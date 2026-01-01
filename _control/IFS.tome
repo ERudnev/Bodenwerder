@@ -1,0 +1,223 @@
+#include "KQM.tome"
+
+@KQM::Tome "IFS" {
+    .description:
+        IFS == Intentional Field Shaping
+        Метод работы с системами и корпусами знаний, при котором намерение
+        не задаётся императивно, а возникает как вычислимое следствие
+        анализа структурированного поля фактов и артефактов.
+
+    .facts {
+        "IntentionalFieldShaping" {
+            Q: 1.0
+            Core:
+                Intentional Field Shaping (IFS) is a method of guiding a system
+                by declaratively shaping a structured field of facts,
+                artifacts, and constraints.
+            Reason:
+                Intent is not injected explicitly but emerges as a
+                context-dependent result of analysis over the shaped field,
+                rather than relying on imperative control.
+        }    
+    
+        "IntentAsContextFunction" {
+            Q: 1.0
+            Core:
+                Intent is not an intrinsic property of a token, fact, or artifact,
+                but a function of how a fragment of context is used within a
+                specific analytical situation.
+            Reason:
+                This avoids treating intent as a universal substance and
+                preserves separation between stored knowledge and its
+                application or interpretation.
+        }
+
+        "IntentActivationThroughAnalysis" {
+            Q: 0.85
+            Core:
+                Intent becomes observable only through analysis and subsequent
+                application, not as a static attribute of stored facts.
+            Reason:
+                Facts remain directionally neutral until an analytical context
+                activates their relevance.
+        }
+
+        "CoreSurvivability" {
+            Q: 0.9
+            Core:
+                A corpus is considered structurally valid if its structural kernel remains
+                self-consistent and operational while ignoring all
+                secondary, reflexive, and diagnostic artifacts.
+            Reason:
+                If a method relies on its own explanations, diagnostics, or meta-commentary to operate,
+                it degenerates into self-reference. Core survivability under reduction indicates genuine
+                methodological substance rather than explanatory scaffolding.
+        }
+
+
+        "AntiImperativePrinciple" {
+            Q: 1.0
+            Core:
+                Direct imperative specification of intent is avoided in favor of
+                contextual dominance derived from structured artifacts.
+            Reason:
+                Imperatives tend to conflict with emergent intent inferred from
+                a rich corpus and reduce system stability.
+        }
+
+        "AnalysisPriority" {
+            Q: 0.85
+            Core:
+                Analysis is the primary operation applied to artifacts of a
+                given domain. It precedes interpretation, evaluation, and
+                application.
+            Reason:
+                Analysis defines the hierarchical relation between artifacts
+                and their interpretations.
+        }
+
+        "AnalysisHierarchy" {
+            Q: 0.85
+            Core:
+                Analysis establishes a hierarchy between artifacts: analyzed
+                artifacts occupy a lower level than analysis results.
+            Reason:
+                This hierarchy is structural rather than temporal or
+                domain-specific.
+        }
+
+        "ArtifactPurity" {
+            Q: 1.0
+            Core:
+                Artifacts intended for analysis must not contain results of
+                their own analysis.
+            Reason:
+                Mixing analyzed content with analysis results breaks the
+                analytical process.
+        }
+
+        "AnalyticalOriginVsStructuralRole" {
+            Q: 0.8
+            Core:
+                The origin of a fact (analysis, reflection, iteration) is independent
+                from its structural role within a corpus.
+                Facts may be born from analysis yet function as structural kernel, secondary,
+                or reflexive elements depending on their role in intent emergence.
+            Reason:
+                Confusing how a fact was produced with how it operates inside a
+                corpus leads to structural kernel inflation and loss of structural clarity.
+                Structural role must be evaluated by function, not by genesis.
+        }
+
+        "CoreEmergenceThroughAnalyticalDetachment" {
+            Q: 0.9
+            Core:
+                A fact becomes part of the structural kernel only when it remains operationally
+                valid after detaching from the analysis that produced it.
+            Reason:
+                Core facts must survive reduction, removal of explanatory context,
+                and absence of their own derivation history.
+                Dependency on the originating analysis indicates scaffolding,
+                not core structure.
+        }
+
+
+
+        "IntentNeutralityCheck" {
+            Q: 0.7
+            Core:
+                A fact or methodological statement is intent-neutral if its meaning
+                remains stable when directive, forceful, or corrective terms are
+                replaced with neutral observational equivalents.
+            Reason:
+                Implicit intent most often enters a corpus through linguistic
+                asymmetry rather than explicit structure.
+                Verbs implying enforcement, removal, or obligation introduce
+                directional bias that distorts intent inference.
+                Intent neutrality preserves the ability for intent to emerge
+                from analysis, rather than being pre-shaped by wording.
+        }
+
+
+        "StuffinessEffect" {
+            Q: 0.7
+            Core:
+                Stuffiness is a negative cognitive effect caused by mixing
+                analyzed artifacts and analysis results in the same
+                representation.
+            Reason:
+                Such mixing prevents independent analysis from taking place.
+        }
+
+        "StuffinessAsLayerCollapse" {
+            Q: 0.7
+            Core:
+                Stuffiness arises when interpretive or analytical artifacts
+                are co-located with the factual layer they analyze, effectively
+                collapsing layers.
+            Reason:
+                Layer collapse interferes with independent analysis and
+                distorts intent inference.
+        }
+
+        "StuffinessMeasure" {
+            Q: 0.65 // draft-state of measure
+            Core: Stuffiness can be treated as a measure of analytical pollution.
+            It reflects the degree of overlap between analyzed artifacts and analysis results.
+            Reason: This allows qualitative and potentially quantitative reasoning about the effect.
+        }
+
+        "AnalysisPreservesAgency" {
+            Q: 0.8
+            Core:
+                Separation between analyzed artifacts and analysis results
+                preserves agency, allowing observers to perform their own
+                analysis.
+            Reason:
+                Loss of this separation leads to cognitive resistance and
+                rejection.
+        }
+
+        "StateTraceHierarchy" {
+            Q: 0.65
+            Core:
+                In notECS, state is an analyzed artifact, while operator traces
+                are results of analysis over state transitions.
+            Reason:
+                Mixing traces into state corresponds to the stuffiness effect.
+        }
+
+        "ReflectionLevel" {
+            Q: 0.3
+            Core:
+                In cyclic thinking processes, reflection is a necessary phase,
+                and artifacts of reflection naturally belong to a higher
+                conceptual level.
+            Reason:
+                Reflection is a byproduct of lower-level activity and cannot
+                reside on the same layer as its subject.
+        }
+
+        "ReflectionNature" {
+            Q: 0.3
+            Core:
+                Reflection artifacts emerge as side effects of technical or
+                operational activity and are not primary products of the
+                system being reflected upon.
+            Reason:
+                This preserves separation between the object of work and
+                meta-level understanding.
+        }
+
+        "LowWeightReflexiveTailHandling" {
+            Q: 0.25
+            Core:
+                Reflexive observations about a method may be retained within
+                the same corpus with deliberately reduced weight.
+            Reason:
+                Lowering influence preserves self-reflection without allowing
+                reflexive artifacts to dominate intent formation or
+                application.
+        }
+    }
+}
