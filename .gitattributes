@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+*.md   text eol=lf
+*.txt  text eol=lf
+*.d1   text eol=lf
+*.types text eol=lf
+
+*.png  binary
+*.jpg  binary
+*.bin  binary
