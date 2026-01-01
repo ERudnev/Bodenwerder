@@ -4,6 +4,7 @@
 *.txt  text eol=lf
 *.d1   text eol=lf
 *.types text eol=lf
+*.tome text eol=lf
 
 *.png  binary
 *.jpg  binary

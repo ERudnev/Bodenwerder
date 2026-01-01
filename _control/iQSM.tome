@@ -1,14 +1,14 @@
 #include "FAL.tome"
 
 @KQM::Tome "iQSM" {
-    .description:
+    Description:
         Описание технологии (immutable)Quantized State Model, систематизация понимания этой технологии.
         Так как notECS развивается и была очень близкой в начале развития с достаточно известной и понятной
         концепцией ECS (Entity Component System), данный том содержит как отсылки к ECS, сравнения с ней
         и даже немного осмысления самой ECS для контекста
 
-    .facts {
-        "Model" {
+    Facts {
+        @KQM::Fact "Model" {
             Q: 0.9
             Core:
                 Форма описывающая структуру моделируемой с помощью notECS части предметной области
@@ -20,13 +20,13 @@
                 исторически понятие "Модели" формировалось при решении задач управления "состояниями программы", что потребовало термина
         }
 
-        "State" {
+        @KQM::Fact "State" {
             Q: 0.9
             Core: Термин, обозначающий "экземпляр состояния нашей программы" или @FAL::Atom её Model
             Reason: Model - тип, State - экземпляр всех данных логики программы.
         }
 
-        "Identifier<Aspect>" {
+        @KQM::Fact "Identifier<Aspect>" {
           Q: 0.9
           Core:
             @FAL::MetaForm, создающий Формы (типы) идентификоторов для @Item
@@ -40,7 +40,7 @@
             Компонент "якорились" на единственный тип Entity. Создание разных типов Id в notECS увело систему от единого Entity как типа
         }
 
-        "Item" {
+        @KQM::Fact "Item" {
             Q: 0.9
             Core:
                 &FAL::Atom, неделимая часть любого состояния системы. Экземпляр 
@@ -51,7 +51,7 @@
                 Удобно говорить "этот Итем имеет тип X"
         }
 
-        "Aspect" {
+        @KQM::Fact "Aspect" {
             Q: 0.9
             Core:
                 Аспект, это Форма (@FAL::Form), группирующая набор форм (локальных типов) одного класса сущностей предметной области:
@@ -69,7 +69,7 @@
                 - удобство: считать что для каждого Aspect A однозначно определены A::Id, A::Item, A::Operations, e.t.c
         }
 
-        "Table" {
+        @KQM::Fact "Table" {
             Q: 0.9
             Core:
                 Table является @FAL::MetaForm
@@ -79,13 +79,13 @@
                 Table по сути является аналогом состояния ECS System.
         }
 
-        "Functor" {
+        @KQM::Fact "Functor" {
             Q: 0.5
             Core: Термин Functor технический, обобщение &Operator и &Validator
             Reason: удобство конструирования терминов
         }
 
-        "Operator" {
+        @KQM::Fact "Operator" {
             Q: 0.9
             Core:
                 Частный случай @Functor, как Логическая операция с Моделью вида "foo(State, Aspect::Id, Args..)->{new State, Result...}"
@@ -98,7 +98,7 @@
                 для элементарных операций над Атомами (Aspect<X>::Item) или над Таблицами (Aspect<X>::Table)
         }
 
-        "Validator" {
+        @KQM::Fact "Validator" {
             Q: 0.9
             Core:
                 Частный случай &Functor со своим смыслом и особенностями:
@@ -113,7 +113,7 @@
                 стратегически выгоднее избегать сложных операций Валидации путем сложности всего процесса Валидации
         }
 
-        "StateHolder" {
+        @KQM::Fact "StateHolder" {
             Q: 0.9
             Core:
                 Семейство классов Мутабельных объектов, предназначенных для временного держания состояний всей Модели
@@ -124,19 +124,19 @@
                 На практике мутабельность обычно локализуется в инфраструктурных держателях состояний.
         }
 
-        "AspectList" {
+        @KQM::Fact "AspectList" {
             Q: 0.8
             Core: Некий Scope, набор неповторяющихся Аспектов (типов) из Модели. Удобно рассматривать в виде DAG
             Reason: В разных задачах речь заходит о "списке типов" и термин оказался удобным на практике.
         }
 
-        "Basis" {
+        @KQM::Fact "Basis" {
             Q: 0.6
             Core: Единственный и полный @AspectList всех известных Модели Аспектов.
             Reason: Для реализации бывает удобно привязывать всю мета-информацию именно к Базису
         }
 
-        "FALUnifiesOOPAndECS" {
+        @KQM::Fact "FALUnifiesOOPAndECS" {
             Q: 0.85
             Core:
                 The Form-Atom language &FAL can describe OOP, ECS, and notECS uniformly.
@@ -144,7 +144,7 @@
             Reason: A common language reduces accidental complexity between architectural models.
         }
 
-        "notECSLooksAsRepository" {
+        @KQM::Fact "notECSLooksAsRepository" {
             Q: 0.3 // illustrative analogy
             Core:
                 Иногда notECS и работа с ним становится похожей на работу с "репозиторием состояний системы"
@@ -152,7 +152,7 @@
             Reason: появляется много аналогий - коммиты, ветки, Merge и даже что-то аналогичное Git Flow
         }
 
-        "WhyItIsNotEcs" {
+        @KQM::Fact "WhyItIsNotEcs" {
             Q: 0.3
             Core:
                 Все три слова из Entity Component System потеряли свой смысл для notECS:
@@ -164,13 +164,13 @@
                 Само название "notECS" несет смысл отрицания терминов и глубокого пересмотра исходной концепции
         }
 
-        "ImmutabilityOfAtoms" {
+        @KQM::Fact "ImmutabilityOfAtoms" {
             Q: 0.95
             Core: Атомы (Item) notECS и сам ее State иммутабельны
             Reason: иммутабельность введена в notECS как выбранный механизм операций с состояниями
         }
 
-        "ImmutabilityIsConceptual" {
+        @KQM::Fact "ImmutabilityIsConceptual" {
             Q: 0.9
             Core:
                 Иммутабельность State — это концептуальный инвариант, гарантирующий отсутствие side effects и чистоту операций.
@@ -181,7 +181,7 @@
                 Позволяет ветвление и concurrency без race conditions, сохраняя эффективность.
         }
 
-        "RuntimeCyclesAllowed" {
+        @KQM::Fact "RuntimeCyclesAllowed" {
             Q: 0.9
             Core:
                 По правилам iQSM циклы между типами Aspect'ов недопустимы. Атомы же (Item) в State могут свободно ссылаться друг на друга циклически.
@@ -191,7 +191,7 @@
                 Помогает избежать взаимных зависимостей между типами, не ограничивая связи между объектами
         }
 
-        "AspectIdentifierMapping" {
+        @KQM::Fact "AspectIdentifierMapping" {
             Q: 0.9
             Core:
                 Каждый @Aspect имеет единственный определенный для него тип @Identifier.
@@ -200,9 +200,9 @@
             Reason:
                 Использовано как механизм ухода от Entities к "классическим" ECS: Аспекты со "своим родным" Id эквивалентны ECS::Entity,
                 Аспекты "пользующиеся чужими" типами идентификаторов - аналог ECS::Component
-        }    
+        }
 
-        "StateIsLightWeight" {
+        @KQM::Fact "StateIsLightWeight" {
             Q: 0.6 // пояснение
             Core:
                 На уровне концепции "Стейт это состояние системы". Реализация сильно оптимизирует и копирование
@@ -212,13 +212,13 @@
                 накладные расходы по сравнению с полным копированием
         }
 
-        "ModelStateDualism" {
+        @KQM::Fact "ModelStateDualism" {
             Q: 0.95
             Core: Пара Модель-Стейт является проявлением &FAL::ForAtomDualism. Можно говорить о "стейтах модели"
             Reason: удобная терминология
-        }    
+        }
 
-        "ItemIsNotAnObject" {
+        @KQM::Fact "ItemIsNotAnObject" {
             Q: 0.8
             Core:
                 Item это лишь одно из состояний. Если попытаться найти в notECS аналог Объекта в ООП,
@@ -230,7 +230,7 @@
                 рассказывать, что "объект это сумма всех иммутабельных состояний. Именно по-этому и нет смысла в указателях на обьекты
         }
 
-        "StateIsLikeAnItem" {
+        @KQM::Fact "StateIsLikeAnItem" {
             Q: 0.8
             Core:
                 Аналогично &ItemIsNotAnObject State есть Атом, единичное состояние Программы.
@@ -238,9 +238,9 @@
                 Совсем не обязательно считать эволюцию "линией" это может быть более сложная структура
             Reason:
                 улучшает понимание иммутабельных особенностей notECS
-        }    
+        }
 
-        "AspectNameMatters" {
+        @KQM::Fact "AspectNameMatters" {
             Q: 0.2
             Core:
                 Каждый Аспект (как Форма и структура Форм) имеет имя (строка) которое очень
@@ -251,7 +251,7 @@
                 - template<Aspect X> struct Table<X> {...} ~= continer<X::Id, X::Item>
         }
 
-        "OwnIdentifierMeans" {
+        @KQM::Fact "OwnIdentifierMeans" {
             Q: 0.85
             Core:
                 Item тех Аспектов, где свой Id определен - могут существовать самостоятельно
@@ -260,15 +260,15 @@
             Reason:
                 Обобщение ECS Entity, как "контролера жизненного цикла компонент" на "Аспект с собственным типом Id"
                 Принцип "эти объекты самостоятельны, а другие - их опциональные логические части"
-        }        
+        }
 
-        "FunctorLooksBetterWithTable" {
+        @KQM::Fact "FunctorLooksBetterWithTable" {
             Q: 0.5
             Core: удобнее определять конкретные Функторы как Атомы некоей Формы "операций над Table"
             Reason: Реализация сильно проще
         }
 
-        "StructuralValidator" {
+        @KQM::Fact "StructuralValidator" {
             Q: 0.5
             Core:
                 Частный случай @Validator, поддерживающий структуру Модели и выводимый из определений Аспектов Модели.
@@ -276,7 +276,7 @@
                 иногда удобно говорить отдельно об "логических" и "структурных" валидаторов, разделяя правила структуры от логики
           }
 
-        "Validation" {
+        @KQM::Fact "Validation" {
             Q: 0.9
             Core:
               Не Форма и не Атом а некий формат процесса применения всех нужных Валидаторов над State или его частями
@@ -285,7 +285,7 @@
               Множество Валидаторов имеет смысл рассматривать как части некоего единого процесса, обеспечивающего корректность состояний Модели 
           }
 
-        "ValidationIsSubjective" {
+        @KQM::Fact "ValidationIsSubjective" {
             Q: 0.9
             Core:
                 Элемент Aspect<A>::Item валидный с точки зрения критериев Aspect<A>::Validation, может считаться невалидным
@@ -296,7 +296,7 @@
                 по дереву зависимостей внутри полного DAG Аспектов (как типов)
         }
 
-        "WhyFunctorApplicationCanCreateState" {
+        @KQM::Fact "WhyFunctorApplicationCanCreateState" {
             Q: 0.01
             Core:
                 В общем случае, применение Функтора может создавать новый Стейт
@@ -307,7 +307,7 @@
                 следующему оператору
         }
 
-        "WhyFunctorApplicationCanSkipCreatingState" {
+        @KQM::Fact "WhyFunctorApplicationCanSkipCreatingState" {
             Q: 0.01
             Core:
                 В общем случае, применение Функтора может не создавать новый Стейт:
@@ -319,7 +319,7 @@
                 Оптимизация.
         }
 
-        "TimeNotMatters" {
+        @KQM::Fact "TimeNotMatters" {
             Q: 0.2
             Core:
                 State may be interpreted as a snapshot; mapping to time is optional and external to the model
@@ -328,7 +328,7 @@
                 Можно выбрамывать все состояния, оставляя одно "текущее". Выбор за архитектором конкретной системы.
         }
 
-        "Change" {
+        @KQM::Fact "Change" {
             Q: 0.9
             Core:
                 Некая Форма, атомы которой хранят изменение State относительно другого
@@ -337,13 +337,13 @@
                 Change Концептуально не является необходимым но очень упрощает реализацию и важен для понимания
         }
 
-        "ApplyChange" {
+        @KQM::Fact "ApplyChange" {
             Q: 0.8
             Core: Некий процесс при котором Apply(State, Change) -> State
             Reason: удобно говорить в таких терминах
         }
 
-        "Merge" {
+        @KQM::Fact "Merge" {
             Q: 0.9
             Core:
                 Процесс, при котором несколько стейтов формируют один совместный по заранее известным правилам.
@@ -351,7 +351,7 @@
                 Термин всплывает при использовании notECS и просочился в базовые определения
         }
 
-        "StrongTypedOrigin" {
+        @KQM::Fact "StrongTypedOrigin" {
             Q: 0.2
             Core:
                 Концепция notECS по своей природе не зависит от языка программирования.
@@ -360,7 +360,7 @@
                 Это объясняет акцент на строгой типизации, одновременно признавая более широкую применимость концепции.
         }
 
-        "SystemIsStateCentric" {
+        @KQM::Fact "SystemIsStateCentric" {
             Q: 0.9
             Core:
                 notECS организована вокруг явных состояний мира.
@@ -369,7 +369,7 @@
                 Это устанавливает состояние как первичный носитель смысла и времени.
         }
 
-        "StateIsImmutable" {
+        @KQM::Fact "StateIsImmutable" {
             Q: 0.5
             Core:
                 Любое изменение производит новое состояние.
@@ -378,7 +378,7 @@
                 Неизменяемость устраняет скрытые побочные эффекты и позволяет ветвление.
         }
 
-        "NoCentralEntity" {
+        @KQM::Fact "NoCentralEntity" {
             Q: 0.5
             Core:
                 Не существует универсального якоря Entity.
@@ -387,7 +387,7 @@
                 Это устраняет онтологическое узкое место классического ECS.
         }
 
-        "ElementsAreIndependent" {
+        @KQM::Fact "ElementsAreIndependent" {
             Q: 0.85
             Core:
                 Некоторые элементы существуют независимо со своей собственной идентичностью.
@@ -395,20 +395,20 @@
             Reason:
                 Это позволяет создавать более богатые графы идентичности, чем плоские модели сущность-компонент.
         }
-  
-        "OperationsAreExternal" {
+
+        @KQM::Fact "OperationsAreExternal" {
             Q: 0.95
             Core: Операции не принадлежат данным. Они преобразуют состояние извне.
             Reason: Разделение структуры и поведения сохраняет архитектурную ясность.
         }
 
-        "OperationsProduceStates" {
+        @KQM::Fact "OperationsProduceStates" {
             Q: 0.95
             Core: Операция отображает одно состояние в другое. Результатом является новое состояние.
             Reason: Это делает временную эволюцию явной и поддающейся инспекции.
         }
 
-        "ValidationIsSeparated" {
+        @KQM::Fact "ValidationIsSeparated" {
             Q: 0.9
             Core:
                 Валидация не смешивается с логикой трансформации.
@@ -418,13 +418,13 @@
                 мы бы получали промежуточные невалидные стейты, которые просто нет смысла делать стабильными
         }
 
-        "TypeGraphIsAcyclic" {
+        @KQM::Fact "TypeGraphIsAcyclic" {
             Q: 0.95
             Core: By construction, the type dependency graph is acyclic within the modeling rules.
             Reason: Ацикличность графа типов используется как средство повышения модульности
         }
 
-        "StructuralDecompositionByDAG" {
+        @KQM::Fact "StructuralDecompositionByDAG" {
             Q: 0.9
             Core:
                 Система может быть разрезана вдоль DAG типов.
@@ -433,7 +433,7 @@
                 Структура DAG обеспечивает безопасное извлечение подсистем.
         }
 
-        "ReadingIsPure" {
+        @KQM::Fact "ReadingIsPure" {
             Q: 0.95
             Core:
                 Операции чтения не модифицируют состояние.
@@ -442,7 +442,7 @@
                 Чистота гарантирует референциальную прозрачность для запросов.
         }
 
-        "WritingIsExplicit" {
+        @KQM::Fact "WritingIsExplicit" {
             Q: 0.95
             Core:
                 Операции записи являются явными трансформациями.
@@ -451,7 +451,7 @@
                 Явные записи делают распространение изменений анализируемым.
         }
 
-        "TimeIsModeledByStates" {
+        @KQM::Fact "TimeIsModeledByStates" {
             Q: 0.9
             Core:
                 Время представляется как последовательность состояний.
@@ -460,7 +460,7 @@
                 Временное рассуждение возникает из последовательности состояний.
         }
 
-        "SystemIsLanguageForStructure" {
+        @KQM::Fact "SystemIsLanguageForStructure" {
             Q: 0.85
             Core:
                 notECS выступает как декларативный язык для структуры.
@@ -469,7 +469,7 @@
                 Это согласовывает систему с архитектурным и когнитивным моделированием.
         }
 
-        "Resource" {
+        @KQM::Fact "Resource" {
             Q: 0.9
             Core:
                 Ресурс - данные вне notECS Модели необходимые для работы, но которые решено в Модель не заносить.
@@ -489,7 +489,7 @@
                 Аналогично LFS в Git или текстурам в движке игры.
         }
 
-        "FALused" {
+        @KQM::Fact "FALused" {
             Q: 0.5 // удобство
             Core: notECS использует язык &FAL и подчинен его правилам (&AB-BA)
             Reason: Исторически, FAL был в основе перехода ECS -> notECS
