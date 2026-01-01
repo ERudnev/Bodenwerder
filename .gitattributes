@@ -1,0 +1,5 @@
+# Line endings for tome files
+*.tome text eol=lf
+
+# Default for other text files
+* text=auto
