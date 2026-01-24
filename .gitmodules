@@ -7,3 +7,6 @@
 [submodule "3party/glew-cmake"]
 	path = 3party/glew-cmake
 	url = https://github.com/Perlmint/glew-cmake.git
+[submodule "_seed"]
+	path = _seed
+	url = https://github.com/ERudnev/Morpheus.git

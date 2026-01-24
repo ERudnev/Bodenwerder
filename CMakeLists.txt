@@ -10,4 +10,5 @@ project(DAQL)
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "Build the GLFW documentation" FORCE)
 
 add_subdirectory(3party)
+add_subdirectory(modules)
 
