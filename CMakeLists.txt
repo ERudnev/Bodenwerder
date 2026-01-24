@@ -6,5 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 project(DAQL)
 
+# Disable GLFW documentation generation (we don't need Doxygen)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "Build the GLFW documentation" FORCE)
+
 add_subdirectory(3party)
 
