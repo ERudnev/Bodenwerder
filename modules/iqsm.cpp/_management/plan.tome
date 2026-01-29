@@ -1,0 +1,26 @@
+// Структурированные задачи планирования и управления модулем iqsm.cpp.
+// Преобразованные из backlog проблемы с конкретными планами выполнения.
+
+#include "Seed/core/KQM.tome"
+#include "Seed/methods/management.tome"
+
+namespace plan {
+
+  implement_iqsm_core_entities: @management::Task {
+    status: in_progress
+    goal:
+      Реализовать технологические сущности из &iQSM::tome в модуле iqsm.cpp с шаблонами и базовой инфраструктурой.
+    subtasks:
+      📋 Подготовить шаблоны/каркасы для Model и Basis
+      📋 Реализовать Identifier и Item типы
+      📋 Сверстать Aspect c его Item/Id связями
+      📋 Реализовать Table контейнеры под Aspect::Item/Id
+      📋 Подготовить Functor/Operator/Validator/StructuralValidator базовые классы
+      📋 Реализовать Change и StateHolder инфраструктуру
+      📋 Добавить Resource (внешние данные) каркас
+      📋 Прописать юнит-тесты или проверки для перечисленных сущностей
+    reason:
+      Требуется перенести задачу из backlog по шаблонам базовых классов и покрыть все сущности из iQSM.tome для начала реализации.
+  }
+
+}

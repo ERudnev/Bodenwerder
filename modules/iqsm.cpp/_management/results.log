@@ -1,0 +1,7 @@
+Development log
+&contract::experience_management - requires logging of agent actions
+@management::Record - defines the format for log entries
+
+[morta] 2026-01-24: Создан управляющий блок _management для модуля iqsm.cpp с пустыми файлами goal.tome, plan.tome, backlog.tome, archive.tome и results.log
+[morta] 2026-01-24: Заполнен backlog IQSM двумя задачами: проверка контейнеров и шаблоны базовых классов
+[morta] 2026-01-24: Добавлена задача implement_iqsm_core_entities в plan.tome с подзадачами по сущностям из iQSM.tome; зависимость от backlog::base_class_templates
