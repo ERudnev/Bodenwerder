@@ -10,3 +10,6 @@
 [submodule "_seed"]
 	path = _seed
 	url = https://github.com/ERudnev/Morpheus.git
+[submodule "3party/assimp"]
+	path = 3party/assimp
+	url = https://github.com/assimp/assimp.git

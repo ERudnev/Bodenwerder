@@ -1,0 +1,8 @@
+﻿// Q1 language spec
+
+#include "Seed/core/FAL.tome"
+#include "modules/Q1/methodology.tome"
+
+namespace Q1 {
+
+}

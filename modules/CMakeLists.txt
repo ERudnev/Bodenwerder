@@ -1,3 +1,4 @@
 add_subdirectory(base.cpp)
-add_subdirectory(iqsm.cpp)
-add_subdirectory(render_test.cpp)
+add_subdirectory(iQSM.cpp)
+add_subdirectory(Q1/golden/Atomic.cpp)
+add_subdirectory(Toy.cpp)

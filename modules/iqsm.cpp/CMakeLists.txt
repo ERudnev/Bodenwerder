@@ -1,7 +1,7 @@
 file (GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "source/*.cpp")
 file (GLOB_RECURSE TESTING_SOURCES CONFIGURE_DEPENDS "test/*.cpp")
 
-project("iqsm"
+project("iQSM"
     DESCRIPTION "iqsm.cpp - C++ implementation of iQSM"
     VERSION 0.1
 )

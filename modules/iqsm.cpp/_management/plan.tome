@@ -13,10 +13,10 @@ namespace plan {
     subtasks:
       📋 Подготовить шаблоны/каркасы для Model и Basis
       📋 Реализовать Identifier и Item типы
-      📋 Сверстать Aspect c его Item/Id связями
-      📋 Реализовать Table контейнеры под Aspect::Item/Id
+      📋 Сверстать Particle c его Item/Id связями
+      📋 Реализовать Field контейнеры под Particle::Item/Id
       📋 Подготовить Functor/Operator/Validator/StructuralValidator базовые классы
-      📋 Реализовать Change и StateHolder инфраструктуру
+      📋 Реализовать Change и History инфраструктуру
       📋 Добавить Resource (внешние данные) каркас
       📋 Прописать юнит-тесты или проверки для перечисленных сущностей
     reason:
