@@ -4,7 +4,7 @@
 #include <iQSM/identifier.h>
 #include <iQSM/logger.h>
 #include <iQSM/particles.h>
-#include <iQSM/q1builtins.h>
+#include <iQSM/q1/builtins.h>
 
 // Minimal DSL surface for generated/etalon code.
 // Intentionally small to avoid pulling the whole iqsm namespace into client headers.

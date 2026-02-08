@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <format>
-#include <typeindex>
 #include <memory>
 #include <base/containers/ImmutableUnorderedMap.h>
 #include <iQSM/aspects.h>
@@ -10,7 +9,7 @@
 namespace iqsm {
 
     struct FieldUntyped {
-        using RuntimeTypeId = std::type_index;
+        using RuntimeTypeId = internals::Types::RuntimeId;
         virtual ~FieldUntyped() = default;
     };
 

@@ -3,7 +3,11 @@
 #define IQSM_TESTS(X) \
     X(typenames_atomic) \
     X(dagdata_define) \
-    X(always_succeeds) \
+    X(worlddata_construct) \
+    X(worlddata_unclosed_basis_returns_null) \
+    X(delta_merge) \
+    X(simpleworld_evolution) \
+    X(validation_anchor) \
     // end
 
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)

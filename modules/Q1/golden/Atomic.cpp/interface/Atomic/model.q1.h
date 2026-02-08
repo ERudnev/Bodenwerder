@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <iQSM/_DSL.include.h>
+#include <iQSM/q1/_gateway.h>
 
 #include <cstdint>
 #include <string>
@@ -19,17 +19,20 @@ namespace Q1CORE::Example::Model {
         struct ItemState {
             string name;
             seconds halflife;
+            integer valency;
         };
     };
 
-    struct Body : Xion<Body>, DependsFrom<> {
-        struct ItemState {};
+    struct Molecule : Xion<Molecule>, DependsFrom<> {
+        struct ItemState {
+            string name;
+        };
     };
 
-    struct Atom : Xion<Atom>, DependsFrom<Element, Body>{ 
+    struct Atom : Xion<Atom>, DependsFrom<Element, Molecule>{ 
         struct ItemState {
             Element::Id type;
-            Body::Id link; //@anchor
+            Molecule::Id link; //@anchor
         };
     };
 

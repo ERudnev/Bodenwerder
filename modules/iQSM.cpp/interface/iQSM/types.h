@@ -1,8 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <format>
 #include <string>
 #include <string_view>
+#include <stdexcept>
 #include <typeindex>
 #include <typeinfo>
 #include <type_traits>
@@ -19,6 +21,11 @@ namespace iqsm {
 
     template<typename T>
     ref<T> clone(cref<T> ref) { return ref ? std::make_shared<T>(*ref) : nullptr;}
+
+    template<typename T>
+    inline void required(const T& x, std::string_view what = "value") {
+        if (not x) { throw std::runtime_error(std::format("{} required", what)); }
+    }
 
     namespace internals {
         struct Types {

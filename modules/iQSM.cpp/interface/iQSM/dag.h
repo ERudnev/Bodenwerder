@@ -48,7 +48,7 @@ iqsm::Dag iqsm::DagState::define()
     (result->aspects.emplace(Aspect<TypeList>::typeId, Entry{
         depends_of<TypeList>(),
         TypeSet{},
-        std::static_pointer_cast<const FieldUntyped>(std::make_shared<FieldState<TypeList>>())
+        std::static_pointer_cast<const FieldUntyped>(std::make_shared<const FieldState<TypeList>>())
     }), ...);
 
     result->check_closed();

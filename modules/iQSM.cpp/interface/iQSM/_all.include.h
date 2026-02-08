@@ -1,4 +1,4 @@
 #pragma once
 
 // all includes from DSL-declarations layer
-#include <iQSM/_DSL.include.h>
+#include <iQSM/q1/_gateway.h>

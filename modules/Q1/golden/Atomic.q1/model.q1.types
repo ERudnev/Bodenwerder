@@ -10,13 +10,16 @@ namespace Q1CORE
         state
           name: string
           halflife: seconds
+          valency: integer
 
-      xion Body
+      xion Molecule
+        state
+          name: string
 
       xion Atom
         state
           type: Element::id
-          link: Body::Id @anchor
+          link: Molecule::Id @anchor
 
       quark Position of Atom
         state

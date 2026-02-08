@@ -1,5 +1,6 @@
 #include <iQSM/dag.h>
 
+#include <format>
 #include <stdexcept>
 
 namespace iqsm {
@@ -7,7 +8,10 @@ namespace iqsm {
         for (const auto& [a, e] : aspects) {
             for (const auto& dep : e.depends_from) {
                 if (aspects.find(dep) == aspects.end()) {
-                    throw std::runtime_error("DagState is not closed");
+                    throw std::runtime_error(std::format(
+                        "DagState is not closed: missing dependency '{}' (required by '{}')",
+                        dep.name(),
+                        a.name()));
                 }
             }
         }

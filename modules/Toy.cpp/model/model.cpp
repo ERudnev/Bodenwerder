@@ -16,10 +16,10 @@ namespace Toy {
         // temp code to buid compileable iQSM structure types:
         iqsm::FieldState<Element> field;
         field.container = field.container
-            .insert(Element::Id::generate_random(), Aspect<Element>::create({"H", seconds{0}}))
-            .insert(Element::Id::generate_random(), Aspect<Element>::create({"He", seconds{0}}))
-            .insert(Element::Id::generate_random(), Aspect<Element>::create({"Li", seconds{0}}))
-            .insert(Element::Id::generate_random(), Aspect<Element>::create({"Be", seconds{0}}));
+            .insert(Element::Id::generate_random(), Aspect<Element>::create({"H", seconds{0}, integer{1}}))
+            .insert(Element::Id::generate_random(), Aspect<Element>::create({"He", seconds{0}, integer{0}}))
+            .insert(Element::Id::generate_random(), Aspect<Element>::create({"Li", seconds{0}, integer{1}}))
+            .insert(Element::Id::generate_random(), Aspect<Element>::create({"Be", seconds{0}, integer{2}}));
 
         message("Field: {}", field);
 
