@@ -1,0 +1,50 @@
+namespace Q1CORE    
+  namespace Example
+    namespace Model
+      struct Vec3
+        x: float
+        y: float
+        z: float
+
+      table Element
+        state
+          name: string
+          halflife: seconds
+
+      xion Body
+
+      xion Atom
+        state
+          type: Element::id
+          link: Body::Id @anchor
+
+      quark Position of Atom
+        state
+          position: Vec3
+
+      quark Fusion of Atom
+        state
+          life: seconds
+
+      quark Chemistry of Atom
+        depends: Position
+        struct Link
+          target: Id
+          strength: float
+          distance: float
+        state
+          links: vector<Link>          
+
+      quark Kinematics of Atom
+        depends: Position
+        state
+          mass: float
+          prev_pos: Vec3
+
+      quark Actor of Atom
+        depends: Position
+        enum Color : red, green, blue
+        state
+          color: Color
+
+      tag Marked of Atom

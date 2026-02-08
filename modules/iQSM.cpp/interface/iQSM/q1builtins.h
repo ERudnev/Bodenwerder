@@ -1,13 +1,40 @@
 #pragma once
 
+#include <cstdint>
 #include <chrono>
+#include <map>
+#include <optional>
+#include <set>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace iqsm::q1 {
-    // Q1 builtin: relative time duration, measured in seconds.
-    using Seconds = double;
+    // Q1 builtins (mapped into the language root)
+    using integer = std::int32_t;
+    // Q1 builtin `float` maps to C++ keyword type: `float`
+    using string = std::string;
+    using boolean = bool;
+
+    template<typename T>
+    using optional = std::optional<T>;
+    template<typename T>
+    using vector = std::vector<T>;
+    template<typename K, typename V>
+    using map = std::map<K, V>;
+    template<typename T>
+    using set = std::set<T>;
+    template<typename K, typename V>
+    using umap = std::unordered_map<K, V>;
+    template<typename T>
+    using uset = std::unordered_set<T>;
+
+    // Q1 builtin: relative time duration (in seconds).
+    using seconds = double;
 
     // Q1 builtin: timepoint (absolute).
-    using Time = std::chrono::system_clock::time_point;
+    using time = std::chrono::system_clock::time_point;
 }
 
 

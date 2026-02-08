@@ -1,6 +1,8 @@
 ﻿#pragma once
 
 #include <cstdint>
+#include <functional>
+#include <format>
 #include <string>
 
 namespace iqsm {
@@ -22,7 +24,6 @@ namespace iqsm {
         inline bool operator<(const Identifier& rhs) const { return value < rhs.value; }
         //remove? Identifier advance() const { return {identifiers::advance(value)}; } // will not compile with non-integers. Redo this
         static Identifier generate_random() { return Identifier{internal::id::generate_unique()}; }
-        inline std::string debug_string() const { return internal::id::info_hash(value); }
 
         inline bool operator==(const Identifier& rhs) const { return value == rhs.value; }
 
@@ -33,3 +34,20 @@ namespace iqsm {
     };
 
 }
+
+// Enable: std::format("{}", Identifier) and thus logger::message(".. {}", id);
+template<typename Meta, typename BaseType>
+struct std::formatter<iqsm::Identifier<Meta, BaseType>, char> : std::formatter<std::string, char> {
+    template<class FormatContext>
+    auto format(const iqsm::Identifier<Meta, BaseType>& id, FormatContext& ctx) const {
+        return std::formatter<std::string, char>::format(iqsm::internal::id::info_hash(id.raw()), ctx);
+    }
+};
+
+// Enable using Identifier as key in unordered/hamt maps (e.g. ImmutableUnorderedMap).
+template<typename Meta, typename BaseType>
+struct std::hash<iqsm::Identifier<Meta, BaseType>> {
+    size_t operator()(const iqsm::Identifier<Meta, BaseType>& id) const noexcept {
+        return std::hash<BaseType>{}(id.raw());
+    }
+};

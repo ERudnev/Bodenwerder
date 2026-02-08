@@ -1,8 +1,9 @@
 #pragma once
 
 #include <memory>
-#include <Base/logging.h>
-#include <Base/testing/ScopedTimer.h>
+#include <stdexcept>
+#include <base/logging.h>
+#include <base/testing/ScopedTimer.h>
 
 namespace testing {
 
@@ -11,7 +12,6 @@ namespace testing {
         testing::scoped_timer timer("total");
         base::message(std::format("[{}] started...", legend));
         try {
-
             func();
         } catch (const std::exception& e) {
             base::message("...FAILED: exception caught: " + std::string(e.what()));
@@ -45,30 +45,28 @@ namespace testing {
         }
     };
 
-    inline void report_and_exit(const std::string& message)
-    {
-        std::cerr << "!!" << std::endl;
-        std::cerr << "ERROR: " << message << std::endl;
-        std::cerr << "!!" << std::endl;
-        std::exit(1);
-    }
+    struct failure final : std::runtime_error {
+        using std::runtime_error::runtime_error;
+    };
+
+    [[noreturn]] inline void fail(const std::string& message) { throw failure(message); }
 }
 
 #define EXPECT_TRUE(condition) \
-    if (!(condition)) { testing::report_and_exit(std::format("Expecting true, but got false: {} (at {}:{})", #condition, __FILE__, __LINE__)); }
+    if (!(condition)) { testing::fail(std::format("Expecting true, but got false: {} (at {}:{})", #condition, __FILE__, __LINE__)); }
 
 #define EXPECT_EQ(a, b) \
     do { \
         auto _a_val = (a); \
         auto _b_val = (b); \
         if (_a_val != _b_val) { \
-            testing::report_and_exit(std::format("Expecting equality, but got: {} != {} (values: {} != {}) (at {}:{})", #a, #b, _a_val, _b_val, __FILE__, __LINE__)); \
+            testing::fail(std::format("Expecting equality, but got: {} != {} (values: {} != {}) (at {}:{})", #a, #b, _a_val, _b_val, __FILE__, __LINE__)); \
         } \
     } while(0)
 
 #define ADD_FAILURE(message) \
     do { \
-        testing::report_and_exit(std::format("Failure: {} (at {}:{})", message, __FILE__, __LINE__)); \
+        testing::fail(std::format("Failure: {} (at {}:{})", message, __FILE__, __LINE__)); \
     } while(0)
 
 #define RUN_TEST(func) testing::function_wrap(func, #func);
