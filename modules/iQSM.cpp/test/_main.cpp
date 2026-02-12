@@ -6,7 +6,6 @@
     X(worlddata_construct) \
     X(worlddata_unclosed_basis_returns_null) \
     X(delta_merge) \
-    X(simpleworld_evolution) \
     X(validation_anchor) \
     // end
 

@@ -7,27 +7,22 @@ namespace Q1CORE
         z: float
 
       table Element
-        state
+        quantum
           name: string
-          halflife: seconds
           valency: integer
 
       xion Molecule
-        state
+        quantum
           name: string
 
       xion Atom
-        state
+        quantum
           type: Element::id
           link: Molecule::Id @anchor
 
       quark Position of Atom
-        state
+        quantum
           position: Vec3
-
-      quark Fusion of Atom
-        state
-          life: seconds
 
       quark Chemistry of Atom
         depends: Position
@@ -35,19 +30,19 @@ namespace Q1CORE
           target: Id
           strength: float
           distance: float
-        state
+        quantum
           links: vector<Link>          
 
       quark Kinematics of Atom
         depends: Position
-        state
+        quantum
           mass: float
           prev_pos: Vec3
 
       quark Actor of Atom
         depends: Position
         enum Color : red, green, blue
-        state
+        quantum
           color: Color
 
       tag Marked of Atom

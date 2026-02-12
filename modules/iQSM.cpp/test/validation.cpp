@@ -3,7 +3,7 @@
 #include <Atomic/model.q1.h>
 #include <iQSM/field.h>
 #include <iQSM/operations/integration.h>
-#include <iQSM/operations/validators.h>
+#include <iQSM/operations/validation.h>
 #include <iQSM/world.h>
 
 namespace tests {
@@ -35,11 +35,9 @@ namespace tests {
 
             EXPECT_EQ(world->field<Atom>()->container.size(), size_t{2});
 
-            auto delta = validators::structural::anchor<Molecule, Atom>(
-                freeze(world),
-                [](Aspect<Atom>::Item item) { return item->link; });
+            auto delta = ops::validation::Structural::anchor<Molecule, Atom, &Atom::Quantum::molecule>(freeze(world));
 
-            auto next = integrate(freeze(world), delta);
+            auto next = ops::integrate_raw(freeze(world), delta);
             EXPECT_EQ(next->field<Atom>()->container.size(), size_t{1});
             EXPECT_TRUE(next->field<Atom>()->container.contains(atom_ok));
             EXPECT_TRUE(not next->field<Atom>()->container.contains(atom_bad));
@@ -72,8 +70,8 @@ namespace tests {
 
             EXPECT_EQ(world->field<Position>()->container.size(), size_t{2});
 
-            auto delta = validators::structural::anchor_quark<Atom, Position>(freeze(world));
-            auto next = integrate(freeze(world), delta);
+            auto delta = ops::validation::Structural::anchor_quark<Atom, Position>(freeze(world));
+            auto next = ops::integrate_raw(freeze(world), delta);
 
             EXPECT_EQ(next->field<Position>()->container.size(), size_t{1});
             EXPECT_TRUE(next->field<Position>()->container.contains(atom_ok));

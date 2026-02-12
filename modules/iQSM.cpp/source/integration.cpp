@@ -3,12 +3,17 @@
 #include <format>
 #include <stdexcept>
 
-namespace iqsm {
+namespace iqsm::ops {
     World integrate(World world, Delta delta) {
+        // Reliable default: always validate the resulting world.
+        return validate(integrate_raw(world, delta));
+    }
+
+    World integrate_raw(World world, Delta delta) {
         if (not delta) { return world; }
         if (not world) { return nullptr; }
         if (delta->fields.empty()) { return world; }
-        required(world->basis, "integrate(): world basis");
+        required(world->basis, "integrate_raw(): world basis");
 
         auto out = std::make_shared<WorldState>(world->basis);
         out->fields = world->fields;
@@ -20,7 +25,7 @@ namespace iqsm {
 
             if (not world->basis->aspects.contains(typeId)) {
                 throw std::runtime_error(std::format(
-                    "integrate(): delta contains type not in basis: '{}'",
+                    "integrate_raw(): delta contains type not in basis: '{}'",
                     typeId.name()));
             }
 

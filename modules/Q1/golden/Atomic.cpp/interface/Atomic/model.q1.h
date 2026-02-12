@@ -16,7 +16,7 @@ namespace Q1CORE::Example::Model {
     };
 
     struct Element : Xion<Element>, DependsFrom<> {
-        struct ItemState {
+        struct Quantum {
             string name;
             seconds halflife;
             integer valency;
@@ -24,28 +24,34 @@ namespace Q1CORE::Example::Model {
     };
 
     struct Molecule : Xion<Molecule>, DependsFrom<> {
-        struct ItemState {
+        struct Quantum {
             string name;
         };
     };
 
     struct Atom : Xion<Atom>, DependsFrom<Element, Molecule>{ 
-        struct ItemState {
+        struct Quantum {
             Element::Id type;
-            Molecule::Id link; //@anchor
+            Molecule::Id molecule; //@anchor
         };
+
+        inline static const Structural invariants{{{
+            Structural::anchor<Molecule, Atom, &Quantum::molecule>,
+        }}};
+
+        //inline static const iqsm::ops::validators::List validators{{
+        //    iqsm::validators::anchor<Molecule, Atom, &Quantum::molecule>,
+        //}};
     };
 
     struct Position : Quark<Position, Atom>, DependsFrom<Atom> {
-        struct ItemState {
+        struct Quantum {
             Vec3 position;
         };
-    };
 
-    struct Fusion : Quark<Fusion, Atom>, DependsFrom<Atom> {
-        struct ItemState {
-            seconds life;
-        };
+        inline static const Structural invariants{{{
+            Structural::anchor_quark<Atom, Position>,
+        }}};
     };
 
     struct Chemistry : Quark<Chemistry, Atom>, DependsFrom<Atom, Position> {
@@ -55,13 +61,13 @@ namespace Q1CORE::Example::Model {
             float distance;
         };
 
-        struct ItemState {
+        struct Quantum {
             std::vector<Link> links;
         };
     };
 
     struct Kinematics : Quark<Kinematics, Atom>, DependsFrom<Atom, Position> {
-        struct ItemState {
+        struct Quantum {
             float mass;
             Vec3 prev_pos;
         };
@@ -70,13 +76,13 @@ namespace Q1CORE::Example::Model {
     struct Actor : Quark<Actor, Atom>, DependsFrom<Atom, Position> {
         enum class Color { red, green, blue };
 
-        struct ItemState {
+        struct Quantum {
             Color color;
         };
     };
 
     struct Marked : Quark<Marked, Atom>, DependsFrom<Atom> {
-        struct ItemState {};
+        struct Quantum {};
     };
 
 } // namespace Q1CORE::Example::Model

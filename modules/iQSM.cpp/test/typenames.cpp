@@ -9,7 +9,6 @@ namespace tests {
         EXPECT_EQ(iqsm::Aspect<Element>::typeName, "Q1CORE::Example::Model::Element");
         EXPECT_EQ(iqsm::Aspect<Molecule>::typeName, "Q1CORE::Example::Model::Molecule");
         EXPECT_EQ(iqsm::Aspect<Atom>::typeName, "Q1CORE::Example::Model::Atom");
-        EXPECT_EQ(iqsm::Aspect<Fusion>::typeName, "Q1CORE::Example::Model::Fusion");
     }
 }
 

@@ -37,7 +37,7 @@ namespace base::testing {
         }
 
         base::message(std::format("SUMMARY: {} passed={}, failed={}, total={}",
-            failed == 0 ? "PASS" : "FAIL",
+            failed == 0 ? "OK" : "FAIL",
             passed, failed, passed + failed
         ));
 

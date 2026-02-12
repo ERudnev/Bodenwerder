@@ -97,6 +97,7 @@ namespace tests {
     void delta_merge() {
         const auto id = Molecule::Id::generate_random();
         const auto other = Molecule::Id::generate_random();
+        using namespace iqsm::ops;
 
         EXPECT_TRUE(are_equal(merge(addMolecule(id, "Water"), addMolecule(id, "Sugar")), addMolecule(id, "Water")));
         EXPECT_TRUE(are_equal(merge(addMolecule(id, "Sugar"), addMolecule(id, "Water")), addMolecule(id, "Sugar")));
