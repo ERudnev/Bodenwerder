@@ -6,54 +6,51 @@
 #include <typeindex>
 
 #include <base/containers/ImmutableUnorderedMap.h>
-#include <iQSM/dag.h>
+#include <iQSM/schema.h>
 #include <iQSM/field.h>
 #include <iQSM/aspects.h>
+#include <iQSM/_forwards.h>
 
 namespace iqsm {
 
-    struct WorldState {
-        using Id = Identifier<WorldState>;
-        using Container = base::ImmutableUnorderedMap<FieldUntyped::RuntimeTypeId, UField>;
+    struct WorldObject {
+        using Id = Identifier<WorldObject>;
+        using Container = base::ImmutableUnorderedMap<FieldAbstract::RuntimeTypeId, FieldAbstract::Ref>;
 
         using TypeId = internals::Types::RuntimeId;
 
         const Id id;
-        const Dag basis;
+        const Schema schema;
         Container fields;
 
-        explicit WorldState(Dag basis_) : id(Id::generate_random()), basis(basis_) { required(basis, "WorldState: basis"); }
+        explicit WorldObject(Schema s) : id(Id::generate_random()), schema(s) { required(schema, "World: schema"); }
 
         template<Facet Meta> Field<Meta> field() const;
 
     private:
         void basis_required(TypeId rttid) const {
-            if (not basis) { throw std::runtime_error("WorldState: basis is required"); }
-            if (not basis->aspects.contains(rttid)) { throw std::runtime_error("WorldState: aspect is not in basis"); }
+            if (not schema) { throw std::runtime_error("World: schema is required"); }
+            if (not schema->aspects.contains(rttid)) { throw std::runtime_error("World: aspect is not in schema"); }
         }
     };
-
-    // Handles
-    using World = cref<WorldState>;
-
 
 }
 
 template<iqsm::Facet Meta>
-iqsm::Field<Meta> iqsm::WorldState::field() const {
+iqsm::Field<Meta> iqsm::WorldObject::field() const {
     const TypeId rttid = Aspect<Meta>::typeId;
     basis_required(rttid);
 
-    UField untyped;
+    FieldAbstract::Ref untyped;
     if (const auto* slot = fields.find(rttid); slot and *slot) {
         untyped = *slot;
     } else {
-        untyped = basis->aspects.at(rttid).zero;
+        untyped = schema->aspects.at(rttid).zero;
     }
 
-    auto typed = std::dynamic_pointer_cast<const FieldState<Meta>>(untyped);
+    auto typed = std::dynamic_pointer_cast<const FieldObject<Meta>>(untyped);
     if (not typed) {
-        throw std::runtime_error("WorldState::field(): invalid stored field type");
+        throw std::runtime_error("World::field(): invalid stored field type");
     }
     return typed;
 }

@@ -4,17 +4,11 @@
 #include <base/containers/ImmutableUnorderedMap.h>
 #include <iQSM/aspects.h>
 #include <iQSM/field.h>
+#include <iQSM/_forwards.h>
 #include <format>
 #include <stdexcept>
 
 namespace iqsm {
-
-    // local forward
-    namespace delta { struct WorldState; }
-
-    // root-level semantics:
-    using Delta = cref<delta::WorldState>;
-
     template<typename Result>
     struct DeltaAnd {
         Delta delta;
@@ -24,16 +18,16 @@ namespace iqsm {
 
 namespace iqsm::delta {
 
-    struct FieldUntyped {
+    struct FieldDiffAbstract {
         using RuntimeTypeId = internals::Types::RuntimeId;
-        virtual ~FieldUntyped() = default;
+        virtual ~FieldDiffAbstract() = default;
 
-        virtual iqsm::UField integrate(iqsm::UField) const = 0;
-        virtual cref<FieldUntyped> merge(cref<FieldUntyped>) const = 0;
+        virtual iqsm::FieldAbstract::Ref integrate(iqsm::FieldAbstract::Ref) const = 0;
+        virtual cref<FieldDiffAbstract> merge(cref<FieldDiffAbstract>) const = 0;
     };
 
     template<Facet Meta>
-    struct FieldState final : Aspect<Meta>, FieldUntyped {
+    struct FieldDiff final : Aspect<Meta>, FieldDiffAbstract {
         using A = iqsm::Aspect<Meta>;
         using ItemId = typename A::ItemId;
         using Item = typename A::Item;
@@ -46,29 +40,29 @@ namespace iqsm::delta {
         base::ImmutableUnorderedMap<ItemId, Item> added;
         base::ImmutableUnorderedMap<ItemId, Change> changed;
         base::ImmutableUnorderedSet<ItemId> deleted;
-        iqsm::UField integrate(iqsm::UField) const override;
-        cref<FieldUntyped> merge(cref<FieldUntyped>) const override;
+        iqsm::FieldAbstract::Ref integrate(iqsm::FieldAbstract::Ref) const override;
+        cref<FieldDiffAbstract> merge(cref<FieldDiffAbstract>) const override;
     };
 
     // Handles
     template<Facet Meta>
-    using Field = cref<FieldState<Meta>>;
-    using UField = cref<FieldUntyped>;
+    using Field = cref<FieldDiff<Meta>>;
+    using UField = cref<FieldDiffAbstract>;
 
     struct WorldState {
-        using Container = base::ImmutableUnorderedMap<FieldUntyped::RuntimeTypeId, UField>;
+        using Container = base::ImmutableUnorderedMap<FieldDiffAbstract::RuntimeTypeId, UField>;
         Container fields;
     };
 }
 
 template<iqsm::Facet Meta>
-iqsm::UField iqsm::delta::FieldState<Meta>::integrate(iqsm::UField current) const {
+iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbstract::Ref current) const {
     if (added.empty() and changed.empty() and deleted.empty()) { return current; }
 
-    auto typed = std::dynamic_pointer_cast<const iqsm::FieldState<Meta>>(current);
+    auto typed = std::dynamic_pointer_cast<const iqsm::FieldObject<Meta>>(current);
     if (not typed) {
         throw std::runtime_error(std::format(
-            "delta::FieldState<{}>::integrate(): invalid field type",
+            "delta::FieldDiff<{}>::integrate(): invalid field type",
             Aspect<Meta>::typeName));
     }
 
@@ -77,7 +71,7 @@ iqsm::UField iqsm::delta::FieldState<Meta>::integrate(iqsm::UField current) cons
     for (const auto& kv : added) {
         if (container.contains(kv.first)) {
             throw std::runtime_error(std::format(
-                "delta::FieldState<{}>::integrate(): added already exists: {}",
+                "delta::FieldDiff<{}>::integrate(): added already exists: {}",
                 Aspect<Meta>::typeName,
                 kv.first));
         }
@@ -86,13 +80,13 @@ iqsm::UField iqsm::delta::FieldState<Meta>::integrate(iqsm::UField current) cons
     for (const auto& kv : changed) {
         if (not container.contains(kv.first)) {
             throw std::runtime_error(std::format(
-                "delta::FieldState<{}>::integrate(): changed missing: {}",
+                "delta::FieldDiff<{}>::integrate(): changed missing: {}",
                 Aspect<Meta>::typeName,
                 kv.first));
         }
         if (kv.second.before and container.at(kv.first) != kv.second.before) {
             throw std::runtime_error(std::format(
-                "delta::FieldState<{}>::integrate(): before mismatch: {}",
+                "delta::FieldDiff<{}>::integrate(): before mismatch: {}",
                 Aspect<Meta>::typeName,
                 kv.first));
         }
@@ -101,28 +95,28 @@ iqsm::UField iqsm::delta::FieldState<Meta>::integrate(iqsm::UField current) cons
     for (const auto& id : deleted) {
         if (not container.contains(id)) {
             throw std::runtime_error(std::format(
-                "delta::FieldState<{}>::integrate(): deleted missing: {}",
+                "delta::FieldDiff<{}>::integrate(): deleted missing: {}",
                 Aspect<Meta>::typeName,
                 id));
         }
         container = container.erase(id);
     }
 
-    auto out = std::make_shared<iqsm::FieldState<Meta>>();
+    auto out = std::make_shared<iqsm::FieldObject<Meta>>();
     out->container = container;
-    return std::static_pointer_cast<const iqsm::FieldUntyped>(iqsm::freeze(out));
+    return std::static_pointer_cast<const iqsm::FieldAbstract>(iqsm::freeze(out));
 }
 
 template<iqsm::Facet Meta>
-iqsm::cref<iqsm::delta::FieldUntyped> iqsm::delta::FieldState<Meta>::merge(iqsm::cref<FieldUntyped> other) const {
-    const auto* rhs = dynamic_cast<const FieldState<Meta>*>(other.get());
+iqsm::cref<iqsm::delta::FieldDiffAbstract> iqsm::delta::FieldDiff<Meta>::merge(iqsm::cref<FieldDiffAbstract> other) const {
+    const auto* rhs = dynamic_cast<const FieldDiff<Meta>*>(other.get());
     if (not rhs) {
         throw std::runtime_error(std::format(
-            "delta::FieldState<{}>::merge(): incompatible field delta type",
+            "delta::FieldDiff<{}>::merge(): incompatible field delta type",
             Aspect<Meta>::typeName));
     }
 
-    auto out = std::make_shared<FieldState<Meta>>();
+    auto out = std::make_shared<FieldDiff<Meta>>();
     auto added_out = added;
     auto changed_out = changed;
     auto deleted_out = deleted;
@@ -169,5 +163,5 @@ iqsm::cref<iqsm::delta::FieldUntyped> iqsm::delta::FieldState<Meta>::merge(iqsm:
     out->changed = changed_out;
     out->deleted = deleted_out;
 
-    return std::static_pointer_cast<const FieldUntyped>(iqsm::freeze(out));
+    return std::static_pointer_cast<const FieldDiffAbstract>(iqsm::freeze(out));
 }

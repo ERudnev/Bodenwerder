@@ -9,19 +9,19 @@ namespace {
 
     Delta addMolecule(Molecule::Id id, std::string name)
     {
-        auto fd = std::make_shared<delta::FieldState<Molecule>>();
+        auto fd = std::make_shared<delta::FieldDiff<Molecule>>();
         fd->added = fd->added.insert(id, Aspect<Molecule>::create({std::move(name)}));
 
         auto wd = std::make_shared<delta::WorldState>();
         wd->fields = wd->fields.insert(
             Aspect<Molecule>::typeId,
-            std::static_pointer_cast<const delta::FieldUntyped>(freeze(fd)));
+            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
         return freeze(wd);
     }
     Delta renameMolecule(Molecule::Id id, std::string oldname, std::string newname)
     {
-        auto fd = std::make_shared<delta::FieldState<Molecule>>();
-        fd->changed = fd->changed.insert(id, delta::FieldState<Molecule>::Change{
+        auto fd = std::make_shared<delta::FieldDiff<Molecule>>();
+        fd->changed = fd->changed.insert(id, delta::FieldDiff<Molecule>::Change{
             .before = Aspect<Molecule>::create({std::move(oldname)}),
             .after = Aspect<Molecule>::create({std::move(newname)}),
         });
@@ -29,18 +29,18 @@ namespace {
         auto wd = std::make_shared<delta::WorldState>();
         wd->fields = wd->fields.insert(
             Aspect<Molecule>::typeId,
-            std::static_pointer_cast<const delta::FieldUntyped>(freeze(fd)));
+            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
         return freeze(wd);
     }
     Delta deleteMolecule(Molecule::Id id)
     {
-        auto fd = std::make_shared<delta::FieldState<Molecule>>();
+        auto fd = std::make_shared<delta::FieldDiff<Molecule>>();
         fd->deleted = fd->deleted.insert(id);
 
         auto wd = std::make_shared<delta::WorldState>();
         wd->fields = wd->fields.insert(
             Aspect<Molecule>::typeId,
-            std::static_pointer_cast<const delta::FieldUntyped>(freeze(fd)));
+            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
         return freeze(wd);
     }
 
@@ -59,8 +59,8 @@ namespace {
         const auto au = a->fields.at(Aspect<Molecule>::typeId);
         const auto bu = b->fields.at(Aspect<Molecule>::typeId);
 
-        auto af = std::dynamic_pointer_cast<const delta::FieldState<Molecule>>(au);
-        auto bf = std::dynamic_pointer_cast<const delta::FieldState<Molecule>>(bu);
+        auto af = std::dynamic_pointer_cast<const delta::FieldDiff<Molecule>>(au);
+        auto bf = std::dynamic_pointer_cast<const delta::FieldDiff<Molecule>>(bu);
         if (not af || not bf) { return false; }
 
         auto item_equal = [](Aspect<Molecule>::Item x, Aspect<Molecule>::Item y) {

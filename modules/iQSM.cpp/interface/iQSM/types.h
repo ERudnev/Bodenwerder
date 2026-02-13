@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iQSM/_forwards.h>
 #include <memory>
 #include <format>
 #include <string>
@@ -10,18 +11,6 @@
 #include <type_traits>
 
 namespace iqsm {
-    template<typename T>
-    using cref = std::shared_ptr<const T>;
-
-    template<typename T>
-    using ref = std::shared_ptr<T>;
-
-    template<typename T>
-    cref<T> freeze(ref<T> r) { return r; }
-
-    template<typename T>
-    ref<T> clone(cref<T> ref) { return ref ? std::make_shared<T>(*ref) : nullptr;}
-
     template<typename T>
     inline void required(const T& x, std::string_view what = "value") {
         if (not x) { throw std::runtime_error(std::format("{} required", what)); }

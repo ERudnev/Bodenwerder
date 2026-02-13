@@ -13,9 +13,10 @@ namespace iqsm::ops {
         if (not delta) { return world; }
         if (not world) { return nullptr; }
         if (delta->fields.empty()) { return world; }
-        required(world->basis, "integrate_raw(): world basis");
+        required(world->schema, "integrate_raw(): world schema");
+        required(not world->schema->aspects.empty(), "integrate_raw(): world schema aspects");
 
-        auto out = std::make_shared<WorldState>(world->basis);
+        auto out = std::make_shared<WorldObject>(world->schema);
         out->fields = world->fields;
 
         for (const auto& kv : delta->fields) {
@@ -23,17 +24,17 @@ namespace iqsm::ops {
             const auto& field_delta = kv.second;
             if (not field_delta) { continue; }
 
-            if (not world->basis->aspects.contains(typeId)) {
+            if (not world->schema->aspects.contains(typeId)) {
                 throw std::runtime_error(std::format(
-                    "integrate_raw(): delta contains type not in basis: '{}'",
+                    "integrate_raw(): delta contains type not in schema: '{}'",
                     typeId.name()));
             }
 
-            iqsm::UField current;
+            iqsm::FieldAbstract::Ref current;
             if (const auto* slot = world->fields.find(typeId); slot and *slot) {
                 current = *slot;
             } else {
-                current = world->basis->aspects.at(typeId).zero;
+                current = world->schema->aspects.at(typeId).zero;
             }
 
             const auto next = field_delta->integrate(current);

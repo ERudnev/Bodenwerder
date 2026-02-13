@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <iQSM/types.h>
+#include <iQSM/internals/type_list.h>
 
 namespace iqsm {
     template<typename Meta>
@@ -27,8 +28,9 @@ namespace iqsm {
     };
 
     template<typename... Deps>
-    struct DependsFrom {
+    struct Require {
         using TypeId = internals::Types::RuntimeId;
+        using Depends = internals::type_list<Deps...>;
         static std::vector<TypeId> depends() { return { TypeId(typeid(Deps))... }; }
     };
 }

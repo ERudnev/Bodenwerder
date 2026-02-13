@@ -8,13 +8,16 @@
 
 namespace iqsm {
 
-    struct FieldUntyped {
+    struct FieldAbstract {
         using RuntimeTypeId = internals::Types::RuntimeId;
-        virtual ~FieldUntyped() = default;
+        virtual ~FieldAbstract() = default;
+
+        // Handle type for internal plumbing (stored in World/Dag containers).
+        using Ref = cref<FieldAbstract>;
     };
 
     template<Facet Meta>
-    struct FieldState final : Aspect<Meta>, FieldUntyped {
+    struct FieldObject final : Aspect<Meta>, FieldAbstract {
         using Aspect = iqsm::Aspect<Meta>;
         using Container = base::ImmutableUnorderedMap<typename Aspect::ItemId, typename Aspect::Item>;
 
@@ -23,17 +26,16 @@ namespace iqsm {
 
     // Handles
     template<Facet Meta>
-    using Field = cref<FieldState<Meta>>;
-    using UField = cref<FieldUntyped>;
+    using Field = cref<FieldObject<Meta>>;
 }
 
-// Enable: std::format("{}", FieldState) and thus logger::message(".. {}", field);
+// Enable: std::format("{}", FieldObject) and thus logger::message(".. {}", field);
 template<typename Meta>
-struct std::formatter<iqsm::FieldState<Meta>, char> {
+struct std::formatter<iqsm::FieldObject<Meta>, char> {
     constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
 
     template<class FormatContext>
-    auto format(const iqsm::FieldState<Meta>& field, FormatContext& ctx) const {
+    auto format(const iqsm::FieldObject<Meta>& field, FormatContext& ctx) const {
         auto out = ctx.out();
         if (!iqsm::Aspect<Meta>::typeName.empty()) {
             out = std::format_to(out, "{}: ", iqsm::Aspect<Meta>::typeName);

@@ -2,11 +2,13 @@
 
 #define IQSM_TESTS(X) \
     X(typenames_atomic) \
-    X(dagdata_define) \
+    X(schema_aspects) \
     X(worlddata_construct) \
-    X(worlddata_unclosed_basis_returns_null) \
+    X(worlddata_closure_pulls_dependencies) \
     X(delta_merge) \
     X(validation_anchor) \
+    X(schema) \
+    X(molecular_analysis_system) \
     // end
 
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)

@@ -1,0 +1,12 @@
+namespace Q1CORE
+  namespace Example
+    namespace System
+      xion MolecularStatistics
+        depends: Position
+        struct Entry
+          name: string
+          count: integer
+        quantum
+          entries: vector<Entry>
+
+

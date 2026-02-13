@@ -3,6 +3,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <memory>
 
 #include <iQSM/world.h>
 #include <iQSM/delta.h>
@@ -12,8 +13,6 @@
 
 
 namespace iqsm::ops::validation {
-
-    using Func = Delta(*)(World);
 
     struct List {
         std::vector<Func> list;
@@ -28,11 +27,17 @@ namespace iqsm::ops::validation {
         template<Facet Anchor, Facet Dependee>
         static Delta anchor_quark(World); // confinement
     };
+
     namespace detail {
+
+        // internally called "validate this Aspect structure"
+        // TODO: template<Facet Meta> ...
+
+        // common part for different validation elements (functions)
         template<Facet Anchor, Facet Dependee, typename Extract>
         Delta anchor_impl(World, Extract);
-    }
-}
+    } // namespace detail
+} // namespace iqsm::ops::validation
 
 namespace iqsm::ops::validation::detail {
     template<Facet Anchor, Facet Dependee, typename Extract>
@@ -43,7 +48,7 @@ namespace iqsm::ops::validation::detail {
         const auto anchor_field = world->field<Anchor>();
         const auto dependee_field = world->field<Dependee>();
 
-        auto fd = std::make_shared<delta::FieldState<Dependee>>();
+        auto fd = std::make_shared<delta::FieldDiff<Dependee>>();
 
         for (const auto& kv : dependee_field->container) {
             const auto& dependee_id = kv.first;
@@ -60,11 +65,11 @@ namespace iqsm::ops::validation::detail {
         auto out = std::make_shared<delta::WorldState>();
         out->fields = out->fields.insert(
             Aspect<Dependee>::typeId,
-            std::static_pointer_cast<const delta::FieldUntyped>(freeze(fd)));
+            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
 
         return freeze(out);
     }
-}
+} // namespace iqsm::ops::validation::detail
 
 namespace iqsm::ops::validation {
     template<Facet Anchor, Facet Dependee, auto Member>
@@ -88,4 +93,4 @@ namespace iqsm::ops::validation {
     {
         return detail::anchor_impl<Anchor, Dependee>(world, [](auto dependee_id, auto) { return dependee_id; });
     }
-}
+} // namespace iqsm::ops::validation

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <iQSM/aspects.h>
 #include <iQSM/identifier.h>
@@ -26,7 +26,7 @@ namespace iqsm::dsl_gateway {
     using Identifier = iqsm::Identifier<Meta, BaseType>;
 
     template<typename... Deps>
-    using DependsFrom = iqsm::DependsFrom<Deps...>;
+    using Require = iqsm::Require<Deps...>;
 
     struct Structural : iqsm::ops::validation::List, iqsm::ops::validation::Structural {
     };
