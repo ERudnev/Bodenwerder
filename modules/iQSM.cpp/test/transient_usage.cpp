@@ -21,13 +21,32 @@ namespace tests {
 
         EXPECT_TRUE(transaction.summary == nullptr);
 
-        // Const access does not mark dirty => no delta is produced.
+        // Read-only access via get() produces no delta.
         {
-            const auto& electron_const = ops::particle::modify<Electron>(transaction, electron);
+            const auto electron_const = ops::particle::get<Electron>(transaction.current, electron);
             EXPECT_EQ(electron_const->legend, "A");
         }
         EXPECT_TRUE(transaction.summary == nullptr);
         EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron)->legend, "A");
+
+        // Creating modify() handle is treated as a mutation => delta is produced,
+        // even if the resulting value is structurally identical and the handle is unused.
+        {
+            auto unused = ops::particle::modify<Electron>(transaction, electron);
+        }
+        EXPECT_TRUE(transaction.summary != nullptr);
+        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron)->legend, "A");
+
+        // A named modify() handle may live for a while; apply happens on scope exit.
+        {
+            auto m = ops::particle::modify<Electron>(transaction, electron);
+            m->legend = "B";
+            m->legend = "C";
+            (*m).legend = "D";
+            m->legend = "E";
+        }
+        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron)->legend, "E");
+
 
         // Mutation marks dirty => delta is produced and transaction world changes.
         ops::particle::modify<Electron>(transaction, electron)->legend = "B";

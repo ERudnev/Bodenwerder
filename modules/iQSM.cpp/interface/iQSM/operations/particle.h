@@ -45,16 +45,20 @@ namespace iqsm::detail::ops::particle {
       using Quantum = typename Aspect<Meta>::Quantum;
       using Item = typename Aspect<Meta>::Item;
 
-      modifier(Transaction& transaction, Id id) : transaction(transaction), id(id), original(required_item(transaction.current, id)), value(*original) {}
+      modifier(Transaction& transaction, Id id)
+          : transaction(transaction)
+          , id(id)
+          , original(required_item(transaction.current, id))
+          , value(*original)
+          , dirty(true)
+      {}
       ~modifier() { apply(); }
       modifier(const modifier&) = delete;
       modifier& operator=(const modifier&) = delete;
       modifier(modifier&& other) noexcept : transaction(other.transaction), id(other.id), original(other.original), value(std::move(other.value)), dirty(other.dirty), applied(other.applied) { other.applied = true; }
       modifier& operator=(modifier&&) = delete;
       Quantum* operator->() { dirty = true; return &value; }
-      const Quantum* operator->() const { return &value; }
       Quantum& operator*() { dirty = true; return value; }
-      const Quantum& operator*() const { return value; }
 
     private:
       static Item required_item(World world, const Id& id);
