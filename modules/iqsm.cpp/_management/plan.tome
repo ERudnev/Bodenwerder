@@ -6,21 +6,34 @@
 
 namespace plan {
 
-  implement_iqsm_core_entities: @management::Task {
+  tests_helper_world_builder: @management::Task {
+    status: planned
+    goal:
+      Синтезировать компактный тестовый синтаксис для "собрать world": assemble schema + создать world + подключить поля.
+      Цель — убрать повторяющийся ритуал с world->fields.insert(...freeze...cast...) и держать фокус теста на логике.
+    reason:
+      В тестах часто повторяется одинаковая последовательность операций по созданию World и регистрации FieldObject<T>,
+      что раздувает сценарии и затрудняет чтение.
+  }
+
+  tests_helper_field_builder: @management::Task {
+    status: planned
+    goal:
+      Синтезировать компактный тестовый синтаксис для "создать FieldObject<T> и наполнить container" через список элементов.
+      Цель — сократить шум вокруг Aspect<T>::create(...) и цепочек container.insert(...).
+    reason:
+      Наполнение полей данными сейчас выражается многословно и повторяется почти в каждом сценарии (sparks/atoms/electrons/...).
+  }
+
+  tests_helper_delta_single_field_ops: @management::Task {
     status: in_progress
     goal:
-      Реализовать технологические сущности из &iQSM::tome в модуле iqsm.cpp с шаблонами и базовой инфраструктурой.
-    subtasks:
-      📋 Подготовить шаблоны/каркасы для Model и Basis
-      📋 Реализовать Identifier и Item типы
-      📋 Сверстать Particle c его Item/Id связями
-      📋 Реализовать Field контейнеры под Particle::Item/Id
-      📋 Подготовить Functor/Operator/Validator/StructuralValidator базовые классы
-      📋 Реализовать Change и History инфраструктуру
-      📋 Добавить Resource (внешние данные) каркас
-      📋 Прописать юнит-тесты или проверки для перечисленных сущностей
+      Синтезировать компактный тестовый синтаксис для создания Delta по одной операции над одним полем
+      (add/change/delete для FieldDiff<T> + упаковка в WorldState).
     reason:
-      Требуется перенести задачу из backlog по шаблонам базовых классов и покрыть все сущности из iQSM.tome для начала реализации.
+      В тестах merge-логики Delta значительная часть кода описывает механику сборки delta::WorldState,
+      а не поведение ops::merge как таковое.
   }
+
 
 }

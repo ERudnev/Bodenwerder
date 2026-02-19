@@ -1,3 +1,5 @@
+  intendation matters (Python-style)
+  
   Q1 language specification
   keywords:
     'namespace' : opens named namespace
@@ -16,6 +18,8 @@
     'xion' : declares xion (root particle)
     'quark' : declares quark (particle of Parent)
     'anchor' : marks anchor reference (special persistent link semantics)
+    'anchor(any)' : used for container of anchors with rule: "i exist if at least anchor valid"
+    'anchor(all)' : used for container of anchors with rule: "i exist if all anchors valid"
     'depends' : adds dependency manually
 
   reserved:
@@ -44,4 +48,7 @@
     'seconds' : relative time duration (in seconds)
     'time' : timepoint
 
-  intendation matters (Python-style)  
+    'vec3' : glm-compatible 3-floats vec
+    'quat' : glm-compatible 4-floats quaternion
+
+  

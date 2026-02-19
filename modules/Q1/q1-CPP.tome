@@ -1,0 +1,93 @@
+// Этот том описывает механические правила проекции (генерации) определений Q1 в C++ код.
+// Цель: объяснить правила генерации С++ кода, зафиксированные в эталонах Q1/golden/
+
+#using namespace FAL(file: "core/FAL.tome")
+#using namespace KQM(file: "core/KQM.tome")
+#using namespace Q1(file: "modules/Q1/methodology.tome")
+
+namespace Q1-CPP {
+
+  cpp_generation: @Process {
+    Goal: кодогенерация C++-проекции из Q1 DSL.
+    Input: исходники/определения, написанные на Q1 DSL.
+    Output: C++-проекция (исходники на C++).
+
+    Reference: эталоны для этой проекции разделяются на вход/выход:
+    - Q1 DSL (эталон входа): `modules/Q1/golden/*.q1/`
+    - C++ (эталон выхода): `modules/Q1/golden/*.cpp/`
+
+    Correctness: C++-проекция удовлетворяет правилам этого тома:
+    - &file_layout
+    - &namespace_projection
+    - &declaration_forms
+    - &quantum_projection
+    - &type_projection
+    - &id_projection
+    - &invariants_and_anchors
+    - &dependencies_derivation
+  }
+  
+
+  file_layout: @Rule {
+    Проекция Q1 DSL → C++: организация файлов и заголовков.
+    1: Каждый сгенерированный заголовок начинается с `#pragma once`.
+    2: Каждый сгенерированный заголовок включает `#include <iQSM/q1/_gateway.h>`.
+    3: Внутри целевого namespace добавляется `using namespace iqsm::dsl_gateway;`.
+    4: Подключаются STL-заголовки по факту использованных типов (например, `vector` → `<vector>`, `string` → `<string>`).
+    5: Для кросс-namespace ссылок подключается соответствующий `.q1.h` (например, System включает Model через `#include <Atomic/model.q1.h>`).
+  }
+
+  namespace_projection: @Rule {
+    Проекция namespace в Q1 DSL → C++.
+    1: Вложенные `namespace` в DSL проецируются в C++ как nested namespace `A::B::C`.
+  }
+
+  declaration_forms: @Rule {
+    Проекция форм объявлений (верхний уровень DSL) → C++.
+    1: `struct S` в DSL проецируется в C++ как `struct S { ... };` (plain data type).
+    2: `type A as B` проецируется как `using A = B;`.
+    3: `table X` проецируется как `struct X : Xion<X>, Require<...> { ... };`.
+    4: `xion X` проецируется как `struct X : Xion<X>, Require<...> { ... };`.
+    5: `quark Q of Parent` проецируется как `struct Q : Quark<Q, Parent>, Require<Parent, ...> { ... };`.
+    6: `tag T of Parent` проецируется как `struct T : Quark<T, Parent>, Require<Parent, ...> { ... };`.
+  }
+
+  quantum_projection: @Rule {
+    Проекция state/`quantum` → C++.
+    1: Блок `quantum` проецируется как вложенный `struct Quantum { ... };` внутри аспектного типа.
+    2: Имена полей из `quantum` сохраняются.
+    3: Пустой `quantum` проецируется как `struct Quantum {};`.
+  }
+
+  type_projection: @Rule {
+    Проекция типовых конструкций DSL → C++ в контексте `Quantum`.
+    1: Базовые DSL-типы (например, `string`, `integer`, `Id`) берутся из `iqsm::dsl_gateway`.
+    2: `vector<T>` проецируется как `std::vector<T>`.
+    3: `enum E : a, b, c` проецируется как `enum class E { a, b, c };`.
+  }
+
+  id_projection: @Rule {
+    Проекция и нормализация нотации Id.
+    1: `Aspect::id` нормализуется в C++ как `Aspect::Id`.
+    2: Встреча `B::Id` в quantum трактуется как использование типа, принадлежащего аспекту B.
+  }
+
+  invariants_and_anchors: @Rule {
+    Проекция структурных инвариантов и якорей.
+    1: Каждый аспектный C++-тип содержит `inline static const Structural invariants{{{ ... }}};`.
+    2: Для `quark/tag ... of Parent` в invariants добавляется `Structural::anchor_quark<Parent, Aspect>`.
+    3: Поле `f: Target::Id @anchor` добавляет в invariants `Structural::anchor<Target, Owner, &Quantum::f>`.
+  }
+
+  dependencies_derivation: @Rule {
+    Вывод `dependencies` (requirements) аспекта в C++ проекции: `Require<...>`.
+    Итог: dependencies = union(выведенные правилами, явно перечисленные через `depends:`).
+    1: Dependencies аспектов выражаются через миксин `Require<...>` и должны быть полными и явными.
+    2: Если аспект объявлен как quark/tag/component `of Parent`, то Parent добавляется в `Require<...>`.
+    3: Если внутри quantum встречается любой тип, принадлежащий аспекту B, то B добавляется в `Require<...>`.
+      1: Это включает случаи `B::Id`.
+    4: Если внутри quantum встречается составной тип (struct/array/vector/optional/etc.), то правило вывода dependencies применяется рекурсивно к его полям/элементам.
+    5: Если в определении аспекта явно указано `depends: X`, то X добавляется в `Require<...>`.
+  }
+
+}

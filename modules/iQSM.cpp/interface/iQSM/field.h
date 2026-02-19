@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <format>
 #include <memory>
@@ -19,7 +19,7 @@ namespace iqsm {
     template<Facet Meta>
     struct FieldObject final : Aspect<Meta>, FieldAbstract {
         using Aspect = iqsm::Aspect<Meta>;
-        using Container = base::ImmutableUnorderedMap<typename Aspect::ItemId, typename Aspect::Item>;
+        using Container = base::ImmutableUnorderedMap<typename Aspect::Id, typename Aspect::Item>;
 
         Container container;
     };

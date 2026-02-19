@@ -29,7 +29,7 @@ namespace iqsm::delta {
     template<Facet Meta>
     struct FieldDiff final : Aspect<Meta>, FieldDiffAbstract {
         using A = iqsm::Aspect<Meta>;
-        using ItemId = typename A::ItemId;
+        using Id = typename A::Id;
         using Item = typename A::Item;
         
         struct Change {
@@ -37,9 +37,9 @@ namespace iqsm::delta {
             Item after;
         };
 
-        base::ImmutableUnorderedMap<ItemId, Item> added;
-        base::ImmutableUnorderedMap<ItemId, Change> changed;
-        base::ImmutableUnorderedSet<ItemId> deleted;
+        base::ImmutableUnorderedMap<Id, Item> added;
+        base::ImmutableUnorderedMap<Id, Change> changed;
+        base::ImmutableUnorderedSet<Id> deleted;
         iqsm::FieldAbstract::Ref integrate(iqsm::FieldAbstract::Ref) const override;
         cref<FieldDiffAbstract> merge(cref<FieldDiffAbstract>) const override;
     };

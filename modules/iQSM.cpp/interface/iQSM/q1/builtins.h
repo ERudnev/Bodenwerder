@@ -10,6 +10,9 @@
 #include <unordered_set>
 #include <vector>
 
+#include <glm/vec3.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 namespace iqsm::q1 {
     // Q1 builtins (mapped into the language root)
     using integer = std::int32_t;
@@ -35,6 +38,12 @@ namespace iqsm::q1 {
 
     // Q1 builtin: timepoint (absolute).
     using time = std::chrono::system_clock::time_point;
+
+    // Q1 builtins: glm-compatible math types.
+    // Exposed as aliases to avoid requiring `glm::` at every field site,
+    // without importing the whole glm namespace into generated code.
+    using vec3 = glm::vec3;
+    using quat = glm::quat;
 }
 
 

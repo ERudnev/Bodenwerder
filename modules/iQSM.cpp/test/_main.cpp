@@ -1,14 +1,14 @@
 #include <base/testing/runner.h>
 
 #define IQSM_TESTS(X) \
-    X(typenames_atomic) \
+    X(typenames_varph) \
     X(schema_aspects) \
     X(worlddata_construct) \
     X(worlddata_closure_pulls_dependencies) \
     X(delta_merge) \
-    X(validation_anchor) \
+    X(transient_usage) \
+    X(validation_anchors) \
     X(schema) \
-    X(molecular_analysis_system) \
     // end
 
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)

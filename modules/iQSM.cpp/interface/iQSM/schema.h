@@ -2,6 +2,7 @@
 
 #include <map>
 #include <set>
+#include <string>
 #include <vector>
 
 #include <iQSM/_forwards.h>
@@ -18,9 +19,11 @@ namespace iqsm {
 
         struct Invariants {
             std::vector<ops::validation::Func> structural;
+            std::vector<ops::validation::Func> logic;
         };
 
         struct Entry {
+            std::string name;
             TypeSet require;
             TypeSet required_by;
             FieldAbstract::Ref zero;
@@ -31,6 +34,7 @@ namespace iqsm {
 
         template<Facet... Leaves>
         static SchemaObject assemble();
+        static Schema merge(Schema first, Schema second);
 
     private:
         void check_closed() const;
@@ -40,7 +44,7 @@ namespace iqsm {
         struct assemble_from;
 
         template<Facet Meta>
-        static TypeSet require_of();
+        static TypeSet requirements_of();
     };
 }
 
@@ -59,7 +63,8 @@ struct iqsm::SchemaObject::assemble_from<iqsm::internals::type_list<TypeList...>
     static SchemaObject run() {
         SchemaObject out{};
         (out.aspects.emplace(Aspect<TypeList>::typeId, Entry{
-            require_of<TypeList>(),
+            std::string{Aspect<TypeList>::typeName},
+            requirements_of<TypeList>(),
             TypeSet{},
             std::static_pointer_cast<const FieldAbstract>(std::make_shared<const FieldObject<TypeList>>()),
             Invariants{ .structural = TypeList::invariants.list }
@@ -72,7 +77,7 @@ struct iqsm::SchemaObject::assemble_from<iqsm::internals::type_list<TypeList...>
 };
 
 template<iqsm::Facet Meta>
-iqsm::SchemaObject::TypeSet iqsm::SchemaObject::require_of()
+iqsm::SchemaObject::TypeSet iqsm::SchemaObject::requirements_of()
 {
     TypeSet out;
     if constexpr (requires { Meta::depends(); }) {

@@ -1,0 +1,112 @@
+namespace Q1CORE
+  namespace Example
+    namespace Varph
+
+      type eVt as float
+
+      // base particle (one Entity) of Model
+      xion Spark
+        quantum
+          position: vec3
+          locality: eVt // internal energy ~ particle localisation measure
+
+      quark Inertia of Spark
+        quantum
+          prev_pos: vec3
+          mass: eVt
+
+      quark Electro of Spark
+        quantum
+          charge: integer
+
+      // "view-like" Entities (subjective classification)
+      // intended to be evaluated every time and kept as cache: no energy impact to the Model
+      xion Atom
+        quantum
+          core: vector<Spark::Id> @anchor(any)
+          captured: vector<Spark::Id>
+          legend: string
+
+      quark Chemical of Atom
+        quantum
+          ionisation: integer
+          valency: integer
+
+      xion Electron
+        quantum
+          spark: Spark::Id @anchor
+          legend: string
+
+      xion Capture
+        quantum
+          atom: Atom::Id @anchor
+          electron: Electron::Id @anchor
+          legend: string // like 1s1, 2p2, ...
+          energy: eVt          
+
+      xion Modecule
+        quantum
+          atoms: vector<Atom::Id> @anchor(any)
+          legend: string
+
+      xion Binding
+        quantum
+          bound: vector<Atom::Id> @anchor(all) 
+
+
+
+
+          
+
+
+      
+
+
+
+
+namespace Q1CORE    
+  namespace Example
+    namespace Model
+      struct Vec3
+        x: float
+        y: float
+        z: float
+
+      table Element
+        quantum
+          name: string
+          valency: integer
+
+      xion Molecule
+        quantum
+          name: string
+
+      xion Position
+        quantum
+          position: Vec3
+
+      xion Atom
+        quantum
+          type: Element::Id
+          molecule: Molecule::Id @anchor
+          position: Position::Id @anchor
+
+      quark Chemistry of Atom
+        struct Link
+          target: Id
+          strength: float
+          distance: float
+        quantum
+          links: vector<Link>          
+
+      quark Kinematics of Atom
+        quantum
+          mass: float
+          prev_pos: Vec3
+
+      quark Actor of Atom
+        enum Color : red, green, blue
+        quantum
+          color: Color
+
+      tag Marked of Atom

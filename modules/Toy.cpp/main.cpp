@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <Atomic/model.q1.h>
+#include <Atomic/varph.q1.h>
 #include <iQSM/logger.h>
 
 #include "model/model.h"

@@ -26,8 +26,8 @@ namespace iqsm::ops {
 
             if (not world->schema->aspects.contains(typeId)) {
                 throw std::runtime_error(std::format(
-                    "integrate_raw(): delta contains type not in schema: '{}'",
-                    typeId.name()));
+                    "integrate_raw(): delta contains type not in schema (hash={})",
+                    typeId.hash_code()));
             }
 
             iqsm::FieldAbstract::Ref current;

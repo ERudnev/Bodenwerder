@@ -1,8 +1,10 @@
 #pragma once
 
 #include <initializer_list>
+#include <type_traits>
 #include <vector>
 
+#include <iQSM/particles.h>
 #include <iQSM/types.h>
 #include <iQSM/internals/type_list.h>
 
@@ -13,9 +15,12 @@ namespace iqsm {
         {id.generate_random()} -> std::same_as<typename Meta::Id>;
     };
 
+    template<typename Meta>
+    concept XionFacet = Facet<Meta> && std::is_base_of_v<particles::Xion<Meta>, Meta>;
+
     template<Facet Meta>
     struct Aspect : internals::Types {
-        using ItemId = typename Meta::Id;
+        using Id = typename Meta::Id;
         using Quantum = typename Meta::Quantum;
         using Item = cref<Quantum>;
         // add Diff
