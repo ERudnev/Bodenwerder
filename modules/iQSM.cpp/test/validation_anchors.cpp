@@ -10,8 +10,7 @@ namespace tests {
 
         // Scenario 1: Electron.spark anchors to Spark
         {
-            const auto schema = ops::schema::assemble<Electron>();
-            ops::Transaction transaction(ops::world::create(schema));
+            ops::Transaction transaction(ops::world::create(ops::schema::assemble<Electron>()));
             const auto spark_ok = ops::particle::create<Spark>(transaction)({vec3{0, 0, 0}, eVt{1}});
             const auto electron_ok = ops::particle::create<Electron>(transaction)({spark_ok, "1s"});
             const auto electron_bad = ops::particle::create<Electron>(transaction)({Spark::Id::generate_random(), "2s"});
@@ -29,8 +28,7 @@ namespace tests {
 
         // Scenario 2: Capture.atom anchors to Atom
         {
-            const auto schema = ops::schema::assemble<Capture>();
-            ops::Transaction transaction(ops::world::create(schema));
+            ops::Transaction transaction(ops::world::create(ops::schema::assemble<Capture>()));
             const auto atom_ok = ops::particle::create<Atom>(transaction)({{}, {}, "H"});
             const auto capture_ok = ops::particle::create<Capture>(transaction)({atom_ok, Electron::Id::generate_random(), "1s1", eVt{-13.6f}});
             const auto capture_bad = ops::particle::create<Capture>(transaction)({Atom::Id::generate_random(), Electron::Id::generate_random(), "1s1", eVt{-13.6f}});
@@ -48,8 +46,7 @@ namespace tests {
 
         // Scenario 3: Atom.core anchors to Spark (any)
         {
-            const auto schema = ops::schema::assemble<Atom>();
-            ops::Transaction transaction(ops::world::create(schema));
+            ops::Transaction transaction(ops::world::create(ops::schema::assemble<Atom>()));
             const auto spark_ok = ops::particle::create<Spark>(transaction)({vec3{0, 0, 0}, eVt{1}});
             const auto atom_keep = ops::particle::create<Atom>(transaction)({std::vector<Spark::Id>{spark_ok, Spark::Id::generate_random()}, {}, "H"});
             const auto atom_die = ops::particle::create<Atom>(transaction)({std::vector<Spark::Id>{Spark::Id::generate_random()}, {}, "He"});
@@ -68,8 +65,7 @@ namespace tests {
 
         // Scenario 4: Binding.bound anchors to Atom (all)
         {
-            const auto schema = ops::schema::assemble<Binding>();
-            ops::Transaction transaction(ops::world::create(schema));
+            ops::Transaction transaction(ops::world::create(ops::schema::assemble<Binding>()));
             const auto atom_ok = ops::particle::create<Atom>(transaction)({{}, {}, "H"});
             const auto bind_ok = ops::particle::create<Binding>(transaction)({std::vector<Atom::Id>{atom_ok}});
             const auto bind_bad = ops::particle::create<Binding>(transaction)({std::vector<Atom::Id>{atom_ok, Atom::Id::generate_random()}});

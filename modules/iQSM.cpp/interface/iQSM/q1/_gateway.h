@@ -21,6 +21,9 @@ namespace iqsm::dsl_gateway {
     template<typename Meta, typename Parent>
     using Quark = iqsm::particles::Quark<Meta, Parent>;
 
+    template<typename Meta>
+    using Resource = iqsm::particles::Resource<Meta>;
+
     // Aspects infrastructure:
     template<typename Meta, typename BaseType = internal::id::BaseType>
     using Identifier = iqsm::Identifier<Meta, BaseType>;

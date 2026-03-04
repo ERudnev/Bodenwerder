@@ -8,11 +8,10 @@ namespace tests {
         using namespace iqsm;
         using namespace Q1CORE::Example::Varph;
 
-        const auto schema = ops::schema::assemble<Electron>();
         // Seed a world with an electron first, then start a "clean" transaction
         // on top of that world. This keeps `transaction.summary == nullptr` at
         // the start of the scenario, so we can test "const access produces no delta".
-        ops::Transaction seeding_transaction(ops::world::create(schema));
+        ops::Transaction seeding_transaction(ops::world::create(ops::schema::assemble<Electron>()));
         const auto spark = ops::particle::create<Spark>(seeding_transaction)({vec3{0, 0, 0}, eVt{1}});
         const auto electron = ops::particle::create<Electron>(seeding_transaction)({spark, "A"});
 
@@ -53,7 +52,7 @@ namespace tests {
         EXPECT_TRUE(transaction.summary != nullptr);
         EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron)->legend, "B");
 
-        const auto untyped = transaction.summary->fields.at(Aspect<Electron>::typeId);
+        const auto untyped = transaction.summary->fields.at(Facet<Electron>::typeId);
         const auto fd = std::dynamic_pointer_cast<const delta::FieldDiff<Electron>>(untyped);
         EXPECT_TRUE(fd != nullptr);
         EXPECT_TRUE(fd->changed.contains(electron));

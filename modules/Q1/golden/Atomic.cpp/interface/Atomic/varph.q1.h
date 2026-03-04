@@ -2,10 +2,6 @@
 
 #include <iQSM/q1/_gateway.h>
 
-#include <cstdint>
-#include <string>
-#include <vector>
-
 namespace Q1CORE::Example::Varph {
     using namespace iqsm::dsl_gateway;
 
@@ -39,6 +35,19 @@ namespace Q1CORE::Example::Varph {
 
         inline static const Structural invariants{{{
             Structural::anchor_quark<Spark, Electro>,
+        }}};
+    };
+
+    struct TextDescription : Resource<TextDescription>, Require<> {
+        struct Passport {
+            string fileName;
+        };
+        struct Quantum { //@ Q1 "instance" + Passport 
+            Passport passport;
+            timepoint created;
+        };
+
+        inline static const Structural invariants{{{
         }}};
     };
 
@@ -90,13 +99,14 @@ namespace Q1CORE::Example::Varph {
         }}};
     };
 
-    struct Modecule : Xion<Modecule>, Require<Atom> {
+    struct Modecule : Xion<Modecule>, Require<Atom, TextDescription> {
         struct Quantum {
             std::vector<Atom::Id> atoms;
-            string legend;
+            TextDescription::Id descrition;
         };
 
         inline static const Structural invariants{{{
+            Structural::anchor_any<Atom, Modecule, &Quantum::atoms>,
         }}};
     };
 

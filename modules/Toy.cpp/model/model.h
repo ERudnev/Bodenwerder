@@ -1,5 +1,6 @@
-﻿#pragma once
+#pragma once
 
+#include <iQSM/_forwards.h>
 #include <string>
 
 namespace Toy {
@@ -10,8 +11,14 @@ namespace Toy {
 
         ~Model() = default;
         void create();
-        void loadFromFile(const std::string&);
+        void loadFromFile();
+
+        iqsm::World current() const { return world; }
     private:
-        std::string fileBinding;
+        const std::string fileBinding;
+
+        // model itself:
+        iqsm::World world;
+
     };
 }

@@ -20,5 +20,10 @@ namespace iqsm {
         struct Quark : Base<Meta> {
             using Id = typename Parent::Id;
         };
+
+        template<typename Meta>
+        struct Resource : Base<Meta> {
+            using Id = Identifier<Meta>;
+        };
     }
 }

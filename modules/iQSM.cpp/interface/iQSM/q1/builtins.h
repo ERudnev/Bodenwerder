@@ -37,7 +37,7 @@ namespace iqsm::q1 {
     using seconds = double;
 
     // Q1 builtin: timepoint (absolute).
-    using time = std::chrono::system_clock::time_point;
+    using timepoint = std::chrono::system_clock::time_point;
 
     // Q1 builtins: glm-compatible math types.
     // Exposed as aliases to avoid requiring `glm::` at every field site,

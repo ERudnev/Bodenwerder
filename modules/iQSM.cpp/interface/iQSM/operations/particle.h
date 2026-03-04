@@ -12,38 +12,38 @@
 #include <iQSM/operations/transaction.h>
 
 namespace iqsm::ops::particle {
-  template<Facet Meta>
-  auto modify(Transaction& transaction, typename Aspect<Meta>::Id id);
+  template<AspectParticle Meta>
+  auto modify(Transaction& transaction, typename Facet<Meta>::Id id);
 
-  template<Facet Meta>
-  auto create(Transaction& transaction) requires XionFacet<Meta>;
+  template<AspectParticle Meta>
+  auto create(Transaction& transaction) requires AspectXion<Meta>;
 
-  template<Facet Meta>
-  auto create(Transaction& transaction, typename Aspect<Meta>::Id id) requires (!XionFacet<Meta>);
+  template<AspectParticle Meta>
+  auto create(Transaction& transaction, typename Facet<Meta>::Id id) requires (!AspectXion<Meta>);
 
-  template<Facet Meta>
-  void remove(Transaction& transaction, typename Aspect<Meta>::Id id);
+  template<AspectParticle Meta>
+  void remove(Transaction& transaction, typename Facet<Meta>::Id id);
 
-  template<Facet Meta>
-  auto get(World world, typename Aspect<Meta>::Id id) -> typename Aspect<Meta>::Item;
+  template<AspectParticle Meta>
+  auto get(World world, typename Facet<Meta>::Id id) -> typename Facet<Meta>::Item;
 
-  template<Facet Meta>
-  auto get_opt(World world, typename Aspect<Meta>::Id id) -> std::optional<typename Aspect<Meta>::Item>;
+  template<AspectParticle Meta>
+  auto get_opt(World world, typename Facet<Meta>::Id id) -> std::optional<typename Facet<Meta>::Item>;
 
-  template<Facet Meta>
-  bool contains(World world, typename Aspect<Meta>::Id id);
+  template<AspectParticle Meta>
+  bool contains(World world, typename Facet<Meta>::Id id);
 
 } // namespace iqsm::ops::particle
 
 namespace iqsm::detail::ops::particle {
     using ::iqsm::ops::Transaction;
 
-    template<Facet Meta>
+    template<AspectParticle Meta>
     class modifier {
     public:
-      using Id = typename Aspect<Meta>::Id;
-      using Quantum = typename Aspect<Meta>::Quantum;
-      using Item = typename Aspect<Meta>::Item;
+      using Id = typename Facet<Meta>::Id;
+      using Quantum = typename Facet<Meta>::Quantum;
+      using Item = typename Facet<Meta>::Item;
 
       modifier(Transaction& transaction, Id id)
           : transaction(transaction)
@@ -72,11 +72,11 @@ namespace iqsm::detail::ops::particle {
       bool applied = false;
     };
 
-    template<Facet Meta>
+    template<AspectParticle Meta>
     class creator_xion {
     public:
-      using Id = typename Aspect<Meta>::Id;
-      using Quantum = typename Aspect<Meta>::Quantum;
+      using Id = typename Facet<Meta>::Id;
+      using Quantum = typename Facet<Meta>::Quantum;
 
       explicit creator_xion(Transaction& transaction) : transaction(transaction) {}
       Id operator()(Quantum value);
@@ -85,11 +85,11 @@ namespace iqsm::detail::ops::particle {
       Transaction& transaction;
     };
 
-    template<Facet Meta>
+    template<AspectParticle Meta>
     class creator_quark {
     public:
-      using Id = typename Aspect<Meta>::Id;
-      using Quantum = typename Aspect<Meta>::Quantum;
+      using Id = typename Facet<Meta>::Id;
+      using Quantum = typename Facet<Meta>::Quantum;
 
       creator_quark(Transaction& transaction, Id id) : transaction(transaction), id(id) {}
       Id operator()(Quantum value);
@@ -101,8 +101,8 @@ namespace iqsm::detail::ops::particle {
 } // namespace iqsm::detail::ops::particle
 
 namespace iqsm::ops::particle {
-  template<Facet Meta>
-  auto get(World world, typename Aspect<Meta>::Id id) -> typename Aspect<Meta>::Item {
+  template<AspectParticle Meta>
+  auto get(World world, typename Facet<Meta>::Id id) -> typename Facet<Meta>::Item {
     required(world, "ops::particle::get(): world");
     const auto field = world->field<Meta>();
     if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::particle::get(): missing entity: {}", id)); }
@@ -111,39 +111,39 @@ namespace iqsm::ops::particle {
     return item;
   }
 
-  template<Facet Meta>
-  auto get_opt(World world, typename Aspect<Meta>::Id id) -> std::optional<typename Aspect<Meta>::Item> {
+  template<AspectParticle Meta>
+  auto get_opt(World world, typename Facet<Meta>::Id id) -> std::optional<typename Facet<Meta>::Item> {
     required(world, "ops::particle::get_opt(): world");
     const auto field = world->field<Meta>();
     if (not field->container.contains(id)) { return std::nullopt; }
     return field->container.at(id);
   }
 
-  template<Facet Meta>
-  bool contains(World world, typename Aspect<Meta>::Id id) {
+  template<AspectParticle Meta>
+  bool contains(World world, typename Facet<Meta>::Id id) {
     required(world, "ops::particle::contains(): world");
     return world->field<Meta>()->container.contains(id);
   }
 } // namespace iqsm::ops::particle
 
 namespace iqsm::ops::particle {
-  template<Facet Meta>
-  auto modify(Transaction& transaction, typename Aspect<Meta>::Id id) { return detail::ops::particle::modifier<Meta>(transaction, id); }
+  template<AspectParticle Meta>
+  auto modify(Transaction& transaction, typename Facet<Meta>::Id id) { return detail::ops::particle::modifier<Meta>(transaction, id); }
 
-  template<Facet Meta>
-  auto create(Transaction& transaction) requires XionFacet<Meta> { return detail::ops::particle::creator_xion<Meta>(transaction); }
+  template<AspectParticle Meta>
+  auto create(Transaction& transaction) requires AspectXion<Meta> { return detail::ops::particle::creator_xion<Meta>(transaction); }
 
-  template<Facet Meta>
-  auto create(Transaction& transaction, typename Aspect<Meta>::Id id) requires (!XionFacet<Meta>) { return detail::ops::particle::creator_quark<Meta>(transaction, id); }
+  template<AspectParticle Meta>
+  auto create(Transaction& transaction, typename Facet<Meta>::Id id) requires (!AspectXion<Meta>) { return detail::ops::particle::creator_quark<Meta>(transaction, id); }
 
-  template<Facet Meta>
-  void remove(Transaction& transaction, typename Aspect<Meta>::Id id) {
+  template<AspectParticle Meta>
+  void remove(Transaction& transaction, typename Facet<Meta>::Id id) {
     auto fd = std::make_shared<delta::FieldDiff<Meta>>();
     fd->deleted = fd->deleted.insert(id);
 
     auto wd = std::make_shared<delta::WorldState>();
     wd->fields = wd->fields.insert(
-        Aspect<Meta>::typeId,
+        Facet<Meta>::typeId,
         std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
 
     transaction.absorb(freeze(wd));
@@ -152,7 +152,7 @@ namespace iqsm::ops::particle {
 } // namespace iqsm::ops::particle
 
 namespace iqsm::detail::ops::particle {
-  template<Facet Meta>
+  template<AspectParticle Meta>
   typename modifier<Meta>::Item modifier<Meta>::required_item(World world, const Id& id) {
     required(world, "modifier: world");
     const auto field = world->field<Meta>();
@@ -162,7 +162,7 @@ namespace iqsm::detail::ops::particle {
     return item;
   }
 
-  template<Facet Meta>
+  template<AspectParticle Meta>
   void modifier<Meta>::apply() {
     if (applied) return;
     applied = true;
@@ -171,41 +171,41 @@ namespace iqsm::detail::ops::particle {
     auto fd = std::make_shared<delta::FieldDiff<Meta>>();
     fd->changed = fd->changed.insert(id, typename delta::FieldDiff<Meta>::Change{
         .before = original,
-        .after = Aspect<Meta>::create(std::move(value)),
+        .after = Facet<Meta>::create(std::move(value)),
     });
 
     auto wd = std::make_shared<delta::WorldState>();
     wd->fields = wd->fields.insert(
-        Aspect<Meta>::typeId,
+        Facet<Meta>::typeId,
         std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
 
     transaction.absorb(freeze(wd));
   }
 
-  template<Facet Meta>
+  template<AspectParticle Meta>
   typename creator_xion<Meta>::Id creator_xion<Meta>::operator()(Quantum value) {
     const auto id = Id::generate_random();
 
     auto fd = std::make_shared<delta::FieldDiff<Meta>>();
-    fd->added = fd->added.insert(id, Aspect<Meta>::create(std::move(value)));
+    fd->added = fd->added.insert(id, Facet<Meta>::create(std::move(value)));
 
     auto wd = std::make_shared<delta::WorldState>();
     wd->fields = wd->fields.insert(
-        Aspect<Meta>::typeId,
+        Facet<Meta>::typeId,
         std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
 
     transaction.absorb(freeze(wd));
     return id;
   }
 
-  template<Facet Meta>
+  template<AspectParticle Meta>
   typename creator_quark<Meta>::Id creator_quark<Meta>::operator()(Quantum value) {
     auto fd = std::make_shared<delta::FieldDiff<Meta>>();
-    fd->added = fd->added.insert(id, Aspect<Meta>::create(std::move(value)));
+    fd->added = fd->added.insert(id, Facet<Meta>::create(std::move(value)));
 
     auto wd = std::make_shared<delta::WorldState>();
     wd->fields = wd->fields.insert(
-        Aspect<Meta>::typeId,
+        Facet<Meta>::typeId,
         std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
 
     transaction.absorb(freeze(wd));

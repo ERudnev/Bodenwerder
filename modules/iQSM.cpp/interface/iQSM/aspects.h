@@ -10,16 +10,22 @@
 
 namespace iqsm {
     template<typename Meta>
-    concept Facet = requires(const typename Meta::Id& id, const typename Meta::Quantum& val)
+    concept Aspect = requires(const typename Meta::Id& id, const typename Meta::Quantum& val)
     {
         {id.generate_random()} -> std::same_as<typename Meta::Id>;
     };
 
     template<typename Meta>
-    concept XionFacet = Facet<Meta> && std::is_base_of_v<particles::Xion<Meta>, Meta>;
+    concept AspectXion = Aspect<Meta> && std::is_base_of_v<particles::Xion<Meta>, Meta>;
 
-    template<Facet Meta>
-    struct Aspect : internals::Types {
+    template<typename Meta>
+    concept AspectResource = Aspect<Meta> && std::is_base_of_v<particles::Resource<Meta>, Meta> && requires { typename Meta::Passport; };
+
+    template<typename Meta>
+    concept AspectParticle = Aspect<Meta> && (!AspectResource<Meta>);
+
+    template<Aspect Meta>
+    struct Facet : internals::Types {
         using Id = typename Meta::Id;
         using Quantum = typename Meta::Quantum;
         using Item = cref<Quantum>;
@@ -28,7 +34,7 @@ namespace iqsm {
         inline static const TypeId typeId{typeid(Meta)};
         inline static const std::string_view typeName{internals::type_name(std::type_identity<Meta>{})};
 
-        static Item create(std::initializer_list<int>) = delete; // forbids Aspect<Meta>::create({})
+        static Item create(std::initializer_list<int>) = delete; // forbids Facet<Meta>::create({})
         static Item create(Quantum value) { return std::make_shared<const Quantum>(static_cast<Quantum&&>(value)); }
     };
 

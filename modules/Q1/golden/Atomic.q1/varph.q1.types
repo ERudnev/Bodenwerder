@@ -19,6 +19,13 @@ namespace Q1CORE
         quantum
           charge: integer
 
+      // some syntetic "resource" as text block (lets imagine, it is too large to keep it within Model)
+       resource TextDescription
+        passport
+          fileName: string
+        instance
+          created: time
+
       // "view-like" Entities (subjective classification)
       // intended to be evaluated every time and kept as cache: no energy impact to the Model
       xion Atom
@@ -47,7 +54,7 @@ namespace Q1CORE
       xion Modecule
         quantum
           atoms: vector<Atom::Id> @anchor(any)
-          legend: string
+          descrition: TextDescription::Id
 
       xion Binding
         quantum

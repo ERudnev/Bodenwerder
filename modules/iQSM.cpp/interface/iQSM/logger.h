@@ -12,5 +12,5 @@ namespace iqsm::logger {
   using base::report;
   using base::to_string;
 
-  inline iqsm::q1::time now() { return base::now(); }
+  inline iqsm::q1::timepoint now() { return base::now(); }
 }

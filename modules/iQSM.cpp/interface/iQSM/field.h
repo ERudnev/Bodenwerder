@@ -16,16 +16,16 @@ namespace iqsm {
         using Ref = cref<FieldAbstract>;
     };
 
-    template<Facet Meta>
-    struct FieldObject final : Aspect<Meta>, FieldAbstract {
-        using Aspect = iqsm::Aspect<Meta>;
-        using Container = base::ImmutableUnorderedMap<typename Aspect::Id, typename Aspect::Item>;
+    template<Aspect Meta>
+    struct FieldObject final : Facet<Meta>, FieldAbstract {
+        using Facet = iqsm::Facet<Meta>;
+        using Container = base::ImmutableUnorderedMap<typename Facet::Id, typename Facet::Item>;
 
         Container container;
     };
 
     // Handles
-    template<Facet Meta>
+    template<Aspect Meta>
     using Field = cref<FieldObject<Meta>>;
 }
 
@@ -37,8 +37,8 @@ struct std::formatter<iqsm::FieldObject<Meta>, char> {
     template<class FormatContext>
     auto format(const iqsm::FieldObject<Meta>& field, FormatContext& ctx) const {
         auto out = ctx.out();
-        if (!iqsm::Aspect<Meta>::typeName.empty()) {
-            out = std::format_to(out, "{}: ", iqsm::Aspect<Meta>::typeName);
+        if (!iqsm::Facet<Meta>::typeName.empty()) {
+            out = std::format_to(out, "{}: ", iqsm::Facet<Meta>::typeName);
         }
         bool first = true;
         for (const auto& kv : field.container) {

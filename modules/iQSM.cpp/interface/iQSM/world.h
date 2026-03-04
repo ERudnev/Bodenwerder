@@ -25,7 +25,7 @@ namespace iqsm {
 
         explicit WorldObject(Schema s) : id(Id::generate_random()), schema(s) { required(schema, "World: schema"); }
 
-        template<Facet Meta> Field<Meta> field() const;
+        template<Aspect Meta> Field<Meta> field() const;
 
     private:
         void basis_required(TypeId rttid) const {
@@ -36,9 +36,9 @@ namespace iqsm {
 
 }
 
-template<iqsm::Facet Meta>
+template<iqsm::Aspect Meta>
 iqsm::Field<Meta> iqsm::WorldObject::field() const {
-    const TypeId rttid = Aspect<Meta>::typeId;
+    const TypeId rttid = Facet<Meta>::typeId;
     basis_required(rttid);
 
     FieldAbstract::Ref untyped;

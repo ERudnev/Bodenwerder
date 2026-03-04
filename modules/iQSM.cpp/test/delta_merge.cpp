@@ -10,11 +10,11 @@ namespace {
     Delta addElectron(Spark::Id spark, Electron::Id id, std::string legend)
     {
         auto fd = std::make_shared<delta::FieldDiff<Electron>>();
-        fd->added = fd->added.insert(id, Aspect<Electron>::create({spark, std::move(legend)}));
+        fd->added = fd->added.insert(id, Facet<Electron>::create({spark, std::move(legend)}));
 
         auto wd = std::make_shared<delta::WorldState>();
         wd->fields = wd->fields.insert(
-            Aspect<Electron>::typeId,
+            Facet<Electron>::typeId,
             std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
         return freeze(wd);
     }
@@ -22,13 +22,13 @@ namespace {
     {
         auto fd = std::make_shared<delta::FieldDiff<Electron>>();
         fd->changed = fd->changed.insert(id, delta::FieldDiff<Electron>::Change{
-            .before = Aspect<Electron>::create({spark, std::move(oldlegend)}),
-            .after = Aspect<Electron>::create({spark, std::move(newlegend)}),
+            .before = Facet<Electron>::create({spark, std::move(oldlegend)}),
+            .after = Facet<Electron>::create({spark, std::move(newlegend)}),
         });
 
         auto wd = std::make_shared<delta::WorldState>();
         wd->fields = wd->fields.insert(
-            Aspect<Electron>::typeId,
+            Facet<Electron>::typeId,
             std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
         return freeze(wd);
     }
@@ -39,7 +39,7 @@ namespace {
 
         auto wd = std::make_shared<delta::WorldState>();
         wd->fields = wd->fields.insert(
-            Aspect<Electron>::typeId,
+            Facet<Electron>::typeId,
             std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
         return freeze(wd);
     }
@@ -54,16 +54,16 @@ namespace {
             if (not b->fields.contains(kv.first)) { return false; }
         }
 
-        if (not a->fields.contains(Aspect<Electron>::typeId)) { return false; }
+        if (not a->fields.contains(Facet<Electron>::typeId)) { return false; }
 
-        const auto au = a->fields.at(Aspect<Electron>::typeId);
-        const auto bu = b->fields.at(Aspect<Electron>::typeId);
+        const auto au = a->fields.at(Facet<Electron>::typeId);
+        const auto bu = b->fields.at(Facet<Electron>::typeId);
 
         auto af = std::dynamic_pointer_cast<const delta::FieldDiff<Electron>>(au);
         auto bf = std::dynamic_pointer_cast<const delta::FieldDiff<Electron>>(bu);
         if (not af || not bf) { return false; }
 
-        auto item_equal = [](Aspect<Electron>::Item x, Aspect<Electron>::Item y) {
+        auto item_equal = [](Facet<Electron>::Item x, Facet<Electron>::Item y) {
             if (x == y) { return true; }
             if (not x || not y) { return false; }
             return x->spark == y->spark && x->legend == y->legend;

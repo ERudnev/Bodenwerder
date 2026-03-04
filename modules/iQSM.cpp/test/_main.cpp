@@ -9,6 +9,7 @@
     X(transient_usage) \
     X(validation_anchors) \
     X(schema) \
+    X(resources) \
     // end
 
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)

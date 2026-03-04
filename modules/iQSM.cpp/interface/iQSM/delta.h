@@ -26,9 +26,9 @@ namespace iqsm::delta {
         virtual cref<FieldDiffAbstract> merge(cref<FieldDiffAbstract>) const = 0;
     };
 
-    template<Facet Meta>
-    struct FieldDiff final : Aspect<Meta>, FieldDiffAbstract {
-        using A = iqsm::Aspect<Meta>;
+    template<Aspect Meta>
+    struct FieldDiff final : Facet<Meta>, FieldDiffAbstract {
+        using A = iqsm::Facet<Meta>;
         using Id = typename A::Id;
         using Item = typename A::Item;
         
@@ -45,7 +45,7 @@ namespace iqsm::delta {
     };
 
     // Handles
-    template<Facet Meta>
+    template<Aspect Meta>
     using Field = cref<FieldDiff<Meta>>;
     using UField = cref<FieldDiffAbstract>;
 
@@ -55,7 +55,7 @@ namespace iqsm::delta {
     };
 }
 
-template<iqsm::Facet Meta>
+template<iqsm::Aspect Meta>
 iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbstract::Ref current) const {
     if (added.empty() and changed.empty() and deleted.empty()) { return current; }
 
@@ -63,7 +63,7 @@ iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbst
     if (not typed) {
         throw std::runtime_error(std::format(
             "delta::FieldDiff<{}>::integrate(): invalid field type",
-            Aspect<Meta>::typeName));
+            Facet<Meta>::typeName));
     }
 
     auto container = typed->container;
@@ -72,7 +72,7 @@ iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbst
         if (container.contains(kv.first)) {
             throw std::runtime_error(std::format(
                 "delta::FieldDiff<{}>::integrate(): added already exists: {}",
-                Aspect<Meta>::typeName,
+                Facet<Meta>::typeName,
                 kv.first));
         }
         container = container.insert(kv.first, kv.second);
@@ -81,13 +81,13 @@ iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbst
         if (not container.contains(kv.first)) {
             throw std::runtime_error(std::format(
                 "delta::FieldDiff<{}>::integrate(): changed missing: {}",
-                Aspect<Meta>::typeName,
+                Facet<Meta>::typeName,
                 kv.first));
         }
         if (kv.second.before and container.at(kv.first) != kv.second.before) {
             throw std::runtime_error(std::format(
                 "delta::FieldDiff<{}>::integrate(): before mismatch: {}",
-                Aspect<Meta>::typeName,
+                Facet<Meta>::typeName,
                 kv.first));
         }
         container = container.insert(kv.first, kv.second.after);
@@ -96,7 +96,7 @@ iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbst
         if (not container.contains(id)) {
             throw std::runtime_error(std::format(
                 "delta::FieldDiff<{}>::integrate(): deleted missing: {}",
-                Aspect<Meta>::typeName,
+                Facet<Meta>::typeName,
                 id));
         }
         container = container.erase(id);
@@ -107,13 +107,13 @@ iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbst
     return std::static_pointer_cast<const iqsm::FieldAbstract>(iqsm::freeze(out));
 }
 
-template<iqsm::Facet Meta>
+template<iqsm::Aspect Meta>
 iqsm::cref<iqsm::delta::FieldDiffAbstract> iqsm::delta::FieldDiff<Meta>::merge(iqsm::cref<FieldDiffAbstract> other) const {
     const auto* rhs = dynamic_cast<const FieldDiff<Meta>*>(other.get());
     if (not rhs) {
         throw std::runtime_error(std::format(
             "delta::FieldDiff<{}>::merge(): incompatible field delta type",
-            Aspect<Meta>::typeName));
+            Facet<Meta>::typeName));
     }
 
     auto out = std::make_shared<FieldDiff<Meta>>();

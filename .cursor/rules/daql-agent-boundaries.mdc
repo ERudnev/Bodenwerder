@@ -1,0 +1,6 @@
+---
+description: Границы поведения агента (без самодеятельности)
+alwaysApply: true
+---
+@_seed/contract.tome
+@technology/CPP_habits.tome

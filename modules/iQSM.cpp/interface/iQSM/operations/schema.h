@@ -6,7 +6,7 @@
 #include <iQSM/schema.h>
 
 namespace iqsm::ops::schema {
-    template<Facet... Leaves>
+    template<Aspect... Leaves>
     inline Schema assemble() {
         return std::make_shared<const SchemaObject>(SchemaObject::assemble<Leaves...>());
     }

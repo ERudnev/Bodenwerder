@@ -21,23 +21,23 @@ namespace iqsm::ops::validation {
     };
 
     struct Structural {
-        template<Facet Anchor, Facet Dependee, auto Member>
+        template<Aspect Anchor, Aspect Dependee, auto Member>
         static Delta anchor(World);
 
-        template<Facet Anchor, Facet Dependee>
+        template<Aspect Anchor, Aspect Dependee>
         static Delta anchor_quark(World); // confinement
 
-        template<Facet Anchor, Facet Dependee, auto Member>
+        template<Aspect Anchor, Aspect Dependee, auto Member>
         static Delta anchor_any(World);
 
-        template<Facet Anchor, Facet Dependee, auto Member>
+        template<Aspect Anchor, Aspect Dependee, auto Member>
         static Delta anchor_all(World);
     };
 
 } // namespace iqsm::ops::validation
 
 namespace iqsm::detail::ops::validation {
-    template<Facet Anchor, Facet Dependee, typename Extract>
+    template<Aspect Anchor, Aspect Dependee, typename Extract>
     Delta anchor_impl(World world, Extract extract)
     {
         required(world, "anchor(): world");
@@ -61,7 +61,7 @@ namespace iqsm::detail::ops::validation {
 
         auto out = std::make_shared<delta::WorldState>();
         out->fields = out->fields.insert(
-            Aspect<Dependee>::typeId,
+            Facet<Dependee>::typeId,
             std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
 
         return freeze(out);
@@ -69,13 +69,13 @@ namespace iqsm::detail::ops::validation {
 } // namespace iqsm::detail::ops::validation
 
 namespace iqsm::ops::validation {
-    template<Facet Anchor, Facet Dependee, auto Member>
+    template<Aspect Anchor, Aspect Dependee, auto Member>
     Delta Structural::anchor(World world)
     {
         static_assert(std::is_member_object_pointer_v<decltype(Member)>);
 
-        using Quantum = typename Aspect<Dependee>::Quantum;
-        using AnchorId = typename Aspect<Anchor>::Id;
+        using Quantum = typename Facet<Dependee>::Quantum;
+        using AnchorId = typename Facet<Anchor>::Id;
         using MemberValue = decltype(std::declval<Quantum>().*Member);
         static_assert(std::is_convertible_v<MemberValue, AnchorId>);
 
@@ -85,13 +85,13 @@ namespace iqsm::ops::validation {
         });
     }
 
-    template<Facet Anchor, Facet Dependee>
+    template<Aspect Anchor, Aspect Dependee>
     Delta Structural::anchor_quark(World world)
     {
         return detail::ops::validation::anchor_impl<Anchor, Dependee>(world, [](auto dependee_id, auto) { return dependee_id; });
     }
 
-    template<Facet Anchor, Facet Dependee, auto Member>
+    template<Aspect Anchor, Aspect Dependee, auto Member>
     // anchor(any):
     // - Dependee holds std::vector<Anchor::Id>
     // - prunes missing anchor ids from that vector
@@ -100,8 +100,8 @@ namespace iqsm::ops::validation {
     {
         static_assert(std::is_member_object_pointer_v<decltype(Member)>);
 
-        using Quantum = typename Aspect<Dependee>::Quantum;
-        using AnchorId = typename Aspect<Anchor>::Id;
+        using Quantum = typename Facet<Dependee>::Quantum;
+        using AnchorId = typename Facet<Anchor>::Id;
         using MemberValue = std::remove_cvref_t<decltype(std::declval<Quantum>().*Member)>;
         static_assert(std::is_same_v<MemberValue, std::vector<AnchorId>>);
 
@@ -137,7 +137,7 @@ namespace iqsm::ops::validation {
                 q.*Member = std::move(filtered);
                 fd->changed = fd->changed.insert(
                     dependee_id,
-                    typename delta::FieldDiff<Dependee>::Change{dependee_item, Aspect<Dependee>::create(std::move(q))});
+                    typename delta::FieldDiff<Dependee>::Change{dependee_item, Facet<Dependee>::create(std::move(q))});
             }
         }
 
@@ -145,13 +145,13 @@ namespace iqsm::ops::validation {
 
         auto out = std::make_shared<delta::WorldState>();
         out->fields = out->fields.insert(
-            Aspect<Dependee>::typeId,
+            Facet<Dependee>::typeId,
             std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
 
         return freeze(out);
     }
 
-    template<Facet Anchor, Facet Dependee, auto Member>
+    template<Aspect Anchor, Aspect Dependee, auto Member>
     // anchor(all):
     // - Dependee holds std::vector<Anchor::Id>
     // - deletes dependee if any anchor id is missing
@@ -159,8 +159,8 @@ namespace iqsm::ops::validation {
     {
         static_assert(std::is_member_object_pointer_v<decltype(Member)>);
 
-        using Quantum = typename Aspect<Dependee>::Quantum;
-        using AnchorId = typename Aspect<Anchor>::Id;
+        using Quantum = typename Facet<Dependee>::Quantum;
+        using AnchorId = typename Facet<Anchor>::Id;
         using MemberValue = std::remove_cvref_t<decltype(std::declval<Quantum>().*Member)>;
         static_assert(std::is_same_v<MemberValue, std::vector<AnchorId>>);
 
@@ -195,7 +195,7 @@ namespace iqsm::ops::validation {
 
         auto out = std::make_shared<delta::WorldState>();
         out->fields = out->fields.insert(
-            Aspect<Dependee>::typeId,
+            Facet<Dependee>::typeId,
             std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
 
         return freeze(out);

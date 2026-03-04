@@ -6,9 +6,9 @@
 namespace tests {
     void typenames_varph() {
         using namespace Q1CORE::Example::Varph;
-        EXPECT_EQ(iqsm::Aspect<Spark>::typeName, "Q1CORE::Example::Varph::Spark");
-        EXPECT_EQ(iqsm::Aspect<Electron>::typeName, "Q1CORE::Example::Varph::Electron");
-        EXPECT_EQ(iqsm::Aspect<Atom>::typeName, "Q1CORE::Example::Varph::Atom");
+        EXPECT_EQ(iqsm::Facet<Spark>::typeName, "Q1CORE::Example::Varph::Spark");
+        EXPECT_EQ(iqsm::Facet<Electron>::typeName, "Q1CORE::Example::Varph::Electron");
+        EXPECT_EQ(iqsm::Facet<Atom>::typeName, "Q1CORE::Example::Varph::Atom");
     }
 }
 

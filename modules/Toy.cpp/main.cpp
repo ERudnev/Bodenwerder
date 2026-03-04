@@ -4,7 +4,7 @@
 #include <iQSM/logger.h>
 
 #include "model/model.h"
-#include "renderer/renderer.h"
+#include <Raidenmamare/core.h>
 
 Toy::Model model(""); // empty string: non-persistent model
 
@@ -13,5 +13,6 @@ int main() {
     message("[{}] Test app is started...", to_string(now()));
     model.create();
 
-    return Toy::run_render_demo();
+    rmmr::Core renderer;
+    return renderer.run_render_demo();
 }

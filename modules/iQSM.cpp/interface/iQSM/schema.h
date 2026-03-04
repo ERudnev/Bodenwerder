@@ -32,7 +32,7 @@ namespace iqsm {
 
         std::map<TypeId, Entry> aspects;
 
-        template<Facet... Leaves>
+        template<Aspect... Leaves>
         static SchemaObject assemble();
         static Schema merge(Schema first, Schema second);
 
@@ -43,12 +43,12 @@ namespace iqsm {
         template<typename List>
         struct assemble_from;
 
-        template<Facet Meta>
+        template<Aspect Meta>
         static TypeSet requirements_of();
     };
 }
 
-template<iqsm::Facet... Leaves>
+template<iqsm::Aspect... Leaves>
 iqsm::SchemaObject iqsm::SchemaObject::assemble()
 {
     using closed = typename internals::tl_closure<
@@ -58,12 +58,12 @@ iqsm::SchemaObject iqsm::SchemaObject::assemble()
     return assemble_from<closed>::run();
 }
 
-template<iqsm::Facet... TypeList>
+template<iqsm::Aspect... TypeList>
 struct iqsm::SchemaObject::assemble_from<iqsm::internals::type_list<TypeList...>> {
     static SchemaObject run() {
         SchemaObject out{};
-        (out.aspects.emplace(Aspect<TypeList>::typeId, Entry{
-            std::string{Aspect<TypeList>::typeName},
+        (out.aspects.emplace(Facet<TypeList>::typeId, Entry{
+            std::string{Facet<TypeList>::typeName},
             requirements_of<TypeList>(),
             TypeSet{},
             std::static_pointer_cast<const FieldAbstract>(std::make_shared<const FieldObject<TypeList>>()),
@@ -76,13 +76,13 @@ struct iqsm::SchemaObject::assemble_from<iqsm::internals::type_list<TypeList...>
     }
 };
 
-template<iqsm::Facet Meta>
+template<iqsm::Aspect Meta>
 iqsm::SchemaObject::TypeSet iqsm::SchemaObject::requirements_of()
 {
     TypeSet out;
     if constexpr (requires { Meta::depends(); }) {
         for (const auto& t : Meta::depends()) { out.insert(t); }
     }
-    out.erase(Aspect<Meta>::typeId);
+    out.erase(Facet<Meta>::typeId);
     return out;
 }

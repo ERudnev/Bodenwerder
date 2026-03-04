@@ -18,6 +18,7 @@
 #include <iQSM/delta.h>
 #include <iQSM/schema.h>
 #include <iQSM/world.h>
+#include <iQSM/resources.h>
 
 // Operations
 #include <iQSM/operations/integration.h>
@@ -28,3 +29,4 @@
 #include <iQSM/operations/schema.h>
 #include <iQSM/operations/world.h>
 #include <iQSM/operations/particle.h>
+#include <iQSM/operations/resource.h>
