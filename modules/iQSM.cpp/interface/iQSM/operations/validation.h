@@ -21,23 +21,26 @@ namespace iqsm::ops::validation {
     };
 
     struct Structural {
-        template<Aspect Anchor, Aspect Dependee, auto Member>
+        template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
         static Delta anchor(World);
 
-        template<Aspect Anchor, Aspect Dependee>
-        static Delta anchor_quark(World); // confinement
+        template<meta::Aspect Anchor, meta::Aspect Dependee>
+        static Delta anchor_attribute(World); // confinement
 
-        template<Aspect Anchor, Aspect Dependee, auto Member>
+        template<meta::Aspect Anchor, meta::Aspect Dependee, auto Construct>
+        static Delta anchor_component(World); // 1-1 iff confinement
+
+        template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
         static Delta anchor_any(World);
 
-        template<Aspect Anchor, Aspect Dependee, auto Member>
+        template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
         static Delta anchor_all(World);
     };
 
 } // namespace iqsm::ops::validation
 
 namespace iqsm::detail::ops::validation {
-    template<Aspect Anchor, Aspect Dependee, typename Extract>
+    template<meta::Aspect Anchor, meta::Aspect Dependee, typename Extract>
     Delta anchor_impl(World world, Extract extract)
     {
         required(world, "anchor(): world");
@@ -69,7 +72,7 @@ namespace iqsm::detail::ops::validation {
 } // namespace iqsm::detail::ops::validation
 
 namespace iqsm::ops::validation {
-    template<Aspect Anchor, Aspect Dependee, auto Member>
+    template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
     Delta Structural::anchor(World world)
     {
         static_assert(std::is_member_object_pointer_v<decltype(Member)>);
@@ -80,18 +83,61 @@ namespace iqsm::ops::validation {
         static_assert(std::is_convertible_v<MemberValue, AnchorId>);
 
         return detail::ops::validation::anchor_impl<Anchor, Dependee>(world, [](auto, auto dependee_item) -> AnchorId {
-            required(dependee_item, "anchor(): dependee item");
             return static_cast<AnchorId>(dependee_item.get()->*Member);
         });
     }
 
-    template<Aspect Anchor, Aspect Dependee>
-    Delta Structural::anchor_quark(World world)
+    template<meta::Aspect Anchor, meta::Aspect Dependee>
+    Delta Structural::anchor_attribute(World world)
     {
         return detail::ops::validation::anchor_impl<Anchor, Dependee>(world, [](auto dependee_id, auto) { return dependee_id; });
     }
 
-    template<Aspect Anchor, Aspect Dependee, auto Member>
+    template<meta::Aspect Anchor, meta::Aspect Dependee, auto Construct>
+    Delta Structural::anchor_component(World world)
+    {
+        using AnchorId = typename Facet<Anchor>::Id;
+        using DependeeId = typename Facet<Dependee>::Id;
+        using AnchorQuantum = typename Facet<Anchor>::Quantum;
+        using DependeeQuantum = typename Facet<Dependee>::Quantum;
+        static_assert(std::is_same_v<AnchorId, DependeeId>);
+        static_assert(std::is_invocable_r_v<DependeeQuantum, decltype(Construct), World, const AnchorQuantum&>);
+
+        required(world, "anchor_component(): world");
+
+        const auto anchor_field = world->field<Anchor>();
+        const auto dependee_field = world->field<Dependee>();
+
+        auto fd = std::make_shared<delta::FieldDiff<Dependee>>();
+
+        // Necessary: Dependee cannot outlive Anchor.
+        for (const auto& kv : dependee_field->container) {
+            const auto& dependee_id = kv.first;
+            if (not anchor_field->container.contains(dependee_id)) {
+                fd->deleted = fd->deleted.insert(dependee_id);
+            }
+        }
+
+        // Sufficient: Anchor implies Dependee.
+        for (const auto& kv : anchor_field->container) {
+            const auto& anchor_id = kv.first;
+            const auto& anchor_item = kv.second;
+            if (not dependee_field->container.contains(anchor_id)) {
+                fd->added = fd->added.insert(anchor_id, Facet<Dependee>::create(Construct(world, *anchor_item)));
+            }
+        }
+
+        if (fd->added.empty() and fd->changed.empty() and fd->deleted.empty()) { return nullptr; }
+
+        auto out = std::make_shared<delta::WorldState>();
+        out->fields = out->fields.insert(
+            Facet<Dependee>::typeId,
+            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+
+        return freeze(out);
+    }
+
+    template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
     // anchor(any):
     // - Dependee holds std::vector<Anchor::Id>
     // - prunes missing anchor ids from that vector
@@ -115,7 +161,6 @@ namespace iqsm::ops::validation {
         for (const auto& kv : dependee_field->container) {
             const auto& dependee_id = kv.first;
             const auto& dependee_item = kv.second;
-            required(dependee_item, "anchor_any(): dependee item");
 
             const auto& ids = (dependee_item.get()->*Member);
 
@@ -151,7 +196,7 @@ namespace iqsm::ops::validation {
         return freeze(out);
     }
 
-    template<Aspect Anchor, Aspect Dependee, auto Member>
+    template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
     // anchor(all):
     // - Dependee holds std::vector<Anchor::Id>
     // - deletes dependee if any anchor id is missing
@@ -174,7 +219,6 @@ namespace iqsm::ops::validation {
         for (const auto& kv : dependee_field->container) {
             const auto& dependee_id = kv.first;
             const auto& dependee_item = kv.second;
-            required(dependee_item, "anchor_all(): dependee item");
 
             const auto& ids = (dependee_item.get()->*Member);
 

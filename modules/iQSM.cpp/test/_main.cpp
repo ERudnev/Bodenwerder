@@ -8,6 +8,7 @@
     X(delta_merge) \
     X(transient_usage) \
     X(validation_anchors) \
+    X(caching_components) \
     X(schema) \
     X(resources) \
     // end

@@ -8,7 +8,7 @@
 #include <base/containers/ImmutableUnorderedMap.h>
 #include <iQSM/schema.h>
 #include <iQSM/field.h>
-#include <iQSM/aspects.h>
+#include <iQSM/meta.h>
 #include <iQSM/_forwards.h>
 
 namespace iqsm {
@@ -25,7 +25,7 @@ namespace iqsm {
 
         explicit WorldObject(Schema s) : id(Id::generate_random()), schema(s) { required(schema, "World: schema"); }
 
-        template<Aspect Meta> Field<Meta> field() const;
+        template<meta::Aspect Meta> Field<Meta> field() const;
 
     private:
         void basis_required(TypeId rttid) const {
@@ -36,7 +36,7 @@ namespace iqsm {
 
 }
 
-template<iqsm::Aspect Meta>
+template<iqsm::meta::Aspect Meta>
 iqsm::Field<Meta> iqsm::WorldObject::field() const {
     const TypeId rttid = Facet<Meta>::typeId;
     basis_required(rttid);

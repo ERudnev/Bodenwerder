@@ -3,29 +3,26 @@
 #include <optional>
 #include <stdexcept>
 
-#include <iQSM/aspects.h>
+#include <iQSM/meta.h>
 #include <iQSM/_forwards.h>
 #include <iQSM/delta.h>
 #include <iQSM/operations/transaction.h>
 
 namespace iqsm::ops::resource {
-    template<AspectResource Meta>
+    template<meta::Resource Meta>
     auto declare(Transaction& transaction);
 
-    template<AspectResource Meta>
-    auto get(World world, typename Facet<Meta>::Id id) -> typename Facet<Meta>::Item;
+    template<meta::Resource Meta>
+    auto get(World world, typename Facet<Meta>::Id id) -> const typename Facet<Meta>::Quantum&;
 
-    template<AspectResource Meta>
-    auto get_opt(World world, typename Facet<Meta>::Id id) -> std::optional<typename Facet<Meta>::Item>;
-
-    template<AspectResource Meta>
-    bool contains(World world, typename Facet<Meta>::Id id);
+    template<meta::Resource Meta>
+    bool exists(World world, typename Facet<Meta>::Id id);
 }
 
 namespace iqsm::detail::ops::resource {
     using ::iqsm::ops::Transaction;
 
-    template<AspectResource Meta>
+    template<meta::Resource Meta>
     class declarer {
     public:
         using Id = typename Facet<Meta>::Id;
@@ -54,32 +51,23 @@ namespace iqsm::detail::ops::resource {
 }
 
 namespace iqsm::ops::resource {
-    template<AspectResource Meta>
+    template<meta::Resource Meta>
     auto declare(Transaction& transaction) {
         return detail::ops::resource::declarer<Meta>(transaction);
     }
 
-    template<AspectResource Meta>
-    auto get(World world, typename Facet<Meta>::Id id) -> typename Facet<Meta>::Item {
+    template<meta::Resource Meta>
+    auto get(World world, typename Facet<Meta>::Id id) -> const typename Facet<Meta>::Quantum& {
         required(world, "ops::resource::get(): world");
         const auto field = world->field<Meta>();
         if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::resource::get(): missing instance: {}", id)); }
         const auto item = field->container.at(id);
-        required(item, "ops::resource::get(): item");
-        return item;
+        return *item;
     }
 
-    template<AspectResource Meta>
-    auto get_opt(World world, typename Facet<Meta>::Id id) -> std::optional<typename Facet<Meta>::Item> {
-        required(world, "ops::resource::get_opt(): world");
-        const auto field = world->field<Meta>();
-        if (not field->container.contains(id)) { return std::nullopt; }
-        return field->container.at(id);
-    }
-
-    template<AspectResource Meta>
-    bool contains(World world, typename Facet<Meta>::Id id) {
-        required(world, "ops::resource::contains(): world");
+    template<meta::Resource Meta>
+    bool exists(World world, typename Facet<Meta>::Id id) {
+        required(world, "ops::resource::exists(): world");
         return world->field<Meta>()->container.contains(id);
     }
 }

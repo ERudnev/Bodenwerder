@@ -6,7 +6,7 @@
 #include <vector>
 
 #include <iQSM/_forwards.h>
-#include <iQSM/aspects.h>
+#include <iQSM/meta.h>
 #include <iQSM/field.h>
 #include <iQSM/internals/type_list.h>
 #include <iQSM/types.h>
@@ -18,8 +18,7 @@ namespace iqsm {
         using TypeSet = std::set<TypeId>;
 
         struct Invariants {
-            std::vector<ops::validation::Func> structural;
-            std::vector<ops::validation::Func> logic;
+            std::vector<ops::validation::Func> own; // TODO: merge with externally attached invariants (union without duplicates)
         };
 
         struct Entry {
@@ -32,7 +31,7 @@ namespace iqsm {
 
         std::map<TypeId, Entry> aspects;
 
-        template<Aspect... Leaves>
+        template<meta::Aspect... Leaves>
         static SchemaObject assemble();
         static Schema merge(Schema first, Schema second);
 
@@ -43,12 +42,12 @@ namespace iqsm {
         template<typename List>
         struct assemble_from;
 
-        template<Aspect Meta>
+        template<meta::Aspect Meta>
         static TypeSet requirements_of();
     };
 }
 
-template<iqsm::Aspect... Leaves>
+template<iqsm::meta::Aspect... Leaves>
 iqsm::SchemaObject iqsm::SchemaObject::assemble()
 {
     using closed = typename internals::tl_closure<
@@ -58,7 +57,7 @@ iqsm::SchemaObject iqsm::SchemaObject::assemble()
     return assemble_from<closed>::run();
 }
 
-template<iqsm::Aspect... TypeList>
+template<iqsm::meta::Aspect... TypeList>
 struct iqsm::SchemaObject::assemble_from<iqsm::internals::type_list<TypeList...>> {
     static SchemaObject run() {
         SchemaObject out{};
@@ -67,7 +66,7 @@ struct iqsm::SchemaObject::assemble_from<iqsm::internals::type_list<TypeList...>
             requirements_of<TypeList>(),
             TypeSet{},
             std::static_pointer_cast<const FieldAbstract>(std::make_shared<const FieldObject<TypeList>>()),
-            Invariants{ .structural = TypeList::invariants.list }
+            Invariants{ .own = TypeList::invariants.list }
         }), ...);
 
         out.check_closed();
@@ -76,7 +75,7 @@ struct iqsm::SchemaObject::assemble_from<iqsm::internals::type_list<TypeList...>
     }
 };
 
-template<iqsm::Aspect Meta>
+template<iqsm::meta::Aspect Meta>
 iqsm::SchemaObject::TypeSet iqsm::SchemaObject::requirements_of()
 {
     TypeSet out;

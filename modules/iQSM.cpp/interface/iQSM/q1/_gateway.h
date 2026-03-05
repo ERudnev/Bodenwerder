@@ -1,9 +1,10 @@
 #pragma once
 
-#include <iQSM/aspects.h>
+#include <iQSM/_forwards.h>
+#include <iQSM/meta.h>
 #include <iQSM/identifier.h>
 #include <iQSM/logger.h>
-#include <iQSM/particles.h>
+#include <iQSM/aspects.h>
 #include <iQSM/operations/validation.h>
 
 #include <iQSM/q1/builtins.h>
@@ -14,15 +15,21 @@
 namespace iqsm::dsl_gateway {
     using namespace iqsm::q1; // adding all builtin types
 
+    using World = iqsm::World;
+    using Delta = iqsm::Delta;
+
     // Particte types:
     template<typename Meta>
-    using Xion = iqsm::particles::Xion<Meta>;
+    using Entity = iqsm::aspects::Entity<Meta>;
 
     template<typename Meta, typename Parent>
-    using Quark = iqsm::particles::Quark<Meta, Parent>;
+    using Attribute = iqsm::aspects::Attribute<Meta, Parent>;
+
+    template<typename Meta, typename Parent>
+    using Component = iqsm::aspects::Component<Meta, Parent>;
 
     template<typename Meta>
-    using Resource = iqsm::particles::Resource<Meta>;
+    using Resource = iqsm::aspects::Resource<Meta>;
 
     // Aspects infrastructure:
     template<typename Meta, typename BaseType = internal::id::BaseType>
@@ -31,6 +38,8 @@ namespace iqsm::dsl_gateway {
     template<typename... Deps>
     using Require = iqsm::Require<Deps...>;
 
-    struct Structural : iqsm::ops::validation::List, iqsm::ops::validation::Structural {
+    struct Invariants : iqsm::ops::validation::List, iqsm::ops::validation::Structural {
     };
+
+    using Structural = Invariants;
 }

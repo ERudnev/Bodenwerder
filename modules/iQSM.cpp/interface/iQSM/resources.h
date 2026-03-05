@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <string>
 
-#include <iQSM/aspects.h>
+#include <iQSM/meta.h>
 #include <iQSM/world.h>
 
 namespace iqsm::resources {
@@ -28,7 +28,7 @@ namespace iqsm::resources {
         virtual std::string report() const = 0;
     };
 
-    template<AspectResource Meta, Handler HandlerType>
+    template<meta::Resource Meta, Handler HandlerType>
     struct LayerData final : LayerAbstract {
         using ResourceId = typename Meta::Id;
         using Passport = typename Meta::Passport;
@@ -45,10 +45,10 @@ namespace iqsm::resources {
 
 // details
 namespace iqsm::detail::resources {
-    template<AspectResource Meta>
+    template<meta::Resource Meta>
     struct handler_of;
 
-    template<AspectResource Meta>
+    template<meta::Resource Meta>
     using handler_t = typename handler_of<Meta>::type;
 }
 
@@ -56,7 +56,7 @@ namespace iqsm::detail::resources {
 // implementation
 namespace iqsm::resources {
     // Handle
-    template<AspectResource Meta>
+    template<meta::Resource Meta>
     using Layer = ref<LayerData<Meta, iqsm::detail::resources::handler_t<Meta>>>;
 
     struct ManagerData {
@@ -64,10 +64,10 @@ namespace iqsm::resources {
 
         std::map<TypeId, LayerAbstract::Ref> layers;
 
-        template<AspectResource Meta>
+        template<meta::Resource Meta>
         void register_layer();
 
-        template<AspectResource Meta>
+        template<meta::Resource Meta>
         Layer<Meta> layer();
 
         void sync(World world);
@@ -77,7 +77,7 @@ namespace iqsm::resources {
     // Handle
     using Manager = ref<ManagerData>;
 
-    template<AspectResource Meta, Handler HandlerType>
+    template<meta::Resource Meta, Handler HandlerType>
     void LayerData<Meta, HandlerType>::load(const ResourceId& id, const Passport& passport) {
         if (handlers.contains(id)) {
             throw std::runtime_error("resources::LayerData::load(): already loaded");
@@ -85,13 +85,13 @@ namespace iqsm::resources {
         handlers[id] = std::make_unique<HandlerType>(passport);
     }
 
-    template<AspectResource Meta, Handler HandlerType>
+    template<meta::Resource Meta, Handler HandlerType>
     void LayerData<Meta, HandlerType>::sync(const ResourceId& id, const Passport& passport) {
         if (handlers.contains(id)) return;
         load(id, passport);
     }
 
-    template<AspectResource Meta, Handler HandlerType>
+    template<meta::Resource Meta, Handler HandlerType>
     std::string LayerData<Meta, HandlerType>::report() const {
         if (handlers.empty()) return std::format("{} [empty]", Facet<Meta>::typeName);
 
@@ -106,26 +106,25 @@ namespace iqsm::resources {
         return std::format("{} {}", Facet<Meta>::typeName, out);
     }
 
-    template<AspectResource Meta, Handler HandlerType>
+    template<meta::Resource Meta, Handler HandlerType>
     void LayerData<Meta, HandlerType>::sync(World world) {
         required(world, "resources::LayerData::sync(world): world");
         const auto field = world->field<Meta>();
         static_assert(requires(typename Facet<Meta>::Quantum q) { q.passport; },
             "resources::LayerData::sync(world): Resource instance must have `Quantum::passport`");
         for (const auto& [id, item] : field->container) {
-            required(item, "resources::LayerData::sync(world): instance");
             sync(id, item->passport);
         }
     }
 
-    template<AspectResource Meta>
+    template<meta::Resource Meta>
     void ManagerData::register_layer() {
         const auto tid = Facet<Meta>::typeId;
         if (layers.contains(tid)) return;
         layers.emplace(tid, std::make_shared<LayerData<Meta, iqsm::detail::resources::handler_t<Meta>>>());
     }
 
-    template<AspectResource Meta>
+    template<meta::Resource Meta>
     Layer<Meta> ManagerData::layer() {
         const auto tid = Facet<Meta>::typeId;
 

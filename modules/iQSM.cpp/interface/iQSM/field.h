@@ -3,7 +3,7 @@
 #include <format>
 #include <memory>
 #include <base/containers/ImmutableUnorderedMap.h>
-#include <iQSM/aspects.h>
+#include <iQSM/meta.h>
 #include <iQSM/identifier.h>
 
 namespace iqsm {
@@ -16,7 +16,7 @@ namespace iqsm {
         using Ref = cref<FieldAbstract>;
     };
 
-    template<Aspect Meta>
+    template<meta::Aspect Meta>
     struct FieldObject final : Facet<Meta>, FieldAbstract {
         using Facet = iqsm::Facet<Meta>;
         using Container = base::ImmutableUnorderedMap<typename Facet::Id, typename Facet::Item>;
@@ -25,7 +25,7 @@ namespace iqsm {
     };
 
     // Handles
-    template<Aspect Meta>
+    template<meta::Aspect Meta>
     using Field = cref<FieldObject<Meta>>;
 }
 

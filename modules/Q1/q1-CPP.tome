@@ -46,10 +46,10 @@ namespace Q1-CPP {
     Проекция форм объявлений (верхний уровень DSL) → C++.
     1: `struct S` в DSL проецируется в C++ как `struct S { ... };` (plain data type).
     2: `type A as B` проецируется как `using A = B;`.
-    3: `table X` проецируется как `struct X : Xion<X>, Require<...> { ... };`.
-    4: `xion X` проецируется как `struct X : Xion<X>, Require<...> { ... };`.
-    5: `quark Q of Parent` проецируется как `struct Q : Quark<Q, Parent>, Require<Parent, ...> { ... };`.
-    6: `tag T of Parent` проецируется как `struct T : Quark<T, Parent>, Require<Parent, ...> { ... };`.
+    3: `table X` проецируется как `struct X : Entity<X>, Require<...> { ... };`.
+    4: `entity X` проецируется как `struct X : Entity<X>, Require<...> { ... };`.
+    5: `attribute Q of Parent` проецируется как `struct Q : Attribute<Q, Parent>, Require<Parent, ...> { ... };`.
+    6: `component Q of Parent` проецируется как `struct Q : Component<Q, Parent>, Require<Parent, ...> { ... };`.
   }
 
   quantum_projection: @Rule {
@@ -74,16 +74,29 @@ namespace Q1-CPP {
 
   invariants_and_anchors: @Rule {
     Проекция структурных инвариантов и якорей.
-    1: Каждый аспектный C++-тип содержит `inline static const Structural invariants{{{ ... }}};`.
-    2: Для `quark/tag ... of Parent` в invariants добавляется `Structural::anchor_quark<Parent, Aspect>`.
-    3: Поле `f: Target::Id @anchor` добавляет в invariants `Structural::anchor<Target, Owner, &Quantum::f>`.
+    1: Каждый аспектный C++-тип содержит `static const Invariants invariants;`, а определение `invariants` размещается в `.cpp`.
+      1: Причина: чтобы не светить внутренние операции (`update/construct` и утилиты) в заголовках и не смешивать данные с логикой.
+    2: Для `attribute/tag ... of Parent` в invariants добавляется `Structural::anchor_attribute<Parent, Aspect>`.
+    3: Для `component ... of Parent` в invariants добавляется `Structural::anchor_component<Parent, Aspect, &logic::Aspect::construct>`.
+      1: Реальная `construct(World, const Parent::Quantum&) -> Aspect::Quantum` размещается в `.cpp` внутри `iqsm::domains::<DomainPath>::Aspect`.
+    4: Поле `f: Target::Id @anchor` добавляет в invariants `Structural::anchor<Target, Owner, &Quantum::f>`.
+    5: Если в `quantum` встречается хотя бы одно поле с директивой `@cache`, генерация добавляет в `invariants` валидатор `&logic::Aspect::update`.
+      1: Реальная `update(World) -> Delta` размещается в `.cpp` внутри `iqsm::domains::<DomainPath>::Aspect`.
+    6: Для удобства определения `invariants` в `.cpp` вводится namespace-alias:
+      1: `namespace logic = iqsm::domains::<DomainPath>;`
+    7: Правило имён в логическом слое (без коллизий):
+      1: Логический код аспекта размещается в `iqsm::domains::<DomainPath>::Aspect` (где `Aspect` — namespace).
+        1: Допустимая форма записи: `namespace iqsm::domains::<DomainPath>::Aspect { ... }`.
+      2: Внутри каждого `iqsm::domains::<DomainPath>::Aspect` обязательно вводится `using Meta = ::<DomainPath>::Aspect;`.
+      3: В любом шаблонном/типовом контексте (`Facet<...>`, `field<...>`, `typeId`) аспектный тип используется через `Aspect::Meta`
+        (например `Facet<Charge::Meta>::typeId`), чтобы избежать коллизий имён без длинных квалификаторов и без суффиксов.
   }
 
   dependencies_derivation: @Rule {
     Вывод `dependencies` (requirements) аспекта в C++ проекции: `Require<...>`.
     Итог: dependencies = union(выведенные правилами, явно перечисленные через `depends:`).
     1: Dependencies аспектов выражаются через миксин `Require<...>` и должны быть полными и явными.
-    2: Если аспект объявлен как quark/tag/component `of Parent`, то Parent добавляется в `Require<...>`.
+    2: Если аспект объявлен как attribute/tag/component `of Parent`, то Parent добавляется в `Require<...>`.
     3: Если внутри quantum встречается любой тип, принадлежащий аспекту B, то B добавляется в `Require<...>`.
       1: Это включает случаи `B::Id`.
     4: Если внутри quantum встречается составной тип (struct/array/vector/optional/etc.), то правило вывода dependencies применяется рекурсивно к его полям/элементам.

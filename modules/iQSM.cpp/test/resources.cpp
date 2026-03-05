@@ -88,8 +88,8 @@ namespace tests {
         const auto mol_h = ops::particle::create<Modecule>(transaction)({std::vector<Atom::Id>{atom_h}, hydrogen});
         const auto mol_he = ops::particle::create<Modecule>(transaction)({std::vector<Atom::Id>{atom_he}, helium});
 
-        EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(transaction.current, mol_h)->descrition)->c_str()), "mock:Hydrogen.txt");
-        EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(transaction.current, mol_he)->descrition)->c_str()), "mock:Helium.txt");
+        EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(transaction.current, mol_h).descrition)->c_str()), "mock:Hydrogen.txt");
+        EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(transaction.current, mol_he).descrition)->c_str()), "mock:Helium.txt");
     }
 
     void resources_manager() {

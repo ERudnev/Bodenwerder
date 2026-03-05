@@ -13,19 +13,18 @@ namespace tests {
         { // assemble from one non-root:
             auto schema = SchemaObject::assemble<Chemical>();
 
-            EXPECT_EQ(schema.aspects.size(), 3);
+            EXPECT_EQ(schema.aspects.size(), 5);
 
             EXPECT_TRUE(schema.aspects.contains(Facet<Atom>::typeId));
             EXPECT_TRUE(schema.aspects.contains(Facet<Spark>::typeId));
+            EXPECT_TRUE(schema.aspects.contains(Facet<Charge>::typeId));
+            EXPECT_TRUE(schema.aspects.contains(Facet<Electron>::typeId));
             EXPECT_EQ(utilities::type_names(schema),
-                "{Q1CORE::Example::Varph::Atom, Q1CORE::Example::Varph::Chemical, Q1CORE::Example::Varph::Spark}");
+                "{Q1CORE::Example::Varph::Atom, Q1CORE::Example::Varph::Charge, Q1CORE::Example::Varph::Chemical, Q1CORE::Example::Varph::Electron, Q1CORE::Example::Varph::Spark}");
 
-            EXPECT_EQ(schema.aspects.at(Facet<Atom>::typeId).invariants.structural.size(), Atom::invariants.list.size());
-            EXPECT_EQ(schema.aspects.at(Facet<Spark>::typeId).invariants.structural.size(), Spark::invariants.list.size());
-
-            EXPECT_EQ(schema.aspects.at(Facet<Atom>::typeId).invariants.structural.size(), 1);
-            EXPECT_EQ(schema.aspects.at(Facet<Spark>::typeId).invariants.structural.size(), 0);
-            EXPECT_EQ(schema.aspects.at(Facet<Chemical>::typeId).invariants.structural.size(), 1);
+            EXPECT_EQ(schema.aspects.at(Facet<Atom>::typeId).invariants.own.size(), Atom::invariants.list.size());
+            EXPECT_EQ(schema.aspects.at(Facet<Spark>::typeId).invariants.own.size(), Spark::invariants.list.size());
+            EXPECT_EQ(schema.aspects.at(Facet<Chemical>::typeId).invariants.own.size(), Chemical::invariants.list.size());
         }
         { // merge two Schema's
             const auto a = ops::schema::assemble<Atom>();
@@ -37,15 +36,17 @@ namespace tests {
             EXPECT_TRUE(ab != nullptr);
             EXPECT_TRUE(ba != nullptr);
 
-            EXPECT_EQ(ab->aspects.size(), 3);
-            EXPECT_EQ(ba->aspects.size(), 3);
+            EXPECT_EQ(ab->aspects.size(), 5);
+            EXPECT_EQ(ba->aspects.size(), 5);
 
             EXPECT_TRUE(ab->aspects.contains(Facet<Spark>::typeId));
             EXPECT_TRUE(ab->aspects.contains(Facet<Atom>::typeId));
             EXPECT_TRUE(ab->aspects.contains(Facet<Chemical>::typeId));
+            EXPECT_TRUE(ab->aspects.contains(Facet<Charge>::typeId));
+            EXPECT_TRUE(ab->aspects.contains(Facet<Electron>::typeId));
 
-            EXPECT_EQ(ab->aspects.at(Facet<Atom>::typeId).invariants.structural.size(), 2);
-            EXPECT_EQ(ba->aspects.at(Facet<Atom>::typeId).invariants.structural.size(), 2);
+            EXPECT_EQ(ab->aspects.at(Facet<Atom>::typeId).invariants.own.size(), Atom::invariants.list.size());
+            EXPECT_EQ(ba->aspects.at(Facet<Atom>::typeId).invariants.own.size(), Atom::invariants.list.size());
 
             EXPECT_TRUE(ab->aspects.at(Facet<Spark>::typeId).required_by.contains(Facet<Atom>::typeId));
             EXPECT_TRUE(ab->aspects.at(Facet<Atom>::typeId).required_by.contains(Facet<Chemical>::typeId));

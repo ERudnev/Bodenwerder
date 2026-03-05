@@ -1,7 +1,7 @@
 #include <base/testing/macros.h>
 
 #include <Atomic/varph.q1.h>
-#include <iQSM/aspects.h>
+#include <iQSM/meta.h>
 
 namespace tests {
     void typenames_varph() {

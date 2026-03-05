@@ -2,7 +2,7 @@
 
 #include <base/containers/ImmutableUnorderedSet.h>
 #include <base/containers/ImmutableUnorderedMap.h>
-#include <iQSM/aspects.h>
+#include <iQSM/meta.h>
 #include <iQSM/field.h>
 #include <iQSM/_forwards.h>
 #include <format>
@@ -26,7 +26,7 @@ namespace iqsm::delta {
         virtual cref<FieldDiffAbstract> merge(cref<FieldDiffAbstract>) const = 0;
     };
 
-    template<Aspect Meta>
+    template<meta::Aspect Meta>
     struct FieldDiff final : Facet<Meta>, FieldDiffAbstract {
         using A = iqsm::Facet<Meta>;
         using Id = typename A::Id;
@@ -45,7 +45,7 @@ namespace iqsm::delta {
     };
 
     // Handles
-    template<Aspect Meta>
+    template<meta::Aspect Meta>
     using Field = cref<FieldDiff<Meta>>;
     using UField = cref<FieldDiffAbstract>;
 
@@ -55,7 +55,7 @@ namespace iqsm::delta {
     };
 }
 
-template<iqsm::Aspect Meta>
+template<iqsm::meta::Aspect Meta>
 iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbstract::Ref current) const {
     if (added.empty() and changed.empty() and deleted.empty()) { return current; }
 
@@ -107,7 +107,7 @@ iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbst
     return std::static_pointer_cast<const iqsm::FieldAbstract>(iqsm::freeze(out));
 }
 
-template<iqsm::Aspect Meta>
+template<iqsm::meta::Aspect Meta>
 iqsm::cref<iqsm::delta::FieldDiffAbstract> iqsm::delta::FieldDiff<Meta>::merge(iqsm::cref<FieldDiffAbstract> other) const {
     const auto* rhs = dynamic_cast<const FieldDiff<Meta>*>(other.get());
     if (not rhs) {

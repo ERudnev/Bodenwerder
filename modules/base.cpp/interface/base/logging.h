@@ -14,6 +14,7 @@
 
 // infra:
 #define _INCOMPLETE_ throw ::base::detail::make_incomplete_message(__FILE__, __LINE__, NOTECS_FUNCTION_NAME)
+#define _IMPLEMENT_ME_ static_assert(false, "needs some code to implement here")
 
 namespace base {
 

@@ -32,15 +32,13 @@ namespace iqsm {
                         lhs.name));
                 }
 
-                lhs.invariants.structural.insert(
-                    lhs.invariants.structural.end(),
-                    rhs.invariants.structural.begin(),
-                    rhs.invariants.structural.end());
-
-                lhs.invariants.logic.insert(
-                    lhs.invariants.logic.end(),
-                    rhs.invariants.logic.begin(),
-                    rhs.invariants.logic.end());
+                // Today we only store "own" (type-declared) invariants.
+                // Future: allow invariants to be attached externally and merge them as a set-union (no duplicates).
+                if (lhs.invariants.own != rhs.invariants.own) {
+                    throw std::runtime_error(std::format(
+                        "Schema::merge(): incompatible invariants for aspect '{}'",
+                        lhs.name));
+                }
             } else {
                 out->aspects.emplace(typeId, rhs);
             }

@@ -42,7 +42,7 @@ namespace Toy {
         constexpr float step = 1.0f;
         constexpr eVt locality = eVt{0};
 
-        const auto schema = ops::schema::assemble<Inertia, Electro>();
+        const auto schema = ops::schema::assemble<Inertia, Charge>();
         std::string aspect_names;
         for (const auto& kv : schema->aspects) { aspect_names += (aspect_names.empty() ? "" : ", ") + kv.second.name; }
         message("Toy::Model::create(): schema aspects ({}) = [{}]", schema->aspects.size(), aspect_names);
@@ -60,7 +60,7 @@ namespace Toy {
 
                 const auto id = create_spark({p, locality});
                 ops::particle::create<Inertia>(transaction, id)({p, type.mass});
-                ops::particle::create<Electro>(transaction, id)({type.charge});
+                ops::particle::create<Charge>(transaction, id)({type.charge});
             }
         }
 

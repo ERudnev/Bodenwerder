@@ -22,8 +22,8 @@ namespace tests {
 
             auto next = ops::integrate_raw(populated_world, delta);
             EXPECT_EQ(next->field<Electron>()->container.size(), size_t{1});
-            EXPECT_TRUE(ops::particle::contains<Electron>(next, electron_ok));
-            EXPECT_TRUE(not ops::particle::contains<Electron>(next, electron_bad));
+            EXPECT_TRUE(ops::particle::exists<Electron>(next, electron_ok));
+            EXPECT_TRUE(not ops::particle::exists<Electron>(next, electron_bad));
         }
 
         // Scenario 2: Capture.atom anchors to Atom
@@ -40,8 +40,8 @@ namespace tests {
             auto next = ops::integrate_raw(populated_world, delta);
 
             EXPECT_EQ(next->field<Capture>()->container.size(), size_t{1});
-            EXPECT_TRUE(ops::particle::contains<Capture>(next, capture_ok));
-            EXPECT_TRUE(not ops::particle::contains<Capture>(next, capture_bad));
+            EXPECT_TRUE(ops::particle::exists<Capture>(next, capture_ok));
+            EXPECT_TRUE(not ops::particle::exists<Capture>(next, capture_bad));
         }
 
         // Scenario 3: Atom.core anchors to Spark (any)
@@ -56,11 +56,11 @@ namespace tests {
             auto next = ops::integrate_raw(populated_world, delta);
 
             EXPECT_EQ(next->field<Atom>()->container.size(), size_t{1});
-            EXPECT_TRUE(ops::particle::contains<Atom>(next, atom_keep));
+            EXPECT_TRUE(ops::particle::exists<Atom>(next, atom_keep));
 
-            const auto kept = ops::particle::get<Atom>(next, atom_keep);
-            EXPECT_EQ(kept->core.size(), size_t{1});
-            EXPECT_TRUE(kept->core.at(0) == spark_ok);
+            const auto& kept = ops::particle::get<Atom>(next, atom_keep);
+            EXPECT_EQ(kept.core.size(), size_t{1});
+            EXPECT_TRUE(kept.core.at(0) == spark_ok);
         }
 
         // Scenario 4: Binding.bound anchors to Atom (all)
@@ -75,8 +75,8 @@ namespace tests {
             auto next = ops::integrate_raw(populated_world, delta);
 
             EXPECT_EQ(next->field<Binding>()->container.size(), size_t{1});
-            EXPECT_TRUE(ops::particle::contains<Binding>(next, bind_ok));
-            EXPECT_TRUE(not ops::particle::contains<Binding>(next, bind_bad));
+            EXPECT_TRUE(ops::particle::exists<Binding>(next, bind_ok));
+            EXPECT_TRUE(not ops::particle::exists<Binding>(next, bind_bad));
         }
     }
 }

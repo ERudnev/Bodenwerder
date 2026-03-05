@@ -7,35 +7,34 @@ namespace Q1CORE::Example::Varph {
 
     using eVt = float;
 
-    struct Spark : Xion<Spark>, Require<> {
+    struct Spark : Entity<Spark>, Require<> {
         struct Quantum {
             vec3 position;
             eVt locality;
         };
 
-        inline static const Structural invariants{{{
-        }}};
+        static const Invariants invariants;
     };
 
-    struct Inertia : Quark<Inertia, Spark>, Require<Spark> {
+    struct Inertia : Attribute<Inertia, Spark>, Require<Spark> {
         struct Quantum {
             vec3 prev_pos;
             eVt mass;
         };
 
-        inline static const Structural invariants{{{
-            Structural::anchor_quark<Spark, Inertia>,
-        }}};
+        static const Invariants invariants;
     };
 
-    struct Electro : Quark<Electro, Spark>, Require<Spark> {
+    struct Charge : Attribute<Charge, Spark>, Require<Spark> {
         struct Quantum {
-            integer charge;
+            integer value;
         };
 
-        inline static const Structural invariants{{{
-            Structural::anchor_quark<Spark, Electro>,
-        }}};
+        struct Operations {
+            static auto value(World, Spark::Id)->integer;
+        };
+
+        static const Invariants invariants;
     };
 
     struct TextDescription : Resource<TextDescription>, Require<> {
@@ -47,45 +46,38 @@ namespace Q1CORE::Example::Varph {
             timepoint created;
         };
 
-        inline static const Structural invariants{{{
-        }}};
+        static const Invariants invariants;
     };
 
-    struct Atom : Xion<Atom>, Require<Spark> {
-        struct Quantum {
-            std::vector<Spark::Id> core;
-            std::vector<Spark::Id> captured;
-            string legend;
-        };
-
-        inline static const Structural invariants{{{
-            Structural::anchor_any<Spark, Atom, &Quantum::core>,
-        }}};
-    };
-
-    struct Chemical : Quark<Chemical, Atom>, Require<Atom> {
-        struct Quantum {
-            integer ionisation;
-            integer valency;
-        };
-
-        inline static const Structural invariants{{{
-            Structural::anchor_quark<Atom, Chemical>,
-        }}};
-    };
-
-    struct Electron : Xion<Electron>, Require<Spark> {
+    struct Electron : Entity<Electron>, Require<Spark> {
         struct Quantum {
             Spark::Id spark;
             string legend;
         };
 
-        inline static const Structural invariants{{{
-            Structural::anchor<Spark, Electron, &Quantum::spark>,
-        }}};
+        static const Invariants invariants;
     };
 
-    struct Capture : Xion<Capture>, Require<Atom, Electron> {
+    struct Atom : Entity<Atom>, Require<Spark, Charge, Electron> {
+        struct Quantum {
+            std::vector<Spark::Id> core;
+            std::vector<Electron::Id> captured;
+            string legend;
+        };
+
+        static const Invariants invariants;
+    };
+
+    struct Chemical : Component<Chemical, Atom>, Require<Atom> {
+        struct Quantum {
+            integer ionisation;
+            integer valency;
+        };
+
+        static const Invariants invariants;
+    };
+
+    struct Capture : Entity<Capture>, Require<Atom, Electron> {
         struct Quantum {
             Atom::Id atom;
             Electron::Id electron;
@@ -93,31 +85,24 @@ namespace Q1CORE::Example::Varph {
             eVt energy;
         };
 
-        inline static const Structural invariants{{{
-            Structural::anchor<Atom, Capture, &Quantum::atom>,
-            Structural::anchor<Electron, Capture, &Quantum::electron>,
-        }}};
+        static const Invariants invariants;
     };
 
-    struct Modecule : Xion<Modecule>, Require<Atom, TextDescription> {
+    struct Modecule : Entity<Modecule>, Require<Atom, TextDescription> {
         struct Quantum {
             std::vector<Atom::Id> atoms;
             TextDescription::Id descrition;
         };
 
-        inline static const Structural invariants{{{
-            Structural::anchor_any<Atom, Modecule, &Quantum::atoms>,
-        }}};
+        static const Invariants invariants;
     };
 
-    struct Binding : Xion<Binding>, Require<Atom> {
+    struct Binding : Entity<Binding>, Require<Atom> {
         struct Quantum {
             std::vector<Atom::Id> bound;
         };
 
-        inline static const Structural invariants{{{
-            Structural::anchor_all<Atom, Binding, &Quantum::bound>,
-        }}};
+        static const Invariants invariants;
     };
 
 } // namespace Q1CORE::Example::Varph

@@ -22,11 +22,11 @@ namespace tests {
 
         // Read-only access via get() produces no delta.
         {
-            const auto electron_const = ops::particle::get<Electron>(transaction.current, electron);
-            EXPECT_EQ(electron_const->legend, "A");
+            const auto& electron_const = ops::particle::get<Electron>(transaction.current, electron);
+            EXPECT_EQ(electron_const.legend, "A");
         }
         EXPECT_TRUE(transaction.summary == nullptr);
-        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron)->legend, "A");
+        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron).legend, "A");
 
         // Creating modify() handle is treated as a mutation => delta is produced,
         // even if the resulting value is structurally identical and the handle is unused.
@@ -34,7 +34,7 @@ namespace tests {
             auto unused = ops::particle::modify<Electron>(transaction, electron);
         }
         EXPECT_TRUE(transaction.summary != nullptr);
-        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron)->legend, "A");
+        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron).legend, "A");
 
         // A named modify() handle may live for a while; apply happens on scope exit.
         {
@@ -44,13 +44,13 @@ namespace tests {
             (*m).legend = "D";
             m->legend = "E";
         }
-        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron)->legend, "E");
+        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron).legend, "E");
 
 
         // Mutation marks dirty => delta is produced and transaction world changes.
         ops::particle::modify<Electron>(transaction, electron)->legend = "B";
         EXPECT_TRUE(transaction.summary != nullptr);
-        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron)->legend, "B");
+        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron).legend, "B");
 
         const auto untyped = transaction.summary->fields.at(Facet<Electron>::typeId);
         const auto fd = std::dynamic_pointer_cast<const delta::FieldDiff<Electron>>(untyped);
@@ -66,7 +66,7 @@ namespace tests {
             auto moved_electron = std::move(electron_to_move);
             EXPECT_EQ(moved_electron->legend, "C");
         }
-        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron)->legend, "C");
+        EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron).legend, "C");
     }
 }
 
