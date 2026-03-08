@@ -8,11 +8,11 @@
 namespace iqsm::ops::schema {
     template<meta::Aspect... Leaves>
     inline Schema assemble() {
-        return std::make_shared<const SchemaObject>(SchemaObject::assemble<Leaves...>());
+        return base::make_shared<const SchemaObject>(SchemaObject::assemble<Leaves...>());
     }
 
     inline Schema create(SchemaObject schema) {
-        return std::make_shared<const SchemaObject>(std::move(schema));
+        return base::make_shared<const SchemaObject>(std::move(schema));
     }
 }
 

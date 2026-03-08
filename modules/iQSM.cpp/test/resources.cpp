@@ -102,7 +102,7 @@ namespace tests {
         const auto hydrogen = ops::resource::declare<TextDescription>(transaction)({{"Hydrogen.txt"}, logger::now()});
         const auto helium = ops::resource::declare<TextDescription>(transaction)({{"Helium.txt"}, logger::now()});
 
-        const resources::Manager manager = std::make_shared<resources::ManagerData>();
+        const resources::Manager manager = base::make_shared<resources::ManagerData>();
         manager->register_layer<TextDescription>();
         manager->sync(transaction.current);
 
@@ -120,7 +120,7 @@ namespace tests {
         const World world = ops::world::create(ops::schema::assemble<Modecule, ColorRamp>());
         ops::Transaction transaction{World{world}};
 
-        const resources::Manager manager = std::make_shared<resources::ManagerData>();
+        const resources::Manager manager = base::make_shared<resources::ManagerData>();
         manager->register_layer<TextDescription>();
         manager->register_layer<ColorRamp>();
 

@@ -5,15 +5,15 @@
 
 namespace iqsm {
     Schema SchemaObject::merge(Schema first, Schema second) {
-        if (not first) { return second; }
-        if (not second) { return first; }
         if (first.get() == second.get()) { return first; }
+        if (first->empty()) { return second; }
+        if (second->empty()) { return first; }
 
         Schema a = first;
         Schema b = second;
         if (std::less<const SchemaObject*>{}(b.get(), a.get())) { std::swap(a, b); }
 
-        auto out = std::make_shared<SchemaObject>();
+        auto out = base::make_shared<SchemaObject>();
         out->aspects = a->aspects;
 
         for (const auto& [typeId, rhs] : b->aspects) {
@@ -26,7 +26,7 @@ namespace iqsm {
                         lhs.name));
                 }
 
-                if (not lhs.zero or not rhs.zero or typeid(*lhs.zero) != typeid(*rhs.zero)) {
+                if (typeid(*lhs.zero) != typeid(*rhs.zero)) {
                     throw std::runtime_error(std::format(
                         "Schema::merge(): incompatible zero for aspect '{}'",
                         lhs.name));

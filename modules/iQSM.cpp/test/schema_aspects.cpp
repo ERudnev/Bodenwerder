@@ -24,9 +24,6 @@ namespace tests {
         EXPECT_TRUE(spark.required_by.contains(Facet<Atom>::typeId));
         EXPECT_TRUE(spark.required_by.contains(Facet<Charge>::typeId));
         EXPECT_TRUE(spark.required_by.contains(Facet<Electron>::typeId));
-        EXPECT_TRUE(spark.zero != nullptr);
-
-        EXPECT_TRUE(atom.zero != nullptr);
     }
 }
 

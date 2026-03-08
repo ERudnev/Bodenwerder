@@ -33,9 +33,6 @@ namespace tests {
             const auto ab = SchemaObject::merge(a, b);
             const auto ba = SchemaObject::merge(b, a);
 
-            EXPECT_TRUE(ab != nullptr);
-            EXPECT_TRUE(ba != nullptr);
-
             EXPECT_EQ(ab->aspects.size(), 5);
             EXPECT_EQ(ba->aspects.size(), 5);
 

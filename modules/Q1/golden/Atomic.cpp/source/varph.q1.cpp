@@ -25,7 +25,6 @@ namespace Q1CORE::Example::Varph {
     }
 
     integer Charge::Operations::value(World world, Spark::Id spark) {
-        required(world, "Charge::Operations::value(): world");
         if (not iqsm::ops::particle::exists<Charge>(world, spark)) { return 0; }
         return iqsm::ops::particle::get<Charge>(world, spark).value;
     }
@@ -111,7 +110,6 @@ namespace Q1CORE::Example::Varph {
         }
 
         Chemical::Quantum construct(World world, const Atom::Quantum& atom) {
-            required(world, "Chemical::construct(): world");
             return Chemical::Quantum{
                 .ionisation = ionisation_of(world, atom),
                 .valency = 0,

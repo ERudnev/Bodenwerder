@@ -1,13 +1,18 @@
 #pragma once
 
 #include <iQSM/_forwards.h>
+#include <iQSM/operations/schema.h>
+#include <iQSM/operations/world.h>
 #include <string>
 
 namespace Toy {
 
     class Model {
     public:
-        Model(const std::string& file) : fileBinding(file) {} // TODO: bind to filesystem API
+        Model(const std::string& file)
+            : fileBinding(file)
+            , world(iqsm::ops::world::create(iqsm::ops::schema::assemble<>()))
+        {} // TODO: bind to filesystem API
 
         ~Model() = default;
         void create();

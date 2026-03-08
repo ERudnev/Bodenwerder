@@ -10,19 +10,15 @@ namespace iqsm::ops {
     }
 
     World integrate_raw(World world, Delta delta) {
-        if (not delta) { return world; }
-        if (not world) { return nullptr; }
-        if (delta->fields.empty()) { return world; }
-        required(world->schema, "integrate_raw(): world schema");
-        required(not world->schema->aspects.empty(), "integrate_raw(): world schema aspects");
+        if (delta->empty()) { return world; }
+        if (world->schema->empty()) { return world; }
 
-        auto out = std::make_shared<WorldObject>(world->schema);
+        auto out = base::make_shared<WorldObject>(world->schema);
         out->fields = world->fields;
 
         for (const auto& kv : delta->fields) {
             const auto& typeId = kv.first;
             const auto& field_delta = kv.second;
-            if (not field_delta) { continue; }
 
             if (not world->schema->aspects.contains(typeId)) {
                 throw std::runtime_error(std::format(
@@ -30,11 +26,9 @@ namespace iqsm::ops {
                     typeId.hash_code()));
             }
 
-            iqsm::FieldAbstract::Ref current;
-            if (const auto* slot = world->fields.find(typeId); slot and *slot) {
+            auto current = world->schema->aspects.at(typeId).zero;
+            if (const auto* slot = world->fields.find(typeId); slot) {
                 current = *slot;
-            } else {
-                current = world->schema->aspects.at(typeId).zero;
             }
 
             const auto next = field_delta->integrate(current);
@@ -50,12 +44,10 @@ namespace iqsm::ops {
     }
 
     Delta merge(Delta first, Delta second) {
-        if (not first) { return second; }
-        if (not second) { return first; }
-        if (first->fields.empty()) { return second; }
-        if (second->fields.empty()) { return first; }
+        if (first->empty()) { return second; }
+        if (second->empty()) { return first; }
 
-        auto out = std::make_shared<iqsm::delta::WorldState>();
+        auto out = base::make_shared<iqsm::delta::Fields>();
         for (const auto& kv : first->fields) {
             out->fields = out->fields.insert(kv.first, kv.second);
         }
@@ -63,7 +55,6 @@ namespace iqsm::ops {
         for (const auto& kv : second->fields) {
             const auto& typeId = kv.first;
             const auto& rhs = kv.second;
-            if (not rhs) { continue; }
 
             if (not out->fields.contains(typeId)) {
                 out->fields = out->fields.insert(typeId, rhs);
@@ -71,16 +62,12 @@ namespace iqsm::ops {
             }
 
             const auto lhs = out->fields.at(typeId);
-            if (not lhs) {
-                out->fields = out->fields.insert(typeId, rhs);
-                continue;
-            }
 
             const auto merged = lhs->merge(rhs);
             out->fields = out->fields.insert(typeId, merged);
         }
 
-        if (out->fields.empty()) { return nullptr; }
+        if (out->fields.empty()) { return ::iqsm::delta::empty(); }
         return freeze(out);
     }
 }

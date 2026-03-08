@@ -108,7 +108,6 @@ namespace iqsm::resources {
 
     template<meta::Resource Meta, Handler HandlerType>
     void LayerData<Meta, HandlerType>::sync(World world) {
-        required(world, "resources::LayerData::sync(world): world");
         const auto field = world->field<Meta>();
         static_assert(requires(typename Facet<Meta>::Quantum q) { q.passport; },
             "resources::LayerData::sync(world): Resource instance must have `Quantum::passport`");
@@ -121,7 +120,7 @@ namespace iqsm::resources {
     void ManagerData::register_layer() {
         const auto tid = Facet<Meta>::typeId;
         if (layers.contains(tid)) return;
-        layers.emplace(tid, std::make_shared<LayerData<Meta, iqsm::detail::resources::handler_t<Meta>>>());
+        layers.emplace(tid, base::make_shared<LayerData<Meta, iqsm::detail::resources::handler_t<Meta>>>());
     }
 
     template<meta::Resource Meta>
@@ -129,9 +128,7 @@ namespace iqsm::resources {
         const auto tid = Facet<Meta>::typeId;
 
         if (auto it = layers.find(tid); it != layers.end()) {
-            auto typed = std::dynamic_pointer_cast<LayerData<Meta, iqsm::detail::resources::handler_t<Meta>>>(it->second);
-            if (!typed) { throw std::runtime_error("resources::ManagerData::layer(): layer type mismatch"); }
-            return typed;
+            return base::shared_ref_cast<LayerData<Meta, iqsm::detail::resources::handler_t<Meta>>>(it->second);
         }
 
         register_layer<Meta>();
@@ -139,9 +136,7 @@ namespace iqsm::resources {
     }
 
     inline void ManagerData::sync(World world) {
-        required(world, "resources::ManagerData::sync(): world");
         for (auto& [_, layer] : layers) {
-            required(layer, "resources::ManagerData::sync(): layer");
             layer->sync(world);
         }
     }

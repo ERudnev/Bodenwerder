@@ -5,6 +5,7 @@
 #include <iQSM/meta.h>
 #include <iQSM/field.h>
 #include <iQSM/_forwards.h>
+#include <memory>
 #include <format>
 #include <stdexcept>
 
@@ -49,22 +50,25 @@ namespace iqsm::delta {
     using Field = cref<FieldDiff<Meta>>;
     using UField = cref<FieldDiffAbstract>;
 
-    struct WorldState {
+    struct Fields {
         using Container = base::ImmutableUnorderedMap<FieldDiffAbstract::RuntimeTypeId, UField>;
         Container fields;
+        bool empty() const { return fields.empty(); }
     };
+
+    inline iqsm::Delta empty() {
+        static const auto singleton = base::make_shared<const Fields>();
+        return singleton;
+    }
 }
 
 template<iqsm::meta::Aspect Meta>
 iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbstract::Ref current) const {
     if (added.empty() and changed.empty() and deleted.empty()) { return current; }
 
-    auto typed = std::dynamic_pointer_cast<const iqsm::FieldObject<Meta>>(current);
-    if (not typed) {
-        throw std::runtime_error(std::format(
-            "delta::FieldDiff<{}>::integrate(): invalid field type",
-            Facet<Meta>::typeName));
-    }
+    // TODO(iqsm): These casts are type-integrity checks (not null-checks). When cref/ref becomes a non-null pointer,
+    // decide on the standard cast API here (e.g. `cast<T>()` throws, `try_cast<T>()` returns optional).
+    auto typed = base::shared_ref_cast<const iqsm::FieldObject<Meta>>(current);
 
     auto container = typed->container;
 
@@ -84,7 +88,7 @@ iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbst
                 Facet<Meta>::typeName,
                 kv.first));
         }
-        if (kv.second.before and container.at(kv.first) != kv.second.before) {
+        if (container.at(kv.first) != kv.second.before) {
             throw std::runtime_error(std::format(
                 "delta::FieldDiff<{}>::integrate(): before mismatch: {}",
                 Facet<Meta>::typeName,
@@ -102,21 +106,16 @@ iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbst
         container = container.erase(id);
     }
 
-    auto out = std::make_shared<iqsm::FieldObject<Meta>>();
+    auto out = base::make_shared<iqsm::FieldObject<Meta>>();
     out->container = container;
-    return std::static_pointer_cast<const iqsm::FieldAbstract>(iqsm::freeze(out));
+    return iqsm::freeze(out);
 }
 
 template<iqsm::meta::Aspect Meta>
 iqsm::cref<iqsm::delta::FieldDiffAbstract> iqsm::delta::FieldDiff<Meta>::merge(iqsm::cref<FieldDiffAbstract> other) const {
-    const auto* rhs = dynamic_cast<const FieldDiff<Meta>*>(other.get());
-    if (not rhs) {
-        throw std::runtime_error(std::format(
-            "delta::FieldDiff<{}>::merge(): incompatible field delta type",
-            Facet<Meta>::typeName));
-    }
+    const auto rhs = base::shared_ref_cast<const FieldDiff<Meta>>(other);
 
-    auto out = std::make_shared<FieldDiff<Meta>>();
+    auto out = base::make_shared<FieldDiff<Meta>>();
     auto added_out = added;
     auto changed_out = changed;
     auto deleted_out = deleted;
@@ -163,5 +162,5 @@ iqsm::cref<iqsm::delta::FieldDiffAbstract> iqsm::delta::FieldDiff<Meta>::merge(i
     out->changed = changed_out;
     out->deleted = deleted_out;
 
-    return std::static_pointer_cast<const FieldDiffAbstract>(iqsm::freeze(out));
+    return iqsm::freeze(out);
 }

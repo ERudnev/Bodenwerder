@@ -29,9 +29,9 @@ namespace plan {
     status: in_progress
     goal:
       Синтезировать компактный тестовый синтаксис для создания Delta по одной операции над одним полем
-      (add/change/delete для FieldDiff<T> + упаковка в WorldState).
+      (add/change/delete для FieldDiff<T> + упаковка в Fields).
     reason:
-      В тестах merge-логики Delta значительная часть кода описывает механику сборки delta::WorldState,
+      В тестах merge-логики Delta значительная часть кода описывает механику сборки delta::Fields,
       а не поведение ops::merge как таковое.
   }
 

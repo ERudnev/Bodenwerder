@@ -23,13 +23,12 @@ namespace iqsm {
         const Schema schema;
         Container fields;
 
-        explicit WorldObject(Schema s) : id(Id::generate_random()), schema(s) { required(schema, "World: schema"); }
+        explicit WorldObject(Schema s) : id(Id::generate_random()), schema(s) {}
 
         template<meta::Aspect Meta> Field<Meta> field() const;
 
     private:
         void basis_required(TypeId rttid) const {
-            if (not schema) { throw std::runtime_error("World: schema is required"); }
             if (not schema->aspects.contains(rttid)) { throw std::runtime_error("World: aspect is not in schema"); }
         }
     };
@@ -41,16 +40,11 @@ iqsm::Field<Meta> iqsm::WorldObject::field() const {
     const TypeId rttid = Facet<Meta>::typeId;
     basis_required(rttid);
 
-    FieldAbstract::Ref untyped;
-    if (const auto* slot = fields.find(rttid); slot and *slot) {
+    auto untyped = schema->aspects.at(rttid).zero;
+    if (const auto* slot = fields.find(rttid); slot) {
         untyped = *slot;
-    } else {
-        untyped = schema->aspects.at(rttid).zero;
     }
 
-    auto typed = std::dynamic_pointer_cast<const FieldObject<Meta>>(untyped);
-    if (not typed) {
-        throw std::runtime_error("World::field(): invalid stored field type");
-    }
-    return typed;
+    // TODO(iqsm): Type-integrity check. With non-null cref/ref, this should be a single throwing cast.
+    return base::shared_ref_cast<const FieldObject<Meta>>(untyped);
 }

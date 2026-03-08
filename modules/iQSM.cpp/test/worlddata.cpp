@@ -10,20 +10,15 @@ namespace tests {
         using namespace Q1CORE::Example::Varph;
 
         const World world = ops::world::create(ops::schema::assemble<Atom>());
-        EXPECT_TRUE(world != nullptr);
-        EXPECT_TRUE(world->schema != nullptr);
         EXPECT_EQ(world->schema->aspects.size(), 4);
 
         auto sparks = world->field<Spark>();
-        EXPECT_TRUE(sparks != nullptr);
         EXPECT_EQ(sparks->container.size(), size_t{0});
 
         auto charges = world->field<Charge>();
-        EXPECT_TRUE(charges != nullptr);
         EXPECT_EQ(charges->container.size(), size_t{0});
 
         auto electrons = world->field<Electron>();
-        EXPECT_TRUE(electrons != nullptr);
         EXPECT_EQ(electrons->container.size(), size_t{0});
     }
 

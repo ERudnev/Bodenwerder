@@ -9,8 +9,8 @@ namespace tests {
         using namespace Q1CORE::Example::Varph;
 
         // Seed a world with an electron first, then start a "clean" transaction
-        // on top of that world. This keeps `transaction.summary == nullptr` at
-        // the start of the scenario, so we can test "const access produces no delta".
+        // on top of that world. This keeps `transaction.summary` empty at the
+        // start of the scenario, so we can test "const access produces no delta".
         ops::Transaction seeding_transaction(ops::world::create(ops::schema::assemble<Electron>()));
         const auto spark = ops::particle::create<Spark>(seeding_transaction)({vec3{0, 0, 0}, eVt{1}});
         const auto electron = ops::particle::create<Electron>(seeding_transaction)({spark, "A"});
@@ -18,14 +18,14 @@ namespace tests {
         const World seeded_world = seeding_transaction.current;
         ops::Transaction transaction{World{seeded_world}};
 
-        EXPECT_TRUE(transaction.summary == nullptr);
+        EXPECT_TRUE(transaction.summary->empty());
 
         // Read-only access via get() produces no delta.
         {
             const auto& electron_const = ops::particle::get<Electron>(transaction.current, electron);
             EXPECT_EQ(electron_const.legend, "A");
         }
-        EXPECT_TRUE(transaction.summary == nullptr);
+        EXPECT_TRUE(transaction.summary->empty());
         EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron).legend, "A");
 
         // Creating modify() handle is treated as a mutation => delta is produced,
@@ -33,7 +33,7 @@ namespace tests {
         {
             auto unused = ops::particle::modify<Electron>(transaction, electron);
         }
-        EXPECT_TRUE(transaction.summary != nullptr);
+        EXPECT_TRUE(not transaction.summary->empty());
         EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron).legend, "A");
 
         // A named modify() handle may live for a while; apply happens on scope exit.
@@ -49,12 +49,11 @@ namespace tests {
 
         // Mutation marks dirty => delta is produced and transaction world changes.
         ops::particle::modify<Electron>(transaction, electron)->legend = "B";
-        EXPECT_TRUE(transaction.summary != nullptr);
+        EXPECT_TRUE(not transaction.summary->empty());
         EXPECT_EQ(ops::particle::get<Electron>(transaction.current, electron).legend, "B");
 
         const auto untyped = transaction.summary->fields.at(Facet<Electron>::typeId);
-        const auto fd = std::dynamic_pointer_cast<const delta::FieldDiff<Electron>>(untyped);
-        EXPECT_TRUE(fd != nullptr);
+        const auto fd = base::shared_ref_cast<const delta::FieldDiff<Electron>>(untyped);
         EXPECT_TRUE(fd->changed.contains(electron));
         EXPECT_EQ(fd->changed.at(electron).before->legend, "A");
         EXPECT_EQ(fd->changed.at(electron).after->legend, "B");

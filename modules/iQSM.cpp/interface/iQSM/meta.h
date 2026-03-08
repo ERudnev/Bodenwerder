@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <vector>
 
+#include <base/shared_reference.h>
 #include <iQSM/aspects.h>
 #include <iQSM/types.h>
 #include <iQSM/internals/type_list.h>
@@ -53,7 +54,7 @@ namespace iqsm {
         inline static const std::string_view typeName{internals::type_name(std::type_identity<Meta>{})};
 
         static Item create(std::initializer_list<int>) = delete; // forbids Facet<Meta>::create({})
-        static Item create(Quantum value) { return std::make_shared<const Quantum>(static_cast<Quantum&&>(value)); }
+        static Item create(Quantum value) { return base::make_shared<const Quantum>(static_cast<Quantum&&>(value)); }
     };
 
     template<typename... Deps>

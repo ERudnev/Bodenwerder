@@ -43,12 +43,10 @@ namespace iqsm::detail::ops::validation {
     template<meta::Aspect Anchor, meta::Aspect Dependee, typename Extract>
     Delta anchor_impl(World world, Extract extract)
     {
-        required(world, "anchor(): world");
-
         const auto anchor_field = world->field<Anchor>();
         const auto dependee_field = world->field<Dependee>();
 
-        auto fd = std::make_shared<delta::FieldDiff<Dependee>>();
+        auto fd = base::make_shared<delta::FieldDiff<Dependee>>();
 
         for (const auto& kv : dependee_field->container) {
             const auto& dependee_id = kv.first;
@@ -60,12 +58,12 @@ namespace iqsm::detail::ops::validation {
             }
         }
 
-        if (fd->deleted.empty()) { return nullptr; }
+        if (fd->deleted.empty()) { return ::iqsm::delta::empty(); }
 
-        auto out = std::make_shared<delta::WorldState>();
+        auto out = base::make_shared<delta::Fields>();
         out->fields = out->fields.insert(
             Facet<Dependee>::typeId,
-            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+            freeze(fd));
 
         return freeze(out);
     }
@@ -103,12 +101,10 @@ namespace iqsm::ops::validation {
         static_assert(std::is_same_v<AnchorId, DependeeId>);
         static_assert(std::is_invocable_r_v<DependeeQuantum, decltype(Construct), World, const AnchorQuantum&>);
 
-        required(world, "anchor_component(): world");
-
         const auto anchor_field = world->field<Anchor>();
         const auto dependee_field = world->field<Dependee>();
 
-        auto fd = std::make_shared<delta::FieldDiff<Dependee>>();
+        auto fd = base::make_shared<delta::FieldDiff<Dependee>>();
 
         // Necessary: Dependee cannot outlive Anchor.
         for (const auto& kv : dependee_field->container) {
@@ -127,12 +123,12 @@ namespace iqsm::ops::validation {
             }
         }
 
-        if (fd->added.empty() and fd->changed.empty() and fd->deleted.empty()) { return nullptr; }
+        if (fd->added.empty() and fd->changed.empty() and fd->deleted.empty()) { return ::iqsm::delta::empty(); }
 
-        auto out = std::make_shared<delta::WorldState>();
+        auto out = base::make_shared<delta::Fields>();
         out->fields = out->fields.insert(
             Facet<Dependee>::typeId,
-            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+            freeze(fd));
 
         return freeze(out);
     }
@@ -151,12 +147,10 @@ namespace iqsm::ops::validation {
         using MemberValue = std::remove_cvref_t<decltype(std::declval<Quantum>().*Member)>;
         static_assert(std::is_same_v<MemberValue, std::vector<AnchorId>>);
 
-        required(world, "anchor_any(): world");
-
         const auto anchor_field = world->field<Anchor>();
         const auto dependee_field = world->field<Dependee>();
 
-        auto fd = std::make_shared<delta::FieldDiff<Dependee>>();
+        auto fd = base::make_shared<delta::FieldDiff<Dependee>>();
 
         for (const auto& kv : dependee_field->container) {
             const auto& dependee_id = kv.first;
@@ -186,12 +180,12 @@ namespace iqsm::ops::validation {
             }
         }
 
-        if (fd->added.empty() and fd->changed.empty() and fd->deleted.empty()) { return nullptr; }
+        if (fd->added.empty() and fd->changed.empty() and fd->deleted.empty()) { return ::iqsm::delta::empty(); }
 
-        auto out = std::make_shared<delta::WorldState>();
+        auto out = base::make_shared<delta::Fields>();
         out->fields = out->fields.insert(
             Facet<Dependee>::typeId,
-            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+            freeze(fd));
 
         return freeze(out);
     }
@@ -209,12 +203,10 @@ namespace iqsm::ops::validation {
         using MemberValue = std::remove_cvref_t<decltype(std::declval<Quantum>().*Member)>;
         static_assert(std::is_same_v<MemberValue, std::vector<AnchorId>>);
 
-        required(world, "anchor_all(): world");
-
         const auto anchor_field = world->field<Anchor>();
         const auto dependee_field = world->field<Dependee>();
 
-        auto fd = std::make_shared<delta::FieldDiff<Dependee>>();
+        auto fd = base::make_shared<delta::FieldDiff<Dependee>>();
 
         for (const auto& kv : dependee_field->container) {
             const auto& dependee_id = kv.first;
@@ -235,12 +227,12 @@ namespace iqsm::ops::validation {
             }
         }
 
-        if (fd->deleted.empty()) { return nullptr; }
+        if (fd->deleted.empty()) { return ::iqsm::delta::empty(); }
 
-        auto out = std::make_shared<delta::WorldState>();
+        auto out = base::make_shared<delta::Fields>();
         out->fields = out->fields.insert(
             Facet<Dependee>::typeId,
-            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+            freeze(fd));
 
         return freeze(out);
     }

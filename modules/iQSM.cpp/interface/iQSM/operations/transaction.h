@@ -12,7 +12,7 @@ namespace iqsm::ops {
 
         explicit Transaction(World&& initial_)
             : current(std::move(initial_))
-            , summary(nullptr)
+            , summary(::iqsm::delta::empty())
         {}
 
         World current;

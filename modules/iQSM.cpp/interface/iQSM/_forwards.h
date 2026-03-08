@@ -1,20 +1,20 @@
 #pragma once
 
-#include <memory>
+#include <base/shared_reference.h>
 
 namespace iqsm {
     // pointer handles:
     template<typename T>
-    using cref = std::shared_ptr<const T>;
+    using cref = base::shared_ref<const T>;
 
     template<typename T>
-    using ref = std::shared_ptr<T>;
+    using ref = base::shared_ref<T>;
 
     template<typename T>
-    cref<T> freeze(ref<T> r) { return r; }
+    cref<T> freeze(ref<T> r) { return cref<T>(std::move(r)); }
 
     template<typename T>
-    ref<T> clone(cref<T> r) { return r ? std::make_shared<T>(*r) : nullptr; }
+    ref<T> clone(cref<T> r) { return base::make_shared<T>(*r); }
 
     // core handles:
     struct SchemaObject;
@@ -23,8 +23,8 @@ namespace iqsm {
     struct WorldObject;
     using World = cref<WorldObject>;
 
-    namespace delta { struct WorldState; }
-    using Delta = cref<delta::WorldState>;
+    namespace delta { struct Fields; }
+    using Delta = cref<delta::Fields>;
 }
 
 namespace iqsm::ops::validation {

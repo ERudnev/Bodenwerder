@@ -30,6 +30,7 @@ namespace iqsm {
         };
 
         std::map<TypeId, Entry> aspects;
+        bool empty() const { return aspects.empty(); }
 
         template<meta::Aspect... Leaves>
         static SchemaObject assemble();
@@ -65,7 +66,7 @@ struct iqsm::SchemaObject::assemble_from<iqsm::internals::type_list<TypeList...>
             std::string{Facet<TypeList>::typeName},
             requirements_of<TypeList>(),
             TypeSet{},
-            std::static_pointer_cast<const FieldAbstract>(std::make_shared<const FieldObject<TypeList>>()),
+            base::make_shared<const FieldObject<TypeList>>(),
             Invariants{ .own = TypeList::invariants.list }
         }), ...);
 

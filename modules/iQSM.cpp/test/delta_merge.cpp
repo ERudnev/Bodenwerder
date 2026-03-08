@@ -9,45 +9,44 @@ namespace {
 
     Delta addElectron(Spark::Id spark, Electron::Id id, std::string legend)
     {
-        auto fd = std::make_shared<delta::FieldDiff<Electron>>();
+        auto fd = base::make_shared<delta::FieldDiff<Electron>>();
         fd->added = fd->added.insert(id, Facet<Electron>::create({spark, std::move(legend)}));
 
-        auto wd = std::make_shared<delta::WorldState>();
+        auto wd = base::make_shared<delta::Fields>();
         wd->fields = wd->fields.insert(
             Facet<Electron>::typeId,
-            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+            freeze(fd));
         return freeze(wd);
     }
     Delta renameElectron(Spark::Id spark, Electron::Id id, std::string oldlegend, std::string newlegend)
     {
-        auto fd = std::make_shared<delta::FieldDiff<Electron>>();
+        auto fd = base::make_shared<delta::FieldDiff<Electron>>();
         fd->changed = fd->changed.insert(id, delta::FieldDiff<Electron>::Change{
             .before = Facet<Electron>::create({spark, std::move(oldlegend)}),
             .after = Facet<Electron>::create({spark, std::move(newlegend)}),
         });
 
-        auto wd = std::make_shared<delta::WorldState>();
+        auto wd = base::make_shared<delta::Fields>();
         wd->fields = wd->fields.insert(
             Facet<Electron>::typeId,
-            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+            freeze(fd));
         return freeze(wd);
     }
     Delta deleteElectron(Electron::Id id)
     {
-        auto fd = std::make_shared<delta::FieldDiff<Electron>>();
+        auto fd = base::make_shared<delta::FieldDiff<Electron>>();
         fd->deleted = fd->deleted.insert(id);
 
-        auto wd = std::make_shared<delta::WorldState>();
+        auto wd = base::make_shared<delta::Fields>();
         wd->fields = wd->fields.insert(
             Facet<Electron>::typeId,
-            std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+            freeze(fd));
         return freeze(wd);
     }
 
     // slow comparison, good for testing only
     bool are_equal(Delta a, Delta b) {
         if (a == b) { return true; }
-        if (not a || not b) { return false; }
 
         if (a->fields.size() != b->fields.size()) { return false; }
         for (const auto& kv : a->fields) {
@@ -59,13 +58,11 @@ namespace {
         const auto au = a->fields.at(Facet<Electron>::typeId);
         const auto bu = b->fields.at(Facet<Electron>::typeId);
 
-        auto af = std::dynamic_pointer_cast<const delta::FieldDiff<Electron>>(au);
-        auto bf = std::dynamic_pointer_cast<const delta::FieldDiff<Electron>>(bu);
-        if (not af || not bf) { return false; }
+        const auto af = base::shared_ref_cast<const delta::FieldDiff<Electron>>(au);
+        const auto bf = base::shared_ref_cast<const delta::FieldDiff<Electron>>(bu);
 
         auto item_equal = [](Facet<Electron>::Item x, Facet<Electron>::Item y) {
             if (x == y) { return true; }
-            if (not x || not y) { return false; }
             return x->spark == y->spark && x->legend == y->legend;
         };
 
@@ -110,8 +107,8 @@ namespace tests {
         EXPECT_TRUE(are_equal(merge(renameElectron(spark, id, "A", "B"), deleteElectron(other)), merge(deleteElectron(other), renameElectron(spark, id, "A", "B"))));
 
         // neutral element + idempotency
-        EXPECT_TRUE(are_equal(merge(nullptr, deleteElectron(id)), deleteElectron(id)));
-        EXPECT_TRUE(are_equal(merge(deleteElectron(id), nullptr), deleteElectron(id)));
+        EXPECT_TRUE(are_equal(merge(delta::empty(), deleteElectron(id)), deleteElectron(id)));
+        EXPECT_TRUE(are_equal(merge(deleteElectron(id), delta::empty()), deleteElectron(id)));
         EXPECT_TRUE(are_equal(merge(deleteElectron(id), deleteElectron(id)), deleteElectron(id)));
 
         // sum of sequential renames: (A->B) + (B->C) == (A->C)

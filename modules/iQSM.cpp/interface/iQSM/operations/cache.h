@@ -15,11 +15,10 @@ namespace iqsm::ops::cache {
 namespace iqsm::ops::cache {
   template<meta::Aspect Meta, typename RecomputeOne>
   Delta recompute(World world, RecomputeOne recompute_one) {
-    required(world, "ops::cache::recompute(): world");
-    if (not world->schema->aspects.contains(Facet<Meta>::typeId)) return nullptr;
+    if (not world->schema->aspects.contains(Facet<Meta>::typeId)) return ::iqsm::delta::empty();
 
     const auto field = world->field<Meta>();
-    auto fd = std::make_shared<delta::FieldDiff<Meta>>();
+    auto fd = base::make_shared<delta::FieldDiff<Meta>>();
 
     for (const auto& kv : field->container) {
       const auto& id = kv.first;
@@ -34,12 +33,12 @@ namespace iqsm::ops::cache {
       });
     }
 
-    if (fd->added.empty() and fd->changed.empty() and fd->deleted.empty()) return nullptr;
+    if (fd->added.empty() and fd->changed.empty() and fd->deleted.empty()) return ::iqsm::delta::empty();
 
-    auto out = std::make_shared<delta::WorldState>();
+    auto out = base::make_shared<delta::Fields>();
     out->fields = out->fields.insert(
         Facet<Meta>::typeId,
-        std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+        freeze(fd));
 
     return freeze(out);
   }

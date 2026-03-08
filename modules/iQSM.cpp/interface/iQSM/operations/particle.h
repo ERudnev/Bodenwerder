@@ -99,7 +99,6 @@ namespace iqsm::detail::ops::particle {
 namespace iqsm::ops::particle {
   template<meta::Particle Meta>
   auto get(World world, typename Facet<Meta>::Id id) -> const typename Facet<Meta>::Quantum& {
-    required(world, "ops::particle::get(): world");
     const auto field = world->field<Meta>();
     if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::particle::get(): missing entity: {}", id)); }
     const auto item = field->container.at(id);
@@ -108,7 +107,6 @@ namespace iqsm::ops::particle {
 
   template<meta::Particle Meta>
   bool exists(World world, typename Facet<Meta>::Id id) {
-    required(world, "ops::particle::exists(): world");
     return world->field<Meta>()->container.contains(id);
   }
 } // namespace iqsm::ops::particle
@@ -125,13 +123,13 @@ namespace iqsm::ops::particle {
 
   template<meta::Particle Meta>
   void remove(Transaction& transaction, typename Facet<Meta>::Id id) {
-    auto fd = std::make_shared<delta::FieldDiff<Meta>>();
+    auto fd = base::make_shared<delta::FieldDiff<Meta>>();
     fd->deleted = fd->deleted.insert(id);
 
-    auto wd = std::make_shared<delta::WorldState>();
+    auto wd = base::make_shared<delta::Fields>();
     wd->fields = wd->fields.insert(
         Facet<Meta>::typeId,
-        std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+        freeze(fd));
 
     transaction.absorb(freeze(wd));
   }
@@ -141,7 +139,6 @@ namespace iqsm::ops::particle {
 namespace iqsm::detail::ops::particle {
   template<meta::Particle Meta>
   typename modifier<Meta>::Item modifier<Meta>::required_item(World world, const Id& id) {
-    required(world, "modifier: world");
     const auto field = world->field<Meta>();
     if (not field->container.contains(id)) { throw std::runtime_error(std::format("modifier: missing entity: {}", id)); }
     const auto item = field->container.at(id);
@@ -154,16 +151,16 @@ namespace iqsm::detail::ops::particle {
     applied = true;
     if (!dirty) return;
 
-    auto fd = std::make_shared<delta::FieldDiff<Meta>>();
+    auto fd = base::make_shared<delta::FieldDiff<Meta>>();
     fd->changed = fd->changed.insert(id, typename delta::FieldDiff<Meta>::Change{
         .before = original,
         .after = Facet<Meta>::create(std::move(value)),
     });
 
-    auto wd = std::make_shared<delta::WorldState>();
+    auto wd = base::make_shared<delta::Fields>();
     wd->fields = wd->fields.insert(
         Facet<Meta>::typeId,
-        std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+        freeze(fd));
 
     transaction.absorb(freeze(wd));
   }
@@ -172,13 +169,13 @@ namespace iqsm::detail::ops::particle {
   typename creator_entity<Meta>::Id creator_entity<Meta>::operator()(Quantum value) {
     const auto id = Id::generate_random();
 
-    auto fd = std::make_shared<delta::FieldDiff<Meta>>();
+    auto fd = base::make_shared<delta::FieldDiff<Meta>>();
     fd->added = fd->added.insert(id, Facet<Meta>::create(std::move(value)));
 
-    auto wd = std::make_shared<delta::WorldState>();
+    auto wd = base::make_shared<delta::Fields>();
     wd->fields = wd->fields.insert(
         Facet<Meta>::typeId,
-        std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+        freeze(fd));
 
     transaction.absorb(freeze(wd));
     return id;
@@ -186,13 +183,13 @@ namespace iqsm::detail::ops::particle {
 
   template<meta::Quark Meta>
   typename creator_quark<Meta>::Id creator_quark<Meta>::operator()(Quantum value) {
-    auto fd = std::make_shared<delta::FieldDiff<Meta>>();
+    auto fd = base::make_shared<delta::FieldDiff<Meta>>();
     fd->added = fd->added.insert(id, Facet<Meta>::create(std::move(value)));
 
-    auto wd = std::make_shared<delta::WorldState>();
+    auto wd = base::make_shared<delta::Fields>();
     wd->fields = wd->fields.insert(
         Facet<Meta>::typeId,
-        std::static_pointer_cast<const delta::FieldDiffAbstract>(freeze(fd)));
+        freeze(fd));
 
     transaction.absorb(freeze(wd));
     return id;
