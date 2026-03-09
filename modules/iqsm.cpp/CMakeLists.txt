@@ -24,6 +24,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PUBLIC glm
     PUBLIC base
+    PUBLIC pfr
     ${OPENGL_LIBRARIES}
 )
 

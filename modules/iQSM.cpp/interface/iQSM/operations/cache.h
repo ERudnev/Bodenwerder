@@ -18,8 +18,9 @@ namespace iqsm::ops::cache {
   Delta update(World world) {
     using Id = typename Facet<Meta>::Id;
     using Item = typename Facet<Meta>::Item;
+    using Quantum = typename Facet<Meta>::Quantum;
 
-    static_assert(std::is_invocable_r_v<Item, decltype(UpdateOne), World, Id>);
+    static_assert(std::is_invocable_r_v<std::optional<Quantum>, decltype(UpdateOne), World, Id, const Quantum&>);
 
     if (not world->schema->aspects.contains(Facet<Meta>::typeId)) return ::iqsm::delta::empty();
 
@@ -30,8 +31,11 @@ namespace iqsm::ops::cache {
       const auto& id = kv.first;
       const auto& before = kv.second;
 
-      const auto after = UpdateOne(world, id);
-      if (after == before) continue;
+      const auto next = UpdateOne(world, id, *before);
+      if (not next.has_value()) continue;
+      if (Facet<Meta>::equal(*before, *next)) continue;
+
+      const auto after = Facet<Meta>::create(std::move(*next));
 
       typename delta::FieldDiff<Meta>::Operation op{};
       op.change = std::pair<typename delta::FieldDiff<Meta>::Item, typename delta::FieldDiff<Meta>::Item>{before, after};

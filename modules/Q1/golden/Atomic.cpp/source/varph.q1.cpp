@@ -1,5 +1,6 @@
 
 #include <Atomic/varph.q1.h>
+#include <cstdlib>
 #include <iQSM/operations/cache.h>
 #include <iQSM/operations/particle.h>
 
@@ -51,7 +52,7 @@ namespace Q1CORE::Example::Varph {
 namespace Q1CORE::Example::Varph {
 
     namespace Electron_impl {
-        auto existence_rule(World, const Charge::Quantum& charge)->bool {
+        auto existence_rule(World, Charge::Id, const Charge::Quantum& charge)->bool {
             return charge.value == -1;
         }
     }
@@ -70,28 +71,24 @@ namespace Q1CORE::Example::Varph {
             return "?";
         }
 
-        auto existence_rule(World, const Strong::Quantum&) -> bool {
-            return true;
+        auto existence_rule(World, Strong::Id, const Strong::Quantum& q) -> bool {
+            return std::abs(q.isospin2) == 1;
         }
 
-        auto update(World world, Nucleon::Id id) -> Facet<Nucleon>::Item {
-            const auto before = world->field<Nucleon>()->container.at(id);
-            const auto& nucleon = *before;
-
+        auto update_cache(World world, Nucleon::Id id, const Nucleon::Quantum& original) -> optional<Nucleon::Quantum> {
             const auto& strong = iqsm::ops::particle::get<Strong>(world, id);
-            const auto next_legend = symbol_of(strong.isospin2);
-            if (nucleon.legend == next_legend) return before;
+            auto updated = original;
+            updated.legend = symbol_of(strong.isospin2);
 
-            auto updated = nucleon;
-            updated.legend = next_legend;
-            return Facet<Nucleon>::create(std::move(updated));
+            if (Facet<Nucleon>::equal(original, updated)) return {};
+            return updated;
         }
     }
 
     const Invariants Nucleon::invariants{{{
         Invariants::existence<Nucleon, Strong, &Nucleon_impl::existence_rule>,
         Invariants::anchor_attribute<Strong, Nucleon>,
-        &iqsm::ops::cache::update<Nucleon, &Nucleon_impl::update>,
+        &iqsm::ops::cache::update<Nucleon, &Nucleon_impl::update_cache>,
     }}};
 }
 
@@ -113,22 +110,17 @@ namespace Q1CORE::Example::Varph {
             return z;
         }
 
-        auto update(World world, Atom::Id id) -> Facet<Atom>::Item {
-            const auto before = world->field<Atom>()->container.at(id);
-            const auto& atom = *before;
-
-            const auto next_legend = symbol_of(z_of(world, atom.core));
-            if (atom.legend == next_legend) return before;
-
-            auto updated = atom;
-            updated.legend = next_legend;
-            return Facet<Atom>::create(std::move(updated));
+        auto update_cache(World world, Atom::Id id, const Atom::Quantum& original) -> optional<Atom::Quantum> {
+            auto updated = original;
+            updated.legend = symbol_of(z_of(world, original.core));
+            if (Facet<Atom>::equal(original, updated)) return {};
+            return updated;
         }
     }
 
     const Invariants Atom::invariants{{{
         Invariants::anchor_any<Nucleon, Atom, &Quantum::core>,
-        &iqsm::ops::cache::update<Atom, &Atom_impl::update>,
+        &iqsm::ops::cache::update<Atom, &Atom_impl::update_cache>,
     }}};
 }
 
@@ -151,23 +143,18 @@ namespace Q1CORE::Example::Varph {
             };
         }
 
-        auto update(World w, Chemical::Id id) -> Facet<Chemical>::Item {
-            const auto before = w->field<Chemical>()->container.at(id);
-            const auto& chemical = *before;
-
+        auto update_cache(World w, Chemical::Id id, const Chemical::Quantum& original) -> optional<Chemical::Quantum> {
             const auto& atom = iqsm::ops::particle::get<Atom>(w, id);
-            const auto ionisation = ionisation_of(w, atom);
-            if (chemical.ionisation == ionisation) return before;
-
-            auto updated = chemical;
-            updated.ionisation = ionisation;
-            return Facet<Chemical>::create(std::move(updated));
+            auto updated = original;
+            updated.ionisation = ionisation_of(w, atom);
+            if (Facet<Chemical>::equal(original, updated)) return {};
+            return updated;
         }
     }
 
     const Invariants Chemical::invariants{{{
         Invariants::anchor_component<Atom, Chemical, &Chemical_impl::construct>,
-        &iqsm::ops::cache::update<Chemical, &Chemical_impl::update>,
+        &iqsm::ops::cache::update<Chemical, &Chemical_impl::update_cache>,
     }}};
 }
 

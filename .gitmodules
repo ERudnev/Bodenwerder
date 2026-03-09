@@ -13,3 +13,6 @@
 [submodule "3party/assimp"]
 	path = 3party/assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "3party/pfr"]
+	path = 3party/pfr
+	url = https://github.com/apolukhin/pfr.git

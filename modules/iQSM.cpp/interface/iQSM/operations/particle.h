@@ -27,6 +27,9 @@ namespace iqsm::ops::particle {
   auto get(World world, typename Facet<Meta>::Id id) -> const typename Facet<Meta>::Quantum&;
 
   template<meta::Particle Meta>
+  auto item(World world, typename Facet<Meta>::Id id) -> typename Facet<Meta>::Item;
+
+  template<meta::Particle Meta>
   bool exists(World world, typename Facet<Meta>::Id id);
 
 } // namespace iqsm::ops::particle
@@ -103,6 +106,13 @@ namespace iqsm::ops::particle {
     if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::particle::get(): missing entity: {}", id)); }
     const auto item = field->container.at(id);
     return *item;
+  }
+
+  template<meta::Particle Meta>
+  auto item(World world, typename Facet<Meta>::Id id) -> typename Facet<Meta>::Item {
+    const auto field = world->field<Meta>();
+    if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::particle::item(): missing entity: {}", id)); }
+    return field->container.at(id);
   }
 
   template<meta::Particle Meta>

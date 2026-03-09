@@ -99,10 +99,11 @@ namespace iqsm::ops::validation {
     template<meta::Aspect Dependee, meta::Aspect Anchor, auto Need>
     Delta Structural::existence(World world)
     {
+        using AnchorId = typename Facet<Anchor>::Id;
         using AnchorQuantum = typename Facet<Anchor>::Quantum;
         using DependeeQuantum = typename Facet<Dependee>::Quantum;
 
-        static_assert(std::is_invocable_r_v<bool, decltype(Need), World, const AnchorQuantum&>);
+        static_assert(std::is_invocable_r_v<bool, decltype(Need), World, AnchorId, const AnchorQuantum&>);
 
         const auto anchor_field = world->field<Anchor>();
         const auto dependee_field = world->field<Dependee>();
@@ -112,7 +113,7 @@ namespace iqsm::ops::validation {
         for (const auto& kv : anchor_field->container) {
             const auto& id = kv.first;
             const auto& anchor_item = kv.second;
-            const bool need = Need(world, *anchor_item);
+            const bool need = Need(world, id, *anchor_item);
 
             const bool has = dependee_field->container.contains(id);
 

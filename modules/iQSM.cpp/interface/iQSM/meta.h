@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <base/shared_reference.h>
+#include <boost/pfr/ops_fields.hpp>
 #include <iQSM/aspects.h>
 #include <iQSM/types.h>
 #include <iQSM/internals/type_list.h>
@@ -55,6 +56,8 @@ namespace iqsm {
 
         static Item create(std::initializer_list<int>) = delete; // forbids Facet<Meta>::create({})
         static Item create(Quantum value) { return base::make_shared<const Quantum>(static_cast<Quantum&&>(value)); }
+
+        static bool equal(const Quantum& a, const Quantum& b) { return boost::pfr::eq_fields(a, b); }
     };
 
     template<typename... Deps>
