@@ -24,8 +24,8 @@ namespace tests {
         auto strong = world->field<Strong>();
         EXPECT_EQ(strong->container.size(), size_t{0});
 
-        auto hadrons = world->field<Hadron>();
-        EXPECT_EQ(hadrons->container.size(), size_t{0});
+        auto nucleons = world->field<Nucleon>();
+        EXPECT_EQ(nucleons->container.size(), size_t{0});
     }
 
     void worlddata_closure_pulls_dependencies() {
@@ -39,7 +39,7 @@ namespace tests {
         EXPECT_TRUE(schema.aspects.contains(Facet<Charge>::typeId));
         EXPECT_TRUE(schema.aspects.contains(Facet<Electron>::typeId));
         EXPECT_TRUE(schema.aspects.contains(Facet<Strong>::typeId));
-        EXPECT_TRUE(schema.aspects.contains(Facet<Hadron>::typeId));
+        EXPECT_TRUE(schema.aspects.contains(Facet<Nucleon>::typeId));
         EXPECT_TRUE(schema.aspects.contains(Facet<Atom>::typeId));
     }
 }

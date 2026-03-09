@@ -60,16 +60,16 @@ namespace Q1CORE::Example::Varph {
         static const Invariants invariants;
     };
 
-    struct Hadron : Attribute<Hadron, Strong>, Require<Strong> {
+    struct Nucleon : Attribute<Nucleon, Strong>, Require<Strong> {
         struct Quantum {
             string legend;
         };
         static const Invariants invariants;
     };
 
-    struct Atom : Entity<Atom>, Require<Hadron, Electron> {
+    struct Atom : Entity<Atom>, Require<Nucleon, Electron> {
         struct Quantum {
-            std::vector<Hadron::Id> core;
+            std::vector<Nucleon::Id> core;
             std::vector<Electron::Id> captured;
             string legend;
         };

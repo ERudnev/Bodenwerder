@@ -16,7 +16,7 @@ namespace tests {
         EXPECT_EQ(schema.aspects.size(), 6);
 
         const auto& atom = schema.aspects.at(Facet<Atom>::typeId);
-        EXPECT_TRUE(atom.require.contains(Facet<Hadron>::typeId));
+        EXPECT_TRUE(atom.require.contains(Facet<Nucleon>::typeId));
         EXPECT_TRUE(atom.require.contains(Facet<Electron>::typeId));
         EXPECT_EQ(atom.require.size(), 2);
 

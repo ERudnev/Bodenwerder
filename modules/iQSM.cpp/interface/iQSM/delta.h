@@ -6,8 +6,10 @@
 #include <iQSM/field.h>
 #include <iQSM/_forwards.h>
 #include <memory>
+#include <optional>
 #include <format>
 #include <stdexcept>
+#include <utility>
 
 namespace iqsm {
     template<typename Result>
@@ -29,20 +31,20 @@ namespace iqsm::delta {
 
     template<meta::Aspect Meta>
     struct FieldDiff final : Facet<Meta>, FieldDiffAbstract {
-        using A = iqsm::Facet<Meta>;
-        using Id = typename A::Id;
-        using Item = typename A::Item;
-        
-        struct Change {
-            Item before;
-            Item after;
+        using Id = typename iqsm::Facet<Meta>::Id;
+        using Item = typename iqsm::Facet<Meta>::Item;
+
+        struct Operation {
+            std::optional<Item> add;
+            std::optional<std::pair<Item, Item>> change; // {before, after}
+            bool remove = false;
         };
 
-        base::ImmutableUnorderedMap<Id, Item> added;
-        base::ImmutableUnorderedMap<Id, Change> changed;
-        base::ImmutableUnorderedSet<Id> deleted;
+        base::ImmutableUnorderedMap<Id, Operation> ops;
         iqsm::FieldAbstract::Ref integrate(iqsm::FieldAbstract::Ref) const override;
         cref<FieldDiffAbstract> merge(cref<FieldDiffAbstract>) const override;
+    private:
+        Operation merge(const Operation& lhs, const Operation& rhs) const;
     };
 
     // Handles
@@ -64,7 +66,7 @@ namespace iqsm::delta {
 
 template<iqsm::meta::Aspect Meta>
 iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbstract::Ref current) const {
-    if (added.empty() and changed.empty() and deleted.empty()) { return current; }
+    if (ops.empty()) { return current; }
 
     // TODO(iqsm): These casts are type-integrity checks (not null-checks). When cref/ref becomes a non-null pointer,
     // decide on the standard cast API here (e.g. `cast<T>()` throws, `try_cast<T>()` returns optional).
@@ -72,31 +74,48 @@ iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbst
 
     auto container = typed->container;
 
-    for (const auto& kv : added) {
-        if (container.contains(kv.first)) {
+    // Apply in the same phase order as the previous representation:
+    // add -> change -> remove.
+    for (const auto& kv : ops) {
+        const auto& id = kv.first;
+        const auto& op = kv.second;
+        if (not op.add.has_value()) continue;
+
+        if (container.contains(id)) {
             throw std::runtime_error(std::format(
                 "delta::FieldDiff<{}>::integrate(): added already exists: {}",
                 Facet<Meta>::typeName,
-                kv.first));
+                id));
         }
-        container = container.insert(kv.first, kv.second);
+        container = container.insert(id, *op.add);
     }
-    for (const auto& kv : changed) {
-        if (not container.contains(kv.first)) {
+
+    for (const auto& kv : ops) {
+        const auto& id = kv.first;
+        const auto& op = kv.second;
+        if (not op.change.has_value()) continue;
+        const auto& [before, after] = *op.change;
+
+        if (not container.contains(id)) {
             throw std::runtime_error(std::format(
                 "delta::FieldDiff<{}>::integrate(): changed missing: {}",
                 Facet<Meta>::typeName,
-                kv.first));
+                id));
         }
-        if (container.at(kv.first) != kv.second.before) {
+        if (container.at(id) != before) {
             throw std::runtime_error(std::format(
                 "delta::FieldDiff<{}>::integrate(): before mismatch: {}",
                 Facet<Meta>::typeName,
-                kv.first));
+                id));
         }
-        container = container.insert(kv.first, kv.second.after);
+        container = container.insert(id, after);
     }
-    for (const auto& id : deleted) {
+
+    for (const auto& kv : ops) {
+        const auto& id = kv.first;
+        const auto& op = kv.second;
+        if (not op.remove) continue;
+
         if (not container.contains(id)) {
             throw std::runtime_error(std::format(
                 "delta::FieldDiff<{}>::integrate(): deleted missing: {}",
@@ -116,51 +135,66 @@ iqsm::cref<iqsm::delta::FieldDiffAbstract> iqsm::delta::FieldDiff<Meta>::merge(i
     const auto rhs = base::shared_ref_cast<const FieldDiff<Meta>>(other);
 
     auto out = base::make_shared<FieldDiff<Meta>>();
-    auto added_out = added;
-    auto changed_out = changed;
-    auto deleted_out = deleted;
 
-    // Apply deletes from second
-    for (const auto& id : rhs->deleted) {
-        if (added_out.contains(id)) {
-            added_out = added_out.erase(id);
-            if (changed_out.contains(id)) { changed_out = changed_out.erase(id); }
-            if (deleted_out.contains(id)) { deleted_out = deleted_out.erase(id); }
+    auto out_ops = ops;
+
+    for (const auto& kv : rhs->ops) {
+        const auto& id = kv.first;
+        const auto merged = merge(out_ops.contains(id) ? out_ops.at(id) : Operation{}, kv.second);
+        const bool empty = (not merged.add.has_value()) && (not merged.change.has_value()) && (not merged.remove);
+        if (empty) {
+            if (out_ops.contains(id)) out_ops = out_ops.erase(id);
             continue;
         }
-        if (changed_out.contains(id)) { changed_out = changed_out.erase(id); }
-        deleted_out = deleted_out.insert(id);
+
+        out_ops = out_ops.insert(id, merged);
     }
 
-    // Apply adds from second
-    for (const auto& kv : rhs->added) {
-        const auto& id = kv.first;
-        const auto& item = kv.second;
-        if (deleted_out.contains(id)) { continue; } // death is unremovable
-        if (added_out.contains(id)) { continue; } // first creation wins
-        if (changed_out.contains(id)) { continue; } // existence decided by first
-        added_out = added_out.insert(id, item);
+    out->ops = out_ops;
+
+    return iqsm::freeze(out);
+}
+
+template<iqsm::meta::Aspect Meta>
+typename iqsm::delta::FieldDiff<Meta>::Operation iqsm::delta::FieldDiff<Meta>::merge(
+    const Operation& lhs,
+    const Operation& rhs) const
+{
+    Operation out = lhs;
+
+    // Priority: remove -> add -> change
+    if (rhs.remove) {
+        if (out.add.has_value()) {
+            // delete cancels creation completely (no "death" recorded)
+            return Operation{};
+        }
+        out.change.reset();
+        out.remove = true;
     }
 
-    // Apply changes from second
-    for (const auto& kv : rhs->changed) {
-        const auto& id = kv.first;
-        const auto& c2 = kv.second;
-
-        if (deleted_out.contains(id)) { continue; }
-        if (added_out.contains(id)) { continue; } // existence decided by first; ignore later modifications
-
-        if (changed_out.contains(id)) {
-            const auto c1 = changed_out.at(id);
-            changed_out = changed_out.insert(id, Change{c1.before, c2.after});
+    if (rhs.add.has_value()) {
+        if (out.remove) {
+            // death is unremovable
+        } else if (out.add.has_value()) {
+            // first creation wins
+        } else if (out.change.has_value()) {
+            // existence decided by first
         } else {
-            changed_out = changed_out.insert(id, c2);
+            out.add = *rhs.add;
         }
     }
 
-    out->added = added_out;
-    out->changed = changed_out;
-    out->deleted = deleted_out;
+    if (rhs.change.has_value()) {
+        if (out.remove) {
+            // death is unremovable
+        } else if (out.add.has_value()) {
+            // existence decided by first; ignore later modifications
+        } else if (out.change.has_value()) {
+            out.change = std::pair<Item, Item>{out.change->first, rhs.change->second};
+        } else {
+            out.change = *rhs.change;
+        }
+    }
 
-    return iqsm::freeze(out);
+    return out;
 }

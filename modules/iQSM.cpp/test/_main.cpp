@@ -10,6 +10,7 @@
     X(validation_anchors) \
     X(caching_components) \
     X(validation_cache) \
+    X(validation_existence) \
     X(schema) \
     X(resources) \
     // end

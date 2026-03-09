@@ -34,7 +34,9 @@ namespace iqsm::detail::ops::resource {
             const auto id = Id::generate_random();
 
             auto fd = base::make_shared<delta::FieldDiff<Meta>>();
-            fd->added = fd->added.insert(id, Facet<Meta>::create(std::move(value)));
+            auto op = typename delta::FieldDiff<Meta>::Operation{};
+            op.add = Facet<Meta>::create(std::move(value));
+            fd->ops = fd->ops.insert(id, std::move(op));
 
             auto wd = base::make_shared<delta::Fields>();
             wd->fields = wd->fields.insert(

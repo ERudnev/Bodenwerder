@@ -10,7 +10,9 @@ namespace {
     Delta addCharge(Spark::Id id, integer value)
     {
         auto fd = base::make_shared<delta::FieldDiff<Charge>>();
-        fd->added = fd->added.insert(id, Facet<Charge>::create(Charge::Quantum{value}));
+        delta::FieldDiff<Charge>::Operation op{};
+        op.add = Facet<Charge>::create(Charge::Quantum{value});
+        fd->ops = fd->ops.insert(id, std::move(op));
 
         auto wd = base::make_shared<delta::Fields>();
         wd->fields = wd->fields.insert(
@@ -21,10 +23,12 @@ namespace {
     Delta setCharge(Spark::Id id, integer before_value, integer after_value)
     {
         auto fd = base::make_shared<delta::FieldDiff<Charge>>();
-        fd->changed = fd->changed.insert(id, delta::FieldDiff<Charge>::Change{
-            .before = Facet<Charge>::create(Charge::Quantum{before_value}),
-            .after = Facet<Charge>::create(Charge::Quantum{after_value}),
-        });
+        delta::FieldDiff<Charge>::Operation op{};
+        op.change = std::pair<Facet<Charge>::Item, Facet<Charge>::Item>{
+            Facet<Charge>::create(Charge::Quantum{before_value}),
+            Facet<Charge>::create(Charge::Quantum{after_value}),
+        };
+        fd->ops = fd->ops.insert(id, std::move(op));
 
         auto wd = base::make_shared<delta::Fields>();
         wd->fields = wd->fields.insert(
@@ -35,7 +39,9 @@ namespace {
     Delta deleteCharge(Spark::Id id)
     {
         auto fd = base::make_shared<delta::FieldDiff<Charge>>();
-        fd->deleted = fd->deleted.insert(id);
+        delta::FieldDiff<Charge>::Operation op{};
+        op.remove = true;
+        fd->ops = fd->ops.insert(id, std::move(op));
 
         auto wd = base::make_shared<delta::Fields>();
         wd->fields = wd->fields.insert(
@@ -66,24 +72,23 @@ namespace {
             return x->value == y->value;
         };
 
-        if (af->added.size() != bf->added.size()) { return false; }
-        for (const auto& kv : af->added) {
-            if (not bf->added.contains(kv.first)) { return false; }
-            if (not item_equal(kv.second, bf->added.at(kv.first))) { return false; }
-        }
+        if (af->ops.size() != bf->ops.size()) { return false; }
+        for (const auto& kv : af->ops) {
+            const auto& id = kv.first;
+            const auto& ao = kv.second;
+            if (not bf->ops.contains(id)) { return false; }
+            const auto& bo = bf->ops.at(id);
 
-        if (af->deleted.size() != bf->deleted.size()) { return false; }
-        for (const auto& id : af->deleted) {
-            if (not bf->deleted.contains(id)) { return false; }
-        }
+            if (ao.remove != bo.remove) { return false; }
 
-        if (af->changed.size() != bf->changed.size()) { return false; }
-        for (const auto& kv : af->changed) {
-            if (not bf->changed.contains(kv.first)) { return false; }
-            const auto ac = kv.second;
-            const auto bc = bf->changed.at(kv.first);
-            if (not item_equal(ac.before, bc.before)) { return false; }
-            if (not item_equal(ac.after, bc.after)) { return false; }
+            if (ao.add.has_value() != bo.add.has_value()) { return false; }
+            if (ao.add.has_value() and not item_equal(*ao.add, *bo.add)) { return false; }
+
+            if (ao.change.has_value() != bo.change.has_value()) { return false; }
+            if (ao.change.has_value()) {
+                if (not item_equal(ao.change->first, bo.change->first)) { return false; }
+                if (not item_equal(ao.change->second, bo.change->second)) { return false; }
+            }
         }
 
         return true;

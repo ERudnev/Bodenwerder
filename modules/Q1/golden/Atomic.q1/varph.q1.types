@@ -37,14 +37,14 @@ namespace Q1CORE
       // "view-like" Entities (subjective classification)
       attribute Electron of Charge
 
-      attribute Hadron of Strong
+      attribute Nucleon of Strong
         quantum
           legend: string @cache
           
 
       entity Atom
         quantum
-          core: vector<Hadron::Id> @anchor(any)
+          core: vector<Nucleon::Id> @anchor(any)
           captured: vector<Electron::Id>
           legend: string @cache
 

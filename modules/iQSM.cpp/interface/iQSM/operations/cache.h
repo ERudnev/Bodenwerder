@@ -33,13 +33,12 @@ namespace iqsm::ops::cache {
       const auto after = UpdateOne(world, id);
       if (after == before) continue;
 
-      fd->changed = fd->changed.insert(id, typename delta::FieldDiff<Meta>::Change{
-          .before = before,
-          .after = after,
-      });
+      typename delta::FieldDiff<Meta>::Operation op{};
+      op.change = std::pair<typename delta::FieldDiff<Meta>::Item, typename delta::FieldDiff<Meta>::Item>{before, after};
+      fd->ops = fd->ops.insert(id, std::move(op));
     }
 
-    if (fd->added.empty() and fd->changed.empty() and fd->deleted.empty()) return ::iqsm::delta::empty();
+    if (fd->ops.empty()) return ::iqsm::delta::empty();
 
     auto out = base::make_shared<delta::Fields>();
     out->fields = out->fields.insert(

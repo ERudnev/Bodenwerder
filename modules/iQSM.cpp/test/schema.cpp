@@ -20,9 +20,9 @@ namespace tests {
             EXPECT_TRUE(schema.aspects.contains(Facet<Charge>::typeId));
             EXPECT_TRUE(schema.aspects.contains(Facet<Electron>::typeId));
             EXPECT_TRUE(schema.aspects.contains(Facet<Strong>::typeId));
-            EXPECT_TRUE(schema.aspects.contains(Facet<Hadron>::typeId));
+            EXPECT_TRUE(schema.aspects.contains(Facet<Nucleon>::typeId));
             EXPECT_EQ(utilities::type_names(schema),
-                "{Q1CORE::Example::Varph::Atom, Q1CORE::Example::Varph::Charge, Q1CORE::Example::Varph::Chemical, Q1CORE::Example::Varph::Electron, Q1CORE::Example::Varph::Hadron, Q1CORE::Example::Varph::Spark, Q1CORE::Example::Varph::Strong}");
+                "{Q1CORE::Example::Varph::Atom, Q1CORE::Example::Varph::Charge, Q1CORE::Example::Varph::Chemical, Q1CORE::Example::Varph::Electron, Q1CORE::Example::Varph::Nucleon, Q1CORE::Example::Varph::Spark, Q1CORE::Example::Varph::Strong}");
 
             EXPECT_EQ(schema.aspects.at(Facet<Atom>::typeId).invariants.own.size(), Atom::invariants.list.size());
             EXPECT_EQ(schema.aspects.at(Facet<Spark>::typeId).invariants.own.size(), Spark::invariants.list.size());
@@ -44,7 +44,7 @@ namespace tests {
             EXPECT_TRUE(ab->aspects.contains(Facet<Charge>::typeId));
             EXPECT_TRUE(ab->aspects.contains(Facet<Electron>::typeId));
             EXPECT_TRUE(ab->aspects.contains(Facet<Strong>::typeId));
-            EXPECT_TRUE(ab->aspects.contains(Facet<Hadron>::typeId));
+            EXPECT_TRUE(ab->aspects.contains(Facet<Nucleon>::typeId));
 
             EXPECT_EQ(ab->aspects.at(Facet<Atom>::typeId).invariants.own.size(), Atom::invariants.list.size());
             EXPECT_EQ(ba->aspects.at(Facet<Atom>::typeId).invariants.own.size(), Atom::invariants.list.size());
@@ -56,7 +56,7 @@ namespace tests {
             // required_by stores direct dependencies only (from Require<>), not transitive closure
             EXPECT_TRUE(ab->aspects.at(Facet<Spark>::typeId).required_by.contains(Facet<Charge>::typeId));
             EXPECT_TRUE(ab->aspects.at(Facet<Spark>::typeId).required_by.contains(Facet<Strong>::typeId));
-            EXPECT_TRUE(ab->aspects.at(Facet<Hadron>::typeId).required_by.contains(Facet<Atom>::typeId));
+            EXPECT_TRUE(ab->aspects.at(Facet<Nucleon>::typeId).required_by.contains(Facet<Atom>::typeId));
             EXPECT_TRUE(ab->aspects.at(Facet<Atom>::typeId).required_by.contains(Facet<Chemical>::typeId));
         }
     }

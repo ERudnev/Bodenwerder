@@ -49,37 +49,49 @@ namespace Q1CORE::Example::Varph {
 
 // Electron:
 namespace Q1CORE::Example::Varph {
+
+    namespace Electron_impl {
+        auto existence_rule(World, const Charge::Quantum& charge)->bool {
+            return charge.value == -1;
+        }
+    }
     const Invariants Electron::invariants{{{
+        Invariants::existence<Electron, Charge, &Electron_impl::existence_rule>,
         Invariants::anchor_attribute<Charge, Electron>,
     }}};
 }
 
-// Hadron:
+// Nucleon:
 namespace Q1CORE::Example::Varph {
-    namespace Hadron_impl {
+    namespace Nucleon_impl {
         auto symbol_of(integer isospin2) -> string {
             if (isospin2 == +1) return "P";
             if (isospin2 == -1) return "N";
             return "?";
         }
 
-        auto update(World world, Hadron::Id id) -> Facet<Hadron>::Item {
-            const auto before = world->field<Hadron>()->container.at(id);
-            const auto& hadron = *before;
+        auto existence_rule(World, const Strong::Quantum&) -> bool {
+            return true;
+        }
+
+        auto update(World world, Nucleon::Id id) -> Facet<Nucleon>::Item {
+            const auto before = world->field<Nucleon>()->container.at(id);
+            const auto& nucleon = *before;
 
             const auto& strong = iqsm::ops::particle::get<Strong>(world, id);
             const auto next_legend = symbol_of(strong.isospin2);
-            if (hadron.legend == next_legend) return before;
+            if (nucleon.legend == next_legend) return before;
 
-            auto updated = hadron;
+            auto updated = nucleon;
             updated.legend = next_legend;
-            return Facet<Hadron>::create(std::move(updated));
+            return Facet<Nucleon>::create(std::move(updated));
         }
     }
 
-    const Invariants Hadron::invariants{{{
-        Invariants::anchor_attribute<Strong, Hadron>,
-        &iqsm::ops::cache::update<Hadron, &Hadron_impl::update>,
+    const Invariants Nucleon::invariants{{{
+        Invariants::existence<Nucleon, Strong, &Nucleon_impl::existence_rule>,
+        Invariants::anchor_attribute<Strong, Nucleon>,
+        &iqsm::ops::cache::update<Nucleon, &Nucleon_impl::update>,
     }}};
 }
 
@@ -92,10 +104,10 @@ namespace Q1CORE::Example::Varph {
             return "X";
         }
 
-        auto z_of(World world, const std::vector<Hadron::Id>& hadrons) -> integer {
+        auto z_of(World world, const std::vector<Nucleon::Id>& nucleons) -> integer {
             integer z = 0;
-            for (const auto& hid : hadrons) {
-                const auto q = Charge::Operations::value(world, hid);
+            for (const auto& id : nucleons) {
+                const auto q = Charge::Operations::value(world, id);
                 if (q > 0) z += q;
             }
             return z;
@@ -115,7 +127,7 @@ namespace Q1CORE::Example::Varph {
     }
 
     const Invariants Atom::invariants{{{
-        Invariants::anchor_any<Hadron, Atom, &Quantum::core>,
+        Invariants::anchor_any<Nucleon, Atom, &Quantum::core>,
         &iqsm::ops::cache::update<Atom, &Atom_impl::update>,
     }}};
 }

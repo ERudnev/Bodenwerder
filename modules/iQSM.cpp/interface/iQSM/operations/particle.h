@@ -124,7 +124,9 @@ namespace iqsm::ops::particle {
   template<meta::Particle Meta>
   void remove(Transaction& transaction, typename Facet<Meta>::Id id) {
     auto fd = base::make_shared<delta::FieldDiff<Meta>>();
-    fd->deleted = fd->deleted.insert(id);
+    auto op = typename delta::FieldDiff<Meta>::Operation{};
+    op.remove = true;
+    fd->ops = fd->ops.insert(id, std::move(op));
 
     auto wd = base::make_shared<delta::Fields>();
     wd->fields = wd->fields.insert(
@@ -152,10 +154,12 @@ namespace iqsm::detail::ops::particle {
     if (!dirty) return;
 
     auto fd = base::make_shared<delta::FieldDiff<Meta>>();
-    fd->changed = fd->changed.insert(id, typename delta::FieldDiff<Meta>::Change{
-        .before = original,
-        .after = Facet<Meta>::create(std::move(value)),
-    });
+    auto op = typename delta::FieldDiff<Meta>::Operation{};
+    op.change = std::pair<typename delta::FieldDiff<Meta>::Item, typename delta::FieldDiff<Meta>::Item>{
+        original,
+        Facet<Meta>::create(std::move(value)),
+    };
+    fd->ops = fd->ops.insert(id, std::move(op));
 
     auto wd = base::make_shared<delta::Fields>();
     wd->fields = wd->fields.insert(
@@ -170,7 +174,9 @@ namespace iqsm::detail::ops::particle {
     const auto id = Id::generate_random();
 
     auto fd = base::make_shared<delta::FieldDiff<Meta>>();
-    fd->added = fd->added.insert(id, Facet<Meta>::create(std::move(value)));
+    auto op = typename delta::FieldDiff<Meta>::Operation{};
+    op.add = Facet<Meta>::create(std::move(value));
+    fd->ops = fd->ops.insert(id, std::move(op));
 
     auto wd = base::make_shared<delta::Fields>();
     wd->fields = wd->fields.insert(
@@ -184,7 +190,9 @@ namespace iqsm::detail::ops::particle {
   template<meta::Quark Meta>
   typename creator_quark<Meta>::Id creator_quark<Meta>::operator()(Quantum value) {
     auto fd = base::make_shared<delta::FieldDiff<Meta>>();
-    fd->added = fd->added.insert(id, Facet<Meta>::create(std::move(value)));
+    auto op = typename delta::FieldDiff<Meta>::Operation{};
+    op.add = Facet<Meta>::create(std::move(value));
+    fd->ops = fd->ops.insert(id, std::move(op));
 
     auto wd = base::make_shared<delta::Fields>();
     wd->fields = wd->fields.insert(
