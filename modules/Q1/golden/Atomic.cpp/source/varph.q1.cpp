@@ -24,13 +24,20 @@ namespace Q1CORE::Example::Varph {
         float force_between(World, Spark::Id, Spark::Id) { return 0.0f; }
     }
 
-    integer Charge::Operations::value(World world, Spark::Id spark) {
+    auto Charge::Operations::value(World world, Spark::Id spark)->integer {
         if (not iqsm::ops::particle::exists<Charge>(world, spark)) { return 0; }
         return iqsm::ops::particle::get<Charge>(world, spark).value;
     }
 
     const Invariants Charge::invariants{{{
         Invariants::anchor_attribute<Spark, Charge>,
+    }}};
+}
+
+// Strong:
+namespace Q1CORE::Example::Varph {
+    const Invariants Strong::invariants{{{
+        Invariants::anchor_attribute<Spark, Strong>,
     }}};
 }
 
@@ -43,68 +50,84 @@ namespace Q1CORE::Example::Varph {
 // Electron:
 namespace Q1CORE::Example::Varph {
     const Invariants Electron::invariants{{{
-        Invariants::anchor<Spark, Electron, &Quantum::spark>,
+        Invariants::anchor_attribute<Charge, Electron>,
+    }}};
+}
+
+// Hadron:
+namespace Q1CORE::Example::Varph {
+    namespace Hadron_impl {
+        auto symbol_of(integer isospin2) -> string {
+            if (isospin2 == +1) return "P";
+            if (isospin2 == -1) return "N";
+            return "?";
+        }
+
+        auto update(World world, Hadron::Id id) -> Facet<Hadron>::Item {
+            const auto before = world->field<Hadron>()->container.at(id);
+            const auto& hadron = *before;
+
+            const auto& strong = iqsm::ops::particle::get<Strong>(world, id);
+            const auto next_legend = symbol_of(strong.isospin2);
+            if (hadron.legend == next_legend) return before;
+
+            auto updated = hadron;
+            updated.legend = next_legend;
+            return Facet<Hadron>::create(std::move(updated));
+        }
+    }
+
+    const Invariants Hadron::invariants{{{
+        Invariants::anchor_attribute<Strong, Hadron>,
+        &iqsm::ops::cache::update<Hadron, &Hadron_impl::update>,
     }}};
 }
 
 // Atom:
 namespace Q1CORE::Example::Varph {
     namespace Atom_impl {
-        static auto symbol_of(integer z) -> string {
+        auto symbol_of(integer z) -> string {
             if (z == 1) return "H";
             if (z == 2) return "He";
             return "X";
         }
 
-        static auto legend_of(integer z, integer ionisation) -> string {
-            auto out = symbol_of(z);
-            if (ionisation == 0) return out;
-            if (ionisation == 1) return out + "+";
-            if (ionisation == -1) return out + "-";
-            // keep it simple in the golden example: no numeric suffixes yet
-            return out;
+        auto z_of(World world, const std::vector<Hadron::Id>& hadrons) -> integer {
+            integer z = 0;
+            for (const auto& hid : hadrons) {
+                const auto q = Charge::Operations::value(world, hid);
+                if (q > 0) z += q;
+            }
+            return z;
         }
 
-        Delta update(World world) {
-            return iqsm::ops::cache::recompute<Atom>(world, [&](World w, Atom::Id, const Atom::Quantum& atom) -> std::optional<Atom::Quantum> {
-                integer z = 0;
-                integer ionisation = 0;
+        auto update(World world, Atom::Id id) -> Facet<Atom>::Item {
+            const auto before = world->field<Atom>()->container.at(id);
+            const auto& atom = *before;
 
-                for (const auto& id : atom.core) {
-                    const auto q = Charge::Operations::value(w, id);
-                    if (q > 0) z += q;
-                    ionisation += q;
-                }
-                for (const auto& id : atom.captured) {
-                    const auto& electron = iqsm::ops::particle::get<Electron>(w, id);
-                    ionisation += Charge::Operations::value(w, electron.spark);
-                }
+            const auto next_legend = symbol_of(z_of(world, atom.core));
+            if (atom.legend == next_legend) return before;
 
-                const auto legend = legend_of(z, ionisation);
-                if (atom.legend == legend) return std::nullopt;
-
-                auto updated = atom;
-                updated.legend = legend;
-                return updated;
-            });
+            auto updated = atom;
+            updated.legend = next_legend;
+            return Facet<Atom>::create(std::move(updated));
         }
     }
 
     const Invariants Atom::invariants{{{
-        Invariants::anchor_any<Spark, Atom, &Quantum::core>,
-        &Atom_impl::update,
+        Invariants::anchor_any<Hadron, Atom, &Quantum::core>,
+        &iqsm::ops::cache::update<Atom, &Atom_impl::update>,
     }}};
 }
 
 // Chemical:
 namespace Q1CORE::Example::Varph {
     namespace Chemical_impl {
-        static auto ionisation_of(World world, const Atom::Quantum& atom) -> integer {
+        auto ionisation_of(World world, const Atom::Quantum& atom) -> integer {
             integer total_charge = 0;
             for (const auto& id : atom.core) { total_charge += Charge::Operations::value(world, id); }
             for (const auto& id : atom.captured) {
-                const auto& electron = iqsm::ops::particle::get<Electron>(world, id);
-                total_charge += Charge::Operations::value(world, electron.spark);
+                total_charge += Charge::Operations::value(world, id);
             }
             return total_charge;
         }
@@ -116,22 +139,23 @@ namespace Q1CORE::Example::Varph {
             };
         }
 
-        Delta update(World world) {
-            return iqsm::ops::cache::recompute<Chemical>(world, [&](World w, Chemical::Id id, const Chemical::Quantum& chemical) -> std::optional<Chemical::Quantum> {
-                const auto& atom = iqsm::ops::particle::get<Atom>(w, id);
-                const auto ionisation = ionisation_of(w, atom);
-                if (chemical.ionisation == ionisation) return std::nullopt;
+        auto update(World w, Chemical::Id id) -> Facet<Chemical>::Item {
+            const auto before = w->field<Chemical>()->container.at(id);
+            const auto& chemical = *before;
 
-                auto updated = chemical;
-                updated.ionisation = ionisation;
-                return updated;
-            });
+            const auto& atom = iqsm::ops::particle::get<Atom>(w, id);
+            const auto ionisation = ionisation_of(w, atom);
+            if (chemical.ionisation == ionisation) return before;
+
+            auto updated = chemical;
+            updated.ionisation = ionisation;
+            return Facet<Chemical>::create(std::move(updated));
         }
     }
 
     const Invariants Chemical::invariants{{{
         Invariants::anchor_component<Atom, Chemical, &Chemical_impl::construct>,
-        &Chemical_impl::update,
+        &iqsm::ops::cache::update<Chemical, &Chemical_impl::update>,
     }}};
 }
 

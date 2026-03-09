@@ -9,6 +9,7 @@
     X(transient_usage) \
     X(validation_anchors) \
     X(caching_components) \
+    X(validation_cache) \
     X(schema) \
     X(resources) \
     // end

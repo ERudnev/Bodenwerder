@@ -8,17 +8,20 @@ namespace tests {
         using namespace iqsm;
         using namespace Q1CORE::Example::Varph;
 
-        // Scenario 1: Electron.spark anchors to Spark
+        // Scenario 1: Electron is confined to Charge (attribute of Charge)
         {
             ops::Transaction transaction(ops::world::create(ops::schema::assemble<Electron>()));
             const auto spark_ok = ops::particle::create<Spark>(transaction)({vec3{0, 0, 0}, eVt{1}});
-            const auto electron_ok = ops::particle::create<Electron>(transaction)({spark_ok, "1s"});
-            const auto electron_bad = ops::particle::create<Electron>(transaction)({Spark::Id::generate_random(), "2s"});
+            ops::particle::create<Charge>(transaction, spark_ok)({integer{-1}});
+
+            const auto electron_ok = ops::particle::create<Electron>(transaction, spark_ok)({});
+            const auto bad_id = Spark::Id::generate_random();
+            const auto electron_bad = ops::particle::create<Electron>(transaction, bad_id)({});
 
             const auto populated_world = transaction.current;
             EXPECT_EQ(populated_world->field<Electron>()->container.size(), size_t{2});
 
-            auto delta = ops::validation::Structural::anchor<Spark, Electron, &Electron::Quantum::spark>(populated_world);
+            auto delta = ops::validation::Structural::anchor_attribute<Charge, Electron>(populated_world);
 
             auto next = ops::integrate_raw(populated_world, delta);
             EXPECT_EQ(next->field<Electron>()->container.size(), size_t{1});
@@ -44,15 +47,18 @@ namespace tests {
             EXPECT_TRUE(not ops::particle::exists<Capture>(next, capture_bad));
         }
 
-        // Scenario 3: Atom.core anchors to Spark (any)
+        // Scenario 3: Atom.core anchors to Hadron (any)
         {
             ops::Transaction transaction(ops::world::create(ops::schema::assemble<Atom>()));
             const auto spark_ok = ops::particle::create<Spark>(transaction)({vec3{0, 0, 0}, eVt{1}});
-            const auto atom_keep = ops::particle::create<Atom>(transaction)({std::vector<Spark::Id>{spark_ok, Spark::Id::generate_random()}, {}, "H"});
-            const auto atom_die = ops::particle::create<Atom>(transaction)({std::vector<Spark::Id>{Spark::Id::generate_random()}, {}, "He"});
+            ops::particle::create<Strong>(transaction, spark_ok)({integer{+1}});
+            ops::particle::create<Hadron>(transaction, spark_ok)({"P"});
+
+            const auto atom_keep = ops::particle::create<Atom>(transaction)({std::vector<Hadron::Id>{spark_ok, Spark::Id::generate_random()}, {}, "H"});
+            const auto atom_die = ops::particle::create<Atom>(transaction)({std::vector<Hadron::Id>{Spark::Id::generate_random()}, {}, "He"});
 
             const auto populated_world = transaction.current;
-            auto delta = ops::validation::Structural::anchor_any<Spark, Atom, &Atom::Quantum::core>(populated_world);
+            auto delta = ops::validation::Structural::anchor_any<Hadron, Atom, &Atom::Quantum::core>(populated_world);
             auto next = ops::integrate_raw(populated_world, delta);
 
             EXPECT_EQ(next->field<Atom>()->container.size(), size_t{1});

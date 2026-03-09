@@ -31,6 +31,7 @@ namespace iqsm {
 
         std::map<TypeId, Entry> aspects;
         bool empty() const { return aspects.empty(); }
+        bool depends(TypeId depender, TypeId dependee) const; //  transitively.
 
         template<meta::Aspect... Leaves>
         static SchemaObject assemble();

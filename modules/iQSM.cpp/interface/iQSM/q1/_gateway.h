@@ -17,6 +17,7 @@ namespace iqsm::dsl_gateway {
 
     using World = iqsm::World;
     using Delta = iqsm::Delta;
+    using ::iqsm::Facet;
 
     // Particte types:
     template<typename Meta>

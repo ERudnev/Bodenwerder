@@ -7,39 +7,39 @@ namespace {
     using namespace iqsm;
     using namespace Q1CORE::Example::Varph;
 
-    Delta addElectron(Spark::Id spark, Electron::Id id, std::string legend)
+    Delta addCharge(Spark::Id id, integer value)
     {
-        auto fd = base::make_shared<delta::FieldDiff<Electron>>();
-        fd->added = fd->added.insert(id, Facet<Electron>::create({spark, std::move(legend)}));
+        auto fd = base::make_shared<delta::FieldDiff<Charge>>();
+        fd->added = fd->added.insert(id, Facet<Charge>::create(Charge::Quantum{value}));
 
         auto wd = base::make_shared<delta::Fields>();
         wd->fields = wd->fields.insert(
-            Facet<Electron>::typeId,
+            Facet<Charge>::typeId,
             freeze(fd));
         return freeze(wd);
     }
-    Delta renameElectron(Spark::Id spark, Electron::Id id, std::string oldlegend, std::string newlegend)
+    Delta setCharge(Spark::Id id, integer before_value, integer after_value)
     {
-        auto fd = base::make_shared<delta::FieldDiff<Electron>>();
-        fd->changed = fd->changed.insert(id, delta::FieldDiff<Electron>::Change{
-            .before = Facet<Electron>::create({spark, std::move(oldlegend)}),
-            .after = Facet<Electron>::create({spark, std::move(newlegend)}),
+        auto fd = base::make_shared<delta::FieldDiff<Charge>>();
+        fd->changed = fd->changed.insert(id, delta::FieldDiff<Charge>::Change{
+            .before = Facet<Charge>::create(Charge::Quantum{before_value}),
+            .after = Facet<Charge>::create(Charge::Quantum{after_value}),
         });
 
         auto wd = base::make_shared<delta::Fields>();
         wd->fields = wd->fields.insert(
-            Facet<Electron>::typeId,
+            Facet<Charge>::typeId,
             freeze(fd));
         return freeze(wd);
     }
-    Delta deleteElectron(Electron::Id id)
+    Delta deleteCharge(Spark::Id id)
     {
-        auto fd = base::make_shared<delta::FieldDiff<Electron>>();
+        auto fd = base::make_shared<delta::FieldDiff<Charge>>();
         fd->deleted = fd->deleted.insert(id);
 
         auto wd = base::make_shared<delta::Fields>();
         wd->fields = wd->fields.insert(
-            Facet<Electron>::typeId,
+            Facet<Charge>::typeId,
             freeze(fd));
         return freeze(wd);
     }
@@ -53,17 +53,17 @@ namespace {
             if (not b->fields.contains(kv.first)) { return false; }
         }
 
-        if (not a->fields.contains(Facet<Electron>::typeId)) { return false; }
+        if (not a->fields.contains(Facet<Charge>::typeId)) { return false; }
 
-        const auto au = a->fields.at(Facet<Electron>::typeId);
-        const auto bu = b->fields.at(Facet<Electron>::typeId);
+        const auto au = a->fields.at(Facet<Charge>::typeId);
+        const auto bu = b->fields.at(Facet<Charge>::typeId);
 
-        const auto af = base::shared_ref_cast<const delta::FieldDiff<Electron>>(au);
-        const auto bf = base::shared_ref_cast<const delta::FieldDiff<Electron>>(bu);
+        const auto af = base::shared_ref_cast<const delta::FieldDiff<Charge>>(au);
+        const auto bf = base::shared_ref_cast<const delta::FieldDiff<Charge>>(bu);
 
-        auto item_equal = [](Facet<Electron>::Item x, Facet<Electron>::Item y) {
+        auto item_equal = [](Facet<Charge>::Item x, Facet<Charge>::Item y) {
             if (x == y) { return true; }
-            return x->spark == y->spark && x->legend == y->legend;
+            return x->value == y->value;
         };
 
         if (af->added.size() != bf->added.size()) { return false; }
@@ -92,34 +92,33 @@ namespace {
 
 namespace tests {
     void delta_merge() {
-        const auto spark = Spark::Id::generate_random();
-        const auto id = Electron::Id::generate_random();
-        const auto other = Electron::Id::generate_random();
+        const auto id = Spark::Id::generate_random();
+        const auto other = Spark::Id::generate_random();
         using namespace iqsm::ops;
 
-        EXPECT_TRUE(are_equal(merge(addElectron(spark, id, "1s"), addElectron(spark, id, "2s")), addElectron(spark, id, "1s")));
-        EXPECT_TRUE(are_equal(merge(addElectron(spark, id, "2s"), addElectron(spark, id, "1s")), addElectron(spark, id, "2s")));
-        EXPECT_TRUE(are_equal(merge(addElectron(spark, id, "1s"), addElectron(spark, other, "2s")), merge(addElectron(spark, other, "2s"), addElectron(spark, id, "1s"))));
+        EXPECT_TRUE(are_equal(merge(addCharge(id, integer{1}), addCharge(id, integer{2})), addCharge(id, integer{1})));
+        EXPECT_TRUE(are_equal(merge(addCharge(id, integer{2}), addCharge(id, integer{1})), addCharge(id, integer{2})));
+        EXPECT_TRUE(are_equal(merge(addCharge(id, integer{1}), addCharge(other, integer{2})), merge(addCharge(other, integer{2}), addCharge(id, integer{1}))));
 
-        EXPECT_TRUE(are_equal(merge(renameElectron(spark, id, "A", "B"), deleteElectron(id)), deleteElectron(id)));
-        EXPECT_TRUE(are_equal(merge(deleteElectron(id), renameElectron(spark, id, "A", "B")), deleteElectron(id)));
-        EXPECT_TRUE(are_equal(merge(deleteElectron(id), deleteElectron(id)), deleteElectron(id)));
-        EXPECT_TRUE(are_equal(merge(renameElectron(spark, id, "A", "B"), deleteElectron(other)), merge(deleteElectron(other), renameElectron(spark, id, "A", "B"))));
+        EXPECT_TRUE(are_equal(merge(setCharge(id, integer{1}, integer{2}), deleteCharge(id)), deleteCharge(id)));
+        EXPECT_TRUE(are_equal(merge(deleteCharge(id), setCharge(id, integer{1}, integer{2})), deleteCharge(id)));
+        EXPECT_TRUE(are_equal(merge(deleteCharge(id), deleteCharge(id)), deleteCharge(id)));
+        EXPECT_TRUE(are_equal(merge(setCharge(id, integer{1}, integer{2}), deleteCharge(other)), merge(deleteCharge(other), setCharge(id, integer{1}, integer{2}))));
 
         // neutral element + idempotency
-        EXPECT_TRUE(are_equal(merge(delta::empty(), deleteElectron(id)), deleteElectron(id)));
-        EXPECT_TRUE(are_equal(merge(deleteElectron(id), delta::empty()), deleteElectron(id)));
-        EXPECT_TRUE(are_equal(merge(deleteElectron(id), deleteElectron(id)), deleteElectron(id)));
+        EXPECT_TRUE(are_equal(merge(delta::empty(), deleteCharge(id)), deleteCharge(id)));
+        EXPECT_TRUE(are_equal(merge(deleteCharge(id), delta::empty()), deleteCharge(id)));
+        EXPECT_TRUE(are_equal(merge(deleteCharge(id), deleteCharge(id)), deleteCharge(id)));
 
-        // sum of sequential renames: (A->B) + (B->C) == (A->C)
+        // sum of sequential changes: (1->2) + (2->3) == (1->3)
         EXPECT_TRUE(are_equal(
-            merge(renameElectron(spark, id, "A", "B"), renameElectron(spark, id, "B", "C")),
-            renameElectron(spark, id, "A", "C")));
+            merge(setCharge(id, integer{1}, integer{2}), setCharge(id, integer{2}, integer{3})),
+            setCharge(id, integer{1}, integer{3})));
 
-        // tolerant sequential renames: (A->B) + (A->C) == (A->C)  ("who came later wins")
+        // tolerant sequential changes: (1->2) + (1->3) == (1->3)  ("who came later wins")
         EXPECT_TRUE(are_equal(
-            merge(renameElectron(spark, id, "A", "B"), renameElectron(spark, id, "A", "C")),
-            renameElectron(spark, id, "A", "C")));
+            merge(setCharge(id, integer{1}, integer{2}), setCharge(id, integer{1}, integer{3})),
+            setCharge(id, integer{1}, integer{3})));
     }
 }
 

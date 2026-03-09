@@ -1,7 +1,9 @@
 #include <iQSM/schema.h>
 
 #include <format>
+#include <set>
 #include <stdexcept>
+#include <vector>
 
 namespace iqsm {
     Schema SchemaObject::merge(Schema first, Schema second) {
@@ -69,6 +71,36 @@ namespace iqsm {
                 aspects.at(dep).required_by.insert(a);
             }
         }
+    }
+
+    bool SchemaObject::depends(TypeId depender, TypeId dependee) const {
+        if (depender == dependee) return false;
+        if (not aspects.contains(depender)) return false;
+        if (not aspects.contains(dependee)) return false;
+
+        const auto& start = aspects.at(depender).require;
+        if (start.contains(dependee)) return true; // direct fast-path
+
+        std::vector<TypeId> q;
+        q.reserve(start.size());
+
+        std::set<TypeId> visited;
+        visited.insert(depender);
+
+        for (const auto& d : start) {
+            if (visited.insert(d).second) q.push_back(d);
+        }
+
+        for (decltype(q.size()) i = 0; i < q.size(); ++i) {
+            const auto cur = q[i];
+            const auto& req = aspects.at(cur).require;
+            if (req.contains(dependee)) return true;
+            for (const auto& d : req) {
+                if (visited.insert(d).second) q.push_back(d);
+            }
+        }
+
+        return false;
     }
 }
 

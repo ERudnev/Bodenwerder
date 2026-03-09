@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <type_traits>
 
 #include <iQSM/_forwards.h>
 #include <iQSM/meta.h>
@@ -8,13 +9,18 @@
 #include <iQSM/field.h>
 
 namespace iqsm::ops::cache {
-  template<meta::Aspect Meta, typename RecomputeOne>
-  Delta recompute(World world, RecomputeOne recompute_one);
+  template<meta::Aspect Meta, auto UpdateOne>
+  Delta update(World world);
 }
 
 namespace iqsm::ops::cache {
-  template<meta::Aspect Meta, typename RecomputeOne>
-  Delta recompute(World world, RecomputeOne recompute_one) {
+  template<meta::Aspect Meta, auto UpdateOne>
+  Delta update(World world) {
+    using Id = typename Facet<Meta>::Id;
+    using Item = typename Facet<Meta>::Item;
+
+    static_assert(std::is_invocable_r_v<Item, decltype(UpdateOne), World, Id>);
+
     if (not world->schema->aspects.contains(Facet<Meta>::typeId)) return ::iqsm::delta::empty();
 
     const auto field = world->field<Meta>();
@@ -22,14 +28,14 @@ namespace iqsm::ops::cache {
 
     for (const auto& kv : field->container) {
       const auto& id = kv.first;
-      const auto& item = kv.second;
+      const auto& before = kv.second;
 
-      auto updated = recompute_one(world, id, *item);
-      if (not updated) continue;
+      const auto after = UpdateOne(world, id);
+      if (after == before) continue;
 
       fd->changed = fd->changed.insert(id, typename delta::FieldDiff<Meta>::Change{
-          .before = item,
-          .after = Facet<Meta>::create(std::move(*updated)),
+          .before = before,
+          .after = after,
       });
     }
 

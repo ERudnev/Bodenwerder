@@ -1,0 +1,12 @@
+---
+description: Never perform any version control operations (git) under any circumstances.
+alwaysApply: true
+---
+
+# No Version Control Operations
+
+- Do **not** run any `git` commands (including read-only commands like `git status`, `git diff`, `git log`).
+- Do **not** stage, commit, amend, reset, restore, checkout, rebase, merge, cherry-pick, push, pull, or create branches.
+- Do **not** use GitHub CLI (`gh`) or any other VCS tooling.
+- If the user asks to "check what changed", "revert", "restore", or any other VCS-related action, **refuse to use VCS commands** and provide only non-VCS alternatives.
+

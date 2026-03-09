@@ -21,6 +21,11 @@ namespace Q1CORE
         readers
           value(Spark::Id)->integer
 
+      attribute Strong of Spark
+        quantum
+          isospin2: integer  // 2 * I3 (isospin projection): +1 => proton-like, -1 => neutron-like
+
+      //
       // some syntetic "resource" as text block (lets imagine, it is too large to keep it within Model)
        resource TextDescription
         passport
@@ -28,16 +33,18 @@ namespace Q1CORE
         instance
           created: time
 
+      //
       // "view-like" Entities (subjective classification)
-      // intended to be evaluated every time and kept as cache: no energy impact to the Model
-      entity Electron
+      attribute Electron of Charge
+
+      attribute Hadron of Strong
         quantum
-          spark: Spark::Id @anchor
-          legend: string
+          legend: string @cache
+          
 
       entity Atom
         quantum
-          core: vector<Spark::Id> @anchor(any)
+          core: vector<Hadron::Id> @anchor(any)
           captured: vector<Electron::Id>
           legend: string @cache
 

@@ -12,30 +12,37 @@ namespace Q1CORE::Example::Varph {
             vec3 position;
             eVt locality;
         };
-
         static const Invariants invariants;
     };
+
 
     struct Inertia : Attribute<Inertia, Spark>, Require<Spark> {
         struct Quantum {
             vec3 prev_pos;
             eVt mass;
         };
-
         static const Invariants invariants;
     };
+
 
     struct Charge : Attribute<Charge, Spark>, Require<Spark> {
         struct Quantum {
             integer value;
         };
-
         struct Operations {
             static auto value(World, Spark::Id)->integer;
         };
-
         static const Invariants invariants;
     };
+
+
+    struct Strong : Attribute<Strong, Spark>, Require<Spark> {
+        struct Quantum {
+            integer isospin2;
+        };
+        static const Invariants invariants;
+    };
+
 
     struct TextDescription : Resource<TextDescription>, Require<> {
         struct Passport {
@@ -45,26 +52,27 @@ namespace Q1CORE::Example::Varph {
             Passport passport;
             timepoint created;
         };
-
         static const Invariants invariants;
     };
 
-    struct Electron : Entity<Electron>, Require<Spark> {
+    struct Electron : Attribute<Electron, Charge>, Require<Charge> {
+        struct Quantum {};
+        static const Invariants invariants;
+    };
+
+    struct Hadron : Attribute<Hadron, Strong>, Require<Strong> {
         struct Quantum {
-            Spark::Id spark;
             string legend;
         };
-
         static const Invariants invariants;
     };
 
-    struct Atom : Entity<Atom>, Require<Spark, Charge, Electron> {
+    struct Atom : Entity<Atom>, Require<Hadron, Electron> {
         struct Quantum {
-            std::vector<Spark::Id> core;
+            std::vector<Hadron::Id> core;
             std::vector<Electron::Id> captured;
             string legend;
         };
-
         static const Invariants invariants;
     };
 
@@ -73,7 +81,6 @@ namespace Q1CORE::Example::Varph {
             integer ionisation;
             integer valency;
         };
-
         static const Invariants invariants;
     };
 
@@ -84,7 +91,6 @@ namespace Q1CORE::Example::Varph {
             string legend;
             eVt energy;
         };
-
         static const Invariants invariants;
     };
 
@@ -93,7 +99,6 @@ namespace Q1CORE::Example::Varph {
             std::vector<Atom::Id> atoms;
             TextDescription::Id descrition;
         };
-
         static const Invariants invariants;
     };
 
@@ -101,7 +106,6 @@ namespace Q1CORE::Example::Varph {
         struct Quantum {
             std::vector<Atom::Id> bound;
         };
-
         static const Invariants invariants;
     };
 

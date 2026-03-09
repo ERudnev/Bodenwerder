@@ -9,7 +9,7 @@ namespace tests {
         using namespace Q1CORE::Example::Varph;
 
         // Build a minimal schema needed for ionisation computation:
-        // - Atom holds Spark ids
+        // - Atom holds Hadron ids (Spark ids confined by Hadron aspect)
         // - Charge carries charge for each Spark
         // - Chemical is a component of Atom (1-1 iff)
         const World world = ops::world::create(ops::schema::assemble<Chemical, Charge>());
@@ -21,16 +21,23 @@ namespace tests {
             return id;
         };
 
-        const auto proton1 = mkSpark(integer{+1});
-        const auto proton2 = mkSpark(integer{+1});
-        const auto neutron1 = mkSpark(integer{0});
-        const auto neutron2 = mkSpark(integer{0});
+        const auto mkHadron = [&](integer charge, integer isospin2) {
+            const auto id = mkSpark(charge);
+            ops::particle::create<Strong>(tx, id)({isospin2});
+            ops::particle::create<Hadron>(tx, id)({""});
+            return id;
+        };
+
+        const auto proton1 = mkHadron(integer{+1}, integer{+1});
+        const auto proton2 = mkHadron(integer{+1}, integer{+1});
+        const auto neutron1 = mkHadron(integer{0}, integer{-1});
+        const auto neutron2 = mkHadron(integer{0}, integer{-1});
         const auto electronSpark1 = mkSpark(integer{-1});
-        const auto electron1 = ops::particle::create<Electron>(tx)({electronSpark1, "1s"});
+        const auto electron1 = ops::particle::create<Electron>(tx, electronSpark1)({});
 
         // Helium ion (He+): 2p + 2n + 1e => total charge +1.
         const auto atomId = ops::particle::create<Atom>(tx)({
-            std::vector<Spark::Id>{proton1, proton2, neutron1, neutron2},
+            std::vector<Hadron::Id>{proton1, proton2, neutron1, neutron2},
             std::vector<Electron::Id>{electron1},
             "He+",
         });
