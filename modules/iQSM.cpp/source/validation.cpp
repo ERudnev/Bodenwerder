@@ -4,7 +4,7 @@
 
 namespace iqsm::ops::validation {
     Delta List::apply(World world) const {
-        Transaction transaction(std::move(world));
+        Transaction transaction = Transaction::integrator(std::move(world));
         for (const auto v : list) {
             if (not v) { continue; }
             transaction.absorb(v(transaction.current));

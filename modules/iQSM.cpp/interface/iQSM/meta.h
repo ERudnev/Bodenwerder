@@ -41,6 +41,16 @@ namespace iqsm::meta {
     concept Particle = Entity<Meta> || Quark<Meta>;
 }
 
+namespace iqsm::detail::_meta {
+    struct EmptyGlobal {};
+
+    template<typename Meta, typename = void>
+    struct global_of { using type = EmptyGlobal; };
+
+    template<typename Meta>
+    struct global_of<Meta, std::void_t<typename Meta::Global>> { using type = typename Meta::Global; };
+}
+
 namespace iqsm {
 
     template<meta::Aspect Meta>
@@ -48,6 +58,8 @@ namespace iqsm {
         using Id = typename Meta::Id;
         using Quantum = typename Meta::Quantum;
         using Item = cref<Quantum>;
+        using GlobalData = typename detail::_meta::global_of<Meta>::type;
+        using Global = cref<GlobalData>;
         // add Diff
         using TypeId = internals::Types::RuntimeId;
 

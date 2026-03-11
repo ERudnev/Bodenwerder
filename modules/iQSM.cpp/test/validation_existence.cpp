@@ -9,11 +9,11 @@ namespace tests {
         using namespace Q1CORE::Example::Varph;
 
         const World initial = ops::world::create(ops::schema::assemble<Electron>());
-        ops::Transaction tx{World{initial}};
+        auto tx = ops::Transaction::integrator(initial);
 
-        const auto s_neg = ops::particle::create<Spark>(tx)({vec3{0, 0, 0}, eVt{0}});
-        const auto s_zero = ops::particle::create<Spark>(tx)({vec3{1, 0, 0}, eVt{0}});
-        const auto s_none = ops::particle::create<Spark>(tx)({vec3{2, 0, 0}, eVt{0}});
+        const auto s_neg = ops::particle::create<Spark>(tx)({vec4{0, 0, 0, 0}, eVt{0}});
+        const auto s_zero = ops::particle::create<Spark>(tx)({vec4{1, 0, 0, 0}, eVt{0}});
+        const auto s_none = ops::particle::create<Spark>(tx)({vec4{2, 0, 0, 0}, eVt{0}});
 
         ops::particle::create<Charge>(tx, s_neg)({integer{-1}});
         ops::particle::create<Charge>(tx, s_zero)({integer{0}});

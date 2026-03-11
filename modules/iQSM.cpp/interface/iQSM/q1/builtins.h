@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 namespace iqsm::q1 {
@@ -43,6 +44,7 @@ namespace iqsm::q1 {
     // Exposed as aliases to avoid requiring `glm::` at every field site,
     // without importing the whole glm namespace into generated code.
     using vec3 = glm::vec3;
+    using vec4 = glm::vec4;
     using quat = glm::quat;
 }
 

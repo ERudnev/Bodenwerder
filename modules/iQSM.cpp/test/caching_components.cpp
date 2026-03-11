@@ -13,10 +13,10 @@ namespace tests {
         // - Charge carries charge for each Spark
         // - Chemical is a component of Atom (1-1 iff)
         const World world = ops::world::create(ops::schema::assemble<Chemical, Charge>());
-        ops::Transaction tx{World{world}};
+        auto tx = ops::Transaction::integrator(world);
 
         const auto mkSpark = [&](integer charge) {
-            const auto id = ops::particle::create<Spark>(tx)({vec3{0, 0, 0}, eVt{0}});
+            const auto id = ops::particle::create<Spark>(tx)({vec4{0, 0, 0, 0}, eVt{0}});
             ops::particle::create<Charge>(tx, id)({charge});
             return id;
         };

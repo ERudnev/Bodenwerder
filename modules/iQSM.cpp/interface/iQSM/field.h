@@ -1,8 +1,10 @@
 #pragma once
 
+#include <type_traits>
 #include <format>
 #include <memory>
 #include <base/containers/ImmutableUnorderedMap.h>
+#include <iQSM/_forwards.h>
 #include <iQSM/meta.h>
 #include <iQSM/identifier.h>
 
@@ -19,9 +21,12 @@ namespace iqsm {
     template<meta::Aspect Meta>
     struct FieldObject final : Facet<Meta>, FieldAbstract {
         using Facet = iqsm::Facet<Meta>;
+        using GlobalData = typename Facet::GlobalData;
+        using Global = typename Facet::Global;
         using Container = base::ImmutableUnorderedMap<typename Facet::Id, typename Facet::Item>;
 
         Container container;
+        Global global = [] { static const Global zeroGlobal = base::make_shared<const GlobalData>(); return zeroGlobal; }();
     };
 
     // Handles

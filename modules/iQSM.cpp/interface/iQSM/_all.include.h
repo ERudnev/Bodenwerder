@@ -24,9 +24,11 @@
 #include <iQSM/operations/integration.h>
 #include <iQSM/operations/transaction.h>
 #include <iQSM/operations/validation.h>
+#include <iQSM/operations/cache.h>
 
 // Helpers (non-generated code)
 #include <iQSM/operations/schema.h>
 #include <iQSM/operations/world.h>
 #include <iQSM/operations/particle.h>
+#include <iQSM/operations/global.h>
 #include <iQSM/operations/resource.h>

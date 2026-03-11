@@ -46,20 +46,26 @@ namespace Toy {
         std::string aspect_names;
         for (const auto& kv : schema->aspects) { aspect_names += (aspect_names.empty() ? "" : ", ") + kv.second.name; }
         message("Toy::Model::create(): schema aspects ({}) = [{}]", schema->aspects.size(), aspect_names);
-        ops::Transaction transaction(ops::world::create(schema));
+        ops::Transaction transaction = ops::Transaction::integrator(ops::world::create(schema));
         auto create_spark = ops::particle::create<Spark>(transaction);
+
+        {
+            auto g = ops::global::modify<Spark>(transaction);
+            g->clock = 0.0f;
+        }
 
         for (int z = 0; z < h; ++z) {
             for (int x = 0; x < w; ++x) {
                 const float fx = (static_cast<float>(x) - (static_cast<float>(w - 1) * 0.5f)) * step;
                 const float fz = (static_cast<float>(z) - (static_cast<float>(h - 1) * 0.5f)) * step;
-                const auto p = vec3{fx, 0.0f, fz};
+
+                const auto position = vec4{fx, 0.0f, fz, ops::global::get<Spark>(transaction.current)->clock};
 
                 const std::string_view type_name = ((x + z) % 3 == 0) ? "proton" : (((x + z) % 3 == 1) ? "neutron" : "electron");
                 const auto& type = Settings::by_name(type_name);
 
-                const auto id = create_spark({p, locality});
-                ops::particle::create<Inertia>(transaction, id)({p, type.mass});
+                const auto id = create_spark({position, locality});
+                ops::particle::create<Inertia>(transaction, id)({position, type.mass});
                 ops::particle::create<Charge>(transaction, id)({type.charge});
             }
         }

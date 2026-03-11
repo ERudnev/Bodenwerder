@@ -6,11 +6,21 @@ namespace Q1CORE::Example::Varph {
     using namespace iqsm::dsl_gateway;
 
     using eVt = float;
+    using distance = float;
+
+    namespace settings {
+        inline constexpr distance strong_tolerance = 0.01f;
+    }
 
     struct Spark : Entity<Spark>, Require<> {
+        using minkpt = vec4;
+        using time = decltype(minkpt{}.w);
         struct Quantum {
-            vec3 position;
+            minkpt position;
             eVt locality;
+        };
+        struct Global {
+            time clock;
         };
         static const Invariants invariants;
     };
@@ -18,7 +28,7 @@ namespace Q1CORE::Example::Varph {
 
     struct Inertia : Attribute<Inertia, Spark>, Require<Spark> {
         struct Quantum {
-            vec3 prev_pos;
+            vec4 prev_pos;
             eVt mass;
         };
         static const Invariants invariants;
@@ -72,6 +82,9 @@ namespace Q1CORE::Example::Varph {
             std::vector<Nucleon::Id> core;
             std::vector<Electron::Id> captured;
             string legend;
+        };
+        struct Operations {
+            static auto tension(World, Atom::Id)->distance;
         };
         static const Invariants invariants;
     };

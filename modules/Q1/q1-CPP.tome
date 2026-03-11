@@ -46,6 +46,9 @@ namespace Q1-CPP {
     Проекция форм объявлений (верхний уровень DSL) → C++.
     1: `struct S` в DSL проецируется в C++ как `struct S { ... };` (plain data type).
     2: `type A as B` проецируется как `using A = B;`.
+    3: `type A ~ Expr` проецируется как `using A = decltype(<Expr>);`.
+      1: Смысл: “тип A равен типу выражения/члена Expr” (аналог C++ `decltype`).
+      2: Это синтаксический сахар для `type A as ~Expr`.
     3: `table X` проецируется как `struct X : Entity<X>, Require<...> { ... };`.
     4: `entity X` проецируется как `struct X : Entity<X>, Require<...> { ... };`.
     5: `attribute Q of Parent` проецируется как `struct Q : Attribute<Q, Parent>, Require<Parent, ...> { ... };`.
@@ -59,11 +62,24 @@ namespace Q1-CPP {
     3: Пустой `quantum` проецируется как `struct Quantum {};`.
   }
 
+  global_projection: @Rule {
+    Проекция “собственных данных поля” (DSL блок `global`) → C++.
+    1: Блок `global` внутри `entity/attribute/component/resource` проецируется как вложенный `struct Global { ... };` внутри аспектного типа.
+    2: Имена полей из `global` сохраняются.
+    3: Пустой `global` проецируется как `struct Global {};`.
+    4: Семантика хранения: `Global` принадлежит не отдельной частице, а полю (`Field<Meta>`), т.е. существует один раз на аспект в рамках `World`.
+    5: В реализации iQSM `FieldObject<Meta>` хранит `global` как `Facet<Meta>::Global` (handle, structural sharing).
+      1: Если `Meta::Global` не объявлен, `Facet<Meta>::GlobalData` считается пустой структурой.
+  }
+
   type_projection: @Rule {
     Проекция типовых конструкций DSL → C++ в контексте `Quantum`.
     1: Базовые DSL-типы (например, `string`, `integer`, `Id`) берутся из `iqsm::dsl_gateway`.
     2: `vector<T>` проецируется как `std::vector<T>`.
     3: `enum E : a, b, c` проецируется как `enum class E { a, b, c };`.
+    4: Типовые алиасы через type-of (`~Expr`) проецируются как `decltype(<Expr>)`.
+      1: Для `~T::field` используем `decltype(T::field)` (как в `elementary.q1.h`).
+      2: Для `~T.field` (например `vec4.w`) используем `decltype(T{}.field)` чтобы получить тип члена, не требуя объекта из данных модели.
   }
 
   id_projection: @Rule {

@@ -10,8 +10,8 @@ namespace tests {
 
         // Scenario 1: Electron is confined to Charge (attribute of Charge)
         {
-            ops::Transaction transaction(ops::world::create(ops::schema::assemble<Electron>()));
-            const auto spark_ok = ops::particle::create<Spark>(transaction)({vec3{0, 0, 0}, eVt{1}});
+            ops::Transaction transaction = ops::Transaction::integrator(ops::world::create(ops::schema::assemble<Electron>()));
+            const auto spark_ok = ops::particle::create<Spark>(transaction)({vec4{0, 0, 0, 0}, eVt{1}});
             ops::particle::create<Charge>(transaction, spark_ok)({integer{-1}});
 
             const auto electron_ok = ops::particle::create<Electron>(transaction, spark_ok)({});
@@ -31,7 +31,7 @@ namespace tests {
 
         // Scenario 2: Capture.atom anchors to Atom
         {
-            ops::Transaction transaction(ops::world::create(ops::schema::assemble<Capture>()));
+            ops::Transaction transaction = ops::Transaction::integrator(ops::world::create(ops::schema::assemble<Capture>()));
             const auto atom_ok = ops::particle::create<Atom>(transaction)({{}, {}, "H"});
             const auto capture_ok = ops::particle::create<Capture>(transaction)({atom_ok, Electron::Id::generate_random(), "1s1", eVt{-13.6f}});
             const auto capture_bad = ops::particle::create<Capture>(transaction)({Atom::Id::generate_random(), Electron::Id::generate_random(), "1s1", eVt{-13.6f}});
@@ -49,8 +49,8 @@ namespace tests {
 
         // Scenario 3: Atom.core anchors to Nucleon (any)
         {
-            ops::Transaction transaction(ops::world::create(ops::schema::assemble<Atom>()));
-            const auto spark_ok = ops::particle::create<Spark>(transaction)({vec3{0, 0, 0}, eVt{1}});
+            ops::Transaction transaction = ops::Transaction::integrator(ops::world::create(ops::schema::assemble<Atom>()));
+            const auto spark_ok = ops::particle::create<Spark>(transaction)({vec4{0, 0, 0, 0}, eVt{1}});
             ops::particle::create<Strong>(transaction, spark_ok)({integer{+1}});
             ops::particle::create<Nucleon>(transaction, spark_ok)({"P"});
 
@@ -71,7 +71,7 @@ namespace tests {
 
         // Scenario 4: Binding.bound anchors to Atom (all)
         {
-            ops::Transaction transaction(ops::world::create(ops::schema::assemble<Binding>()));
+            ops::Transaction transaction = ops::Transaction::integrator(ops::world::create(ops::schema::assemble<Binding>()));
             const auto atom_ok = ops::particle::create<Atom>(transaction)({{}, {}, "H"});
             const auto bind_ok = ops::particle::create<Binding>(transaction)({std::vector<Atom::Id>{atom_ok}});
             const auto bind_bad = ops::particle::create<Binding>(transaction)({std::vector<Atom::Id>{atom_ok, Atom::Id::generate_random()}});

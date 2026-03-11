@@ -11,13 +11,13 @@ namespace tests {
         // Seed a world with a hadron first, then start a "clean" transaction
         // on top of that world. This keeps `transaction.summary` empty at the
         // start of the scenario, so we can test "const access produces no delta".
-        ops::Transaction seeding_transaction(ops::world::create(ops::schema::assemble<Nucleon>()));
-        const auto spark = ops::particle::create<Spark>(seeding_transaction)({vec3{0, 0, 0}, eVt{1}});
+        ops::Transaction seeding_transaction = ops::Transaction::integrator(ops::world::create(ops::schema::assemble<Nucleon>()));
+        const auto spark = ops::particle::create<Spark>(seeding_transaction)({vec4{0, 0, 0, 0}, eVt{1}});
         ops::particle::create<Strong>(seeding_transaction, spark)({integer{+1}});
         const auto nucleon = ops::particle::create<Nucleon>(seeding_transaction, spark)({"A"});
 
-        const World seeded_world = seeding_transaction.current;
-        ops::Transaction transaction{World{seeded_world}};
+        World seeded_world = seeding_transaction.current;
+        auto transaction = ops::Transaction::integrator(std::move(seeded_world));
 
         EXPECT_TRUE(transaction.summary->empty());
 

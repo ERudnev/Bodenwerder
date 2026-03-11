@@ -34,6 +34,9 @@ namespace iqsm::delta {
         using Id = typename iqsm::Facet<Meta>::Id;
         using Item = typename iqsm::Facet<Meta>::Item;
 
+        using GlobalData = typename iqsm::Facet<Meta>::GlobalData;
+        using Global = typename iqsm::Facet<Meta>::Global;
+
         struct Operation {
             std::optional<Item> add;
             std::optional<std::pair<Item, Item>> change; // {before, after}
@@ -41,6 +44,7 @@ namespace iqsm::delta {
         };
 
         base::ImmutableUnorderedMap<Id, Operation> ops;
+        std::optional<std::pair<Global, Global>> global_change; // {before, after}
         iqsm::FieldAbstract::Ref integrate(iqsm::FieldAbstract::Ref) const override;
         cref<FieldDiffAbstract> merge(cref<FieldDiffAbstract>) const override;
     private:
@@ -66,7 +70,7 @@ namespace iqsm::delta {
 
 template<iqsm::meta::Aspect Meta>
 iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbstract::Ref current) const {
-    if (ops.empty()) { return current; }
+    if (ops.empty() && not global_change.has_value()) { return current; }
 
     // TODO(iqsm): These casts are type-integrity checks (not null-checks). When cref/ref becomes a non-null pointer,
     // decide on the standard cast API here (e.g. `cast<T>()` throws, `try_cast<T>()` returns optional).
@@ -127,6 +131,17 @@ iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbst
 
     auto out = base::make_shared<iqsm::FieldObject<Meta>>();
     out->container = container;
+    out->global = typed->global;
+
+    if (global_change.has_value()) {
+        const auto& [before, after] = *global_change;
+        if (typed->global != before) {
+            throw std::runtime_error(std::format(
+                "delta::FieldDiff<{}>::integrate(): global before mismatch",
+                Facet<Meta>::typeName));
+        }
+        out->global = after;
+    }
     return iqsm::freeze(out);
 }
 
@@ -151,6 +166,21 @@ iqsm::cref<iqsm::delta::FieldDiffAbstract> iqsm::delta::FieldDiff<Meta>::merge(i
     }
 
     out->ops = out_ops;
+
+    if (global_change.has_value() && rhs->global_change.has_value()) {
+        const auto& [lhs_before, lhs_after] = *global_change;
+        const auto& [rhs_before, rhs_after] = *rhs->global_change;
+        if (lhs_after != rhs_before) {
+            throw std::runtime_error(std::format(
+                "delta::FieldDiff<{}>::merge(): global before mismatch",
+                Facet<Meta>::typeName));
+        }
+        out->global_change = std::pair<Global, Global>{lhs_before, rhs_after};
+    } else if (rhs->global_change.has_value()) {
+        out->global_change = rhs->global_change;
+    } else if (global_change.has_value()) {
+        out->global_change = global_change;
+    }
 
     return iqsm::freeze(out);
 }

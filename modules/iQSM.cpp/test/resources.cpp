@@ -67,8 +67,7 @@ namespace tests {
         using namespace iqsm;
         using namespace Q1CORE::Example::Varph;
 
-        const World world = ops::world::create(ops::schema::assemble<Modecule>());
-        ops::Transaction transaction{World{world}};
+        auto transaction = ops::Transaction::integrator(ops::world::create(ops::schema::assemble<Modecule>()));
 
         resources::LayerData<TextDescription, handlers::TextDescription> layer;
 
@@ -78,9 +77,9 @@ namespace tests {
         layer.sync(transaction.current);
         logger::message("resources (scalar): {}", layer.report());
 
-        const auto proton_h = ops::particle::create<Spark>(transaction)({vec3{0, 0, 0}, eVt{1}});
-        const auto proton_he1 = ops::particle::create<Spark>(transaction)({vec3{1, 0, 0}, eVt{1}});
-        const auto proton_he2 = ops::particle::create<Spark>(transaction)({vec3{2, 0, 0}, eVt{1}});
+        const auto proton_h = ops::particle::create<Spark>(transaction)({vec4{0, 0, 0, 0}, eVt{1}});
+        const auto proton_he1 = ops::particle::create<Spark>(transaction)({vec4{1, 0, 0, 0}, eVt{1}});
+        const auto proton_he2 = ops::particle::create<Spark>(transaction)({vec4{2, 0, 0, 0}, eVt{1}});
 
         const auto atom_h = ops::particle::create<Atom>(transaction)({std::vector<Spark::Id>{proton_h}, {}, "H"});
         const auto atom_he = ops::particle::create<Atom>(transaction)({std::vector<Spark::Id>{proton_he1, proton_he2}, {}, "He"});
@@ -96,8 +95,7 @@ namespace tests {
         using namespace iqsm;
         using namespace Q1CORE::Example::Varph;
 
-        const World world = ops::world::create(ops::schema::assemble<Modecule>());
-        ops::Transaction transaction{World{world}};
+        auto transaction = ops::Transaction::integrator(ops::world::create(ops::schema::assemble<Modecule>()));
 
         const auto hydrogen = ops::resource::declare<TextDescription>(transaction)({{"Hydrogen.txt"}, logger::now()});
         const auto helium = ops::resource::declare<TextDescription>(transaction)({{"Helium.txt"}, logger::now()});
@@ -117,8 +115,7 @@ namespace tests {
         using namespace Q1CORE::Example::Varph;
         using namespace Test;
 
-        const World world = ops::world::create(ops::schema::assemble<Modecule, ColorRamp>());
-        ops::Transaction transaction{World{world}};
+        auto transaction = ops::Transaction::integrator(ops::world::create(ops::schema::assemble<Modecule, ColorRamp>()));
 
         const resources::Manager manager = base::make_shared<resources::ManagerData>();
         manager->register_layer<TextDescription>();
@@ -129,9 +126,10 @@ namespace tests {
         const auto green = ops::resource::declare<ColorRamp>(transaction)({{"GreenRamp", 8, glm::vec3{0, 0, 0}, glm::vec3{0, 1, 0}}});
         const auto blue = ops::resource::declare<ColorRamp>(transaction)({{"BlueRamp", 8, glm::vec3{0, 0, 0}, glm::vec3{0, 0, 1}}});
 
+        transaction.validate();
         manager->sync(transaction.current);
 
-        logger::message("resources (add custom layer): schema={}", utilities::type_names_multiline(*world->schema));
+        logger::message("resources (add custom layer): schema={}", utilities::type_names_multiline(*transaction.current->schema));
         logger::message("resources (add custom layer): hydrogen={}", hydrogen);
         logger::message("resources (add custom layer): ramps: red={}, green={}, blue={}", red, green, blue);
         logger::message("resources (add custom layer): {}", manager->report());

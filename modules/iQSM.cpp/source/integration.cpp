@@ -90,7 +90,7 @@ namespace iqsm::ops {
             const auto affected = expand_required_by(world, touched);
             const auto order = topo_order_dependencies_first(world, affected);
 
-            iqsm::ops::Transaction tx{iqsm::World{world}};
+            iqsm::ops::Transaction tx = iqsm::ops::Transaction::integrator(iqsm::World{world});
             for (const auto& t : order) {
                 const auto& entry = tx.current->schema->aspects.at(t);
                 for (const auto fn : entry.invariants.own) {
@@ -144,7 +144,7 @@ namespace iqsm::ops {
         for (const auto& kv : world->schema->aspects) all.insert(kv.first);
         const auto order = topo_order_dependencies_first(world, all);
 
-        iqsm::ops::Transaction tx{iqsm::World{world}};
+        iqsm::ops::Transaction tx = iqsm::ops::Transaction::integrator(iqsm::World{world});
         for (const auto& t : order) {
             const auto& entry = tx.current->schema->aspects.at(t);
             for (const auto fn : entry.invariants.own) {

@@ -3,16 +3,24 @@ namespace Q1CORE
     namespace Varph
 
       type eVt as float
+      type distance as float
+
+      namespace settings
+        strong_tolerance: distance = 0.01
 
       // base particle (one Entity) of Model
       entity Spark
+        type minkpt as vec4
+        type time ~ vec4.w
         quantum
-          position: vec3
+          position: minkpt
           locality: eVt // internal energy ~ particle localisation measure
+        global
+          clock: time
 
       attribute Inertia of Spark
         quantum
-          prev_pos: vec3
+          prev_pos: vec4
           mass: eVt
 
       attribute Charge of Spark
@@ -39,14 +47,15 @@ namespace Q1CORE
 
       attribute Nucleon of Strong
         quantum
-          legend: string @cache
-          
+          legend: string @cache          
 
       entity Atom
         quantum
           core: vector<Nucleon::Id> @anchor(any)
           captured: vector<Electron::Id>
           legend: string @cache
+        readers
+          tension(Id)->distance
 
       component Chemical of Atom
         quantum

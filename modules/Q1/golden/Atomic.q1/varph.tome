@@ -1,0 +1,132 @@
+// Тома модели Varph (набросок спецификации).
+// Область: смысл Q1CORE::Example::Varph DSL-модели в терминах эталонной проекции.
+//
+// NOTE:
+// - Авторитетен Q1 DSL; C++ является механической проекцией.
+// - Эта тома фиксирует намерение (intent), а не детали реализации.
+
+#using namespace FAL(file: "core/FAL.tome")
+#using namespace KQM(file: "core/KQM.tome")
+#using namespace Q1(file: "modules/Q1/methodology.tome")
+
+namespace Varph {
+
+  overview: @Statement(~0.85) {
+    Core:
+      Varph — маленький "атомный игрушечный мир", собранный из аспектов:
+      частиц (`entity`), их свойств (`attribute`), производных присоединений (`component`)
+      и внешних записей (`resource`).
+
+      Модель намеренно использует упрощённые единицы (безразмерная `distance`)
+      и упрощённую физику (дискретный isospin2, эвристическая кластеризация).
+    Reason:
+      Нам нужна маленькая, но уже нетривиальная модель, на которой можно эволюционировать "алфавит" инвариантов,
+      кэш-апдейтов и reader-операций без преждевременной физической строгости.
+  }
+
+  MinkowskySpace: @Definition {
+    Clause:
+      MinkowskySpace — пространство‑время, в котором положения частиц трактуются как события.
+      Четвёртая компонента координаты — время, а не просто ещё одна пространственная ось.
+      Интуитивный образ: световой конус, причинность, сферический фронт волны.
+    Notation:
+      mispt a = {x,y,z,t}
+    Examples:
+      См. `modules/Q1/golden/Atomic.q1/varph.q1.types`.
+  }
+
+  Spark: @Definition {
+    Clause:
+      Spark — базовая частица модели Varph.
+      Spark.position трактуется как точка в пространстве‑времени @MinkowskySpace.
+      Эволюция Spark.position во времени является обязанностью @Inertia.
+    Notation:
+      q1.types: Varph::Spark
+    Examples:
+      См. `modules/Q1/golden/Atomic.q1/varph.q1.types`.
+  }
+
+  Inertia: @Definition {
+    Clause:
+      Inertia — аспект, задающий “динамику” Spark: он интегрирует (обновляет) Spark.position как 4D координату события.
+      В частности, именно Inertia обновляет временную компоненту Spark.position.t.
+
+      Inertia.mass — мера инерции по трём пространственным осям (масса покоя в терминах этой игрушечной модели).
+    Notation:
+      q1.types: Varph::Inertia
+    Examples:
+      См. `modules/Q1/golden/Atomic.q1/varph.q1.types`.
+  }
+
+  Photon: @Definition {
+    Clause:
+      Photon — смысловой объект модели: Spark без @Inertia.
+      У Photon нет кванта инерции и нет массы покоя; обновлять Spark.position.t банально некому (Δt == 0).
+      Поэтому Photon остаётся “в прошлом” относительно Spark, которые несёт вперёд @Inertia.
+
+      Взаимодействие с Photon вычисляется через световые конусы:
+      сферический фронт волны соответствует сечению светового конуса плоскостью фиксированного времени.
+    Notation:
+      Photon spark: Spark, where Inertia is absent
+    Examples:
+      Photon пока не является аспектом Q1 DSL и не проецируется в C++.
+  }
+
+  ViewAspect: @Definition {
+    Clause:
+      View-аспект — это аспект, у которого:
+      - существование выводится из других аспектов, и/или
+      - квант (частично) выводится из других аспектов через вычислимые/кэшируемые поля.
+
+      View-аспект не вводит независимых степеней свободы: он материализует "проекцию" чужого состояния.
+    Notation:
+      <Aspect>: ...  // аспект с производным существованием и/или производными полями
+    Examples:
+      Electron (view на Charge), Nucleon (view на Strong)
+  }
+
+  CachedField: @Definition {
+    Clause:
+      Cached field — поле кванта, помеченное как вычислимое (`@cache`) и поддерживаемое логикой модели.
+      Такие поля обновляются через инварианты кэш-апдейта и не должны считаться авторитетным источником данных.
+    Notation:
+      <field>: <type> @cache
+    Examples:
+      legend: string @cache
+  }
+
+  Electron: @Definition {
+    Clause:
+      Electron — @ViewAspect над Charge, введённый как проекция электрического заряда в терминах "частицы-носителя",
+      без введения собственного кванта.
+    Notation:
+      q1.types: Varph::Electron
+    Examples:
+      См. `modules/Q1/golden/Atomic.q1/varph.q1.types`.
+  }
+
+  Nucleon: @Definition {
+    Clause:
+      Nucleon — @ViewAspect над Strong, материализующий "нуклонность" (протон/нейтрон-подобное состояние).
+      Это обобщение введено, чтобы строить @Atom из однотипных элементов ядра, не размножая доменную логику на “протон/нейтрон”.
+    Notation:
+      q1.types: Varph::Nucleon
+    Examples:
+      См. `modules/Q1/golden/Atomic.q1/varph.q1.types`.
+  }
+
+  Atom: @Definition {
+    Clause:
+      Atom имеет собственное независимое пространство идентификаторов (настоящая identity сущности).
+
+      Atom группирует близкие нуклоны в устойчивую сущность.
+      Состав (`core`) не фиксирован: он может меняться при апдейтах.
+      Atom — это “вещь”, которая нужна модели как объект более высокого уровня, чем отдельный @Nucleon:
+      у неё есть собственная identity и динамическое ядро.
+    Notation:
+      q1.types: Varph::Atom
+    Examples:
+      См. `modules/Q1/golden/Atomic.q1/varph.q1.types`.
+  }
+}
+

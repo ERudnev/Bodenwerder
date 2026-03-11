@@ -7,7 +7,7 @@ namespace Q1CORE
       struct Struct
         field1: Basic
         field2: Alias
-      type AliasByField as ~Struct::field1 // AliasByField == type of(Struct::field1) == Basic == integer
+      type AliasByField ~ Struct::field1 // AliasByField == type of(Struct::field1) == Basic == integer
       struct HasLocalType
         type LocalType as integer
         field: string          

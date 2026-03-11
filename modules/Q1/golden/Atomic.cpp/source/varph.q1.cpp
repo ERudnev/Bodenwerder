@@ -1,6 +1,9 @@
 
 #include <Atomic/varph.q1.h>
 #include <cstdlib>
+#include <unordered_map>
+#include <unordered_set>
+#include <glm/geometric.hpp>
 #include <iQSM/operations/cache.h>
 #include <iQSM/operations/particle.h>
 
@@ -95,6 +98,7 @@ namespace Q1CORE::Example::Varph {
 // Atom:
 namespace Q1CORE::Example::Varph {
     namespace Atom_impl {
+
         auto symbol_of(integer z) -> string {
             if (z == 1) return "H";
             if (z == 2) return "He";
@@ -110,6 +114,86 @@ namespace Q1CORE::Example::Varph {
             return z;
         }
 
+        auto existence(World world) -> Delta {
+            const auto nucleons = world->field<Nucleon>();
+            if (nucleons->container.empty()) return ::iqsm::delta::empty();
+
+            const auto atoms = world->field<Atom>();
+
+            std::unordered_set<Nucleon::Id> assigned;
+            assigned.reserve(nucleons->container.size());
+
+            for (const auto& kv : atoms->container) {
+                const auto& atom_item = kv.second;
+                for (const auto& nid : atom_item->core) {
+                    if (nucleons->container.contains(nid)) assigned.insert(nid);
+                }
+            }
+
+            std::vector<Nucleon::Id> homeless;
+            homeless.reserve(nucleons->container.size());
+            for (const auto& kv : nucleons->container) {
+                const auto& nid = kv.first;
+                if (not assigned.contains(nid)) homeless.push_back(nid);
+            }
+            if (homeless.empty()) return ::iqsm::delta::empty();
+
+            struct Node {
+                Spark::minkpt pos;
+                float reach;
+            };
+
+            std::unordered_map<Nucleon::Id, Node> node;
+            node.reserve(homeless.size());
+            for (const auto& nid : homeless) {
+                const auto& spark = iqsm::ops::particle::get<Spark>(world, nid);
+                node.emplace(nid, Node{spark.position, spark.locality});
+            }
+
+            const auto linked = [&](Nucleon::Id a, Nucleon::Id b) -> bool {
+                const auto& na = node.at(a);
+                const auto& nb = node.at(b);
+                const auto d = (vec3(na.pos) - vec3(nb.pos)); // ignore time component
+                const float dist2 = glm::dot(d, d);
+                const float reach = 0.5f * (na.reach + nb.reach);
+                return dist2 <= (reach * reach);
+            };
+
+            constexpr std::size_t min_core = 2;
+
+            std::unordered_set<Nucleon::Id> visited;
+            visited.reserve(homeless.size());
+
+            auto tx = iqsm::ops::Transaction::integrator(world);
+
+            for (const auto& start : homeless) {
+                if (not visited.insert(start).second) continue;
+
+                std::vector<Nucleon::Id> group;
+                group.push_back(start);
+
+                for (std::size_t i = 0; i < group.size(); ++i) {
+                    const auto cur = group[i];
+                    for (const auto& other : homeless) {
+                        if (visited.contains(other)) continue;
+                        if (not linked(cur, other)) continue;
+                        visited.insert(other);
+                        group.push_back(other);
+                    }
+                }
+
+                if (group.size() < min_core) continue;
+
+                Atom::Quantum q{};
+                q.core = std::move(group);
+                q.legend = symbol_of(z_of(world, q.core));
+
+                iqsm::ops::particle::create<Atom>(tx)(std::move(q));
+            }
+
+            return tx.summary;
+        }
+
         auto update_cache(World world, Atom::Id id, const Atom::Quantum& original) -> optional<Atom::Quantum> {
             auto updated = original;
             updated.legend = symbol_of(z_of(world, original.core));
@@ -118,7 +202,23 @@ namespace Q1CORE::Example::Varph {
         }
     }
 
+    auto Atom::Operations::tension(World world, Atom::Id atom) -> distance {
+        const auto q = iqsm::ops::particle::get<Atom>(world, atom);
+
+        distance out = 0.0f;
+        for (std::size_t i = 0; i < q.core.size(); ++i) {
+            const auto& pi = iqsm::ops::particle::get<Spark>(world, q.core[i]).position;
+            for (std::size_t j = i + 1; j < q.core.size(); ++j) {
+                const auto& pj = iqsm::ops::particle::get<Spark>(world, q.core[j]).position;
+                const auto d = (pi - pj);
+                out += glm::dot(d, d);
+            }
+        }
+        return out;
+    }
+
     const Invariants Atom::invariants{{{
+        &Atom_impl::existence,
         Invariants::anchor_any<Nucleon, Atom, &Quantum::core>,
         &iqsm::ops::cache::update<Atom, &Atom_impl::update_cache>,
     }}};
@@ -136,7 +236,7 @@ namespace Q1CORE::Example::Varph {
             return total_charge;
         }
 
-        Chemical::Quantum construct(World world, const Atom::Quantum& atom) {
+        auto construct(World world, const Atom::Quantum& atom)->Chemical::Quantum {
             return Chemical::Quantum{
                 .ionisation = ionisation_of(world, atom),
                 .valency = 0,

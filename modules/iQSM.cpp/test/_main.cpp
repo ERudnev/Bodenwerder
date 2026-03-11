@@ -11,6 +11,8 @@
     X(caching_components) \
     X(validation_cache) \
     X(validation_existence) \
+    X(transaction_strategy) \
+    X(globals) \
     X(schema) \
     X(resources) \
     // end
