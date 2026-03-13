@@ -17,11 +17,11 @@ namespace iqsm::ops::global {
     }
 
     template<meta::Aspect Meta>
-    auto modify(Transaction& transaction);
+    auto modify(Context context);
 }
 
 namespace iqsm::detail::ops::global {
-    using ::iqsm::ops::Transaction;
+    using ::iqsm::ops::Context;
 
     template<meta::Aspect Meta>
     class modifier {
@@ -29,9 +29,9 @@ namespace iqsm::detail::ops::global {
         using GlobalData = typename Facet<Meta>::GlobalData;
         using Global = typename Facet<Meta>::Global;
 
-        explicit modifier(Transaction& transaction)
-            : transaction(transaction)
-            , original(required_item(transaction.current))
+        explicit modifier(Context context)
+            : context(context)
+            , original(required_item(context.world))
             , value(*original)
         {}
 
@@ -39,7 +39,7 @@ namespace iqsm::detail::ops::global {
         modifier(const modifier&) = delete;
         modifier& operator=(const modifier&) = delete;
         modifier(modifier&& other) noexcept
-            : transaction(other.transaction)
+            : context(other.context)
             , original(other.original)
             , value(std::move(other.value))
             , dirty(other.dirty)
@@ -74,10 +74,10 @@ namespace iqsm::detail::ops::global {
                 Facet<Meta>::typeId,
                 freeze(fd));
 
-            transaction.absorb(freeze(wd));
+            context.absorb(freeze(wd));
         }
 
-        Transaction& transaction;
+        Context context;
         Global original;
         GlobalData value;
         bool dirty = false;
@@ -87,8 +87,8 @@ namespace iqsm::detail::ops::global {
 
 namespace iqsm::ops::global {
     template<meta::Aspect Meta>
-    auto modify(Transaction& transaction) {
-        return detail::ops::global::modifier<Meta>(transaction);
+    auto modify(Context context) {
+        return detail::ops::global::modifier<Meta>(context);
     }
 }
 

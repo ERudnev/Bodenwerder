@@ -12,6 +12,7 @@
     X(validation_cache) \
     X(validation_existence) \
     X(transaction_strategy) \
+    X(transaction2) \
     X(globals) \
     X(schema) \
     X(resources) \
@@ -22,5 +23,8 @@ BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)
 int main() {
     auto all_tests = BASETEST_MAKE_LIST_TESTS(IQSM_TESTS);
 
-    return base::testing::run_tests(all_tests);
+    // return base::testing::run_tests(all_tests);
+    return base::testing::run_tests(BASETEST_LIST(
+        BASETEST_NAMED("transaction2", &tests::transaction2)
+    ));
 }

@@ -40,7 +40,7 @@ namespace tests {
             g->tick = integer{2};
         }
 
-        world = tx.current;
+        world = tx.world;
         EXPECT_EQ(ops::global::get<FooWithGlobal>(world)->tick, integer{2});
     }
 }

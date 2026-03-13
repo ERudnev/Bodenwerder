@@ -12,16 +12,16 @@
 
 namespace iqsm::ops::particle {
   template<meta::Particle Meta>
-  auto modify(Transaction& transaction, typename Facet<Meta>::Id id);
+  auto modify(Context context, typename Facet<Meta>::Id id);
 
   template<meta::Entity Meta>
-  auto create(Transaction& transaction);
+  auto create(Context context);
 
   template<meta::Quark Meta>
-  auto create(Transaction& transaction, typename Facet<Meta>::Id id);
+  auto create(Context context, typename Facet<Meta>::Id id);
 
   template<meta::Particle Meta>
-  void remove(Transaction& transaction, typename Facet<Meta>::Id id);
+  void remove(Context context, typename Facet<Meta>::Id id);
 
   template<meta::Particle Meta>
   auto get(World world, typename Facet<Meta>::Id id) -> const typename Facet<Meta>::Quantum&;
@@ -35,7 +35,7 @@ namespace iqsm::ops::particle {
 } // namespace iqsm::ops::particle
 
 namespace iqsm::detail::ops::particle {
-    using ::iqsm::ops::Transaction;
+    using ::iqsm::ops::Context;
 
     template<meta::Particle Meta>
     class modifier {
@@ -44,17 +44,17 @@ namespace iqsm::detail::ops::particle {
       using Quantum = typename Facet<Meta>::Quantum;
       using Item = typename Facet<Meta>::Item;
 
-      modifier(Transaction& transaction, Id id)
-          : transaction(transaction)
+      modifier(Context context, Id id)
+          : context(context)
           , id(id)
-          , original(required_item(transaction.current, id))
+          , original(required_item(context.world, id))
           , value(*original)
           , dirty(true)
       {}
       ~modifier() { apply(); }
       modifier(const modifier&) = delete;
       modifier& operator=(const modifier&) = delete;
-      modifier(modifier&& other) noexcept : transaction(other.transaction), id(other.id), original(other.original), value(std::move(other.value)), dirty(other.dirty), applied(other.applied) { other.applied = true; }
+      modifier(modifier&& other) noexcept : context(other.context), id(other.id), original(other.original), value(std::move(other.value)), dirty(other.dirty), applied(other.applied) { other.applied = true; }
       modifier& operator=(modifier&&) = delete;
       Quantum* operator->() { dirty = true; return &value; }
       Quantum& operator*() { dirty = true; return value; }
@@ -63,7 +63,7 @@ namespace iqsm::detail::ops::particle {
       static Item required_item(World world, const Id& id);
       void apply();
 
-      Transaction& transaction;
+      Context context;
       Id id;
       Item original;
       Quantum value;
@@ -77,11 +77,11 @@ namespace iqsm::detail::ops::particle {
       using Id = typename Facet<Meta>::Id;
       using Quantum = typename Facet<Meta>::Quantum;
 
-      explicit creator_entity(Transaction& transaction) : transaction(transaction) {}
+      explicit creator_entity(Context context) : context(context) {}
       Id operator()(Quantum value);
 
     private:
-      Transaction& transaction;
+      Context context;
     };
 
     template<meta::Quark Meta>
@@ -90,11 +90,11 @@ namespace iqsm::detail::ops::particle {
       using Id = typename Facet<Meta>::Id;
       using Quantum = typename Facet<Meta>::Quantum;
 
-      creator_quark(Transaction& transaction, Id id) : transaction(transaction), id(id) {}
+      creator_quark(Context context, Id id) : context(context), id(id) {}
       Id operator()(Quantum value);
 
     private:
-      Transaction& transaction;
+      Context context;
       Id id;
     };
 } // namespace iqsm::detail::ops::particle
@@ -123,16 +123,16 @@ namespace iqsm::ops::particle {
 
 namespace iqsm::ops::particle {
   template<meta::Particle Meta>
-  auto modify(Transaction& transaction, typename Facet<Meta>::Id id) { return detail::ops::particle::modifier<Meta>(transaction, id); }
+  auto modify(Context context, typename Facet<Meta>::Id id) { return detail::ops::particle::modifier<Meta>(context, id); }
 
   template<meta::Entity Meta>
-  auto create(Transaction& transaction) { return detail::ops::particle::creator_entity<Meta>(transaction); }
+  auto create(Context context) { return detail::ops::particle::creator_entity<Meta>(context); }
 
   template<meta::Quark Meta>
-  auto create(Transaction& transaction, typename Facet<Meta>::Id id) { return detail::ops::particle::creator_quark<Meta>(transaction, id); }
+  auto create(Context context, typename Facet<Meta>::Id id) { return detail::ops::particle::creator_quark<Meta>(context, id); }
 
   template<meta::Particle Meta>
-  void remove(Transaction& transaction, typename Facet<Meta>::Id id) {
+  void remove(Context context, typename Facet<Meta>::Id id) {
     auto fd = base::make_shared<delta::FieldDiff<Meta>>();
     auto op = typename delta::FieldDiff<Meta>::Operation{};
     op.remove = true;
@@ -143,7 +143,7 @@ namespace iqsm::ops::particle {
         Facet<Meta>::typeId,
         freeze(fd));
 
-    transaction.absorb(freeze(wd));
+    context.absorb(freeze(wd));
   }
 
 } // namespace iqsm::ops::particle
@@ -176,7 +176,7 @@ namespace iqsm::detail::ops::particle {
         Facet<Meta>::typeId,
         freeze(fd));
 
-    transaction.absorb(freeze(wd));
+    context.absorb(freeze(wd));
   }
 
   template<meta::Entity Meta>
@@ -193,7 +193,7 @@ namespace iqsm::detail::ops::particle {
         Facet<Meta>::typeId,
         freeze(fd));
 
-    transaction.absorb(freeze(wd));
+    context.absorb(freeze(wd));
     return id;
   }
 
@@ -209,7 +209,7 @@ namespace iqsm::detail::ops::particle {
         Facet<Meta>::typeId,
         freeze(fd));
 
-    transaction.absorb(freeze(wd));
+    context.absorb(freeze(wd));
     return id;
   }
 } // namespace iqsm::detail::ops::particle

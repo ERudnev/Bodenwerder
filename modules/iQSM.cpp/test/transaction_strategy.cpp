@@ -77,7 +77,7 @@ namespace tests {
         World world = ops::world::create(ops::schema::assemble<Foo, Bar>());
 
         {
-            ops::Transaction tx{World{world}, ops::Transaction::Policy::accumulator};
+            auto tx = ops::Transaction::accumulator(World{world});
 
             const auto addFoo = [&](integer value) -> Foo::Id {
                 const auto id = Foo::Id::generate_random();
@@ -102,11 +102,9 @@ namespace tests {
             const auto f3 = addFoo(integer{10});
             const auto f4 = addFoo(integer{15});
 
-            tx.flush();
-            world = tx.current;
-
-            world = ops::integrate_raw(world, Foo::invariants.apply(world));
-            world = ops::integrate_raw(world, Bar::invariants.apply(world));
+            world = ops::validate(ops::integrate(world, tx.summary()));
+            world = ops::validate(ops::integrate(world, Foo::invariants.apply(world)));
+            world = ops::validate(ops::integrate(world, Bar::invariants.apply(world)));
 
             EXPECT_EQ(world->field<Bar>()->container.size(), size_t{5});
             EXPECT_EQ(ops::particle::get<Foo>(world, f0).value, integer{0});

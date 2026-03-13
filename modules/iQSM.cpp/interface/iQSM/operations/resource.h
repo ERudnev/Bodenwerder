@@ -10,7 +10,7 @@
 
 namespace iqsm::ops::resource {
     template<meta::Resource Meta>
-    auto declare(Transaction& transaction);
+    auto declare(Context context);
 
     template<meta::Resource Meta>
     auto get(World world, typename Facet<Meta>::Id id) -> const typename Facet<Meta>::Quantum&;
@@ -20,7 +20,7 @@ namespace iqsm::ops::resource {
 }
 
 namespace iqsm::detail::ops::resource {
-    using ::iqsm::ops::Transaction;
+    using ::iqsm::ops::Context;
 
     template<meta::Resource Meta>
     class declarer {
@@ -28,7 +28,7 @@ namespace iqsm::detail::ops::resource {
         using Id = typename Facet<Meta>::Id;
         using Quantum = typename Facet<Meta>::Quantum;
 
-        explicit declarer(Transaction& tx) : transaction(tx) {}
+        explicit declarer(Context context) : context(context) {}
 
         Id operator()(Quantum value) {
             const auto id = Id::generate_random();
@@ -43,19 +43,19 @@ namespace iqsm::detail::ops::resource {
                 Facet<Meta>::typeId,
                 freeze(fd));
 
-            this->transaction.absorb(freeze(wd));
+            this->context.absorb(freeze(wd));
             return id;
         }
 
     private:
-        Transaction& transaction;
+        Context context;
     };
 }
 
 namespace iqsm::ops::resource {
     template<meta::Resource Meta>
-    auto declare(Transaction& transaction) {
-        return detail::ops::resource::declarer<Meta>(transaction);
+    auto declare(Context context) {
+        return detail::ops::resource::declarer<Meta>(context);
     }
 
     template<meta::Resource Meta>

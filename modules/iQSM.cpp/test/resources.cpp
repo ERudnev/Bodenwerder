@@ -67,14 +67,16 @@ namespace tests {
         using namespace iqsm;
         using namespace Q1CORE::Example::Varph;
 
-        auto transaction = ops::Transaction::integrator(ops::world::create(ops::schema::assemble<Modecule>()));
+        World world = ops::world::create(ops::schema::assemble<Modecule>());
+        auto transaction = ops::Transaction::integrator(world);
 
         resources::LayerData<TextDescription, handlers::TextDescription> layer;
 
         const auto hydrogen = ops::resource::declare<TextDescription>(transaction)({{"Hydrogen.txt"}, logger::now()});
         const auto helium = ops::resource::declare<TextDescription>(transaction)({{"Helium.txt"}, logger::now()});
 
-        layer.sync(transaction.current);
+        world = ops::integrate(world, transaction.summary());
+        layer.sync(world);
         logger::message("resources (scalar): {}", layer.report());
 
         const auto proton_h = ops::particle::create<Spark>(transaction)({vec4{0, 0, 0, 0}, eVt{1}});
@@ -87,8 +89,9 @@ namespace tests {
         const auto mol_h = ops::particle::create<Modecule>(transaction)({std::vector<Atom::Id>{atom_h}, hydrogen});
         const auto mol_he = ops::particle::create<Modecule>(transaction)({std::vector<Atom::Id>{atom_he}, helium});
 
-        EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(transaction.current, mol_h).descrition)->c_str()), "mock:Hydrogen.txt");
-        EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(transaction.current, mol_he).descrition)->c_str()), "mock:Helium.txt");
+        world = ops::integrate(world, transaction.summary());
+        EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(world, mol_h).descrition)->c_str()), "mock:Hydrogen.txt");
+        EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(world, mol_he).descrition)->c_str()), "mock:Helium.txt");
     }
 
     void resources_manager() {
@@ -102,7 +105,7 @@ namespace tests {
 
         const resources::Manager manager = base::make_shared<resources::ManagerData>();
         manager->register_layer<TextDescription>();
-        manager->sync(transaction.current);
+        manager->sync(transaction.world);
 
         logger::message("resources (manager): {}", manager->report());
 
@@ -127,9 +130,9 @@ namespace tests {
         const auto blue = ops::resource::declare<ColorRamp>(transaction)({{"BlueRamp", 8, glm::vec3{0, 0, 0}, glm::vec3{0, 0, 1}}});
 
         transaction.validate();
-        manager->sync(transaction.current);
+        manager->sync(transaction.world);
 
-        logger::message("resources (add custom layer): schema={}", utilities::type_names_multiline(*transaction.current->schema));
+        logger::message("resources (add custom layer): schema={}", utilities::type_names_multiline(*transaction.world->schema));
         logger::message("resources (add custom layer): hydrogen={}", hydrogen);
         logger::message("resources (add custom layer): ramps: red={}, green={}, blue={}", red, green, blue);
         logger::message("resources (add custom layer): {}", manager->report());

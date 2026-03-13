@@ -90,24 +90,19 @@ namespace iqsm::ops {
             const auto affected = expand_required_by(world, touched);
             const auto order = topo_order_dependencies_first(world, affected);
 
-            iqsm::ops::Transaction tx = iqsm::ops::Transaction::integrator(iqsm::World{world});
+            auto tx = iqsm::ops::Transaction::integrator(iqsm::World{world});
             for (const auto& t : order) {
-                const auto& entry = tx.current->schema->aspects.at(t);
+                const auto& entry = tx.world->schema->aspects.at(t);
                 for (const auto fn : entry.invariants.own) {
                     if (not fn) continue;
-                    tx.absorb(fn(tx.current));
+                    tx.absorb(fn(tx.world));
                 }
             }
-            return tx.current;
+            return tx.world;
         }
     }
 
     World integrate(World world, Delta delta) {
-        // Reliable default: always validate the resulting world.
-        return validate_from_delta(integrate_raw(world, delta), delta);
-    }
-
-    World integrate_raw(World world, Delta delta) {
         if (delta->empty()) { return world; }
         if (world->schema->empty()) { return world; }
 
@@ -120,7 +115,7 @@ namespace iqsm::ops {
 
             if (not world->schema->aspects.contains(typeId)) {
                 throw std::runtime_error(std::format(
-                    "integrate_raw(): delta contains type not in schema (hash={})",
+                    "integrate(): delta contains type not in schema (hash={})",
                     typeId.hash_code()));
             }
 
@@ -144,15 +139,15 @@ namespace iqsm::ops {
         for (const auto& kv : world->schema->aspects) all.insert(kv.first);
         const auto order = topo_order_dependencies_first(world, all);
 
-        iqsm::ops::Transaction tx = iqsm::ops::Transaction::integrator(iqsm::World{world});
+        auto tx = iqsm::ops::Transaction::integrator(iqsm::World{world});
         for (const auto& t : order) {
-            const auto& entry = tx.current->schema->aspects.at(t);
+            const auto& entry = tx.world->schema->aspects.at(t);
             for (const auto fn : entry.invariants.own) {
                 if (not fn) continue;
-                tx.absorb(fn(tx.current));
+                tx.absorb(fn(tx.world));
             }
         }
-        return tx.current;
+        return tx.world;
     }
 
     Delta merge(Delta first, Delta second) {
