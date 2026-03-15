@@ -8,6 +8,7 @@ namespace iqsm::ops {
     World integrate(World, Delta);
     World validate(World);
     Delta merge(Delta first, Delta second); // first/second is order of appearance
+    Delta make_delta(World from, World to); // requires same schema handle
 }
 
 

@@ -177,6 +177,42 @@ namespace iqsm::ops {
         if (out->fields.empty()) { return ::iqsm::delta::empty(); }
         return freeze(out);
     }
+
+    Delta make_delta(World from, World to) {
+        if (from->schema != to->schema) {
+            throw std::runtime_error("make_delta(from,to): worlds must share the same schema handle");
+        }
+
+        if (from == to) { return ::iqsm::delta::empty(); }
+        if (from->schema->empty()) { return ::iqsm::delta::empty(); }
+
+        auto out = base::make_shared<iqsm::delta::Fields>();
+
+        for (const auto& aspect_entry : from->schema->aspects) {
+            const auto& type_id = aspect_entry.first;
+            const auto& entry = aspect_entry.second;
+
+            auto from_field = entry.zero;
+            if (const auto* slot = from->fields.find(type_id); slot) { from_field = *slot; }
+
+            auto to_field = entry.zero;
+            if (const auto* slot = to->fields.find(type_id); slot) { to_field = *slot; }
+
+            if (not entry.make_delta_field) {
+                throw std::runtime_error(std::format(
+                    "make_delta(from,to): schema entry has no make_delta_field thunk (type={})",
+                    entry.name));
+            }
+
+            const auto field_delta = entry.make_delta_field(from_field, to_field);
+            if (not field_delta.has_value()) continue;
+
+            out->fields = out->fields.insert(type_id, *field_delta);
+        }
+
+        if (out->fields.empty()) { return ::iqsm::delta::empty(); }
+        return freeze(out);
+    }
 }
 
 

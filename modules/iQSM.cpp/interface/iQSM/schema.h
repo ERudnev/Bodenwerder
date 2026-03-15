@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <iQSM/_forwards.h>
+#include <iQSM/delta.h>
 #include <iQSM/meta.h>
 #include <iQSM/field.h>
 #include <iQSM/internals/type_list.h>
@@ -22,11 +23,14 @@ namespace iqsm {
         };
 
         struct Entry {
+            using MakeDeltaField = std::optional<iqsm::delta::UField>(*)(FieldAbstract::Ref from, FieldAbstract::Ref to);
+
             std::string name;
             TypeSet require;
             TypeSet required_by;
             FieldAbstract::Ref zero;
             Invariants invariants;
+            MakeDeltaField make_delta_field = nullptr;
         };
 
         std::map<TypeId, Entry> aspects;
@@ -68,7 +72,8 @@ struct iqsm::SchemaObject::assemble_from<iqsm::internals::type_list<TypeList...>
             requirements_of<TypeList>(),
             TypeSet{},
             base::make_shared<const FieldObject<TypeList>>(),
-            Invariants{ .own = TypeList::invariants.list }
+            Invariants{ .own = TypeList::invariants.list },
+            &iqsm::delta::make_delta_field<TypeList>
         }), ...);
 
         out.check_closed();

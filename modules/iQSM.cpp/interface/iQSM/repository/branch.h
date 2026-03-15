@@ -10,16 +10,25 @@ namespace iqsm::repo {
     class Branch {
     public:
         //
-        Branch(World starting) : current(starting) {}
+        Branch(World starting) : head(starting), current(starting) {}
 
         // branch ops:
         void rebase(World world) {
             if (world == current) return;
             current = ops::validate(std::move(world));
+            head = current;
         }
 
         void absorb(Delta delta) {
-            rebase(ops::integrate(current, std::move(delta)));
+            current = ops::validate(ops::integrate(current, std::move(delta)));
+        }
+
+        Delta delta() const { return ops::make_delta(head, current); }
+
+        Delta push() {
+            auto out = delta();
+            head = current;
+            return out;
         }
 
         // One-step conversion into a value-type handles compatible with other iQSM parts
@@ -27,6 +36,7 @@ namespace iqsm::repo {
         operator iqsm::World() const { return current; }
 
     private:
+        World head;
         World current;
     };
 }
