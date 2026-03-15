@@ -163,7 +163,7 @@ namespace Q1CORE::Example::Varph {
             std::unordered_set<Nucleon::Id> visited;
             visited.reserve(homeless.size());
 
-            auto tx = iqsm::ops::Transaction::integrator(World{world});
+            auto tx = iqsm::repo::Sequence{World{world}};
 
             for (const auto& start : homeless) {
                 if (not visited.insert(start).second) continue;
@@ -190,7 +190,7 @@ namespace Q1CORE::Example::Varph {
                 iqsm::ops::particle::create<Atom>(tx, std::move(q));
             }
 
-            return tx.summary();
+            return tx.push();
         }
 
         auto update_cache(World world, Atom::Id id, const Atom::Quantum& original) -> optional<Atom::Quantum> {

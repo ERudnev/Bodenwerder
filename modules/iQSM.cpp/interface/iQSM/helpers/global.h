@@ -1,13 +1,14 @@
 #pragma once
 
 #include <type_traits>
+#include <stdexcept>
 #include <utility>
 
 #include <iQSM/_forwards.h>
 #include <iQSM/meta.h>
 #include <iQSM/delta.h>
 #include <iQSM/field.h>
-#include <iQSM/operations/transaction.h>
+#include <iQSM/repository/commit.h>
 
 namespace iqsm::ops::global {
     template<meta::Aspect Meta>
@@ -17,21 +18,19 @@ namespace iqsm::ops::global {
     }
 
     template<meta::Aspect Meta>
-    auto modifier(Context context);
+    auto modifier(repo::Commit commit);
 }
 
 namespace iqsm::detail::ops::global {
-    using ::iqsm::ops::Context;
-
     template<meta::Aspect Meta>
     class modifier {
     public:
         using GlobalData = typename Facet<Meta>::GlobalData;
         using Global = typename Facet<Meta>::Global;
 
-        explicit modifier(Context context)
-            : context(context)
-            , original(required_item(context.world))
+        explicit modifier(repo::Commit commit)
+            : commit(std::move(commit))
+            , original(required_item(this->commit.initial))
             , value(*original)
         {}
 
@@ -39,7 +38,7 @@ namespace iqsm::detail::ops::global {
         modifier(const modifier&) = delete;
         modifier& operator=(const modifier&) = delete;
         modifier(modifier&& other) noexcept
-            : context(other.context)
+            : commit(std::move(other.commit))
             , original(other.original)
             , value(std::move(other.value))
             , dirty(other.dirty)
@@ -63,21 +62,21 @@ namespace iqsm::detail::ops::global {
             applied = true;
             if (!dirty) return;
 
-            auto fd = base::make_shared<delta::FieldDiff<Meta>>();
-            fd->global_change = std::pair<typename delta::FieldDiff<Meta>::Global, typename delta::FieldDiff<Meta>::Global>{
+            auto field_delta = base::make_shared<delta::FieldDiff<Meta>>();
+            field_delta->global_change = std::pair<typename delta::FieldDiff<Meta>::Global, typename delta::FieldDiff<Meta>::Global>{
                 original,
                 base::make_shared<const GlobalData>(std::move(value)),
             };
 
-            auto wd = base::make_shared<delta::Fields>();
-            wd->fields = wd->fields.insert(
+            auto world_delta = base::make_shared<delta::Fields>();
+            world_delta->fields = world_delta->fields.insert(
                 Facet<Meta>::typeId,
-                freeze(fd));
+                freeze(field_delta));
 
-            context.absorb(freeze(wd));
+            commit.push(freeze(world_delta));
         }
 
-        Context context;
+        repo::Commit commit;
         Global original;
         GlobalData value;
         bool dirty = false;
@@ -87,8 +86,8 @@ namespace iqsm::detail::ops::global {
 
 namespace iqsm::ops::global {
     template<meta::Aspect Meta>
-    auto modifier(Context context) {
-        return detail::ops::global::modifier<Meta>(context);
+    auto modifier(repo::Commit commit) {
+        return detail::ops::global::modifier<Meta>(std::move(commit));
     }
 }
 

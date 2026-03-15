@@ -12,7 +12,7 @@ namespace tests {
         // - Charge carries charge for each Spark
         // - Chemical is a component of Atom (1-1 iff)
         const World world = ops::world::create(ops::schema::assemble<Chemical, Charge>());
-        auto tx = ops::Transaction::integrator(World{world});
+        auto tx = repo::Sequence{World{world}};
 
         const auto mkSpark = [&](integer charge) {
             const auto id = ops::particle::create<Spark>(tx, Spark::Quantum{vec4{0, 0, 0, 0}, eVt{0}});
@@ -42,10 +42,10 @@ namespace tests {
         });
 
         {
-            EXPECT_TRUE(not ops::particle::exists<Chemical>(tx.world, atomId));
+            EXPECT_TRUE(not ops::particle::exists<Chemical>(tx, atomId));
         }
 
-        const World next = ops::validate(ops::integrate(world, tx.summary()));
+        const World next = ops::validate(ops::integrate(world, tx.push()));
 
         EXPECT_TRUE(ops::particle::exists<Chemical>(next, atomId));
         const auto& chemical = ops::particle::get<Chemical>(next, atomId);

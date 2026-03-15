@@ -28,11 +28,11 @@ namespace tests {
         EXPECT_EQ(ops::global::get<FooWithGlobal>(world)->tick, integer{0});
 
         // Modify global via transaction (illustrates syntax and merge of consecutive global changes).
-        auto tx = ops::Transaction::integrator(std::move(world));
+        auto tx = repo::Sequence{std::move(world)};
         ops::global::modifier<FooWithGlobal>(tx)->tick = integer{1};
         ops::global::modifier<FooWithGlobal>(tx)->tick = integer{2};
 
-        world = tx.temp_result_as_valid();
+        world = ops::validate(static_cast<World>(tx));
         EXPECT_EQ(ops::global::get<FooWithGlobal>(world)->tick, integer{2});
     }
 }

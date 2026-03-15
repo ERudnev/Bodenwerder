@@ -64,22 +64,33 @@ namespace tests {
         using namespace Q1CORE::Example::Varph;
 
         World world = ops::world::create(ops::schema::assemble<Modecule>());
-        auto declaration = ops::Transaction::accumulator(world);
+        auto declaration = repo::Accumulator{world};
 
         resources::LayerData<TextDescription, handlers::TextDescription> layer;
 
         const auto hydrogen = ops::resource::declare<TextDescription>(declaration, TextDescription::Quantum{{"Hydrogen.txt"}, logger::now()});
         const auto helium = ops::resource::declare<TextDescription>(declaration, TextDescription::Quantum{{"Helium.txt"}, logger::now()});
 
-        world = ops::integrate(world, declaration.summary());
+        world = ops::integrate(world, declaration.push());
         layer.sync(world);
         logger::message("resources (scalar): {}", layer.report());
 
-        auto transaction = ops::Transaction::accumulator(world);
+        auto transaction = repo::Accumulator{world};
 
         const auto proton_h = ops::particle::create<Spark>(transaction, Spark::Quantum{vec4{0, 0, 0, 0}, eVt{1}});
+        ops::particle::create<Charge>(transaction, proton_h, Charge::Quantum{integer{+1}});
+        ops::particle::create<Strong>(transaction, proton_h, Strong::Quantum{integer{+1}});
+        ops::particle::create<Nucleon>(transaction, proton_h, Nucleon::Quantum{""});
+
         const auto proton_he1 = ops::particle::create<Spark>(transaction, Spark::Quantum{vec4{1, 0, 0, 0}, eVt{1}});
+        ops::particle::create<Charge>(transaction, proton_he1, Charge::Quantum{integer{+1}});
+        ops::particle::create<Strong>(transaction, proton_he1, Strong::Quantum{integer{+1}});
+        ops::particle::create<Nucleon>(transaction, proton_he1, Nucleon::Quantum{""});
+
         const auto proton_he2 = ops::particle::create<Spark>(transaction, Spark::Quantum{vec4{2, 0, 0, 0}, eVt{1}});
+        ops::particle::create<Charge>(transaction, proton_he2, Charge::Quantum{integer{+1}});
+        ops::particle::create<Strong>(transaction, proton_he2, Strong::Quantum{integer{+1}});
+        ops::particle::create<Nucleon>(transaction, proton_he2, Nucleon::Quantum{""});
 
         const auto atom_h = ops::particle::create<Atom>(transaction, Atom::Quantum{std::vector<Spark::Id>{proton_h}, {}, "H"});
         const auto atom_he = ops::particle::create<Atom>(transaction, Atom::Quantum{std::vector<Spark::Id>{proton_he1, proton_he2}, {}, "He"});
@@ -87,7 +98,7 @@ namespace tests {
         const auto mol_h = ops::particle::create<Modecule>(transaction, Modecule::Quantum{std::vector<Atom::Id>{atom_h}, hydrogen});
         const auto mol_he = ops::particle::create<Modecule>(transaction, Modecule::Quantum{std::vector<Atom::Id>{atom_he}, helium});
 
-        world = ops::validate(ops::integrate(world, transaction.summary()));
+        world = ops::validate(ops::integrate(world, transaction.push()));
         EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(world, mol_h).descrition)->c_str()), "mock:Hydrogen.txt");
         EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(world, mol_he).descrition)->c_str()), "mock:Helium.txt");
     }
@@ -97,14 +108,14 @@ namespace tests {
         using namespace Q1CORE::Example::Varph;
 
         auto world = ops::world::create(ops::schema::assemble<Modecule>());
-        auto transaction = ops::Transaction::accumulator(world);
+        auto transaction = repo::Accumulator{world};
 
         const auto hydrogen = ops::resource::declare<TextDescription>(transaction, TextDescription::Quantum{{"Hydrogen.txt"}, logger::now()});
         const auto helium = ops::resource::declare<TextDescription>(transaction, TextDescription::Quantum{{"Helium.txt"}, logger::now()});
 
         const resources::Manager manager = base::make_shared<resources::ManagerData>();
         manager->register_layer<TextDescription>();
-        world = ops::validate(ops::integrate(world, transaction.summary()));
+        world = ops::validate(ops::integrate(world, transaction.push()));
         manager->sync(world);
 
         logger::message("resources (manager): {}", manager->report());
@@ -118,7 +129,7 @@ namespace tests {
         using namespace Q1CORE::Example::Varph;
         using namespace Test;
 
-        auto transaction = ops::Transaction::integrator(ops::world::create(ops::schema::assemble<Modecule, ColorRamp>()));
+        auto transaction = repo::Sequence{ops::world::create(ops::schema::assemble<Modecule, ColorRamp>())};
 
         const resources::Manager manager = base::make_shared<resources::ManagerData>();
         manager->register_layer<TextDescription>();
@@ -129,7 +140,7 @@ namespace tests {
         const auto green = ops::resource::declare<ColorRamp>(transaction, ColorRamp::Quantum{{"GreenRamp", 8, glm::vec3{0, 0, 0}, glm::vec3{0, 1, 0}}});
         const auto blue = ops::resource::declare<ColorRamp>(transaction, ColorRamp::Quantum{{"BlueRamp", 8, glm::vec3{0, 0, 0}, glm::vec3{0, 0, 1}}});
 
-        const auto validated = ops::validate(transaction.world);
+        const auto validated = ops::validate(static_cast<World>(transaction));
         manager->sync(validated);
 
         logger::message("resources (add custom layer): schema={}", utilities::type_names_multiline(*validated->schema));

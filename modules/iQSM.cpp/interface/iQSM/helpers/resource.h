@@ -1,16 +1,17 @@
 #pragma once
 
+#include <format>
 #include <optional>
 #include <stdexcept>
 
 #include <iQSM/meta.h>
 #include <iQSM/_forwards.h>
 #include <iQSM/delta.h>
-#include <iQSM/operations/transaction.h>
+#include <iQSM/repository/commit.h>
 
 namespace iqsm::ops::resource {
     template<meta::Resource Meta>
-    auto declare(Context context, Quantum<Meta> value) -> Id<Meta>;
+    auto declare(repo::Commit commit, Quantum<Meta> value) -> Id<Meta>;
 
     template<meta::Resource Meta>
     auto get(World world, Id<Meta> id) -> const Quantum<Meta>&;
@@ -21,7 +22,7 @@ namespace iqsm::ops::resource {
 
 namespace iqsm::ops::resource {
     template<meta::Resource Meta>
-    auto declare(Context context, Quantum<Meta> value) -> Id<Meta> {
+    auto declare(repo::Commit commit, Quantum<Meta> value) -> Id<Meta> {
         const auto id = Id<Meta>::generate_random();
 
         auto fd = base::make_shared<delta::FieldDiff<Meta>>();
@@ -32,7 +33,7 @@ namespace iqsm::ops::resource {
         auto wd = base::make_shared<delta::Fields>();
         wd->fields = wd->fields.insert(Facet<Meta>::typeId, freeze(fd));
 
-        context.absorb(freeze(wd));
+        commit.push(freeze(wd));
         return id;
     }
 

@@ -69,66 +69,6 @@ namespace iqsm::delta {
     }
 }
 
-namespace iqsm::delta {
-    // Build a field-delta between two typed fields using pointer identity only:
-    // - Items are "equal" iff the shared_ref pointer is equal.
-    // - Any pointer change is treated as change (no structural equality).
-    template<meta::Aspect Meta>
-    inline auto make_delta_field(iqsm::FieldAbstract::Ref from_untyped, iqsm::FieldAbstract::Ref to_untyped)
-        -> std::optional<iqsm::delta::UField>
-    {
-        const auto from = base::shared_ref_cast<const iqsm::FieldObject<Meta>>(from_untyped);
-        const auto to = base::shared_ref_cast<const iqsm::FieldObject<Meta>>(to_untyped);
-
-        auto fd = base::make_shared<iqsm::delta::FieldDiff<Meta>>();
-
-        // remove / change (iterate "from")
-        for (const auto& kv : from->container) {
-            const auto& id = kv.first;
-            const auto& from_item = kv.second;
-
-            if (not to->container.contains(id)) {
-                typename iqsm::delta::FieldDiff<Meta>::Operation op{};
-                op.remove = true;
-                fd->ops = fd->ops.insert(id, std::move(op));
-                continue;
-            }
-
-            const auto to_item = to->container.at(id);
-            if (to_item != from_item) {
-                typename iqsm::delta::FieldDiff<Meta>::Operation op{};
-                op.change = std::pair<typename iqsm::delta::FieldDiff<Meta>::Item, typename iqsm::delta::FieldDiff<Meta>::Item>{
-                    from_item,
-                    to_item,
-                };
-                fd->ops = fd->ops.insert(id, std::move(op));
-            }
-        }
-
-        // add (iterate "to")
-        for (const auto& kv : to->container) {
-            const auto& id = kv.first;
-            const auto& to_item = kv.second;
-            if (from->container.contains(id)) continue;
-
-            typename iqsm::delta::FieldDiff<Meta>::Operation op{};
-            op.add = to_item;
-            fd->ops = fd->ops.insert(id, std::move(op));
-        }
-
-        // global
-        if (from->global != to->global) {
-            fd->global_change = std::pair<typename iqsm::delta::FieldDiff<Meta>::Global, typename iqsm::delta::FieldDiff<Meta>::Global>{
-                from->global,
-                to->global,
-            };
-        }
-
-        if (fd->ops.empty() && not fd->global_change.has_value()) return std::nullopt;
-        return iqsm::freeze(std::move(fd));
-    }
-}
-
 template<iqsm::meta::Aspect Meta>
 iqsm::FieldAbstract::Ref iqsm::delta::FieldDiff<Meta>::integrate(iqsm::FieldAbstract::Ref current) const {
     if (ops.empty() && not global_change.has_value()) { return current; }

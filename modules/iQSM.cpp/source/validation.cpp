@@ -1,15 +1,20 @@
 #include <iQSM/operations/validation.h>
-#include <iQSM/operations/transaction.h>
+#include <iQSM/operations/integration.h>
 #include <utility>
 
 namespace iqsm::ops::validation {
     Delta List::apply(World world) const {
-        auto transaction = Transaction::integrator(std::move(world));
+        auto current = std::move(world);
+        auto summary = ::iqsm::delta::empty();
+
         for (const auto validator : list) {
-            if (not validator) { continue; }
-            transaction.absorb(validator(transaction.world));
+            if (not validator) continue;
+            auto delta = validator(current);
+            summary = iqsm::ops::merge(std::move(summary), delta);
+            current = iqsm::ops::integrate(std::move(current), std::move(delta));
         }
-        return transaction.summary();
+
+        return summary;
     }
 }
 

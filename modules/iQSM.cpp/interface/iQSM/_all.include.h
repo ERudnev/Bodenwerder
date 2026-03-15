@@ -22,9 +22,14 @@
 
 // Operations
 #include <iQSM/operations/integration.h>
-#include <iQSM/operations/transaction.h>
 #include <iQSM/operations/validation.h>
 #include <iQSM/operations/cache.h>
+
+// Repository (replaces Transaction/Context)
+#include <iQSM/repository/commit.h>
+#include <iQSM/repository/branch.h>
+#include <iQSM/repository/sequence.h>
+#include <iQSM/repository/accumulator.h>
 
 // Helpers (non-generated code)
 #include <iQSM/helpers/schema.h>

@@ -5,8 +5,6 @@
 #include <stdexcept>
 #include <vector>
 
-#include <iQSM/operations/transaction.h>
-
 namespace iqsm::ops {
     namespace {
         using TypeId = iqsm::SchemaObject::TypeId;
@@ -80,6 +78,18 @@ namespace iqsm::ops {
             return out;
         }
 
+        auto apply_invariants_in_order(iqsm::World world, const std::vector<TypeId>& order) -> iqsm::World {
+            for (const auto& type_id : order) {
+                const auto& entry = world->schema->aspects.at(type_id);
+                for (const auto invariant : entry.invariants.own) {
+                    if (not invariant) continue;
+                    auto delta = invariant(world);
+                    world = iqsm::ops::integrate(std::move(world), std::move(delta));
+                }
+            }
+            return world;
+        }
+
         auto validate_from_delta(iqsm::World world, iqsm::Delta delta) -> iqsm::World {
             if (delta->empty()) return world;
             if (world->schema->empty()) return world;
@@ -89,16 +99,7 @@ namespace iqsm::ops {
 
             const auto affected = expand_required_by(world, touched);
             const auto order = topo_order_dependencies_first(world, affected);
-
-            auto transaction = iqsm::ops::Transaction::integrator(iqsm::World{world});
-            for (const auto& type_id : order) {
-                const auto& entry = transaction.world->schema->aspects.at(type_id);
-                for (const auto invariant : entry.invariants.own) {
-                    if (not invariant) continue;
-                    transaction.absorb(invariant(transaction.world));
-                }
-            }
-            return transaction.world;
+            return apply_invariants_in_order(std::move(world), order);
         }
     }
 
@@ -138,16 +139,7 @@ namespace iqsm::ops {
         std::set<TypeId> all;
         for (const auto& aspect_entry : world->schema->aspects) all.insert(aspect_entry.first);
         const auto order = topo_order_dependencies_first(world, all);
-
-        auto transaction = iqsm::ops::Transaction::integrator(iqsm::World{world});
-        for (const auto& type_id : order) {
-            const auto& entry = transaction.world->schema->aspects.at(type_id);
-            for (const auto invariant : entry.invariants.own) {
-                if (not invariant) continue;
-                transaction.absorb(invariant(transaction.world));
-            }
-        }
-        return transaction.world;
+        return apply_invariants_in_order(std::move(world), order);
     }
 
     Delta merge(Delta first, Delta second) {

@@ -85,5 +85,8 @@ namespace iqsm {
 
     template<meta::Aspect Meta>
     using Quantum = typename Facet<Meta>::Quantum;
+
+    template<meta::Aspect Meta>
+    using Item = typename Facet<Meta>::Item;
 }
 

@@ -46,27 +46,28 @@ namespace Toy {
         std::string aspect_names;
         for (const auto& kv : schema->aspects) { aspect_names += (aspect_names.empty() ? "" : ", ") + kv.second.name; }
         message("Toy::Model::create(): schema aspects ({}) = [{}]", schema->aspects.size(), aspect_names);
-        auto transaction = ops::Transaction::integrator(ops::world::create(schema));
+        auto accumulator = repo::Accumulator{world};
 
-        ops::global::modifier<Spark>(transaction)->clock = 0.0f;
+        const float clock = 0.0f;
+        ops::global::modifier<Spark>(accumulator)->clock = clock;
 
         for (int z = 0; z < h; ++z) {
             for (int x = 0; x < w; ++x) {
                 const float fx = (static_cast<float>(x) - (static_cast<float>(w - 1) * 0.5f)) * step;
                 const float fz = (static_cast<float>(z) - (static_cast<float>(h - 1) * 0.5f)) * step;
 
-                const auto position = vec4{fx, 0.0f, fz, ops::global::get<Spark>(transaction.world)->clock};
+                const auto position = vec4{fx, 0.0f, fz, clock};
 
                 const std::string_view type_name = ((x + z) % 3 == 0) ? "proton" : (((x + z) % 3 == 1) ? "neutron" : "electron");
                 const auto& type = Settings::by_name(type_name);
 
-                const auto id = ops::particle::create<Spark>(transaction, Spark::Quantum{position, locality});
-                ops::particle::create<Inertia>(transaction, id, Inertia::Quantum{position, type.mass});
-                ops::particle::create<Charge>(transaction, id, Charge::Quantum{type.charge});
+                const auto id = ops::particle::create<Spark>(accumulator, Spark::Quantum{position, locality});
+                ops::particle::create<Inertia>(accumulator, id, Inertia::Quantum{position, type.mass});
+                ops::particle::create<Charge>(accumulator, id, Charge::Quantum{type.charge});
             }
         }
 
-        world = transaction.world;
+        world = ops::validate(ops::integrate(world, accumulator.push()));
     }
 
     void Model::loadFromFile() {

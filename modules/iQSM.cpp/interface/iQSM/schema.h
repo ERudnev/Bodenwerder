@@ -7,6 +7,7 @@
 
 #include <iQSM/_forwards.h>
 #include <iQSM/delta.h>
+#include <iQSM/internals/delta_builders.h>
 #include <iQSM/meta.h>
 #include <iQSM/field.h>
 #include <iQSM/internals/type_list.h>
@@ -73,7 +74,7 @@ struct iqsm::SchemaObject::assemble_from<iqsm::internals::type_list<TypeList...>
             TypeSet{},
             base::make_shared<const FieldObject<TypeList>>(),
             Invariants{ .own = TypeList::invariants.list },
-            &iqsm::delta::make_delta_field<TypeList>
+            &iqsm::internals::delta::count_delta_field<TypeList>
         }), ...);
 
         out.check_closed();

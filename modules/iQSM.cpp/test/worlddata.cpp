@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 namespace tests {
+
     void worlddata_construct() {
         using namespace iqsm;
         using namespace Q1CORE::Example::Varph;
@@ -40,6 +41,11 @@ namespace tests {
         EXPECT_TRUE(schema.aspects.contains(Facet<Strong>::typeId));
         EXPECT_TRUE(schema.aspects.contains(Facet<Nucleon>::typeId));
         EXPECT_TRUE(schema.aspects.contains(Facet<Atom>::typeId));
+    }
+
+    void worlddata() {
+        worlddata_construct();
+        worlddata_closure_pulls_dependencies();
     }
 }
 

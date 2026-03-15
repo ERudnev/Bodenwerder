@@ -13,10 +13,11 @@ namespace iqsm::repo {
         Branch(World starting) : head(starting), current(starting) {}
 
         // branch ops:
-        void rebase(World world) {
-            if (world == current) return;
+        World rebase(World world) {
+            if (world == current) return current;
             current = ops::validate(std::move(world));
             head = current;
+            return head;
         }
 
         void absorb(Delta delta) {
