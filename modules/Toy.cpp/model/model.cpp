@@ -47,12 +47,8 @@ namespace Toy {
         for (const auto& kv : schema->aspects) { aspect_names += (aspect_names.empty() ? "" : ", ") + kv.second.name; }
         message("Toy::Model::create(): schema aspects ({}) = [{}]", schema->aspects.size(), aspect_names);
         auto transaction = ops::Transaction::integrator(ops::world::create(schema));
-        auto create_spark = ops::particle::create<Spark>(transaction);
 
-        {
-            auto g = ops::global::modify<Spark>(transaction);
-            g->clock = 0.0f;
-        }
+        ops::global::modifier<Spark>(transaction)->clock = 0.0f;
 
         for (int z = 0; z < h; ++z) {
             for (int x = 0; x < w; ++x) {
@@ -64,9 +60,9 @@ namespace Toy {
                 const std::string_view type_name = ((x + z) % 3 == 0) ? "proton" : (((x + z) % 3 == 1) ? "neutron" : "electron");
                 const auto& type = Settings::by_name(type_name);
 
-                const auto id = create_spark({position, locality});
-                ops::particle::create<Inertia>(transaction, id)({position, type.mass});
-                ops::particle::create<Charge>(transaction, id)({type.charge});
+                const auto id = ops::particle::create<Spark>(transaction, Spark::Quantum{position, locality});
+                ops::particle::create<Inertia>(transaction, id, Inertia::Quantum{position, type.mass});
+                ops::particle::create<Charge>(transaction, id, Charge::Quantum{type.charge});
             }
         }
 

@@ -78,5 +78,12 @@ namespace iqsm {
         using Depends = internals::type_list<Deps...>;
         static std::vector<TypeId> depends() { return { TypeId(typeid(Deps))... }; }
     };
+
+    // experimental: make root-level alias for better signatures for client code:
+    template<meta::Aspect Meta>
+    using Id = typename Facet<Meta>::Id;
+
+    template<meta::Aspect Meta>
+    using Quantum = typename Facet<Meta>::Quantum;
 }
 

@@ -13,6 +13,10 @@
     X(validation_existence) \
     X(transaction_strategy) \
     X(transaction2) \
+    X(transaction_repo) \
+    X(globals) \
+    X(schema) \
+    X(resources) \
     X(globals) \
     X(schema) \
     X(resources) \
@@ -25,6 +29,6 @@ int main() {
 
     // return base::testing::run_tests(all_tests);
     return base::testing::run_tests(BASETEST_LIST(
-        BASETEST_NAMED("transaction2", &tests::transaction2)
+        BASETEST_NAMED("transaction_repo", &tests::transaction_repo)
     ));
 }

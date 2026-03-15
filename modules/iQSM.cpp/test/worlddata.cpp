@@ -1,7 +1,6 @@
-#include <base/testing/macros.h>
+#include "_common.h"
 
 #include <Atomic/varph.q1.h>
-#include <iQSM/_all.include.h>
 #include <stdexcept>
 
 namespace tests {

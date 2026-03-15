@@ -109,7 +109,7 @@ namespace iqsm::resources {
     template<meta::Resource Meta, Handler HandlerType>
     void LayerData<Meta, HandlerType>::sync(World world) {
         const auto field = world->field<Meta>();
-        static_assert(requires(typename Facet<Meta>::Quantum q) { q.passport; },
+        static_assert(requires(Quantum<Meta> q) { q.passport; },
             "resources::LayerData::sync(world): Resource instance must have `Quantum::passport`");
         for (const auto& [id, item] : field->container) {
             sync(id, item->passport);

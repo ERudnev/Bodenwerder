@@ -31,7 +31,7 @@ namespace iqsm::delta {
 
     template<meta::Aspect Meta>
     struct FieldDiff final : Facet<Meta>, FieldDiffAbstract {
-        using Id = typename iqsm::Facet<Meta>::Id;
+        using Id = iqsm::Id<Meta>;
         using Item = typename iqsm::Facet<Meta>::Item;
 
         using GlobalData = typename iqsm::Facet<Meta>::GlobalData;

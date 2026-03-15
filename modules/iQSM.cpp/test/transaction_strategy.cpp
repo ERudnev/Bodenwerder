@@ -1,11 +1,10 @@
-#include <base/testing/macros.h>
+#include "_common.h"
 
 #include <algorithm>
 
 #include <Atomic/varph.q1.h>
-#include <iQSM/_all.include.h>
 
-namespace tests {
+namespace tests::strategy {
 
     using namespace iqsm::dsl_gateway;
 
@@ -73,6 +72,7 @@ namespace tests {
     void transaction_strategy() {
         using namespace iqsm;
         using namespace iqsm::dsl_gateway;
+        using namespace tests::strategy;
 
         World world = ops::world::create(ops::schema::assemble<Foo, Bar>());
 

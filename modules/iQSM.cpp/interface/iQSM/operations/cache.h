@@ -16,9 +16,9 @@ namespace iqsm::ops::cache {
 namespace iqsm::ops::cache {
   template<meta::Aspect Meta, auto UpdateOne>
   Delta update(World world) {
-    using Id = typename Facet<Meta>::Id;
+    using Id = iqsm::Id<Meta>;
     using Item = typename Facet<Meta>::Item;
-    using Quantum = typename Facet<Meta>::Quantum;
+    using Quantum = iqsm::Quantum<Meta>;
 
     static_assert(std::is_invocable_r_v<std::optional<Quantum>, decltype(UpdateOne), World, Id, const Quantum&>);
 

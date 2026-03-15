@@ -14,15 +14,15 @@ namespace iqsm::ops {
         auto expand_required_by(iqsm::World world, const std::set<TypeId>& touched) -> std::set<TypeId> {
             std::set<TypeId> out = touched;
 
-            std::vector<TypeId> q;
-            q.reserve(out.size());
-            for (const auto& t : out) q.push_back(t);
+            std::vector<TypeId> queue;
+            queue.reserve(out.size());
+            for (const auto& type_id : out) queue.push_back(type_id);
 
-            for (size_t i = 0; i < q.size(); ++i) {
-                const auto cur = q[i];
-                const auto& entry = world->schema->aspects.at(cur);
-                for (const auto& dep : entry.required_by) {
-                    if (out.insert(dep).second) q.push_back(dep);
+            for (size_t queue_index = 0; queue_index < queue.size(); ++queue_index) {
+                const auto current_type = queue[queue_index];
+                const auto& entry = world->schema->aspects.at(current_type);
+                for (const auto& required_type : entry.required_by) {
+                    if (out.insert(required_type).second) queue.push_back(required_type);
                 }
             }
 
@@ -35,45 +35,45 @@ namespace iqsm::ops {
             std::map<TypeId, size_t> indegree;
             std::map<TypeId, std::vector<TypeId>> forward; // B -> [A] (dependency to dependers)
 
-            for (const auto& t : subset) {
-                indegree.emplace(t, size_t{0});
-                forward.emplace(t, std::vector<TypeId>{});
+            for (const auto& type_id : subset) {
+                indegree.emplace(type_id, size_t{0});
+                forward.emplace(type_id, std::vector<TypeId>{});
             }
 
-            for (const auto& t : subset) {
-                const auto& req = world->schema->aspects.at(t).require;
-                for (const auto& dep : req) {
-                    if (not subset.contains(dep)) continue;
-                    indegree.at(t) += 1;
-                    forward.at(dep).push_back(t);
+            for (const auto& type_id : subset) {
+                const auto& required_types = world->schema->aspects.at(type_id).require;
+                for (const auto& required_type : required_types) {
+                    if (not subset.contains(required_type)) continue;
+                    indegree.at(type_id) += 1;
+                    forward.at(required_type).push_back(type_id);
                 }
             }
 
-            std::vector<TypeId> q;
-            for (const auto& kv : indegree) {
-                if (kv.second == 0) q.push_back(kv.first);
+            std::vector<TypeId> queue;
+            for (const auto& indegree_entry : indegree) {
+                if (indegree_entry.second == 0) queue.push_back(indegree_entry.first);
             }
 
             std::vector<TypeId> out;
             out.reserve(subset.size());
-            for (size_t i = 0; i < q.size(); ++i) {
-                const auto cur = q[i];
-                out.push_back(cur);
-                for (const auto& next : forward.at(cur)) {
-                    auto& d = indegree.at(next);
-                    d -= 1;
-                    if (d == 0) q.push_back(next);
+            for (size_t queue_index = 0; queue_index < queue.size(); ++queue_index) {
+                const auto current_type = queue[queue_index];
+                out.push_back(current_type);
+                for (const auto& dependent_type : forward.at(current_type)) {
+                    auto& dependent_indegree = indegree.at(dependent_type);
+                    dependent_indegree -= 1;
+                    if (dependent_indegree == 0) queue.push_back(dependent_type);
                 }
             }
 
             // Fallback: in case of unexpected cycles, keep deterministic set order appended.
             if (out.size() != subset.size()) {
-                for (const auto& t : subset) {
+                for (const auto& type_id : subset) {
                     bool seen = false;
-                    for (const auto& x : out) {
-                        if (x == t) { seen = true; break; }
+                    for (const auto& ordered_type : out) {
+                        if (ordered_type == type_id) { seen = true; break; }
                     }
-                    if (not seen) out.push_back(t);
+                    if (not seen) out.push_back(type_id);
                 }
             }
 
@@ -85,20 +85,20 @@ namespace iqsm::ops {
             if (world->schema->empty()) return world;
 
             std::set<TypeId> touched;
-            for (const auto& kv : delta->fields) touched.insert(kv.first);
+            for (const auto& field_entry : delta->fields) touched.insert(field_entry.first);
 
             const auto affected = expand_required_by(world, touched);
             const auto order = topo_order_dependencies_first(world, affected);
 
-            auto tx = iqsm::ops::Transaction::integrator(iqsm::World{world});
-            for (const auto& t : order) {
-                const auto& entry = tx.world->schema->aspects.at(t);
-                for (const auto fn : entry.invariants.own) {
-                    if (not fn) continue;
-                    tx.absorb(fn(tx.world));
+            auto transaction = iqsm::ops::Transaction::integrator(iqsm::World{world});
+            for (const auto& type_id : order) {
+                const auto& entry = transaction.world->schema->aspects.at(type_id);
+                for (const auto invariant : entry.invariants.own) {
+                    if (not invariant) continue;
+                    transaction.absorb(invariant(transaction.world));
                 }
             }
-            return tx.world;
+            return transaction.world;
         }
     }
 
@@ -109,9 +109,9 @@ namespace iqsm::ops {
         auto out = base::make_shared<WorldObject>(world->schema);
         out->fields = world->fields;
 
-        for (const auto& kv : delta->fields) {
-            const auto& typeId = kv.first;
-            const auto& field_delta = kv.second;
+        for (const auto& field_entry : delta->fields) {
+            const auto& typeId = field_entry.first;
+            const auto& field_delta = field_entry.second;
 
             if (not world->schema->aspects.contains(typeId)) {
                 throw std::runtime_error(std::format(
@@ -136,18 +136,18 @@ namespace iqsm::ops {
         if (world->schema->empty()) return world;
 
         std::set<TypeId> all;
-        for (const auto& kv : world->schema->aspects) all.insert(kv.first);
+        for (const auto& aspect_entry : world->schema->aspects) all.insert(aspect_entry.first);
         const auto order = topo_order_dependencies_first(world, all);
 
-        auto tx = iqsm::ops::Transaction::integrator(iqsm::World{world});
-        for (const auto& t : order) {
-            const auto& entry = tx.world->schema->aspects.at(t);
-            for (const auto fn : entry.invariants.own) {
-                if (not fn) continue;
-                tx.absorb(fn(tx.world));
+        auto transaction = iqsm::ops::Transaction::integrator(iqsm::World{world});
+        for (const auto& type_id : order) {
+            const auto& entry = transaction.world->schema->aspects.at(type_id);
+            for (const auto invariant : entry.invariants.own) {
+                if (not invariant) continue;
+                transaction.absorb(invariant(transaction.world));
             }
         }
-        return tx.world;
+        return transaction.world;
     }
 
     Delta merge(Delta first, Delta second) {
@@ -155,22 +155,22 @@ namespace iqsm::ops {
         if (second->empty()) { return first; }
 
         auto out = base::make_shared<iqsm::delta::Fields>();
-        for (const auto& kv : first->fields) {
-            out->fields = out->fields.insert(kv.first, kv.second);
+        for (const auto& field_entry : first->fields) {
+            out->fields = out->fields.insert(field_entry.first, field_entry.second);
         }
 
-        for (const auto& kv : second->fields) {
-            const auto& typeId = kv.first;
-            const auto& rhs = kv.second;
+        for (const auto& field_entry : second->fields) {
+            const auto& typeId = field_entry.first;
+            const auto& right_delta = field_entry.second;
 
             if (not out->fields.contains(typeId)) {
-                out->fields = out->fields.insert(typeId, rhs);
+                out->fields = out->fields.insert(typeId, right_delta);
                 continue;
             }
 
-            const auto lhs = out->fields.at(typeId);
+            const auto left_delta = out->fields.at(typeId);
 
-            const auto merged = lhs->merge(rhs);
+            const auto merged = left_delta->merge(right_delta);
             out->fields = out->fields.insert(typeId, merged);
         }
 

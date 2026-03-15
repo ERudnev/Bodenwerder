@@ -8,29 +8,29 @@
 #include <iQSM/meta.h>
 #include <iQSM/delta.h>
 #include <iQSM/field.h>
-#include <iQSM/operations/transaction.h>
+#include <iQSM/operations/transaction.h> // rmove after "iqsm/repo/" evolved to replace old "Transaction/Context"
 
 namespace iqsm::ops::particle {
   template<meta::Particle Meta>
-  auto modify(Context context, typename Facet<Meta>::Id id);
+  auto modifier(Context context, Id<Meta> id);
 
   template<meta::Entity Meta>
-  auto create(Context context);
+  auto create(Context context, Quantum<Meta> value) -> Id<Meta>;
 
   template<meta::Quark Meta>
-  auto create(Context context, typename Facet<Meta>::Id id);
+  auto create(Context context, Id<Meta> id, Quantum<Meta> value) -> Id<Meta>;
 
   template<meta::Particle Meta>
-  void remove(Context context, typename Facet<Meta>::Id id);
+  void remove(Context context, Id<Meta> id);
 
   template<meta::Particle Meta>
-  auto get(World world, typename Facet<Meta>::Id id) -> const typename Facet<Meta>::Quantum&;
+  auto get(World world, Id<Meta> id) -> const Quantum<Meta>&;
 
   template<meta::Particle Meta>
-  auto item(World world, typename Facet<Meta>::Id id) -> typename Facet<Meta>::Item;
+  auto item(World world, Id<Meta> id) -> typename Facet<Meta>::Item;
 
   template<meta::Particle Meta>
-  bool exists(World world, typename Facet<Meta>::Id id);
+  bool exists(World world, Id<Meta> id);
 
 } // namespace iqsm::ops::particle
 
@@ -40,8 +40,8 @@ namespace iqsm::detail::ops::particle {
     template<meta::Particle Meta>
     class modifier {
     public:
-      using Id = typename Facet<Meta>::Id;
-      using Quantum = typename Facet<Meta>::Quantum;
+      using Id = iqsm::Id<Meta>;
+      using Quantum = iqsm::Quantum<Meta>;
       using Item = typename Facet<Meta>::Item;
 
       modifier(Context context, Id id)
@@ -71,37 +71,11 @@ namespace iqsm::detail::ops::particle {
       bool applied = false;
     };
 
-    template<meta::Entity Meta>
-    class creator_entity {
-    public:
-      using Id = typename Facet<Meta>::Id;
-      using Quantum = typename Facet<Meta>::Quantum;
-
-      explicit creator_entity(Context context) : context(context) {}
-      Id operator()(Quantum value);
-
-    private:
-      Context context;
-    };
-
-    template<meta::Quark Meta>
-    class creator_quark {
-    public:
-      using Id = typename Facet<Meta>::Id;
-      using Quantum = typename Facet<Meta>::Quantum;
-
-      creator_quark(Context context, Id id) : context(context), id(id) {}
-      Id operator()(Quantum value);
-
-    private:
-      Context context;
-      Id id;
-    };
 } // namespace iqsm::detail::ops::particle
 
 namespace iqsm::ops::particle {
   template<meta::Particle Meta>
-  auto get(World world, typename Facet<Meta>::Id id) -> const typename Facet<Meta>::Quantum& {
+  auto get(World world, Id<Meta> id) -> const Quantum<Meta>& {
     const auto field = world->field<Meta>();
     if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::particle::get(): missing entity: {}", id)); }
     const auto item = field->container.at(id);
@@ -109,30 +83,54 @@ namespace iqsm::ops::particle {
   }
 
   template<meta::Particle Meta>
-  auto item(World world, typename Facet<Meta>::Id id) -> typename Facet<Meta>::Item {
+  auto item(World world, Id<Meta> id) -> typename Facet<Meta>::Item {
     const auto field = world->field<Meta>();
     if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::particle::item(): missing entity: {}", id)); }
     return field->container.at(id);
   }
 
   template<meta::Particle Meta>
-  bool exists(World world, typename Facet<Meta>::Id id) {
+  bool exists(World world, Id<Meta> id) {
     return world->field<Meta>()->container.contains(id);
   }
 } // namespace iqsm::ops::particle
 
 namespace iqsm::ops::particle {
   template<meta::Particle Meta>
-  auto modify(Context context, typename Facet<Meta>::Id id) { return detail::ops::particle::modifier<Meta>(context, id); }
+  auto modifier(Context context, Id<Meta> id) { return detail::ops::particle::modifier<Meta>(context, id); }
 
   template<meta::Entity Meta>
-  auto create(Context context) { return detail::ops::particle::creator_entity<Meta>(context); }
+  auto create(Context context, Quantum<Meta> value) -> Id<Meta> {
+    const auto id = Id<Meta>::generate_random();
+
+    auto fd = base::make_shared<delta::FieldDiff<Meta>>();
+    auto op = typename delta::FieldDiff<Meta>::Operation{};
+    op.add = Facet<Meta>::create(std::move(value));
+    fd->ops = fd->ops.insert(id, std::move(op));
+
+    auto wd = base::make_shared<delta::Fields>();
+    wd->fields = wd->fields.insert(Facet<Meta>::typeId, freeze(fd));
+
+    context.absorb(freeze(wd));
+    return id;
+  }
 
   template<meta::Quark Meta>
-  auto create(Context context, typename Facet<Meta>::Id id) { return detail::ops::particle::creator_quark<Meta>(context, id); }
+  auto create(Context context, Id<Meta> id, Quantum<Meta> value) -> Id<Meta> {
+    auto fd = base::make_shared<delta::FieldDiff<Meta>>();
+    auto op = typename delta::FieldDiff<Meta>::Operation{};
+    op.add = Facet<Meta>::create(std::move(value));
+    fd->ops = fd->ops.insert(id, std::move(op));
+
+    auto wd = base::make_shared<delta::Fields>();
+    wd->fields = wd->fields.insert(Facet<Meta>::typeId, freeze(fd));
+
+    context.absorb(freeze(wd));
+    return id;
+  }
 
   template<meta::Particle Meta>
-  void remove(Context context, typename Facet<Meta>::Id id) {
+  void remove(Context context, Id<Meta> id) {
     auto fd = base::make_shared<delta::FieldDiff<Meta>>();
     auto op = typename delta::FieldDiff<Meta>::Operation{};
     op.remove = true;
@@ -179,38 +177,5 @@ namespace iqsm::detail::ops::particle {
     context.absorb(freeze(wd));
   }
 
-  template<meta::Entity Meta>
-  typename creator_entity<Meta>::Id creator_entity<Meta>::operator()(Quantum value) {
-    const auto id = Id::generate_random();
-
-    auto fd = base::make_shared<delta::FieldDiff<Meta>>();
-    auto op = typename delta::FieldDiff<Meta>::Operation{};
-    op.add = Facet<Meta>::create(std::move(value));
-    fd->ops = fd->ops.insert(id, std::move(op));
-
-    auto wd = base::make_shared<delta::Fields>();
-    wd->fields = wd->fields.insert(
-        Facet<Meta>::typeId,
-        freeze(fd));
-
-    context.absorb(freeze(wd));
-    return id;
-  }
-
-  template<meta::Quark Meta>
-  typename creator_quark<Meta>::Id creator_quark<Meta>::operator()(Quantum value) {
-    auto fd = base::make_shared<delta::FieldDiff<Meta>>();
-    auto op = typename delta::FieldDiff<Meta>::Operation{};
-    op.add = Facet<Meta>::create(std::move(value));
-    fd->ops = fd->ops.insert(id, std::move(op));
-
-    auto wd = base::make_shared<delta::Fields>();
-    wd->fields = wd->fields.insert(
-        Facet<Meta>::typeId,
-        freeze(fd));
-
-    context.absorb(freeze(wd));
-    return id;
-  }
 } // namespace iqsm::detail::ops::particle
 

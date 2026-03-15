@@ -34,6 +34,8 @@ namespace iqsm::ops {
         void integrate();
         void validate();
 
+        World temp_result_as_valid() { integrate(); validate(); return world; }
+
         // returns full accumulated Delta (regardless of "world")
         Delta summary() const; // counts summary of all nested Deltas, use it once on Transaction is done
 

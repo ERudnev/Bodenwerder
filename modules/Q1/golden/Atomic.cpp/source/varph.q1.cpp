@@ -4,8 +4,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <glm/geometric.hpp>
-#include <iQSM/operations/cache.h>
-#include <iQSM/operations/particle.h>
+#include <iQSM/_all.include.h>
 
 // Spark:
 namespace Q1CORE::Example::Varph {
@@ -188,7 +187,7 @@ namespace Q1CORE::Example::Varph {
                 q.core = std::move(group);
                 q.legend = symbol_of(z_of(world, q.core));
 
-                iqsm::ops::particle::create<Atom>(tx)(std::move(q));
+                iqsm::ops::particle::create<Atom>(tx, std::move(q));
             }
 
             return tx.summary();

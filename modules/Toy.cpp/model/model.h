@@ -1,8 +1,8 @@
 #pragma once
 
 #include <iQSM/_forwards.h>
-#include <iQSM/operations/schema.h>
-#include <iQSM/operations/world.h>
+#include <iQSM/helpers/schema.h>
+#include <iQSM/helpers/world.h>
 #include <string>
 
 namespace Toy {

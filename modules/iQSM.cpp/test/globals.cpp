@@ -1,6 +1,4 @@
-#include <base/testing/macros.h>
-
-#include <iQSM/_all.include.h>
+#include "_common.h"
 
 namespace tests {
     using namespace iqsm::dsl_gateway;
@@ -31,16 +29,10 @@ namespace tests {
 
         // Modify global via transaction (illustrates syntax and merge of consecutive global changes).
         auto tx = ops::Transaction::integrator(std::move(world));
-        {
-            auto g = ops::global::modify<FooWithGlobal>(tx);
-            g->tick = integer{1};
-        }
-        {
-            auto g = ops::global::modify<FooWithGlobal>(tx);
-            g->tick = integer{2};
-        }
+        ops::global::modifier<FooWithGlobal>(tx)->tick = integer{1};
+        ops::global::modifier<FooWithGlobal>(tx)->tick = integer{2};
 
-        world = tx.world;
+        world = tx.temp_result_as_valid();
         EXPECT_EQ(ops::global::get<FooWithGlobal>(world)->tick, integer{2});
     }
 }

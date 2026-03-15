@@ -17,7 +17,7 @@ namespace iqsm::ops::global {
     }
 
     template<meta::Aspect Meta>
-    auto modify(Context context);
+    auto modifier(Context context);
 }
 
 namespace iqsm::detail::ops::global {
@@ -53,7 +53,7 @@ namespace iqsm::detail::ops::global {
     private:
         static Global required_item(World world) {
             if (not world->schema->aspects.contains(Facet<Meta>::typeId)) {
-                throw std::runtime_error("ops::global::modify(): aspect is not in schema");
+                throw std::runtime_error("ops::global::modifier(): aspect is not in schema");
             }
             return world->field<Meta>()->global;
         }
@@ -87,7 +87,7 @@ namespace iqsm::detail::ops::global {
 
 namespace iqsm::ops::global {
     template<meta::Aspect Meta>
-    auto modify(Context context) {
+    auto modifier(Context context) {
         return detail::ops::global::modifier<Meta>(context);
     }
 }

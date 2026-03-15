@@ -27,8 +27,8 @@
 #include <iQSM/operations/cache.h>
 
 // Helpers (non-generated code)
-#include <iQSM/operations/schema.h>
-#include <iQSM/operations/world.h>
-#include <iQSM/operations/particle.h>
-#include <iQSM/operations/global.h>
-#include <iQSM/operations/resource.h>
+#include <iQSM/helpers/schema.h>
+#include <iQSM/helpers/world.h>
+#include <iQSM/helpers/particle.h>
+#include <iQSM/helpers/global.h>
+#include <iQSM/helpers/resource.h>

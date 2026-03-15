@@ -1,7 +1,6 @@
-#include <base/testing/macros.h>
+#include "_common.h"
 
 #include <Atomic/varph.q1.h>
-#include <iQSM/_all.include.h>
 
 namespace tests {
     void caching_components() {
@@ -16,15 +15,15 @@ namespace tests {
         auto tx = ops::Transaction::integrator(World{world});
 
         const auto mkSpark = [&](integer charge) {
-            const auto id = ops::particle::create<Spark>(tx)({vec4{0, 0, 0, 0}, eVt{0}});
-            ops::particle::create<Charge>(tx, id)({charge});
+            const auto id = ops::particle::create<Spark>(tx, Spark::Quantum{vec4{0, 0, 0, 0}, eVt{0}});
+            ops::particle::create<Charge>(tx, id, Charge::Quantum{charge});
             return id;
         };
 
         const auto mkNucleon = [&](integer charge, integer isospin2) {
             const auto id = mkSpark(charge);
-            ops::particle::create<Strong>(tx, id)({isospin2});
-            ops::particle::create<Nucleon>(tx, id)({""});
+            ops::particle::create<Strong>(tx, id, Strong::Quantum{isospin2});
+            ops::particle::create<Nucleon>(tx, id, Nucleon::Quantum{""});
             return id;
         };
 
@@ -33,10 +32,10 @@ namespace tests {
         const auto neutron1 = mkNucleon(integer{0}, integer{-1});
         const auto neutron2 = mkNucleon(integer{0}, integer{-1});
         const auto electronSpark1 = mkSpark(integer{-1});
-        const auto electron1 = ops::particle::create<Electron>(tx, electronSpark1)({});
+        const auto electron1 = ops::particle::create<Electron>(tx, electronSpark1, Electron::Quantum{});
 
         // Helium ion (He+): 2p + 2n + 1e => total charge +1.
-        const auto atomId = ops::particle::create<Atom>(tx)({
+        const auto atomId = ops::particle::create<Atom>(tx, Atom::Quantum{
             std::vector<Nucleon::Id>{proton1, proton2, neutron1, neutron2},
             std::vector<Electron::Id>{electron1},
             "He+",

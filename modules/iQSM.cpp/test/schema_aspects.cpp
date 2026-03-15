@@ -1,4 +1,4 @@
-#include <base/testing/macros.h>
+#include "_common.h"
 
 #include <iQSM/schema.h>
 

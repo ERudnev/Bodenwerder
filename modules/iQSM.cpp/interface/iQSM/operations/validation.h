@@ -80,8 +80,8 @@ namespace iqsm::ops::validation {
     {
         static_assert(std::is_member_object_pointer_v<decltype(Member)>);
 
-        using Quantum = typename Facet<Dependee>::Quantum;
-        using AnchorId = typename Facet<Anchor>::Id;
+        using Quantum = iqsm::Quantum<Dependee>;
+        using AnchorId = Id<Anchor>;
         using MemberValue = decltype(std::declval<Quantum>().*Member);
         static_assert(std::is_convertible_v<MemberValue, AnchorId>);
 
@@ -99,9 +99,9 @@ namespace iqsm::ops::validation {
     template<meta::Aspect Dependee, meta::Aspect Anchor, auto Need>
     Delta Structural::existence(World world)
     {
-        using AnchorId = typename Facet<Anchor>::Id;
-        using AnchorQuantum = typename Facet<Anchor>::Quantum;
-        using DependeeQuantum = typename Facet<Dependee>::Quantum;
+        using AnchorId = Id<Anchor>;
+        using AnchorQuantum = iqsm::Quantum<Anchor>;
+        using DependeeQuantum = iqsm::Quantum<Dependee>;
 
         static_assert(std::is_invocable_r_v<bool, decltype(Need), World, AnchorId, const AnchorQuantum&>);
 
@@ -143,10 +143,10 @@ namespace iqsm::ops::validation {
     template<meta::Aspect Anchor, meta::Aspect Dependee, auto Construct>
     Delta Structural::anchor_component(World world)
     {
-        using AnchorId = typename Facet<Anchor>::Id;
-        using DependeeId = typename Facet<Dependee>::Id;
-        using AnchorQuantum = typename Facet<Anchor>::Quantum;
-        using DependeeQuantum = typename Facet<Dependee>::Quantum;
+        using AnchorId = Id<Anchor>;
+        using DependeeId = Id<Dependee>;
+        using AnchorQuantum = iqsm::Quantum<Anchor>;
+        using DependeeQuantum = iqsm::Quantum<Dependee>;
         static_assert(std::is_same_v<AnchorId, DependeeId>);
         static_assert(std::is_invocable_r_v<DependeeQuantum, decltype(Construct), World, const AnchorQuantum&>);
 
@@ -195,8 +195,8 @@ namespace iqsm::ops::validation {
     {
         static_assert(std::is_member_object_pointer_v<decltype(Member)>);
 
-        using Quantum = typename Facet<Dependee>::Quantum;
-        using AnchorId = typename Facet<Anchor>::Id;
+        using Quantum = iqsm::Quantum<Dependee>;
+        using AnchorId = Id<Anchor>;
         using MemberValue = std::remove_cvref_t<decltype(std::declval<Quantum>().*Member)>;
         static_assert(std::is_same_v<MemberValue, std::vector<AnchorId>>);
 
@@ -256,8 +256,8 @@ namespace iqsm::ops::validation {
     {
         static_assert(std::is_member_object_pointer_v<decltype(Member)>);
 
-        using Quantum = typename Facet<Dependee>::Quantum;
-        using AnchorId = typename Facet<Anchor>::Id;
+        using Quantum = iqsm::Quantum<Dependee>;
+        using AnchorId = Id<Anchor>;
         using MemberValue = std::remove_cvref_t<decltype(std::declval<Quantum>().*Member)>;
         static_assert(std::is_same_v<MemberValue, std::vector<AnchorId>>);
 
