@@ -25,7 +25,8 @@ namespace iqsm::ops::cache {
     if (not world->schema->aspects.contains(Facet<Meta>::typeId)) return ::iqsm::delta::empty();
 
     const auto field = world->field<Meta>();
-    auto fd = base::make_shared<delta::FieldDiff<Meta>>();
+    using Operation = typename delta::FieldDiff<Meta>::Operation;
+    auto field_delta = base::make_shared<delta::FieldDiff<Meta>>();
 
     for (const auto& kv : field->container) {
       const auto& id = kv.first;
@@ -37,19 +38,23 @@ namespace iqsm::ops::cache {
 
       const auto after = Facet<Meta>::create(std::move(*next));
 
-      typename delta::FieldDiff<Meta>::Operation op{};
-      op.change = std::pair<typename delta::FieldDiff<Meta>::Item, typename delta::FieldDiff<Meta>::Item>{before, after};
-      fd->ops = fd->ops.insert(id, std::move(op));
+      field_delta->ops = field_delta->ops.insert(
+          id,
+          Operation{
+              std::nullopt,
+              std::pair<typename delta::FieldDiff<Meta>::Item, typename delta::FieldDiff<Meta>::Item>{before, after},
+              false,
+          });
     }
 
-    if (fd->ops.empty()) return ::iqsm::delta::empty();
+    if (field_delta->ops.empty()) return ::iqsm::delta::empty();
 
-    auto out = base::make_shared<delta::Fields>();
-    out->fields = out->fields.insert(
+    auto world_delta = base::make_shared<delta::Fields>();
+    world_delta->fields = world_delta->fields.insert(
         Facet<Meta>::typeId,
-        freeze(fd));
+        freeze(field_delta));
 
-    return freeze(out);
+    return freeze(world_delta);
   }
 }
 
