@@ -3,7 +3,6 @@
 #include <optional>
 
 #include <iQSM/references.h>
-#include <iQSM/meta/concepts.h>
 
 namespace iqsm { struct FieldAbstract; }
 namespace iqsm::delta { struct FieldDiffAbstract; }

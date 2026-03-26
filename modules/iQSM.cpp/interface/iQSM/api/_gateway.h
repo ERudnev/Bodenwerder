@@ -9,6 +9,9 @@
 // aspect tags (Entity/Component/Attribute/Resource):
 #include <iQSM/aspects.h>
 
+// typed facade (Id/Quantum/Item):
+#include <iQSM/meta/facade.h>
+
 // operations interface (validation invariants types):
 #include <iQSM/operations/interface.h>
 #include <iQSM/operations/validators.h>
@@ -55,6 +58,9 @@ namespace iqsm::dsl_gateway {
 
     template<typename... Deps>
     using Require = iqsm::Require<Deps...>;
+
+    template<typename Meta>
+    using Item = ::iqsm::Item<Meta>;
 
     using Invariants = ::iqsm::detail::validation::Block;
 

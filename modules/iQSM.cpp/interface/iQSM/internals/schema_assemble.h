@@ -4,6 +4,7 @@
 
 #include <iQSM/field.h>
 #include <iQSM/internals/delta_builders.h>
+#include <iQSM/types.h>
 
 namespace iqsm {
     namespace internals::schema_thunks {
@@ -57,7 +58,7 @@ namespace iqsm {
         static SchemaObject run() {
             SchemaObject out{};
             (out.aspects.emplace(types::aspectId<TypeList>(), Entry{
-                std::string{typeid(TypeList).name()},
+                std::string{internals::type_name<TypeList>()},
                 requirements_of<TypeList>(),
                 TypeSet{},
                 internals::schema::FieldEntry::make<TypeList>(),

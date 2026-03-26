@@ -19,9 +19,9 @@ namespace iqsm::detail::operations {
         virtual ~Group() = default;
 
     protected:
+        using Own = Meta;
         using Id = ::iqsm::Id<Meta>;
         using Quantum = ::iqsm::Quantum<Meta>;
-        using Item = ::iqsm::Item<Meta>;
         using ItemChange = std::optional<Quantum>; // nullopt = no change
 
         using Reading = ::iqsm::World;

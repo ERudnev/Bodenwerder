@@ -1,5 +1,7 @@
 #include <base/testing/runner.h>
 
+#include <vector>
+
 #define IQSM_TESTS(X) \
     /* X(typenames_varph) */ \
     /* X(schema_aspects) */ \
@@ -13,15 +15,54 @@
     /* X(globals) */ \
     /* X(schema) */ \
     /* X(resources) */ \
-    X(etalon_model) \
+    X(model_is_compileable) \
+    // end
+
+#define IQSM_VALIDATION_TESTS(X) \
+    X(validation_placeholder) \
+    X(validation_tag_globals) \
+    // end
+
+#define IQSM_OPERATIONS_TESTS(X) \
+    X(transaction_repo) \
     // end
 
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(IQSM_VALIDATION_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(IQSM_OPERATIONS_TESTS)
 
 int main() {
-    auto all_tests = BASETEST_MAKE_LIST_TESTS(IQSM_TESTS);
+    struct group final {
+        const char* name = "";
+        std::vector<base::testing::test_case> tests{};
+    };
 
-    return base::testing::run_tests(all_tests);
+    const std::vector<group> groups{
+        group{ "all", BASETEST_MAKE_LIST_TESTS(IQSM_TESTS) },
+        group{ "validation", BASETEST_MAKE_LIST_TESTS(IQSM_VALIDATION_TESTS) },
+        group{ "operations", BASETEST_MAKE_LIST_TESTS(IQSM_OPERATIONS_TESTS) },
+    };
+
+    base::testing::run_summary total{};
+
+    for (std::size_t i = 0; i < groups.size(); ++i) {
+        if (i != 0) base::message("");
+        base::message(std::format("{}:", groups[i].name));
+
+        const auto s = base::testing::run_tests(groups[i].tests);
+        total += s;
+    }
+
+    base::message("");
+    base::message(std::format("TOTAL SUMMARY: {} passed={}, failed={}, total={}",
+        total.ok() ? "OK" : "FAIL",
+        total.passed,
+        total.failed,
+        total.total()
+    ));
+    base::message(std::format("TOTAL TIME: {:.3f} ms", total.elapsed_ms()));
+
+    return total.ok() ? 0 : 1;
     /*return base::testing::run_tests(BASETEST_LIST(
         BASETEST_NAMED("transaction_repo", &tests::transaction_repo)
     ));*/

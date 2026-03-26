@@ -37,6 +37,12 @@ namespace iqsm::ops::validation {
         template<meta::Aspect Anchor, meta::Aspect Dependee, auto Construct>
         void isomorphic(repo::Commit); // 1-1 iff confinement
 
+        // Like anchor(), but the member is optional-like:
+        // - if optional has no value -> ignored
+        // - if optional has value and Anchor is missing -> Dependee is removed
+        template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
+        void anchor_optional(repo::Commit);
+
         template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
         void anchor_any(repo::Commit);
 
@@ -47,6 +53,11 @@ namespace iqsm::ops::validation {
     namespace logic {
         // Ensures Dependee existence from Anchor by predicate.
         template<meta::Aspect Dependee, meta::Aspect Anchor, auto Need>
+        void existence(repo::Commit);
+
+        // Like existence(), but uses Construct to build new Dependee items when needed.
+        // Construct signature: DependeeQuantum(World, AnchorId, Item<Anchor>).
+        template<meta::Aspect Dependee, meta::Aspect Anchor, auto Need, auto Construct>
         void existence(repo::Commit);
     }
 } // namespace iqsm::ops::validation
@@ -119,7 +130,51 @@ namespace iqsm::ops::validation {
     template<meta::Aspect Anchor, meta::Aspect Dependee>
     void structural::anchor_attribute(repo::Commit commit)
     {
-        return detail::ops::validation::anchor_impl<Anchor, Dependee>(std::move(commit), [](auto dependee_id, auto) { return dependee_id; });
+        return detail::ops::validation::anchor_impl<Anchor, Dependee>(commit, [](auto dependee_id, auto) { return dependee_id; });
+    }
+
+    template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
+    void structural::anchor_optional(repo::Commit commit)
+    {
+        static_assert(std::is_member_object_pointer_v<decltype(Member)>);
+
+        const auto world = commit.initial;
+        internals::FieldsMutable acc{};
+
+        using Quantum = iqsm::Quantum<Dependee>;
+        using AnchorId = Id<Anchor>;
+        using MemberValue = std::remove_cvref_t<decltype(std::declval<Quantum>().*Member)>;
+
+        static_assert(
+            requires(const MemberValue& v) { v.has_value(); *v; },
+            "anchor_optional: Member must be an optional-like type (has_value() and operator*)"
+        );
+        static_assert(
+            std::is_convertible_v<decltype(*std::declval<const MemberValue&>()), AnchorId>,
+            "anchor_optional: optional value must be convertible to Anchor::Id"
+        );
+
+        const auto anchor_field = world->field<Anchor>();
+        const auto dependee_field = world->field<Dependee>();
+
+        using Operation = typename delta::FieldDiff<Dependee>::Operation;
+
+        for (const auto& kv : dependee_field->container) {
+            const auto& dependee_id = kv.first;
+            const auto& dependee_item = kv.second;
+
+            const auto& opt = (dependee_item.get()->*Member);
+            if (not opt.has_value()) continue;
+
+            const auto anchor_id = static_cast<AnchorId>(*opt);
+            if (not anchor_field->container.contains(anchor_id)) {
+                acc.add_op<Dependee>(dependee_id, Operation{ dependee_item, std::nullopt });
+            }
+        }
+
+        if (not acc.empty()) {
+            commit.push(acc.push());
+        }
     }
 
     template<meta::Aspect Dependee, meta::Aspect Anchor, auto Need>
@@ -129,10 +184,10 @@ namespace iqsm::ops::validation {
         internals::FieldsMutable acc{};
 
         using AnchorId = Id<Anchor>;
-        using AnchorQuantum = iqsm::Quantum<Anchor>;
+        using AnchorItem = iqsm::Item<Anchor>;
         using DependeeQuantum = iqsm::Quantum<Dependee>;
 
-        static_assert(std::is_invocable_r_v<bool, decltype(Need), World, AnchorId, const AnchorQuantum&>);
+        static_assert(std::is_invocable_r_v<bool, decltype(Need), World, AnchorId, AnchorItem>);
 
         const auto anchor_field = world->field<Anchor>();
         const auto dependee_field = world->field<Dependee>();
@@ -142,13 +197,52 @@ namespace iqsm::ops::validation {
         for (const auto& kv : anchor_field->container) {
             const auto& id = kv.first;
             const auto& anchor_item = kv.second;
-            const bool need = Need(world, id, *anchor_item);
+            const bool need = Need(world, id, anchor_item);
 
             const bool has = dependee_field->container.contains(id);
 
             if (need) {
                 if (has) continue;
                 acc.add_op<Dependee>(id, Operation{ std::nullopt, base::make_shared<const DependeeQuantum>(DependeeQuantum{}) });
+            } else {
+                if (not has) continue;
+                acc.add_op<Dependee>(id, Operation{ dependee_field->container.at(id), std::nullopt });
+            }
+        }
+
+        if (not acc.empty()) {
+            commit.push(acc.push());
+        }
+    }
+
+    template<meta::Aspect Dependee, meta::Aspect Anchor, auto Need, auto Construct>
+    void logic::existence(repo::Commit commit)
+    {
+        const auto world = commit.initial;
+        internals::FieldsMutable acc{};
+
+        using AnchorId = Id<Anchor>;
+        using AnchorItem = iqsm::Item<Anchor>;
+        using DependeeQuantum = iqsm::Quantum<Dependee>;
+
+        static_assert(std::is_invocable_r_v<bool, decltype(Need), World, AnchorId, AnchorItem>);
+        static_assert(std::is_invocable_r_v<DependeeQuantum, decltype(Construct), World, AnchorId, AnchorItem>);
+
+        const auto anchor_field = world->field<Anchor>();
+        const auto dependee_field = world->field<Dependee>();
+
+        using Operation = typename delta::FieldDiff<Dependee>::Operation;
+
+        for (const auto& kv : anchor_field->container) {
+            const auto& id = kv.first;
+            const auto& anchor_item = kv.second;
+            const bool need = Need(world, id, anchor_item);
+
+            const bool has = dependee_field->container.contains(id);
+
+            if (need) {
+                if (has) continue;
+                acc.add_op<Dependee>(id, Operation{ std::nullopt, base::make_shared<const DependeeQuantum>(Construct(world, id, anchor_item)) });
             } else {
                 if (not has) continue;
                 acc.add_op<Dependee>(id, Operation{ dependee_field->container.at(id), std::nullopt });
@@ -169,9 +263,10 @@ namespace iqsm::ops::validation {
         using AnchorId = Id<Anchor>;
         using DependeeId = Id<Dependee>;
         using AnchorQuantum = iqsm::Quantum<Anchor>;
+        using AnchorItem = iqsm::Item<Anchor>;
         using DependeeQuantum = iqsm::Quantum<Dependee>;
         static_assert(std::is_same_v<AnchorId, DependeeId>);
-        static_assert(std::is_invocable_r_v<DependeeQuantum, decltype(Construct), World, const AnchorQuantum&>);
+        static_assert(std::is_invocable_r_v<DependeeQuantum, decltype(Construct), World, AnchorId, AnchorItem>);
 
         const auto anchor_field = world->field<Anchor>();
         const auto dependee_field = world->field<Dependee>();
@@ -192,7 +287,7 @@ namespace iqsm::ops::validation {
             const auto& anchor_id = kv.first;
             const auto& anchor_item = kv.second;
             if (not dependee_field->container.contains(anchor_id)) {
-                acc.add_op<Dependee>(anchor_id, Operation{ std::nullopt, base::make_shared<const DependeeQuantum>(Construct(world, *anchor_item)) });
+                acc.add_op<Dependee>(anchor_id, Operation{ std::nullopt, base::make_shared<const DependeeQuantum>(Construct(world, anchor_id, anchor_item)) });
             }
         }
 

@@ -1,72 +1,110 @@
 #include "model.h"
 
-#include <algorithm>
-
 namespace iqsm_internal_model {
 
     using namespace iqsm::dsl_gateway;
 
-    auto Basic::Operations::total_value(Reading world) -> integer {
-        integer total = 0;
-        for (const auto& kv : world->field<Basic>()->container) {
-            total += kv.second->value;
-        }
-        return total;
-    }
+    //
+    // SampleEntity
+    struct SampleEntity_private : SampleEntity::Operations {
+        static auto private_const_fieldwide_method(Reading) -> string { return {}; }
+        static auto private_const_element_method(Reading, Id) -> float { return 0.0f; }
 
-    struct Basic_private : Basic::Operations {
-        static ItemChange clamp_value(Reading, Id, const Quantum& original) {
-            auto updated = original;
-            if (updated.value < integer{0}) updated.value = integer{0};
-            if (updated.value > integer{100}) updated.value = integer{100};
-            if (updated.value == original.value) return {};
-            return updated;
-        }
+        static void private_nonconst_fieldwide_method(Writing) {}
+        static void private_nonconst_element_method(Writing, Id) {}
 
-        static auto min_max_total(Reading world) -> std::pair<integer, integer> {
-            const auto& c = world->field<Basic>()->container;
-            const auto it0 = c.begin();
-            if (it0 == c.end()) return {integer{0}, integer{0}};
+        static auto private_validate_item_atomic(Reading, Id, const Quantum&) -> ItemChange { return {}; }
 
-            integer min = it0->second->value;
-            integer max = it0->second->value;
-            for (auto it = std::next(it0); it != c.end(); ++it) {
-                const auto v = it->second->value;
-                min = std::min(min, v);
-                max = std::max(max, v);
-            }
-            return {min, max};
-        }
+        static void private_validate_table(Writing) {}
     };
 
-    auto Basic::Operations::normalized(Reading world, Id id) -> float {
-        const auto [min, max] = Basic_private::min_max_total(world);
-        if (min == max) return 0.0f;
+    auto SampleEntity::Operations::const_fieldwide_method(Reading) -> string { return {}; }
+    auto SampleEntity::Operations::const_element_method(Reading, Id) -> float { return 0.0f; }
+    void SampleEntity::Operations::nonconst_fieldwide_method(Writing) {}
+    void SampleEntity::Operations::nonconst_element_method(Writing, Id) {}
 
-        const auto& q = ops::particle::get<Basic>(world, id);
-        const auto num = static_cast<float>(q.value - min);
-        const auto den = static_cast<float>(max - min);
-        return num / den;
+    auto SampleEntity::Operations::public_constructor(Writing commit, Quantum value) -> Id {
+        return ops::particle::create<SampleEntity>(commit, value);
     }
 
-    const Invariants Basic::invariants{
+    auto SampleEntity::Operations::public_constructor(Writing commit, integer data_field) -> Id {
+        return ops::particle::create<SampleEntity>(commit, Quantum{data_field});
+    }
+
+    const Invariants SampleEntity::invariants{
         .structural = {},
         .logical = {
-            invariant::for_each_item<Basic, &Basic_private::clamp_value>,
+            invariant::for_each_item<SampleEntity, &SampleEntity_private::private_validate_item_atomic>,
+            &SampleEntity_private::private_validate_table,
         },
     };
 
-    const Invariants Essentials::invariants{
+    //
+    // Tag (exists for even SampleEntity::data_field)
+    struct Tag_private : Tag::Operations {
+        static void clamp_global(Writing commit) {
+            auto g = ops::global::modifier<Tag>(commit);
+            if (g->modulus > integer{0}) return;
+            g->modulus = integer{1};
+        }
+
+        static bool need_even(Reading world, SampleEntity::Id, Item<SampleEntity> item) {
+            const auto mod = ops::global::get<Tag>(world)->modulus;
+            const auto safe = mod > integer{0} ? mod : integer{1};
+            return (item->data_field % safe) == integer{0};
+        }
+    };
+
+    const Invariants Tag::invariants{
         .structural = {
-            invariant::anchor_attribute<Basic, Essentials>,
+            invariant::anchor_attribute<SampleEntity, Tag>,
+        },
+        .logical = {
+            &Tag_private::clamp_global,
+            invariant::existence<Tag, SampleEntity, &Tag_private::need_even>,
+        },
+    };
+
+    //
+    // SampleComponent
+    struct SampleComponent_private : SampleComponent::Operations {
+        static auto private_construct(Reading, Id, Item<SampleEntity>) -> Quantum { return {}; }
+    };
+    
+    const Invariants SampleComponent::invariants{
+        .structural = {
+            invariant::isomorphic<SampleEntity, SampleComponent, &SampleComponent_private::private_construct>,
         },
         .logical = {},
     };
 
-    const Invariants Optionals::invariants{
+    //
+    // SampleAttribute
+    struct SampleAttribute_private : SampleAttribute::Operations {
+        static bool need_even(Reading, SampleEntity::Id, Item<SampleEntity> item) {
+            return (item->data_field % integer{2}) == integer{0};
+        }
+
+        static auto construct(Reading, Id id, Item<SampleEntity>) -> Quantum {
+            return Quantum{
+                .neighbor_anchor = id,
+                .optional_anchor = id,
+                .every_essential = { id },
+                .at_least_one_required = { id },
+            };
+        }
+    };
+
+    const Invariants SampleAttribute::invariants{
         .structural = {
-            invariant::anchor_attribute<Basic, Optionals>,
+            invariant::anchor_attribute<SampleEntity, SampleAttribute>,
+            invariant::anchor<SampleEntity, SampleAttribute, &SampleAttribute::Quantum::neighbor_anchor>,
+            invariant::anchor_optional<SampleComponent, SampleAttribute, &SampleAttribute::Quantum::optional_anchor>,
+            invariant::anchor_all<SampleEntity, SampleAttribute, &SampleAttribute::Quantum::every_essential>,
+            invariant::anchor_any<SampleEntity, SampleAttribute, &SampleAttribute::Quantum::at_least_one_required>,
         },
-        .logical = {},
+        .logical = {
+            invariant::existence<SampleAttribute, SampleEntity, &SampleAttribute_private::need_even, &SampleAttribute_private::construct>,
+        },
     };
 }

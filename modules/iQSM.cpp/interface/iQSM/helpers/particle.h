@@ -55,7 +55,7 @@ namespace iqsm::detail::helpers::particle {
       ~modifier() { apply(); }
       modifier(const modifier&) = delete;
       modifier& operator=(const modifier&) = delete;
-      modifier(modifier&& other) noexcept : commit(std::move(other.commit)), id(other.id), original(other.original), value(std::move(other.value)), dirty(other.dirty), applied(other.applied) { other.applied = true; }
+      modifier(modifier&& other) noexcept : commit(other.commit), id(other.id), original(other.original), value(std::move(other.value)), dirty(other.dirty), applied(other.applied) { other.applied = true; }
       modifier& operator=(modifier&&) = delete;
       Quantum* operator->() { dirty = true; return &value; }
       Quantum& operator*() { dirty = true; return value; }
@@ -98,7 +98,7 @@ namespace iqsm::helpers::particle {
 
 namespace iqsm::helpers::particle {
   template<meta::Particle Meta>
-  auto modifier(repo::Commit commit, Id<Meta> id) { return detail::helpers::particle::modifier<Meta>(std::move(commit), id); }
+  auto modifier(repo::Commit commit, Id<Meta> id) { return detail::helpers::particle::modifier<Meta>(commit, id); }
 
   template<meta::Entity Meta>
   auto create(repo::Commit commit, Quantum<Meta> value) -> Id<Meta> {

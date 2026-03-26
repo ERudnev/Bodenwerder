@@ -32,7 +32,7 @@ namespace iqsm::detail::helpers::global {
         using Global = ::iqsm::meta::Global<Meta>;
 
         explicit modifier(repo::Commit commit)
-            : commit(std::move(commit))
+            : commit(commit)
             , original(required_item(this->commit.initial))
             , value(*original)
         {}
@@ -41,7 +41,7 @@ namespace iqsm::detail::helpers::global {
         modifier(const modifier&) = delete;
         modifier& operator=(const modifier&) = delete;
         modifier(modifier&& other) noexcept
-            : commit(std::move(other.commit))
+            : commit(other.commit)
             , original(other.original)
             , value(std::move(other.value))
             , dirty(other.dirty)
@@ -88,7 +88,7 @@ namespace iqsm::detail::helpers::global {
 namespace iqsm::helpers::global {
     template<meta::Aspect Meta>
     auto modifier(repo::Commit commit) {
-        return detail::helpers::global::modifier<Meta>(std::move(commit));
+        return detail::helpers::global::modifier<Meta>(commit);
     }
 }
 

@@ -13,35 +13,56 @@ namespace base::testing {
         void (*fn)();
     };
 
-    inline int run_tests(const std::vector<test_case>& tests) {
+    struct run_summary final {
         int passed = 0;
         int failed = 0;
+        long long elapsed_us = 0;
+
+        int total() const { return passed + failed; }
+        bool ok() const { return failed == 0; }
+        double elapsed_ms() const { return static_cast<double>(elapsed_us) / 1'000.0; }
+
+        run_summary& operator+=(const run_summary& rhs) {
+            passed += rhs.passed;
+            failed += rhs.failed;
+            elapsed_us += rhs.elapsed_us;
+            return *this;
+        }
+    };
+
+    inline run_summary run_tests(const std::vector<test_case>& tests) {
+        run_summary summary{};
+        ::testing::scoped_timer timer("run_tests");
 
         for (const auto& t : tests) {
             base::message(std::format("[{}] started...", t.name));
             try {
                 t.fn();
-                ++passed;
+                ++summary.passed;
                 base::message(std::format("[{}] OK", t.name));
             } catch (const ::testing::failure& e) {
-                ++failed;
+                ++summary.failed;
                 base::message(std::format("[{}] FAIL: {}", t.name, e.what()));
             } catch (const std::exception& e) {
-                ++failed;
+                ++summary.failed;
                 base::message(std::format("[{}] EXCEPTION: {}", t.name, e.what()));
             } catch (...) {
-                ++failed;
+                ++summary.failed;
                 base::message(std::format("[{}] EXCEPTION: <unknown>", t.name));
             }
             base::message("");
         }
 
-        base::message(std::format("SUMMARY: {} passed={}, failed={}, total={}",
-            failed == 0 ? "OK" : "FAIL",
-            passed, failed, passed + failed
-        ));
+        summary.elapsed_us = timer.elapsed_us();
+        (void)timer.finish(); // disarm to avoid destructor logging
 
-        return failed == 0 ? 0 : 1;
+        base::message(std::format("SUMMARY: {} passed={}, failed={}, total={}",
+            summary.ok() ? "OK" : "FAIL",
+            summary.passed, summary.failed, summary.total()
+        ));
+        base::message(std::format("TIME: {:.3f} ms", summary.elapsed_ms()));
+
+        return summary;
     }
 }
 
