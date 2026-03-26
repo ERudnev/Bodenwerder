@@ -19,7 +19,7 @@ namespace Test {
             Passport passport;
         };
 
-        inline static const Structural invariants{{{
+        inline static const Invariants invariants{{{
         }}};
     };
 
@@ -98,7 +98,7 @@ namespace tests {
         const auto mol_h = ops::particle::create<Modecule>(transaction, Modecule::Quantum{std::vector<Atom::Id>{atom_h}, hydrogen});
         const auto mol_he = ops::particle::create<Modecule>(transaction, Modecule::Quantum{std::vector<Atom::Id>{atom_he}, helium});
 
-        world = ops::validate(ops::integrate(world, transaction.push()));
+        world = ops::validate_smart(world, ops::integrate(world, transaction.push()));
         EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(world, mol_h).descrition)->c_str()), "mock:Hydrogen.txt");
         EXPECT_EQ(std::string(layer.handlers.at(ops::particle::get<Modecule>(world, mol_he).descrition)->c_str()), "mock:Helium.txt");
     }
@@ -115,7 +115,7 @@ namespace tests {
 
         const resources::Manager manager = base::make_shared<resources::ManagerData>();
         manager->register_layer<TextDescription>();
-        world = ops::validate(ops::integrate(world, transaction.push()));
+        world = ops::validate_smart(world, ops::integrate(world, transaction.push()));
         manager->sync(world);
 
         logger::message("resources (manager): {}", manager->report());
@@ -129,7 +129,8 @@ namespace tests {
         using namespace Q1CORE::Example::Varph;
         using namespace Test;
 
-        auto transaction = repo::Sequence{ops::world::create(ops::schema::assemble<Modecule, ColorRamp>())};
+        const World before = ops::world::create(ops::schema::assemble<Modecule, ColorRamp>());
+        auto transaction = repo::Sequence{before};
 
         const resources::Manager manager = base::make_shared<resources::ManagerData>();
         manager->register_layer<TextDescription>();
@@ -140,7 +141,7 @@ namespace tests {
         const auto green = ops::resource::declare<ColorRamp>(transaction, ColorRamp::Quantum{{"GreenRamp", 8, glm::vec3{0, 0, 0}, glm::vec3{0, 1, 0}}});
         const auto blue = ops::resource::declare<ColorRamp>(transaction, ColorRamp::Quantum{{"BlueRamp", 8, glm::vec3{0, 0, 0}, glm::vec3{0, 0, 1}}});
 
-        const auto validated = ops::validate(static_cast<World>(transaction));
+        const auto validated = ops::validate_smart(before, ops::integrate(before, transaction.push()));
         manager->sync(validated);
 
         logger::message("resources (add custom layer): schema={}", utilities::type_names_multiline(*validated->schema));

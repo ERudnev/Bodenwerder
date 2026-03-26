@@ -21,7 +21,7 @@ namespace tests {
         EXPECT_TRUE(not ops::particle::exists<Electron>(initial, s_zero));
         EXPECT_TRUE(not ops::particle::exists<Electron>(initial, s_none));
 
-        const World next = ops::validate(ops::integrate(initial, tx.push()));
+        const World next = ops::validate_smart(initial, ops::integrate(initial, tx.push()));
 
         EXPECT_TRUE(ops::particle::exists<Electron>(next, s_neg));
         EXPECT_TRUE(not ops::particle::exists<Electron>(next, s_zero));

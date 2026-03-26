@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iQSM/delta.h>
+#include <iQSM/internals/fields_mutable.h>
 #include <iQSM/operations/integration.h>
 #include <iQSM/repository/commit.h>
 #include <iQSM/world.h>
@@ -15,17 +16,15 @@ namespace iqsm::repo {
 
         // Accumulate changes (no integrate/validate, no head movement).
         void absorb(Delta delta) {
-            accumulated = ops::merge(accumulated, std::move(delta));
+            accumulated.absorb(std::move(delta));
         }
 
         // Current accumulated changes.
-        Delta delta() const { return accumulated; }
+        Delta delta() const { return accumulated.snapshot(); }
 
         // Return accumulated delta and reset to empty (non-const).
         Delta push() {
-            auto out = accumulated;
-            accumulated = ::iqsm::delta::empty();
-            return out;
+            return accumulated.push();
         }
 
         // One-step conversion into a value-type handle compatible with experimental helpers.
@@ -36,11 +35,9 @@ namespace iqsm::repo {
             };
         }
 
-        operator iqsm::World() const { return head; }
-
     private:
         const World head;
-        Delta accumulated = ::iqsm::delta::empty();
+        internals::FieldsMutable accumulated{};
     };
 }
 

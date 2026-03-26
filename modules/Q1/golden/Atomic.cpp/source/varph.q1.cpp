@@ -15,7 +15,7 @@ namespace Q1CORE::Example::Varph {
 // Inertia:
 namespace Q1CORE::Example::Varph {
     const Invariants Inertia::invariants{{{
-        Invariants::anchor_attribute<Spark, Inertia>,
+        invariant::anchor_attribute<Spark, Inertia>,
     }}};
 }
 
@@ -33,14 +33,14 @@ namespace Q1CORE::Example::Varph {
     }
 
     const Invariants Charge::invariants{{{
-        Invariants::anchor_attribute<Spark, Charge>,
+        invariant::anchor_attribute<Spark, Charge>,
     }}};
 }
 
 // Strong:
 namespace Q1CORE::Example::Varph {
     const Invariants Strong::invariants{{{
-        Invariants::anchor_attribute<Spark, Strong>,
+        invariant::anchor_attribute<Spark, Strong>,
     }}};
 }
 
@@ -59,8 +59,8 @@ namespace Q1CORE::Example::Varph {
         }
     }
     const Invariants Electron::invariants{{{
-        Invariants::existence<Electron, Charge, &Electron_impl::existence_rule>,
-        Invariants::anchor_attribute<Charge, Electron>,
+        invariant::existence<Electron, Charge, &Electron_impl::existence_rule>,
+        invariant::anchor_attribute<Charge, Electron>,
     }}};
 }
 
@@ -88,9 +88,9 @@ namespace Q1CORE::Example::Varph {
     }
 
     const Invariants Nucleon::invariants{{{
-        Invariants::existence<Nucleon, Strong, &Nucleon_impl::existence_rule>,
-        Invariants::anchor_attribute<Strong, Nucleon>,
-        &iqsm::ops::cache::update<Nucleon, &Nucleon_impl::update_cache>,
+        invariant::existence<Nucleon, Strong, &Nucleon_impl::existence_rule>,
+        invariant::anchor_attribute<Strong, Nucleon>,
+        invariant::for_each_item<Nucleon, &Nucleon_impl::update_cache>,
     }}};
 }
 
@@ -113,9 +113,10 @@ namespace Q1CORE::Example::Varph {
             return z;
         }
 
-        auto existence(World world) -> Delta {
+        void existence(iqsm::repo::Commit commit) {
+            const auto world = commit.initial;
             const auto nucleons = world->field<Nucleon>();
-            if (nucleons->container.empty()) return ::iqsm::delta::empty();
+            if (nucleons->container.empty()) return;
 
             const auto atoms = world->field<Atom>();
 
@@ -135,7 +136,7 @@ namespace Q1CORE::Example::Varph {
                 const auto& nid = kv.first;
                 if (not assigned.contains(nid)) homeless.push_back(nid);
             }
-            if (homeless.empty()) return ::iqsm::delta::empty();
+            if (homeless.empty()) return;
 
             struct Node {
                 Spark::minkpt pos;
@@ -163,7 +164,7 @@ namespace Q1CORE::Example::Varph {
             std::unordered_set<Nucleon::Id> visited;
             visited.reserve(homeless.size());
 
-            auto tx = iqsm::repo::Sequence{World{world}};
+            auto tx = iqsm::repo::Sequence{world};
 
             for (const auto& start : homeless) {
                 if (not visited.insert(start).second) continue;
@@ -190,7 +191,10 @@ namespace Q1CORE::Example::Varph {
                 iqsm::ops::particle::create<Atom>(tx, std::move(q));
             }
 
-            return tx.push();
+            const auto delta = tx.push();
+            if (not delta->empty()) {
+                commit.push(delta);
+            }
         }
 
         auto update_cache(World world, Atom::Id id, const Atom::Quantum& original) -> optional<Atom::Quantum> {
@@ -218,8 +222,8 @@ namespace Q1CORE::Example::Varph {
 
     const Invariants Atom::invariants{{{
         &Atom_impl::existence,
-        Invariants::anchor_any<Nucleon, Atom, &Quantum::core>,
-        &iqsm::ops::cache::update<Atom, &Atom_impl::update_cache>,
+        invariant::anchor_any<Nucleon, Atom, &Quantum::core>,
+        invariant::for_each_item<Atom, &Atom_impl::update_cache>,
     }}};
 }
 
@@ -252,8 +256,8 @@ namespace Q1CORE::Example::Varph {
     }
 
     const Invariants Chemical::invariants{{{
-        Invariants::anchor_component<Atom, Chemical, &Chemical_impl::construct>,
-        &iqsm::ops::cache::update<Chemical, &Chemical_impl::update_cache>,
+        invariant::isomorphic<Atom, Chemical, &Chemical_impl::construct>,
+        invariant::for_each_item<Chemical, &Chemical_impl::update_cache>,
     }}};
 }
 
@@ -261,22 +265,22 @@ namespace Q1CORE::Example::Varph {
 // Capture:
 namespace Q1CORE::Example::Varph {
     const Invariants Capture::invariants{{{
-        Invariants::anchor<Atom, Capture, &Quantum::atom>,
-        Invariants::anchor<Electron, Capture, &Quantum::electron>,
+        invariant::anchor<Atom, Capture, &Quantum::atom>,
+        invariant::anchor<Electron, Capture, &Quantum::electron>,
     }}};
 }
 
 // Modecule:
 namespace Q1CORE::Example::Varph {
     const Invariants Modecule::invariants{{{
-        Invariants::anchor_any<Atom, Modecule, &Quantum::atoms>,
+        invariant::anchor_any<Atom, Modecule, &Quantum::atoms>,
     }}};
 }
 
 // Binding:
 namespace Q1CORE::Example::Varph {
     const Invariants Binding::invariants{{{
-        Invariants::anchor_all<Atom, Binding, &Quantum::bound>,
+        invariant::anchor_all<Atom, Binding, &Quantum::bound>,
     }}};
 }
 

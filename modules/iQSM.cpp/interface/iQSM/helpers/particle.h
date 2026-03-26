@@ -102,19 +102,22 @@ namespace iqsm::ops::particle {
   auto create(repo::Commit commit, Quantum<Meta> value) -> Id<Meta> {
     const auto id = Id<Meta>::generate_random();
 
-    commit.push(internals::delta::make_atomic<Meta>(id, Facet<Meta>::create(std::move(value)), std::nullopt, false));
+    commit.push(internals::delta::make_atomic<Meta>(id, std::nullopt, Facet<Meta>::create(std::move(value))));
     return id;
   }
 
   template<meta::Quark Meta>
   auto create(repo::Commit commit, Id<Meta> id, Quantum<Meta> value) -> Id<Meta> {
-    commit.push(internals::delta::make_atomic<Meta>(id, Facet<Meta>::create(std::move(value)), std::nullopt, false));
+    commit.push(internals::delta::make_atomic<Meta>(id, std::nullopt, Facet<Meta>::create(std::move(value))));
     return id;
   }
 
   template<meta::Particle Meta>
   void remove(repo::Commit commit, Id<Meta> id) {
-    commit.push(internals::delta::make_atomic<Meta>(id, std::nullopt, std::nullopt, true));
+    const auto field = commit.initial->field<Meta>();
+    if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::particle::remove(): missing entity: {}", id)); }
+    const auto before = field->container.at(id);
+    commit.push(internals::delta::make_atomic<Meta>(id, before, std::nullopt));
   }
 
 } // namespace iqsm::ops::particle
@@ -134,7 +137,7 @@ namespace iqsm::detail::ops::particle {
     applied = true;
     if (!dirty) return;
 
-    commit.push(internals::delta::make_atomic<Meta>(id, std::nullopt, std::pair<Item, Item>{ original, Facet<Meta>::create(std::move(value)) }, false));
+    commit.push(internals::delta::make_atomic<Meta>(id, original, Facet<Meta>::create(std::move(value))));
   }
 
 } // namespace iqsm::detail::ops::particle

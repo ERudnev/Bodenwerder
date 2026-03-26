@@ -31,7 +31,7 @@ namespace Q1-CPP {
   file_layout: @Rule {
     Проекция Q1 DSL → C++: организация файлов и заголовков.
     1: Каждый сгенерированный заголовок начинается с `#pragma once`.
-    2: Каждый сгенерированный заголовок включает `#include <iQSM/q1/_gateway.h>`.
+    2: Каждый сгенерированный заголовок включает `#include <iQSM/api/_gateway.h>`.
     3: Внутри целевого namespace добавляется `using namespace iqsm::dsl_gateway;`.
     4: Подключаются STL-заголовки по факту использованных типов (например, `vector` → `<vector>`, `string` → `<string>`).
     5: Для кросс-namespace ссылок подключается соответствующий `.q1.h` (например, System включает Model через `#include <Atomic/model.q1.h>`).
@@ -93,7 +93,7 @@ namespace Q1-CPP {
     1: Каждый аспектный C++-тип содержит `static const Invariants invariants;`, а определение `invariants` размещается в `.cpp`.
       1: Причина: чтобы не светить внутренние операции (`update/construct` и утилиты) в заголовках и не смешивать данные с логикой.
     2: Для `attribute/tag ... of Parent` в invariants добавляется `Structural::anchor_attribute<Parent, Aspect>`.
-    3: Для `component ... of Parent` в invariants добавляется `Structural::anchor_component<Parent, Aspect, &logic::Aspect::construct>`.
+    3: Для `component ... of Parent` в invariants добавляется `Structural::isomorphic<Parent, Aspect, &logic::Aspect::construct>`.
       1: Реальная `construct(World, const Parent::Quantum&) -> Aspect::Quantum` размещается в `.cpp` внутри `iqsm::domains::<DomainPath>::Aspect`.
     4: Поле `f: Target::Id @anchor` добавляет в invariants `Structural::anchor<Target, Owner, &Quantum::f>`.
     5: Если в `quantum` встречается хотя бы одно поле с директивой `@cache`, генерация добавляет в `invariants` валидатор `&logic::Aspect::update`.

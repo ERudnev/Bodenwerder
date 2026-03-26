@@ -5,15 +5,15 @@
 namespace iqsm::internals::delta {
 
     template<meta::Aspect Meta>
-    inline auto make_atomic(Id<Meta> id, std::optional<Item<Meta>> add, std::optional<std::pair<Item<Meta>, Item<Meta>>> change, bool remove) -> Delta
+    inline auto make_atomic(Id<Meta> id, std::optional<Item<Meta>> before, std::optional<Item<Meta>> after) -> Delta
     {
         using Operation = typename iqsm::delta::FieldDiff<Meta>::Operation;
 
         auto field_delta = base::make_shared<iqsm::delta::FieldDiff<Meta>>();
-        field_delta->ops = field_delta->ops.insert(std::move(id), Operation{ std::move(add), std::move(change), remove });
+        field_delta->ops.emplace(std::move(id), Operation{ std::move(before), std::move(after) });
 
         auto world_delta = base::make_shared<iqsm::delta::Fields>();
-        world_delta->fields = world_delta->fields.insert(Facet<Meta>::typeId, freeze(field_delta));
+        world_delta->fields.emplace(Facet<Meta>::typeId, freeze(field_delta));
         return freeze(std::move(world_delta));
     }
 
@@ -37,19 +37,13 @@ namespace iqsm::internals::delta {
             const auto& from_item = kv.second;
 
             if (not to->container.contains(id)) {
-                field_delta->ops = field_delta->ops.insert(id, Operation{ std::nullopt, std::nullopt, true });
+                field_delta->ops.emplace(id, Operation{ from_item, std::nullopt });
                 continue;
             }
 
             const auto to_item = to->container.at(id);
             if (to_item != from_item) {
-                field_delta->ops = field_delta->ops.insert(
-                    id,
-                    Operation{
-                        std::nullopt,
-                        std::pair<typename iqsm::delta::FieldDiff<Meta>::Item, typename iqsm::delta::FieldDiff<Meta>::Item>{ from_item, to_item },
-                        false,
-                    });
+                field_delta->ops.emplace(id, Operation{ from_item, to_item });
             }
         }
 
@@ -59,7 +53,7 @@ namespace iqsm::internals::delta {
             const auto& to_item = kv.second;
             if (from->container.contains(id)) continue;
 
-            field_delta->ops = field_delta->ops.insert(id, Operation{ to_item, std::nullopt, false });
+            field_delta->ops.emplace(id, Operation{ std::nullopt, to_item });
         }
 
         // global

@@ -67,7 +67,7 @@ namespace Toy {
             }
         }
 
-        world = ops::validate(ops::integrate(world, accumulator.push()));
+        world = ops::validate_smart(world, ops::integrate(world, accumulator.push()));
     }
 
     void Model::loadFromFile() {

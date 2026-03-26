@@ -69,9 +69,7 @@ namespace iqsm::detail::ops::global {
             };
 
             auto world_delta = base::make_shared<delta::Fields>();
-            world_delta->fields = world_delta->fields.insert(
-                Facet<Meta>::typeId,
-                freeze(field_delta));
+            world_delta->fields.emplace(Facet<Meta>::typeId, freeze(field_delta));
 
             commit.push(freeze(world_delta));
         }

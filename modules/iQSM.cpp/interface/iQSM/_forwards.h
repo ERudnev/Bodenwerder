@@ -25,10 +25,13 @@ namespace iqsm {
 
     namespace delta { struct Fields; }
     using Delta = cref<delta::Fields>;
+
+    namespace internals { struct FieldsMutable; }
+    namespace repo { struct Commit; }
 }
 
 namespace iqsm::ops::validation {
-    using Func = Delta(*)(World);
+    using Func = void(*)(iqsm::repo::Commit);
 }
 
 

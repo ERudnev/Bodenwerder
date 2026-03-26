@@ -1,7 +1,7 @@
 #pragma once
 
 // all includes from DSL-declarations layer
-#include <iQSM/q1/_gateway.h>
+#include <iQSM/api/_gateway.h>
 
 // Umbrella header for non-generated (logic) code.
 //

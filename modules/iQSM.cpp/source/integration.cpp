@@ -4,6 +4,7 @@
 #include <set>
 #include <stdexcept>
 #include <vector>
+#include <iQSM/repository/commit.h>
 
 namespace iqsm::ops {
     namespace {
@@ -83,23 +84,16 @@ namespace iqsm::ops {
                 const auto& entry = world->schema->aspects.at(type_id);
                 for (const auto invariant : entry.invariants.own) {
                     if (not invariant) continue;
-                    auto delta = invariant(world);
-                    world = iqsm::ops::integrate(std::move(world), std::move(delta));
+                    repo::Commit commit{
+                        world,
+                        [&](Delta delta) {
+                            world = iqsm::ops::integrate(std::move(world), std::move(delta));
+                        }
+                    };
+                    invariant(std::move(commit));
                 }
             }
             return world;
-        }
-
-        auto validate_from_delta(iqsm::World world, iqsm::Delta delta) -> iqsm::World {
-            if (delta->empty()) return world;
-            if (world->schema->empty()) return world;
-
-            std::set<TypeId> touched;
-            for (const auto& field_entry : delta->fields) touched.insert(field_entry.first);
-
-            const auto affected = expand_required_by(world, touched);
-            const auto order = topo_order_dependencies_first(world, affected);
-            return apply_invariants_in_order(std::move(world), order);
         }
     }
 
@@ -132,8 +126,8 @@ namespace iqsm::ops {
         return freeze(out);
     }
 
-    World validate(World world) {
-        // helper: validate everything (no delta context)
+    World validate_full(World world) {
+        // validate everything (no delta context)
         if (world->schema->empty()) return world;
 
         std::set<TypeId> all;
@@ -142,32 +136,39 @@ namespace iqsm::ops {
         return apply_invariants_in_order(std::move(world), order);
     }
 
-    Delta merge(Delta first, Delta second) {
-        if (first->empty()) { return second; }
-        if (second->empty()) { return first; }
-
-        auto out = base::make_shared<iqsm::delta::Fields>();
-        for (const auto& field_entry : first->fields) {
-            out->fields = out->fields.insert(field_entry.first, field_entry.second);
+    World validate_smart(World validBeforeChanges, World changed) {
+        if (validBeforeChanges->schema != changed->schema) {
+            throw std::runtime_error("validate_smart(validBeforeChanges,changed): worlds must share the same schema handle");
         }
 
-        for (const auto& field_entry : second->fields) {
-            const auto& typeId = field_entry.first;
-            const auto& right_delta = field_entry.second;
+        if (validBeforeChanges == changed) return changed;
+        if (changed->schema->empty()) return changed;
 
-            if (not out->fields.contains(typeId)) {
-                out->fields = out->fields.insert(typeId, right_delta);
-                continue;
+        std::set<TypeId> touched;
+        for (const auto& aspect_entry : changed->schema->aspects) {
+            const auto& type_id = aspect_entry.first;
+            const auto& entry = aspect_entry.second;
+
+            auto before = entry.zero;
+            if (const auto* slot = validBeforeChanges->fields.find(type_id); slot) {
+                before = *slot;
             }
 
-            const auto left_delta = out->fields.at(typeId);
+            auto after = entry.zero;
+            if (const auto* slot = changed->fields.find(type_id); slot) {
+                after = *slot;
+            }
 
-            const auto merged = left_delta->merge(right_delta);
-            out->fields = out->fields.insert(typeId, merged);
+            if (before != after) {
+                touched.insert(type_id);
+            }
         }
 
-        if (out->fields.empty()) { return ::iqsm::delta::empty(); }
-        return freeze(out);
+        if (touched.empty()) return changed;
+
+        const auto affected = expand_required_by(changed, touched);
+        const auto order = topo_order_dependencies_first(changed, affected);
+        return apply_invariants_in_order(std::move(changed), order);
     }
 
     Delta make_delta(World from, World to) {
@@ -199,7 +200,7 @@ namespace iqsm::ops {
             const auto field_delta = entry.make_delta_field(from_field, to_field);
             if (not field_delta.has_value()) continue;
 
-            out->fields = out->fields.insert(type_id, *field_delta);
+            out->fields.emplace(type_id, *field_delta);
         }
 
         if (out->fields.empty()) { return ::iqsm::delta::empty(); }

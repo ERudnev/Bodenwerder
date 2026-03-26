@@ -1,6 +1,7 @@
 #include "_common.h"
 
 #include <Atomic/varph.q1.h>
+#include <iQSM/internals/fields_mutable.h>
 
 namespace {
     using namespace iqsm;
@@ -10,42 +11,34 @@ namespace {
     {
         auto fd = base::make_shared<delta::FieldDiff<Charge>>();
         delta::FieldDiff<Charge>::Operation op{};
-        op.add = Facet<Charge>::create(Charge::Quantum{value});
-        fd->ops = fd->ops.insert(id, std::move(op));
+        op.after = Facet<Charge>::create(Charge::Quantum{value});
+        fd->ops.emplace(id, std::move(op));
 
         auto wd = base::make_shared<delta::Fields>();
-        wd->fields = wd->fields.insert(
-            Facet<Charge>::typeId,
-            freeze(fd));
+        wd->fields.emplace(Facet<Charge>::typeId, freeze(fd));
         return freeze(wd);
     }
     Delta setCharge(Spark::Id id, integer before_value, integer after_value)
     {
         auto fd = base::make_shared<delta::FieldDiff<Charge>>();
         delta::FieldDiff<Charge>::Operation op{};
-        op.change = std::pair<Facet<Charge>::Item, Facet<Charge>::Item>{
-            Facet<Charge>::create(Charge::Quantum{before_value}),
-            Facet<Charge>::create(Charge::Quantum{after_value}),
-        };
-        fd->ops = fd->ops.insert(id, std::move(op));
+        op.before = Facet<Charge>::create(Charge::Quantum{before_value});
+        op.after = Facet<Charge>::create(Charge::Quantum{after_value});
+        fd->ops.emplace(id, std::move(op));
 
         auto wd = base::make_shared<delta::Fields>();
-        wd->fields = wd->fields.insert(
-            Facet<Charge>::typeId,
-            freeze(fd));
+        wd->fields.emplace(Facet<Charge>::typeId, freeze(fd));
         return freeze(wd);
     }
-    Delta deleteCharge(Spark::Id id)
+    Delta deleteCharge(Spark::Id id, integer before_value)
     {
         auto fd = base::make_shared<delta::FieldDiff<Charge>>();
         delta::FieldDiff<Charge>::Operation op{};
-        op.remove = true;
-        fd->ops = fd->ops.insert(id, std::move(op));
+        op.before = Facet<Charge>::create(Charge::Quantum{before_value});
+        fd->ops.emplace(id, std::move(op));
 
         auto wd = base::make_shared<delta::Fields>();
-        wd->fields = wd->fields.insert(
-            Facet<Charge>::typeId,
-            freeze(fd));
+        wd->fields.emplace(Facet<Charge>::typeId, freeze(fd));
         return freeze(wd);
     }
 
@@ -78,16 +71,11 @@ namespace {
             if (not bf->ops.contains(id)) { return false; }
             const auto& bo = bf->ops.at(id);
 
-            if (ao.remove != bo.remove) { return false; }
+            if (ao.before.has_value() != bo.before.has_value()) { return false; }
+            if (ao.before.has_value() and not item_equal(*ao.before, *bo.before)) { return false; }
 
-            if (ao.add.has_value() != bo.add.has_value()) { return false; }
-            if (ao.add.has_value() and not item_equal(*ao.add, *bo.add)) { return false; }
-
-            if (ao.change.has_value() != bo.change.has_value()) { return false; }
-            if (ao.change.has_value()) {
-                if (not item_equal(ao.change->first, bo.change->first)) { return false; }
-                if (not item_equal(ao.change->second, bo.change->second)) { return false; }
-            }
+            if (ao.after.has_value() != bo.after.has_value()) { return false; }
+            if (ao.after.has_value() and not item_equal(*ao.after, *bo.after)) { return false; }
         }
 
         return true;
@@ -98,30 +86,36 @@ namespace tests {
     void delta_merge() {
         const auto id = Spark::Id::generate_random();
         const auto other = Spark::Id::generate_random();
-        using namespace iqsm::ops;
 
-        EXPECT_TRUE(are_equal(merge(addCharge(id, integer{1}), addCharge(id, integer{2})), addCharge(id, integer{1})));
-        EXPECT_TRUE(are_equal(merge(addCharge(id, integer{2}), addCharge(id, integer{1})), addCharge(id, integer{2})));
-        EXPECT_TRUE(are_equal(merge(addCharge(id, integer{1}), addCharge(other, integer{2})), merge(addCharge(other, integer{2}), addCharge(id, integer{1}))));
+        const auto merged = [](Delta a, Delta b) -> Delta {
+            iqsm::internals::FieldsMutable out{};
+            out.absorb(std::move(a));
+            out.absorb(std::move(b));
+            return out.push();
+        };
 
-        EXPECT_TRUE(are_equal(merge(setCharge(id, integer{1}, integer{2}), deleteCharge(id)), deleteCharge(id)));
-        EXPECT_TRUE(are_equal(merge(deleteCharge(id), setCharge(id, integer{1}, integer{2})), deleteCharge(id)));
-        EXPECT_TRUE(are_equal(merge(deleteCharge(id), deleteCharge(id)), deleteCharge(id)));
-        EXPECT_TRUE(are_equal(merge(setCharge(id, integer{1}, integer{2}), deleteCharge(other)), merge(deleteCharge(other), setCharge(id, integer{1}, integer{2}))));
+        EXPECT_TRUE(are_equal(merged(addCharge(id, integer{1}), addCharge(id, integer{2})), addCharge(id, integer{2})));
+        EXPECT_TRUE(are_equal(merged(addCharge(id, integer{2}), addCharge(id, integer{1})), addCharge(id, integer{1})));
+        EXPECT_TRUE(are_equal(merged(addCharge(id, integer{1}), addCharge(other, integer{2})), merged(addCharge(other, integer{2}), addCharge(id, integer{1}))));
+
+        EXPECT_TRUE(are_equal(merged(setCharge(id, integer{1}, integer{2}), deleteCharge(id, integer{2})), deleteCharge(id, integer{2})));
+        EXPECT_TRUE(are_equal(merged(deleteCharge(id, integer{1}), setCharge(id, integer{1}, integer{2})), deleteCharge(id, integer{1})));
+        EXPECT_TRUE(are_equal(merged(deleteCharge(id, integer{1}), deleteCharge(id, integer{2})), deleteCharge(id, integer{1})));
+        EXPECT_TRUE(are_equal(merged(setCharge(id, integer{1}, integer{2}), deleteCharge(other, integer{5})), merged(deleteCharge(other, integer{5}), setCharge(id, integer{1}, integer{2}))));
 
         // neutral element + idempotency
-        EXPECT_TRUE(are_equal(merge(delta::empty(), deleteCharge(id)), deleteCharge(id)));
-        EXPECT_TRUE(are_equal(merge(deleteCharge(id), delta::empty()), deleteCharge(id)));
-        EXPECT_TRUE(are_equal(merge(deleteCharge(id), deleteCharge(id)), deleteCharge(id)));
+        EXPECT_TRUE(are_equal(merged(delta::empty(), deleteCharge(id, integer{1})), deleteCharge(id, integer{1})));
+        EXPECT_TRUE(are_equal(merged(deleteCharge(id, integer{1}), delta::empty()), deleteCharge(id, integer{1})));
+        EXPECT_TRUE(are_equal(merged(deleteCharge(id, integer{1}), deleteCharge(id, integer{2})), deleteCharge(id, integer{1})));
 
         // sum of sequential changes: (1->2) + (2->3) == (1->3)
         EXPECT_TRUE(are_equal(
-            merge(setCharge(id, integer{1}, integer{2}), setCharge(id, integer{2}, integer{3})),
+            merged(setCharge(id, integer{1}, integer{2}), setCharge(id, integer{2}, integer{3})),
             setCharge(id, integer{1}, integer{3})));
 
         // tolerant sequential changes: (1->2) + (1->3) == (1->3)  ("who came later wins")
         EXPECT_TRUE(are_equal(
-            merge(setCharge(id, integer{1}, integer{2}), setCharge(id, integer{1}, integer{3})),
+            merged(setCharge(id, integer{1}, integer{2}), setCharge(id, integer{1}, integer{3})),
             setCharge(id, integer{1}, integer{3})));
     }
 }

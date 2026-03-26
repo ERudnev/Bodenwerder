@@ -21,23 +21,21 @@ namespace tests::utility {
     };
 
     namespace Foo_impl {
-        inline iqsm::Delta validate_nonnegative(iqsm::World world) {
+        inline void validate_nonnegative(iqsm::repo::Commit commit) {
+            const auto world = commit.initial;
             const auto field = world->field<Foo>();
 
-            auto fd = base::make_shared<iqsm::delta::FieldDiff<Foo>>();
+            iqsm::internals::FieldsMutable staged{};
+            using Operation = typename iqsm::delta::FieldDiff<Foo>::Operation;
 
             for (const auto& [id, item] : field->container) {
                 if (item->value >= integer{0}) continue;
-                typename iqsm::delta::FieldDiff<Foo>::Operation op{};
-                op.remove = true;
-                fd->ops = fd->ops.insert(id, std::move(op));
+                staged.add_op<Foo>(id, Operation{ item, std::nullopt });
             }
 
-            if (fd->ops.empty()) return iqsm::delta::empty();
-
-            auto wd = base::make_shared<iqsm::delta::Fields>();
-            wd->fields = wd->fields.insert(iqsm::Facet<Foo>::typeId, iqsm::freeze(fd));
-            return iqsm::freeze(wd);
+            if (not staged.empty()) {
+                commit.push(staged.push());
+            }
         }
     }
 
@@ -46,6 +44,6 @@ namespace tests::utility {
     }}};
 
     inline const Invariants Bar::invariants{{{
-        Invariants::anchor_attribute<Foo, Bar>,
+        invariant::anchor_attribute<Foo, Bar>,
     }}};
 }

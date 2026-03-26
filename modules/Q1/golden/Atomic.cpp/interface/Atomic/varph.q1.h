@@ -1,6 +1,6 @@
 #pragma once
 
-#include <iQSM/q1/_gateway.h>
+#include <iQSM/api/_gateway.h>
 
 namespace Q1CORE::Example::Varph {
     using namespace iqsm::dsl_gateway;

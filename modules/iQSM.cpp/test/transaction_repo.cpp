@@ -1,6 +1,7 @@
 #include "_common.h"
 
-#include <iQSM/helpers/_experimental.h>
+#include <iQSM/api/_gateway.h>
+
 #include <iQSM/repository/branch.h>
 #include <iQSM/repository/sequence.h>
 #include <iQSM/repository/accumulator.h>
@@ -19,12 +20,12 @@ namespace tests {
                 const auto id = iqsm::Id<Foo>::generate_random();
 
                 typename iqsm::delta::FieldDiff<Foo>::Operation op{};
-                op.add = iqsm::Facet<Foo>::create(Foo::Quantum{start_value + i});
-                fd->ops = fd->ops.insert(id, std::move(op));
+                op.after = iqsm::Facet<Foo>::create(Foo::Quantum{start_value + i});
+                fd->ops.emplace(id, std::move(op));
             }
 
             auto wd = base::make_shared<iqsm::delta::Fields>();
-            wd->fields = wd->fields.insert(iqsm::Facet<Foo>::typeId, iqsm::freeze(fd));
+            wd->fields.emplace(iqsm::Facet<Foo>::typeId, iqsm::freeze(fd));
 
             return iqsm::ops::integrate(world, iqsm::freeze(wd));
         }
@@ -40,29 +41,29 @@ namespace tests {
         master.rebase(seed_foos_oldschool(master, 10, 100));
         EXPECT_EQ(debug::count<Foo>(master), 10) << "rebase from non-delta patch";
 
-        const auto id = ops::experimental::particle::create<Foo>(master, Foo::Quantum{10});
+        const auto id = ops::particle::create<Foo>(master, Foo::Quantum{10});
         EXPECT_TRUE(debug::read<Foo>(master, id).exists()) << "Commit applied as atomic branch update";
 
-        ops::experimental::particle::modifier<Foo>(master, id)->value = 5;
+        ops::particle::modifier<Foo>(master, id)->value = 5;
         EXPECT_EQ(debug::read<Foo>(master, id)->value, 5) << "simple modification applied";
 
         {
-            auto mod = ops::experimental::particle::modifier<Foo>(master, id);
+            auto mod = ops::particle::modifier<Foo>(master, id);
             mod->value = mod->value - 1;
             mod->value = mod->value - 2;
             EXPECT_EQ(debug::read<Foo>(master, id)->value, 5) << "branch is unchanged until modifier scope ends";
         }
         EXPECT_EQ(debug::read<Foo>(master, id)->value, 2) << "modifier applied on scope exit";
 
-        ops::experimental::particle::modifier<Foo>(master, id)->value = -5;
+        ops::particle::modifier<Foo>(master, id)->value = -5;
         EXPECT_TRUE(not debug::read<Foo>(master, id).exists()) << "negative Foo removed by validation";
 
         { // stress test: two concurrent changes
             repo::Branch fork(master); // expected conversion Branch->World
-            const auto thorn = ops::experimental::particle::create<Foo>(fork, Foo::Quantum{10});
+            const auto thorn = ops::particle::create<Foo>(fork, Foo::Quantum{10});
             {
-                auto mod_a = ops::experimental::particle::modifier<Foo>(fork, thorn);
-                auto mod_b = ops::experimental::particle::modifier<Foo>(fork, thorn);
+                auto mod_a = ops::particle::modifier<Foo>(fork, thorn);
+                auto mod_b = ops::particle::modifier<Foo>(fork, thorn);
                 mod_a->value = 8;
                 mod_b->value = 6;
             }
@@ -74,7 +75,7 @@ namespace tests {
             const size_t before = debug::count<Foo>(master);
             repo::Sequence seq{master};
             for (int v = -5; v <= 5; ++v) {
-                ops::experimental::particle::create<Foo>(seq, Foo::Quantum{v});
+                ops::particle::create<Foo>(seq, Foo::Quantum{v});
             }
 
             EXPECT_EQ(debug::count<Foo>(seq) - before, size_t{11}) << "absorbing to Sequence as is, no validation called";
@@ -92,7 +93,7 @@ namespace tests {
             const int computed = static_cast<int>(assumed_count) - static_cast<int>(head_count) - 1;
 
             for (int i = 0; i < 11; ++i) {
-                ops::experimental::particle::create<Foo>(acc, Foo::Quantum{integer{computed}});
+                ops::particle::create<Foo>(acc, Foo::Quantum{integer{computed}});
             }
 
             EXPECT_EQ(debug::count<Foo>(acc), head_count) << "Accumulator must not integrate head while accumulating";

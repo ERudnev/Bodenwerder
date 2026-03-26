@@ -9,7 +9,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include <iQSM/q1/_gateway.h>
+#include <iQSM/api/_gateway.h>
 
 namespace Q1CORE {
   namespace Syntax {

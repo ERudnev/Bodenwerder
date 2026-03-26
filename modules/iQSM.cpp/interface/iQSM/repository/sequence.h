@@ -1,32 +1,32 @@
 #pragma once
 
 #include <iQSM/delta.h>
+#include <iQSM/internals/fields_mutable.h>
 #include <iQSM/operations/integration.h>
 #include <iQSM/repository/commit.h>
 #include <iQSM/world.h>
 
 namespace iqsm::repo {
 
-    // Accumulates changes as a thick delta without integrating/validating into a World.
-    // `current` is kept as an "sync" snapshot for workers that require a World to read from.
+    // Accumulates changes as a thick delta.
+    // Also keeps an up-to-date `current` world snapshot by integrating each absorbed delta,
+    // so subsequent operations can depend on previous writes.
     class Sequence {
     public:
         Sequence(World starting) : current(starting) {}
 
-        // Accumulate changes (no integrate/validate).
+        // Accumulate changes (integrates into `current`, no validation).
         void absorb(Delta delta) {
             current = ops::integrate(current, delta);
-            accumulated = ops::merge(accumulated, std::move(delta));
+            accumulated.absorb(std::move(delta));
         }
 
         // Current accumulated changes.
-        Delta delta() const { return accumulated; }
+        Delta delta() const { return accumulated.snapshot(); }
 
-        // Return accumulated delta and reset to empty (non-const).
+        // Return accumulated delta and reset accumulator to empty (non-const).
         Delta push() {
-            auto out = accumulated;
-            accumulated = ::iqsm::delta::empty();
-            return out;
+            return accumulated.push();
         }
 
         // One-step conversion into a value-type handle compatible with experimental helpers.
@@ -37,11 +37,9 @@ namespace iqsm::repo {
             };
         }
 
-        operator iqsm::World() const { return current; }
-
     private:
         World current;
-        Delta accumulated = ::iqsm::delta::empty();
+        internals::FieldsMutable accumulated{};
     };
 }
 

@@ -38,21 +38,13 @@ namespace iqsm::ops::cache {
 
       const auto after = Facet<Meta>::create(std::move(*next));
 
-      field_delta->ops = field_delta->ops.insert(
-          id,
-          Operation{
-              std::nullopt,
-              std::pair<typename delta::FieldDiff<Meta>::Item, typename delta::FieldDiff<Meta>::Item>{before, after},
-              false,
-          });
+      field_delta->ops.emplace(id, Operation{ before, after });
     }
 
     if (field_delta->ops.empty()) return ::iqsm::delta::empty();
 
     auto world_delta = base::make_shared<delta::Fields>();
-    world_delta->fields = world_delta->fields.insert(
-        Facet<Meta>::typeId,
-        freeze(field_delta));
+    world_delta->fields.emplace(Facet<Meta>::typeId, freeze(field_delta));
 
     return freeze(world_delta);
   }

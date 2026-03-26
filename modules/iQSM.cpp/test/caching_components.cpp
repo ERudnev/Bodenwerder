@@ -42,10 +42,10 @@ namespace tests {
         });
 
         {
-            EXPECT_TRUE(not ops::particle::exists<Chemical>(tx, atomId));
+            EXPECT_TRUE(not ops::particle::exists<Chemical>(ops::integrate(world, tx.delta()), atomId));
         }
 
-        const World next = ops::validate(ops::integrate(world, tx.push()));
+        const World next = ops::validate_smart(world, ops::integrate(world, tx.push()));
 
         EXPECT_TRUE(ops::particle::exists<Chemical>(next, atomId));
         const auto& chemical = ops::particle::get<Chemical>(next, atomId);
