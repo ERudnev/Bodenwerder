@@ -1,6 +1,8 @@
 #pragma once
 
 #include <iQSM/delta.h>
+#include <iQSM/meta/aspect_id.h>
+#include <iQSM/meta/concepts.h>
 
 namespace iqsm::internals::delta {
 
@@ -13,7 +15,7 @@ namespace iqsm::internals::delta {
         field_delta->ops.emplace(std::move(id), Operation{ std::move(before), std::move(after) });
 
         auto world_delta = base::make_shared<iqsm::delta::Fields>();
-        world_delta->fields.emplace(Facet<Meta>::typeId, freeze(field_delta));
+        world_delta->fields.emplace(types::aspectId<Meta>(), freeze(field_delta));
         return freeze(std::move(world_delta));
     }
 
@@ -22,7 +24,7 @@ namespace iqsm::internals::delta {
     // - Items are "equal" iff the shared_ref pointer is equal.
     // - Any pointer change is treated as change (no structural equality).
     template<meta::Aspect Meta>
-    inline auto count_delta_field(iqsm::FieldAbstract::Ref from_untyped, iqsm::FieldAbstract::Ref to_untyped)
+    inline auto count_delta_field(iqsm::cref<iqsm::FieldAbstract> from_untyped, iqsm::cref<iqsm::FieldAbstract> to_untyped)
         -> std::optional<iqsm::delta::UField>
     {
         const auto from = base::shared_ref_cast<const iqsm::FieldObject<Meta>>(from_untyped);

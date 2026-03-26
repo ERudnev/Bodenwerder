@@ -16,11 +16,11 @@ namespace iqsm::repo {
 
         // Accumulate changes (no integrate/validate, no head movement).
         void absorb(Delta delta) {
-            accumulated.absorb(std::move(delta));
+            accumulated.absorb(head->schema, std::move(delta));
         }
 
         // Current accumulated changes.
-        Delta delta() const { return accumulated.snapshot(); }
+        Delta delta() const { return accumulated.snapshot(head->schema); }
 
         // Return accumulated delta and reset to empty (non-const).
         Delta push() {

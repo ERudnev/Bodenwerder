@@ -1,6 +1,8 @@
 #pragma once
 
 #include <iQSM/delta.h>
+#include <iQSM/meta/aspect_id.h>
+#include <iQSM/schema.h>
 
 namespace iqsm::internals {
     // Mutable accumulator for deltas (intended for Sequence/Accumulator/validation pipelines).
@@ -33,12 +35,12 @@ namespace iqsm::internals {
             }
 
             if (fd->empty()) {
-                fields.erase(::iqsm::Facet<Meta>::typeId);
+                fields.erase(::iqsm::types::aspectId<Meta>());
             }
         }
 
         template<meta::Aspect Meta>
-        void set_global(typename ::iqsm::Facet<Meta>::Global before, typename ::iqsm::Facet<Meta>::Global after) {
+        void set_global(typename ::iqsm::delta::FieldDiff<Meta>::Global before, typename ::iqsm::delta::FieldDiff<Meta>::Global after) {
             const auto fd = require_field<Meta>();
 
             if (fd->global_change.has_value()) {
@@ -46,27 +48,35 @@ namespace iqsm::internals {
                 if (lhs_after != before) {
                     base::message("merge conflict resolved as last-wins");
                 }
-                fd->global_change = std::pair<typename ::iqsm::Facet<Meta>::Global, typename ::iqsm::Facet<Meta>::Global>{lhs_before, after};
+                fd->global_change = std::pair<typename ::iqsm::delta::FieldDiff<Meta>::Global, typename ::iqsm::delta::FieldDiff<Meta>::Global>{lhs_before, after};
             } else {
-                fd->global_change = std::pair<typename ::iqsm::Facet<Meta>::Global, typename ::iqsm::Facet<Meta>::Global>{std::move(before), std::move(after)};
+                fd->global_change = std::pair<typename ::iqsm::delta::FieldDiff<Meta>::Global, typename ::iqsm::delta::FieldDiff<Meta>::Global>{std::move(before), std::move(after)};
             }
         }
 
-        void absorb(Delta rhs) {
+        void absorb(Schema schema, Delta rhs) {
             if (rhs->empty()) return;
 
             for (const auto& kv : rhs->fields) {
                 const auto& type_id = kv.first;
                 const auto& right = kv.second;
 
+                if (not schema->aspects.contains(type_id)) {
+                    throw std::runtime_error("FieldsMutable::absorb(): delta contains type not in schema");
+                }
+                const auto& ops = schema->aspects.at(type_id).delta;
+                if (not ops.clone || not ops.absorb || not ops.empty) {
+                    throw std::runtime_error("FieldsMutable::absorb(): schema entry has no delta thunks");
+                }
+
                 auto it = fields.find(type_id);
                 if (it == fields.end()) {
-                    fields.emplace(type_id, right->clone());
+                    fields.emplace(type_id, ops.clone(right));
                     continue;
                 }
 
-                it->second->merge(right);
-                if (it->second->empty()) {
+                ops.absorb(it->second, right);
+                if (ops.empty(it->second)) {
                     fields.erase(type_id);
                 }
             }
@@ -74,7 +84,7 @@ namespace iqsm::internals {
 
         // Returns an immutable snapshot without consuming state.
         // Costs: clones field diffs that are currently accumulated.
-        Delta snapshot() const {
+        Delta snapshot(Schema schema) const {
             if (fields.empty()) return ::iqsm::delta::empty();
 
             auto out = base::make_shared<::iqsm::delta::Fields>();
@@ -83,7 +93,16 @@ namespace iqsm::internals {
             for (const auto& kv : fields) {
                 const auto& type_id = kv.first;
                 const auto& field_diff = kv.second; // mutable
-                out->fields.emplace(type_id, iqsm::freeze(field_diff->clone()));
+
+                if (not schema->aspects.contains(type_id)) {
+                    throw std::runtime_error("FieldsMutable::snapshot(): delta contains type not in schema");
+                }
+                const auto& ops = schema->aspects.at(type_id).delta;
+                if (not ops.clone) {
+                    throw std::runtime_error("FieldsMutable::snapshot(): schema entry has no clone thunk");
+                }
+
+                out->fields.emplace(type_id, iqsm::freeze(ops.clone(field_diff)));
             }
 
             return iqsm::freeze(out);
@@ -110,7 +129,7 @@ namespace iqsm::internals {
     private:
         template<meta::Aspect Meta>
         ::iqsm::ref<::iqsm::delta::FieldDiff<Meta>> require_field() {
-            const auto type_id = ::iqsm::Facet<Meta>::typeId;
+            const auto type_id = ::iqsm::types::aspectId<Meta>();
             auto it = fields.find(type_id);
             if (it == fields.end()) {
                 auto created = base::make_shared<::iqsm::delta::FieldDiff<Meta>>();

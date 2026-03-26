@@ -1,32 +1,40 @@
 #pragma once
 
+// core handles:
 #include <iQSM/_forwards.h>
-#include <iQSM/meta.h>
-#include <iQSM/identifier.h>
-#include <iQSM/logger.h>
+
+// builtin basic types (alias)
+#include <iQSM/api/builtins.h>
+
+// aspect tags (Entity/Component/Attribute/Resource):
 #include <iQSM/aspects.h>
-#include <iQSM/operations/validation.h>
+
+// operations interface (validation invariants types):
+#include <iQSM/operations/interface.h>
+#include <iQSM/operations/validators.h>
 
 // helpers:
-#include <iQSM/helpers/schema.h>
-#include <iQSM/helpers/world.h>
 #include <iQSM/helpers/particle.h>
 #include <iQSM/helpers/global.h>
 #include <iQSM/helpers/resource.h>
+#include <iQSM/helpers/schema.h>
+#include <iQSM/helpers/world.h>
 
-#include <iQSM/api/builtins.h>
+// repository:
+#include <iQSM/repository/commit.h>
+#include <iQSM/repository/branch.h>
+#include <iQSM/repository/sequence.h>
+#include <iQSM/repository/accumulator.h>
 
 // Minimal DSL surface for generated/etalon code.
 // Intentionally small to avoid pulling the whole iqsm namespace into client headers.
 // USAGE: add "using namespace iqsm::dsl_gateway;" in your generated/etalon code once and feel safe
 namespace iqsm::dsl_gateway {
     using namespace iqsm::q1; // adding all builtin types
-    namespace ops = iqsm::ops;
-    namespace validator = iqsm::ops::validation;
 
-    using World = iqsm::World;
-    using Delta = iqsm::Delta;
-    using ::iqsm::Facet;
+    namespace ops = ::iqsm::helpers;
+    namespace repo = ::iqsm::repo;
+    namespace validator = ::iqsm::ops::validation;
 
     // Particte types:
     template<typename Meta>
@@ -48,7 +56,7 @@ namespace iqsm::dsl_gateway {
     template<typename... Deps>
     using Require = iqsm::Require<Deps...>;
 
-    using Invariants = validator::List;
+    using Invariants = ::iqsm::detail::validation::Block;
 
     namespace invariant {
         using namespace validator::structural;

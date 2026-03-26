@@ -4,12 +4,14 @@
 #include <optional>
 #include <stdexcept>
 
-#include <iQSM/meta.h>
 #include <iQSM/_forwards.h>
 #include <iQSM/delta.h>
+#include <iQSM/meta/aspect_id.h>
+#include <iQSM/meta/concepts.h>
+#include <iQSM/meta/facade.h>
 #include <iQSM/repository/commit.h>
 
-namespace iqsm::ops::resource {
+namespace iqsm::helpers::resource {
     template<meta::Resource Meta>
     auto declare(repo::Commit commit, Quantum<Meta> value) -> Id<Meta>;
 
@@ -20,18 +22,18 @@ namespace iqsm::ops::resource {
     bool exists(World world, Id<Meta> id);
 }
 
-namespace iqsm::ops::resource {
+namespace iqsm::helpers::resource {
     template<meta::Resource Meta>
     auto declare(repo::Commit commit, Quantum<Meta> value) -> Id<Meta> {
         const auto id = Id<Meta>::generate_random();
 
         auto fd = base::make_shared<delta::FieldDiff<Meta>>();
         auto op = typename delta::FieldDiff<Meta>::Operation{};
-        op.after = Facet<Meta>::create(std::move(value));
+        op.after = base::make_shared<const Quantum<Meta>>(std::move(value));
         fd->ops.emplace(id, std::move(op));
 
         auto wd = base::make_shared<delta::Fields>();
-        wd->fields.emplace(Facet<Meta>::typeId, freeze(fd));
+        wd->fields.emplace(types::aspectId<Meta>(), freeze(fd));
 
         commit.push(freeze(wd));
         return id;

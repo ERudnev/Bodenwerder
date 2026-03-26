@@ -3,9 +3,9 @@
 #include <memory>
 #include <utility>
 
-#include <iQSM/schema.h>
+#include <iQSM/internals/schema_assemble.h>
 
-namespace iqsm::ops::schema {
+namespace iqsm::helpers::schema {
     template<meta::Aspect... Leaves>
     inline Schema assemble() {
         return base::make_shared<const SchemaObject>(SchemaObject::assemble<Leaves...>());

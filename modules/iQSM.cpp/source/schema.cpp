@@ -1,4 +1,5 @@
 #include <iQSM/schema.h>
+#include <iQSM/field.h>
 
 #include <format>
 #include <set>
@@ -28,17 +29,21 @@ namespace iqsm {
                         lhs.name));
                 }
 
-                if (typeid(*lhs.zero) != typeid(*rhs.zero)) {
+                if (typeid(*lhs.field.zero) != typeid(*rhs.field.zero)) {
                     throw std::runtime_error(std::format(
                         "Schema::merge(): incompatible zero for aspect '{}'",
                         lhs.name));
                 }
 
-                // Today we only store "own" (type-declared) invariants.
-                // Future: allow invariants to be attached externally and merge them as a set-union (no duplicates).
-                if (lhs.invariants.own != rhs.invariants.own) {
+                if (lhs.invariants.structural != rhs.invariants.structural || lhs.invariants.logical != rhs.invariants.logical) {
                     throw std::runtime_error(std::format(
                         "Schema::merge(): incompatible invariants for aspect '{}'",
+                        lhs.name));
+                }
+
+                if (lhs.delta.make_delta_field != rhs.delta.make_delta_field) {
+                    throw std::runtime_error(std::format(
+                        "Schema::merge(): incompatible delta ops for aspect '{}'",
                         lhs.name));
                 }
             } else {

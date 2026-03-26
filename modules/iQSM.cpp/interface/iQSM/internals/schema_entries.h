@@ -1,0 +1,42 @@
+#pragma once
+
+#include <optional>
+
+#include <iQSM/references.h>
+#include <iQSM/meta/concepts.h>
+
+namespace iqsm { struct FieldAbstract; }
+namespace iqsm::delta { struct FieldDiffAbstract; }
+
+namespace iqsm::internals::schema {
+    // Schema-owned typed “slots” for per-aspect operations/data.
+    // These are intentionally type-erased and rely on forward declarations to keep `schema.h` light.
+
+    struct FieldEntry {
+        cref<FieldAbstract> zero;
+
+        template<meta::Aspect Meta>
+        static FieldEntry make();
+    };
+
+    struct DeltaEntry {
+        using UField = cref<::iqsm::delta::FieldDiffAbstract>;
+        using UFieldMut = ref<::iqsm::delta::FieldDiffAbstract>;
+
+        using MakeDeltaField = std::optional<UField> (*)(cref<FieldAbstract> from, cref<FieldAbstract> to);
+        using IntegrateField = cref<FieldAbstract> (*)(cref<FieldAbstract> current, UField diff);
+        using Empty = bool (*)(UField diff);
+        using Clone = UFieldMut (*)(UField diff);
+        using Absorb = void (*)(UFieldMut lhs, UField rhs);
+
+        MakeDeltaField make_delta_field = nullptr;
+        IntegrateField integrate_field = nullptr;
+        Empty empty = nullptr;
+        Clone clone = nullptr;
+        Absorb absorb = nullptr;
+
+        template<meta::Aspect Meta>
+        static DeltaEntry make();
+    };
+}
+

@@ -3,8 +3,7 @@
 #include <functional>
 #include <utility>
 
-#include <iQSM/delta.h>
-#include <iQSM/world.h>
+#include <iQSM/_forwards.h>
 
 namespace iqsm::repo {
 

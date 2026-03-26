@@ -1,31 +1,28 @@
 #pragma once
 
-#include <iQSM/_forwards.h>
-#include <memory>
 #include <format>
+#include <stdexcept>
 #include <string>
 #include <string_view>
-#include <stdexcept>
-#include <typeindex>
-#include <typeinfo>
 #include <type_traits>
+#include <typeindex>
 
+// 
 namespace iqsm {
     template<typename T>
     inline void required(const T& x, std::string_view what = "value") {
         if (not x) { throw std::runtime_error(std::format("{} required", what)); }
     }
+}
 
-    namespace internals {
-        struct Types {
-            using RuntimeId = std::type_index;
-            using StaticId = std::string;
-        };
+namespace iqsm::internals {
+    struct Types {
+        using RuntimeId = std::type_index;
+        using StaticId = std::string;
+    };
 
-        template<typename T>
-        constexpr std::string_view type_name(std::type_identity<T> = {});
-    }
-    
+    template<typename T>
+    constexpr std::string_view type_name(std::type_identity<T> = {});
 }
 
 // ---- implementation details
@@ -53,14 +50,10 @@ namespace iqsm::internals {
     template<typename T>
     constexpr std::string_view type_name(std::type_identity<T>) {
 #if defined(_MSC_VER)
-        // Example (varies):
-        // "class std::basic_string_view<char,struct std::char_traits<char> > __cdecl iqsm::internals::type_name<struct Q1CORE::Example::Model::Element>(struct std::type_identity<struct Q1CORE::Example::Model::Element>)"
         constexpr std::string_view sig = __FUNCSIG__;
         auto name = _slice_between(sig, "type_name<", ">(");
         return _strip_decorations(name);
 #elif defined(__clang__) || defined(__GNUC__)
-        // Example GCC:   "constexpr std::string_view iqsm::internals::type_name() [with T = Q1CORE::Example::Model::Element]"
-        // Example Clang: "constexpr std::string_view iqsm::internals::type_name() [T = Q1CORE::Example::Model::Element]"
         constexpr std::string_view sig = __PRETTY_FUNCTION__;
         const auto pos = sig.find("T = ");
         if (pos == std::string_view::npos) return {};
@@ -73,3 +66,4 @@ namespace iqsm::internals {
 #endif
     }
 }
+

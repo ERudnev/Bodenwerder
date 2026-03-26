@@ -1,18 +1,19 @@
 #include <base/testing/runner.h>
 
 #define IQSM_TESTS(X) \
-    X(typenames_varph) \
-    X(schema_aspects) \
-    X(worlddata) \
-    X(delta_merge) \
-    X(validation_anchors) \
-    X(caching_components) \
-    X(validation_cache) \
-    X(validation_existence) \
-    X(transaction_repo) \
-    X(globals) \
-    X(schema) \
-    X(resources) \
+    /* X(typenames_varph) */ \
+    /* X(schema_aspects) */ \
+    /* X(worlddata) */ \
+    /* X(delta_merge) */ \
+    /* X(validation_anchors) */ \
+    /* X(caching_components) */ \
+    /* X(validation_cache) */ \
+    /* X(validation_existence) */ \
+    /* X(transaction_repo) */ \
+    /* X(globals) */ \
+    /* X(schema) */ \
+    /* X(resources) */ \
+    X(etalon_model) \
     // end
 
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)

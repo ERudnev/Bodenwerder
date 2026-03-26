@@ -5,13 +5,15 @@
 #include <utility>
 
 #include <iQSM/_forwards.h>
-#include <iQSM/meta.h>
 #include <iQSM/delta.h>
 #include <iQSM/field.h>
+#include <iQSM/world.h>
 #include <iQSM/internals/delta_builders.h>
+#include <iQSM/meta/concepts.h>
+#include <iQSM/meta/facade.h>
 #include <iQSM/repository/commit.h>
 
-namespace iqsm::ops::particle {
+namespace iqsm::helpers::particle {
   template<meta::Particle Meta>
   auto modifier(repo::Commit commit, Id<Meta> id);
 
@@ -28,20 +30,20 @@ namespace iqsm::ops::particle {
   auto get(World world, Id<Meta> id) -> const Quantum<Meta>&;
 
   template<meta::Particle Meta>
-  auto item(World world, Id<Meta> id) -> typename Facet<Meta>::Item;
+  auto item(World world, Id<Meta> id) -> Item<Meta>;
 
   template<meta::Particle Meta>
   bool exists(World world, Id<Meta> id);
 
-} // namespace iqsm::ops::particle
+} // namespace iqsm::helpers::particle
 
-namespace iqsm::detail::ops::particle {
+namespace iqsm::detail::helpers::particle {
     template<meta::Particle Meta>
     class modifier {
     public:
       using Id = iqsm::Id<Meta>;
       using Quantum = iqsm::Quantum<Meta>;
-      using Item = typename Facet<Meta>::Item;
+      using Item = iqsm::Item<Meta>;
 
       modifier(repo::Commit commit, Id id)
           : commit(std::move(commit))
@@ -70,21 +72,21 @@ namespace iqsm::detail::ops::particle {
       bool applied = false;
     };
 
-} // namespace iqsm::detail::ops::particle
+} // namespace iqsm::detail::helpers::particle
 
-namespace iqsm::ops::particle {
+namespace iqsm::helpers::particle {
   template<meta::Particle Meta>
   auto get(World world, Id<Meta> id) -> const Quantum<Meta>& {
     const auto field = world->field<Meta>();
-    if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::particle::get(): missing entity: {}", id)); }
+    if (not field->container.contains(id)) { throw std::runtime_error(std::format("helpers::particle::get(): missing entity: {}", id)); }
     const auto item = field->container.at(id);
     return *item;
   }
 
   template<meta::Particle Meta>
-  auto item(World world, Id<Meta> id) -> typename Facet<Meta>::Item {
+  auto item(World world, Id<Meta> id) -> Item<Meta> {
     const auto field = world->field<Meta>();
-    if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::particle::item(): missing entity: {}", id)); }
+    if (not field->container.contains(id)) { throw std::runtime_error(std::format("helpers::particle::item(): missing entity: {}", id)); }
     return field->container.at(id);
   }
 
@@ -92,37 +94,37 @@ namespace iqsm::ops::particle {
   bool exists(World world, Id<Meta> id) {
     return world->field<Meta>()->container.contains(id);
   }
-} // namespace iqsm::ops::particle
+} // namespace iqsm::helpers::particle
 
-namespace iqsm::ops::particle {
+namespace iqsm::helpers::particle {
   template<meta::Particle Meta>
-  auto modifier(repo::Commit commit, Id<Meta> id) { return detail::ops::particle::modifier<Meta>(std::move(commit), id); }
+  auto modifier(repo::Commit commit, Id<Meta> id) { return detail::helpers::particle::modifier<Meta>(std::move(commit), id); }
 
   template<meta::Entity Meta>
   auto create(repo::Commit commit, Quantum<Meta> value) -> Id<Meta> {
     const auto id = Id<Meta>::generate_random();
 
-    commit.push(internals::delta::make_atomic<Meta>(id, std::nullopt, Facet<Meta>::create(std::move(value))));
+    commit.push(internals::delta::make_atomic<Meta>(id, std::nullopt, base::make_shared<const Quantum<Meta>>(std::move(value))));
     return id;
   }
 
   template<meta::Quark Meta>
   auto create(repo::Commit commit, Id<Meta> id, Quantum<Meta> value) -> Id<Meta> {
-    commit.push(internals::delta::make_atomic<Meta>(id, std::nullopt, Facet<Meta>::create(std::move(value))));
+    commit.push(internals::delta::make_atomic<Meta>(id, std::nullopt, base::make_shared<const Quantum<Meta>>(std::move(value))));
     return id;
   }
 
   template<meta::Particle Meta>
   void remove(repo::Commit commit, Id<Meta> id) {
     const auto field = commit.initial->field<Meta>();
-    if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::particle::remove(): missing entity: {}", id)); }
+    if (not field->container.contains(id)) { throw std::runtime_error(std::format("helpers::particle::remove(): missing entity: {}", id)); }
     const auto before = field->container.at(id);
     commit.push(internals::delta::make_atomic<Meta>(id, before, std::nullopt));
   }
 
-} // namespace iqsm::ops::particle
+} // namespace iqsm::helpers::particle
 
-namespace iqsm::detail::ops::particle {
+namespace iqsm::detail::helpers::particle {
   template<meta::Particle Meta>
   typename modifier<Meta>::Item modifier<Meta>::required_item(World world, const Id& id) {
     const auto field = world->field<Meta>();
@@ -137,8 +139,8 @@ namespace iqsm::detail::ops::particle {
     applied = true;
     if (!dirty) return;
 
-    commit.push(internals::delta::make_atomic<Meta>(id, original, Facet<Meta>::create(std::move(value))));
+    commit.push(internals::delta::make_atomic<Meta>(id, original, base::make_shared<const Quantum>(std::move(value))));
   }
 
-} // namespace iqsm::detail::ops::particle
+} // namespace iqsm::detail::helpers::particle
 

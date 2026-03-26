@@ -5,14 +5,17 @@
 #include <utility>
 
 #include <iQSM/_forwards.h>
-#include <iQSM/meta.h>
 #include <iQSM/delta.h>
 #include <iQSM/field.h>
+#include <iQSM/meta/aspect_id.h>
+#include <iQSM/meta/concepts.h>
+#include <iQSM/meta/facade.h>
+#include <iQSM/meta/global.h>
 #include <iQSM/repository/commit.h>
 
-namespace iqsm::ops::global {
+namespace iqsm::helpers::global {
     template<meta::Aspect Meta>
-    auto get(World world) -> typename Facet<Meta>::Global {
+    auto get(World world) -> ::iqsm::meta::Global<Meta> {
         const auto field = world->field<Meta>();
         return field->global;
     }
@@ -21,12 +24,12 @@ namespace iqsm::ops::global {
     auto modifier(repo::Commit commit);
 }
 
-namespace iqsm::detail::ops::global {
+namespace iqsm::detail::helpers::global {
     template<meta::Aspect Meta>
     class modifier {
     public:
-        using GlobalData = typename Facet<Meta>::GlobalData;
-        using Global = typename Facet<Meta>::Global;
+        using GlobalData = ::iqsm::meta::GlobalData<Meta>;
+        using Global = ::iqsm::meta::Global<Meta>;
 
         explicit modifier(repo::Commit commit)
             : commit(std::move(commit))
@@ -51,8 +54,8 @@ namespace iqsm::detail::ops::global {
 
     private:
         static Global required_item(World world) {
-            if (not world->schema->aspects.contains(Facet<Meta>::typeId)) {
-                throw std::runtime_error("ops::global::modifier(): aspect is not in schema");
+            if (not world->schema->aspects.contains(types::aspectId<Meta>())) {
+                throw std::runtime_error("helpers::global::modifier(): aspect is not in schema");
             }
             return world->field<Meta>()->global;
         }
@@ -69,7 +72,7 @@ namespace iqsm::detail::ops::global {
             };
 
             auto world_delta = base::make_shared<delta::Fields>();
-            world_delta->fields.emplace(Facet<Meta>::typeId, freeze(field_delta));
+            world_delta->fields.emplace(types::aspectId<Meta>(), freeze(field_delta));
 
             commit.push(freeze(world_delta));
         }
@@ -82,10 +85,10 @@ namespace iqsm::detail::ops::global {
     };
 }
 
-namespace iqsm::ops::global {
+namespace iqsm::helpers::global {
     template<meta::Aspect Meta>
     auto modifier(repo::Commit commit) {
-        return detail::ops::global::modifier<Meta>(std::move(commit));
+        return detail::helpers::global::modifier<Meta>(std::move(commit));
     }
 }
 

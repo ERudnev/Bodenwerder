@@ -2,6 +2,9 @@
 
 #include <iQSM/_forwards.h>
 #include <iQSM/internals/fields_mutable.h>
+#include <iQSM/meta/concepts.h>
+#include <iQSM/meta/facade.h>
+#include <iQSM/meta/global.h>
 #include <iQSM/repository/commit.h>
 
 namespace iqsm::repo {
@@ -39,13 +42,7 @@ namespace iqsm::repo {
         }
 
         template<meta::Aspect Meta>
-        void update_if_changed(Id<Meta> id, Item<Meta> before, Quantum<Meta> after) {
-            if (Facet<Meta>::equal(*before, after)) return;
-            update<Meta>(std::move(id), std::move(before), Facet<Meta>::create(std::move(after)));
-        }
-
-        template<meta::Aspect Meta>
-        void set_global(typename Facet<Meta>::Global before, typename Facet<Meta>::Global after) {
+        void set_global(typename ::iqsm::meta::Global<Meta> before, typename ::iqsm::meta::Global<Meta> after) {
             staged.set_global<Meta>(std::move(before), std::move(after));
         }
     };

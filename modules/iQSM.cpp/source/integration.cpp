@@ -82,16 +82,21 @@ namespace iqsm::ops {
         auto apply_invariants_in_order(iqsm::World world, const std::vector<TypeId>& order) -> iqsm::World {
             for (const auto& type_id : order) {
                 const auto& entry = world->schema->aspects.at(type_id);
-                for (const auto invariant : entry.invariants.own) {
-                    if (not invariant) continue;
-                    repo::Commit commit{
-                        world,
-                        [&](Delta delta) {
-                            world = iqsm::ops::integrate(std::move(world), std::move(delta));
-                        }
-                    };
-                    invariant(std::move(commit));
-                }
+                const auto apply_layer = [&](const iqsm::SchemaObject::Invariants::Layer& layer) {
+                    for (const auto invariant : layer) {
+                        if (not invariant) continue;
+                        repo::Commit commit{
+                            world,
+                            [&](Delta delta) {
+                                world = iqsm::ops::integrate(std::move(world), std::move(delta));
+                            }
+                        };
+                        invariant(std::move(commit));
+                    }
+                };
+
+                apply_layer(entry.invariants.structural);
+                apply_layer(entry.invariants.logical);
             }
             return world;
         }
@@ -114,12 +119,19 @@ namespace iqsm::ops {
                     typeId.hash_code()));
             }
 
-            auto current = world->schema->aspects.at(typeId).zero;
+            const auto& entry = world->schema->aspects.at(typeId);
+            if (not entry.delta.integrate_field) {
+                throw std::runtime_error(std::format(
+                    "integrate(): schema entry has no integrate_field thunk (type={})",
+                    entry.name));
+            }
+
+            auto current = entry.field.zero;
             if (const auto* slot = world->fields.find(typeId); slot) {
                 current = *slot;
             }
 
-            const auto next = field_delta->integrate(current);
+            const auto next = entry.delta.integrate_field(current, field_delta);
             out->fields = out->fields.insert(typeId, next);
         }
 
@@ -149,12 +161,12 @@ namespace iqsm::ops {
             const auto& type_id = aspect_entry.first;
             const auto& entry = aspect_entry.second;
 
-            auto before = entry.zero;
+            auto before = entry.field.zero;
             if (const auto* slot = validBeforeChanges->fields.find(type_id); slot) {
                 before = *slot;
             }
 
-            auto after = entry.zero;
+            auto after = entry.field.zero;
             if (const auto* slot = changed->fields.find(type_id); slot) {
                 after = *slot;
             }
@@ -185,19 +197,19 @@ namespace iqsm::ops {
             const auto& type_id = aspect_entry.first;
             const auto& entry = aspect_entry.second;
 
-            auto from_field = entry.zero;
+            auto from_field = entry.field.zero;
             if (const auto* slot = from->fields.find(type_id); slot) { from_field = *slot; }
 
-            auto to_field = entry.zero;
+            auto to_field = entry.field.zero;
             if (const auto* slot = to->fields.find(type_id); slot) { to_field = *slot; }
 
-            if (not entry.make_delta_field) {
+            if (not entry.delta.make_delta_field) {
                 throw std::runtime_error(std::format(
                     "make_delta(from,to): schema entry has no make_delta_field thunk (type={})",
                     entry.name));
             }
 
-            const auto field_delta = entry.make_delta_field(from_field, to_field);
+            const auto field_delta = entry.delta.make_delta_field(from_field, to_field);
             if (not field_delta.has_value()) continue;
 
             out->fields.emplace(type_id, *field_delta);

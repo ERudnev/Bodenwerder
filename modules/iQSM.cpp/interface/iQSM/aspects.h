@@ -1,35 +1,41 @@
 #pragma once
 
 #include <iQSM/identifier.h>
+#include <iQSM/operations/interface.h>
 
-namespace iqsm::aspects {
 
+namespace iqsm::detail::aspects {
     template<typename Meta>
     struct Base {
-        // disallow constructing any meta-type (Particle) as objects:
         Base() = delete;
     };
-
-    template<typename Meta>
-    struct Entity : Base<Meta> {
-        using Id = Identifier<Meta>;
-    };
-
-    template<typename Meta, typename Parent>
-    struct Attribute : Base<Meta> {
-        using Id = typename Parent::Id;
-        using ParentAspect = Parent;
-    };
-
-    template<typename Meta, typename Parent>
-    struct Component : Base<Meta> {
-        using Id = typename Parent::Id;
-        using ParentAspect = Parent;
-    };
-
-    template<typename Meta>
-    struct Resource : Base<Meta> {
-        using Id = Identifier<Meta>;
-    };
-
 }
+
+namespace iqsm::aspects {
+    template<typename Meta>
+    struct Entity : detail::aspects::Base<Meta> {
+        using Id = Identifier<Meta>;
+        using OwnTypeOperations = ::iqsm::detail::operations::Group<Meta>;
+    };
+
+    template<typename Meta, typename Parent>
+    struct Attribute : detail::aspects::Base<Meta> {
+        using Id = typename Parent::Id;
+        using ParentAspect = Parent;
+        using OwnTypeOperations = ::iqsm::detail::operations::Group<Meta>;
+    };
+
+    template<typename Meta, typename Parent>
+    struct Component : detail::aspects::Base<Meta> {
+        using Id = typename Parent::Id;
+        using ParentAspect = Parent;
+        using OwnTypeOperations = ::iqsm::detail::operations::Group<Meta>;
+    };
+
+    template<typename Meta>
+    struct Resource : detail::aspects::Base<Meta> {
+        using Id = Identifier<Meta>;
+        using OwnTypeOperations = ::iqsm::detail::operations::Group<Meta>;
+    };
+}
+

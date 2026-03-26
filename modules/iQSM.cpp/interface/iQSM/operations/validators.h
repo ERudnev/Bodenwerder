@@ -18,17 +18,10 @@
 
 namespace iqsm::ops::validation {
 
-    struct List {
-        std::vector<Func> list;
-        // Semantics of a validator: (Commit) -> void
-        Delta apply(World world) const;
-    };
-
     namespace helpers {
         // Applies Func to each (id, item) in Field<Meta> and stages updates:
         // - Func(World, Id<Meta>, const Quantum<Meta>&) -> std::optional<Quantum<Meta>>
         // - if Func returns {}, no change
-        // - if returns value equal to before (Facet::equal), no change
         // - otherwise updates item
         template<meta::Aspect Meta, auto Func>
         void for_each_item(repo::Commit commit);
@@ -36,25 +29,25 @@ namespace iqsm::ops::validation {
 
     namespace structural {
         template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
-        void anchor(repo::Commit commit);
+        void anchor(repo::Commit);
 
         template<meta::Aspect Anchor, meta::Aspect Dependee>
-        void anchor_attribute(repo::Commit commit); // confinement
+        void anchor_attribute(repo::Commit); // confinement
 
         template<meta::Aspect Anchor, meta::Aspect Dependee, auto Construct>
-        void isomorphic(repo::Commit commit); // 1-1 iff confinement
+        void isomorphic(repo::Commit); // 1-1 iff confinement
 
         template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
-        void anchor_any(repo::Commit commit);
+        void anchor_any(repo::Commit);
 
         template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
-        void anchor_all(repo::Commit commit);
+        void anchor_all(repo::Commit);
     }
 
     namespace logic {
         // Ensures Dependee existence from Anchor by predicate.
         template<meta::Aspect Dependee, meta::Aspect Anchor, auto Need>
-        void existence(repo::Commit commit);
+        void existence(repo::Commit);
     }
 } // namespace iqsm::ops::validation
 
@@ -104,7 +97,7 @@ namespace iqsm::ops::validation {
 
             const auto after_q = std::invoke(Func, world, id, *before);
             if (not after_q.has_value()) continue;
-            staged.update_if_changed<Meta>(id, before, std::move(*after_q));
+            staged.update<Meta>(id, before, base::make_shared<const Quantum>(std::move(*after_q)));
         }
     }
 
@@ -155,7 +148,7 @@ namespace iqsm::ops::validation {
 
             if (need) {
                 if (has) continue;
-                acc.add_op<Dependee>(id, Operation{ std::nullopt, Facet<Dependee>::create(DependeeQuantum{}) });
+                acc.add_op<Dependee>(id, Operation{ std::nullopt, base::make_shared<const DependeeQuantum>(DependeeQuantum{}) });
             } else {
                 if (not has) continue;
                 acc.add_op<Dependee>(id, Operation{ dependee_field->container.at(id), std::nullopt });
@@ -199,7 +192,7 @@ namespace iqsm::ops::validation {
             const auto& anchor_id = kv.first;
             const auto& anchor_item = kv.second;
             if (not dependee_field->container.contains(anchor_id)) {
-                acc.add_op<Dependee>(anchor_id, Operation{ std::nullopt, Facet<Dependee>::create(Construct(world, *anchor_item)) });
+                acc.add_op<Dependee>(anchor_id, Operation{ std::nullopt, base::make_shared<const DependeeQuantum>(Construct(world, *anchor_item)) });
             }
         }
 
@@ -252,7 +245,7 @@ namespace iqsm::ops::validation {
             if (filtered.size() != ids.size()) {
                 Quantum q = *dependee_item;
                 q.*Member = std::move(filtered);
-                acc.add_op<Dependee>(dependee_id, Operation{ dependee_item, Facet<Dependee>::create(std::move(q)) });
+                acc.add_op<Dependee>(dependee_id, Operation{ dependee_item, base::make_shared<const Quantum>(std::move(q)) });
             }
         }
 
