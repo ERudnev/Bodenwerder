@@ -30,7 +30,7 @@ namespace iqsm {
 
     template<meta::Aspect Meta>
     internals::schema::FieldEntry internals::schema::FieldEntry::make() {
-        return internals::schema::FieldEntry{base::make_shared<const FieldObject<Meta>>()};
+        return internals::schema::FieldEntry{base::make_shared<const FieldData<Meta>>()};
     }
 
     template<meta::Aspect Meta>

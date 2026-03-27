@@ -7,14 +7,6 @@
 #include <type_traits>
 #include <typeindex>
 
-// 
-namespace iqsm {
-    template<typename T>
-    inline void required(const T& x, std::string_view what = "value") {
-        if (not x) { throw std::runtime_error(std::format("{} required", what)); }
-    }
-}
-
 namespace iqsm::internals {
     struct Types {
         using RuntimeId = std::type_index;

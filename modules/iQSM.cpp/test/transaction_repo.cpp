@@ -14,7 +14,7 @@ namespace tests {
             for (int i = 0; i < count; ++i) {
                 const auto id = iqsm::Id<Foo>::generate_random();
                 auto after = base::make_shared<const Quantum>(Quantum{::iqsm::q1::integer{start_value + i}});
-                world = ::iqsm::ops::integrate(std::move(world),
+                world = ::iqsm::operations::integrate(std::move(world),
                     ::iqsm::internals::delta::make_atomic<Foo>(id, std::nullopt, std::move(after)));
             }
 

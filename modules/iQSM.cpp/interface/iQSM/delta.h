@@ -75,7 +75,7 @@ template<iqsm::meta::Aspect Meta>
 iqsm::cref<iqsm::FieldAbstract> iqsm::delta::FieldDiff<Meta>::integrate(iqsm::cref<iqsm::FieldAbstract> current) const {
     if (ops.empty() && not global_change.has_value()) { return current; }
 
-    auto typed = base::shared_ref_cast<const iqsm::FieldObject<Meta>>(current);
+    auto typed = base::shared_ref_cast<const iqsm::FieldData<Meta>>(current);
     auto container = typed->container;
 
     // Apply in phase order: add -> change -> remove.
@@ -122,7 +122,7 @@ iqsm::cref<iqsm::FieldAbstract> iqsm::delta::FieldDiff<Meta>::integrate(iqsm::cr
         container = container.erase(id);
     }
 
-    auto out = base::make_shared<iqsm::FieldObject<Meta>>();
+    auto out = base::make_shared<iqsm::FieldData<Meta>>();
     out->container = container;
     out->global = typed->global;
 

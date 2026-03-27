@@ -17,7 +17,7 @@ namespace iqsm::repo {
 
         // Accumulate changes (integrates into `current`, no validation).
         void absorb(Delta delta) {
-            current = ops::integrate(current, delta);
+            current = operations::integrate(current, delta);
             accumulated.absorb(current->schema, std::move(delta));
         }
 

@@ -15,7 +15,7 @@ namespace iqsm {
     };
 
     template<meta::Aspect Meta>
-    struct FieldObject final : FieldAbstract {
+    struct FieldData final : FieldAbstract {
         using Id = ::iqsm::Id<Meta>;
         using Item = ::iqsm::Item<Meta>;
 
@@ -29,6 +29,6 @@ namespace iqsm {
     };
 
     template<meta::Aspect Meta>
-    using Field = cref<FieldObject<Meta>>;
+    using Field = cref<FieldData<Meta>>;
 }
 

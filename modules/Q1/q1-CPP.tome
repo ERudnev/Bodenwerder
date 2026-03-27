@@ -68,7 +68,7 @@ namespace Q1-CPP {
     2: Имена полей из `global` сохраняются.
     3: Пустой `global` проецируется как `struct Global {};`.
     4: Семантика хранения: `Global` принадлежит не отдельной частице, а полю (`Field<Meta>`), т.е. существует один раз на аспект в рамках `World`.
-    5: В реализации iQSM `FieldObject<Meta>` хранит `global` как `Facet<Meta>::Global` (handle, structural sharing).
+    5: В реализации iQSM `FieldData<Meta>` хранит `global` как `Facet<Meta>::Global` (handle, structural sharing).
       1: Если `Meta::Global` не объявлен, `Facet<Meta>::GlobalData` считается пустой структурой.
   }
 

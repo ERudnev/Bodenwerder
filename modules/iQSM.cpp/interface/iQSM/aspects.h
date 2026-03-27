@@ -33,7 +33,7 @@ namespace iqsm::aspects {
     };
 
     template<typename Meta>
-    struct Handle : detail::aspects::Base<Meta> {
+    struct Binding : detail::aspects::Base<Meta> {
         using Id = Identifier<Meta>;
         using OwnTypeOperations = ::iqsm::detail::operations::Group<Meta>;
     };

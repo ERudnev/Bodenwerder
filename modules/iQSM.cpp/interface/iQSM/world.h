@@ -44,6 +44,6 @@ iqsm::Field<Meta> iqsm::WorldObject::field() const {
     if (const auto* slot = fields.find(rttid); slot) {
         untyped = *slot;
     }
-    return base::shared_ref_cast<const FieldObject<Meta>>(untyped);
+    return base::shared_ref_cast<const FieldData<Meta>>(untyped);
 }
 

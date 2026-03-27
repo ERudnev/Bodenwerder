@@ -6,7 +6,7 @@
 // builtin basic types (alias)
 #include <iQSM/api/builtins.h>
 
-// aspect tags (Entity/Component/Attribute/Handle):
+// aspect types (Entity/Component/Attribute/Handle):
 #include <iQSM/aspects.h>
 
 // typed facade (Id/Quantum/Item):
@@ -19,7 +19,7 @@
 // helpers:
 #include <iQSM/helpers/particle.h>
 #include <iQSM/helpers/global.h>
-#include <iQSM/helpers/handle.h>
+#include <iQSM/helpers/binding.h>
 #include <iQSM/helpers/schema.h>
 #include <iQSM/helpers/world.h>
 
@@ -29,6 +29,9 @@
 #include <iQSM/repository/sequence.h>
 #include <iQSM/repository/accumulator.h>
 
+// other types
+#include <iQSM/binding/layer.h>
+
 // Minimal DSL surface for generated/etalon code.
 // Intentionally small to avoid pulling the whole iqsm namespace into client headers.
 // USAGE: add "using namespace iqsm::dsl_gateway;" in your generated/etalon code once and feel safe
@@ -37,7 +40,7 @@ namespace iqsm::dsl_gateway {
 
     namespace ops = ::iqsm::helpers;
     namespace repo = ::iqsm::repo;
-    namespace validator = ::iqsm::ops::validation;
+    namespace validator = ::iqsm::operations::validation;
 
     // Particte types:
     template<typename Meta>
@@ -50,7 +53,7 @@ namespace iqsm::dsl_gateway {
     using Component = iqsm::aspects::Component<Meta, Parent>;
 
     template<typename Meta>
-    using Handle = iqsm::aspects::Handle<Meta>;
+    using Binding = iqsm::aspects::Binding<Meta>;
 
     // Aspects infrastructure:
     template<typename Meta, typename BaseType = internal::id::BaseType>
@@ -68,5 +71,10 @@ namespace iqsm::dsl_gateway {
         using namespace validator::structural;
         using namespace validator::logic;
         using namespace validator::helpers;
+    }
+
+    namespace resources {
+        using Provider = cref<iqsm::binding::ManagerData>;
+        using Manager = ref<iqsm::binding::ManagerData>;
     }
 }

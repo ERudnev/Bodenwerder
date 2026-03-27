@@ -16,7 +16,7 @@
 
 
 
-namespace iqsm::ops::validation {
+namespace iqsm::operations::validation {
 
     namespace helpers {
         // Applies Func to each (id, item) in Field<Meta> and stages updates:
@@ -60,9 +60,9 @@ namespace iqsm::ops::validation {
         template<meta::Aspect Dependee, meta::Aspect Anchor, auto Need, auto Construct>
         void existence(repo::Commit);
     }
-} // namespace iqsm::ops::validation
+} // namespace iqsm::operations::validation
 
-namespace iqsm::detail::ops::validation {
+namespace iqsm::detail::operations::validation {
     template<meta::Aspect Anchor, meta::Aspect Dependee, typename Extract>
     void anchor_impl(repo::Commit commit, Extract extract)
     {
@@ -87,9 +87,9 @@ namespace iqsm::detail::ops::validation {
             commit.push(acc.push());
         }
     }
-} // namespace iqsm::detail::ops::validation
+} // namespace iqsm::detail::operations::validation
 
-namespace iqsm::ops::validation {
+namespace iqsm::operations::validation {
     template<meta::Aspect Meta, auto Func>
     void helpers::for_each_item(repo::Commit commit) {
         using Id = ::iqsm::Id<Meta>;
@@ -122,7 +122,7 @@ namespace iqsm::ops::validation {
         using MemberValue = decltype(std::declval<Quantum>().*Member);
         static_assert(std::is_convertible_v<MemberValue, AnchorId>);
 
-        return detail::ops::validation::anchor_impl<Anchor, Dependee>(std::move(commit), [](auto, auto dependee_item) -> AnchorId {
+        return detail::operations::validation::anchor_impl<Anchor, Dependee>(std::move(commit), [](auto, auto dependee_item) -> AnchorId {
             return static_cast<AnchorId>(dependee_item.get()->*Member);
         });
     }
@@ -130,7 +130,7 @@ namespace iqsm::ops::validation {
     template<meta::Aspect Anchor, meta::Aspect Dependee>
     void structural::anchor_attribute(repo::Commit commit)
     {
-        return detail::ops::validation::anchor_impl<Anchor, Dependee>(commit, [](auto dependee_id, auto) { return dependee_id; });
+        return detail::operations::validation::anchor_impl<Anchor, Dependee>(commit, [](auto dependee_id, auto) { return dependee_id; });
     }
 
     template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
@@ -393,4 +393,4 @@ namespace iqsm::ops::validation {
             commit.push(acc.push());
         }
     }
-} // namespace iqsm::ops::validation
+} // namespace iqsm::operations::validation

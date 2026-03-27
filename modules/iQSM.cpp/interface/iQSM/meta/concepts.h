@@ -28,14 +28,11 @@ namespace iqsm::meta {
     template<typename Meta>
     concept Entity = Aspect<Meta> && (not HasParentAspect<Meta>) && (not HasPassport<Meta>);
 
-    template<typename Meta>
     // Handle = world-side declaration of an external runtime object.
     // - Quantum lives in World and must carry Passport (+ optional domain usage state).
     // - Handler (runtime) materializes/owns the external Resource object (cache/metrics/etc).
-    concept Handle =
-        Aspect<Meta> &&
-        HasPassport<Meta> &&
-        (not HasParentAspect<Meta>);
+    template<typename Meta>
+    concept Binding = Aspect<Meta> && HasPassport<Meta> && (not HasParentAspect<Meta>);
 
     template<typename Meta>
     concept Quark = Aspect<Meta> && HasParentAspect<Meta> && (not HasPassport<Meta>);
@@ -47,6 +44,6 @@ namespace iqsm::meta {
     concept Component = Quark<Meta>;
 
     template<typename Meta>
-    concept Particle = Entity<Meta> || Quark<Meta> || Handle<Meta>;
+    concept Particle = Entity<Meta> || Quark<Meta> || Binding<Meta>;
 }
 

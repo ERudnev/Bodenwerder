@@ -6,7 +6,7 @@
 #include <vector>
 #include <iQSM/repository/commit.h>
 
-namespace iqsm::ops {
+namespace iqsm::operations {
     namespace {
         using TypeId = iqsm::SchemaObject::TypeId;
 
@@ -88,7 +88,7 @@ namespace iqsm::ops {
                         repo::Commit commit{
                             world,
                             [&](Delta delta) {
-                                world = iqsm::ops::integrate(std::move(world), std::move(delta));
+                                world = iqsm::operations::integrate(std::move(world), std::move(delta));
                             }
                         };
                         invariant(std::move(commit));

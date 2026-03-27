@@ -3,7 +3,7 @@
 #include <iQSM/world.h>
 #include <iQSM/delta.h>
 
-namespace iqsm::ops {
+namespace iqsm::operations {
     // Fast path: applies delta without validation (for Transaction and internal pipelines).
     World integrate(World, Delta);
     // Validate a snapshot against schema constraints (topological order / dependents).

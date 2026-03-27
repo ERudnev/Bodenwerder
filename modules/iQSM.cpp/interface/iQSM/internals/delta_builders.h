@@ -27,8 +27,8 @@ namespace iqsm::internals::delta {
     inline auto count_delta_field(iqsm::cref<iqsm::FieldAbstract> from_untyped, iqsm::cref<iqsm::FieldAbstract> to_untyped)
         -> std::optional<iqsm::delta::UField>
     {
-        const auto from = base::shared_ref_cast<const iqsm::FieldObject<Meta>>(from_untyped);
-        const auto to = base::shared_ref_cast<const iqsm::FieldObject<Meta>>(to_untyped);
+        const auto from = base::shared_ref_cast<const iqsm::FieldData<Meta>>(from_untyped);
+        const auto to = base::shared_ref_cast<const iqsm::FieldData<Meta>>(to_untyped);
 
         using Operation = typename iqsm::delta::FieldDiff<Meta>::Operation;
         auto field_delta = base::make_shared<iqsm::delta::FieldDiff<Meta>>();

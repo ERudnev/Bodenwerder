@@ -15,17 +15,17 @@ namespace iqsm::repo {
         // branch ops:
         World rebase(World world) {
             if (world == current) return current;
-            current = ops::validate_smart(head, std::move(world));
+            current = operations::validate_smart(head, std::move(world));
             head = current;
             return head;
         }
 
         void absorb(Delta delta) {
             const auto before = current;
-            current = ops::validate_smart(before, ops::integrate(std::move(current), std::move(delta)));
+            current = operations::validate_smart(before, operations::integrate(std::move(current), std::move(delta)));
         }
 
-        Delta delta() const { return ops::make_delta(head, current); }
+        Delta delta() const { return operations::make_delta(head, current); }
 
         Delta push() {
             auto out = delta();
