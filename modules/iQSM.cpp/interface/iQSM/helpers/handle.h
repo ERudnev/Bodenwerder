@@ -11,19 +11,16 @@
 #include <iQSM/meta/facade.h>
 #include <iQSM/repository/commit.h>
 
-namespace iqsm::helpers::resource {
-    template<meta::Resource Meta>
+namespace iqsm::helpers::handle {
+    // Handle instances live in World like other particles.
+    // Use `helpers::particle::{item,get,exists,...}` out of the box.
+    // This helper only provides a world-writing constructor-like operation.
+    template<meta::Handle Meta>
     auto declare(repo::Commit commit, Quantum<Meta> value) -> Id<Meta>;
-
-    template<meta::Resource Meta>
-    auto get(World world, Id<Meta> id) -> const Quantum<Meta>&;
-
-    template<meta::Resource Meta>
-    bool exists(World world, Id<Meta> id);
 }
 
-namespace iqsm::helpers::resource {
-    template<meta::Resource Meta>
+namespace iqsm::helpers::handle {
+    template<meta::Handle Meta>
     auto declare(repo::Commit commit, Quantum<Meta> value) -> Id<Meta> {
         const auto id = Id<Meta>::generate_random();
 
@@ -37,19 +34,6 @@ namespace iqsm::helpers::resource {
 
         commit.push(freeze(wd));
         return id;
-    }
-
-    template<meta::Resource Meta>
-    auto get(World world, Id<Meta> id) -> const Quantum<Meta>& {
-        const auto field = world->field<Meta>();
-        if (not field->container.contains(id)) { throw std::runtime_error(std::format("ops::resource::get(): missing instance: {}", id)); }
-        const auto item = field->container.at(id);
-        return *item;
-    }
-
-    template<meta::Resource Meta>
-    bool exists(World world, Id<Meta> id) {
-        return world->field<Meta>()->container.contains(id);
     }
 }
 

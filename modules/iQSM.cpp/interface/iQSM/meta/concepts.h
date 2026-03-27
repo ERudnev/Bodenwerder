@@ -23,11 +23,16 @@ namespace iqsm::meta {
             { id.generate_random() } -> std::same_as<typename Meta::Id>;
         };
 
+
+    // TODO fix this semantic debt: are Entity ad Handle siblings or not?
     template<typename Meta>
     concept Entity = Aspect<Meta> && (not HasParentAspect<Meta>) && (not HasPassport<Meta>);
 
     template<typename Meta>
-    concept Resource =
+    // Handle = world-side declaration of an external runtime object.
+    // - Quantum lives in World and must carry Passport (+ optional domain usage state).
+    // - Handler (runtime) materializes/owns the external Resource object (cache/metrics/etc).
+    concept Handle =
         Aspect<Meta> &&
         HasPassport<Meta> &&
         (not HasParentAspect<Meta>);
@@ -42,6 +47,6 @@ namespace iqsm::meta {
     concept Component = Quark<Meta>;
 
     template<typename Meta>
-    concept Particle = Entity<Meta> || Quark<Meta>;
+    concept Particle = Entity<Meta> || Quark<Meta> || Handle<Meta>;
 }
 

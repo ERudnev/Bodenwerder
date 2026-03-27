@@ -6,7 +6,7 @@
 // builtin basic types (alias)
 #include <iQSM/api/builtins.h>
 
-// aspect tags (Entity/Component/Attribute/Resource):
+// aspect tags (Entity/Component/Attribute/Handle):
 #include <iQSM/aspects.h>
 
 // typed facade (Id/Quantum/Item):
@@ -19,7 +19,7 @@
 // helpers:
 #include <iQSM/helpers/particle.h>
 #include <iQSM/helpers/global.h>
-#include <iQSM/helpers/resource.h>
+#include <iQSM/helpers/handle.h>
 #include <iQSM/helpers/schema.h>
 #include <iQSM/helpers/world.h>
 
@@ -50,7 +50,7 @@ namespace iqsm::dsl_gateway {
     using Component = iqsm::aspects::Component<Meta, Parent>;
 
     template<typename Meta>
-    using Resource = iqsm::aspects::Resource<Meta>;
+    using Handle = iqsm::aspects::Handle<Meta>;
 
     // Aspects infrastructure:
     template<typename Meta, typename BaseType = internal::id::BaseType>

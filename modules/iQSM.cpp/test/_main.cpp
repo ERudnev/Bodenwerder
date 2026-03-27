@@ -14,7 +14,8 @@
     /* X(transaction_repo) */ \
     /* X(globals) */ \
     /* X(schema) */ \
-    /* X(resources) */ \
+    /* X(handles) */ \
+    X(handle_lifecycle) \
     X(model_is_compileable) \
     // end
 
