@@ -1,11 +1,11 @@
 #include "../_common.h"
 
-#include "../etalon/model.h"
+#include <Etalon/aspects.q1.h>
 
 namespace tests {
     void validation_tag_globals() {
         using namespace iqsm::dsl_gateway;
-        using namespace iqsm_internal_model;
+        using namespace Q1CORE::Etalon;
 
         const auto empty = ops::world::create(ops::schema::assemble<SampleEntity, Tag>());
         repo::Branch master{empty};

@@ -2,13 +2,13 @@
 
 #include <iQSM/internals/delta_builders.h>
 
-#include "etalon/model.h"
+#include <Etalon/aspects.q1.h>
 
 namespace tests {
 
     namespace {
         iqsm::World seed_foos_oldschool(iqsm::World world, int count, int start_value) {
-            using Foo = iqsm_internal_model::SampleEntity;
+            using Foo = Q1CORE::Etalon::SampleEntity;
             using Quantum = iqsm::Quantum<Foo>;
 
             for (int i = 0; i < count; ++i) {
@@ -24,7 +24,7 @@ namespace tests {
 
     void transaction_repo() {
         using namespace iqsm::dsl_gateway;
-        using namespace iqsm_internal_model;
+        using namespace Q1CORE::Etalon;
 
         using Foo = SampleEntity;
         using Bar = SampleAttribute;

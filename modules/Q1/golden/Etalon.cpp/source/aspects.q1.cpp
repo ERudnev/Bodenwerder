@@ -1,6 +1,6 @@
-#include "model.h"
+#include <Etalon/aspects.q1.h>
 
-namespace iqsm_internal_model {
+namespace Q1CORE::Etalon {
 
     using namespace iqsm::dsl_gateway;
 

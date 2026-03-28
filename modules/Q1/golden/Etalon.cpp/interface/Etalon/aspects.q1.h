@@ -2,7 +2,7 @@
 
 #include <iQSM/api/_gateway.h>
 
-namespace iqsm_internal_model { 
+namespace Q1CORE::Etalon { 
     
     using namespace iqsm::dsl_gateway;
 

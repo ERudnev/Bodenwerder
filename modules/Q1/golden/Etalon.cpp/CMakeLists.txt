@@ -1,7 +1,7 @@
 file (GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "source/*.cpp")
 
-project("atomic"
-  DESCRIPTION "Atomic.cpp - golden (hand-made) reference for Q1->C++ code generation"
+project("Q1Etalon"
+  DESCRIPTION "Etalon.cpp - golden (hand-made) reference for Q1->C++ code generation"
   VERSION 0.1
 )
 

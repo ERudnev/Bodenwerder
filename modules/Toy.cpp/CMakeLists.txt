@@ -18,6 +18,6 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE atomic
     PUBLIC libglew_static
     PUBLIC glfw
-    PRIVATE assimp
+    #PRIVATE assimp
     ${OPENGL_LIBRARIES}
 )
