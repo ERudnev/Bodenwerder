@@ -12,16 +12,12 @@ namespace Q1CORE::Etalon {
         };
         static const Invariants invariants;
         struct Operations : OwnTypeOperations {
-            static auto const_fieldwide_method(Reading) -> string;
-            static auto const_element_method(Reading, Id) -> float;
+            static auto construct(Writing, integer data_field) -> Id;
 
-            static void nonconst_fieldwide_method(Writing);
-            static void nonconst_element_method(Writing, Id);
-
-            static auto public_constructor(Writing, integer data_field) -> Id;
-
-        private:
-            static auto public_constructor(Writing, Quantum) -> Id;
+            static auto example_const_fieldwide_method(Reading) -> string;
+            static auto example_const_element_method(Reading, Id) -> float;
+            static void example_nonconst_fieldwide_method(Writing);
+            static void example_nonconst_element_method(Writing, Id);
         };
     };
 

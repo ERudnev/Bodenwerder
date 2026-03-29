@@ -1,0 +1,28 @@
+namespace Q1CORE
+  namespace Etalon
+    
+    entity SampleEntity
+      element
+        data_field : integer
+        ?const_element_method() -> string
+        !nonconst_element_method()
+      table
+        ?const_fieldwide_method() -> string
+        !nonconst_fieldwide_method()
+
+    attribute Tag of SampleEntity
+      table
+        modulus : integer
+
+    component SampleComponent of SampleEntity
+
+    attribute SampleAttribute of SampleEntity
+      element
+        neighbor_anchor : anchor SampleEntity::id
+        optional_anchor : optional<anchor SampleComponent::id>
+        every_essential : anchor(all) vector<SampleEntity::id>
+        at_least_one_required : anchor(any) vector<SampleComponent::id>
+        
+        
+
+    
