@@ -30,6 +30,7 @@ namespace domain {
             Passport passport;
             integer usage_cost; // domain business-logic
         };
+        struct Global {};
 
         static const Invariants invariants;
 

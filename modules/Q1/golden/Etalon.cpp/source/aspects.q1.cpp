@@ -7,12 +7,6 @@ namespace Q1CORE::Etalon {
     //
     // SampleEntity
     struct SampleEntity_private : SampleEntity::Operations {
-        
-        // construct name is soft-keyword. Naming operation as "construct" making binding easier
-        static auto construct(Writing commit, Quantum value) -> Id {
-            return ops::particle::create<SampleEntity>(commit, value);
-        }
-
         static auto example_private_const_fieldwide_method(Reading) -> string { return {}; }
         static auto example_private_const_element_method(Reading, Id) -> float { return 0.0f; }
 
@@ -20,9 +14,11 @@ namespace Q1CORE::Etalon {
         static void example_private_nonconst_element_method(Writing, Id) {}
 
         static auto example_private_validate_item_atomic(Reading, Id, const Quantum&) -> ItemChange { return {}; }
-
         static void example_private_validate_table(Writing) {}
     };
+    auto SampleEntity::Operations::construct(Writing gate, float field_value) -> Id {
+        return ops::particle::create<SampleEntity>(gate, Quantum{static_cast<integer>(field_value)});
+    }
     auto SampleEntity::Operations::example_const_fieldwide_method(Reading) -> string { return {}; }
     auto SampleEntity::Operations::example_const_element_method(Reading, Id) -> float { return 0.0f; }
     void SampleEntity::Operations::example_nonconst_fieldwide_method(Writing) {}
@@ -67,6 +63,18 @@ namespace Q1CORE::Etalon {
     struct SampleComponent_private : SampleComponent::Operations {
         static auto private_construct(Reading, Id, Item<SampleEntity>) -> Quantum { return {}; }
     };
+
+    void SampleComponent::Operations::example_op_multiply(Writing commit, Id id, integer factor) {
+        ops::particle::modifier<SampleEntity>(commit, id)->data_field *= factor;
+    }
+
+    auto SampleComponent::Operations::example_op_div_with_remainder(Writing commit, Id id, integer divisor) -> integer {
+        const auto safe = divisor > integer{0} ? divisor : integer{1};
+        auto m = ops::particle::modifier<SampleEntity>(commit, id);
+        const auto remainder = (m->data_field % safe);
+        m->data_field /= safe;
+        return remainder;
+    }
     
     const Invariants SampleComponent::invariants{
         .structural = {

@@ -5,12 +5,14 @@ namespace {
 
     struct Foo : Entity<Foo>, Require<> {
         struct Quantum { integer value = 0; };
+        struct Global {};
         static const Invariants invariants;
         struct Operations : OwnTypeOperations {};
     };
 
     struct Bar : Component<Bar, Foo>, Require<Foo> {
         struct Quantum {};
+        struct Global {};
         static const Invariants invariants;
         struct Operations : OwnTypeOperations {
             static void remove(Writing commit, Id id) { ops::particle::remove<Foo>(commit, id); }

@@ -7,6 +7,7 @@ namespace Q1CORE
         ?const_element_method() -> string
         !nonconst_element_method()
       table
+        +from_float(value_approximate: float)
         ?const_fieldwide_method() -> string
         !nonconst_fieldwide_method()
 
@@ -15,6 +16,9 @@ namespace Q1CORE
         modulus : integer
 
     component SampleComponent of SampleEntity
+      element
+        !example_op_multiply(factor: integer)
+        !example_op_div_with_remainder(divisor: integer) -> integer
 
     attribute SampleAttribute of SampleEntity
       element

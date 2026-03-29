@@ -11,6 +11,9 @@ namespace iqsm::meta {
     concept HasQuantum = requires { typename Meta::Quantum; };
 
     template<typename Meta>
+    concept HasGlobal = requires { typename Meta::Global; };
+
+    template<typename Meta>
     concept HasParentAspect = requires { typename Meta::ParentAspect; };
 
     template<typename Meta>
@@ -18,7 +21,7 @@ namespace iqsm::meta {
 
     template<typename Meta>
     concept Aspect =
-        HasId<Meta> && HasQuantum<Meta> &&
+        HasId<Meta> && HasQuantum<Meta> && HasGlobal<Meta> &&
         requires(const typename Meta::Id& id, const typename Meta::Quantum& /*val*/) {
             { id.generate_random() } -> std::same_as<typename Meta::Id>;
         };

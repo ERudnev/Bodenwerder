@@ -23,10 +23,10 @@
     'depends' : adds dependency manually
     'element' : opens per-item data+operations block inside aspect definition
     'table' : opens field-own data+operations block inside aspect definition
-    'global' : opens field-own data block inside `table` (stored once per aspect/World)
 
     '?' : declares read-only operation (query) signature
     '!' : declares state-changing operation (command) signature
+    '+' : declares creation factory (convenience create) signature
     '->' : declares operation return type (used with `?`)
 
   reserved:
@@ -61,6 +61,5 @@
   particle blocks:
     'element' : per-item state+queries/commands (stored in Field container as Item Quantum)
     'table' : field-own state+queries/commands (Global + fieldwide ops)
-    'global' : field-own state (stored once per Field, not per item)
 
   

@@ -10,9 +10,10 @@ namespace Q1CORE::Etalon {
         struct Quantum {
             integer data_field;
         };
+        struct Global {};
         static const Invariants invariants;
         struct Operations : OwnTypeOperations {
-            static auto construct(Writing, integer data_field) -> Id;
+            static auto construct(Writing, float field_value) -> Id;
 
             static auto example_const_fieldwide_method(Reading) -> string;
             static auto example_const_element_method(Reading, Id) -> float;
@@ -31,10 +32,13 @@ namespace Q1CORE::Etalon {
     };
 
     struct SampleComponent : Component<SampleComponent, SampleEntity>, Require<SampleEntity> {
-        struct Quantum {
-        };
+        struct Quantum {};
+        struct Global {};
         static const Invariants invariants;
-        struct Operations : OwnTypeOperations{};
+        struct Operations : OwnTypeOperations{
+            static auto example_op_multiply(Writing, Id, integer factor)->void;
+            static auto example_op_div_with_remainder(Writing, Id, integer divisor)->integer; // returns remainder
+        };
     };
 
     struct SampleAttribute : Attribute<SampleAttribute, SampleEntity>, Require<SampleEntity, SampleComponent> {
@@ -44,6 +48,7 @@ namespace Q1CORE::Etalon {
             std::vector<SampleEntity::Id> every_essential;
             std::vector<SampleComponent::Id> at_least_one_required;
         };
+        struct Global {};
         static const Invariants invariants;
         struct Operations : OwnTypeOperations{};
     };
