@@ -33,7 +33,7 @@ namespace iqsm::meta {
 
     // Handle = world-side declaration of an external runtime object.
     // - Quantum lives in World and must carry Passport (+ optional domain usage state).
-    // - Handler (runtime) materializes/owns the external Resource object (cache/metrics/etc).
+    // - Runtime object is managed by binding layer and may be type-erased.
     template<typename Meta>
     concept Binding = Aspect<Meta> && HasPassport<Meta> && (not HasParentAspect<Meta>);
 

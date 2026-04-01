@@ -1,0 +1,15 @@
+namespace Q1CORE
+  namespace Etalon
+    
+    // External runtime-bound resource; the concrete runtime type is only named here.
+    // Loading/unloading/passport interpretation stays outside the DSL projection.
+    
+    resource SampleResource @external(function1f)
+      passport
+        description: string
+        cost: integer
+      element
+        cost_summary: integer        
+        *use(arg: float) -> float
+        ?use_free(arg: float) -> float
+

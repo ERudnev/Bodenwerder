@@ -20,6 +20,7 @@
 #include <iQSM/helpers/particle.h>
 #include <iQSM/helpers/global.h>
 #include <iQSM/helpers/binding.h>
+#include <iQSM/helpers/resource.h>
 #include <iQSM/helpers/schema.h>
 #include <iQSM/helpers/world.h>
 
@@ -73,6 +74,7 @@ namespace iqsm::dsl_gateway {
         using namespace validator::helpers;
     }
 
+    // TODO: remove or rebind on iqsm::helpers::resource::Types
     namespace resources {
         using Provider = cref<iqsm::binding::ManagerData>;
         using Manager = ref<iqsm::binding::ManagerData>;

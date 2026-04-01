@@ -13,7 +13,7 @@ namespace Q1CORE::Etalon {
         struct Global {};
         static const Invariants invariants;
         struct Operations : OwnTypeOperations {
-            static auto construct(Writing, float field_value) -> Id;
+            static auto create_from_float(Writing, float field_value) -> Id;
 
             static auto example_const_fieldwide_method(Reading) -> string;
             static auto example_const_element_method(Reading, Id) -> float;

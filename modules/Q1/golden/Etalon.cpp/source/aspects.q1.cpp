@@ -16,7 +16,7 @@ namespace Q1CORE::Etalon {
         static auto example_private_validate_item_atomic(Reading, Id, const Quantum&) -> ItemChange { return {}; }
         static void example_private_validate_table(Writing) {}
     };
-    auto SampleEntity::Operations::construct(Writing gate, float field_value) -> Id {
+    auto SampleEntity::Operations::create_from_float(Writing gate, float field_value) -> Id {
         return ops::particle::create<SampleEntity>(gate, Quantum{static_cast<integer>(field_value)});
     }
     auto SampleEntity::Operations::example_const_fieldwide_method(Reading) -> string { return {}; }
@@ -35,16 +35,15 @@ namespace Q1CORE::Etalon {
     //
     // Tag (exists for even SampleEntity::data_field)
     struct Tag_private : Tag::Operations {
-        static void clamp_global(Writing commit) {
+        static void modulus_clamped(Writing commit) {
             auto g = ops::global::modifier<Tag>(commit);
             if (g->modulus > integer{0}) return;
             g->modulus = integer{1};
         }
 
-        static bool need_even(Reading world, SampleEntity::Id, Item<SampleEntity> item) {
+        static bool needs_tag(Reading world, SampleEntity::Id, Item<SampleEntity> item) {
             const auto mod = ops::global::get<Tag>(world)->modulus;
-            const auto safe = mod > integer{0} ? mod : integer{1};
-            return (item->data_field % safe) == integer{0};
+            return (item->data_field % mod) == integer{0};
         }
     };
 
@@ -53,8 +52,8 @@ namespace Q1CORE::Etalon {
             invariant::anchor_attribute<SampleEntity, Tag>,
         },
         .logical = {
-            &Tag_private::clamp_global,
-            invariant::existence<Tag, SampleEntity, &Tag_private::need_even>,
+            &Tag_private::modulus_clamped,
+            invariant::existence<Tag, SampleEntity, &Tag_private::needs_tag>,
         },
     };
 
