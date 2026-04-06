@@ -1,0 +1,26 @@
+{
+  "name": "q1-language",
+  "displayName": "Q1 Language",
+  "description": "Minimal Q1 syntax highlighting for Cursor/VS Code",
+  "version": "0.0.1",
+  "publisher": "local",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "q1",
+        "aliases": ["Q1", "q1"],
+        "extensions": [".q1.types"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "q1",
+        "scopeName": "source.q1",
+        "path": "./syntaxes/q1.tmLanguage.json"
+      }
+    ]
+  }
+}
