@@ -20,9 +20,9 @@ private:
     // Leaf node for storing actual values
     struct Leaf {
         T value_;
-        
-        Leaf(const T& value) : value_(value) {}
-        Leaf(T&& value) : value_(std::move(value)) {}
+
+        template<typename ValueArg>
+        Leaf(ValueArg&& value) : value_(std::forward<ValueArg>(value)) {}
     };
     
     // Entry in HAMT node - can be either internal node or leaf
@@ -31,13 +31,13 @@ private:
         Type type_;
         std::shared_ptr<Node> node_;
         std::shared_ptr<Leaf> leaf_;
-        
-        Entry(std::shared_ptr<Node> node) : type_(NODE), node_(node), leaf_(nullptr) {}
-        Entry(std::shared_ptr<Leaf> leaf) : type_(LEAF), node_(nullptr), leaf_(leaf) {}
-        
-        // Copy constructor for structural sharing
-        Entry(const Entry& other) 
-            : type_(other.type_), node_(other.node_), leaf_(other.leaf_) {}
+
+        Entry(std::shared_ptr<Node> node) : type_(NODE), node_(std::move(node)), leaf_(nullptr) {}
+        Entry(std::shared_ptr<Leaf> leaf) : type_(LEAF), node_(nullptr), leaf_(std::move(leaf)) {}
+        Entry(const Entry&) = default;
+        Entry(Entry&&) noexcept = default;
+        Entry& operator=(const Entry&) = default;
+        Entry& operator=(Entry&&) noexcept = default;
     };
     
     // HAMT node structure
@@ -46,16 +46,10 @@ private:
         std::vector<Entry> children_;  // Array of child entries (nodes or leaves)
         
         Node() : bitmap_(0) {}
-        
-        // Copy constructor - shallow copy for structural sharing
-        Node(const Node& other) 
-            : bitmap_(other.bitmap_), children_(other.children_) {}
-        
-        // Move constructor
-        Node(Node&& other) noexcept 
-            : bitmap_(other.bitmap_), children_(std::move(other.children_)) {
-            other.bitmap_ = 0;
-        }
+        Node(const Node&) = default;
+        Node(Node&&) noexcept = default;
+        Node& operator=(const Node&) = default;
+        Node& operator=(Node&&) noexcept = default;
     };
     
     static constexpr int HASH_SHIFT = 5;  // 5 bits per level (32-way branching)
@@ -84,43 +78,113 @@ private:
     static int index(uint32_t bitmap, uint32_t bit) {
         return popcount(bitmap & (bit - 1));
     }
+
+    static std::shared_ptr<Node> make_single_leaf_node(size_t hash, int level, const std::shared_ptr<Leaf>& leaf) {
+        auto new_node = std::make_shared<Node>();
+        new_node->bitmap_ = bitpos(hash, level);
+        new_node->children_.reserve(1);
+        new_node->children_.emplace_back(leaf);
+        return new_node;
+    }
+
+    static std::shared_ptr<Node> clone_with_replaced_child(
+        const std::shared_ptr<Node>& node,
+        int idx,
+        Entry replacement)
+    {
+        auto new_node = std::make_shared<Node>(*node);
+        new_node->children_[idx] = std::move(replacement);
+        return new_node;
+    }
+
+    static std::shared_ptr<Node> clone_with_inserted_child(
+        const std::shared_ptr<Node>& node,
+        uint32_t bitmap,
+        int idx,
+        Entry inserted)
+    {
+        auto new_node = std::make_shared<Node>();
+        new_node->bitmap_ = bitmap;
+        new_node->children_.reserve(node->children_.size() + 1);
+
+        for (int i = 0; i < idx; ++i) {
+            new_node->children_.push_back(node->children_[i]);
+        }
+
+        new_node->children_.push_back(std::move(inserted));
+
+        for (std::size_t i = static_cast<std::size_t>(idx); i < node->children_.size(); ++i) {
+            new_node->children_.push_back(node->children_[i]);
+        }
+
+        return new_node;
+    }
+
+    static std::shared_ptr<Node> clone_with_erased_child(
+        const std::shared_ptr<Node>& node,
+        uint32_t bitmap,
+        int idx)
+    {
+        if (node->children_.size() == 1) {
+            return nullptr;
+        }
+
+        auto new_node = std::make_shared<Node>();
+        new_node->bitmap_ = bitmap;
+        new_node->children_.reserve(node->children_.size() - 1);
+
+        for (int i = 0; i < idx; ++i) {
+            new_node->children_.push_back(node->children_[i]);
+        }
+
+        for (std::size_t i = static_cast<std::size_t>(idx + 1); i < node->children_.size(); ++i) {
+            new_node->children_.push_back(node->children_[i]);
+        }
+
+        return new_node;
+    }
     
     // Find value in HAMT
     const T* find_impl(const std::shared_ptr<Node>& node, const T& value, size_t hash, int level) const {
-        if (!node) return nullptr;
-        
-        uint32_t bit = bitpos(hash, level);
-        
-        if (!(node->bitmap_ & bit)) {
-            return nullptr;  // Bit not set, value doesn't exist
-        }
-        
-        int idx = index(node->bitmap_, bit);
-        auto& entry = node->children_[idx];
-        
-        if (entry.type_ == Entry::NODE) {
-            // Recursive search in internal node
-            return find_impl(entry.node_, value, hash, level + 1);
-        } else {
-            // Check leaf
-            if (key_equal_(entry.leaf_->value_, value)) {
-                return &entry.leaf_->value_;
+        auto current = node;
+        int current_level = level;
+
+        while (current) {
+            const uint32_t bit = bitpos(hash, current_level);
+
+            if (!(current->bitmap_ & bit)) {
+                return nullptr;  // Bit not set, value doesn't exist
             }
-            // Hash collision - value not found
-            return nullptr;
+
+            const int idx = index(current->bitmap_, bit);
+            const auto& entry = current->children_[idx];
+
+            if (entry.type_ == Entry::LEAF) {
+                if (key_equal_(entry.leaf_->value_, value)) {
+                    return &entry.leaf_->value_;
+                }
+                return nullptr;  // Hash collision - value not found
+            }
+
+            current = entry.node_;
+            ++current_level;
         }
+
+        return nullptr;
     }
     
-    // Insert value into HAMT (returns new node, or same node if no change)
-    std::shared_ptr<Node> insert_impl(const std::shared_ptr<Node>& node, const T& value, size_t hash, int level) const {
+    // Insert value into HAMT and report whether the value was newly inserted.
+    std::shared_ptr<Node> insert_impl(
+        const std::shared_ptr<Node>& node,
+        const T& value,
+        const std::shared_ptr<Leaf>& leaf,
+        size_t hash,
+        int level,
+        bool& inserted) const
+    {
         if (!node) {
-            // Create new leaf node
-            auto leaf = std::make_shared<Leaf>(value);
-            auto new_node = std::make_shared<Node>();
-            uint32_t bit = bitpos(hash, level);
-            new_node->bitmap_ = bit;
-            new_node->children_.emplace_back(leaf);
-            return new_node;
+            inserted = true;
+            return make_single_leaf_node(hash, level, leaf);
         }
         
         uint32_t bit = bitpos(hash, level);
@@ -132,37 +196,30 @@ private:
             
             if (entry.type_ == Entry::NODE) {
                 // Recursive insert
-                auto new_child = insert_impl(entry.node_, value, hash, level + 1);
+                auto new_child = insert_impl(entry.node_, value, leaf, hash, level + 1, inserted);
                 if (new_child == entry.node_) {
                     return node;  // No change
                 }
-                // Create new node with updated child
-                auto new_node = std::make_shared<Node>(*node);
-                new_node->children_[idx] = Entry(new_child);
-                return new_node;
+                return clone_with_replaced_child(node, idx, Entry(std::move(new_child)));
             } else {
                 // Collision with existing leaf
                 if (key_equal_(entry.leaf_->value_, value)) {
+                    inserted = false;
                     return node;  // Value already exists
                 }
                 
                 // Hash collision - need to create internal node
                 // Move existing leaf deeper and insert both
+                inserted = true;
                 size_t existing_hash = hasher_(entry.leaf_->value_);
-                auto new_node = std::make_shared<Node>(*node);
-                new_node->children_[idx] = Entry(create_collision_node(
-                    entry.leaf_, std::make_shared<Leaf>(value), 
-                    existing_hash, hash, level + 1));
-                return new_node;
+                auto collision = create_collision_node(entry.leaf_, leaf, existing_hash, hash, level + 1);
+                return clone_with_replaced_child(node, idx, Entry(std::move(collision)));
             }
         } else {
             // Position free - insert leaf directly
-            auto new_node = std::make_shared<Node>(*node);
-            new_node->bitmap_ |= bit;
+            inserted = true;
             int idx = index(node->bitmap_, bit);
-            auto leaf = std::make_shared<Leaf>(value);
-            new_node->children_.insert(new_node->children_.begin() + idx, Entry(leaf));
-            return new_node;
+            return clone_with_inserted_child(node, node->bitmap_ | bit, idx, Entry(leaf));
         }
     }
     
@@ -173,12 +230,12 @@ private:
         size_t existing_hash,
         size_t new_hash,
         int level) const {
-        
-        auto node = std::make_shared<Node>();
-        
+
         // Check if hashes still collide at this level
         uint32_t existing_bit = bitpos(existing_hash, level);
         uint32_t new_bit = bitpos(new_hash, level);
+        auto node = std::make_shared<Node>();
+        node->children_.reserve(existing_bit == new_bit ? 1 : 2);
         
         if (existing_bit == new_bit) {
             // Still colliding - recurse deeper
@@ -200,13 +257,23 @@ private:
         return node;
     }
     
-    // Erase value from HAMT
-    std::shared_ptr<Node> erase_impl(const std::shared_ptr<Node>& node, const T& value, size_t hash, int level) const {
-        if (!node) return nullptr;
+    // Erase value from HAMT and report whether it existed.
+    std::shared_ptr<Node> erase_impl(
+        const std::shared_ptr<Node>& node,
+        const T& value,
+        size_t hash,
+        int level,
+        bool& erased) const
+    {
+        if (!node) {
+            erased = false;
+            return nullptr;
+        }
         
         uint32_t bit = bitpos(hash, level);
         
         if (!(node->bitmap_ & bit)) {
+            erased = false;
             return node;  // Value doesn't exist
         }
         
@@ -214,38 +281,23 @@ private:
         auto& entry = node->children_[idx];
         
         if (entry.type_ == Entry::NODE) {
-            auto new_child = erase_impl(entry.node_, value, hash, level + 1);
+            auto new_child = erase_impl(entry.node_, value, hash, level + 1, erased);
             if (new_child == entry.node_) {
                 return node;  // No change
             }
             
             if (!new_child) {
-                // Child was removed - need to remove from this node
-                if (node->children_.size() == 1) {
-                    return nullptr;  // This node becomes empty
-                }
-                auto new_node = std::make_shared<Node>(*node);
-                new_node->bitmap_ &= ~bit;
-                new_node->children_.erase(new_node->children_.begin() + idx);
-                return new_node;
+                return clone_with_erased_child(node, node->bitmap_ & ~bit, idx);
             }
             
-            // Update child
-            auto new_node = std::make_shared<Node>(*node);
-            new_node->children_[idx] = Entry(new_child);
-            return new_node;
+            return clone_with_replaced_child(node, idx, Entry(std::move(new_child)));
         } else {
             // Check if leaf matches
             if (key_equal_(entry.leaf_->value_, value)) {
-                // Remove this leaf
-                if (node->children_.size() == 1) {
-                    return nullptr;  // Node becomes empty
-                }
-                auto new_node = std::make_shared<Node>(*node);
-                new_node->bitmap_ &= ~bit;
-                new_node->children_.erase(new_node->children_.begin() + idx);
-                return new_node;
+                erased = true;
+                return clone_with_erased_child(node, node->bitmap_ & ~bit, idx);
             }
+            erased = false;
             return node;  // Value not found
         }
     }
@@ -341,30 +393,37 @@ public:
 
     // Modifiers - return new sets with structural sharing
     ImmutableUnorderedSet insert(const T& value) const {
-        if (contains(value)) return *this;
-        
+        auto leaf = std::make_shared<Leaf>(value);
+        const size_type hash = hasher_(leaf->value_);
+        bool inserted = false;
         ImmutableUnorderedSet result(*this);
-        result.root_ = insert_impl(root_, value, hasher_(value), 0);
-        result.size_ = size_ + 1;
+        result.root_ = insert_impl(root_, leaf->value_, leaf, hash, 0, inserted);
+        if (inserted) {
+            result.size_ = size_ + 1;
+        }
         return result;
     }
     
     ImmutableUnorderedSet insert(T&& value) const {
-        // Check first to avoid moving if already exists
-        T temp = value;
-        if (contains(temp)) return *this;
-        
+        auto leaf = std::make_shared<Leaf>(std::move(value));
+        const size_type hash = hasher_(leaf->value_);
+        bool inserted = false;
         ImmutableUnorderedSet result(*this);
-        result.root_ = insert_impl(root_, std::move(value), hasher_(value), 0);
-        result.size_ = size_ + 1;
+        result.root_ = insert_impl(root_, leaf->value_, leaf, hash, 0, inserted);
+        if (inserted) {
+            result.size_ = size_ + 1;
+        }
         return result;
     }
 
     ImmutableUnorderedSet erase(const T& value) const {
-        if (!contains(value)) return *this;
+        const size_type hash = hasher_(value);
+        bool erased = false;
+        auto new_root = erase_impl(root_, value, hash, 0, erased);
+        if (!erased) return *this;
 
         ImmutableUnorderedSet result(*this);
-        result.root_ = erase_impl(root_, value, hasher_(value), 0);
+        result.root_ = new_root;
         result.size_ = size_ - 1;
         return result;
     }

@@ -16,6 +16,7 @@
     /* X(schema) */ \
     /* X(handles) */ \
     X(handle_lifecycle) \
+    X(immutable_containers_perf) \
     X(model_is_compileable) \
     // end
 
