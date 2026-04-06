@@ -77,7 +77,7 @@ namespace Q1-CPP {
     3: Операции (семантические сигнатуры) задаются внутри `element` и `table` строками:
       1: `?<name>(...) -> <type>`: read-only операция (query).
       2: `*<name>(...)`: операция изменения (command), C++-проекция возвращает `void`.
-      3: `+<name>(...)`: фабрика создания (convenience create), C++-проекция возвращает `Id` (стрелка `-> id` в DSL схлопывается по умолчанию).
+      3: `+<name>(...)`: фабрика создания (convenience create), C++-проекция возвращает `Id` (в DSL стрелка `-> #` схлопывается/опциональна по умолчанию; `#` — локальный id).
         1: Канонические “технические” конструкторы (create from full payload) в DSL не описываются: они считаются частью движка/рантайма.
     4: Привязка контекста (implicit arguments):
       1: Все `element`-операции в C++ получают дополнительный параметр `Id` (ссылка на конкретную запись).
@@ -87,7 +87,7 @@ namespace Q1-CPP {
 
   type_projection: @Rule {
     Проекция типовых конструкций DSL → C++ в контексте `Quantum`.
-    1: Базовые DSL-типы (например, `string`, `integer`, `Id`) берутся из `iqsm::dsl_gateway`.
+    1: Базовые DSL-типы (например, `string`, `integer`, `#` как локальный id) берутся из `iqsm::dsl_gateway` (C++ имена: `Id`, `Aspect::Id`, ...).
     2: `vector<T>` проецируется как `std::vector<T>`.
     3: `enum E : a, b, c` проецируется как `enum class E { a, b, c };`.
     4: Типовые алиасы через type-of (`~Expr`) проецируются как `decltype(<Expr>)`.
@@ -96,9 +96,9 @@ namespace Q1-CPP {
   }
 
   id_projection: @Rule {
-    Проекция и нормализация нотации Id.
-    1: `Aspect::id` нормализуется в C++ как `Aspect::Id`.
-    2: Встреча `B::Id` в полях `element`/`table` трактуется как использование типа, принадлежащего аспекту B.
+    Проекция и нормализация нотации id (в DSL через `#`).
+    1: `#Aspect` нормализуется в C++ как `Aspect::Id` (decode: `Aspect::id`).
+    2: Встреча `#B` в полях `element`/`table` трактуется как использование типа, принадлежащего аспекту B.
   }
 
   invariants_and_anchors: @Rule {
@@ -108,7 +108,7 @@ namespace Q1-CPP {
     2: Для `attribute/tag ... of Parent` в invariants добавляется `Structural::anchor_attribute<Parent, Aspect>`.
     3: Для `component ... of Parent` в invariants добавляется `Structural::isomorphic<Parent, Aspect, &Aspect_private::construct>`.
       1: Реальная `construct(Reading, Parent::Id, Item<Parent>) -> Aspect::Quantum` размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
-    4: Поле `f: Target::Id @anchor` добавляет в invariants `Structural::anchor<Target, Owner, &Quantum::f>`.
+    4: Поле `f: #Target @anchor` (decode: `Target::id`) добавляет в invariants `Structural::anchor<Target, Owner, &Quantum::f>`.
     5: Если в `element` встречается хотя бы одно поле с директивой `@cache`, генерация добавляет в `invariants` валидатор `&Aspect_private::update`.
       1: Реальная `update(...)` (или иной валидатор/реакция) размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
     6: Эталонная (golden) форма логики в `.cpp`:
@@ -125,8 +125,8 @@ namespace Q1-CPP {
     1: Dependencies аспектов выражаются через миксин `Require<...>` и должны быть полными и явными.
     2: Если аспект объявлен как attribute/tag/component `of Parent`, то Parent добавляется в `Require<...>`.
     3: Если внутри `element`/`table` встречается любой тип, принадлежащий аспекту B, то B добавляется в `Require<...>`.
-      1: Это включает случаи `B::Id`.
-    4: Если внутри `element`/`table` встречается составной тип (struct/array/vector/optional/etc.), то правило вывода dependencies применяется рекурсивно к его полям/элементам.
+      1: Это включает случаи `#B` (decode: `B::id`; в C++ проекции: `B::Id`).
+    4: Если внутри `element`/`table` встречается составной тип (struct/array/vector/`T?`/etc.), то правило вывода dependencies применяется рекурсивно к его полям/элементам.
     5: Если в определении аспекта явно указано `depends: X`, то X добавляется в `Require<...>`.
   }
 

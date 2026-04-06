@@ -24,10 +24,10 @@ namespace Q1CORE
 
     attribute SampleAttribute of SampleEntity
       element
-        neighbor_anchor : anchor SampleEntity::id
-        optional_anchor : optional<anchor SampleComponent::id>
-        every_essential : anchor(all) vector<SampleEntity::id>
-        at_least_one_required : anchor(any) vector<SampleComponent::id>
+        neighbor_anchor : #SampleEntity @anchor
+        optional_anchor : #SampleComponent? @anchor
+        every_essential : vector<#SampleEntity> @anchor(all)
+        at_least_one_required : vector<#SampleComponent> @anchor(any)
         
         
 
