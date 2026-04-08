@@ -84,13 +84,16 @@ namespace testing {
         };
 
         struct FailHelper final {
+            const char* expected;
             const char* expr;
             const char* file;
             int line;
 
             void operator=(const Message& msg) const {
                 auto base_msg = std::format(
-                    "Expecting true, but got false: {} (at {}:{})",
+                    "Expecting {}, but got {}: {} (at {}:{})",
+                    expected,
+                    std::string(expected) == "true" ? "false" : "true",
                     expr,
                     file,
                     line);
@@ -177,7 +180,12 @@ namespace testing {
 #define EXPECT_TRUE(condition) \
     switch (0) case 0: default: \
         if (::testing::detail::eval_bool([&] { return (condition); }, #condition, __FILE__, __LINE__)) ; \
-        else ::testing::detail::FailHelper{#condition, __FILE__, __LINE__} = ::testing::detail::Message()
+        else ::testing::detail::FailHelper{"true", #condition, __FILE__, __LINE__} = ::testing::detail::Message()
+
+#define EXPECT_FALSE(condition) \
+    switch (0) case 0: default: \
+        if (not ::testing::detail::eval_bool([&] { return (condition); }, #condition, __FILE__, __LINE__)) ; \
+        else ::testing::detail::FailHelper{"false", #condition, __FILE__, __LINE__} = ::testing::detail::Message()
 
 #define EXPECT_EQ(a, b) \
     switch (0) case 0: default: \

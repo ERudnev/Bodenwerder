@@ -17,6 +17,11 @@ namespace Q1CORE
         !modulus_clamped() // must be >= 1
         !q1::existence(needs_tag) // appears when SampleEntity.data_field is divided by modulus
 
+    component Remnant of Tag
+      element
+        power : integer // == SampleEntity::data_field / Tag::Modulus (Tag quarantees integer)
+        !renmant_calculated()
+
     component SampleComponent of SampleEntity
       element
         *example_op_multiply(factor: integer)

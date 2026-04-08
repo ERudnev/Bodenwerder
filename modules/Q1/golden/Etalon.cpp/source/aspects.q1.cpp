@@ -58,6 +58,33 @@ namespace Q1CORE::Etalon {
     };
 
     //
+    // Remnant
+    struct Remnant_private : Remnant::Operations {
+        static auto construct(Reading world, Id id, Item<Tag>) -> Quantum {
+            return Quantum{
+                .power = ops::particle::get<SampleEntity>(world, id).data_field / ops::global::get<Tag>(world)->modulus,
+            };
+        }
+
+        static auto renmant_calculated(Reading world, Id id, const Quantum& before) -> ItemChange {
+            const auto expected_power = ops::particle::get<SampleEntity>(world, id).data_field / ops::global::get<Tag>(world)->modulus;
+            if (before.power == expected_power) return {};
+            return Quantum{
+                .power = expected_power,
+            };
+        }
+    };
+
+    const Invariants Remnant::invariants{
+        .structural = {
+            invariant::isomorphic<Tag, Remnant, &Remnant_private::construct>,
+        },
+        .logical = {
+            invariant::for_each_item<Remnant, &Remnant_private::renmant_calculated>,
+        },
+    };
+
+    //
     // SampleComponent
     struct SampleComponent_private : SampleComponent::Operations {
         static auto private_construct(Reading, Id, Item<SampleEntity>) -> Quantum { return {}; }

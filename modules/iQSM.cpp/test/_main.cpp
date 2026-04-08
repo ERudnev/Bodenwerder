@@ -22,6 +22,7 @@
 
 #define IQSM_VALIDATION_TESTS(X) \
     X(validation_placeholder) \
+    X(validation_caching_component) \
     X(validation_tag_globals) \
     // end
 

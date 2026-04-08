@@ -8,7 +8,7 @@ namespace tests {
         using namespace iqsm::dsl_gateway;
         using namespace Q1CORE::Etalon;
 
-        const auto schema = ops::schema::assemble<SampleEntity, Tag, SampleComponent, SampleAttribute>();
+        const auto schema = ops::schema::assemble<SampleEntity, Tag, Remnant, SampleComponent, SampleAttribute>();
         const auto empty = ops::world::create(schema);
         (void)empty;
         EXPECT_TRUE(true);

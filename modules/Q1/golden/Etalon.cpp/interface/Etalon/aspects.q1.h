@@ -31,6 +31,15 @@ namespace Q1CORE::Etalon {
         struct Operations : OwnTypeOperations{};
     };
 
+    struct Remnant : Component<Remnant, Tag>, Require<Tag> {
+        struct Quantum {
+            integer power;
+        };
+        struct Global {};
+        static const Invariants invariants;
+        struct Operations : OwnTypeOperations{};
+    };
+
     struct SampleComponent : Component<SampleComponent, SampleEntity>, Require<SampleEntity> {
         struct Quantum {};
         struct Global {};
