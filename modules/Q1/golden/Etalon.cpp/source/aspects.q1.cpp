@@ -1,5 +1,9 @@
 #include <Etalon/aspects.q1.h>
 
+#include <iQSM/api/_gateway_equal.h>
+
+#include <algorithm>
+
 namespace Q1CORE::Etalon {
 
     using namespace iqsm::dsl_gateway;
@@ -13,7 +17,21 @@ namespace Q1CORE::Etalon {
         static void example_private_nonconst_fieldwide_method(Writing) {}
         static void example_private_nonconst_element_method(Writing, Id) {}
 
-        static auto example_private_validate_item_atomic(Reading, Id, const Quantum&) -> ItemChange { return {}; }
+        static auto min_value(Reading, Id, const Quantum& before) -> ItemChange {
+            auto after = before;
+            after.data_field = std::max(after.data_field, integer{-1000});
+
+            if (ops::particle::equal<SampleEntity>(after, before)) return {};
+            return after;
+        }
+
+        static auto max_value(Reading, Id, const Quantum& before) -> ItemChange {
+            auto after = before;
+            after.data_field = std::min(after.data_field, integer{1000});
+
+            if (ops::particle::equal<SampleEntity>(after, before)) return {};
+            return after;
+        }
         static void example_private_validate_table(Writing) {}
     };
     auto SampleEntity::Operations::create_from_float(Writing gate, float field_value) -> Id {
@@ -27,7 +45,8 @@ namespace Q1CORE::Etalon {
     const Invariants SampleEntity::invariants{
         .structural = {},
         .logical = {
-            invariant::for_each_item<SampleEntity, &SampleEntity_private::example_private_validate_item_atomic>,
+            invariant::for_each_item<SampleEntity, &SampleEntity_private::min_value>,
+            invariant::for_each_item<SampleEntity, &SampleEntity_private::max_value>,
             &SampleEntity_private::example_private_validate_table,
         },
     };

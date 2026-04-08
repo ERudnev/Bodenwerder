@@ -6,6 +6,8 @@ namespace Q1CORE
         data_field : integer
         ?const_element_method() -> string
         *nonconst_element_method()
+        !min_value() // -1000
+        !max_value() // 1000
       table
         +from_float(value_approximate: float)
         ?const_fieldwide_method() -> string
@@ -19,7 +21,7 @@ namespace Q1CORE
 
     component Remnant of Tag
       element
-        power : integer // == SampleEntity::data_field / Tag::Modulus (Tag quarantees integer)
+        power : integer @cache// == SampleEntity::data_field / Tag::Modulus (Tag quarantees integer)
         !renmant_calculated()
 
     component SampleComponent of SampleEntity

@@ -105,16 +105,21 @@ namespace Q1-CPP {
     Проекция структурных инвариантов и якорей.
     1: Каждый аспектный C++-тип содержит `static const Invariants invariants;`, а определение `invariants` размещается в `.cpp`.
       1: Причина: чтобы не светить внутренние helper-операции и утилиты в заголовках и не смешивать декларацию данных с прикладной логикой.
-    2: Для `attribute/tag ... of Parent` в invariants добавляется `Structural::anchor_attribute<Parent, Aspect>`.
-    3: Для `component ... of Parent` в invariants добавляется `Structural::isomorphic<Parent, Aspect, &Aspect_private::construct>`.
+    2: Q1-валидаторы `!name(...)` проецируются по контексту объявления.
+      1: `element`-валидатор проецируется как `static auto name(Reading, Id, const Quantum&) -> ItemChange` в `Aspect_private`.
+      2: Такой валидатор подключается в `invariants.logical` как `invariant::for_each_item<Aspect, &Aspect_private::name>`.
+      3: `table`-валидатор проецируется как `static void name(Writing)` в `Aspect_private`.
+      4: Такой валидатор подключается в `invariants.logical` как прямой указатель `&Aspect_private::name`.
+    3: Для `attribute/tag ... of Parent` в invariants добавляется `Structural::anchor_attribute<Parent, Aspect>`.
+    4: Для `component ... of Parent` в invariants добавляется `Structural::isomorphic<Parent, Aspect, &Aspect_private::construct>`.
       1: Реальная `construct(Reading, Parent::Id, Item<Parent>) -> Aspect::Quantum` размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
-    4: Поле `f: #Target @anchor` (decode: `Target::id`) добавляет в invariants `Structural::anchor<Target, Owner, &Quantum::f>`.
-    5: Если в `element` встречается хотя бы одно поле с директивой `@cache`, генерация добавляет в `invariants` валидатор `&Aspect_private::update`.
+    5: Поле `f: #Target @anchor` (decode: `Target::id`) добавляет в invariants `Structural::anchor<Target, Owner, &Quantum::f>`.
+    6: Если в `element` встречается хотя бы одно поле с директивой `@cache`, генерация добавляет в `invariants` валидатор `&Aspect_private::update`.
       1: Реальная `update(...)` (или иной валидатор/реакция) размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
-    6: Эталонная (golden) форма логики в `.cpp`:
+    7: Эталонная (golden) форма логики в `.cpp`:
       1: Для каждого аспекта вводится локальный helper-тип `Aspect_private : Aspect::Operations` со статическими функциями.
       2: Функции, на которые ссылаются `invariants` через указатели, размещаются именно в `Aspect_private` (например `construct`, `need_even`, `private_validate_*`).
-    7: Эталонная форма публичных операций (golden):
+    8: Эталонная форма публичных операций (golden):
       1: Публичные операции аспектов объявляются в `Aspect::Operations`.
       2: В эталонах допускается префикс `example_` у операций, чтобы явно отделить “демонстрацию формы” от прикладных имён.
   }

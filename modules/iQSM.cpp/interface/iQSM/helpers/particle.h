@@ -17,6 +17,9 @@ namespace iqsm::helpers::particle {
   template<meta::Particle Meta>
   auto modifier(repo::Commit commit, Id<Meta> id);
 
+  template<meta::HasQuantum Meta>
+  bool equal(const Quantum<Meta>& a, const Quantum<Meta>& b);
+
   template<meta::Entity Meta>
   auto create(repo::Commit commit, Quantum<Meta> value) -> Id<Meta>;
 

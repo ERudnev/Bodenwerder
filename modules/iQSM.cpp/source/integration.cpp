@@ -79,26 +79,28 @@ namespace iqsm::operations {
             return out;
         }
 
-        auto apply_invariants_in_order(iqsm::World world, const std::vector<TypeId>& order) -> iqsm::World {
+        auto apply_invariants_in_order(iqsm::World initial_world, const std::vector<TypeId>& order) -> iqsm::World {
+            auto current_world = initial_world;
+
             for (const auto& type_id : order) {
-                const auto& entry = world->schema->aspects.at(type_id);
+                const auto& entry = current_world->schema->aspects.at(type_id);
                 const auto apply_layer = [&](const iqsm::SchemaObject::Invariants::Layer& layer) {
                     for (const auto invariant : layer) {
                         if (not invariant) continue;
-                        repo::Commit commit{
-                            world,
+                        repo::Commit cursor{
+                            current_world,
                             [&](Delta delta) {
-                                world = iqsm::operations::integrate(std::move(world), std::move(delta));
+                                current_world = iqsm::operations::integrate(current_world, std::move(delta));
                             }
                         };
-                        invariant(std::move(commit));
+                        invariant(cursor);
                     }
                 };
 
                 apply_layer(entry.invariants.structural);
                 apply_layer(entry.invariants.logical);
             }
-            return world;
+            return current_world;
         }
     }
 
@@ -145,7 +147,7 @@ namespace iqsm::operations {
         std::set<TypeId> all;
         for (const auto& aspect_entry : world->schema->aspects) all.insert(aspect_entry.first);
         const auto order = topo_order_dependencies_first(world, all);
-        return apply_invariants_in_order(std::move(world), order);
+        return apply_invariants_in_order(world, order);
     }
 
     World validate_smart(World validBeforeChanges, World changed) {
@@ -180,7 +182,7 @@ namespace iqsm::operations {
 
         const auto affected = expand_required_by(changed, touched);
         const auto order = topo_order_dependencies_first(changed, affected);
-        return apply_invariants_in_order(std::move(changed), order);
+        return apply_invariants_in_order(changed, order);
     }
 
     Delta make_delta(World from, World to) {
