@@ -17,10 +17,11 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/source
         ${CMAKE_CURRENT_SOURCE_DIR}/interface
     INTERFACE
-        ${PROJECT_SOURCE_DIR}/interface
+        ${CMAKE_CURRENT_SOURCE_DIR}/interface
 )
 
 target_link_libraries(${PROJECT_NAME}
+    PUBLIC iQSM
     PUBLIC libglew_static
     PUBLIC glfw
     ${OPENGL_LIBRARIES}

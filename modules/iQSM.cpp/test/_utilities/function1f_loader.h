@@ -15,8 +15,9 @@ namespace tests::resources {
     >;
 
     struct Function1fLoader final : Function1f::Loader {
-        Function1f::Ptr load(const Function1f::Passport& passport) const override
+        Function1f::Ptr load(iqsm::World world, iqsm::ref<iqsm::binding::ManagerData>, Function1f::Aspect::Id id) const override
         {
+            const auto& passport = iqsm::helpers::particle::get<Function1f::Aspect>(world, id).passport;
             if (passport.description == "sin(x)") {
                 return std::make_unique<Function1f::Data>(
                     Function1f::PayloadType{ [](float arg) { return std::sin(arg); } }
@@ -29,6 +30,8 @@ namespace tests::resources {
             }
             return {};
         }
+
+        void unload(iqsm::World, iqsm::ref<iqsm::binding::ManagerData>, Function1f::Aspect::Id, iqsm::binding::resource::Data&) const override {}
     };
 }
 

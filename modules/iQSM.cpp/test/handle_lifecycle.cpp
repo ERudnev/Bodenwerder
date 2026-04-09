@@ -55,6 +55,24 @@ namespace tests {
             function_loader
         );
         EXPECT_TRUE(success);
+        EXPECT_EQ(true, ops::resource::loaded<SampleResource>(manager, old_function_cos));
+
+        const bool unloaded = ops::resource::unload<SampleResource>(
+            master,
+            manager,
+            old_function_cos,
+            function_loader
+        );
+        EXPECT_TRUE(unloaded);
+        EXPECT_EQ(false, ops::resource::loaded<SampleResource>(manager, old_function_cos));
+
+        const bool reloaded = ops::resource::load<SampleResource>(
+            master,
+            manager,
+            old_function_cos,
+            function_loader
+        );
+        EXPECT_TRUE(reloaded);
 
         const auto paid_sin_of_twentyseven = SampleResource::Operations::use(master, new_function_sin, manager, 27.0f);
         const auto free_sin_of_ten = SampleResource::Operations::use_free(master, new_function_sin, manager, 10.0f);

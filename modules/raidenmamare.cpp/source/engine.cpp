@@ -1,4 +1,7 @@
-#include <Raidenmamare/core.h>
+#include <Raidenmamare/engine.h>
+
+#include <Raidenmamare/core.q1.h>
+#include <Raidenmamare/program.q1.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -48,41 +51,50 @@ void main() {
         return false;
     }
 
-    int init_window(GLFWwindow*& out_window) {
-        if (!glfwInit()) {
-            std::cerr << "Failed to initialize GLFW" << std::endl;
-            return 1;
-        }
-
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-        out_window = glfwCreateWindow(800, 600, "OpenGL Hello World Triangle", nullptr, nullptr);
-        if (!out_window) {
-            std::cerr << "Failed to create GLFW window" << std::endl;
-            glfwTerminate();
-            return 2;
-        }
-
-        glfwMakeContextCurrent(out_window);
-        glfwSetFramebufferSizeCallback(out_window, [](GLFWwindow*, int width, int height) {
-            glViewport(0, 0, width, height);
-        });
-        return 0;
-    }
 } // namespace
 
 namespace rmmr {
+    auto coreLoader() -> const iqsm::binding::resource::Loader<Core>&;
+    auto getWindow(iqsm::binding::resource::Manager manager, Core::Id id) -> GLFWwindow*;
+}
 
-int Core::run_render_demo() {
-    GLFWwindow* window = nullptr;
-    if (const int rc = init_window(window); rc != 0) { return rc; }
+namespace rmmr {
+
+Engine::Engine(std::string assetsRoot)
+    : assetsRoot(std::move(assetsRoot))
+    , state(ops::world::create(resourceAspects()))
+    , resourceManager(base::make_shared<iqsm::binding::ManagerData>())
+    , core(ops::resource::declare<Core>(
+        state,
+        Core::Quantum{
+            .passport = Core::Passport{
+                .assets_root = this->assetsRoot,
+            },
+        }
+    ))
+{}
+
+iqsm::Schema Engine::resourceAspects() {
+    return ops::schema::assemble<Core, Program>();
+}
+
+int Engine::run_render_demo() {
+    if (!ops::resource::load<Core>(state, resourceManager, core, coreLoader())) {
+        std::cerr << "Failed to load Core resource" << std::endl;
+        return 1;
+    }
+
+    GLFWwindow* window = getWindow(resourceManager, core);
+    if (!window) {
+        std::cerr << "Failed to acquire GLFW window from Core resource" << std::endl;
+        ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
+        return 2;
+    }
 
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
         std::cerr << "Failed to initialize GLEW" << std::endl;
-        glfwTerminate();
+        ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
         return 3;
     }
 
@@ -109,14 +121,15 @@ int Core::run_render_demo() {
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &kVertexShaderSource, nullptr);
     if (!compile_shader(vertexShader, "Vertex shader")) {
-        glfwTerminate();
+        ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
         return 4;
     }
 
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &kFragmentShaderSource, nullptr);
     if (!compile_shader(fragmentShader, "Fragment shader")) {
-        glfwTerminate();
+        glDeleteShader(vertexShader);
+        ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
         return 5;
     }
 
@@ -124,7 +137,10 @@ int Core::run_render_demo() {
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     if (!link_program(shaderProgram)) {
-        glfwTerminate();
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
+        glDeleteProgram(shaderProgram);
+        ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
         return 6;
     }
 
@@ -151,10 +167,9 @@ int Core::run_render_demo() {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
-
-    glfwTerminate();
+    ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
     return 0;
 }
 
-} // namespace rmnr
+} // namespace rmmr
 

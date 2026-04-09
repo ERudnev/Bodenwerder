@@ -11,8 +11,8 @@
 
 namespace iqsm::helpers::resource {
     // sugar:
-    using Provider = cref<::iqsm::binding::ManagerData>;
-    using Manager = ref<::iqsm::binding::ManagerData>;
+    using Provider = ::iqsm::binding::resource::Provider;
+    using Manager = ::iqsm::binding::resource::Manager;
 
     template<meta::Binding Meta>
     auto declare(repo::Commit, Quantum<Meta>) -> Id<Meta>;
@@ -25,6 +25,9 @@ namespace iqsm::helpers::resource {
 
     template<meta::Binding Meta>
     auto load(repo::Commit, Manager, const Id<Meta>&, const ::iqsm::binding::resource::Loader<Meta>&) -> bool;
+
+    template<meta::Binding Meta>
+    auto unload(World, Manager, const Id<Meta>&, const ::iqsm::binding::resource::Loader<Meta>&) -> bool;
 }
 
 namespace iqsm::helpers::resource {
@@ -59,12 +62,26 @@ namespace iqsm::helpers::resource {
         if (loaded<Meta>(manager, id)) return false;
         if (!helpers::particle::exists<Meta>(commit.initial, id)) return false;
 
-        const auto& quantum = helpers::particle::get<Meta>(commit.initial, id);
-        auto external = loader.load(quantum.passport);
+        auto external = loader.load(commit.initial, manager, id);
         if (!external) return false;
 
         manager->layer<Meta>()->bind(id, std::move(external));
         return true;
+    }
+
+    template<meta::Binding Meta>
+    auto unload(
+        World world,
+        Manager manager,
+        const Id<Meta>& id,
+        const ::iqsm::binding::resource::Loader<Meta>& loader) -> bool
+    {
+        auto layer = manager->layer<Meta>();
+        auto* external = layer->try_get(id);
+        if (!external) return false;
+
+        loader.unload(world, manager, id, *external);
+        return layer->unbind(id);
     }
 }
 

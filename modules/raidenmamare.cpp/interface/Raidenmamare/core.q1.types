@@ -1,0 +1,9 @@
+namespace rmmr
+
+  resource Core @external(opengl_context)
+    passport
+      assets_root: string
+      
+
+    
+      

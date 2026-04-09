@@ -32,6 +32,7 @@ namespace iqsm::binding {
         Data* try_get(const Id& id) const noexcept;
         Data* get(const Id& id) const;
         void bind(const Id& id, std::unique_ptr<Data> data);
+        bool unbind(const Id& id);
 
         Id create(repo::Commit commit, ::iqsm::Quantum<Meta> quantum, std::unique_ptr<Data> data);
     };
@@ -96,6 +97,11 @@ namespace iqsm::binding {
     template<meta::Binding Meta>
     void LayerData<Meta>::bind(const Id& id, std::unique_ptr<Data> data) {
         handlers.insert_or_assign(id, std::move(data));
+    }
+
+    template<meta::Binding Meta>
+    bool LayerData<Meta>::unbind(const Id& id) {
+        return handlers.erase(id) > 0;
     }
 
     template<meta::Binding Meta>

@@ -1,0 +1,9 @@
+namespace rmmr
+
+  // OpenGL-backed linked program resource assembled from shader stage files.
+  resource Program @external(opengl_program)
+    passport
+      debugName: string
+      vertexFilename: string
+      fragmentFilename: string
+
