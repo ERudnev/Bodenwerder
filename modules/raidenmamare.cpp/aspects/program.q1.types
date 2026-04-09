@@ -1,0 +1,9 @@
+namespace rmmr
+
+  // OpenGL-backed vertex program resource.
+  // The loader/bridge compiles Passport::filename into a runtime shader object.
+  resource VertexProgram @external(opengl_vertex_program)
+    passport
+      debug_name: string
+      filename: string
+

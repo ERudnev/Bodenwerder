@@ -156,5 +156,5 @@ int Core::run_render_demo() {
     return 0;
 }
 
-} // namespace rmnr
+} // namespace rmmr
 

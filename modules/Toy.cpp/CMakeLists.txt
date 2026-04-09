@@ -11,11 +11,16 @@ target_sources(${PROJECT_NAME}
         ${MODULE_SOURCES}
 )
 
+target_include_directories(${PROJECT_NAME}
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/modules/iQSM.cpp/interface
+)
+
 target_link_libraries(${PROJECT_NAME}
     PUBLIC glm
     PUBLIC base
+    PRIVATE iQSM
     PRIVATE Raidenmamare
-    PRIVATE atomic
     PUBLIC libglew_static
     PUBLIC glfw
     #PRIVATE assimp
