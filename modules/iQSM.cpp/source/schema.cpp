@@ -29,15 +29,15 @@ namespace iqsm {
                         lhs.name));
                 }
 
-                if (typeid(*lhs.field.zero) != typeid(*rhs.field.zero)) {
-                    throw std::runtime_error(std::format(
-                        "Schema::merge(): incompatible zero for aspect '{}'",
-                        lhs.name));
-                }
-
                 if (lhs.invariants.structural != rhs.invariants.structural || lhs.invariants.logical != rhs.invariants.logical) {
                     throw std::runtime_error(std::format(
                         "Schema::merge(): incompatible invariants for aspect '{}'",
+                        lhs.name));
+                }
+
+                if (lhs.resource.create_slot != rhs.resource.create_slot) {
+                    throw std::runtime_error(std::format(
+                        "Schema::merge(): incompatible resource runtime for aspect '{}'",
                         lhs.name));
                 }
 

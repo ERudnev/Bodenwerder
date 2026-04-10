@@ -30,6 +30,7 @@ namespace iqsm {
             TypeSet require;
             TypeSet required_by;
             internals::schema::FieldEntry field;
+            internals::schema::ResourceEntry resource;
             Invariants invariants;
             internals::schema::DeltaEntry delta;
         };

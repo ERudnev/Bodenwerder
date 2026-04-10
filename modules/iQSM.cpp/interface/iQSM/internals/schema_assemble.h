@@ -4,6 +4,7 @@
 
 #include <iQSM/field.h>
 #include <iQSM/internals/delta_builders.h>
+#include <iQSM/resources/slot.h>
 #include <iQSM/types.h>
 
 namespace iqsm {
@@ -26,6 +27,14 @@ namespace iqsm {
             static auto clone(UField diff) -> UFieldMut { return as(diff)->clone(); }
             static void absorb(UFieldMut lhs, UField rhs) { as_mut(lhs)->absorb(*as(rhs)); }
         };
+
+        template<meta::Handle Meta>
+        struct resource_entry {
+            static auto create_slot() -> std::unique_ptr<resources::SlotAbstract> {
+                return std::make_unique<resources::Slot<Meta>>(
+                    base::make_shared<typename Meta::Materializer>());
+            }
+        };
     }
 
     template<meta::Aspect Meta>
@@ -42,6 +51,17 @@ namespace iqsm {
             &internals::schema_thunks::delta_entry<Meta>::clone,
             &internals::schema_thunks::delta_entry<Meta>::absorb,
         };
+    }
+
+    template<meta::Aspect Meta>
+    internals::schema::ResourceEntry internals::schema::ResourceEntry::make() {
+        if constexpr (meta::Handle<Meta>) {
+            return internals::schema::ResourceEntry{
+                &internals::schema_thunks::resource_entry<Meta>::create_slot,
+            };
+        } else {
+            return internals::schema::ResourceEntry{};
+        }
     }
 
     template<meta::Aspect... Leaves>
@@ -62,6 +82,7 @@ namespace iqsm {
                 requirements_of<TypeList>(),
                 TypeSet{},
                 internals::schema::FieldEntry::make<TypeList>(),
+                internals::schema::ResourceEntry::make<TypeList>(),
                 TypeList::invariants,
                 internals::schema::DeltaEntry::make<TypeList>(),
             }), ...);

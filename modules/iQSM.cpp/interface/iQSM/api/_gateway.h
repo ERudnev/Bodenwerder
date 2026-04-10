@@ -19,10 +19,9 @@
 // helpers:
 #include <iQSM/helpers/particle.h>
 #include <iQSM/helpers/global.h>
-#include <iQSM/helpers/binding.h>
-#include <iQSM/helpers/resource.h>
 #include <iQSM/helpers/schema.h>
 #include <iQSM/helpers/world.h>
+#include <iQSM/helpers/resource.h>
 
 // repository:
 #include <iQSM/repository/commit.h>
@@ -30,8 +29,9 @@
 #include <iQSM/repository/sequence.h>
 #include <iQSM/repository/accumulator.h>
 
-// other types
-#include <iQSM/binding/layer.h>
+// resource system
+#include <iQSM/resources/manager.h>
+#include <iQSM/resources/materializer.h>
 
 // Minimal DSL surface for generated/etalon code.
 // Intentionally small to avoid pulling the whole iqsm namespace into client headers.
@@ -53,8 +53,8 @@ namespace iqsm::dsl_gateway {
     template<typename Meta, typename Parent>
     using Component = iqsm::aspects::Component<Meta, Parent>;
 
-    template<typename Meta>
-    using Binding = iqsm::aspects::Binding<Meta>;
+    template<typename Meta, typename RuntimeStorageType, typename RuntimeAccessType>
+    using Handle = iqsm::aspects::Handle<Meta, RuntimeStorageType, RuntimeAccessType>;
 
     // Aspects infrastructure:
     template<typename Meta, typename BaseType = internal::id::BaseType>
@@ -66,6 +66,9 @@ namespace iqsm::dsl_gateway {
     template<typename Meta>
     using Item = ::iqsm::Item<Meta>;
 
+    using Reading = ::iqsm::World;
+    using Writing = ::iqsm::repo::Commit;
+
     using Invariants = ::iqsm::detail::validation::Block;
 
     namespace invariant {
@@ -76,7 +79,7 @@ namespace iqsm::dsl_gateway {
 
     // TODO: remove or rebind on iqsm::helpers::resource::Types
     namespace resources {
-        using Provider = cref<iqsm::binding::ManagerData>;
-        using Manager = ref<iqsm::binding::ManagerData>;
+        using Provider = cref<iqsm::resources::ManagerCore>;
+        using Manager = ref<iqsm::resources::ManagerCore>;
     }
 }

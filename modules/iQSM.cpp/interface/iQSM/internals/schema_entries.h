@@ -1,11 +1,13 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 
 #include <iQSM/references.h>
 
 namespace iqsm { struct FieldAbstract; }
 namespace iqsm::delta { struct FieldDiffAbstract; }
+namespace iqsm::resources { struct SlotAbstract; }
 
 namespace iqsm::internals::schema {
     // Schema-owned typed “slots” for per-aspect operations/data.
@@ -36,6 +38,15 @@ namespace iqsm::internals::schema {
 
         template<meta::Aspect Meta>
         static DeltaEntry make();
+    };
+
+    struct ResourceEntry {
+        using CreateSlot = std::unique_ptr<resources::SlotAbstract> (*)();
+
+        CreateSlot create_slot = nullptr;
+
+        template<meta::Aspect Meta>
+        static ResourceEntry make();
     };
 }
 

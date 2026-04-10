@@ -143,7 +143,7 @@ namespace iqsm::operations::validation {
 
         using Quantum = iqsm::Quantum<Dependee>;
         using AnchorId = Id<Anchor>;
-        using MemberValue = std::remove_cvref_t<decltype(std::declval<Quantum>().*Member)>;
+        using MemberValue = std::remove_reference_t<decltype(std::declval<Quantum&>().*Member)>;
 
         static_assert(
             requires(const MemberValue& v) { v.has_value(); *v; },
@@ -310,7 +310,7 @@ namespace iqsm::operations::validation {
 
         using Quantum = iqsm::Quantum<Dependee>;
         using AnchorId = Id<Anchor>;
-        using MemberValue = std::remove_cvref_t<decltype(std::declval<Quantum>().*Member)>;
+        using MemberValue = std::remove_reference_t<decltype(std::declval<Quantum&>().*Member)>;
         static_assert(std::is_same_v<MemberValue, std::vector<AnchorId>>);
 
         const auto anchor_field = world->field<Anchor>();
@@ -362,7 +362,7 @@ namespace iqsm::operations::validation {
 
         using Quantum = iqsm::Quantum<Dependee>;
         using AnchorId = Id<Anchor>;
-        using MemberValue = std::remove_cvref_t<decltype(std::declval<Quantum>().*Member)>;
+        using MemberValue = std::remove_reference_t<decltype(std::declval<Quantum&>().*Member)>;
         static_assert(std::is_same_v<MemberValue, std::vector<AnchorId>>);
 
         const auto anchor_field = world->field<Anchor>();

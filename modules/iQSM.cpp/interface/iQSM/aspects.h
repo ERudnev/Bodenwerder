@@ -32,10 +32,12 @@ namespace iqsm::aspects {
         using OwnTypeOperations = ::iqsm::detail::operations::Group<Meta>;
     };
 
-    template<typename Meta>
-    struct Binding : detail::aspects::Base<Meta> {
+    template<typename Meta, typename RuntimeStorageType, typename RuntimeAccessType>
+    struct Handle : detail::aspects::Base<Meta> {
         using Id = Identifier<Meta>;
         using OwnTypeOperations = ::iqsm::detail::operations::Group<Meta>;
+        using RuntimeStorage = RuntimeStorageType;
+        using RuntimeAccess = RuntimeAccessType;
     };
 }
 

@@ -17,7 +17,7 @@ namespace iqsm::meta {
     concept HasParentAspect = requires { typename Meta::ParentAspect; };
 
     template<typename Meta>
-    concept HasPassport = requires { typename Meta::Passport; };
+    concept HasQuantumPassport = requires(typename Meta::Quantum quantum) { quantum.passport; };
 
     template<typename Meta>
     concept Aspect =
@@ -29,16 +29,16 @@ namespace iqsm::meta {
 
     // TODO fix this semantic debt: are Entity ad Handle siblings or not?
     template<typename Meta>
-    concept Entity = Aspect<Meta> && (not HasParentAspect<Meta>) && (not HasPassport<Meta>);
+    concept Entity = Aspect<Meta> && (not HasParentAspect<Meta>) && (not HasQuantumPassport<Meta>);
 
     // Handle = world-side declaration of an external runtime object.
-    // - Quantum lives in World and must carry Passport (+ optional domain usage state).
+    // - Quantum lives in World and must carry `passport` (+ optional domain usage state).
     // - Runtime object is managed by binding layer and may be type-erased.
     template<typename Meta>
-    concept Binding = Aspect<Meta> && HasPassport<Meta> && (not HasParentAspect<Meta>);
+    concept Handle = Aspect<Meta> && HasQuantumPassport<Meta> && (not HasParentAspect<Meta>);
 
     template<typename Meta>
-    concept Quark = Aspect<Meta> && HasParentAspect<Meta> && (not HasPassport<Meta>);
+    concept Quark = Aspect<Meta> && HasParentAspect<Meta>;
 
     template<typename Meta>
     concept Attribute = Quark<Meta>;
@@ -47,6 +47,6 @@ namespace iqsm::meta {
     concept Component = Quark<Meta>;
 
     template<typename Meta>
-    concept Particle = Entity<Meta> || Quark<Meta> || Binding<Meta>;
+    concept Particle = Entity<Meta> || Quark<Meta> || Handle<Meta>;
 }
 

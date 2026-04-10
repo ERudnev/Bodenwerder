@@ -5,6 +5,7 @@
 #include <exception>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <base/logging.h>
 #include <base/testing/ScopedTimer.h>
@@ -189,10 +190,10 @@ namespace testing {
 
 #define EXPECT_EQ(a, b) \
     switch (0) case 0: default: \
-        if (const auto _cap = ::testing::detail::make_eq_capture<decltype((a)), decltype((b))>( \
+        if (const auto _cap = ::testing::detail::make_eq_capture<std::decay_t<decltype((a))>, std::decay_t<decltype((b))>>( \
                 #a, #b, __FILE__, __LINE__, \
-                [&]() -> decltype((a)) { return (a); }, \
-                [&]() -> decltype((b)) { return (b); } \
+                [&]() -> std::decay_t<decltype((a))> { return (a); }, \
+                [&]() -> std::decay_t<decltype((b))> { return (b); } \
             ); _cap.ok()) ; \
         else _cap.helper() = ::testing::detail::Message()
 

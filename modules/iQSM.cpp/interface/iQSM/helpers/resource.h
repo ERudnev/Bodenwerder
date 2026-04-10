@@ -1,87 +1,80 @@
 #pragma once
 
-#include <memory>
+#include <utility>
 
-#include <iQSM/binding/layer.h>
-#include <iQSM/binding/resource.h>
-#include <iQSM/helpers/binding.h>
+#include <base/shared_reference.h>
+
 #include <iQSM/helpers/particle.h>
+#include <iQSM/internals/delta_builders.h>
 #include <iQSM/meta/concepts.h>
+#include <iQSM/meta/facade.h>
 #include <iQSM/repository/commit.h>
+#include <iQSM/resources/manager.h>
 
 namespace iqsm::helpers::resource {
-    // sugar:
-    using Provider = ::iqsm::binding::resource::Provider;
-    using Manager = ::iqsm::binding::resource::Manager;
+    using Manager = ref<::iqsm::resources::ManagerCore>;
+    using Provider = cref<::iqsm::resources::ManagerCore>;
+    using Reading = ::iqsm::World;
 
-    template<meta::Binding Meta>
+    template<meta::Handle Meta>
     auto declare(repo::Commit, Quantum<Meta>) -> Id<Meta>;
 
-    template<meta::Binding Meta>
-    auto create(repo::Commit, Manager, Quantum<Meta>, ::iqsm::binding::resource::Ptr) -> Id<Meta>;
+    template<meta::Handle Meta>
+    auto create(repo::Commit, Manager, Quantum<Meta>, RuntimeStorage<Meta>) -> Id<Meta>;
 
-    template<meta::Binding Meta>
-    auto loaded(Provider, const Id<Meta>&) -> bool;
+    template<meta::Handle Meta>
+    auto materialized(Provider, const Id<Meta>&) -> bool;
 
-    template<meta::Binding Meta>
-    auto load(repo::Commit, Manager, const Id<Meta>&, const ::iqsm::binding::resource::Loader<Meta>&) -> bool;
+    template<meta::Handle Meta>
+    void materialize(Reading, Manager, const Id<Meta>&);
 
-    template<meta::Binding Meta>
-    auto unload(World, Manager, const Id<Meta>&, const ::iqsm::binding::resource::Loader<Meta>&) -> bool;
+    template<meta::Handle Meta>
+    void release(Reading, Manager, const Id<Meta>&);
+
+    template<meta::Handle Meta>
+    auto provide(Reading, Provider, const Id<Meta>&) -> RuntimeAccess<Meta>;
 }
 
 namespace iqsm::helpers::resource {
-    template<meta::Binding Meta>
+    template<meta::Handle Meta>
     auto declare(repo::Commit commit, Quantum<Meta> quantum) -> Id<Meta> {
-        return helpers::binding::declare<Meta>(std::move(commit), std::move(quantum));
+        const auto id = Id<Meta>::generate_random();
+        commit.push(internals::delta::make_atomic<Meta>(
+            id,
+            std::nullopt,
+            base::make_shared<const Quantum<Meta>>(std::move(quantum))));
+        return id;
     }
 
-    template<meta::Binding Meta>
+    template<meta::Handle Meta>
     auto create(
         repo::Commit commit,
         Manager manager,
         Quantum<Meta> quantum,
-        ::iqsm::binding::resource::Ptr external) -> Id<Meta>
+        RuntimeStorage<Meta> runtime) -> Id<Meta>
     {
-        return manager->layer<Meta>()->create(std::move(commit), std::move(quantum), std::move(external));
+        const auto id = declare<Meta>(std::move(commit), std::move(quantum));
+        manager->layer<Meta>().materialize(id, std::move(runtime));
+        return id;
     }
 
-    template<meta::Binding Meta>
-    auto loaded(Provider provider, const Id<Meta>& id) -> bool
-    {
-        return provider->layer<Meta>()->try_get(id) != nullptr;
+    template<meta::Handle Meta>
+    auto materialized(Provider provider, const Id<Meta>& id) -> bool {
+        return provider->materialized<Meta>(id);
     }
 
-    template<meta::Binding Meta>
-    auto load(
-        repo::Commit commit,
-        Manager manager,
-        const Id<Meta>& id,
-        const ::iqsm::binding::resource::Loader<Meta>& loader) -> bool
-    {
-        if (loaded<Meta>(manager, id)) return false;
-        if (!helpers::particle::exists<Meta>(commit.initial, id)) return false;
-
-        auto external = loader.load(commit.initial, manager, id);
-        if (!external) return false;
-
-        manager->layer<Meta>()->bind(id, std::move(external));
-        return true;
+    template<meta::Handle Meta>
+    void materialize(Reading world, Manager manager, const Id<Meta>& id) {
+        manager->materializer<Meta>().materialize(manager, world, id);
     }
 
-    template<meta::Binding Meta>
-    auto unload(
-        World world,
-        Manager manager,
-        const Id<Meta>& id,
-        const ::iqsm::binding::resource::Loader<Meta>& loader) -> bool
-    {
-        auto layer = manager->layer<Meta>();
-        auto* external = layer->try_get(id);
-        if (!external) return false;
+    template<meta::Handle Meta>
+    void release(Reading world, Manager manager, const Id<Meta>& id) {
+        manager->materializer<Meta>().release(manager, world, id);
+    }
 
-        loader.unload(world, manager, id, *external);
-        return layer->unbind(id);
+    template<meta::Handle Meta>
+    auto provide(Reading, Provider provider, const Id<Meta>& id) -> RuntimeAccess<Meta> {
+        return provider->layer<Meta>().provide(id);
     }
 }
-

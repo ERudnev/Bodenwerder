@@ -2,6 +2,10 @@
   "files.associations": {
     "*.q1.types": "q1"
   },
+  "cmake.useCMakePresets": "always",
+  "cmake.configureOnOpen": true,
+  "cmake.defaultConfigurePreset": "ninja-clang-debug",
+  "cmake.defaultBuildPreset": "debug",
   "editor.tokenColorCustomizations": {
     "textMateRules": [
       {
