@@ -6,7 +6,7 @@
 #include <unordered_map>
 
 namespace Q1CORE::Etalon {
-    struct SampleResourcePrivate : SampleResource::Operations {
+    struct SampleResource_private : SampleResource::Operations {
         using Functions = std::unordered_map<string, base::testing::function1f>;
 
         static auto functions() -> const Functions& {
@@ -26,7 +26,7 @@ namespace Q1CORE::Etalon {
 
         const auto& passport = ops::particle::get<SampleResource>(world, id).passport;
         try {
-            manager->layer<SampleResource>().materialize(id, SampleResourcePrivate::functions().at(passport.description));
+            manager->layer<SampleResource>().materialize(id, SampleResource_private::functions().at(passport.description));
         } catch (const std::out_of_range&) {
             throw std::runtime_error(
                 std::format(

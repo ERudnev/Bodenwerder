@@ -6,7 +6,7 @@
 
 #include <iQSM/schema.h>
 
-#include <raidenmamare/core.q1.h>
+#include <Raidenmamare/core.q1.h>
 
 namespace rmmr {
     class Engine {

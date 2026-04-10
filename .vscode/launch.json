@@ -1,35 +1,14 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Toy (CMake Tools)",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${command:cmake.launchTargetPath}",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${command:cmake.launchTargetDirectory}",
-            "environment": []
-        },
-        {
-            "name": "Toy (build/Debug)",
-            "type": "cppvsdbg",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/modules/Toy.cpp/Debug/Toy.exe",
-            "args": [],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build/modules/Toy.cpp/Debug",
-            "environment": []
-        },
-        {
-            "name": "Toy (CodeLLDB)",
-            "type": "lldb",
-            "request": "launch",
-            "program": "${workspaceFolder}/build/modules/Toy.cpp/Debug/Toy.exe",
-            "args": [],
-            "cwd": "${workspaceFolder}/build/modules/Toy.cpp/Debug",
-            "preLaunchTask": "CMake: build Toy (Debug preset)",
-            "stopOnEntry": false
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Active CMake Target",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.launchTargetPath}",
+      "cwd": "${command:cmake.launchTargetDirectory}",
+      "args": [],
+      "stopOnEntry": false
+    }
+  ]
 }

@@ -8,4 +8,7 @@ namespace rmmr
       fragmentFilename: string
     element
       core: #Core
+      ?provide()->opengl_program
+      ?open()
+      ?close()
 

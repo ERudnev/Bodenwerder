@@ -16,6 +16,11 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_SOURCE_DIR}/modules/iQSM.cpp/interface
 )
 
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE
+        DAQL_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+)
+
 target_link_libraries(${PROJECT_NAME}
     PUBLIC glm
     PUBLIC base

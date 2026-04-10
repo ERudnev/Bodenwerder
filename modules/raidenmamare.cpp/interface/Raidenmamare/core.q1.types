@@ -1,9 +1,15 @@
 namespace rmmr
 
-  resource Core @external(opengl_context)
+  // Root OpenGL window/context resource for the demo application.
+  resource Core @external(opengl_window)
     passport
       assets_root: string
-      
-
-    
-      
+      title: string
+      width: integer
+      height: integer
+      context_major: integer
+      context_minor: integer
+    element
+      ?provide()->opengl_window
+      ?open()
+      ?close()

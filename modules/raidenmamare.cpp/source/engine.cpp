@@ -3,9 +3,6 @@
 #include <Raidenmamare/core.q1.h>
 #include <Raidenmamare/program.q1.h>
 
-#include <opengl/context.h>
-#include <opengl/program.h>
-
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -15,21 +12,21 @@ namespace {
 } // namespace
 
 namespace rmmr {
-    auto coreLoader() -> const iqsm::binding::resource::Loader<Core>&;
-    auto programLoader() -> const iqsm::binding::resource::Loader<Program>&;
-}
-
-namespace rmmr {
 
 Engine::Engine(std::string assetsRoot)
     : assetsRoot(std::move(assetsRoot))
     , state(ops::world::create(resourceAspects()))
-    , resourceManager(base::make_shared<iqsm::binding::ManagerData>())
+    , resourceManager(base::make_shared<iqsm::resources::ManagerCore>(resourceAspects()))
     , core(ops::resource::declare<Core>(
         state,
         Core::Quantum{
-            .passport = Core::Passport{
+            .passport = Core::Materializer::Passport{
                 .assets_root = this->assetsRoot,
+                .title = "Raidenmamare",
+                .width = 800,
+                .height = 600,
+                .context_major = 3,
+                .context_minor = 3,
             },
         }
     ))
@@ -40,12 +37,14 @@ iqsm::Schema Engine::resourceAspects() {
 }
 
 int Engine::run_render_demo() {
-    if (!ops::resource::load<Core>(state, resourceManager, core, coreLoader())) {
-        std::cerr << "Failed to load Core resource" << std::endl;
+    try {
+        Core::Operations::open(state, core, resourceManager);
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to open Core resource: " << e.what() << std::endl;
         return 1;
     }
 
-    GLFWwindow* window = opengl::Context::getWindow(resourceManager, core);
+    GLFWwindow* window = Core::Operations::provide(state, core, resourceManager);
 
     std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "Press ESC to exit." << std::endl;
@@ -53,7 +52,7 @@ int Engine::run_render_demo() {
     const Program::Id program = ops::resource::declare<Program>(
         state,
         Program::Quantum{
-            .passport = Program::Passport{
+            .passport = Program::Materializer::Passport{
                 .debugName = "triangle",
                 .vertexFilename = "shaders/triangle.vert.glsl",
                 .fragmentFilename = "shaders/triangle.frag.glsl",
@@ -61,13 +60,22 @@ int Engine::run_render_demo() {
             .core = core,
         }
     );
-    if (!ops::resource::load<Program>(state, resourceManager, program, programLoader())) {
-        std::cerr << "Failed to load Program resource" << std::endl;
-        ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
+    try {
+        Program::Operations::open(state, program, resourceManager);
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to open Program resource: " << e.what() << std::endl;
+        Core::Operations::close(state, core, resourceManager);
         return 3;
     }
 
-    const GLuint shaderProgram = opengl::Program::getHandle(resourceManager, program);
+    const GLuint shaderProgram = Program::Operations::provide(state, program, resourceManager);
+    if (!shaderProgram) {
+        std::cerr << "Failed to access Program resource" << std::endl;
+        Program::Operations::close(state, program, resourceManager);
+        Core::Operations::close(state, core, resourceManager);
+        return 3;
+    }
+
 
     float vertices[] = {
         -0.5f, -0.5f, 0.0f,
@@ -105,8 +113,8 @@ int Engine::run_render_demo() {
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    ops::resource::unload<Program>(state, resourceManager, program, programLoader());
-    ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
+    Program::Operations::close(state, program, resourceManager);
+    Core::Operations::close(state, core, resourceManager);
     return 0;
 }
 
