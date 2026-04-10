@@ -78,7 +78,7 @@
       "patterns": [
         {
           "name": "support.type.builtin.q1",
-          "match": "\\b(integer|float|string|boolean|seconds|time|vec3|quat|vector|map|set|umap|uset)\\b"
+          "match": "\\b(integer|index2|float|string|boolean|seconds|time|vec3|quat|vector|map|set|umap|uset)\\b"
         },
         { "name": "entity.name.type.q1", "match": "\\b[A-Z][A-Za-z0-9_]*\\b" }
       ]

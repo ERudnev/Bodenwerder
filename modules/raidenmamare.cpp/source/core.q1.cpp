@@ -15,8 +15,8 @@ namespace rmmr {
                 throw std::runtime_error("Core::Materializer::materialize: glfwInit() failed");
             }
 
-            const int width = std::max(static_cast<int>(passport.width), 1);
-            const int height = std::max(static_cast<int>(passport.height), 1);
+            const int width = std::max(static_cast<int>(passport.size.x), 1);
+            const int height = std::max(static_cast<int>(passport.size.y), 1);
             const int context_major = std::max(static_cast<int>(passport.context_major), 1);
             const int context_minor = std::max(static_cast<int>(passport.context_minor), 0);
             const char* title = passport.title.empty() ? "Raidenmamare" : passport.title.c_str();

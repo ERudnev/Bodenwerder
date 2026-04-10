@@ -16,6 +16,7 @@ namespace Q1CORE {
     using namespace iqsm::dsl_gateway;
     namespace Typization {
         
+      using Index2Alias = index2;
       using Basic = integer;
       using Alias = Basic;
 

@@ -5,8 +5,7 @@ namespace rmmr
     passport
       assets_root: string
       title: string
-      width: integer
-      height: integer
+      size: index2
       context_major: integer
       context_minor: integer
     element

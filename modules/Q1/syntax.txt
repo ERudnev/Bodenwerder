@@ -51,6 +51,7 @@
 
   buildtin types:
     'integer' : fixed size (32 bit) integer
+    'index2' : 2D signed integer pair (x/y)
     'float' : floating-point number
     'string' : UTF-8 string
     'boolean' : boolean (true/false)

@@ -2,6 +2,7 @@
 namespace Q1CORE
   namespace Syntax
     namespace Typization      
+      type Index2Alias as index2
       type Basic as integer
       type Alias as Basic
       struct Struct

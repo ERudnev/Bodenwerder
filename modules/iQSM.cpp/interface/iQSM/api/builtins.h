@@ -21,6 +21,11 @@ namespace iqsm::q1 {
     using string = std::string;
     using boolean = bool;
 
+    struct index2 final {
+        integer x;
+        integer y;
+    };
+
     template<typename T>
     using optional = std::optional<T>;
     template<typename T>

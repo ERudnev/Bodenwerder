@@ -1,10 +1,12 @@
 #pragma once
 
+#include <algorithm>
 #include <format>
 #include <memory>
 #include <stdexcept>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include <iQSM/schema.h>
 #include <iQSM/meta/aspect_id.h>
@@ -15,13 +17,15 @@
 
 namespace iqsm::resources {
 
-    struct ManagerCore {
+    struct ManagerCore : std::enable_shared_from_this<ManagerCore> {
         using TypeId = types::RuntimeId;
         Schema schema;
         std::unordered_map<TypeId, std::unique_ptr<resources::SlotAbstract>> slots;
 
         explicit ManagerCore(Schema schema)
             : schema(std::move(schema)) {}
+
+        void shutdown(World) noexcept;
 
         template<typename Meta>
         auto slot() -> resources::Slot<Meta>&;
@@ -45,6 +49,33 @@ namespace iqsm::resources {
 }
 
 namespace iqsm::resources {
+    inline void ManagerCore::shutdown(World world) noexcept {
+        std::vector<TypeId> order;
+        order.reserve(slots.size());
+
+        for (const auto& [type_id, slot] : slots) {
+            if (!slot) continue;
+            if (!schema->aspects.contains(type_id)) continue;
+            const auto& entry = schema->aspects.at(type_id);
+            if (!entry.resource.create_slot) continue;
+            order.push_back(type_id);
+        }
+
+        std::stable_sort(order.begin(), order.end(), [this](TypeId lhs, TypeId rhs) {
+            return schema->depends(lhs, rhs);
+        });
+
+        const auto self = ref<ManagerCore>(this->shared_from_this());
+        for (const auto type_id : order) {
+            const auto it = slots.find(type_id);
+            if (it == slots.end() || !it->second) continue;
+            try {
+                it->second->shutdown(self, world);
+            } catch (...) {
+            }
+        }
+    }
+
     template<typename Meta>
     auto ManagerCore::slot() -> resources::Slot<Meta>& {
         const auto type_id = types::aspectId<Meta>();

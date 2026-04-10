@@ -13,8 +13,7 @@ namespace rmmr {
             struct Passport {
                 string assets_root;
                 string title;
-                integer width;
-                integer height;
+                index2 size;
                 integer context_major;
                 integer context_minor;
             };

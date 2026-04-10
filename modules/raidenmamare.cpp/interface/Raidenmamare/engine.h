@@ -11,20 +11,25 @@
 namespace rmmr {
     class Engine {
     public:
-        explicit Engine(std::string assetsRoot);
+        struct Passport {
+            Core::Materializer::Passport core;
+        };
+
+        explicit Engine(Passport passport);
+        ~Engine() noexcept;
 
         // Runs the OpenGL demo. Returns 0 on success, non-zero on failure.
         int run_render_demo();
 
     private:
-        const std::string assetsRoot;
+        const Passport passport;
         iqsm::repo::Branch state;
         iqsm::dsl_gateway::resources::Manager resourceManager;
         const Core::Id core;
 
         static iqsm::Schema resourceAspects();
 
-        void shutdown();
+        void shutdown() noexcept;
     };
 }
 
