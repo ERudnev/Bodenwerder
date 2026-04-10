@@ -8,12 +8,14 @@
 #include <optional>
 #include <ostream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
 
 // infra:
 #define _INCOMPLETE_ throw ::base::detail::make_incomplete_message(__FILE__, __LINE__, NOTECS_FUNCTION_NAME)
+#define _THROW_LOGIC_ERROR_ throw std::logic_error(::base::detail::make_logic_error_message(__FILE__, __LINE__, __func__))
 #define _IMPLEMENT_ME_ static_assert(false, "needs some code to implement here")
 
 namespace base {
@@ -121,5 +123,9 @@ namespace base {
 namespace base::detail {
     inline std::string make_incomplete_message(const char* file, int line, const char* function) {
         return std::string("INCOMPLETE at ") + file + ":" + std::to_string(line) + " in " + function;
+    }
+
+    inline std::string make_logic_error_message(const char* file, int line, const char* function) {
+        return std::string("LOGIC ERROR at ") + file + ":" + std::to_string(line) + " in " + function;
     }
 }

@@ -6,4 +6,6 @@ namespace rmmr
       debugName: string
       vertexFilename: string
       fragmentFilename: string
+    element
+      core: #Core
 

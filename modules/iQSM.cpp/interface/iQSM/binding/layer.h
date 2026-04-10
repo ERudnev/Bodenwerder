@@ -38,7 +38,7 @@ namespace iqsm::binding {
     };
 
     template<meta::Binding Meta>
-    using Layer = ref<LayerData<Meta>>;
+    using Layer = cref<LayerData<Meta>>;
 
     struct ManagerData final {
         using TypeId = internals::Types::RuntimeId;
@@ -47,10 +47,13 @@ namespace iqsm::binding {
         Container layers;
 
         template<meta::Binding Meta>
-        Layer<Meta> register_layer();
+        ref<LayerData<Meta>> register_layer();
 
         template<meta::Binding Meta>
-        Layer<Meta> layer();
+        ref<LayerData<Meta>> layer();
+
+        template<meta::Binding Meta>
+        Layer<Meta> layer() const;
     };
 }
 
@@ -58,7 +61,7 @@ namespace iqsm::binding {
 namespace iqsm::binding {
 
     template<meta::Binding Meta>
-    Layer<Meta> ManagerData::register_layer() {
+    ref<LayerData<Meta>> ManagerData::register_layer() {
         const auto rttid = types::aspectId<Meta>();
         auto created = base::make_shared<LayerData<Meta>>();
         layers.emplace(rttid, created);
@@ -66,7 +69,7 @@ namespace iqsm::binding {
     }
 
     template<meta::Binding Meta>
-    Layer<Meta> ManagerData::layer() {
+    ref<LayerData<Meta>> ManagerData::layer() {
         const auto rttid = types::aspectId<Meta>();
 
         if (auto it = layers.find(rttid); it != layers.end()) {
@@ -74,6 +77,17 @@ namespace iqsm::binding {
         }
 
         return register_layer<Meta>();
+    }
+
+    template<meta::Binding Meta>
+    Layer<Meta> ManagerData::layer() const {
+        const auto rttid = types::aspectId<Meta>();
+
+        if (auto it = layers.find(rttid); it != layers.end()) {
+            return base::shared_ref_cast<const LayerData<Meta>>(it->second);
+        }
+
+        throw std::runtime_error(std::format("iqsm::binding::ManagerData: no layer for type {}", internals::type_name<Meta>()));
     }
 
     template<meta::Binding Meta>

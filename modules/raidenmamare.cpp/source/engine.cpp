@@ -3,59 +3,20 @@
 #include <Raidenmamare/core.q1.h>
 #include <Raidenmamare/program.q1.h>
 
+#include <opengl/context.h>
+#include <opengl/program.h>
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #include <iostream>
 
 namespace {
-    const char* kVertexShaderSource = R"(
-#version 330 core
-layout (location = 0) in vec3 aPos;
-
-void main() {
-    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-}
-)";
-
-    const char* kFragmentShaderSource = R"(
-#version 330 core
-out vec4 FragColor;
-
-void main() {
-    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f); // Orange color
-}
-)";
-
-    bool compile_shader(GLuint shader, const char* label) {
-        glCompileShader(shader);
-        int success = 0;
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-        if (success) return true;
-
-        char infoLog[512];
-        glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-        std::cerr << label << " compilation failed: " << infoLog << std::endl;
-        return false;
-    }
-
-    bool link_program(GLuint program) {
-        glLinkProgram(program);
-        int success = 0;
-        glGetProgramiv(program, GL_LINK_STATUS, &success);
-        if (success) return true;
-
-        char infoLog[512];
-        glGetProgramInfoLog(program, 512, nullptr, infoLog);
-        std::cerr << "Shader program linking failed: " << infoLog << std::endl;
-        return false;
-    }
-
 } // namespace
 
 namespace rmmr {
     auto coreLoader() -> const iqsm::binding::resource::Loader<Core>&;
-    auto getWindow(iqsm::binding::resource::Manager manager, Core::Id id) -> GLFWwindow*;
+    auto programLoader() -> const iqsm::binding::resource::Loader<Program>&;
 }
 
 namespace rmmr {
@@ -84,22 +45,29 @@ int Engine::run_render_demo() {
         return 1;
     }
 
-    GLFWwindow* window = getWindow(resourceManager, core);
-    if (!window) {
-        std::cerr << "Failed to acquire GLFW window from Core resource" << std::endl;
-        ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
-        return 2;
-    }
+    GLFWwindow* window = opengl::Context::getWindow(resourceManager, core);
 
-    glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW" << std::endl;
+    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "Press ESC to exit." << std::endl;
+
+    const Program::Id program = ops::resource::declare<Program>(
+        state,
+        Program::Quantum{
+            .passport = Program::Passport{
+                .debugName = "triangle",
+                .vertexFilename = "shaders/triangle.vert.glsl",
+                .fragmentFilename = "shaders/triangle.frag.glsl",
+            },
+            .core = core,
+        }
+    );
+    if (!ops::resource::load<Program>(state, resourceManager, program, programLoader())) {
+        std::cerr << "Failed to load Program resource" << std::endl;
         ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
         return 3;
     }
 
-    std::cout << "OpenGL Version: " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "Press ESC to exit." << std::endl;
+    const GLuint shaderProgram = opengl::Program::getHandle(resourceManager, program);
 
     float vertices[] = {
         -0.5f, -0.5f, 0.0f,
@@ -117,35 +85,6 @@ int Engine::run_render_demo() {
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &kVertexShaderSource, nullptr);
-    if (!compile_shader(vertexShader, "Vertex shader")) {
-        ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
-        return 4;
-    }
-
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &kFragmentShaderSource, nullptr);
-    if (!compile_shader(fragmentShader, "Fragment shader")) {
-        glDeleteShader(vertexShader);
-        ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
-        return 5;
-    }
-
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    if (!link_program(shaderProgram)) {
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
-        glDeleteProgram(shaderProgram);
-        ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
-        return 6;
-    }
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 
@@ -166,7 +105,7 @@ int Engine::run_render_demo() {
 
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteProgram(shaderProgram);
+    ops::resource::unload<Program>(state, resourceManager, program, programLoader());
     ops::resource::unload<Core>(state, resourceManager, core, coreLoader());
     return 0;
 }

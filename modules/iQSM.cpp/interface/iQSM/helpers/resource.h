@@ -21,7 +21,7 @@ namespace iqsm::helpers::resource {
     auto create(repo::Commit, Manager, Quantum<Meta>, ::iqsm::binding::resource::Ptr) -> Id<Meta>;
 
     template<meta::Binding Meta>
-    auto loaded(Manager, const Id<Meta>&) -> bool;
+    auto loaded(Provider, const Id<Meta>&) -> bool;
 
     template<meta::Binding Meta>
     auto load(repo::Commit, Manager, const Id<Meta>&, const ::iqsm::binding::resource::Loader<Meta>&) -> bool;
@@ -47,9 +47,9 @@ namespace iqsm::helpers::resource {
     }
 
     template<meta::Binding Meta>
-    auto loaded(Manager manager, const Id<Meta>& id) -> bool
+    auto loaded(Provider provider, const Id<Meta>& id) -> bool
     {
-        return manager->layer<Meta>()->try_get(id) != nullptr;
+        return provider->layer<Meta>()->try_get(id) != nullptr;
     }
 
     template<meta::Binding Meta>
