@@ -13,9 +13,7 @@ namespace tests {
         });
         ops::global::modifier<Tag>(master)->modulus = integer{7};
         EXPECT_TRUE(ops::particle::exists<Remnant>(master, sampleEntity));
-
-        const auto trivia = ops::particle::create<Trivia>(master, Trivia::Quantum{});
-        ops::particle::modifier<Remnant>(master, sampleEntity)->trivia = trivia;
+        const auto trivia = debug::read<Remnant>(master, sampleEntity)->trivia;
         EXPECT_TRUE(ops::particle::exists<Trivia>(master, trivia));
 
         ops::global::modifier<Tag>(master)->modulus = integer{5};

@@ -21,6 +21,10 @@
     X(ownership) \
     // end
 
+#define IQSM_KNOWN_ISSUES_TESTS(X) \
+    X(merge_add_remove_constructor_issue) \
+    // end
+
 #define IQSM_VALIDATION_TESTS(X) \
     X(validation_placeholder) \
     X(validation_caching_component) \
@@ -34,6 +38,7 @@
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_VALIDATION_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_OPERATIONS_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(IQSM_KNOWN_ISSUES_TESTS)
 
 int main() {
     struct group final {
@@ -45,6 +50,7 @@ int main() {
         group{ "all", BASETEST_MAKE_LIST_TESTS(IQSM_TESTS) },
         group{ "validation", BASETEST_MAKE_LIST_TESTS(IQSM_VALIDATION_TESTS) },
         group{ "operations", BASETEST_MAKE_LIST_TESTS(IQSM_OPERATIONS_TESTS) },
+        //group{ "known_issues", BASETEST_MAKE_LIST_TESTS(IQSM_KNOWN_ISSUES_TESTS) },
     };
 
     base::testing::run_summary total{};

@@ -87,10 +87,10 @@ namespace Q1CORE::Etalon {
     //
     // Remnant
     struct Remnant_private : Remnant::Operations {
-        static auto construct(Reading world, Id id, Item<Tag>) -> Quantum {
+        static auto construct(Writing commit, Id id, Item<Tag>) -> Quantum {
             return Quantum{
-                .power = ops::particle::get<SampleEntity>(world, id).data_field / ops::global::get<Tag>(world)->modulus,
-                .trivia = Trivia::Id{ id.raw() },
+                .power = ops::particle::get<SampleEntity>(commit.initial, id).data_field / ops::global::get<Tag>(commit.initial)->modulus,
+                .trivia = ops::particle::create<Trivia>(commit, Trivia::Quantum{}),
             };
         }
 
@@ -104,8 +104,8 @@ namespace Q1CORE::Etalon {
     };
 
     void Remnant::Operations::pre_remove_action(Writing commit, Id, const Quantum& before) {
-        //if (!ops::particle::exists<Trivia>(commit.initial, before.trivia)) return;
-        //ops::particle::remove<Trivia>(commit, before.trivia);
+        if (!ops::particle::exists<Trivia>(commit.initial, before.trivia)) return;
+        ops::particle::remove<Trivia>(commit, before.trivia);
     }
 
     const Invariants Remnant::invariants{
@@ -120,7 +120,7 @@ namespace Q1CORE::Etalon {
     //
     // SampleComponent
     struct SampleComponent_private : SampleComponent::Operations {
-        static auto private_construct(Reading, Id, Item<SampleEntity>) -> Quantum { return {}; }
+        static auto private_construct(Writing, Id, Item<SampleEntity>) -> Quantum { return {}; }
     };
 
     void SampleComponent::Operations::example_op_multiply(Writing commit, Id id, integer factor) {

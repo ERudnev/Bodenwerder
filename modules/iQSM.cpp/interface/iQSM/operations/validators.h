@@ -9,6 +9,7 @@
 
 #include <iQSM/world.h>
 #include <iQSM/delta.h>
+#include <iQSM/helpers/particle.h>
 #include <iQSM/internals/lifecycle_actions.h>
 #include <iQSM/operations/integration.h>
 #include <iQSM/types.h>
@@ -273,7 +274,7 @@ namespace iqsm::operations::validation {
         using AnchorItem = iqsm::Item<Anchor>;
         using DependeeQuantum = iqsm::Quantum<Dependee>;
         static_assert(std::is_same_v<AnchorId, DependeeId>);
-        static_assert(std::is_invocable_r_v<DependeeQuantum, decltype(Construct), World, AnchorId, AnchorItem>);
+        static_assert(std::is_invocable_r_v<DependeeQuantum, decltype(Construct), repo::Commit, AnchorId, AnchorItem>);
 
         const auto anchor_field = world->field<Anchor>();
         const auto dependee_field = world->field<Dependee>();
@@ -295,7 +296,9 @@ namespace iqsm::operations::validation {
             const auto& anchor_id = kv.first;
             const auto& anchor_item = kv.second;
             if (not dependee_field->container.contains(anchor_id)) {
-                acc.add_op<Dependee>(anchor_id, Operation{ std::nullopt, base::make_shared<const DependeeQuantum>(Construct(world, anchor_id, anchor_item)) });
+                repo::Sequence staged{world};
+                ::iqsm::helpers::particle::create<Dependee>(staged, anchor_id, Construct(staged, anchor_id, anchor_item));
+                acc.absorb(world->schema, staged.push());
             }
         }
 

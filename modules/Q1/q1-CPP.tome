@@ -112,16 +112,26 @@ namespace Q1-CPP {
       4: Такой валидатор подключается в `invariants.logical` как прямой указатель `&Aspect_private::name`.
     3: Для `attribute/tag ... of Parent` в invariants добавляется `Structural::anchor_attribute<Parent, Aspect>`.
     4: Для `component ... of Parent` в invariants добавляется `Structural::isomorphic<Parent, Aspect, &Aspect_private::construct>`.
-      1: Реальная `construct(Reading, Parent::Id, Item<Parent>) -> Aspect::Quantum` размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
+      1: Реальная `construct(Writing, Parent::Id, Item<Parent>) -> Aspect::Quantum` размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
+      2: Такой конструктор может порождать дополнительные delta-операции через `Writing` до того, как сам `Aspect` будет добавлен в world.
     5: Поле `f: #Target @anchor` (decode: `Target::id`) добавляет в invariants `Structural::anchor<Target, Owner, &Quantum::f>`.
-    6: Если в `element` встречается хотя бы одно поле с директивой `@cache`, генерация добавляет в `invariants` валидатор `&Aspect_private::update`.
+    6: Поле `f: #Target @managed` (decode: owner-side lifecycle relation) не является обычным anchor.
+      1: `Target` считается сущностью, жизненным циклом которой владеет `Owner`.
+      2: Проекция ожидает, что `Owner` создаёт `Target` внутри `Aspect_private::construct(Writing, ...)` и сохраняет сгенерированный `Target::Id` в `Quantum::f`.
+      3: Для такого поля генерация не добавляет `Structural::anchor<Target, Owner, &Quantum::f>`; связь выражается через lifecycle-хуки, а не через structural anchor.
+      4: Если в аспекте присутствует хотя бы одно поле `@managed`, генерация добавляет в `Aspect::Operations` специальную операцию `static void pre_remove_action(Writing, Id, const Quantum& before);`, даже если она не была явно объявлена в DSL.
+      5: Имя `pre_remove_action` зарезервировано проекцией и трактуется как implicit lifecycle hook, появляющийся по факту наличия managed-объектов.
+      6: Такой hook вызывается перед удалением owner-объекта и может порождать дополнительные delta-операции в тот же accumulated diff (например, удаление managed-сущностей).
+    7: Если в `element` встречается хотя бы одно поле с директивой `@cache`, генерация добавляет в `invariants` валидатор `&Aspect_private::update`.
       1: Реальная `update(...)` (или иной валидатор/реакция) размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
-    7: Эталонная (golden) форма логики в `.cpp`:
+    8: Эталонная (golden) форма логики в `.cpp`:
       1: Для каждого аспекта вводится локальный helper-тип `Aspect_private : Aspect::Operations` со статическими функциями.
       2: Функции, на которые ссылаются `invariants` через указатели, размещаются именно в `Aspect_private` (например `construct`, `need_even`, `private_validate_*`).
-    8: Эталонная форма публичных операций (golden):
+      3: Для аспектов с `@managed` в той же `.cpp`-проекции ожидается реализация `Aspect::Operations::pre_remove_action(...)`, использующая сохранённый `Quantum` как источник managed-id.
+    9: Эталонная форма публичных операций (golden):
       1: Публичные операции аспектов объявляются в `Aspect::Operations`.
       2: В эталонах допускается префикс `example_` у операций, чтобы явно отделить “демонстрацию формы” от прикладных имён.
+      3: `pre_remove_action` — исключение: это специальное имя implicit lifecycle hook-а, генерируемого проекцией, а не обычная пользовательская операция DSL.
   }
 
   dependencies_derivation: @Rule {
@@ -131,6 +141,7 @@ namespace Q1-CPP {
     2: Если аспект объявлен как attribute/tag/component `of Parent`, то Parent добавляется в `Require<...>`.
     3: Если внутри `element`/`table` встречается любой тип, принадлежащий аспекту B, то B добавляется в `Require<...>`.
       1: Это включает случаи `#B` (decode: `B::id`; в C++ проекции: `B::Id`).
+      2: Это также включает поля с директивами `@anchor` и `@managed`: сам факт хранения `#B` уже достаточен для вывода зависимости от `B`.
     4: Если внутри `element`/`table` встречается составной тип (struct/array/vector/`T?`/etc.), то правило вывода dependencies применяется рекурсивно к его полям/элементам.
     5: Если в определении аспекта явно указано `depends: X`, то X добавляется в `Require<...>`.
   }

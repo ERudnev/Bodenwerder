@@ -22,7 +22,7 @@ namespace {
     const Invariants Foo::invariants{};
 
     struct Bar_private : Bar::Operations {
-        static auto construct(Reading, Id, Item<Foo>) -> Quantum { return {}; }
+        static auto construct(Writing, Id, Item<Foo>) -> Quantum { return {}; }
     };
 
     const Invariants Bar::invariants{
