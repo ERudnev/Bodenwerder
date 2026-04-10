@@ -46,7 +46,7 @@ namespace Q1CORE::Etalon {
         struct Global {};
         static const Invariants invariants;
         struct Operations : OwnTypeOperations{
-            static void pre_remove_action(Writing, Id, const Quantum& before);
+            static void pre_remove_action(Writing, Id, const Quantum& before); //@ added implicitly due of "managed" Trivia entity
         };
     };
 

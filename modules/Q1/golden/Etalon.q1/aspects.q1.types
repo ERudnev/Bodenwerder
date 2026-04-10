@@ -24,7 +24,7 @@ namespace Q1CORE
     component Remnant of Tag
       element
         power : integer @cache// == SampleEntity::data_field / Tag::Modulus (Tag quarantees integer)
-        trivia: #Trivia @managed
+        trivia: #Trivia @managed // requires generated pre-removal action
         !renmant_calculated()
 
     component SampleComponent of SampleEntity

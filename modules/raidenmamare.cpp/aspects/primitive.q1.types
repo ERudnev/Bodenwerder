@@ -1,0 +1,21 @@
+#include "core.q1.types"
+
+namespace rmmr
+  namespace primitive
+
+    // OpenGL-backed drawable primitive. Runtime may own VAO/VBO and related GPU objects.
+    resource Base @external(opengl_primitive)
+      passport
+        debugName: string
+      element
+        core: #Core
+        vertices: vector<vec3>
+        ?provide()->opengl_primitive
+        ?open()
+        ?close()
+
+    // TODO: implement and use this later
+    //attribute Normals of Base
+    //  element
+    //    normals: vector<vec3>
+
