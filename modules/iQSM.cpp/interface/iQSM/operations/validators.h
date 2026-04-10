@@ -9,6 +9,7 @@
 
 #include <iQSM/world.h>
 #include <iQSM/delta.h>
+#include <iQSM/internals/lifecycle_actions.h>
 #include <iQSM/operations/integration.h>
 #include <iQSM/types.h>
 #include <iQSM/repository/commit.h>
@@ -79,6 +80,7 @@ namespace iqsm::detail::operations::validation {
 
             const auto anchor_id = extract(dependee_id, dependee_item);
             if (not anchor_field->container.contains(anchor_id)) {
+                detail::lifecycle::pre_remove_action_into_accumulator<Dependee>(world, acc, dependee_id, dependee_item);
                 acc.add_op<Dependee>(dependee_id, Operation{ dependee_item, std::nullopt });
             }
         }
@@ -168,6 +170,7 @@ namespace iqsm::operations::validation {
 
             const auto anchor_id = static_cast<AnchorId>(*opt);
             if (not anchor_field->container.contains(anchor_id)) {
+                detail::lifecycle::pre_remove_action_into_accumulator<Dependee>(world, acc, dependee_id, dependee_item);
                 acc.add_op<Dependee>(dependee_id, Operation{ dependee_item, std::nullopt });
             }
         }
@@ -206,7 +209,9 @@ namespace iqsm::operations::validation {
                 acc.add_op<Dependee>(id, Operation{ std::nullopt, base::make_shared<const DependeeQuantum>(DependeeQuantum{}) });
             } else {
                 if (not has) continue;
-                acc.add_op<Dependee>(id, Operation{ dependee_field->container.at(id), std::nullopt });
+                const auto before = dependee_field->container.at(id);
+                detail::lifecycle::pre_remove_action_into_accumulator<Dependee>(world, acc, id, before);
+                acc.add_op<Dependee>(id, Operation{ before, std::nullopt });
             }
         }
 
@@ -245,7 +250,9 @@ namespace iqsm::operations::validation {
                 acc.add_op<Dependee>(id, Operation{ std::nullopt, base::make_shared<const DependeeQuantum>(Construct(world, id, anchor_item)) });
             } else {
                 if (not has) continue;
-                acc.add_op<Dependee>(id, Operation{ dependee_field->container.at(id), std::nullopt });
+                const auto before = dependee_field->container.at(id);
+                detail::lifecycle::pre_remove_action_into_accumulator<Dependee>(world, acc, id, before);
+                acc.add_op<Dependee>(id, Operation{ before, std::nullopt });
             }
         }
 
@@ -278,6 +285,7 @@ namespace iqsm::operations::validation {
             const auto& dependee_id = kv.first;
             const auto& dependee_item = kv.second;
             if (not anchor_field->container.contains(dependee_id)) {
+                detail::lifecycle::pre_remove_action_into_accumulator<Dependee>(world, acc, dependee_id, dependee_item);
                 acc.add_op<Dependee>(dependee_id, Operation{ dependee_item, std::nullopt });
             }
         }
@@ -333,6 +341,7 @@ namespace iqsm::operations::validation {
             }
 
             if (filtered.empty()) {
+                detail::lifecycle::pre_remove_action_into_accumulator<Dependee>(world, acc, dependee_id, dependee_item);
                 acc.add_op<Dependee>(dependee_id, Operation{ dependee_item, std::nullopt });
                 continue;
             }
@@ -385,6 +394,7 @@ namespace iqsm::operations::validation {
             }
 
             if (not ok) {
+                detail::lifecycle::pre_remove_action_into_accumulator<Dependee>(world, acc, dependee_id, dependee_item);
                 acc.add_op<Dependee>(dependee_id, Operation{ dependee_item, std::nullopt });
             }
         }

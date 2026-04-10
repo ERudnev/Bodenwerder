@@ -1,3 +1,5 @@
+#include "core.q1.types"
+
 namespace rmmr
 
   // OpenGL-backed linked program resource assembled from shader stage files.

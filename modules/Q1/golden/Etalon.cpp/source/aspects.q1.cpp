@@ -9,8 +9,16 @@ namespace Q1CORE::Etalon {
     using namespace iqsm::dsl_gateway;
 
     //
+    // Trivia
+    const Invariants Trivia::invariants{
+        .structural = {},
+        .logical = {},
+    };
+
+    //
     // SampleEntity
     struct SampleEntity_private : SampleEntity::Operations {
+
         static auto example_private_const_fieldwide_method(Reading) -> string { return {}; }
         static auto example_private_const_element_method(Reading, Id) -> float { return 0.0f; }
 
@@ -82,17 +90,23 @@ namespace Q1CORE::Etalon {
         static auto construct(Reading world, Id id, Item<Tag>) -> Quantum {
             return Quantum{
                 .power = ops::particle::get<SampleEntity>(world, id).data_field / ops::global::get<Tag>(world)->modulus,
+                .trivia = Trivia::Id{ id.raw() },
             };
         }
 
         static auto renmant_calculated(Reading world, Id id, const Quantum& before) -> ItemChange {
             const auto expected_power = ops::particle::get<SampleEntity>(world, id).data_field / ops::global::get<Tag>(world)->modulus;
-            if (before.power == expected_power) return {};
-            return Quantum{
-                .power = expected_power,
-            };
+            auto after = before;
+            after.power = expected_power;
+            if (ops::particle::equal<Remnant>(after, before)) return {};
+            return after;
         }
     };
+
+    void Remnant::Operations::pre_remove_action(Writing commit, Id, const Quantum& before) {
+        //if (!ops::particle::exists<Trivia>(commit.initial, before.trivia)) return;
+        //ops::particle::remove<Trivia>(commit, before.trivia);
+    }
 
     const Invariants Remnant::invariants{
         .structural = {

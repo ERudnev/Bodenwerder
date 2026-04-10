@@ -12,6 +12,7 @@
 #include <iQSM/meta/concepts.h>
 #include <iQSM/meta/facade.h>
 #include <iQSM/repository/commit.h>
+#include <iQSM/repository/staged.h>
 
 namespace iqsm::helpers::particle {
   template<meta::Particle Meta>
@@ -122,7 +123,8 @@ namespace iqsm::helpers::particle {
     const auto field = commit.initial->field<Meta>();
     if (not field->container.contains(id)) { throw std::runtime_error(std::format("helpers::particle::remove(): missing entity: {}", id)); }
     const auto before = field->container.at(id);
-    commit.push(internals::delta::make_atomic<Meta>(id, before, std::nullopt));
+    repo::Staged staged{commit};
+    staged.remove<Meta>(id, before);
   }
 
 } // namespace iqsm::helpers::particle

@@ -1,11 +1,15 @@
 #pragma once
 
+#include <utility>
+
 #include <iQSM/_forwards.h>
+#include <iQSM/internals/lifecycle_actions.h>
 #include <iQSM/internals/fields_mutable.h>
 #include <iQSM/meta/concepts.h>
 #include <iQSM/meta/facade.h>
 #include <iQSM/meta/global.h>
 #include <iQSM/repository/commit.h>
+#include <iQSM/world.h>
 
 namespace iqsm::repo {
     // Scope-based staging buffer:
@@ -32,6 +36,9 @@ namespace iqsm::repo {
         template<meta::Aspect Meta>
         void remove(Id<Meta> id, Item<Meta> before) {
             using Op = typename delta::FieldDiff<Meta>::Operation;
+
+            detail::lifecycle::pre_remove_action_into_accumulator<Meta>(commit.initial, staged, id, before);
+
             staged.add_op<Meta>(std::move(id), Op{std::move(before), std::nullopt});
         }
 

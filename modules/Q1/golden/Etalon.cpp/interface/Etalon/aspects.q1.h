@@ -6,6 +6,13 @@ namespace Q1CORE::Etalon {
     
     using namespace iqsm::dsl_gateway;
 
+    struct Trivia : Entity<Trivia>, Require<> {
+        struct Quantum {};
+        struct Global {};
+        static const Invariants invariants;
+        struct Operations : OwnTypeOperations{};
+    };
+
     struct SampleEntity : Entity<SampleEntity>, Require<> {
         struct Quantum {
             integer data_field;
@@ -31,13 +38,16 @@ namespace Q1CORE::Etalon {
         struct Operations : OwnTypeOperations{};
     };
 
-    struct Remnant : Component<Remnant, Tag>, Require<Tag> {
+    struct Remnant : Component<Remnant, Tag>, Require<Tag, Trivia> {
         struct Quantum {
             integer power;
+            Trivia::Id trivia; // managed
         };
         struct Global {};
         static const Invariants invariants;
-        struct Operations : OwnTypeOperations{};
+        struct Operations : OwnTypeOperations{
+            static void pre_remove_action(Writing, Id, const Quantum& before);
+        };
     };
 
     struct SampleComponent : Component<SampleComponent, SampleEntity>, Require<SampleEntity> {

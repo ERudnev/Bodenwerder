@@ -18,6 +18,7 @@
     X(resource_example) \
     X(immutable_containers_perf) \
     X(model_is_compileable) \
+    X(ownership) \
     // end
 
 #define IQSM_VALIDATION_TESTS(X) \
