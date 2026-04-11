@@ -19,6 +19,7 @@
 #include <Raidenmamare/math.q1.h>
 
 // private stuff:
+#include "primitives/meshGenerator.h"
 #include "renderer/renderer.h"
 
 using namespace iqsm::dsl_gateway;
@@ -153,21 +154,7 @@ void Engine::prepareResources() {
         throw std::runtime_error("Engine::prepareResources: material::Core runtime program is null");
     }
 
-    state->primitive = ops::resource::declare<primitive::Base>(
-        main,
-        primitive::Base::Quantum{
-            .passport = primitive::Base::Materializer::Passport{
-                .debugName = "triangle",
-            },
-            .device = device,
-            .vertices = vector<vec3>{
-                vec3{-0.5f, -0.5f, 0.0f},
-                vec3{ 0.5f, -0.5f, 0.0f},
-                vec3{ 0.0f,  0.5f, 0.0f},
-            },
-        }
-    );
-    primitive::Base::Operations::bake(main, state->primitive, resourceManager);
+    state->primitive = primitive::MeshGenerator::triangle(main, device, resourceManager); 
 
     createViewport(devicePassport.size);
     createScene();

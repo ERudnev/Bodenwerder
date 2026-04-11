@@ -36,6 +36,7 @@ namespace iqsm::repo {
                 [this](Delta delta) { this->absorb(std::move(delta)); },
             };
         }
+        operator iqsm::World() const { return current; }
 
     private:
         World current;
