@@ -20,6 +20,10 @@ namespace Q1CORE::Etalon {
         struct Global {};
         static const Invariants invariants;
         struct Operations : OwnTypeOperations {
+            static constexpr integer absolute_min = integer{-1000};
+            static constexpr integer absolute_max = integer{1000};
+            static auto from_float(float) -> integer;
+
             static auto create_from_float(Writing, float field_value) -> Id;
 
             static auto example_const_fieldwide_method(Reading) -> string;
@@ -69,6 +73,8 @@ namespace Q1CORE::Etalon {
         };
         struct Global {};
         static const Invariants invariants;
-        struct Operations : OwnTypeOperations{};
+        struct Operations : OwnTypeOperations{
+            static auto create_complex_constructor(Writing, SampleEntity::Id existing) -> Id;
+        };
     };
 }

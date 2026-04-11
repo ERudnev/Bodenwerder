@@ -18,6 +18,7 @@
     X(resource_example) \
     X(immutable_containers_perf) \
     X(model_is_compileable) \
+    X(complex_constructor) \
     X(ownership) \
     // end
 

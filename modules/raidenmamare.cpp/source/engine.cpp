@@ -12,6 +12,9 @@
 #include <Raidenmamare/materials/type.q1.h>
 #include <Raidenmamare/viewport.q1.h>
 #include <Raidenmamare/scene/core.q1.h>
+#include <Raidenmamare/scene/camera.q1.h>
+#include <Raidenmamare/scene/light.q1.h>
+#include <Raidenmamare/math.q1.h>
 
 using namespace iqsm::dsl_gateway;
 
@@ -72,6 +75,8 @@ iqsm::Schema Engine::resourceAspects() {
         primitive::Base,
         Viewport,
         scene::Node,
+        scene::Camera,
+        scene::Light,
         scene::Core>();
 }
 
@@ -155,10 +160,30 @@ void Engine::createScene() {
             .rotation = quat{1.0f, 0.0f, 0.0f, 0.0f},
         });
 
+    // Placeholder camera: lives on its own node and targets the current viewport.
+    const auto cameraNode = scene::Camera::Operations::create(
+        main,
+        Pos{0.0f, 0.0f, 2.0f},
+        HPB{0.0f, 0.0f, 0.0f},
+        1.04719755f, // ~60 degrees in radians
+        0.1f,
+        100.0f
+    );
+
+    // Placeholder point light: also a node payload.
+    const auto lightNode = scene::Light::Operations::create(
+        main,
+        Pos{2.0f, 2.0f, 2.0f},
+        HPB{0.0f, 0.0f, 0.0f},
+        RGB{1.0f, 1.0f, 1.0f},
+        5.0f,
+        10.0f
+    );
+
     state->scene = ops::particle::create<scene::Core>(
         main,
         scene::Core::Quantum{
-            .nodes = vector<scene::Node::Id>{ demoRoot },
+            .nodes = vector<scene::Node::Id>{ demoRoot, cameraNode, lightNode },
         });
 }
 

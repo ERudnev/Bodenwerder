@@ -1,4 +1,5 @@
 #include "device.q1.types"
+#include "aspects/math.q1.types"
 
 namespace rmmr
   namespace primitive
@@ -9,7 +10,7 @@ namespace rmmr
         debugName: string
       element
         device: #Device
-        vertices: vector<vec3>
+        vertices: vector<Pos>
         ?provide()->opengl_primitive
         ?bake()
         ?release()

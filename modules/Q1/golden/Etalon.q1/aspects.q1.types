@@ -4,8 +4,12 @@ namespace Q1CORE
     entity Trivia
    
     entity SampleEntity
+      static
+        absolute_min: integer = -1000 // static constants are always defined
+        absolute_max: integer = 1000
+        ?from_float(float)->integer
       element
-        data_field : integer
+        data_field: integer
         ?const_element_method() -> string
         *nonconst_element_method()
         !min_value() // -1000
@@ -17,13 +21,13 @@ namespace Q1CORE
 
     attribute Tag of SampleEntity
       table
-        modulus : integer
+        modulus: integer
         !modulus_clamped() // must be >= 1
         !q1::existence(needs_tag) // appears when SampleEntity.data_field is divided by modulus
 
     component Remnant of Tag
       element
-        power : integer @cache// == SampleEntity::data_field / Tag::Modulus (Tag quarantees integer)
+        power: integer @cache// == SampleEntity::data_field / Tag::Modulus (Tag quarantees integer)
         trivia: #Trivia @managed // requires generated pre-removal action
         !renmant_calculated()
 
@@ -34,10 +38,12 @@ namespace Q1CORE
 
     attribute SampleAttribute of SampleEntity
       element
-        neighbor_anchor : #SampleEntity @anchor
-        optional_anchor : #SampleComponent? @anchor
-        every_essential : vector<#SampleEntity> @anchor(all)
-        at_least_one_required : vector<#SampleComponent> @anchor(any)
+        neighbor_anchor: #SampleEntity @anchor
+        optional_anchor: #SampleComponent? @anchor
+        every_essential: vector<#SampleEntity> @anchor(all)
+        at_least_one_required: vector<#SampleComponent> @anchor(any)
+      table
+        +complex_constructor(existing: #SampleEntity)
         
         
 

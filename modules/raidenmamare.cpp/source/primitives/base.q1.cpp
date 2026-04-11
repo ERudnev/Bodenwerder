@@ -34,11 +34,11 @@ namespace rmmr::primitive {
             glBindBuffer(GL_ARRAY_BUFFER, runtime.vbo);
             glBufferData(
                 GL_ARRAY_BUFFER,
-                static_cast<GLsizeiptr>(quantum.vertices.size() * sizeof(vec3)),
+                static_cast<GLsizeiptr>(quantum.vertices.size() * sizeof(Pos)),
                 quantum.vertices.data(),
                 GL_STATIC_DRAW);
 
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Pos), (void*)0);
             glEnableVertexAttribArray(0);
 
             runtime.vertex_count = static_cast<integer>(quantum.vertices.size());

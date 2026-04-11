@@ -27,7 +27,7 @@ namespace Q1CORE::Etalon {
 
         static auto min_value(Reading, Id, const Quantum& before) -> ItemChange {
             auto after = before;
-            after.data_field = std::max(after.data_field, integer{-1000});
+            after.data_field = std::max(after.data_field, absolute_min);
 
             if (ops::particle::equal<SampleEntity>(after, before)) return {};
             return after;
@@ -35,15 +35,19 @@ namespace Q1CORE::Etalon {
 
         static auto max_value(Reading, Id, const Quantum& before) -> ItemChange {
             auto after = before;
-            after.data_field = std::min(after.data_field, integer{1000});
+            after.data_field = std::min(after.data_field, absolute_max);
 
             if (ops::particle::equal<SampleEntity>(after, before)) return {};
             return after;
         }
         static void example_private_validate_table(Writing) {}
     };
+    auto SampleEntity::Operations::from_float(float value_approximate) -> integer {
+        const auto value = static_cast<integer>(value_approximate);
+        return std::min(absolute_max, std::max(absolute_min, value));
+    }
     auto SampleEntity::Operations::create_from_float(Writing gate, float field_value) -> Id {
-        return ops::particle::create<SampleEntity>(gate, Quantum{static_cast<integer>(field_value)});
+        return ops::particle::create<SampleEntity>(gate, Quantum{from_float(field_value)});
     }
     auto SampleEntity::Operations::example_const_fieldwide_method(Reading) -> string { return {}; }
     auto SampleEntity::Operations::example_const_element_method(Reading, Id) -> float { return 0.0f; }
@@ -165,10 +169,30 @@ namespace Q1CORE::Etalon {
             invariant::anchor<SampleEntity, SampleAttribute, &SampleAttribute::Quantum::neighbor_anchor>,
             invariant::anchor_optional<SampleComponent, SampleAttribute, &SampleAttribute::Quantum::optional_anchor>,
             invariant::anchor_all<SampleEntity, SampleAttribute, &SampleAttribute::Quantum::every_essential>,
-            invariant::anchor_any<SampleEntity, SampleAttribute, &SampleAttribute::Quantum::at_least_one_required>,
+            invariant::anchor_any<SampleComponent, SampleAttribute, &SampleAttribute::Quantum::at_least_one_required>,
         },
         .logical = {
             invariant::existence<SampleAttribute, SampleEntity, &SampleAttribute_private::need_even, &SampleAttribute_private::construct>,
         },
     };
+
+    auto SampleAttribute::Operations::create_complex_constructor(Writing commit, SampleEntity::Id existing) -> Id {
+        const auto& existing_entity = ops::particle::get<SampleEntity>(commit.initial, existing);
+
+        auto data_field = existing_entity.data_field;
+        if ((data_field % 2) != 0) data_field += 1;
+
+        const auto created = ops::particle::create<SampleEntity>(commit, SampleEntity::Quantum{ data_field });
+        ops::particle::create<SampleAttribute>(
+            commit,
+            created,
+            SampleAttribute::Quantum{
+                .neighbor_anchor = existing,
+                .optional_anchor = {},
+                .every_essential = {},
+                .at_least_one_required = { existing },
+            }
+        );
+        return created;
+    }
 }

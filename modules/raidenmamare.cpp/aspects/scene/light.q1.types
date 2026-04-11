@@ -1,0 +1,15 @@
+#include "aspects/scene/node.q1.types"
+#include "aspects/math.q1.types"
+
+namespace rmmr
+  namespace scene
+
+    // Simple point light bound to a scene node.
+    attribute Light of Node
+      element
+        color: RGB
+        intensity: float
+        range: float
+      table
+        +create(Pos, HPB, RGB, intensity: float, range: float)
+

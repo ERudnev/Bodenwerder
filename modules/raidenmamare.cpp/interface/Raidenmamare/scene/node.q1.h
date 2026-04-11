@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Raidenmamare/math.q1.h>
+
 #include <iQSM/api/_gateway.h>
 
 namespace rmmr::scene {
@@ -8,14 +10,15 @@ namespace rmmr::scene {
 
     struct Node : Entity<Node>, Require<> {
         struct Quantum {
-            vec3 position;
+            Pos position;
             quat rotation;
         };
         struct Global {};
         struct Operations : OwnTypeOperations {
+            static auto create_posHpb(Writing, Pos position, HPB hpb) -> Id;
             static auto transform(Reading, Id) -> mat4;
-            static auto euler(Reading, Id) -> vec3;
-            static auto euler(Writing, Id, vec3 heading_pitch_bank) -> void;
+            static auto hpb(Reading, Id) -> HPB;
+            static auto hpb(Writing, Id, HPB hpb) -> void;
         };
         static const Invariants invariants;
     };

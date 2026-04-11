@@ -1,5 +1,6 @@
 #include <Raidenmamare/scene/node.q1.h>
 
+#include <glm/common.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 
@@ -17,27 +18,38 @@ namespace rmmr::scene {
             return vec3{euler.y, euler.x, euler.z};
         }
 
-        static auto rotation_from_heading_pitch_bank(vec3 heading_pitch_bank) -> quat {
+        static auto rotation_from_hpb(HPB hpb) -> quat {
+            const vec3 radians = glm::radians(hpb);
             const glm::vec3 glm_euler{
-                heading_pitch_bank.y,
-                heading_pitch_bank.x,
-                heading_pitch_bank.z,
+                radians.y,
+                radians.x,
+                radians.z,
             };
             return glm::normalize(quat{glm_euler});
         }
     };
 
+    auto Node::Operations::create_posHpb(Writing commit, Pos position, HPB hpb) -> Id {
+        return ops::particle::create<Node>(
+            commit,
+            Quantum{
+                .position = position,
+                .rotation = Node_private::rotation_from_hpb(hpb),
+            });
+    }
+
     auto Node::Operations::transform(Reading world, Id id) -> mat4 {
         return Node_private::make_transform(ops::particle::get<Node>(world, id));
     }
 
-    auto Node::Operations::euler(Reading world, Id id) -> vec3 {
-        return Node_private::heading_pitch_bank_from_rotation(ops::particle::get<Node>(world, id).rotation);
+    auto Node::Operations::hpb(Reading world, Id id) -> HPB {
+        const vec3 radians = Node_private::heading_pitch_bank_from_rotation(ops::particle::get<Node>(world, id).rotation);
+        return glm::degrees(radians);
     }
 
-    auto Node::Operations::euler(Writing commit, Id id, vec3 heading_pitch_bank) -> void {
+    auto Node::Operations::hpb(Writing commit, Id id, HPB hpb) -> void {
         ops::particle::modifier<Node>(commit, id)->rotation =
-            Node_private::rotation_from_heading_pitch_bank(heading_pitch_bank);
+            Node_private::rotation_from_hpb(hpb);
     }
 
     const Invariants Node::invariants{

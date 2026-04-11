@@ -1,0 +1,18 @@
+#include "aspects/scene/node.q1.types"
+#include "aspects/math.q1.types"
+
+namespace rmmr
+  namespace scene
+
+    // Camera settings bound to a scene node.
+    attribute Camera of Node
+      element
+        fov_y: float
+        z_near: float
+        z_far: float
+        ?projection(aspect_ratio: float)->mat4
+        ?view()->mat4
+        ?view_projection(aspect_ratio: float)->mat4
+      table
+        +create(Pos, HPB, fov_y: float, z_near: float, z_far: float)
+

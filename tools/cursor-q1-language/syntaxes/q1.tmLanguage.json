@@ -83,7 +83,7 @@
       "patterns": [
         {
           "name": "keyword.control.q1",
-          "match": "\\b(namespace|declare|type|template|struct|as|enum|entity|attribute|component|resource|depends|element|table|model|passport)\\b"
+          "match": "\\b(namespace|declare|type|template|struct|as|enum|entity|attribute|component|resource|depends|static|element|table|model|passport)\\b"
         }
       ]
     },

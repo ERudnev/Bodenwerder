@@ -22,6 +22,7 @@
     'depends' : adds dependency manually
     'element' : opens per-item data+operations block inside aspect definition
     'table' : opens field-own data+operations block inside aspect definition
+    'static' : opens static constants + pure functions block inside aspect definition
     '#' : id type constructor (inside type expressions only):  #T == T::id (decode only) ; # == id (local Aspect type; decode only)
     '?' : postfix Optional type constructor (inside type expressions only):  T? == optional<T> (decode only)
 
@@ -74,5 +75,6 @@
   particle blocks:
     'element' : per-item state+queries/commands (stored in Field container as Item Quantum)
     'table' : field-own state+queries/commands (Global + fieldwide ops)
+    'static' : compile-time constants + referentially transparent functions (no World/Global/Id dependency)
 
   

@@ -2,6 +2,7 @@
 
 #include <GL/glew.h>
 #include <iQSM/api/_gateway.h>
+#include <Raidenmamare/math.q1.h>
 #include <Raidenmamare/device.q1.h>
 
 namespace rmmr::primitive {
@@ -27,7 +28,7 @@ namespace rmmr::primitive {
         struct Quantum {
             Materializer::Passport passport;
             Device::Id device;
-            vector<vec3> vertices;
+            vector<Pos> vertices;
         };
         struct Global {};
         struct Operations : OwnTypeOperations {

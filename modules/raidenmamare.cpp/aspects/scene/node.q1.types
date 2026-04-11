@@ -1,3 +1,5 @@
+#include "aspects/math.q1.types"
+
 namespace rmmr
   namespace scene
 
@@ -5,8 +7,10 @@ namespace rmmr
     // Rendering payloads (primitive, camera, light, viewport bindings) can be layered later.
     entity Node
       element
-        position: vec3
+        position: Pos
         rotation: quat
         ?transform()->mat4
-        ?euler()->vec3 // heading/pitch/bank
-        *euler(vec3)
+        ?hpb()->HPB // heading/pitch/bank (degrees)
+        *hpb(HPB)
+      table
+        +posHpb(pos: Pos, hpb: HPB) // convenience c-tor
