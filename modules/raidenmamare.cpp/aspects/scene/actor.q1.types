@@ -1,0 +1,14 @@
+#include "aspects/scene/node.q1.types"
+#include "aspects/primitives/base.q1.types"
+#include "aspects/materials/core.q1.types"
+#include "aspects/math.q1.types"
+
+namespace rmmr
+  namespace scene
+
+    attribute PrimitiveActor of Node
+      element
+        geometry: #primitive::Base
+        material: #material::Core
+      table
+        +create(Pos, HPB, geometry: #primitive::Base, material: #material::Core)

@@ -10,9 +10,10 @@
 #include <Raidenmamare/device.q1.h>
 #include <Raidenmamare/primitives/base.q1.h>
 #include <Raidenmamare/materials/program.q1.h>
-#include <Raidenmamare/materials/type.q1.h>
+#include <Raidenmamare/materials/core.q1.h>
 #include <Raidenmamare/viewport.q1.h>
 #include <Raidenmamare/scene/core.q1.h>
+#include <Raidenmamare/scene/actor.q1.h>
 #include <Raidenmamare/scene/camera.q1.h>
 #include <Raidenmamare/scene/light.q1.h>
 #include <Raidenmamare/math.q1.h>
@@ -27,7 +28,7 @@ namespace rmmr::internal {
 
         // this objects may vary a lot with Engine develops in time
         maybe<Device::Id> device;
-        maybe<material::Type::Id> materialType;
+        maybe<material::Core::Id> materialCore;
         maybe<primitive::Base::Id> primitive;
         maybe<Viewport::Id> viewport; // TODO: remove this link later
         maybe<scene::Core::Id> scene;
@@ -49,7 +50,7 @@ Engine::Engine(StartupParameters params) {
         .main = iqsm::repo::Branch(ops::world::create(schema)),
         .resourceManager = base::make_shared<iqsm::resources::ManagerCore>(schema),
         .device = {},
-        .materialType = {},
+        .materialCore = {},
         .primitive = {},
         .viewport = {},
         .scene = {},
@@ -79,10 +80,11 @@ iqsm::Schema Engine::resourceAspects() {
     return ops::schema::assemble<
         Device,
         material::Program,
-        material::Type,
+        material::Core,
         primitive::Base,
         Viewport,
         scene::Node,
+        scene::PrimitiveActor,
         scene::Camera,
         scene::Light,
         scene::Core>();
@@ -105,7 +107,7 @@ void Engine::prepareResources() {
     const auto& devicePassport = ops::particle::get<Device>(main, device).passport;
 
     // hardcoded for now...
-    // this Program::Id will be saved in state via material::Type later...
+    // this Program::Id will be saved in state via material::Core later...
     const material::Program::Id program = ops::resource::declare<material::Program>(
         main,
         material::Program::Quantum{
@@ -120,20 +122,28 @@ void Engine::prepareResources() {
 
     material::Program::Operations::materialize(main, program, resourceManager);
 
-    state->materialType = ops::resource::declare<material::Type>(
+    state->materialCore = ops::resource::declare<material::Core>(
         main,
-        material::Type::Quantum{
-            .passport = material::Type::Materializer::Passport{
+        material::Core::Quantum{
+            .passport = material::Core::Materializer::Passport{
                 .program = program,
+                .uniforms = material::Core::Operations::uniformIds(vector<string>{
+                    "model",
+                    "view",
+                    "projection",
+                    "albedo",
+                    "lightColor",
+                    "lightIntensity",
+                }),
             },
             .name = "triangle",
         }
     );
-    ops::resource::materialize<material::Type>(main, resourceManager, state->materialType);
+    ops::resource::materialize<material::Core>(main, resourceManager, state->materialCore);
 
-    const auto& materialTypeRuntime = resourceManager->layer<material::Type>().provide(state->materialType);
-    if (!materialTypeRuntime.program) {
-        throw std::runtime_error("Engine::prepareResources: material::Type runtime program is null");
+    const auto& materialCoreRuntime = resourceManager->layer<material::Core>().provide(state->materialCore);
+    if (!materialCoreRuntime.program) {
+        throw std::runtime_error("Engine::prepareResources: material::Core runtime program is null");
     }
 
     state->primitive = ops::resource::declare<primitive::Base>(
@@ -160,13 +170,13 @@ void Engine::prepareResources() {
 void Engine::createScene() {
     auto& main = state->main;
 
-    // Single root node for the demo: slightly above origin, identity rotation (triangle will sit in this space later).
-    const auto demoRoot = ops::particle::create<scene::Node>(
+    const auto actorNode = scene::PrimitiveActor::Operations::create(
         main,
-        scene::Node::Quantum{
-            .position = vec3{0.0f, 0.5f, 0.0f},
-            .rotation = quat{1.0f, 0.0f, 0.0f, 0.0f},
-        });
+        Pos{0.0f, 0.5f, 0.0f},
+        HPB{0.0f, 0.0f, 0.0f},
+        state->primitive,
+        state->materialCore
+    );
 
     // Placeholder camera: lives on its own node and targets the current viewport.
     const auto cameraNode = scene::Camera::Operations::create(
@@ -191,7 +201,7 @@ void Engine::createScene() {
     state->scene = ops::particle::create<scene::Core>(
         main,
         scene::Core::Quantum{
-            .nodes = vector<scene::Node::Id>{ demoRoot, cameraNode, lightNode },
+            .nodes = vector<scene::Node::Id>{ actorNode, cameraNode, lightNode },
         });
 }
 
@@ -208,26 +218,11 @@ void Engine::createViewport(index2 size, index2 origin) {
     );
 }
 
-void render(internal::EngineState& state) {
+void render(const internal::EngineState& state) {
     auto& main = state.main;
     auto resourceManager = state.resourceManager;
-    const auto materialType = state.materialType;
-    const auto primitive = state.primitive;
     const auto viewport = state.viewport;
     const auto scene_id = state.scene;
-
-    const auto& materialTypeRuntime = resourceManager->layer<material::Type>().provide(materialType);
-    const auto shaderProgram = materialTypeRuntime.program;
-    if (!shaderProgram) {
-        throw std::runtime_error("Engine::run_render_demo: material::Type runtime program is null");
-    }
-    const auto& primitive_runtime = primitive::Base::Operations::provide(main, primitive, resourceManager);
-    const GLint model_location = glGetUniformLocation(shaderProgram, "u_model");
-    const GLint view_location = glGetUniformLocation(shaderProgram, "u_view");
-    const GLint projection_location = glGetUniformLocation(shaderProgram, "u_projection");
-    const GLint albedo_location = glGetUniformLocation(shaderProgram, "u_albedo");
-    const GLint light_color_location = glGetUniformLocation(shaderProgram, "u_lightColor");
-    const GLint light_intensity_location = glGetUniformLocation(shaderProgram, "u_lightIntensity");
 
     const auto& scene_core = ops::particle::get<scene::Core>(main, scene_id);
     if (scene_core.cameras.empty()) throw std::runtime_error("Engine::run_render_demo: scene has no camera node");
@@ -235,17 +230,7 @@ void render(internal::EngineState& state) {
 
     const auto camera = scene_core.cameras.front();
     const auto light_id = scene_core.lights.front();
-    maybe<scene::Node::Id> actor;
-    for (const auto node : scene_core.nodes) {
-        if (node == camera) continue;
-        if (node == light_id) continue;
-        actor = node;
-        break;
-    }
-    if (!actor) throw std::runtime_error("Engine::run_render_demo: scene has no drawable actor node");
-
     const float aspect_ratio = internal::viewport_aspect_ratio(main, viewport);
-    const mat4 model = scene::Node::Operations::transform(main, actor);
     const mat4 view = scene::Camera::Operations::view(main, camera);
     const mat4 projection = scene::Camera::Operations::projection(main, camera, aspect_ratio);
     const auto& light = ops::particle::get<scene::Light>(main, light_id);
@@ -253,15 +238,35 @@ void render(internal::EngineState& state) {
     Viewport::Operations::activate(main, viewport, resourceManager);
     Viewport::Operations::clear(main, viewport, resourceManager);
 
-    glUseProgram(shaderProgram);
-    glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
-    glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
-    glUniform3f(albedo_location, 1.0f, 0.5f, 0.2f);
-    glUniform3f(light_color_location, light.color.x, light.color.y, light.color.z);
-    glUniform1f(light_intensity_location, light.intensity);
-    glBindVertexArray(primitive_runtime.vao);
-    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(primitive_runtime.vertex_count));
+    for (const auto node : scene_core.nodes) {
+        if (!ops::particle::exists<scene::PrimitiveActor>(main, node)) continue;
+
+        const auto& actor = ops::particle::get<scene::PrimitiveActor>(main, node);
+        const auto& material_core_runtime = resourceManager->layer<material::Core>().provide(actor.material);
+        const auto shaderProgram = material_core_runtime.program;
+        if (!shaderProgram) {
+            throw std::runtime_error("Engine::run_render_demo: actor material runtime program is null");
+        }
+
+        const auto& primitive_runtime = primitive::Base::Operations::provide(main, actor.geometry, resourceManager);
+        const GLint model_location = glGetUniformLocation(shaderProgram, "u_model");
+        const GLint view_location = glGetUniformLocation(shaderProgram, "u_view");
+        const GLint projection_location = glGetUniformLocation(shaderProgram, "u_projection");
+        const GLint albedo_location = glGetUniformLocation(shaderProgram, "u_albedo");
+        const GLint light_color_location = glGetUniformLocation(shaderProgram, "u_lightColor");
+        const GLint light_intensity_location = glGetUniformLocation(shaderProgram, "u_lightIntensity");
+        const mat4 model = scene::Node::Operations::transform(main, node);
+
+        glUseProgram(shaderProgram);
+        glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3f(albedo_location, 1.0f, 0.5f, 0.2f);
+        glUniform3f(light_color_location, light.color.x, light.color.y, light.color.z);
+        glUniform1f(light_intensity_location, light.intensity);
+        glBindVertexArray(primitive_runtime.vao);
+        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(primitive_runtime.vertex_count));
+    }
 }
 
 
