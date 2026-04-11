@@ -1,4 +1,6 @@
 #include "node.q1.types"
+#include "camera.q1.types"
+#include "light.q1.types"
 
 namespace rmmr
   namespace scene
@@ -8,3 +10,8 @@ namespace rmmr
     entity Core
       element
         nodes: vector<#Node>
+        cameras: vector<#Camera>
+        lights: vector<#Light>
+        !cameras_registered() // cameras = lookup {nodes} and querying world->field<scene::Camera>
+        !lights_registered()
+        

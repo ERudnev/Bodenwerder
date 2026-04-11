@@ -1,6 +1,12 @@
 #version 330 core
 out vec4 FragColor;
 
+uniform vec3 u_albedo;
+uniform vec3 u_lightColor;
+uniform float u_lightIntensity;
+
 void main() {
-    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f); // Orange color
+    float exposure = max(u_lightIntensity, 0.0);
+    vec3 lit = u_albedo * u_lightColor * (exposure / (1.0 + exposure));
+    FragColor = vec4(lit, 1.0);
 }

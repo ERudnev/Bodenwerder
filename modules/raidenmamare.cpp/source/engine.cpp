@@ -2,6 +2,7 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <glm/gtc/type_ptr.hpp>
 #include <base/maybe.h>
 #include <iQSM/logger.h>
 #include <stdexcept>
@@ -31,6 +32,13 @@ namespace rmmr::internal {
         maybe<Viewport::Id> viewport; // TODO: remove this link later
         maybe<scene::Core::Id> scene;
     };
+
+    static auto viewport_aspect_ratio(Reading world, Viewport::Id viewport) -> float {
+        const auto& quantum = ops::particle::get<Viewport>(world, viewport);
+        const float width = quantum.size.x > integer{0} ? static_cast<float>(quantum.size.x) : 1.0f;
+        const float height = quantum.size.y > integer{0} ? static_cast<float>(quantum.size.y) : 1.0f;
+        return width / height;
+    }
 }
 
 namespace rmmr {
@@ -200,34 +208,76 @@ void Engine::createViewport(index2 size, index2 origin) {
     );
 }
 
+void render(internal::EngineState& state) {
+    auto& main = state.main;
+    auto resourceManager = state.resourceManager;
+    const auto materialType = state.materialType;
+    const auto primitive = state.primitive;
+    const auto viewport = state.viewport;
+    const auto scene_id = state.scene;
 
-int Engine::run_render_demo() {
-    const auto device = state->device;
-    const auto materialType = state->materialType;
-    const auto primitive = state->primitive;
-    const auto viewport = state->viewport;
-    auto& main = state->main;
-    auto resourceManager = state->resourceManager;
-
-    GLFWwindow* window = Device::Operations::provide(main, device, resourceManager);
     const auto& materialTypeRuntime = resourceManager->layer<material::Type>().provide(materialType);
     const auto shaderProgram = materialTypeRuntime.program;
     if (!shaderProgram) {
         throw std::runtime_error("Engine::run_render_demo: material::Type runtime program is null");
     }
     const auto& primitive_runtime = primitive::Base::Operations::provide(main, primitive, resourceManager);
+    const GLint model_location = glGetUniformLocation(shaderProgram, "u_model");
+    const GLint view_location = glGetUniformLocation(shaderProgram, "u_view");
+    const GLint projection_location = glGetUniformLocation(shaderProgram, "u_projection");
+    const GLint albedo_location = glGetUniformLocation(shaderProgram, "u_albedo");
+    const GLint light_color_location = glGetUniformLocation(shaderProgram, "u_lightColor");
+    const GLint light_intensity_location = glGetUniformLocation(shaderProgram, "u_lightIntensity");
+
+    const auto& scene_core = ops::particle::get<scene::Core>(main, scene_id);
+    if (scene_core.cameras.empty()) throw std::runtime_error("Engine::run_render_demo: scene has no camera node");
+    if (scene_core.lights.empty()) throw std::runtime_error("Engine::run_render_demo: scene has no light node");
+
+    const auto camera = scene_core.cameras.front();
+    const auto light_id = scene_core.lights.front();
+    maybe<scene::Node::Id> actor;
+    for (const auto node : scene_core.nodes) {
+        if (node == camera) continue;
+        if (node == light_id) continue;
+        actor = node;
+        break;
+    }
+    if (!actor) throw std::runtime_error("Engine::run_render_demo: scene has no drawable actor node");
+
+    const float aspect_ratio = internal::viewport_aspect_ratio(main, viewport);
+    const mat4 model = scene::Node::Operations::transform(main, actor);
+    const mat4 view = scene::Camera::Operations::view(main, camera);
+    const mat4 projection = scene::Camera::Operations::projection(main, camera, aspect_ratio);
+    const auto& light = ops::particle::get<scene::Light>(main, light_id);
+
+    Viewport::Operations::activate(main, viewport, resourceManager);
+    Viewport::Operations::clear(main, viewport, resourceManager);
+
+    glUseProgram(shaderProgram);
+    glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
+    glUniform3f(albedo_location, 1.0f, 0.5f, 0.2f);
+    glUniform3f(light_color_location, light.color.x, light.color.y, light.color.z);
+    glUniform1f(light_intensity_location, light.intensity);
+    glBindVertexArray(primitive_runtime.vao);
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(primitive_runtime.vertex_count));
+}
+
+
+int Engine::run_render_demo() {
+    const auto device = state->device;
+    auto& main = state->main;
+    auto resourceManager = state->resourceManager;
+
+    GLFWwindow* window = Device::Operations::provide(main, device, resourceManager);
 
     while (!glfwWindowShouldClose(window)) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, true);
         }
 
-        Viewport::Operations::activate(main, viewport, resourceManager);
-        Viewport::Operations::clear(main, viewport, resourceManager);
-
-        glUseProgram(shaderProgram);
-        glBindVertexArray(primitive_runtime.vao);
-        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(primitive_runtime.vertex_count));
+        render(*state);
 
         Device::Operations::present(main, device, resourceManager);
         Device::Operations::poll_events(main, device, resourceManager);
