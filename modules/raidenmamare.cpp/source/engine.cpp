@@ -6,11 +6,12 @@
 #include <iQSM/logger.h>
 #include <stdexcept>
 
-#include <Raidenmamare/core.q1.h>
+#include <Raidenmamare/device.q1.h>
 #include <Raidenmamare/primitives/base.q1.h>
 #include <Raidenmamare/materials/program.q1.h>
 #include <Raidenmamare/materials/type.q1.h>
 #include <Raidenmamare/viewport.q1.h>
+#include <Raidenmamare/scene/core.q1.h>
 
 using namespace iqsm::dsl_gateway;
 
@@ -21,10 +22,11 @@ namespace rmmr::internal {
         iqsm::dsl_gateway::resources::Manager resourceManager;
 
         // this objects may vary a lot with Engine develops in time
-        base::maybe<Core::Id> core;
-        base::maybe<material::Type::Id> materialType;
-        base::maybe<primitive::Base::Id> primitive;
-        base::maybe<Viewport::Id> viewport;
+        maybe<Device::Id> device;
+        maybe<material::Type::Id> materialType;
+        maybe<primitive::Base::Id> primitive;
+        maybe<Viewport::Id> viewport; // TODO: remove this link later
+        maybe<scene::Core::Id> scene;
     };
 }
 
@@ -35,22 +37,23 @@ Engine::Engine(StartupParameters params) {
     state = std::make_shared<State>(State{
         .main = iqsm::repo::Branch(ops::world::create(schema)),
         .resourceManager = base::make_shared<iqsm::resources::ManagerCore>(schema),
-        .core = {},
+        .device = {},
         .materialType = {},
         .primitive = {},
         .viewport = {},
+        .scene = {},
     });
 
-    state->core = ops::resource::declare<Core>(
+    state->device = ops::resource::declare<Device>(
         state->main,
-        Core::Quantum{
+        Device::Quantum{
             .passport = std::move(params),
         });
 
     using namespace iqsm::logger;
-    const auto& corePassport = ops::particle::get<Core>(state->main, state->core).passport;
-    message("Engine initialized for '{}'", corePassport.title);
-    message("Requested OpenGL context {}.{}", corePassport.context_major, corePassport.context_minor);
+    const auto& devicePassport = ops::particle::get<Device>(state->main, state->device).passport;
+    message("Engine initialized for '{}'", devicePassport.title);
+    message("Requested OpenGL context {}.{}", devicePassport.context_major, devicePassport.context_minor);
 
     message("Loading resources...");
     prepareResources();
@@ -62,7 +65,14 @@ Engine::~Engine() noexcept {
 }
 
 iqsm::Schema Engine::resourceAspects() {
-    return ops::schema::assemble<Core, material::Program, material::Type, primitive::Base, Viewport>();
+    return ops::schema::assemble<
+        Device,
+        material::Program,
+        material::Type,
+        primitive::Base,
+        Viewport,
+        scene::Node,
+        scene::Core>();
 }
 
 void Engine::shutdown() noexcept {
@@ -76,10 +86,10 @@ void Engine::shutdown() noexcept {
 void Engine::prepareResources() {
     auto& main = state->main;
     auto resourceManager = state->resourceManager;
-    const auto core = state->core;
+    const auto device = state->device;
 
-    Core::Operations::materialize(main, core, resourceManager);
-    const auto& corePassport = ops::particle::get<Core>(main, core).passport;
+    Device::Operations::materialize(main, device, resourceManager);
+    const auto& devicePassport = ops::particle::get<Device>(main, device).passport;
 
     // hardcoded for now...
     // this Program::Id will be saved in state via material::Type later...
@@ -91,7 +101,7 @@ void Engine::prepareResources() {
                 .vertexFilename = "shaders/triangle.vert.glsl",
                 .fragmentFilename = "shaders/triangle.frag.glsl",
             },
-            .core = core,
+            .device = device,
         }
     );
 
@@ -119,7 +129,7 @@ void Engine::prepareResources() {
             .passport = primitive::Base::Materializer::Passport{
                 .debugName = "triangle",
             },
-            .core = core,
+            .device = device,
             .vertices = vector<vec3>{
                 vec3{-0.5f, -0.5f, 0.0f},
                 vec3{ 0.5f, -0.5f, 0.0f},
@@ -129,12 +139,37 @@ void Engine::prepareResources() {
     );
     primitive::Base::Operations::bake(main, state->primitive, resourceManager);
 
-    state->viewport = ops::particle::create<Viewport>(
+    createViewport(devicePassport.size);
+    createScene();
+}
+
+
+void Engine::createScene() {
+    auto& main = state->main;
+
+    // Single root node for the demo: slightly above origin, identity rotation (triangle will sit in this space later).
+    const auto demoRoot = ops::particle::create<scene::Node>(
         main,
+        scene::Node::Quantum{
+            .position = vec3{0.0f, 0.5f, 0.0f},
+            .rotation = quat{1.0f, 0.0f, 0.0f, 0.0f},
+        });
+
+    state->scene = ops::particle::create<scene::Core>(
+        main,
+        scene::Core::Quantum{
+            .nodes = vector<scene::Node::Id>{ demoRoot },
+        });
+}
+
+
+void Engine::createViewport(index2 size, index2 origin) {
+    state->viewport = ops::particle::create<Viewport>(
+        state->main,
         Viewport::Quantum{
-            .core = core,
-            .origin = index2{.x = 0, .y = 0},
-            .size = corePassport.size,
+            .device = state->device,
+            .origin = origin,
+            .size = size,
             .clear_color = vec4{0.2f, 0.3f, 0.3f, 1.0f},
         }
     );
@@ -142,14 +177,14 @@ void Engine::prepareResources() {
 
 
 int Engine::run_render_demo() {
-    const auto core = state->core;
+    const auto device = state->device;
     const auto materialType = state->materialType;
     const auto primitive = state->primitive;
     const auto viewport = state->viewport;
     auto& main = state->main;
     auto resourceManager = state->resourceManager;
 
-    GLFWwindow* window = Core::Operations::provide(main, core, resourceManager);
+    GLFWwindow* window = Device::Operations::provide(main, device, resourceManager);
     const auto& materialTypeRuntime = resourceManager->layer<material::Type>().provide(materialType);
     const auto shaderProgram = materialTypeRuntime.program;
     if (!shaderProgram) {
@@ -169,8 +204,8 @@ int Engine::run_render_demo() {
         glBindVertexArray(primitive_runtime.vao);
         glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(primitive_runtime.vertex_count));
 
-        Core::Operations::present(main, core, resourceManager);
-        Core::Operations::poll_events(main, core, resourceManager);
+        Device::Operations::present(main, device, resourceManager);
+        Device::Operations::poll_events(main, device, resourceManager);
     }
 
     shutdown();

@@ -11,7 +11,7 @@ namespace rmmr::primitive {
 
         static auto create_runtime(GLFWwindow* window, const Quantum& quantum) -> Runtime {
             if (!window) {
-                throw std::runtime_error("primitive::Base::Materializer::materialize: core is not open");
+                throw std::runtime_error("primitive::Base::Materializer::materialize: device is not open");
             }
 
             if (quantum.vertices.empty()) {
@@ -70,7 +70,7 @@ namespace rmmr::primitive {
         }
 
         const auto& quantum = ops::particle::get<Base>(world, id);
-        GLFWwindow* window = Core::Operations::provide(world, quantum.core, manager);
+        GLFWwindow* window = Device::Operations::provide(world, quantum.device, manager);
         manager->layer<Base>().materialize(id, Base_private::create_runtime(window, quantum));
     }
 
@@ -80,8 +80,8 @@ namespace rmmr::primitive {
         const auto& quantum = ops::particle::get<Base>(world, id);
 
         GLFWwindow* window = nullptr;
-        if (manager->materialized<Core>(quantum.core)) {
-            window = Core::Operations::provide(world, quantum.core, manager);
+        if (manager->materialized<Device>(quantum.device)) {
+            window = Device::Operations::provide(world, quantum.device, manager);
         }
 
         Base_private::release_runtime(window, runtime);

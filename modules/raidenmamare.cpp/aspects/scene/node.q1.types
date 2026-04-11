@@ -5,6 +5,8 @@ namespace rmmr
     // Rendering payloads (primitive, camera, light, viewport bindings) can be layered later.
     entity Node
       element
-        translation: vec3
+        position: vec3
         rotation: quat
         ?transform()->mat4
+        ?euler()->vec3 // heading/pitch/bank
+        *euler(vec3)

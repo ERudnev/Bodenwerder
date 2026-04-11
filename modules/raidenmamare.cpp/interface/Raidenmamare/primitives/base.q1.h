@@ -2,7 +2,7 @@
 
 #include <GL/glew.h>
 #include <iQSM/api/_gateway.h>
-#include <Raidenmamare/core.q1.h>
+#include <Raidenmamare/device.q1.h>
 
 namespace rmmr::primitive {
 
@@ -14,7 +14,7 @@ namespace rmmr::primitive {
         integer vertex_count = 0;
     };
 
-    struct Base : Handle<Base, OpenGLPrimitive, const OpenGLPrimitive&>, Require<Core> {
+    struct Base : Handle<Base, OpenGLPrimitive, const OpenGLPrimitive&>, Require<Device> {
         struct Materializer : iqsm::resources::Materializer<Base> {
             struct Passport {
                 string debugName;
@@ -26,7 +26,7 @@ namespace rmmr::primitive {
 
         struct Quantum {
             Materializer::Passport passport;
-            Core::Id core;
+            Device::Id device;
             vector<vec3> vertices;
         };
         struct Global {};

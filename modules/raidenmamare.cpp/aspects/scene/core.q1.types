@@ -5,6 +5,6 @@ namespace rmmr
 
     // Passive scene root that gathers nodes.
     // Cameras, lights and other scene-wide bindings can be added later.
-    entity Scene
+    entity Core
       element
         nodes: vector<#Node>

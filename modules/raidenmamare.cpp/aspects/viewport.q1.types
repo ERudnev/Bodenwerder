@@ -1,12 +1,12 @@
-#include "core.q1.types"
+#include "device.q1.types"
 
 namespace rmmr
 
-  // Viewport configuration for rendering into Core's default framebuffer.
-  // Later this can grow camera / render-target semantics without bloating Core.
+  // Viewport configuration for rendering into Device's default framebuffer.
+  // Later this can grow camera / render-target semantics without bloating Device.
   entity Viewport
     element
-      core: #Core
+      device: #Device
       origin: index2
       size: index2
       clear_color: vec4

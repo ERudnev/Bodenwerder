@@ -8,12 +8,14 @@ namespace rmmr::scene {
 
     struct Node : Entity<Node>, Require<> {
         struct Quantum {
-            vec3 translation;
+            vec3 position;
             quat rotation;
         };
         struct Global {};
         struct Operations : OwnTypeOperations {
             static auto transform(Reading, Id) -> mat4;
+            static auto euler(Reading, Id) -> vec3;
+            static auto euler(Writing, Id, vec3 heading_pitch_bank) -> void;
         };
         static const Invariants invariants;
     };

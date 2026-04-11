@@ -1,4 +1,4 @@
-#include <Raidenmamare/core.q1.h>
+#include <Raidenmamare/device.q1.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -7,12 +7,12 @@
 #include <stdexcept>
 
 namespace rmmr {
-    struct Core_private : Core::Operations {
-        using Passport = Core::Materializer::Passport;
+    struct Device_private : Device::Operations {
+        using Passport = Device::Materializer::Passport;
 
         static auto init_window(const Passport& passport) -> GLFWwindow* {
             if (!glfwInit()) {
-                throw std::runtime_error("Core::Materializer::materialize: glfwInit() failed");
+                throw std::runtime_error("Device::Materializer::materialize: glfwInit() failed");
             }
 
             const int width = std::max(static_cast<int>(passport.size.x), 1);
@@ -28,7 +28,7 @@ namespace rmmr {
             GLFWwindow* window = glfwCreateWindow(width, height, title, nullptr, nullptr);
             if (!window) {
                 glfwTerminate();
-                throw std::runtime_error("Core::Materializer::materialize: glfwCreateWindow() failed");
+                throw std::runtime_error("Device::Materializer::materialize: glfwCreateWindow() failed");
             }
 
             glfwMakeContextCurrent(window);
@@ -36,7 +36,7 @@ namespace rmmr {
             if (glewInit() != GLEW_OK) {
                 glfwDestroyWindow(window);
                 glfwTerminate();
-                throw std::runtime_error("Core::Materializer::materialize: glewInit() failed");
+                throw std::runtime_error("Device::Materializer::materialize: glewInit() failed");
             }
 
             glfwSetFramebufferSizeCallback(window, [](GLFWwindow*, int framebuffer_width, int framebuffer_height) {
@@ -53,43 +53,43 @@ namespace rmmr {
         }
     };
 
-    void Core::Materializer::materialize(resources::Manager manager, Reading world, Id id) const {
-        if (manager->materialized<Core>(id)) {
-            throw std::runtime_error("Core::Materializer::materialize: resource is already materialized");
+    void Device::Materializer::materialize(resources::Manager manager, Reading world, Id id) const {
+        if (manager->materialized<Device>(id)) {
+            throw std::runtime_error("Device::Materializer::materialize: resource is already materialized");
         }
 
-        const auto& passport = ops::particle::get<Core>(world, id).passport;
-        manager->layer<Core>().materialize(id, Core_private::init_window(passport));
+        const auto& passport = ops::particle::get<Device>(world, id).passport;
+        manager->layer<Device>().materialize(id, Device_private::init_window(passport));
     }
 
-    void Core::Materializer::release(resources::Manager manager, Reading, Id id) const {
-        auto& layer = manager->layer<Core>();
+    void Device::Materializer::release(resources::Manager manager, Reading, Id id) const {
+        auto& layer = manager->layer<Device>();
         GLFWwindow* window = layer.value(id);
-        Core_private::release_window(window);
+        Device_private::release_window(window);
         layer.release(id);
     }
 
-    void Core::Operations::present(Reading, Id id, resources::Manager manager) {
-        glfwSwapBuffers(manager->layer<Core>().provide(id));
+    void Device::Operations::present(Reading, Id id, resources::Manager manager) {
+        glfwSwapBuffers(manager->layer<Device>().provide(id));
     }
 
-    void Core::Operations::poll_events(Reading, Id, resources::Manager) {
+    void Device::Operations::poll_events(Reading, Id, resources::Manager) {
         glfwPollEvents();
     }
 
-    void Core::Operations::materialize(Reading world, Id id, resources::Manager manager) {
-        ops::resource::materialize<Core>(world, manager, id);
+    void Device::Operations::materialize(Reading world, Id id, resources::Manager manager) {
+        ops::resource::materialize<Device>(world, manager, id);
     }
 
-    void Core::Operations::release(Reading world, Id id, resources::Manager manager) {
-        ops::resource::release<Core>(world, manager, id);
+    void Device::Operations::release(Reading world, Id id, resources::Manager manager) {
+        ops::resource::release<Device>(world, manager, id);
     }
 
-    auto Core::Operations::provide(Reading, Id id, resources::Manager manager) -> RuntimeAccess {
-        return manager->layer<Core>().provide(id);
+    auto Device::Operations::provide(Reading, Id id, resources::Manager manager) -> RuntimeAccess {
+        return manager->layer<Device>().provide(id);
     }
 
-    const Invariants Core::invariants{
+    const Invariants Device::invariants{
         .structural = {},
         .logical = {},
     };

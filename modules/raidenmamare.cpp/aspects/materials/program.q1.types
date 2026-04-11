@@ -1,4 +1,4 @@
-#include "core.q1.types"
+#include "device.q1.types"
 
 namespace rmmr
   namespace material
@@ -10,8 +10,7 @@ namespace rmmr
         vertexFilename: string
         fragmentFilename: string
       element
-        core: #Core
+        device: #Device
         ?provide()->opengl_program
         ?materialize()
         ?release()
-

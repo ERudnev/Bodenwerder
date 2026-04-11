@@ -115,12 +115,12 @@ namespace rmmr::material {
 
         const auto& quantum = ops::particle::get<Program>(world, id);
         const auto& passport = quantum.passport;
-        const auto& corePassport = ops::particle::get<rmmr::Core>(world, quantum.core).passport;
-        if (!rmmr::Core::Operations::provide(world, quantum.core, manager)) {
-            throw std::runtime_error("Program::Materializer::materialize: core is not open");
+        const auto& devicePassport = ops::particle::get<rmmr::Device>(world, quantum.device).passport;
+        if (!rmmr::Device::Operations::provide(world, quantum.device, manager)) {
+            throw std::runtime_error("Program::Materializer::materialize: device is not open");
         }
 
-        const std::filesystem::path asset_root(corePassport.assets_root);
+        const std::filesystem::path asset_root(devicePassport.assets_root);
         const GLuint program = Program_private::create_program(asset_root, passport);
         if (!program) {
             throw std::runtime_error("Program::Materializer::materialize: failed to create OpenGL program");

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Raidenmamare/core.q1.h>
+#include <Raidenmamare/device.q1.h>
 
 #include <GL/glew.h>
 
@@ -11,7 +11,7 @@ namespace material {
 
     using namespace iqsm::dsl_gateway;
 
-    struct Program : Handle<Program, GLuint, GLuint>, Require<rmmr::Core> {
+    struct Program : Handle<Program, GLuint, GLuint>, Require<rmmr::Device> {
         struct Materializer : iqsm::resources::Materializer<Program> {
             struct Passport {
                 string debugName;
@@ -25,7 +25,7 @@ namespace material {
 
         struct Quantum {
             Materializer::Passport passport;
-            rmmr::Core::Id core;
+            rmmr::Device::Id device;
         };
         struct Global {};
         struct Operations : OwnTypeOperations {

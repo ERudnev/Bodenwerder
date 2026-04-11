@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Raidenmamare/core.q1.h>
+#include <Raidenmamare/device.q1.h>
 
 #include <iQSM/api/_gateway.h>
 
@@ -8,9 +8,9 @@ namespace rmmr {
 
     using namespace iqsm::dsl_gateway;
 
-    struct Viewport : Entity<Viewport>, Require<Core> {
+    struct Viewport : Entity<Viewport>, Require<Device> {
         struct Quantum {
-            Core::Id core;
+            Device::Id device;
             index2 origin;
             index2 size;
             vec4 clear_color;

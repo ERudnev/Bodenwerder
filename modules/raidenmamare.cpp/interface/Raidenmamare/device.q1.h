@@ -8,8 +8,8 @@ namespace rmmr {
 
     using namespace iqsm::dsl_gateway;
 
-    struct Core : Handle<Core, GLFWwindow*, GLFWwindow*>, Require<> {
-        struct Materializer : iqsm::resources::Materializer<Core> {
+    struct Device : Handle<Device, GLFWwindow*, GLFWwindow*>, Require<> {
+        struct Materializer : iqsm::resources::Materializer<Device> {
             struct Passport {
                 string assets_root;
                 string title;

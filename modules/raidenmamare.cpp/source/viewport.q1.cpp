@@ -9,7 +9,7 @@ namespace rmmr {
     struct Viewport_private : Viewport::Operations {
         static auto window(Reading world, Id id, resources::Manager manager) -> GLFWwindow* {
             const auto& quantum = ops::particle::get<Viewport>(world, id);
-            return Core::Operations::provide(world, quantum.core, manager);
+            return Device::Operations::provide(world, quantum.device, manager);
         }
     };
 

@@ -3,11 +3,10 @@
 #include <string>
 #include <memory>
 
-#include <iQSM/api/_gateway.h>
 #include <iQSM/schema.h>
 
 // this include will be removed from "public" Engine interface after "Engine::StartupParameters" become facade type (just config file to read?)
-#include <Raidenmamare/core.q1.h>
+#include <Raidenmamare/device.q1.h>
 
 
 namespace rmmr::internal {
@@ -17,10 +16,12 @@ namespace rmmr::internal {
 
 namespace rmmr {
 
+    using namespace iqsm::q1;
+
     class Engine {
     public:
         // temp: this will become separate type one day:
-        using StartupParameters = Core::Materializer::Passport;
+        using StartupParameters = Device::Materializer::Passport;
 
         explicit Engine(StartupParameters);
         ~Engine() noexcept;
@@ -33,6 +34,8 @@ namespace rmmr {
 
         static iqsm::Schema resourceAspects();
         void prepareResources();
+        void createScene();
+        void createViewport(index2 size, index2 origin = index2{0, 0});
         void shutdown() noexcept;
 
         // only this is really needed...
