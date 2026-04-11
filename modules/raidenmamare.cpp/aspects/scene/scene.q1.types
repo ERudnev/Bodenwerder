@@ -1,0 +1,10 @@
+#include "node.q1.types"
+
+namespace rmmr
+  namespace scene
+
+    // Passive scene root that gathers nodes.
+    // Cameras, lights and other scene-wide bindings can be added later.
+    entity Scene
+      element
+        nodes: vector<#Node>

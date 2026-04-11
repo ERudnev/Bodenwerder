@@ -3,6 +3,7 @@
   "scopeName": "source.q1",
   "patterns": [
     { "include": "#comments" },
+    { "include": "#preprocessor" },
     { "include": "#strings" },
     { "include": "#numbers" },
     { "include": "#directives" },
@@ -15,6 +16,18 @@
     "comments": {
       "patterns": [
         { "name": "comment.line.double-slash.q1", "match": "//.*$" }
+      ]
+    },
+    "preprocessor": {
+      "patterns": [
+        {
+          "name": "meta.preprocessor.include.q1",
+          "match": "^\\s*(#\\s*include)\\s+(\"[^\"]*\"|<[^>\\n]+>)",
+          "captures": {
+            "1": { "name": "keyword.control.import.include.q1" },
+            "2": { "name": "string.quoted.include.q1" }
+          }
+        }
       ]
     },
     "strings": {
@@ -70,7 +83,7 @@
       "patterns": [
         {
           "name": "keyword.control.q1",
-          "match": "\\b(namespace|declare|type|template|struct|as|enum|entity|attribute|component|resource|depends|element|table|model)\\b"
+          "match": "\\b(namespace|declare|type|template|struct|as|enum|entity|attribute|component|resource|depends|element|table|model|passport)\\b"
         }
       ]
     },
@@ -78,7 +91,7 @@
       "patterns": [
         {
           "name": "support.type.builtin.q1",
-          "match": "\\b(integer|index2|float|string|boolean|seconds|time|vec3|quat|vector|map|set|umap|uset)\\b"
+          "match": "\\b(integer|index2|float|string|boolean|seconds|time|mat4|vec3|quat|vector|map|set|umap|uset)\\b"
         },
         { "name": "entity.name.type.q1", "match": "\\b[A-Z][A-Za-z0-9_]*\\b" }
       ]

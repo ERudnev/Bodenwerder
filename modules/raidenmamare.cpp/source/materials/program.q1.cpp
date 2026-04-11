@@ -1,4 +1,4 @@
-#include <Raidenmamare/program.q1.h>
+#include <Raidenmamare/materials/program.q1.h>
 
 #include <filesystem>
 #include <fstream>
@@ -8,7 +8,7 @@
 #include <string>
 #include <string_view>
 
-namespace rmmr {
+namespace rmmr::material {
     struct Program_private : Program::Operations {
         using Passport = Program::Materializer::Passport;
 
@@ -113,10 +113,10 @@ namespace rmmr {
             throw std::runtime_error("Program::Materializer::materialize: resource is already materialized");
         }
 
-            const auto& quantum = ops::particle::get<Program>(world, id);
-            const auto& passport = quantum.passport;
-            const auto& corePassport = ops::particle::get<Core>(world, quantum.core).passport;
-        if (!Core::Operations::provide(world, quantum.core, manager)) {
+        const auto& quantum = ops::particle::get<Program>(world, id);
+        const auto& passport = quantum.passport;
+        const auto& corePassport = ops::particle::get<rmmr::Core>(world, quantum.core).passport;
+        if (!rmmr::Core::Operations::provide(world, quantum.core, manager)) {
             throw std::runtime_error("Program::Materializer::materialize: core is not open");
         }
 
@@ -135,11 +135,11 @@ namespace rmmr {
         layer.release(id);
     }
 
-    void Program::Operations::open(Reading world, Id id, resources::Manager manager) {
+    void Program::Operations::materialize(Reading world, Id id, resources::Manager manager) {
         ops::resource::materialize<Program>(world, manager, id);
     }
 
-    void Program::Operations::close(Reading world, Id id, resources::Manager manager) {
+    void Program::Operations::release(Reading world, Id id, resources::Manager manager) {
         ops::resource::release<Program>(world, manager, id);
     }
 

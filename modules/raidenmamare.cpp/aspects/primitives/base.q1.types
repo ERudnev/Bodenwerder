@@ -11,8 +11,8 @@ namespace rmmr
         core: #Core
         vertices: vector<vec3>
         ?provide()->opengl_primitive
-        ?open()
-        ?close()
+        ?bake()
+        ?release()
 
     // TODO: implement and use this later
     //attribute Normals of Base

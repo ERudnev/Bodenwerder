@@ -10,5 +10,7 @@ namespace rmmr
       context_minor: integer
     element
       ?provide()->opengl_window
-      ?open()
-      ?close()
+      ?present()
+      ?poll_events()
+      ?materialize()
+      ?release()

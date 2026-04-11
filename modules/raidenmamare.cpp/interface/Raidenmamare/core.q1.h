@@ -27,8 +27,10 @@ namespace rmmr {
         };
         struct Global {};
         struct Operations : OwnTypeOperations {
-            static void open(Reading, Id, resources::Manager);
-            static void close(Reading, Id, resources::Manager);
+            static void present(Reading, Id, resources::Manager);
+            static void poll_events(Reading, Id, resources::Manager);
+            static void materialize(Reading, Id, resources::Manager);
+            static void release(Reading, Id, resources::Manager);
             static auto provide(Reading, Id, resources::Manager) -> RuntimeAccess;
         };
         static const Invariants invariants;

@@ -1,4 +1,4 @@
-#include <Raidenmamare/primitive.q1.h>
+#include <Raidenmamare/primitives/base.q1.h>
 
 #include <GLFW/glfw3.h>
 
@@ -88,11 +88,11 @@ namespace rmmr::primitive {
         layer.release(id);
     }
 
-    void Base::Operations::open(Reading world, Id id, resources::Manager manager) {
+    void Base::Operations::bake(Reading world, Id id, resources::Manager manager) {
         ops::resource::materialize<Base>(world, manager, id);
     }
 
-    void Base::Operations::close(Reading world, Id id, resources::Manager manager) {
+    void Base::Operations::release(Reading world, Id id, resources::Manager manager) {
         ops::resource::release<Base>(world, manager, id);
     }
 

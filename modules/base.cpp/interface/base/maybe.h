@@ -22,7 +22,16 @@ namespace base {
         constexpr maybe(std::optional<T>&& o) noexcept(std::is_nothrow_move_constructible_v<std::optional<T>>) : opt_(std::move(o)) {}
 
         [[nodiscard]] constexpr bool exists() const noexcept { return opt_.has_value(); }
-        constexpr explicit operator bool() const noexcept { return exists(); }
+        constexpr explicit operator bool() const noexcept
+            requires (!std::is_same_v<std::remove_cv_t<T>, bool>)
+        {
+            return exists();
+        }
+
+        constexpr operator T&() & { return opt_.value(); }
+        constexpr operator const T&() const & { return opt_.value(); }
+        constexpr operator T&&() && { return std::move(opt_).value(); }
+        constexpr operator const T&&() const && { return std::move(opt_).value(); }
 
         constexpr T& value() & { return opt_.value(); }
         constexpr const T& value() const & { return opt_.value(); }
@@ -33,6 +42,8 @@ namespace base {
         constexpr const T* operator->() const { return &opt_.value(); }
         constexpr T& operator*() & { return opt_.value(); }
         constexpr const T& operator*() const & { return opt_.value(); }
+        constexpr T&& operator*() && { return std::move(opt_).value(); }
+        constexpr const T&& operator*() const && { return std::move(opt_).value(); }
 
         constexpr void reset() noexcept { opt_.reset(); }
 

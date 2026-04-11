@@ -1,0 +1,9 @@
+#include "aspects/scene/node.q1.types"
+#include "aspects/primitive.q1.types"
+
+namespace rmmr
+  namespace scene
+
+    attribute PrimitiveActor of Node
+      element
+        geometry: primitive::Base

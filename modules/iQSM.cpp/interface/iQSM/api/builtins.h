@@ -12,7 +12,10 @@
 
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+#include <glm/mat4x4.hpp>
 #include <glm/gtc/quaternion.hpp>
+
+#include <base/maybe.h>
 
 namespace iqsm::q1 {
     // Q1 builtins (mapped into the language root)
@@ -27,7 +30,9 @@ namespace iqsm::q1 {
     };
 
     template<typename T>
-    using optional = std::optional<T>;
+    using optional = std::optional<T>; // TODO: replace with "maybe" someday...
+    template<typename T>
+    using maybe = base::maybe<T>;
     template<typename T>
     using vector = std::vector<T>;
     template<typename K, typename V>
@@ -48,6 +53,7 @@ namespace iqsm::q1 {
     // Q1 builtins: glm-compatible math types.
     // Exposed as aliases to avoid requiring `glm::` at every field site,
     // without importing the whole glm namespace into generated code.
+    using mat4 = glm::mat4;
     using vec3 = glm::vec3;
     using vec4 = glm::vec4;
     using quat = glm::quat;

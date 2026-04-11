@@ -1,0 +1,10 @@
+namespace rmmr
+  namespace scene
+
+    // Basic transformable scene node.
+    // Rendering payloads (primitive, camera, light, viewport bindings) can be layered later.
+    entity Node
+      element
+        translation: vec3
+        rotation: quat
+        ?transform()->mat4

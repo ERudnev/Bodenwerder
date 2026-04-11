@@ -1,4 +1,8 @@
-file (GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "source/*.cpp")
+file (GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS
+    "source/*.cpp"
+    "source/*/*.cpp"
+    "source/*/*/*.cpp"
+)
 
 project("Raidenmamare"
     DESCRIPTION "Raidenmamare - utilitarian rendering toolkit (graphics engine seed)"

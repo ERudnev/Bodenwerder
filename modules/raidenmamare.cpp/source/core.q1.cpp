@@ -69,11 +69,19 @@ namespace rmmr {
         layer.release(id);
     }
 
-    void Core::Operations::open(Reading world, Id id, resources::Manager manager) {
+    void Core::Operations::present(Reading, Id id, resources::Manager manager) {
+        glfwSwapBuffers(manager->layer<Core>().provide(id));
+    }
+
+    void Core::Operations::poll_events(Reading, Id, resources::Manager) {
+        glfwPollEvents();
+    }
+
+    void Core::Operations::materialize(Reading world, Id id, resources::Manager manager) {
         ops::resource::materialize<Core>(world, manager, id);
     }
 
-    void Core::Operations::close(Reading world, Id id, resources::Manager manager) {
+    void Core::Operations::release(Reading world, Id id, resources::Manager manager) {
         ops::resource::release<Core>(world, manager, id);
     }
 

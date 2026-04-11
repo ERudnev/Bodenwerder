@@ -1,0 +1,14 @@
+#include "core.q1.types"
+
+namespace rmmr
+
+  // Viewport configuration for rendering into Core's default framebuffer.
+  // Later this can grow camera / render-target semantics without bloating Core.
+  entity Viewport
+    element
+      core: #Core
+      origin: index2
+      size: index2
+      clear_color: vec4
+      ?activate()
+      ?clear()

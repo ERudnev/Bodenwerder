@@ -39,6 +39,9 @@
   directives:
     @builtin : this type definition is internal to the Q1 language
 
+    line-oriented preprocessor (C-like; processed before Q1 parse):
+      `#include "..."` or `#include <...>` : include another Q1 types file (or header path for projection)
+
     @anchor : marks an anchor reference field (special persistent link semantics)
     @anchor(any) : for containers of anchors; the dependee exists if at least one anchor is valid
     @anchor(all) : for containers of anchors; the dependee exists only if all anchors are valid
@@ -64,6 +67,7 @@
     'seconds' : relative time duration (in seconds)
     'time' : timepoint
 
+    'mat4' : glm-compatible 4x4 float matrix
     'vec3' : glm-compatible 3-floats vec
     'quat' : glm-compatible 4-floats quaternion
 
