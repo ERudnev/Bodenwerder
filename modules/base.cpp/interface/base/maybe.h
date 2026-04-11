@@ -21,6 +21,22 @@ namespace base {
         constexpr maybe(const std::optional<T>& o) : opt_(o) {}
         constexpr maybe(std::optional<T>&& o) noexcept(std::is_nothrow_move_constructible_v<std::optional<T>>) : opt_(std::move(o)) {}
 
+        constexpr maybe& operator=(const T& v)
+            requires(std::is_copy_constructible_v<T>)
+        {
+            opt_.reset();
+            opt_.emplace(v);
+            return *this;
+        }
+
+        constexpr maybe& operator=(T&& v) noexcept(std::is_nothrow_move_constructible_v<T>)
+            requires(std::is_move_constructible_v<T>)
+        {
+            opt_.reset();
+            opt_.emplace(std::move(v));
+            return *this;
+        }
+
         [[nodiscard]] constexpr bool exists() const noexcept { return opt_.has_value(); }
         constexpr explicit operator bool() const noexcept
             requires (!std::is_same_v<std::remove_cv_t<T>, bool>)

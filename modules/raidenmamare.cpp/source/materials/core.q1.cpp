@@ -20,20 +20,34 @@ namespace rmmr::material {
 
             Semantics::RuntimeMapping locations{};
             locations.reserve(quantum.passport.uniforms.size());
+            vector<Semantics::Binding> bindings{};
+            bindings.reserve(quantum.passport.uniforms.size());
             for (const auto persistent_id : quantum.passport.uniforms) {
                 const auto semantic_name = Semantics::name_of(persistent_id);
                 if (semantic_name == Semantics::Name{"_undefined"}) {
                     locations.emplace(persistent_id, GLint{-1});
+                    bindings.push_back(Semantics::Binding{
+                        .id = persistent_id,
+                        .type = Semantics::type_of(persistent_id),
+                        .location = GLint{-1},
+                    });
                     continue;
                 }
 
                 const auto uniform_name = Semantics::uniform_name(semantic_name);
-                locations.emplace(persistent_id, glGetUniformLocation(program, uniform_name.c_str()));
+                const auto location = glGetUniformLocation(program, uniform_name.c_str());
+                locations.emplace(persistent_id, location);
+                bindings.push_back(Semantics::Binding{
+                    .id = persistent_id,
+                    .type = Semantics::type_of(persistent_id),
+                    .location = location,
+                });
             }
 
             return Runtime{
                 .program = program,
                 .locations = std::move(locations),
+                .bindings = std::move(bindings),
             };
         }
     };
@@ -51,6 +65,12 @@ namespace rmmr::material {
         }
 
         return out;
+    }
+
+    auto Core::Operations::apply(Reading, Id id, rmmr::Device::Id, resources::Manager manager) -> RuntimeAccess {
+        const auto& runtime = manager->layer<Core>().provide(id);
+        glUseProgram(runtime.program);
+        return runtime;
     }
 
     void Core::Materializer::materialize(resources::Manager manager, Reading world, Id id) const {

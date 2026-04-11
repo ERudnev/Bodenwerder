@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <stdexcept>
 #include <utility>
 
 #include <iQSM/api/builtins.h>
@@ -39,13 +40,19 @@ namespace rmmr::material {
             Type type;
             Name name;
         };
+
+        struct Binding {
+            PersistentId id;
+            Type type;
+            RenderId location;
+        };
         
         // Persistent uniform semantics vocabulary.
         //
         // ID convention:
         // - 1..99: matrices and structural transforms
         // - 100..: "pixel channels" (material/light parameters, scalars/vectors, etc.)
-        static constexpr auto Vocabulary = std::array<Entry, 7>{{
+        static constexpr auto vocabulary = std::array<Entry, 7>{{
             Entry{0, Type::i32, "_undefined"},
 
             // triangle.vert.glsl
@@ -55,32 +62,30 @@ namespace rmmr::material {
 
             // triangle.frag.glsl (pixel channels start at 100)
             Entry{100, Type::v3f, "albedo"},
-            Entry{101, Type::v3f, "lightColor"},
-            Entry{102, Type::f32, "lightIntensity"},
+            Entry{101, Type::v3f, "ambientColor"},
+            Entry{102, Type::f32, "ambientIntensity"},
         }};
 
         static constexpr auto name_of(PersistentId id) -> Name {
-            for (const auto& e : Vocabulary) {
+            for (const auto& e : vocabulary) {
                 if (e.id == id) return e.name;
             }
-            return "_undefined";
+            throw std::runtime_error("Semantics::name_of: unknown uniform semantic id");
         }
 
         static auto id_of(Name name) -> PersistentId {
-            for (const auto& e : Vocabulary) {
+            for (const auto& e : vocabulary) {
                 if (e.name == name) return e.id;
             }
-            return PersistentId{0};
+            throw std::runtime_error("Semantics::id_of: unknown uniform semantic name");
         }
 
         static constexpr auto type_of(PersistentId id) -> Type {
-            for (const auto& e : Vocabulary) {
+            for (const auto& e : vocabulary) {
                 if (e.id == id) return e.type;
             }
-            return Type::i32;
-        }
-
-        
+            throw std::runtime_error("Semantics::type_of: unknown uniform semantic id");
+        }      
 
         using RuntimeMapping = umap<PersistentId, RenderId>;
     };

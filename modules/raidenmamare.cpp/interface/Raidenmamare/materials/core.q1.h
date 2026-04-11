@@ -10,7 +10,8 @@
 namespace rmmr::internals::material {
     struct CoreCompiled {
         const rmmr::material::Program::RuntimeAccess program;
-        const Semantics::RuntimeMapping locations;
+        const rmmr::material::Semantics::RuntimeMapping locations;
+        const vector<rmmr::material::Semantics::Binding> bindings;
     };
 }
 
@@ -20,10 +21,6 @@ namespace rmmr::material {
 
     struct Core : Handle<Core, rmmr::internals::material::CoreCompiled, const rmmr::internals::material::CoreCompiled&>, Require<Program>
     {
-        struct Operations : OwnTypeOperations {
-            static auto uniformIds(const vector<string>& names) -> vector<Semantics::PersistentId>;
-        };
-
         struct Materializer : iqsm::resources::Materializer<Core> {
             struct Passport {
                 Program::Id program;
@@ -39,6 +36,12 @@ namespace rmmr::material {
             string name;
         };
         struct Global {};
+        
         static const Invariants invariants;
+
+        struct Operations : OwnTypeOperations {
+            static auto uniformIds(const vector<string>& names) -> vector<Semantics::PersistentId>;
+            static auto apply(Reading, Id, rmmr::Device::Id, resources::Manager) -> RuntimeAccess;
+        };
     };
 }

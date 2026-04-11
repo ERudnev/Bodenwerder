@@ -18,6 +18,9 @@
 #include <Raidenmamare/scene/light.q1.h>
 #include <Raidenmamare/math.q1.h>
 
+// private stuff:
+#include "renderer/renderer.h"
+
 using namespace iqsm::dsl_gateway;
 
 namespace rmmr::internal {
@@ -25,6 +28,7 @@ namespace rmmr::internal {
     struct EngineState {
         iqsm::repo::Branch main;
         iqsm::dsl_gateway::resources::Manager resourceManager;
+        maybe<rmmr::Renderer> renderer;
 
         // this objects may vary a lot with Engine develops in time
         maybe<Device::Id> device;
@@ -49,6 +53,7 @@ Engine::Engine(StartupParameters params) {
     state = std::make_shared<State>(State{
         .main = iqsm::repo::Branch(ops::world::create(schema)),
         .resourceManager = base::make_shared<iqsm::resources::ManagerCore>(schema),
+        .renderer = {},
         .device = {},
         .materialCore = {},
         .primitive = {},
@@ -70,6 +75,8 @@ Engine::Engine(StartupParameters params) {
     message("Loading resources...");
     prepareResources();
     message("... loading resources: Done");
+
+    state->renderer = rmmr::Renderer(state->resourceManager.std_ptr(), state->device);
 }
 
 Engine::~Engine() noexcept {
@@ -132,8 +139,8 @@ void Engine::prepareResources() {
                     "view",
                     "projection",
                     "albedo",
-                    "lightColor",
-                    "lightIntensity",
+                    "ambientColor",
+                    "ambientIntensity",
                 }),
             },
             .name = "triangle",
@@ -202,6 +209,8 @@ void Engine::createScene() {
         main,
         scene::Core::Quantum{
             .nodes = vector<scene::Node::Id>{ actorNode, cameraNode, lightNode },
+            .ambient = RGB{0.4f, 0.4f, 0.4f},
+            .ambient_intensity = 0.8f,
         });
 }
 
@@ -218,57 +227,6 @@ void Engine::createViewport(index2 size, index2 origin) {
     );
 }
 
-void render(const internal::EngineState& state) {
-    auto& main = state.main;
-    auto resourceManager = state.resourceManager;
-    const auto viewport = state.viewport;
-    const auto scene_id = state.scene;
-
-    const auto& scene_core = ops::particle::get<scene::Core>(main, scene_id);
-    if (scene_core.cameras.empty()) throw std::runtime_error("Engine::run_render_demo: scene has no camera node");
-    if (scene_core.lights.empty()) throw std::runtime_error("Engine::run_render_demo: scene has no light node");
-
-    const auto camera = scene_core.cameras.front();
-    const auto light_id = scene_core.lights.front();
-    const float aspect_ratio = internal::viewport_aspect_ratio(main, viewport);
-    const mat4 view = scene::Camera::Operations::view(main, camera);
-    const mat4 projection = scene::Camera::Operations::projection(main, camera, aspect_ratio);
-    const auto& light = ops::particle::get<scene::Light>(main, light_id);
-
-    Viewport::Operations::activate(main, viewport, resourceManager);
-    Viewport::Operations::clear(main, viewport, resourceManager);
-
-    for (const auto node : scene_core.nodes) {
-        if (!ops::particle::exists<scene::PrimitiveActor>(main, node)) continue;
-
-        const auto& actor = ops::particle::get<scene::PrimitiveActor>(main, node);
-        const auto& material_core_runtime = resourceManager->layer<material::Core>().provide(actor.material);
-        const auto shaderProgram = material_core_runtime.program;
-        if (!shaderProgram) {
-            throw std::runtime_error("Engine::run_render_demo: actor material runtime program is null");
-        }
-
-        const auto& primitive_runtime = primitive::Base::Operations::provide(main, actor.geometry, resourceManager);
-        const GLint model_location = glGetUniformLocation(shaderProgram, "u_model");
-        const GLint view_location = glGetUniformLocation(shaderProgram, "u_view");
-        const GLint projection_location = glGetUniformLocation(shaderProgram, "u_projection");
-        const GLint albedo_location = glGetUniformLocation(shaderProgram, "u_albedo");
-        const GLint light_color_location = glGetUniformLocation(shaderProgram, "u_lightColor");
-        const GLint light_intensity_location = glGetUniformLocation(shaderProgram, "u_lightIntensity");
-        const mat4 model = scene::Node::Operations::transform(main, node);
-
-        glUseProgram(shaderProgram);
-        glUniformMatrix4fv(model_location, 1, GL_FALSE, glm::value_ptr(model));
-        glUniformMatrix4fv(view_location, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
-        glUniform3f(albedo_location, 1.0f, 0.5f, 0.2f);
-        glUniform3f(light_color_location, light.color.x, light.color.y, light.color.z);
-        glUniform1f(light_intensity_location, light.intensity);
-        glBindVertexArray(primitive_runtime.vao);
-        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(primitive_runtime.vertex_count));
-    }
-}
-
 
 int Engine::run_render_demo() {
     const auto device = state->device;
@@ -277,12 +235,13 @@ int Engine::run_render_demo() {
 
     GLFWwindow* window = Device::Operations::provide(main, device, resourceManager);
 
+
     while (!glfwWindowShouldClose(window)) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, true);
         }
 
-        render(*state);
+        state->renderer->render_new_temp({main, state->viewport, state->scene});
 
         Device::Operations::present(main, device, resourceManager);
         Device::Operations::poll_events(main, device, resourceManager);

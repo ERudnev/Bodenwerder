@@ -12,6 +12,8 @@ namespace rmmr
         nodes: vector<#Node>
         cameras: vector<#Camera>
         lights: vector<#Light>
+        ambient: RGB
+        ambient_intensity: float
         !cameras_registered() // cameras = lookup {nodes} and querying world->field<scene::Camera>
         !lights_registered()
         
