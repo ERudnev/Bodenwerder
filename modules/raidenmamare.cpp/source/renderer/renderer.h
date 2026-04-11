@@ -6,6 +6,7 @@
 #include <Raidenmamare/materials/core.q1.h>
 #include <Raidenmamare/primitives/base.q1.h>
 #include <Raidenmamare/scene/core.q1.h>
+#include <Raidenmamare/scene/actor.q1.h>
 #include <Raidenmamare/viewport.q1.h>
 
 #include <iQSM/api/_gateway.h>
@@ -27,7 +28,7 @@ namespace rmmr {
         void render_new_temp(PassArguments);
     private:
         void bind_material(PassArguments, material::Core::RuntimeAccess);
-        void bind_actor(PassArguments, material::Core::RuntimeAccess, scene::Node::Id, const primitive::OpenGLPrimitive&);
+        void bind_actor(PassArguments, material::Core::RuntimeAccess, const scene::PrimitiveActor::Quantum&, scene::Node::Id);
         const Resources resources;
         const Device::Id device;
     };

@@ -1,0 +1,19 @@
+// Том очередных задач развития подпроекта iQSM (repo objects, transactions, validation).
+// Содержит сырые идеи, проблемы и направления развития.
+
+#using namespace KQM(file: "core/KQM.tome")
+
+namespace backlog::iqsm {
+
+  repo_objects_commit_input_raii_output: @Statement(~0.7) {
+    Core:
+      Придумать и реализовать транзакционную абстракцию для repo-объектов (Branch/Sequence/Accumulator),
+      где входом является repo::Commit (вместо World) и/или где есть RAII-поведение "auto-push" в receiver.
+      Цель — убрать ручные строки вида "parent.absorb(transaction.push())" и не забывать commit в user code.
+    Reason:
+      Текущий стиль требует вручную пушить/абсорбить deltas и легко забывается при росте кода.
+      Commit уже несет receiver, поэтому хочется сделать транзакцию более безопасной и выразительной.
+  }
+
+}
+

@@ -1,5 +1,0 @@
-namespace rmmr
-  entity Renderer
-    element
-      ?render(#Viewport, #scene::Core)
-    

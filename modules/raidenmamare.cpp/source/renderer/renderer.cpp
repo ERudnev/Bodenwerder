@@ -46,16 +46,27 @@ namespace rmmr {
         }
     }
 
-    void Renderer::bind_actor(PassArguments args, material::Core::RuntimeAccess material_runtime, scene::Node::Id node, const primitive::OpenGLPrimitive& primitive_runtime) {
+    void Renderer::bind_actor(
+        PassArguments args,
+        material::Core::RuntimeAccess material_runtime,
+        const scene::PrimitiveActor::Quantum& actor,
+        scene::Node::Id node
+    ) {
+        const resources::Manager manager{resources};
+        const auto& primitive_runtime = primitive::Base::Operations::provide(args.world, actor.geometry, manager);
+
         for (const auto& binding : material_runtime.bindings) {
             if (binding.location < 0) { continue; }
             const auto name = material::Semantics::name_of(binding.id);
             if (name == "model") {
                 const mat4 model = scene::Node::Operations::transform(args.world, node);
                 glUniformMatrix4fv(binding.location, 1, GL_FALSE, glm::value_ptr(model));
+            } else if (name == "albedo") {
+                glUniform3f(binding.location, actor.albedo.x, actor.albedo.y, actor.albedo.z);
             }
         }
         glBindVertexArray(primitive_runtime.vao);
+        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(primitive_runtime.vertex_count));
     }
 
     void Renderer::render_new_temp(PassArguments args) {
@@ -102,17 +113,11 @@ namespace rmmr {
             const auto shaderProgram = material_core_runtime.program;
             if (!shaderProgram) { throw std::runtime_error("actor material runtime program is null"); }
 
-            const GLint albedo_location = glGetUniformLocation(shaderProgram, "u_albedo");
-
             bind_material(args, material_core_runtime);
-            glUniform3f(albedo_location, 1.0f, 0.5f, 0.2f);
 
             for (const auto node : batch.nodes) {
                 const auto& actor = ops::particle::get<scene::PrimitiveActor>(world, node);
-                const auto& primitive_runtime = primitive::Base::Operations::provide(world, actor.geometry, manager);
-
-                bind_actor(args, material_core_runtime, node, primitive_runtime);
-                glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(primitive_runtime.vertex_count));
+                bind_actor(args, material_core_runtime, actor, node);
             }
         }
     }

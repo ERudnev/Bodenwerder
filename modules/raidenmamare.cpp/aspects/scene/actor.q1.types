@@ -10,5 +10,6 @@ namespace rmmr
       element
         geometry: #primitive::Base
         material: #material::Core
+        albedo: RGB
       table
-        +create(Pos, HPB, geometry: #primitive::Base, material: #material::Core)
+        +create(Pos, HPB, geometry: #primitive::Base, material: #material::Core, albedo: RGB)

@@ -6,7 +6,8 @@ namespace rmmr::scene {
         Pos position,
         HPB hpb,
         primitive::Base::Id geometry,
-        material::Core::Id material) -> Id
+        material::Core::Id material,
+        RGB albedo) -> Id
     {
         const auto node = Node::Operations::create_posHpb(commit, position, hpb);
         ops::particle::create<PrimitiveActor>(
@@ -15,6 +16,7 @@ namespace rmmr::scene {
             PrimitiveActor::Quantum{
                 .geometry = geometry,
                 .material = material,
+                .albedo = albedo,
             }
         );
         return node;

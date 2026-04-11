@@ -33,8 +33,8 @@ namespace rmmr::internal {
         // this objects may vary a lot with Engine develops in time
         maybe<Device::Id> device;
         maybe<material::Core::Id> materialCore;
-        maybe<primitive::Base::Id> primitive;
         maybe<Viewport::Id> viewport; // TODO: remove this link later
+        maybe<primitive::Base::Id> primitive;
         maybe<scene::Core::Id> scene;
     };
 
@@ -56,8 +56,8 @@ Engine::Engine(StartupParameters params) {
         .renderer = {},
         .device = {},
         .materialCore = {},
-        .primitive = {},
         .viewport = {},
+        .primitive = {},
         .scene = {},
     });
 
@@ -175,43 +175,53 @@ void Engine::prepareResources() {
 
 
 void Engine::createScene() {
-    auto& main = state->main;
-
-    const auto actorNode = scene::PrimitiveActor::Operations::create(
-        main,
-        Pos{0.0f, 0.5f, 0.0f},
-        HPB{0.0f, 0.0f, 0.0f},
-        state->primitive,
-        state->materialCore
-    );
-
-    // Placeholder camera: lives on its own node and targets the current viewport.
-    const auto cameraNode = scene::Camera::Operations::create(
-        main,
-        Pos{0.0f, 0.0f, 2.0f},
-        HPB{0.0f, 0.0f, 0.0f},
-        1.04719755f, // ~60 degrees in radians
-        0.1f,
-        100.0f
-    );
-
-    // Placeholder point light: also a node payload.
-    const auto lightNode = scene::Light::Operations::create(
-        main,
-        Pos{2.0f, 2.0f, 2.0f},
-        HPB{0.0f, 0.0f, 0.0f},
-        RGB{1.0f, 1.0f, 1.0f},
-        5.0f,
-        10.0f
-    );
+    repo::Sequence transaction{state->main};
 
     state->scene = ops::particle::create<scene::Core>(
-        main,
+        transaction,
         scene::Core::Quantum{
-            .nodes = vector<scene::Node::Id>{ actorNode, cameraNode, lightNode },
+            .nodes = {},
             .ambient = RGB{0.4f, 0.4f, 0.4f},
             .ambient_intensity = 0.8f,
         });
+
+    for (int i = 0; i < 5; ++i) {
+        ops::particle::modifier<scene::Core>(transaction, state->scene)->nodes.push_back(
+            scene::PrimitiveActor::Operations::create(
+                transaction,
+                Pos{-1.4f + 0.7f * static_cast<float>(i), 0.5f, 0.0f},
+                HPB{0.0f, 0.0f, 0.0f},
+                state->primitive,
+                state->materialCore,
+                RGB{1.0f - 0.15f * static_cast<float>(i), 0.5f, 0.2f + 0.15f * static_cast<float>(i)}
+            )
+        );
+    }
+
+    // Placeholder camera: lives on its own node and targets the current viewport.
+    ops::particle::modifier<scene::Core>(transaction, state->scene)->nodes.push_back(
+        scene::Camera::Operations::create(
+            transaction,
+            Pos{0.0f, 0.0f, 2.0f},
+            HPB{0.0f, 0.0f, 0.0f},
+            1.04719755f, // ~60 degrees in radians
+            0.1f,
+            100.0f
+        )
+    );
+
+    // Placeholder point light: also a node payload.
+    ops::particle::modifier<scene::Core>(transaction, state->scene)->nodes.push_back(scene::Light::Operations::create(
+            transaction,
+            Pos{2.0f, 2.0f, 2.0f},
+            HPB{0.0f, 0.0f, 0.0f},
+            RGB{1.0f, 1.0f, 1.0f},
+            5.0f,
+            10.0f
+        )
+    );
+
+    state->main.absorb(transaction.push());
 }
 
 
