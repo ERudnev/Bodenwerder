@@ -32,7 +32,7 @@ namespace rmmr {
             quantum.clear_color.y,
             quantum.clear_color.z,
             quantum.clear_color.w);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
     const Invariants Viewport::invariants{

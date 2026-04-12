@@ -4,6 +4,7 @@
 #include <iQSM/api/_gateway.h>
 #include <Raidenmamare/math.q1.h>
 #include <Raidenmamare/device.q1.h>
+#include <Raidenmamare/primitives/geometrySemantics.h>
 
 namespace rmmr::primitive {
 
@@ -19,6 +20,9 @@ namespace rmmr::primitive {
         struct Materializer : iqsm::resources::Materializer<Base> {
             struct Passport {
                 string debugName;
+                // Explicit vertex layout contract (channel semantics IDs).
+                // Interleaved buffer: position-only (attrib 0), or position + normal (attribs 0–1).
+                vector<GeometrySemantics::PersistentId> layout;
             };
 
             void materialize(resources::Manager, Reading, Id) const override;
@@ -28,7 +32,8 @@ namespace rmmr::primitive {
         struct Quantum {
             Materializer::Passport passport;
             Device::Id device;
-            vector<Pos> vertices;
+            vector<Pos> positions;
+            vector<Pos> normals;
         };
         struct Global {};
         struct Operations : OwnTypeOperations {

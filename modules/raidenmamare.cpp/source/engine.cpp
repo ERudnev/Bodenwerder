@@ -5,12 +5,10 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <base/maybe.h>
 #include <iQSM/logger.h>
-#include <stdexcept>
+#include <random>
 
 #include <Raidenmamare/device.q1.h>
 #include <Raidenmamare/primitives/base.q1.h>
-#include <Raidenmamare/materials/program.q1.h>
-#include <Raidenmamare/materials/core.q1.h>
 #include <Raidenmamare/viewport.q1.h>
 #include <Raidenmamare/scene/core.q1.h>
 #include <Raidenmamare/scene/actor.q1.h>
@@ -19,6 +17,7 @@
 #include <Raidenmamare/math.q1.h>
 
 // private stuff:
+#include "materials/materialGenerator.h"
 #include "primitives/meshGenerator.h"
 #include "renderer/renderer.h"
 
@@ -33,9 +32,11 @@ namespace rmmr::internal {
 
         // this objects may vary a lot with Engine develops in time
         maybe<Device::Id> device;
-        maybe<material::Core::Id> materialCore;
+        maybe<material::Core::Id> materialAmbient;
+        maybe<material::Core::Id> materialLit;
         maybe<Viewport::Id> viewport; // TODO: remove this link later
         maybe<primitive::Base::Id> primitive;
+        maybe<primitive::Base::Id> primitiveKube;
         maybe<scene::Core::Id> scene;
     };
 
@@ -56,9 +57,11 @@ Engine::Engine(StartupParameters params) {
         .resourceManager = base::make_shared<iqsm::resources::ManagerCore>(schema),
         .renderer = {},
         .device = {},
-        .materialCore = {},
+        .materialAmbient = {},
+        .materialLit = {},
         .viewport = {},
         .primitive = {},
+        .primitiveKube = {},
         .scene = {},
     });
 
@@ -114,47 +117,11 @@ void Engine::prepareResources() {
     Device::Operations::materialize(main, device, resourceManager);
     const auto& devicePassport = ops::particle::get<Device>(main, device).passport;
 
-    // hardcoded for now...
-    // this Program::Id will be saved in state via material::Core later...
-    const material::Program::Id program = ops::resource::declare<material::Program>(
-        main,
-        material::Program::Quantum{
-            .passport = material::Program::Materializer::Passport{
-                .debugName = "triangle",
-                .vertexFilename = "shaders/triangle.vert.glsl",
-                .fragmentFilename = "shaders/triangle.frag.glsl",
-            },
-            .device = device,
-        }
-    );
+    state->materialAmbient = material::MaterialGenerator::ambient(main, device, resourceManager);
+    state->materialLit = material::MaterialGenerator::lit(main, device, resourceManager);
 
-    material::Program::Operations::materialize(main, program, resourceManager);
-
-    state->materialCore = ops::resource::declare<material::Core>(
-        main,
-        material::Core::Quantum{
-            .passport = material::Core::Materializer::Passport{
-                .program = program,
-                .uniforms = material::Core::Operations::uniformIds(vector<string>{
-                    "model",
-                    "view",
-                    "projection",
-                    "albedo",
-                    "ambientColor",
-                    "ambientIntensity",
-                }),
-            },
-            .name = "triangle",
-        }
-    );
-    ops::resource::materialize<material::Core>(main, resourceManager, state->materialCore);
-
-    const auto& materialCoreRuntime = resourceManager->layer<material::Core>().provide(state->materialCore);
-    if (!materialCoreRuntime.program) {
-        throw std::runtime_error("Engine::prepareResources: material::Core runtime program is null");
-    }
-
-    state->primitive = primitive::MeshGenerator::triangle(main, device, resourceManager); 
+    state->primitive = primitive::MeshGenerator::triangle(main, device, resourceManager);
+    state->primitiveKube = primitive::MeshGenerator::kube(main, device, resourceManager);
 
     createViewport(devicePassport.size);
     createScene();
@@ -179,18 +146,37 @@ void Engine::createScene() {
                 Pos{-1.4f + 0.7f * static_cast<float>(i), 0.5f, 0.0f},
                 HPB{0.0f, 0.0f, 0.0f},
                 state->primitive,
-                state->materialCore,
+                state->materialAmbient,
                 RGB{1.0f - 0.15f * static_cast<float>(i), 0.5f, 0.2f + 0.15f * static_cast<float>(i)}
             )
         );
     }
 
+    std::mt19937 rng{std::random_device{}()};
+    std::uniform_real_distribution<float> heading_deg{-180.0f, 180.0f};
+    std::uniform_real_distribution<float> pitch_deg{-45.0f, 45.0f};
+    std::uniform_real_distribution<float> bank_deg{-45.0f, 45.0f};
+
+    for (int i = 0; i < 4; ++i) {
+        ops::particle::modifier<scene::Core>(transaction, state->scene)->nodes.push_back(
+            scene::PrimitiveActor::Operations::create(
+                transaction,
+                Pos{-1.05f + 0.7f * static_cast<float>(i), 0.2f, 0.0f},
+                HPB{heading_deg(rng), pitch_deg(rng), bank_deg(rng)},
+                state->primitiveKube,
+                state->materialLit,
+                RGB{0.2f + 0.2f * static_cast<float>(i), 0.45f, 1.0f - 0.2f * static_cast<float>(i)}
+            )
+        );
+    }
+
     // Placeholder camera: lives on its own node and targets the current viewport.
+    // Rough framing: a bit farther (~2× previous z), higher (~1.3), pitch down toward mid of triangles (y≈0.5) + cubes (y≈0.2).
     ops::particle::modifier<scene::Core>(transaction, state->scene)->nodes.push_back(
         scene::Camera::Operations::create(
             transaction,
-            Pos{0.0f, 0.0f, 2.0f},
-            HPB{0.0f, 0.0f, 0.0f},
+            Pos{0.0f, 1.3f, 4.0f},
+            HPB{0.0f, -12.5f, 0.0f},
             1.04719755f, // ~60 degrees in radians
             0.1f,
             100.0f

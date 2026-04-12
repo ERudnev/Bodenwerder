@@ -39,6 +39,8 @@ namespace rmmr {
                 throw std::runtime_error("Device::Materializer::materialize: glewInit() failed");
             }
 
+            glEnable(GL_DEPTH_TEST);
+
             glfwSetFramebufferSizeCallback(window, [](GLFWwindow*, int framebuffer_width, int framebuffer_height) {
                 glViewport(0, 0, framebuffer_width, framebuffer_height);
             });

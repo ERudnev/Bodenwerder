@@ -3,3 +3,4 @@ namespace rmmr
   type Pos as vec3
   type HPB as vec3
   type RGB as vec3
+  type UV as vec2

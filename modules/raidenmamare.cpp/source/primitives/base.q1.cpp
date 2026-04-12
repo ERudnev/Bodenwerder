@@ -2,7 +2,9 @@
 
 #include <GLFW/glfw3.h>
 
+#include <cstddef>
 #include <stdexcept>
+#include <vector>
 
 namespace rmmr::primitive {
     struct Base_private : Base::Operations {
@@ -14,8 +16,30 @@ namespace rmmr::primitive {
                 throw std::runtime_error("primitive::Base::Materializer::materialize: device is not open");
             }
 
-            if (quantum.vertices.empty()) {
-                throw std::runtime_error("primitive::Base::Materializer::materialize: vertices are empty");
+            if (quantum.positions.empty()) {
+                throw std::runtime_error("primitive::Base::Materializer::materialize: positions are empty");
+            }
+
+            const auto pos_id = GeometrySemantics::id_of("position");
+            const auto normal_id = GeometrySemantics::id_of("normal");
+
+            const bool position_only = quantum.passport.layout.size() == std::size_t{1} && quantum.passport.layout[0] == pos_id;
+            const bool position_normal = quantum.passport.layout.size() == std::size_t{2} && quantum.passport.layout[0] == pos_id
+                && quantum.passport.layout[1] == normal_id;
+
+            if (!position_only && !position_normal) {
+                throw std::runtime_error(
+                    "primitive::Base::Materializer::materialize: unsupported vertex layout (expect position only, or position+normal)");
+            }
+
+            if (position_only) {
+                if (!quantum.normals.empty()) {
+                    throw std::runtime_error("primitive::Base::Materializer::materialize: normals must be empty for position-only layout");
+                }
+            } else {
+                if (quantum.normals.size() != quantum.positions.size()) {
+                    throw std::runtime_error("primitive::Base::Materializer::materialize: normals count must match positions");
+                }
             }
 
             glfwMakeContextCurrent(window);
@@ -30,18 +54,66 @@ namespace rmmr::primitive {
                 throw std::runtime_error("primitive::Base::Materializer::materialize: failed to allocate VAO/VBO");
             }
 
-            glBindVertexArray(runtime.vao);
-            glBindBuffer(GL_ARRAY_BUFFER, runtime.vbo);
-            glBufferData(
-                GL_ARRAY_BUFFER,
-                static_cast<GLsizeiptr>(quantum.vertices.size() * sizeof(Pos)),
-                quantum.vertices.data(),
-                GL_STATIC_DRAW);
+            const std::size_t vertex_count = quantum.positions.size();
+            std::vector<float> interleaved;
 
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Pos), (void*)0);
-            glEnableVertexAttribArray(0);
+            if (position_only) {
+                interleaved.reserve(vertex_count * 3);
+                for (std::size_t i = 0; i < vertex_count; ++i) {
+                    const auto& p = quantum.positions[i];
+                    interleaved.push_back(p.x);
+                    interleaved.push_back(p.y);
+                    interleaved.push_back(p.z);
+                }
 
-            runtime.vertex_count = static_cast<integer>(quantum.vertices.size());
+                constexpr GLsizei stride = static_cast<GLsizei>(3 * sizeof(float));
+
+                glBindVertexArray(runtime.vao);
+                glBindBuffer(GL_ARRAY_BUFFER, runtime.vbo);
+                glBufferData(
+                    GL_ARRAY_BUFFER,
+                    static_cast<GLsizeiptr>(interleaved.size() * sizeof(float)),
+                    interleaved.data(),
+                    GL_STATIC_DRAW);
+
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(static_cast<std::uintptr_t>(0)));
+                glEnableVertexAttribArray(0);
+            } else {
+                interleaved.reserve(vertex_count * 6);
+                for (std::size_t i = 0; i < vertex_count; ++i) {
+                    const auto& p = quantum.positions[i];
+                    const auto& n = quantum.normals[i];
+                    interleaved.push_back(p.x);
+                    interleaved.push_back(p.y);
+                    interleaved.push_back(p.z);
+                    interleaved.push_back(n.x);
+                    interleaved.push_back(n.y);
+                    interleaved.push_back(n.z);
+                }
+
+                constexpr GLsizei stride = static_cast<GLsizei>(6 * sizeof(float));
+
+                glBindVertexArray(runtime.vao);
+                glBindBuffer(GL_ARRAY_BUFFER, runtime.vbo);
+                glBufferData(
+                    GL_ARRAY_BUFFER,
+                    static_cast<GLsizeiptr>(interleaved.size() * sizeof(float)),
+                    interleaved.data(),
+                    GL_STATIC_DRAW);
+
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(static_cast<std::uintptr_t>(0)));
+                glEnableVertexAttribArray(0);
+                glVertexAttribPointer(
+                    1,
+                    3,
+                    GL_FLOAT,
+                    GL_FALSE,
+                    stride,
+                    reinterpret_cast<void*>(static_cast<std::uintptr_t>(3 * sizeof(float))));
+                glEnableVertexAttribArray(1);
+            }
+
+            runtime.vertex_count = static_cast<integer>(vertex_count);
             return runtime;
         }
 

@@ -14,6 +14,7 @@ namespace rmmr::primitive {
         // The commit receiver is expected to apply the delta into a repo object
         // (Branch/Sequence/Accumulator), so the resulting Id becomes observable by the caller.
         static auto triangle(Writing, rmmr::Device::Id, resources::Manager) -> Base::Id;
+        static auto kube(Writing, rmmr::Device::Id, resources::Manager) -> Base::Id;
     };
 
 }

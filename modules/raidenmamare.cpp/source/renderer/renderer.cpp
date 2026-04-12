@@ -69,6 +69,30 @@ namespace rmmr {
         glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(primitive_runtime.vertex_count));
     }
 
+    void Renderer::bind_lights(PassArguments args, material::Core::RuntimeAccess material) {
+        const auto& scene = ops::particle::get<scene::Core>(args.world, args.scene);
+        if (scene.lights.empty()) {
+            return;
+        }
+
+        const auto light_node = scene.lights.front();
+        const auto& light = ops::particle::get<scene::Light>(args.world, light_node);
+        const mat4 light_transform = scene::Node::Operations::transform(args.world, light_node);
+        const Pos light_world_pos{light_transform[3]};
+
+        for (const auto& binding : material.bindings) {
+            if (binding.location < 0) { continue; }
+            const auto name = material::Semantics::name_of(binding.id);
+            if (name == "light0Pos") {
+                glUniform3f(binding.location, light_world_pos.x, light_world_pos.y, light_world_pos.z);
+            } else if (name == "light0Color") {
+                glUniform3f(binding.location, light.color.x, light.color.y, light.color.z);
+            } else if (name == "light0Intensity") {
+                glUniform1f(binding.location, light.intensity);
+            }
+        }
+    }
+
     void Renderer::render_new_temp(PassArguments args) {
         const auto world = args.world;
         const auto viewport = args.viewport;
@@ -114,6 +138,7 @@ namespace rmmr {
             if (!shaderProgram) { throw std::runtime_error("actor material runtime program is null"); }
 
             bind_material(args, material_core_runtime);
+            bind_lights(args, material_core_runtime);
 
             for (const auto node : batch.nodes) {
                 const auto& actor = ops::particle::get<scene::PrimitiveActor>(world, node);

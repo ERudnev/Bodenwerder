@@ -49,22 +49,8 @@ namespace rmmr::material {
 
             char info_log[2048];
             glGetShaderInfoLog(shader, sizeof(info_log), nullptr, info_log);
-            std::cerr << "Program: " << label << " compilation failed: " << info_log << std::endl;
             glDeleteShader(shader);
-            return 0;
-        }
-
-        static auto link_program(GLuint program) -> bool {
-            glLinkProgram(program);
-
-            int success = 0;
-            glGetProgramiv(program, GL_LINK_STATUS, &success);
-            if (success) return true;
-
-            char info_log[2048];
-            glGetProgramInfoLog(program, sizeof(info_log), nullptr, info_log);
-            std::cerr << "Program: linking failed: " << info_log << std::endl;
-            return false;
+            throw std::runtime_error(std::string("Program::compile_shader: ") + label + ": " + info_log);
         }
 
         static auto create_program(const std::filesystem::path& asset_root, const Passport& passport) -> GLuint {
@@ -72,33 +58,45 @@ namespace rmmr::material {
             const auto fragment_path = resolve_program_path(asset_root, passport.fragmentFilename);
 
             const std::string vertex_source = read_text_file(vertex_path);
-            if (vertex_source.empty()) return 0;
+            if (vertex_source.empty()) {
+                throw std::runtime_error(
+                    "Program::create_program: vertex shader source is empty or unreadable: " + vertex_path.string());
+            }
 
             const std::string fragment_source = read_text_file(fragment_path);
-            if (fragment_source.empty()) return 0;
-
-            const GLuint vertex_shader = compile_shader(GL_VERTEX_SHADER, vertex_source, "vertex shader");
-            if (!vertex_shader) return 0;
-
-            const GLuint fragment_shader = compile_shader(GL_FRAGMENT_SHADER, fragment_source, "fragment shader");
-            if (!fragment_shader) {
-                glDeleteShader(vertex_shader);
-                return 0;
+            if (fragment_source.empty()) {
+                throw std::runtime_error(
+                    "Program::create_program: fragment shader source is empty or unreadable: " + fragment_path.string());
             }
+
+            const GLuint vertex_shader =
+                compile_shader(GL_VERTEX_SHADER, vertex_source, passport.vertexFilename.c_str());
+            const GLuint fragment_shader =
+                compile_shader(GL_FRAGMENT_SHADER, fragment_source, passport.fragmentFilename.c_str());
 
             const GLuint program = glCreateProgram();
+            if (!program) {
+                glDeleteShader(vertex_shader);
+                glDeleteShader(fragment_shader);
+                throw std::runtime_error("Program::create_program: glCreateProgram() failed");
+            }
             glAttachShader(program, vertex_shader);
             glAttachShader(program, fragment_shader);
+            glLinkProgram(program);
 
-            const bool linked = link_program(program);
-            glDeleteShader(vertex_shader);
-            glDeleteShader(fragment_shader);
-
-            if (!linked) {
+            int link_ok = 0;
+            glGetProgramiv(program, GL_LINK_STATUS, &link_ok);
+            if (!link_ok) {
+                char info_log[2048];
+                glGetProgramInfoLog(program, sizeof(info_log), nullptr, info_log);
+                glDeleteShader(vertex_shader);
+                glDeleteShader(fragment_shader);
                 glDeleteProgram(program);
-                return 0;
+                throw std::runtime_error(std::string("Program::create_program: link failed: ") + info_log);
             }
 
+            glDeleteShader(vertex_shader);
+            glDeleteShader(fragment_shader);
             return program;
         }
 
@@ -122,9 +120,6 @@ namespace rmmr::material {
 
         const std::filesystem::path asset_root(devicePassport.assets_root);
         const GLuint program = Program_private::create_program(asset_root, passport);
-        if (!program) {
-            throw std::runtime_error("Program::Materializer::materialize: failed to create OpenGL program");
-        }
         manager->layer<Program>().materialize(id, program);
     }
 

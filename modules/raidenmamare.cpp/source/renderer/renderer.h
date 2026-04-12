@@ -29,6 +29,7 @@ namespace rmmr {
     private:
         void bind_material(PassArguments, material::Core::RuntimeAccess);
         void bind_actor(PassArguments, material::Core::RuntimeAccess, const scene::PrimitiveActor::Quantum&, scene::Node::Id);
+        void bind_lights(PassArguments, material::Core::RuntimeAccess);
         const Resources resources;
         const Device::Id device;
     };

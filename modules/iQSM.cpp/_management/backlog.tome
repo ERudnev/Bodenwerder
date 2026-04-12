@@ -7,12 +7,14 @@ namespace backlog::iqsm {
 
   repo_objects_commit_input_raii_output: @Statement(~0.7) {
     Core:
-      Придумать и реализовать транзакционную абстракцию для repo-объектов (Branch/Sequence/Accumulator),
-      где входом является repo::Commit (вместо World) и/или где есть RAII-поведение "auto-push" в receiver.
-      Цель — убрать ручные строки вида "parent.absorb(transaction.push())" и не забывать commit в user code.
+      Изменить существующие repo-объекты (Sequence/Accumulator), чтобы они принимали на вход repo::Commit
+      (вместо World), сохраняли этот Commit внутри, использовали commit.initial как исходный снапшот,
+      а на деструкторе (RAII) автоматически отправляли накопленные изменения в commit.receiver через commit.push(push()).
+      По духу это уже похоже на repo::Staged (scope-based staging buffer, который пушит Delta на выходе из скоупа).
+      Цель — убрать ручные строки вида "parent.absorb(transaction.push())" и снизить риск забыть push/absorb.
     Reason:
       Текущий стиль требует вручную пушить/абсорбить deltas и легко забывается при росте кода.
-      Commit уже несет receiver, поэтому хочется сделать транзакцию более безопасной и выразительной.
+      Commit уже несет receiver, поэтому изменения можно сбрасывать в него автоматически.
   }
 
 }
