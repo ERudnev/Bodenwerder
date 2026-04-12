@@ -5,12 +5,14 @@ namespace rmmr
 
     // OpenGL-backed linked program resource assembled from shader stage files.
     resource Program @external(opengl_program)
+      static
+        ?vertexFilename(name: string, library: string): string  // returns "library/shaders/name.vert.glsl"
+        ?fragmentFilename(name: string, library: string): string // returns "library/shaders/name.frag.glsl"
       passport
-        debugName: string
-        vertexFilename: string
-        fragmentFilename: string
+        name: string
+        library: string
       element
         device: #Device
-        ?provide()->opengl_program
+        ?provide(): opengl_program
         ?materialize()
         ?release()

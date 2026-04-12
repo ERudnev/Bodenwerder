@@ -30,7 +30,7 @@ namespace rmmr::primitive {
         };
 
         struct Quantum {
-            Materializer::Passport passport;
+            const Materializer::Passport passport;
             Device::Id device;
             vector<Pos> positions;
             vector<Pos> normals;

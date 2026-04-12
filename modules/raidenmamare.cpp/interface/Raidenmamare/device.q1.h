@@ -23,7 +23,7 @@ namespace rmmr {
         };
 
         struct Quantum {
-            Materializer::Passport passport;
+            const Materializer::Passport passport;
         };
         struct Global {};
         struct Operations : OwnTypeOperations {

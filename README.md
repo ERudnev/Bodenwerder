@@ -7,6 +7,5 @@
 Работа начинается с контракта: `_seed/contract.tome`
 
 ## Модули
-Модули живут в плоской структуре modiles/
-могут имет управляющие блоки _management (see _seed/methods/management.tome)
-
+Модули живут в плоской структуре modules/
+могут иметь управляющие блоки _management (see _seed/methods/management.tome)

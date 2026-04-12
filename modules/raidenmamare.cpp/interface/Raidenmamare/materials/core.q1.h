@@ -32,7 +32,7 @@ namespace rmmr::material {
         };
 
         struct Quantum {
-            Materializer::Passport passport;
+            const Materializer::Passport passport;
             string name;
         };
         struct Global {};

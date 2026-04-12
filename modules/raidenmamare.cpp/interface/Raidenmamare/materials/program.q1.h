@@ -14,9 +14,8 @@ namespace material {
     struct Program : Handle<Program, GLuint, GLuint>, Require<rmmr::Device> {
         struct Materializer : iqsm::resources::Materializer<Program> {
             struct Passport {
-                string debugName;
-                string vertexFilename;
-                string fragmentFilename;
+                string name;
+                string library;
             };
 
             void materialize(resources::Manager, Reading, Id) const override;
@@ -24,11 +23,14 @@ namespace material {
         };
 
         struct Quantum {
-            Materializer::Passport passport;
+            const Materializer::Passport passport;
             rmmr::Device::Id device;
         };
         struct Global {};
         struct Operations : OwnTypeOperations {
+            static auto vertexFilename(const string& name, const string& library) -> string;
+            static auto fragmentFilename(const string& name, const string& library) -> string;
+
             static void materialize(Reading, Id, resources::Manager);
             static void release(Reading, Id, resources::Manager);
             static auto provide(Reading, Id, resources::Manager) -> RuntimeAccess;

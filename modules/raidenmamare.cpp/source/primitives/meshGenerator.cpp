@@ -143,5 +143,42 @@ namespace rmmr::primitive {
         return id;
     }
 
+    auto MeshGenerator::gridPlane(Writing commit, rmmr::Device::Id device, resources::Manager resourceManager) -> Base::Id {
+        repo::Sequence transaction{commit.initial};
+
+        constexpr float half = 80.0f;
+
+        const auto id = ops::resource::declare<Base>(
+            transaction,
+            Base::Quantum{
+                .passport = Base::Materializer::Passport{
+                    .debugName = "gridPlane",
+                    .layout = vector<GeometrySemantics::PersistentId>{
+                        GeometrySemantics::id_of("position"),
+                    },
+                },
+                .device = device,
+                .positions = vector<Pos>{
+                    Pos{-half, 0.0f, -half},
+                    Pos{half, 0.0f, -half},
+                    Pos{half, 0.0f, half},
+                    Pos{-half, 0.0f, -half},
+                    Pos{half, 0.0f, half},
+                    Pos{-half, 0.0f, half},
+                },
+                .normals = vector<Pos>{},
+            }
+        );
+        primitive::Base::Operations::bake(transaction, id, resourceManager);
+
+        const auto& runtime = resourceManager->layer<Base>().provide(id);
+        if (!runtime.vao || !runtime.vbo || runtime.vertex_count <= integer{0}) {
+            throw std::runtime_error("MeshGenerator::gridPlane: primitive runtime is incomplete (VAO/VBO/count)");
+        }
+
+        commit.push(transaction.push());
+        return id;
+    }
+
 }
 

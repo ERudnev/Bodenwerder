@@ -9,6 +9,7 @@
 #include <string_view>
 
 namespace rmmr::material {
+    using iqsm::q1::string;
     struct Program_private : Program::Operations {
         using Passport = Program::Materializer::Passport;
 
@@ -24,11 +25,11 @@ namespace rmmr::material {
             };
         }
 
-        static auto resolve_program_path(
+        static auto resolve_under_asset_root(
             const std::filesystem::path& asset_root,
-            std::string_view filename) -> std::filesystem::path
+            std::string_view relative_path) -> std::filesystem::path
         {
-            const std::filesystem::path path(filename);
+            const std::filesystem::path path(relative_path);
             if (path.is_absolute()) return path;
             if (asset_root.empty()) {
                 throw std::runtime_error("Program::Materializer::materialize: asset root is empty");
@@ -54,8 +55,11 @@ namespace rmmr::material {
         }
 
         static auto create_program(const std::filesystem::path& asset_root, const Passport& passport) -> GLuint {
-            const auto vertex_path = resolve_program_path(asset_root, passport.vertexFilename);
-            const auto fragment_path = resolve_program_path(asset_root, passport.fragmentFilename);
+            const std::string vertex_rel = Program::Operations::vertexFilename(passport.name, passport.library);
+            const std::string fragment_rel = Program::Operations::fragmentFilename(passport.name, passport.library);
+
+            const auto vertex_path = resolve_under_asset_root(asset_root, vertex_rel);
+            const auto fragment_path = resolve_under_asset_root(asset_root, fragment_rel);
 
             const std::string vertex_source = read_text_file(vertex_path);
             if (vertex_source.empty()) {
@@ -70,9 +74,9 @@ namespace rmmr::material {
             }
 
             const GLuint vertex_shader =
-                compile_shader(GL_VERTEX_SHADER, vertex_source, passport.vertexFilename.c_str());
+                compile_shader(GL_VERTEX_SHADER, vertex_source, vertex_rel.c_str());
             const GLuint fragment_shader =
-                compile_shader(GL_FRAGMENT_SHADER, fragment_source, passport.fragmentFilename.c_str());
+                compile_shader(GL_FRAGMENT_SHADER, fragment_source, fragment_rel.c_str());
 
             const GLuint program = glCreateProgram();
             if (!program) {
@@ -105,6 +109,20 @@ namespace rmmr::material {
             glDeleteProgram(program);
         }
     };
+
+    auto Program::Operations::vertexFilename(const string& name, const string& library) -> string {
+        if (library.empty()) {
+            return "shaders/" + name + ".vert.glsl";
+        }
+        return library + "/shaders/" + name + ".vert.glsl";
+    }
+
+    auto Program::Operations::fragmentFilename(const string& name, const string& library) -> string {
+        if (library.empty()) {
+            return "shaders/" + name + ".frag.glsl";
+        }
+        return library + "/shaders/" + name + ".frag.glsl";
+    }
 
     void Program::Materializer::materialize(resources::Manager manager, Reading world, Program::Id id) const {
         if (manager->materialized<Program>(id)) {

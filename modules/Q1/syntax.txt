@@ -7,12 +7,12 @@
     'type' : defines new type or alias
     'template' : similar to C++ template
     '<...>' : similar to C++ template parameter list
-    'struct' : defines structural type
+    'struct' : defines structural type (body: local type aliases, fields, and optionally operation lines `?` `*` `+` — not `!`)
     'as' : similar to "typedef/using in C++"
     'enum'
     '~' : type-of operator (reference to the type of an expression/member)
     '::' : namespace scope or global namespace if starts path
-    ':' : "has type" (for structure field)
+    ':' : "has type" (for structure field: `field: Type`, and for operation return: `name(args): ReturnType` after the closing `)`)
     '@' : preprocessor directives (seebelow)
     'entity' : declares entity (root particle)
     'attribute' : declares attribute (particle with Owner)
@@ -30,7 +30,6 @@
     '*' : declares state-changing operation (command) signature
     '+' : declares creation factory (convenience create) signature
     '!' : declares validator/invariant signature
-    '->' : declares operation return type
 
   reserved:
     'composite' - subjective and scope-dependent "soft" type for building composites of entities/attributes/components
@@ -71,6 +70,10 @@
     'mat4' : glm-compatible 4x4 float matrix
     'vec3' : glm-compatible 3-floats vec
     'quat' : glm-compatible 4-floats quaternion
+
+  struct bodies (inside `struct`, alongside fields):
+    Operation signatures use the same markers as in aspect `element`, but `!` (validator/invariant) is not allowed.
+    `?` query, `*` command, `+` factory returning a value of the struct type
 
   particle blocks:
     'element' : per-item state+queries/commands (stored in Field container as Item Quantum)

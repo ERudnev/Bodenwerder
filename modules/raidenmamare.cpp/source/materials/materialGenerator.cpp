@@ -11,9 +11,8 @@ namespace rmmr::material {
             transaction,
             material::Program::Quantum{
                 .passport = material::Program::Materializer::Passport{
-                    .debugName = "ambient",
-                    .vertexFilename = "shaders/triangle.vert.glsl",
-                    .fragmentFilename = "shaders/triangle.frag.glsl",
+                    .name = "ambient",
+                    .library = "rmmr",
                 },
                 .device = device,
             }
@@ -26,7 +25,7 @@ namespace rmmr::material {
             material::Core::Quantum{
                 .passport = material::Core::Materializer::Passport{
                     .program = program,
-                    // triangle.vert/frag: no lights — only transforms, per-object albedo, scene ambient hemispheres.
+                    // ambient shaders: no lights — only transforms, per-object albedo, scene ambient hemispheres.
                     .uniforms = material::Core::Operations::uniformIds(vector<string>{
                         "model",
                         "view",
@@ -53,9 +52,8 @@ namespace rmmr::material {
             transaction,
             material::Program::Quantum{
                 .passport = material::Program::Materializer::Passport{
-                    .debugName = "kube",
-                    .vertexFilename = "shaders/kube.vert.glsl",
-                    .fragmentFilename = "shaders/kube.frag.glsl",
+                    .name = "lit",
+                    .library = "rmmr",
                 },
                 .device = device,
             }
@@ -68,7 +66,7 @@ namespace rmmr::material {
             material::Core::Quantum{
                 .passport = material::Core::Materializer::Passport{
                     .program = program,
-                    // kube.vert/frag: same basis as ambient, plus one world-space lamp (N·L + attenuation-style terms in shader).
+                    // lit shaders: same basis as ambient, plus one world-space lamp (N·L + attenuation-style terms in shader).
                     .uniforms = material::Core::Operations::uniformIds(vector<string>{
                         "model",
                         "view",
@@ -82,6 +80,46 @@ namespace rmmr::material {
                     }),
                 },
                 .name = "lit",
+            }
+        );
+
+        ops::resource::materialize<material::Core>(transaction, resourceManager, core);
+
+        commit.push(transaction.push());
+        return core;
+    }
+
+    auto MaterialGenerator::grid(Writing commit, rmmr::Device::Id device, resources::Manager resourceManager) -> Core::Id {
+        repo::Sequence transaction{commit.initial};
+
+        const material::Program::Id program = ops::resource::declare<material::Program>(
+            transaction,
+            material::Program::Quantum{
+                .passport = material::Program::Materializer::Passport{
+                    .name = "Grid",
+                    .library = "rmmr",
+                },
+                .device = device,
+            }
+        );
+
+        material::Program::Operations::materialize(transaction, program, resourceManager);
+
+        const auto core = ops::resource::declare<material::Core>(
+            transaction,
+            material::Core::Quantum{
+                .passport = material::Core::Materializer::Passport{
+                    .program = program,
+                    .uniforms = material::Core::Operations::uniformIds(vector<string>{
+                        "model",
+                        "view",
+                        "projection",
+                        "patternScale",
+                        "colorPrimary",
+                        "colorSecondary",
+                    }),
+                },
+                .name = "grid",
             }
         );
 

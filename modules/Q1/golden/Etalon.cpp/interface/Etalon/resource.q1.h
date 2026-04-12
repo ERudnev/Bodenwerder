@@ -21,8 +21,8 @@ namespace Q1CORE::Etalon {
         };
 
         struct Quantum {
-            Materializer::Passport passport;     // implied by `passport { ... }` section in DSL
-            integer cost_summary;    // from `element` fields in DSL
+            const Materializer::Passport passport; // this "const" prevents helpers to modify Passport even in immutable copy-to-change path!
+            integer cost_summary;                  // from `element` in DSL; mutable instance state
         };
 
         struct Global {};

@@ -10,7 +10,7 @@ namespace Q1CORE
         cost: integer
       element
         cost_summary: integer
-        ?provide()->ScalarFloatFunction
-        *use(arg: float) -> float
-        ?use_free(arg: float) -> float
+        ?provide(): ScalarFloatFunction
+        *use(arg: float): float
+        ?use_free(arg: float): float
 

@@ -13,7 +13,7 @@ namespace rmmr
         device: #Device
         positions: vector<Pos>
         normals: vector<Pos>
-        ?provide()->opengl_primitive
+        ?provide(): opengl_primitive
         ?bake()
         ?release()
 

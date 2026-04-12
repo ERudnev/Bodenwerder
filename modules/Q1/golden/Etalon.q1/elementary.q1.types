@@ -11,7 +11,16 @@ namespace Q1CORE
       type AliasByField ~ Struct::field1 // AliasByField == type of(Struct::field1) == Basic == integer
       struct HasLocalType
         type LocalType as integer
-        field: string          
+        field: string
+
+      struct StructWithMethods
+        type Scalar as float
+        x: Scalar
+        y: Scalar
+        ?length(): Scalar
+        *normalize(Scalar)
+        +fromScalar(argument: Scalar) // {x,x}
+        // invariants "!" not allowed
 
     namespace Namespaces
       namespace Some
@@ -19,6 +28,7 @@ namespace Q1CORE
       namespace Other
         type Type as string  // Type == Q1CORE::Syntax::Namespaces::Other::Type
       type Type as Some::Type // Type == Q1CORE::Syntax::Namespaces::Type == Q1CORE::Syntax::Namespaces::Some::Type == integer
+
 
   
     

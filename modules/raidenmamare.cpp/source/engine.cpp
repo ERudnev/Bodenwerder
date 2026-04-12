@@ -14,6 +14,7 @@
 #include <Raidenmamare/scene/actor.q1.h>
 #include <Raidenmamare/scene/camera.q1.h>
 #include <Raidenmamare/scene/light.q1.h>
+#include <Raidenmamare/controller/basic.q1.h>
 #include <Raidenmamare/math.q1.h>
 
 // private stuff:
@@ -29,15 +30,19 @@ namespace rmmr::internal {
         iqsm::repo::Branch main;
         iqsm::dsl_gateway::resources::Manager resourceManager;
         maybe<rmmr::Renderer> renderer;
+        maybe<Device::Id> device;
 
         // this objects may vary a lot with Engine develops in time
-        maybe<Device::Id> device;
-        maybe<material::Core::Id> materialAmbient;
-        maybe<material::Core::Id> materialLit;
-        maybe<Viewport::Id> viewport; // TODO: remove this link later
-        maybe<primitive::Base::Id> primitive;
-        maybe<primitive::Base::Id> primitiveKube;
+        maybe<Viewport::Id> viewport; // TODO: remove this link later        
         maybe<scene::Core::Id> scene;
+        struct {
+            maybe<material::Core::Id> materialAmbient;
+            maybe<material::Core::Id> materialLit;
+            maybe<material::Core::Id> materialGrid;
+            maybe<primitive::Base::Id> primitive;
+            maybe<primitive::Base::Id> primitiveKube;
+            maybe<primitive::Base::Id> primitiveGrid;
+        } resources;
     };
 
     static auto viewport_aspect_ratio(Reading world, Viewport::Id viewport) -> float {
@@ -57,12 +62,9 @@ Engine::Engine(StartupParameters params) {
         .resourceManager = base::make_shared<iqsm::resources::ManagerCore>(schema),
         .renderer = {},
         .device = {},
-        .materialAmbient = {},
-        .materialLit = {},
         .viewport = {},
-        .primitive = {},
-        .primitiveKube = {},
         .scene = {},
+        .resources = {},
     });
 
     state->device = ops::resource::declare<Device>(
@@ -98,6 +100,7 @@ iqsm::Schema Engine::resourceAspects() {
         scene::PrimitiveActor,
         scene::Camera,
         scene::Light,
+        controller::Core,
         scene::Core>();
 }
 
@@ -117,11 +120,13 @@ void Engine::prepareResources() {
     Device::Operations::materialize(main, device, resourceManager);
     const auto& devicePassport = ops::particle::get<Device>(main, device).passport;
 
-    state->materialAmbient = material::MaterialGenerator::ambient(main, device, resourceManager);
-    state->materialLit = material::MaterialGenerator::lit(main, device, resourceManager);
+    state->resources.materialAmbient = material::MaterialGenerator::ambient(main, device, resourceManager);
+    state->resources.materialLit = material::MaterialGenerator::lit(main, device, resourceManager);
+    state->resources.materialGrid = material::MaterialGenerator::grid(main, device, resourceManager);
 
-    state->primitive = primitive::MeshGenerator::triangle(main, device, resourceManager);
-    state->primitiveKube = primitive::MeshGenerator::kube(main, device, resourceManager);
+    state->resources.primitive = primitive::MeshGenerator::triangle(main, device, resourceManager);
+    state->resources.primitiveKube = primitive::MeshGenerator::kube(main, device, resourceManager);
+    state->resources.primitiveGrid = primitive::MeshGenerator::gridPlane(main, device, resourceManager);
 
     createViewport(devicePassport.size);
     createScene();
@@ -145,8 +150,8 @@ void Engine::createScene() {
                 transaction,
                 Pos{-1.4f + 0.7f * static_cast<float>(i), 0.5f, 0.0f},
                 HPB{0.0f, 0.0f, 0.0f},
-                state->primitive,
-                state->materialAmbient,
+                state->resources.primitive,
+                state->resources.materialAmbient,
                 RGB{1.0f - 0.15f * static_cast<float>(i), 0.5f, 0.2f + 0.15f * static_cast<float>(i)}
             )
         );
@@ -163,12 +168,23 @@ void Engine::createScene() {
                 transaction,
                 Pos{-1.05f + 0.7f * static_cast<float>(i), 0.2f, 0.0f},
                 HPB{heading_deg(rng), pitch_deg(rng), bank_deg(rng)},
-                state->primitiveKube,
-                state->materialLit,
+                state->resources.primitiveKube,
+                state->resources.materialLit,
                 RGB{0.2f + 0.2f * static_cast<float>(i), 0.45f, 1.0f - 0.2f * static_cast<float>(i)}
             )
         );
     }
+
+    ops::particle::modifier<scene::Core>(transaction, state->scene)->nodes.push_back(
+        scene::PrimitiveActor::Operations::create(
+            transaction,
+            Pos{0.0f, 0.0f, 0.0f},
+            HPB{0.0f, 0.0f, 0.0f},
+            state->resources.primitiveGrid,
+            state->resources.materialGrid,
+            RGB{0.0f, 0.0f, 0.0f}
+        )
+    );
 
     // Placeholder camera: lives on its own node and targets the current viewport.
     // Rough framing: a bit farther (~2× previous z), higher (~1.3), pitch down toward mid of triangles (y≈0.5) + cubes (y≈0.2).
@@ -184,7 +200,8 @@ void Engine::createScene() {
     );
 
     // Placeholder point light: also a node payload.
-    ops::particle::modifier<scene::Core>(transaction, state->scene)->nodes.push_back(scene::Light::Operations::create(
+    ops::particle::modifier<scene::Core>(transaction, state->scene)->nodes.push_back(
+        scene::Light::Operations::create(
             transaction,
             Pos{2.0f, 2.0f, 2.0f},
             HPB{0.0f, 0.0f, 0.0f},

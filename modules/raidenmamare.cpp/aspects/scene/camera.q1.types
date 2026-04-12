@@ -10,9 +10,9 @@ namespace rmmr
         fov_y: float
         z_near: float
         z_far: float
-        ?projection(aspect_ratio: float)->mat4
-        ?view()->mat4
-        ?view_projection(aspect_ratio: float)->mat4
+        ?projection(aspect_ratio: float): mat4
+        ?view(): mat4
+        ?view_projection(aspect_ratio: float): mat4
       table
         +create(Pos, HPB, fov_y: float, z_near: float, z_far: float)
 

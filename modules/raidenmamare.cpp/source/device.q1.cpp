@@ -31,6 +31,9 @@ namespace rmmr {
                 throw std::runtime_error("Device::Materializer::materialize: glfwCreateWindow() failed");
             }
 
+            // Rough center on a 5000×1400 display when using a ~3000×1200 client area (tweak if your WM differs).
+            glfwSetWindowPos(window, 1000, 100);
+
             glfwMakeContextCurrent(window);
             glewExperimental = GL_TRUE;
             if (glewInit() != GLEW_OK) {

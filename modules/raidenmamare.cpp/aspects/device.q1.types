@@ -9,7 +9,7 @@ namespace rmmr
       context_major: integer
       context_minor: integer
     element
-      ?provide()->opengl_window
+      ?provide(): opengl_window
       ?present()
       ?poll_events()
       ?materialize()

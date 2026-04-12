@@ -15,6 +15,7 @@ namespace rmmr::primitive {
         // (Branch/Sequence/Accumulator), so the resulting Id becomes observable by the caller.
         static auto triangle(Writing, rmmr::Device::Id, resources::Manager) -> Base::Id;
         static auto kube(Writing, rmmr::Device::Id, resources::Manager) -> Base::Id;
+        static auto gridPlane(Writing, rmmr::Device::Id, resources::Manager) -> Base::Id;
     };
 
 }

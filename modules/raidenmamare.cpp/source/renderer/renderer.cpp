@@ -14,6 +14,14 @@
 
 namespace rmmr {
 
+    static auto material_is_grid(material::Core::RuntimeAccess material) -> bool {
+        for (const auto& binding : material.bindings) {
+            if (binding.location < 0) { continue; }
+            if (material::Semantics::name_of(binding.id) == "patternScale") { return true; }
+        }
+        return false;
+    }
+
     static auto viewport_aspect_ratio(Reading world, Viewport::Id viewport) -> float {
         const auto& quantum = ops::particle::get<Viewport>(world, viewport);
         const float width = quantum.size.x > integer{0} ? static_cast<float>(quantum.size.x) : 1.0f;
@@ -42,6 +50,12 @@ namespace rmmr {
                 glUniformMatrix4fv(binding.location, 1, GL_FALSE, glm::value_ptr(view));
             } else if (name == "projection") {
                 glUniformMatrix4fv(binding.location, 1, GL_FALSE, glm::value_ptr(projection));
+            } else if (name == "patternScale") {
+                glUniform1f(binding.location, 1.0f);
+            } else if (name == "colorPrimary") {
+                glUniform3f(binding.location, 0.45f, 0.48f, 0.52f);
+            } else if (name == "colorSecondary") {
+                glUniform3f(binding.location, 0.1f, 0.12f, 0.14f);
             }
         }
     }
@@ -132,7 +146,7 @@ namespace rmmr {
             }
         }
 
-        for (const auto& batch : batches) {
+        const auto draw_batch = [&](const MaterialBatch& batch) {
             const auto& material_core_runtime = manager->layer<material::Core>().provide(batch.material);
             const auto shaderProgram = material_core_runtime.program;
             if (!shaderProgram) { throw std::runtime_error("actor material runtime program is null"); }
@@ -144,7 +158,25 @@ namespace rmmr {
                 const auto& actor = ops::particle::get<scene::PrimitiveActor>(world, node);
                 bind_actor(args, material_core_runtime, actor, node);
             }
+        };
+
+        for (const auto& batch : batches) {
+            const auto& material_core_runtime = manager->layer<material::Core>().provide(batch.material);
+            if (material_is_grid(material_core_runtime)) { continue; }
+            draw_batch(batch);
         }
+
+        GLboolean depth_write_prev{};
+        glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);
+        glDepthMask(GL_FALSE);
+
+        for (const auto& batch : batches) {
+            const auto& material_core_runtime = manager->layer<material::Core>().provide(batch.material);
+            if (!material_is_grid(material_core_runtime)) { continue; }
+            draw_batch(batch);
+        }
+
+        glDepthMask(depth_write_prev);
     }
 } // namespace rmmr
 

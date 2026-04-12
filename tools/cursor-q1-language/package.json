@@ -2,7 +2,7 @@
   "name": "q1-language",
   "displayName": "Q1 Language",
   "description": "Minimal Q1 syntax highlighting for Cursor/VS Code",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "local",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Programming Languages"],

@@ -7,16 +7,16 @@ namespace Q1CORE
       static
         absolute_min: integer = -1000 // static constants are always defined
         absolute_max: integer = 1000
-        ?from_float(float)->integer
+        ?from_float(float): integer
       element
         data_field: integer
-        ?const_element_method() -> string
+        ?const_element_method(): string
         *nonconst_element_method()
         !min_value() // -1000
         !max_value() // 1000
       table
         +from_float(value_approximate: float)
-        ?const_fieldwide_method() -> string
+        ?const_fieldwide_method(): string
         *nonconst_fieldwide_method()
 
     attribute Tag of SampleEntity
@@ -34,7 +34,7 @@ namespace Q1CORE
     component SampleComponent of SampleEntity
       element
         *example_op_multiply(factor: integer)
-        *example_op_div_with_remainder(divisor: integer) -> integer
+        *example_op_div_with_remainder(divisor: integer): integer
 
     attribute SampleAttribute of SampleEntity
       element

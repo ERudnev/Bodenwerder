@@ -2,6 +2,10 @@
 
 Minimal local language extension to get `*.q1.types` highlighted and recognized as **Q1**.
 
+## Syntax notes (DSL)
+
+- Operation **return types** are written with a colon after the closing parenthesis, e.g. `?length(): Scalar`, `?provide(): opengl_window`, `*use(arg: float): float`. (The older `->` form is no longer used in Q1 types.)
+
 ## Install in Cursor
 
 1. Open Command Palette.
