@@ -4,7 +4,7 @@
 
 #define IQSM_TESTS(X) \
     /* X(typenames_varph) */ \
-    /* X(schema_aspects) */ \
+    X(schema_aspects) \
     /* X(worlddata) */ \
     /* X(delta_merge) */ \
     /* X(validation_anchors) */ \
@@ -13,7 +13,6 @@
     /* X(validation_existence) */ \
     /* X(transaction_repo) */ \
     /* X(globals) */ \
-    /* X(schema) */ \
     /* X(handles) */ \
     X(resource_example) \
     /* X(immutable_containers_perf) */ \
@@ -36,6 +35,7 @@
 
 #define IQSM_OPERATIONS_TESTS(X) \
     X(transaction_repo) \
+    X(globals) \
     // end
 
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)
