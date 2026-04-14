@@ -48,6 +48,7 @@ namespace iqsm::operations::validation {
         template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
         void anchor_any(repo::Commit);
 
+        // Member: std::vector<Anchor::Id> (every id must exist) or std::pair<Anchor::Id, Anchor::Id> (both must exist)
         template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
         void anchor_all(repo::Commit);
     }
@@ -363,7 +364,7 @@ namespace iqsm::operations::validation {
 
     template<meta::Aspect Anchor, meta::Aspect Dependee, auto Member>
     // anchor(all):
-    // - Dependee holds std::vector<Anchor::Id>
+    // - Dependee holds std::vector<Anchor::Id> or std::pair<Anchor::Id, Anchor::Id>
     // - deletes dependee if any anchor id is missing
     void structural::anchor_all(repo::Commit commit)
     {
@@ -375,30 +376,49 @@ namespace iqsm::operations::validation {
         using Quantum = iqsm::Quantum<Dependee>;
         using AnchorId = Id<Anchor>;
         using MemberValue = std::remove_reference_t<decltype(std::declval<Quantum&>().*Member)>;
-        static_assert(std::is_same_v<MemberValue, std::vector<AnchorId>>);
+        static_assert(
+            std::is_same_v<MemberValue, std::vector<AnchorId>>
+            || std::is_same_v<MemberValue, std::pair<AnchorId, AnchorId>>,
+            "anchor_all: member must be vector<Anchor::Id> or pair<Anchor::Id, Anchor::Id>");
 
         const auto anchor_field = world->field<Anchor>();
         const auto dependee_field = world->field<Dependee>();
 
         using Operation = typename delta::FieldDiff<Dependee>::Operation;
 
-        for (const auto& kv : dependee_field->container) {
-            const auto& dependee_id = kv.first;
-            const auto& dependee_item = kv.second;
+        if constexpr (std::is_same_v<MemberValue, std::vector<AnchorId>>) {
+            for (const auto& kv : dependee_field->container) {
+                const auto& dependee_id = kv.first;
+                const auto& dependee_item = kv.second;
 
-            const auto& ids = (dependee_item.get()->*Member);
+                const auto& ids = (dependee_item.get()->*Member);
 
-            bool ok = true;
-            for (const auto& id : ids) {
-                if (not anchor_field->container.contains(id)) {
-                    ok = false;
-                    break;
+                bool ok = true;
+                for (const auto& id : ids) {
+                    if (not anchor_field->container.contains(id)) {
+                        ok = false;
+                        break;
+                    }
+                }
+
+                if (not ok) {
+                    detail::lifecycle::pre_remove_action_into_accumulator<Dependee>(world, acc, dependee_id, dependee_item);
+                    acc.add_op<Dependee>(dependee_id, Operation{ dependee_item, std::nullopt });
                 }
             }
+        } else {
+            for (const auto& kv : dependee_field->container) {
+                const auto& dependee_id = kv.first;
+                const auto& dependee_item = kv.second;
 
-            if (not ok) {
-                detail::lifecycle::pre_remove_action_into_accumulator<Dependee>(world, acc, dependee_id, dependee_item);
-                acc.add_op<Dependee>(dependee_id, Operation{ dependee_item, std::nullopt });
+                const auto& pr = (dependee_item.get()->*Member);
+                const bool ok = anchor_field->container.contains(pr.first)
+                    && anchor_field->container.contains(pr.second);
+
+                if (not ok) {
+                    detail::lifecycle::pre_remove_action_into_accumulator<Dependee>(world, acc, dependee_id, dependee_item);
+                    acc.add_op<Dependee>(dependee_id, Operation{ dependee_item, std::nullopt });
+                }
             }
         }
 

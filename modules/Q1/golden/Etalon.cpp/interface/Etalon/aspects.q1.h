@@ -20,13 +20,14 @@ namespace Q1CORE::Etalon {
         struct Global {};
         static const Invariants invariants;
         struct Operations : OwnTypeOperations {
+            static constexpr integer max_elements = integer{2000};
             static constexpr integer absolute_min = integer{-1000};
             static constexpr integer absolute_max = integer{1000};
             static auto from_float(float) -> integer;
 
             static auto create_from_float(Writing, float field_value) -> Id;
 
-            static auto example_const_fieldwide_method(Reading) -> string;
+            static auto example_const_fieldwide_method(Reading) -> integer;
             static auto example_const_element_method(Reading, Id) -> float;
             static void example_nonconst_fieldwide_method(Writing);
             static void example_nonconst_element_method(Writing, Id);

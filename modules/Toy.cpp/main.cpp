@@ -4,6 +4,20 @@
 #include <iQSM/logger.h>
 #include <Raidenmamare/engine.h>
 
+/*
+struct State {
+    std::unique_ptr<rmmr::Engine> engine;
+
+};
+
+
+State createState() {
+    State state;
+
+    state = std::make_shared<
+}
+*/
+
 int main() {
     using namespace iqsm::logger;
     message("[{}] Test app is started...", to_string(now()));

@@ -3,6 +3,7 @@
 #include <iQSM/api/_gateway_equal.h>
 
 #include <algorithm>
+#include <vector>
 
 namespace Q1CORE::Etalon {
 
@@ -19,12 +20,7 @@ namespace Q1CORE::Etalon {
     // SampleEntity
     struct SampleEntity_private : SampleEntity::Operations {
 
-        static auto example_private_const_fieldwide_method(Reading) -> string { return {}; }
-        static auto example_private_const_element_method(Reading, Id) -> float { return 0.0f; }
-
-        static void example_private_nonconst_fieldwide_method(Writing) {}
-        static void example_private_nonconst_element_method(Writing, Id) {}
-
+        //@ Reading interface is required for possible other aspects
         static auto min_value(Reading, Id, const Quantum& before) -> ItemChange {
             auto after = before;
             after.data_field = std::max(after.data_field, absolute_min);
@@ -40,7 +36,24 @@ namespace Q1CORE::Etalon {
             if (ops::particle::equal<SampleEntity>(after, before)) return {};
             return after;
         }
-        static void example_private_validate_table(Writing) {}
+
+        static void some_logic_fieldwide_invariant(Writing commit) {
+            const auto world = commit.initial;
+            const auto& container = world->field<SampleEntity>()->container;
+            const auto cap = static_cast<std::size_t>(max_elements);
+            if (container.size() <= cap) return;
+
+            std::vector<Id> ids;
+            ids.reserve(container.size());
+            for (const auto& kv : container) {
+                ids.push_back(kv.first);
+            }
+
+            const std::size_t over = container.size() - cap;
+            for (std::size_t i = 0; i < over; ++i) {
+                ops::particle::remove<SampleEntity>(commit, ids[i]);
+            }
+        }
     };
     auto SampleEntity::Operations::from_float(float value_approximate) -> integer {
         const auto value = static_cast<integer>(value_approximate);
@@ -49,17 +62,39 @@ namespace Q1CORE::Etalon {
     auto SampleEntity::Operations::create_from_float(Writing gate, float field_value) -> Id {
         return ops::particle::create<SampleEntity>(gate, Quantum{from_float(field_value)});
     }
-    auto SampleEntity::Operations::example_const_fieldwide_method(Reading) -> string { return {}; }
+    auto SampleEntity::Operations::example_const_fieldwide_method(Reading world) -> integer {
+        integer sum = integer{0};
+        for (const auto& kv : world->field<SampleEntity>()->container) {
+            sum = sum + kv.second->data_field;
+        }
+        return sum;
+    }
     auto SampleEntity::Operations::example_const_element_method(Reading, Id) -> float { return 0.0f; }
-    void SampleEntity::Operations::example_nonconst_fieldwide_method(Writing) {}
-    void SampleEntity::Operations::example_nonconst_element_method(Writing, Id) {}    
+    void SampleEntity::Operations::example_nonconst_fieldwide_method(Writing commit) {
+        const auto world = commit.initial;
+        const auto& container = world->field<SampleEntity>()->container;
+        if (container.empty()) return;
+
+        auto it = container.begin();
+        Id min_id = it->first;
+        integer min_val = it->second->data_field;
+        for (++it; it != container.end(); ++it) {
+            const auto v = it->second->data_field;
+            if (v < min_val) {
+                min_val = v;
+                min_id = it->first;
+            }
+        }
+        ops::particle::remove<SampleEntity>(commit, min_id);
+    }
+    void SampleEntity::Operations::example_nonconst_element_method(Writing, Id) {}
 
     const Invariants SampleEntity::invariants{
         .structural = {},
         .logical = {
             invariant::for_each_item<SampleEntity, &SampleEntity_private::min_value>,
             invariant::for_each_item<SampleEntity, &SampleEntity_private::max_value>,
-            &SampleEntity_private::example_private_validate_table,
+            &SampleEntity_private::some_logic_fieldwide_invariant,
         },
     };
 

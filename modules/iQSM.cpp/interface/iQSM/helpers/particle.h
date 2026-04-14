@@ -1,6 +1,7 @@
 #pragma once
 
 #include <format>
+#include <functional>
 #include <stdexcept>
 #include <utility>
 
@@ -38,6 +39,10 @@ namespace iqsm::helpers::particle {
 
   template<meta::Particle Meta>
   bool exists(World world, Id<Meta> id);
+
+  // Mass operation: run the same per-item callable for every id in Field<Meta> (ids from commit.initial); each call receives the same commit and the forwarded trailing arguments.
+  template<meta::Particle Meta, typename F, typename... Args>
+  void massop(repo::Commit commit, F&& op, Args&&... args);
 
 } // namespace iqsm::helpers::particle
 
@@ -125,6 +130,14 @@ namespace iqsm::helpers::particle {
     const auto before = field->container.at(id);
     repo::Staged staged{commit};
     staged.remove<Meta>(id, before);
+  }
+
+  template<meta::Particle Meta, typename F, typename... Args>
+  void massop(repo::Commit commit, F&& op, Args&&... args) {
+    const auto world = commit.initial;
+    for (const auto& kv : world->field<Meta>()->container) {
+      std::invoke(std::forward<F>(op), commit, kv.first, std::forward<Args>(args)...);
+    }
   }
 
 } // namespace iqsm::helpers::particle

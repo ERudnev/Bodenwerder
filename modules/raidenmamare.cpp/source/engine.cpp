@@ -51,15 +51,22 @@ namespace rmmr::internal {
         const float height = quantum.size.y > integer{0} ? static_cast<float>(quantum.size.y) : 1.0f;
         return width / height;
     }
+
+    static void advance_demo_frame(Writing commit, GLFWwindow* window, seconds now_sec) {
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+            glfwSetWindowShouldClose(window, true);
+        }
+
+        controller::Core::Operations::update(commit, now_sec);
+    }
 }
 
 namespace rmmr {
 
 Engine::Engine(StartupParameters params) {
-    const auto schema = resourceAspects();
     state = std::make_shared<State>(State{
-        .main = iqsm::repo::Branch(ops::world::create(schema)),
-        .resourceManager = base::make_shared<iqsm::resources::ManagerCore>(schema),
+        .main = iqsm::repo::Branch(ops::world::create(schema())),
+        .resourceManager = base::make_shared<iqsm::resources::ManagerCore>(schema()),
         .renderer = {},
         .device = {},
         .viewport = {},
@@ -89,7 +96,7 @@ Engine::~Engine() noexcept {
     shutdown();
 }
 
-iqsm::Schema Engine::resourceAspects() {
+iqsm::Schema Engine::schema() {
     return ops::schema::assemble<
         Device,
         material::Program,
@@ -235,16 +242,16 @@ int Engine::run_render_demo() {
 
     GLFWwindow* window = Device::Operations::provide(main, device, resourceManager);
 
-
     while (!glfwWindowShouldClose(window)) {
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-            glfwSetWindowShouldClose(window, true);
-        }
+        Device::Operations::poll_events(main, device, resourceManager);
+
+        const double now_sec = glfwGetTime();
+
+        internal::advance_demo_frame(main, window, now_sec);
 
         state->renderer->render_new_temp({main, state->viewport, state->scene});
 
         Device::Operations::present(main, device, resourceManager);
-        Device::Operations::poll_events(main, device, resourceManager);
     }
 
     shutdown();

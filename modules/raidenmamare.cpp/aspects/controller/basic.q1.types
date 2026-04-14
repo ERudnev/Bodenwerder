@@ -2,8 +2,8 @@ namespace rmmr
     
     attribute Core of scene::Node
       table // literally this is "input state"... dont worry, this is implicit design.
-        clock: time
+        clock: double
         keys: vector<bool> // simplified for now
         mouse: index2
         active: vector<#>
-        *update(dt: seconds)
+        *update(now: seconds)

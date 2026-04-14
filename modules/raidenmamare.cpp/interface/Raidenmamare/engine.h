@@ -26,13 +26,16 @@ namespace rmmr {
         explicit Engine(StartupParameters);
         ~Engine() noexcept;
 
+        // Schema (model) of the world/resources the engine expects to create.
+        // Exposed so engine users can build compatible models on their side.
+        static iqsm::Schema schema();
+
         // Runs the OpenGL demo. Returns 0 on success, non-zero on failure.
         int run_render_demo();
 
     private:
         using State = internal::EngineState;
 
-        static iqsm::Schema resourceAspects();
         void prepareResources();
         void createScene();
         void createViewport(index2 size, index2 origin = index2{0, 0});

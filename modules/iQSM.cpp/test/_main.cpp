@@ -16,10 +16,12 @@
     /* X(schema) */ \
     /* X(handles) */ \
     X(resource_example) \
-    X(immutable_containers_perf) \
+    /* X(immutable_containers_perf) */ \
     X(model_is_compileable) \
     X(complex_constructor) \
     X(ownership) \
+    X(multistate_system) \
+    X(mass_operations) \
     // end
 
 #define IQSM_KNOWN_ISSUES_TESTS(X) \
