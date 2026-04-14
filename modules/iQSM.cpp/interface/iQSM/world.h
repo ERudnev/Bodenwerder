@@ -23,6 +23,8 @@ namespace iqsm {
 
         explicit WorldObject(Schema s) : id(Id::generate_random()), schema(s) {}
 
+        cref<FieldAbstract> field(TypeId rttid) const;
+
         template<meta::Aspect Meta>
         Field<Meta> field() const;
 
@@ -35,15 +37,19 @@ namespace iqsm {
     };
 }
 
-template<iqsm::meta::Aspect Meta>
-iqsm::Field<Meta> iqsm::WorldObject::field() const {
-    const TypeId rttid = types::aspectId<Meta>();
+inline iqsm::cref<iqsm::FieldAbstract> iqsm::WorldObject::field(TypeId rttid) const {
     basis_required(rttid);
 
     auto untyped = schema->aspects.at(rttid).field.zero;
     if (const auto* slot = fields.find(rttid); slot) {
         untyped = *slot;
     }
-    return base::shared_ref_cast<const FieldData<Meta>>(untyped);
+    return untyped;
+}
+
+template<iqsm::meta::Aspect Meta>
+iqsm::Field<Meta> iqsm::WorldObject::field() const {
+    const TypeId rttid = types::aspectId<Meta>();
+    return base::shared_ref_cast<const FieldData<Meta>>(field(rttid));
 }
 

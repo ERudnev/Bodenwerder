@@ -11,6 +11,7 @@ namespace RnD::Logic {
     struct House : Entity<House>, Require<> {
         struct Quantum {
             integer happiness;
+            integer dynamics;
         };
         struct Global {};
         static const Invariants invariants;

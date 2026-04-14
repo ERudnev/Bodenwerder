@@ -1,22 +1,43 @@
 #include <iostream>
 #include <filesystem>
 
+#include <iQSM/api/_gateway.h>
 #include <iQSM/logger.h>
+#include <iQSM/references.h>
+#include <iQSM/repository/agents/collaboration.h>
+#include <iQSM/repository/agents/subsystem.h>
+#include <iQSM/repository/branch.h>
 #include <Raidenmamare/engine.h>
 
-/*
-struct State {
-    std::unique_ptr<rmmr::Engine> engine;
 
-};
+namespace Model {
+    struct Logic : iqsm::agents::Subsystem {
+        explicit Logic(iqsm::Schema schema)
+            : schema_(schema)
+            , main(iqsm::helpers::world::create(schema_))
+        {}
 
+        auto schema() const -> iqsm::Schema override { return schema_; }
 
-State createState() {
-    State state;
+        auto access() -> Update override {
+            struct Replacer {
+                iqsm::repo::Branch* main;
+                void operator()(iqsm::World next) const { main->rebase(next); }
+            };
 
-    state = std::make_shared<
+            return Update{
+                .current = main,
+                .replace = Replacer{&main},
+            };
+        }
+
+    private:
+        iqsm::Schema schema_;
+        iqsm::repo::Branch main;
+    };
+
 }
-*/
+
 
 int main() {
     using namespace iqsm::logger;
@@ -31,6 +52,12 @@ int main() {
         .context_minor = 3,
     };
 
-    rmmr::Engine renderer(engine_startup_parameters);
-    return renderer.run_render_demo();
+    const auto engineObj = base::make_shared<rmmr::Engine>(engine_startup_parameters);
+    const auto schema = engineObj->schema();
+    const auto logicObj = base::make_shared<Model::Logic>(schema);
+
+    iqsm::agents::Collaboration collaboration(logicObj, engineObj); // placeholder
+    collaboration.sync();
+
+    return engineObj->run_render_demo();
 }

@@ -4,7 +4,9 @@ namespace RnD
     entity House
       element
         happiness: integer
-    
+        dynamics: integer;
+        !happiness_clamped() // happiness is [0..20]
+
     entity Pairing
       element
         participants: pair<#House> @anchor(all)

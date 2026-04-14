@@ -37,13 +37,16 @@ namespace iqsm {
 
         std::map<TypeId, Entry> aspects;
         bool empty() const { return aspects.empty(); }
+        auto types() const -> TypeSet;
 
         bool depends(TypeId depender, TypeId dependee) const; // transitively
 
         template<meta::Aspect... Leaves>
         static SchemaObject assemble();
 
+        // Schema/TypeSet operations:
         static Schema merge(Schema first, Schema second);
+        static Schema intersection(Schema first, Schema second); //not uset yet.. may be forever :(
 
     private:
         void check_closed() const;

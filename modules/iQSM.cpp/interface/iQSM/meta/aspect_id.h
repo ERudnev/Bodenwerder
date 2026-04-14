@@ -5,6 +5,7 @@
 
 #include <iQSM/meta/concepts.h>
 #include <iQSM/types.h>
+#include <unordered_set>
 
 namespace iqsm::types {
     using RuntimeId = ::iqsm::internals::Types::RuntimeId;

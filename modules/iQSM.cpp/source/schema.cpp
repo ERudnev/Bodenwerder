@@ -7,6 +7,14 @@
 #include <vector>
 
 namespace iqsm {
+    auto SchemaObject::types() const -> TypeSet{
+        TypeSet out;
+        for (const auto& [id, _] : aspects) {
+            out.insert(id);
+        }
+        return out;
+    }
+
     Schema SchemaObject::merge(Schema first, Schema second) {
         if (first.get() == second.get()) { return first; }
         if (first->empty()) { return second; }
@@ -48,6 +56,64 @@ namespace iqsm {
                 }
             } else {
                 out->aspects.emplace(typeId, rhs);
+            }
+        }
+
+        out->check_closed();
+        out->update_required_by();
+        return freeze(out);
+    }
+
+    Schema SchemaObject::intersection(Schema first, Schema second) {
+        if (first.get() == second.get()) { return first; }
+        if (first->empty() || second->empty()) { return freeze(base::make_shared<SchemaObject>()); }
+
+        auto out = base::make_shared<SchemaObject>();
+
+        for (const auto& [typeId, lhs] : first->aspects) {
+            const auto rhs_it = second->aspects.find(typeId);
+            if (rhs_it == second->aspects.end()) continue;
+
+            const auto& rhs = rhs_it->second;
+
+            if (lhs.name != rhs.name) {
+                throw std::runtime_error(std::format(
+                    "Schema::intersection(): incompatible names for shared aspect (hash={})",
+                    typeId.hash_code()));
+            }
+
+            if (lhs.invariants.structural != rhs.invariants.structural || lhs.invariants.logical != rhs.invariants.logical) {
+                throw std::runtime_error(std::format(
+                    "Schema::intersection(): incompatible invariants for aspect '{}'",
+                    lhs.name));
+            }
+
+            if (lhs.resource.create_slot != rhs.resource.create_slot) {
+                throw std::runtime_error(std::format(
+                    "Schema::intersection(): incompatible resource runtime for aspect '{}'",
+                    lhs.name));
+            }
+
+            if (lhs.delta.make_delta_field != rhs.delta.make_delta_field
+                || lhs.delta.integrate_field != rhs.delta.integrate_field
+                || lhs.delta.empty != rhs.delta.empty
+                || lhs.delta.clone != rhs.delta.clone
+                || lhs.delta.absorb != rhs.delta.absorb) {
+                throw std::runtime_error(std::format(
+                    "Schema::intersection(): incompatible delta ops for aspect '{}'",
+                    lhs.name));
+            }
+
+            out->aspects.emplace(typeId, lhs);
+        }
+
+        for (auto& [_, entry] : out->aspects) {
+            for (auto it = entry.require.begin(); it != entry.require.end();) {
+                if (out->aspects.contains(*it)) {
+                    ++it;
+                } else {
+                    it = entry.require.erase(it);
+                }
             }
         }
 

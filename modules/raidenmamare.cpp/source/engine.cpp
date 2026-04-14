@@ -24,49 +24,51 @@
 
 using namespace iqsm::dsl_gateway;
 
-namespace rmmr::internal {
-
-    struct EngineState {
-        iqsm::repo::Branch main;
-        iqsm::dsl_gateway::resources::Manager resourceManager;
-        maybe<rmmr::Renderer> renderer;
-        maybe<Device::Id> device;
-
-        // this objects may vary a lot with Engine develops in time
-        maybe<Viewport::Id> viewport; // TODO: remove this link later        
-        maybe<scene::Core::Id> scene;
-        struct {
-            maybe<material::Core::Id> materialAmbient;
-            maybe<material::Core::Id> materialLit;
-            maybe<material::Core::Id> materialGrid;
-            maybe<primitive::Base::Id> primitive;
-            maybe<primitive::Base::Id> primitiveKube;
-            maybe<primitive::Base::Id> primitiveGrid;
-        } resources;
-    };
-
-    static auto viewport_aspect_ratio(Reading world, Viewport::Id viewport) -> float {
-        const auto& quantum = ops::particle::get<Viewport>(world, viewport);
-        const float width = quantum.size.x > integer{0} ? static_cast<float>(quantum.size.x) : 1.0f;
-        const float height = quantum.size.y > integer{0} ? static_cast<float>(quantum.size.y) : 1.0f;
-        return width / height;
-    }
-
-    static void advance_demo_frame(Writing commit, GLFWwindow* window, seconds now_sec) {
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-            glfwSetWindowShouldClose(window, true);
-        }
-
-        controller::Core::Operations::update(commit, now_sec);
-    }
-}
-
 namespace rmmr {
 
+struct Engine::State {
+    iqsm::repo::Branch main;
+    iqsm::dsl_gateway::resources::Manager resourceManager;
+    maybe<rmmr::Renderer> renderer;
+    maybe<Device::Id> device;
+
+    // this objects may vary a lot with Engine develops in time
+    maybe<Viewport::Id> viewport; // TODO: remove this link later        
+    maybe<scene::Core::Id> scene;
+    struct {
+        maybe<material::Core::Id> materialAmbient;
+        maybe<material::Core::Id> materialLit;
+        maybe<material::Core::Id> materialGrid;
+        maybe<primitive::Base::Id> primitive;
+        maybe<primitive::Base::Id> primitiveKube;
+        maybe<primitive::Base::Id> primitiveGrid;
+    } resources;
+
+    static float viewport_aspect_ratio(Reading, Viewport::Id);
+    static void advance_demo_frame(Writing, GLFWwindow*, seconds now_sec);
+};
+
+float Engine::State::viewport_aspect_ratio(Reading world, Viewport::Id viewport) {
+    const auto& quantum = ops::particle::get<Viewport>(world, viewport);
+    const float width = quantum.size.x > integer{0} ? static_cast<float>(quantum.size.x) : 1.0f;
+    const float height = quantum.size.y > integer{0} ? static_cast<float>(quantum.size.y) : 1.0f;
+    return width / height;
+}
+
+void Engine::State::advance_demo_frame(Writing commit, GLFWwindow* window, seconds now_sec) {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
+
+    controller::Core::Operations::update(commit, now_sec);
+}
+
+
+// Engine itself
 Engine::Engine(StartupParameters params) {
     state = std::make_shared<State>(State{
-        .main = iqsm::repo::Branch(ops::world::create(schema())),
-        .resourceManager = base::make_shared<iqsm::resources::ManagerCore>(schema()),
+        .main = iqsm::repo::Branch(ops::world::create(schema_static())),
+        .resourceManager = base::make_shared<iqsm::resources::ManagerCore>(schema_static()),
         .renderer = {},
         .device = {},
         .viewport = {},
@@ -96,7 +98,7 @@ Engine::~Engine() noexcept {
     shutdown();
 }
 
-iqsm::Schema Engine::schema() {
+iqsm::Schema Engine::schema_static() {
     return ops::schema::assemble<
         Device,
         material::Program,
@@ -109,6 +111,22 @@ iqsm::Schema Engine::schema() {
         scene::Light,
         controller::Core,
         scene::Core>();
+}
+
+auto Engine::schema() const -> iqsm::Schema {
+    return Engine::schema_static();
+}
+
+auto Engine::access() -> iqsm::agents::Subsystem::Update {
+    struct Replacer {
+        State* state;
+        void operator()(iqsm::World next) const { state->main.rebase(next); }
+    };
+
+    return iqsm::agents::Subsystem::Update{
+        .current = state->main,
+        .replace = Replacer{state.get()},
+    };
 }
 
 void Engine::shutdown() noexcept {
@@ -247,7 +265,7 @@ int Engine::run_render_demo() {
 
         const double now_sec = glfwGetTime();
 
-        internal::advance_demo_frame(main, window, now_sec);
+        State::advance_demo_frame(main, window, now_sec);
 
         state->renderer->render_new_temp({main, state->viewport, state->scene});
 

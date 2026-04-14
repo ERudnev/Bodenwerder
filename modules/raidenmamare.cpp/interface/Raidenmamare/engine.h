@@ -4,21 +4,16 @@
 #include <memory>
 
 #include <iQSM/schema.h>
+#include <iQSM/repository/agents/subsystem.h>
 
 // this include will be removed from "public" Engine interface after "Engine::StartupParameters" become facade type (just config file to read?)
 #include <Raidenmamare/device.q1.h>
-
-
-namespace rmmr::internal {
-    // local forward to Engine internal state:
-    struct EngineState;
-}
 
 namespace rmmr {
 
     using namespace iqsm::q1;
 
-    class Engine {
+    class Engine : public iqsm::agents::Subsystem {
     public:
         // temp: this will become separate type one day:
         using StartupParameters = Device::Materializer::Passport;
@@ -26,15 +21,16 @@ namespace rmmr {
         explicit Engine(StartupParameters);
         ~Engine() noexcept;
 
-        // Schema (model) of the world/resources the engine expects to create.
-        // Exposed so engine users can build compatible models on their side.
-        static iqsm::Schema schema();
+        auto schema() const -> iqsm::Schema override;
+        auto access() -> iqsm::agents::Subsystem::Update override;
 
         // Runs the OpenGL demo. Returns 0 on success, non-zero on failure.
         int run_render_demo();
 
     private:
-        using State = internal::EngineState;
+        struct State;
+
+        static iqsm::Schema schema_static();
 
         void prepareResources();
         void createScene();
