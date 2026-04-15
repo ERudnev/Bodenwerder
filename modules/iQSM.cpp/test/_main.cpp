@@ -36,6 +36,7 @@
 #define IQSM_OPERATIONS_TESTS(X) \
     X(transaction_repo) \
     X(globals) \
+    X(commit_snapshot_fanout) \
     // end
 
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)
