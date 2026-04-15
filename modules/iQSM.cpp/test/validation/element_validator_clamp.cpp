@@ -7,7 +7,7 @@ namespace tests {
         using namespace iqsm::dsl_gateway;
         using namespace Q1CORE::Etalon;
 
-        repo::Branch master{ops::world::create(ops::schema::assemble<SampleEntity>())};
+        repo::Branch master{ops::world::create_no_resources(ops::schema::assemble<SampleEntity>())};
 
         const auto too_small = ops::particle::create<SampleEntity>(master, SampleEntity::Quantum{.data_field = integer{-1005}});
         const auto too_large = ops::particle::create<SampleEntity>(master, SampleEntity::Quantum{.data_field = integer{1005}});

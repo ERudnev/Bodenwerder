@@ -9,7 +9,7 @@ namespace tests {
         using namespace iqsm::dsl_gateway;
         using namespace Q1CORE::Etalon;
 
-        repo::Branch master{ops::world::create(ops::schema::assemble<Remnant>())};
+        repo::Branch master{ops::world::create_no_resources(ops::schema::assemble<Remnant>())};
         const auto sampleEntity = ops::particle::create<SampleEntity>(master, SampleEntity::Quantum{
             .data_field = integer{7},
         });

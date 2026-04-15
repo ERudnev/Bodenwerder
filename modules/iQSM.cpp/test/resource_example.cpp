@@ -10,8 +10,8 @@ namespace tests {
         using Q1CORE::Etalon::SampleResource;
 
         const auto schema = ops::schema::assemble<SampleResource>();
-        repo::Branch master(ops::world::create(schema));
         resources::Manager manager = base::make_shared<iqsm::resources::ManagerCore>(schema);
+        repo::Branch master(ops::world::create(schema, iqsm::freeze(manager)));
 
         const auto loaded_sin = ops::resource::create<SampleResource>(
             master,
@@ -43,9 +43,9 @@ namespace tests {
 
         EXPECT_TRUE(ops::resource::materialized<SampleResource>(manager, unloaded_cos));
 
-        const auto provided_cos = ops::resource::provide<SampleResource>(master, manager, unloaded_cos);
-        const auto paid_sin = SampleResource::Operations::use(master, loaded_sin, manager, 27.0f);
-        const auto free_sin = SampleResource::Operations::use_free(master, loaded_sin, manager, 10.0f);
+        const auto provided_cos = ops::resource::provide<SampleResource>(master, unloaded_cos);
+        const auto paid_sin = SampleResource::Operations::use(master, loaded_sin, 27.0f);
+        const auto free_sin = SampleResource::Operations::use_free(master, loaded_sin, 10.0f);
         const auto free_cos = provided_cos(7.0f);
 
         EXPECT_TRUE(std::abs(paid_sin - std::sin(27.0f)) < 1e-5f);

@@ -39,7 +39,7 @@ namespace rmmr::primitive {
         struct Operations : OwnTypeOperations {
             static void bake(Reading, Id, resources::Manager);
             static void release(Reading, Id, resources::Manager);
-            static auto provide(Reading, Id, resources::Manager) -> RuntimeAccess;
+            static auto provide(Reading, Id) -> RuntimeAccess;
         };
         static const Invariants invariants;
     };

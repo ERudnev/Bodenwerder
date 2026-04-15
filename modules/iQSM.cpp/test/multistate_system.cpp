@@ -31,7 +31,7 @@ namespace tests {
                 return schema;
             }
 
-            iqsm::repo::Branch main{ops::world::create(definedSchema())};
+            iqsm::repo::Branch main{ops::world::create_no_resources(definedSchema())};
 
             auto schema() const -> iqsm::Schema override { return definedSchema(); }
             auto access() -> Update override {
@@ -71,7 +71,7 @@ namespace tests {
                 return schema;
             }
 
-            iqsm::repo::Branch main{ops::world::create(definedSchema())};
+            iqsm::repo::Branch main{ops::world::create_no_resources(definedSchema())};
 
             auto schema() const -> iqsm::Schema override { return definedSchema(); }
             auto access() -> Update override {
@@ -150,7 +150,7 @@ void multistate_system() {
                 return schema;
             }
 
-            iqsm::repo::Branch main{ops::world::create(definedSchema())};
+            iqsm::repo::Branch main{ops::world::create_no_resources(definedSchema())};
 
             auto schema() const -> iqsm::Schema override { return definedSchema(); }
             auto access() -> Update override {

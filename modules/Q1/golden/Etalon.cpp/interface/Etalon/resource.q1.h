@@ -30,9 +30,9 @@ namespace Q1CORE::Etalon {
         static const Invariants invariants;
 
         struct Operations : OwnTypeOperations {
-            static auto provide(Reading, Id, resources::Manager) -> RuntimeAccess;
-            static auto use(Writing, Id, resources::Manager, float arg) -> float;
-            static auto use_free(Reading, Id, resources::Manager, float arg) -> float;
+            static auto provide(Reading, Id) -> RuntimeAccess;
+            static auto use(Writing, Id, float arg) -> float;
+            static auto use_free(Reading, Id, float arg) -> float;
         };
     };
 

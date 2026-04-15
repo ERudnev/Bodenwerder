@@ -7,7 +7,7 @@ namespace tests {
         using namespace iqsm::dsl_gateway;
         using namespace Q1CORE::Etalon;
 
-        repo::Branch master{ops::world::create(ops::schema::assemble<SampleEntity, Tag, Remnant>())};
+        repo::Branch master{ops::world::create_no_resources(ops::schema::assemble<SampleEntity, Tag, Remnant>())};
         ops::global::modifier<Tag>(master)->modulus = integer{7};
 
         const auto divisible = ops::particle::create<SampleEntity>(master, SampleEntity::Quantum{.data_field = integer{14}});

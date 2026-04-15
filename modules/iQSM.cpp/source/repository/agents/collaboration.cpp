@@ -1,14 +1,24 @@
 #include <iQSM/repository/agents/collaboration.h>
 
+#include <iQSM/helpers/schema.h>
 #include <iQSM/operations/integration.h>
+#include <iQSM/references.h>
+#include <iQSM/resources/manager.h>
 
 namespace {
+
+    auto make_overlap_slice_mutable(iqsm::Schema overlap_schema) -> iqsm::ref<iqsm::WorldObject> {
+        const iqsm::Schema empty_schema = iqsm::helpers::schema::assemble<>();
+        auto manager = base::make_shared<iqsm::resources::ManagerCore>(empty_schema);
+        return base::make_shared<iqsm::WorldObject>(std::move(overlap_schema), iqsm::freeze(manager));
+    }
+
     auto project_overlap(
         iqsm::World world,
         iqsm::Schema overlapSchema,
         const iqsm::SchemaObject::TypeSet& overlapTypes) -> iqsm::World
     {
-        auto projected = base::make_shared<iqsm::WorldObject>(overlapSchema);
+        auto projected = make_overlap_slice_mutable(overlapSchema);
 
         for (const auto& typeId : overlapTypes) {
             const auto& entry = overlapSchema->aspects.at(typeId);
@@ -68,7 +78,8 @@ namespace {
         iqsm::Schema overlapSchema,
         const iqsm::SchemaObject::TypeSet& overlapTypes) -> iqsm::World
     {
-        auto merged = base::make_shared<iqsm::WorldObject>(overlapSchema);
+        // Same contract as project_overlap: overlap slice only; provider is empty-schema ManagerCore host (not peers' managers).
+        auto merged = make_overlap_slice_mutable(overlapSchema);
 
         for (const auto& typeId : overlapTypes) {
             const auto& entry = overlapSchema->aspects.at(typeId);
@@ -127,6 +138,7 @@ namespace iqsm::agents {
             return;
         }
 
+        // integrate() clones full leftCurrent/rightCurrent (same schema + resources Provider), then applies only overlap field deltas.
         const base::pair<World> next{
             leftDelta->empty()
                 ? leftCurrent

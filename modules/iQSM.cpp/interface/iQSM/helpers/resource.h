@@ -32,7 +32,7 @@ namespace iqsm::helpers::resource {
     void release(Reading, Manager, const Id<Meta>&);
 
     template<meta::Handle Meta>
-    auto provide(Reading, Provider, const Id<Meta>&) -> RuntimeAccess<Meta>;
+    auto provide(Reading, const Id<Meta>&) -> RuntimeAccess<Meta>;
 }
 
 namespace iqsm::helpers::resource {
@@ -74,7 +74,7 @@ namespace iqsm::helpers::resource {
     }
 
     template<meta::Handle Meta>
-    auto provide(Reading, Provider provider, const Id<Meta>& id) -> RuntimeAccess<Meta> {
-        return provider->layer<Meta>().provide(id);
+    auto provide(Reading world, const Id<Meta>& id) -> RuntimeAccess<Meta> {
+        return world->resources->layer<Meta>().provide(id);
     }
 }

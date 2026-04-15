@@ -14,7 +14,7 @@ namespace Model {
     struct Logic : iqsm::agents::Subsystem {
         explicit Logic(iqsm::Schema schema)
             : schema_(schema)
-            , main(iqsm::helpers::world::create(schema_))
+            , main(iqsm::helpers::world::create_no_resources(schema_))
         {}
 
         auto schema() const -> iqsm::Schema override { return schema_; }

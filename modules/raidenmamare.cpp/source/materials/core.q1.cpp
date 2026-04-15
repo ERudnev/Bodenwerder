@@ -13,7 +13,7 @@ namespace rmmr::material {
                 throw std::runtime_error("Core::Materializer::materialize: program is not open");
             }
 
-            const Program::RuntimeAccess program = Program::Operations::provide(world, quantum.passport.program, manager);
+            const Program::RuntimeAccess program = Program::Operations::provide(world, quantum.passport.program);
             if (!program) {
                 throw std::runtime_error("Core::Materializer::materialize: program runtime is null");
             }
@@ -67,8 +67,12 @@ namespace rmmr::material {
         return out;
     }
 
-    auto Core::Operations::apply(Reading, Id id, rmmr::Device::Id, resources::Manager manager) -> RuntimeAccess {
-        const auto& runtime = manager->layer<Core>().provide(id);
+    auto Core::Operations::provide(Reading world, Id id) -> RuntimeAccess {
+        return world->resources->layer<Core>().provide(id);
+    }
+
+    auto Core::Operations::apply(Reading world, Id id, rmmr::Device::Id) -> RuntimeAccess {
+        const auto& runtime = provide(world, id);
         glUseProgram(runtime.program);
         return runtime;
     }

@@ -9,7 +9,7 @@ namespace tests {
         using namespace Q1CORE::Etalon;
 
         const auto schema = ops::schema::assemble<SampleEntity, Tag, Remnant, SampleComponent, SampleAttribute>();
-        const auto empty = ops::world::create(schema);
+        const auto empty = ops::world::create_no_resources(schema);
         (void)empty;
         EXPECT_TRUE(true);
     }

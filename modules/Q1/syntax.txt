@@ -51,6 +51,7 @@
       X is NOT a Q1 type. It is an external/runtime identifier resolved by projection layer.
       Q1 declaration does NOT define concrete loader/binding implementation for X.
       Such runtime code is expected to exist outside DSL projection.
+    C++ projection note: operations from `element`/`table` on a resource aspect use the same `Reading`/`Writing`/`Id` context as other aspects; the generator does not add `resources::Manager` (or similar) to those operation signatures — runtime access goes through the world-bound provider (`modules/Q1/q1-CPP.tome`, declaration_forms resource).
 
   buildtin types:
     'integer' : fixed size (32 bit) integer

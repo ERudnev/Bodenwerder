@@ -29,7 +29,7 @@ namespace tests {
         using Foo = SampleEntity;
         using Bar = SampleAttribute;
 
-        repo::Branch master = repo::Branch{ops::world::create(ops::schema::assemble<Foo, Bar>())};
+        repo::Branch master = repo::Branch{ops::world::create_no_resources(ops::schema::assemble<Foo, Bar>())};
 
         master.rebase(seed_foos_oldschool(master, 10, 100));
         EXPECT_EQ(debug::count<Foo>(master), 10) << "rebase from non-delta patch";

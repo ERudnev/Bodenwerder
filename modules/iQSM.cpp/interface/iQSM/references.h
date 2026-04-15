@@ -11,7 +11,7 @@ namespace iqsm {
     using ref = base::shared_ref<T>;
 
     template<typename T>
-    cref<T> freeze(ref<T> r) { return cref<T>(std::move(r)); }
+    cref<T> freeze(ref<T> r) { return cref<T>(r); }
 
     template<typename T>
     ref<T> clone(cref<T> r) { return base::make_shared<T>(*r); }

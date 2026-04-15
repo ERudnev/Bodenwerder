@@ -36,6 +36,7 @@ namespace iqsm {
         };
 
         std::map<TypeId, Entry> aspects;
+
         bool empty() const { return aspects.empty(); }
         auto types() const -> TypeSet;
 

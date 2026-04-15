@@ -108,8 +108,7 @@ namespace iqsm::operations {
         if (delta->empty()) { return world; }
         if (world->schema->empty()) { return world; }
 
-        auto out = base::make_shared<WorldObject>(world->schema);
-        out->fields = world->fields;
+        auto out = world->clone();
 
         for (const auto& field_entry : delta->fields) {
             const auto& typeId = field_entry.first;

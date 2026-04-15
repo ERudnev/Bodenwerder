@@ -40,18 +40,18 @@ namespace Q1CORE::Etalon {
     }
 
     
-    auto SampleResource::Operations::provide(Reading, Id id, resources::Manager manager) -> RuntimeAccess {
-        return manager->layer<SampleResource>().provide(id);
+    auto SampleResource::Operations::provide(Reading world, Id id) -> RuntimeAccess {
+        return world->resources->layer<SampleResource>().provide(id);
     }
 
-    auto SampleResource::Operations::use(Writing commit, Id id, resources::Manager manager, float arg) -> float {
+    auto SampleResource::Operations::use(Writing commit, Id id, float arg) -> float {
         const Quantum& q = ops::particle::get<SampleResource>(commit.initial, id);
         ops::particle::modifier<SampleResource>(commit, id)->cost_summary += q.passport.cost;
-        return provide(commit.initial, id, manager)(arg);
+        return provide(commit.initial, id)(arg);
     }
 
-    auto SampleResource::Operations::use_free(Reading world, Id id, resources::Manager manager, float arg) -> float {
-        return provide(world, id, manager)(arg);
+    auto SampleResource::Operations::use_free(Reading world, Id id, float arg) -> float {
+        return provide(world, id)(arg);
     }
 
     const Invariants SampleResource::invariants{

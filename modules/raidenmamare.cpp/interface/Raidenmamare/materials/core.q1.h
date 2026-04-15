@@ -41,7 +41,8 @@ namespace rmmr::material {
 
         struct Operations : OwnTypeOperations {
             static auto uniformIds(const vector<string>& names) -> vector<Semantics::PersistentId>;
-            static auto apply(Reading, Id, rmmr::Device::Id, resources::Manager) -> RuntimeAccess;
+            static auto provide(Reading, Id) -> RuntimeAccess;
+            static auto apply(Reading, Id, rmmr::Device::Id) -> RuntimeAccess;
         };
     };
 }

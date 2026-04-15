@@ -33,7 +33,7 @@ namespace material {
 
             static void materialize(Reading, Id, resources::Manager);
             static void release(Reading, Id, resources::Manager);
-            static auto provide(Reading, Id, resources::Manager) -> RuntimeAccess;
+            static auto provide(Reading, Id) -> RuntimeAccess;
         };
         static const Invariants invariants;
     };

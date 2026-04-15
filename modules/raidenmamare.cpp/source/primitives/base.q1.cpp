@@ -142,7 +142,7 @@ namespace rmmr::primitive {
         }
 
         const auto& quantum = ops::particle::get<Base>(world, id);
-        GLFWwindow* window = Device::Operations::provide(world, quantum.device, manager);
+        GLFWwindow* window = Device::Operations::provide(world, quantum.device);
         manager->layer<Base>().materialize(id, Base_private::create_runtime(window, quantum));
     }
 
@@ -153,7 +153,7 @@ namespace rmmr::primitive {
 
         GLFWwindow* window = nullptr;
         if (manager->materialized<Device>(quantum.device)) {
-            window = Device::Operations::provide(world, quantum.device, manager);
+            window = Device::Operations::provide(world, quantum.device);
         }
 
         Base_private::release_runtime(window, runtime);
@@ -168,8 +168,8 @@ namespace rmmr::primitive {
         ops::resource::release<Base>(world, manager, id);
     }
 
-    auto Base::Operations::provide(Reading, Id id, resources::Manager manager) -> RuntimeAccess {
-        return manager->layer<Base>().provide(id);
+    auto Base::Operations::provide(Reading world, Id id) -> RuntimeAccess {
+        return world->resources->layer<Base>().provide(id);
     }
 
     const Invariants Base::invariants{

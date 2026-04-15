@@ -35,7 +35,7 @@ namespace {
 
 namespace tests {
     void validation_placeholder() {
-        const auto empty = ops::world::create(ops::schema::assemble<Foo, Bar>());
+        const auto empty = ops::world::create_no_resources(ops::schema::assemble<Foo, Bar>());
         repo::Branch master{empty};
 
         const auto foo_id = ops::particle::create<Foo>(master, Foo::Quantum{.value = 1});

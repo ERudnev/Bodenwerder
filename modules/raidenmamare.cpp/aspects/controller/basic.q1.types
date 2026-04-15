@@ -1,7 +1,10 @@
+#include "../device.q1.types"
+
 namespace rmmr
     
     attribute Core of scene::Node
       table // literally this is "input state"... dont worry, this is implicit design.
+        device: #Device?
         clock: double
         keys: vector<bool> // simplified for now
         mouse: index2

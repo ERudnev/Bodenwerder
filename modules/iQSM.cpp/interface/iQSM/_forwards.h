@@ -11,6 +11,12 @@ namespace iqsm {
 
     namespace delta { struct Fields; }
     using Delta = cref<delta::Fields>;
+
+    namespace resources { 
+        struct ManagerCore;
+        using Provider = cref<ManagerCore>;
+    }
+
 }
 
 

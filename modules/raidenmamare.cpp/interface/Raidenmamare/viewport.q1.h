@@ -17,8 +17,8 @@ namespace rmmr {
         };
         struct Global {};
         struct Operations : OwnTypeOperations {
-            static void activate(Reading, Id, resources::Manager);
-            static void clear(Reading, Id, resources::Manager);
+            static void activate(Reading, Id);
+            static void clear(Reading, Id);
         };
         static const Invariants invariants;
     };

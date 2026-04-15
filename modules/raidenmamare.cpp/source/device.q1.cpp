@@ -74,11 +74,11 @@ namespace rmmr {
         layer.release(id);
     }
 
-    void Device::Operations::present(Reading, Id id, resources::Manager manager) {
-        glfwSwapBuffers(manager->layer<Device>().provide(id));
+    void Device::Operations::present(Reading world, Id id) {
+        glfwSwapBuffers(world->resources->layer<Device>().provide(id));
     }
 
-    void Device::Operations::poll_events(Reading, Id, resources::Manager) {
+    void Device::Operations::poll_events(Reading, Id) {
         glfwPollEvents();
     }
 
@@ -90,8 +90,8 @@ namespace rmmr {
         ops::resource::release<Device>(world, manager, id);
     }
 
-    auto Device::Operations::provide(Reading, Id id, resources::Manager manager) -> RuntimeAccess {
-        return manager->layer<Device>().provide(id);
+    auto Device::Operations::provide(Reading world, Id id) -> RuntimeAccess {
+        return world->resources->layer<Device>().provide(id);
     }
 
     const Invariants Device::invariants{

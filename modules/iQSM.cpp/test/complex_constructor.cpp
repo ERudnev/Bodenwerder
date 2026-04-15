@@ -8,7 +8,7 @@ namespace tests {
         using namespace Q1CORE::Etalon;
 
         const auto schema = ops::schema::assemble<SampleEntity, SampleComponent, SampleAttribute>();
-        repo::Branch master{ ops::world::create(schema) };
+        repo::Branch master{ ops::world::create_no_resources(schema) };
 
         const auto existing = ops::particle::create<SampleEntity>(master, SampleEntity::Quantum{
             .data_field = integer{1},

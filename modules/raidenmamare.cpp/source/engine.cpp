@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <base/maybe.h>
+#include <iQSM/helpers/global.h>
 #include <iQSM/logger.h>
 #include <random>
 
@@ -27,8 +28,8 @@ using namespace iqsm::dsl_gateway;
 namespace rmmr {
 
 struct Engine::State {
-    iqsm::repo::Branch main;
     iqsm::dsl_gateway::resources::Manager resourceManager;
+    iqsm::repo::Branch main;    
     maybe<rmmr::Renderer> renderer;
     maybe<Device::Id> device;
 
@@ -45,7 +46,7 @@ struct Engine::State {
     } resources;
 
     static float viewport_aspect_ratio(Reading, Viewport::Id);
-    static void advance_demo_frame(Writing, GLFWwindow*, seconds now_sec);
+    static void advance_demo_frame(Writing, seconds now_sec);
 };
 
 float Engine::State::viewport_aspect_ratio(Reading world, Viewport::Id viewport) {
@@ -55,9 +56,13 @@ float Engine::State::viewport_aspect_ratio(Reading world, Viewport::Id viewport)
     return width / height;
 }
 
-void Engine::State::advance_demo_frame(Writing commit, GLFWwindow* window, seconds now_sec) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, true);
+void Engine::State::advance_demo_frame(Writing commit, seconds now_sec) {
+    const auto& device = ops::global::get<controller::Core>(commit.initial)->device;
+    if (device) {
+        GLFWwindow* const window = Device::Operations::provide(commit.initial, *device);
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+            glfwSetWindowShouldClose(window, true);
+        }
     }
 
     controller::Core::Operations::update(commit, now_sec);
@@ -66,9 +71,10 @@ void Engine::State::advance_demo_frame(Writing commit, GLFWwindow* window, secon
 
 // Engine itself
 Engine::Engine(StartupParameters params) {
+    const auto resources = base::make_shared<iqsm::resources::ManagerCore>(schema_static());
     state = std::make_shared<State>(State{
-        .main = iqsm::repo::Branch(ops::world::create(schema_static())),
-        .resourceManager = base::make_shared<iqsm::resources::ManagerCore>(schema_static()),
+        .resourceManager = resources,
+        .main = iqsm::repo::Branch(ops::world::create(schema_static(), iqsm::freeze(resources))),
         .renderer = {},
         .device = {},
         .viewport = {},
@@ -82,6 +88,12 @@ Engine::Engine(StartupParameters params) {
             .passport = std::move(params),
         });
 
+    {
+        repo::Sequence tx{state->main};
+        ops::global::modifier<controller::Core>(tx)->device = *state->device;
+        state->main.absorb(tx.push());
+    }
+
     using namespace iqsm::logger;
     const auto& devicePassport = ops::particle::get<Device>(state->main, state->device).passport;
     message("Engine initialized for '{}'", devicePassport.title);
@@ -91,7 +103,7 @@ Engine::Engine(StartupParameters params) {
     prepareResources();
     message("... loading resources: Done");
 
-    state->renderer = rmmr::Renderer(state->resourceManager.std_ptr(), state->device);
+    state->renderer = rmmr::Renderer{};
 }
 
 Engine::~Engine() noexcept {
@@ -256,20 +268,19 @@ void Engine::createViewport(index2 size, index2 origin) {
 int Engine::run_render_demo() {
     const auto device = state->device;
     auto& main = state->main;
-    auto resourceManager = state->resourceManager;
 
-    GLFWwindow* window = Device::Operations::provide(main, device, resourceManager);
+    GLFWwindow* window = Device::Operations::provide(main, device);
 
     while (!glfwWindowShouldClose(window)) {
-        Device::Operations::poll_events(main, device, resourceManager);
+        Device::Operations::poll_events(main, device);
 
         const double now_sec = glfwGetTime();
 
-        State::advance_demo_frame(main, window, now_sec);
+        State::advance_demo_frame(main, now_sec);
 
         state->renderer->render_new_temp({main, state->viewport, state->scene});
 
-        Device::Operations::present(main, device, resourceManager);
+        Device::Operations::present(main, device);
     }
 
     shutdown();

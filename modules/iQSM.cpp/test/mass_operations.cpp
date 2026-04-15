@@ -8,7 +8,7 @@ namespace tests {
         using namespace iqsm::dsl_gateway;
         using namespace Q1CORE::Etalon;
 
-        repo::Branch branch{ops::world::create(ops::schema::assemble<SampleEntity, SampleComponent>())};
+        repo::Branch branch{ops::world::create_no_resources(ops::schema::assemble<SampleEntity, SampleComponent>())};
 
         for (int i = 0; i < 100; ++i) {
             ops::particle::create<SampleEntity>(branch, SampleEntity::Quantum{integer{i}});

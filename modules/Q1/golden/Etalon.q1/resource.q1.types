@@ -3,6 +3,7 @@ namespace Q1CORE
     
     // External runtime-bound resource; the concrete runtime type is only named here.
     // Loading/unloading/passport interpretation stays outside the DSL projection.
+    // C++ projection: element operations do not add resources::Manager to signatures; access via Reading/world->resources (q1-CPP.tome).
     
     resource FloatFunction @external(ScalarFloatFunction)
       passport

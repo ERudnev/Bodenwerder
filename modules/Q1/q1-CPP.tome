@@ -62,12 +62,14 @@ namespace Q1-CPP {
     7: `resource R @external(X)` проецируется как `struct R : Handle<R, RuntimeStorage, RuntimeAccess>, Require<...> { ... };` (шаблон `iqsm::aspects::Handle`).
       1: `X` в DSL — имя/метка внешнего вида ресурса (не Q1-тип). В C++ физическая форма задаётся парой типов `RuntimeStorage` и `RuntimeAccess` на `Handle` (часто совпадают: `GLuint`, указатель окна и т.п.).
       2: Аспектный заголовок остаётся доменным: `Quantum`, `Materializer::Passport`, вложенный `struct Materializer : iqsm::resources::Materializer<R>` с `materialize` / `release`, плюс `Operations`.
-      3: Значение рантайма на каждый `R::Id` хранится в `iqsm::resources::Layer<R>` внутри `resources::Manager` (один `RuntimeStorage` на id); выдача — через `layer<R>().provide(id)` и доменные `R::Operations::provide(...)`.
-      4: Создание и уничтожение физического объекта выполняется в реализации `Materializer` (обычно `.cpp`): она строит `RuntimeStorage`, регистрирует его в слое при `materialize` и снимает при `release`.
-      5: Интерпретация `RuntimeStorage`/`RuntimeAccess` в прикладных операциях — в `.cpp` аспекта.
-      6: Каноническая “техническая” загрузка ресурса может существовать только в C++-проекции и не обязана объявляться в DSL.
-      7: Генератор не выводит конкретный loader целиком: ожидается внешний код, который зарегистрировал `Materializer`, знает, как из паспорта/окружения получить дескриптор, и вызывает materialize для нужных id.
-      8: Такой код живёт в рантайме, тестах или клиентском слое — там, где ресурс реально создаётся и привязывается к id в `resources::Manager`.
+      3: Значение рантайма на каждый `R::Id` физически хранится в `iqsm::resources::Layer<R>` внутри `resources::Manager` (один `RuntimeStorage` на id). Это хранилище не протаскивается в сигнатуры **доменных** операций, сгенерированных из DSL: те следуют общим правилам `element_and_table_projection` (`Reading` / `Writing` / `Id` и явные параметры из DSL).
+      4: Операции, которым нужен уже материализованный рантайм (типичный пример — `?provide` → `R::Operations::provide`), в C++ реализуются с доступом к слою **через мир**: `Reading` несёт `iqsm::resources::Provider` (`world->resources`), откуда берётся тот же менеджер, что привязан к `WorldObject` (например `world->resources->layer<R>().provide(id)`). Генератор **не** добавляет отдельный параметр `resources::Manager` / `Provider` в сигнатуры таких операций.
+      5: Виртуальные методы `Materializer::materialize` / `release` задаются базовым классом `iqsm::resources::Materializer<R>`: там `resources::Manager` остаётся в сигнатуре, когда нужна мутация слоя менеджера (регистрация/снятие `RuntimeStorage`). Это рантайм-хуки материализации, а не проекция пользовательских `?/*/+` из DSL.
+      6: Создание и уничтожение физического объекта выполняется в реализации `Materializer` (обычно `.cpp`): она строит `RuntimeStorage`, регистрирует его в слое при `materialize` и снимает при `release`.
+      7: Интерпретация `RuntimeStorage`/`RuntimeAccess` в прикладных операциях — в `.cpp` аспекта.
+      8: Каноническая “техническая” загрузка ресурса может существовать только в C++-проекции и не обязана объявляться в DSL.
+      9: Генератор не выводит конкретный loader целиком: ожидается внешний код, который зарегистрировал `Materializer`, знает, как из паспорта/окружения получить дескриптор, и вызывает materialize для нужных id.
+      10: Такой код живёт в рантайме, тестах или клиентском слое — там, где ресурс реально создаётся и привязывается к id в `resources::Manager`.
   }
 
   element_and_table_projection: @Rule {
@@ -114,8 +116,9 @@ namespace Q1-CPP {
     Проекция типовых конструкций DSL → C++ в контексте `Quantum`.
     1: Базовые DSL-типы (например, `string`, `integer`, `#` как локальный id) берутся из `iqsm::dsl_gateway` (C++ имена: `Id`, `Aspect::Id`, ...).
     2: `vector<T>` проецируется как `std::vector<T>`.
-    3: `enum E : a, b, c` проецируется как `enum class E { a, b, c };`.
-    4: Типовые алиасы через type-of (`~Expr`) проецируются как `decltype(<Expr>)`.
+    3: Постфикс `T?` в типах полей (`syntax.txt`: optional): проецируется как `optional<T_пр>`, где `T_пр` — уже спроецированный тип `T`; для `#X?` — `optional<X::Id>`. Шаблон `optional` берётся из `iqsm::q1` (`modules/iQSM.cpp/interface/iQSM/api/builtins.h`), не пишется `std::optional` вручную в проекции.
+    4: `enum E : a, b, c` проецируется как `enum class E { a, b, c };`.
+    5: Типовые алиасы через type-of (`~Expr`) проецируются как `decltype(<Expr>)`.
       1: Для `~T::field` используем `decltype(T::field)` (как в `elementary.q1.h`).
       2: Для `~T.field` (например `vec4.w`) используем `decltype(T{}.field)` чтобы получить тип члена, не требуя объекта из данных модели.
   }

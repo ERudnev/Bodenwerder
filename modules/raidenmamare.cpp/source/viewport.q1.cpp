@@ -7,15 +7,15 @@
 
 namespace rmmr {
     struct Viewport_private : Viewport::Operations {
-        static auto window(Reading world, Id id, resources::Manager manager) -> GLFWwindow* {
+        static auto window(Reading world, Id id) -> GLFWwindow* {
             const auto& quantum = ops::particle::get<Viewport>(world, id);
-            return Device::Operations::provide(world, quantum.device, manager);
+            return Device::Operations::provide(world, quantum.device);
         }
     };
 
-    void Viewport::Operations::activate(Reading world, Id id, resources::Manager manager) {
+    void Viewport::Operations::activate(Reading world, Id id) {
         const auto& quantum = ops::particle::get<Viewport>(world, id);
-        glfwMakeContextCurrent(Viewport_private::window(world, id, manager));
+        glfwMakeContextCurrent(Viewport_private::window(world, id));
 
         const int x = static_cast<int>(quantum.origin.x);
         const int y = static_cast<int>(quantum.origin.y);
@@ -24,9 +24,9 @@ namespace rmmr {
         glViewport(x, y, width, height);
     }
 
-    void Viewport::Operations::clear(Reading world, Id id, resources::Manager manager) {
+    void Viewport::Operations::clear(Reading world, Id id) {
         const auto& quantum = ops::particle::get<Viewport>(world, id);
-        glfwMakeContextCurrent(Viewport_private::window(world, id, manager));
+        glfwMakeContextCurrent(Viewport_private::window(world, id));
         glClearColor(
             quantum.clear_color.x,
             quantum.clear_color.y,

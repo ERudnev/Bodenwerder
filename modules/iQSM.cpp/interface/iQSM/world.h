@@ -4,6 +4,7 @@
 
 #include <base/containers/ImmutableUnorderedMap.h>
 
+#include <iQSM/_forwards.h>
 #include <iQSM/field.h>
 #include <iQSM/identifier.h>
 #include <iQSM/meta/aspect_id.h>
@@ -19,9 +20,11 @@ namespace iqsm {
 
         const Id id;
         const Schema schema;
+        const resources::Provider resources;
         Container fields;
 
-        explicit WorldObject(Schema s) : id(Id::generate_random()), schema(s) {}
+        explicit WorldObject(Schema s, resources::Provider res) : id(Id::generate_random()), schema(s), resources(res) {}
+        auto clone() const -> ref<WorldObject> { auto w = base::make_shared<WorldObject>(schema, resources); w->fields = fields; return ref<WorldObject>(std::move(w)); }
 
         cref<FieldAbstract> field(TypeId rttid) const;
 

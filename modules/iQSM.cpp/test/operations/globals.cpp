@@ -10,7 +10,7 @@ namespace tests {
         using namespace iqsm::dsl_gateway;
         using namespace Q1CORE::Etalon;
 
-        const World before = ops::world::create(ops::schema::assemble<Tag>());
+        const World before = ops::world::create_no_resources(ops::schema::assemble<Tag>());
 
         EXPECT_EQ(ops::global::get<Tag>(before)->modulus, integer{2});
 

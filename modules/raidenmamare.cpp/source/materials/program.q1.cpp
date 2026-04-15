@@ -132,7 +132,7 @@ namespace rmmr::material {
         const auto& quantum = ops::particle::get<Program>(world, id);
         const auto& passport = quantum.passport;
         const auto& devicePassport = ops::particle::get<rmmr::Device>(world, quantum.device).passport;
-        if (!rmmr::Device::Operations::provide(world, quantum.device, manager)) {
+        if (!rmmr::Device::Operations::provide(world, quantum.device)) {
             throw std::runtime_error("Program::Materializer::materialize: device is not open");
         }
 
@@ -156,8 +156,8 @@ namespace rmmr::material {
         ops::resource::release<Program>(world, manager, id);
     }
 
-    auto Program::Operations::provide(Reading, Id id, resources::Manager manager) -> RuntimeAccess {
-        return manager->layer<Program>().provide(id);
+    auto Program::Operations::provide(Reading world, Id id) -> RuntimeAccess {
+        return world->resources->layer<Program>().provide(id);
     }
 
     const Invariants Program::invariants{

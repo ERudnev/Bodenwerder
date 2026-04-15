@@ -66,8 +66,7 @@ namespace rmmr {
         const scene::PrimitiveActor::Quantum& actor,
         scene::Node::Id node
     ) {
-        const resources::Manager manager{resources};
-        const auto& primitive_runtime = primitive::Base::Operations::provide(args.world, actor.geometry, manager);
+        const auto& primitive_runtime = primitive::Base::Operations::provide(args.world, actor.geometry);
 
         for (const auto& binding : material_runtime.bindings) {
             if (binding.location < 0) { continue; }
@@ -111,14 +110,12 @@ namespace rmmr {
         const auto world = args.world;
         const auto viewport = args.viewport;
         const auto scene_id = args.scene;
-        const resources::Manager manager{resources};
-
         const auto& scene_core = ops::particle::get<scene::Core>(world, scene_id);
         if (scene_core.cameras.empty()) { throw std::runtime_error("scene has no camera"); }
         if (scene_core.lights.empty()) { throw std::runtime_error("scene has no light"); }
 
-        Viewport::Operations::activate(world, viewport, manager);
-        Viewport::Operations::clear(world, viewport, manager);
+        Viewport::Operations::activate(world, viewport);
+        Viewport::Operations::clear(world, viewport);
 
         struct MaterialBatch {
             material::Core::Id material;
@@ -147,7 +144,7 @@ namespace rmmr {
         }
 
         const auto draw_batch = [&](const MaterialBatch& batch) {
-            const auto& material_core_runtime = manager->layer<material::Core>().provide(batch.material);
+            const auto& material_core_runtime = material::Core::Operations::provide(world, batch.material);
             const auto shaderProgram = material_core_runtime.program;
             if (!shaderProgram) { throw std::runtime_error("actor material runtime program is null"); }
 
@@ -161,7 +158,7 @@ namespace rmmr {
         };
 
         for (const auto& batch : batches) {
-            const auto& material_core_runtime = manager->layer<material::Core>().provide(batch.material);
+            const auto& material_core_runtime = material::Core::Operations::provide(world, batch.material);
             if (material_is_grid(material_core_runtime)) { continue; }
             draw_batch(batch);
         }
@@ -171,7 +168,7 @@ namespace rmmr {
         glDepthMask(GL_FALSE);
 
         for (const auto& batch : batches) {
-            const auto& material_core_runtime = manager->layer<material::Core>().provide(batch.material);
+            const auto& material_core_runtime = material::Core::Operations::provide(world, batch.material);
             if (!material_is_grid(material_core_runtime)) { continue; }
             draw_batch(batch);
         }

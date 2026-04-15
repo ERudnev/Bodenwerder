@@ -7,7 +7,7 @@ namespace tests {
         using namespace iqsm::dsl_gateway;
         using namespace Q1CORE::Etalon;
 
-        const auto empty = ops::world::create(ops::schema::assemble<SampleEntity, Tag>());
+        const auto empty = ops::world::create_no_resources(ops::schema::assemble<SampleEntity, Tag>());
         repo::Branch master{empty};
 
         // create 100 entities with data_field = 1..100
