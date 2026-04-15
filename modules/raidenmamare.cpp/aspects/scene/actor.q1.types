@@ -1,7 +1,7 @@
-#include "aspects/scene/node.q1.types"
-#include "aspects/primitives/base.q1.types"
-#include "aspects/materials/core.q1.types"
-#include "aspects/math.q1.types"
+import "scene/node"
+import "primitives/base"
+import "materials/core"
+import "math"
 
 namespace rmmr
   namespace scene

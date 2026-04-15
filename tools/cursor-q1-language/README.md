@@ -4,6 +4,7 @@ Minimal local language extension to get `*.q1.types` highlighted and recognized 
 
 ## Syntax notes (DSL)
 
+- **Imports:** `import "path/to/module"` at the top of a file (see `modules/Q1/syntax.txt`). Paths are logical, without the `.q1.types` suffix; C-style `#include` is not used in Q1 types.
 - Operation **return types** are written with a colon after the closing parenthesis, e.g. `?length(): Scalar`, `?provide(): opengl_window`, `*use(arg: float): float`. (The older `->` form is no longer used in Q1 types.)
 
 ## Install in Cursor

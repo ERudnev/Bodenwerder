@@ -1,4 +1,4 @@
-#include "aspects/math.q1.types"
+import "math"
 
 namespace rmmr
   namespace scene

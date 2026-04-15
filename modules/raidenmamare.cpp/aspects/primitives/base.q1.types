@@ -1,5 +1,5 @@
-#include "device.q1.types"
-#include "aspects/math.q1.types"
+import "device"
+import "math"
 
 namespace rmmr
   namespace primitive

@@ -1,5 +1,5 @@
-#include "aspects/scene/node.q1.types"
-#include "aspects/math.q1.types"
+import "scene/node"
+import "math"
 
 namespace rmmr
   namespace scene

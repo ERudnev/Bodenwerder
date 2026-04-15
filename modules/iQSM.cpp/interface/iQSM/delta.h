@@ -84,9 +84,7 @@ iqsm::cref<iqsm::FieldAbstract> iqsm::delta::FieldDiff<Meta>::integrate(iqsm::cr
         const auto& op = kv.second;
         if (not op.is_add()) continue;
 
-        if (container.contains(id)) {
-            base::message("delta integrate conflict resolved as last-wins");
-        }
+        if (container.contains(id)) { base::message("delta integrate conflict resolved as last-wins (aspect={})", typeid(Meta).name()); }
         container = container.insert(id, *op.after);
     }
 
@@ -98,15 +96,9 @@ iqsm::cref<iqsm::FieldAbstract> iqsm::delta::FieldDiff<Meta>::integrate(iqsm::cr
         const auto& before = *op.before;
         const auto& after = *op.after;
 
-        if (not container.contains(id)) {
-            base::message("delta integrate conflict resolved as last-wins");
-            container = container.insert(id, after);
-            continue;
-        }
+        if (not container.contains(id)) { base::message("delta integrate conflict resolved as last-wins (aspect={})", typeid(Meta).name()); container = container.insert(id, after); continue; }
 
-        if (container.at(id) != before) {
-            base::message("delta integrate conflict resolved as last-wins");
-        }
+        if (container.at(id) != before) { base::message("delta integrate conflict resolved as last-wins (aspect={})", typeid(Meta).name()); }
         container = container.insert(id, after);
     }
 
@@ -115,10 +107,7 @@ iqsm::cref<iqsm::FieldAbstract> iqsm::delta::FieldDiff<Meta>::integrate(iqsm::cr
         const auto& op = kv.second;
         if (not op.is_del()) continue;
 
-        if (not container.contains(id)) {
-            base::message("delta integrate conflict resolved as last-wins");
-            continue;
-        }
+        if (not container.contains(id)) { base::message("delta integrate conflict resolved as last-wins (aspect={})", typeid(Meta).name()); continue; }
         container = container.erase(id);
     }
 
@@ -128,9 +117,7 @@ iqsm::cref<iqsm::FieldAbstract> iqsm::delta::FieldDiff<Meta>::integrate(iqsm::cr
 
     if (global_change.has_value()) {
         const auto& [before, after] = *global_change;
-        if (typed->global != before) {
-            base::message("delta integrate conflict resolved as last-wins");
-        }
+        if (typed->global != before) { base::message("delta integrate conflict resolved as last-wins (aspect={})", typeid(Meta).name()); }
         out->global = after;
     }
 
@@ -158,9 +145,7 @@ void iqsm::delta::FieldDiff<Meta>::absorb(const FieldDiff& rhs) {
     if (global_change.has_value() && rhs.global_change.has_value()) {
         const auto& [lhs_before, lhs_after] = *global_change;
         const auto& [rhs_before, rhs_after] = *rhs.global_change;
-        if (lhs_after != rhs_before) {
-            base::message("delta absorb conflict resolved as last-wins");
-        }
+        if (lhs_after != rhs_before) { base::message("delta absorb conflict resolved as last-wins (aspect={})", typeid(Meta).name()); }
         global_change = std::pair<Global, Global>{lhs_before, rhs_after};
     } else if (rhs.global_change.has_value()) {
         global_change = rhs.global_change;
@@ -173,15 +158,9 @@ iqsm::delta::FieldDiff<Meta>::merge_ops(const Operation& lhs, const Operation& r
     if (rhs.is_noop()) return lhs;
     if (lhs.is_noop()) return rhs;
 
-    const auto report = []() {
-        base::message("delta absorb conflict resolved by unique-id policy");
-    };
-
     // chg + chg : last-wins for final value, keep earliest known "before".
     if (lhs.is_chg() && rhs.is_chg()) {
-        if (lhs.after && rhs.before && *lhs.after != *rhs.before) {
-            report();
-        }
+        if (lhs.after && rhs.before && *lhs.after != *rhs.before) { base::message("delta absorb conflict resolved by unique-id policy (aspect={})", typeid(Meta).name()); }
         return Operation{lhs.before, rhs.after};
     }
 
@@ -198,9 +177,9 @@ iqsm::delta::FieldDiff<Meta>::merge_ops(const Operation& lhs, const Operation& r
             else if (other.is_add()) before = other.after;
             else if (other.is_del()) before = other.before;
         } else {
-            if (other.is_chg() && other.after && *before != *other.after) report();
-            if (other.is_add() && other.after && *before != *other.after) report();
-            if (other.is_del() && other.before && *before != *other.before) report();
+            if (other.is_chg() && other.after && *before != *other.after) { base::message("delta absorb conflict resolved by unique-id policy (aspect={})", typeid(Meta).name()); }
+            if (other.is_add() && other.after && *before != *other.after) { base::message("delta absorb conflict resolved by unique-id policy (aspect={})", typeid(Meta).name()); }
+            if (other.is_del() && other.before && *before != *other.before) { base::message("delta absorb conflict resolved by unique-id policy (aspect={})", typeid(Meta).name()); }
         }
 
         return Operation{before, std::nullopt};
@@ -213,25 +192,21 @@ iqsm::delta::FieldDiff<Meta>::merge_ops(const Operation& lhs, const Operation& r
 
         // add + add: keep RHS value (deterministic within absorb ordering).
         if (other.is_add()) {
-            if (add.after && other.after && *add.after != *other.after) {
-                report();
-            }
+            if (add.after && other.after && *add.after != *other.after) { base::message("delta absorb conflict resolved by unique-id policy (aspect={})", typeid(Meta).name()); }
             return Operation{std::nullopt, rhs.after};
         }
 
         // add + chg: normalize to {null, final}.
         if (other.is_chg()) {
-            if (add.after && other.before && *add.after != *other.before) {
-                report();
-            }
+            if (add.after && other.before && *add.after != *other.before) { base::message("delta absorb conflict resolved by unique-id policy (aspect={})", typeid(Meta).name()); }
             return Operation{std::nullopt, other.after};
         }
 
-        report();
+        base::message("delta absorb conflict resolved by unique-id policy (aspect={})", typeid(Meta).name());
         return Operation{std::nullopt, rhs.after};
     }
 
-    report();
+    base::message("delta absorb conflict resolved by unique-id policy (aspect={})", typeid(Meta).name());
     return rhs;
 }
 

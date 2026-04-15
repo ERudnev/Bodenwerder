@@ -4,7 +4,9 @@
 #include <GLFW/glfw3.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <base/maybe.h>
+#include <stdexcept>
 #include <iQSM/helpers/global.h>
+#include <iQSM/helpers/particle.h>
 #include <iQSM/logger.h>
 #include <random>
 
@@ -15,7 +17,8 @@
 #include <Raidenmamare/scene/actor.q1.h>
 #include <Raidenmamare/scene/camera.q1.h>
 #include <Raidenmamare/scene/light.q1.h>
-#include <Raidenmamare/controller/basic.q1.h>
+#include <Raidenmamare/controller/dispatcher.q1.h>
+#include <Raidenmamare/controller/camera.q1.h>
 #include <Raidenmamare/math.q1.h>
 
 // private stuff:
@@ -46,7 +49,7 @@ struct Engine::State {
     } resources;
 
     static float viewport_aspect_ratio(Reading, Viewport::Id);
-    static void advance_demo_frame(Writing, seconds now_sec);
+    void update(Writing commit, seconds now_sec) const;
 };
 
 float Engine::State::viewport_aspect_ratio(Reading world, Viewport::Id viewport) {
@@ -56,16 +59,17 @@ float Engine::State::viewport_aspect_ratio(Reading world, Viewport::Id viewport)
     return width / height;
 }
 
-void Engine::State::advance_demo_frame(Writing commit, seconds now_sec) {
-    const auto& device = ops::global::get<controller::Core>(commit.initial)->device;
-    if (device) {
-        GLFWwindow* const window = Device::Operations::provide(commit.initial, *device);
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-            glfwSetWindowShouldClose(window, true);
-        }
-    }
+void Engine::State::update(Writing commit, seconds now_sec) const {
+    const auto& device = ops::global::get<controller::Dispatcher>(commit.initial)->device;
+    if (not device) throw std::runtime_error("Engine::update() failed: no device");
 
-    controller::Core::Operations::update(commit, now_sec);
+    // TODO: move this decision to Controller, State should only perform "ShouldClose"
+    GLFWwindow* const window = Device::Operations::provide(commit.initial, *device);
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    controller::Dispatcher::Operations::update(commit, now_sec);
+    ops::particle::massop<controller::Camera>(commit, &controller::Camera::Operations::update, now_sec);
 }
 
 
@@ -90,7 +94,7 @@ Engine::Engine(StartupParameters params) {
 
     {
         repo::Sequence tx{state->main};
-        ops::global::modifier<controller::Core>(tx)->device = *state->device;
+        ops::global::modifier<controller::Dispatcher>(tx)->device = *state->device;
         state->main.absorb(tx.push());
     }
 
@@ -121,7 +125,8 @@ iqsm::Schema Engine::schema_static() {
         scene::PrimitiveActor,
         scene::Camera,
         scene::Light,
-        controller::Core,
+        controller::Dispatcher,
+        controller::Camera,
         scene::Core>();
 }
 
@@ -223,18 +228,18 @@ void Engine::createScene() {
         )
     );
 
-    // Placeholder camera: lives on its own node and targets the current viewport.
+    // Placeholder camera: scene node + scene::Camera first; controller layer (Dispatcher + this attribute) via Camera::Operations::create.
     // Rough framing: a bit farther (~2× previous z), higher (~1.3), pitch down toward mid of triangles (y≈0.5) + cubes (y≈0.2).
-    ops::particle::modifier<scene::Core>(transaction, state->scene)->nodes.push_back(
-        scene::Camera::Operations::create(
-            transaction,
-            Pos{0.0f, 1.3f, 4.0f},
-            HPB{0.0f, -12.5f, 0.0f},
-            1.04719755f, // ~60 degrees in radians
-            0.1f,
-            100.0f
-        )
+    const auto scene_camera = scene::Camera::Operations::create(
+        transaction,
+        Pos{0.0f, 1.3f, 4.0f},
+        HPB{0.0f, -12.5f, 0.0f},
+        1.04719755f, // ~60 degrees in radians
+        0.1f,
+        100.0f
     );
+    ops::particle::modifier<scene::Core>(transaction, state->scene)->nodes.push_back(scene_camera);
+    controller::Camera::Operations::create(transaction, scene_camera);
 
     // Placeholder point light: also a node payload.
     ops::particle::modifier<scene::Core>(transaction, state->scene)->nodes.push_back(
@@ -276,7 +281,7 @@ int Engine::run_render_demo() {
 
         const double now_sec = glfwGetTime();
 
-        State::advance_demo_frame(main, now_sec);
+        state->update(main, now_sec);
 
         state->renderer->render_new_temp({main, state->viewport, state->scene});
 

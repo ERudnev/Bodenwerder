@@ -66,6 +66,10 @@ namespace iqsm::dsl_gateway {
     template<typename Meta>
     using Item = ::iqsm::Item<Meta>;
 
+    // experimental, try to use this a bit...
+    template<typename Aspect>
+    using call = Aspect::Operations;  // call<Dispatcher>::foo(...)
+
     using Reading = ::iqsm::World;
     using Writing = ::iqsm::repo::Commit;
 

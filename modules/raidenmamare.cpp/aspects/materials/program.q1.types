@@ -1,4 +1,4 @@
-#include "device.q1.types"
+import "device"
 
 namespace rmmr
   namespace material

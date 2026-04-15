@@ -1,6 +1,6 @@
-#include "node.q1.types"
-#include "camera.q1.types"
-#include "light.q1.types"
+import "scene/node"
+import "scene/camera"
+import "scene/light"
 
 namespace rmmr
   namespace scene

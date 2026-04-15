@@ -1,4 +1,4 @@
-#include "materials/program.q1.types"
+import "materials/program"
 
 namespace rmmr
   namespace material

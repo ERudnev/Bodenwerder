@@ -2,6 +2,7 @@
   
   Q1 language specification
   keywords:
+    'import' : line at top of file; pulls in another `.q1.types` module (see directives below)
     'namespace' : opens named namespace
     'declare' : declares existing external type
     'type' : defines new type or alias
@@ -39,8 +40,8 @@
   directives:
     @builtin : this type definition is internal to the Q1 language
 
-    line-oriented preprocessor (C-like; processed before Q1 parse):
-      `#include "..."` or `#include <...>` : include another Q1 types file (or header path for projection)
+    line-oriented import (processed before Q1 parse):
+      `import "..."` : bring another `.q1.types` module into scope. The string is a logical path within the module (commonly rooted at that module's `aspects/` tree). Do not repeat the `.q1.types` suffix in the string.
 
     @anchor : marks an anchor reference field (special persistent link semantics)
     @anchor(any) : for containers of anchors; the dependee exists if at least one anchor is valid

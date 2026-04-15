@@ -1,4 +1,4 @@
-#include <Raidenmamare/controller/basic.q1.h>
+#include <Raidenmamare/controller/dispatcher.q1.h>
 #include <Raidenmamare/device.q1.h>
 
 #include <GLFW/glfw3.h>
@@ -11,12 +11,12 @@
 
 namespace rmmr::controller {
 
-    struct Core_private : Core::Operations {
+    struct Dispatcher_private : Dispatcher::Operations {
         static void applyInput(Writing step);
     };
 
-    void Core_private::applyInput(Writing step) {
-        const auto& device = ops::global::get<Core>(step.initial)->device;
+    void Dispatcher_private::applyInput(Writing step) {
+        const auto& device = ops::global::get<Dispatcher>(step.initial)->device;
         if (not device) {
             return;
         }
@@ -25,7 +25,7 @@ namespace rmmr::controller {
             return;
         }
 
-        auto mod = ops::global::modifier<Core>(step);
+        auto mod = ops::global::modifier<Dispatcher>(step);
         auto& keys = mod->keys;
 
         if (keys.size() < static_cast<size_t>(GLFW_KEY_LAST + 1)) {
@@ -42,14 +42,14 @@ namespace rmmr::controller {
         mod->mouse = index2{static_cast<integer>(std::lround(mx)), static_cast<integer>(std::lround(my))};
     }
 
-    void Core::Operations::update(Writing outer, seconds now_sec) {
+    void Dispatcher::Operations::update(Writing outer, seconds now_sec) {
         iqsm::repo::Sequence seq{outer.initial};
-        ops::global::modifier<Core>(seq)->clock = now_sec;
-        Core_private::applyInput(seq);
+        ops::global::modifier<Dispatcher>(seq)->clock = now_sec;
+        Dispatcher_private::applyInput(seq);
         outer.push(seq.push());
     }
 
-    const Invariants Core::invariants{
+    const Invariants Dispatcher::invariants{
         .structural = {},
         .logical = {},
     };

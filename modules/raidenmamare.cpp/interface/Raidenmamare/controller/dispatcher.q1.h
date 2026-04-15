@@ -9,14 +9,14 @@ namespace rmmr::controller {
 
     using namespace iqsm::dsl_gateway;
 
-    struct Core : Attribute<Core, scene::Node>, Require<scene::Node, ::rmmr::Device> {
+    struct Dispatcher : Attribute<Dispatcher, scene::Node>, Require<scene::Node, ::rmmr::Device> {
         struct Quantum {};
         struct Global {
             optional<Device::Id> device; // Q1: #Device? → iqsm::q1::optional (builtins.h)
             double clock;
             vector<bool> keys;
             index2 mouse;
-            vector<scene::Node::Id> active;
+            uset<scene::Node::Id> active; // Q1: uset<#>
         };
         struct Operations : OwnTypeOperations {
             static void update(Writing, seconds now_sec);

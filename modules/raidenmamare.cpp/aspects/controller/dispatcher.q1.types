@@ -1,12 +1,12 @@
-#include "../device.q1.types"
+import "device"
 
 namespace rmmr
-    
-    attribute Core of scene::Node
+  namespace controller
+    attribute Dispatcher of scene::Node
       table // literally this is "input state"... dont worry, this is implicit design.
         device: #Device?
         clock: double
         keys: vector<bool> // simplified for now
         mouse: index2
-        active: vector<#>
+        active: uset<#>
         *update(now: seconds)

@@ -3,7 +3,7 @@
   "scopeName": "source.q1",
   "patterns": [
     { "include": "#comments" },
-    { "include": "#preprocessor" },
+    { "include": "#imports" },
     { "include": "#strings" },
     { "include": "#numbers" },
     { "include": "#directives" },
@@ -19,14 +19,14 @@
         { "name": "comment.line.double-slash.q1", "match": "//.*$" }
       ]
     },
-    "preprocessor": {
+    "imports": {
       "patterns": [
         {
-          "name": "meta.preprocessor.include.q1",
-          "match": "^\\s*(#\\s*include)\\s+(\"[^\"]*\"|<[^>\\n]+>)",
+          "name": "meta.import.q1",
+          "match": "^\\s*(import)\\s+(\"[^\"]*\")",
           "captures": {
-            "1": { "name": "keyword.control.import.include.q1" },
-            "2": { "name": "string.quoted.include.q1" }
+            "1": { "name": "keyword.control.import.q1" },
+            "2": { "name": "string.quoted.import.q1" }
           }
         }
       ]
