@@ -47,6 +47,8 @@ namespace iqsm::helpers::particle {
 } // namespace iqsm::helpers::particle
 
 namespace iqsm::detail::helpers::particle {
+
+    // TODO: make this (protected) repo::Transaction object
     template<meta::Particle Meta>
     class modifier {
     public:

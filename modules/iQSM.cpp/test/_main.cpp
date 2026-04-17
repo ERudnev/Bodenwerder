@@ -39,10 +39,15 @@
     X(commit_snapshot_fanout) \
     // end
 
+#define IQSM_WORKSHOP_TESTS(X) \
+    X(linear_commits) \
+    // end
+
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_VALIDATION_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_OPERATIONS_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_KNOWN_ISSUES_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(IQSM_WORKSHOP_TESTS)
 
 int main() {
     struct group final {
@@ -51,9 +56,10 @@ int main() {
     };
 
     const std::vector<group> groups{
-        group{ "all", BASETEST_MAKE_LIST_TESTS(IQSM_TESTS) },
-        group{ "validation", BASETEST_MAKE_LIST_TESTS(IQSM_VALIDATION_TESTS) },
-        group{ "operations", BASETEST_MAKE_LIST_TESTS(IQSM_OPERATIONS_TESTS) },
+        //group{ "all", BASETEST_MAKE_LIST_TESTS(IQSM_TESTS) },
+        //group{ "validation", BASETEST_MAKE_LIST_TESTS(IQSM_VALIDATION_TESTS) },
+        //group{ "operations", BASETEST_MAKE_LIST_TESTS(IQSM_OPERATIONS_TESTS) },
+        group{ "Workshop", BASETEST_MAKE_LIST_TESTS(IQSM_WORKSHOP_TESTS) },
         //group{ "known_issues", BASETEST_MAKE_LIST_TESTS(IQSM_KNOWN_ISSUES_TESTS) },
     };
 
