@@ -45,9 +45,9 @@ namespace Q1CORE::Etalon {
     }
 
     auto SampleResource::Operations::use(Writing commit, Id id, float arg) -> float {
-        const Quantum& q = ops::particle::get<SampleResource>(commit.initial, id);
-        ops::particle::modifier<SampleResource>(commit, id)->cost_summary += q.passport.cost;
-        return provide(commit.initial, id)(arg);
+        repo::Accumulator acc{commit};
+        ops::particle::modifier<SampleResource>(acc, id)->cost_summary += ops::particle::get<SampleResource>(acc, id).passport.cost;
+        return provide(acc, id)(arg);
     }
 
     auto SampleResource::Operations::use_free(Reading world, Id id, float arg) -> float {

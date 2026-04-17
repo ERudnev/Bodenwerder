@@ -4,7 +4,7 @@
 #include <set>
 #include <stdexcept>
 #include <vector>
-#include <iQSM/repository/commit.h>
+#include <iQSM/repository/transactions/sequence.h>
 
 namespace iqsm::operations {
     namespace {
@@ -79,26 +79,22 @@ namespace iqsm::operations {
             return out;
         }
 
+        void apply_invariants_vector(World& current_world, const iqsm::SchemaObject::Invariants::Layer& layer) {
+            for (const auto invariant : layer) {
+                if (not invariant) continue;
+                repo::Sequence seq{current_world};
+                invariant(static_cast<Writing>(seq));
+                current_world = static_cast<World>(seq);
+            }
+        }
+
         auto apply_invariants_in_order(iqsm::World initial_world, const std::vector<TypeId>& order) -> iqsm::World {
             auto current_world = initial_world;
 
             for (const auto& type_id : order) {
                 const auto& entry = current_world->schema->aspects.at(type_id);
-                const auto apply_layer = [&](const iqsm::SchemaObject::Invariants::Layer& layer) {
-                    for (const auto invariant : layer) {
-                        if (not invariant) continue;
-                        repo::Commit cursor{
-                            current_world,
-                            [&](Delta delta) {
-                                current_world = iqsm::operations::integrate(current_world, std::move(delta));
-                            }
-                        };
-                        invariant(cursor);
-                    }
-                };
-
-                apply_layer(entry.invariants.structural);
-                apply_layer(entry.invariants.logical);
+                apply_invariants_vector(current_world, entry.invariants.structural);
+                apply_invariants_vector(current_world, entry.invariants.logical);
             }
             return current_world;
         }

@@ -6,8 +6,8 @@
 #include <base/shared_reference.h>
 
 #include <iQSM/api/_gateway.h>
-#include <iQSM/repository/agents/subsystem.h>
 #include <iQSM/repository/agents/collaboration.h>
+#include <iQSM/repository/agents/subsystem.h>
 
 #include "multistate/model.q1.h"
 
@@ -56,8 +56,6 @@ namespace tests {
                 });
 
                 ops::particle::create<Logic::Pairing>(tx, Logic::Pairing::Quantum{{first, second}});
-
-                main.absorb(tx.push());
             }
 
             void updateWorld() {
@@ -126,12 +124,14 @@ void multistate_system() {
     EXPECT_EQ(ops::particle::get<RnD::View::HappyHouse>(renderer.main, firstHouseId).previous_happiness, integer{12});
 
     // Concurrent changes before sync resolve as right-wins for shared House field.
+    base::message("[multistate_system] expecting 2 House merge conflicts in concurrent sync section");
     server.updateWorld();
     renderer.updateWorld();
     collaborator.sync();
     EXPECT_EQ(ops::particle::get<RnD::Logic::House>(server.main, firstHouseId).happiness, integer{12});
     EXPECT_EQ(ops::particle::get<RnD::Logic::House>(server.main, firstHouseId).dynamics, integer{0});
     EXPECT_EQ(ops::particle::get<RnD::View::HappyHouse>(renderer.main, firstHouseId).previous_happiness, integer{12});
+    base::message("[multistate_system] concurrent conflict section finished");
 
     // Server-only non-overlap change must not replace renderer world.
     const iqsm::World rendererBefore = renderer.main;
@@ -174,7 +174,7 @@ void multistate_system() {
             .happiness = integer{7},
             .dynamics = integer{0},
         });
-        right->main.absorb(tx.push());
+        tx.finish();
 
         iqsm::agents::Collaboration bootstrap(left, right);
         bootstrap.sync();

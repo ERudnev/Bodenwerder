@@ -18,7 +18,6 @@
     /* X(immutable_containers_perf) */ \
     X(model_is_compileable) \
     X(complex_constructor) \
-    X(ownership) \
     X(multistate_system) \
     X(mass_operations) \
     // end
@@ -36,18 +35,18 @@
 #define IQSM_OPERATIONS_TESTS(X) \
     X(transaction_repo) \
     X(globals) \
-    X(commit_snapshot_fanout) \
     // end
 
-#define IQSM_WORKSHOP_TESTS(X) \
-    X(linear_commits) \
-    // end
+// Workshop: верни каталог test/workshop/ целиком и раскомментируй блок ниже + group "Workshop" в groups.
+//#define IQSM_WORKSHOP_TESTS(X) \
+//    X(linear_commits) \
+//    // end
 
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_VALIDATION_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_OPERATIONS_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_KNOWN_ISSUES_TESTS)
-BASETEST_FORWARD_DECLARE_TESTS(IQSM_WORKSHOP_TESTS)
+//BASETEST_FORWARD_DECLARE_TESTS(IQSM_WORKSHOP_TESTS)
 
 int main() {
     struct group final {
@@ -56,10 +55,10 @@ int main() {
     };
 
     const std::vector<group> groups{
-        //group{ "all", BASETEST_MAKE_LIST_TESTS(IQSM_TESTS) },
-        //group{ "validation", BASETEST_MAKE_LIST_TESTS(IQSM_VALIDATION_TESTS) },
-        //group{ "operations", BASETEST_MAKE_LIST_TESTS(IQSM_OPERATIONS_TESTS) },
-        group{ "Workshop", BASETEST_MAKE_LIST_TESTS(IQSM_WORKSHOP_TESTS) },
+        group{ "all", BASETEST_MAKE_LIST_TESTS(IQSM_TESTS) },
+        group{ "validation", BASETEST_MAKE_LIST_TESTS(IQSM_VALIDATION_TESTS) },
+        group{ "operations", BASETEST_MAKE_LIST_TESTS(IQSM_OPERATIONS_TESTS) },
+        //group{ "Workshop", BASETEST_MAKE_LIST_TESTS(IQSM_WORKSHOP_TESTS) },
         //group{ "known_issues", BASETEST_MAKE_LIST_TESTS(IQSM_KNOWN_ISSUES_TESTS) },
     };
 
@@ -83,7 +82,10 @@ int main() {
     base::message(std::format("TOTAL TIME: {:.3f} ms", total.elapsed_ms()));
 
     return total.ok() ? 0 : 1;
-    /*return base::testing::run_tests(BASETEST_LIST(
-        BASETEST_NAMED("transaction_repo", &tests::transaction_repo)
-    ));*/
+}
+
+int main_single() {
+    const auto s = base::testing::run_tests(
+        BASETEST_LIST(BASETEST_NAMED("multistate_system", &tests::multistate_system)));
+    return s.ok() ? 0 : 1;
 }

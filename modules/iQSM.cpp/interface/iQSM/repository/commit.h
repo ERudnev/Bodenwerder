@@ -1,36 +1,44 @@
-#pragma once
+﻿#pragma once
 
 #include <functional>
-#include <utility>
+#include <format>
+#include <base/logging.h>
 
 #include <iQSM/_forwards.h>
 
-namespace iqsm::repo {
+namespace iqsm::internals::repo {
 
-    // Value-type commit handle:
-    // - copyable/movable
-    // - no virtual/polymorphism
-    // - delegates `push()` into captured receiver (e.g. Branch)
-    //
-    // IMPORTANT USAGE NOTE
-    // `Commit` is meant to be obtained from repository objects (e.g. `repo::Branch`, `repo::Sequence`, `repo::Accumulator`)
-    // via implicit conversion. Do not construct it manually in user code.
-    //
-    // Rationale:
-    // - repo objects define the write policy (when/how changes are applied and validated)
-    // - converting from a repo object captures the correct receiver and a consistent snapshot (`initial`) for that call
-    // - explicit construction tends to leak implementation details into user code and makes misuse (reusing stale snapshots) more likely
+    // commit is encapsulated transaction agent with restricted access only for short list of legal users
+    // has initial state and gate to push somewhere own Delta.
+    // !WARNING: designed to be never visible/usable outside of Permit/Transaction wraps
+
+    // so, this structure has no encapsulation, because it is completely hidden by design
     struct Commit final {
-        World initial;
-        std::function<void(Delta)> receiver;
+        using Upstream = std::function<void(Delta)>;
 
-        Commit(World initial, std::function<void(Delta)> receiver)
-            : initial(std::move(initial))
-            , receiver(std::move(receiver))
-        {}
+        iqsm::World state;
+        Upstream upstream;
 
-        void push(Delta delta) const {
-            receiver(std::move(delta));
+        Commit(const Commit&) = delete;
+        Commit(Commit&&) = default;
+        operator World() const { return state; }
+        ~Commit() {
+            if (upstream) {
+                base::message("-commit: NOT USED");
+            }
         }
+        void kill() { upstream = {}; state.kill(); }
+
+        void receive(Delta delta) {
+            if (not upstream) {
+                base::message("commit SECOND call, rejecting");
+                return;
+            }            
+            upstream(std::move(delta)); // calling reveiver here!
+            upstream = {};
+        }
+        
+        Commit(iqsm::World world, Upstream sink) : state(std::move(world)), upstream(std::move(sink)) {}        
     };
+
 }

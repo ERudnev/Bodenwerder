@@ -13,7 +13,7 @@
 #include <iQSM/api/_gateway_equal.h>
 #include <iQSM/helpers/global.h>
 #include <iQSM/helpers/particle.h>
-#include <iQSM/repository/sequence.h>
+#include <iQSM/repository/transactions/sequence.h>
 
 namespace rmmr::controller {
 

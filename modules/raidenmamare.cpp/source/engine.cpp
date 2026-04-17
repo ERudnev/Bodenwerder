@@ -95,7 +95,7 @@ Engine::Engine(StartupParameters params) {
     {
         repo::Sequence tx{state->main};
         ops::global::modifier<controller::Dispatcher>(tx)->device = *state->device;
-        state->main.absorb(tx.push());
+        tx.finish();
     }
 
     using namespace iqsm::logger;
@@ -253,7 +253,7 @@ void Engine::createScene() {
         )
     );
 
-    state->main.absorb(transaction.push());
+    transaction.finish();
 }
 
 

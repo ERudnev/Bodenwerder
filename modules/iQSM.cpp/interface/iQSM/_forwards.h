@@ -3,6 +3,8 @@
 #include <iQSM/references.h>
 
 namespace iqsm {
+
+    // core entities
     struct SchemaObject;
     using Schema = cref<SchemaObject>;
 

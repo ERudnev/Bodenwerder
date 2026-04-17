@@ -6,7 +6,7 @@
 #include <iQSM/references.h>
 #include <iQSM/repository/agents/collaboration.h>
 #include <iQSM/repository/agents/subsystem.h>
-#include <iQSM/repository/branch.h>
+#include <iQSM/repository/transactions/branch.h>
 #include <Raidenmamare/engine.h>
 
 

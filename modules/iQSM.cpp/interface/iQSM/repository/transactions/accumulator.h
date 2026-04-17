@@ -1,21 +1,23 @@
 #pragma once
 
-#include "transaction.h"
+#include <iQSM/repository/transaction.h>
 
-namespace iqsm_mock::repo {
+namespace iqsm::repo {
 
     // Процессный слой над скрытым Commit: толстая дельта копится отдельно, снимок мира для чтения не двигаем.
     // Смысл как у iqsm::repo::Accumulator (буфер без integrate/validate в World), но язык — Transaction / Permit / finish.
     struct Accumulator : Transaction {
         explicit Accumulator(Writing writing) : Transaction(std::move(writing)) {}
-        ~Accumulator() override;
+        explicit Accumulator(Transaction& parent) : Transaction(parent) {}
+        ~Accumulator() override { finish(); }
 
         Delta delta() const;
         Delta push();
 
+        void finish() override;
+
     protected:
         void absorb(Delta delta) override;
-        void finish() override;
 
     private:
         internals::FieldsMutable accumulated{};
@@ -23,26 +25,22 @@ namespace iqsm_mock::repo {
 }
 
 // impl:
-namespace iqsm_mock::repo {
+namespace iqsm::repo {
 
-    Accumulator::~Accumulator() {
-        base::message("-accumulator");
-        finish();
-    }
-
-    Delta Accumulator::delta() const {
+    inline Delta Accumulator::delta() const {
         return accumulated.snapshot(head.state->schema);
     }
 
-    Delta Accumulator::push() {
+    inline Delta Accumulator::push() {
         return accumulated.push();
     }
 
-    void Accumulator::absorb(Delta delta) {
+    inline void Accumulator::absorb(Delta delta) {
         accumulated.absorb(head.state->schema, std::move(delta));
     }
 
-    void Accumulator::finish() {
+    inline void Accumulator::finish() {
+        if (unwinding()) return;
         if (not head.upstream)
             return;
         head.upstream(push());

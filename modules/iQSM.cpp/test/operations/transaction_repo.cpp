@@ -52,7 +52,7 @@ namespace tests {
         EXPECT_TRUE(debug::read<Foo>(master, id).exists()) << "etalon validators are degenerate; negative Foo stays";
 
         { // stress test: two concurrent changes
-            repo::Branch fork(master);
+            repo::Sequence fork(master);
             const auto thorn = ops::particle::create<Foo>(fork, Foo::Quantum{integer{10}});
             {
                 auto mod_a = ops::particle::modifier<Foo>(fork, thorn);
@@ -61,23 +61,23 @@ namespace tests {
                 mod_b->data_field = integer{6};
             }
             EXPECT_EQ(debug::read<Foo>(fork, thorn)->data_field, integer{8}) << "Last-wins is the only merge policy for now";
-            master.absorb(fork.push());
+            fork.finish();
         }
 
-        { // Sequence: no validation until absorbed into Branch
+        { // Sequence: no validation until finish() into Branch
             const std::size_t before = debug::count<Foo>(master);
             repo::Sequence seq{master};
             for (int v = -5; v <= 5; ++v) {
                 ops::particle::create<Foo>(seq, Foo::Quantum{integer{v}});
             }
 
-            EXPECT_EQ(debug::count<Foo>(seq) - before, std::size_t{11}) << "absorbing to Sequence as is, no validation called";
+            EXPECT_EQ(debug::count<Foo>(seq) - before, std::size_t{11}) << "Sequence as-is; no validation until finish()";
 
-            master.absorb(seq.push());
+            seq.finish();
             EXPECT_EQ(debug::count<Foo>(master), before + std::size_t{11}) << "etalon validators are degenerate; all Foo's enter master";
         }
 
-        { // Accumulator: no integrate/validate; validation happens on absorb into Branch
+        { // Accumulator: no integrate/validate until finish() into Branch
             const std::size_t before = debug::count<Foo>(master);
 
             repo::Accumulator acc{master};
@@ -91,7 +91,7 @@ namespace tests {
 
             EXPECT_EQ(debug::count<Foo>(acc), head_count) << "Accumulator must not integrate head while accumulating";
 
-            master.absorb(acc.push());
+            acc.finish();
             EXPECT_EQ(debug::count<Foo>(master), before + std::size_t{11}) << "etalon validators are degenerate; all accumulated Foo's enter master";
         }
     }

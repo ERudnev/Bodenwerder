@@ -8,7 +8,7 @@
 #include <iQSM/internals/delta_builders.h>
 #include <iQSM/meta/concepts.h>
 #include <iQSM/meta/facade.h>
-#include <iQSM/repository/commit.h>
+#include <iQSM/repository/transactions/once.h>
 #include <iQSM/resources/manager.h>
 
 namespace iqsm::helpers::resource {
@@ -17,10 +17,10 @@ namespace iqsm::helpers::resource {
     using Reading = ::iqsm::World;
 
     template<meta::Handle Meta>
-    auto declare(repo::Commit, Quantum<Meta>) -> Id<Meta>;
+    auto declare(Writing, Quantum<Meta>) -> Id<Meta>;
 
     template<meta::Handle Meta>
-    auto create(repo::Commit, Manager, Quantum<Meta>, RuntimeStorage<Meta>) -> Id<Meta>;
+    auto create(Writing, Manager, Quantum<Meta>, RuntimeStorage<Meta>) -> Id<Meta>;
 
     template<meta::Handle Meta>
     auto materialized(Provider, const Id<Meta>&) -> bool;
@@ -37,9 +37,9 @@ namespace iqsm::helpers::resource {
 
 namespace iqsm::helpers::resource {
     template<meta::Handle Meta>
-    auto declare(repo::Commit commit, Quantum<Meta> quantum) -> Id<Meta> {
+    auto declare(Writing writing, Quantum<Meta> quantum) -> Id<Meta> {
         const auto id = Id<Meta>::generate_random();
-        commit.push(internals::delta::make_atomic<Meta>(
+        repo::Once(writing).submit(internals::delta::make_atomic<Meta>(
             id,
             std::nullopt,
             base::make_shared<const Quantum<Meta>>(std::move(quantum))));
@@ -48,12 +48,12 @@ namespace iqsm::helpers::resource {
 
     template<meta::Handle Meta>
     auto create(
-        repo::Commit commit,
+        Writing writing,
         Manager manager,
         Quantum<Meta> quantum,
         RuntimeStorage<Meta> runtime) -> Id<Meta>
     {
-        const auto id = declare<Meta>(std::move(commit), std::move(quantum));
+        const auto id = declare<Meta>(writing, std::move(quantum));
         manager->layer<Meta>().materialize(id, std::move(runtime));
         return id;
     }

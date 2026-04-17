@@ -3,7 +3,7 @@
 #include <optional>
 #include <vector>
 
-#include <iQSM/repository/commit.h>
+#include <iQSM/repository/permit.h>
 #include <iQSM/meta/concepts.h>
 #include <iQSM/meta/facade.h>
 
@@ -23,9 +23,6 @@ namespace iqsm::detail::operations {
         using Id = ::iqsm::Id<Meta>;
         using Quantum = ::iqsm::Quantum<Meta>;
         using ItemChange = std::optional<Quantum>; // nullopt = no change
-
-        using Reading = ::iqsm::World;
-        using Writing = ::iqsm::repo::Commit;
     };
 }
 
@@ -33,7 +30,7 @@ namespace iqsm::detail::operations {
 namespace iqsm::detail::validation {
     // validation of any Aspect means applying Block of functions in defined order
     struct Block {
-        using One = void(*)(iqsm::repo::Commit);
+        using One = void(*)(Writing);
         using Layer = std::vector<One>;
 
         Layer structural;

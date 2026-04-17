@@ -1,20 +1,21 @@
 #pragma once
 
-#include "transaction.h"
+#include <iQSM/operations/integration.h>
+#include <iQSM/repository/transaction.h>
 
-namespace iqsm_mock::repo {
+namespace iqsm::repo {
 
     struct Branch : Transaction {
         Branch(Reading reading) : Transaction(reading) {}
         Branch(Writing writing) : Transaction(std::move(writing)) {}
         ~Branch() {
-            base::message("-repo::Base");
             finish();
         }
 
         World rebase(World world) {
             if (world == head.state) return head.state;
-            head.state = operations::validate_smart(root, std::move(world));
+            const auto before = head.state;
+            head.state = operations::validate_smart(before, world);
             root = head.state;
             return root;
         }
@@ -28,6 +29,7 @@ namespace iqsm_mock::repo {
         }
 
         void finish() override {
+            if (unwinding()) return;
             if (not head.upstream)
                 return;
             head.upstream(delta());
@@ -36,7 +38,7 @@ namespace iqsm_mock::repo {
     protected:
         void absorb(Delta delta) override {
             const auto before = head.state;
-            head.state = operations::validate_smart(before, operations::integrate(head.state, std::move(delta)));
+            head.state = operations::validate_smart(before, operations::integrate(head.state, delta));
         }
     };
 }

@@ -131,8 +131,8 @@ namespace iqsm::agents {
             overlapSchema,
             overlapTypes);
 
-        const Delta leftDelta = operations::make_delta(lastOverlaps.first, mergedOverlap);
-        const Delta rightDelta = operations::make_delta(lastOverlaps.second, mergedOverlap);
+        const Delta leftDelta = operations::make_delta(currentOverlaps.first, mergedOverlap);
+        const Delta rightDelta = operations::make_delta(currentOverlaps.second, mergedOverlap);
         if (leftDelta->empty() && rightDelta->empty()) {
             lastSynced = {leftCurrent, rightCurrent};
             return;

@@ -23,11 +23,11 @@
 #include <iQSM/helpers/world.h>
 #include <iQSM/helpers/resource.h>
 
-// repository:
-#include <iQSM/repository/commit.h>
-#include <iQSM/repository/branch.h>
-#include <iQSM/repository/sequence.h>
-#include <iQSM/repository/accumulator.h>
+#include <iQSM/repository/transactions/accumulator.h>
+#include <iQSM/repository/transactions/branch.h>
+#include <iQSM/repository/transactions/once.h>
+#include <iQSM/repository/transactions/sequence.h>
+#include <iQSM/repository/transactions/staged.h>
 
 // resource system
 #include <iQSM/resources/manager.h>
@@ -40,7 +40,6 @@ namespace iqsm::dsl_gateway {
     using namespace iqsm::q1; // adding all builtin types
 
     namespace ops = ::iqsm::helpers;
-    namespace repo = ::iqsm::repo;
     namespace validator = ::iqsm::operations::validation;
 
     // Particte types:
@@ -70,8 +69,16 @@ namespace iqsm::dsl_gateway {
     template<typename Aspect>
     using call = Aspect::Operations;  // call<Dispatcher>::foo(...)
 
-    using Reading = ::iqsm::World;
-    using Writing = ::iqsm::repo::Commit;
+    // Transactions mechanism:
+    using Reading = ::iqsm::Reading;
+    using Writing = ::iqsm::Writing;
+    namespace repo {
+        using Accumulator = ::iqsm::repo::Accumulator;
+        using Branch = ::iqsm::repo::Branch;
+        using Once = ::iqsm::repo::Once;
+        using Sequence = ::iqsm::repo::Sequence;
+        using Staged = ::iqsm::repo::Staged;
+    }
 
     using Invariants = ::iqsm::detail::validation::Block;
 

@@ -46,13 +46,11 @@ namespace Q1CORE::Etalon {
     struct Remnant : Component<Remnant, Tag>, Require<Tag, Trivia> {
         struct Quantum {
             integer power;
-            Trivia::Id trivia; // managed
+            Trivia::Id trivia;
         };
         struct Global {};
         static const Invariants invariants;
-        struct Operations : OwnTypeOperations{
-            static void pre_remove_action(Writing, Id, const Quantum& before); //@ added implicitly due of "managed" Trivia entity
-        };
+        struct Operations : OwnTypeOperations{};
     };
 
     struct SampleComponent : Component<SampleComponent, SampleEntity>, Require<SampleEntity> {

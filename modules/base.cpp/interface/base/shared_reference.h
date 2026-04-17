@@ -20,6 +20,7 @@ namespace base {
         bool operator!() const = delete;
         bool operator==(std::nullptr_t) const = delete;
         bool operator!=(std::nullptr_t) const = delete;
+        void kill() { ptr_ = nullptr; }
 
         explicit shared_ref(std::shared_ptr<T> p)
             : ptr_(std::move(p))

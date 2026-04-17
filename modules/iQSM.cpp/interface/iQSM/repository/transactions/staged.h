@@ -1,31 +1,28 @@
 #pragma once
 
+#include <optional>
 #include <utility>
 
-#include <iQSM/_forwards.h>
-#include <iQSM/internals/lifecycle_actions.h>
 #include <iQSM/internals/fields_mutable.h>
 #include <iQSM/meta/concepts.h>
 #include <iQSM/meta/facade.h>
 #include <iQSM/meta/global.h>
-#include <iQSM/repository/commit.h>
-#include <iQSM/world.h>
+#include <iQSM/repository/transaction.h>
 
 namespace iqsm::repo {
-    // Scope-based staging buffer:
-    // - accumulate small atomic operations cheaply
-    // - push a single baked Delta on scope exit
-    struct Staged final {
-        Commit& commit;
-        internals::FieldsMutable staged;
+    // Scope-based staging buffer as a repo object:
+    // - collects many cheap typed ops into FieldsMutable
+    // - flushes a single Delta on finish / scope exit
+    // - does not mutate World snapshot (head.state is read-only baseline)
+    struct Staged final : Transaction {
+        internals::FieldsMutable staged{};
 
-        explicit Staged(Commit& c) : commit(c) {}
+        explicit Staged(Reading reading) : Transaction(reading) {}
+        explicit Staged(Writing writing) : Transaction(std::move(writing)) {}
+        explicit Staged(Transaction& parent) : Transaction(parent) {}
+        ~Staged() override { finish(); }
 
-        ~Staged() {
-            if (!staged.empty()) {
-                commit.push(staged.push());
-            }
-        }
+        void finish() override;
 
         template<meta::Aspect Meta>
         void add(Id<Meta> id, Item<Meta> after) {
@@ -36,9 +33,6 @@ namespace iqsm::repo {
         template<meta::Aspect Meta>
         void remove(Id<Meta> id, Item<Meta> before) {
             using Op = typename delta::FieldDiff<Meta>::Operation;
-
-            detail::lifecycle::pre_remove_action_into_accumulator<Meta>(commit.initial, staged, id, before);
-
             staged.add_op<Meta>(std::move(id), Op{std::move(before), std::nullopt});
         }
 
@@ -49,9 +43,21 @@ namespace iqsm::repo {
         }
 
         template<meta::Aspect Meta>
-        void set_global(typename ::iqsm::meta::Global<Meta> before, typename ::iqsm::meta::Global<Meta> after) {
+        void set_global(typename meta::Global<Meta> before, typename meta::Global<Meta> after) {
             staged.set_global<Meta>(std::move(before), std::move(after));
         }
-    };
-}
 
+    protected:
+        void absorb(Delta delta) override {
+            staged.absorb(head.state->schema, std::move(delta));
+        }
+    };
+
+    inline void Staged::finish() {
+        if (unwinding()) return;
+        if (not head.upstream)
+            return;
+        head.upstream(staged.push());
+        disconnect();
+    }
+}

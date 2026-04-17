@@ -10,84 +10,49 @@
 #include <iQSM/field.h>
 #include <iQSM/world.h>
 #include <iQSM/internals/delta_builders.h>
+#include <iQSM/internals/fields_mutable.h>
 #include <iQSM/meta/concepts.h>
 #include <iQSM/meta/facade.h>
-#include <iQSM/repository/commit.h>
-#include <iQSM/repository/staged.h>
+#include <iQSM/repository/transactions/accumulator.h>
+#include <iQSM/repository/transactions/once.h>
+#include <iQSM/repository/transactions/quantum.h>
+#include <iQSM/repository/transactions/staged.h>
 
 namespace iqsm::helpers::particle {
   template<meta::Particle Meta>
-  auto modifier(repo::Commit commit, Id<Meta> id);
+  auto modifier(Writing writing, Id<Meta> id);
 
   template<meta::HasQuantum Meta>
   bool equal(const Quantum<Meta>& a, const Quantum<Meta>& b);
 
   template<meta::Entity Meta>
-  auto create(repo::Commit commit, Quantum<Meta> value) -> Id<Meta>;
+  auto create(Writing writing, Quantum<Meta> value) -> Id<Meta>;
 
   template<meta::Quark Meta>
-  auto create(repo::Commit commit, Id<Meta> id, Quantum<Meta> value) -> Id<Meta>;
+  auto create(Writing writing, Id<Meta> id, Quantum<Meta> value) -> Id<Meta>;
 
   template<meta::Particle Meta>
-  void remove(repo::Commit commit, Id<Meta> id);
+  void remove(Writing writing, Id<Meta> id);
 
   template<meta::Particle Meta>
-  auto get(World world, Id<Meta> id) -> const Quantum<Meta>&;
+  auto get(Reading world, Id<Meta> id) -> const Quantum<Meta>&;
 
   template<meta::Particle Meta>
-  auto item(World world, Id<Meta> id) -> Item<Meta>;
+  auto item(Reading world, Id<Meta> id) -> Item<Meta>;
 
   template<meta::Particle Meta>
-  bool exists(World world, Id<Meta> id);
+  bool exists(Reading world, Id<Meta> id);
 
-  // Mass operation: run the same per-item callable for every id in Field<Meta> (ids from commit.initial); each call receives the same commit and the forwarded trailing arguments.
+  // Mass operation: run the same per-item callable for every id in Field<Meta> (ids from reading snapshot);
+  // each call receives the same repo object and the forwarded trailing arguments.
   template<meta::Particle Meta, typename F, typename... Args>
-  void massop(repo::Commit commit, F&& op, Args&&... args);
+  void massop(Writing writing, F&& op, Args&&... args);
 
 } // namespace iqsm::helpers::particle
 
-namespace iqsm::detail::helpers::particle {
-
-    // TODO: make this (protected) repo::Transaction object
-    template<meta::Particle Meta>
-    class modifier {
-    public:
-      using Id = iqsm::Id<Meta>;
-      using Quantum = iqsm::Quantum<Meta>;
-      using Item = iqsm::Item<Meta>;
-
-      modifier(repo::Commit commit, Id id)
-          : commit(std::move(commit))
-          , id(id)
-          , original(required_item(this->commit.initial, id))
-          , value(*original)
-          , dirty(true)
-      {}
-      ~modifier() { apply(); }
-      modifier(const modifier&) = delete;
-      modifier& operator=(const modifier&) = delete;
-      modifier(modifier&& other) noexcept : commit(other.commit), id(other.id), original(other.original), value(std::move(other.value)), dirty(other.dirty), applied(other.applied) { other.applied = true; }
-      modifier& operator=(modifier&&) = delete;
-      Quantum* operator->() { dirty = true; return &value; }
-      Quantum& operator*() { dirty = true; return value; }
-
-    private:
-      static Item required_item(World world, const Id& id);
-      void apply();
-
-      repo::Commit commit;
-      Id id;
-      Item original;
-      Quantum value;
-      bool dirty = false;
-      bool applied = false;
-    };
-
-} // namespace iqsm::detail::helpers::particle
-
 namespace iqsm::helpers::particle {
   template<meta::Particle Meta>
-  auto get(World world, Id<Meta> id) -> const Quantum<Meta>& {
+  auto get(Reading world, Id<Meta> id) -> const Quantum<Meta>& {
     const auto field = world->field<Meta>();
     if (not field->container.contains(id)) { throw std::runtime_error(std::format("helpers::particle::get(): missing entity: {}", id)); }
     const auto item = field->container.at(id);
@@ -95,72 +60,53 @@ namespace iqsm::helpers::particle {
   }
 
   template<meta::Particle Meta>
-  auto item(World world, Id<Meta> id) -> Item<Meta> {
+  auto item(Reading world, Id<Meta> id) -> Item<Meta> {
     const auto field = world->field<Meta>();
     if (not field->container.contains(id)) { throw std::runtime_error(std::format("helpers::particle::item(): missing entity: {}", id)); }
     return field->container.at(id);
   }
 
   template<meta::Particle Meta>
-  bool exists(World world, Id<Meta> id) {
+  bool exists(Reading world, Id<Meta> id) {
     return world->field<Meta>()->container.contains(id);
   }
 } // namespace iqsm::helpers::particle
 
 namespace iqsm::helpers::particle {
   template<meta::Particle Meta>
-  auto modifier(repo::Commit commit, Id<Meta> id) { return detail::helpers::particle::modifier<Meta>(commit, id); }
+  auto modifier(Writing writing, Id<Meta> id) {
+    return repo::Quantum<Meta>(writing, id);
+  }
 
   template<meta::Entity Meta>
-  auto create(repo::Commit commit, Quantum<Meta> value) -> Id<Meta> {
+  auto create(Writing writing, Quantum<Meta> value) -> Id<Meta> {
     const auto id = Id<Meta>::generate_random();
-
-    commit.push(internals::delta::make_atomic<Meta>(id, std::nullopt, base::make_shared<const Quantum<Meta>>(std::move(value))));
+    repo::Once(writing).submit(internals::delta::make_atomic<Meta>(id, std::nullopt, base::make_shared<const Quantum<Meta>>(std::move(value))));
     return id;
   }
 
   template<meta::Quark Meta>
-  auto create(repo::Commit commit, Id<Meta> id, Quantum<Meta> value) -> Id<Meta> {
-    commit.push(internals::delta::make_atomic<Meta>(id, std::nullopt, base::make_shared<const Quantum<Meta>>(std::move(value))));
+  auto create(Writing writing, Id<Meta> id, Quantum<Meta> value) -> Id<Meta> {
+    repo::Once(writing).submit(internals::delta::make_atomic<Meta>(id, std::nullopt, base::make_shared<const Quantum<Meta>>(std::move(value))));
     return id;
   }
 
   template<meta::Particle Meta>
-  void remove(repo::Commit commit, Id<Meta> id) {
-    const auto field = commit.initial->field<Meta>();
+  void remove(Writing writing, Id<Meta> id) {
+    const auto field = writing->field<Meta>();
     if (not field->container.contains(id)) { throw std::runtime_error(std::format("helpers::particle::remove(): missing entity: {}", id)); }
     const auto before = field->container.at(id);
-    repo::Staged staged{commit};
+    repo::Staged staged{writing};
     staged.remove<Meta>(id, before);
   }
 
   template<meta::Particle Meta, typename F, typename... Args>
-  void massop(repo::Commit commit, F&& op, Args&&... args) {
-    const auto world = commit.initial;
-    for (const auto& kv : world->field<Meta>()->container) {
-      std::invoke(std::forward<F>(op), commit, kv.first, std::forward<Args>(args)...);
+  void massop(Writing writing, F&& op, Args&&... args) {
+    repo::Accumulator seq{writing};
+    for (const auto& kv : seq->field<Meta>()->container) {
+      std::invoke(std::forward<F>(op), seq, kv.first, std::forward<Args>(args)...);
     }
   }
 
 } // namespace iqsm::helpers::particle
-
-namespace iqsm::detail::helpers::particle {
-  template<meta::Particle Meta>
-  typename modifier<Meta>::Item modifier<Meta>::required_item(World world, const Id& id) {
-    const auto field = world->field<Meta>();
-    if (not field->container.contains(id)) { throw std::runtime_error(std::format("modifier: missing entity: {}", id)); }
-    const auto item = field->container.at(id);
-    return item;
-  }
-
-  template<meta::Particle Meta>
-  void modifier<Meta>::apply() {
-    if (applied) return;
-    applied = true;
-    if (!dirty) return;
-
-    commit.push(internals::delta::make_atomic<Meta>(id, original, base::make_shared<const Quantum>(std::move(value))));
-  }
-
-} // namespace iqsm::detail::helpers::particle
 

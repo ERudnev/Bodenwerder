@@ -15,7 +15,7 @@ namespace tests {
         for (int i = 1; i <= 100; ++i) {
             ops::particle::create<SampleEntity>(seq, SampleEntity::Quantum{integer{i}});
         }
-        master.absorb(seq.push());
+        seq.finish();
 
         EXPECT_EQ(debug::count<Tag>(master), std::size_t{50});
 

@@ -38,8 +38,8 @@ namespace Q1CORE::Etalon {
         }
 
         static void some_logic_fieldwide_invariant(Writing commit) {
-            const auto world = commit.initial;
-            const auto& container = world->field<SampleEntity>()->container;
+            repo::Sequence tx{commit};
+            const auto& container = tx->field<SampleEntity>()->container;
             const auto cap = static_cast<std::size_t>(max_elements);
             if (container.size() <= cap) return;
 
@@ -51,7 +51,7 @@ namespace Q1CORE::Etalon {
 
             const std::size_t over = container.size() - cap;
             for (std::size_t i = 0; i < over; ++i) {
-                ops::particle::remove<SampleEntity>(commit, ids[i]);
+                ops::particle::remove<SampleEntity>(tx, ids[i]);
             }
         }
     };
@@ -71,8 +71,8 @@ namespace Q1CORE::Etalon {
     }
     auto SampleEntity::Operations::example_const_element_method(Reading, Id) -> float { return 0.0f; }
     void SampleEntity::Operations::example_nonconst_fieldwide_method(Writing commit) {
-        const auto world = commit.initial;
-        const auto& container = world->field<SampleEntity>()->container;
+        repo::Sequence tx{commit};
+        const auto& container = tx->field<SampleEntity>()->container;
         if (container.empty()) return;
 
         auto it = container.begin();
@@ -85,7 +85,7 @@ namespace Q1CORE::Etalon {
                 min_id = it->first;
             }
         }
-        ops::particle::remove<SampleEntity>(commit, min_id);
+        ops::particle::remove<SampleEntity>(tx, min_id);
     }
     void SampleEntity::Operations::example_nonconst_element_method(Writing, Id) {}
 
@@ -128,7 +128,7 @@ namespace Q1CORE::Etalon {
     struct Remnant_private : Remnant::Operations {
         static auto construct(Writing commit, Id id, Item<Tag>) -> Quantum {
             return Quantum{
-                .power = ops::particle::get<SampleEntity>(commit.initial, id).data_field / ops::global::get<Tag>(commit.initial)->modulus,
+                .power = ops::particle::get<SampleEntity>(commit, id).data_field / ops::global::get<Tag>(commit)->modulus,
                 .trivia = ops::particle::create<Trivia>(commit, Trivia::Quantum{}),
             };
         }
@@ -142,14 +142,10 @@ namespace Q1CORE::Etalon {
         }
     };
 
-    void Remnant::Operations::pre_remove_action(Writing commit, Id, const Quantum& before) {
-        if (!ops::particle::exists<Trivia>(commit.initial, before.trivia)) return;
-        ops::particle::remove<Trivia>(commit, before.trivia);
-    }
-
     const Invariants Remnant::invariants{
         .structural = {
             invariant::isomorphic<Tag, Remnant, &Remnant_private::construct>,
+            invariant::anchor<Trivia, Remnant, &Remnant::Quantum::trivia>,
         },
         .logical = {
             invariant::for_each_item<Remnant, &Remnant_private::renmant_calculated>,
@@ -212,14 +208,15 @@ namespace Q1CORE::Etalon {
     };
 
     auto SampleAttribute::Operations::create_complex_constructor(Writing commit, SampleEntity::Id existing) -> Id {
-        const auto& existing_entity = ops::particle::get<SampleEntity>(commit.initial, existing);
+        const auto& existing_entity = ops::particle::get<SampleEntity>(commit, existing);
 
         auto data_field = existing_entity.data_field;
         if ((data_field % 2) != 0) data_field += 1;
 
-        const auto created = ops::particle::create<SampleEntity>(commit, SampleEntity::Quantum{ data_field });
+        repo::Accumulator tx(commit);
+        const auto created = ops::particle::create<SampleEntity>(tx, SampleEntity::Quantum{ data_field });
         ops::particle::create<SampleAttribute>(
-            commit,
+            tx,
             created,
             SampleAttribute::Quantum{
                 .neighbor_anchor = existing,

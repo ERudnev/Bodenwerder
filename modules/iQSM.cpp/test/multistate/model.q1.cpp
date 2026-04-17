@@ -26,22 +26,22 @@ namespace RnD::Logic {
     };
 
     void Pairing::Operations::update(Writing commit, Id pairing_id) {
-        const auto world = commit.initial;
-        const auto& pr = ops::particle::get<Pairing>(world, pairing_id).participants;
+        repo::Accumulator acc{commit};
+        const auto& pr = ops::particle::get<Pairing>(acc, pairing_id).participants;
         if (pr.first == pr.second) return;
 
-        const auto ha = ops::particle::get<House>(world, pr.first).happiness;
-        const auto hb = ops::particle::get<House>(world, pr.second).happiness;
+        const auto ha = ops::particle::get<House>(acc, pr.first).happiness;
+        const auto hb = ops::particle::get<House>(acc, pr.second).happiness;
 
         if (ha < hb) {
-            ops::particle::modifier<House>(commit, pr.first)->happiness = ha + integer{2};
-            ops::particle::modifier<House>(commit, pr.second)->happiness = hb + integer{1};
+            ops::particle::modifier<House>(acc, pr.first)->happiness = ha + integer{2};
+            ops::particle::modifier<House>(acc, pr.second)->happiness = hb + integer{1};
         } else if (ha > hb) {
-            ops::particle::modifier<House>(commit, pr.first)->happiness = ha + integer{1};
-            ops::particle::modifier<House>(commit, pr.second)->happiness = hb + integer{2};
+            ops::particle::modifier<House>(acc, pr.first)->happiness = ha + integer{1};
+            ops::particle::modifier<House>(acc, pr.second)->happiness = hb + integer{2};
         } else {
-            ops::particle::modifier<House>(commit, pr.first)->happiness = ha + integer{1};
-            ops::particle::modifier<House>(commit, pr.second)->happiness = hb + integer{1};
+            ops::particle::modifier<House>(acc, pr.first)->happiness = ha + integer{1};
+            ops::particle::modifier<House>(acc, pr.second)->happiness = hb + integer{1};
         }
     }
 
@@ -58,18 +58,19 @@ namespace RnD::View {
     using namespace iqsm::dsl_gateway;
 
     struct HappyHouse_private : HappyHouse::Operations {
-        static auto construct(Writing commit, Logic::House::Id id, Item<Logic::House>) -> HappyHouse::Quantum {
+        static auto construct(Reading context, Logic::House::Id id, Item<Logic::House>) -> HappyHouse::Quantum {
             return HappyHouse::Quantum{
-                .previous_happiness = ops::particle::get<Logic::House>(commit.initial, id).happiness,
+                .previous_happiness = ops::particle::get<Logic::House>(context, id).happiness,
             };
         }
     };
 
     void HappyHouse::Operations::update(Writing commit, Id id) {
-        const auto current = ops::particle::get<Logic::House>(commit.initial, id).happiness;
-        const auto previous = ops::particle::get<HappyHouse>(commit.initial, id).previous_happiness;
-        ops::particle::modifier<Logic::House>(commit, id)->dynamics = current - previous;
-        ops::particle::modifier<HappyHouse>(commit, id)->previous_happiness = current;
+        repo::Accumulator acc{commit};
+        const auto current = ops::particle::get<Logic::House>(acc, id).happiness;
+        const auto previous = ops::particle::get<HappyHouse>(acc, id).previous_happiness;
+        ops::particle::modifier<Logic::House>(acc, id)->dynamics = current - previous;
+        ops::particle::modifier<HappyHouse>(acc, id)->previous_happiness = current;
     }
 
     const Invariants HappyHouse::invariants{

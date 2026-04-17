@@ -14,7 +14,7 @@ namespace tests {
 
         EXPECT_EQ(ops::global::get<Tag>(before)->modulus, integer{2});
 
-        auto tx = repo::Sequence{before};
+        auto tx = ::iqsm::repo::Sequence{before};
         ops::global::modifier<Tag>(tx)->modulus = integer{1};
         ops::global::modifier<Tag>(tx)->modulus = integer{2};
 

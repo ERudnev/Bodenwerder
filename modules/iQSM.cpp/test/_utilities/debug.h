@@ -6,7 +6,7 @@
 
 #include <iQSM/meta/aspect_id.h>
 #include <iQSM/meta/concepts.h>
-#include <iQSM/repository/commit.h>
+#include <iQSM/repository/permit.h>
 #include <iQSM/world.h>
 
 namespace tests::debug {
@@ -20,8 +20,8 @@ namespace tests::debug {
     }
 
     template<iqsm::meta::Aspect Meta>
-    auto read(iqsm::repo::Commit commit, iqsm::Id<Meta> id) -> base::maybe<iqsm::Quantum<Meta>> {
-        return read_world<Meta>(commit.initial, id);
+    auto read(iqsm::Reading snapshot, iqsm::Id<Meta> id) -> base::maybe<iqsm::Quantum<Meta>> {
+        return read_world<Meta>(snapshot, id);
     }
 
     template<iqsm::meta::Aspect Meta>
@@ -31,7 +31,7 @@ namespace tests::debug {
     }
 
     template<iqsm::meta::Aspect Meta>
-    auto count(iqsm::repo::Commit commit) -> std::size_t {
-        return count_world<Meta>(commit.initial);
+    auto count(iqsm::Reading snapshot) -> std::size_t {
+        return count_world<Meta>(snapshot);
     }
 }
