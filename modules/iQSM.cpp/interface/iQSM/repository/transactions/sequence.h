@@ -8,7 +8,7 @@
 namespace iqsm::repo {
 
     // Mirrors iqsm::repo::Sequence: integrate + FieldsMutable (no validate_smart on absorb);
-    // upstream receives accumulated delta on finish (see interface/iQSM/repository/transactions/sequence.h).
+    // upstream receives accumulated delta on on_finish (see interface/iQSM/repository/transactions/sequence.h).
     struct Sequence : Transaction {
         explicit Sequence(World reading) : Transaction(reading) {}
         explicit Sequence(Permit writing) : Transaction(std::move(writing)) {}
@@ -18,9 +18,8 @@ namespace iqsm::repo {
         Delta delta() const;
         Delta push();
 
-        void finish() override;
-
     protected:
+        void on_finish() override;        
         void absorb(Delta delta) override;
 
     private:
@@ -32,7 +31,7 @@ namespace iqsm::repo {
 namespace iqsm::repo {
 
     inline Sequence::~Sequence() {
-        finish();
+        on_finish();
     }
 
     inline Delta Sequence::delta() const {
@@ -48,7 +47,7 @@ namespace iqsm::repo {
         accumulated.absorb(head.state->schema, std::move(delta));
     }
 
-    inline void Sequence::finish() {
+    inline void Sequence::on_finish() {
         if (unwinding()) return;
         if (not head.upstream)
             return;

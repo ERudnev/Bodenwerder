@@ -9,7 +9,7 @@
 #include <iQSM/meta/global.h>
 #include <iQSM/repository/transaction.h>
 
-// Staged batches typed field ops (add/remove/update) into FieldsMutable and emits one Delta on finish(); the world
+// Staged batches typed field ops (add/remove/update) into FieldsMutable and emits one Delta on on_finish(); the world
 // snapshot stays the read-only baseline until then.
 // Same buffer-and-flush core as Accumulator; Staged favors many small direct add_op merges, Accumulator favors
 // absorbing pre-built Deltas from child transactions.
@@ -21,9 +21,7 @@ namespace iqsm::repo {
         explicit Staged(Reading reading) : Transaction(reading) {}
         explicit Staged(Writing writing) : Transaction(std::move(writing)) {}
         explicit Staged(Transaction& parent) : Transaction(parent) {}
-        ~Staged() override { finish(); }
-
-        void finish() override;
+        ~Staged() override { on_finish(); }
 
         template<meta::Aspect Meta>
         void add(Id<Meta> id, Item<Meta> after) {
@@ -49,16 +47,15 @@ namespace iqsm::repo {
         }
 
     protected:
+        void on_finish() override {
+            if (unwinding()) return;
+            if (not head.upstream)
+                return;
+            head.upstream(staged.push());
+            disconnect();
+        }
         void absorb(Delta delta) override {
             staged.absorb(head.state->schema, std::move(delta));
         }
     };
-
-    inline void Staged::finish() {
-        if (unwinding()) return;
-        if (not head.upstream)
-            return;
-        head.upstream(staged.push());
-        disconnect();
-    }
 }

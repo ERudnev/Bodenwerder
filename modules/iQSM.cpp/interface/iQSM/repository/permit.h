@@ -15,20 +15,19 @@ namespace iqsm::repo {
 
     // it is a "mandate for only one update". Forces to define strategy in function where acts as parameter
     // implemented as "Thief" - steals (moves-out) commit to provoke creating Branch for more than 1 writing op.
-    struct Permit {
+    struct Permit final{
         operator Reading() const { assert_not_stolen(); return static_cast<Reading>(stolen); }
 
         auto operator->() const { assert_not_stolen(); return stolen.state.operator->(); }
 
         Permit(const Permit&) = delete;
         Permit(Permit& other) : stolen((other.assert_not_stolen(), std::move(other.stolen))) { other.stolen.kill(); }
-        //  EXPERIMENT... Permit(Permit&&) =  default;
-
-        // cliend may discard own transaction, disarming "commit: not used" warning
-        void discard() {
-            assert_not_stolen();
-            stolen.kill();
+        ~Permit() { 
+            //if (not stolen.state.get())
+            //    base::message("Permit: not transferred");
         }
+
+        //  EXPERIMENT... Permit(Permit&&) =  default;
 
     private:
         using Commit = internals::repo::Commit;

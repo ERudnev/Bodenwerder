@@ -25,7 +25,7 @@ namespace iqsm::repo {
             , value(*original)
         {}
 
-        ~Quantum() override { finish(); }
+        ~Quantum() override { on_finish(); }
 
         Quantum(const Quantum&) = delete;
         Quantum& operator=(const Quantum&) = delete;
@@ -36,7 +36,7 @@ namespace iqsm::repo {
         QuantumData& operator*() { dirty = true; return value; }
 
     private:
-        void finish() override {
+        void on_finish() override {
             if (unwinding()) return;
             if (not head.upstream) return;
             if (not dirty) {

@@ -39,7 +39,7 @@ namespace tests {
         repo::Accumulator merged{master};
         merged.absorb(seq_add.push());
         merged.absorb(seq_remove.push());
-        merged.finish();
+        merged.on_finish();
 
         EXPECT_FALSE(ops::particle::exists<Remnant>(master, sampleEntity));
         EXPECT_TRUE(ops::particle::exists<Trivia>(master, trivia));

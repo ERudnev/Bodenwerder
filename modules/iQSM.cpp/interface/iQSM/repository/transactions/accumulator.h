@@ -5,18 +5,17 @@
 namespace iqsm::repo {
 
     // Процессный слой над скрытым Commit: толстая дельта копится отдельно, снимок мира для чтения не двигаем.
-    // Смысл как у iqsm::repo::Accumulator (буфер без integrate/validate в World), но язык — Transaction / Permit / finish.
+    // Смысл как у iqsm::repo::Accumulator (буфер без integrate/validate в World), но язык — Transaction / Permit / on_finish.
     struct Accumulator : Transaction {
         explicit Accumulator(Writing writing) : Transaction(std::move(writing)) {}
         explicit Accumulator(Transaction& parent) : Transaction(parent) {}
-        ~Accumulator() override { finish(); }
+        ~Accumulator() override { on_finish(); }
 
         Delta delta() const;
         Delta push();
 
-        void finish() override;
-
     protected:
+        void on_finish() override;
         void absorb(Delta delta) override;
 
     private:
@@ -39,7 +38,7 @@ namespace iqsm::repo {
         accumulated.absorb(head.state->schema, std::move(delta));
     }
 
-    inline void Accumulator::finish() {
+    inline void Accumulator::on_finish() {
         if (unwinding()) return;
         if (not head.upstream)
             return;

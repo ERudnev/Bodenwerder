@@ -9,7 +9,7 @@ namespace iqsm::repo {
         Branch(Reading reading) : Transaction(reading) {}
         Branch(Writing writing) : Transaction(std::move(writing)) {}
         ~Branch() {
-            finish();
+            on_finish();
         }
 
         World rebase(World world) {
@@ -28,14 +28,14 @@ namespace iqsm::repo {
             return out;
         }
 
-        void finish() override {
+    protected:
+        void on_finish() override {
             if (unwinding()) return;
             if (not head.upstream)
                 return;
             head.upstream(delta());
             disconnect();
         }
-    protected:
         void absorb(Delta delta) override {
             const auto before = head.state;
             head.state = operations::validate_smart(before, operations::integrate(head.state, delta));

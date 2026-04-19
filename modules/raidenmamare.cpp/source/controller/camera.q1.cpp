@@ -42,14 +42,16 @@ namespace rmmr::controller {
 
 
         static void apply_arrow_move_xz(
-            Writing commit,
+            Writing permit,
             scene::Camera::Id node_id,
             float yaw_rad,
             const vector<bool>& keys,
             double delta_sec
         ) {
+            repo::Sequence transaction(permit);
+
             if (delta_sec <= 0.0)
-                return commit.discard();
+                return transaction.complete();
 
             const auto key_down = [&keys](int key) -> bool {
                 return static_cast<size_t>(key) < keys.size() && keys[static_cast<size_t>(key)];
@@ -78,9 +80,9 @@ namespace rmmr::controller {
                 delta += right_xz * step;
 
             if (glm::dot(delta, delta) <= 0.0f)
-                return commit.discard();
+                return transaction.complete();
 
-            auto node_mod = ops::particle::modifier<scene::Node>(commit, node_id);
+            auto node_mod = ops::particle::modifier<scene::Node>(transaction, node_id);
             node_mod->position.x += delta.x;
             node_mod->position.y += delta.y;
             node_mod->position.z += delta.z;

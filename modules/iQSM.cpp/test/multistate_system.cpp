@@ -174,7 +174,7 @@ void multistate_system() {
             .happiness = integer{7},
             .dynamics = integer{0},
         });
-        tx.finish();
+        tx.complete();
 
         iqsm::agents::Collaboration bootstrap(left, right);
         bootstrap.sync();

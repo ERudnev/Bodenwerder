@@ -61,23 +61,22 @@ namespace tests {
                 mod_b->data_field = integer{6};
             }
             EXPECT_EQ(debug::read<Foo>(fork, thorn)->data_field, integer{8}) << "Last-wins is the only merge policy for now";
-            fork.finish();
         }
 
-        { // Sequence: no validation until finish() into Branch
+        { // Sequence: no validation until on_finish() into Branch
             const std::size_t before = debug::count<Foo>(master);
             repo::Sequence seq{master};
             for (int v = -5; v <= 5; ++v) {
                 ops::particle::create<Foo>(seq, Foo::Quantum{integer{v}});
             }
 
-            EXPECT_EQ(debug::count<Foo>(seq) - before, std::size_t{11}) << "Sequence as-is; no validation until finish()";
+            EXPECT_EQ(debug::count<Foo>(seq) - before, std::size_t{11}) << "Sequence as-is; no validation until on_finish()";
 
-            seq.finish();
+            seq.complete();
             EXPECT_EQ(debug::count<Foo>(master), before + std::size_t{11}) << "etalon validators are degenerate; all Foo's enter master";
         }
 
-        { // Accumulator: no integrate/validate until finish() into Branch
+        { // Accumulator: no integrate/validate until on_finish() into Branch
             const std::size_t before = debug::count<Foo>(master);
 
             repo::Accumulator acc{master};
@@ -91,7 +90,7 @@ namespace tests {
 
             EXPECT_EQ(debug::count<Foo>(acc), head_count) << "Accumulator must not integrate head while accumulating";
 
-            acc.finish();
+            acc.complete();
             EXPECT_EQ(debug::count<Foo>(master), before + std::size_t{11}) << "etalon validators are degenerate; all accumulated Foo's enter master";
         }
     }

@@ -12,11 +12,11 @@ namespace iqsm::repo {
         explicit Once(Writing writing) : Transaction(std::move(writing)) {}
 
         using Transaction::submit;
-        void finish() override;
 
-        ~Once() override { finish(); }
+        ~Once() override { on_finish(); }
 
     private:
+        void on_finish() override;
         void absorb(Delta delta) override;
 
         internals::FieldsMutable accumulated{};
@@ -29,7 +29,7 @@ namespace iqsm::repo {
         accumulated.absorb(head.state->schema, std::move(delta));
     }
 
-    inline void Once::finish() {
+    inline void Once::on_finish() {
         if (unwinding()) return;
         if (not head.upstream) return;
         head.upstream(accumulated.push());

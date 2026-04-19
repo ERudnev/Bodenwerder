@@ -1,6 +1,7 @@
 #pragma once
 
 #include <exception>
+#include <stdexcept>
 #include <utility>
 
 #include <iQSM/delta.h>
@@ -17,12 +18,12 @@ namespace iqsm::repo {
         using Commit = internals::repo::Commit;
     public:
         Transaction(World world)
-            : uncaught_exceptions_at_enter_(std::uncaught_exceptions())
+            : uncaught_exceptions_at_enter(std::uncaught_exceptions())
             , root(world)
             , head(world, {})
         {}
         Transaction(Permit&& permit)
-            : uncaught_exceptions_at_enter_(std::uncaught_exceptions())
+            : uncaught_exceptions_at_enter(std::uncaught_exceptions())
             , root(permit.stolen.state)
             , head(std::move(permit.stolen))
         {}
@@ -32,12 +33,23 @@ namespace iqsm::repo {
         Transaction(Transaction&&)=delete;
         virtual ~Transaction()=default;
 
-        void submit(Delta delta) { absorb(delta); finish(); }
-        virtual void finish() = 0; // store all updates to caller (if have caller)
+        void submit(Delta delta) { absorb(delta); on_finish(); }
+        // После on_finish() обнуляет root/head (мир и commit): повторный on_finish() тихо выходит по not head.upstream / пустому state.
+        void complete() {
+            on_finish();
+            root.kill();
+            head.kill();
+        }
 
-        operator Reading() const { return head.state; }
+        operator Reading() const {
+            if (not root.get()) throw std::logic_error("repo::Transaction: invalid (e.g. after complete())");
+            return head.state;
+        }
         // Upstream is the single choke point for child→parent deltas: do not propagate empty packets.
-        operator Writing() { return Permit{ Commit{ head.state, [this](Delta delta) { if (delta->empty()) return; this->absorb(std::move(delta)); } } }; }
+        operator Writing() {
+            if (not root.get()) throw std::logic_error("repo::Transaction: invalid (e.g. after complete())");
+            return Permit{ Commit{ head.state, [this](Delta delta) { if (delta->empty()) return; this->absorb(std::move(delta)); } } };
+        }
 
         // Snapshot read of head.state (Commit baseline). Pending absorbs (e.g. Accumulator/Staged buffers)
         // are not merged into this view — by design for those transaction kinds.
@@ -47,16 +59,16 @@ namespace iqsm::repo {
     protected:
         friend struct Staged;
 
-        // std::uncaught_exceptions() at ctor; unwinding() == true → unwind since then → finish() no-ops early.
-        const int uncaught_exceptions_at_enter_{};
-
-        bool unwinding() const noexcept { return std::uncaught_exceptions() > uncaught_exceptions_at_enter_; }
+        // std::uncaught_exceptions() at ctor; unwinding() == true → unwind since then → on_finish() no-ops early.
+        const int uncaught_exceptions_at_enter{};
 
         World root; // this is state when Transaction was started. Like Git "base" (can be rebased)
         Commit head; // current transaction state as "commit": head and "how to send back" (Commit(w, null) is legal as "standalone")      
 
+        bool unwinding() const noexcept { return std::uncaught_exceptions() > uncaught_exceptions_at_enter; }
         void disconnect() { head.upstream = {}; }
         // each Transaction class must define own policy of receiving final change through head.upstream
         virtual void absorb(Delta delta) = 0;
+        virtual void on_finish() = 0; // store all updates to caller (if have caller)
     };
 }

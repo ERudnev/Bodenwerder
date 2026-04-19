@@ -34,7 +34,7 @@ namespace iqsm::detail::helpers::global {
             , value(*original)
         {}
 
-        ~modifier() override { finish(); }
+        ~modifier() override { on_finish(); }
         modifier(const modifier&) = delete;
         modifier& operator=(const modifier&) = delete;
         modifier(modifier&&) = delete;
@@ -43,7 +43,7 @@ namespace iqsm::detail::helpers::global {
         GlobalData* operator->() { dirty = true; return &value; }
         GlobalData& operator*() { dirty = true; return value; }
 
-        void finish() override {
+        void on_finish() override {
             if (unwinding()) return;
             if (finished) return;
             finished = true;
