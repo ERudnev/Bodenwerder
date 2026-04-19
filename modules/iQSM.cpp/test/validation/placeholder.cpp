@@ -22,7 +22,9 @@ namespace {
     const Invariants Foo::invariants{};
 
     struct Bar_private : Bar::Operations {
-        static auto construct(Writing, Id, Item<Foo>) -> Quantum { return {}; }
+        static void construct(Writing commit, Id id, Item<Foo>) {
+            ops::particle::create<Bar>(commit, id, Quantum{});
+        }
     };
 
     const Invariants Bar::invariants{

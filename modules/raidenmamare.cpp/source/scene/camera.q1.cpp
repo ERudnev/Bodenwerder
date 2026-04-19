@@ -15,10 +15,11 @@ namespace rmmr::scene {
         }
     };
 
-    auto Camera::Operations::create(Writing commit, Pos position, HPB hpb, float fov_y, float z_near, float z_far) -> Id {
-        const auto node = Node::Operations::create_posHpb(commit, position, hpb);
+    auto Camera::Operations::create(Writing permit, Pos position, HPB hpb, float fov_y, float z_near, float z_far) -> Id {
+        repo::Accumulator transaction(permit);
+        const auto node = Node::Operations::create_posHpb(transaction, position, hpb);
         ops::particle::create<Camera>(
-            commit,
+            transaction,
             node,
             Camera::Quantum{
                 .fov_y = fov_y,

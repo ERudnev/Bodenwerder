@@ -58,10 +58,13 @@ namespace RnD::View {
     using namespace iqsm::dsl_gateway;
 
     struct HappyHouse_private : HappyHouse::Operations {
-        static auto construct(Reading context, Logic::House::Id id, Item<Logic::House>) -> HappyHouse::Quantum {
-            return HappyHouse::Quantum{
-                .previous_happiness = ops::particle::get<Logic::House>(context, id).happiness,
-            };
+        static void construct(Writing commit, Logic::House::Id id, Item<Logic::House>) {
+            ops::particle::create<HappyHouse>(
+                commit,
+                id,
+                HappyHouse::Quantum{
+                    .previous_happiness = ops::particle::get<Logic::House>(commit, id).happiness,
+                });
         }
     };
 

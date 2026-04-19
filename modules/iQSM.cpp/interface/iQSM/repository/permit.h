@@ -30,8 +30,8 @@ namespace iqsm::repo {
         //Permit(Commit& commit) : stolen(std::move(commit)) { base::message("Permit c-tor(Commit): stolen commit");}
         Permit(Commit&& commit) : stolen(std::move(commit)) {}
         inline void assert_not_stolen() const {
-            //if (not stolen.state.get()) throw std::logic_error("iqsm::Writing: attempted to use consumed permit");
-            if (not stolen.state.get()) base::message("TEMP LOG ABOUT BAD COMMIT");
+            if (not stolen.state.get()) throw std::logic_error("iqsm::Writing: attempted to use consumed permit");
+            //if (not stolen.state.get()) base::message("critical: using write Permit 2nd time");
         }
 
         Commit stolen;

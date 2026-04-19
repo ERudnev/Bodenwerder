@@ -9,11 +9,12 @@
 #include <iQSM/meta/global.h>
 #include <iQSM/repository/transaction.h>
 
+// Staged batches typed field ops (add/remove/update) into FieldsMutable and emits one Delta on finish(); the world
+// snapshot stays the read-only baseline until then.
+// Same buffer-and-flush core as Accumulator; Staged favors many small direct add_op merges, Accumulator favors
+// absorbing pre-built Deltas from child transactions.
+
 namespace iqsm::repo {
-    // Scope-based staging buffer as a repo object:
-    // - collects many cheap typed ops into FieldsMutable
-    // - flushes a single Delta on finish / scope exit
-    // - does not mutate World snapshot (head.state is read-only baseline)
     struct Staged final : Transaction {
         internals::FieldsMutable staged{};
 

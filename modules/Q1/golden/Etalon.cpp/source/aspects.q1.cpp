@@ -126,11 +126,16 @@ namespace Q1CORE::Etalon {
     //
     // Remnant
     struct Remnant_private : Remnant::Operations {
-        static auto construct(Writing commit, Id id, Item<Tag>) -> Quantum {
-            return Quantum{
-                .power = ops::particle::get<SampleEntity>(commit, id).data_field / ops::global::get<Tag>(commit)->modulus,
-                .trivia = ops::particle::create<Trivia>(commit, Trivia::Quantum{}),
-            };
+        static void construct(Writing permit, Id id, Item<Tag>) {
+            repo::Sequence sequence(permit);
+            const auto trivia = ops::particle::create<Trivia>(sequence, Trivia::Quantum{});
+            ops::particle::create<Remnant>(
+                sequence,
+                id,
+                Quantum{
+                    .power = ops::particle::get<SampleEntity>(sequence, id).data_field / ops::global::get<Tag>(sequence)->modulus,
+                    .trivia = trivia,
+                });
         }
 
         static auto renmant_calculated(Reading world, Id id, const Quantum& before) -> ItemChange {
@@ -155,7 +160,9 @@ namespace Q1CORE::Etalon {
     //
     // SampleComponent
     struct SampleComponent_private : SampleComponent::Operations {
-        static auto private_construct(Writing, Id, Item<SampleEntity>) -> Quantum { return {}; }
+        static void private_construct(Writing commit, Id id, Item<SampleEntity>) {
+            ops::particle::create<SampleComponent>(commit, id, Quantum{});
+        }
     };
 
     void SampleComponent::Operations::example_op_multiply(Writing commit, Id id, integer factor) {
@@ -184,13 +191,16 @@ namespace Q1CORE::Etalon {
             return (item->data_field % integer{2}) == integer{0};
         }
 
-        static auto construct(Reading, Id id, Item<SampleEntity>) -> Quantum {
-            return Quantum{
-                .neighbor_anchor = id,
-                .optional_anchor = id,
-                .every_essential = { id },
-                .at_least_one_required = { id },
-            };
+        static void construct(Writing commit, Id id, Item<SampleEntity>) {
+            ops::particle::create<SampleAttribute>(
+                commit,
+                id,
+                SampleAttribute::Quantum{
+                    .neighbor_anchor = id,
+                    .optional_anchor = id,
+                    .every_essential = { id },
+                    .at_least_one_required = { id },
+                });
         }
     };
 

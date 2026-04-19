@@ -1,10 +1,11 @@
 #include <Raidenmamare/scene/light.q1.h>
 
 namespace rmmr::scene {
-    auto Light::Operations::create(Writing commit, Pos position, HPB hpb, RGB color, float intensity, float range) -> Id {
-        const auto node = Node::Operations::create_posHpb(commit, position, hpb);
+    auto Light::Operations::create(Writing permit, Pos position, HPB hpb, RGB color, float intensity, float range) -> Id {
+        repo::Accumulator transaction(permit);
+        const auto node = Node::Operations::create_posHpb(transaction, position, hpb);
         ops::particle::create<Light>(
-            commit,
+            transaction,
             node,
             Light::Quantum{
                 .color = color,

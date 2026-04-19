@@ -86,10 +86,11 @@ namespace rmmr::controller {
         }
     }
 
-    auto Camera::Operations::create(Writing commit, scene::Camera::Id anchor) -> Id {
-        ops::particle::create<Dispatcher>(commit, anchor, Dispatcher::Quantum{});
+    auto Camera::Operations::create(Writing permit, scene::Camera::Id anchor) -> Id {
+        repo::Sequence transaction(permit);
+        ops::particle::create<Dispatcher>(transaction, anchor, Dispatcher::Quantum{});
         ops::particle::create<Camera>(
-            commit,
+            transaction,
             anchor,
             Quantum{
                 .camera = anchor,
@@ -103,8 +104,8 @@ namespace rmmr::controller {
         return anchor;
     }
 
-    void Camera::Operations::update(Writing commit, Id self, seconds nowSec) {
-        iqsm::repo::Sequence seq{commit.initial};
+    void Camera::Operations::update(Writing permit, Id self, seconds nowSec) {
+        iqsm::repo::Sequence seq{permit};
 
         const auto& dispatcher = *ops::global::get<Dispatcher>(seq);
         const auto& state = ops::particle::get<Camera>(seq, self);
@@ -144,16 +145,15 @@ namespace rmmr::controller {
             }
         }
 
-        {
-            auto mod = ops::particle::modifier<Camera>(seq, self);
-            mod->previous_mouse = previousMouse;
-            mod->has_previous = hasPrevious;
-            mod->yaw_rad = yawRad;
-            mod->pitch_rad = pitchRad;
-            mod->fps_initialized = true;
-            mod->last_step_sec = nowSec;
-    }
-        commit.push(seq.push());
+
+        auto mod = ops::particle::modifier<Camera>(seq, self);
+        mod->previous_mouse = previousMouse;
+        mod->has_previous = hasPrevious;
+        mod->yaw_rad = yawRad;
+        mod->pitch_rad = pitchRad;
+        mod->fps_initialized = true;
+        mod->last_step_sec = nowSec;
+
     }
 
     const Invariants Camera::invariants{

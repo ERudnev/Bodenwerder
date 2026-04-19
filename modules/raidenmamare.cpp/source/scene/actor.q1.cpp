@@ -2,16 +2,17 @@
 
 namespace rmmr::scene {
     auto PrimitiveActor::Operations::create(
-        Writing commit,
+        Writing permit,
         Pos position,
         HPB hpb,
         primitive::Base::Id geometry,
         material::Core::Id material,
         RGB albedo) -> Id
     {
-        const auto node = Node::Operations::create_posHpb(commit, position, hpb);
+        repo::Accumulator transaction(permit);
+        const auto node = Node::Operations::create_posHpb(transaction, position, hpb);
         ops::particle::create<PrimitiveActor>(
-            commit,
+            transaction,
             node,
             PrimitiveActor::Quantum{
                 .geometry = geometry,

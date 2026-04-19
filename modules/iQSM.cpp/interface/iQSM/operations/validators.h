@@ -10,6 +10,7 @@
 #include <iQSM/world.h>
 #include <iQSM/delta.h>
 #include <iQSM/helpers/particle.h>
+#include <iQSM/meta/operationSemantics.h>
 #include <iQSM/types.h>
 #include <iQSM/repository/permit.h>
 #include <iQSM/repository/transactions/staged.h>
@@ -57,7 +58,7 @@ namespace iqsm::operations::validation {
         void existence(Writing);
 
         // Like existence(), but uses Construct to build new Dependee items when needed.
-        // Construct signature: DependeeQuantum(Writing, AnchorId, Item<Anchor>) — nested work uses the same mandate.
+        // Construct signature: void(Writing, AnchorId, Item<Anchor>) — writes via the same mandate (e.g. particle::create).
         template<meta::Aspect Dependee, meta::Aspect Anchor, auto Need, auto Construct>
         void existence(Writing);
     }
@@ -91,7 +92,7 @@ namespace iqsm::operations::validation {
         using Quantum = ::iqsm::Quantum<Meta>;
         using Item = ::iqsm::Item<Meta>;
 
-        static_assert(std::is_invocable_r_v<std::optional<Quantum>, decltype(Func), World, Id, const Quantum&>);
+        static_assert(meta::operations::ForEachItemUpdate<Meta, decltype(Func)>);
 
         repo::Staged staged{writing};
         const auto field = staged->field<Meta>();
@@ -173,7 +174,7 @@ namespace iqsm::operations::validation {
         using AnchorItem = iqsm::Item<Anchor>;
         using DependeeQuantum = iqsm::Quantum<Dependee>;
 
-        static_assert(std::is_invocable_r_v<bool, decltype(Need), World, AnchorId, AnchorItem>);
+        static_assert(meta::operations::ExistenceNeed<Anchor, decltype(Need)>);
 
         const auto anchor_field = staged->field<Anchor>();
         const auto dependee_field = staged->field<Dependee>();
@@ -203,10 +204,9 @@ namespace iqsm::operations::validation {
 
         using AnchorId = Id<Anchor>;
         using AnchorItem = iqsm::Item<Anchor>;
-        using DependeeQuantum = iqsm::Quantum<Dependee>;
 
-        static_assert(std::is_invocable_r_v<bool, decltype(Need), World, AnchorId, AnchorItem>);
-        static_assert(std::is_invocable_r_v<DependeeQuantum, decltype(Construct), Writing&, AnchorId, AnchorItem>);
+        static_assert(meta::operations::ExistenceNeed<Anchor, decltype(Need)>);
+        static_assert(meta::operations::DependeeConstruct<Anchor, decltype(Construct)>);
 
         const auto anchor_field = staged->field<Anchor>();
         const auto dependee_field = staged->field<Dependee>();
@@ -220,7 +220,7 @@ namespace iqsm::operations::validation {
 
             if (need) {
                 if (has) continue;
-                staged.add<Dependee>(id, base::make_shared<const DependeeQuantum>(Construct(staged, id, anchor_item)));
+                Construct(staged, id, anchor_item);
             } else {
                 if (not has) continue;
                 const auto before = dependee_field->container.at(id);
@@ -237,9 +237,8 @@ namespace iqsm::operations::validation {
         using AnchorId = Id<Anchor>;
         using DependeeId = Id<Dependee>;
         using AnchorItem = iqsm::Item<Anchor>;
-        using DependeeQuantum = iqsm::Quantum<Dependee>;
         static_assert(std::is_same_v<AnchorId, DependeeId>);
-        static_assert(std::is_invocable_r_v<DependeeQuantum, decltype(Construct), Writing&, AnchorId, AnchorItem>);
+        static_assert(meta::operations::DependeeConstruct<Anchor, decltype(Construct)>);
 
         const auto anchor_field = staged->field<Anchor>();
         const auto dependee_field = staged->field<Dependee>();
@@ -258,7 +257,7 @@ namespace iqsm::operations::validation {
             const auto& anchor_id = kv.first;
             const auto& anchor_item = kv.second;
             if (not dependee_field->container.contains(anchor_id)) {
-                ::iqsm::helpers::particle::create<Dependee>(staged, anchor_id, Construct(staged, anchor_id, anchor_item));
+                Construct(staged, anchor_id, anchor_item);
             }
         }
     }
