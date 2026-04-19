@@ -218,12 +218,12 @@ namespace Q1CORE::Etalon {
     };
 
     auto SampleAttribute::Operations::create_complex_constructor(Writing commit, SampleEntity::Id existing) -> Id {
-        const auto& existing_entity = ops::particle::get<SampleEntity>(commit, existing);
+        repo::Accumulator tx(commit);
+        const auto& existing_entity = ops::particle::get<SampleEntity>(tx, existing);
 
         auto data_field = existing_entity.data_field;
         if ((data_field % 2) != 0) data_field += 1;
 
-        repo::Accumulator tx(commit);
         const auto created = ops::particle::create<SampleEntity>(tx, SampleEntity::Quantum{ data_field });
         ops::particle::create<SampleAttribute>(
             tx,

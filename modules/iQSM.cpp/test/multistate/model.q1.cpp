@@ -59,11 +59,12 @@ namespace RnD::View {
 
     struct HappyHouse_private : HappyHouse::Operations {
         static void construct(Writing commit, Logic::House::Id id, Item<Logic::House>) {
+            repo::Accumulator acc(commit);
             ops::particle::create<HappyHouse>(
-                commit,
+                acc,
                 id,
                 HappyHouse::Quantum{
-                    .previous_happiness = ops::particle::get<Logic::House>(commit, id).happiness,
+                    .previous_happiness = ops::particle::get<Logic::House>(acc, id).happiness,
                 });
         }
     };

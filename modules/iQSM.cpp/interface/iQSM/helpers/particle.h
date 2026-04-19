@@ -93,10 +93,11 @@ namespace iqsm::helpers::particle {
 
   template<meta::Particle Meta>
   void remove(Writing writing, Id<Meta> id) {
-    const auto field = writing->field<Meta>();
+    repo::Staged staged{writing};
+    const auto field = staged->field<Meta>();
     if (not field->container.contains(id)) { throw std::runtime_error(std::format("helpers::particle::remove(): missing entity: {}", id)); }
     const auto before = field->container.at(id);
-    repo::Staged staged{writing};
+    
     staged.remove<Meta>(id, before);
   }
 
