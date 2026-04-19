@@ -19,6 +19,7 @@ namespace rmmr::controller {
 
     namespace {
         constexpr float k_mouse_sens_deg_per_pixel = 0.12f;
+        constexpr float k_mouse_yaw_scale_x = -1.0f;
         constexpr float k_pitch_min_deg = -89.0f;
         constexpr float k_pitch_max_deg = 89.0f;
         constexpr float k_move_units_per_sec = 3.0f;
@@ -41,10 +42,11 @@ namespace rmmr::controller {
         }
 
 
-        static void apply_arrow_move_xz(
+        static void apply_arrow_move(
             Writing permit,
             scene::Camera::Id node_id,
             float yaw_rad,
+            float pitch_rad,
             const vector<bool>& keys,
             double delta_sec
         ) {
@@ -67,13 +69,16 @@ namespace rmmr::controller {
 
             const glm::vec3 right_xz = glm::normalize(glm::cross(forward_xz, k_world_up));
 
+            const glm::quat orient = fps_orientation_rh(yaw_rad, pitch_rad);
+            const glm::vec3 forward_cam = glm::normalize(orient * glm::vec3(0.0f, 0.0f, -1.0f));
+
             const float step = k_move_units_per_sec * static_cast<float>(delta_sec);
             glm::vec3 delta{0.0f};
 
             if (key_down(GLFW_KEY_UP))
-                delta += forward_xz * step;
+                delta += forward_cam * step;
             if (key_down(GLFW_KEY_DOWN))
-                delta -= forward_xz * step;
+                delta -= forward_cam * step;
             if (key_down(GLFW_KEY_LEFT))
                 delta -= right_xz * step;
             if (key_down(GLFW_KEY_RIGHT))
@@ -129,7 +134,7 @@ namespace rmmr::controller {
         }
 
         const double deltaSec = state.last_step_sec >= 0.0 ? nowSec - state.last_step_sec : 0.0;
-        apply_arrow_move_xz(seq, state.camera, yawRad, dispatcher.keys, deltaSec);
+        apply_arrow_move(seq, state.camera, yawRad, pitchRad, dispatcher.keys, deltaSec);
 
         bool hasPrevious = false;
         index2 previousMouse = state.previous_mouse;
@@ -139,7 +144,7 @@ namespace rmmr::controller {
             if (state.has_previous) {
                 const index2 deltaMouse{mouse.x - state.previous_mouse.x, mouse.y - state.previous_mouse.y};
                 const float sensRad = glm::radians(k_mouse_sens_deg_per_pixel);
-                yawRad += static_cast<float>(deltaMouse.x) * sensRad;
+                yawRad += k_mouse_yaw_scale_x * static_cast<float>(deltaMouse.x) * sensRad;
                 pitchRad -= static_cast<float>(deltaMouse.y) * sensRad;
                 pitchRad = std::clamp(pitchRad, glm::radians(k_pitch_min_deg), glm::radians(k_pitch_max_deg));
 
