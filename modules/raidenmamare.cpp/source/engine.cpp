@@ -49,7 +49,7 @@ struct Engine::State {
     } resources;
 
     static float viewport_aspect_ratio(Reading, Viewport::Id);
-    void update(Writing commit, seconds now_sec) const;
+    void update(Writing, seconds now_sec) const;
 };
 
 float Engine::State::viewport_aspect_ratio(Reading world, Viewport::Id viewport) {
@@ -59,24 +59,26 @@ float Engine::State::viewport_aspect_ratio(Reading world, Viewport::Id viewport)
     return width / height;
 }
 
-void Engine::State::update(Writing commit, seconds now_sec) const {
-    const auto& device = ops::global::get<controller::Dispatcher>(commit.initial)->device;
+void Engine::State::update(Writing permit, seconds now_sec) const {
+    repo::Sequence transaction(permit);
+    const Reading world = transaction;
+    const auto& device = ops::global::get<controller::Dispatcher>(world)->device;
     if (not device) throw std::runtime_error("Engine::update() failed: no device");
 
     // TODO: move this decision to Controller, State should only perform "ShouldClose"
-    GLFWwindow* const window = Device::Operations::provide(commit.initial, *device);
+    GLFWwindow* const window = Device::Operations::provide(world, *device);
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    controller::Dispatcher::Operations::update(commit, now_sec);
-    ops::particle::massop<controller::Camera>(commit, &controller::Camera::Operations::update, now_sec);
+    controller::Dispatcher::Operations::update(transaction, now_sec);
+    ops::particle::massop<controller::Camera>(transaction, &controller::Camera::Operations::update, now_sec);
 }
 
 
 // Engine itself
 Engine::Engine(StartupParameters params) {
     const auto resources = base::make_shared<iqsm::resources::ManagerCore>(schema_static());
-    state = std::make_shared<State>(State{
+    state = std::shared_ptr<State>(new State{
         .resourceManager = resources,
         .main = iqsm::repo::Branch(ops::world::create(schema_static(), iqsm::freeze(resources))),
         .renderer = {},

@@ -40,6 +40,7 @@ namespace rmmr::controller {
             pitch_out = std::asin(std::clamp(forward.y, -1.0f, 1.0f));
         }
 
+
         static void apply_arrow_move_xz(
             Writing commit,
             scene::Camera::Id node_id,
@@ -48,7 +49,7 @@ namespace rmmr::controller {
             double delta_sec
         ) {
             if (delta_sec <= 0.0)
-                return;
+                return commit.discard();
 
             const auto key_down = [&keys](int key) -> bool {
                 return static_cast<size_t>(key) < keys.size() && keys[static_cast<size_t>(key)];
@@ -77,7 +78,7 @@ namespace rmmr::controller {
                 delta += right_xz * step;
 
             if (glm::dot(delta, delta) <= 0.0f)
-                return;
+                return commit.discard();
 
             auto node_mod = ops::particle::modifier<scene::Node>(commit, node_id);
             node_mod->position.x += delta.x;

@@ -4,8 +4,8 @@
 
 namespace rmmr::primitive {
 
-    auto MeshGenerator::triangle(Writing commit, rmmr::Device::Id device, resources::Manager resourceManager) -> Base::Id {
-        repo::Sequence transaction{commit.initial};
+    auto MeshGenerator::triangle(Writing permit, rmmr::Device::Id device, resources::Manager resourceManager) -> Base::Id {
+        repo::Sequence transaction(permit);
 
         const auto id = ops::resource::declare<Base>(
             transaction,
@@ -31,12 +31,11 @@ namespace rmmr::primitive {
         if (!tri_runtime.vao || !tri_runtime.vbo || tri_runtime.vertex_count <= integer{0})
             throw std::runtime_error("MeshGenerator::triangle: primitive runtime is incomplete (VAO/VBO/count)");
 
-        commit.push(transaction.push());
         return id;
     }
 
-    auto MeshGenerator::kube(Writing commit, rmmr::Device::Id device, resources::Manager resourceManager) -> Base::Id {
-        repo::Sequence transaction{commit.initial};
+    auto MeshGenerator::kube(Writing permit, rmmr::Device::Id device, resources::Manager resourceManager) -> Base::Id {
+        repo::Sequence transaction(permit);
 
         const auto id = ops::resource::declare<Base>(
             transaction,
@@ -139,12 +138,11 @@ namespace rmmr::primitive {
         if (!kube_runtime.vao || !kube_runtime.vbo || kube_runtime.vertex_count <= integer{0})
             throw std::runtime_error("MeshGenerator::kube: primitive runtime is incomplete (VAO/VBO/count)");
 
-        commit.push(transaction.push());
         return id;
     }
 
-    auto MeshGenerator::gridPlane(Writing commit, rmmr::Device::Id device, resources::Manager resourceManager) -> Base::Id {
-        repo::Sequence transaction{commit.initial};
+    auto MeshGenerator::gridPlane(Writing permit, rmmr::Device::Id device, resources::Manager resourceManager) -> Base::Id {
+        repo::Sequence transaction(permit);
 
         constexpr float half = 80.0f;
 
@@ -176,7 +174,6 @@ namespace rmmr::primitive {
             throw std::runtime_error("MeshGenerator::gridPlane: primitive runtime is incomplete (VAO/VBO/count)");
         }
 
-        commit.push(transaction.push());
         return id;
     }
 

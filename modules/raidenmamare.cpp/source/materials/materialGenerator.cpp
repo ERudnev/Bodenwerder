@@ -4,8 +4,8 @@
 
 namespace rmmr::material {
 
-    auto MaterialGenerator::ambient(Writing commit, rmmr::Device::Id device, resources::Manager resourceManager) -> Core::Id {
-        repo::Sequence transaction{commit.initial};
+    auto MaterialGenerator::ambient(Writing permit, rmmr::Device::Id device, resources::Manager resourceManager) -> Core::Id {
+        repo::Sequence transaction(permit);
 
         const material::Program::Id program = ops::resource::declare<material::Program>(
             transaction,
@@ -41,12 +41,11 @@ namespace rmmr::material {
 
         ops::resource::materialize<material::Core>(transaction, resourceManager, core);
 
-        commit.push(transaction.push());
         return core;
     }
 
-    auto MaterialGenerator::lit(Writing commit, rmmr::Device::Id device, resources::Manager resourceManager) -> Core::Id {
-        repo::Sequence transaction{commit.initial};
+    auto MaterialGenerator::lit(Writing permit, rmmr::Device::Id device, resources::Manager resourceManager) -> Core::Id {
+        repo::Sequence transaction(permit);
 
         const material::Program::Id program = ops::resource::declare<material::Program>(
             transaction,
@@ -85,12 +84,11 @@ namespace rmmr::material {
 
         ops::resource::materialize<material::Core>(transaction, resourceManager, core);
 
-        commit.push(transaction.push());
         return core;
     }
 
-    auto MaterialGenerator::grid(Writing commit, rmmr::Device::Id device, resources::Manager resourceManager) -> Core::Id {
-        repo::Sequence transaction{commit.initial};
+    auto MaterialGenerator::grid(Writing permit, rmmr::Device::Id device, resources::Manager resourceManager) -> Core::Id {
+        repo::Sequence transaction(permit);
 
         const material::Program::Id program = ops::resource::declare<material::Program>(
             transaction,
@@ -125,7 +123,6 @@ namespace rmmr::material {
 
         ops::resource::materialize<material::Core>(transaction, resourceManager, core);
 
-        commit.push(transaction.push());
         return core;
     }
 

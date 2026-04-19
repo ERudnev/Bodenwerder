@@ -24,6 +24,12 @@ namespace iqsm::repo {
         Permit(Permit& other) : stolen((other.assert_not_stolen(), std::move(other.stolen))) { other.stolen.kill(); }
         //  EXPERIMENT... Permit(Permit&&) =  default;
 
+        // cliend may discard own transaction, disarming "commit: not used" warning
+        void discard() {
+            assert_not_stolen();
+            stolen.kill();
+        }
+
     private:
         using Commit = internals::repo::Commit;
         friend struct Transaction; // Permit is just a transport between Transactions

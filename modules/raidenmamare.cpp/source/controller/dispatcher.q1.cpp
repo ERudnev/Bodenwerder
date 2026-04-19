@@ -12,20 +12,21 @@
 namespace rmmr::controller {
 
     struct Dispatcher_private : Dispatcher::Operations {
-        static void applyInput(Writing step);
+        static void applyInput(Writing);
     };
 
-    void Dispatcher_private::applyInput(Writing step) {
-        const auto& device = ops::global::get<Dispatcher>(step.initial)->device;
+    void Dispatcher_private::applyInput(Writing permit) {
+        repo::Sequence transaction(permit);
+        const auto& device = ops::global::get<Dispatcher>(transaction)->device;
         if (not device) {
             return;
         }
-        GLFWwindow* const w = Device::Operations::provide(step.initial, *device);
+        GLFWwindow* const w = Device::Operations::provide(transaction, *device);
         if (!w) {
             return;
         }
 
-        auto mod = ops::global::modifier<Dispatcher>(step);
+        auto mod = ops::global::modifier<Dispatcher>(transaction);
         auto& keys = mod->keys;
 
         if (keys.size() < static_cast<size_t>(GLFW_KEY_LAST + 1)) {
@@ -42,11 +43,10 @@ namespace rmmr::controller {
         mod->mouse = index2{static_cast<integer>(std::lround(mx)), static_cast<integer>(std::lround(my))};
     }
 
-    void Dispatcher::Operations::update(Writing outer, seconds now_sec) {
-        iqsm::repo::Sequence seq{outer.initial};
-        ops::global::modifier<Dispatcher>(seq)->clock = now_sec;
-        Dispatcher_private::applyInput(seq);
-        outer.push(seq.push());
+    void Dispatcher::Operations::update(Writing permit, seconds now_sec) {
+        iqsm::repo::Sequence transaction(permit);
+        ops::global::modifier<Dispatcher>(transaction)->clock = now_sec;
+        Dispatcher_private::applyInput(transaction);
     }
 
     const Invariants Dispatcher::invariants{
