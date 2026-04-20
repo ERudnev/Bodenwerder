@@ -1,5 +1,6 @@
 add_subdirectory(base.cpp)
 add_subdirectory(iQSM.cpp)
+add_subdirectory(mQSM.cpp)
 add_subdirectory(QGame/Foundation)
 add_subdirectory(Q1/golden/Etalon.cpp)
 add_subdirectory(raidenmamare.cpp)

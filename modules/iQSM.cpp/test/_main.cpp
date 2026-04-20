@@ -15,7 +15,7 @@
     /* X(globals) */ \
     /* X(handles) */ \
     X(resource_example) \
-    /* X(immutable_containers_perf) */ \
+    X(immutable_containers_perf) \
     X(model_is_compileable) \
     X(complex_constructor) \
     X(multistate_system) \
@@ -37,6 +37,11 @@
     X(globals) \
     // end
 
+// Perf-lab: keep single-test main() simple and switch here.
+#define IQSM_PERFORMANCE_LAB_TESTS(X) \
+    X(immutable_containers_perf2) \
+    // end
+
 // Workshop: верни каталог test/workshop/ целиком и раскомментируй блок ниже + group "Workshop" в groups.
 //#define IQSM_WORKSHOP_TESTS(X) \
 //    X(linear_commits) \
@@ -46,9 +51,10 @@ BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_VALIDATION_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_OPERATIONS_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_KNOWN_ISSUES_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(IQSM_PERFORMANCE_LAB_TESTS)
 //BASETEST_FORWARD_DECLARE_TESTS(IQSM_WORKSHOP_TESTS)
 
-int main() {
+int main_all() {
     struct group final {
         const char* name = "";
         std::vector<base::testing::test_case> tests{};
@@ -84,8 +90,9 @@ int main() {
     return total.ok() ? 0 : 1;
 }
 
-int main_single() {
+int main() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("multistate_system", &tests::multistate_system)));
+        //BASETEST_LIST(BASETEST_NAMED("performance_lab", &tests::immutable_containers_perf)));
+        BASETEST_LIST(BASETEST_NAMED("performance_lab2", &tests::immutable_containers_perf2)));
     return s.ok() ? 0 : 1;
 }

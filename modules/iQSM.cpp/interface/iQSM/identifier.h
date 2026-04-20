@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include <cstdint>
-#include <functional>
 #include <format>
+#include <functional>
 #include <string>
 
 namespace iqsm {
@@ -21,13 +21,12 @@ namespace iqsm {
         explicit Identifier(BaseType v) : value(v) {}
 
         // do not use for any kind of logic! Only for std::map and other containers!
-        inline bool operator<(const Identifier& rhs) const { return value < rhs.value; }
-        //remove? Identifier advance() const { return {identifiers::advance(value)}; } // will not compile with non-integers. Redo this
+        bool operator<(const Identifier& rhs) const { return value < rhs.value; }
         static Identifier generate_random() { return Identifier{internal::id::generate_unique()}; }
 
-        inline bool operator==(const Identifier& rhs) const { return value == rhs.value; }
+        bool operator==(const Identifier& rhs) const { return value == rhs.value; }
 
-        inline BaseType raw() const { return value; }
+        BaseType raw() const { return value; }
 
     private:
         BaseType value;

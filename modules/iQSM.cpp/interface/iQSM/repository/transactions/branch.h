@@ -8,6 +8,8 @@ namespace iqsm::repo {
     struct Branch : Transaction {
         Branch(Reading reading) : Transaction(reading) {}
         Branch(Writing writing) : Transaction(std::move(writing)) {}
+        explicit Branch(Transaction& parent) : Transaction(parent) {}
+        explicit Branch(Branch& parent) : Transaction(parent) {}
         ~Branch() {
             on_finish();
         }
