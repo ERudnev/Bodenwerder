@@ -9,6 +9,7 @@
 #include <base/logging.h>
 
 #include <iQSM/_forwards.h>
+#include <iQSM/collections/fieldDiff.h>
 #include <iQSM/field.h>
 #include <iQSM/meta/aspect_id.h>
 #include <iQSM/meta/concepts.h>
@@ -18,10 +19,6 @@
 #include <iQSM/types.h>
 
 namespace iqsm::delta {
-    struct FieldDiffAbstract {
-        using RuntimeTypeId = internals::Types::RuntimeId;
-        virtual ~FieldDiffAbstract() = default;
-    };
 
     template<meta::Aspect Meta>
     struct FieldDiff final : FieldDiffAbstract {

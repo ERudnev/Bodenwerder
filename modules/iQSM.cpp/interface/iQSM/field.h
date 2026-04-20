@@ -1,18 +1,15 @@
 #pragma once
 
 #include <base/containers/ImmutableUnorderedMap.h>
+//#include <base/containers/denseTable.h>
 
+#include <iQSM/collections/field.h>
 #include <iQSM/meta/concepts.h>
 #include <iQSM/meta/facade.h>
 #include <iQSM/meta/global.h>
 #include <iQSM/references.h>
-#include <iQSM/types.h>
 
 namespace iqsm {
-    struct FieldAbstract {
-        using RuntimeTypeId = internals::Types::RuntimeId;
-        virtual ~FieldAbstract() = default;
-    };
 
     template<meta::Aspect Meta>
     struct FieldData final : FieldAbstract {
@@ -23,6 +20,7 @@ namespace iqsm {
         using Global = ::iqsm::meta::Global<Meta>;
 
         using Container = base::ImmutableUnorderedMap<Id, Item>;
+        //using Container = base::DenseTable<Id,Item>;
 
         Container container;
         Global global = ::iqsm::meta::zero_global<Meta>();

@@ -173,12 +173,12 @@ template<typename TransactionT>
 void updateHousesQuadratic(State& state) {
     TransactionT tx{state.master};
 
-    for (const auto& outer : tx->field<Logic::House>()->container) {
+    for (const auto& outer : tx->template field<Logic::House>()->container) {
         const auto outerId = outer.first;
 
         integer sumOthers = 0;
         integer countOthers = 0;
-        for (const auto& inner : tx->field<Logic::House>()->container) {
+        for (const auto& inner : tx->template field<Logic::House>()->container) {
             if (inner.first == outerId) {
                 continue;
             }
@@ -223,7 +223,7 @@ void shuffleHouses(State& state) {
         return x;
     };
 
-    for (const auto& kv : tx->field<Logic::House>()->container) {
+    for (const auto& kv : tx->template field<Logic::House>()->container) {
         const auto id = kv.first;
         const integer cur = ops::particle::get<Logic::House>(tx, id).happiness;
         const integer delta = static_cast<integer>(static_cast<int>(rng() % 5u) - 2); // [-2..+2]
