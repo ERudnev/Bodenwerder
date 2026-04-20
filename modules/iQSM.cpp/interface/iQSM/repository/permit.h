@@ -8,7 +8,6 @@
 namespace iqsm {
     namespace repo { struct Permit; }
     using Writing = repo::Permit;
-    using Reading = World;
 }
 
 namespace iqsm::repo {

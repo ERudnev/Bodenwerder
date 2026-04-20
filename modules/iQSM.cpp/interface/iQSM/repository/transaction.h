@@ -17,7 +17,7 @@ namespace iqsm::repo {
     protected:
         using Commit = internals::repo::Commit;
     public:
-        Transaction(World world)
+        Transaction(Reading world)
             : uncaught_exceptions_at_enter(std::uncaught_exceptions())
             , root(world)
             , head(world, {})
@@ -33,7 +33,7 @@ namespace iqsm::repo {
         Transaction(Transaction&&)=delete;
         virtual ~Transaction()=default;
 
-        void submit(Delta delta) { absorb(delta); on_finish(); }
+        void submit(Delta delta) { absorb({{}, delta}); on_finish(); }
         // После on_finish() обнуляет root/head (мир и commit): повторный on_finish() тихо выходит по not head.upstream / пустому state.
         void complete() {
             on_finish();
@@ -48,12 +48,15 @@ namespace iqsm::repo {
         // Upstream is the single choke point for child→parent deltas: do not propagate empty packets.
         operator Writing() {
             if (not root.get()) throw std::logic_error("repo::Transaction: invalid (e.g. after complete())");
-            return Permit{ Commit{ head.state, [this](Delta delta) { if (delta->empty()) return; this->absorb(std::move(delta)); } } };
+            return Permit{ Commit{ head.state, [this](Commit::Result result) {
+                if (not result.maybeState.exists() && result.delta->empty()) return;
+                this->absorb(std::move(result));
+            } } };
         }
 
         // Snapshot read of head.state (Commit baseline). Pending absorbs (e.g. Accumulator/Staged buffers)
         // are not merged into this view — by design for those transaction kinds.
-        World operator*() const { return head.state; }
+        Reading operator*() const { return head.state; }
         auto operator->() const { return head.state.operator->(); }
 
     protected:
@@ -62,13 +65,17 @@ namespace iqsm::repo {
         // std::uncaught_exceptions() at ctor; unwinding() == true → unwind since then → on_finish() no-ops early.
         const int uncaught_exceptions_at_enter{};
 
-        World root; // this is state when Transaction was started. Like Git "base" (can be rebased)
+        Reading root; // this is state when Transaction was started. Like Git "base" (can be rebased)
         Commit head; // current transaction state as "commit": head and "how to send back" (Commit(w, null) is legal as "standalone")      
 
         bool unwinding() const noexcept { return std::uncaught_exceptions() > uncaught_exceptions_at_enter; }
         void disconnect() { head.upstream = {}; }
+        /// Like `operator Writing()`, but custom upstream instead of `absorb` (e.g. integrate-only for nested validation).
+        Writing permit_with_upstream(Commit::Upstream sink) {
+            return Permit{ Commit{ head.state, std::move(sink) } };
+        }
         // each Transaction class must define own policy of receiving final change through head.upstream
-        virtual void absorb(Delta delta) = 0;
+        virtual void absorb(Commit::Result result) = 0;
         virtual void on_finish() = 0; // store all updates to caller (if have caller)
     };
 }

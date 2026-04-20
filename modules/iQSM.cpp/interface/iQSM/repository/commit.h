@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <format>
+#include <base/maybe.h>
 #include <base/logging.h>
 
 #include <iQSM/_forwards.h>
@@ -14,14 +15,18 @@ namespace iqsm::internals::repo {
 
     // so, this structure has no encapsulation, because it is completely hidden by design
     struct Commit final {
-        using Upstream = std::function<void(Delta)>;
+        struct Result {
+            base::maybe<Reading> maybeState;
+            Delta delta;
+        };
+        using Upstream = std::function<void(Result)>;
 
-        iqsm::World state;
+        Reading state;
         Upstream upstream;
 
         Commit(const Commit&) = delete;
         Commit(Commit&&) = default;
-        operator World() const { return state; }
+        operator Reading() const { return state; }
         ~Commit() {
             if (upstream) {
                 base::message("-commit: NOT USED");
@@ -29,16 +34,16 @@ namespace iqsm::internals::repo {
         }
         void kill() { upstream = {}; state.kill(); }
 
-        void receive(Delta delta) {
+        void receive(Result result) {
             if (not upstream) {
-                base::message("commit SECOND call, rejecting");
+                base::message("commit second call, rejecting");
                 return;
             }            
-            upstream(std::move(delta)); // calling reveiver here!
+            upstream(std::move(result)); // calling reveiver here!
             upstream = {};
         }
         
-        Commit(iqsm::World world, Upstream sink) : state(std::move(world)), upstream(std::move(sink)) {}        
+        Commit(Reading world, Upstream sink) : state(std::move(world)), upstream(std::move(sink)) {}        
     };
 
 }

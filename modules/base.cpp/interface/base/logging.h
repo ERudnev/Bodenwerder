@@ -13,6 +13,10 @@
 #include <string_view>
 #include <utility>
 
+#ifndef NOTECS_FUNCTION_NAME
+#define NOTECS_FUNCTION_NAME __func__
+#endif
+
 // infra:
 #define _INCOMPLETE_ throw ::base::detail::make_incomplete_message(__FILE__, __LINE__, NOTECS_FUNCTION_NAME)
 #define _THROW_LOGIC_ERROR_ throw std::logic_error(::base::detail::make_logic_error_message(__FILE__, __LINE__, __func__))

@@ -15,7 +15,7 @@
 
 namespace iqsm::helpers::global {
     template<meta::Aspect Meta>
-    auto get(World world) -> ::iqsm::meta::Global<Meta> { const auto field = world->field<Meta>(); return field->global; }
+    auto get(Reading world) -> ::iqsm::meta::Global<Meta> { const auto field = world->field<Meta>(); return field->global; }
 
     template<meta::Aspect Meta>
     auto modifier(Writing writing);
@@ -59,12 +59,12 @@ namespace iqsm::detail::helpers::global {
             auto world_delta = base::make_shared<delta::Fields>();
             world_delta->fields.emplace(types::aspectId<Meta>(), freeze(field_delta));
 
-            head.upstream(freeze(world_delta));
+            head.upstream({{}, freeze(world_delta)});
             disconnect();
         }
 
     private:
-        static Global required_item(World world) {
+        static Global required_item(Reading world) {
             if (not world->schema->aspects.contains(types::aspectId<Meta>())) {
                 throw std::runtime_error("helpers::global::modifier(): aspect is not in schema");
             }
@@ -72,7 +72,7 @@ namespace iqsm::detail::helpers::global {
         }
 
     protected:
-        void absorb(Delta delta) override {}
+        void absorb(repo::Transaction::Commit::Result) override {}
 
         Global original;
         GlobalData value;

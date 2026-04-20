@@ -14,9 +14,7 @@ namespace tests {
             ops::particle::create<SampleEntity>(branch, SampleEntity::Quantum{integer{i}});
         }
 
-        // "rude" way to update all elements in table
-        const iqsm::World world = branch;
-        for (const auto& kv : world->field<SampleEntity>()->container) {
+        for (const auto& kv : branch->field<SampleEntity>()->container) {
             SampleComponent::Operations::example_op_multiply(branch, kv.first, integer{2});
         }
 

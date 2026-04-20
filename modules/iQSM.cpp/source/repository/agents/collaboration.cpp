@@ -1,5 +1,7 @@
 #include <iQSM/repository/agents/collaboration.h>
 
+#include <base/logging.h>
+
 #include <iQSM/helpers/schema.h>
 #include <iQSM/operations/integration.h>
 #include <iQSM/references.h>
@@ -107,6 +109,8 @@ namespace iqsm::agents {
     {}
 
     void Collaboration::sync() {
+        _INCOMPLETE_;
+        /*
         const base::pair<Subsystem::Update> updates{peers.first->access(), peers.second->access()};
 
         const World leftCurrent = updates.first.current;
@@ -157,5 +161,6 @@ namespace iqsm::agents {
         const base::pair<World> finals{peers.first->access().current, peers.second->access().current};
 
         lastSynced = finals;
+        */
     }
 }

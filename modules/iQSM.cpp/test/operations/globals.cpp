@@ -14,11 +14,11 @@ namespace tests {
 
         EXPECT_EQ(ops::global::get<Tag>(before)->modulus, integer{2});
 
-        auto tx = ::iqsm::repo::Sequence{before};
-        ops::global::modifier<Tag>(tx)->modulus = integer{1};
-        ops::global::modifier<Tag>(tx)->modulus = integer{2};
+        iqsm::repo::Sequence transaction{before};
+        ops::global::modifier<Tag>(transaction)->modulus = integer{1};
+        ops::global::modifier<Tag>(transaction)->modulus = integer{2};
 
-        const World validated = operations::validate_smart(before, operations::integrate(before, tx.push()));
-        EXPECT_EQ(ops::global::get<Tag>(validated)->modulus, integer{2});
+
+        EXPECT_EQ(ops::global::get<Tag>(transaction)->modulus, integer{2});
     }
 }

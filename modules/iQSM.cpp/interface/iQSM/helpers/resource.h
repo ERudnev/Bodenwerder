@@ -14,7 +14,6 @@
 namespace iqsm::helpers::resource {
     using Manager = ref<::iqsm::resources::ManagerCore>;
     using Provider = cref<::iqsm::resources::ManagerCore>;
-    using Reading = ::iqsm::World;
 
     template<meta::Handle Meta>
     auto declare(Writing, Quantum<Meta>) -> Id<Meta>;

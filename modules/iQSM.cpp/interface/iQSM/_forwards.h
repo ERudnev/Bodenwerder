@@ -4,12 +4,13 @@
 
 namespace iqsm {
 
-    // core entities
     struct SchemaObject;
     using Schema = cref<SchemaObject>;
 
+    struct WorldInterface;
     struct WorldObject;
     using World = cref<WorldObject>;
+    using Reading = cref<WorldInterface>;
 
     namespace delta { struct Fields; }
     using Delta = cref<delta::Fields>;

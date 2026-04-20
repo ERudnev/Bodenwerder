@@ -12,10 +12,8 @@ namespace iqsm::agents {
 
         base::pair<ref<Subsystem>> peers;
 
-        // Последние World слева и справа после успешного sync (per-side snapshot).
-        base::pair<World> lastSynced;
+        base::pair<Reading> lastSynced;
 
-        // Множество TypeId общей поверхности (пересечение Schema левого и правого Subsystem).
         SchemaObject::TypeSet overlapTypes;
 
         void sync();

@@ -25,7 +25,7 @@ namespace iqsm::resources {
         explicit ManagerCore(Schema schema)
             : schema(std::move(schema)) {}
 
-        void shutdown(World) noexcept;
+        void shutdown(Reading) noexcept;
 
         template<typename Meta>
         auto slot() -> resources::Slot<Meta>&;
@@ -49,7 +49,7 @@ namespace iqsm::resources {
 }
 
 namespace iqsm::resources {
-    inline void ManagerCore::shutdown(World world) noexcept {
+    inline void ManagerCore::shutdown(Reading world) noexcept {
         std::vector<TypeId> order;
         order.reserve(slots.size());
 

@@ -6,7 +6,7 @@
 namespace iqsm::repo {
 
     struct Branch : Transaction {
-        Branch(Reading reading) : Transaction(reading) {}
+        Branch(Reading reading) : Transaction(reading->share()) {}
         Branch(Writing writing) : Transaction(std::move(writing)) {}
         explicit Branch(Transaction& parent) : Transaction(parent) {}
         explicit Branch(Branch& parent) : Transaction(parent) {}
@@ -14,10 +14,12 @@ namespace iqsm::repo {
             on_finish();
         }
 
-        World rebase(World world) {
+        Reading rebase(Reading world) {
             if (world == head.state) return head.state;
             const auto before = head.state;
-            head.state = operations::validate_smart(before, world);
+            head.state = world;
+
+            operations::validate_smart(cleanChannel(), before);
             root = head.state;
             return root;
         }
@@ -31,16 +33,33 @@ namespace iqsm::repo {
         }
 
     protected:
+        /// Writing for nested work (e.g. validate_smart) without re-entering `absorb` → validate_smart.
+        Writing cleanChannel() {
+            return permit_with_upstream([this](Commit::Result result) {
+                if (result.maybeState.exists()) {
+                    head.state = *std::move(result.maybeState);
+                    return;
+                }
+                if (result.delta->empty()) return;
+                head.state = operations::integrate(head.state, std::move(result.delta));
+            });
+        }
+
         void on_finish() override {
             if (unwinding()) return;
             if (not head.upstream)
                 return;
-            head.upstream(delta());
+            head.upstream({head.state, delta()});
             disconnect();
         }
-        void absorb(Delta delta) override {
+        void absorb(Commit::Result result) override {
             const auto before = head.state;
-            head.state = operations::validate_smart(before, operations::integrate(head.state, delta));
+            if (result.maybeState.exists()) {
+                head.state = *std::move(result.maybeState);
+            } else {
+                head.state = operations::integrate(head.state, result.delta);
+            }
+            operations::validate_smart(cleanChannel(), before);
         }
     };
 }

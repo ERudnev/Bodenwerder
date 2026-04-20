@@ -12,7 +12,7 @@ namespace iqsm::resources {
 
     struct SlotAbstract {
         virtual ~SlotAbstract() = default;
-        virtual void shutdown(ref<ManagerCore>, World) noexcept = 0;
+        virtual void shutdown(ref<ManagerCore>, Reading) noexcept = 0;
     };
 
     template<typename Meta>
@@ -23,7 +23,7 @@ namespace iqsm::resources {
         explicit Slot(ref<resources::Materializer<Meta>> materializer)
             : materializer(std::move(materializer)) {}
 
-        void shutdown(ref<ManagerCore> manager, World world) noexcept override {
+        void shutdown(ref<ManagerCore> manager, Reading world) noexcept override {
             std::vector<typename Meta::Id> ids;
             ids.reserve(layer.values.size());
             for (const auto& [id, _] : layer.values) {

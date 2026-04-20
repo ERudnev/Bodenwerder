@@ -37,7 +37,7 @@ namespace tests {
             auto access() -> Update override {
                 return Update{
                     .current = main,
-                    .replace = [this](iqsm::World next) {
+                    .replace = [this](iqsm::Reading next) {
                         main.rebase(next);
                     },
                 };
@@ -75,7 +75,7 @@ namespace tests {
             auto access() -> Update override {
                 return Update{
                     .current = main,
-                    .replace = [this](iqsm::World next) {
+                    .replace = [this](iqsm::Reading next) {
                         main.rebase(next);
                     },
                 };
@@ -99,9 +99,8 @@ void multistate_system() {
     server.startup();
     iqsm::agents::Collaboration collaborator(serverObj, rendererObj);
 
-    const iqsm::World startedServer = server.main;
-    const auto pairingId = startedServer->field<RnD::Logic::Pairing>()->container.begin()->first;
-    const auto firstHouseId = ops::particle::get<RnD::Logic::Pairing>(startedServer, pairingId).participants.first;
+    const auto pairingId = server.main->field<RnD::Logic::Pairing>()->container.begin()->first;
+    const auto firstHouseId = ops::particle::get<RnD::Logic::Pairing>(server.main, pairingId).participants.first;
 
     // Bootstrap: renderer learns shared state from server.
     collaborator.sync();
@@ -134,10 +133,10 @@ void multistate_system() {
     base::message("[multistate_system] concurrent conflict section finished");
 
     // Server-only non-overlap change must not replace renderer world.
-    const iqsm::World rendererBefore = renderer.main;
     ops::particle::remove<RnD::Logic::Pairing>(server.main, pairingId);
     collaborator.sync();
-    EXPECT_EQ(renderer.access().current.std_ptr(), rendererBefore.std_ptr());
+    const iqsm::Reading renderer_head = renderer.main;
+    EXPECT_EQ(renderer.access().current, renderer_head);
 
     // Regression: collaboration must not "bootstrap-wipe" a valid side when the other side is empty,
     // and neither side changed since collaboration construction.
@@ -156,7 +155,7 @@ void multistate_system() {
             auto access() -> Update override {
                 struct Replacer {
                     iqsm::repo::Branch* main;
-                    void operator()(iqsm::World next) const { main->rebase(next); }
+                    void operator()(iqsm::Reading next) const { main->rebase(next); }
                 };
 
                 return Update{

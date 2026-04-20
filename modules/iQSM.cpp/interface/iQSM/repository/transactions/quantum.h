@@ -44,10 +44,10 @@ namespace iqsm::repo {
                 return;
             }
 
-            head.upstream(internals::delta::make_atomic<Meta>(
+            head.upstream({{}, internals::delta::make_atomic<Meta>(
                 id,
                 original,
-                base::make_shared<const QuantumData>(std::move(value))));
+                base::make_shared<const QuantumData>(std::move(value)))});
             disconnect();
         }
 
@@ -64,6 +64,6 @@ namespace iqsm::repo {
         bool dirty = false;
 
     protected:
-        void absorb(Delta delta) override {}
+        void absorb(Commit::Result) override {}
     };
 }

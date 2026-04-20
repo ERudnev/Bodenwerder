@@ -1,24 +1,26 @@
 #include "../_common.h"
 
+#include <iQSM/helpers/world.h>
 #include <iQSM/internals/delta_builders.h>
+#include <iQSM/operations/integration.h>
 
 #include <Etalon/aspects.q1.h>
 
 namespace tests {
 
     namespace {
-        iqsm::World seed_foos_oldschool(iqsm::World world, int count, int start_value) {
+        iqsm::World seed_foos_oldschool(iqsm::Reading baseline, int count, int start_value) {
             using Foo = Q1CORE::Etalon::SampleEntity;
             using Quantum = iqsm::Quantum<Foo>;
 
+            iqsm::World seeded = iqsm::helpers::world::create_no_resources(baseline->schema);
             for (int i = 0; i < count; ++i) {
                 const auto id = iqsm::Id<Foo>::generate_random();
                 auto after = base::make_shared<const Quantum>(Quantum{::iqsm::q1::integer{start_value + i}});
-                world = ::iqsm::operations::integrate(std::move(world),
-                    ::iqsm::internals::delta::make_atomic<Foo>(id, std::nullopt, std::move(after)));
+                seeded = ::iqsm::operations::integrate(seeded, ::iqsm::internals::delta::make_atomic<Foo>(id, std::nullopt, std::move(after)));
             }
 
-            return world;
+            return seeded;
         }
     }
 

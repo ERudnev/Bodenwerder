@@ -5,12 +5,13 @@
 #include <stdexcept>
 #include <vector>
 #include <iQSM/repository/transactions/sequence.h>
+#include <iQSM/repository/transactions/accumulator.h>
 
 namespace iqsm::operations {
     namespace {
         using TypeId = iqsm::SchemaObject::TypeId;
 
-        auto expand_required_by(iqsm::World world, const std::set<TypeId>& touched) -> std::set<TypeId> {
+        auto expand_required_by(Reading world, const std::set<TypeId>& touched) -> std::set<TypeId> {
             std::set<TypeId> out = touched;
 
             std::vector<TypeId> queue;
@@ -24,11 +25,10 @@ namespace iqsm::operations {
                     if (out.insert(required_type).second) queue.push_back(required_type);
                 }
             }
-
             return out;
         }
 
-        auto topo_order_dependencies_first(iqsm::World world, const std::set<TypeId>& subset) -> std::vector<TypeId> {
+        auto topo_order_dependencies_first(Reading world, const std::set<TypeId>& subset) -> std::vector<TypeId> {
             // Kahn topological sort inside subset, where edges are: depender -> dependee (Entry::require).
             // We need dependencies first => if A requires B, B comes before A.
             std::map<TypeId, size_t> indegree;
@@ -79,32 +79,32 @@ namespace iqsm::operations {
             return out;
         }
 
-        void apply_invariants_vector(World& current_world, const iqsm::SchemaObject::Invariants::Layer& layer) {
+        void apply_invariants_vector(Writing context, const iqsm::SchemaObject::Invariants::Layer& layer) {
+            repo::Sequence transaction(context);
+
             for (const auto invariant : layer) {
                 if (not invariant) continue;
-                repo::Sequence seq{current_world};
-                invariant(static_cast<Writing>(seq));
-                current_world = static_cast<World>(seq);
+                invariant(transaction);
             }
         }
 
-        auto apply_invariants_in_order(iqsm::World initial_world, const std::vector<TypeId>& order) -> iqsm::World {
-            auto current_world = initial_world;
+        void apply_invariants_in_order(Writing context, const std::vector<TypeId>& order) {
+            repo::Sequence transaction(context);
 
             for (const auto& type_id : order) {
-                const auto& entry = current_world->schema->aspects.at(type_id);
-                apply_invariants_vector(current_world, entry.invariants.structural);
-                apply_invariants_vector(current_world, entry.invariants.logical);
+                const auto& entry = transaction->schema->aspects.at(type_id);
+                apply_invariants_vector(transaction, entry.invariants.structural);
+                apply_invariants_vector(transaction, entry.invariants.logical);
             }
-            return current_world;
         }
     }
 
-    World integrate(World world, Delta delta) {
-        if (delta->empty()) { return world; }
-        if (world->schema->empty()) { return world; }
+    World integrate(Reading world, Delta delta) {
+        if (delta->empty()) { return world->share(); }
+        if (world->schema->empty()) { return world->share(); }
 
-        auto out = world->clone();
+        World base = world->share();
+        auto out = base->clone();
 
         for (const auto& field_entry : delta->fields) {
             const auto& typeId = field_entry.first;
@@ -123,10 +123,7 @@ namespace iqsm::operations {
                     entry.name));
             }
 
-            auto current = entry.field.zero;
-            if (const auto* slot = world->fields.find(typeId); slot) {
-                current = *slot;
-            }
+            const auto current = world->field(typeId);
 
             const auto next = entry.delta.integrate_field(current, field_delta);
             out->fields = out->fields.insert(typeId, next);
@@ -135,52 +132,46 @@ namespace iqsm::operations {
         return freeze(out);
     }
 
-    World validate_full(World world) {
+    void validate_full(Writing context) {
+        repo::Accumulator transaction(context);
         // validate everything (no delta context)
-        if (world->schema->empty()) return world;
+        if (transaction->schema->empty()) return;
 
         std::set<TypeId> all;
-        for (const auto& aspect_entry : world->schema->aspects) all.insert(aspect_entry.first);
-        const auto order = topo_order_dependencies_first(world, all);
-        return apply_invariants_in_order(world, order);
+        for (const auto& aspect_entry : transaction->schema->aspects) all.insert(aspect_entry.first);
+        const auto order = topo_order_dependencies_first(transaction, all);
+        apply_invariants_in_order(transaction, order);
     }
 
-    World validate_smart(World validBeforeChanges, World changed) {
-        if (validBeforeChanges->schema != changed->schema) {
+    void validate_smart(Writing context, Reading validBeforeChanges) {
+        repo::Sequence transaction(context);
+        if (validBeforeChanges->schema != transaction->schema) {
             throw std::runtime_error("validate_smart(validBeforeChanges,changed): worlds must share the same schema handle");
         }
 
-        if (validBeforeChanges == changed) return changed;
-        if (changed->schema->empty()) return changed;
+        if (validBeforeChanges == transaction) return;
+        if (transaction->schema->empty()) return;
 
         std::set<TypeId> touched;
-        for (const auto& aspect_entry : changed->schema->aspects) {
+        for (const auto& aspect_entry : transaction->schema->aspects) {
             const auto& type_id = aspect_entry.first;
-            const auto& entry = aspect_entry.second;
 
-            auto before = entry.field.zero;
-            if (const auto* slot = validBeforeChanges->fields.find(type_id); slot) {
-                before = *slot;
-            }
-
-            auto after = entry.field.zero;
-            if (const auto* slot = changed->fields.find(type_id); slot) {
-                after = *slot;
-            }
+            const auto before = validBeforeChanges->field(type_id);
+            const auto after = transaction->field(type_id);
 
             if (before != after) {
                 touched.insert(type_id);
             }
         }
 
-        if (touched.empty()) return changed;
+        if (touched.empty()) return;
 
-        const auto affected = expand_required_by(changed, touched);
-        const auto order = topo_order_dependencies_first(changed, affected);
-        return apply_invariants_in_order(changed, order);
+        const auto affected = expand_required_by(transaction, touched);
+        const auto order = topo_order_dependencies_first(transaction, affected);
+        apply_invariants_in_order(transaction, order);
     }
 
-    Delta make_delta(World from, World to) {
+    Delta make_delta(Reading from, Reading to) {
         if (from->schema != to->schema) {
             throw std::runtime_error("make_delta(from,to): worlds must share the same schema handle");
         }
@@ -194,11 +185,8 @@ namespace iqsm::operations {
             const auto& type_id = aspect_entry.first;
             const auto& entry = aspect_entry.second;
 
-            auto from_field = entry.field.zero;
-            if (const auto* slot = from->fields.find(type_id); slot) { from_field = *slot; }
-
-            auto to_field = entry.field.zero;
-            if (const auto* slot = to->fields.find(type_id); slot) { to_field = *slot; }
+            const auto from_field = from->field(type_id);
+            const auto to_field = to->field(type_id);
 
             if (not entry.delta.make_delta_field) {
                 throw std::runtime_error(std::format(

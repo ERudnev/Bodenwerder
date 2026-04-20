@@ -18,7 +18,7 @@ namespace iqsm::repo {
     struct Staged final : Transaction {
         internals::FieldsMutable staged{};
 
-        explicit Staged(Reading reading) : Transaction(reading) {}
+        explicit Staged(Reading reading) : Transaction(reading->share()) {}
         explicit Staged(Writing writing) : Transaction(std::move(writing)) {}
         explicit Staged(Transaction& parent) : Transaction(parent) {}
         ~Staged() override { on_finish(); }
@@ -51,11 +51,11 @@ namespace iqsm::repo {
             if (unwinding()) return;
             if (not head.upstream)
                 return;
-            head.upstream(staged.push());
+            head.upstream({{}, staged.push()});
             disconnect();
         }
-        void absorb(Delta delta) override {
-            staged.absorb(head.state->schema, std::move(delta));
+        void absorb(Commit::Result result) override {
+            staged.absorb(head.state->schema, std::move(result.delta));
         }
     };
 }

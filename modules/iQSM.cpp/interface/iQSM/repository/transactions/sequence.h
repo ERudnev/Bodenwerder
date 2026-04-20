@@ -10,7 +10,7 @@ namespace iqsm::repo {
     // Mirrors iqsm::repo::Sequence: integrate + FieldsMutable (no validate_smart on absorb);
     // upstream receives accumulated delta on on_finish (see interface/iQSM/repository/transactions/sequence.h).
     struct Sequence : Transaction {
-        explicit Sequence(World reading) : Transaction(reading) {}
+        explicit Sequence(Reading reading) : Transaction(reading) {}
         explicit Sequence(Permit writing) : Transaction(std::move(writing)) {}
         explicit Sequence(Transaction& parent) : Transaction(parent) {}
         ~Sequence() override;
@@ -20,7 +20,7 @@ namespace iqsm::repo {
 
     protected:
         void on_finish() override;        
-        void absorb(Delta delta) override;
+        void absorb(Commit::Result result) override;
 
     private:
         internals::FieldsMutable accumulated{};
@@ -42,16 +42,20 @@ namespace iqsm::repo {
         return accumulated.push();
     }
 
-    inline void Sequence::absorb(Delta delta) {
-        head.state = operations::integrate(head.state, delta);
-        accumulated.absorb(head.state->schema, std::move(delta));
+    inline void Sequence::absorb(Commit::Result result) {
+        if (result.maybeState.exists()) {
+            head.state = result.maybeState;
+        } else {
+            head.state = operations::integrate(head.state, result.delta);
+        }
+        accumulated.absorb(head.state->schema, std::move(result.delta));
     }
 
     inline void Sequence::on_finish() {
         if (unwinding()) return;
         if (not head.upstream)
             return;
-        head.upstream(push());
+        head.upstream({head.state, push()});
         disconnect();
     }
 }

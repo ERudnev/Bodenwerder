@@ -10,8 +10,8 @@ namespace iqsm::agents {
             // Synchronizer sees a participant as:
             // 1) current local snapshot,
             // 2) a way to replace that snapshot after merge/sync.
-            World current;
-            std::function<void(World)> replace;
+            Reading current;
+            std::function<void(Reading)> replace;
         };
         // TODO: discuss to add Commit interface here
         // this looks useless atm, but...

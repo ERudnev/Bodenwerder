@@ -15,7 +15,7 @@ namespace iqsm::resources {
 
         virtual ~Materializer() = default;
 
-        virtual void materialize(Manager, World, Id) const = 0;
-        virtual void release(Manager, World, Id) const = 0;
+        virtual void materialize(Manager, Reading, Id) const = 0;
+        virtual void release(Manager, Reading, Id) const = 0;
     };
 }

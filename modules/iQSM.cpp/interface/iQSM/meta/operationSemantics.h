@@ -12,8 +12,7 @@ namespace iqsm::meta::operations {
 
 /// Predicate for `logic::existence`: whether a dependee row must exist for this anchor id (reading context).
 template<typename Anchor, typename F>
-concept ExistenceNeed =
-    meta::Aspect<Anchor> && std::is_invocable_r_v<bool, F, World, Id<Anchor>, Item<Anchor>>;
+concept ExistenceNeed = meta::Aspect<Anchor> && std::is_invocable_r_v<bool, F, Reading, Id<Anchor>, Item<Anchor>>;
 
 /// Materialize dependee by writing through the validation transaction; call site is `Construct(staged, id, item)`.
 /// First parameter is checked as `repo::Staged&` (not `Writing` by value: `Permit` is a poor fit for `std::declval` / trait checks).
@@ -25,6 +24,6 @@ concept DependeeConstruct =
 template<typename Meta, typename F>
 concept ForEachItemUpdate =
     meta::Aspect<Meta> &&
-    std::is_invocable_r_v<std::optional<Quantum<Meta>>, F, World, Id<Meta>, const Quantum<Meta>&>;
+    std::is_invocable_r_v<std::optional<Quantum<Meta>>, F, Reading, Id<Meta>, const Quantum<Meta>&>;
 
 } // namespace iqsm::meta::operations

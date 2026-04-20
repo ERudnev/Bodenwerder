@@ -16,7 +16,7 @@ namespace iqsm::repo {
 
     protected:
         void on_finish() override;
-        void absorb(Delta delta) override;
+        void absorb(Commit::Result result) override;
 
     private:
         internals::FieldsMutable accumulated{};
@@ -34,15 +34,15 @@ namespace iqsm::repo {
         return accumulated.push();
     }
 
-    inline void Accumulator::absorb(Delta delta) {
-        accumulated.absorb(head.state->schema, std::move(delta));
+    inline void Accumulator::absorb(Commit::Result result) {
+        accumulated.absorb(head.state->schema, std::move(result.delta));
     }
 
     inline void Accumulator::on_finish() {
         if (unwinding()) return;
         if (not head.upstream)
             return;
-        head.upstream(push());
+        head.upstream({{}, push()});
         disconnect();
     }
 }
