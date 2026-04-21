@@ -75,7 +75,6 @@ namespace iqsm::dsl_gateway {
     namespace repo {
         using Accumulator = ::iqsm::repo::Accumulator;
         using Branch = ::iqsm::repo::Branch;
-        using Once = ::iqsm::repo::Once;
         using Sequence = ::iqsm::repo::Sequence;
         using Staged = ::iqsm::repo::Staged;
     }

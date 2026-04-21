@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iQSM/internals/fields_mutable.h>
 #include <iQSM/repository/transaction.h>
 
 namespace iqsm::repo {

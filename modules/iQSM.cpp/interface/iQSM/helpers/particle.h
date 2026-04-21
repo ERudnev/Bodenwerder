@@ -9,8 +9,6 @@
 #include <iQSM/delta.h>
 #include <iQSM/field.h>
 #include <iQSM/world.h>
-#include <iQSM/internals/delta_builders.h>
-#include <iQSM/internals/fields_mutable.h>
 #include <iQSM/meta/concepts.h>
 #include <iQSM/meta/facade.h>
 #include <iQSM/repository/transactions/accumulator.h>
@@ -81,13 +79,13 @@ namespace iqsm::helpers::particle {
   template<meta::Entity Meta>
   auto create(Writing writing, Quantum<Meta> value) -> Id<Meta> {
     const auto id = Id<Meta>::generate_random();
-    repo::Once(writing).submit(internals::delta::make_atomic<Meta>(id, std::nullopt, base::make_shared<const Quantum<Meta>>(std::move(value))));
+    repo::Once<Meta>{writing}.add(id, base::make_shared<const Quantum<Meta>>(std::move(value)));
     return id;
   }
 
   template<meta::Quark Meta>
   auto create(Writing writing, Id<Meta> id, Quantum<Meta> value) -> Id<Meta> {
-    repo::Once(writing).submit(internals::delta::make_atomic<Meta>(id, std::nullopt, base::make_shared<const Quantum<Meta>>(std::move(value))));
+    repo::Once<Meta>{writing}.add(id, base::make_shared<const Quantum<Meta>>(std::move(value)));
     return id;
   }
 
@@ -104,7 +102,7 @@ namespace iqsm::helpers::particle {
   template<meta::Particle Meta, typename F, typename... Args>
   void massop(Writing writing, F&& op, Args&&... args) {
     repo::Accumulator seq{writing};
-    for (const auto& kv : seq->field<Meta>()->container) {
+    for (const auto& kv : seq->template field<Meta>()->container) {
       std::invoke(std::forward<F>(op), seq, kv.first, std::forward<Args>(args)...);
     }
   }

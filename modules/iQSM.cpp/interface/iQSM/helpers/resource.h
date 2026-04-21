@@ -5,7 +5,6 @@
 #include <base/shared_reference.h>
 
 #include <iQSM/helpers/particle.h>
-#include <iQSM/internals/delta_builders.h>
 #include <iQSM/meta/concepts.h>
 #include <iQSM/meta/facade.h>
 #include <iQSM/repository/transactions/once.h>
@@ -38,10 +37,7 @@ namespace iqsm::helpers::resource {
     template<meta::Handle Meta>
     auto declare(Writing writing, Quantum<Meta> quantum) -> Id<Meta> {
         const auto id = Id<Meta>::generate_random();
-        repo::Once(writing).submit(internals::delta::make_atomic<Meta>(
-            id,
-            std::nullopt,
-            base::make_shared<const Quantum<Meta>>(std::move(quantum))));
+        repo::Once<Meta>{writing}.add(id, base::make_shared<const Quantum<Meta>>(std::move(quantum)));
         return id;
     }
 
