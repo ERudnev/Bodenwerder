@@ -9,7 +9,7 @@ namespace tests {
         /* OBSOLETE SYNTAX, update some day
         
         using namespace iqsm::dsl_gateway;
-        using namespace Q1CORE::Etalon;
+        using namespace Q1_iQSM::Etalon;
 
         repo::Branch master{ops::world::create_no_resources(ops::schema::assemble<Remnant>())};
         const auto sampleEntity = ops::particle::create<SampleEntity>(master, SampleEntity::Quantum{

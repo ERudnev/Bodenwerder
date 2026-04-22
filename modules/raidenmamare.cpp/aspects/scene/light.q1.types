@@ -11,5 +11,5 @@ namespace rmmr
         intensity: float
         range: float
       table
-        +create(Pos, HPB, RGB, intensity: float, range: float)
+        >create(Pos, HPB, RGB, intensity: float, range: float): #
 

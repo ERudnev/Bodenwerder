@@ -7,7 +7,7 @@
 namespace tests {
     void resource_example() {
         using namespace iqsm::dsl_gateway;
-        using Q1CORE::Etalon::SampleResource;
+        using Q1_iQSM::Etalon::SampleResource;
 
         const auto schema = ops::schema::assemble<SampleResource>();
         resources::Manager manager = base::make_shared<iqsm::resources::ManagerCore>(schema);

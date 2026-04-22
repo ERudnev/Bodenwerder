@@ -10,7 +10,7 @@ namespace RnD
     entity Pairing
       element
         participants: pair<#House> @anchor(all)
-        *update() // makes both targeted houses one step closer one to another: [10, 20] -> [11, 19]
+        =update() // makes both targeted houses one step closer one to another: [10, 20] -> [11, 19]
 
 
   namespace View
@@ -19,5 +19,5 @@ namespace RnD
         previous_happiness: ~Logic::House::happiness
 
         ?interpolated_happiness()->float // evaluated average between prev and current
-        *update()
+        =update()
 

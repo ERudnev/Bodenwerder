@@ -8,12 +8,12 @@
     'type' : defines new type or alias
     'template' : similar to C++ template
     '<...>' : similar to C++ template parameter list
-    'struct' : defines structural type (body: local type aliases, fields, and optionally operation lines `?` `*` `+` — not `!`)
+    'struct' : defines structural type (body: local type aliases, fields, and optionally operation lines `?` `=` `>` — not `!`)
     'as' : similar to "typedef/using in C++"
     'enum'
     '~' : type-of operator (reference to the type of an expression/member)
     '::' : namespace scope or global namespace if starts path
-    ':' : "has type" (for structure field: `field: Type`, and for operation return: `name(args): ReturnType` after the closing `)`)
+    ':' : "has type" (for structure field: `field: Type`, and for operation return: `name(args): ReturnType` after the closing `)`). If `ReturnType` is the local aspect id written as `#`, use a **space** after the colon: `: #` (not `:#`).
     '@' : preprocessor directives (seebelow)
     'entity' : declares entity (root particle)
     'attribute' : declares attribute (particle with Owner)
@@ -28,8 +28,8 @@
     '?' : postfix Optional type constructor (inside type expressions only):  T? == optional<T> (decode only)
 
     '?' : declares read-only operation (query) signature
-    '*' : declares state-changing operation (command) signature
-    '+' : declares creation factory (convenience create) signature
+    '=' : declares state-changing operation (command) signature
+    '>' : declares factory (convenience create) signature; must include return type after `)`: `: #` for the enclosing aspect’s id, or a concrete type (e.g. `: S` for a factory inside `struct S`)
     '!' : declares validator/invariant signature
 
   reserved:
@@ -52,7 +52,7 @@
       X is NOT a Q1 type. It is an external/runtime identifier resolved by projection layer.
       Q1 declaration does NOT define concrete loader/binding implementation for X.
       Such runtime code is expected to exist outside DSL projection.
-    C++ projection note: operations from `element`/`table` on a resource aspect use the same `Reading`/`Writing`/`Id` context as other aspects; the generator does not add `resources::Manager` (or similar) to those operation signatures — runtime access goes through the world-bound provider (`modules/Q1/q1-CPP.tome`, declaration_forms resource).
+    C++ projection note: operations from `element`/`table` on a resource aspect use the same `Reading`/`Writing`/`Id` context as other aspects; the generator does not add `resources::Manager` (or similar) to those operation signatures — runtime access goes through the world-bound provider (`modules/Q1/q1-to-iQSM.tome`, declaration_forms resource).
 
   buildtin types:
     'integer' : fixed size (32 bit) integer
@@ -75,7 +75,7 @@
 
   struct bodies (inside `struct`, alongside fields):
     Operation signatures use the same markers as in aspect `element`, but `!` (validator/invariant) is not allowed.
-    `?` query, `*` command, `+` factory returning a value of the struct type
+    `?` query, `=` command, `>` factory with explicit return type (for a value-struct factory, typically `: StructName`)
 
   particle blocks:
     'element' : per-item state+queries/commands (stored in Field container as Item Quantum)

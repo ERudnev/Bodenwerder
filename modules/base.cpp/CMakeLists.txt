@@ -20,3 +20,7 @@ target_include_directories(${PROJECT_NAME}
         ${PROJECT_SOURCE_DIR}/interface
 )
 
+target_link_libraries(${PROJECT_NAME}
+    PUBLIC glm
+)
+

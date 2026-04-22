@@ -1,4 +1,4 @@
-namespace Q1CORE
+namespace Q1_iQSM
   namespace Etalon
     
     // External runtime-bound resource; the concrete runtime type is only named here.
@@ -12,6 +12,6 @@ namespace Q1CORE
       element
         cost_summary: integer
         ?provide(): ScalarFloatFunction
-        *use(arg: float): float
+        =use(arg: float): float
         ?use_free(arg: float): float
 

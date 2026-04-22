@@ -1,4 +1,4 @@
-namespace Q1CORE
+namespace Q1_iQSM
   namespace Etalon
 
     entity Trivia
@@ -12,13 +12,14 @@ namespace Q1CORE
       element
         data_field: integer
         ?const_element_method(): string
-        *nonconst_element_method()
+        =nonconst_element_method()
         !min_value()
         !max_value()
       table
-        +from_float(value_approximate: float)
+        >from_float(value_approximate: float): #
+        ?find_first(integer): #?
         ?const_fieldwide_method(): integer // just sum of all values
-        *nonconst_fieldwide_method() // removes one item with minimal value
+        =nonconst_fieldwide_method() // removes one item with minimal value
         !some_logic_fieldwide_invariant()
 
     attribute Tag of SampleEntity
@@ -34,8 +35,8 @@ namespace Q1CORE
 
     component SampleComponent of SampleEntity
       element
-        *example_op_multiply(factor: integer)
-        *example_op_div_with_remainder(divisor: integer): integer
+        =example_op_multiply(factor: integer)
+        =example_op_div_with_remainder(divisor: integer): integer
 
     attribute SampleAttribute of SampleEntity
       element
@@ -44,7 +45,7 @@ namespace Q1CORE
         every_essential: vector<#SampleEntity> @anchor(all)
         at_least_one_required: vector<#SampleComponent> @anchor(any)
       table
-        +complex_constructor(existing: #SampleEntity)
+        >complex_constructor(existing: #SampleEntity): #
         
         
 

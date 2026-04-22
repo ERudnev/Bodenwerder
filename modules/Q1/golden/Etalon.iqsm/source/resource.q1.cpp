@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <unordered_map>
 
-namespace Q1CORE::Etalon {
+namespace Q1_iQSM::Etalon {
     struct SampleResource_private : SampleResource::Operations {
         using Functions = std::unordered_map<string, base::testing::function1f>;
 
@@ -59,4 +59,4 @@ namespace Q1CORE::Etalon {
         .logical = {},
     };
 
-} // namespace Q1CORE::Etalon
+} // namespace Q1_iQSM::Etalon

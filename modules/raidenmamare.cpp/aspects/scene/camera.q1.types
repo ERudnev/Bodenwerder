@@ -14,5 +14,5 @@ namespace rmmr
         ?view(): mat4
         ?view_projection(aspect_ratio: float): mat4
       table
-        +create(Pos, HPB, fov_y: float, z_near: float, z_far: float)
+        >create(Pos, HPB, fov_y: float, z_near: float, z_far: float): #
 

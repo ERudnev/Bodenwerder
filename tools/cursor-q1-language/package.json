@@ -2,11 +2,26 @@
   "name": "q1-language",
   "displayName": "Q1 Language",
   "description": "Minimal Q1 syntax highlighting for Cursor/VS Code",
-  "version": "0.0.3",
+  "version": "0.0.7",
   "publisher": "local",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Programming Languages"],
   "contributes": {
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          {
+            "scope": [
+              "keyword.other.q1.operation-prefix",
+              "source.q1 keyword.other.q1.operation-prefix"
+            ],
+            "settings": {
+              "foreground": "#e2c943"
+            }
+          }
+        ]
+      }
+    },
     "languages": [
       {
         "id": "q1",

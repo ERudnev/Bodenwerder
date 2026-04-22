@@ -37,6 +37,6 @@ target_sources(${PROJECT_NAME}_tests
 target_link_libraries(${PROJECT_NAME}_tests
     PRIVATE
         ${PROJECT_NAME}
-        Q1Etalon
+        Q1_Etalon_iqsm
 )
 

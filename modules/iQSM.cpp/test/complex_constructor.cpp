@@ -5,7 +5,7 @@
 namespace tests {
     void complex_constructor() {
         using namespace iqsm::dsl_gateway;
-        using namespace Q1CORE::Etalon;
+        using namespace Q1_iQSM::Etalon;
 
         const auto schema = ops::schema::assemble<SampleEntity, SampleComponent, SampleAttribute>();
         repo::Branch master{ ops::world::create_no_resources(schema) };

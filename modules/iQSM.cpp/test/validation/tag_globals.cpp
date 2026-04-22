@@ -5,7 +5,7 @@
 namespace tests {
     void validation_tag_globals() {
         using namespace iqsm::dsl_gateway;
-        using namespace Q1CORE::Etalon;
+        using namespace Q1_iQSM::Etalon;
 
         const auto empty = ops::world::create_no_resources(ops::schema::assemble<SampleEntity, Tag>());
         repo::Branch master{empty};

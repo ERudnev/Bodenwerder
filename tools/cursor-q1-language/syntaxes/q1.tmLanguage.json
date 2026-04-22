@@ -9,6 +9,7 @@
     { "include": "#directives" },
     { "include": "#operations" },
     { "include": "#operationReturn" },
+    { "include": "#typeExpressionMarkers" },
     { "include": "#keywords" },
     { "include": "#types" },
     { "include": "#operators" }
@@ -61,9 +62,9 @@
       "patterns": [
         {
           "name": "meta.operation.signature.q1",
-          "begin": "^(\\s*)([\\?\\*\\+!])\\s*([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)\\s*\\(",
+          "begin": "^(\\s*)([\\?\\=>!])\\s*([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)\\s*\\(",
           "beginCaptures": {
-            "2": { "name": "keyword.operator.q1" },
+            "2": { "name": "keyword.other.q1.operation-prefix" },
             "3": { "name": "entity.name.function.q1" }
           },
           "end": "\\)",
@@ -72,6 +73,7 @@
               "name": "variable.parameter.q1",
               "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b(?=\\s*:)"
             },
+            { "include": "#typeExpressionMarkers" },
             { "include": "#types" },
             { "include": "#operators" },
             { "include": "#numbers" },
@@ -99,17 +101,52 @@
     },
     "operators": {
       "patterns": [
-        { "name": "keyword.operator.q1", "match": "(::|~|:|\\?|\\*|\\+|!|#)" }
+        { "name": "keyword.operator.q1", "match": "(::|~|:|\\=|>|<|!)" }
+      ]
+    },
+    "typeExpressionMarkers": {
+      "patterns": [
+        {
+          "match": "(#)(\\?)(?=\\s*(?:$|//|,|\\)|\\]|>|<|@|;))",
+          "captures": {
+            "1": { "name": "keyword.other.q1.type-id-hash" },
+            "2": { "name": "keyword.other.q1.type-optional-suffix" }
+          }
+        },
+        {
+          "match": "(#)([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)\\b",
+          "captures": {
+            "1": { "name": "keyword.other.q1.type-id-hash" },
+            "2": { "name": "entity.name.type.q1" }
+          }
+        },
+        {
+          "match": "(#)(?=\\s*(?:$|//|,|\\)|\\]|>|<|@|;))",
+          "captures": {
+            "1": { "name": "keyword.other.q1.type-id-hash" }
+          }
+        },
+        {
+          "match": "(?<=[A-Za-z0-9_#\\)\\]>])\\?(?=\\s*(?:$|//|,|\\)|\\]|>|<|@|;|\\{))",
+          "name": "keyword.other.q1.type-optional-suffix"
+        }
       ]
     },
     "operationReturn": {
       "patterns": [
         {
           "name": "meta.operation.return.q1",
-          "match": "\\)\\s*(:)\\s*([^\\n]+?)(?=//|$)",
+          "match": "(?<=\\))\\s*(:)\\s*([^\\n]+?)(?=//|$)",
           "captures": {
             "1": { "name": "keyword.operator.q1" },
-            "2": { "name": "entity.name.type.q1" }
+            "2": {
+              "patterns": [
+                { "include": "#typeExpressionMarkers" },
+                { "include": "#types" },
+                { "include": "#numbers" },
+                { "include": "#operators" }
+              ]
+            }
           }
         }
       ]

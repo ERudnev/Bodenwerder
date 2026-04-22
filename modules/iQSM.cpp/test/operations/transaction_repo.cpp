@@ -10,7 +10,7 @@ namespace tests {
 
     namespace {
         iqsm::World seed_foos_oldschool(iqsm::Reading baseline, int count, int start_value) {
-            using Foo = Q1CORE::Etalon::SampleEntity;
+            using Foo = Q1_iQSM::Etalon::SampleEntity;
             using Quantum = iqsm::Quantum<Foo>;
 
             iqsm::World seeded = iqsm::helpers::world::create_no_resources(baseline->schema);
@@ -26,7 +26,7 @@ namespace tests {
 
     void transaction_repo() {
         using namespace iqsm::dsl_gateway;
-        using namespace Q1CORE::Etalon;
+        using namespace Q1_iQSM::Etalon;
 
         using Foo = SampleEntity;
         using Bar = SampleAttribute;

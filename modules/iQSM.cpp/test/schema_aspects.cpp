@@ -5,7 +5,7 @@
 namespace tests {
     void schema_aspects() {
         using namespace iqsm;
-        using namespace Q1CORE::Etalon;
+        using namespace Q1_iQSM::Etalon;
 
         const SchemaObject schema = SchemaObject::assemble<SampleAttribute>();
 

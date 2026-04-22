@@ -5,7 +5,7 @@
 // allow include of external domain for Resource access?
 #include <base/testing/function1f.h>
 
-namespace Q1CORE::Etalon {
+namespace Q1_iQSM::Etalon {
 
     using namespace iqsm::dsl_gateway;
 
@@ -36,4 +36,4 @@ namespace Q1CORE::Etalon {
         };
     };
 
-} // namespace Q1CORE::Etalon
+} // namespace Q1_iQSM::Etalon

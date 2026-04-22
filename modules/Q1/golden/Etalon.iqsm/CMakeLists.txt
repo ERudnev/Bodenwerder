@@ -1,7 +1,7 @@
 file (GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "source/*.cpp")
 
-project("Q1Etalon"
-  DESCRIPTION "Etalon.cpp - golden (hand-made) reference for Q1->C++ code generation"
+project("Q1_Etalon_iqsm"
+  DESCRIPTION "Etalon.iqsm - golden (hand-made) iQSM projection reference for Q1 DSL"
   VERSION 0.1
 )
 

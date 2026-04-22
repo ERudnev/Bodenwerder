@@ -9,4 +9,4 @@ namespace rmmr
         keys: vector<bool> // simplified for now
         mouse: index2
         active: uset<#>
-        *update(now: seconds)
+        =update(now: seconds)

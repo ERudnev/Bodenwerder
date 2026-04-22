@@ -11,6 +11,6 @@ namespace rmmr
         rotation: quat
         ?transform(): mat4
         ?hpb(): HPB // heading/pitch/bank (degrees)
-        *hpb(HPB)
+        =hpb(HPB)
       table
-        +posHpb(pos: Pos, hpb: HPB) // convenience c-tor
+        >posHpb(pos: Pos, hpb: HPB): # // convenience c-tor

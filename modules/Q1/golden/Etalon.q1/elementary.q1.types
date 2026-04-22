@@ -1,5 +1,5 @@
 // Q1 DSL file, see Q1/syntax.txt for details
-namespace Q1CORE
+namespace Q1_iQSM
   namespace Syntax
     namespace Typization      
       type Index2Alias as index2
@@ -18,16 +18,16 @@ namespace Q1CORE
         x: Scalar
         y: Scalar
         ?length(): Scalar
-        *normalize(Scalar)
-        +fromScalar(argument: Scalar) // {x,x}
+        =normalize(Scalar)
+        >fromScalar(argument: Scalar):StructWithMethods // {x,x}
         // invariants "!" not allowed
 
     namespace Namespaces
       namespace Some
         type Type as integer
       namespace Other
-        type Type as string  // Type == Q1CORE::Syntax::Namespaces::Other::Type
-      type Type as Some::Type // Type == Q1CORE::Syntax::Namespaces::Type == Q1CORE::Syntax::Namespaces::Some::Type == integer
+        type Type as string  // Type == Q1_iQSM::Syntax::Namespaces::Other::Type
+      type Type as Some::Type // Type == Q1_iQSM::Syntax::Namespaces::Type == Q1_iQSM::Syntax::Namespaces::Some::Type == integer
 
 
   

@@ -8,7 +8,7 @@ namespace tests {
     void globals() {
         using namespace iqsm;
         using namespace iqsm::dsl_gateway;
-        using namespace Q1CORE::Etalon;
+        using namespace Q1_iQSM::Etalon;
 
         const World before = ops::world::create_no_resources(ops::schema::assemble<Tag>());
 

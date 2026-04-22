@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-namespace Q1CORE::Syntax::Typization {
+namespace Q1_iQSM::Syntax::Typization {
 
 auto StructWithMethods::length() const -> Scalar {
     return std::sqrt(x * x + y * y);
@@ -22,4 +22,4 @@ auto StructWithMethods::fromScalar(Scalar argument) -> StructWithMethods {
     return StructWithMethods{argument, argument};
 }
 
-} // namespace Q1CORE::Syntax::Typization
+} // namespace Q1_iQSM::Syntax::Typization

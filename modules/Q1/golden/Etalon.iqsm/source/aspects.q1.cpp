@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <vector>
 
-namespace Q1CORE::Etalon {
+namespace Q1_iQSM::Etalon {
 
     using namespace iqsm::dsl_gateway;
 

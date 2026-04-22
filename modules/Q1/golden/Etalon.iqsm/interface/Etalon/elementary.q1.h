@@ -11,7 +11,7 @@
 
 #include <iQSM/api/_gateway.h>
 
-namespace Q1CORE {
+namespace Q1_iQSM {
   namespace Syntax {
     using namespace iqsm::dsl_gateway;
     namespace Typization {
@@ -32,7 +32,7 @@ namespace Q1CORE {
         string field;
       };
 
-      // Struct body: local types, fields, and three of four operation kinds (`?` `*` `+`).
+      // Struct body: local types, fields, and three of four operation kinds (`?` `=` `>`).
       // Invariant validators `!` are not allowed here (see DSL elementary.q1.types).
       struct StructWithMethods {
         using Scalar = float;
