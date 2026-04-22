@@ -11,12 +11,10 @@ namespace iqsm {
     namespace internals::schema_thunks {
         template<meta::Aspect Meta>
         struct delta_entry {
-            using UField = cref<::iqsm::delta::FieldDiffAbstract>;
-            using UFieldMut = ref<::iqsm::delta::FieldDiffAbstract>;
+            using UField = ref<::iqsm::delta::FieldDiffAbstract>;
             using FD = ::iqsm::delta::FieldDiff<Meta>;
 
-            static auto as(UField d) -> cref<const FD> { return base::shared_ref_cast<const FD>(d); }
-            static auto as_mut(UFieldMut d) -> ref<FD> { return base::shared_ref_cast<FD>(d); }
+            static auto as(UField d) -> ref<FD> { return base::shared_ref_cast<FD>(d); }
 
             static auto make_delta_field(cref<FieldAbstract> from, cref<FieldAbstract> to) -> std::optional<UField> {
                 return iqsm::internals::delta::count_delta_field<Meta>(std::move(from), std::move(to));
@@ -24,8 +22,7 @@ namespace iqsm {
 
             static auto integrate_field(cref<FieldAbstract> current, UField diff) -> cref<FieldAbstract> { return as(diff)->integrate(std::move(current)); }
             static bool empty(UField diff) { return as(diff)->empty(); }
-            static auto clone(UField diff) -> UFieldMut { return as(diff)->clone(); }
-            static void absorb(UFieldMut lhs, UField rhs) { as_mut(lhs)->absorb(*as(rhs)); }
+            static void absorb(UField lhs, UField rhs) { as(lhs)->absorb(*as(rhs)); }
         };
 
         template<meta::Handle Meta>
@@ -48,7 +45,6 @@ namespace iqsm {
             &internals::schema_thunks::delta_entry<Meta>::make_delta_field,
             &internals::schema_thunks::delta_entry<Meta>::integrate_field,
             &internals::schema_thunks::delta_entry<Meta>::empty,
-            &internals::schema_thunks::delta_entry<Meta>::clone,
             &internals::schema_thunks::delta_entry<Meta>::absorb,
         };
     }

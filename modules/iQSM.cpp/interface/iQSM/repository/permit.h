@@ -12,8 +12,22 @@ namespace iqsm {
 
 namespace iqsm::repo {
 
-    // it is a "mandate for only one update". Forces to define strategy in function where acts as parameter
-    // implemented as "Thief" - steals (moves-out) commit to provoke creating Branch for more than 1 writing op.
+    /*
+    Permit is not a value object. It is a one-shot mandate for mutation.
+
+    Semantics intentionally differ from ordinary C++ ownership types:
+    1. Passing Permit further means consuming the right to write, not copying data.
+    2. Permit exists to keep call sites clean: user code passes transactions naturally,
+       without repetitive std::move noise at every relay point.
+    3. The consumed state is not an accident of implementation; it is the meaning of the type.
+    4. Reusing the same Permit is a logic error, because one mandate must produce one write path.
+    5. The "stealing" constructor is deliberate: lvalue transfer here models capability passing,
+       not ordinary object copying.
+    6. If a caller needs several independent write paths, it must construct an explicit transaction
+       policy (Branch / Sequence / Accumulator / Staged), not duplicate Permit.
+    7. Permit is internal transport between transactions and helpers; ergonomic surface is prioritized
+       over conventional C++ move syntax in this narrow runtime-specific case.
+    */
     struct Permit final{
         //operator Reading() const { assert_not_stolen(); return static_cast<Reading>(stolen); }
 

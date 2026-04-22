@@ -97,7 +97,6 @@ namespace iqsm {
             if (lhs.delta.make_delta_field != rhs.delta.make_delta_field
                 || lhs.delta.integrate_field != rhs.delta.integrate_field
                 || lhs.delta.empty != rhs.delta.empty
-                || lhs.delta.clone != rhs.delta.clone
                 || lhs.delta.absorb != rhs.delta.absorb) {
                 throw std::runtime_error(std::format(
                     "Schema::intersection(): incompatible delta ops for aspect '{}'",

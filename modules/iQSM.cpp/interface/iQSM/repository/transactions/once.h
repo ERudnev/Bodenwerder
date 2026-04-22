@@ -45,7 +45,7 @@ namespace iqsm::repo {
 
         const auto it = result.delta->fields.find(types::aspectId<Meta>());
         if (it == result.delta->fields.end()) return;
-        accumulated.absorb(*base::shared_ref_cast<const delta::FieldDiff<Meta>>(it->second));
+        accumulated.absorb(*base::shared_ref_cast<delta::FieldDiff<Meta>>(it->second));
     }
 
     template<meta::Aspect Meta>
@@ -58,8 +58,8 @@ namespace iqsm::repo {
         }
 
         auto out = base::make_shared<delta::Fields>();
-        out->fields.emplace(types::aspectId<Meta>(), freeze(base::make_shared<delta::FieldDiff<Meta>>(std::move(accumulated))));
-        this->head.upstream({{}, freeze(out)});
+        out->fields.emplace(types::aspectId<Meta>(), base::make_shared<delta::FieldDiff<Meta>>(std::move(accumulated)));
+        this->head.upstream({{}, out});
         this->disconnect();
     }
 }

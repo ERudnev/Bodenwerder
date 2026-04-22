@@ -13,7 +13,7 @@ namespace iqsm {
     using Reading = cref<WorldInterface>;
 
     namespace delta { struct Fields; }
-    using Delta = cref<delta::Fields>;
+    using Delta = ref<delta::Fields>;
 
     namespace resources { 
         struct ManagerCore;

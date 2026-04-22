@@ -21,19 +21,16 @@ namespace iqsm::internals::schema {
     };
 
     struct DeltaEntry {
-        using UField = cref<::iqsm::delta::FieldDiffAbstract>;
-        using UFieldMut = ref<::iqsm::delta::FieldDiffAbstract>;
+        using UField = ref<::iqsm::delta::FieldDiffAbstract>;
 
         using MakeDeltaField = std::optional<UField> (*)(cref<FieldAbstract> from, cref<FieldAbstract> to);
         using IntegrateField = cref<FieldAbstract> (*)(cref<FieldAbstract> current, UField diff);
         using Empty = bool (*)(UField diff);
-        using Clone = UFieldMut (*)(UField diff);
-        using Absorb = void (*)(UFieldMut lhs, UField rhs);
+        using Absorb = void (*)(UField lhs, UField rhs);
 
         MakeDeltaField make_delta_field = nullptr;
         IntegrateField integrate_field = nullptr;
         Empty empty = nullptr;
-        Clone clone = nullptr;
         Absorb absorb = nullptr;
 
         template<meta::Aspect Meta>

@@ -15,7 +15,7 @@ namespace iqsm::repo {
         explicit Sequence(Transaction& parent) : Transaction(parent) {}
         ~Sequence() override;
 
-        Delta delta() const;
+        Delta delta();
         Delta push();
 
     protected:
@@ -34,8 +34,8 @@ namespace iqsm::repo {
         on_finish();
     }
 
-    inline Delta Sequence::delta() const {
-        return accumulated.snapshot(head.state->schema);
+    inline Delta Sequence::delta() {
+        return accumulated.delta();
     }
 
     inline Delta Sequence::push() {

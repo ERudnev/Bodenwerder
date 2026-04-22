@@ -57,9 +57,9 @@ namespace iqsm::detail::helpers::global {
             };
 
             auto world_delta = base::make_shared<delta::Fields>();
-            world_delta->fields.emplace(types::aspectId<Meta>(), freeze(field_delta));
+            world_delta->fields.emplace(types::aspectId<Meta>(), field_delta);
 
-            head.upstream({{}, freeze(world_delta)});
+            head.upstream({{}, world_delta});
             disconnect();
         }
 

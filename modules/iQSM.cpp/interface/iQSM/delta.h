@@ -43,7 +43,6 @@ namespace iqsm::delta {
         std::optional<std::pair<Global, Global>> global_change; // {before, after}
 
         bool empty() const { return ops.empty() && not global_change.has_value(); }
-        ref<FieldDiffAbstract> clone() const { return base::make_shared<FieldDiff<Meta>>(*this); }
         void absorb(const FieldDiff& rhs);
         cref<FieldAbstract> integrate(cref<FieldAbstract> current) const;
 
@@ -52,9 +51,9 @@ namespace iqsm::delta {
     };
 
     template<meta::Aspect Meta>
-    using Field = cref<FieldDiff<Meta>>;
+    using Field = ref<FieldDiff<Meta>>;
 
-    using UField = cref<FieldDiffAbstract>;
+    using UField = ref<FieldDiffAbstract>;
 
     struct Fields {
         using Container = std::unordered_map<FieldDiffAbstract::RuntimeTypeId, UField>;
@@ -63,8 +62,7 @@ namespace iqsm::delta {
     };
 
     inline iqsm::Delta empty() {
-        static const auto singleton = base::make_shared<const Fields>();
-        return singleton;
+        return base::make_shared<Fields>();
     }
 } // namespace iqsm::delta
 

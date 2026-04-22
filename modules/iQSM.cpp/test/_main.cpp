@@ -54,7 +54,7 @@ BASETEST_FORWARD_DECLARE_TESTS(IQSM_KNOWN_ISSUES_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_PERFORMANCE_LAB_TESTS)
 //BASETEST_FORWARD_DECLARE_TESTS(IQSM_WORKSHOP_TESTS)
 
-int main_all() {
+int main() {
     struct group final {
         const char* name = "";
         std::vector<base::testing::test_case> tests{};
@@ -90,7 +90,7 @@ int main_all() {
     return total.ok() ? 0 : 1;
 }
 
-int main() {
+int main_one_test() {
     const auto s = base::testing::run_tests(
         //BASETEST_LIST(BASETEST_NAMED("performance_lab", &tests::immutable_containers_perf)));
         BASETEST_LIST(BASETEST_NAMED("performance_lab2", &tests::immutable_containers_perf2)));

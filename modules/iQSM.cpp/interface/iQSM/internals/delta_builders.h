@@ -15,8 +15,8 @@ namespace iqsm::internals::delta {
         field_delta->ops.emplace(std::move(id), Operation{ std::move(before), std::move(after) });
 
         auto world_delta = base::make_shared<iqsm::delta::Fields>();
-        world_delta->fields.emplace(types::aspectId<Meta>(), freeze(field_delta));
-        return freeze(std::move(world_delta));
+        world_delta->fields.emplace(types::aspectId<Meta>(), field_delta);
+        return world_delta;
     }
 
 
@@ -67,6 +67,6 @@ namespace iqsm::internals::delta {
         }
 
         if (field_delta->ops.empty() && not field_delta->global_change.has_value()) return std::nullopt;
-        return iqsm::freeze(std::move(field_delta));
+        return field_delta;
     }
 }

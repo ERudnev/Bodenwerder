@@ -12,7 +12,7 @@ namespace iqsm::repo {
         explicit Accumulator(Transaction& parent) : Transaction(parent) {}
         ~Accumulator() override { on_finish(); }
 
-        Delta delta() const;
+        Delta delta();
         Delta push();
 
     protected:
@@ -27,8 +27,8 @@ namespace iqsm::repo {
 // impl:
 namespace iqsm::repo {
 
-    inline Delta Accumulator::delta() const {
-        return accumulated.snapshot(head.state->schema);
+    inline Delta Accumulator::delta() {
+        return accumulated.delta();
     }
 
     inline Delta Accumulator::push() {

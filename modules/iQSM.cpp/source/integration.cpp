@@ -201,7 +201,7 @@ namespace iqsm::operations {
         }
 
         if (out->fields.empty()) { return ::iqsm::delta::empty(); }
-        return freeze(out);
+        return out;
     }
 }
 
