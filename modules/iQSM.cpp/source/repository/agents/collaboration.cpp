@@ -16,7 +16,7 @@ namespace {
     }
 
     auto project_overlap(
-        iqsm::World world,
+        iqsm::Reading world,
         iqsm::Schema overlapSchema,
         const iqsm::SchemaObject::TypeSet& overlapTypes) -> iqsm::World
     {
@@ -34,6 +34,11 @@ namespace {
         }
 
         return iqsm::freeze(projected);
+    }
+
+    auto make_empty_baseline(iqsm::Reading current) -> iqsm::Reading {
+        auto empty = base::make_shared<iqsm::WorldObject>(current->schema, current->resources);
+        return iqsm::freeze(empty);
     }
 
     auto merge_overlap_field(
@@ -104,21 +109,21 @@ namespace {
 namespace iqsm::agents {
     Collaboration::Collaboration(ref<Subsystem> left, ref<Subsystem> right)
         : peers{left, right}
-        , lastSynced{left->access().current, right->access().current}
+        , lastSynced{
+            make_empty_baseline(left->access().current),
+            make_empty_baseline(right->access().current)}
         , overlapTypes(SchemaObject::intersection(left->schema(), right->schema())->types())
     {}
 
     void Collaboration::sync() {
-        _INCOMPLETE_;
-        /*
         const base::pair<Subsystem::Update> updates{peers.first->access(), peers.second->access()};
 
-        const World leftCurrent = updates.first.current;
-        const World rightCurrent = updates.second.current;
-        const Schema overlapSchema = SchemaObject::intersection(leftCurrent->schema, rightCurrent->schema);
+        const base::pair<Reading> current{updates.first.current, updates.second.current};
+        const Schema overlapSchema = SchemaObject::intersection(current.first->schema, current.second->schema);
+        overlapTypes = overlapSchema->types();
 
         if (overlapTypes.empty()) {
-            lastSynced = {leftCurrent, rightCurrent};
+            lastSynced = current;
             return;
         }
 
@@ -126,8 +131,8 @@ namespace iqsm::agents {
             project_overlap(lastSynced.first, overlapSchema, overlapTypes),
             project_overlap(lastSynced.second, overlapSchema, overlapTypes)};
         const base::pair<World> currentOverlaps{
-            project_overlap(leftCurrent, overlapSchema, overlapTypes),
-            project_overlap(rightCurrent, overlapSchema, overlapTypes)};
+            project_overlap(current.first, overlapSchema, overlapTypes),
+            project_overlap(current.second, overlapSchema, overlapTypes)};
 
         const World mergedOverlap = build_merged_overlap(
             lastOverlaps,
@@ -138,29 +143,29 @@ namespace iqsm::agents {
         const Delta leftDelta = operations::make_delta(currentOverlaps.first, mergedOverlap);
         const Delta rightDelta = operations::make_delta(currentOverlaps.second, mergedOverlap);
         if (leftDelta->empty() && rightDelta->empty()) {
-            lastSynced = {leftCurrent, rightCurrent};
+            lastSynced = current;
             return;
         }
 
-        // integrate() clones full leftCurrent/rightCurrent (same schema + resources Provider), then applies only overlap field deltas.
-        const base::pair<World> next{
+        // integrate() clones full leftCurrent/rightCurrent (same schema + resources Provider),
+        // then applies only overlap field deltas. Validation is performed by peers' replace/rebase mechanisms.
+        const base::pair<Reading> next{
             leftDelta->empty()
-                ? leftCurrent
-                : operations::validate_smart(leftCurrent, operations::integrate(leftCurrent, leftDelta)),
+                ? current.first
+                : operations::integrate(current.first, leftDelta),
             rightDelta->empty()
-                ? rightCurrent
-                : operations::validate_smart(rightCurrent, operations::integrate(rightCurrent, rightDelta))};
+                ? current.second
+                : operations::integrate(current.second, rightDelta)};
 
-        if (next.first != leftCurrent) {
+        if (next.first != current.first) {
             updates.first.replace(next.first);
         }
-        if (next.second != rightCurrent) {
+        if (next.second != current.second) {
             updates.second.replace(next.second);
         }
 
-        const base::pair<World> finals{peers.first->access().current, peers.second->access().current};
+        const base::pair<Reading> finals{peers.first->access().current, peers.second->access().current};
 
         lastSynced = finals;
-        */
     }
 }
