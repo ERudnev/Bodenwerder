@@ -20,14 +20,12 @@ namespace Model {
         auto schema() const -> iqsm::Schema override { return schema_; }
 
         auto access() -> Update override {
-            struct Replacer {
-                iqsm::repo::Branch* main;
-                void operator()(iqsm::World next) const { main->rebase(next); }
-            };
-
             return Update{
                 .current = main,
-                .replace = Replacer{&main},
+                .replace =
+                    [this](iqsm::Reading next) {
+                        main.rebase(next);
+                    },
             };
         }
 

@@ -136,14 +136,12 @@ auto Engine::schema() const -> iqsm::Schema {
 }
 
 auto Engine::access() -> iqsm::agents::Subsystem::Update {
-    struct Replacer {
-        State* state;
-        void operator()(iqsm::World next) const { state->main.rebase(next); }
-    };
-
     return iqsm::agents::Subsystem::Update{
         .current = state->main,
-        .replace = Replacer{state.get()},
+        .replace =
+            [st = state.get()](iqsm::Reading next) {
+                st->main.rebase(next);
+            },
     };
 }
 
