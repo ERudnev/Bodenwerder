@@ -9,6 +9,9 @@ project(DAQL)
 # Disable GLFW documentation generation (we don't need Doxygen)
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "Build the GLFW documentation" FORCE)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+include(Q1)
+
 add_subdirectory(3party)
 add_subdirectory(modules)
 

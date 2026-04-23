@@ -5,7 +5,16 @@ project("Foundation"
     VERSION 0.1
 )
 
+set(Foundation_Q1
+    hexes.q1.types
+)
+
 add_library(${PROJECT_NAME} STATIC)
+
+add_q1_schema(${PROJECT_NAME}
+    ROOT ${CMAKE_CURRENT_SOURCE_DIR}
+    FILES ${Foundation_Q1}
+)
 
 target_sources(${PROJECT_NAME}
     PRIVATE
