@@ -7,10 +7,4 @@ namespace mqsm::dsl_gateway {
 
     namespace repo {
     }
-
-    namespace invariant {
-    }
-
-    namespace resources {
-    }
 }

@@ -18,7 +18,7 @@
 #endif
 
 // infra:
-#define _INCOMPLETE_ throw ::base::detail::make_incomplete_message(__FILE__, __LINE__, NOTECS_FUNCTION_NAME)
+#define _INCOMPLETE_ throw ::base::detail::IncompleteError(::base::detail::make_incomplete_message(__FILE__, __LINE__, NOTECS_FUNCTION_NAME))
 #define _THROW_LOGIC_ERROR_ throw std::logic_error(::base::detail::make_logic_error_message(__FILE__, __LINE__, __func__))
 #define _IMPLEMENT_ME_ static_assert(false, "needs some code to implement here")
 
@@ -125,8 +125,13 @@ namespace base {
 
 // infra / internal details (kept out of `base::` surface)
 namespace base::detail {
+    struct IncompleteError : std::logic_error {
+        using std::logic_error::logic_error;
+    };
+
     inline std::string make_incomplete_message(const char* file, int line, const char* function) {
-        return std::string("INCOMPLETE at ") + file + ":" + std::to_string(line) + " in " + function;
+        return std::string("INCOMPLETE: reached placeholder code. ")
+            + "Location: " + file + ":" + std::to_string(line) + " in " + function;
     }
 
     inline std::string make_logic_error_message(const char* file, int line, const char* function) {
