@@ -4,7 +4,7 @@
 
 namespace tests {
     void validation_element_validator_clamp() {
-        using namespace iqsm::dsl_gateway;
+        using namespace iqsm::q1_gateway;
         using namespace Q1_iQSM::Etalon;
 
         repo::Branch master{ops::world::create_no_resources(ops::schema::assemble<SampleEntity>())};

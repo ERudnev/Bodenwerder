@@ -5,7 +5,7 @@
 namespace tests {
 
     void mass_operations() {
-        using namespace iqsm::dsl_gateway;
+        using namespace iqsm::q1_gateway;
         using namespace Q1_iQSM::Etalon;
 
         repo::Branch branch{ops::world::create_no_resources(ops::schema::assemble<SampleEntity, SampleComponent>())};

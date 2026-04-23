@@ -6,7 +6,7 @@ struct GLFWwindow;
 
 namespace rmmr {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct Device : Handle<Device, GLFWwindow*, GLFWwindow*>, Require<> {
         struct Materializer : iqsm::resources::Materializer<Device> {

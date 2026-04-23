@@ -10,7 +10,7 @@
 
 namespace rmmr {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     class Renderer final {
     public:

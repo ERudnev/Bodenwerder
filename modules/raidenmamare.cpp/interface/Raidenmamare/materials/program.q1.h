@@ -9,7 +9,7 @@
 namespace rmmr {
 namespace material {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct Program : Handle<Program, GLuint, GLuint>, Require<rmmr::Device> {
         struct Materializer : iqsm::resources::Materializer<Program> {

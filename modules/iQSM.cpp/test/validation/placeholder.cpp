@@ -1,7 +1,7 @@
 #include "../_common.h"
 
 namespace {
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct Foo : Entity<Foo>, Require<> {
         struct Quantum { integer value = 0; };

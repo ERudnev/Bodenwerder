@@ -3,7 +3,7 @@
 #include <iQSM/api/_gateway.h>
 
 namespace rmmr {
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     using Pos = vec3;
     using HPB = vec3;

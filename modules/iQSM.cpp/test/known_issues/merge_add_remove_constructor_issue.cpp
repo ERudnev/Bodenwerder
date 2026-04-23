@@ -8,7 +8,7 @@ namespace tests {
     void merge_add_remove_constructor_issue() {
         /* OBSOLETE SYNTAX, update some day
         
-        using namespace iqsm::dsl_gateway;
+        using namespace iqsm::q1_gateway;
         using namespace Q1_iQSM::Etalon;
 
         repo::Branch master{ops::world::create_no_resources(ops::schema::assemble<Remnant>())};

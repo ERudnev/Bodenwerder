@@ -6,7 +6,7 @@
 
 namespace tests {
     void resource_example() {
-        using namespace iqsm::dsl_gateway;
+        using namespace iqsm::q1_gateway;
         using Q1_iQSM::Etalon::SampleResource;
 
         const auto schema = ops::schema::assemble<SampleResource>();

@@ -1,5 +1,5 @@
 // Этот том описывает механические правила проекции (генерации) определений Q1 в C++-код **на рельсах iQSM**.
-// Цель: зафиксировать рецепт Q1 → iQSM C++ (в терминах `iqsm::dsl_gateway` и транзакционной культуры iQSM),
+// Цель: зафиксировать рецепт Q1 → iQSM C++ (в терминах `iqsm::q1_gateway` и транзакционной культуры iQSM),
 // зафиксированный в эталонах `modules/Q1/golden/*.iqsm/`.
 
 #using namespace FAL(file: "core/FAL.tome")
@@ -11,7 +11,7 @@ namespace Q1-iQSM {
   iqsm_is_the_rail: @Statement(~0.9) {
     Core:
       Это не “Q1 → произвольный C++”. Это “Q1 → C++ на рельсах iQSM”:
-      итоговый код выражает модель через `iqsm::dsl_gateway` (типы/Id, `#include <iQSM/api/_gateway.h>`)
+      итоговый код выражает модель через `iqsm::q1_gateway` (типы/Id, `#include <iQSM/api/_gateway.h>`)
       и исполняет операции через культуру `Reading`/`Writing` и транзакции iQSM (см. `&iqsm_transaction_culture`).
     Reason:
       Нам важна не абстрактная форма C++, а устойчивый прикладной контракт iQSM, по которому живут world/delta/ops.
@@ -44,7 +44,7 @@ namespace Q1-iQSM {
     Проекция Q1 DSL → C++: организация файлов и заголовков.
     1: Каждый сгенерированный заголовок начинается с `#pragma once`.
     2: Каждый сгенерированный заголовок включает `#include <iQSM/api/_gateway.h>`.
-    3: Внутри целевого namespace добавляется `using namespace iqsm::dsl_gateway;`.
+    3: Внутри целевого namespace добавляется `using namespace iqsm::q1_gateway;`.
     4: Подключаются STL-заголовки по факту использованных типов (например, `vector` → `<vector>`, `string` → `<string>`).
     5: Для кросс-namespace ссылок подключается соответствующий `.q1.h` (например, System включает Model через `#include <Atomic/model.q1.h>`).
   }
@@ -126,7 +126,7 @@ namespace Q1-iQSM {
 
   type_projection: @Rule {
     Проекция типовых конструкций DSL → C++ в контексте `Quantum`.
-    1: Базовые DSL-типы (например, `string`, `integer`, `#` как локальный id) берутся из `iqsm::dsl_gateway` (C++ имена: `Id`, `Aspect::Id`, ...).
+    1: Базовые DSL-типы (например, `string`, `integer`, `#` как локальный id) берутся из `iqsm::q1_gateway` (C++ имена: `Id`, `Aspect::Id`, ...).
     2: `vector<T>` проецируется как `std::vector<T>`.
     3: Постфикс `T?` в типах полей (`syntax.txt`: optional): проецируется как `optional<T_пр>`, где `T_пр` — уже спроецированный тип `T`; для `#X?` — `optional<X::Id>`. Шаблон `optional` берётся из `iqsm::q1` (`modules/iQSM.cpp/interface/iQSM/api/builtins.h`), не пишется `std::optional` вручную в проекции.
     4: `enum E : a, b, c` проецируется как `enum class E { a, b, c };`.

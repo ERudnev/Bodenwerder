@@ -6,7 +6,7 @@
 
 namespace rmmr {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct Viewport : Entity<Viewport>, Require<Device> {
         struct Quantum {

@@ -7,7 +7,7 @@
 
 namespace rmmr::material {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct MaterialGenerator final {
         static auto ambient(Writing, rmmr::Device::Id, resources::Manager) -> Core::Id;

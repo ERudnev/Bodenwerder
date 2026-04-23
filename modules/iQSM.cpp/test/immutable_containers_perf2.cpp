@@ -8,7 +8,7 @@
 
 #include "multistate/model.q1.h"
 
-using namespace iqsm::dsl_gateway;
+using namespace iqsm::q1_gateway;
 using namespace RnD;
 
 namespace {

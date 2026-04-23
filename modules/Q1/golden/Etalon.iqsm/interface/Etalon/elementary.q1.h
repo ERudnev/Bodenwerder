@@ -3,7 +3,7 @@
 #include <iQSM/api/_gateway.h>
 
 namespace Q1_iQSM {
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
     namespace Syntax {
         namespace Typization {
 

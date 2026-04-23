@@ -17,7 +17,7 @@
 
 namespace tests {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
     using namespace iqsm::agents;
 
     // will go to the iQSM later...

@@ -5,7 +5,7 @@
 namespace tests {
     
     void model_is_compileable() {
-        using namespace iqsm::dsl_gateway;
+        using namespace iqsm::q1_gateway;
         using namespace Q1_iQSM::Etalon;
 
         const auto schema = ops::schema::assemble<SampleEntity, Tag, Remnant, SampleComponent, SampleAttribute>();

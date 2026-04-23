@@ -7,7 +7,7 @@
 
 namespace Q1_iQSM::Etalon {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     //
     // Trivia

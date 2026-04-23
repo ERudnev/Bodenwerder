@@ -17,7 +17,7 @@ namespace rmmr::internals::material {
 
 namespace rmmr::material {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct Core : Handle<Core, rmmr::internals::material::CoreCompiled, const rmmr::internals::material::CoreCompiled&>, Require<Program>
     {

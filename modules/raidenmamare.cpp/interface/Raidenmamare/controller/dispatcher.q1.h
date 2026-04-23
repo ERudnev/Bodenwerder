@@ -7,7 +7,7 @@
 
 namespace rmmr::controller {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct Dispatcher : Attribute<Dispatcher, scene::Node>, Require<scene::Node, ::rmmr::Device> {
         struct Quantum {};

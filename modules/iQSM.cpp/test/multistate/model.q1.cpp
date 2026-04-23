@@ -6,7 +6,7 @@
 
 namespace RnD::Logic {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct House_private : House::Operations {
         static auto happiness_clamped(Reading, Id, const Quantum& before) -> ItemChange {
@@ -55,7 +55,7 @@ namespace RnD::Logic {
 
 namespace RnD::View {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct HappyHouse_private : HappyHouse::Operations {
         static void construct(Writing commit, Logic::House::Id id, Item<Logic::House>) {

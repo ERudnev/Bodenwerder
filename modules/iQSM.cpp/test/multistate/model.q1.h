@@ -6,7 +6,7 @@
 
 namespace RnD::Logic {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct House : Entity<House>, Require<> {
         struct Quantum {
@@ -32,7 +32,7 @@ namespace RnD::Logic {
 
 namespace RnD::View {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct HappyHouse : Component<HappyHouse, Logic::House>, Require<Logic::House> {
         struct Quantum {

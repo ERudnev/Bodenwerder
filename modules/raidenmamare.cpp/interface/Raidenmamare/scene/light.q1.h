@@ -6,7 +6,7 @@
 
 namespace rmmr::scene {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct Light : Attribute<Light, Node>, Require<Node> {
         struct Quantum {

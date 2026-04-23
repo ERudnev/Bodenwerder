@@ -26,12 +26,12 @@
 #include "primitives/meshGenerator.h"
 #include "renderer/renderer.h"
 
-using namespace iqsm::dsl_gateway;
+using namespace iqsm::q1_gateway;
 
 namespace rmmr {
 
 struct Engine::State {
-    iqsm::dsl_gateway::resources::Manager resourceManager;
+    iqsm::q1_gateway::resources::Manager resourceManager;
     iqsm::repo::Branch main;    
     maybe<rmmr::Renderer> renderer;
     maybe<Device::Id> device;

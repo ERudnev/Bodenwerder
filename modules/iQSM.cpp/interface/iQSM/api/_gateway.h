@@ -35,8 +35,8 @@
 
 // Minimal DSL surface for generated/etalon code.
 // Intentionally small to avoid pulling the whole iqsm namespace into client headers.
-// USAGE: add "using namespace iqsm::dsl_gateway;" in your generated/etalon code once and feel safe
-namespace iqsm::dsl_gateway {
+// USAGE: add "using namespace iqsm::q1_gateway;" in your generated/etalon code once and feel safe
+namespace iqsm::q1_gateway {
     using namespace iqsm::q1; // adding all builtin types
 
     namespace ops = ::iqsm::helpers;

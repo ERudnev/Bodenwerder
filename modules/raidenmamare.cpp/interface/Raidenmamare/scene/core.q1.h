@@ -9,7 +9,7 @@
 
 namespace rmmr::scene {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct Core : Entity<Core>, Require<Node, Camera, Light> {
         struct Quantum {

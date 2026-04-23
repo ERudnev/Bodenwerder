@@ -7,7 +7,7 @@
 
 namespace Q1_iQSM::Etalon {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct SampleResource : Handle<SampleResource, base::testing::function1f, const base::testing::function1f&>, Require<> {
         struct Materializer : iqsm::resources::Materializer<SampleResource> {

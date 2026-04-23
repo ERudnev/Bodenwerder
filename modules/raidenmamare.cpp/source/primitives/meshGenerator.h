@@ -6,7 +6,7 @@
 
 namespace rmmr::primitive {
 
-    using namespace iqsm::dsl_gateway;
+    using namespace iqsm::q1_gateway;
 
     struct MeshGenerator final {
         // Declares a canonical triangle mesh resource in the repository.

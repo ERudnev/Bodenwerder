@@ -2,7 +2,7 @@
 
 #include <mQSM/api/builtins.h>
 
-namespace mqsm::dsl_gateway {
+namespace mqsm::q1_gateway {
     using namespace mqsm::q1;
 
     namespace repo {
