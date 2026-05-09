@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iQSM/identifier.h>
-#include <iQSM/operations/interface.h>
+#include <iQSM/service/interface.h>
 
 
 namespace iqsm::detail::aspects {
@@ -15,29 +15,29 @@ namespace iqsm::aspects {
     template<typename Meta>
     struct Entity : detail::aspects::Base<Meta> {
         using Id = Identifier<Meta>;
-        using OwnTypeOperations = ::iqsm::detail::operations::Group<Meta>;
+        using OwnManipulators = ::iqsm::service::Group<Meta>;
     };
 
     template<typename Meta, typename Parent>
     struct Attribute : detail::aspects::Base<Meta> {
         using Id = typename Parent::Id;
         using ParentAspect = Parent;
-        using OwnTypeOperations = ::iqsm::detail::operations::Group<Meta>;
+        using OwnManipulators = service::Group<Meta>;
     };
 
     template<typename Meta, typename Parent>
     struct Component : detail::aspects::Base<Meta> {
         using Id = typename Parent::Id;
         using ParentAspect = Parent;
-        using OwnTypeOperations = ::iqsm::detail::operations::Group<Meta>;
+        using OwnManipulators = service::Group<Meta>;
     };
 
-    template<typename Meta, typename RuntimeStorageType, typename RuntimeAccessType>
-    struct Handle : detail::aspects::Base<Meta> {
+    template<typename Meta, typename RuntimeType>
+    struct Agent : detail::aspects::Base<Meta> {
         using Id = Identifier<Meta>;
-        using OwnTypeOperations = ::iqsm::detail::operations::Group<Meta>;
-        using RuntimeStorage = RuntimeStorageType;
-        using RuntimeAccess = RuntimeAccessType;
+        using OwnManipulators = service::Group<Meta>;
+        // TODO: redesign this...
+        using Runtime = RuntimeType;
     };
 }
 

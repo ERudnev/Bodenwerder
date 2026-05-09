@@ -71,9 +71,10 @@ namespace Q1-iQSM {
     4: `entity X` проецируется как `struct X : Entity<X>, Require<...> { ... };`.
     5: `attribute Q of Parent` проецируется как `struct Q : Attribute<Q, Parent>, Require<Parent, ...> { ... };`.
     6: `component Q of Parent` проецируется как `struct Q : Component<Q, Parent>, Require<Parent, ...> { ... };`.
-    7: `resource R @external(X)` проецируется как `struct R : Handle<R, RuntimeStorage, RuntimeAccess>, Require<...> { ... };` (шаблон `iqsm::aspects::Handle`).
-      1: `X` в DSL — имя/метка внешнего вида ресурса (не Q1-тип). В C++ физическая форма задаётся парой типов `RuntimeStorage` и `RuntimeAccess` на `Handle` (часто совпадают: `GLuint`, указатель окна и т.п.).
-      2: Аспектный заголовок остаётся доменным: `Quantum`, `Materializer::Passport`, вложенный `struct Materializer : iqsm::resources::Materializer<R>` с `materialize` / `release`, плюс `Operations`.
+    7: `agent R @external(X)` проецируется как `struct R : Handle<R, RuntimeStorage, RuntimeAccess>, Require<...> { ... };` (шаблон `iqsm::aspects::Handle`).
+      1: Смысл: `R` — доменный **agent** (логическая обёртка/handle), а `X` — внешний runtime **resource** identifier (не Q1-тип).
+         В C++ физическая форма ресурса задаётся парой типов `RuntimeStorage` и `RuntimeAccess` на `Handle` (часто совпадают: `GLuint`, указатель окна и т.п.).
+      2: Аспектный заголовок остаётся доменным (agent-аспект): `Quantum`, `Materializer::Passport`, вложенный `struct Materializer : iqsm::resources::Materializer<R>` с `materialize` / `release`, плюс `Operations`.
       3: Значение рантайма на каждый `R::Id` физически хранится в `iqsm::resources::Layer<R>` внутри `resources::Manager` (один `RuntimeStorage` на id). Это хранилище не протаскивается в сигнатуры **доменных** операций, сгенерированных из DSL: те следуют общим правилам `element_and_table_projection` (`Reading` / `Writing` / `Id` и явные параметры из DSL).
       4: Операции, которым нужен уже материализованный рантайм (типичный пример — `?provide` → `R::Operations::provide`), в C++ реализуются с доступом к слою **через мир**: `Reading` несёт `iqsm::resources::Provider` (`world->resources`), откуда берётся тот же менеджер, что привязан к `WorldObject` (например `world->resources->layer<R>().provide(id)`). Генератор **не** добавляет отдельный параметр `resources::Manager` / `Provider` в сигнатуры таких операций.
       5: Виртуальные методы `Materializer::materialize` / `release` задаются базовым классом `iqsm::resources::Materializer<R>`: там `resources::Manager` остаётся в сигнатуре, когда нужна мутация слоя менеджера (регистрация/снятие `RuntimeStorage`). Это рантайм-хуки материализации, а не проекция пользовательских `?/=/>` из DSL.

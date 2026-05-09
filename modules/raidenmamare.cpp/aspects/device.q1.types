@@ -1,7 +1,7 @@
 namespace rmmr
 
   // Root OpenGL window/context resource for the demo application.
-  resource Device @external(opengl_window)
+  agent Device @external(opengl_window)
     passport
       assets_root: string
       title: string

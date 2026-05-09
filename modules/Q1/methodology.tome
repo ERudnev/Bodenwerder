@@ -63,12 +63,12 @@ namespace Q1 {
       fieldwide/elementwide операций в одном плоском списке.
   }
 
-  resource_runtime_code_is_external: @Statement(~0.85) {
+  agent_runtime_code_is_external: @Statement(~0.85) {
     Core:
-      `resource ... @external(X)` в Q1 объявляет только доменный аспект и факт зависимости от внешнего runtime identifier `X`.
+      `agent ... @external(X)` в Q1 объявляет только доменный аспект и факт зависимости от внешнего runtime identifier `X`.
       Concrete loader implementation, payload interpretation и bind/load glue-code не являются частью DSL и не должны генерироваться автоматически.
       Генерилка вправе ожидать, что такой код существует вне проекции: в рантайме, тестовом слое или клиентском коде.
-      Операции из `element`/`table` для resource-аспектов проецируются как обычные операции с `Reading`/`Writing`/`Id`; доступ к уже загруженному рантайму в C++ — через привязку менеджера к миру (`World::resources`), без добавления `resources::Manager` в сигнатуры этих операций (см. `modules/Q1/q1-to-iQSM.tome`, `declaration_forms` § resource).
+      Операции из `element`/`table` для agent-аспектов проецируются как обычные операции с `Reading`/`Writing`/`Id`; доступ к уже загруженному рантайму в C++ — через привязку менеджера к миру (`World::resources`), без добавления `resources::Manager` в сигнатуры этих операций (см. `modules/Q1/q1-to-iQSM.tome`, `declaration_forms` § agent).
     Reason:
       Это удерживает аспектный интерфейс доменным, не протаскивает физические runtime-типы в Q1 и явно разделяет
       "что объявлено в модели" и "как конкретная платформа материализует внешний ресурс".

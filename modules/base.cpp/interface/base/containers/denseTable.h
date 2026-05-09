@@ -14,7 +14,7 @@ namespace base {
 
 /// Dense vector of entries + unordered map id -> slot index. Mutable; erase uses swap-with-tail.
 template<typename IdType, typename ValueType, typename Hasher = std::hash<IdType>, typename KeyEqual = std::equal_to<IdType>>
-class DensePointerTable {
+class DenseTable {
 public:
     struct Entry {
         IdType id;
@@ -71,7 +71,7 @@ public:
         }
 
     private:
-        friend class DensePointerTable;
+        friend class DenseTable;
 
         ConstIterator(const std::vector<Entry>& entry_vec, SizeType index_)
             : entries(entry_vec)
@@ -82,9 +82,9 @@ public:
         SizeType index;
     };
 
-    DensePointerTable() = default;
+    DenseTable() = default;
 
-    explicit DensePointerTable(const Hasher& hash, const KeyEqual& eq = KeyEqual())
+    explicit DenseTable(const Hasher& hash, const KeyEqual& eq = KeyEqual())
         : idToIndex(0, hash, eq)
     {}
 
@@ -106,13 +106,13 @@ public:
 
     const ValueType& at(const IdType& id) const {
         const auto* found = find(id);
-        if (!found) throw std::out_of_range("DensePointerTable::at");
+        if (!found) throw std::out_of_range("DenseTable::at");
         return *found;
     }
 
     ValueType& at(const IdType& id) {
         auto* found = find(id);
-        if (!found) throw std::out_of_range("DensePointerTable::at");
+        if (!found) throw std::out_of_range("DenseTable::at");
         return *found;
     }
 
@@ -173,8 +173,5 @@ public:
     std::unordered_map<IdType, SizeType, Hasher, KeyEqual> idToIndex;
     std::vector<Entry> entries;
 };
-
-template<typename IdType, typename ValueType, typename Hasher = std::hash<IdType>, typename KeyEqual = std::equal_to<IdType>>
-using DenseTable = DensePointerTable<IdType, ValueType, Hasher, KeyEqual>;
 
 } // namespace base

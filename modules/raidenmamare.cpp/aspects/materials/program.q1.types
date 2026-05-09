@@ -4,7 +4,7 @@ namespace rmmr
   namespace material
 
     // OpenGL-backed linked program resource assembled from shader stage files.
-    resource Program @external(opengl_program)
+    agent Program @external(opengl_program)
       static
         ?vertexFilename(name: string, library: string): string  // returns "library/shaders/name.vert.glsl"
         ?fragmentFilename(name: string, library: string): string // returns "library/shaders/name.frag.glsl"

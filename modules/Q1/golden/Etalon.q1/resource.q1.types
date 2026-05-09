@@ -1,11 +1,10 @@
 namespace Q1_iQSM
   namespace Etalon
     
-    // External runtime-bound resource; the concrete runtime type is only named here.
+    // External runtime-bound agent (wrapper); the concrete runtime resource type is only named here.
     // Loading/unloading/passport interpretation stays outside the DSL projection.
-    // C++ projection: element operations do not add resources::Manager to signatures; access via Reading/world->resources (q1-CPP.tome).
-    
-    resource FloatFunction @external(ScalarFloatFunction)
+    // C++ projection: element operations do not add resources::Manager to signatures; access via Reading/world->resources (q1-CPP.tome).    
+    agent FloatFunction @external(ScalarFloatFunction)
       passport
         description: string
         cost: integer

@@ -3,43 +3,7 @@
 #include <vector>
 
 #define IQSM_TESTS(X) \
-    /* X(typenames_varph) */ \
-    X(schema_aspects) \
-    /* X(worlddata) */ \
-    /* X(delta_merge) */ \
-    /* X(validation_anchors) */ \
-    /* X(caching_components) */ \
-    /* X(validation_cache) */ \
-    /* X(validation_existence) */ \
-    /* X(transaction_repo) */ \
-    /* X(globals) */ \
-    /* X(handles) */ \
-    X(resource_example) \
-    X(immutable_containers_perf) \
-    X(model_is_compileable) \
-    X(complex_constructor) \
-    X(multistate_system) \
-    X(mass_operations) \
-    // end
-
-#define IQSM_KNOWN_ISSUES_TESTS(X) \
-    X(merge_add_remove_constructor_issue) \
-    // end
-
-#define IQSM_VALIDATION_TESTS(X) \
-    X(validation_placeholder) \
-    X(validation_caching_component) \
-    X(validation_tag_globals) \
-    // end
-
-#define IQSM_OPERATIONS_TESTS(X) \
-    X(transaction_repo) \
-    X(globals) \
-    // end
-
-// Perf-lab: keep single-test main() simple and switch here.
-#define IQSM_PERFORMANCE_LAB_TESTS(X) \
-    X(immutable_containers_perf2) \
+    X(dual_layer_model) \
     // end
 
 // Workshop: верни каталог test/workshop/ целиком и раскомментируй блок ниже + group "Workshop" в groups.
@@ -48,10 +12,6 @@
 //    // end
 
 BASETEST_FORWARD_DECLARE_TESTS(IQSM_TESTS)
-BASETEST_FORWARD_DECLARE_TESTS(IQSM_VALIDATION_TESTS)
-BASETEST_FORWARD_DECLARE_TESTS(IQSM_OPERATIONS_TESTS)
-BASETEST_FORWARD_DECLARE_TESTS(IQSM_KNOWN_ISSUES_TESTS)
-BASETEST_FORWARD_DECLARE_TESTS(IQSM_PERFORMANCE_LAB_TESTS)
 //BASETEST_FORWARD_DECLARE_TESTS(IQSM_WORKSHOP_TESTS)
 
 int main() {
@@ -62,10 +22,6 @@ int main() {
 
     const std::vector<group> groups{
         group{ "all", BASETEST_MAKE_LIST_TESTS(IQSM_TESTS) },
-        group{ "validation", BASETEST_MAKE_LIST_TESTS(IQSM_VALIDATION_TESTS) },
-        group{ "operations", BASETEST_MAKE_LIST_TESTS(IQSM_OPERATIONS_TESTS) },
-        //group{ "Workshop", BASETEST_MAKE_LIST_TESTS(IQSM_WORKSHOP_TESTS) },
-        //group{ "known_issues", BASETEST_MAKE_LIST_TESTS(IQSM_KNOWN_ISSUES_TESTS) },
     };
 
     base::testing::run_summary total{};
@@ -92,7 +48,7 @@ int main() {
 
 int main_one_test() {
     const auto s = base::testing::run_tests(
-        //BASETEST_LIST(BASETEST_NAMED("performance_lab", &tests::immutable_containers_perf)));
-        BASETEST_LIST(BASETEST_NAMED("performance_lab2", &tests::immutable_containers_perf2)));
+        BASETEST_LIST(BASETEST_NAMED("all", &tests::dual_layer_model)));
+        //BASETEST_LIST(BASETEST_NAMED("performance_lab2", &tests::immutable_containers_perf2)));
     return s.ok() ? 0 : 1;
 }

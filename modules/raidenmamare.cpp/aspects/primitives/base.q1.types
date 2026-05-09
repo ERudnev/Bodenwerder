@@ -5,7 +5,7 @@ namespace rmmr
   namespace primitive
 
     // OpenGL-backed drawable primitive. Runtime may own VAO/VBO and related GPU objects.
-    resource Base @external(opengl_primitive)
+    agent Base @external(opengl_primitive)
       passport
         debugName: string
         layout: vector<integer>

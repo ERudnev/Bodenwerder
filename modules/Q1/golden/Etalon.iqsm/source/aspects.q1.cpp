@@ -107,9 +107,9 @@ namespace Q1_iQSM::Etalon {
             g->modulus = integer{1};
         }
 
-        static bool needs_tag(Reading world, SampleEntity::Id, Item<SampleEntity> item) {
+        static bool needs_tag(Reading world, SampleEntity::Id, Node<SampleEntity> node) {
             const auto mod = ops::global::get<Tag>(world)->modulus;
-            return (item->data_field % mod) == integer{0};
+            return (node->data_field % mod) == integer{0};
         }
     };
 
@@ -126,7 +126,7 @@ namespace Q1_iQSM::Etalon {
     //
     // Remnant
     struct Remnant_private : Remnant::Operations {
-        static void construct(Writing permit, Id id, Item<Tag>) {
+        static void construct(Writing permit, Id id, Node<Tag>) {
             repo::Sequence sequence(permit);
             const auto trivia = ops::particle::create<Trivia>(sequence, Trivia::Quantum{});
             ops::particle::create<Remnant>(
@@ -160,7 +160,7 @@ namespace Q1_iQSM::Etalon {
     //
     // SampleComponent
     struct SampleComponent_private : SampleComponent::Operations {
-        static void private_construct(Writing commit, Id id, Item<SampleEntity>) {
+        static void private_construct(Writing commit, Id id, Node<SampleEntity>) {
             ops::particle::create<SampleComponent>(commit, id, Quantum{});
         }
     };
@@ -187,11 +187,11 @@ namespace Q1_iQSM::Etalon {
     //
     // SampleAttribute
     struct SampleAttribute_private : SampleAttribute::Operations {
-        static bool need_even(Reading, SampleEntity::Id, Item<SampleEntity> item) {
-            return (item->data_field % integer{2}) == integer{0};
+        static bool need_even(Reading, SampleEntity::Id, Node<SampleEntity> node) {
+            return (node->data_field % integer{2}) == integer{0};
         }
 
-        static void construct(Writing commit, Id id, Item<SampleEntity>) {
+        static void construct(Writing commit, Id id, Node<SampleEntity>) {
             ops::particle::create<SampleAttribute>(
                 commit,
                 id,
