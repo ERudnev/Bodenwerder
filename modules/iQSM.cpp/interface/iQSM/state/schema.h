@@ -4,15 +4,14 @@
 #include <set>
 #include <string>
 
-#include <iQSM/typeId.h>
+#include <iQSM/state/_forwards.h>
 #include <iQSM/references.h>
 #include <iQSM/service/validation.h>
 
 namespace iqsm::state {
     
     struct SchemaData {
-        using TypeId = internals::Types::RuntimeId;
-        using TypeSet = std::set<TypeId>;
+        using TypeSet = std::set<RAId>;
         using Invariants = validation::Block;
 
         struct Aspect {
@@ -24,12 +23,13 @@ namespace iqsm::state {
             };
 
             std::string name; // persistent name
+            policy::versioning layer;
             TypeSet requiredByMe;
             TypeSet requiredBy;
             Versioned versioned;
             Operational operational;
         };
 
-        std::map<TypeId, Aspect> aspects;
+        std::map<RAId, Aspect> aspects;
     };
 }

@@ -18,18 +18,27 @@ namespace {
     };
 }
 
+
+namespace iqsm_workshop {
+    using namespace iqsm;
+}
+
 namespace tests {
+
+    namespace manip = ::iqsm_workshop;
 
     // this test is TDD framework to envolve iQSM World of Two Layers: immutable (historical) and mutable (operational)
     void dual_layer_model()
     {
         using namespace iqsm::interface;
         //using Layer = policy::versioning;
-        const auto schema = ask::schema::merge({
+        const iqsm::Schema schema = ask::schema::merge({
             ask::schema::aspect<LogicEntity, ask::schema::Layer::shared>(),
             ask::schema::aspect<AgentEntity, ask::schema::Layer::shared>(),
             ask::schema::aspect<RuntimeEntity, ask::schema::Layer::single>(),
         });
+
+        const iqsm::World world = ask::world::create(schema);
         
     }
 }

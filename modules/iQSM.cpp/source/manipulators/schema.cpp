@@ -2,7 +2,7 @@
 
 #include <iQSM/state/schema.h>
 
-namespace iqsm::manipulators::schema {
+namespace iqsm::manipulator::schema {
     iqsm::Schema merge(std::initializer_list<iqsm::Schema> parts) {
         auto out = base::make_shared<iqsm::state::SchemaData>();
 

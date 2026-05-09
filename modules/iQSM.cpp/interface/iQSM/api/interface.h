@@ -8,6 +8,7 @@
 
 // operations
 #include <iQSM/manipulators/schema.h>
+#include <iQSM/manipulators/world.h>
 
 
 namespace iqsm::interface {
@@ -15,9 +16,9 @@ namespace iqsm::interface {
     using namespace iqsm::q1;
 
     // add operations as short "ops":
-    namespace ask = ::iqsm::manipulators;
+    namespace ask = ::iqsm::manipulator;
 
-    // Particle types:
+    // Aspect types:
     template<typename Meta>
     using Entity = iqsm::aspects::Entity<Meta>;
 

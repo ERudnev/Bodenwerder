@@ -5,7 +5,7 @@
 #include <base/maybe.h>
 #include <base/logging.h>
 #include <iQSM/flow/reading.h>
-#include <iQSM/state/interface.h>
+#include <iQSM/state/_forwards.h>
 
 namespace iqsm::internals::flow {
 

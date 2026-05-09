@@ -6,7 +6,7 @@
 #include <iQSM/meta/concepts.h>
 #include <iQSM/meta/alias.h>
 #include <iQSM/flow/interface.h>
-#include <iQSM/state/interface.h>
+#include <iQSM/state/_forwards.h>
 
 
 namespace iqsm::service {
