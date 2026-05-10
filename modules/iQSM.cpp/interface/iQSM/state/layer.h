@@ -16,24 +16,5 @@ namespace iqsm::state {
     struct Layer  {
         using SlicesContainer = SlicesLayout<SliceVersioning>::SlicesContainer;
         SlicesContainer slices;
-        //using SliceContainer = slice::Data<Meta, Versioning, ItemRole>;
-    };
-
-    /*
-    template<policy::role Role, policy::versioning SlicePolicy>
-    struct Composite {
-        using Layer = LayerFor<SlicePolicy>;
-
-        // remove?
-        template<meta::Aspect Meta>
-        using Shared = slice::Data<Meta, Item<Meta, policy::versioning::shared, Role>>;
-
-        template<meta::Aspect Meta>
-        using Single = slice::Data<Meta, Item<Meta, policy::versioning::single, Role>>;
-        //
-        const Schema schema;
-        Layer shared;
-        Layer single;
-    };*/
-    
+    };    
 }

@@ -16,14 +16,13 @@ namespace iqsm::state {
 
         struct Aspect {
             struct Versioned {
-                // TODO: add this stuff: cref<slice::Abstract> zero;
             };
             struct Operational {
-                
             };
 
             std::string name; // persistent name
             policy::versioning layer;
+            cref<slice::Abstract> zero;
             TypeSet requiredByMe;
             TypeSet requiredBy;
             Versioned versioned;

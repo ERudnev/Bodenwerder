@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <vector>
-#include <iQSM/flow/permit.h>
+#include <iQSM/flow/internals/permit.h>
 
 namespace iqsm::validation {
     // validation of any Aspect means applying Block of functions in defined order

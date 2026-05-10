@@ -3,11 +3,12 @@
 #include <exception>
 #include <stdexcept>
 #include <utility>
-
-#include <iQSM/delta.h>
-#include <iQSM/repository/channel.h>
-#include <iQSM/repository/permit.h>
 #include <cstddef>
+
+#include <iQSM/state/delta.h>
+#include <iQSM/state/world.h>
+#include <iQSM/flow/internals/channel.h>
+#include <iQSM/flow/internals/permit.h>
 
 
 namespace iqsm::flow {
@@ -15,7 +16,8 @@ namespace iqsm::flow {
     // Interface, can consume Channel from Permit and keeps changes as local, making one final push/summary
     struct Transaction {
     protected:
-        using Channel = internals::flow::Channel;
+        using Channel = internals::Channel;
+        using Permit = internals::Permit;
     public:
         Transaction(Reading world)
             : uncaught_exceptions_at_enter(std::uncaught_exceptions())

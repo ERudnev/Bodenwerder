@@ -1,7 +1,9 @@
 #pragma once
 
-#include <iQSM/operations/integration.h>
-#include <iQSM/repository/transaction.h>
+#include <iQSM/flow/processing.h>
+#include <iQSM/flow/transaction.h>
+#include <iQSM/state/view.h>
+
 
 namespace iqsm::flow {
 
@@ -19,12 +21,12 @@ namespace iqsm::flow {
             const auto before = head.state;
             head.state = world;
 
-            operations::validate_smart(cleanChannel(), before);
+            flow::validateSmart(cleanChannel(), before);
             root = head.state;
             return root;
         }
 
-        Delta delta() const { return operations::make_delta(root, head.state); }
+        Delta delta() const { return flow::makeDelta(root, head.state); }
 
         Delta push() {
             auto out = delta();
@@ -41,7 +43,7 @@ namespace iqsm::flow {
                     return;
                 }
                 if (result.delta->empty()) return;
-                head.state = operations::integrate(head.state, std::move(result.delta));
+                head.state = flow::integrate(head.state, std::move(result.delta));
             });
         }
 
@@ -57,9 +59,9 @@ namespace iqsm::flow {
             if (result.maybeState.exists()) {
                 head.state = *std::move(result.maybeState);
             } else {
-                head.state = operations::integrate(head.state, result.delta);
+                head.state = flow::integrate(head.state, result.delta);
             }
-            operations::validate_smart(cleanChannel(), before);
+            flow::validateSmart(cleanChannel(), before);
         }
     };
 }

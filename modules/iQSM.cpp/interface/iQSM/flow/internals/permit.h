@@ -2,14 +2,15 @@
 
 #include <stdexcept>
 
-#include <iQSM/flow/channel.h>
+#include <iQSM/flow/internals/channel.h>
 
 namespace iqsm {
-    namespace flow { struct Permit; }
-    using Writing = flow::Permit;
+    namespace flow::internals { struct Permit; }
+    namespace flow { struct Transaction; }
+    using Writing = flow::internals::Permit;
 }
 
-namespace iqsm::flow {
+namespace iqsm::flow::internals {
 
     /*
     Permit is not a value object. It is a one-shot mandate for mutation.
@@ -42,8 +43,8 @@ namespace iqsm::flow {
         //  EXPERIMENT... Permit(Permit&&) =  default;
 
     private:
-        using Channel = internals::flow::Channel;
-        friend struct Transaction; // Permit is just a transport between Transactions
+        using Channel = internals::Channel;
+        friend struct ::iqsm::flow::Transaction; // Permit is just a transport between Transactions
         //Permit(Channel& channel) : stolen(std::move(channel)) { base::message("Permit c-tor(Channel): stolen channel");}
         Permit(Channel&& channel) : stolen(std::move(channel)) {}
         inline void assert_not_stolen() const {

@@ -1,14 +1,10 @@
 #pragma once
 
-#include <iQSM/references.h>
-#include <iQSM/flow/permit.h>
-#include <iQSM/flow/reading.h>
+#include <iQSM/flow/_forwards.h>
+#include <iQSM/flow/internals/permit.h>
 
 namespace iqsm {
-    namespace state { struct View; }
-    using Writing = ::iqsm::flow::Permit;
-    // Reading is added to ::iqsm root by "reading.h"
-
     // IMPORTANT NOTICE:
     // if you considering to make flow::Channel as part of API - you are wrong!
+    using Writing = ::iqsm::flow::internals::Permit;
 }

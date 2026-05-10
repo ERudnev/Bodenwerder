@@ -1,32 +1,11 @@
 #include "_common.h"
 
 #include <iQSM/api/interface.h>
+#include "_model.h"
 
-namespace {
-    using namespace iqsm::interface;
-
-    struct RuntimeEntity : Entity<RuntimeEntity> {
-        struct Quantum { int value; };
-    };
-
-    struct AgentEntity : Agent<AgentEntity, RuntimeEntity> {
-        struct Quantum { int value; };
-    };
-
-    struct LogicEntity : Entity<LogicEntity> {
-        struct Quantum { int value; };
-    };
-}
-
-
-namespace iqsm_workshop {
-    using namespace iqsm;
-}
 
 namespace tests {
-
-    namespace manip = ::iqsm_workshop;
-
+    using namespace ::tests::model;
     // this test is TDD framework to envolve iQSM World of Two Layers: immutable (historical) and mutable (operational)
     void dual_layer_model()
     {
@@ -39,6 +18,8 @@ namespace tests {
         });
 
         const iqsm::World world = ask::world::create(schema);
+
+        context::Branch branch(world);
         
     }
 }

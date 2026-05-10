@@ -2,9 +2,12 @@
 
 #include <stdexcept>
 #include <utility>
+#include <memory>
 
+#include <iQSM/references.h>
 #include <iQSM/state/layer.h>
 #include <iQSM/state/view.h>
+#include <iQSM/state/schema.h>
 
 namespace iqsm::state {
     
@@ -23,15 +26,25 @@ namespace iqsm::state {
     };
 
     // placeholder
-    struct WorldData : WorldTemplate<policy::versioning::shared> 
+    struct WorldData : WorldTemplate<policy::versioning::shared>, std::enable_shared_from_this<WorldData>
     {
+        // c-tor
         using WorldTemplate<policy::versioning::shared>::WorldTemplate;
+
+        World share() const override { return World(shared_from_this()); }
+        auto clone() const -> ref<WorldData> {
+            auto cloned = base::make_shared<WorldData>(schema);
+            cloned->versioned = versioned;
+            cloned->operational = operational;
+            return ref<WorldData>(std::move(cloned));
+        }
     };
 }
 
 
 // impl:
 namespace iqsm::state {
+
     template<policy::versioning SliceVersioning>
     WorldTemplate<SliceVersioning>::WorldTemplate(Schema schema)
         : View(std::move(schema)), operational([]() -> OperationalLayerPtr {
@@ -49,15 +62,15 @@ namespace iqsm::state {
     auto WorldTemplate<SliceVersioning>::slice(RAId runtimeTypeId) const -> cref<slice::Abstract> {
         const auto& aspect = schema->aspects.at(runtimeTypeId);
 
-        try {
-            switch (aspect.layer) {
-            case policy::versioning::shared:
-                return versioned.slices.at(runtimeTypeId);
-            case policy::versioning::single:
-                return operational->slices.at(runtimeTypeId);
-            }
-        } catch (const std::out_of_range&) {
-            throw std::out_of_range("state::WorldTemplate::slice(): required slice not found in schema-selected layer");
+        switch (aspect.layer) {
+        case policy::versioning::shared: {
+            const auto it = versioned.slices.find(runtimeTypeId);
+            return it != versioned.slices.end() ? it->second : aspect.zero;
+        }
+        case policy::versioning::single: {
+            const auto it = operational->slices.find(runtimeTypeId);
+            return it != operational->slices.end() ? it->second : aspect.zero;
+        }
         }
 
         throw std::runtime_error("state::WorldTemplate::slice(): unsupported layer policy");

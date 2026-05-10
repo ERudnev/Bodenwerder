@@ -11,6 +11,9 @@ namespace iqsm::internals {
     struct Types {
         using RuntimeId = std::type_index;
         using StaticId = std::string; // TODO: stringview?
+
+        template<typename Meta>
+        static RuntimeId rttid() { return typeid(Meta); }
     };
 
     template<typename T>

@@ -5,10 +5,19 @@
 
 // aspect types (Entity/Component/Attribute/Agent):
 #include <iQSM/aspects.h>
+#include <iQSM/meta/require.h>
 
-// operations
+// manipulators
 #include <iQSM/manipulators/schema.h>
 #include <iQSM/manipulators/world.h>
+#include <iQSM/manipulators/item.h>
+
+// flow (transactions)
+//#include <iQSM/flow/transactions/accumulator.h>
+#include <iQSM/flow/transactions/branch.h>
+//#include <iQSM/flow/transactions/once.h>
+//#include <iQSM/flow/transactions/sequence.h>
+//#include <iQSM/flow/transactions/staged.h>
 
 
 namespace iqsm::interface {
@@ -30,4 +39,13 @@ namespace iqsm::interface {
 
     template<typename Meta, typename Runtime>
     using Agent = iqsm::aspects::Agent<Meta, Runtime>;
+
+    template<typename... Deps>
+    using Require = iqsm::meta::Require<Deps...>;
+
+    // flow/transactions mechanism
+    //using Reading = 
+    namespace context {
+        using Branch = ::iqsm::flow::Branch;
+    }
 }

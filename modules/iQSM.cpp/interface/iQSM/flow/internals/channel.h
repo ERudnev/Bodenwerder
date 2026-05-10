@@ -4,10 +4,10 @@
 #include <format>
 #include <base/maybe.h>
 #include <base/logging.h>
-#include <iQSM/flow/reading.h>
+#include <iQSM/flow/_forwards.h>
 #include <iQSM/state/_forwards.h>
 
-namespace iqsm::internals::flow {
+namespace iqsm::flow::internals {
 
     // channel is encapsulated transaction agent with restricted access only for short list of legal users
     // has initial state and gate to push somewhere own Delta.

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <iQSM/internals/fields_mutable.h>
+#include <iQSM/flow/internals/assembler.h>
 #include <iQSM/repository/transaction.h>
 
 namespace iqsm::flow {
@@ -20,7 +20,8 @@ namespace iqsm::flow {
         void absorb(Channel::Result result) override;
 
     private:
-        internals::FieldsMutable accumulated{};
+        //internals::FieldsMutable accumulated{};
+        internals::Assembler delta;
     };
 }
 

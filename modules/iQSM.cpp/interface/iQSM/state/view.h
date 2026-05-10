@@ -15,6 +15,8 @@ namespace iqsm::state {
         const Id id;
         const Schema schema;
 
+        virtual World share() const = 0;
+
     protected:
         explicit View(Schema schema) : id(Id::generate_random()), schema(std::move(schema)) {}
 

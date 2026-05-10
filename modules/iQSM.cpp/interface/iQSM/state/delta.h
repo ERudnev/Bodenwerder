@@ -9,8 +9,10 @@ namespace iqsm::state {
     //};
 
     struct DeltaData {
-        using Container = LayerFor<policy::versioning::single>;
+        using Container = SlicesLayout<policy::versioning::single>::SlicesContainer;
         //template<meta::Aspect Meta,         
         Container slices;
+
+        bool empty() const;
     };
 }
