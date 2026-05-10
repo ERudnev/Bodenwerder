@@ -5,6 +5,7 @@
 
 // aspect types (Entity/Component/Attribute/Agent):
 #include <iQSM/aspects.h>
+#include <iQSM/meta/register.h>
 #include <iQSM/meta/require.h>
 
 // manipulators
@@ -27,6 +28,9 @@ namespace iqsm::interface {
     // add operations as short "ops":
     namespace ask = ::iqsm::manipulator;
 
+    // iqsm policy mechanism:
+    using Layer = ::iqsm::state::policy::versioning;
+
     // Aspect types:
     template<typename Meta>
     using Entity = iqsm::aspects::Entity<Meta>;
@@ -42,6 +46,9 @@ namespace iqsm::interface {
 
     template<typename... Deps>
     using Require = iqsm::meta::Require<Deps...>;
+
+    template<typename Meta, state::policy::versioning Versioning>
+    using Register = iqsm::meta::Register<Meta, Versioning>;
 
     // flow/transactions mechanism
     //using Reading = 

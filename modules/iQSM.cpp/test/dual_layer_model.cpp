@@ -10,17 +10,17 @@ namespace tests {
     void dual_layer_model()
     {
         using namespace iqsm::interface;
-        //using Layer = policy::versioning;
         const iqsm::Schema schema = ask::schema::merge({
-            ask::schema::aspect<LogicEntity, ask::schema::Layer::shared>(),
-            ask::schema::aspect<AgentEntity, ask::schema::Layer::shared>(),
-            ask::schema::aspect<RuntimeEntity, ask::schema::Layer::single>(),
+            ask::schema::aspect<LogicEntity>(),
+            ask::schema::aspect<AgentEntity>(),
+            ask::schema::aspect<RuntimeEntity>(),
         });
 
         const iqsm::World world = ask::world::create(schema);
 
-        context::Branch branch(world);
+        context::Branch master(world);  
         
+        const auto entityId = ask::item::create<LogicEntity>(master, {1});
     }
 }
 

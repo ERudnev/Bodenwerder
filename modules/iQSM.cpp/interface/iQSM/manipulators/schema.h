@@ -10,12 +10,9 @@
 #include <iQSM/state/slice.h>
 
 namespace iqsm::manipulator::schema {
-    // for any Aspect Type, schema supports all versioning policies as own "mode"
-    using Layer = state::policy::versioning;
-
     iqsm::Schema merge(std::initializer_list<iqsm::Schema> parts);
 
-    template<meta::Aspect Meta, Layer versioning>
+    template<meta::Aspect Meta>
     iqsm::Schema aspect();
 }
 
@@ -33,11 +30,13 @@ namespace iqsm::manipulator::schema {
         }
     }
 
-    template<meta::Aspect Meta, Layer versioning>
+    template<meta::Aspect Meta>
     iqsm::Schema aspect() {
+        using Versioning = typename Meta::Runtime::Versioning;
+        constexpr auto versioning = static_cast<state::policy::versioning>(Versioning::value);
         auto out = base::make_shared<iqsm::state::SchemaData>();
         auto zero = [&]() -> iqsm::cref<iqsm::state::slice::Abstract> {
-            if constexpr (versioning == Layer::shared) {
+            if constexpr (versioning == state::policy::versioning::shared) {
                 return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Item<Meta, state::policy::versioning::shared, state::policy::role::value>>>());
             } else {
                 return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Item<Meta, state::policy::versioning::single, state::policy::role::value>>>());

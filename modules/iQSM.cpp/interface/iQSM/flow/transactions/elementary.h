@@ -3,20 +3,25 @@
 #include <iQSM/delta.h>
 #include <iQSM/repository/transaction.h>
 
-namespace iqsm::flow {
+namespace iqsm::repo {
 
     // Single-field transaction: one Writing in, one typed field-diff out on scope-exit.
     // Does not expose Reading/Writing conversions (private base): only ctor + typed field ops.
     template<meta::Aspect Meta>
-    struct Once final : private Transaction {
+    struct Elementary final : private Transaction {
     public:
-        explicit Once(Writing writing) : Transaction(std::move(writing)) {}
+        explicit Elementary(Writing writing) : Transaction(std::move(writing)) {}
         using Id = ::iqsm::Id<Meta>;
         using Node = ::iqsm::Node<Meta>;
-        using Op = typename delta::FieldDiff<Meta>::Operation;
+        using Versioning = typename Meta::Runtime::Versioning;
+        using Op = state::Item<Meta, Versioning::value, state::policy::role::patch>;
 
-        ~Once() override { on_finish(); }
+        ~Elementary() override { on_finish(); }
 
+        //void add(Id id, 
+
+
+        /*
         void add(Id id, Node after) {
             accumulated.ops.insert_or_assign(std::move(id), Op{std::nullopt, std::move(after)});
         }
@@ -28,19 +33,20 @@ namespace iqsm::flow {
         void update(Id id, Node before, Node after) {
             accumulated.ops.insert_or_assign(std::move(id), Op{std::move(before), std::move(after)});
         }
+        */
 
     private:
         void on_finish() override;
-        void absorb(internals::flow::Channel::Result result) override;
+        void absorb(internals::repo::Commit::Result result) override;
 
         delta::FieldDiff<Meta> accumulated{};
     };
 }
 
-namespace iqsm::flow {
+namespace iqsm::repo {
 
     template<meta::Aspect Meta>
-    inline void Once<Meta>::absorb(internals::flow::Channel::Result result) {
+    inline void Elementary<Meta>::absorb(internals::repo::Commit::Result result) {
         if (result.delta->empty()) return;
 
         const auto it = result.delta->fields.find(types::aspectId<Meta>());
@@ -49,7 +55,7 @@ namespace iqsm::flow {
     }
 
     template<meta::Aspect Meta>
-    inline void Once<Meta>::on_finish() {
+    inline void Elementary<Meta>::on_finish() {
         if (this->unwinding()) return;
         if (not this->head.upstream) return;
         if (accumulated.empty()) {

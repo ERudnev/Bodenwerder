@@ -17,25 +17,21 @@ namespace iqsm::state {
 
         virtual World share() const = 0;
 
+        template<meta::Aspect Meta>
+        auto slice() const -> cref<typename Meta::Runtime::ValueSlice>;
+
     protected:
         explicit View(Schema schema) : id(Id::generate_random()), schema(std::move(schema)) {}
 
         virtual
         auto slice(RAId runtimeTypeId) const -> cref<slice::Abstract> = 0;
-
-        /* finish it some day
-        template<meta::Aspect Meta, template<meta::Aspect> typename Cell>
-        auto slice() const -> cref<slice::Data<Meta, Cell>>;
-        */
     };
 }
 
 namespace iqsm::state {
-    /*
-    template<meta::Aspect Meta, template<meta::Aspect> typename Cell>
-    auto View::slice() const -> cref<slice::Data<Meta, Cell>> {
-        using Slice = slice::Data<Meta, Cell>;
+    template<meta::Aspect Meta>
+    auto View::slice() const -> cref<typename Meta::Runtime::ValueSlice> {
+        using Slice = typename Meta::Runtime::ValueSlice;
         return base::shared_ref_cast<const Slice>(slice(RAId{typeid(Slice)}));
     }
-    */
 }

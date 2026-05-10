@@ -1,6 +1,6 @@
 #pragma once
 
-#include <map>
+#include <unordered_map>
 #include <optional>
 
 #include <iQSM/typeId.h>
@@ -54,13 +54,13 @@ namespace iqsm::state::detail {
     struct SlicesLayout<policy::versioning::shared> {  
         template<typename T>
         using RefQualified = iqsm::cref<T>;
-        using SlicesContainer = std::map<RAId, RefQualified<slice::Abstract>>; // TODO: std::map -> base::DenseTable
+        using SlicesContainer = std::unordered_map<RAId, RefQualified<slice::Abstract>>; // TODO: std::map -> base::DenseTable
     };
 
     template<>
     struct SlicesLayout<policy::versioning::single> {
         template<typename T>
         using RefQualified = iqsm::ref<T>;
-        using SlicesContainer = std::map<RAId, RefQualified<slice::Abstract>>; // TODO: std::map -> base::DenseTable
+        using SlicesContainer = std::unordered_map<RAId, RefQualified<slice::Abstract>>; // TODO: std::map -> base::DenseTable
     };
 }
