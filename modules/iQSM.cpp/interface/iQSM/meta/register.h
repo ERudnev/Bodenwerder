@@ -11,7 +11,8 @@ namespace iqsm::meta {
     struct Register : Meta {
         struct Runtime {
             using Versioning = std::integral_constant<state::policy::versioning, VersioningType>;
-            using Value = state::Item<Meta, Versioning::value, state::policy::role::value>;
+            using Value = state::Chunk<Meta, state::policy::order::state>;
+            using Patch = state::Chunk<Meta, state::policy::order::patch>;
             using ValueSlice = state::slice::Data<Meta, Value>;
 
             static auto read(const Value& item) -> const iqsm::Quantum<Meta>& {

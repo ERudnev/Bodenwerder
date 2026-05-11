@@ -13,8 +13,7 @@ namespace iqsm::repo {
         explicit Elementary(Writing writing) : Transaction(std::move(writing)) {}
         using Id = ::iqsm::Id<Meta>;
         using Node = ::iqsm::Node<Meta>;
-        using Versioning = typename Meta::Runtime::Versioning;
-        using Op = state::Item<Meta, Versioning::value, state::policy::role::patch>;
+        using Op = state::Chunk<Meta, state::policy::order::patch>;
 
         ~Elementary() override { on_finish(); }
 

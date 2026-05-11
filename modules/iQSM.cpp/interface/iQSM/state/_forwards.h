@@ -18,11 +18,6 @@ namespace iqsm {
     using World = iqsm::cref<state::WorldData>;
 }
 
-// TODO: consider to remove or clarify:
-namespace iqsm::state::slice {
-    struct Abstract;
-}
-
 // TODO: clarify this place as best to define this Axis...
 namespace iqsm::state::policy {
     enum class versioning { // syntax: yep, small first character. enum class is not a type, it is namespace...
@@ -30,8 +25,8 @@ namespace iqsm::state::policy {
         single,
     };
 
-    enum class role {
-        value,
+    enum class order { // in math terms verlet integration as "state := (0 * state + 1 * patch)". I am not kidding!
+        state,
         patch,
     };
 } // policy

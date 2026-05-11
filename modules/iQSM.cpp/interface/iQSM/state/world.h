@@ -14,15 +14,15 @@ namespace iqsm::state {
     // DeltaData is "patch" of "single-version" (mutable) containers if (mutable+immutable Slices)
     template<policy::versioning SliceVersioning>
     struct WorldTemplate : View {
-        using VersionedLayer = Layer<policy::role::value, policy::versioning::shared, SliceVersioning>;
-        using OperationalLayer = Layer<policy::role::value, policy::versioning::single, SliceVersioning>;
+        using VersionedLayer = Layer<policy::order::state, policy::versioning::shared, SliceVersioning>;
+        using OperationalLayer = Layer<policy::order::state, policy::versioning::single, SliceVersioning>;
         using OperationalLayerPtr = SlicesLayout<SliceVersioning>::template RefQualified<OperationalLayer>;
 
         VersionedLayer versioned;
         OperationalLayerPtr operational;
 
         WorldTemplate(Schema schema);
-        auto slice(RAId runtimeTypeId) const -> cref<slice::Abstract> override;
+        auto slice(RAId runtimeTypeId) const -> cref<slice::AbstractState> override;
     };
 
     // placeholder

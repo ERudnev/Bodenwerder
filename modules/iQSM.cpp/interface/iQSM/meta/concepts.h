@@ -16,6 +16,7 @@ namespace iqsm::meta {
     template<typename Meta>
     concept HasQuantumPassport = requires(typename Meta::Quantum quantum) { quantum.passport; };
 
+    // any legal Aspect type
     template<typename Meta>
     concept Aspect =
         HasId<Meta> && HasQuantum<Meta>  &&
@@ -23,7 +24,7 @@ namespace iqsm::meta {
             { id.generate_random() } -> std::same_as<typename Meta::Id>;
         };
 
-
+    
     // TODO fix this semantic debt: are Entity ad Handle siblings or not?
     template<typename Meta>
     concept Entity = Aspect<Meta> && (not HasParentAspect<Meta>) && (not HasQuantumPassport<Meta>);
@@ -32,7 +33,7 @@ namespace iqsm::meta {
     // - Quantum lives in World and must carry `passport` (+ optional domain usage state).
     // - Runtime object is managed by binding layer and may be type-erased.
     template<typename Meta>
-    concept Handle = Aspect<Meta> && HasQuantumPassport<Meta> && (not HasParentAspect<Meta>);
+    concept Agent = Aspect<Meta> && HasQuantumPassport<Meta> && (not HasParentAspect<Meta>);
 
     template<typename Meta>
     concept Quark = Aspect<Meta> && HasParentAspect<Meta>;
@@ -44,6 +45,6 @@ namespace iqsm::meta {
     concept Component = Quark<Meta>;
 
     template<typename Meta>
-    concept Particle = Entity<Meta> || Quark<Meta> || Handle<Meta>;
+    concept Particle = Entity<Meta> || Quark<Meta> || Agent<Meta>;
 }
 

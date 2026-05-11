@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <map>
+#include <unordered_map>
 #include <set>
 #include <string>
 
@@ -14,12 +14,23 @@ namespace iqsm::state {
         using TypeSet = std::set<RAId>;
         using Invariants = validation::Block;
 
+        template<policy::versioning Versioning>
         struct Aspect {
-            struct Versioned {
-            };
-            struct Operational {
-            };
+            std::string name; // persistent name
+            policy::versioning layer; // TODO: remove (it is template parameter now)
+            cref<slice::AbstractState<Versioning>> zero;
+            TypeSet requiredByMe;
+            TypeSet requiredBy;
+        };
 
+        using VersionedAspect = Aspect<policy::versioning::shared>;
+        using OperationalAspect = Aspect<policy::versioning::single>;
+
+        std::unordered_map<RAId, VersionedAspect> versioned;
+        std::unordered_map<RAId, OperationalAspect> operational;
+
+        /* TODO: use this fields to populate updated Aspect struct
+        struct Aspect {
             std::string name; // persistent name
             policy::versioning layer;
             cref<slice::Abstract> zero;
@@ -28,7 +39,6 @@ namespace iqsm::state {
             Versioned versioned;
             Operational operational;
         };
-
-        std::map<RAId, Aspect> aspects;
+        */
     };
 }

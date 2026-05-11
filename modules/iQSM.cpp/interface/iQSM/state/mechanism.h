@@ -11,7 +11,7 @@
 
 
 namespace iqsm::state::detail {
-    template<meta::Aspect Meta, policy::versioning, policy::role>
+    template<meta::Aspect Meta, policy::versioning, policy::order>
     struct ItemsLayout;
 
     template<policy::versioning>
@@ -19,8 +19,8 @@ namespace iqsm::state::detail {
 }
 
 namespace iqsm::state {
-    template<meta::Aspect Meta, policy::versioning ItemsVersioning, policy::role ItemRole>
-    using Item = typename detail::ItemsLayout<Meta, ItemsVersioning, ItemRole>::Element;
+    template<meta::Aspect Meta, policy::versioning ItemsVersioning, policy::order Order>
+    using Chunk = typename detail::ItemsLayout<Meta, ItemsVersioning, Order>::Element;
 
     template<policy::versioning SliceVersioning>
     using SlicesLayout = detail::SlicesLayout<SliceVersioning>;
@@ -31,22 +31,22 @@ namespace iqsm::state {
 
 namespace iqsm::state::detail {
     template<meta::Aspect Meta>
-    struct ItemsLayout<Meta, policy::versioning::shared, policy::role::value> {
+    struct ItemsLayout<Meta, policy::versioning::shared, policy::order::state> {
         using Element = Node<Meta>;
     };
 
     template<meta::Aspect Meta>
-    struct ItemsLayout<Meta, policy::versioning::shared, policy::role::patch> {
+    struct ItemsLayout<Meta, policy::versioning::shared, policy::order::patch> {
         using Element = VersionedPatch<Meta>;
     };
 
     template<meta::Aspect Meta>
-    struct ItemsLayout<Meta, policy::versioning::single, policy::role::value> {
+    struct ItemsLayout<Meta, policy::versioning::single, policy::order::state> {
         using Element = Quantum<Meta>;
     };
 
     template<meta::Aspect Meta>
-    struct ItemsLayout<Meta, policy::versioning::single, policy::role::patch> {
+    struct ItemsLayout<Meta, policy::versioning::single, policy::order::patch> {
         using Element = FlatPatch<Meta>;
     };
 

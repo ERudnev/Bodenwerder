@@ -24,7 +24,7 @@ namespace iqsm::state {
         explicit View(Schema schema) : id(Id::generate_random()), schema(std::move(schema)) {}
 
         virtual
-        auto slice(RAId runtimeTypeId) const -> cref<slice::Abstract> = 0;
+        auto slice(RAId runtimeTypeId) const -> cref<slice::AbstractState> = 0;
     };
 }
 

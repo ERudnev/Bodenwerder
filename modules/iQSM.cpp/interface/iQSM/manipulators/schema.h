@@ -35,13 +35,15 @@ namespace iqsm::manipulator::schema {
         using Versioning = typename Meta::Runtime::Versioning;
         constexpr auto versioning = static_cast<state::policy::versioning>(Versioning::value);
         auto out = base::make_shared<iqsm::state::SchemaData>();
+        /* fix this code
         auto zero = [&]() -> iqsm::cref<iqsm::state::slice::Abstract> {
             if constexpr (versioning == state::policy::versioning::shared) {
-                return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Item<Meta, state::policy::versioning::shared, state::policy::role::value>>>());
+                return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Chunk<Meta, state::policy::order::state>>>());
             } else {
-                return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Item<Meta, state::policy::versioning::single, state::policy::role::value>>>());
+                return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Chunk<Meta, state::policy::order::state>>>());
             }
         }();
+        */
 
         out->aspects.emplace(iqsm::internals::Types::rttid<Meta>(), iqsm::state::SchemaData::Aspect{
             std::string{},
@@ -49,8 +51,6 @@ namespace iqsm::manipulator::schema {
             zero,
             detail::requirements_of<Meta>(),
             iqsm::state::SchemaData::TypeSet{},
-            iqsm::state::SchemaData::Aspect::Versioned{},
-            iqsm::state::SchemaData::Aspect::Operational{},
         });
         return iqsm::freeze(out);
     }
