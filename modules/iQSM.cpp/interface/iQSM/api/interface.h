@@ -28,8 +28,8 @@ namespace iqsm::interface {
     // add operations as short "ops":
     namespace ask = ::iqsm::manipulator;
 
-    // iqsm policy mechanism:
-    using Layer = ::iqsm::state::policy::versioning;
+    // iqsm axis mechanism:
+    using Layer = ::iqsm::state::axis::versioning;
 
     // Aspect types:
     template<typename Meta>
@@ -48,7 +48,7 @@ namespace iqsm::interface {
     using Require = iqsm::meta::Require<Deps...>;
 
 
-    template<typename Meta, state::policy::versioning Versioning>
+    template<typename Meta, state::axis::versioning Versioning>
     using Register = iqsm::meta::Registered<Meta, Versioning>;
 
     // flow/transactions mechanism

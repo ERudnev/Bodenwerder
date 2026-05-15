@@ -23,9 +23,9 @@ namespace iQSM {
       Аспект сохраняет смысл архетипа, но уже существует как часть конкретной системы,
       прошедшая через регистрацию и получившая инстанцированные runtime-решения.
       Aspect связывает архетипическую природу типа с внутренними механизмами системы,
-      делая возможными специализированные представления, policy и рабочие alias'ы ядра.
+      делая возможными специализированные представления, axis и рабочие alias'ы ядра.
     Notation:
-      using aspect::Foo = iqsm::meta::Registry<archetype::Foo, iqsm::state::policy::versioning::shared>;
+      using aspect::Foo = iqsm::meta::Registry<archetype::Foo, iqsm::state::axis::versioning::shared>;
   }
 
   Registry: @Definition(@Process) {
@@ -36,7 +36,7 @@ namespace iQSM {
       Через Registry до-системное описание типа получает системную форму,
       пригодную для работы механизмов iQSM.
     Notation:
-      template<iqsm::meta::archetype::Any Meta, iqsm::state::policy::versioning V>
+      template<iqsm::meta::archetype::Any Meta, iqsm::state::axis::versioning V>
       struct Registry : Meta { ... };
   }
 

@@ -7,7 +7,7 @@
 
 
 // default empty Aspect::Global
-namespace iqsm::detail::aspects {
+namespace iqsm::detail::archetype {
 
     namespace internals {
         struct EmptyGlobal {};
@@ -39,7 +39,7 @@ namespace iqsm {
 
     template<typename Meta>
     requires meta::archetype::has::Quantum<Meta> // yes, require Quantum to allow (even empty) Global
-    using GlobalValue = typename detail::aspects::GlobalValue<Meta>::Type;
+    using GlobalValue = typename detail::archetype::GlobalValue<Meta>::Type;
 
     template<typename Meta>
     requires meta::archetype::has::Quantum<Meta>

@@ -5,12 +5,12 @@
 namespace iqsm::state {
     
     // DeltaData is "patch" of "single-version" (mutable) containers if (mutable+immutable Slices)
-    //struct DeltaData : Composite<policy::order::patch, policy::versioning::single> {
+    //struct DeltaData : Composite<axis::order::patch, axis::versioning::single> {
     //};
 
     struct DeltaData {
-        SlicesLayout<policy::versioning::shared>::SlicesContainer versioned;
-        SlicesLayout<policy::versioning::single>::SlicesContainer operational;
+        SlicesLayout<axis::versioning::shared>::SlicesContainer versioned;
+        SlicesLayout<axis::versioning::single>::SlicesContainer operational;
 
         bool empty() const;
     };

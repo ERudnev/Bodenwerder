@@ -12,10 +12,10 @@
 namespace iqsm::state {
     
     // DeltaData is "patch" of "single-version" (mutable) containers if (mutable+immutable Slices)
-    template<policy::versioning SliceVersioning>
+    template<axis::versioning SliceVersioning>
     struct WorldTemplate : View {
-        using VersionedLayer = Layer<policy::order::state, policy::versioning::shared, SliceVersioning>;
-        using OperationalLayer = Layer<policy::order::state, policy::versioning::single, SliceVersioning>;
+        using VersionedLayer = Layer<axis::order::state, axis::versioning::shared, SliceVersioning>;
+        using OperationalLayer = Layer<axis::order::state, axis::versioning::single, SliceVersioning>;
         using OperationalLayerPtr = SlicesLayout<SliceVersioning>::template RefQualified<OperationalLayer>;
 
         VersionedLayer versioned;
@@ -26,10 +26,10 @@ namespace iqsm::state {
     };
 
     // placeholder
-    struct WorldData : WorldTemplate<policy::versioning::shared>, std::enable_shared_from_this<WorldData>
+    struct WorldData : WorldTemplate<axis::versioning::shared>, std::enable_shared_from_this<WorldData>
     {
         // c-tor
-        using WorldTemplate<policy::versioning::shared>::WorldTemplate;
+        using WorldTemplate<axis::versioning::shared>::WorldTemplate;
 
         World share() const override { return World(shared_from_this()); }
         auto clone() const -> ref<WorldData> {
@@ -45,12 +45,12 @@ namespace iqsm::state {
 // impl:
 namespace iqsm::state {
 
-    template<policy::versioning SliceVersioning>
+    template<axis::versioning SliceVersioning>
     WorldTemplate<SliceVersioning>::WorldTemplate(Schema schema)
         : View(std::move(schema)), operational([]() -> OperationalLayerPtr {
             auto runtime = base::make_shared<OperationalLayer>();
 
-            if constexpr (SliceVersioning == policy::versioning::shared) {
+            if constexpr (SliceVersioning == axis::versioning::shared) {
                 return iqsm::freeze(runtime);
             } else {
                 return runtime;
@@ -58,21 +58,21 @@ namespace iqsm::state {
         }())
     {}
 
-    template<policy::versioning SliceVersioning>
+    template<axis::versioning SliceVersioning>
     auto WorldTemplate<SliceVersioning>::slice(RAId runtimeTypeId) const -> cref<slice::Abstract> {
         const auto& aspect = schema->aspects.at(runtimeTypeId);
 
         switch (aspect.layer) {
-        case policy::versioning::shared: {
+        case axis::versioning::shared: {
             const auto it = versioned.slices.find(runtimeTypeId);
             return it != versioned.slices.end() ? it->second : aspect.zero;
         }
-        case policy::versioning::single: {
+        case axis::versioning::single: {
             const auto it = operational->slices.find(runtimeTypeId);
             return it != operational->slices.end() ? it->second : aspect.zero;
         }
         }
 
-        throw std::runtime_error("state::WorldTemplate::slice(): unsupported layer policy");
+        throw std::runtime_error("state::WorldTemplate::slice(): unsupported layer axis");
     }
 }

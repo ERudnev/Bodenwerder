@@ -8,7 +8,7 @@
 
 namespace iqsm::manipulator::item {
 
-    // experimental prototype of policy-independent manipulator
+    // experimental prototype of axis-independent manipulator
     template<aspect::Any Meta>
     bool exists(Reading, Id<Meta>);
 

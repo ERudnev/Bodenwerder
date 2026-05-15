@@ -24,7 +24,7 @@ namespace iqsm::flow::internals {
     5. The "stealing" constructor is deliberate: lvalue transfer here models capability passing,
        not ordinary object copying.
     6. If a caller needs several independent write paths, it must construct an explicit transaction
-       policy (Branch / Sequence / Accumulator / Staged), not duplicate Permit.
+       axis (Branch / Sequence / Accumulator / Staged), not duplicate Permit.
     7. Permit is internal transport between transactions and helpers; ergonomic surface is prioritized
        over conventional C++ move syntax in this narrow runtime-specific case.
     */

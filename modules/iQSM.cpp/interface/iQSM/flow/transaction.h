@@ -76,7 +76,7 @@ namespace iqsm::flow {
         Writing permit_with_upstream(Channel::Upstream sink) {
             return Permit{ Channel{ head.state, std::move(sink) } };
         }
-        // each Transaction class must define own policy of receiving final change through head.upstream
+        // each Transaction class must define own axis of receiving final change through head.upstream
         virtual void absorb(Channel::Result result) = 0;
         virtual void on_finish() = 0; // store all updates to caller (if have caller)
     };

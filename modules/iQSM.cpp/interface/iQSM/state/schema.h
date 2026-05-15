@@ -14,17 +14,17 @@ namespace iqsm::state {
         using TypeSet = std::set<RAId>;
         using Invariants = validation::Block;
 
-        template<policy::versioning Versioning>
+        template<axis::versioning Versioning>
         struct Aspect {
             std::string name; // persistent name
-            policy::versioning layer; // TODO: remove (it is template parameter now)
+            axis::versioning layer; // TODO: remove (it is template parameter now)
             cref<slice::AbstractState<Versioning>> zero;
             TypeSet requiredByMe;
             TypeSet requiredBy;
         };
 
-        using VersionedAspect = Aspect<policy::versioning::shared>;
-        using OperationalAspect = Aspect<policy::versioning::single>;
+        using VersionedAspect = Aspect<axis::versioning::shared>;
+        using OperationalAspect = Aspect<axis::versioning::single>;
 
         std::unordered_map<RAId, VersionedAspect> versioned;
         std::unordered_map<RAId, OperationalAspect> operational;
@@ -32,7 +32,7 @@ namespace iqsm::state {
         /* TODO: use this fields to populate updated Aspect struct
         struct Aspect {
             std::string name; // persistent name
-            policy::versioning layer;
+            axis::versioning layer;
             cref<slice::Abstract> zero;
             TypeSet requiredByMe;
             TypeSet requiredBy;

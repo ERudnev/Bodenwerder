@@ -33,14 +33,14 @@ namespace iqsm::manipulator::schema {
     template<aspect::Any Meta>
     iqsm::Schema aspect() {
         using Versioning = typename Meta::Runtime::Versioning;
-        constexpr auto versioning = static_cast<state::policy::versioning>(Versioning::value);
+        constexpr auto versioning = static_cast<state::axis::versioning>(Versioning::value);
         auto out = base::make_shared<iqsm::state::SchemaData>();
         /* fix this code
         auto zero = [&]() -> iqsm::cref<iqsm::state::slice::Abstract> {
-            if constexpr (versioning == state::policy::versioning::shared) {
-                return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Chunk<Meta, state::policy::order::state>>>());
+            if constexpr (versioning == state::axis::versioning::shared) {
+                return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Chunk<Meta, state::axis::order::state>>>());
             } else {
-                return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Chunk<Meta, state::policy::order::state>>>());
+                return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Chunk<Meta, state::axis::order::state>>>());
             }
         }();
         */

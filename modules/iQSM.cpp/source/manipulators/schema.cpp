@@ -28,10 +28,10 @@ namespace {
 
     void validate_layer_dependencies(const iqsm::state::SchemaData& schema) {
         for (const auto& [_, aspect] : schema.aspects) {
-            if (aspect.layer != iqsm::state::policy::versioning::single) continue;
+            if (aspect.layer != iqsm::state::axis::versioning::single) continue;
 
             for (const auto& dep : aspect.requiredByMe) {
-                if (schema.aspects.at(dep).layer == iqsm::state::policy::versioning::shared) {
+                if (schema.aspects.at(dep).layer == iqsm::state::axis::versioning::shared) {
                     throw std::runtime_error("state::schema::merge(): operational aspect cannot depend on versioned aspect");
                 }
             }
@@ -40,7 +40,7 @@ namespace {
 
     void merge_aspect(iqsm::state::SchemaData::Aspect& accumulated, const iqsm::state::SchemaData::Aspect& incoming) {
         if (accumulated.layer != incoming.layer) {
-            throw std::runtime_error("state::schema::merge(): same aspect inserted with different layer policy");
+            throw std::runtime_error("state::schema::merge(): same aspect inserted with different layer axis");
         }
 
         if (accumulated.name.empty()) accumulated.name = incoming.name;

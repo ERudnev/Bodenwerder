@@ -16,12 +16,17 @@ namespace iqsm {
 
 namespace iqsm::meta {
 
-    template<archetype::Any Meta, state::policy::versioning VersioningType>
+    template<archetype::Any Meta, axis::versioning VersioningType>
     struct Aspect : Meta {
         struct Runtime {
-            using Versioning = std::integral_constant<state::policy::versioning, VersioningType>;
+            using Versioning = std::integral_constant<axis::versioning, VersioningType>;
+            struct State {
+                template<axis::order Order>
+                using Item = typename meta::state::ItemsLayout<Aspect, VersioningType, Order>::Element;
+            };
+
             struct Slice {
-                using LayerLayout = 
+                //using LayerLayout =
             };
         };
     };

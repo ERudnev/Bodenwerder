@@ -17,16 +17,3 @@ namespace iqsm {
     using Delta = iqsm::cref<state::DeltaData>;
     using World = iqsm::cref<state::WorldData>;
 }
-
-// TODO: clarify this place as best to define this Axis...
-namespace iqsm::state::policy {
-    enum class versioning { // syntax: yep, small first character. enum class is not a type, it is namespace...
-        shared,
-        single,
-    };
-
-    enum class order { // in math terms verlet integration as "state := (0 * state + 1 * patch)". I am not kidding!
-        state,
-        patch,
-    };
-} // policy
