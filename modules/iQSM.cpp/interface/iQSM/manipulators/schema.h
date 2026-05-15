@@ -5,7 +5,6 @@
 #include <iQSM/meta/aspect.h> // registered level of meta-mechanism
 #include <iQSM/meta/type_list.h>
 #include <iQSM/state/_forwards.h>
-#include <iQSM/state/mechanism.h>
 #include <iQSM/state/schema.h>
 #include <iQSM/state/slice.h>
 
@@ -15,7 +14,6 @@ namespace iqsm::manipulator::schema {
     template<aspect::Any Meta>
     iqsm::Schema aspect();
 }
-
 // impl:
 namespace iqsm::manipulator::schema {
     namespace detail {
@@ -33,25 +31,26 @@ namespace iqsm::manipulator::schema {
     template<aspect::Any Meta>
     iqsm::Schema aspect() {
         using Versioning = typename Meta::Runtime::Versioning;
+        using Aspect = iqsm::state::SchemaData::Aspect<Versioning::value>;
+        //using StateSlice = iqsm::state::slice::Data<Meta, state::axis::order::state>;
+        //using PatchSlice = iqsm::state::slice::Data<Meta, state::axis::order::patch>;
         constexpr auto versioning = static_cast<state::axis::versioning>(Versioning::value);
         auto out = base::make_shared<iqsm::state::SchemaData>();
-        /* fix this code
-        auto zero = [&]() -> iqsm::cref<iqsm::state::slice::Abstract> {
-            if constexpr (versioning == state::axis::versioning::shared) {
-                return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Chunk<Meta, state::axis::order::state>>>());
-            } else {
-                return iqsm::freeze(base::make_shared<iqsm::state::slice::Data<Meta, iqsm::state::Chunk<Meta, state::axis::order::state>>>());
-            }
-        }();
-        */
-
-        out->aspects.emplace(iqsm::internals::Types::rttid<Meta>(), iqsm::state::SchemaData::Aspect{
+        auto aspect = Aspect{
             std::string{},
             versioning,
-            zero,
+            Aspect::template ZeroProvider<state::axis::order::state>::template create<Meta::Runtime::Slice::State>(),
+            Aspect::template ZeroProvider<state::axis::order::patch>::template create<Meta::Runtime::Slice::Patch>(),
             detail::requirements_of<Meta>(),
             iqsm::state::SchemaData::TypeSet{},
-        });
+        };
+
+        if constexpr (Versioning::value == state::axis::versioning::shared) {
+            out->versioned.emplace(iqsm::internals::Types::rttid<Meta>(), aspect);
+        } else {
+            out->operational.emplace(iqsm::internals::Types::rttid<Meta>(), aspect);
+        }
+
         return iqsm::freeze(out);
     }
 }

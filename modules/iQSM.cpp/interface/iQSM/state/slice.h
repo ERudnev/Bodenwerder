@@ -12,18 +12,20 @@ namespace iqsm::state::slice {
     namespace axis = meta::axis;
     namespace aspect = meta::aspect;
 
-    template<axis::order Order, axis::versioning Versioning>
+    template<axis::order Order>
     struct Abstract {
         virtual ~Abstract() = default;
     };
 
-    //template<axis::versioning Versioning>
-    //using AstractState = VeryAbstract<axis::order::state, Versioning>;
+    template<axis::order Order, axis::versioning Versioning>
+    struct AbstractVersioned : Abstract<Order> {
+        virtual ~AbstractVersioned() = default;
+    };
 
     template<aspect::Any Meta, axis::order Order>
-    struct Data : Abstract<Order, Meta::Runtime::Versioning::value> {
-        using Chunk = typename Meta::Runtime::State::template Item<Order>;
-        using Container = base::DenseTable<Id<Meta>, Chunk>;
+    struct Data : AbstractVersioned<Order, Meta::Runtime::Versioning::value> {
+        using Item = typename Meta::Runtime::State::template Item<Order>;
+        using Container = base::DenseTable<Id<Meta>, Item>;
         Container container;
     };
 }

@@ -26,7 +26,11 @@ namespace iqsm::meta {
             };
 
             struct Slice {
-                //using LayerLayout =
+                template<axis::order Order>
+                using Container = base::DenseTable<Id<Meta>, typename State::template Item<Order>>;
+
+                using State = iqsm::state::slice::Data<Aspect, axis::order::state>;
+                using Patch = iqsm::state::slice::Data<Aspect, axis::order::patch>;
             };
         };
     };

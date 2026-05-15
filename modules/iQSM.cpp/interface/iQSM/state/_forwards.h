@@ -4,9 +4,9 @@
 #include <iQSM/references.h>
 
 namespace iqsm {
-    namespace state {
-        using RAId = internals::Types::RuntimeId;
-    }
+    
+    using RAId = internals::Types::RuntimeId;
+
     namespace state {
         struct SchemaData;
         struct DeltaData;

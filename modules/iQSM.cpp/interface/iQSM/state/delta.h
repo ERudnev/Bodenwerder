@@ -9,9 +9,11 @@ namespace iqsm::state {
     //};
 
     struct DeltaData {
-        SlicesLayout<axis::versioning::shared>::SlicesContainer versioned;
-        SlicesLayout<axis::versioning::single>::SlicesContainer operational;
-
-        bool empty() const;
+        using SliceBase = slice::Abstract<axis::order::patch>;
+        using SlicesContainer = std::unordered_map<RAId, ref<SliceBase>>;
+    
+        SlicesContainer slices;
+    
+        bool empty() const { return slices.empty(); }
     };
 }

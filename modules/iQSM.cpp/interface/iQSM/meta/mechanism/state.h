@@ -14,20 +14,11 @@
 namespace iqsm::meta::state {
     template<archetype::Any Meta, axis::versioning, axis::order>
     struct ItemsLayout;
-}
-
-
-/* TODO: cleanp if Registration:: absorb this alias
-namespace iqsm::state {
-    template<meta::Aspect Meta, axis::versioning ItemsVersioning, axis::order Order>
-    using Chunk = typename detail::ItemsLayout<Meta, ItemsVersioning, Order>::Element;
 
     template<axis::versioning SliceVersioning>
-    using SlicesLayout = detail::SlicesLayout<SliceVersioning>;
-    
-    //template<axis::versioning OperationalVersioning>
+    struct SlicesLayout;
 }
-*/
+
 
 namespace iqsm::meta::state {
 
@@ -73,19 +64,60 @@ namespace iqsm::meta::state {
         using Element = patch::Solid<Meta>;
     };
 
-    /*
     template<>
     struct SlicesLayout<axis::versioning::shared> {  
-        template<typename T>
-        using RefQualified = iqsm::cref<T>;
-        using SlicesContainer = std::unordered_map<RAId, RefQualified<slice::Abstract>>; // TODO: std::map -> base::DenseTable
+        template<typename SliceBase>
+        using RefQualified = iqsm::cref<SliceBase>;
+
+        template<typename SliceBase>
+        using Container = std::unordered_map<RAId, RefQualified<SliceBase>>; // TODO: std::map -> base::DenseTable
+
+        template<typename SliceBase>
+        struct ZeroSliceProvider {
+
+            template<typename ActualSliceType>
+            static ZeroSliceProvider create() {
+                return ZeroSliceProvider{ .prototype = prototypeTypedSingleton<ActualSliceType>() };
+            }
+
+            iqsm::cref<SliceBase> provide() const {
+                return prototype;
+            }
+
+            const iqsm::cref<SliceBase> prototype;
+        private:
+            template<typename ActualSliceType>
+            static iqsm::cref<SliceBase> prototypeTypedSingleton() {
+                static iqsm::cref<SliceBase> prototype = iqsm::freeze(base::make_shared<ActualSliceType>());
+                return prototype;
+            }
+            
+        };
     };
 
     template<>
     struct SlicesLayout<axis::versioning::single> {
-        template<typename T>
-        using RefQualified = iqsm::ref<T>;
-        using SlicesContainer = std::unordered_map<RAId, RefQualified<slice::Abstract>>; // TODO: std::map -> base::DenseTable
+        template<typename SliceBase>
+        using RefQualified = iqsm::ref<SliceBase>;
+
+        template<typename SliceBase>
+        using Container = std::unordered_map<RAId, RefQualified<SliceBase>>; // TODO: std::map -> base::DenseTable
+
+        template<typename SliceBase>
+        struct ZeroSliceProvider {
+            template<typename ActualSliceType>
+            static ZeroSliceProvider create() {
+                return ZeroSliceProvider(iqsm::freeze(base::make_shared<ActualSliceType>()));
+            }
+
+            iqsm::ref<SliceBase> provide() const {
+                return iqsm::clone(prototype);
+            }
+
+        private:
+            ZeroSliceProvider(iqsm::cref<SliceBase> prototype) : prototype(prototype) {}
+
+            const iqsm::cref<SliceBase> prototype;
+        };
     };
-    */
 }

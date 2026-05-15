@@ -19,23 +19,23 @@ namespace iqsm::state {
         virtual World share() const = 0;
 
         template<aspect::Any Meta>
-        auto slice() const -> cref<typename Meta::Runtime::ValueSlice>;
+        auto slice() const -> cref<typename Meta::Runtime::Slice::State>;
 
-        template<aspect::Any Meta>
-        auto experimental_template_slice_access() const -> cref<
+        //template<aspect::Any Meta>
+        //auto experimental_template_slice_access() const -> cref<
 
     protected:
         explicit View(Schema schema) : id(Id::generate_random()), schema(std::move(schema)) {}
 
         virtual
-        auto slice(RAId runtimeTypeId) const -> cref<slice::AbstractState<axis::versioning> = 0;
+        auto slice(RAId runtimeTypeId) const -> cref<slice::Abstract<aspect::order::state>> = 0;
     };
 }
 
 namespace iqsm::state {
     template<aspect::Any Meta>
-    auto View::slice() const -> cref<typename Meta::Runtime::ValueSlice> {
-        using Slice = typename Meta::Runtime::ValueSlice;
+    auto View::slice() const -> cref<typename Meta::Runtime::Slice::State> {
+        using Slice = typename Meta::Runtime::Slice::State;
         return base::shared_ref_cast<const Slice>(slice(RAId{typeid(Slice)}));
     }
 }

@@ -16,7 +16,7 @@ namespace iqsm::state {
     struct WorldTemplate : View {
         using VersionedLayer = Layer<axis::order::state, axis::versioning::shared, SliceVersioning>;
         using OperationalLayer = Layer<axis::order::state, axis::versioning::single, SliceVersioning>;
-        using OperationalLayerPtr = SlicesLayout<SliceVersioning>::template RefQualified<OperationalLayer>;
+        using OperationalLayerPtr = meta::state::SlicesLayout<SliceVersioning>::template RefQualified<OperationalLayer>;
 
         VersionedLayer versioned;
         OperationalLayerPtr operational;
@@ -59,7 +59,7 @@ namespace iqsm::state {
     {}
 
     template<axis::versioning SliceVersioning>
-    auto WorldTemplate<SliceVersioning>::slice(RAId runtimeTypeId) const -> cref<slice::Abstract> {
+    auto WorldTemplate<SliceVersioning>::slice(RAId runtimeTypeId) const -> cref<slice::Abstract<axis::order::state>> {
         const auto& aspect = schema->aspects.at(runtimeTypeId);
 
         switch (aspect.layer) {

@@ -12,12 +12,14 @@
 #include <iQSM/state/slice.h>
 
 namespace iqsm::state {
+    namespace axis = meta::axis;
 
-    // TODO: do something with too long "meta::axis:..."
-    template<meta::axis::order ItemRole, meta::axis::versioning ItemVersioning, meta::axis::versioning SliceVersioning>
-    struct Layer  {
-        //using SlicesContainer = SlicesLayout<SliceVersioning>::SlicesContainer;
-        
+    template<axis::order ItemRole, axis::versioning ItemVersioning, axis::versioning SliceVersioning>
+    struct Layer {
+        using SliceBase = slice::AbstractVersioned<ItemRole, ItemVersioning>;
+        using Layout = meta::state::SlicesLayout<SliceVersioning>;
+        using SlicesContainer = Layout::template Container<SliceBase>;
+
         SlicesContainer slices;
-    };    
+    };
 }
