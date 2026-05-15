@@ -10,7 +10,7 @@ namespace tests::generated_domain {
         struct Quantum { int value; };
     };
 
-    struct AgentEntity : Agent<AgentEntity, RuntimeEntity> {
+    struct ControllerEntity : Controller<ControllerEntity, RuntimeEntity> {
         struct Quantum { int value; };
     };
 
@@ -23,7 +23,7 @@ namespace tests::generated_domain {
 namespace tests::model {
     using namespace iqsm::interface;
     using RuntimeEntity = Register<generated_domain::RuntimeEntity, Layer::single>;
-    using AgentEntity = Register<generated_domain::AgentEntity, Layer::shared>;
+    using ControllerEntity = Register<generated_domain::ControllerEntity, Layer::shared>;
     using LogicEntity = Register<generated_domain::LogicEntity, Layer::shared>;
 }
 

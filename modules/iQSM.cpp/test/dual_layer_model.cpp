@@ -12,7 +12,7 @@ namespace tests {
         using namespace iqsm::interface;
         const iqsm::Schema schema = ask::schema::merge({
             ask::schema::aspect<LogicEntity>(),
-            ask::schema::aspect<AgentEntity>(),
+            ask::schema::aspect<ControllerEntity>(),
             ask::schema::aspect<RuntimeEntity>(),
         });
 

@@ -39,8 +39,8 @@ namespace iqsm::manipulator::schema {
         auto aspect = Aspect{
             std::string{},
             versioning,
-            Aspect::template ZeroProvider<state::axis::order::state>::template create<Meta::Runtime::Slice::State>(),
-            Aspect::template ZeroProvider<state::axis::order::patch>::template create<Meta::Runtime::Slice::Patch>(),
+            Aspect::template ZeroProvider<state::axis::order::state>::template create<typename Meta::Runtime::Slice::State>(),
+            Aspect::template ZeroProvider<state::axis::order::patch>::template create<typename Meta::Runtime::Slice::Patch>(),
             detail::requirements_of<Meta>(),
             iqsm::state::SchemaData::TypeSet{},
         };

@@ -29,14 +29,14 @@ namespace iqsm::aspects {
 
     template<typename Meta, typename HostType>
     struct Attribute : detail::aspects::Any<Meta> {
-        using Id = typename Parent::Id;
+        using Id = typename HostType::Id;
         using HostAspect = HostType;
         using OwnManipulators = service::Group<Meta>;
     };
 
-    template<typename Meta, typename Host>
+    template<typename Meta, typename HostType>
     struct Component : detail::aspects::Any<Meta> {
-        using Id = typename Parent::Id;
+        using Id = typename HostType::Id;
         using HostAspect = HostType;
         using OwnManipulators = service::Group<Meta>;
     };

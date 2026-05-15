@@ -22,7 +22,7 @@ namespace iqsm::state {
         OperationalLayerPtr operational;
 
         WorldTemplate(Schema schema);
-        auto slice(RAId runtimeTypeId) const -> cref<slice::AbstractState> override;
+        auto slice(RAId runtimeTypeId) const -> cref<slice::Abstract<meta::axis::order::state>> override;
     };
 
     // placeholder
@@ -60,19 +60,22 @@ namespace iqsm::state {
 
     template<axis::versioning SliceVersioning>
     auto WorldTemplate<SliceVersioning>::slice(RAId runtimeTypeId) const -> cref<slice::Abstract<axis::order::state>> {
-        const auto& aspect = schema->aspects.at(runtimeTypeId);
-
-        switch (aspect.layer) {
-        case axis::versioning::shared: {
-            const auto it = versioned.slices.find(runtimeTypeId);
-            return it != versioned.slices.end() ? it->second : aspect.zero;
-        }
-        case axis::versioning::single: {
+        if (const auto foundAsOperational = schema->operational.find(runtimeTypeId); foundAsOperational != schema->operational.end()) {
             const auto it = operational->slices.find(runtimeTypeId);
-            return it != operational->slices.end() ? it->second : aspect.zero;
-        }
-        }
+            if (it != operational->slices.end()) {
+                return base::shared_ref_cast<const slice::Abstract<axis::order::state>>(it->second);
+            }
 
-        throw std::runtime_error("state::WorldTemplate::slice(): unsupported layer axis");
+            return foundAsOperational->second.zeroStateSlice.provide();
+        }
+        else if (const auto foundAsVersioned = schema->versioned.find(runtimeTypeId); foundAsVersioned != schema->versioned.end()) {
+            const auto it = versioned.slices.find(runtimeTypeId);
+            if (it != versioned.slices.end()) {
+                return it->second;
+            }
+
+            return foundAsVersioned->second.zeroStateSlice.provide();
+        }
+        else throw std::runtime_error("state::WorldTemplate::slice(): unknown runtime type");
     }
 }

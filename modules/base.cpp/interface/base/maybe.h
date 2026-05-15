@@ -6,7 +6,7 @@
 
 namespace base {
     template<typename T>
-    class maybe final {
+    class maybe {
         static_assert(!std::is_reference_v<T>, "base::maybe<T>: T must not be a reference");
 
     public:

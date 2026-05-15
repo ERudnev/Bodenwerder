@@ -44,7 +44,7 @@ namespace iqsm::manipulator::item {
 
     template<aspect::Entity Meta>
     auto create(Writing channel, Quantum<Meta> value) -> Id<Meta> {
-        const auto id = Id<Meta>::generate_random()
+        const auto id = Id<Meta>::generate_random();
 
         _INCOMPLETE_;
         //return Id<Meta>::generate_random();

@@ -5,40 +5,81 @@
 #include <iQSM/state/schema.h>
 
 namespace {
-    auto is_closed(const iqsm::state::SchemaData& schema) -> bool {
-        for (const auto& [_, aspect] : schema.aspects) {
-            for (const auto& dep : aspect.requiredByMe) {
-                if (!schema.aspects.contains(dep)) return false;
-            }
+    template<typename Fn>
+    void for_each_aspect(const iqsm::state::SchemaData& schema, Fn&& fn) {
+        for (const auto& [type, aspect] : schema.versioned) {
+            fn(type, aspect);
         }
-        return true;
+
+        for (const auto& [type, aspect] : schema.operational) {
+            fn(type, aspect);
+        }
+    }
+
+    template<typename Fn>
+    void for_each_aspect(iqsm::state::SchemaData& schema, Fn&& fn) {
+        for (auto& [type, aspect] : schema.versioned) {
+            fn(type, aspect);
+        }
+
+        for (auto& [type, aspect] : schema.operational) {
+            fn(type, aspect);
+        }
+    }
+
+    auto contains_aspect(const iqsm::state::SchemaData& schema, iqsm::RAId type) -> bool {
+        return schema.versioned.contains(type) || schema.operational.contains(type);
+    }
+
+    template<typename Fn>
+    void with_aspect(iqsm::state::SchemaData& schema, iqsm::RAId type, Fn&& fn) {
+        if (auto it = schema.versioned.find(type); it != schema.versioned.end()) {
+            fn(it->second);
+            return;
+        }
+
+        fn(schema.operational.at(type));
+    }
+
+    auto is_closed(const iqsm::state::SchemaData& schema) -> bool {
+        bool closed = true;
+        for_each_aspect(schema, [&](iqsm::RAId, const auto& aspect) {
+            for (const auto& dep : aspect.requiredByMe) {
+                if (!contains_aspect(schema, dep)) {
+                    closed = false;
+                    return;
+                }
+            }
+        });
+        return closed;
     }
 
     void rebuild_required_by(iqsm::state::SchemaData& schema) {
-        for (auto& [_, aspect] : schema.aspects) {
+        for_each_aspect(schema, [](iqsm::RAId, auto& aspect) {
             aspect.requiredBy.clear();
-        }
+        });
 
-        for (const auto& [type, aspect] : schema.aspects) {
+        for_each_aspect(schema, [&](iqsm::RAId type, const auto& aspect) {
             for (const auto& dep : aspect.requiredByMe) {
-                schema.aspects.at(dep).requiredBy.insert(type);
+                with_aspect(schema, dep, [&](auto& dep_aspect) {
+                    dep_aspect.requiredBy.insert(type);
+                });
             }
-        }
+        });
     }
 
     void validate_layer_dependencies(const iqsm::state::SchemaData& schema) {
-        for (const auto& [_, aspect] : schema.aspects) {
-            if (aspect.layer != iqsm::state::axis::versioning::single) continue;
-
+        for (const auto& [_, aspect] : schema.operational) {
             for (const auto& dep : aspect.requiredByMe) {
-                if (schema.aspects.at(dep).layer == iqsm::state::axis::versioning::shared) {
+                if (schema.versioned.contains(dep)) {
                     throw std::runtime_error("state::schema::merge(): operational aspect cannot depend on versioned aspect");
                 }
             }
         }
     }
 
-    void merge_aspect(iqsm::state::SchemaData::Aspect& accumulated, const iqsm::state::SchemaData::Aspect& incoming) {
+    template<typename Aspect>
+    void merge_aspect(Aspect& accumulated, const Aspect& incoming) {
         if (accumulated.layer != incoming.layer) {
             throw std::runtime_error("state::schema::merge(): same aspect inserted with different layer axis");
         }
@@ -50,6 +91,20 @@ namespace {
 
         accumulated.requiredByMe.insert(incoming.requiredByMe.begin(), incoming.requiredByMe.end());
     }
+
+    template<typename AspectMap>
+    void merge_layer(AspectMap& accumulated, const AspectMap& incoming, const auto& opposite_layer) {
+        for (const auto& [type, aspect] : incoming) {
+            if (opposite_layer.contains(type)) {
+                throw std::runtime_error("state::schema::merge(): same aspect inserted with different layer axis");
+            }
+
+            const auto [it, inserted] = accumulated.emplace(type, aspect);
+            if (!inserted) {
+                merge_aspect(it->second, aspect);
+            }
+        }
+    }
 }
 
 namespace iqsm::manipulator::schema {
@@ -57,10 +112,8 @@ namespace iqsm::manipulator::schema {
         auto out = base::make_shared<iqsm::state::SchemaData>();
 
         for (const auto& part : parts) {
-            for (const auto& [type, aspect] : part->aspects) {
-                const auto [it, inserted] = out->aspects.emplace(type, aspect);
-                if (!inserted) merge_aspect(it->second, aspect);
-            }
+            merge_layer(out->versioned, part->versioned, out->operational);
+            merge_layer(out->operational, part->operational, out->versioned);
         }
 
         if (!is_closed(*out)) {
