@@ -2,7 +2,7 @@
 
 #include <iQSM/api/interface.h>
 
-// this classes are kinda generated from Q1
+// KQM: &iQSM::Archetype, &iQSM::Aspect, &iQSM::archetype_to_aspect_transition, &iQSM::runtime_is_system_projection
 namespace tests::generated_domain {
     using namespace iqsm::interface;
 

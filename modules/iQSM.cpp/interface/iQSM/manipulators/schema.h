@@ -2,7 +2,7 @@
 
 #include <initializer_list>
 
-#include <iQSM/meta/concepts.h>
+#include <iQSM/meta/aspect.h> // registered level of meta-mechanism
 #include <iQSM/meta/type_list.h>
 #include <iQSM/state/_forwards.h>
 #include <iQSM/state/mechanism.h>
@@ -12,7 +12,7 @@
 namespace iqsm::manipulator::schema {
     iqsm::Schema merge(std::initializer_list<iqsm::Schema> parts);
 
-    template<meta::Aspect Meta>
+    template<aspect::Any Meta>
     iqsm::Schema aspect();
 }
 
@@ -24,13 +24,13 @@ namespace iqsm::manipulator::schema {
             return iqsm::state::SchemaData::TypeSet{iqsm::internals::Types::rttid<Metas>()...};
         }
 
-        template<meta::Aspect Meta>
+        template<aspect::Any Meta>
         auto requirements_of() -> iqsm::state::SchemaData::TypeSet {
             return requirements_of(typename meta::deps_of<Meta>::type{});
         }
     }
 
-    template<meta::Aspect Meta>
+    template<aspect::Any Meta>
     iqsm::Schema aspect() {
         using Versioning = typename Meta::Runtime::Versioning;
         constexpr auto versioning = static_cast<state::policy::versioning>(Versioning::value);

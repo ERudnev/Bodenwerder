@@ -6,38 +6,39 @@
 
 namespace iqsm::detail::aspects {
     template<typename Meta>
-    struct Base {
-        Base() = delete;
+    struct Any {
+        Any() = delete;
     };
 }
 
 namespace iqsm::aspects {
+
+    // all local types are re-defined to get rid of "typename Meta::Id", "typename Meta::OwnManipulators" e.t.c
     template<typename Meta>
-    struct Entity : detail::aspects::Base<Meta> {
+    struct Entity : detail::aspects::Any<Meta> {
         using Id = Identifier<Meta>;
         using OwnManipulators = ::iqsm::service::Group<Meta>;
     };
 
-    template<typename Meta, typename Parent>
-    struct Attribute : detail::aspects::Base<Meta> {
-        using Id = typename Parent::Id;
-        using ParentAspect = Parent;
-        using OwnManipulators = service::Group<Meta>;
-    };
-
-    template<typename Meta, typename Parent>
-    struct Component : detail::aspects::Base<Meta> {
-        using Id = typename Parent::Id;
-        using ParentAspect = Parent;
-        using OwnManipulators = service::Group<Meta>;
-    };
-
-    template<typename Meta, typename RuntimeType>
-    struct Agent : detail::aspects::Base<Meta> {
+    template<typename Meta, typename WorkerType>
+    struct Controller : detail::aspects::Any<Meta> {
         using Id = Identifier<Meta>;
         using OwnManipulators = service::Group<Meta>;
-        // TODO: redesign this...
-        using Runtime = RuntimeType;
+        using WorkerAspect = WorkerType;
+    };
+
+    template<typename Meta, typename HostType>
+    struct Attribute : detail::aspects::Any<Meta> {
+        using Id = typename Parent::Id;
+        using HostAspect = HostType;
+        using OwnManipulators = service::Group<Meta>;
+    };
+
+    template<typename Meta, typename Host>
+    struct Component : detail::aspects::Any<Meta> {
+        using Id = typename Parent::Id;
+        using HostAspect = HostType;
+        using OwnManipulators = service::Group<Meta>;
     };
 }
 

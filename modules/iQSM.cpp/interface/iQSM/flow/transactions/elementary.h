@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iQSM/meta/aspect.h>
 #include <iQSM/delta.h>
 #include <iQSM/repository/transaction.h>
 
@@ -7,7 +8,7 @@ namespace iqsm::repo {
 
     // Single-field transaction: one Writing in, one typed field-diff out on scope-exit.
     // Does not expose Reading/Writing conversions (private base): only ctor + typed field ops.
-    template<meta::Aspect Meta>
+    template<aspect::Any Meta>
     struct Elementary final : private Transaction {
     public:
         explicit Elementary(Writing writing) : Transaction(std::move(writing)) {}
@@ -44,7 +45,7 @@ namespace iqsm::repo {
 
 namespace iqsm::repo {
 
-    template<meta::Aspect Meta>
+    template<aspect::Any Meta>
     inline void Elementary<Meta>::absorb(internals::repo::Commit::Result result) {
         if (result.delta->empty()) return;
 
@@ -53,7 +54,7 @@ namespace iqsm::repo {
         accumulated.absorb(*base::shared_ref_cast<delta::FieldDiff<Meta>>(it->second));
     }
 
-    template<meta::Aspect Meta>
+    template<aspect::Any Meta>
     inline void Elementary<Meta>::on_finish() {
         if (this->unwinding()) return;
         if (not this->head.upstream) return;

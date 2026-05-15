@@ -10,14 +10,13 @@
 #include <iQSM/state/patches.h>
 
 
-namespace iqsm::state::detail {
+namespace iqsm::meta::state {
     template<meta::Aspect Meta, policy::versioning, policy::order>
     struct ItemsLayout;
-
-    template<policy::versioning>
-    struct SlicesLayout;
 }
 
+
+/* TODO: cleanp if Registration:: absorb this alias
 namespace iqsm::state {
     template<meta::Aspect Meta, policy::versioning ItemsVersioning, policy::order Order>
     using Chunk = typename detail::ItemsLayout<Meta, ItemsVersioning, Order>::Element;
@@ -27,9 +26,32 @@ namespace iqsm::state {
     
     //template<policy::versioning OperationalVersioning>
 }
+*/
 
+namespace iqsm::meta::state {
 
-namespace iqsm::state::detail {
+    namespace patch {
+        // TODO: find better alias as template<versioning>...
+
+        //template<typename Meta>
+        //using FlatPatch = std::optional<Quantum<Meta>>;
+        template<aspect::Any Meta>
+        struct Solid : base::maybe<Quantum<Meta>> {
+            bool is_noop() const { return exists(); }
+        };
+
+        template<aspect::Any Meta>
+        struct Shared {
+            std::optional<Node<Meta>> before;
+            std::optional<Node<Meta>> after;
+
+            bool is_noop() const { return !before && !after; }
+            bool is_add()  const { return !before &&  after; }
+            bool is_del()  const { return  before && !after; }
+            bool is_chg()  const { return  before &&  after; }
+        };
+    }
+
     template<meta::Aspect Meta>
     struct ItemsLayout<Meta, policy::versioning::shared, policy::order::state> {
         using Element = Node<Meta>;
@@ -50,6 +72,7 @@ namespace iqsm::state::detail {
         using Element = FlatPatch<Meta>;
     };
 
+    /*
     template<>
     struct SlicesLayout<policy::versioning::shared> {  
         template<typename T>
@@ -63,4 +86,5 @@ namespace iqsm::state::detail {
         using RefQualified = iqsm::ref<T>;
         using SlicesContainer = std::unordered_map<RAId, RefQualified<slice::Abstract>>; // TODO: std::map -> base::DenseTable
     };
+    */
 }
