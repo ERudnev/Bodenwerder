@@ -13,27 +13,25 @@ namespace iqsm::repo {
     public:
         explicit Elementary(Writing writing) : Transaction(std::move(writing)) {}
         using Id = ::iqsm::Id<Meta>;
-        using Node = ::iqsm::Node<Meta>;
-        using Op = state::Chunk<Meta, state::axis::order::patch>;
+        using Quantum = ::iqsm::Quantum<Meta>;
+        using Element = typename Meta::Runtime::Element::State;
+        using Versioning = typename Meta::Runtime::Versioning;
+        using Differential = meta::state::Differentiation<Meta, Versioning::value>;
+        using Patch = typename Meta::Runtime::Element::Patch;
 
         ~Elementary() override { on_finish(); }
 
-        //void add(Id id, 
-
-
-        /*
-        void add(Id id, Node after) {
-            accumulated.ops.insert_or_assign(std::move(id), Op{std::nullopt, std::move(after)});
+        void add(Id id, Element after) {
+            accumulated.ops.insert_or_assign(id, Differential::add(std::move(after)));
         }
-
-        void remove(Id id, Node before) {
-            accumulated.ops.insert_or_assign(std::move(id), Op{std::move(before), std::nullopt});
+        
+        void remove(Id id, Element before) {
+            accumulated.ops.insert_or_assign(id, Differential::remove(std::move(before)));
         }
-
-        void update(Id id, Node before, Node after) {
-            accumulated.ops.insert_or_assign(std::move(id), Op{std::move(before), std::move(after)});
+        
+        void change(Id id, Element before, Element after) {
+            accumulated.ops.insert_or_assign(id, Differential::change(std::move(before), std::move(after)));
         }
-        */
 
     private:
         void on_finish() override;

@@ -20,14 +20,17 @@ namespace iqsm::meta {
     struct Aspect : Meta {
         struct Runtime {
             using Versioning = std::integral_constant<axis::versioning, VersioningType>;
-            struct State {
+            struct Element {
                 template<axis::order Order>
                 using Item = typename meta::state::ItemsLayout<Aspect, VersioningType, Order>::Element;
+
+                using State = Item<axis::order::state>;
+                using Patch = Item<axis::order::patch>; 
             };
 
             struct Slice {
                 template<axis::order Order>
-                using Container = base::DenseTable<Id<Meta>, typename State::template Item<Order>>;
+                using Container = base::DenseTable<Id<Meta>, typename Element::template Item<Order>>;
 
                 using State = iqsm::state::slice::Data<Aspect, axis::order::state>;
                 using Patch = iqsm::state::slice::Data<Aspect, axis::order::patch>;

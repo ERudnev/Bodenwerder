@@ -5,6 +5,7 @@
 
 #include <iQSM/meta/aspect.h>
 #include <iQSM/state/view.h>
+#include <iQSM/flow/transactions/elementary.h>
 
 namespace iqsm::manipulator::item {
 
@@ -15,7 +16,7 @@ namespace iqsm::manipulator::item {
     template<aspect::Any Meta>
     auto get(Reading, Id<Meta>) -> const Quantum<Meta>&;
 
-    template<aspect::Entity Meta>
+    template<aspect::Host Meta>
     auto create(Writing, Quantum<Meta> value) -> Id<Meta>;
 
     template<aspect::Parasite Meta>
@@ -42,13 +43,20 @@ namespace iqsm::manipulator::item {
     }
 
 
-    template<aspect::Entity Meta>
+    template<aspect::Host Meta>
     auto create(Writing channel, Quantum<Meta> value) -> Id<Meta> {
+        using Versioning = typename Meta::Runtime::Versioning;
+        using Element = typename Meta::Runtime::Element::State;
+
         const auto id = Id<Meta>::generate_random();
+        repo::Elementary<Meta> tx(channel);
 
-        _INCOMPLETE_;
-        //return Id<Meta>::generate_random();
-
+        if constexpr (Versioning::value == state::axis::versioning::shared) {
+            tx.add(id, Element{base::make_shared<const Quantum<Meta>>(std::move(value))});
+        } else {
+            tx.add(id, Element{std::move(value)});
+        }
+        return id;
     }
 
 } // namespace

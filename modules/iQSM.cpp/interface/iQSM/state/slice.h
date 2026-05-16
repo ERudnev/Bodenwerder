@@ -24,7 +24,7 @@ namespace iqsm::state::slice {
 
     template<aspect::Any Meta, axis::order Order>
     struct Data : AbstractVersioned<Order, Meta::Runtime::Versioning::value> {
-        using Item = typename Meta::Runtime::State::template Item<Order>;
+        using Item = typename Meta::Runtime::Element::template Item<Order>;
         using Container = base::DenseTable<Id<Meta>, Item>;
         Container container;
     };

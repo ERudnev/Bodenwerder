@@ -12,11 +12,14 @@
 
 
 namespace iqsm::meta::state {
-    template<archetype::Any Meta, axis::versioning, axis::order>
+    template<archetype::Any, axis::versioning, axis::order>
     struct ItemsLayout;
 
     template<axis::versioning SliceVersioning>
     struct SlicesLayout;
+
+    template<archetype::Any, axis::versioning ItemVersioning>
+    struct Differentiation;
 }
 
 
@@ -28,9 +31,8 @@ namespace iqsm::meta::state {
         //template<typename Meta>
         //using FlatPatch = std::optional<Quantum<Meta>>;
         template<archetype::Any Meta>
-        struct Solid : base::maybe<Quantum<Meta>> {
-            bool is_noop() const { return exists(); }
-        };
+        //struct Solid : base::maybe<Quantum<Meta>> {
+        using Solid = base::maybe<Quantum<Meta>>;
 
         template<archetype::Any Meta>
         struct Shared {
@@ -44,6 +46,7 @@ namespace iqsm::meta::state {
         };
     }
 
+    // Items Layout specs:
     template<archetype::Any Meta>
     struct ItemsLayout<Meta, axis::versioning::shared, axis::order::state> {
         using Element = Node<Meta>;
@@ -64,6 +67,8 @@ namespace iqsm::meta::state {
         using Element = patch::Solid<Meta>;
     };
 
+
+    // Slices Layout specs:
     template<>
     struct SlicesLayout<axis::versioning::shared> {  
         template<typename SliceBase>
@@ -120,4 +125,28 @@ namespace iqsm::meta::state {
             const iqsm::cref<SliceBase> prototype;
         };
     };
+
+
+    // Differentiation (converting state <-> patch):
+    template<archetype::Any Meta>
+    struct Differentiation<Meta, axis::versioning::shared> {
+        using State = typename Meta::Runtime::Element::State;
+        using Patch = typename Meta::Runtime::Element::Patch;
+
+        static Patch add(State after) { return Patch{ std::nullopt, std::move(after) }; }
+        static Patch remove(State before) { return Patch{ std::move(before), std::nullopt };}
+        static Patch change(State before, State after) { return Patch{ std::move(before), std::move(after) };}
+    };
+
+    template<archetype::Any Meta>
+    struct Differentiation<Meta, axis::versioning::single> {
+        using State = typename Meta::Runtime::Element::State;
+        using Patch = typename Meta::Runtime::Element::Patch;
+
+        static Patch add(State after) { return Patch{std::move(after)}; }
+        static Patch remove(State before) { return Patch{std::nullopt}; }
+        static Patch change(State before, State after) { return Patch{std::move(after)}; }
+    };
 }
+
+

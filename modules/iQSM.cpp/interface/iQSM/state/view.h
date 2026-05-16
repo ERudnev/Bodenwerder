@@ -21,9 +21,6 @@ namespace iqsm::state {
         template<aspect::Any Meta>
         auto slice() const -> cref<typename Meta::Runtime::Slice::State>;
 
-        //template<aspect::Any Meta>
-        //auto experimental_template_slice_access() const -> cref<
-
     protected:
         explicit View(Schema schema) : id(Id::generate_random()), schema(std::move(schema)) {}
 
