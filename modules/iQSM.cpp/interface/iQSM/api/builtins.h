@@ -1,9 +1,0 @@
-#pragma once
-
-#include <base/types/common_types.h>
-
-namespace iqsm::q1 {
-    using namespace base::common_types;
-}
-
-
