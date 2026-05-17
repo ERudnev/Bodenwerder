@@ -2,11 +2,11 @@
 
 #include <type_traits>
 
-#include <fQSM/meta/concepts/archetypes.h> // pre-registered level mechanism
+#include <fQSM/meta/concepts.h> // pre-registered level mechanism
 
 
 // default empty Aspect::Global
-namespace fqsm::detail::archetype {
+namespace fqsm::detail::aspect {
 
     namespace internals {
         struct EmptyGlobal {};
@@ -25,16 +25,16 @@ namespace fqsm::detail::archetype {
 
 namespace fqsm {
     template<typename Meta>
-    requires meta::archetype::has::Id<Meta>
+    requires meta::aspect::has::Id<Meta>
     using Id = typename Meta::Id;
 
     template<typename Meta>
-    requires meta::archetype::has::Quantum<Meta>
+    requires meta::aspect::has::Quantum<Meta>
     using Quantum = typename Meta::Quantum;
 
     template<typename Meta>
-    requires meta::archetype::has::Quantum<Meta> // yes, require Quantum to allow (even empty) Global
-    using GlobalValue = typename detail::archetype::GlobalValue<Meta>::Type;
+    requires meta::aspect::has::Quantum<Meta> // yes, require Quantum to allow (even empty) Global
+    using GlobalValue = typename detail::aspect::GlobalValue<Meta>::Type;
 
 }
 

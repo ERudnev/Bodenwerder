@@ -1,9 +1,9 @@
 #pragma once
 
-#include <iQSM/typeId.h>
-#include <iQSM/references.h>
+#include <fQSM/typeId.h>
+#include <fQSM/references.h>
 
-namespace iqsm {
+namespace fqsm {
     
     using RAId = internals::Types::RuntimeId;
 
@@ -13,7 +13,7 @@ namespace iqsm {
         struct WorldData;
     }
     // raise pointer alias to the root of iQSM:
-    using Schema = iqsm::cref<state::SchemaData>;
-    using Delta = iqsm::cref<state::DeltaData>;
-    using World = iqsm::cref<state::WorldData>;
+    using Schema = fqsm::cref<state::SchemaData>;
+    using Delta = fqsm::cref<state::DeltaData>;
+    using World = fqsm::cref<state::WorldData>;
 }

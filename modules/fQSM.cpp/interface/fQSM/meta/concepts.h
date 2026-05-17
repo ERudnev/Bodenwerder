@@ -2,7 +2,8 @@
 
 #include <concepts>
 
-namespace fqsm::meta::archetype {
+namespace fqsm::meta::aspect {
+    
     namespace has {
         template<typename Meta>
         concept Id = requires(const typename Meta::Id& id) {
@@ -49,4 +50,5 @@ namespace fqsm::meta::archetype {
 
     template<typename Meta>
     concept Attribute = Parasite<Meta>; // TODO: add attribute-specific stuff, for example "rule of creation(ctor)"
+
 }
