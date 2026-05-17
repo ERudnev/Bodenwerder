@@ -3,7 +3,7 @@
 #include <vector>
 
 #define FQSM_TESTS(X) \
-    X(dual_layer_model) \
+    X(flat_model_assembly) \
     // end
 
 // Workshop: верни каталог test/workshop/ целиком и раскомментируй блок ниже + group "Workshop" в groups.
@@ -48,7 +48,7 @@ int main() {
 
 int main_one_test() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("all", &tests::dual_layer_model)));
+        BASETEST_LIST(BASETEST_NAMED("all", &tests::flat_model_assembly)));
         //BASETEST_LIST(BASETEST_NAMED("performance_lab2", &tests::immutable_containers_perf2)));
     return s.ok() ? 0 : 1;
 }

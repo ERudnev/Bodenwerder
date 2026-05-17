@@ -21,7 +21,7 @@ namespace fqsm::internals {
 }
 
 // ---- implementation details
-namespace iqsm::internals {
+namespace fqsm::internals {
     constexpr std::string_view _strip_decorations(std::string_view n) {
         if (n.starts_with("struct ")) { n.remove_prefix(7); }
         else if (n.starts_with("class ")) { n.remove_prefix(6); }

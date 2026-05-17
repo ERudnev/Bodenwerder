@@ -6,10 +6,10 @@
 // aspect types (Entity/Component/Attribute):
 #include <fQSM/api/aspects.h>
 #include <fQSM/meta/aspect.h>
-//#include <iQSM/meta/require.h>
+#include <fQSM/meta/require.h>
 
 // manipulators
-//#include <iQSM/manipulators/schema.h>
+#include <fQSM/manipulators/schema.h>
 //#include <iQSM/manipulators/world.h>
 //#include <iQSM/manipulators/item.h>
 
@@ -23,30 +23,32 @@
 
 namespace fqsm::api {
     // Q1 language builtin types
-    using namespace fqsm::q1;
+    using namespace ::fqsm::q1;
 
     // add operations as short "ops":
-    //namespace ask = ::fqsm::manipulator;
+    namespace ask = ::fqsm::manipulator;
 
     // archetype registration:
     template<typename Meta>
-    using Register = fqsm::meta::Aspect<Meta>;
+    using Register = ::fqsm::meta::Aspect<Meta>;
 
     // Aspect types:
     template<typename Meta>
-    using Entity = fqsm::aspects::Entity<Meta>;
+    using Entity = ::fqsm::aspects::Entity<Meta>;
 
     template<typename Meta, typename Runtime>
-    using Controller = fqsm::aspects::Controller<Meta, Runtime>;
+    using Controller = ::fqsm::aspects::Controller<Meta, Runtime>;
 
     template<typename Meta, typename Parent>
-    using Attribute = fqsm::aspects::Attribute<Meta, Parent>;
+    using Attribute = ::fqsm::aspects::Attribute<Meta, Parent>;
 
     template<typename Meta, typename Parent>
-    using Component = fqsm::aspects::Component<Meta, Parent>;
+    using Component = ::fqsm::aspects::Component<Meta, Parent>;
 
-    //template<typename... Deps>
-    //using Require = fqsm::meta::Require<Deps...>;
+    template<typename... Deps>
+    using Require = fqsm::meta::Require<Deps...>;
+
+    using Schema = fqsm::Schema;
 
     // flow/transactions/contexts mechanism
     //namespace context {

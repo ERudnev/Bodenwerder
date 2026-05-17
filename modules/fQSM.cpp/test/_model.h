@@ -10,7 +10,7 @@ namespace tests::model {
         struct Quantum { int value; };
     };
 
-    struct SomeComponent : Component<SomeComponent, SomeEntity> {
+    struct SomeComponent : Component<SomeComponent, SomeEntity>, Require<SomeEntity> {
         struct Quantum { int value; };
     };
 }

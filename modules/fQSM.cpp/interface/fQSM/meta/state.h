@@ -28,7 +28,7 @@ namespace fqsm::meta::state {
         using Element = base::maybe<Quantum<Meta>>;
     };
 
-    // Differentiation (converting state <-> patch):
+    /* Differentiation (converting state <-> patch):
     template<aspect::Any Meta>
     struct Differentiation {
         using State = typename Meta::Runtime::Element::State;
@@ -36,7 +36,7 @@ namespace fqsm::meta::state {
 
         static Patch add(State after) { return Patch{std::move(after)}; }
         static Patch change(State after) { return Patch{std::move(after)}; }
-    };
+    };*/
 }
 
 

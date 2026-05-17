@@ -6,7 +6,7 @@
 
 #include <base/containers/denseTable.h>
 #include <fQSM/meta/axis.h>
-#include <fQSM/meta/mechanism/state.h>
+#include <fQSM/meta/state.h>
 #include <fQSM/meta/concepts.h>
 
 
