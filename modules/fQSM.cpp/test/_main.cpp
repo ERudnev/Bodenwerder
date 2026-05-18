@@ -3,6 +3,7 @@
 #include <vector>
 
 #define FQSM_TESTS(X) \
+    X(dense_table_overlay) \
     X(flat_model_assembly) \
     // end
 

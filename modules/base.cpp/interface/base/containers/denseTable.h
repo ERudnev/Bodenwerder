@@ -10,11 +10,13 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/tableView.h>
+
 namespace base {
 
 /// Dense vector of entries + unordered map id -> slot index. Mutable; erase uses swap-with-tail.
 template<typename IdType, typename ValueType, typename Hasher = std::hash<IdType>, typename KeyEqual = std::equal_to<IdType>>
-class DenseTable {
+class DenseTable : public TableView<IdType, ValueType> {
 public:
     struct Entry {
         IdType id;
@@ -88,11 +90,11 @@ public:
         : idToIndex(0, hash, eq)
     {}
 
-    bool contains(const IdType& id) const {
+    bool contains(const IdType& id) const override {
         return idToIndex.find(id) != idToIndex.end();
     }
 
-    const ValueType* find(const IdType& id) const {
+    const ValueType* find(const IdType& id) const override {
         const auto lookup = idToIndex.find(id);
         if (lookup == idToIndex.end()) return nullptr;
         return std::addressof(entries[lookup->second].value);
@@ -104,7 +106,7 @@ public:
         return std::addressof(entries[lookup->second].value);
     }
 
-    const ValueType& at(const IdType& id) const {
+    const ValueType& at(const IdType& id) const override {
         const auto* found = find(id);
         if (!found) throw std::out_of_range("DenseTable::at");
         return *found;
@@ -172,6 +174,15 @@ public:
 
     std::unordered_map<IdType, SizeType, Hasher, KeyEqual> idToIndex;
     std::vector<Entry> entries;
+
+protected:
+    typename TableView<IdType, ValueType>::ReadIterator read_begin() const override {
+        return this->make_read_iterator(ConstIterator(entries, 0));
+    }
+
+    typename TableView<IdType, ValueType>::ReadIterator read_end() const override {
+        return this->make_read_iterator(ConstIterator(entries, entries.size()));
+    }
 };
 
 } // namespace base
