@@ -3,6 +3,9 @@
 #include "_model.h"
 #include <fQSM/api/interface.h>
 
+// temp
+#include <fQSM/state/world.h>
+
 
 namespace tests {
     using namespace ::tests::model;
@@ -14,6 +17,9 @@ namespace tests {
             ask::schema::aspect<SomeEntity>(),
             ask::schema::aspect<SomeComponent>(),
         });
+
+        //fqsm::World world = ask::world::create(schema);
+        fqsm::state::World temp_world(schema);
        
     }
 }

@@ -5,4 +5,9 @@ namespace fqsm::meta::axis {
         state,
         patch,
     };
+
+    enum class mutability {
+        writable,
+        constant,
+    };
 }

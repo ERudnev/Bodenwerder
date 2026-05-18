@@ -5,6 +5,7 @@
 
 #include <base/maybe.h>
 #include <fQSM/typeId.h>
+#include <fQSM/references.h>
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/alias.h>
 #include <fQSM/meta/concepts.h>
@@ -14,6 +15,20 @@ namespace fqsm::meta::state {
     struct ItemsLayout;
 }
 
+namespace fqsm::meta::state {
+    template<axis::mutability, typename>
+    struct Reference;
+
+    template<typename T>
+    struct Reference<axis::mutability::writable, T> {
+        using Type = ::fqsm::ref<T>;
+    };
+
+    template<typename T>
+    struct Reference<axis::mutability::constant, T> {
+        using Type = ::fqsm::cref<T>;
+    };
+}
 
 namespace fqsm::meta::state {
 
@@ -27,16 +42,6 @@ namespace fqsm::meta::state {
     struct ItemsLayout<Meta, axis::order::patch> {
         using Element = base::maybe<Quantum<Meta>>;
     };
-
-    /* Differentiation (converting state <-> patch):
-    template<aspect::Any Meta>
-    struct Differentiation {
-        using State = typename Meta::Runtime::Element::State;
-        using Patch = typename Meta::Runtime::Element::Patch;
-
-        static Patch add(State after) { return Patch{std::move(after)}; }
-        static Patch change(State after) { return Patch{std::move(after)}; }
-    };*/
 }
 
 

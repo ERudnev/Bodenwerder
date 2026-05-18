@@ -2,7 +2,6 @@
 
 #include <base/containers/denseTable.h>
 #include <fQSM/meta/axis.h>
-#include <fQSM/meta/state.h>
 #include <fQSM/meta/concepts.h>
 #include <fQSM/meta/alias.h>
 #include <fQSM/state/_forwards.h>

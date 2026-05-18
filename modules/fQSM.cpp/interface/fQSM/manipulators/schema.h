@@ -3,7 +3,7 @@
 #include <initializer_list>
 
 #include <base/shared_reference.h>
-#include <fQSM/meta/aspect.h>
+#include <fQSM/aspect.h>
 #include <fQSM/meta/type_list.h>
 #include <fQSM/state/_forwards.h>
 #include <fQSM/state/schema.h>

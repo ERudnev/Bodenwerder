@@ -4,7 +4,6 @@
 #include <set>
 #include <string>
 
-#include <fQSM/meta/state.h>
 #include <fQSM/state/_forwards.h>
 #include <fQSM/state/slice.h>
 #include <fQSM/references.h>

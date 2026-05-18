@@ -5,7 +5,7 @@
 
 // aspect types (Entity/Component/Attribute):
 #include <fQSM/api/aspects.h>
-#include <fQSM/meta/aspect.h>
+//#include <fQSM/aspect.h>
 #include <fQSM/meta/require.h>
 
 // manipulators
@@ -27,11 +27,7 @@ namespace fqsm::api {
 
     // add operations as short "ops":
     namespace ask = ::fqsm::manipulator;
-
-    // archetype registration:
-    template<typename Meta>
-    using Register = ::fqsm::meta::Aspect<Meta>;
-
+    
     // Aspect types:
     template<typename Meta>
     using Entity = ::fqsm::aspects::Entity<Meta>;
