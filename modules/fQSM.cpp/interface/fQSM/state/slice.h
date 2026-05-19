@@ -17,9 +17,29 @@ namespace fqsm::state::slice {
     };
 
     template<aspect::Any Meta, axis::order Order>
-    struct Data : Abstract<Order> {
+    struct View : Abstract<Order> {
         using Item = typename Meta::Runtime::Element::template Item<Order>;
-        using Container = base::DenseTable<Id<Meta>, Item>;
-        Container container;
+        using ItemsView = base::TableView<Id<Meta>, Item>;
+
+        virtual const ItemsView& items() const = 0;
+    };
+
+    template<aspect::Any Meta, axis::order Order>
+    struct Data : View<Meta, Order> {
+        using Item = typename View<Meta, Order>::Item;
+        using ItemsView = typename View<Meta, Order>::ItemsView;
+        using ItemsData = base::DenseTable<Id<Meta>, Item>;
+
+        const ItemsView& items() const override {
+            return table;
+        };
+
+        ItemsData& items() {
+            return table;
+        }
+
+    private:
+        ItemsData table;
     };
 }
+

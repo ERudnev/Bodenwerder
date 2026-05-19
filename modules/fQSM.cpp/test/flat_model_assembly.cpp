@@ -19,7 +19,7 @@ namespace tests {
         });
 
         //fqsm::World world = ask::world::create(schema);
-        fqsm::state::World temp_world(schema);
+        fqsm::state::world::Data temp_world(schema);
        
     }
 }

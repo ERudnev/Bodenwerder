@@ -1,28 +1,61 @@
 #pragma once
 
-#include <stdexcept>
-#include <utility>
-#include <memory>
-
 #include <fQSM/meta/concepts.h>
-#include <fQSM/state/view.h>
+#include <fQSM/state/composite.h>
 
-namespace fqsm::state {
+namespace fqsm::state::world {
+    namespace axis = meta::axis;
+    namespace aspect = meta::aspect;
 
-    struct World : View {
-        struct Access {
-            using Structure = Composite<axis::order::state, axis::mutability::writable>;
+    struct View {
+        using CompositeView = composite::View<axis::order::state>;
 
-            template<aspect::Any Meta>
-            using Slice = typename Structure::Entry::template TypedHandle<Meta>;
-        };
+        template<aspect::Any Meta>
+        using TableView = typename CompositeView::Entry::template Handle<Meta>;
 
-        explicit World(Schema schema) : View(schema) {}
+        template<aspect::Any Meta>
+        using ItemsView = typename slice::View<Meta, axis::order::state>::ItemsView;
 
-        Access::Structure composite;
+        template<aspect::Any Meta>
+        auto slice() const -> TableView<Meta> { return composite().template slice<Meta>(); }
+
+        template<aspect::Any Meta>
+        auto items() const -> const ItemsView<Meta>& { return slice<Meta>()->items(); }
+
+        const Schema schema;
+
     protected:
-        auto slice(RAId runtimeTypeId) const -> cref<slice::Abstract<meta::axis::order::state>> override {
-            return composite.slices.at(runtimeTypeId);
-        }
+        explicit View(Schema schema) : schema(schema) {}
+
+        virtual auto composite() const -> const CompositeView& = 0;
+    };
+
+    struct Data : View {
+        using CompositeData = composite::Data<axis::order::state>;
+
+        template<aspect::Any Meta>
+        using TableData = typename CompositeData::Entry::template Handle<Meta>;
+
+        template<aspect::Any Meta>
+        using ItemsData = typename slice::Data<Meta, axis::order::state>::ItemsData;
+
+        using View::items;
+        using View::slice;
+
+        explicit Data(Schema schema) : View(schema) {}
+
+        auto composite() -> CompositeData& { return slices; }
+
+        template<aspect::Any Meta>
+        auto slice() -> TableData<Meta> { return composite().template slice<Meta>(); }
+
+        template<aspect::Any Meta>
+        auto items() -> ItemsData<Meta>& { return slice<Meta>()->items(); }
+
+    protected:
+        auto composite() const -> const CompositeView& override { return slices; }
+
+    private:
+        CompositeData slices;
     };
 }

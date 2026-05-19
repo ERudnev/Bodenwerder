@@ -9,26 +9,63 @@
 #include <fQSM/state/_forwards.h>
 #include <fQSM/state/slice.h>
 
-namespace fqsm::state {
+
+namespace fqsm::state::composite {
     namespace axis = meta::axis;
+    namespace aspect = meta::aspect;
 
-    template<axis::order ItemRole, axis::mutability SliceStorageType>
-    struct Composite {
+    template<axis::order Order>
+    struct View {
         struct Entry {
-            using Base = slice::Abstract<ItemRole>;
-            using Handle = typename meta::state::Reference<SliceStorageType, Base>::Type;
+            using Abstract = slice::Abstract<Order>;
 
             template<aspect::Any Meta>
-            using Typed = slice::Data<Meta, ItemRole>;
+            using Typed = slice::View<Meta, Order>;
 
             template<aspect::Any Meta>
-            using TypedHandle = typename meta::state::Reference<
-                SliceStorageType,
-                Typed<Meta>
-            >::Type;
+            using Handle = cref<Typed<Meta>>;
         };
-        using Slices = std::unordered_map<RAId, typename Entry::Handle>;
+
+        template<aspect::Any Meta>
+        auto slice() const -> typename Entry::template Handle<Meta> {
+            using DataSlice = slice::Data<Meta, Order>;
+            using ViewSlice = typename Entry::template Typed<Meta>;
+
+            return base::shared_ref_cast<const ViewSlice>(
+                slice(RAId{typeid(DataSlice)})
+            );
+        }
+
+    protected:
+        virtual auto slice(RAId runtimeTypeId) const -> cref<typename Entry::Abstract> = 0;
+    };
+
+
+    template<axis::order Order>
+    struct Data : View<Order> {
+        struct Entry {
+            using Abstract = slice::Abstract<Order>;
+
+            template<aspect::Any Meta>
+            using Typed = slice::Data<Meta, Order>;
+
+            template<aspect::Any Meta>
+            using Handle = ref<Typed<Meta>>;
+        };
+
+        using Slices = std::unordered_map<RAId, ref<typename Entry::Abstract>>;
+
+        template<aspect::Any Meta>
+        auto slice() -> typename Entry::template Handle<Meta> {
+            using DataSlice = typename Entry::template Typed<Meta>;
+            return base::shared_ref_cast<DataSlice>(slices.at(RAId{typeid(DataSlice)}));
+        }
 
         Slices slices;
+
+    protected:
+        auto slice(RAId runtimeTypeId) const -> cref<typename View<Order>::Entry::Abstract> override {
+            return slices.at(runtimeTypeId);
+        }
     };
-}
+};
