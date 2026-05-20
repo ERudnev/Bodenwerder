@@ -18,7 +18,7 @@ namespace fqsm::state::slice {
 
     template<aspect::Any Meta, axis::order Order>
     struct View : Abstract<Order> {
-        using Item = typename Meta::Runtime::Element::template Item<Order>;
+        using Item = typename meta::state::ItemsLayout<Meta, Order>::Element;
         using ItemsView = base::TableView<Id<Meta>, Item>;
 
         virtual const ItemsView& items() const = 0;

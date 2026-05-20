@@ -28,16 +28,14 @@ namespace fqsm::state::composite {
 
         template<aspect::Any Meta>
         auto slice() const -> typename Entry::template Handle<Meta> {
-            using DataSlice = slice::Data<Meta, Order>;
             using ViewSlice = typename Entry::template Typed<Meta>;
-
             return base::shared_ref_cast<const ViewSlice>(
-                slice(RAId{typeid(DataSlice)})
+                slice(aspect::Rtid::of<Meta>())
             );
         }
 
     protected:
-        virtual auto slice(RAId runtimeTypeId) const -> cref<typename Entry::Abstract> = 0;
+        virtual auto slice(aspect::Rtid runtimeTypeId) const -> cref<typename Entry::Abstract> = 0;
     };
 
 
@@ -53,18 +51,18 @@ namespace fqsm::state::composite {
             using Handle = ref<Typed<Meta>>;
         };
 
-        using Slices = std::unordered_map<RAId, ref<typename Entry::Abstract>>;
+        using Slices = std::unordered_map<aspect::Rtid, ref<typename Entry::Abstract>, aspect::Rtid::Hash>;
 
         template<aspect::Any Meta>
         auto slice() -> typename Entry::template Handle<Meta> {
             using DataSlice = typename Entry::template Typed<Meta>;
-            return base::shared_ref_cast<DataSlice>(slices.at(RAId{typeid(DataSlice)}));
+            return base::shared_ref_cast<DataSlice>(slices.at(aspect::Rtid::of<Meta>()));
         }
 
         Slices slices;
 
     protected:
-        auto slice(RAId runtimeTypeId) const -> cref<typename View<Order>::Entry::Abstract> override {
+        auto slice(aspect::Rtid runtimeTypeId) const -> cref<typename View<Order>::Entry::Abstract> override {
             return slices.at(runtimeTypeId);
         }
     };

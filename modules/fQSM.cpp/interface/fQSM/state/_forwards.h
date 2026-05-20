@@ -1,12 +1,10 @@
 #pragma once
 
-#include <fQSM/typeId.h>
+#include <fQSM/meta/runtimeId.h>
 #include <fQSM/references.h>
 
 namespace fqsm {
     
-    using RAId = internals::Types::RuntimeId;
-
     namespace state {
         struct SchemaData;
     }

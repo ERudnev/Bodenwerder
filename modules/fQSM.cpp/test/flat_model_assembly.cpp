@@ -19,7 +19,9 @@ namespace tests {
         });
 
         //fqsm::World world = ask::world::create(schema);
-        fqsm::state::world::Data temp_world(schema);
+        fqsm::state::world::Data world(schema);
+
+        const auto temp_size = world.slice<SomeEntity>()->items().size();
        
     }
 }

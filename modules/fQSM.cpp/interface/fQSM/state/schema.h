@@ -4,6 +4,7 @@
 #include <set>
 #include <string>
 
+#include <fQSM/meta/runtimeId.h>
 #include <fQSM/state/_forwards.h>
 #include <fQSM/state/slice.h>
 #include <fQSM/references.h>
@@ -14,15 +15,15 @@ namespace fqsm::state {
     namespace axis = meta::axis;
     
     struct SchemaData {
-        using TypeSet = std::set<RAId>;
+        using TypeSet = std::set<meta::aspect::Rtid>;
         //using Invariants = validation::Block;
 
         struct Aspect {
-            const std::string name; // persistent name
+            const meta::aspect::Name name;
             TypeSet requiredByMe;
             TypeSet requiredBy;
         };
 
-        std::unordered_map<RAId, Aspect> aspects;
+        std::unordered_map<meta::aspect::Rtid, Aspect, meta::aspect::Rtid::Hash> aspects;
     };
 }

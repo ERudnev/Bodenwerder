@@ -4,7 +4,6 @@
 #include <optional>
 
 #include <base/maybe.h>
-#include <fQSM/typeId.h>
 #include <fQSM/references.h>
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/alias.h>

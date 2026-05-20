@@ -21,6 +21,7 @@ namespace fqsm {
     template<aspect::Any Meta> // it was more complicated in iQSM: template< ... , axis::versioning VersioningType>
     struct Aspect {
         struct Element {
+            // TODO: use alias from fqsm::state layer
             template<meta::axis::order Order>
             using Item = typename meta::state::ItemsLayout<Meta, Order>::Element;
 

@@ -31,7 +31,7 @@ namespace fqsm::manipulator::schema {
     namespace detail {
         template<typename... Metas>
         auto requirements_of(meta::internals::type_list<Metas...>) -> fqsm::state::SchemaData::TypeSet {
-            return fqsm::state::SchemaData::TypeSet{fqsm::internals::Types::rttid<Metas>()...};
+            return fqsm::state::SchemaData::TypeSet{fqsm::meta::aspect::Rtid::of<Metas>()...};
         }
 
         template<aspect::Any Meta>
@@ -44,12 +44,12 @@ namespace fqsm::manipulator::schema {
     fqsm::Schema aspect() {
         auto out = base::make_shared<fqsm::state::SchemaData>();
         auto aspect = fqsm::state::SchemaData::Aspect{
-            std::string{fqsm::internals::type_name<Meta>()},
+            fqsm::meta::aspect::Name::of<Meta>(),
             detail::requirements_of<Meta>(),
             fqsm::state::SchemaData::TypeSet{},
         };
 
-        out->aspects.emplace(fqsm::internals::Types::rttid<Meta>(), aspect);
+        out->aspects.emplace(fqsm::meta::aspect::Rtid::of<Meta>(), aspect);
         return fqsm::freeze(out);
     }
 }
