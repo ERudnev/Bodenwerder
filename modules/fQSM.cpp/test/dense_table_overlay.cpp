@@ -5,7 +5,7 @@
 #include <map>
 #include <optional>
 
-#include <base/containers/tableOverlay.h>
+#include <fQSM/state/overlay.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/state/world.h>
 
@@ -31,10 +31,10 @@ void dense_table_overlay()
     patch.items<SomeEntity>().insert(Id{3}, PatchItem{std::nullopt});
     patch.items<SomeEntity>().insert(Id{4}, PatchItem{Item{40}});
 
-    base::TableOverlay<Id, Item> overlay(state.items<SomeEntity>(), patch.items<SomeEntity>());
+    fqsm::state::world::Overlay overlay(state, patch);
 
     const View& view = state.items<SomeEntity>();
-    const View& overlayView = overlay;
+    const View& overlayView = overlay.items<SomeEntity>();
 
     EXPECT_TRUE(view.contains(Id{1}));
     EXPECT_EQ(view.at(Id{1}).value, 1);
@@ -60,6 +60,19 @@ void dense_table_overlay()
     EXPECT_EQ(visible.at(2), 20);
     EXPECT_FALSE(visible.contains(3));
     EXPECT_EQ(visible.at(4), 40);
+
+    std::map<int, std::string> delta;
+
+    for (const auto change : overlay.delta<SomeEntity>()) {
+        if (change.add()) delta.emplace(change.id.raw(), "add");
+        if (change.update()) delta.emplace(change.id.raw(), "update");
+        if (change.remove()) delta.emplace(change.id.raw(), "remove");
+    }
+
+    EXPECT_EQ(delta.size(), std::size_t{3});
+    EXPECT_EQ(delta.at(2), std::string{"update"});
+    EXPECT_EQ(delta.at(3), std::string{"remove"});
+    EXPECT_EQ(delta.at(4), std::string{"add"});
 }
 
 } // namespace tests

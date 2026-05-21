@@ -10,7 +10,11 @@ namespace fqsm::state::world {
     namespace aspect = meta::aspect;
 
     struct Patch {
+        using CompositeView = composite::View<axis::order::patch>;
         using CompositeData = composite::Data<axis::order::patch>;
+
+        template<aspect::Any Meta>
+        using TableView = typename CompositeView::Entry::template Handle<Meta>;
 
         template<aspect::Any Meta>
         using TableData = typename CompositeData::Entry::template Handle<Meta>;
@@ -21,6 +25,14 @@ namespace fqsm::state::world {
         explicit Patch(Schema schema) : schema(schema) {}
 
         auto composite() -> CompositeData& { return slices; }
+
+        template<aspect::Any Meta>
+        auto slice() const -> TableView<Meta> {
+            const auto aspectId = aspect::Rtid::of<Meta>();
+            const auto found = slices.slices.find(aspectId);
+            if (found == slices.slices.end()) return empty_slice<Meta>();
+            return base::shared_ref_cast<const typename CompositeView::Entry::template Typed<Meta>>(found->second);
+        }
 
         template<aspect::Any Meta>
         auto slice() -> TableData<Meta> {
@@ -37,6 +49,12 @@ namespace fqsm::state::world {
         const Schema schema;
 
     private:
+        template<aspect::Any Meta>
+        static auto empty_slice() -> TableView<Meta> {
+            static const auto empty = fqsm::freeze(base::make_shared<slice::Data<Meta, axis::order::patch>>());
+            return empty;
+        }
+
         CompositeData slices;
     };
 }

@@ -66,4 +66,16 @@ namespace fqsm::state::composite {
             return slices.at(runtimeTypeId);
         }
     };
+
+    struct Overlay : View<axis::order::state> {
+        using Entry = View<axis::order::state>::Entry;
+        using Slices = std::unordered_map<aspect::Rtid, ref<typename Entry::Abstract>, aspect::Rtid::Hash>;
+
+        Slices slices;
+
+    protected:
+        auto slice(aspect::Rtid runtimeTypeId) const -> cref<typename Entry::Abstract> override {
+            return slices.at(runtimeTypeId);
+        }
+    };
 };
