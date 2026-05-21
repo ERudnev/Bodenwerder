@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <optional>
 
-#include <base/maybe.h>
+#include <base/types/patches.h>
 #include <fQSM/references.h>
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/alias.h>
@@ -39,7 +39,7 @@ namespace fqsm::meta::state {
 
     template<aspect::Any Meta>
     struct ItemsLayout<Meta, axis::order::patch> {
-        using Element = base::maybe<Quantum<Meta>>;
+        using Element = base::types::Patch<Quantum<Meta>>;
     };
 }
 

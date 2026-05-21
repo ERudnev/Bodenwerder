@@ -47,6 +47,9 @@ namespace fqsm::manipulator::schema {
             fqsm::meta::aspect::Name::of<Meta>(),
             detail::requirements_of<Meta>(),
             fqsm::state::SchemaData::TypeSet{},
+            [] {
+                return base::make_shared<fqsm::state::slice::Data<Meta, meta::axis::order::state>>();
+            },
         };
 
         out->aspects.emplace(fqsm::meta::aspect::Rtid::of<Meta>(), aspect);

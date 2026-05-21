@@ -1,62 +1,65 @@
 #include "_common.h"
 
+#include "_model.h"
+
 #include <map>
 #include <optional>
-#include <string>
 
-#include <base/containers/denseTable.h>
 #include <base/containers/tableOverlay.h>
-#include <base/containers/tableView.h>
-#include <base/types/patches.h>
+#include <fQSM/state/patch.h>
+#include <fQSM/state/world.h>
 
 namespace tests {
 
 void dense_table_overlay()
 {
-    using Table = base::DenseTable<int, std::string>;
-    using View = base::TableView<int, std::string>;
-    using Patch = base::types::Patch<std::string>;
-    using PatchTable = base::DenseTable<int, Patch>;
+    using namespace ::tests::model;
+    using Id = fqsm::Id<SomeEntity>;
+    using Item = fqsm::state::slice::View<SomeEntity, fqsm::meta::axis::order::state>::Item;
+    using PatchItem = fqsm::state::slice::View<SomeEntity, fqsm::meta::axis::order::patch>::Item;
+    using View = base::TableView<Id, Item>;
 
-    Table table;
-    table.insert(1, "state");
-    table.insert(2, "old");
-    table.insert(3, "removed");
+    const fqsm::Schema schema = fqsm::manipulator::schema::aspect<SomeEntity>();
 
-    PatchTable patch;
-    patch.insert(2, Patch{"patched"});
-    patch.insert(3, std::nullopt);
-    patch.insert(4, Patch{"inserted"});
+    fqsm::state::world::Data state(schema);
+    state.items<SomeEntity>().insert(Id{1}, Item{1});
+    state.items<SomeEntity>().insert(Id{2}, Item{2});
+    state.items<SomeEntity>().insert(Id{3}, Item{3});
 
-    base::TableOverlay<int, std::string> overlay(table, patch);
+    fqsm::state::world::Patch patch(schema);
+    patch.items<SomeEntity>().insert(Id{2}, PatchItem{Item{20}});
+    patch.items<SomeEntity>().insert(Id{3}, PatchItem{std::nullopt});
+    patch.items<SomeEntity>().insert(Id{4}, PatchItem{Item{40}});
 
-    const View& view = table;
+    base::TableOverlay<Id, Item> overlay(state.items<SomeEntity>(), patch.items<SomeEntity>());
+
+    const View& view = state.items<SomeEntity>();
     const View& overlayView = overlay;
 
-    EXPECT_TRUE(view.contains(1));
-    EXPECT_EQ(view.at(1), std::string{"state"});
-    EXPECT_TRUE(patch.at(2).has_value());
+    EXPECT_TRUE(view.contains(Id{1}));
+    EXPECT_EQ(view.at(Id{1}).value, 1);
+    EXPECT_TRUE(patch.items<SomeEntity>().at(Id{2}).has_value());
 
-    EXPECT_TRUE(overlayView.contains(1));
-    EXPECT_TRUE(overlayView.contains(2));
-    EXPECT_FALSE(overlayView.contains(3));
-    EXPECT_TRUE(overlayView.contains(4));
+    EXPECT_TRUE(overlayView.contains(Id{1}));
+    EXPECT_TRUE(overlayView.contains(Id{2}));
+    EXPECT_FALSE(overlayView.contains(Id{3}));
+    EXPECT_TRUE(overlayView.contains(Id{4}));
 
-    EXPECT_EQ(overlayView.at(1), std::string{"state"});
-    EXPECT_EQ(overlayView.at(2), std::string{"patched"});
-    EXPECT_EQ(overlayView.at(4), std::string{"inserted"});
+    EXPECT_EQ(overlayView.at(Id{1}).value, 1);
+    EXPECT_EQ(overlayView.at(Id{2}).value, 20);
+    EXPECT_EQ(overlayView.at(Id{4}).value, 40);
 
-    std::map<int, std::string> visible;
+    std::map<int, int> visible;
 
     for (const auto entry : overlayView) {
-        visible.emplace(entry.first, entry.second);
+        visible.emplace(entry.first.raw(), entry.second.value);
     }
 
     EXPECT_EQ(visible.size(), std::size_t{3});
-    EXPECT_EQ(visible.at(1), std::string{"state"});
-    EXPECT_EQ(visible.at(2), std::string{"patched"});
+    EXPECT_EQ(visible.at(1), 1);
+    EXPECT_EQ(visible.at(2), 20);
     EXPECT_FALSE(visible.contains(3));
-    EXPECT_EQ(visible.at(4), std::string{"inserted"});
+    EXPECT_EQ(visible.at(4), 40);
 }
 
 } // namespace tests

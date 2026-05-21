@@ -1,8 +1,9 @@
 ﻿#pragma once
 
-#include <unordered_map>
+#include <functional>
 #include <set>
 #include <string>
+#include <unordered_map>
 
 #include <fQSM/meta/runtimeId.h>
 #include <fQSM/state/_forwards.h>
@@ -19,9 +20,12 @@ namespace fqsm::state {
         //using Invariants = validation::Block;
 
         struct Aspect {
+            using StateSliceFactory = std::function<ref<slice::Abstract<axis::order::state>>()>;
+
             const meta::aspect::Name name;
             TypeSet requiredByMe;
             TypeSet requiredBy;
+            StateSliceFactory createStateSlice;
         };
 
         std::unordered_map<meta::aspect::Rtid, Aspect, meta::aspect::Rtid::Hash> aspects;
