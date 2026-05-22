@@ -3,8 +3,11 @@
 #include <vector>
 
 #define FQSM_TESTS(X) \
-    X(dense_table_overlay) \
     X(flat_model_assembly) \
+    // end
+
+#define FQSM_INTERNALS_TESTS(X) \
+    X(dense_table_overlay) \
     // end
 
 // Workshop: верни каталог test/workshop/ целиком и раскомментируй блок ниже + group "Workshop" в groups.
@@ -13,6 +16,7 @@
 //    // end
 
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(FQSM_INTERNALS_TESTS)
 //BASETEST_FORWARD_DECLARE_TESTS(IQSM_WORKSHOP_TESTS)
 
 int main() {
@@ -23,6 +27,7 @@ int main() {
 
     const std::vector<group> groups{
         group{ "all", BASETEST_MAKE_LIST_TESTS(FQSM_TESTS) },
+        group{ "internals", BASETEST_MAKE_LIST_TESTS(FQSM_INTERNALS_TESTS) },
     };
 
     base::testing::run_summary total{};
@@ -49,7 +54,7 @@ int main() {
 
 int main_one_test() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("all", &tests::flat_model_assembly)));
-        //BASETEST_LIST(BASETEST_NAMED("performance_lab2", &tests::immutable_containers_perf2)));
+        //BASETEST_LIST(BASETEST_NAMED("all", &tests::flat_model_assembly)));
+        BASETEST_LIST(BASETEST_NAMED("internals/dense_table_overlay", &tests::dense_table_overlay)));
     return s.ok() ? 0 : 1;
 }
