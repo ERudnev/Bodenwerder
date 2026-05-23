@@ -19,15 +19,21 @@ namespace fqsm::state {
         using TypeSet = std::set<meta::aspect::Rtid>;
         //using Invariants = validation::Block;
 
-        struct Aspect {
-            using StateSliceFactory = std::function<ref<slice::Abstract<axis::order::state>>()>;
-            using OverlaySliceFactory = std::function<ref<slice::Abstract<axis::order::state>>(const world::View&, const world::Patch&)>;
+        struct SliceFactory {
+            using State = std::function<ref<slice::Abstract<axis::order::state>>()>;
+            using StateClone = std::function<ref<slice::Abstract<axis::order::state>>(const world::View&)>;
+            using Overlay = std::function<ref<slice::Abstract<axis::order::state>>(const world::View&, const world::Patch&)>;
 
+            State createState;
+            StateClone cloneState;
+            Overlay createOverlay;
+        };
+
+        struct Aspect {
             const meta::aspect::Name name;
             TypeSet requiredByMe;
             TypeSet requiredBy;
-            StateSliceFactory createStateSlice;
-            OverlaySliceFactory createOverlaySlice;
+            SliceFactory factory;            
         };
 
         std::unordered_map<meta::aspect::Rtid, Aspect, meta::aspect::Rtid::Hash> aspects;

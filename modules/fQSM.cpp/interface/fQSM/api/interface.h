@@ -14,12 +14,7 @@
 //#include <iQSM/manipulators/item.h>
 
 // flow (transactions)
-//#include <iQSM/flow/transactions/accumulator.h>
-//#include <iQSM/flow/transactions/branch.h>
-//#include <iQSM/flow/transactions/once.h>
-//#include <iQSM/flow/transactions/sequence.h>
-//#include <iQSM/flow/transactions/staged.h>
-
+#include <fQSM/processing/realm.h>
 
 namespace fqsm::api {
     // Q1 language builtin types
@@ -47,7 +42,7 @@ namespace fqsm::api {
     using Schema = fqsm::Schema;
 
     // flow/transactions/contexts mechanism
-    //namespace context {
-    //    using Branch = ::fqsm::flow::Branch;
-    //}
+    namespace context {
+        using Realm = ::fqsm::processing::Realm;
+    }
 }

@@ -6,9 +6,8 @@
 #include <fQSM/aspect.h>
 #include <fQSM/meta/type_list.h>
 #include <fQSM/state/_forwards.h>
-#include <fQSM/state/patch.h>
+#include <fQSM/state/details/schemaBinding.h>
 #include <fQSM/state/schema.h>
-#include <fQSM/state/world.h>
 
 namespace fqsm::manipulator::schema {
     Schema merge(std::initializer_list<Schema> parts);
@@ -49,15 +48,7 @@ namespace fqsm::manipulator::schema {
             fqsm::meta::aspect::Name::of<Meta>(),
             detail::requirements_of<Meta>(),
             fqsm::state::SchemaData::TypeSet{},
-            [] {
-                return base::make_shared<fqsm::state::slice::Data<Meta, meta::axis::order::state>>();
-            },
-            [](const fqsm::state::world::View& state, const fqsm::state::world::Patch& patch) {
-                return base::make_shared<fqsm::state::slice::Overlay<Meta>>(
-                    state.template slice<Meta>(),
-                    patch.template slice<Meta>()
-                );
-            },
+            fqsm::state::details::makeSliceFactory<Meta>(),
         };
 
         out->aspects.emplace(fqsm::meta::aspect::Rtid::of<Meta>(), aspect);

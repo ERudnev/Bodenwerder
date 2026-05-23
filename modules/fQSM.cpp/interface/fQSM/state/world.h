@@ -45,7 +45,13 @@ namespace fqsm::state::world {
 
         explicit Data(Schema schema) : View(schema) {
             for (const auto& [aspectId, aspect] : schema->aspects) {
-                composite().slices.emplace(aspectId, aspect.createStateSlice());
+                composite().slices.emplace(aspectId, aspect.factory.createState());
+            }
+        }
+
+        explicit Data(const View& source) : View(source.schema) {
+            for (const auto& [aspectId, aspect] : schema->aspects) {
+                composite().slices.emplace(aspectId, aspect.factory.cloneState(source));
             }
         }
 

@@ -11,7 +11,7 @@ namespace fqsm::state::world {
 
         Overlay(const View& state, const Patch& patch) : View(state.schema) {
             for (const auto& [aspectId, aspect] : schema->aspects) {
-                composite().slices.emplace(aspectId, aspect.createOverlaySlice(state, patch));
+                composite().slices.emplace(aspectId, aspect.factory.createOverlay(state, patch));
             }
         }
 
