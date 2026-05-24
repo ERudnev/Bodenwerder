@@ -8,6 +8,7 @@
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/alias.h>
 #include <fQSM/meta/concepts.h>
+#include <fQSM/meta/specializations.h>
 
 namespace fqsm::meta::state {
     template<aspect::Any, axis::order>

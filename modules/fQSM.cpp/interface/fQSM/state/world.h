@@ -2,7 +2,7 @@
 
 #include <fQSM/meta/concepts.h>
 #include <fQSM/state/composite.h>
-#include <fQSM/state/schema.h>
+#include <fQSM/schema/dag.h>
 
 namespace fqsm::state::world {
     namespace axis = meta::axis;
@@ -44,14 +44,14 @@ namespace fqsm::state::world {
         using View::slice;
 
         explicit Data(Schema schema) : View(schema) {
-            for (const auto& [aspectId, aspect] : schema->aspects) {
-                composite().slices.emplace(aspectId, aspect.factory.createState());
+            for (const auto& [aspectId, aspect] : schema->nodes) {
+                composite().slices.emplace(aspectId, aspect.binding.createState());
             }
         }
 
         explicit Data(const View& source) : View(source.schema) {
-            for (const auto& [aspectId, aspect] : schema->aspects) {
-                composite().slices.emplace(aspectId, aspect.factory.cloneState(source));
+            for (const auto& [aspectId, aspect] : schema->nodes) {
+                composite().slices.emplace(aspectId, aspect.binding.cloneState(source));
             }
         }
 

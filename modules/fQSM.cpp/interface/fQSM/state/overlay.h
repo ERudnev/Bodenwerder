@@ -10,8 +10,8 @@ namespace fqsm::state::world {
         using CompositeData = composite::Overlay;
 
         Overlay(const View& state, const Patch& patch) : View(state.schema) {
-            for (const auto& [aspectId, aspect] : schema->aspects) {
-                composite().slices.emplace(aspectId, aspect.factory.createOverlay(state, patch));
+            for (const auto& [aspectId, aspect] : schema->nodes) {
+                composite().slices.emplace(aspectId, aspect.binding.createOverlay(state, patch));
             }
         }
 

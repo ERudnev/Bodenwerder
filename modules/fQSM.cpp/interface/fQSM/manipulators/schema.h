@@ -3,26 +3,27 @@
 #include <initializer_list>
 
 #include <base/shared_reference.h>
-#include <fQSM/aspect.h>
+
+#include <fQSM/meta/concepts.h>
 #include <fQSM/meta/type_list.h>
-#include <fQSM/state/_forwards.h>
-#include <fQSM/state/details/schemaBinding.h>
-#include <fQSM/state/schema.h>
+#include <fQSM/schema/dag.h>
+#include <fQSM/schema/details/builders.h>
 
 namespace fqsm::manipulator::schema {
+
     Schema merge(std::initializer_list<Schema> parts);
 
-    template<aspect::Any Meta>
+    template<meta::aspect::Any Meta>
     Schema aspect();
 }
 // impl:
 namespace fqsm::manipulator::schema {
     inline Schema merge(std::initializer_list<Schema> parts) {
-        auto out = base::make_shared<fqsm::state::SchemaData>();
+        auto out = base::make_shared<fqsm::schema::Dag>();
 
         for (const auto& part : parts) {
-            for (const auto& [type, aspect] : part->aspects) {
-                out->aspects.emplace(type, aspect);
+            for (const auto& [type, node] : part->nodes) {
+                out->nodes.emplace(type, node);
             }
         }
 
@@ -31,27 +32,27 @@ namespace fqsm::manipulator::schema {
 
     namespace detail {
         template<typename... Metas>
-        auto requirements_of(meta::internals::type_list<Metas...>) -> fqsm::state::SchemaData::TypeSet {
-            return fqsm::state::SchemaData::TypeSet{fqsm::meta::aspect::Rtid::of<Metas>()...};
+        auto requirements_of(meta::internals::type_list<Metas...>) -> fqsm::schema::Dag::TypeSet {
+            return fqsm::schema::Dag::TypeSet{fqsm::meta::aspect::Rtid::of<Metas>()...};
         }
 
-        template<aspect::Any Meta>
-        auto requirements_of() -> fqsm::state::SchemaData::TypeSet {
+        template<meta::aspect::Any Meta>
+        auto requirements_of() -> fqsm::schema::Dag::TypeSet {
             return requirements_of(typename meta::deps_of<Meta>::type{});
         }
     }
 
-    template<aspect::Any Meta>
+    template<meta::aspect::Any Meta>
     fqsm::Schema aspect() {
-        auto out = base::make_shared<fqsm::state::SchemaData>();
-        auto aspect = fqsm::state::SchemaData::Aspect{
+        auto out = base::make_shared<fqsm::schema::Dag>();
+        auto node = fqsm::schema::Dag::Node{
             fqsm::meta::aspect::Name::of<Meta>(),
             detail::requirements_of<Meta>(),
-            fqsm::state::SchemaData::TypeSet{},
-            fqsm::state::details::makeSliceFactory<Meta>(),
+            fqsm::schema::Dag::TypeSet{},
+            fqsm::schema::details::binding<Meta>(),
         };
 
-        out->aspects.emplace(fqsm::meta::aspect::Rtid::of<Meta>(), aspect);
+        out->nodes.emplace(fqsm::meta::aspect::Rtid::of<Meta>(), node);
         return fqsm::freeze(out);
     }
 }

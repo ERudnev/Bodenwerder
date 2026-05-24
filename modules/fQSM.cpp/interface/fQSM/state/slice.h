@@ -5,6 +5,7 @@
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/concepts.h>
 #include <fQSM/meta/alias.h>
+#include <fQSM/meta/specializations.h>
 #include <fQSM/state/_forwards.h>
 
 // local usings and forwards

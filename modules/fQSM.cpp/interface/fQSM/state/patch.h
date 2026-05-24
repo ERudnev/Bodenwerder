@@ -3,7 +3,7 @@
 #include <base/shared_reference.h>
 #include <fQSM/meta/concepts.h>
 #include <fQSM/state/composite.h>
-#include <fQSM/state/schema.h>
+#include <fQSM/schema/dag.h>
 
 namespace fqsm::state::world {
     namespace axis = meta::axis;
