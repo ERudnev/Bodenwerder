@@ -33,22 +33,22 @@ namespace fqsm::meta::aspect {
     concept Any = has::Id<Meta> and has::Quantum<Meta>;
 
     template<typename Meta>
-    concept Host = Any<Meta> and has::Autonomy<Meta>;
+    concept Standalone = Any<Meta> and has::Autonomy<Meta>;
 
     template<typename Meta>
-    concept Parasite = Any<Meta> and has::Host<Meta>;
+    concept Parasitic = Any<Meta> and has::Host<Meta>;
 
     // final archetype kind to be used in domains aspect meta-classes
     template<typename Meta>
-    concept Entity = Host<Meta>; // TODO: add Entity-specific requirements later...
+    concept Entity = Standalone<Meta>; // TODO: add Entity-specific requirements later...
 
     template<typename Meta>
-    concept Controller = Host<Meta> and has::Passport<Meta> and has::Worker<Meta>;
+    concept Controller = Standalone<Meta> and has::Passport<Meta> and has::Worker<Meta>;
 
     template<typename Meta>
-    concept Component = Parasite<Meta>;
+    concept Component = Parasitic<Meta>;
 
     template<typename Meta>
-    concept Attribute = Parasite<Meta>; // TODO: add attribute-specific stuff, for example "rule of creation(ctor)"
+    concept Attribute = Parasitic<Meta>; // TODO: add attribute-specific stuff, for example "rule of creation(ctor)"
 
 }

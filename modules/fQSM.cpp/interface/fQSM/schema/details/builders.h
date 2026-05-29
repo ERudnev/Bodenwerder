@@ -3,12 +3,12 @@
 #include <base/shared_reference.h>
 
 #include <fQSM/meta/concepts.h>
+#include <fQSM/processing/algorithm/integration.h>
 #include <fQSM/schema/binding.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/state/world.h>
 
 namespace fqsm::schema::details {
-    namespace aspect = meta::aspect;
     namespace axis = meta::axis;
 
     template<aspect::Any Meta, axis::order Order>
@@ -33,12 +33,18 @@ namespace fqsm::schema::details {
     }
 
     template<aspect::Any Meta>
+    void integratePatchSlice(state::world::Data& world, const state::world::Patch& patch) {
+        fqsm::processing::integration::integrate<Meta>(world, patch);
+    }
+
+    template<aspect::Any Meta>
     auto binding() -> Binding {
         return Binding{
             &createSlice<Meta, axis::order::state>,
             &createSlice<Meta, axis::order::patch>,
             &cloneState<Meta>,
             &createOverlay<Meta>,
+            &integratePatchSlice<Meta>,
         };
     }
 }

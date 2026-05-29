@@ -6,8 +6,9 @@
 #include <fQSM/state/world.h>
 
 namespace fqsm::processing {
-    struct Channel; // remove it?
+    struct Context;
     struct Permit;
+    using Channel = std::shared_ptr<Context>;
 }
 
 namespace fqsm::processing {

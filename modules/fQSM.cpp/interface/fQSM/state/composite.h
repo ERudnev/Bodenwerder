@@ -8,11 +8,11 @@
 #include <fQSM/meta/specializations.h>
 #include <fQSM/state/_forwards.h>
 #include <fQSM/state/slice.h>
+#include <fQSM/meta/runtimeId.h>
 
 
 namespace fqsm::state::composite {
     namespace axis = meta::axis;
-    namespace aspect = meta::aspect;
 
     template<axis::order Order>
     struct View {
@@ -67,15 +67,4 @@ namespace fqsm::state::composite {
         }
     };
 
-    struct Overlay : View<axis::order::state> {
-        using Entry = View<axis::order::state>::Entry;
-        using Slices = std::unordered_map<aspect::Rtid, ref<typename Entry::Abstract>, aspect::Rtid::Hash>;
-
-        Slices slices;
-
-    protected:
-        auto slice(aspect::Rtid runtimeTypeId) const -> cref<typename Entry::Abstract> override {
-            return slices.at(runtimeTypeId);
-        }
-    };
 };

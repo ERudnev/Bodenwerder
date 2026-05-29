@@ -4,6 +4,10 @@
 
 #include <fQSM/meta/concepts.h> // pre-registered level mechanism
 
+// this concepts are common:
+namespace fqsm {
+    namespace aspect = meta::aspect;
+}
 
 // default empty Aspect::Global
 namespace fqsm::detail::aspect {

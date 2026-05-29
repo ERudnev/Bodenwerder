@@ -9,8 +9,6 @@
 
 namespace fqsm::schema {
 
-    namespace aspect = meta::aspect;
-
     struct Dag {
         using TypeSet = std::set<aspect::Rtid>;
         // NB: using Invariants = validation::Block;

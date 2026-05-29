@@ -7,7 +7,6 @@
 
 namespace fqsm::state::world {
     namespace axis = meta::axis;
-    namespace aspect = meta::aspect;
 
     struct Patch {
         using CompositeView = composite::View<axis::order::patch>;

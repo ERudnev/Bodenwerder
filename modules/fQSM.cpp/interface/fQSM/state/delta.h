@@ -10,7 +10,6 @@
 
 namespace fqsm::state::item {
     namespace axis = meta::axis;
-    namespace aspect = meta::aspect;
 
     template<aspect::Any Meta>
     struct Delta {
@@ -29,7 +28,6 @@ namespace fqsm::state::item {
 
 namespace fqsm::state::slice {
     namespace axis = meta::axis;
-    namespace aspect = meta::aspect;
 
     template<aspect::Any Meta>
     struct Delta {

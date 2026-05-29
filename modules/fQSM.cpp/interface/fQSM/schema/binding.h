@@ -16,7 +16,6 @@ namespace fqsm::state::world {
 
 namespace fqsm::schema {
 
-    namespace aspect = meta::aspect;
     namespace axis = meta::axis;
 
     struct Binding {
@@ -24,6 +23,7 @@ namespace fqsm::schema {
         std::function<ref<state::slice::Abstract<axis::order::patch>>()> createPatch;
         std::function<ref<state::slice::Abstract<axis::order::state>>(const state::world::View&)> cloneState;
         std::function<ref<state::slice::Abstract<axis::order::state>>(const state::world::View&, const state::world::Patch&)> createOverlay;
+        std::function<void(state::world::Data&, const state::world::Patch&)> integratePatchSlice;
 
         template<aspect::Any Meta>
         static Binding make();

@@ -11,7 +11,6 @@
 // local usings and forwards
 namespace fqsm::state::slice {
     namespace axis = meta::axis;
-    namespace aspect = meta::aspect;
 
     template<aspect::Any Meta>
     struct Delta;

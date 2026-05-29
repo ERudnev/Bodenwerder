@@ -7,11 +7,15 @@ namespace tests::model {
     using namespace fqsm::api;
 
     struct SomeEntity : Entity<SomeEntity> {
-        struct Quantum { int value; };
+        struct Quantum {
+            integer value;
+        };
     };
 
     struct SomeComponent : Component<SomeComponent, SomeEntity>, Require<SomeEntity> {
-        struct Quantum { int value; };
+        struct Quantum {
+            string name;
+        };
     };
 }
 

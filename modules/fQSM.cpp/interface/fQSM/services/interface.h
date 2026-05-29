@@ -1,5 +1,7 @@
 #pragma once
 
+// Servies are "things, that Aspects can do"
+
 #include <optional>
 #include <vector>
 

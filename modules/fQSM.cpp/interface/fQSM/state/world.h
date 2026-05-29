@@ -6,19 +6,22 @@
 
 namespace fqsm::state::world {
     namespace axis = meta::axis;
-    namespace aspect = meta::aspect;
 
     struct View {
-        using CompositeView = composite::View<axis::order::state>;
+        using AbstractSlice = slice::Abstract<axis::order::state>;
 
         template<aspect::Any Meta>
-        using TableView = typename CompositeView::Entry::template Handle<Meta>;
+        using TableView = cref<slice::View<Meta, axis::order::state>>;
 
         template<aspect::Any Meta>
         using ItemsView = typename slice::View<Meta, axis::order::state>::ItemsView;
 
         template<aspect::Any Meta>
-        auto slice() const -> TableView<Meta> { return composite().template slice<Meta>(); }
+        auto slice() const -> TableView<Meta> {
+            return base::shared_ref_cast<const slice::View<Meta, axis::order::state>>(
+                slice(aspect::Rtid::of<Meta>())
+            );
+        }
 
         template<aspect::Any Meta>
         auto items() const -> const ItemsView<Meta>& { return slice<Meta>()->items(); }
@@ -28,7 +31,7 @@ namespace fqsm::state::world {
     protected:
         explicit View(Schema schema) : schema(schema) {}
 
-        virtual auto composite() const -> const CompositeView& = 0;
+        virtual auto slice(aspect::Rtid runtimeTypeId) const -> cref<AbstractSlice> = 0;
     };
 
     struct Data : View {
@@ -64,7 +67,7 @@ namespace fqsm::state::world {
         auto items() -> ItemsData<Meta>& { return slice<Meta>()->items(); }
 
     protected:
-        auto composite() const -> const CompositeView& override { return slices; }
+        auto slice(aspect::Rtid runtimeTypeId) const -> cref<AbstractSlice> override { return slices.slices.at(runtimeTypeId); }
 
     private:
         CompositeData slices;

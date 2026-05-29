@@ -21,6 +21,7 @@
 #define _INCOMPLETE_ throw ::base::detail::IncompleteError(::base::detail::make_incomplete_message(__FILE__, __LINE__, NOTECS_FUNCTION_NAME))
 #define _THROW_LOGIC_ERROR_ throw std::logic_error(::base::detail::make_logic_error_message(__FILE__, __LINE__, __func__))
 #define _IMPLEMENT_ME_ static_assert(false, "needs some code to implement here")
+#define _DEBUG_REPORT_ ::base::message("{}:{}: {}", __FILE__, __LINE__, NOTECS_FUNCTION_NAME)
 
 namespace base {
 

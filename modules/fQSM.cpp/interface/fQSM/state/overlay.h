@@ -7,15 +7,7 @@
 namespace fqsm::state::world {
 
     struct Overlay : View {
-        using CompositeData = composite::Overlay;
-
-        Overlay(const View& state, const Patch& patch) : View(state.schema) {
-            for (const auto& [aspectId, aspect] : schema->nodes) {
-                composite().slices.emplace(aspectId, aspect.binding.createOverlay(state, patch));
-            }
-        }
-
-        auto composite() -> CompositeData& { return slices; }
+        Overlay(const View& state, const Patch& patch) : View(state.schema), state(state), patch(patch) {}
 
         template<aspect::Any Meta>
         auto delta() const -> slice::Delta<Meta> {
@@ -23,10 +15,13 @@ namespace fqsm::state::world {
         }
 
     protected:
-        auto composite() const -> const CompositeView& override { return slices; }
+        auto slice(aspect::Rtid runtimeTypeId) const -> cref<AbstractSlice> override {
+            return schema->nodes.at(runtimeTypeId).binding.createOverlay(state, patch);
+        }
 
     private:
-        CompositeData slices;
+        const View& state;
+        const Patch& patch;
     };
 
 }
