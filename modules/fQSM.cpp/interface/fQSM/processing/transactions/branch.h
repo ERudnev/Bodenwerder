@@ -8,29 +8,40 @@
 namespace fqsm::processing::transaction {
 
     struct Branch : Transaction {
-        Branch(Permit& writing)
-            : Transaction(writing)
-            , patch(base::make_shared<state::world::Patch>(context->view.schema))
-            , overlay(context->view, *patch)
-        {
-            auto parent = context;
-    
-            context = std::make_shared<Context>(
+        Branch(Transaction& parent) : Branch(parent.childPolicy()) {}
+
+        Branch(ChildPolicy policy)
+            : patch(base::make_shared<state::world::Patch>(policy.view.schema))
+            , overlay(policy.view, *patch)
+        {    
+            context = std::make_shared<Context>(Context{
                 overlay,
                 patch,
-                [parent](Context::PatchRef patch) {
-                    if (parent->submit) {
-                        (*parent->submit)(patch);
-                        parent->submit = std::nullopt;
-                    }
-                }
-            );
+                policy.upstream
+            });
         }
     
         operator Reading() const override { return overlay; }
-    
+
     private:
+        ContextShared context;
         Context::PatchRef patch;
         state::world::Overlay overlay;
+
+        auto writing() -> Writing override {
+            return Gate{overlay, context};
+        }
+
+        auto makeChildPolicy() -> ChildPolicy override {
+            return ChildPolicy{
+                overlay,
+                [this](Context::PatchRef patch) { accept(patch); }
+            };
+        }
+
+        void accept(Context::PatchRef) {
+            _INCOMPLETE_;
+        }
+
     };
 }

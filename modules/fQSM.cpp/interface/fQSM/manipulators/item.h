@@ -6,7 +6,7 @@
 
 #include <fQSM/identifier.h>
 #include <fQSM/processing/_forwards.h>
-#include <fQSM/processing/transactions/gate.h>
+#include <fQSM/processing/context.h>
 
 namespace fqsm::manipulator::item {
     template<aspect::Standalone Meta>
@@ -29,14 +29,13 @@ namespace fqsm::manipulator::item {
     template<aspect::Standalone Meta>
     auto create(Writing context, Quantum<Meta> value) -> Id<Meta> {
         const auto id = Id<Meta>::generate_random();
-        transaction::Gate<Meta>{context}.addOrModify(id, std::move(value));
+        context.patch().template items<Meta>().insert(id, std::move(value));
         return id;
     }
 
-
     template<aspect::Parasitic Meta>
     void create(Writing context, Id<Meta> id, Quantum<Meta> value) {
-        transaction::Gate<Meta>{context}.addOrModify(id, std::move(value));
+        context.patch().template items<Meta>().insert(id, std::move(value));
     }
 
     template<aspect::Any Meta>
@@ -48,7 +47,7 @@ namespace fqsm::manipulator::item {
     auto getopt(Reading view, Id<Meta> id) -> std::optional<std::reference_wrapper<const Quantum<Meta>>> {
         const auto* found = view.items<Meta>().find(id);
         if (!found) return std::nullopt;
-        return base::cref(*found);
+        return cref(*found);
     }
 
 

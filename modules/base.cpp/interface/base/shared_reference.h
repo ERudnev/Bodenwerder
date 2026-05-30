@@ -22,6 +22,10 @@ namespace base {
         bool operator!=(std::nullptr_t) const = delete;
         void kill() { ptr_ = nullptr; }
 
+        static shared_ref killed() {
+            return shared_ref{killed_t{}};
+        }
+
         explicit shared_ref(std::shared_ptr<T> p)
             : ptr_(std::move(p))
         {
@@ -58,6 +62,12 @@ namespace base {
         friend bool operator!=(const shared_ref& a, const shared_ref& b) { return a.ptr_ != b.ptr_; }
 
     private:
+        struct killed_t {};
+
+        explicit shared_ref(killed_t)
+            : ptr_(nullptr)
+        {}
+
         std::shared_ptr<T> ptr_;
     };
 

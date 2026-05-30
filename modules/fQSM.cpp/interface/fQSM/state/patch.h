@@ -19,6 +19,9 @@ namespace fqsm::state::world {
         using TableData = typename CompositeData::Entry::template Handle<Meta>;
 
         template<aspect::Any Meta>
+        using ItemsView = typename slice::View<Meta, axis::order::patch>::ItemsView;
+
+        template<aspect::Any Meta>
         using ItemsData = typename slice::Data<Meta, axis::order::patch>::ItemsData;
 
         explicit Patch(Schema schema) : schema(schema) {}
@@ -44,6 +47,9 @@ namespace fqsm::state::world {
 
         template<aspect::Any Meta>
         auto items() -> ItemsData<Meta>& { return slice<Meta>()->items(); }
+
+        template<aspect::Any Meta>
+        auto items() const -> const ItemsView<Meta>& { return slice<Meta>()->items(); }
 
         const Schema schema;
 

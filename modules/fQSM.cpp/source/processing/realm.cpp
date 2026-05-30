@@ -1,23 +1,31 @@
-#include <fQSM/processing/realm.h>
+#include <fQSM/processing/transactions/realm.h>
 
-#include <fQSM/processing/algorithm/integration.h>
+#include <fQSM/processing/actions/integration.h>
 
 namespace fqsm::processing {
-    Permit Realm::createFork() {
+    auto Realm::writing() -> Writing {
         auto patch = base::make_shared<state::world::Patch>(world.schema);
-
-        Channel newChannel = std::make_shared<Context>(
+        auto context = std::make_shared<Context>(Context{
             world,
             patch,
             [this](Context::PatchRef patch) {
-                update(patch);
+                accept(patch);
             }
-        );
+        });
 
-        return grantPermit(newChannel);
+        return Gate{world, context};
     }
 
-    void Realm::update(Context::PatchRef patch) {
-        integration::integrate(world, *patch);
+    auto Realm::makeChildPolicy() -> ChildPolicy {
+        return ChildPolicy{
+            world,
+            [this](Context::PatchRef patch) {
+                accept(patch);
+            }
+        };
+    }
+
+    void Realm::accept(Context::PatchRef patch) {
+        actions::integrate(world, *patch);
     }
 }

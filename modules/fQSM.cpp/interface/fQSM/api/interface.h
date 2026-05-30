@@ -11,12 +11,11 @@
 // manipulators
 #include <fQSM/manipulators/schema.h>
 //#include <iQSM/manipulators/world.h>
-//#include <iQSM/manipulators/item.h>
+#include <fQSM/manipulators/item.h>
 
 // flow (transactions)
-#include <fQSM/processing/realm.h>
+#include <fQSM/processing/transactions/realm.h>
 #include <fQSM/processing/transactions/branch.h>
-#include <fQSM/processing/transactions/gate.h>
 
 namespace fqsm::api {
     // Q1 language builtin types
@@ -47,8 +46,5 @@ namespace fqsm::api {
     namespace context {
         using Realm = ::fqsm::processing::Realm;
         using Branch = ::fqsm::processing::transaction::Branch;
-
-        template<typename Meta>
-        using Gate = ::fqsm::processing::transaction::Gate<Meta>; 
     }
 }

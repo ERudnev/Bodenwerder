@@ -11,6 +11,7 @@
 
 namespace fqsm::state::world {
     struct View;
+    struct Data;
     struct Patch;
 }
 
@@ -24,6 +25,7 @@ namespace fqsm::schema {
         std::function<ref<state::slice::Abstract<axis::order::state>>(const state::world::View&)> cloneState;
         std::function<ref<state::slice::Abstract<axis::order::state>>(const state::world::View&, const state::world::Patch&)> createOverlay;
         std::function<void(state::world::Data&, const state::world::Patch&)> integratePatchSlice;
+        std::function<void(const state::world::View&, ref<state::world::Patch>, cref<state::world::Patch>)> mergePatchSlice;
 
         template<aspect::Any Meta>
         static Binding make();

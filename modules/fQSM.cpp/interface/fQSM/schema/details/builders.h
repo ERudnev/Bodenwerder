@@ -3,7 +3,8 @@
 #include <base/shared_reference.h>
 
 #include <fQSM/meta/concepts.h>
-#include <fQSM/processing/algorithm/integration.h>
+#include <fQSM/processing/actions/integration.h>
+#include <fQSM/processing/actions/merge.h>
 #include <fQSM/schema/binding.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/state/world.h>
@@ -34,7 +35,12 @@ namespace fqsm::schema::details {
 
     template<aspect::Any Meta>
     void integratePatchSlice(state::world::Data& world, const state::world::Patch& patch) {
-        fqsm::processing::integration::integrate<Meta>(world, patch);
+        fqsm::processing::actions::integrate<Meta>(world, patch);
+    }
+
+    template<aspect::Any Meta>
+    void mergePatchSlice(const state::world::View& base, ref<state::world::Patch> target, cref<state::world::Patch> source) {
+        fqsm::processing::actions::merge<Meta>(base, target, source);
     }
 
     template<aspect::Any Meta>
@@ -45,6 +51,7 @@ namespace fqsm::schema::details {
             &cloneState<Meta>,
             &createOverlay<Meta>,
             &integratePatchSlice<Meta>,
+            &mergePatchSlice<Meta>,
         };
     }
 }

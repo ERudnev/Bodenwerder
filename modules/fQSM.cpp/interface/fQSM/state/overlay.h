@@ -10,8 +10,11 @@ namespace fqsm::state::world {
         Overlay(const View& state, const Patch& patch) : View(state.schema), state(state), patch(patch) {}
 
         template<aspect::Any Meta>
-        auto delta() const -> slice::Delta<Meta> {
-            return slice::Delta<Meta>{*base::shared_ref_cast<const slice::Overlay<Meta>>(slice<Meta>())};
+        auto delta() const -> ::fqsm::state::slice::Delta<Meta> {
+            using SliceOverlay = ::fqsm::state::slice::Overlay<Meta>;
+            return ::fqsm::state::slice::Delta<Meta>{
+                *base::shared_ref_cast<const SliceOverlay>(View::slice<Meta>())
+            };
         }
 
     protected:
