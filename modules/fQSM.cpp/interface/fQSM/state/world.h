@@ -1,6 +1,6 @@
 #pragma once
 
-#include <fQSM/meta/concepts.h>
+#include <fQSM/state/details/aware_at.h>
 #include <fQSM/state/composite.h>
 #include <fQSM/schema/dag.h>
 
@@ -67,7 +67,7 @@ namespace fqsm::state::world {
         auto items() -> ItemsData<Meta>& { return slice<Meta>()->items(); }
 
     protected:
-        auto slice(aspect::Rtid runtimeTypeId) const -> cref<AbstractSlice> override { return slices.slices.at(runtimeTypeId); }
+        auto slice(aspect::Rtid runtimeTypeId) const -> cref<AbstractSlice> override { return aware_at(slices.slices, runtimeTypeId); }
 
     private:
         CompositeData slices;

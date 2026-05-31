@@ -7,6 +7,7 @@
 
 #include <fQSM/meta/alias.h>
 #include <fQSM/meta/concepts.h>
+#include <fQSM/meta/runtimeId.h>
 #include <fQSM/processing/context.h>
 
 namespace fqsm::processing::transaction {
@@ -53,7 +54,10 @@ namespace fqsm::processing::transaction {
         Quantum<Meta> requireActual(Reading source, Id<Meta> itemId) const {
             const auto actual = getActual(source, itemId);
             if (!actual) {
-                throw std::runtime_error(std::format("Quantal: missing item {}", itemId));
+                throw std::runtime_error(std::format(
+                    R"(cannot modify "{}" "{}": not present)",
+                    aspect::Rtid::name(aspect::Rtid::of<Meta>()),
+                    itemId));
             }
             return *actual;
         }

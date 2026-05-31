@@ -18,13 +18,15 @@ namespace fqsm::meta::aspect {
         static Rtid of() {
             return Rtid{typeid(Meta)};
         }
+
+        static std::string_view name(Rtid id);
     
         bool operator==(const Rtid&) const = default;
         bool operator<(const Rtid& other) const {
             const auto thisHash = value.hash_code();
             const auto otherHash = other.value.hash_code();
             if (thisHash != otherHash) return thisHash < otherHash;
-            return std::string_view{value.name()} < std::string_view{other.value.name()};
+            return name(*this) < name(other);
         }
 
         struct Hash {
@@ -73,6 +75,10 @@ namespace fqsm::meta::aspect {
             return {};
 #endif
         }
+    }
+
+    inline std::string_view Rtid::name(Rtid id) {
+        return detail::strip_decorations(id.value.name());
     }
 
     struct Name {

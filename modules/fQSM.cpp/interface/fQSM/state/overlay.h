@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include <fQSM/state/details/aware_at.h>
 #include <fQSM/state/delta.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/state/world.h>
@@ -33,7 +34,7 @@ namespace fqsm::state::world {
                 return it->second;
             }
 
-            auto created = schema->nodes.at(runtimeTypeId).binding.createOverlay(state, patch);
+            auto created = aware_at(schema->nodes, runtimeTypeId).binding.createOverlay(state, patch);
             const auto inserted = slices.emplace(runtimeTypeId, std::move(created));
             return inserted.first->second;
         }

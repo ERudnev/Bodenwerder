@@ -9,6 +9,7 @@
 #include <fQSM/state/_forwards.h>
 #include <fQSM/state/slice.h>
 #include <fQSM/meta/runtimeId.h>
+#include <fQSM/state/details/aware_at.h>
 
 
 namespace fqsm::state::composite {
@@ -56,14 +57,14 @@ namespace fqsm::state::composite {
         template<aspect::Any Meta>
         auto slice() -> typename Entry::template Handle<Meta> {
             using DataSlice = typename Entry::template Typed<Meta>;
-            return base::shared_ref_cast<DataSlice>(slices.at(aspect::Rtid::of<Meta>()));
+            return base::shared_ref_cast<DataSlice>(aware_at<Meta>(slices));
         }
 
         Slices slices;
 
     protected:
         auto slice(aspect::Rtid runtimeTypeId) const -> cref<typename View<Order>::Entry::Abstract> override {
-            return slices.at(runtimeTypeId);
+            return aware_at(slices, runtimeTypeId);
         }
     };
 

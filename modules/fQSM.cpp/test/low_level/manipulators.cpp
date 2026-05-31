@@ -13,6 +13,7 @@ void manipulators()
     
     const Schema schema = ask::schema::merge({
         ask::schema::aspect<SomeEntity>(),
+        ask::schema::aspect<SomeComponent>(),
     });
 
     //fqsm::World world = ask::world::create(schema);
