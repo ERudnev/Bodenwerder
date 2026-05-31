@@ -1,10 +1,8 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
 #include <optional>
-
-#include <base/testing/macros.h>
+#include <functional>
 
 #include <fQSM/meta/alias.h>
 #include <fQSM/meta/runtimeId.h>
@@ -35,23 +33,5 @@ namespace tests::debug {
             ++out;
         }
         return out;
-    }
-}
-
-namespace tests::expect {
-
-    template<fqsm::aspect::Any Meta>
-    void count(fqsm::Reading view, std::size_t expected) {
-        EXPECT_EQ(tests::debug::count<Meta>(view), expected);
-    }
-
-    template<fqsm::aspect::Any Meta>
-    void exists(fqsm::Reading view, fqsm::Id<Meta> id) {
-        EXPECT_TRUE(tests::debug::read<Meta>(view, id).has_value());
-    }
-
-    template<fqsm::aspect::Any Meta>
-    void missing(fqsm::Reading view, fqsm::Id<Meta> id) {
-        EXPECT_FALSE(tests::debug::read<Meta>(view, id).has_value());
     }
 }

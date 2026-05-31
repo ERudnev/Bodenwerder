@@ -23,7 +23,7 @@ namespace fqsm::schema {
         std::function<ref<state::slice::Abstract<axis::order::state>>()> createState;
         std::function<ref<state::slice::Abstract<axis::order::patch>>()> createPatch;
         std::function<ref<state::slice::Abstract<axis::order::state>>(const state::world::View&)> cloneState;
-        std::function<ref<state::slice::Abstract<axis::order::state>>(const state::world::View&, const state::world::Patch&)> createOverlay;
+        std::function<ref<state::slice::Abstract<axis::order::state>>(const state::world::View&, state::world::Patch&)> createOverlay;
         std::function<void(state::world::Data&, const state::world::Patch&)> integratePatchSlice;
         std::function<void(const state::world::View&, ref<state::world::Patch>, cref<state::world::Patch>)> mergePatchSlice;
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <utility>
 
 #include <fQSM/state/delta.h>
 #include <fQSM/state/patch.h>
@@ -11,11 +12,11 @@ namespace fqsm::state::world {
     struct Overlay : View {
         using Slices = std::unordered_map<aspect::Rtid, ref<AbstractSlice>, aspect::Rtid::Hash>;
 
-        Overlay(const View& state, const Patch& patch) : View(state.schema) {
-            for (const auto& [aspectId, aspect] : schema->nodes) {
-                slices.emplace(aspectId, aspect.binding.createOverlay(state, patch));
-            }
-        }
+        Overlay(const View& state, Patch& patch)
+            : View(state.schema)
+            , state(state)
+            , patch(patch)
+        {}
 
         template<aspect::Any Meta>
         auto delta() const -> ::fqsm::state::slice::Delta<Meta> {
@@ -27,11 +28,20 @@ namespace fqsm::state::world {
 
     protected:
         auto slice(aspect::Rtid runtimeTypeId) const -> cref<AbstractSlice> override {
-            return slices.at(runtimeTypeId);
+            const auto it = slices.find(runtimeTypeId);
+            if (it != slices.end()) {
+                return it->second;
+            }
+
+            auto created = schema->nodes.at(runtimeTypeId).binding.createOverlay(state, patch);
+            const auto inserted = slices.emplace(runtimeTypeId, std::move(created));
+            return inserted.first->second;
         }
 
     private:
-        Slices slices;
+        const View& state;
+        Patch& patch;
+        mutable Slices slices;
     };
 
 }

@@ -1,6 +1,7 @@
 #include "../_common.h"
 #include "../_model.h"
 
+#include <cstddef>
 #include <format>
 #include <string>
 #include <vector>
@@ -37,15 +38,27 @@ void transaction_hierarchy()
         const auto id = ask::item::create<SomeEntity>(main, {7});
         ask::item::create<SomeComponent>(main, id, {"seven"});
     }
+    EXPECT_EQ(debug::count<SomeEntity>(main), std::size_t{1});
+    EXPECT_EQ(debug::count<SomeComponent>(main), std::size_t{1});
 
     { // immediate complex change:
         experimental_manipulator(main, 17, "seventeen");
     }
+    EXPECT_EQ(debug::count<SomeEntity>(main), std::size_t{2});
+    EXPECT_EQ(debug::count<SomeComponent>(main), std::size_t{2});
 
     { // Branch changes will be applied with RAII (exiting this scope)
         context::Branch tx(main);
         experimental_manipulator(tx, 27, "twenty-seven");
+
+        // Branch sees base + patch, Realm stays stable.
+        EXPECT_EQ(debug::count<SomeEntity>(tx), std::size_t{3});
+        EXPECT_EQ(debug::count<SomeComponent>(tx), std::size_t{3});
+        EXPECT_EQ(debug::count<SomeEntity>(main), std::size_t{2});
+        EXPECT_EQ(debug::count<SomeComponent>(main), std::size_t{2});
     }
+    EXPECT_EQ(debug::count<SomeEntity>(main), std::size_t{3});
+    EXPECT_EQ(debug::count<SomeComponent>(main), std::size_t{3});
 
     { // 10 workers are branches: each will make their job independently, which will be applied after all
         std::vector<context::Branch> workers;
@@ -57,8 +70,18 @@ void transaction_hierarchy()
             auto& tx = workers[xx];
             for (int yy = 0; yy < 4; ++yy)
                 experimental_manipulator(tx, 1000 + xx * 100 + yy, std::format("series: {}, step: {}", xx, yy));
+
+            // Each worker sees base + its own patch (4 entities/components).
+            EXPECT_EQ(debug::count<SomeEntity>(tx), std::size_t{7});
+            EXPECT_EQ(debug::count<SomeComponent>(tx), std::size_t{7});
+            EXPECT_EQ(debug::count<SomeEntity>(main), std::size_t{3});
+            EXPECT_EQ(debug::count<SomeComponent>(main), std::size_t{3});
         }
     }
+
+    // 3 (previous) + 10 * 4 (workers).
+    EXPECT_EQ(debug::count<SomeEntity>(main), std::size_t{43});
+    EXPECT_EQ(debug::count<SomeComponent>(main), std::size_t{43});
 }
 
 } // namespace tests
