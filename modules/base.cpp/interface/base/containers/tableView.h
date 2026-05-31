@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <utility>
 
 namespace base {
@@ -124,6 +125,11 @@ public:
     virtual bool contains(const Key& key) const = 0;
     virtual const Val* find(const Key& key) const = 0;
     virtual const Val& at(const Key& key) const = 0;
+
+    std::optional<Val> get(const Key& key) const {
+        if (const auto* found = find(key)) return *found;
+        return std::nullopt;
+    }
 
     ReadIterator begin() const {
         return read_begin();

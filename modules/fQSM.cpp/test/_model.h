@@ -17,5 +17,11 @@ namespace tests::model {
             string name;
         };
     };
+
+    struct SecondaryAttribute : Attribute<SecondaryAttribute, SomeComponent>, Require<SomeComponent> {
+        struct Quantum {
+            integer attribute;
+        };
+    };
 }
 

@@ -16,10 +16,7 @@ namespace fqsm::processing {
         PatchRef patch; // always created outside
         Upstream upstream;
 
-        ~Context() {
-            _DEBUG_REPORT_;
-            finish();
-        }
+        ~Context() { finish(); } // _DEBUG_REPORT_;
 
         void finish() {
             if (upstream) {

@@ -4,7 +4,6 @@
 #include <functional>
 #include <iterator>
 #include <memory>
-#include <optional>
 #include <stdexcept>
 #include <unordered_map>
 #include <utility>
@@ -115,12 +114,6 @@ public:
     ValueType& at(const IdType& id) {
         auto* found = find(id);
         if (!found) throw std::out_of_range("DenseTable::at");
-        return *found;
-    }
-
-    std::optional<ValueType> get(const IdType& id) const {
-        const auto* found = find(id);
-        if (!found) return std::nullopt;
         return *found;
     }
 

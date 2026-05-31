@@ -107,23 +107,23 @@ namespace testing {
             }
         };
 
-        template<typename A, typename B>
+        template<typename T>
         struct EqCapture final {
             const char* a_expr;
             const char* b_expr;
             const char* file;
             int line;
 
-            std::decay_t<A> a;
-            std::decay_t<B> b;
+            T a;
+            T b;
 
-            EqCapture(const char* a_expr, const char* b_expr, const char* file, int line, A&& a, B&& b)
+            EqCapture(const char* a_expr, const char* b_expr, const char* file, int line, T a, T b)
                 : a_expr(a_expr)
                 , b_expr(b_expr)
                 , file(file)
                 , line(line)
-                , a(std::forward<A>(a))
-                , b(std::forward<B>(b))
+                , a(std::move(a))
+                , b(std::move(b))
             {}
 
             [[nodiscard]] bool ok() const { return a == b; }
@@ -152,8 +152,8 @@ namespace testing {
             [[nodiscard]] Helper helper() const { return Helper{this}; }
         };
 
-        template<typename A, typename B, typename FA, typename FB>
-        inline EqCapture<A, B> make_eq_capture(
+        template<typename FA, typename FB>
+        inline auto make_eq_capture(
             const char* a_expr,
             const char* b_expr,
             const char* file,
@@ -161,10 +161,12 @@ namespace testing {
             FA&& a_eval,
             FB&& b_eval)
         {
+            using T = std::decay_t<decltype(std::declval<FA>()())>;
+
             try {
-                return EqCapture<A, B>{a_expr, b_expr, file, line,
-                    std::forward<FA>(a_eval)(),
-                    std::forward<FB>(b_eval)()};
+                T a = std::forward<FA>(a_eval)();
+                T b = static_cast<T>(std::forward<FB>(b_eval)());
+                return EqCapture<T>{a_expr, b_expr, file, line, std::move(a), std::move(b)};
             } catch (const std::exception& e) {
                 testing::fail(std::format(
                     "EXCEPTION while evaluating EXPECT_EQ({}, {}): {} (at {}:{})",
@@ -190,10 +192,10 @@ namespace testing {
 
 #define EXPECT_EQ(a, b) \
     switch (0) case 0: default: \
-        if (const auto _cap = ::testing::detail::make_eq_capture<std::decay_t<decltype((a))>, std::decay_t<decltype((b))>>( \
+        if (const auto _cap = ::testing::detail::make_eq_capture( \
                 #a, #b, __FILE__, __LINE__, \
-                [&]() -> std::decay_t<decltype((a))> { return (a); }, \
-                [&]() -> std::decay_t<decltype((b))> { return (b); } \
+                [&]() { return (a); }, \
+                [&]() { return (b); } \
             ); _cap.ok()) ; \
         else _cap.helper() = ::testing::detail::Message()
 

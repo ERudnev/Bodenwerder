@@ -5,7 +5,7 @@
 #include <utility>
 
 #include <fQSM/identifier.h>
-#include <fQSM/processing/_forwards.h>
+#include <fQSM/processing/transactions/quantal.h>
 #include <fQSM/processing/context.h>
 
 namespace fqsm::manipulator::item {
@@ -19,7 +19,10 @@ namespace fqsm::manipulator::item {
     auto get(Reading, Id<Meta>)-> const Quantum<Meta>&;
 
     template<aspect::Any Meta>
-    auto getopt(Reading, Id<Meta>) -> std::optional<std::reference_wrapper<const Quantum<Meta>>>;
+    auto get_opt(Reading, Id<Meta>) -> std::optional<std::reference_wrapper<const Quantum<Meta>>>;
+
+    template<aspect::Any Meta>
+    using update = processing::transaction::Quantal<Meta>;
 }
 
 //
@@ -44,11 +47,10 @@ namespace fqsm::manipulator::item {
     }
 
     template<aspect::Any Meta>
-    auto getopt(Reading view, Id<Meta> id) -> std::optional<std::reference_wrapper<const Quantum<Meta>>> {
+    auto get_opt(Reading view, Id<Meta> id) -> std::optional<std::reference_wrapper<const Quantum<Meta>>> {
         const auto* found = view.items<Meta>().find(id);
         if (!found) return std::nullopt;
-        return cref(*found);
+        return std::cref(*found);
     }
-
 
 }

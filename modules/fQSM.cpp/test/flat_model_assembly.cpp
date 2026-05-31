@@ -24,38 +24,23 @@ namespace tests {
         const Schema schema = ask::schema::merge({
             ask::schema::aspect<SomeEntity>(),
             ask::schema::aspect<SomeComponent>(),
+            ask::schema::aspect<SecondaryAttribute>(),
         });
 
         //fqsm::World world = ask::world::create(schema);
         fqsm::state::world::Data world(schema);
         context::Realm main(world);
 
-        { // 2 trivial syncronous changes.. each with potentially heavy integration/normalization
-            const auto id = ask::item::create<SomeEntity>(main, {7});
-            ask::item::create<SomeComponent>(main, id, {"seven"});
+        const auto id = ask::item::create<SomeEntity>(main, {7});
+        ask::item::update<SomeComponent>(main, id, {"seven"});
+        {
+            auto tx = ask::item::update<SecondaryAttribute>(main, id,
+                {static_cast<integer>(ask::item::get<SomeComponent>(main, id).name.length())}
+            );
+            tx->attribute = 88;
+            tx->attribute = 77;
         }
 
-        { // immediate complex change:
-            experimental_manipulator(main, 17, "seventeen");
-        }
-
-        { // Branch changes will be applied with RAII (exiting this scope)
-            context::Branch tx(main);
-            experimental_manipulator(tx, 27, "twenty-seven");
-        }
-
-        { // 10 workers are branches: each will make their job independently, which will be applied after all
-            std::vector<context::Branch> workers;
-            for (int xx = 0; xx < 10; ++xx)
-                workers.emplace_back(context::Branch(main));
-
-            // while each worker does its job, actual world state in realm is constant, so it may work in MT environment
-            for (int xx = 0; xx < 10; ++xx) {
-                auto& tx = workers[xx];
-                for (int yy = 0; yy < 4; ++yy)
-                    experimental_manipulator(tx, 1000 + xx * 100 + yy, std::format("series: {}, step: {}", xx, yy));
-            }
-        }
     }
 }
 

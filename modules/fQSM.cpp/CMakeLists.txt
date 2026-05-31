@@ -34,6 +34,10 @@ target_sources(${PROJECT_NAME}_tests
     PRIVATE
         ${TESTING_SOURCES}
 )
+target_include_directories(${PROJECT_NAME}_tests
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/test
+)
 target_link_libraries(${PROJECT_NAME}_tests
     PRIVATE
         ${PROJECT_NAME}
