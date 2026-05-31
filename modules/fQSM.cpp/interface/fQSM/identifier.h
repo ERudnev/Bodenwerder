@@ -34,12 +34,12 @@ namespace fqsm {
 
 }
 
-// Enable: std::format("{}", Identifier) and thus logger::message(".. {}", id);
+// Enable: std::format("{}", Identifier) -> "#abc-1234" and thus logger::message(".. {}", id);
 template<typename Meta, typename BaseType>
 struct std::formatter<fqsm::Identifier<Meta, BaseType>, char> : std::formatter<std::string, char> {
     template<class FormatContext>
     auto format(const fqsm::Identifier<Meta, BaseType>& id, FormatContext& ctx) const {
-        return std::formatter<std::string, char>::format(fqsm::internal::id::info_hash(id.raw()), ctx);
+        return std::format_to(ctx.out(), "#{}", fqsm::internal::id::info_hash(id.raw()));
     }
 };
 

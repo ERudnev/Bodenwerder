@@ -1,6 +1,7 @@
 #pragma once
 
 #include <set>
+#include <string>
 #include <unordered_map>
 
 #include <fQSM/meta/runtimeId.h>
@@ -14,7 +15,7 @@ namespace fqsm::schema {
         // NB: using Invariants = validation::Block;
 
         struct Node {
-            aspect::Name name;
+            std::string name;
             TypeSet requiredByMe;
             TypeSet requiredBy;
 

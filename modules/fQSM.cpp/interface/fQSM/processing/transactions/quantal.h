@@ -55,7 +55,7 @@ namespace fqsm::processing::transaction {
             const auto actual = getActual(source, itemId);
             if (!actual) {
                 throw std::runtime_error(std::format(
-                    R"(cannot modify "{}" "{}": not present)",
+                    R"(cannot modify "{}" {}: not present)",
                     aspect::Rtid::name(aspect::Rtid::of<Meta>()),
                     itemId));
             }

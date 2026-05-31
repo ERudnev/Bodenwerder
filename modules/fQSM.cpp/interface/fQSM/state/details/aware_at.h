@@ -27,7 +27,7 @@ namespace fqsm::state {
         if (found == map.end()) {
             throw std::runtime_error(std::format(
                 R"(aware_at: missing entry, aspect "{}")",
-                aspect::Name::of<Meta>().value));
+                aspect::Rtid::name(aspectId)));
         }
         return found->second;
     }
