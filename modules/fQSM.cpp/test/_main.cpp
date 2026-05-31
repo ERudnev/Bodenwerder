@@ -8,6 +8,7 @@
 
 #define FQSM_INTERNALS_TESTS(X) \
     X(dense_table_overlay) \
+    X(transaction_hierarchy) \
     // end
 
 // Workshop: верни каталог test/workshop/ целиком и раскомментируй блок ниже + group "Workshop" в groups.

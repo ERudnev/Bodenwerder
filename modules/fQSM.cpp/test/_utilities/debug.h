@@ -1,41 +1,57 @@
 #pragma once
 
-#include <base/maybe.h>
-
 #include <cstddef>
+#include <functional>
+#include <optional>
 
-/*
-#include <iQSM/meta/aspect_id.h>
-#include <iQSM/meta/concepts.h>
-#include <iQSM/repository/permit.h>
-#include <iQSM/world.h>
-*/
+#include <base/testing/macros.h>
+
+#include <fQSM/meta/alias.h>
+#include <fQSM/meta/runtimeId.h>
+#include <fQSM/processing/_forwards.h>
+#include <fQSM/state/world.h>
 
 namespace tests::debug {
 
-    /*
-    template<iqsm::meta::Aspect Meta>
-    auto read_world(iqsm::Reading world, iqsm::Id<Meta> id) -> base::maybe<iqsm::Quantum<Meta>> {
-        if (not world->schema->aspects.contains(iqsm::types::aspectId<Meta>())) return {};
-        const auto field = world->field<Meta>();
-        if (not field->container.contains(id)) return {};
-        return *field->container.at(id);
+    template<fqsm::aspect::Any Meta>
+    auto has(fqsm::Reading view) -> bool {
+        return view.schema->nodes.contains(fqsm::aspect::Rtid::of<Meta>());
     }
 
-    template<iqsm::meta::Aspect Meta>
-    auto read(iqsm::Reading snapshot, iqsm::Id<Meta> id) -> base::maybe<iqsm::Quantum<Meta>> {
-        return read_world<Meta>(snapshot, id);
+    template<fqsm::aspect::Any Meta>
+    auto read(fqsm::Reading view, fqsm::Id<Meta> id) -> std::optional<std::reference_wrapper<const fqsm::Quantum<Meta>>> {
+        if (!has<Meta>(view)) return std::nullopt;
+        const auto* found = view.items<Meta>().find(id);
+        if (!found) return std::nullopt;
+        return std::cref(*found);
     }
 
-    template<iqsm::meta::Aspect Meta>
-    auto count_world(iqsm::Reading world) -> std::size_t {
-        if (not world->schema->aspects.contains(iqsm::types::aspectId<Meta>())) return 0;
-        return world->field<Meta>()->container.size();
+    template<fqsm::aspect::Any Meta>
+    auto count(fqsm::Reading view) -> std::size_t {
+        if (!has<Meta>(view)) return 0;
+
+        std::size_t out = 0;
+        for (const auto entry : view.items<Meta>()) {
+            ++out;
+        }
+        return out;
+    }
+}
+
+namespace tests::expect {
+
+    template<fqsm::aspect::Any Meta>
+    void count(fqsm::Reading view, std::size_t expected) {
+        EXPECT_EQ(tests::debug::count<Meta>(view), expected);
     }
 
-    template<iqsm::meta::Aspect Meta>
-    auto count(iqsm::Reading snapshot) -> std::size_t {
-        return count_world<Meta>(snapshot);
+    template<fqsm::aspect::Any Meta>
+    void exists(fqsm::Reading view, fqsm::Id<Meta> id) {
+        EXPECT_TRUE(tests::debug::read<Meta>(view, id).has_value());
     }
-    */
+
+    template<fqsm::aspect::Any Meta>
+    void missing(fqsm::Reading view, fqsm::Id<Meta> id) {
+        EXPECT_FALSE(tests::debug::read<Meta>(view, id).has_value());
+    }
 }
