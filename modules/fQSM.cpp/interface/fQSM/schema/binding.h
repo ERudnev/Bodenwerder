@@ -15,6 +15,10 @@ namespace fqsm::state::world {
     struct Patch;
 }
 
+namespace fqsm::analysis {
+    struct Patch;
+}
+
 namespace fqsm::schema {
 
     namespace axis = meta::axis;
@@ -26,6 +30,7 @@ namespace fqsm::schema {
         std::function<ref<state::slice::Abstract<axis::order::state>>(const state::world::View&, state::world::Patch&)> createOverlay;
         std::function<void(state::world::Data&, const state::world::Patch&)> integratePatchSlice;
         std::function<void(const state::world::View&, ref<state::world::Patch>, cref<state::world::Patch>)> mergePatchSlice;
+        std::function<void(const state::world::Patch&, analysis::Patch&)> analyzePatchSlice;
 
         template<aspect::Any Meta>
         static Binding make();

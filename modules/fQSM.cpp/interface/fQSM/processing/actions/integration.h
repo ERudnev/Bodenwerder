@@ -3,7 +3,13 @@
 #include <fQSM/state/patch.h>
 #include <fQSM/state/world.h>
 
+// facade
 namespace fqsm::processing::actions {
+    void integrate(state::world::Data&, const state::world::Patch&);
+}
+
+// implementation
+namespace fqsm::processing::actions::details {
 
     template<aspect::Any Meta>
     void integrate(state::world::Data& world, const state::world::Patch& patch) {
@@ -15,12 +21,6 @@ namespace fqsm::processing::actions {
             } else {
                 target.erase(entry.first);
             }
-        }
-    }
-
-    inline void integrate(state::world::Data& world, const state::world::Patch& patch) {
-        for (const auto& [aspectId, node] : world.schema->nodes) {
-            node.binding.integratePatchSlice(world, patch);
         }
     }
 }

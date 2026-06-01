@@ -6,6 +6,7 @@
 #include <fQSM/processing/actions/integration.h>
 #include <fQSM/processing/actions/merge.h>
 #include <fQSM/schema/binding.h>
+#include <fQSM/state/details/analysis.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/state/world.h>
 
@@ -35,12 +36,28 @@ namespace fqsm::schema::details {
 
     template<aspect::Any Meta>
     void integratePatchSlice(state::world::Data& world, const state::world::Patch& patch) {
-        fqsm::processing::actions::integrate<Meta>(world, patch);
+        fqsm::processing::actions::details::integrate<Meta>(world, patch);
     }
 
     template<aspect::Any Meta>
     void mergePatchSlice(const state::world::View& base, ref<state::world::Patch> target, cref<state::world::Patch> source) {
-        fqsm::processing::actions::merge<Meta>(base, target, source);
+        fqsm::processing::actions::details::merge<Meta>(base, target, source);
+    }
+
+    template<aspect::Any Meta>
+    void analyzePatchSlice(const state::world::Patch& patch, analysis::Patch& out) {
+        auto entry = analysis::Patch::SliceEntry{};
+        for (const auto patchEntry : patch.template items<Meta>()) {
+            if (patchEntry.second.has_value()) {
+                ++entry.modified;
+            } else {
+                ++entry.deleted;
+            }
+        }
+
+        if (entry.total() != 0) {
+            out.perSlice.emplace(aspect::Rtid::of<Meta>(), entry);
+        }
     }
 
     template<aspect::Any Meta>
@@ -52,6 +69,7 @@ namespace fqsm::schema::details {
             &createOverlay<Meta>,
             &integratePatchSlice<Meta>,
             &mergePatchSlice<Meta>,
+            &analyzePatchSlice<Meta>,
         };
     }
 }

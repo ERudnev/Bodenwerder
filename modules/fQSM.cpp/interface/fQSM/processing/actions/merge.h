@@ -5,7 +5,11 @@
 #include <fQSM/state/patch.h>
 
 namespace fqsm::processing::actions {
+    void merge(Reading base, fqsm::ref<Patch> target, fqsm::cref<Patch> source);
+}
 
+// implementation/details
+namespace fqsm::processing::actions::details {
     template<aspect::Any Meta>
     void merge(Reading base, fqsm::ref<Patch> target, fqsm::cref<Patch> source) {
         auto& targetItems = target->template items<Meta>();
@@ -24,7 +28,4 @@ namespace fqsm::processing::actions {
             }
         }
     }
-
-    void merge(Reading base, fqsm::ref<Patch> target, fqsm::cref<Patch> source);
-
 }
