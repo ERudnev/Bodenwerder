@@ -12,6 +12,10 @@ namespace fqsm::processing::actions {
 namespace fqsm::processing::actions::details {
     template<aspect::Any Meta>
     void merge(Reading base, fqsm::ref<Patch> target, fqsm::cref<Patch> source) {
+        if (source->template global<Meta>().has_value()) {
+            target->template global<Meta>() = source->template global<Meta>();
+        }
+
         auto& targetItems = target->template items<Meta>();
         const state::slice::Delta<Meta> delta{
             base.template slice<Meta>(),

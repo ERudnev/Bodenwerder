@@ -11,6 +11,7 @@
 // manipulators
 #include <fQSM/manipulators/schema.h>
 //#include <iQSM/manipulators/world.h>
+#include <fQSM/manipulators/global.h>
 #include <fQSM/manipulators/item.h>
 
 // flow (transactions)

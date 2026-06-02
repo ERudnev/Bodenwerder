@@ -17,6 +17,9 @@ namespace fqsm::state::world {
         using ItemsView = typename slice::View<Meta, axis::order::state>::ItemsView;
 
         template<aspect::Any Meta>
+        using GlobalView = typename slice::View<Meta, axis::order::state>::Global;
+
+        template<aspect::Any Meta>
         auto slice() const -> TableView<Meta> {
             return base::shared_ref_cast<const slice::View<Meta, axis::order::state>>(
                 slice(aspect::Rtid::of<Meta>())
@@ -25,6 +28,9 @@ namespace fqsm::state::world {
 
         template<aspect::Any Meta>
         auto items() const -> const ItemsView<Meta>& { return slice<Meta>()->items(); }
+
+        template<aspect::Any Meta>
+        auto global() const -> const GlobalView<Meta>& { return slice<Meta>()->global(); }
 
         const Schema schema;
 
@@ -43,7 +49,11 @@ namespace fqsm::state::world {
         template<aspect::Any Meta>
         using ItemsData = typename slice::Data<Meta, axis::order::state>::ItemsData;
 
+        template<aspect::Any Meta>
+        using GlobalData = typename slice::Data<Meta, axis::order::state>::Global;
+
         using View::items;
+        using View::global;
         using View::slice;
 
         explicit Data(Schema schema) : View(schema) {
@@ -65,6 +75,9 @@ namespace fqsm::state::world {
 
         template<aspect::Any Meta>
         auto items() -> ItemsData<Meta>& { return slice<Meta>()->items(); }
+
+        template<aspect::Any Meta>
+        auto global() -> GlobalData<Meta>& { return slice<Meta>()->global(); }
 
     protected:
         auto slice(aspect::Rtid runtimeTypeId) const -> cref<AbstractSlice> override { return aware_at(slices.slices, runtimeTypeId); }

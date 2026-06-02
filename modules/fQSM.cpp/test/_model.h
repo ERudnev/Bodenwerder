@@ -10,6 +10,9 @@ namespace tests::model {
         struct Quantum {
             integer value;
         };
+        struct Global {
+            integer modulus = 2;
+        };
     };
 
     struct SomeComponent : Component<SomeComponent, SomeEntity>, Require<SomeEntity> {

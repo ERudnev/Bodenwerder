@@ -13,6 +13,10 @@ namespace fqsm::processing::actions::details {
 
     template<aspect::Any Meta>
     void integrate(state::world::Data& world, const state::world::Patch& patch) {
+        if (patch.template global<Meta>().has_value()) {
+            world.template global<Meta>() = patch.template global<Meta>().value();
+        }
+
         auto& target = world.items<Meta>();
 
         for (const auto entry : patch.template items<Meta>()) {

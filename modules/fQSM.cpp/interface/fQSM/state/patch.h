@@ -24,6 +24,12 @@ namespace fqsm::state::world {
         template<aspect::Any Meta>
         using ItemsData = typename slice::Data<Meta, axis::order::patch>::ItemsData;
 
+        template<aspect::Any Meta>
+        using GlobalView = typename slice::View<Meta, axis::order::patch>::Global;
+
+        template<aspect::Any Meta>
+        using GlobalData = typename slice::Data<Meta, axis::order::patch>::Global;
+
         explicit Patch(Schema schema) : schema(schema) {}
 
         auto composite() -> CompositeData& { return slices; }
@@ -50,6 +56,12 @@ namespace fqsm::state::world {
 
         template<aspect::Any Meta>
         auto items() const -> const ItemsView<Meta>& { return slice<Meta>()->items(); }
+
+        template<aspect::Any Meta>
+        auto global() -> GlobalData<Meta>& { return slice<Meta>()->global(); }
+
+        template<aspect::Any Meta>
+        auto global() const -> const GlobalView<Meta>& { return slice<Meta>()->global(); }
 
         const Schema schema;
 

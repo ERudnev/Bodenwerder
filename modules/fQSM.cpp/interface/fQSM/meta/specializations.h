@@ -12,7 +12,7 @@
 
 namespace fqsm::meta::state {
     template<aspect::Any, axis::order>
-    struct ItemsLayout;
+    struct DataLayout;
 }
 
 namespace fqsm::meta::state {
@@ -34,13 +34,15 @@ namespace fqsm::meta::state {
 
     // Items Layout specs:
     template<aspect::Any Meta>
-    struct ItemsLayout<Meta, axis::order::state> {
-        using Element = Quantum<Meta>;
+    struct DataLayout<Meta, axis::order::state> {
+        using Item = Quantum<Meta>;
+        using Global = GlobalValue<Meta>;
     };
 
     template<aspect::Any Meta>
-    struct ItemsLayout<Meta, axis::order::patch> {
-        using Element = base::types::Patch<Quantum<Meta>>;
+    struct DataLayout<Meta, axis::order::patch> {
+        using Item = base::types::Patch<Quantum<Meta>>;
+        using Global = std::optional<GlobalValue<Meta>>;
     };
 }
 
