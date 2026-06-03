@@ -1,8 +1,9 @@
 namespace Q1_iQSM
   namespace Etalon
 
+    //@ in is not forward, it is mature Aspect definition
     entity Trivia
-   
+  
     entity SampleEntity
       static
         max_elements: integer = 2000

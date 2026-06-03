@@ -5,7 +5,6 @@
 
 // aspect types (Entity/Component/Attribute):
 #include <fQSM/api/aspects.h>
-//#include <fQSM/aspect.h>
 #include <fQSM/meta/require.h>
 
 // manipulators
