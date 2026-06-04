@@ -1,5 +1,5 @@
 #include "_common.h"
-#include "_model.h"
+#include "minimodel/aspects.q1.h"
 
 #include <map>
 #include <optional>
@@ -18,7 +18,7 @@ void dense_table_overlay()
     using PatchItem = fqsm::state::slice::View<SomeEntity, fqsm::meta::axis::order::patch>::Item;
     using View = base::TableView<Id, Item>;
 
-    const fqsm::Schema schema = fqsm::manipulator::schema::aspect<SomeEntity>();
+    const fqsm::Schema schema = fqsm::manipulation::schema::aspect<SomeEntity>();
 
     fqsm::state::world::Data state(schema);
     state.items<SomeEntity>().insert(Id{1}, Item{1});

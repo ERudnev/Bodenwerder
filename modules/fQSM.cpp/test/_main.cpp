@@ -9,8 +9,9 @@
 #define FQSM_INTERNALS_TESTS(X) \
     X(dense_table_overlay) \
     X(transaction_hierarchy) \
-    X(manipulators) \
+    X(manipulation) \
     X(globals) \
+    X(codex_and_indices) \
     // end
 
 #define FQSM_Q1RUNTIME_TESTS(X) \

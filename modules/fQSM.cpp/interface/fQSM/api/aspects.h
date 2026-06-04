@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fQSM/identifier.h>
-#include <fQSM/services/interface.h>
+#include <fQSM/features/interface.h>
 
 namespace fqsm::detail::aspects {
     template<typename Meta>

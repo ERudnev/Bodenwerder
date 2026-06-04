@@ -1,12 +1,12 @@
 #include "_common.h"
-#include "_model.h"
+#include "minimodel/aspects.q1.h"
 
 #include <fQSM/api/interface.h>
 #include <fQSM/state/world.h>
 
 namespace tests {
 
-void manipulators()
+void manipulation()
 {
     using namespace ::tests::model;
     using namespace fqsm::api;

@@ -1,5 +1,5 @@
 #include "_common.h"
-#include "_model.h"
+#include "minimodel/aspects.q1.h"
 
 #include <format>
 #include <string>

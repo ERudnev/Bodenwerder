@@ -7,11 +7,11 @@
 #include <fQSM/api/aspects.h>
 #include <fQSM/meta/require.h>
 
-// manipulators
-#include <fQSM/manipulators/schema.h>
-//#include <iQSM/manipulators/world.h>
-#include <fQSM/manipulators/global.h>
-#include <fQSM/manipulators/item.h>
+// manipulation
+#include <fQSM/manipulation/schema.h>
+//#include <iQSM/manipulation/world.h>
+#include <fQSM/manipulation/global.h>
+#include <fQSM/manipulation/item.h>
 
 // flow (transactions)
 #include <fQSM/processing/transactions/realm.h>
@@ -22,7 +22,7 @@ namespace fqsm::api {
     using namespace ::fqsm::q1;
 
     // add operations as short "ops":
-    namespace ask = ::fqsm::manipulator;
+    namespace ask = ::fqsm::manipulation;
     
     // Aspect types:
     template<typename Meta>

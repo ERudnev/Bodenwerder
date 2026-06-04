@@ -8,7 +8,7 @@
 #include <fQSM/processing/transactions/quantal.h>
 #include <fQSM/processing/context.h>
 
-namespace fqsm::manipulator::item {
+namespace fqsm::manipulation::item {
     template<aspect::Standalone Meta>
     auto create(Writing, Quantum<Meta> value) -> Id<Meta>;
 
@@ -27,7 +27,7 @@ namespace fqsm::manipulator::item {
 
 //
 // impl
-namespace fqsm::manipulator::item {
+namespace fqsm::manipulation::item {
 
     template<aspect::Standalone Meta>
     auto create(Writing context, Quantum<Meta> value) -> Id<Meta> {

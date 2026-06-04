@@ -13,7 +13,7 @@ namespace tests::model {
         struct Global {
             integer modulus = 2;
         };
-        //static const Codex codex;
+        static const Codex codex;
         struct Service : DefaultService {};
     };
 
@@ -21,12 +21,16 @@ namespace tests::model {
         struct Quantum {
             string name;
         };
+        static const Codex codex;
+        struct Service : DefaultService {};
     };
 
     struct SecondaryAttribute : Attribute<SecondaryAttribute, SomeComponent>, Require<SomeComponent> {
         struct Quantum {
             integer attribute;
         };
+        static const Codex codex;
+        struct Service : DefaultService {};
     };
 }
 

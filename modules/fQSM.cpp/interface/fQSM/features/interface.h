@@ -6,7 +6,8 @@
 #include <vector>
 
 #include <fQSM/meta/alias.h>
-#include <fQSM/services/codex.h>
+#include <fQSM/processing/_forwards.h>
+#include <fQSM/features/codex.h>
 
 namespace fqsm::service {
 

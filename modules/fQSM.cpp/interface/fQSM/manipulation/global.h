@@ -5,7 +5,7 @@
 #include <fQSM/meta/alias.h>
 #include <fQSM/processing/context.h>
 
-namespace fqsm::manipulator::global {
+namespace fqsm::manipulation::global {
     template<aspect::Any Meta>
     auto get(Reading) -> const GlobalValue<Meta>&;
 
@@ -15,7 +15,7 @@ namespace fqsm::manipulator::global {
 
 //
 // impl
-namespace fqsm::manipulator::global {
+namespace fqsm::manipulation::global {
     template<aspect::Any Meta>
     struct update {
         explicit update(Writing gate)

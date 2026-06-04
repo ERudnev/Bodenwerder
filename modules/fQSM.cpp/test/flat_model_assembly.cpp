@@ -1,5 +1,5 @@
 #include "_common.h"
-#include "_model.h"
+#include "minimodel/aspects.q1.h"
 
 #include <fQSM/api/interface.h>
 #include <fQSM/state/world.h>

@@ -9,7 +9,7 @@
 #include <fQSM/schema/dag.h>
 #include <fQSM/schema/details/builders.h>
 
-namespace fqsm::manipulator::schema {
+namespace fqsm::manipulation::schema {
 
     Schema merge(std::initializer_list<Schema> parts);
 
@@ -17,7 +17,7 @@ namespace fqsm::manipulator::schema {
     Schema aspect();
 }
 // impl:
-namespace fqsm::manipulator::schema {
+namespace fqsm::manipulation::schema {
     inline Schema merge(std::initializer_list<Schema> parts) {
         auto out = base::make_shared<fqsm::schema::Dag>();
 
