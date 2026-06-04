@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <fQSM/meta/alias.h>
+#include <fQSM/services/codex.h>
 
 namespace fqsm::service {
 
@@ -24,5 +25,7 @@ namespace fqsm::service {
         using Id = ::fqsm::Id<Meta>;
         using Quantum = ::fqsm::Quantum<Meta>;
         using ItemChange = std::optional<Quantum>; // nullopt = no change
+        using Reading = ::fqsm::Reading;
+        using Writing = ::fqsm::Writing;
     };
 }

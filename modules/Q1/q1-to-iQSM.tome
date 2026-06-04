@@ -58,7 +58,7 @@ namespace Q1-iQSM {
   declaration_forms: @Rule {
     Проекция форм объявлений (верхний уровень DSL) → C++.
     1: `struct S` в DSL проецируется в C++ как `struct S { ... };`.
-      1: Тело может содержать локальные `type` (как и раньше), поля `name: Type`, и **операции** трёх видов: `?` (query), `=` (command), `>` (фабрика значения с **обязательным** возвратом в DSL: `>name(...): ReturnType`). Форма `!` (инвариант/валидатор) **внутри struct не допускается** — инварианты относятся к аспектам с состоянием мира.
+      1: Тело может содержать локальные `type` (как и раньше), поля `name: Type`, и **операции** трёх видов: `?` (query), `=` (command), `>` (фабрика значения с **обязательным** возвратом в DSL: `>name(...): ReturnType`). Форма `!` (инвариант/нормализатор) **внутри struct не допускается** — инварианты относятся к аспектам с состоянием мира.
       2: Проекция операций **без** `Reading`/`Writing`/`Id` (у value-struct нет частицы):
         1: `?name(...): T` → обычно `T name(...) const;` для методов, читающих поля.
         2: `=name(...)` без возвращаемого типа в DSL → `void name(...);` как изменяющий метод.
@@ -74,9 +74,9 @@ namespace Q1-iQSM {
     7: `agent R @external(X)` проецируется как `struct R : Handle<R, RuntimeStorage, RuntimeAccess>, Require<...> { ... };` (шаблон `iqsm::aspects::Handle`).
       1: Смысл: `R` — доменный **agent** (логическая обёртка/handle), а `X` — внешний runtime **resource** identifier (не Q1-тип).
          В C++ физическая форма ресурса задаётся парой типов `RuntimeStorage` и `RuntimeAccess` на `Handle` (часто совпадают: `GLuint`, указатель окна и т.п.).
-      2: Аспектный заголовок остаётся доменным (agent-аспект): `Quantum`, `Materializer::Passport`, вложенный `struct Materializer : iqsm::resources::Materializer<R>` с `materialize` / `release`, плюс `Operations`.
+      2: Аспектный заголовок остаётся доменным (agent-аспект): `Quantum`, `Materializer::Passport`, вложенный `struct Materializer : iqsm::resources::Materializer<R>` с `materialize` / `release`, плюс `Service`.
       3: Значение рантайма на каждый `R::Id` физически хранится в `iqsm::resources::Layer<R>` внутри `resources::Manager` (один `RuntimeStorage` на id). Это хранилище не протаскивается в сигнатуры **доменных** операций, сгенерированных из DSL: те следуют общим правилам `element_and_table_projection` (`Reading` / `Writing` / `Id` и явные параметры из DSL).
-      4: Операции, которым нужен уже материализованный рантайм (типичный пример — `?provide` → `R::Operations::provide`), в C++ реализуются с доступом к слою **через мир**: `Reading` несёт `iqsm::resources::Provider` (`world->resources`), откуда берётся тот же менеджер, что привязан к `WorldObject` (например `world->resources->layer<R>().provide(id)`). Генератор **не** добавляет отдельный параметр `resources::Manager` / `Provider` в сигнатуры таких операций.
+      4: Операции, которым нужен уже материализованный рантайм (типичный пример — `?provide` → `R::Service::provide`), в C++ реализуются с доступом к слою **через мир**: `Reading` несёт `iqsm::resources::Provider` (`world->resources`), откуда берётся тот же менеджер, что привязан к `WorldObject` (например `world->resources->layer<R>().provide(id)`). Генератор **не** добавляет отдельный параметр `resources::Manager` / `Provider` в сигнатуры таких операций.
       5: Виртуальные методы `Materializer::materialize` / `release` задаются базовым классом `iqsm::resources::Materializer<R>`: там `resources::Manager` остаётся в сигнатуре, когда нужна мутация слоя менеджера (регистрация/снятие `RuntimeStorage`). Это рантайм-хуки материализации, а не проекция пользовательских `?/=/>` из DSL.
       6: Создание и уничтожение физического объекта выполняется в реализации `Materializer` (обычно `.cpp`): она строит `RuntimeStorage`, регистрирует его в слое при `materialize` и снимает при `release`.
       7: Интерпретация `RuntimeStorage`/`RuntimeAccess` в прикладных операциях — в `.cpp` аспекта.
@@ -97,8 +97,8 @@ namespace Q1-iQSM {
       2: Имена полей сохраняются.
       3: Если блок `table` отсутствует или пустой, он трактуется как пустой и проецируется как `struct Global {};`.
     2.5: Блок `static` описывает “вневременную” часть аспекта, не привязанную ни к `Id`, ни к `Global`, ни к `World`.
-      1: Статические константы объявляются в C++ внутри `Aspect::Operations` как `static constexpr` (если тип позволяет).
-      2: Статические функции объявляются в C++ внутри `Aspect::Operations` и получают ровно те аргументы, которые указаны в DSL.
+      1: Статические константы объявляются в C++ внутри `Aspect::Service` как `static constexpr` (если тип позволяет).
+      2: Статические функции объявляются в C++ внутри `Aspect::Service` и получают ровно те аргументы, которые указаны в DSL.
         1: Для `static`-функций не добавляются implicit-аргументы (`Reading/Writing`, `Id` и т.п.).
         2: Такие функции обязаны быть referentially transparent: их результат зависит только от явных аргументов.
       3: Тела `static`-функций размещаются в `.cpp` рядом с остальными операциями аспекта.
@@ -114,7 +114,7 @@ namespace Q1-iQSM {
         3: Для `attribute/component` (их `Id` совпадает с `Parent::Id`) “конструктор” в DSL может:
           1: либо создавать/материализовать сам parent и затем создавать attribute/component для этого же `Id`,
           2: либо работать от уже существующего parent-id (например, “создать attribute от моего имени для существующей сущности”).
-        4: Фабрики не отменяют инварианты: результат должен быть валиден относительно anchor/existence и прочих правил, иначе валидаторы сразу откатят/удалят созданное.
+        4: Фабрики не отменяют инварианты: результат должен быть валиден относительно anchor/existence и прочих правил, иначе нормализаторы сразу откатят/удалят созданное.
     4: Привязка контекста (implicit arguments):
       1: Все `element`-операции в C++ получают дополнительный параметр `Id` (ссылка на конкретную запись).
       2: Все операции (и element, и table) в C++ получают первым параметром политику доступа: `Reading` для `?`, `Writing` для `=` и `>`.
@@ -144,12 +144,12 @@ namespace Q1-iQSM {
 
   private_constructors_generation: @Rule {
     Генерация приватных аспектных конструкторов в C++-проекции.
-    1: Речь идёт не о публичных DSL-операциях `>name(...): ...`, а о специальных helper-конструкторах, на которые ссылаются structural/logical invariants.
+    1: Речь идёт не о публичных DSL-операциях `>name(...): ...`, а о специальных helper-конструкторах, на которые ссылаются structural/logical normas.
     2: Такие конструкторы не обязаны быть заметны в DSL и не считаются частью публичного аспектного API.
-    3: В C++ они размещаются в `.cpp` как `static`-функции локального helper-типа `Aspect_private : Aspect::Operations`.
+    3: В C++ они размещаются в `.cpp` как `static`-функции локального helper-типа `Aspect_private : Aspect::Service`.
       1: Каноническая форма имени для invariant-driven создания — `construct`.
       2: Этот helper-тип существует именно затем, чтобы не светить внутренние функции в заголовке и не смешивать их с пользовательскими операциями.
-    4: Тело такого конструктора пишется программистом вручную; генерация задаёт только место, сигнатурную форму и способ подключения через `invariants`.
+    4: Тело такого конструктора пишется программистом вручную; генерация задаёт только место, сигнатурную форму и способ подключения через `normas`.
     5: Если конструктору нужно только читать уже видимый мир и вычислить стартовый `Quantum`, его форма должна быть `construct(Reading, Parent::Id, Item<Parent>) -> Aspect::Quantum`.
       1: Это нормальная preferred-форма для “чистого” конструктора, который ничего не порождает дополнительно и не делает побочных write-операций.
       2: Такой конструктор не обязан “для вида” использовать write-мандат.
@@ -162,26 +162,26 @@ namespace Q1-iQSM {
 
   invariants_and_anchors: @Rule {
     Проекция структурных инвариантов и якорей.
-    1: Каждый аспектный C++-тип содержит `static const Invariants invariants;`, а определение `invariants` размещается в `.cpp`.
+    1: Каждый аспектный C++-тип содержит `static const Codex codex;`, а определение `normas` размещается в `.cpp`.
       1: Причина: чтобы не светить внутренние helper-операции и утилиты в заголовках и не смешивать декларацию данных с прикладной логикой.
-    2: Q1-валидаторы `!name(...)` проецируются по контексту объявления.
-      1: `element`-валидатор проецируется как `static auto name(Reading, Id, const Quantum&) -> ItemChange` в `Aspect_private`.
-      2: Такой валидатор подключается в `invariants.logical` как `invariant::for_each_item<Aspect, &Aspect_private::name>`.
-      3: `table`-валидатор проецируется как `static void name(Writing)` в `Aspect_private`.
-      4: Такой валидатор подключается в `invariants.logical` как прямой указатель `&Aspect_private::name`.
-    3: Для `attribute/tag ... of Parent` в invariants добавляется `Structural::anchor_attribute<Parent, Aspect>`.
-    4: Для `component ... of Parent` в invariants добавляется `Structural::isomorphic<Parent, Aspect, &Aspect_private::construct>`.
+    2: Q1-нормализаторы `!name(...)` проецируются по контексту объявления.
+      1: `element`-нормализатор проецируется как `static auto name(Reading, Id, const Quantum&) -> ItemChange` в `Aspect_private`.
+      2: Такой нормализатор подключается в `normas.logical` как `invariant::for_each_item<Aspect, &Aspect_private::name>`.
+      3: `table`-нормализатор проецируется как `static void name(Writing)` в `Aspect_private`.
+      4: Такой нормализатор подключается в `normas.logical` как прямой указатель `&Aspect_private::name`.
+    3: Для `attribute/tag ... of Parent` в normas добавляется `Structural::anchor_attribute<Parent, Aspect>`.
+    4: Для `component ... of Parent` в normas добавляется `Structural::isomorphic<Parent, Aspect, &Aspect_private::construct>`.
       1: Реальная `construct(...) -> Aspect::Quantum` размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
       2: Допустимы обе сигнатуры: `construct(Reading, Parent::Id, Item<Parent>)` для чистого вычисления начального кванта и `construct(Writing, Parent::Id, Item<Parent>)` для конструктора, который дополнительно меняет мир.
       3: В `Writing`-форме такой конструктор может порождать дополнительные delta-операции до того, как сам `Aspect` будет добавлен в world.
-    5: Поле `f: #Target @anchor` (decode: `Target::id`) добавляет в invariants `Structural::anchor<Target, Owner, &Quantum::f>`.
-    6: Если в `element` встречается хотя бы одно поле с директивой `@cache`, генерация добавляет в `invariants` валидатор `&Aspect_private::update`.
-      1: Реальная `update(...)` (или иной валидатор/реакция) размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
+    5: Поле `f: #Target @anchor` (decode: `Target::id`) добавляет в normas `Structural::anchor<Target, Owner, &Quantum::f>`.
+    6: Если в `element` встречается хотя бы одно поле с директивой `@cache`, генерация добавляет в `normas` нормализатор `&Aspect_private::update`.
+      1: Реальная `update(...)` (или иной нормализатор/реакция) размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
     7: Эталонная (golden) форма логики в `.cpp`:
-      1: Для каждого аспекта вводится локальный helper-тип `Aspect_private : Aspect::Operations` со статическими функциями.
-      2: Функции, на которые ссылаются `invariants` через указатели, размещаются именно в `Aspect_private` (например `construct`, `need_even`, `private_validate_*`).
+      1: Для каждого аспекта вводится локальный helper-тип `Aspect_private : Aspect::Service` со статическими функциями.
+      2: Функции, на которые ссылаются `normas` через указатели, размещаются именно в `Aspect_private` (например `construct`, `need_even`, `private_validate_*`).
     8: Эталонная форма публичных операций (golden):
-      1: Публичные операции аспектов объявляются в `Aspect::Operations`.
+      1: Публичные операции аспектов объявляются в `Aspect::Service`.
       2: В эталонах допускается префикс `example_` у операций, чтобы явно отделить “демонстрацию формы” от прикладных имён.
   }
 

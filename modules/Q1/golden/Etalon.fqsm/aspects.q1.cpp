@@ -11,14 +11,14 @@ namespace Q1_iQSM::Etalon {
 
     //
     // Trivia
-    const Invariants Trivia::invariants{
+    const Normas Trivia::normas{
         .structural = {},
         .logical = {},
     };
 
     //
     // SampleEntity
-    struct SampleEntity_private : SampleEntity::Operations {
+    struct SampleEntity_private : SampleEntity::Service {
 
         //@ Reading interface is required for possible other aspects
         static auto min_value(Reading, Id, const Quantum& before) -> ItemChange {
@@ -55,22 +55,22 @@ namespace Q1_iQSM::Etalon {
             }
         }
     };
-    auto SampleEntity::Operations::from_float(float value_approximate) -> integer {
+    auto SampleEntity::Service::from_float(float value_approximate) -> integer {
         const auto value = static_cast<integer>(value_approximate);
         return std::min(absolute_max, std::max(absolute_min, value));
     }
-    auto SampleEntity::Operations::create_from_float(Writing gate, float field_value) -> Id {
+    auto SampleEntity::Service::create_from_float(Writing gate, float field_value) -> Id {
         return ops::particle::create<SampleEntity>(gate, Quantum{from_float(field_value)});
     }
-    auto SampleEntity::Operations::example_const_fieldwide_method(Reading world) -> integer {
+    auto SampleEntity::Service::example_const_fieldwide_method(Reading world) -> integer {
         integer sum = integer{0};
         for (const auto& kv : world->field<SampleEntity>()->container) {
             sum = sum + kv.second->data_field;
         }
         return sum;
     }
-    auto SampleEntity::Operations::example_const_element_method(Reading, Id) -> float { return 0.0f; }
-    void SampleEntity::Operations::example_nonconst_fieldwide_method(Writing commit) {
+    auto SampleEntity::Service::example_const_element_method(Reading, Id) -> float { return 0.0f; }
+    void SampleEntity::Service::example_nonconst_fieldwide_method(Writing commit) {
         repo::Sequence tx{commit};
         const auto& container = tx->field<SampleEntity>()->container;
         if (container.empty()) return;
@@ -87,9 +87,9 @@ namespace Q1_iQSM::Etalon {
         }
         ops::particle::remove<SampleEntity>(tx, min_id);
     }
-    void SampleEntity::Operations::example_nonconst_element_method(Writing, Id) {}
+    void SampleEntity::Service::example_nonconst_element_method(Writing, Id) {}
 
-    const Invariants SampleEntity::invariants{
+    const Normas SampleEntity::normas{
         .structural = {},
         .logical = {
             invariant::for_each_item<SampleEntity, &SampleEntity_private::min_value>,
@@ -100,7 +100,7 @@ namespace Q1_iQSM::Etalon {
 
     //
     // Tag (exists for even SampleEntity::data_field)
-    struct Tag_private : Tag::Operations {
+    struct Tag_private : Tag::Service {
         static void modulus_clamped(Writing commit) {
             auto g = ops::global::modifier<Tag>(commit);
             if (g->modulus > integer{0}) return;
@@ -113,7 +113,7 @@ namespace Q1_iQSM::Etalon {
         }
     };
 
-    const Invariants Tag::invariants{
+    const Normas Tag::normas{
         .structural = {
             invariant::anchor_attribute<SampleEntity, Tag>,
         },
@@ -125,7 +125,7 @@ namespace Q1_iQSM::Etalon {
 
     //
     // Remnant
-    struct Remnant_private : Remnant::Operations {
+    struct Remnant_private : Remnant::Service {
         static void construct(Writing permit, Id id, Node<Tag>) {
             repo::Sequence sequence(permit);
             const auto trivia = ops::particle::create<Trivia>(sequence, Trivia::Quantum{});
@@ -147,7 +147,7 @@ namespace Q1_iQSM::Etalon {
         }
     };
 
-    const Invariants Remnant::invariants{
+    const Normas Remnant::normas{
         .structural = {
             invariant::isomorphic<Tag, Remnant, &Remnant_private::construct>,
             invariant::anchor<Trivia, Remnant, &Remnant::Quantum::trivia>,
@@ -159,17 +159,17 @@ namespace Q1_iQSM::Etalon {
 
     //
     // SampleComponent
-    struct SampleComponent_private : SampleComponent::Operations {
+    struct SampleComponent_private : SampleComponent::Service {
         static void private_construct(Writing commit, Id id, Node<SampleEntity>) {
             ops::particle::create<SampleComponent>(commit, id, Quantum{});
         }
     };
 
-    void SampleComponent::Operations::example_op_multiply(Writing commit, Id id, integer factor) {
+    void SampleComponent::Service::example_op_multiply(Writing commit, Id id, integer factor) {
         ops::particle::modifier<SampleEntity>(commit, id)->data_field *= factor;
     }
 
-    auto SampleComponent::Operations::example_op_div_with_remainder(Writing commit, Id id, integer divisor) -> integer {
+    auto SampleComponent::Service::example_op_div_with_remainder(Writing commit, Id id, integer divisor) -> integer {
         const auto safe = divisor > integer{0} ? divisor : integer{1};
         auto m = ops::particle::modifier<SampleEntity>(commit, id);
         const auto remainder = (m->data_field % safe);
@@ -177,7 +177,7 @@ namespace Q1_iQSM::Etalon {
         return remainder;
     }
     
-    const Invariants SampleComponent::invariants{
+    const Normas SampleComponent::normas{
         .structural = {
             invariant::isomorphic<SampleEntity, SampleComponent, &SampleComponent_private::private_construct>,
         },
@@ -186,7 +186,7 @@ namespace Q1_iQSM::Etalon {
 
     //
     // SampleAttribute
-    struct SampleAttribute_private : SampleAttribute::Operations {
+    struct SampleAttribute_private : SampleAttribute::Service {
         static bool need_even(Reading, SampleEntity::Id, Node<SampleEntity> node) {
             return (node->data_field % integer{2}) == integer{0};
         }
@@ -204,7 +204,7 @@ namespace Q1_iQSM::Etalon {
         }
     };
 
-    const Invariants SampleAttribute::invariants{
+    const Normas SampleAttribute::normas{
         .structural = {
             invariant::anchor_attribute<SampleEntity, SampleAttribute>,
             invariant::anchor<SampleEntity, SampleAttribute, &SampleAttribute::Quantum::neighbor_anchor>,
@@ -217,7 +217,7 @@ namespace Q1_iQSM::Etalon {
         },
     };
 
-    auto SampleAttribute::Operations::create_complex_constructor(Writing commit, SampleEntity::Id existing) -> Id {
+    auto SampleAttribute::Service::create_complex_constructor(Writing commit, SampleEntity::Id existing) -> Id {
         repo::Accumulator tx(commit);
         const auto& existing_entity = ops::particle::get<SampleEntity>(tx, existing);
 

@@ -12,7 +12,7 @@ namespace fqsm::schema {
 
     struct Dag {
         using TypeSet = std::set<aspect::Rtid>;
-        // NB: using Invariants = validation::Block;
+        // NB: using Normas = validation::Block;
 
         struct Node {
             std::string name;

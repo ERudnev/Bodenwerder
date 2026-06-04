@@ -13,6 +13,10 @@
     X(globals) \
     // end
 
+#define FQSM_Q1RUNTIME_TESTS(X) \
+    X(schema_world_from_etalon) \
+    // end
+
 // Workshop: верни каталог test/workshop/ целиком и раскомментируй блок ниже + group "Workshop" в groups.
 //#define IQSM_WORKSHOP_TESTS(X) \
 //    X(linear_commits) \
@@ -20,6 +24,7 @@
 
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_INTERNALS_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(FQSM_Q1RUNTIME_TESTS)
 //BASETEST_FORWARD_DECLARE_TESTS(IQSM_WORKSHOP_TESTS)
 
 int main() {
@@ -31,6 +36,7 @@ int main() {
     const std::vector<group> groups{
         group{ "all", BASETEST_MAKE_LIST_TESTS(FQSM_TESTS) },
         group{ "internals", BASETEST_MAKE_LIST_TESTS(FQSM_INTERNALS_TESTS) },
+        group{ "q1runtime", BASETEST_MAKE_LIST_TESTS(FQSM_Q1RUNTIME_TESTS) },
     };
 
     base::testing::run_summary total{};

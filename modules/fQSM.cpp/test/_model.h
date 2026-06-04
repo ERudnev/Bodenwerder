@@ -13,8 +13,8 @@ namespace tests::model {
         struct Global {
             integer modulus = 2;
         };
-        //static const Invariants invariants;
-        struct Operations : OwnManipulators{};
+        //static const Codex codex;
+        struct Service : DefaultService {};
     };
 
     struct SomeComponent : Component<SomeComponent, SomeEntity>, Require<SomeEntity> {

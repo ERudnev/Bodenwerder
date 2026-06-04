@@ -4,13 +4,13 @@
 
 namespace Q1_iQSM::Etalon { 
     
-    using namespace iqsm::q1_gateway;
+    using namespace fqsm::api;
 
     struct Trivia : Entity<Trivia>, Require<> {
         struct Quantum {};
         struct Global {};
-        static const Invariants invariants;
-        struct Operations : OwnManipulators{};
+        static const Codex codex;
+        struct Service : DefaultService{};
     };
 
     struct SampleEntity : Entity<SampleEntity>, Require<> {
@@ -18,8 +18,8 @@ namespace Q1_iQSM::Etalon {
             integer data_field;
         };
         struct Global {};
-        static const Invariants invariants;
-        struct Operations : OwnManipulators {
+        static const Codex codex;
+        struct Service : DefaultService {
             static constexpr integer max_elements = integer{2000};
             static constexpr integer absolute_min = integer{-1000};
             static constexpr integer absolute_max = integer{1000};
@@ -39,8 +39,8 @@ namespace Q1_iQSM::Etalon {
         struct Global {
             integer modulus = integer{2};
         };
-        static const Invariants invariants;
-        struct Operations : OwnManipulators{};
+        static const Codex codex;
+        struct Service : DefaultService{};
     };
 
     struct Remnant : Component<Remnant, Tag>, Require<Tag, Trivia> {
@@ -49,15 +49,15 @@ namespace Q1_iQSM::Etalon {
             Trivia::Id trivia;
         };
         struct Global {};
-        static const Invariants invariants;
-        struct Operations : OwnManipulators{};
+        static const Codex codex;
+        struct Service : DefaultService{};
     };
 
     struct SampleComponent : Component<SampleComponent, SampleEntity>, Require<SampleEntity> {
         struct Quantum {};
         struct Global {};
-        static const Invariants invariants;
-        struct Operations : OwnManipulators{
+        static const Codex codex;
+        struct Service : DefaultService{
             static auto example_op_multiply(Writing, Id, integer factor)->void;
             static auto example_op_div_with_remainder(Writing, Id, integer divisor)->integer; // returns remainder
         };
@@ -71,8 +71,8 @@ namespace Q1_iQSM::Etalon {
             std::vector<SampleComponent::Id> at_least_one_required;
         };
         struct Global {};
-        static const Invariants invariants;
-        struct Operations : OwnManipulators{
+        static const Codex codex;
+        struct Manipulators : DefaultService{
             static auto create_complex_constructor(Writing, SampleEntity::Id existing) -> Id;
         };
     };
