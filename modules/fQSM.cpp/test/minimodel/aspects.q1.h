@@ -14,7 +14,10 @@ namespace tests::model {
             integer modulus = 2;
         };
         static const Codex codex;
-        struct Service : DefaultService {};
+        struct Capabilities : BaseCapabilities {
+            struct Private;
+            static auto constantFunc(Reading, Id)->integer;
+        };
     };
 
     struct SomeComponent : Component<SomeComponent, SomeEntity>, Require<SomeEntity> {
@@ -22,7 +25,7 @@ namespace tests::model {
             string name;
         };
         static const Codex codex;
-        struct Service : DefaultService {};
+        struct Capabilities : BaseCapabilities {};
     };
 
     struct SecondaryAttribute : Attribute<SecondaryAttribute, SomeComponent>, Require<SomeComponent> {
@@ -30,7 +33,7 @@ namespace tests::model {
             integer attribute;
         };
         static const Codex codex;
-        struct Service : DefaultService {};
+        struct Capabilities : BaseCapabilities {};
     };
 }
 

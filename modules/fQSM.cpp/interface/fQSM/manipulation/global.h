@@ -2,7 +2,7 @@
 
 #include <utility>
 
-#include <fQSM/meta/alias.h>
+#include <fQSM/meta/interface.include.h>
 #include <fQSM/processing/context.h>
 
 namespace fqsm::manipulation::global {

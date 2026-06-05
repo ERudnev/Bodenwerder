@@ -21,17 +21,17 @@ void manipulation()
 
     { // create + get (standalone)
         const auto id = ask::item::create<SomeEntity>(main, {7});
-        EXPECT_EQ(ask::item::get<SomeEntity>(main, id).value, 7);
+        EXPECT_EQ(ask::item::get<SomeEntity>(main, id)->value, 7);
         EXPECT_EQ(debug::count<SomeEntity>(main), 1);
     }
 
-    { // create + get_opt (parasitic)
+    { // create + get (parasitic)
         const auto id = ask::item::create<SomeEntity>(main, {42});
-        EXPECT_FALSE(ask::item::get_opt<SomeComponent>(main, id).has_value());
+        EXPECT_FALSE(ask::item::get<SomeComponent>(main, id).exists());
 
         ask::item::create<SomeComponent>(main, id, {"hello"});
-        EXPECT_TRUE(ask::item::get_opt<SomeComponent>(main, id).has_value());
-        EXPECT_EQ(ask::item::get<SomeComponent>(main, id).name, "hello");
+        EXPECT_TRUE(ask::item::get<SomeComponent>(main, id).exists());
+        EXPECT_EQ(ask::item::get<SomeComponent>(main, id)->name, "hello");
         EXPECT_EQ(debug::count<SomeComponent>(main), 1);
     }
 
@@ -44,7 +44,7 @@ void manipulation()
             tx->name = "after";
         }
 
-        EXPECT_EQ(ask::item::get<SomeComponent>(main, id).name, "after");
+        EXPECT_EQ(ask::item::get<SomeComponent>(main, id)->name, "after");
     }
 
     { // update without precondition: modify ctor must fail

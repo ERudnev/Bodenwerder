@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <optional>
 #include <type_traits>
 #include <utility>
@@ -74,6 +75,55 @@ namespace base {
 
     private:
         std::optional<T> opt_;
+    };
+
+    template<typename T>
+    class maybe<std::reference_wrapper<T>> {
+    public:
+        using stored_type = std::reference_wrapper<T>;
+        using value_type = T;
+
+        constexpr maybe() noexcept = default;
+        constexpr maybe(std::nullopt_t) noexcept : opt_(std::nullopt) {}
+
+        constexpr maybe(T& v) noexcept : opt_(std::ref(v)) {}
+        constexpr maybe(stored_type v) noexcept : opt_(v) {}
+
+        constexpr maybe(const std::optional<stored_type>& o) : opt_(o) {}
+        constexpr maybe(std::optional<stored_type>&& o) noexcept(std::is_nothrow_move_constructible_v<std::optional<stored_type>>) : opt_(std::move(o)) {}
+
+        constexpr maybe& operator=(T& v) noexcept {
+            opt_ = std::ref(v);
+            return *this;
+        }
+
+        constexpr maybe& operator=(stored_type v) noexcept {
+            opt_ = v;
+            return *this;
+        }
+
+        [[nodiscard]] constexpr bool exists() const noexcept { return opt_.has_value(); }
+        constexpr explicit operator bool() const noexcept
+            requires (!std::is_same_v<std::remove_cv_t<T>, bool>)
+        {
+            return exists();
+        }
+
+        constexpr operator T&() const { return opt_.value().get(); }
+
+        constexpr T& value() const { return opt_.value().get(); }
+
+        constexpr T* operator->() const { return &opt_.value().get(); }
+        constexpr T& operator*() const { return opt_.value().get(); }
+
+        constexpr void reset() noexcept { opt_.reset(); }
+
+        [[nodiscard]] constexpr const std::optional<stored_type>& std_optional() const & { return opt_; }
+        [[nodiscard]] constexpr std::optional<stored_type>& std_optional() & { return opt_; }
+        [[nodiscard]] constexpr std::optional<stored_type>&& std_optional() && { return std::move(opt_); }
+
+    private:
+        std::optional<stored_type> opt_;
     };
 }
 

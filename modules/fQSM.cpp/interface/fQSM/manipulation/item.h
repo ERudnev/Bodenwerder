@@ -1,7 +1,8 @@
 #pragma once
 
+#include <base/maybe.h>
+
 #include <functional>
-#include <optional>
 #include <utility>
 
 #include <fQSM/identifier.h>
@@ -16,10 +17,7 @@ namespace fqsm::manipulation::item {
     void create(Writing, Id<Meta>, Quantum<Meta>);
 
     template<aspect::Any Meta>
-    auto get(Reading, Id<Meta>)-> const Quantum<Meta>&;
-
-    template<aspect::Any Meta>
-    auto get_opt(Reading, Id<Meta>) -> std::optional<std::reference_wrapper<const Quantum<Meta>>>;
+    auto get(Reading, Id<Meta>) -> base::maybe<std::reference_wrapper<const Quantum<Meta>>>;
 
     template<aspect::Any Meta>
     using update = processing::transaction::Quantal<Meta>;
@@ -42,12 +40,7 @@ namespace fqsm::manipulation::item {
     }
 
     template<aspect::Any Meta>
-    auto get(Reading view, Id<Meta> id) -> const Quantum<Meta>& {
-        return view.items<Meta>().at(id);
-    }
-
-    template<aspect::Any Meta>
-    auto get_opt(Reading view, Id<Meta> id) -> std::optional<std::reference_wrapper<const Quantum<Meta>>> {
+    auto get(Reading view, Id<Meta> id) -> base::maybe<std::reference_wrapper<const Quantum<Meta>>> {
         const auto* found = view.items<Meta>().find(id);
         if (!found) return std::nullopt;
         return std::cref(*found);

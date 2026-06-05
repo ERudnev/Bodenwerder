@@ -4,7 +4,7 @@
 #include <optional>
 #include <functional>
 
-#include <fQSM/meta/alias.h>
+#include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/runtimeId.h>
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/state/world.h>

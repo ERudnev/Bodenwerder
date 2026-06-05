@@ -4,7 +4,7 @@
 
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/concepts.h>
-#include <fQSM/meta/alias.h>
+#include <fQSM/meta/interface.include.h>
 #include <fQSM/state/_forwards.h>
 #include <fQSM/state/slice.h>
 

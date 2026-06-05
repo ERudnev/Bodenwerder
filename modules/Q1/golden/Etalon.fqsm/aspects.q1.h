@@ -10,7 +10,7 @@ namespace Q1_iQSM::Etalon {
         struct Quantum {};
         struct Global {};
         static const Codex codex;
-        struct Service : DefaultService{};
+        struct Service : BaseCapabilities{};
     };
 
     struct SampleEntity : Entity<SampleEntity>, Require<> {
@@ -19,7 +19,7 @@ namespace Q1_iQSM::Etalon {
         };
         struct Global {};
         static const Codex codex;
-        struct Service : DefaultService {
+        struct Service : BaseCapabilities {
             static constexpr integer max_elements = integer{2000};
             static constexpr integer absolute_min = integer{-1000};
             static constexpr integer absolute_max = integer{1000};
@@ -40,7 +40,7 @@ namespace Q1_iQSM::Etalon {
             integer modulus = integer{2};
         };
         static const Codex codex;
-        struct Service : DefaultService{};
+        struct Service : BaseCapabilities{};
     };
 
     struct Remnant : Component<Remnant, Tag>, Require<Tag, Trivia> {
@@ -50,14 +50,14 @@ namespace Q1_iQSM::Etalon {
         };
         struct Global {};
         static const Codex codex;
-        struct Service : DefaultService{};
+        struct Service : BaseCapabilities{};
     };
 
     struct SampleComponent : Component<SampleComponent, SampleEntity>, Require<SampleEntity> {
         struct Quantum {};
         struct Global {};
         static const Codex codex;
-        struct Service : DefaultService{
+        struct Service : BaseCapabilities{
             static auto example_op_multiply(Writing, Id, integer factor)->void;
             static auto example_op_div_with_remainder(Writing, Id, integer divisor)->integer; // returns remainder
         };
@@ -72,7 +72,7 @@ namespace Q1_iQSM::Etalon {
         };
         struct Global {};
         static const Codex codex;
-        struct Manipulators : DefaultService{
+        struct Manipulators : BaseCapabilities{
             static auto create_complex_constructor(Writing, SampleEntity::Id existing) -> Id;
         };
     };

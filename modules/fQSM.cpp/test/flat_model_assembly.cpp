@@ -35,7 +35,7 @@ namespace tests {
         ask::item::update<SomeComponent>(main, id, {"seven"});
         {
             auto tx = ask::item::update<SecondaryAttribute>(main, id,
-                {static_cast<integer>(ask::item::get<SomeComponent>(main, id).name.length())}
+                {static_cast<integer>(ask::item::get<SomeComponent>(main, id)->name.length())}
             );
             tx->attribute = 88;
             tx->attribute = 77;

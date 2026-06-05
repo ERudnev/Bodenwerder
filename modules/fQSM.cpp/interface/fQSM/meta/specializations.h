@@ -10,9 +10,14 @@
 #include <fQSM/meta/concepts.h>
 #include <fQSM/meta/specializations.h>
 
-namespace fqsm::meta::state {
-    template<aspect::Any, axis::order>
-    struct DataLayout;
+// forwards:
+namespace fqsm {
+    namespace aspect = meta::aspect;
+
+    namespace meta::state {
+        template<aspect::Any, axis::order>
+        struct DataLayout;
+    }
 }
 
 namespace fqsm::meta::state {

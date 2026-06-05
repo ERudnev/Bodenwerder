@@ -3,7 +3,7 @@
 #include <format>
 #include <stdexcept>
 
-#include <fQSM/meta/alias.h>
+#include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/concepts.h>
 #include <fQSM/meta/runtimeId.h>
 

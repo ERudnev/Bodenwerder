@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fQSM/identifier.h>
-#include <fQSM/features/interface.h>
+#include <fQSM/features/interface.include.h>
 
 namespace fqsm::detail::aspects {
     template<typename Meta>
@@ -17,13 +17,13 @@ namespace fqsm::aspects {
     template<typename Meta>
     struct Entity : detail::aspects::Any<Meta> {
         using Id = Identifier<Meta>;
-        using DefaultService = service::Group<Meta>;
+        using BaseCapabilities = capabilities::Aspect<Meta>;
     };
 
     template<typename Meta, typename WorkerType>
     struct Controller : detail::aspects::Any<Meta> {
         using Id = Identifier<Meta>;
-        using DefaultService = service::Group<Meta>;
+        using BaseCapabilities = capabilities::Aspect<Meta>;
         using WorkerAspect = WorkerType;
     };
 
@@ -31,14 +31,14 @@ namespace fqsm::aspects {
     struct Attribute : detail::aspects::Any<Meta> {
         using Id = typename HostType::Id;
         using HostAspect = HostType;
-        using DefaultService = service::Group<Meta>;
+        using BaseCapabilities = capabilities::Aspect<Meta>;
     };
 
     template<typename Meta, typename HostType>
     struct Component : detail::aspects::Any<Meta> {
         using Id = typename HostType::Id;
         using HostAspect = HostType;
-        using DefaultService = service::Group<Meta>;
+        using BaseCapabilities = capabilities::Aspect<Meta>;
     };
 }
 
