@@ -1,6 +1,6 @@
 #pragma once
 
-#include <fQSM/state/overlay.h>
+#include <fQSM/state/preview.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/processing/transaction.h>
 
@@ -12,29 +12,29 @@ namespace fqsm::processing::transaction {
 
         Branch(ChildPolicy policy)
             : patch(base::make_shared<state::world::Patch>(policy.view.schema))
-            , overlay(policy.view, *patch)
+            , preview(policy.view, *patch)
         {    
             context = std::make_shared<Context>(Context{
-                overlay,
+                preview,
                 patch,
                 policy.upstream
             });
         }
     
-        operator Reading() const override { return overlay; }
+        operator Reading() const override { return preview; }
 
     private:
         ContextShared context;
         Context::PatchRef patch;
-        state::world::Overlay overlay;
+        state::world::Preview preview;
 
         auto writing() -> Writing override {
-            return Gate{overlay, context};
+            return Gate{preview, context};
         }
 
         auto makeChildPolicy() -> ChildPolicy override {
             return ChildPolicy{
-                overlay,
+                preview,
                 [this](Context::PatchRef patch) { accept(patch); }
             };
         }

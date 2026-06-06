@@ -50,14 +50,14 @@ namespace fqsm::state::slice {
     };
 
     template<aspect::Any Meta>
-    struct Overlay : View<Meta, axis::order::state> {
+    struct Preview : View<Meta, axis::order::state> {
         using StateSlice = View<Meta, axis::order::state>;
         using PatchSlice = View<Meta, axis::order::patch>;
         using Item = typename StateSlice::Item;
         using Global = typename StateSlice::Global;
         using ItemsView = typename StateSlice::ItemsView;
 
-        Overlay(cref<StateSlice> state, cref<PatchSlice> patch) : state(state), patch(patch), table(state->items(), patch->items()) {}
+        Preview(cref<StateSlice> state, cref<PatchSlice> patch) : state(state), patch(patch), table(state->items(), patch->items()) {}
 
         const ItemsView& items() const override { return table; }
         const Global& global() const override {

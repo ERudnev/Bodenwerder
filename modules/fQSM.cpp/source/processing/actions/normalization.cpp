@@ -50,7 +50,9 @@ namespace fqsm::processing::actions::normalization {
 
     // build normalization patch
     Patch normalizer(const State& state, const Patch& patch) {
-        return Patch(patch.schema);
+        Patch fix(patch.schema);
+        // call all requires Norma instances to form "fix" contents...
+        return fix;
     }
 
 

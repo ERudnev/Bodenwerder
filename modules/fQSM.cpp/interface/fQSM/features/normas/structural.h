@@ -7,6 +7,9 @@ namespace fqsm::processing::normas::structural {
     
     template<aspect::Component ComponentAspect, aspect::Entity EntityAspect>
     struct Component : Norma {
-        //void normalize(Patch&, 
+
+        void apply(const Preview& preUpdate, Patch& fixAccumulator) override {
+        }
+        
     };
 }

@@ -84,7 +84,7 @@ namespace fqsm::state::slice {
         };
     
         Delta(cref<StateSlice> state, cref<PatchSlice> patch) : state(state), patch(patch) {}
-        explicit Delta(const Overlay<Meta>& overlay) : Delta(overlay.state, overlay.patch) {}
+        explicit Delta(const Preview<Meta>& preview) : Delta(preview.state, preview.patch) {}
 
         auto begin() const -> Iterator { return Iterator{*this, patch->items().begin(), patch->items().end()}; }
         auto end() const -> Iterator { return Iterator{*this, patch->items().end(), patch->items().end()}; }

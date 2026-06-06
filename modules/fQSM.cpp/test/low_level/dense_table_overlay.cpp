@@ -4,7 +4,7 @@
 #include <map>
 #include <optional>
 
-#include <fQSM/state/overlay.h>
+#include <fQSM/state/preview.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/state/world.h>
 
@@ -31,10 +31,10 @@ void dense_table_overlay()
     patch.items<SomeEntity>().insert(Id{4}, PatchItem{Item{40}});
     patch.items<SomeEntity>().insert(Id{5}, PatchItem{std::nullopt});
 
-    fqsm::state::world::Overlay overlay(state, patch);
+    fqsm::state::world::Preview preview(state, patch);
 
     const View& view = state.items<SomeEntity>();
-    const View& overlayView = overlay.items<SomeEntity>();
+    const View& overlayView = preview.items<SomeEntity>();
 
     EXPECT_TRUE(view.contains(Id{1}));
     EXPECT_EQ(view.at(Id{1}).value, 1);
@@ -65,7 +65,7 @@ void dense_table_overlay()
 
     std::map<int, std::string> delta;
 
-    for (const auto change : overlay.delta<SomeEntity>()) {
+    for (const auto change : preview.delta<SomeEntity>()) {
         if (change.add()) delta.emplace(change.id.raw(), "add");
         if (change.update()) delta.emplace(change.id.raw(), "update");
         if (change.remove()) delta.emplace(change.id.raw(), "remove");

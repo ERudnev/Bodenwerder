@@ -5,6 +5,7 @@
 namespace fqsm::state::world {
     struct View;
     struct Data;
+    struct Preview;
     struct Patch;
 }
 

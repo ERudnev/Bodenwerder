@@ -10,10 +10,10 @@
 
 namespace fqsm::state::world {
 
-    struct Overlay : View {
+    struct Preview : View {
         using Slices = std::unordered_map<aspect::Rtid, ref<AbstractSlice>, aspect::Rtid::Hash>;
 
-        Overlay(const View& state, Patch& patch)
+        Preview(const View& state, const Patch& patch)
             : View(state.schema)
             , state(state)
             , patch(patch)
@@ -21,7 +21,7 @@ namespace fqsm::state::world {
 
         template<aspect::Any Meta>
         auto delta() const -> ::fqsm::state::slice::Delta<Meta> {
-            using SliceOverlay = ::fqsm::state::slice::Overlay<Meta>;
+            using SliceOverlay = ::fqsm::state::slice::Preview<Meta>;
             return ::fqsm::state::slice::Delta<Meta>{
                 *base::shared_ref_cast<const SliceOverlay>(View::slice<Meta>())
             };
@@ -41,7 +41,7 @@ namespace fqsm::state::world {
 
     private:
         const View& state;
-        Patch& patch;
+        const Patch& patch;
         mutable Slices slices;
     };
 

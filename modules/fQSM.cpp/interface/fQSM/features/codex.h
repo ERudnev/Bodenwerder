@@ -5,6 +5,6 @@
 namespace fqsm::service::internal {
 
     struct Codex {
-
+        //std::vector<
     };
 }
