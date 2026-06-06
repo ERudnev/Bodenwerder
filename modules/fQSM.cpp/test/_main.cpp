@@ -12,6 +12,7 @@
     X(manipulation) \
     X(globals) \
     X(codex_and_indices) \
+    X(connections) \
     // end
 
 #define FQSM_Q1RUNTIME_TESTS(X) \

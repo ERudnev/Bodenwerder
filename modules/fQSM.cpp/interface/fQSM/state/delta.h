@@ -5,8 +5,8 @@
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/concepts.h>
 #include <fQSM/meta/interface.include.h>
-#include <fQSM/state/_forwards.h>
-#include <fQSM/state/slice.h>
+#include <fQSM/state/slice/preview.h>
+#include <fQSM/state/slice/view.h>
 
 namespace fqsm::state::item {
     namespace axis = meta::axis;

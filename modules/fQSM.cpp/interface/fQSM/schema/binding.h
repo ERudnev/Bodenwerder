@@ -7,7 +7,7 @@
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/concepts.h>
 #include <fQSM/references.h>
-#include <fQSM/state/slice.h>
+#include <fQSM/state/slice/view.h>
 
 namespace fqsm::state::world {
     struct View;

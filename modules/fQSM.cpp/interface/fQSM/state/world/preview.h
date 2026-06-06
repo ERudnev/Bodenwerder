@@ -6,7 +6,7 @@
 #include <fQSM/state/details/aware_at.h>
 #include <fQSM/state/delta.h>
 #include <fQSM/state/patch.h>
-#include <fQSM/state/world.h>
+#include <fQSM/state/world/view.h>
 
 namespace fqsm::state::world {
 

@@ -1,4 +1,4 @@
-#include <Etalon/elementary.q1.h>
+#include <Etalon.fqsm/elementary.q1.h>
 
 #include <cmath>
 

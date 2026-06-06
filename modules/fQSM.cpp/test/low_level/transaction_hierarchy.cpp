@@ -6,7 +6,7 @@
 #include <vector>
 
 #include <fQSM/api/interface.h>
-#include <fQSM/state/world.h>
+#include <fQSM/state/world/data.h>
 
 namespace {
     using namespace ::tests::model;

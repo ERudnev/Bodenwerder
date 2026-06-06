@@ -1,6 +1,6 @@
 #pragma once
 
-#include <fQSM/state/preview.h>
+#include <fQSM/state/world/preview.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/processing/transaction.h>
 

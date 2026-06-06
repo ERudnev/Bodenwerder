@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fQSM/processing/_forwards.h>
+#include <fQSM/state/world/view.h>
 #include <fQSM/state/delta.h>
 #include <fQSM/state/patch.h>
 

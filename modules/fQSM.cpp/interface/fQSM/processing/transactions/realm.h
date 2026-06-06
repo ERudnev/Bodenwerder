@@ -1,6 +1,6 @@
 #pragma once
 
-#include <fQSM/state/world.h>
+#include <fQSM/state/world/data.h>
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/transaction.h>
 

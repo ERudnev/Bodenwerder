@@ -1,4 +1,4 @@
-#include <Etalon/aspects.q1.h>
+#include <Etalon.fqsm/aspects.q1.h>
 
 #include <iQSM/api/_gateway_equal.h>
 
@@ -39,7 +39,7 @@ namespace Q1_iQSM::Etalon {
 
         static void some_logic_fieldwide_invariant(Writing commit) {
             repo::Sequence tx{commit};
-            const auto& container = tx->field<SampleEntity>()->container;
+            const auto& container = tx->slice<SampleEntity>()->container;
             const auto cap = static_cast<std::size_t>(max_elements);
             if (container.size() <= cap) return;
 

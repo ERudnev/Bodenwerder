@@ -5,7 +5,7 @@
 #include <fQSM/references.h>
 #include <fQSM/state/_forwards.h>
 
-#include <fQSM/state/world.h>
+//#include <fQSM/state/world.h>
 
 namespace fqsm::processing {
     using View = ::fqsm::state::world::View;

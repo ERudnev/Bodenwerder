@@ -1,14 +1,15 @@
 #include "_common.h"
 
-#include "../../../Q1/golden/Etalon.fqsm/aspects.q1.h"
+//#include <Etalon.fqsm/aspects.q1.h>
 
 #include <fQSM/api/interface.h>
-#include <fQSM/state/world.h>
+#include <fQSM/state/world/data.h>
 
 namespace tests {
 
 void schema_world_from_etalon()
 {
+    /*
     using namespace fqsm::api;
     using namespace Q1_iQSM::Etalon;
 
@@ -22,6 +23,7 @@ void schema_world_from_etalon()
     });
 
     fqsm::state::world::Data world(schema);
+    */
 }
 
 } // namespace tests

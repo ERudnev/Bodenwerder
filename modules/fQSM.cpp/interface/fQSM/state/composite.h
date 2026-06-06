@@ -7,7 +7,8 @@
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/specializations.h>
 #include <fQSM/state/_forwards.h>
-#include <fQSM/state/slice.h>
+#include <fQSM/state/slice/data.h>
+#include <fQSM/state/slice/view.h>
 #include <fQSM/meta/rtid.h>
 #include <fQSM/state/details/aware_at.h>
 
