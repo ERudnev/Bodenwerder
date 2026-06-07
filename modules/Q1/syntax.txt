@@ -13,7 +13,8 @@
     'enum'
     '~' : type-of operator (reference to the type of an expression/member)
     '::' : namespace scope or global namespace if starts path
-    ':' : "has type" (for structure field: `field: Type`, and for operation return: `name(args): ReturnType` after the closing `)`). If `ReturnType` is the local aspect id written as `#`, use a **space** after the colon: `: #` (not `:#`).
+    ':' : "has type" (for structure field: `field: Type` and for named parameters like `name: Type`)
+    '->' : operation return type after the closing `)` (for example `name(args) -> ReturnType`). If `ReturnType` is the local aspect id written as `#`, use spaces around the arrow: `-> #`.
     '@' : preprocessor directives (seebelow)
     'entity' : declares entity (root particle)
     'attribute' : declares attribute (particle with Owner)
@@ -29,7 +30,7 @@
 
     '?' : declares read-only operation (query) signature
     '=' : declares state-changing operation (command) signature
-    '>' : declares factory (convenience create) signature; must include return type after `)`: `: #` for the enclosing aspect’s id, or a concrete type (e.g. `: S` for a factory inside `struct S`)
+    '>' : declares factory (convenience create) signature; must include return type after `)`: `-> #` for the enclosing aspect’s id, or a concrete type (e.g. `-> S` for a factory inside `struct S`)
     '!' : declares validator/invariant signature
 
   reserved:
@@ -75,7 +76,7 @@
 
   struct bodies (inside `struct`, alongside fields):
     Operation signatures use the same markers as in aspect `element`, but `!` (validator/invariant) is not allowed.
-    `?` query, `=` command, `>` factory with explicit return type (for a value-struct factory, typically `: StructName`)
+    `?` query, `=` command, `>` factory with explicit return type (for a value-struct factory, typically `-> StructName`)
 
   particle blocks:
     'element' : per-item state+queries/commands (stored in Field container as Item Quantum)

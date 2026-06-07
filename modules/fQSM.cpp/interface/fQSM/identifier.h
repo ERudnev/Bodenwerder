@@ -18,6 +18,8 @@ namespace fqsm {
     public:
         Identifier() = delete;
 
+        using Raw = BaseType;
+
         explicit Identifier(BaseType v) : value(v) {}
 
         // do not use for any kind of logic! Only for std::map and other containers!
@@ -26,7 +28,7 @@ namespace fqsm {
 
         bool operator==(const Identifier& rhs) const { return value == rhs.value; }
 
-        BaseType raw() const { return value; }
+        Raw raw() const { return value; }
 
     private:
         BaseType value;

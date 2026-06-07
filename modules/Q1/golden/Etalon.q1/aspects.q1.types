@@ -9,17 +9,17 @@ namespace Q1_iQSM
         max_elements: integer = 2000
         absolute_min: integer = -1000 // static constants are always defined
         absolute_max: integer = 1000
-        ?from_float(float): integer
+        ?from_float(float) -> integer
       element
         data_field: integer
-        ?const_element_method(): string
+        ?const_element_method() -> string
         =nonconst_element_method()
         !min_value()
         !max_value()
       table
-        >from_float(value_approximate: float): #
-        ?find_first(integer): #?
-        ?const_fieldwide_method(): integer // just sum of all values
+        >from_float(value_approximate: float) -> #
+        ?find_first(integer) -> #?
+        ?const_fieldwide_method() -> integer // just sum of all values
         =nonconst_fieldwide_method() // removes one item with minimal value
         !some_logic_fieldwide_invariant()
 
@@ -37,7 +37,7 @@ namespace Q1_iQSM
     component SampleComponent of SampleEntity
       element
         =example_op_multiply(factor: integer)
-        =example_op_div_with_remainder(divisor: integer): integer
+        =example_op_div_with_remainder(divisor: integer) -> integer
 
     attribute SampleAttribute of SampleEntity
       element
@@ -46,7 +46,7 @@ namespace Q1_iQSM
         every_essential: vector<#SampleEntity> @anchor(all)
         at_least_one_required: vector<#SampleComponent> @anchor(any)
       table
-        >complex_constructor(existing: #SampleEntity): #
+        >complex_constructor(existing: #SampleEntity) -> #
         
         
 

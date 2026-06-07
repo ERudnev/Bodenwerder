@@ -17,9 +17,9 @@ namespace Q1_iQSM
         type Scalar as float
         x: Scalar
         y: Scalar
-        ?length(): Scalar
+        ?length() -> Scalar
         =normalize(Scalar)
-        >fromScalar(argument: Scalar):StructWithMethods // {x,x}
+        >fromScalar(argument: Scalar) -> StructWithMethods // {x,x}
         // normas "!" not allowed
 
     namespace Namespaces

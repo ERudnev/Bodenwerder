@@ -1,0 +1,18 @@
+namespace tests
+  namespace model
+    entity SomeEntity
+      element
+        value: integer
+        parent: #? @anchor
+        ?constantFunc() -> integer
+      table
+        modulus: integer
+    
+    component SomeComponent of SomeEntity
+      element
+        name: string
+    
+    attribute SecondaryAttribute of SomeComponent
+      element
+        attribute: integer
+      

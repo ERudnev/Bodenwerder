@@ -8,16 +8,11 @@
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/alias.h>
 #include <fQSM/meta/concepts.h>
-#include <fQSM/meta/specializations.h>
 
 // forwards:
-namespace fqsm {
-    namespace aspect = meta::aspect;
-
-    namespace meta::state {
-        template<aspect::Any, axis::order>
-        struct DataLayout;
-    }
+namespace fqsm::meta::state {
+    template<aspect::Any, axis::order>
+    struct DataLayout;
 }
 
 namespace fqsm::meta::state {

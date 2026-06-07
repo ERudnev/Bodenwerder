@@ -9,6 +9,7 @@ namespace tests::model {
     struct SomeEntity : Entity<SomeEntity> {
         struct Quantum {
             integer value;
+            //optional<anchor<SomeEntity>> parent;
         };
         struct Global {
             integer modulus = 2;

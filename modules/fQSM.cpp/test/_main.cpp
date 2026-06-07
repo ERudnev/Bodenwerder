@@ -13,6 +13,7 @@
     X(globals) \
     X(codex_and_indices) \
     X(connections) \
+    X(relations_table) \
     // end
 
 #define FQSM_Q1RUNTIME_TESTS(X) \

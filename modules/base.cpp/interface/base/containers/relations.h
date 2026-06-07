@@ -151,12 +151,28 @@ namespace base {
             }
         }
 
-        Range find_a(AId a) const {
-            return Range(links, find_slots(byA, a));
+        std::vector<BId> find_a(AId a) const {
+            const auto& slots = find_slots(byA, a);
+            std::vector<BId> result;
+            result.reserve(slots.size());
+
+            for (const SizeType slot : slots) {
+                result.push_back(links[slot].b);
+            }
+
+            return result;
         }
 
-        Range find_b(BId b) const {
-            return Range(links, find_slots(byB, b));
+        std::vector<AId> find_b(BId b) const {
+            const auto& slots = find_slots(byB, b);
+            std::vector<AId> result;
+            result.reserve(slots.size());
+
+            for (const SizeType slot : slots) {
+                result.push_back(links[slot].a);
+            }
+
+            return result;
         }
 
         bool contains(AId a, BId b) const {
