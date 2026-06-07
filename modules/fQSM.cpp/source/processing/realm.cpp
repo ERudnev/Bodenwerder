@@ -1,6 +1,7 @@
 #include <fQSM/processing/transactions/realm.h>
 
-#include <fQSM/processing/actions/integration.h>
+#include <fQSM/state/patch.h>
+#include <fQSM/processing/actions/normalization.h>
 
 namespace fqsm::processing {
     auto Realm::writing() -> Writing {
@@ -26,6 +27,6 @@ namespace fqsm::processing {
     }
 
     void Realm::accept(Context::PatchRef patch) {
-        actions::integrate(world, *patch);
+        actions::update(world, *patch);
     }
 }

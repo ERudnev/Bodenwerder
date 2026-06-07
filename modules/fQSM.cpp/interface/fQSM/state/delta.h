@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iterator>
+#include <stdexcept>
 
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/concepts.h>
@@ -11,6 +12,12 @@
 namespace fqsm::state::item {
     namespace axis = meta::axis;
 
+    enum class ChangeType {
+        addition,
+        deletion,
+        modification,
+    };
+
     template<aspect::Any Meta>
     struct Delta {
         using Id = fqsm::Id<Meta>;
@@ -20,9 +27,17 @@ namespace fqsm::state::item {
         const Item* before;
         const Item* after;        
 
+        bool good() const { return before || after; }
         bool add() const { return !before && after; }
         bool update() const { return before && after; }
         bool remove() const { return before && !after; }
+
+        auto kind() const -> ChangeType {
+            if (add()) return ChangeType::addition;
+            if (update()) return ChangeType::modification;
+            if (remove()) return ChangeType::deletion;
+            throw std::logic_error("state::item::Delta::kind(): invalid delta");
+        }
     };
 }
 

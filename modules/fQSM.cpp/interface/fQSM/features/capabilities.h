@@ -1,6 +1,14 @@
 #pragma once
 
-// Servies are "things, that Aspects can do"
+// Capabilites is set of features of Aspect, similar to methods of objects
+// like "do something()" "what is your size()"
+// fQSM-specific fact: all "methods" of Aspect are implementated as static methods of Aspect::Capabilities interface
+// notmal shape:
+// static auto Aspect::Capabilities::foo(Reading, Id, Args...)->result
+// static auto Aspect::Capabilities::bar(Writing, Id, Args...)->result
+// true statics (methods of Aspect itself, not its Items:
+// static auto Aspect::Capabilities::static_foo(Reading, Args...)->result
+// static auto Aspect::Capabilities::static_bar(Writing, Args...)->result
 
 #include <optional>
 #include <vector>

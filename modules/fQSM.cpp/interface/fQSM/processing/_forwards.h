@@ -14,10 +14,12 @@ namespace fqsm::processing {
 
     struct Context;
     struct Gate;
+    struct Review;
     using ContextShared = std::shared_ptr<Context>;
 }
 
 namespace fqsm {
     using Reading = const processing::View&;
     using Writing = processing::Gate;
+    using Reviewing = processing::Review;
 }

@@ -16,8 +16,8 @@ namespace fqsm::schema {
 
         struct Node {
             std::string name;
-            TypeSet requiredByMe;
-            TypeSet requiredBy;
+            TypeSet origins;
+            TypeSet followers;
 
             Binding binding;            
         };

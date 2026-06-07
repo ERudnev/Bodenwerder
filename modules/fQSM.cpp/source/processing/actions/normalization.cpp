@@ -5,6 +5,8 @@
 #include <vector>
 
 #include <fQSM/processing/actions/integration.h>
+#include <fQSM/processing/review.h>
+#include <fQSM/state/world/preview.h>
 #include <fQSM/state/details/analysis.h>
 #include <fQSM/state/patch.h>
 
@@ -14,6 +16,7 @@ namespace fqsm::processing::actions {
 
     using State = fqsm::state::world::Data;
     using Patch = fqsm::state::world::Patch;
+    using PatchRef = fqsm::ref<Patch>;
 }
 
 // internal part of normalization
@@ -49,10 +52,17 @@ namespace fqsm::processing::actions::normalization {
     }
 
     // build normalization patch
-    Patch normalizer(const State& state, const Patch& patch) {
-        Patch fix(patch.schema);
-        // call all requires Norma instances to form "fix" contents...
-        return fix;
+    PatchRef normalizer(const State& state, const Patch& patch) {
+        auto review = Reviewing{
+            state::world::Preview{state, patch},
+            base::make_shared<Patch>(patch.schema),
+        };
+
+        for (const auto& [aspectId, node] : patch.schema->nodes) {
+            // TODO: codex access should come from schema/binding side, not from a parallel registry here.
+        }
+
+        return review.patch;
     }
 
 
@@ -62,14 +72,14 @@ namespace fqsm::processing::actions::normalization {
         const auto fix = normalizer(state, patch);
         integrate(state, patch);
 
-        const auto fixStats = analysis::Patch{fix};
+        const auto fixStats = analysis::Patch{*fix};
         if (fixStats.overallChanges() == 0) return;
 
         if (is_suspicious_growth(control)) return;
 
         ensure_depth_limit(control);
         ++control.counter;
-        update_recursive(state, fix, control);
+        update_recursive(state, *fix, control);
     }
 }
 

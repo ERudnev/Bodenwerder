@@ -9,13 +9,16 @@
 
 // manipulation
 #include <fQSM/manipulation/schema.h>
-//#include <iQSM/manipulation/world.h>
 #include <fQSM/manipulation/global.h>
 #include <fQSM/manipulation/item.h>
 
-// flow (transactions)
+// processing (transactions, e.t.c)
 #include <fQSM/processing/transactions/realm.h>
 #include <fQSM/processing/transactions/branch.h>
+
+// Codex definition for Aspects:
+#include <fQSM/features/normas/structural.h>
+#include <fQSM/features/normas/reactions.h>
 
 namespace fqsm::api {
     // Q1 language builtin types
@@ -42,9 +45,14 @@ namespace fqsm::api {
 
     using Schema = fqsm::Schema;
 
-    // flow/transactions/contexts mechanism
+    // processing/transactions/contexts Big Objects
     namespace context {
         using Realm = ::fqsm::processing::Realm;
         using Branch = ::fqsm::processing::transaction::Branch;
+    }
+
+    // Codex builder:
+    namespace norma {
+        using namespace fqsm::features::normas::structural;
     }
 }

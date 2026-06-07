@@ -27,18 +27,30 @@ namespace fqsm::manipulation::schema {
             }
         }
 
+        for (auto& [_, node] : out->nodes) {
+            node.followers.clear();
+        }
+
+        for (const auto& [followerType, node] : out->nodes) {
+            for (const auto& originType : node.origins) {
+                const auto found = out->nodes.find(originType);
+                if (found == out->nodes.end()) continue;
+                found->second.followers.insert(followerType);
+            }
+        }
+
         return fqsm::freeze(out);
     }
 
     namespace detail {
         template<typename... Metas>
-        auto requirements_of(meta::internals::type_list<Metas...>) -> fqsm::schema::Dag::TypeSet {
+        auto origins_of(meta::internals::type_list<Metas...>) -> fqsm::schema::Dag::TypeSet {
             return fqsm::schema::Dag::TypeSet{fqsm::meta::aspect::Rtid::of<Metas>()...};
         }
 
         template<meta::aspect::Any Meta>
-        auto requirements_of() -> fqsm::schema::Dag::TypeSet {
-            return requirements_of(typename meta::deps_of<Meta>::type{});
+        auto origins_of() -> fqsm::schema::Dag::TypeSet {
+            return origins_of(typename meta::deps_of<Meta>::type{});
         }
     }
 
@@ -47,7 +59,7 @@ namespace fqsm::manipulation::schema {
         auto out = base::make_shared<fqsm::schema::Dag>();
         auto node = fqsm::schema::Dag::Node{
             std::string{fqsm::meta::aspect::Rtid::name(fqsm::meta::aspect::Rtid::of<Meta>())},
-            detail::requirements_of<Meta>(),
+            detail::origins_of<Meta>(),
             fqsm::schema::Dag::TypeSet{},
             fqsm::schema::details::binding<Meta>(),
         };
