@@ -7,7 +7,7 @@
 
 #include <fQSM/features/norma.h>
 
-namespace fqsm::service::internal {
+namespace fqsm::features {
 
     struct Codex {
         std::vector<std::unique_ptr<features::Norma>> normas;

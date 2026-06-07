@@ -9,6 +9,7 @@
 #include <fQSM/state/world/preview.h>
 #include <fQSM/state/details/analysis.h>
 #include <fQSM/state/patch.h>
+#include <fQSM/features/codex.h>
 
 // local alias:
 namespace fqsm::processing::actions {
@@ -58,8 +59,11 @@ namespace fqsm::processing::actions::normalization {
             base::make_shared<Patch>(patch.schema),
         };
 
-        for (const auto& [aspectId, node] : patch.schema->nodes) {
-            // TODO: codex access should come from schema/binding side, not from a parallel registry here.
+        for (const auto& entry : patch.schema->nodes) {
+            const auto& node = entry.second;
+            for (const auto& norma : node.codex.normas) {
+                norma->apply(review);
+            }
         }
 
         return review.patch;

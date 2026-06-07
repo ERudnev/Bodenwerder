@@ -7,7 +7,7 @@ namespace fqsm::detail::aspects {
     template<typename Meta>
     struct Any {
         Any() = delete;
-        using Codex = fqsm::service::internal::Codex;
+        using Codex = fqsm::features::Codex;
     };
 }
 

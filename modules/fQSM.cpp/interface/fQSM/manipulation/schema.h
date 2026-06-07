@@ -61,6 +61,7 @@ namespace fqsm::manipulation::schema {
             std::string{fqsm::meta::aspect::Rtid::name(fqsm::meta::aspect::Rtid::of<Meta>())},
             detail::origins_of<Meta>(),
             fqsm::schema::Dag::TypeSet{},
+            Meta::codex,
             fqsm::schema::details::binding<Meta>(),
         };
 

@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 
+#include <fQSM/features/_forwards.h>
 #include <fQSM/meta/rtid.h>
 #include <fQSM/schema/_forwards.h>
 #include <fQSM/schema/binding.h>
@@ -19,6 +20,7 @@ namespace fqsm::schema {
             TypeSet origins;
             TypeSet followers;
 
+            const features::Codex& codex;
             Binding binding;            
         };
     

@@ -17,7 +17,7 @@ namespace fqsm::features::normas::structural {
         const std::string message;
 
         void apply(Reviewing) override {
-            base::message("");
+            base::message("hey, I am here!");
         }
     };
 }
