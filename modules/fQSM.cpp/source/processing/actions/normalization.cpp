@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <fQSM/processing/actions/integration.h>
+#include <fQSM/processing/actions/merge.h>
 #include <fQSM/processing/review.h>
 #include <fQSM/state/world/preview.h>
 #include <fQSM/state/details/analysis.h>
@@ -59,16 +60,12 @@ namespace fqsm::processing::actions::normalization {
         throw std::runtime_error(std::format("normalization: depth limit {} reached", control.limit));
     }
 
-    // build normalization patch
-    struct NormalizationResult {
-        PatchRef patch;
-        Review::Notes notes;
-    };
-    auto normalizer(const State& state, const Patch& patch) -> NormalizationResult {
+    // build one normalization wave
+    auto normalizer(Reading source, const Patch& patch) -> actions::NormalizationResult {
         Review::Notes notes;
         auto review = Reviewing{
-            state::world::Preview{state, patch},
-            base::make_shared<Patch>(patch.schema),
+            state::world::Preview{source, patch},
+            ::base::make_shared<Patch>(patch.schema),
             notes,
         };
 
@@ -90,15 +87,13 @@ namespace fqsm::processing::actions::normalization {
     }
 
 
-    auto update_recursive(State& state, const Patch& patch, UpdateControl& control) -> Review::Notes {
-        control.statistics.emplace_back(patch);
+    auto normalize_recursive(Reading source, PatchRef accumulated, UpdateControl& control) -> Review::Notes {
+        control.statistics.emplace_back(*accumulated);
 
-        const auto fix = normalizer(state, patch);
-        if (fix.notes.rejection()) return fix.notes;
-
-        integrate(state, patch);
-
+        const auto fix = normalizer(source, *accumulated);
         auto notes = fix.notes;
+        if (notes.rejection()) return notes;
+
         const auto fixStats = analysis::Patch{*fix.patch};
         if (fixStats.overallChanges() == 0) return notes;
 
@@ -106,7 +101,8 @@ namespace fqsm::processing::actions::normalization {
 
         ensure_depth_limit(control);
         ++control.counter;
-        append(notes, update_recursive(state, *fix.patch, control));
+        actions::merge(source, accumulated, fix.patch);
+        append(notes, normalize_recursive(source, accumulated, control));
         return notes;
     }
 }
@@ -115,8 +111,18 @@ namespace fqsm::processing::actions::normalization {
 // facade part
 namespace fqsm::processing::actions {
 
-    auto update(State& state, const Patch& patch) -> Review::Notes {
+    auto normalize(Reading source, const Patch& patch) -> NormalizationResult {
+        auto normalized = ::base::make_shared<Patch>(patch);
         normalization::UpdateControl control{temp_defence_normalization_waves};
-        return normalization::update_recursive(state, patch, control);
+        auto notes = normalization::normalize_recursive(source, normalized, control);
+        return { normalized, std::move(notes) };
+    }
+
+    auto update(State& state, const Patch& patch) -> Review::Notes {
+        const auto normalized = normalize(state, patch);
+        if (normalized.notes.rejection()) return normalized.notes;
+
+        integrate(state, *normalized.patch);
+        return normalized.notes;
     }
 }

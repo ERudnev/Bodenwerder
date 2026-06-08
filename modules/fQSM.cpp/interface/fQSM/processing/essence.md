@@ -56,7 +56,7 @@ Observable world state.
 
 ### Review
 
-**View** + the patch under consideration + **Preview** of the future state.
+**View** + the patch under consideration + **Preview** of the future state + review notes.
 
 Used by reactions and norms.
 
@@ -65,24 +65,59 @@ Used by reactions and norms.
 ```
 A
 │
-├─ P  (logic patch)
+├─ P  (logic patch / current intention)
 │   ▼
 │   Review(A + P)
 │   │
 │   ├─ Reactions / Norms
 │   │   ▼
-│   │   V  (reaction patch)
+│   │   K  (reaction patch)
 │   │
-│   ▼
-│   Integrate(P)
-│       ▼
-│       B
-│           ▼
-│           Integrate(V)
+│   ├─ if K is empty:
+│   │      fixed point reached
+│   │
+│   └─ else:
+│          P <- P ⊕ K
+│          repeat Review(A + P)
+│
+└─ once stable:
+       if notes contain rejection:
+           abort integration
+       else:
+           world <- P*
 ```
 
 - Reactions do **not** modify the patch under consideration.
 - Reactions produce their **own** patch.
+- Normalization is an iterative patch-to-patch process.
+- World integration happens only once, after a stable normalized patch `P*` is found.
+
+## Transactions
+
+### Realm
+
+`Realm` owns the actual world state.
+
+Algorithm:
+
+1. Receive a logic patch `P`.
+2. Normalize it recursively into `P*`.
+3. If notes contain rejection, do not integrate.
+4. Otherwise apply `P*` to the world exactly once.
+
+### Branch
+
+`Branch` does not own world state; it owns only a patch over some base view `A`.
+
+Algorithm:
+
+1. Keep current branch patch `B`.
+2. Build `Review(A + B)`.
+3. Reactions produce correction patch `K`.
+4. Merge: `B <- B ⊕ K`.
+5. Repeat until a fixed point is reached or notes reject the branch.
+
+So for a branch the main result is not a new world, but a refined patch.
 
 ## Principles
 

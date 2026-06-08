@@ -13,14 +13,14 @@ namespace fqsm::processing::transaction {
         Branch(ChildPolicy policy)
             : patch(base::make_shared<state::world::Patch>(policy.view.schema))
             , preview(policy.view, *patch)
-        {    
+        {
             context = std::make_shared<Context>(Context{
                 preview,
                 patch,
                 policy.upstream
             });
         }
-    
+
         operator Reading() const override { return preview; }
 
     private:
