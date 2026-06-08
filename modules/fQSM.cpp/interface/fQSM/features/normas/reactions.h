@@ -7,14 +7,13 @@ namespace fqsm::features::normas::structural {
 
     template<aspect::Component Aspect>
     struct debug_death_event : Norma {
-
         debug_death_event(std::string text) : message(std::move(text)) {}
 
-        inline static const Filter filter{
-            state::item::ChangeType::deletion,
-        };
-
         const std::string message;
+
+        Sources listens() const override {
+            return typed_set<Aspect>();
+        }
 
         void apply(Reviewing) override {
             base::message("hey, I am here!");

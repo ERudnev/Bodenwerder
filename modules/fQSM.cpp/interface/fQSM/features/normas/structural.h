@@ -6,12 +6,11 @@
 namespace fqsm::features::normas::structural {
     
     // NG: public visibility of this "classes" is made object-like
-    template<aspect::Component ComponentAspect, aspect::Entity EntityAspect>
+    template<aspect::Component Follower, aspect::Entity Origin>
     struct component : Norma {
-        inline static const Filter filter{
-            state::item::ChangeType::addition,
-            state::item::ChangeType::deletion,
-        };
+        Sources listens() const override {
+            return typed_set<Origin>();
+        }
 
         void apply(Reviewing context) override {
             //_INCOMPLETE_;
@@ -21,5 +20,6 @@ namespace fqsm::features::normas::structural {
                 //manipulators::item::remove<ComponentAspect>(myContext, temp_id);
             }
         }
+
     };
 }

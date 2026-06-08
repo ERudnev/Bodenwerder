@@ -8,6 +8,7 @@
 
 #define FQSM_INTERNALS_TESTS(X) \
     X(dense_table_overlay) \
+    X(delta_iterators) \
     X(transaction_hierarchy) \
     X(manipulation) \
     X(globals) \

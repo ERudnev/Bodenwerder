@@ -1,6 +1,5 @@
 #pragma once
 
-#include <set>
 #include <string>
 #include <unordered_map>
 
@@ -12,15 +11,17 @@
 namespace fqsm::schema {
 
     struct Dag {
-        using TypeSet = std::set<aspect::Rtid>;
-        // NB: using Normas = validation::Block;
+        using TypeSet = meta::aspect::TypeSet;
+        using Reactions = features::Normas;
 
         struct Node {
             std::string name;
             TypeSet origins;
             TypeSet followers;
 
+            // TODO: consider to remove
             const features::Codex& codex;
+            //const Reactions reactions;
             Binding binding;            
         };
     
