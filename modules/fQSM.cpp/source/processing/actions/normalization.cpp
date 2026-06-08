@@ -3,6 +3,7 @@
 #include <format>
 #include <set>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include <fQSM/processing/actions/integration.h>
@@ -30,6 +31,11 @@ namespace fqsm::processing::actions::normalization {
         std::vector<analysis::Patch> statistics;
     };
 
+    void append(Review::Notes& dst, Review::Notes src) {
+        dst.critical.insert(dst.critical.end(), src.critical.begin(), src.critical.end());
+        dst.warning.insert(dst.warning.end(), src.warning.begin(), src.warning.end());
+    }
+
     constexpr std::size_t early_window = 4;
 
     auto is_suspicious_growth(const UpdateControl& control) -> bool {
@@ -54,10 +60,16 @@ namespace fqsm::processing::actions::normalization {
     }
 
     // build normalization patch
-    PatchRef normalizer(const State& state, const Patch& patch) {
+    struct NormalizationResult {
+        PatchRef patch;
+        Review::Notes notes;
+    };
+    auto normalizer(const State& state, const Patch& patch) -> NormalizationResult {
+        Review::Notes notes;
         auto review = Reviewing{
             state::world::Preview{state, patch},
             base::make_shared<Patch>(patch.schema),
+            notes,
         };
 
         std::set<schema::Dag::ReactionId> selectedReactions;
@@ -74,24 +86,28 @@ namespace fqsm::processing::actions::normalization {
             patch.schema->reactions.at(reactionId.raw())->apply(review);
         }
 
-        return review.patch;
+        return { review.patch, std::move(notes) };
     }
 
 
-    void update_recursive(State& state, const Patch& patch, UpdateControl& control) {
+    auto update_recursive(State& state, const Patch& patch, UpdateControl& control) -> Review::Notes {
         control.statistics.emplace_back(patch);
 
         const auto fix = normalizer(state, patch);
+        if (fix.notes.rejection()) return fix.notes;
+
         integrate(state, patch);
 
-        const auto fixStats = analysis::Patch{*fix};
-        if (fixStats.overallChanges() == 0) return;
+        auto notes = fix.notes;
+        const auto fixStats = analysis::Patch{*fix.patch};
+        if (fixStats.overallChanges() == 0) return notes;
 
-        if (is_suspicious_growth(control)) return;
+        if (is_suspicious_growth(control)) return notes;
 
         ensure_depth_limit(control);
         ++control.counter;
-        update_recursive(state, *fix, control);
+        append(notes, update_recursive(state, *fix.patch, control));
+        return notes;
     }
 }
 
@@ -99,8 +115,8 @@ namespace fqsm::processing::actions::normalization {
 // facade part
 namespace fqsm::processing::actions {
 
-    void update(State& state, const Patch& patch) {
+    auto update(State& state, const Patch& patch) -> Review::Notes {
         normalization::UpdateControl control{temp_defence_normalization_waves};
-        normalization::update_recursive(state, patch, control);
+        return normalization::update_recursive(state, patch, control);
     }
 }

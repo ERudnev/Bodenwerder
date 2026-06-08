@@ -9,6 +9,7 @@
 // manipulation
 #include <fQSM/manipulation/schema.h>
 #include <fQSM/manipulation/global.h>
+#include <fQSM/manipulation/feedback.h>
 #include <fQSM/manipulation/item.h>
 
 // processing (transactions, e.t.c)
@@ -23,7 +24,7 @@ namespace fqsm::api {
     // Q1 language builtin types
     using namespace ::fqsm::q1;
 
-    // add operations as short "ops":
+    // add manipulators as short "ask":
     namespace ask = ::fqsm::manipulation;
 
     // Aspect types:

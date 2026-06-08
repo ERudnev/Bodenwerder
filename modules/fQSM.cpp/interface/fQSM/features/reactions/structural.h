@@ -1,8 +1,9 @@
 #pragma once
 
-#include <base/logging.h>
+#include <format>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
+#include <fQSM/manipulation/feedback.h>
 #include <fQSM/manipulation/item.h>
 
 namespace fqsm::features::reflexes {
@@ -58,11 +59,7 @@ namespace fqsm::features::reactions::normas::structural {
                 for (const auto change : will_be<Origin>(context).added()) {
                     if (manipulation::item::exists<Follower>(context.preview, change.id)) continue;
                     if (!autoConstructor) {
-                        base::message(
-                            R"(structural::component make_default: no constructor for "{}" on "{}" {})",
-                            aspect::Rtid::name<Follower>(),
-                            aspect::Rtid::name<Origin>(),
-                            change.id);
+                        ask::feedback::critical<Follower>(context, std::format(R"(structural::component no constructor on "{}" {})", aspect::Rtid::name<Origin>(), change.id));
                         continue;
                     }
                     (*autoConstructor)(context, change.id);
@@ -72,11 +69,7 @@ namespace fqsm::features::reactions::normas::structural {
             case ComponentMissing::inacceptable: {
                 for (const auto change : will_be<Origin>(context).added()) {
                     if (manipulation::item::exists<Follower>(context.preview, change.id)) continue;
-                    base::message(
-                        R"(structural::component inacceptable: missing "{}" for "{}" {})",
-                        aspect::Rtid::name<Follower>(),
-                        aspect::Rtid::name<Origin>(),
-                        change.id);
+                    ask::feedback::critical<Follower>(context, std::format(R"(structural::component inacceptable: missing for "{}" {})", aspect::Rtid::name<Origin>(), change.id));
                 }
             } break;
         }

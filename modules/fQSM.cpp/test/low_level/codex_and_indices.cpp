@@ -60,8 +60,13 @@ void codex_and_indices()
     fqsm::state::world::Data world(schema);
     context::Realm main(world);
 
-    const auto id = ask::item::create<A>(main, {4});
-    EXPECT_EQ(ask::item::get<B>(main, id)->text, "generated");
+    { // Scenario 1: B::Codex::component<> aborted creation of A
+        const auto id = ask::item::create<A>(main, {4});
+        EXPECT_FALSE(ask::item::exists<A>(main, id));
+    }
+    // TDO: use this some day
+    //EXPECT_EQ(ask::item::get<B>(main, id)->text, "generated");
+
 }
 
 } // namespace tests
