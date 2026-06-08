@@ -17,13 +17,13 @@ namespace fqsm::aspects {
     template<typename Meta>
     struct Entity : detail::aspects::Any<Meta> {
         using Id = Identifier<Meta>;
-        using BaseCapabilities = capabilities::Aspect<Meta>;
+        using BaseCapabilities = capabilities::Entity<Meta>;
     };
 
     template<typename Meta, typename WorkerType>
     struct Controller : detail::aspects::Any<Meta> {
         using Id = Identifier<Meta>;
-        using BaseCapabilities = capabilities::Aspect<Meta>;
+        using BaseCapabilities = capabilities::Controller<Meta, WorkerType>;
         using WorkerAspect = WorkerType;
     };
 
@@ -31,14 +31,13 @@ namespace fqsm::aspects {
     struct Attribute : detail::aspects::Any<Meta> {
         using Id = typename HostType::Id;
         using HostAspect = HostType;
-        using BaseCapabilities = capabilities::Aspect<Meta>;
+        using BaseCapabilities = capabilities::Attribute<Meta, HostType>;
     };
 
     template<typename Meta, typename HostType>
     struct Component : detail::aspects::Any<Meta> {
         using Id = typename HostType::Id;
         using HostAspect = HostType;
-        using BaseCapabilities = capabilities::Aspect<Meta>;
+        using BaseCapabilities = capabilities::Component<Meta, HostType>;
     };
 }
-

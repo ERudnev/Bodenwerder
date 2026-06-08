@@ -15,6 +15,9 @@ namespace fqsm::meta::aspect {
         template<Any Meta>
         static Rtid of() { return Rtid{typeid(Meta)}; }
 
+        template<Any Meta>
+        static std::string_view name() { return name(of<Meta>()); }
+
         static std::string_view name(Rtid id);
 
         bool operator==(const Rtid&) const = default;

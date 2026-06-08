@@ -56,7 +56,7 @@ namespace fqsm::processing::transaction {
             if (!actual) {
                 throw std::runtime_error(std::format(
                     R"(cannot modify "{}" {}: not present)",
-                    aspect::Rtid::name(aspect::Rtid::of<Meta>()),
+                    aspect::Rtid::name<Meta>(),
                     itemId));
             }
             return *actual;

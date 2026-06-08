@@ -31,6 +31,8 @@ namespace fqsm::processing {
         const View& view;
         ContextShared parent;
 
+        operator Reading() const { return view; }
+
         Patch& patch() const { return *parent->patch; }
     };
 }

@@ -19,18 +19,19 @@
 
 namespace fqsm::capabilities {
     // each Aspect must (may?) have own Interface
+    // this set of interfaces is used to generate Aspect-specific parts of their interfaces
     class Abstract {
     protected:
         virtual ~Abstract() = default;
-        
+
         using Reading = ::fqsm::Reading;
         using Writing = ::fqsm::Writing;
     };
 
-    // TODO: rename
+
     template<typename Meta>
-    struct Aspect : Abstract {
-        virtual ~Aspect() = default;
+    struct Any : Abstract {
+        virtual ~Any() = default;
 
     protected:
         using Own = Meta;
@@ -38,4 +39,30 @@ namespace fqsm::capabilities {
         using Quantum = ::fqsm::Quantum<Meta>;
         using ItemChange = std::optional<Quantum>; // nullopt = no change
     };
+
+
+    template<typename Meta>
+    using Standalone = Any<Meta>;
+
+    template<typename Meta, typename HostType>
+    struct Parasitic : Any<Meta> {
+    public:
+        using AutoConstructorType = void(Writing, ::fqsm::Id<HostType>);
+    };
+
+
+    template<typename Meta>
+    using Entity = Standalone<Meta>;
+
+
+    template<typename Meta, typename WorkerType> // WorkerType is not used yet
+    using Controller = Standalone<Meta>;
+
+
+    template<typename Meta, typename HostType>
+    using Attribute = Parasitic<Meta, HostType>;
+
+
+    template<typename Meta, typename HostType>
+    using Component = Parasitic<Meta, HostType>;
 }

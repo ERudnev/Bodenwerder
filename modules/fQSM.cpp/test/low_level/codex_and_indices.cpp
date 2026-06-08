@@ -20,11 +20,11 @@ namespace {
             struct Quantum { integer power; };
             static const Codex codex;
             struct Capabilities : BaseCapabilities {
-                static auto create(Writing, A::Id id, const A::Quantum& source) {
-                };
+                static void create(Writing context, A::Id id) {
+                    ask::item::create<C>(context, id, {ask::item::get<A>(context, id)->value});
+                }
             };
         };
-
     }
 
     // kinda impl in come *.cpp file:
@@ -33,8 +33,13 @@ namespace {
     }
     namespace local {
         const B::Codex B::codex = {
-            norma::component<B, A>(),
+            norma::component<B, A>(ComponentMissing::inacceptable),
             reaction::debug_death_event<B>("death-event message for {}"),
+        };
+    }
+    namespace local {
+        const C::Codex C::codex = {
+            norma::component<C, A>(ComponentMissing::make_default, &C::Capabilities::create),
         };
     }
 }
@@ -49,6 +54,7 @@ void codex_and_indices()
     const Schema schema = ask::schema::merge({
         ask::schema::aspect<A>(),
         ask::schema::aspect<B>(),
+        ask::schema::aspect<C>(),
     });
 
     fqsm::state::world::Data world(schema);

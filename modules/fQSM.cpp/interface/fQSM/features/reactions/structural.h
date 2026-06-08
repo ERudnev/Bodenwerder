@@ -1,50 +1,84 @@
 #pragma once
 
+#include <base/logging.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
 #include <fQSM/manipulation/item.h>
 
+namespace fqsm::features::reflexes {
+
+    enum class ComponentMissing {
+        remove_parent,
+        make_default,
+        inacceptable,
+    };
+}
+
 namespace fqsm::features::reactions::normas::structural {
+
+    using fqsm::features::reflexes::ComponentMissing;
 
     // NG: public visibility of this "classes" is made object-like
     template<aspect::Component Follower, aspect::Entity Origin>
     struct component : Reaction {
         static_assert(std::same_as<typename Follower::HostAspect, Origin>);
+        using AutoConstructorType = typename Follower::BaseCapabilities::AutoConstructorType;
 
-        enum class Behavior {
-            removeParent,
-            addDefault,
-            verifyAdded,
-        };
+        component(ComponentMissing strat, AutoConstructorType autoConstr = nullptr)
+            : policy(strat), autoConstructor(autoConstr) {}
 
-        component(Behavior strat = Behavior::verifyAdded) : behavior(strat) {}
-
-        Sources listens() const override {
-            return typed_set<Origin>();
-        }
-
-        void apply(Reviewing context) override {
-            switch (behavior) {
-                case Behavior::removeParent: {
-                    for (const auto change : will_be<Origin>(context).added()) {
-                        if (manipulation::item::exists<Follower>(context.preview, change.id)) continue;
-                        manipulation::item::update<Origin>(context, change.id).remove();
-                    }
-
-                    for (const auto change : will_be<Origin>(context).removed()) {
-                        if (!manipulation::item::exists<Follower>(context.preview, change.id)) continue;
-                        manipulation::item::update<Follower>(context, change.id).remove();
-                    }
-                } break;
-
-                case Behavior::addDefault: {
-                } break;
-
-                case Behavior::verifyAdded: {
-                } break;
-            }
-        }
+        Sources listens() const override { return typed_set<Origin>(); }
+        void apply(Reviewing context) override;
     private:
-        const Behavior behavior;
+        const ComponentMissing policy;
+        AutoConstructorType* autoConstructor = nullptr;
     };
+}
+
+// Impl:
+namespace fqsm::features::reactions::normas::structural {
+    // component:
+    template<aspect::Component Follower, aspect::Entity Origin>
+    void component<Follower, Origin>::apply(Reviewing context) {
+        // all modes:
+        for (const auto change : will_be<Origin>(context).removed()) {
+            if (!manipulation::item::exists<Follower>(context.preview, change.id)) continue;
+            manipulation::item::update<Follower>(context, change.id).remove();
+        }
+
+        switch (policy) {
+            case ComponentMissing::remove_parent: {
+                for (const auto change : will_be<Origin>(context).added()) {
+                    if (manipulation::item::exists<Follower>(context.preview, change.id)) continue;
+                    manipulation::item::update<Origin>(context, change.id).remove();
+                }
+            } break;
+
+            case ComponentMissing::make_default: {
+                for (const auto change : will_be<Origin>(context).added()) {
+                    if (manipulation::item::exists<Follower>(context.preview, change.id)) continue;
+                    if (!autoConstructor) {
+                        base::message(
+                            R"(structural::component make_default: no constructor for "{}" on "{}" {})",
+                            aspect::Rtid::name<Follower>(),
+                            aspect::Rtid::name<Origin>(),
+                            change.id);
+                        continue;
+                    }
+                    (*autoConstructor)(context, change.id);
+                }
+            } break;
+
+            case ComponentMissing::inacceptable: {
+                for (const auto change : will_be<Origin>(context).added()) {
+                    if (manipulation::item::exists<Follower>(context.preview, change.id)) continue;
+                    base::message(
+                        R"(structural::component inacceptable: missing "{}" for "{}" {})",
+                        aspect::Rtid::name<Follower>(),
+                        aspect::Rtid::name<Origin>(),
+                        change.id);
+                }
+            } break;
+        }
+    }
 }

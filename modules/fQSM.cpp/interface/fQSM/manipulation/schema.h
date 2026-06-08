@@ -51,7 +51,7 @@ namespace fqsm::manipulation::schema {
     fqsm::Schema aspect() {
         auto out = base::make_shared<fqsm::schema::Dag>();
         auto node = fqsm::schema::Dag::Node{
-            std::string{fqsm::meta::aspect::Rtid::name(fqsm::meta::aspect::Rtid::of<Meta>())},
+            std::string{fqsm::meta::aspect::Rtid::name<Meta>()},
             fqsm::schema::Dag::ReactionIds{},
             fqsm::schema::details::binding<Meta>(),
         };

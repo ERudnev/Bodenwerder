@@ -41,6 +41,8 @@ namespace fqsm::api {
 
     using Schema = fqsm::Schema;
 
+    using ComponentMissing = fqsm::features::reflexes::ComponentMissing;
+
     // processing/transactions/contexts Big Objects
     namespace context {
         using Realm = ::fqsm::processing::Realm;
@@ -48,11 +50,14 @@ namespace fqsm::api {
     }
 
     // Codex builder:
+    namespace reflex {
+        using namespace ::fqsm::features::reflexes;
+    }
     namespace norma {
-        using namespace fqsm::features::reactions::normas::structural;
+        using namespace ::fqsm::features::reactions::normas::structural;
         //namespace fqsm::features::reactions
     }
     namespace reaction {
-        using namespace fqsm::features::reactions::standard;
+        using namespace ::fqsm::features::reactions::standard;
     }
 }
