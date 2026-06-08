@@ -34,7 +34,7 @@ namespace {
     namespace local {
         const B::Codex B::codex = {
             norma::component<B, A>(),
-            norma::debug_death_event<B>("death-event message for {}"),
+            reaction::debug_death_event<B>("death-event message for {}"),
         };
     }
 }

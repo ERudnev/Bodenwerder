@@ -11,7 +11,7 @@ namespace rmmr::scene {
 
     using namespace iqsm::q1_gateway;
 
-    struct Core : Entity<Core>, Require<Node, Camera, Light> {
+    struct Core : Entity<Core> {
         struct Quantum {
             vector<Node::Id> nodes;
             vector<Camera::Id> cameras;

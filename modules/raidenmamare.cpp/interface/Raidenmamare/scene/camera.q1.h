@@ -8,7 +8,7 @@ namespace rmmr::scene {
 
     using namespace iqsm::q1_gateway;
 
-    struct Camera : Attribute<Camera, Node>, Require<Node> {
+    struct Camera : Attribute<Camera, Node> {
         struct Quantum {
             float fov_y;
             float z_near;

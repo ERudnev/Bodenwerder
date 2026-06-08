@@ -1,12 +1,12 @@
 #pragma once
 
 #include <fQSM/meta/interface.include.h>
-#include <fQSM/features/norma.h>
+#include <fQSM/features/reaction.h>
 
-namespace fqsm::features::normas::structural {
+namespace  fqsm::features::reactions::standard {
 
     template<aspect::Component Aspect>
-    struct debug_death_event : Norma {
+    struct debug_death_event : Reaction {
         debug_death_event(std::string text) : message(std::move(text)) {}
 
         const std::string message;

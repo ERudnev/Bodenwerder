@@ -61,6 +61,7 @@ namespace fqsm::state::slice {
         enum class Layer {
             all,
             added,
+            addedOrUpdated,
             removed,
             updated,
         };
@@ -99,6 +100,7 @@ namespace fqsm::state::slice {
             static auto matches(Layer layer, const value_type& change) -> bool {
                 if (layer == Layer::all) return change.good();
                 if (layer == Layer::added) return change.add();
+                if (layer == Layer::addedOrUpdated) return change.add() || change.update();
                 if (layer == Layer::removed) return change.remove();
                 if (layer == Layer::updated) return change.update();
                 return false;
@@ -146,6 +148,7 @@ namespace fqsm::state::slice {
         auto end() const -> Iterator { return Iterator{state, patch, patch->items().end(), patch->items().end(), Layer::all}; }
 
         auto added() const -> LayerView { return LayerView{state, patch, Layer::added}; }
+        auto addedOrUpdated() const -> LayerView { return LayerView{state, patch, Layer::addedOrUpdated}; }
         auto removed() const -> LayerView { return LayerView{state, patch, Layer::removed}; }
         auto updated() const -> LayerView { return LayerView{state, patch, Layer::updated}; }
 

@@ -1,6 +1,7 @@
 #include <fQSM/processing/actions/normalization.h>
 
 #include <format>
+#include <set>
 #include <stdexcept>
 #include <vector>
 
@@ -9,7 +10,7 @@
 #include <fQSM/state/world/preview.h>
 #include <fQSM/state/details/analysis.h>
 #include <fQSM/state/patch.h>
-#include <fQSM/features/codex.h>
+#include <fQSM/features/reaction.h>
 
 // local alias:
 namespace fqsm::processing::actions {
@@ -59,11 +60,18 @@ namespace fqsm::processing::actions::normalization {
             base::make_shared<Patch>(patch.schema),
         };
 
-        for (const auto& entry : patch.schema->nodes) {
-            const auto& node = entry.second;
-            for (const auto& norma : node.codex.normas) {
-                norma->apply(review);
+        std::set<schema::Dag::ReactionId> selectedReactions;
+        for (const auto& [sourceType, _] : patch.composite().slices) {
+            const auto found = patch.schema->nodes.find(sourceType);
+            if (found == patch.schema->nodes.end()) continue;
+
+            for (const auto reactionId : found->second.reactions) {
+                selectedReactions.insert(reactionId);
             }
+        }
+
+        for (const auto reactionId : selectedReactions) {
+            patch.schema->reactions.at(reactionId.raw())->apply(review);
         }
 
         return review.patch;

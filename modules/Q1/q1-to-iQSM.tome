@@ -68,10 +68,10 @@ namespace Q1-iQSM {
     3: `type A ~ Expr` проецируется как `using A = decltype(<Expr>);`.
       1: Смысл: “тип A равен типу выражения/члена Expr” (аналог C++ `decltype`).
       2: Это синтаксический сахар для `type A as ~Expr`.
-    4: `entity X` проецируется как `struct X : Entity<X>, Require<...> { ... };`.
-    5: `attribute Q of Parent` проецируется как `struct Q : Attribute<Q, Parent>, Require<Parent, ...> { ... };`.
-    6: `component Q of Parent` проецируется как `struct Q : Component<Q, Parent>, Require<Parent, ...> { ... };`.
-    7: `agent R @external(X)` проецируется как `struct R : Handle<R, RuntimeStorage, RuntimeAccess>, Require<...> { ... };` (шаблон `iqsm::aspects::Handle`).
+    4: `entity X` проецируется как `struct X : Entity<X> { ... };`.
+    5: `attribute Q of Parent` проецируется как `struct Q : Attribute<Q, Parent> { ... };`.
+    6: `component Q of Parent` проецируется как `struct Q : Component<Q, Parent> { ... };`.
+    7: `agent R @external(X)` проецируется как `struct R : Handle<R, RuntimeStorage, RuntimeAccess> { ... };` (шаблон `iqsm::aspects::Handle`).
       1: Смысл: `R` — доменный **agent** (логическая обёртка/handle), а `X` — внешний runtime **resource** identifier (не Q1-тип).
          В C++ физическая форма ресурса задаётся парой типов `RuntimeStorage` и `RuntimeAccess` на `Handle` (часто совпадают: `GLuint`, указатель окна и т.п.).
       2: Аспектный заголовок остаётся доменным (agent-аспект): `Quantum`, `Materializer::Passport`, вложенный `struct Materializer : iqsm::resources::Materializer<R>` с `materialize` / `release`, плюс `Service`.
@@ -186,15 +186,12 @@ namespace Q1-iQSM {
   }
 
   dependencies_derivation: @Rule {
-    Вывод `dependencies` (requirements) аспекта в C++ проекции: `Require<...>`.
-    Итог: dependencies = union(выведенные правилами, явно перечисленные через `depends:`).
-    1: Dependencies аспектов выражаются через миксин `Require<...>` и должны быть полными и явными.
-    2: Если аспект объявлен как attribute/tag/component `of Parent`, то Parent добавляется в `Require<...>`.
-    3: Если внутри `element`/`table` встречается любой тип, принадлежащий аспекту B, то B добавляется в `Require<...>`.
-      1: Это включает случаи `#B` (decode: `B::id`; в C++ проекции: `B::Id`).
-      2: Это также включает поля с директивой `@anchor`: сам факт хранения `#B` уже достаточен для вывода зависимости от `B`.
-    4: Если внутри `element`/`table` встречается составной тип (struct/array/vector/`T?`/etc.), то правило вывода dependencies применяется рекурсивно к его полям/элементам.
-    5: Если в определении аспекта явно указано `depends: X`, то X добавляется в `Require<...>`.
+    Миксин `Require<...>` в C++ проекции больше не используется.
+    1: Structural parent-связь выражается только базовым типом аспекта: `Attribute<Q, Parent>` / `Component<Q, Parent>`.
+    2: `entity` и `agent` не получают отдельного dependency-mixin в C++ форме.
+    3: Reactive dependencies должны выражаться нормами/реакциями через `listens()`, а не через список требований в объявлении аспекта.
+    4: Наличие ссылочных полей (`#B`, `B::Id`, контейнеров таких значений и т.п.) само по себе больше не порождает отдельный C++ dependency-mixin.
+    5: DSL `depends:` не проецируется в `Require<...>` и требует отдельной архитектурной интерпретации, если такая зависимость вообще нужна.
   }
 
   iqsm_transaction_culture: @Rule {

@@ -16,7 +16,7 @@ namespace rmmr::primitive {
         integer vertex_count = 0;
     };
 
-    struct Base : Handle<Base, OpenGLPrimitive, const OpenGLPrimitive&>, Require<Device> {
+    struct Base : Handle<Base, OpenGLPrimitive, const OpenGLPrimitive&> {
         struct Materializer : iqsm::resources::Materializer<Base> {
             struct Passport {
                 string debugName;

@@ -11,7 +11,7 @@ namespace material {
 
     using namespace iqsm::q1_gateway;
 
-    struct Program : Handle<Program, GLuint, GLuint>, Require<rmmr::Device> {
+    struct Program : Handle<Program, GLuint, GLuint> {
         struct Materializer : iqsm::resources::Materializer<Program> {
             struct Passport {
                 string name;

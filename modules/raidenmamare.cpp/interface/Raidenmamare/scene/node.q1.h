@@ -8,7 +8,7 @@ namespace rmmr::scene {
 
     using namespace iqsm::q1_gateway;
 
-    struct Node : Entity<Node>, Require<> {
+    struct Node : Entity<Node> {
         struct Quantum {
             Pos position;
             quat rotation;

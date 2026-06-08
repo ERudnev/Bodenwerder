@@ -11,7 +11,7 @@ namespace rmmr::scene {
 
     using namespace iqsm::q1_gateway;
 
-    struct PrimitiveActor : Attribute<PrimitiveActor, Node>, Require<Node, primitive::Base, material::Core> {
+    struct PrimitiveActor : Attribute<PrimitiveActor, Node> {
         struct Quantum {
             primitive::Base::Id geometry;
             material::Core::Id material;

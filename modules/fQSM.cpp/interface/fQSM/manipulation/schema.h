@@ -4,8 +4,8 @@
 
 #include <base/shared_reference.h>
 
+#include <fQSM/features/codex.h>
 #include <fQSM/meta/concepts.h>
-#include <fQSM/meta/type_list.h>
 #include <fQSM/schema/dag.h>
 #include <fQSM/schema/details/builders.h>
 
@@ -28,30 +28,23 @@ namespace fqsm::manipulation::schema {
         }
 
         for (auto& [_, node] : out->nodes) {
-            node.followers.clear();
+            node.reactions.clear();
         }
 
-        for (const auto& [followerType, node] : out->nodes) {
-            for (const auto& originType : node.origins) {
-                const auto found = out->nodes.find(originType);
-                if (found == out->nodes.end()) continue;
-                found->second.followers.insert(followerType);
+        for (const auto& part : parts) {
+            for (const auto& reaction : part->reactions) {
+                const auto reactionId = fqsm::schema::Dag::ReactionId{ out->reactions.size() };
+                out->reactions.push_back(reaction);
+
+                for (const auto& sourceType : reaction->listens()) {
+                    const auto found = out->nodes.find(sourceType);
+                    if (found == out->nodes.end()) continue;
+                    found->second.reactions.push_back(reactionId);
+                }
             }
         }
 
         return fqsm::freeze(out);
-    }
-
-    namespace detail {
-        template<typename... Metas>
-        auto origins_of(meta::internals::type_list<Metas...>) -> fqsm::schema::Dag::TypeSet {
-            return fqsm::schema::Dag::TypeSet{fqsm::meta::aspect::Rtid::of<Metas>()...};
-        }
-
-        template<meta::aspect::Any Meta>
-        auto origins_of() -> fqsm::schema::Dag::TypeSet {
-            return origins_of(typename meta::deps_of<Meta>::type{});
-        }
     }
 
     template<meta::aspect::Any Meta>
@@ -59,13 +52,23 @@ namespace fqsm::manipulation::schema {
         auto out = base::make_shared<fqsm::schema::Dag>();
         auto node = fqsm::schema::Dag::Node{
             std::string{fqsm::meta::aspect::Rtid::name(fqsm::meta::aspect::Rtid::of<Meta>())},
-            detail::origins_of<Meta>(),
-            fqsm::schema::Dag::TypeSet{},
-            Meta::codex,
+            fqsm::schema::Dag::ReactionIds{},
             fqsm::schema::details::binding<Meta>(),
         };
 
         out->nodes.emplace(fqsm::meta::aspect::Rtid::of<Meta>(), node);
+
+        for (const auto& reaction : Meta::codex.normas) {
+            const auto reactionId = fqsm::schema::Dag::ReactionId{ out->reactions.size() };
+            out->reactions.push_back(reaction);
+
+            for (const auto& sourceType : reaction->listens()) {
+                const auto found = out->nodes.find(sourceType);
+                if (found == out->nodes.end()) continue;
+                found->second.reactions.push_back(reactionId);
+            }
+        }
+
         return fqsm::freeze(out);
     }
 }

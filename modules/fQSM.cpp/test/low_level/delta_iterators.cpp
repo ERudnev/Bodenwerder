@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <set>
+#include <unordered_map>
 #include <vector>
 
 #include <fQSM/api/interface.h>
@@ -65,13 +66,11 @@ void delta_iterators()
 
     const fqsm::state::world::Preview preview(state, *patch);
 
-    std::set<Id> all;
-    std::set<Id> added;
-    std::set<Id> removed;
-    std::set<Id> updated;
+    using Layer = fqsm::state::slice::Delta<A>::Layer;
+    std::unordered_map<Layer, std::set<Id>> collected;
 
     for (const auto change : preview.delta<A>()) {
-        all.insert(change.id);
+        collected[Layer::all].insert(change.id);
     }
 
     for (const auto change : preview.delta<A>().added()) {
@@ -80,7 +79,13 @@ void delta_iterators()
         EXPECT_FALSE(change.remove());
         EXPECT_TRUE(change.before == nullptr);
         EXPECT_TRUE(change.after != nullptr);
-        added.insert(change.id);
+        collected[Layer::added].insert(change.id);
+    }
+
+    for (const auto change : preview.delta<A>().addedOrUpdated()) {
+        EXPECT_FALSE(change.remove());
+        EXPECT_TRUE(change.after != nullptr);
+        collected[Layer::addedOrUpdated].insert(change.id);
     }
 
     for (const auto change : preview.delta<A>().removed()) {
@@ -89,7 +94,7 @@ void delta_iterators()
         EXPECT_TRUE(change.remove());
         EXPECT_TRUE(change.before != nullptr);
         EXPECT_TRUE(change.after == nullptr);
-        removed.insert(change.id);
+        collected[Layer::removed].insert(change.id);
     }
 
     for (const auto change : preview.delta<A>().updated()) {
@@ -98,30 +103,41 @@ void delta_iterators()
         EXPECT_FALSE(change.remove());
         EXPECT_TRUE(change.before != nullptr);
         EXPECT_TRUE(change.after != nullptr);
-        updated.insert(change.id);
+        collected[Layer::updated].insert(change.id);
     }
 
-    EXPECT_EQ(all.size(), std::size_t{60});
-    EXPECT_EQ(added.size(), std::size_t{10});
-    EXPECT_EQ(removed.size(), std::size_t{20});
-    EXPECT_EQ(updated.size(), std::size_t{30});
+    EXPECT_EQ(collected[Layer::all].size(), std::size_t{60});
+    EXPECT_EQ(collected[Layer::added].size(), std::size_t{10});
+    EXPECT_EQ(collected[Layer::addedOrUpdated].size(), std::size_t{40});
+    EXPECT_EQ(collected[Layer::removed].size(), std::size_t{20});
+    EXPECT_EQ(collected[Layer::updated].size(), std::size_t{30});
 
-    EXPECT_TRUE(all.contains(ids.at(0)));
-    EXPECT_TRUE(all.contains(ids.at(20)));
-    EXPECT_TRUE(all.contains(added_ids.at(0)));
-    EXPECT_FALSE(all.contains(ids.at(50)));
+    EXPECT_TRUE(collected[Layer::all].contains(ids.at(0)));
+    EXPECT_TRUE(collected[Layer::all].contains(ids.at(20)));
+    EXPECT_TRUE(collected[Layer::all].contains(added_ids.at(0)));
+    EXPECT_FALSE(collected[Layer::all].contains(ids.at(50)));
 
-    EXPECT_TRUE(added.contains(added_ids.at(0)));
-    EXPECT_TRUE(added.contains(added_ids.at(9)));
-    EXPECT_FALSE(added.contains(ids.at(99)));
+    EXPECT_TRUE(collected[Layer::added].contains(added_ids.at(0)));
+    EXPECT_TRUE(collected[Layer::added].contains(added_ids.at(9)));
+    EXPECT_FALSE(collected[Layer::added].contains(ids.at(99)));
 
-    EXPECT_TRUE(removed.contains(ids.at(0)));
-    EXPECT_TRUE(removed.contains(ids.at(19)));
-    EXPECT_FALSE(removed.contains(ids.at(20)));
+    EXPECT_TRUE(collected[Layer::addedOrUpdated].contains(added_ids.at(0)));
+    EXPECT_TRUE(collected[Layer::addedOrUpdated].contains(ids.at(20)));
+    EXPECT_TRUE(collected[Layer::addedOrUpdated].contains(ids.at(49)));
+    EXPECT_FALSE(collected[Layer::addedOrUpdated].contains(ids.at(0)));
+    EXPECT_FALSE(collected[Layer::addedOrUpdated].contains(ids.at(50)));
 
-    EXPECT_TRUE(updated.contains(ids.at(20)));
-    EXPECT_TRUE(updated.contains(ids.at(49)));
-    EXPECT_FALSE(updated.contains(ids.at(50)));
+    EXPECT_TRUE(collected[Layer::removed].contains(ids.at(0)));
+    EXPECT_TRUE(collected[Layer::removed].contains(ids.at(19)));
+    EXPECT_FALSE(collected[Layer::removed].contains(ids.at(20)));
+
+    EXPECT_TRUE(collected[Layer::updated].contains(ids.at(20)));
+    EXPECT_TRUE(collected[Layer::updated].contains(ids.at(49)));
+    EXPECT_FALSE(collected[Layer::updated].contains(ids.at(50)));
+
+    std::set<Id> expected_added_or_updated = collected[Layer::added];
+    expected_added_or_updated.insert(collected[Layer::updated].begin(), collected[Layer::updated].end());
+    EXPECT_EQ(collected[Layer::addedOrUpdated], expected_added_or_updated);
 }
 
 } // namespace tests

@@ -5,7 +5,6 @@
 
 // aspect types (Entity/Component/Attribute):
 #include <fQSM/api/aspects.h>
-#include <fQSM/meta/require.h>
 
 // manipulation
 #include <fQSM/manipulation/schema.h>
@@ -17,8 +16,8 @@
 #include <fQSM/processing/transactions/branch.h>
 
 // Codex definition for Aspects:
-#include <fQSM/features/normas/structural.h>
-#include <fQSM/features/normas/reactions.h>
+#include <fQSM/features/reactions/structural.h>
+#include <fQSM/features/reactions/standard.h>
 
 namespace fqsm::api {
     // Q1 language builtin types
@@ -26,7 +25,7 @@ namespace fqsm::api {
 
     // add operations as short "ops":
     namespace ask = ::fqsm::manipulation;
-    
+
     // Aspect types:
     template<typename Meta>
     using Entity = ::fqsm::aspects::Entity<Meta>;
@@ -40,9 +39,6 @@ namespace fqsm::api {
     template<typename Meta, typename Parent>
     using Component = ::fqsm::aspects::Component<Meta, Parent>;
 
-    template<typename... Deps>
-    using Require = fqsm::meta::Require<Deps...>;
-
     using Schema = fqsm::Schema;
 
     // processing/transactions/contexts Big Objects
@@ -53,6 +49,10 @@ namespace fqsm::api {
 
     // Codex builder:
     namespace norma {
-        using namespace fqsm::features::normas::structural;
+        using namespace fqsm::features::reactions::normas::structural;
+        //namespace fqsm::features::reactions
+    }
+    namespace reaction {
+        using namespace fqsm::features::reactions::standard;
     }
 }

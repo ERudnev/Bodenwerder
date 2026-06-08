@@ -21,7 +21,7 @@ namespace tests::model {
         };
     };
 
-    struct SomeComponent : Component<SomeComponent, SomeEntity>, Require<SomeEntity> {
+    struct SomeComponent : Component<SomeComponent, SomeEntity> {
         struct Quantum {
             string name;
         };
@@ -29,7 +29,7 @@ namespace tests::model {
         struct Capabilities : BaseCapabilities {};
     };
 
-    struct SecondaryAttribute : Attribute<SecondaryAttribute, SomeComponent>, Require<SomeComponent> {
+    struct SecondaryAttribute : Attribute<SecondaryAttribute, SomeComponent> {
         struct Quantum {
             integer attribute;
         };

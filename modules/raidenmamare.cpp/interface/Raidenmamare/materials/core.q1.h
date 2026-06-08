@@ -19,7 +19,7 @@ namespace rmmr::material {
 
     using namespace iqsm::q1_gateway;
 
-    struct Core : Handle<Core, rmmr::internals::material::CoreCompiled, const rmmr::internals::material::CoreCompiled&>, Require<Program>
+    struct Core : Handle<Core, rmmr::internals::material::CoreCompiled, const rmmr::internals::material::CoreCompiled&>
     {
         struct Materializer : iqsm::resources::Materializer<Core> {
             struct Passport {

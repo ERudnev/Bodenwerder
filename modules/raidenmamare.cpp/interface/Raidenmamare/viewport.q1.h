@@ -8,7 +8,7 @@ namespace rmmr {
 
     using namespace iqsm::q1_gateway;
 
-    struct Viewport : Entity<Viewport>, Require<Device> {
+    struct Viewport : Entity<Viewport> {
         struct Quantum {
             Device::Id device;
             index2 origin;

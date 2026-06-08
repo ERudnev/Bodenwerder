@@ -8,7 +8,7 @@ namespace rmmr {
 
     using namespace iqsm::q1_gateway;
 
-    struct Device : Handle<Device, GLFWwindow*, GLFWwindow*>, Require<> {
+    struct Device : Handle<Device, GLFWwindow*, GLFWwindow*> {
         struct Materializer : iqsm::resources::Materializer<Device> {
             struct Passport {
                 string assets_root;

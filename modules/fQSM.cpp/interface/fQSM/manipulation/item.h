@@ -20,6 +20,9 @@ namespace fqsm::manipulation::item {
     auto get(Reading, Id<Meta>) -> base::maybe<std::reference_wrapper<const Quantum<Meta>>>;
 
     template<aspect::Any Meta>
+    auto exists(Reading, Id<Meta>) -> bool;
+
+    template<aspect::Any Meta>
     using update = processing::transaction::Quantal<Meta>;
 }
 
@@ -44,6 +47,11 @@ namespace fqsm::manipulation::item {
         const auto* found = view.items<Meta>().find(id);
         if (!found) return std::nullopt;
         return std::cref(*found);
+    }
+
+    template<aspect::Any Meta>
+    auto exists(Reading view, Id<Meta> id) -> bool {
+        return view.items<Meta>().find(id) != nullptr;
     }
 
 }

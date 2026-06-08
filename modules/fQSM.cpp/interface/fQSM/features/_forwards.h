@@ -6,7 +6,7 @@
 // TODO: remove?
 namespace fqsm::features {
     struct Codex;
-    struct Norma;
+    struct Reaction;
 
-    using Normas = std::vector<std::shared_ptr<Norma>>;
+    using Reactions = std::vector<std::shared_ptr<Reaction>>;
 }

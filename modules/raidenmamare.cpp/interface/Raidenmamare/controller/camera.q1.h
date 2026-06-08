@@ -9,7 +9,7 @@ namespace rmmr::controller {
 
     using namespace iqsm::q1_gateway;
 
-    struct Camera : Attribute<Camera, Dispatcher>, Require<Dispatcher, scene::Camera> {
+    struct Camera : Attribute<Camera, Dispatcher> {
         struct Quantum {
             scene::Camera::Id camera;
             index2 previous_mouse;

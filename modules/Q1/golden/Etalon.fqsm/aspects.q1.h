@@ -6,14 +6,14 @@ namespace Q1_iQSM::Etalon {
     
     using namespace fqsm::api;
 
-    struct Trivia : Entity<Trivia>, Require<> {
+    struct Trivia : Entity<Trivia> {
         struct Quantum {};
         struct Global {};
         static const Codex codex;
         struct Service : BaseCapabilities{};
     };
 
-    struct SampleEntity : Entity<SampleEntity>, Require<> {
+    struct SampleEntity : Entity<SampleEntity> {
         struct Quantum {
             integer data_field;
         };
@@ -34,7 +34,7 @@ namespace Q1_iQSM::Etalon {
         };
     };
 
-    struct Tag : Attribute<Tag, SampleEntity>, Require<SampleEntity> {
+    struct Tag : Attribute<Tag, SampleEntity> {
         struct Quantum{};
         struct Global {
             integer modulus = integer{2};
@@ -43,7 +43,7 @@ namespace Q1_iQSM::Etalon {
         struct Service : BaseCapabilities{};
     };
 
-    struct Remnant : Component<Remnant, Tag>, Require<Tag, Trivia> {
+    struct Remnant : Component<Remnant, Tag> {
         struct Quantum {
             integer power;
             Trivia::Id trivia;
@@ -53,7 +53,7 @@ namespace Q1_iQSM::Etalon {
         struct Service : BaseCapabilities{};
     };
 
-    struct SampleComponent : Component<SampleComponent, SampleEntity>, Require<SampleEntity> {
+    struct SampleComponent : Component<SampleComponent, SampleEntity> {
         struct Quantum {};
         struct Global {};
         static const Codex codex;
@@ -63,7 +63,7 @@ namespace Q1_iQSM::Etalon {
         };
     };
 
-    struct SampleAttribute : Attribute<SampleAttribute, SampleEntity>, Require<SampleEntity, SampleComponent> {
+    struct SampleAttribute : Attribute<SampleAttribute, SampleEntity> {
         struct Quantum {
             Id neighbor_anchor;
             optional<SampleComponent::Id> optional_anchor;

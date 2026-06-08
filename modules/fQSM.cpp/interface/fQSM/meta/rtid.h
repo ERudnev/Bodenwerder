@@ -15,14 +15,14 @@ namespace fqsm::meta::aspect {
         template<Any Meta>
         static Rtid of() { return Rtid{typeid(Meta)}; }
 
-        static std::string_view name(Rtid id);    
+        static std::string_view name(Rtid id);
 
         bool operator==(const Rtid&) const = default;
         bool operator<(const Rtid& other) const;
 
         struct Hash {
             auto operator()(const Rtid& id) const -> std::size_t { return id.value.hash_code(); }
-        };    
+        };
 
     private:
         explicit Rtid(std::type_index value) : value(value) {}
@@ -55,5 +55,3 @@ namespace fqsm::meta::aspect {
     }
 
 }
-
-

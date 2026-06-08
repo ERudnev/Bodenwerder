@@ -9,7 +9,7 @@ namespace rmmr::controller {
 
     using namespace iqsm::q1_gateway;
 
-    struct Dispatcher : Attribute<Dispatcher, scene::Node>, Require<scene::Node, ::rmmr::Device> {
+    struct Dispatcher : Attribute<Dispatcher, scene::Node> {
         struct Quantum {};
         struct Global {
             optional<Device::Id> device; // Q1: #Device? → iqsm::q1::optional (builtins.h)

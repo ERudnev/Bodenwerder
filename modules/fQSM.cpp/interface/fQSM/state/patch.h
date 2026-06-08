@@ -33,6 +33,7 @@ namespace fqsm::state::world {
         explicit Patch(Schema schema) : schema(schema) {}
 
         auto composite() -> CompositeData& { return slices; }
+        auto composite() const -> const CompositeData& { return slices; }
 
         template<aspect::Any Meta>
         auto slice() const -> TableView<Meta> {

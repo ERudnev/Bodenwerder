@@ -35,16 +35,6 @@ namespace fqsm::meta::internals {
     };
 
     template<typename Meta, typename = void>
-    struct explicit_deps_of {
-        using type = type_list<>;
-    };
-
-    template<typename Meta>
-    struct explicit_deps_of<Meta, std::void_t<typename Meta::Depends>> {
-        using type = typename Meta::Depends;
-    };
-
-    template<typename Meta, typename = void>
     struct parent_deps_of {
         using type = type_list<>;
     };
@@ -58,6 +48,6 @@ namespace fqsm::meta::internals {
 namespace fqsm::meta {
     template<typename Meta>
     struct deps_of {
-        using type = typename internals::tl_append_list_unique<typename internals::parent_deps_of<Meta>::type, typename internals::explicit_deps_of<Meta>::type>::type;
+        using type = typename internals::parent_deps_of<Meta>::type;
     };
 }

@@ -8,7 +8,7 @@ namespace rmmr::scene {
 
     using namespace iqsm::q1_gateway;
 
-    struct Light : Attribute<Light, Node>, Require<Node> {
+    struct Light : Attribute<Light, Node> {
         struct Quantum {
             RGB color;
             float intensity;
