@@ -3,7 +3,7 @@ namespace Q1_iQSM
 
     //@ in is not forward, it is mature Aspect definition
     entity Trivia
-  
+
     entity SampleEntity
       static
         max_elements: integer = 2000
@@ -47,7 +47,3 @@ namespace Q1_iQSM
         at_least_one_required: vector<#SampleComponent> @anchor(any)
       table
         >complex_constructor(existing: #SampleEntity) -> #
-        
-        
-
-    

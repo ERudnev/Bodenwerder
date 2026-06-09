@@ -10,7 +10,7 @@
 namespace fqsm::processing {
     using View = ::fqsm::state::world::View;
     using Data = ::fqsm::state::world::Data;
-    using Patch = ::fqsm::state::world::Patch;    
+    using Patch = ::fqsm::state::world::Patch;
 
     struct Context;
     struct Gate;
