@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fQSM/processing/actions/merge.h>
 #include <fQSM/state/world/preview.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/processing/transaction.h>
@@ -39,8 +40,8 @@ namespace fqsm::processing::transaction {
             };
         }
 
-        void accept(Context::PatchRef) {
-            _INCOMPLETE_;
+        void accept(Context::PatchRef child) {
+            actions::merge(preview, patch, child);
         }
 
     };

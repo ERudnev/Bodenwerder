@@ -14,7 +14,7 @@ namespace fqsm::features::reactions {
 
 namespace fqsm::features {
 
-    // Norma is a special kind of Reaction; Codex collects normas specifically.
+    // Norma is a special kind of Reaction; Codex collects morms specifically.
     struct Reaction {
         using Reviewing = processing::Review;
         using Preview = state::world::Preview;

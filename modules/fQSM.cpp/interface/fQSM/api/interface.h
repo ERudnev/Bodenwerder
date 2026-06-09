@@ -55,7 +55,7 @@ namespace fqsm::api {
         using namespace ::fqsm::features::reflexes;
     }
     namespace norma {
-        using namespace ::fqsm::features::reactions::normas::structural;
+        using namespace ::fqsm::features::reactions::morms::structural;
         //namespace fqsm::features::reactions
     }
     namespace reaction {

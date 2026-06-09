@@ -10,16 +10,16 @@
 namespace fqsm::features {
 
     struct Codex {
-        const Reactions normas;
+        const Reactions morms;
 
         Codex() = default;
 
-        Codex(Reactions in) : normas(std::move(in)) {}
+        Codex(Reactions in) : morms(std::move(in)) {}
 
         // syntax sugar for Aspect definitions: {normaA(), normaB(p), normaC(c,d)}
         template<typename FirstReaction, typename... RestReactions, typename = std::enable_if_t<std::is_base_of_v<features::Reaction, std::decay_t<FirstReaction>> && (std::is_base_of_v<features::Reaction, std::decay_t<RestReactions>> && ...)>>
         Codex(FirstReaction&& firstReaction, RestReactions&&... restReactions)
-            : normas(make_normas(std::forward<FirstReaction>(firstReaction), std::forward<RestReactions>(restReactions)...)) {}
+            : morms(make_normas(std::forward<FirstReaction>(firstReaction), std::forward<RestReactions>(restReactions)...)) {}
 
     private:
         template<typename FirstReaction, typename... RestReactions>

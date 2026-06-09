@@ -58,7 +58,7 @@ namespace fqsm::manipulation::schema {
 
         out->nodes.emplace(fqsm::meta::aspect::Rtid::of<Meta>(), node);
 
-        for (const auto& reaction : Meta::codex.normas) {
+        for (const auto& reaction : Meta::codex.morms) {
             const auto reactionId = fqsm::schema::Dag::ReactionId{ out->reactions.size() };
             out->reactions.push_back(reaction);
 

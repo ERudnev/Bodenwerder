@@ -1,7 +1,7 @@
 // Q1 DSL file, see Q1/syntax.txt for details
 namespace Q1_iQSM
   namespace Syntax
-    namespace Typization      
+    namespace Typization
       type Index2Alias as index2
       type Basic as integer
       type Alias as Basic
@@ -20,7 +20,7 @@ namespace Q1_iQSM
         ?length() -> Scalar
         =normalize(Scalar)
         >fromScalar(argument: Scalar) -> StructWithMethods // {x,x}
-        // normas "!" not allowed
+        // morms "!" not allowed
 
     namespace Namespaces
       namespace Some
@@ -28,14 +28,3 @@ namespace Q1_iQSM
       namespace Other
         type Type as string  // Type == Q1_iQSM::Syntax::Namespaces::Other::Type
       type Type as Some::Type // Type == Q1_iQSM::Syntax::Namespaces::Type == Q1_iQSM::Syntax::Namespaces::Some::Type == integer
-
-
-  
-    
-   
-      
-
-
-      
-
-    

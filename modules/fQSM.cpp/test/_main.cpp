@@ -12,13 +12,16 @@
     X(transaction_hierarchy) \
     X(manipulation) \
     X(globals) \
-    X(codex_and_indices) \
     X(connections) \
     X(relations_table) \
     // end
 
 #define FQSM_Q1RUNTIME_TESTS(X) \
     X(schema_world_from_etalon) \
+    // end
+
+#define FQSM_REACTIONS_TESTS(X) \
+    X(component_norms) \
     // end
 
 // Workshop: верни каталог test/workshop/ целиком и раскомментируй блок ниже + group "Workshop" в groups.
@@ -29,6 +32,7 @@
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_INTERNALS_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_Q1RUNTIME_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(FQSM_REACTIONS_TESTS)
 //BASETEST_FORWARD_DECLARE_TESTS(IQSM_WORKSHOP_TESTS)
 
 int main() {
@@ -41,6 +45,7 @@ int main() {
         group{ "all", BASETEST_MAKE_LIST_TESTS(FQSM_TESTS) },
         group{ "internals", BASETEST_MAKE_LIST_TESTS(FQSM_INTERNALS_TESTS) },
         group{ "q1runtime", BASETEST_MAKE_LIST_TESTS(FQSM_Q1RUNTIME_TESTS) },
+        group{ "reactions", BASETEST_MAKE_LIST_TESTS(FQSM_REACTIONS_TESTS) },
     };
 
     base::testing::run_summary total{};

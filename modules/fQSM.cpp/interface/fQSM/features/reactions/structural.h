@@ -8,6 +8,8 @@
 
 namespace fqsm::features::reflexes {
 
+    // TODO: find better names
+    // TODO: find better place (gather all reflexes in one file?)
     enum class ComponentMissing {
         remove_parent,
         make_default,
@@ -15,7 +17,7 @@ namespace fqsm::features::reflexes {
     };
 }
 
-namespace fqsm::features::reactions::normas::structural {
+namespace fqsm::features::reactions::morms::structural {
 
     using fqsm::features::reflexes::ComponentMissing;
 
@@ -25,8 +27,7 @@ namespace fqsm::features::reactions::normas::structural {
         static_assert(std::same_as<typename Follower::HostAspect, Origin>);
         using AutoConstructorType = typename Follower::BaseCapabilities::AutoConstructorType;
 
-        component(ComponentMissing strat, AutoConstructorType autoConstr = nullptr)
-            : policy(strat), autoConstructor(autoConstr) {}
+        component(ComponentMissing strat, AutoConstructorType autoConstr = nullptr) : policy(strat), autoConstructor(autoConstr) {}
 
         Sources listens() const override { return typed_set<Origin>(); }
         void apply(Reviewing context) override;
@@ -37,7 +38,7 @@ namespace fqsm::features::reactions::normas::structural {
 }
 
 // Impl:
-namespace fqsm::features::reactions::normas::structural {
+namespace fqsm::features::reactions::morms::structural {
     // component:
     template<aspect::Component Follower, aspect::Entity Origin>
     void component<Follower, Origin>::apply(Reviewing context) {

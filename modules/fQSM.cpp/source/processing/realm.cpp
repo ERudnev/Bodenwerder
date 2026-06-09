@@ -27,6 +27,7 @@ namespace fqsm::processing {
     }
 
     void Realm::accept(Context::PatchRef patch) {
-        actions::update(world, *patch);
+        lastNotes = {};
+        lastNotes = actions::update(world, *patch);
     }
 }

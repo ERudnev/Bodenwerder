@@ -46,7 +46,7 @@ namespace {
 
 namespace tests {
 
-void codex_and_indices()
+void component_norms()
 {
     using namespace local;
     using namespace fqsm::api;
@@ -63,6 +63,30 @@ void codex_and_indices()
     { // Scenario 1: B::Codex::component<> aborted creation of A
         const auto id = ask::item::create<A>(main, {4});
         EXPECT_FALSE(ask::item::exists<A>(main, id));
+        EXPECT_TRUE(main.notes().rejection());
+    }
+    { // Scenario 2: A+B manual, C via make_default; parent removal cascades to both components
+        const auto id = [&] {
+            context::Branch tx(main);
+            const auto id = ask::item::create<A>(tx, {4});
+            ask::item::create<B>(tx, id, {"manual"});
+            return id;
+        }();
+
+        EXPECT_FALSE(main.notes().rejection());
+        EXPECT_TRUE(ask::item::exists<A>(main, id));
+        EXPECT_TRUE(ask::item::exists<B>(main, id));
+        EXPECT_EQ(ask::item::get<C>(main, id)->power, 4);
+
+        {
+            context::Branch tx(main);
+            ask::item::update<A>(tx, id).remove();
+        }
+
+        EXPECT_FALSE(main.notes().rejection());
+        EXPECT_FALSE(ask::item::exists<A>(main, id));
+        EXPECT_FALSE(ask::item::exists<B>(main, id));
+        EXPECT_FALSE(ask::item::exists<C>(main, id));
     }
     // TDO: use this some day
     //EXPECT_EQ(ask::item::get<B>(main, id)->text, "generated");

@@ -38,7 +38,7 @@ namespace Q1-iQSM {
     - &dependencies_derivation
     - &iqsm_transaction_culture
   }
-  
+
 
   file_layout: @Rule {
     Проекция Q1 DSL → C++: организация файлов и заголовков.
@@ -144,12 +144,12 @@ namespace Q1-iQSM {
 
   private_constructors_generation: @Rule {
     Генерация приватных аспектных конструкторов в C++-проекции.
-    1: Речь идёт не о публичных DSL-операциях `>name(...) -> ...`, а о специальных helper-конструкторах, на которые ссылаются structural/logical normas.
+    1: Речь идёт не о публичных DSL-операциях `>name(...) -> ...`, а о специальных helper-конструкторах, на которые ссылаются structural/logical morms.
     2: Такие конструкторы не обязаны быть заметны в DSL и не считаются частью публичного аспектного API.
     3: В C++ они размещаются в `.cpp` как `static`-функции локального helper-типа `Aspect_private : Aspect::Service`.
       1: Каноническая форма имени для invariant-driven создания — `construct`.
       2: Этот helper-тип существует именно затем, чтобы не светить внутренние функции в заголовке и не смешивать их с пользовательскими операциями.
-    4: Тело такого конструктора пишется программистом вручную; генерация задаёт только место, сигнатурную форму и способ подключения через `normas`.
+    4: Тело такого конструктора пишется программистом вручную; генерация задаёт только место, сигнатурную форму и способ подключения через `morms`.
     5: Если конструктору нужно только читать уже видимый мир и вычислить стартовый `Quantum`, его форма должна быть `construct(Reading, Parent::Id, Item<Parent>) -> Aspect::Quantum`.
       1: Это нормальная preferred-форма для “чистого” конструктора, который ничего не порождает дополнительно и не делает побочных write-операций.
       2: Такой конструктор не обязан “для вида” использовать write-мандат.
@@ -162,24 +162,24 @@ namespace Q1-iQSM {
 
   invariants_and_anchors: @Rule {
     Проекция структурных инвариантов и якорей.
-    1: Каждый аспектный C++-тип содержит `static const Codex codex;`, а определение `normas` размещается в `.cpp`.
+    1: Каждый аспектный C++-тип содержит `static const Codex codex;`, а определение `morms` размещается в `.cpp`.
       1: Причина: чтобы не светить внутренние helper-операции и утилиты в заголовках и не смешивать декларацию данных с прикладной логикой.
     2: Q1-нормализаторы `!name(...)` проецируются по контексту объявления.
       1: `element`-нормализатор проецируется как `static auto name(Reading, Id, const Quantum&) -> ItemChange` в `Aspect_private`.
-      2: Такой нормализатор подключается в `normas.logical` как `invariant::for_each_item<Aspect, &Aspect_private::name>`.
+      2: Такой нормализатор подключается в `morms.logical` как `invariant::for_each_item<Aspect, &Aspect_private::name>`.
       3: `table`-нормализатор проецируется как `static void name(Writing)` в `Aspect_private`.
-      4: Такой нормализатор подключается в `normas.logical` как прямой указатель `&Aspect_private::name`.
-    3: Для `attribute/tag ... of Parent` в normas добавляется `Structural::anchor_attribute<Parent, Aspect>`.
-    4: Для `component ... of Parent` в normas добавляется `Structural::isomorphic<Parent, Aspect, &Aspect_private::construct>`.
+      4: Такой нормализатор подключается в `morms.logical` как прямой указатель `&Aspect_private::name`.
+    3: Для `attribute/tag ... of Parent` в morms добавляется `Structural::anchor_attribute<Parent, Aspect>`.
+    4: Для `component ... of Parent` в morms добавляется `Structural::isomorphic<Parent, Aspect, &Aspect_private::construct>`.
       1: Реальная `construct(...) -> Aspect::Quantum` размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
       2: Допустимы обе сигнатуры: `construct(Reading, Parent::Id, Item<Parent>)` для чистого вычисления начального кванта и `construct(Writing, Parent::Id, Item<Parent>)` для конструктора, который дополнительно меняет мир.
       3: В `Writing`-форме такой конструктор может порождать дополнительные delta-операции до того, как сам `Aspect` будет добавлен в world.
-    5: Поле `f: #Target @anchor` (decode: `Target::id`) добавляет в normas `Structural::anchor<Target, Owner, &Quantum::f>`.
-    6: Если в `element` встречается хотя бы одно поле с директивой `@cache`, генерация добавляет в `normas` нормализатор `&Aspect_private::update`.
+    5: Поле `f: #Target @anchor` (decode: `Target::id`) добавляет в morms `Structural::anchor<Target, Owner, &Quantum::f>`.
+    6: Если в `element` встречается хотя бы одно поле с директивой `@cache`, генерация добавляет в `morms` нормализатор `&Aspect_private::update`.
       1: Реальная `update(...)` (или иной нормализатор/реакция) размещается в `.cpp` как статическая функция приватного helper-типа `Aspect_private`.
     7: Эталонная (golden) форма логики в `.cpp`:
       1: Для каждого аспекта вводится локальный helper-тип `Aspect_private : Aspect::Service` со статическими функциями.
-      2: Функции, на которые ссылаются `normas` через указатели, размещаются именно в `Aspect_private` (например `construct`, `need_even`, `private_validate_*`).
+      2: Функции, на которые ссылаются `morms` через указатели, размещаются именно в `Aspect_private` (например `construct`, `need_even`, `private_validate_*`).
     8: Эталонная форма публичных операций (golden):
       1: Публичные операции аспектов объявляются в `Aspect::Service`.
       2: В эталонах допускается префикс `example_` у операций, чтобы явно отделить “демонстрацию формы” от прикладных имён.

@@ -11,7 +11,7 @@ namespace Q1_iQSM::Etalon {
 
     //
     // Trivia
-    const Normas Trivia::normas{
+    const Norms Trivia::morms{
         .structural = {},
         .logical = {},
     };
@@ -89,7 +89,7 @@ namespace Q1_iQSM::Etalon {
     }
     void SampleEntity::Service::example_nonconst_element_method(Writing, Id) {}
 
-    const Normas SampleEntity::normas{
+    const Norms SampleEntity::morms{
         .structural = {},
         .logical = {
             invariant::for_each_item<SampleEntity, &SampleEntity_private::min_value>,
@@ -113,7 +113,7 @@ namespace Q1_iQSM::Etalon {
         }
     };
 
-    const Normas Tag::normas{
+    const Norms Tag::morms{
         .structural = {
             invariant::anchor_attribute<SampleEntity, Tag>,
         },
@@ -147,7 +147,7 @@ namespace Q1_iQSM::Etalon {
         }
     };
 
-    const Normas Remnant::normas{
+    const Norms Remnant::morms{
         .structural = {
             invariant::isomorphic<Tag, Remnant, &Remnant_private::construct>,
             invariant::anchor<Trivia, Remnant, &Remnant::Quantum::trivia>,
@@ -176,8 +176,8 @@ namespace Q1_iQSM::Etalon {
         m->data_field /= safe;
         return remainder;
     }
-    
-    const Normas SampleComponent::normas{
+
+    const Norms SampleComponent::morms{
         .structural = {
             invariant::isomorphic<SampleEntity, SampleComponent, &SampleComponent_private::private_construct>,
         },
@@ -204,7 +204,7 @@ namespace Q1_iQSM::Etalon {
         }
     };
 
-    const Normas SampleAttribute::normas{
+    const Norms SampleAttribute::morms{
         .structural = {
             invariant::anchor_attribute<SampleEntity, SampleAttribute>,
             invariant::anchor<SampleEntity, SampleAttribute, &SampleAttribute::Quantum::neighbor_anchor>,
