@@ -2,13 +2,13 @@
 
 #include <vector>
 #include <string>
-#include <fQSM/processing/context.h>
+#include <fQSM/processing/commit.h>
 #include <fQSM/state/world/preview.h>
 
 namespace fqsm::processing {
 
     struct Review final {
-        using PatchRef = Context::PatchRef;
+        using PatchRef = Commit::PatchRef;
         struct Notes {
             using Category = std::vector<std::string>;
             Category critical;
@@ -27,7 +27,7 @@ namespace fqsm::processing {
         }
 
         operator Gate() const {
-            return Gate{ preview, std::make_shared<Context>(Context{preview, patch,{}}) };
+            return Gate{ preview, std::make_shared<Commit>(Commit{preview, patch,{}}) };
         }
     };
 

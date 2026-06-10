@@ -3,20 +3,20 @@
 #include <memory>
 
 #include <fQSM/state/_forwards.h>
-#include <fQSM/processing/context.h>
+#include <fQSM/processing/commit.h>
 
 namespace fqsm::processing {
 
     struct Transaction {
         struct ChildPolicy {
             Reading view;
-            Context::Upstream upstream;
+            Commit::Upstream upstream;
         };
 
         virtual ~Transaction() = default;
 
         virtual operator Reading() const = 0;
-        
+
         operator Writing() {
             return writing();
         }

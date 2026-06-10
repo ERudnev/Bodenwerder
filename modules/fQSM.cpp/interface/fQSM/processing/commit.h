@@ -10,7 +10,7 @@
 
 namespace fqsm::processing {
 
-    struct Context final {
+    struct Commit final {
         using PatchRef = fqsm::ref<Patch>;
         using Upstream = std::function<void(PatchRef)>;
 
@@ -18,7 +18,7 @@ namespace fqsm::processing {
         PatchRef patch; // always created outside
         Upstream upstream;
 
-        ~Context() { finish(); } // _DEBUG_REPORT_;
+        ~Commit() { finish(); } // _DEBUG_REPORT_;
 
         void finish() {
             if (upstream) {
@@ -28,7 +28,7 @@ namespace fqsm::processing {
     };
 
     struct Gate {
-        using PatchRef = Context::PatchRef;
+        using PatchRef = Commit::PatchRef;
 
         const View& state;
         ContextShared parent;
