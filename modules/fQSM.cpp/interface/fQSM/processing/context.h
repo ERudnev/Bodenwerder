@@ -4,6 +4,8 @@
 #include <memory>
 #include <base/logging.h>
 #include <fQSM/state/_forwards.h>
+#include <fQSM/state/patch.h>
+#include <fQSM/state/world/view.h>
 #include <fQSM/processing/_forwards.h>
 
 namespace fqsm::processing {
@@ -34,5 +36,16 @@ namespace fqsm::processing {
         operator Reading() const { return view; }
 
         Patch& patch() const { return *parent->patch; }
+
+        // optimization stuff:
+        template<aspect::Any Meta>
+        void reserve_broad_update() const;
     };
+}
+
+namespace fqsm::processing {
+    template<aspect::Any Meta>
+    void Gate::reserve_broad_update() const {
+        patch().template items<Meta>().reserve(view.items<Meta>().size());
+    }
 }

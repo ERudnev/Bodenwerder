@@ -125,6 +125,7 @@ public:
     virtual bool contains(const Key& key) const = 0;
     virtual const Val* find(const Key& key) const = 0;
     virtual const Val& at(const Key& key) const = 0;
+    virtual std::size_t size() const = 0;
 
     std::optional<Val> get(const Key& key) const {
         if (const auto* found = find(key)) return *found;

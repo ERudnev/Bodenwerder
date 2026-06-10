@@ -22,7 +22,7 @@ namespace fqsm::features::reactions::morms::structural {
     using fqsm::features::reflexes::ComponentMissing;
 
     // NG: public visibility of this "classes" is made object-like
-    template<aspect::Component Follower, aspect::Entity Origin>
+    template<aspect::Component Follower, aspect::Any Origin>
     struct component : Reaction {
         static_assert(std::same_as<typename Follower::HostAspect, Origin>);
         using ConstructorDefault = typename Follower::BaseActions::ConstructorDefault;
@@ -40,7 +40,7 @@ namespace fqsm::features::reactions::morms::structural {
 // Impl:
 namespace fqsm::features::reactions::morms::structural {
     // component:
-    template<aspect::Component Follower, aspect::Entity Origin>
+    template<aspect::Component Follower, aspect::Any Origin>
     void component<Follower, Origin>::apply(Reviewing context) {
         // all modes:
         for (const auto change : will_be<Origin>(context).removed()) {

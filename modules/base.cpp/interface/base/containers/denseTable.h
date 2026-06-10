@@ -117,7 +117,7 @@ public:
         return *found;
     }
 
-    SizeType size() const { return entries.size(); }
+    SizeType size() const override { return entries.size(); }
     bool empty() const { return entries.empty(); }
 
     void clear() {

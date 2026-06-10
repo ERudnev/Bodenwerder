@@ -39,6 +39,22 @@ public:
         throw std::out_of_range("TableOverlay::at");
     }
 
+    std::size_t size() const override {
+        std::size_t result = state.size();
+
+        // TODO: consider cachind add/remove features inside of Patch to make this a bit faster:
+        for (const auto entry : patch) {
+            const bool existed = state.contains(entry.first);
+            if (!entry.second.has_value()) {
+                if (existed) --result;
+                continue;
+            }
+            if (!existed) ++result;
+        }
+
+        return result;
+    }
+
 public:
     using ReadIterator = typename View::ReadIterator;
     using EntryView = typename View::EntryView;

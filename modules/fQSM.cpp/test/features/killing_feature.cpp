@@ -3,31 +3,66 @@
 #include <fQSM/api/interface.h>
 #include <fQSM/state/world/data.h>
 
+
 namespace {
     using namespace fqsm::api;
     namespace local {
-        struct A : Entity<A> {
-            struct Quantum { integer value; };
-            static const Codex codex;
-        };
-
-        struct B : Component<B, A> {
-            struct Quantum { string text; };
+        struct Body : Entity<Body> {
+            struct Quantum {
+                integer powerOfMass; // mass (kg) == 1 * 2^powerOfMass
+            };
             static const Codex codex;
             struct Actions : BaseActions {};
         };
 
-        struct C : Component<C, B> {
-            struct Quantum { integer power; };
+        struct Life : Component<Life, Body> {
+            struct Quantum {
+                integer clock = 0;
+            };
             static const Codex codex;
-            struct Actions : BaseActions {};
+            struct Actions : BaseActions {
+                static void create(Writing context, Body::Id id) {
+                    ask::item::create<Life>(context, id, {0});
+                }
+                static Quantum update(const Quantum& q) {
+                    return Quantum{q.clock+1};
+                }
+                static void update(Writing context, Id) {
+                    context.reserve_broad_update<Life>();
+                    for (const auto entry : context.view.items<Life>()) {
+                        context.patch().template items<Life>().insert(entry.first, update(entry.second));
+                    }
+                }
+            };
+        };
+
+        struct Death : Component<Death, Life> {
+            struct Quantum {
+                integer limit;
+            };
+            static const Codex codex;
+            struct Actions : BaseActions {
+                static void create(Writing context, Life::Id id) {
+                    ask::item::create<Death>(context, id, {10000});
+                }
+                static void update(Writing context, Id) {
+                    for (const auto entry : static_cast<Reading>(context).items<Death>()) {
+                        if (ask::item::get<Life>(context, entry.first)->clock > entry.second.limit)
+                            Life::Actions::kill(context, entry.first);
+                    }
+                }
+            };
         };
     }
 
     namespace local {
-        const A::Codex A::codex = {};
-        const B::Codex B::codex = {};
-        const C::Codex C::codex = {};
+        const Body::Codex Body::codex = {};
+        const Life::Codex Life::codex = {
+            norma::component<Life, Body>(ComponentMissing::make_default, &Life::Actions::create),
+        };
+        const Death::Codex Death::codex = {
+            norma::component<Death, Life>(ComponentMissing::make_default, &Death::Actions::create),
+        };
     }
 }
 
@@ -39,29 +74,37 @@ void killing_feature()
     using namespace fqsm::api;
 
     const Schema schema = ask::schema::merge({
-        ask::schema::aspect<A>(),
-        ask::schema::aspect<B>(),
-        ask::schema::aspect<C>(),
+        ask::schema::aspect<Body>(),
+        ask::schema::aspect<Life>(),
+        ask::schema::aspect<Death>(),
     });
 
     fqsm::state::world::Data world(schema);
     context::Realm main(world);
 
-    const auto id = [&] {
-        context::Branch tx(main);
-        const auto id = ask::item::create<A>(tx, {4});
-        ask::item::create<B>(tx, id, {"b"});
-        ask::item::create<C>(tx, id, {8});
-        return id;
-    }();
+    { // Single Stone kill:
+        const auto id = [&] {
+            context::Branch tx(main);
+            // this is valid case to build Entity when Item value normalization is present:
+            const auto id = ask::item::create<Body>(tx, {4});
+            ask::item::create<Life>(tx, id, {0});
+            ask::item::create<Death>(tx, id, {10000});
+            return id;
+        }();
 
-    EXPECT_FALSE(main.notes().rejection());
-    EXPECT_TRUE(ask::item::exists<A>(main, id));
+        EXPECT_FALSE(main.notes().rejection());
+        EXPECT_TRUE(ask::item::exists<Body>(main, id));
 
-    C::Actions::kill(main, id);
+        Death::Actions::kill(main, id);
 
-    EXPECT_FALSE(main.notes().rejection());
-    EXPECT_FALSE(ask::item::exists<A>(main, id));
+        EXPECT_FALSE(main.notes().rejection());
+        EXPECT_FALSE(ask::item::exists<Body>(main, id));
+    }
+    { // Lifetime simulation
+        // create one Stone with
+        // run as many updates as needed for first death/echo
+        // run next updates for second
+    }
 }
 
 } // namespace tests
