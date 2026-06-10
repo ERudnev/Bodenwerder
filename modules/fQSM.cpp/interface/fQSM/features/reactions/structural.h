@@ -25,15 +25,15 @@ namespace fqsm::features::reactions::morms::structural {
     template<aspect::Component Follower, aspect::Entity Origin>
     struct component : Reaction {
         static_assert(std::same_as<typename Follower::HostAspect, Origin>);
-        using AutoConstructorType = typename Follower::BaseCapabilities::AutoConstructorType;
+        using ConstructorDefault = typename Follower::BaseActions::ConstructorDefault;
 
-        component(ComponentMissing strat, AutoConstructorType autoConstr = nullptr) : policy(strat), autoConstructor(autoConstr) {}
+        component(ComponentMissing strat, ConstructorDefault autoConstr = nullptr) : policy(strat), autoConstructor(autoConstr) {}
 
         Sources listens() const override { return typed_set<Origin>(); }
         void apply(Reviewing context) override;
     private:
         const ComponentMissing policy;
-        AutoConstructorType* autoConstructor = nullptr;
+        ConstructorDefault* autoConstructor = nullptr;
     };
 }
 

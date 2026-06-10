@@ -2,7 +2,7 @@
 
 #include <fQSM/api/interface.h>
 
-// this is "generated" semantic-level domain code 
+// this is "generated" semantic-level domain code
 namespace tests::model {
     using namespace fqsm::api;
 
@@ -15,7 +15,7 @@ namespace tests::model {
             integer modulus = 2;
         };
         static const Codex codex;
-        struct Capabilities : BaseCapabilities {
+        struct Actions : BaseActions {
             struct Private;
             static auto constantFunc(Reading, Id)->integer;
         };
@@ -26,7 +26,7 @@ namespace tests::model {
             string name;
         };
         static const Codex codex;
-        struct Capabilities : BaseCapabilities {};
+        struct Actions : BaseActions {};
     };
 
     struct SecondaryAttribute : Attribute<SecondaryAttribute, SomeComponent> {
@@ -34,7 +34,6 @@ namespace tests::model {
             integer attribute;
         };
         static const Codex codex;
-        struct Capabilities : BaseCapabilities {};
+        struct Actions : BaseActions {};
     };
 }
-

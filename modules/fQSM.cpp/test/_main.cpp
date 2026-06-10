@@ -22,6 +22,8 @@
 
 #define FQSM_REACTIONS_TESTS(X) \
     X(component_norms) \
+    X(attribute_norms) \
+    X(killing_feature) \
     // end
 
 // Workshop: верни каталог test/workshop/ целиком и раскомментируй блок ниже + group "Workshop" в groups.

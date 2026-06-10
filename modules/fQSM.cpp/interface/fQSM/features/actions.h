@@ -2,22 +2,23 @@
 
 // Capabilites is set of features of Aspect, similar to methods of objects
 // like "do something()" "what is your size()"
-// fQSM-specific fact: all "methods" of Aspect are implementated as static methods of Aspect::Capabilities interface
+// fQSM-specific fact: all "methods" of Aspect are implementated as static methods of Aspect::Actions interface
 // notmal shape:
-// static auto Aspect::Capabilities::foo(Reading, Id, Args...)->result
-// static auto Aspect::Capabilities::bar(Writing, Id, Args...)->result
+// static auto Aspect::Actions::foo(Reading, Id, Args...)->result
+// static auto Aspect::Actions::bar(Writing, Id, Args...)->result
 // true statics (methods of Aspect itself, not its Items:
-// static auto Aspect::Capabilities::static_foo(Reading, Args...)->result
-// static auto Aspect::Capabilities::static_bar(Writing, Args...)->result
+// static auto Aspect::Actions::static_foo(Reading, Args...)->result
+// static auto Aspect::Actions::static_bar(Writing, Args...)->result
 
 #include <optional>
 #include <vector>
 
+#include <fQSM/manipulation/item.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/features/codex.h>
 
-namespace fqsm::capabilities {
+namespace fqsm::actions {
     // each Aspect must (may?) have own Interface
     // this set of interfaces is used to generate Aspect-specific parts of their interfaces
     class Abstract {
@@ -47,7 +48,10 @@ namespace fqsm::capabilities {
     template<typename Meta, typename HostType>
     struct Parasitic : Any<Meta> {
     public:
-        using AutoConstructorType = void(Writing, ::fqsm::Id<HostType>);
+        using Id = Any<Meta>::Id;
+        using ConstructorDefault = void(Writing, ::fqsm::Id<HostType>);
+
+        static void kill(Writing context, Id id);
     };
 
 
@@ -65,4 +69,16 @@ namespace fqsm::capabilities {
 
     template<typename Meta, typename HostType>
     using Component = Parasitic<Meta, HostType>;
+}
+
+// Impl
+namespace fqsm::actions {
+    template<typename Meta, typename HostType>
+    void Parasitic<Meta, HostType>::kill(Writing context, Id id) {
+        if constexpr (aspect::Standalone<HostType>) {
+            manipulation::item::update<HostType>(context, id).remove();
+        } else {
+            HostType::Actions::kill(context, id);
+        }
+    }
 }

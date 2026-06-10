@@ -1,4 +1,4 @@
 #pragma once
 
 #include <fQSM/features/codex.h>
-#include <fQSM/features/capabilities.h>
+#include <fQSM/features/actions.h>

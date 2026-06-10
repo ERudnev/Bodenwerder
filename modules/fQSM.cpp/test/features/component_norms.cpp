@@ -19,7 +19,7 @@ namespace {
         struct C : Component<C, A> {
             struct Quantum { integer power; };
             static const Codex codex;
-            struct Capabilities : BaseCapabilities {
+            struct Actions : BaseActions {
                 static void create(Writing context, A::Id id) {
                     ask::item::create<C>(context, id, {ask::item::get<A>(context, id)->value});
                 }
@@ -39,7 +39,7 @@ namespace {
     }
     namespace local {
         const C::Codex C::codex = {
-            norma::component<C, A>(ComponentMissing::make_default, &C::Capabilities::create),
+            norma::component<C, A>(ComponentMissing::make_default, &C::Actions::create),
         };
     }
 }

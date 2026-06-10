@@ -2,15 +2,15 @@
 
 #include <fQSM/api/interface.h>
 
-namespace Q1_iQSM::Etalon { 
-    
+namespace Q1_iQSM::Etalon {
+
     using namespace fqsm::api;
 
     struct Trivia : Entity<Trivia> {
         struct Quantum {};
         struct Global {};
         static const Codex codex;
-        struct Service : BaseCapabilities{};
+        struct Service : BaseActions{};
     };
 
     struct SampleEntity : Entity<SampleEntity> {
@@ -19,7 +19,7 @@ namespace Q1_iQSM::Etalon {
         };
         struct Global {};
         static const Codex codex;
-        struct Service : BaseCapabilities {
+        struct Service : BaseActions {
             static constexpr integer max_elements = integer{2000};
             static constexpr integer absolute_min = integer{-1000};
             static constexpr integer absolute_max = integer{1000};
@@ -40,7 +40,7 @@ namespace Q1_iQSM::Etalon {
             integer modulus = integer{2};
         };
         static const Codex codex;
-        struct Service : BaseCapabilities{};
+        struct Service : BaseActions{};
     };
 
     struct Remnant : Component<Remnant, Tag> {
@@ -50,14 +50,14 @@ namespace Q1_iQSM::Etalon {
         };
         struct Global {};
         static const Codex codex;
-        struct Service : BaseCapabilities{};
+        struct Service : BaseActions{};
     };
 
     struct SampleComponent : Component<SampleComponent, SampleEntity> {
         struct Quantum {};
         struct Global {};
         static const Codex codex;
-        struct Service : BaseCapabilities{
+        struct Service : BaseActions{
             static auto example_op_multiply(Writing, Id, integer factor)->void;
             static auto example_op_div_with_remainder(Writing, Id, integer divisor)->integer; // returns remainder
         };
@@ -72,7 +72,7 @@ namespace Q1_iQSM::Etalon {
         };
         struct Global {};
         static const Codex codex;
-        struct Manipulators : BaseCapabilities{
+        struct Manipulators : BaseActions{
             static auto create_complex_constructor(Writing, SampleEntity::Id existing) -> Id;
         };
     };

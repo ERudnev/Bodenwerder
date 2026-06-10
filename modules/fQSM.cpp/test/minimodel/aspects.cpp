@@ -6,12 +6,12 @@ namespace tests::model {
     // SomeEntity:
     const SomeEntity::Codex SomeEntity::codex{};
 
-    struct SomeEntity::Capabilities::Private {
+    struct SomeEntity::Actions::Private {
         static integer somePrivateFunc(integer val, integer mod) {
             return val % mod;
         }
     };
-    auto SomeEntity::Capabilities::constantFunc(Reading context, Id id) -> integer {
+    auto SomeEntity::Actions::constantFunc(Reading context, Id id) -> integer {
         // this version of "user code" is not final, not effective and must not be an example
         auto self = ask::item::get<SomeEntity>(context, id);
         auto global = ask::global::get<SomeEntity>(context);
