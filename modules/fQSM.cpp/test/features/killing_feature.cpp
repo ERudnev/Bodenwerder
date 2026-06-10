@@ -29,7 +29,7 @@ namespace {
                 }
                 static void update(Writing context, Id) {
                     context.reserve_broad_update<Life>();
-                    for (const auto entry : context.view.items<Life>()) {
+                    for (const auto entry : context.state.items<Life>()) {
                         context.patch().template items<Life>().insert(entry.first, update(entry.second));
                     }
                 }

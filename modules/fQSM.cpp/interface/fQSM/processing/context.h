@@ -30,10 +30,10 @@ namespace fqsm::processing {
     struct Gate {
         using PatchRef = Context::PatchRef;
 
-        const View& view;
+        const View& state;
         ContextShared parent;
 
-        operator Reading() const { return view; }
+        operator Reading() const { return state; }
 
         Patch& patch() const { return *parent->patch; }
 
@@ -46,6 +46,6 @@ namespace fqsm::processing {
 namespace fqsm::processing {
     template<aspect::Any Meta>
     void Gate::reserve_broad_update() const {
-        patch().template items<Meta>().reserve(view.items<Meta>().size());
+        patch().template items<Meta>().reserve(state.items<Meta>().size());
     }
 }

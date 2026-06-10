@@ -13,6 +13,7 @@
 namespace fqsm::processing::transaction {
 
     // not derived from Transaction, because it is... "final" one, not allowed to propagate context
+    // TODO: consider to remove this thing one day...
     template<aspect::Any Meta>
     struct Quantal {
         const Id<Meta> id;
@@ -21,7 +22,7 @@ namespace fqsm::processing::transaction {
             : id(Id<Meta>::generate_random()), gate(std::move(gate)), buffer(std::move(value)) {}
 
         explicit Quantal(Writing gate, Id<Meta> id)
-            : id(id), gate(std::move(gate)), buffer(requireActual(this->gate.view, id)) {}
+            : id(id), gate(std::move(gate)), buffer(requireActual(this->gate.state, id)) {}
 
         explicit Quantal(Writing gate, Id<Meta> id, Quantum<Meta> value) requires aspect::Parasitic<Meta>
             : id(id), gate(std::move(gate)), buffer(std::move(value)) {}
@@ -29,7 +30,7 @@ namespace fqsm::processing::transaction {
         ~Quantal() {
             auto& patchItems = gate.patch().template items<Meta>();
             if (removed) {
-                if (getActual(gate.view, id))
+                if (getActual(gate.state, id))
                     patchItems.insert(id, std::nullopt);
                 return;
             }

@@ -20,7 +20,7 @@ namespace fqsm::manipulation::global {
     struct update {
         explicit update(Writing gate)
             : gate(std::move(gate))
-            , buffer(this->gate.view.template global<Meta>())
+            , buffer(this->gate.state.template global<Meta>())
         {}
 
         ~update() {
