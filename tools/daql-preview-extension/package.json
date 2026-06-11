@@ -1,0 +1,108 @@
+{
+  "name": "daql-preview",
+  "displayName": "KQM Preview",
+  "description": "Read-only semantic preview for KQM knowledge files (*.tome)",
+  "version": "0.3.1",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCustomEditor:kqm.preview",
+    "onLanguage:kqm",
+    "workspaceContains:**/*.tome"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configurationDefaults": {
+      "files.associations": {
+        "*.tome": "kqm"
+      }
+    },
+    "languages": [
+      {
+        "id": "kqm",
+        "aliases": [
+          "KQM"
+        ],
+        "extensions": [
+          ".tome"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "kqm.preview",
+        "displayName": "KQM Preview",
+        "selector": [
+          {
+            "filenamePattern": "*.tome"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "kqm.showPreview",
+        "title": "Open KQM Preview",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "kqm.showPreviewToSide",
+        "title": "Open KQM Preview to the Side",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "kqm.openWithTextEditor",
+        "title": "Open with Text Editor",
+        "icon": "$(file-text)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "kqm.showPreview",
+          "when": "resourceExtname == .tome",
+          "group": "navigation"
+        },
+        {
+          "command": "kqm.showPreviewToSide",
+          "when": "resourceExtname == .tome",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "kqm.showPreview",
+          "when": "resourceExtname == .tome",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "kqm.showPreviewToSide",
+        "key": "ctrl+k v",
+        "when": "resourceExtname == .tome || editorLangId == kqm"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "smoke": "node scripts/smoke.mjs",
+    "package": "npm run compile && vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^3.2.1",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0"
+  }
+}

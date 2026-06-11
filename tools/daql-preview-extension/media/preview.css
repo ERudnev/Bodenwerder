@@ -1,0 +1,171 @@
+body {
+  margin: 0;
+  padding: 1.5rem 2rem 2rem;
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  line-height: 1.6;
+}
+
+.daql-document {
+  max-width: 52rem;
+}
+
+.daql-comment {
+  margin: 0.25rem 0;
+  color: var(--vscode-descriptionForeground);
+  font-style: italic;
+}
+
+.daql-prose {
+  margin: 0.75rem 0;
+}
+
+.daql-using {
+  margin: 0.5rem 0;
+  padding: 0.4rem 0.75rem;
+  border-left: 3px solid var(--vscode-textLink-foreground);
+  background-color: var(--vscode-textBlockQuote-background);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.95em;
+}
+
+.daql-using-kw {
+  color: var(--vscode-symbolKeyword-color, var(--vscode-editor-foreground));
+  font-weight: 600;
+}
+
+.daql-using-file {
+  color: var(--vscode-descriptionForeground);
+}
+
+.daql-namespace {
+  margin-top: 1.5rem;
+}
+
+.daql-namespace-title {
+  margin: 0 0 1.25rem;
+  padding-bottom: 0.4rem;
+  font-size: 1.5em;
+  font-weight: 600;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.daql-artifact {
+  margin: 1.25rem 0;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.daql-artifact-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.65rem 1rem;
+  background-color: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.daql-artifact-name {
+  font-weight: 600;
+  font-size: 1.05em;
+}
+
+.daql-form {
+  padding: 0.15em 0.5em;
+  border-radius: 3px;
+  background-color: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.daql-quality {
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  background-color: var(--vscode-inputValidation-infoBackground);
+  color: var(--vscode-inputValidation-infoForeground);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.85em;
+}
+
+.daql-artifact-body {
+  padding: 0.75rem 1rem 1rem;
+}
+
+.daql-field {
+  margin: 0.75rem 0;
+}
+
+.daql-field-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.85em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--vscode-symbolKeyword-color, var(--vscode-textLink-foreground));
+}
+
+.daql-field-content p {
+  margin: 0.35rem 0;
+}
+
+.daql-rule-prologue {
+  margin-bottom: 0.75rem;
+  color: var(--vscode-editor-foreground);
+}
+
+.daql-rule-prologue p {
+  margin: 0.35rem 0;
+}
+
+.daql-rule-tree {
+  margin: 0.35rem 0;
+  padding-left: 1.5rem;
+  list-style: decimal;
+}
+
+.daql-rule-tree li {
+  margin: 0.35rem 0;
+}
+
+.daql-rule-index {
+  font-weight: 600;
+  color: var(--vscode-symbolNumber-color, var(--vscode-textLink-foreground));
+}
+
+.daql-rule-text {
+  margin-left: 0.25rem;
+}
+
+.daql-form-ref {
+  color: var(--vscode-textLink-foreground);
+  font-weight: 500;
+}
+
+.daql-form-ref::before {
+  content: "@";
+  opacity: 0.65;
+}
+
+.daql-artifact-ref {
+  color: var(--vscode-textLink-foreground);
+  font-weight: 500;
+}
+
+.daql-artifact-ref::before {
+  content: "&";
+  opacity: 0.65;
+}
+
+.daql-inline-code {
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  background-color: var(--vscode-textCodeBlock-background);
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.92em;
+}

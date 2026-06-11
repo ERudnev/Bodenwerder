@@ -55,8 +55,8 @@ namespace fqsm::actions {
         using Parent = Standalone<HostType>;
         using ConstructorDefault = void(Writing, typename Parent::Id);
 
+        // feature:
         static void kill(Writing context, Own::Id id);
-        static void temp_test_syntax(Writing context, Parent::Id id) {}
     };
 
 
