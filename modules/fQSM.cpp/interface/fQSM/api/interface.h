@@ -11,6 +11,7 @@
 #include <fQSM/manipulation/global.h>
 #include <fQSM/manipulation/feedback.h>
 #include <fQSM/manipulation/item.h>
+#include <fQSM/manipulation/_experimental.h>
 
 // processing (transactions, e.t.c)
 #include <fQSM/processing/transactions/realm.h>
@@ -18,6 +19,7 @@
 
 // Codex definition for Aspects:
 #include <fQSM/features/reactions/structural.h>
+#include <fQSM/features/reactions/constraints.h>
 #include <fQSM/features/reactions/standard.h>
 
 namespace fqsm::api {
@@ -26,6 +28,9 @@ namespace fqsm::api {
 
     // add manipulators as short "ask":
     namespace ask = ::fqsm::manipulation;
+    //experimental:
+    template<typename Meta>
+    using call = ::fqsm::manipulation::call<Meta>;
 
     // Aspect types:
     template<typename Meta>
@@ -56,7 +61,7 @@ namespace fqsm::api {
     }
     namespace norma {
         using namespace ::fqsm::features::reactions::morms::structural;
-        //namespace fqsm::features::reactions
+        using namespace ::fqsm::features::reactions::morms::constraints;
     }
     namespace reaction {
         using namespace ::fqsm::features::reactions::standard;

@@ -21,37 +21,42 @@
 namespace fqsm::actions {
     // each Aspect must (may?) have own Interface
     // this set of interfaces is used to generate Aspect-specific parts of their interfaces
-    class Abstract {
-    protected:
-        virtual ~Abstract() = default;
-
+    struct Base {
         using Reading = ::fqsm::Reading;
         using Writing = ::fqsm::Writing;
+        template<typename Meta>
+        using Immediate = ::fqsm::Immediate<Meta>;
     };
 
-
     template<typename Meta>
-    struct Any : Abstract {
-        virtual ~Any() = default;
+    struct Any : Base {
+        friend class ::fqsm::features::Codex;
 
-    protected:
-        using Own = Meta;
+        // basic alias
         using Id = ::fqsm::Id<Meta>;
         using Quantum = ::fqsm::Quantum<Meta>;
-        using ItemChange = std::optional<Quantum>; // nullopt = no change
+        using Update = std::optional<Quantum>;
+
+        // signatures
+        using ItemUpdate = Update(*)(const Quantum&);
+
+        // helpers:
+        static auto get(Reading context, Id id) -> const Quantum&;
     };
 
-
     template<typename Meta>
-    using Standalone = Any<Meta>;
+    struct Standalone : Any<Meta> {
+        using Own = Any<Meta>;
+    };
 
     template<typename Meta, typename HostType>
     struct Parasitic : Any<Meta> {
-    public:
-        using Id = Any<Meta>::Id;
-        using ConstructorDefault = void(Writing, ::fqsm::Id<HostType>);
+        using Own = Any<Meta>;
+        using Parent = Standalone<HostType>;
+        using ConstructorDefault = void(Writing, typename Parent::Id);
 
-        static void kill(Writing context, Id id);
+        static void kill(Writing context, Own::Id id);
+        static void temp_test_syntax(Writing context, Parent::Id id) {}
     };
 
 
@@ -73,8 +78,18 @@ namespace fqsm::actions {
 
 // Impl
 namespace fqsm::actions {
+
+    template<typename Meta>
+    auto Any<Meta>::get(Reading context, Id id) -> const Quantum& {
+        const auto found = ::fqsm::manipulation::item::get<Meta>(context, id);
+        if (!found) {
+            throw std::runtime_error(std::format(R"(actions::get "{}" {}: not present)", ::fqsm::meta::aspect::Rtid::name<Meta>(), id));
+        }
+        return found.value();
+    }
+
     template<typename Meta, typename HostType>
-    void Parasitic<Meta, HostType>::kill(Writing context, Id id) {
+    void Parasitic<Meta, HostType>::kill(Writing context, Own::Id id) {
         if constexpr (aspect::Standalone<HostType>) {
             manipulation::item::update<HostType>(context, id).remove();
         } else {

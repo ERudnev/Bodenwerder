@@ -11,8 +11,18 @@ namespace {
             struct Quantum {
                 integer powerOfMass; // mass (kg) == 1 * 2^powerOfMass
             };
+            struct Global {
+                integer dustKgs = 0;// == mass (kg)
+            };
             static const Codex codex;
-            struct Actions : BaseActions {};
+            struct Actions : BaseActions {
+                integer mass(Reading context, Id id) {
+                    return 1 << get(context, id).powerOfMass;
+                }
+                void resetField(Writing context) {
+                    //global
+                }
+            };
         };
 
         struct Life : Component<Life, Body> {
@@ -43,7 +53,8 @@ namespace {
             static const Codex codex;
             struct Actions : BaseActions {
                 static void create(Writing context, Life::Id id) {
-                    ask::item::create<Death>(context, id, {10000});
+                    const auto body = ask::item::get<Body>(context, id);
+                    ask::item::create<Death>(context, id, {body->powerOfMass + 1} ); // mass 1kg lives 1 sec
                 }
                 static void update(Writing context, Id) {
                     for (const auto entry : static_cast<Reading>(context).items<Death>()) {

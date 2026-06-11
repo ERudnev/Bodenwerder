@@ -33,7 +33,7 @@ namespace fqsm::processing {
 
     void Realm::accept_immediate(aspect::Rtid type) {
         auto patch = state::world::Patch(world.schema);
-        patch.composite().slices.emplace(type, world.schema->nodes.at(type).binding.createPatch());
+        patch.composite().slices.emplace(type, world.schema->nodes.at(type).binding.createDirtyVirtualPatch());
 
         lastNotes = {};
         lastNotes = actions::update(world, patch);

@@ -2,6 +2,7 @@
 
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 
 #include <fQSM/meta/axis.h>
@@ -56,6 +57,7 @@ namespace fqsm::state::slice {
         using Item = typename item::Delta<Meta>::Item;
         using PatchItem = typename PatchSlice::Item;
         using PatchIterator = typename PatchSlice::ItemsView::ReadIterator;
+        using StateIterator = typename StateSlice::ItemsView::ReadIterator;
         using value_type = item::Delta<Meta>;
 
         enum class Layer {
@@ -73,16 +75,25 @@ namespace fqsm::state::slice {
             using value_type = item::Delta<Meta>;
 
             Iterator(cref<StateSlice> state, cref<PatchSlice> patch, PatchIterator current, PatchIterator end, Layer layer = Layer::all)
-                : state(state), patch(patch), current(current), end(end), layer(layer) {
+                : state(state), patch(patch), patchCurrent(current), patchEnd(end), layer(layer) {
+                skip_to_match();
+            }
+
+            Iterator(cref<StateSlice> state, cref<PatchSlice> patch, StateIterator current, StateIterator end, Layer layer, bool)
+                : state(state), patch(patch), stateCurrent(current), stateEnd(end), layer(layer) {
                 skip_to_match();
             }
 
             auto operator*() const -> value_type {
-                return make_value(current);
+                return patch->tainted() ? make_state_value(*stateCurrent) : make_patch_value(*patchCurrent);
             }
 
             Iterator& operator++() {
-                ++current;
+                if (patch->tainted()) {
+                    ++*stateCurrent;
+                } else {
+                    ++*patchCurrent;
+                }
                 skip_to_match();
                 return *this;
             }
@@ -93,7 +104,10 @@ namespace fqsm::state::slice {
                 return copy;
             }
 
-            bool operator==(const Iterator& other) const { return current == other.current; }
+            bool operator==(const Iterator& other) const {
+                if (patch->tainted()) return stateCurrent == other.stateCurrent;
+                return patchCurrent == other.patchCurrent;
+            }
             bool operator!=(const Iterator& other) const { return !(*this == other); }
 
         private:
@@ -107,23 +121,38 @@ namespace fqsm::state::slice {
             }
 
             void skip_to_match() {
-                while (current != end) {
-                    if (matches(layer, make_value(current))) return;
-                    ++current;
+                if (patch->tainted()) {
+                    while (stateCurrent != stateEnd) {
+                        if (matches(layer, make_state_value(*stateCurrent))) return;
+                        ++*stateCurrent;
+                    }
+                    return;
+                }
+
+                while (patchCurrent != patchEnd) {
+                    if (matches(layer, make_patch_value(*patchCurrent))) return;
+                    ++*patchCurrent;
                 }
             }
 
-            auto make_value(PatchIterator current) const -> value_type {
+            auto make_patch_value(PatchIterator current) const -> value_type {
                 const auto entry = *current;
                 const auto* before = state->items().find(entry.first);
                 const auto* after = entry.second.has_value() ? std::addressof(entry.second.value()) : nullptr;
                 return value_type{entry.first, before, after};
             }
 
+            auto make_state_value(StateIterator current) const -> value_type {
+                const auto entry = *current;
+                return value_type{entry.first, std::addressof(entry.second), std::addressof(entry.second)};
+            }
+
             cref<StateSlice> state;
             cref<PatchSlice> patch;
-            PatchIterator current;
-            PatchIterator end;
+            std::optional<PatchIterator> patchCurrent;
+            std::optional<PatchIterator> patchEnd;
+            std::optional<StateIterator> stateCurrent;
+            std::optional<StateIterator> stateEnd;
             Layer layer;
         };
 
@@ -133,10 +162,16 @@ namespace fqsm::state::slice {
             Layer layer;
 
             auto begin() const -> Iterator {
+                if (patch->tainted()) {
+                    return Iterator{state, patch, state->items().begin(), state->items().end(), layer, true};
+                }
                 return Iterator{state, patch, patch->items().begin(), patch->items().end(), layer};
             }
 
             auto end() const -> Iterator {
+                if (patch->tainted()) {
+                    return Iterator{state, patch, state->items().end(), state->items().end(), layer, true};
+                }
                 return Iterator{state, patch, patch->items().end(), patch->items().end(), layer};
             }
         };
@@ -144,8 +179,14 @@ namespace fqsm::state::slice {
         Delta(cref<StateSlice> state, cref<PatchSlice> patch) : state(state), patch(patch) {}
         explicit Delta(const Preview<Meta>& preview) : Delta(preview.state, preview.patch) {}
 
-        auto begin() const -> Iterator { return Iterator{state, patch, patch->items().begin(), patch->items().end(), Layer::all}; }
-        auto end() const -> Iterator { return Iterator{state, patch, patch->items().end(), patch->items().end(), Layer::all}; }
+        auto begin() const -> Iterator {
+            if (patch->tainted()) return Iterator{state, patch, state->items().begin(), state->items().end(), Layer::all, true};
+            return Iterator{state, patch, patch->items().begin(), patch->items().end(), Layer::all};
+        }
+        auto end() const -> Iterator {
+            if (patch->tainted()) return Iterator{state, patch, state->items().end(), state->items().end(), Layer::all, true};
+            return Iterator{state, patch, patch->items().end(), patch->items().end(), Layer::all};
+        }
 
         auto added() const -> LayerView { return LayerView{state, patch, Layer::added}; }
         auto addedOrUpdated() const -> LayerView { return LayerView{state, patch, Layer::addedOrUpdated}; }

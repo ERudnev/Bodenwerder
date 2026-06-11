@@ -8,6 +8,7 @@
 #include <fQSM/schema/binding.h>
 #include <fQSM/state/details/analysis.h>
 #include <fQSM/state/patch.h>
+#include <fQSM/state/slice/taint.h>
 #include <fQSM/state/world/view.h>
 
 namespace fqsm::schema::details {
@@ -16,6 +17,11 @@ namespace fqsm::schema::details {
     template<aspect::Any Meta, axis::order Order>
     auto createSlice() -> ref<state::slice::Abstract<Order>> {
         return base::make_shared<state::slice::Data<Meta, Order>>();
+    }
+
+    template<aspect::Any Meta>
+    auto createDirtyVirtualPatch() -> ref<state::slice::Abstract<axis::order::patch>> {
+        return base::make_shared<state::slice::Taint<Meta>>();
     }
 
     template<aspect::Any Meta>
@@ -39,16 +45,25 @@ namespace fqsm::schema::details {
 
     template<aspect::Any Meta>
     void integratePatchSlice(state::world::Data& world, const state::world::Patch& patch) {
+        if (patch.template slice<Meta>()->tainted()) return;
         fqsm::processing::actions::details::integrate<Meta>(world, patch);
     }
 
     template<aspect::Any Meta>
     void mergePatchSlice(const state::world::View& base, ref<state::world::Patch> target, cref<state::world::Patch> source) {
+        if (source->template slice<Meta>()->tainted()) {
+            const auto aspectId = aspect::Rtid::of<Meta>();
+            if (!target->composite().slices.contains(aspectId)) {
+                target->composite().slices.emplace(aspectId, target->schema->nodes.at(aspectId).binding.createDirtyVirtualPatch());
+            }
+            return;
+        }
         fqsm::processing::actions::details::merge<Meta>(base, target, source);
     }
 
     template<aspect::Any Meta>
     void analyzePatchSlice(const state::world::Patch& patch, analysis::Patch& out) {
+        if (patch.template slice<Meta>()->tainted()) return;
         auto entry = analysis::Patch::SliceEntry{};
         if (patch.template global<Meta>().has_value()) {
             ++entry.modified;
@@ -71,6 +86,7 @@ namespace fqsm::schema::details {
         return Binding{
             &createSlice<Meta, axis::order::state>,
             &createSlice<Meta, axis::order::patch>,
+            &createDirtyVirtualPatch<Meta>,
             &cloneState<Meta>,
             &createOverlay<Meta>,
             &integratePatchSlice<Meta>,

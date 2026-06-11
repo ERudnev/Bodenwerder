@@ -17,6 +17,7 @@ namespace fqsm::state::slice {
     template<axis::order Order>
     struct Abstract {
         virtual ~Abstract() = default;
+        virtual bool tainted() const { return false; }
     };
 
     template<aspect::Any Meta, axis::order Order>

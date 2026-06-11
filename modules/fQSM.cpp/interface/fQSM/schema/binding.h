@@ -26,6 +26,7 @@ namespace fqsm::schema {
     struct Binding {
         std::function<ref<state::slice::Abstract<axis::order::state>>()> createState;
         std::function<ref<state::slice::Abstract<axis::order::patch>>()> createPatch;
+        std::function<ref<state::slice::Abstract<axis::order::patch>>()> createDirtyVirtualPatch;
         std::function<ref<state::slice::Abstract<axis::order::state>>(const state::world::View&)> cloneState;
         std::function<ref<state::slice::Abstract<axis::order::state>>(const state::world::View&, const state::world::Patch&)> createOverlay;
         std::function<void(state::world::Data&, const state::world::Patch&)> integratePatchSlice;

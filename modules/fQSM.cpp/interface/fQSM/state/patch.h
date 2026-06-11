@@ -46,8 +46,10 @@ namespace fqsm::state::world {
         template<aspect::Any Meta>
         auto slice() -> TableData<Meta> {
             const auto aspectId = aspect::Rtid::of<Meta>();
-            if (!slices.slices.contains(aspectId)) {
+            if (not slices.slices.contains(aspectId)) {
                 slices.slices.emplace(aspectId, base::make_shared<slice::Data<Meta, axis::order::patch>>());
+            } else if (slices.slices.at(aspectId)->tainted()) {
+                slices.slices.at(aspectId) = base::make_shared<slice::Data<Meta, axis::order::patch>>();
             }
             return composite().template slice<Meta>();
         }

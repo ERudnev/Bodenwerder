@@ -84,9 +84,9 @@ namespace fqsm::processing {
             }
         };
 
-        Immediate(SliceRef slice, Upstream upstream)
-            : slice(std::move(slice))
-            , items(this->slice->items())
+        Immediate(SliceRef typed, Upstream upstream)
+            : slice(typed)
+            , items(typed->items())
             , commit(std::make_shared<Commit>(Commit{std::move(upstream)}))
         {}
 
