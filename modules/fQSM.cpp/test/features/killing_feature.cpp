@@ -16,11 +16,12 @@ namespace {
             };
             static const Codex codex;
             struct Actions : BaseActions {
-                integer mass(Reading context, Id id) {
+                static integer mass(Reading context, Id id) {
                     return 1 << get(context, id).powerOfMass;
                 }
-                void resetField(Writing context) {
-                    //global
+                static void resetField(Writing context) {
+                    ask::global::update<Own>(context)->dustKgs = 0;
+                    //global(context).dustKgs = 0;
                 }
             };
         };
@@ -113,6 +114,11 @@ void killing_feature()
     }
     { // Lifetime simulation
         // create one Stone with
+        with<Body>::resetField(main);
+        ask::item::create<Body>(main, {4});
+        //for (int xx = 0; xx < 100; ++xx)
+        //    with<Life>::update(main, 1);
+        //EXPECT_EQ()
         // run as many updates as needed for first death/echo
         // run next updates for second
     }
