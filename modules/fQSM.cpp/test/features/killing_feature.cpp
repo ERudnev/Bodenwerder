@@ -58,8 +58,8 @@ namespace {
                 }
                 static void update(Writing context, Id) {
                     for (const auto entry : static_cast<Reading>(context).items<Death>()) {
-                        if (ask::item::get<Life>(context, entry.first)->clock > entry.second.limit)
-                            Life::Actions::kill(context, entry.first);
+                        if (with<Life>::get(context, entry.first).clock > entry.second.limit)
+                            with<Life>::kill(context, entry.first);
                     }
                 }
             };

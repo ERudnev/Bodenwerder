@@ -13,6 +13,7 @@
 #include <optional>
 #include <vector>
 
+#include <fQSM/manipulation/global.h>
 #include <fQSM/manipulation/item.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/processing/_forwards.h>
@@ -35,13 +36,17 @@ namespace fqsm::actions {
         // basic alias
         using Id = ::fqsm::Id<Meta>;
         using Quantum = ::fqsm::Quantum<Meta>;
+        using Global = ::fqsm::GlobalValue<Meta>;
         using Update = std::optional<Quantum>;
 
         // signatures
         using ItemUpdate = Update(*)(const Quantum&);
 
         // helpers:
-        static auto get(Reading context, Id id) -> const Quantum&;
+        static auto get(Reading, Id) -> const Quantum&;
+        static auto find(Reading, Id) -> base::maybe<std::reference_wrapper<const Quantum>>;
+        static auto global(Reading) -> const Global&;
+
     };
 
     template<typename Meta>
@@ -86,6 +91,16 @@ namespace fqsm::actions {
             throw std::runtime_error(std::format(R"(actions::get "{}" {}: not present)", ::fqsm::meta::aspect::Rtid::name<Meta>(), id));
         }
         return found.value();
+    }
+
+    template<typename Meta>
+    auto Any<Meta>::find(Reading context, Id id) -> base::maybe<std::reference_wrapper<const Quantum>> {
+        return ::fqsm::manipulation::item::get<Meta>(context, id);
+    }
+
+    template<typename Meta>
+    auto Any<Meta>::global(Reading context) -> const Global& {
+        return ::fqsm::manipulation::global::get<Meta>(context);
     }
 
     template<typename Meta, typename HostType>

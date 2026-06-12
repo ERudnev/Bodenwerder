@@ -21,7 +21,7 @@ namespace {
             static const Codex codex;
             struct Actions : BaseActions {
                 static void create(Writing context, A::Id id) {
-                    ask::item::create<C>(context, id, {ask::item::get<A>(context, id)->value});
+                    ask::item::create<C>(context, id, {with<A>::get(context, id).value});
                 }
             };
         };

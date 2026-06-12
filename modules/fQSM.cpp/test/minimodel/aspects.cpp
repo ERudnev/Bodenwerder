@@ -12,10 +12,7 @@ namespace tests::model {
         }
     };
     auto SomeEntity::Actions::constantFunc(Reading context, Id id) -> integer {
-        // this version of "user code" is not final, not effective and must not be an example
-        auto self = ask::item::get<SomeEntity>(context, id);
-        auto global = ask::global::get<SomeEntity>(context);
-        return Private::somePrivateFunc(self->value, global.modulus);
+        return Private::somePrivateFunc(get(context, id).value, global(context).modulus);
     }
 }
 
