@@ -9,14 +9,14 @@
 //#include <fQSM/state/world.h>
 
 namespace fqsm::processing {
+    /*
     using View = ::fqsm::state::world::View;
     using Data = ::fqsm::state::world::Data;
     using Patch = ::fqsm::state::world::Patch;
+    */
 
     struct Commit;
     struct Gate;
-    template<meta::aspect::Any Meta>
-    struct Immediate;
     struct Review;
     using ContextShared = std::shared_ptr<Commit>;
 }

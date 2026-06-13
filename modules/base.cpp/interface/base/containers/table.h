@@ -3,20 +3,19 @@
 #include <cstddef>
 #include <functional>
 #include <iterator>
-#include <memory>
 #include <stdexcept>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include <base/containers/tableInterface.h>
+#include <base/containers/interface/access.h>
 
 namespace base {
 
 template<typename IdType, typename ValueType, typename Hasher = std::hash<IdType>, typename KeyEqual = std::equal_to<IdType>>
-class DenseTable : public TableInterface<IdType, ValueType> {
+class Table : public table::Access<IdType, ValueType> {
 public:
-    using Interface = TableInterface<IdType, ValueType>;
+    using Interface = table::Access<IdType, ValueType>;
     using KeyType = typename Interface::KeyType;
     using MappedType = typename Interface::MappedType;
     using SizeType = typename Interface::SizeType;
@@ -72,7 +71,7 @@ public:
         }
 
     private:
-        friend class DenseTable;
+        friend class Table;
 
         ConstIterator(const std::vector<Entry>& entries, SizeType index)
             : entries(entries)
@@ -129,7 +128,7 @@ public:
         }
 
     private:
-        friend class DenseTable;
+        friend class Table;
 
         Iterator(std::vector<Entry>& entries, SizeType index)
             : entries(entries)
@@ -140,9 +139,9 @@ public:
         SizeType index;
     };
 
-    DenseTable() = default;
+    Table() = default;
 
-    explicit DenseTable(const Hasher& hash, const KeyEqual& equal = KeyEqual())
+    explicit Table(const Hasher& hash, const KeyEqual& equal = KeyEqual())
         : idToIndex(0, hash, equal)
     {}
 
@@ -164,13 +163,13 @@ public:
 
     const ValueType& at(const IdType& id) const override {
         const auto* found = find(id);
-        if (!found) throw std::out_of_range("DenseTable::at");
+        if (!found) throw std::out_of_range("Table::at");
         return *found;
     }
 
     ValueType& at(const IdType& id) override {
         auto* found = find(id);
-        if (!found) throw std::out_of_range("DenseTable::at");
+        if (!found) throw std::out_of_range("Table::at");
         return *found;
     }
 

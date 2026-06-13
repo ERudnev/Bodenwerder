@@ -4,62 +4,31 @@
 #include <stdexcept>
 #include <utility>
 
-#include <base/containers/tableView.h>
+#include <base/containers/delta.h>
+#include <base/containers/interface/write.h>
 #include <base/types/patches.h>
 
 namespace base {
 
 template<typename Key, typename Val>
-class TableOverlay : public TableView<Key, Val> {
+class Overlay : public table::Write<Key, Val> {
 public:
-    using View = TableView<Key, Val>;
-    using Patch = types::Patch<Val>;
-    using PatchView = TableView<Key, Patch>;
+    using Interface = table::Write<Key, Val>;
+    using View = table::Read<Key, Val>;
+    using PatchType = types::Patch<Val>;
+    using Patch = table::Write<Key, PatchType>;
 
-    TableOverlay(const View& state, const PatchView& patch)
-        : state(state)
-        , patch(patch)
-    {}
+    using KeyType = typename Interface::KeyType;
+    using MappedType = typename Interface::MappedType;
+    using SizeType = typename Interface::SizeType;
 
-    bool contains(const Key& key) const override {
-        return find(key) != nullptr;
-    }
-
-    const Val* find(const Key& key) const override {
-        if (const auto* patched = patch.find(key)) {
-            if (!patched->has_value()) return nullptr;
-            return std::addressof(patched->value());
-        }
-
-        return state.find(key);
-    }
-
-    const Val& at(const Key& key) const override {
-        if (const auto* found = find(key)) return *found;
-        throw std::out_of_range("TableOverlay::at");
-    }
-
-    std::size_t size() const override {
-        std::size_t result = state.size();
-
-        // TODO: consider cachind add/remove features inside of Patch to make this a bit faster:
-        for (const auto entry : patch) {
-            const bool existed = state.contains(entry.first);
-            if (!entry.second.has_value()) {
-                if (existed) --result;
-                continue;
-            }
-            if (!existed) ++result;
-        }
-
-        return result;
-    }
-
-public:
-    using ReadIterator = typename View::ReadIterator;
-    using EntryView = typename View::EntryView;
+    using EntryView = typename Interface::EntryView;
+    using ReadIterator = typename Interface::ReadIterator;
     using StateIterator = typename View::ReadIterator;
-    using PatchIterator = typename PatchView::ReadIterator;
+    using PatchIterator = typename Patch::ReadIterator;
+    using ChangesView = typename Patch::EntryView;
+    using ChangesIterator = typename Patch::ReadIterator;
+    using DeltaView = Delta<Key, Val>;
 
     enum class Phase {
         state,
@@ -70,7 +39,7 @@ public:
     class ConstIterator {
     public:
         ConstIterator(
-            const TableOverlay& owner,
+            const Overlay& owner,
             Phase phase,
             StateIterator stateIt,
             StateIterator stateEnd,
@@ -163,13 +132,119 @@ public:
             }
         }
 
-        const TableOverlay* owner;
+        const Overlay* owner;
         Phase phase;
         StateIterator stateIt;
         StateIterator stateEnd;
         PatchIterator patchIt;
         PatchIterator patchEnd;
     };
+
+    struct Changes {
+        const Overlay* owner;
+
+        auto begin() const -> ChangesIterator {
+            return owner->changes_begin();
+        }
+
+        auto end() const -> ChangesIterator {
+            return owner->changes_end();
+        }
+    };
+
+    Overlay(const View& state, Patch& patch)
+        : state(state)
+        , patch(patch)
+    {}
+
+    auto changes_begin() const -> ChangesIterator {
+        return patch.begin();
+    }
+
+    auto changes_end() const -> ChangesIterator {
+        return patch.end();
+    }
+
+    auto changes() const -> Changes {
+        return Changes{this};
+    }
+
+    auto delta() const -> DeltaView {
+        return DeltaView(state, patch);
+    }
+
+    bool contains(const Key& key) const override {
+        return find(key) != nullptr;
+    }
+
+    const Val* find(const Key& key) const override {
+        if (const auto* patched = patch.find(key)) {
+            if (!patched->has_value()) return nullptr;
+            return std::addressof(patched->value());
+        }
+
+        return state.find(key);
+    }
+
+    const Val& at(const Key& key) const override {
+        if (const auto* found = find(key)) return *found;
+        throw std::out_of_range("Overlay::at");
+    }
+
+    SizeType size() const override {
+        SizeType result = state.size();
+
+        for (const auto entry : patch) {
+            const bool existed = state.contains(entry.first);
+            if (!entry.second.has_value()) {
+                if (existed) --result;
+                continue;
+            }
+            if (!existed) ++result;
+        }
+
+        return result;
+    }
+
+    void clear() override {
+        patch.clear();
+        patch.reserve(state.size());
+
+        for (const auto entry : state) {
+            patch.insert(entry.first, std::nullopt);
+        }
+    }
+
+    void reserve(SizeType capacity) override {
+        patch.reserve(capacity);
+    }
+
+    void insert(const Key& key, const Val& value) override {
+        patch.insert(key, value);
+    }
+
+    void insert(Key&& key, Val&& value) override {
+        patch.insert(std::move(key), std::move(value));
+    }
+
+    bool erase(const Key& key) override {
+        const bool existed_in_state = state.contains(key);
+        const auto* patched = patch.find(key);
+
+        if (patched) {
+            if (!patched->has_value()) return false;
+
+            if (!existed_in_state) return patch.erase(key);
+
+            patch.insert(key, std::nullopt);
+            return true;
+        }
+
+        if (!existed_in_state) return false;
+
+        patch.insert(key, std::nullopt);
+        return true;
+    }
 
 protected:
     ReadIterator read_begin() const override {
@@ -196,7 +271,7 @@ protected:
 
 private:
     const View& state;
-    const PatchView& patch;
+    Patch& patch;
 };
 
 } // namespace base

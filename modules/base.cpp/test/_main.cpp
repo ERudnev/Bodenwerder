@@ -5,7 +5,9 @@
 #define BASE_TESTS(X) \
     X(smoke) \
     X(relations) \
-    X(denseTable) \
+    X(table) \
+    X(tableDelta) \
+    X(tableOverlay) \
     // end
 
 BASETEST_FORWARD_DECLARE_TESTS(BASE_TESTS)

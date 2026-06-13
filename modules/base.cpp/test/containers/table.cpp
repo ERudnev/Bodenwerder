@@ -1,12 +1,12 @@
 #include "_common.h"
 
-#include <base/containers/denseTable.h>
+#include <base/containers/table.h>
 
 namespace tests {
 
-void denseTable()
+void table()
 {
-    base::DenseTable<int, int> table;
+    base::Table<int, int> table;
 
     EXPECT_TRUE(table.empty());
 
