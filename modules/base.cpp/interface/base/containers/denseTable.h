@@ -9,22 +9,22 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/tableView.h>
+#include <base/containers/tableInterface.h>
 
 namespace base {
 
-/// Dense vector of entries + unordered map id -> slot index. Mutable; erase uses swap-with-tail.
 template<typename IdType, typename ValueType, typename Hasher = std::hash<IdType>, typename KeyEqual = std::equal_to<IdType>>
-class DenseTable : public TableView<IdType, ValueType> {
+class DenseTable : public TableInterface<IdType, ValueType> {
 public:
+    using Interface = TableInterface<IdType, ValueType>;
+    using KeyType = typename Interface::KeyType;
+    using MappedType = typename Interface::MappedType;
+    using SizeType = typename Interface::SizeType;
+
     struct Entry {
         IdType id;
         ValueType value;
     };
-
-    using KeyType = IdType;
-    using MappedType = ValueType;
-    using SizeType = std::size_t;
 
     class ConstIterator {
     public:
@@ -74,19 +74,76 @@ public:
     private:
         friend class DenseTable;
 
-        ConstIterator(const std::vector<Entry>& entry_vec, SizeType index_)
-            : entries(entry_vec)
-            , index(index_)
+        ConstIterator(const std::vector<Entry>& entries, SizeType index)
+            : entries(entries)
+            , index(index)
         {}
 
         const std::vector<Entry>& entries;
         SizeType index;
     };
 
+    class Iterator {
+    public:
+        struct EntryRef {
+            const IdType& first;
+            ValueType& second;
+        };
+
+        using iterator_category = std::forward_iterator_tag;
+        using difference_type = std::ptrdiff_t;
+        using value_type = EntryRef;
+        using pointer = EntryRef*;
+        using reference = EntryRef&;
+
+        EntryRef operator*() const {
+            return EntryRef{entries[index].id, entries[index].value};
+        }
+
+        struct ArrowProxy {
+            EntryRef view;
+            const EntryRef* operator->() const { return &view; }
+        };
+
+        ArrowProxy operator->() const {
+            return ArrowProxy{EntryRef{entries[index].id, entries[index].value}};
+        }
+
+        Iterator& operator++() {
+            ++index;
+            return *this;
+        }
+
+        Iterator operator++(int) {
+            Iterator copy = *this;
+            ++*this;
+            return copy;
+        }
+
+        bool operator==(const Iterator& other) const {
+            return std::addressof(entries) == std::addressof(other.entries) && index == other.index;
+        }
+
+        bool operator!=(const Iterator& other) const {
+            return !(*this == other);
+        }
+
+    private:
+        friend class DenseTable;
+
+        Iterator(std::vector<Entry>& entries, SizeType index)
+            : entries(entries)
+            , index(index)
+        {}
+
+        std::vector<Entry>& entries;
+        SizeType index;
+    };
+
     DenseTable() = default;
 
-    explicit DenseTable(const Hasher& hash, const KeyEqual& eq = KeyEqual())
-        : idToIndex(0, hash, eq)
+    explicit DenseTable(const Hasher& hash, const KeyEqual& equal = KeyEqual())
+        : idToIndex(0, hash, equal)
     {}
 
     bool contains(const IdType& id) const override {
@@ -99,7 +156,7 @@ public:
         return std::addressof(entries[lookup->second].value);
     }
 
-    ValueType* find(const IdType& id) {
+    ValueType* find(const IdType& id) override {
         const auto lookup = idToIndex.find(id);
         if (lookup == idToIndex.end()) return nullptr;
         return std::addressof(entries[lookup->second].value);
@@ -111,38 +168,35 @@ public:
         return *found;
     }
 
-    ValueType& at(const IdType& id) {
+    ValueType& at(const IdType& id) override {
         auto* found = find(id);
         if (!found) throw std::out_of_range("DenseTable::at");
         return *found;
     }
 
-    SizeType size() const override { return entries.size(); }
-    bool empty() const { return entries.empty(); }
+    SizeType size() const override {
+        return entries.size();
+    }
 
-    void clear() {
+    void clear() override {
         idToIndex.clear();
         entries.clear();
     }
 
-    void reserve(SizeType capacity) {
+    void reserve(SizeType capacity) override {
         idToIndex.reserve(capacity);
         entries.reserve(capacity);
     }
 
-    template<typename IdArg, typename ValueArg>
-    void insert(IdArg&& id, ValueArg&& value) {
-        const auto lookup = idToIndex.find(id);
-        if (lookup != idToIndex.end()) {
-            entries[lookup->second].value = std::forward<ValueArg>(value);
-            return;
-        }
-        const SizeType slot = entries.size();
-        entries.emplace_back(Entry{std::forward<IdArg>(id), std::forward<ValueArg>(value)});
-        idToIndex.emplace(entries.back().id, slot);
+    void insert(const IdType& id, const ValueType& value) override {
+        insert_impl(id, value);
     }
 
-    bool erase(const IdType& id) {
+    void insert(IdType&& id, ValueType&& value) override {
+        insert_impl(std::move(id), std::move(value));
+    }
+
+    bool erase(const IdType& id) override {
         const auto lookup = idToIndex.find(id);
         if (lookup == idToIndex.end()) return false;
 
@@ -153,28 +207,43 @@ public:
             entries[removedSlot] = std::move(entries.back());
             idToIndex[entries[removedSlot].id] = removedSlot;
         }
+
         entries.pop_back();
         return true;
-    }
-
-    ConstIterator begin() const {
-        return ConstIterator(entries, 0);
-    }
-
-    ConstIterator end() const {
-        return ConstIterator(entries, entries.size());
     }
 
     std::unordered_map<IdType, SizeType, Hasher, KeyEqual> idToIndex;
     std::vector<Entry> entries;
 
 protected:
-    typename TableView<IdType, ValueType>::ReadIterator read_begin() const override {
+    typename Interface::ReadIterator read_begin() const override {
         return this->make_read_iterator(ConstIterator(entries, 0));
     }
 
-    typename TableView<IdType, ValueType>::ReadIterator read_end() const override {
+    typename Interface::ReadIterator read_end() const override {
         return this->make_read_iterator(ConstIterator(entries, entries.size()));
+    }
+
+    typename Interface::WriteIterator write_begin() override {
+        return this->make_write_iterator(Iterator(entries, 0));
+    }
+
+    typename Interface::WriteIterator write_end() override {
+        return this->make_write_iterator(Iterator(entries, entries.size()));
+    }
+
+private:
+    template<typename IdArg, typename ValueArg>
+    void insert_impl(IdArg&& id, ValueArg&& value) {
+        const auto lookup = idToIndex.find(id);
+        if (lookup != idToIndex.end()) {
+            entries[lookup->second].value = std::forward<ValueArg>(value);
+            return;
+        }
+
+        const SizeType slot = entries.size();
+        entries.emplace_back(Entry{std::forward<IdArg>(id), std::forward<ValueArg>(value)});
+        idToIndex.emplace(entries.back().id, slot);
     }
 };
 

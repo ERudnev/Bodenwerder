@@ -8,7 +8,7 @@ namespace fqsm::state::slice {
     struct Taint : View<Meta, axis::order::patch> {
         using ItemsView = typename View<Meta, axis::order::patch>::ItemsView;
         using Global = typename View<Meta, axis::order::patch>::Global;
-        using ItemsData = base::DenseTable<Id<Meta>, typename View<Meta, axis::order::patch>::Item>;
+        using ItemsData = base::DenseTable_deprecated<Id<Meta>, typename View<Meta, axis::order::patch>::Item>;
 
         const ItemsView& items() const override { return table; }
         const Global& global() const override { return globalValue; }

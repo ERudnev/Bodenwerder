@@ -1,6 +1,6 @@
 #pragma once
 
-#include <base/containers/denseTable.h>
+#include <base/containers/denseTable_deprecated.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/specializations.h>
 
@@ -12,7 +12,7 @@ namespace fqsm::state::slice {
     struct Delta;
 }
 
-namespace fqsm::state::slice {    
+namespace fqsm::state::slice {
 
     template<axis::order Order>
     struct Abstract {
@@ -30,5 +30,5 @@ namespace fqsm::state::slice {
         virtual const Global& global() const = 0;
     };
 
-    
+
 }

@@ -1,0 +1,5 @@
+﻿site_name: Mortazar's Wiki
+theme:
+  name: material
+
+docs_dir: docs

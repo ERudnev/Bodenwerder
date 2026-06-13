@@ -1,5 +1,7 @@
 #pragma once
 
+// TODO: remove this at all (obsolete)
+
 #include <cstddef>
 #include <iterator>
 #include <memory>

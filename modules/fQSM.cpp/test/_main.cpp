@@ -15,6 +15,7 @@
     X(globals) \
     X(connections) \
     X(relations_table) \
+    X(containers_updated) \
     // end
 
 #define FQSM_Q1RUNTIME_TESTS(X) \
