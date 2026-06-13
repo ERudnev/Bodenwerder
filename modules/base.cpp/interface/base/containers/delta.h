@@ -4,7 +4,7 @@
 #include <utility>
 
 #include <base/containers/interface/read.h>
-#include <base/types/patches.h>
+#include <base/containers/patch.h>
 
 namespace base {
 
@@ -24,8 +24,8 @@ template<typename Key, typename Val>
 class Delta {
 public:
     using View = table::Read<Key, Val>;
-    using PatchType = types::Patch<Val>;
-    using PatchView = table::Read<Key, PatchType>;
+    using PatchElement = patch::Element<Val>;
+    using PatchView = table::Read<Key, PatchElement>;
     using PatchIterator = typename PatchView::ReadIterator;
     using value_type = Change<Key, Val>;
 

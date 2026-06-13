@@ -6,7 +6,7 @@
 
 #include <base/containers/delta.h>
 #include <base/containers/interface/write.h>
-#include <base/types/patches.h>
+#include <base/containers/patch.h>
 
 namespace base {
 
@@ -15,8 +15,8 @@ class Overlay : public table::Write<Key, Val> {
 public:
     using Interface = table::Write<Key, Val>;
     using View = table::Read<Key, Val>;
-    using PatchType = types::Patch<Val>;
-    using Patch = table::Write<Key, PatchType>;
+    using PatchElement = patch::Element<Val>;
+    using Patch = table::Write<Key, PatchElement>;
 
     using KeyType = typename Interface::KeyType;
     using MappedType = typename Interface::MappedType;

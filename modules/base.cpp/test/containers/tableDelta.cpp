@@ -11,7 +11,8 @@ namespace tests {
 void tableDelta()
 {
     using State = base::Table<int, int>;
-    using Patch = base::Table<int, std::optional<int>>;
+    using PatchElement = base::patch::Element<int>;
+    using Patch = base::Patch<int, PatchElement>;
     State state;
     state.insert(1, 10);
     state.insert(2, 20);

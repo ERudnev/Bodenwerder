@@ -6,6 +6,7 @@
     X(smoke) \
     X(relations) \
     X(table) \
+    X(patch) \
     X(tableDelta) \
     X(tableOverlay) \
     // end

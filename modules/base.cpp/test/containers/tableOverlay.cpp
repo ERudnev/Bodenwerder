@@ -12,7 +12,8 @@ namespace tests {
 void tableOverlay()
 {
     using State = base::Table<int, int>;
-    using Patch = base::Table<int, std::optional<int>>;
+    using PatchElement = base::patch::Element<int>;
+    using Patch = base::Patch<int, PatchElement>;
 
     State state;
     state.insert(1, 10);
@@ -59,10 +60,10 @@ void tableOverlay()
     EXPECT_EQ(overlay.at(6), 60);
     EXPECT_EQ(state.at(1), 10);
     EXPECT_EQ(state.at(2), 20);
-    EXPECT_EQ(patch.at(1), std::optional<int>{11});
+    EXPECT_EQ(patch.at(1), PatchElement{11});
     EXPECT_FALSE(patch.at(2).has_value());
     EXPECT_TRUE(patch.contains(3));
-    EXPECT_EQ(patch.at(6), std::optional<int>{60});
+    EXPECT_EQ(patch.at(6), PatchElement{60});
 
     std::map<int, std::string> changes;
     for (const auto entry : overlay.changes()) {
