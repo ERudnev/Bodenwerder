@@ -2,7 +2,6 @@
 
 #include <vector>
 
-#include <fQSM/state/delta.h>
 #include <fQSM/state/_forwards.h>
 #include <fQSM/processing/review.h>
 

@@ -39,7 +39,7 @@ BASETEST_FORWARD_DECLARE_TESTS(FQSM_Q1RUNTIME_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_REACTIONS_TESTS)
 //BASETEST_FORWARD_DECLARE_TESTS(IQSM_WORKSHOP_TESTS)
 
-int main() {
+int main_all_test() {
     struct group final {
         const char* name = "";
         std::vector<base::testing::test_case> tests{};
@@ -74,7 +74,7 @@ int main() {
     return total.ok() ? 0 : 1;
 }
 
-int main_one_test() {
+int main() {
     const auto s = base::testing::run_tests(
         //BASETEST_LIST(BASETEST_NAMED("all", &tests::flat_model_assembly)));
         BASETEST_LIST(BASETEST_NAMED("internals/dense_table_overlay", &tests::dense_table_overlay)));

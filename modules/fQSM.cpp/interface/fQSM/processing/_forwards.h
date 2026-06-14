@@ -9,11 +9,9 @@
 //#include <fQSM/state/world.h>
 
 namespace fqsm::processing {
-    /*
-    using View = ::fqsm::state::world::View;
-    using Data = ::fqsm::state::world::Data;
+
+    using World = ::fqsm::state::world::Actual;
     using Patch = ::fqsm::state::world::Patch;
-    */
 
     struct Commit;
     struct Gate;
@@ -22,10 +20,9 @@ namespace fqsm::processing {
 }
 
 namespace fqsm {
-    using Reading = const processing::View&;
+    //using Reading = const processing::View&; // cleanup
+    using Reading = const ::fqsm::state::world::Actual&;
     using Writing = processing::Gate;
     using Reviewing = processing::Review;
-
-    template<meta::aspect::Any Meta>
-    using Immediate = processing::Immediate<Meta>;
+    using Immediate = ::fqsm::state::world::Actual&;
 }

@@ -11,7 +11,7 @@ namespace base {
 template<typename Key, typename Val>
 struct Change {
     const Key& key;
-    const Val* before;
+    const Val* before; // TODO: implement "Taint mode" as std::optional<const Val*>
     const Val* after;
 
     bool good() const { return before || after; }

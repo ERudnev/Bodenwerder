@@ -2,8 +2,15 @@
 
 #include <fQSM/references.h>
 
-namespace fqsm::state::world {
-    struct Data;
-    struct Preview;
-    struct Patch;
+namespace fqsm::state {
+
+    namespace slice {
+        struct Erased;
+        //struct Patch;
+    }
+
+    namespace world {
+        struct Actual;
+        struct Patch;
+    }
 }

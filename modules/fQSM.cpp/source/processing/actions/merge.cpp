@@ -1,3 +1,4 @@
+/*
 #include <fQSM/processing/actions/merge.h>
 
 #include <fQSM/schema/dag.h>
@@ -11,3 +12,4 @@ namespace fqsm::processing::actions {
     }
 
 }
+*/

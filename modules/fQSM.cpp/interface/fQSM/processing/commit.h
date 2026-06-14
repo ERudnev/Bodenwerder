@@ -4,8 +4,8 @@
 #include <memory>
 #include <base/logging.h>
 #include <fQSM/state/_forwards.h>
-#include <fQSM/state/patch.h>
-#include <fQSM/state/world/view.h>
+#include <fQSM/state/world/patch.h>
+#include <fQSM/state/world/actual.h>
 #include <fQSM/processing/_forwards.h>
 
 namespace fqsm::processing {
@@ -14,7 +14,7 @@ namespace fqsm::processing {
         using PatchRef = fqsm::ref<Patch>;
         using Upstream = std::function<void(PatchRef)>;
 
-        const View& view;
+        const World& state;
         PatchRef patch; // always created outside
         Upstream upstream;
 
@@ -30,7 +30,7 @@ namespace fqsm::processing {
     struct Gate {
         using PatchRef = Commit::PatchRef;
 
-        const View& state;
+        const World& state;
         ContextShared parent;
 
         operator Reading() const { return state; }
@@ -46,6 +46,6 @@ namespace fqsm::processing {
 namespace fqsm::processing {
     template<aspect::Any Meta>
     void Gate::reserve_broad_update() const {
-        patch().template items<Meta>().reserve(state.items<Meta>().size());
+        patch().template slice<Meta>().reserve(state.slice<Meta>().size());
     }
 }

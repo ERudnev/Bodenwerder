@@ -6,12 +6,7 @@
 
 namespace fqsm::state::slice {
 
-    template<aspect::Any Meta>
-    struct Changes {
-
-    };
-
-
+    /*
     template<aspect::Any Meta>
     struct Draft : Interface<Meta>, Changes<Meta> {
         // slice::Interface:
@@ -25,5 +20,9 @@ namespace fqsm::state::slice {
         cref<Actual<Meta>> actual;
         cref<Patch<Meta>> patch;
     };
+    */
+
+    template<aspect::Any Meta>
+    struct Draft :
 
 }

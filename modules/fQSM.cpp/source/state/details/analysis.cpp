@@ -1,7 +1,7 @@
 #include <fQSM/state/details/analysis.h>
 
 #include <fQSM/schema/binding.h>
-#include <fQSM/state/patch.h>
+#include <fQSM/state/world/patch.h>
 
 namespace fqsm::analysis {
 

@@ -7,7 +7,7 @@
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/rtid.h>
 #include <fQSM/processing/_forwards.h>
-#include <fQSM/state/world/data.h>
+#include <fQSM/state/world/actual.h>
 
 namespace tests::debug {
 
@@ -19,7 +19,7 @@ namespace tests::debug {
     template<fqsm::aspect::Any Meta>
     auto read(fqsm::Reading view, fqsm::Id<Meta> id) -> std::optional<std::reference_wrapper<const fqsm::Quantum<Meta>>> {
         if (!has<Meta>(view)) return std::nullopt;
-        const auto* found = view.items<Meta>().find(id);
+        const auto* found = view.slice<Meta>().find(id);
         if (!found) return std::nullopt;
         return std::cref(*found);
     }
@@ -29,7 +29,7 @@ namespace tests::debug {
         if (!has<Meta>(view)) return 0;
 
         std::size_t out = 0;
-        for (const auto entry : view.items<Meta>()) {
+        for (const auto entry : view.slice<Meta>()) {
             ++out;
         }
         return out;

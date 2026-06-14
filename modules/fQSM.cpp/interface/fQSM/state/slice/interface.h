@@ -1,20 +1,35 @@
 #pragma once
 
 #include <fQSM/meta/interface.include.h>
-#include <base/containers/tableInterface.h>
+#include <fQSM/state/slice/erased.h>
+#include <base/containers/interface/access.h>
 
 namespace fqsm::state::slice {
 
-    struct Erased {
-        virtual ~Erased()=default;
+    template<aspect::Any Meta>
+    struct Read : Erased {
+        using Global = GlobalValue<Meta>;
+        using Container = base::table::Read<Id<Meta>, Quantum<Meta>>;
+
+        virtual Container& items()=0;
+        virtual Global& global()=0;
     };
 
     template<aspect::Any Meta>
-    struct Interface : Erased {
+    struct Write : Read<Meta> {
         using Global = GlobalValue<Meta>;
-        using ContainerAbstract = base::TableInterface<Id<Meta>, Quantum<Meta>>;
+        using Container = base::table::Write<Id<Meta>, Quantum<Meta>>;
 
-        virtual ContainerAbstract& items()=0;
-        virtual Global& global()=0;
+        virtual Container& items() override =0;
+        virtual Global& global() override =0;
+    };
+
+    template<aspect::Any Meta>
+    struct Access : Write<Meta> {
+        using Global = GlobalValue<Meta>;
+        using Container = base::table::Access<Id<Meta>, Quantum<Meta>>;
+
+        virtual Container& items() override =0;
+        virtual Global& global() override =0;
     };
 }
