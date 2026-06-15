@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fQSM/processing/actions/merge.h>
-#include <fQSM/state/world/preview.h>
+#include <fQSM/state/world/draft.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/processing/transaction.h>
 
@@ -27,10 +27,10 @@ namespace fqsm::processing::transaction {
     private:
         ContextShared context;
         Commit::PatchRef patch;
-        state::world::Preview preview;
+        state::world::Draft preview;
 
         auto writing() -> Writing override {
-            return Gate{preview, context};
+            return GateWriting{preview, context};
         }
 
         auto makeChildPolicy() -> ChildPolicy override {

@@ -27,10 +27,21 @@ namespace fqsm::processing {
         }
     };
 
-    struct Gate {
+    struct GateWrite {
         using PatchRef = Commit::PatchRef;
 
         const World& state;
+        ContextShared parent;
+
+        operator Reading() const { return state; }
+
+        Patch& patch() const { return *parent->patch; }
+    };
+
+    struct GateImmediate {
+        using PatchRef = Commit::PatchRef;
+
+        World& state;
         ContextShared parent;
 
         operator Reading() const { return state; }
@@ -45,7 +56,7 @@ namespace fqsm::processing {
 
 namespace fqsm::processing {
     template<aspect::Any Meta>
-    void Gate::reserve_broad_update() const {
+    void GateImmediate::reserve_broad_update() const {
         patch().template slice<Meta>().reserve(state.slice<Meta>().size());
     }
 }

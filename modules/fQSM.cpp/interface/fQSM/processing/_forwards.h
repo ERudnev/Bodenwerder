@@ -10,19 +10,21 @@
 
 namespace fqsm::processing {
 
-    using World = ::fqsm::state::world::Actual;
+    using World = ::fqsm::state::world::Write;
     using Patch = ::fqsm::state::world::Patch;
 
     struct Commit;
-    struct Gate;
+    struct GateWriting;
+    struct GateImmediate;
     struct Review;
+    struct Immediate; // clarify this
     using ContextShared = std::shared_ptr<Commit>;
 }
 
 namespace fqsm {
     //using Reading = const processing::View&; // cleanup
     using Reading = const ::fqsm::state::world::Actual&;
-    using Writing = processing::Gate;
+    using Writing = processing::GateWriting;
+    using Immediate = processing::GateImmediate;
     using Reviewing = processing::Review;
-    using Immediate = ::fqsm::state::world::Actual&;
 }

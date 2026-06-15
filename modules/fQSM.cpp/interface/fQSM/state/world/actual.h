@@ -5,6 +5,15 @@
 
 namespace fqsm::state::world {
 
-    struct Actual : Composite<slice::Actual>{
+    struct Actual {
+        virtual ~Actual() = default;
+        const Schema schema;
+
+
+    protected:
+        explicit Actual(Schema schema) : schema{std::move(schema)} {}
     };
+
+    struct
+
 }

@@ -3,22 +3,19 @@
 #include <cstddef>
 #include <utility>
 
-#include <base/containers/interface/read.h>
+#include <base/cannonball/table/read.h>
 
-namespace base::table {
+namespace base::cannonball::table {
 
 template<typename Key, typename Val>
-class Write : public Read<Key, Val> {
+class Operational : public Read<Key, Val> {
 public:
     using Interface = Read<Key, Val>;
     using KeyType = typename Interface::KeyType;
     using MappedType = typename Interface::MappedType;
-    using SizeType = std::size_t;
+    using SizeType = typename Interface::SizeType;
 
-    using EntryView = typename Interface::EntryView;
-    using ReadIterator = typename Interface::ReadIterator;
-
-    virtual ~Write() = default;
+    virtual ~Operational() = default;
 
     virtual void clear() = 0;
     virtual void reserve(SizeType capacity) = 0;
@@ -27,4 +24,4 @@ public:
     virtual bool erase(const Key& key) = 0;
 };
 
-} // namespace base::table
+} // namespace base::cannonball::table

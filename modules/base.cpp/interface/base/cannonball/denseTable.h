@@ -3,52 +3,48 @@
 #include <cstddef>
 #include <functional>
 #include <iterator>
+#include <memory>
 #include <stdexcept>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include <base/containers/interface/access.h>
+#include <base/cannonball/table/direct.h>
 
-namespace base {
+namespace base::cannonball {
 
-template<typename IdType, typename ValueType, typename Hasher = std::hash<IdType>, typename KeyEqual = std::equal_to<IdType>>
-class Table : public table::Access<IdType, ValueType> {
+template<typename Key, typename Val, typename Hasher = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
+class DenseTable : public table::Direct<Key, Val> {
 public:
-    using Interface = table::Access<IdType, ValueType>;
+    using Interface = table::Direct<Key, Val>;
     using KeyType = typename Interface::KeyType;
     using MappedType = typename Interface::MappedType;
     using SizeType = typename Interface::SizeType;
 
     struct Entry {
-        IdType id;
-        ValueType value;
+        Key key;
+        Val value;
     };
 
     class ConstIterator {
     public:
-        struct EntryView {
-            const IdType& first;
-            const ValueType& second;
-        };
-
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
-        using value_type = EntryView;
-        using pointer = const EntryView*;
-        using reference = const EntryView&;
+        using value_type = typename Interface::EntryView;
+        using pointer = const value_type*;
+        using reference = const value_type&;
 
-        EntryView operator*() const {
-            return EntryView{entries[index].id, entries[index].value};
+        value_type operator*() const {
+            return value_type{entries[index].key, entries[index].value};
         }
 
         struct ArrowProxy {
-            EntryView view;
-            const EntryView* operator->() const { return &view; }
+            value_type view;
+            const value_type* operator->() const { return &view; }
         };
 
         ArrowProxy operator->() const {
-            return ArrowProxy{EntryView{entries[index].id, entries[index].value}};
+            return ArrowProxy{value_type{entries[index].key, entries[index].value}};
         }
 
         ConstIterator& operator++() {
@@ -71,7 +67,7 @@ public:
         }
 
     private:
-        friend class Table;
+        friend class DenseTable;
 
         ConstIterator(const std::vector<Entry>& entries, SizeType index)
             : entries(entries)
@@ -84,28 +80,23 @@ public:
 
     class Iterator {
     public:
-        struct EntryRef {
-            const IdType& first;
-            ValueType& second;
-        };
-
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
-        using value_type = EntryRef;
-        using pointer = EntryRef*;
-        using reference = EntryRef&;
+        using value_type = typename Interface::EntryRef;
+        using pointer = value_type*;
+        using reference = value_type&;
 
-        EntryRef operator*() const {
-            return EntryRef{entries[index].id, entries[index].value};
+        value_type operator*() const {
+            return value_type{entries[index].key, entries[index].value};
         }
 
         struct ArrowProxy {
-            EntryRef view;
-            const EntryRef* operator->() const { return &view; }
+            value_type view;
+            const value_type* operator->() const { return &view; }
         };
 
         ArrowProxy operator->() const {
-            return ArrowProxy{EntryRef{entries[index].id, entries[index].value}};
+            return ArrowProxy{value_type{entries[index].key, entries[index].value}};
         }
 
         Iterator& operator++() {
@@ -128,7 +119,7 @@ public:
         }
 
     private:
-        friend class Table;
+        friend class DenseTable;
 
         Iterator(std::vector<Entry>& entries, SizeType index)
             : entries(entries)
@@ -139,37 +130,37 @@ public:
         SizeType index;
     };
 
-    Table() = default;
+    DenseTable() = default;
 
-    explicit Table(const Hasher& hash, const KeyEqual& equal = KeyEqual())
-        : idToIndex(0, hash, equal)
+    explicit DenseTable(const Hasher& hash, const KeyEqual& equal = KeyEqual())
+        : keyToIndex(0, hash, equal)
     {}
 
-    bool contains(const IdType& id) const override {
-        return idToIndex.find(id) != idToIndex.end();
+    bool contains(const Key& key) const override {
+        return keyToIndex.find(key) != keyToIndex.end();
     }
 
-    const ValueType* find(const IdType& id) const override {
-        const auto lookup = idToIndex.find(id);
-        if (lookup == idToIndex.end()) return nullptr;
+    const Val* find(const Key& key) const override {
+        const auto lookup = keyToIndex.find(key);
+        if (lookup == keyToIndex.end()) return nullptr;
         return std::addressof(entries[lookup->second].value);
     }
 
-    ValueType* find(const IdType& id) override {
-        const auto lookup = idToIndex.find(id);
-        if (lookup == idToIndex.end()) return nullptr;
+    Val* find(const Key& key) override {
+        const auto lookup = keyToIndex.find(key);
+        if (lookup == keyToIndex.end()) return nullptr;
         return std::addressof(entries[lookup->second].value);
     }
 
-    const ValueType& at(const IdType& id) const override {
-        const auto* found = find(id);
-        if (!found) throw std::out_of_range("Table::at");
+    const Val& at(const Key& key) const override {
+        const auto* found = find(key);
+        if (!found) throw std::out_of_range("DenseTable::at");
         return *found;
     }
 
-    ValueType& at(const IdType& id) override {
-        auto* found = find(id);
-        if (!found) throw std::out_of_range("Table::at");
+    Val& at(const Key& key) override {
+        auto* found = find(key);
+        if (!found) throw std::out_of_range("DenseTable::at");
         return *found;
     }
 
@@ -178,41 +169,38 @@ public:
     }
 
     void clear() override {
-        idToIndex.clear();
+        keyToIndex.clear();
         entries.clear();
     }
 
     void reserve(SizeType capacity) override {
-        idToIndex.reserve(capacity);
+        keyToIndex.reserve(capacity);
         entries.reserve(capacity);
     }
 
-    void insert(const IdType& id, const ValueType& value) override {
-        insert_impl(id, value);
+    void insert(const Key& key, const Val& value) override {
+        insert_impl(key, value);
     }
 
-    void insert(IdType&& id, ValueType&& value) override {
-        insert_impl(std::move(id), std::move(value));
+    void insert(Key&& key, Val&& value) override {
+        insert_impl(std::move(key), std::move(value));
     }
 
-    bool erase(const IdType& id) override {
-        const auto lookup = idToIndex.find(id);
-        if (lookup == idToIndex.end()) return false;
+    bool erase(const Key& key) override {
+        const auto lookup = keyToIndex.find(key);
+        if (lookup == keyToIndex.end()) return false;
 
         const SizeType removedSlot = lookup->second;
-        idToIndex.erase(lookup);
+        keyToIndex.erase(lookup);
 
         if (removedSlot != entries.size() - 1) {
             entries[removedSlot] = std::move(entries.back());
-            idToIndex[entries[removedSlot].id] = removedSlot;
+            keyToIndex[entries[removedSlot].key] = removedSlot;
         }
 
         entries.pop_back();
         return true;
     }
-
-    std::unordered_map<IdType, SizeType, Hasher, KeyEqual> idToIndex;
-    std::vector<Entry> entries;
 
 protected:
     typename Interface::ReadIterator read_begin() const override {
@@ -232,18 +220,21 @@ protected:
     }
 
 private:
-    template<typename IdArg, typename ValueArg>
-    void insert_impl(IdArg&& id, ValueArg&& value) {
-        const auto lookup = idToIndex.find(id);
-        if (lookup != idToIndex.end()) {
-            entries[lookup->second].value = std::forward<ValueArg>(value);
+    template<typename KeyArg, typename ValArg>
+    void insert_impl(KeyArg&& key, ValArg&& value) {
+        const auto lookup = keyToIndex.find(key);
+        if (lookup != keyToIndex.end()) {
+            entries[lookup->second].value = std::forward<ValArg>(value);
             return;
         }
 
         const SizeType slot = entries.size();
-        entries.emplace_back(Entry{std::forward<IdArg>(id), std::forward<ValueArg>(value)});
-        idToIndex.emplace(entries.back().id, slot);
+        entries.emplace_back(Entry{std::forward<KeyArg>(key), std::forward<ValArg>(value)});
+        keyToIndex.emplace(entries.back().key, slot);
     }
+
+    std::unordered_map<Key, SizeType, Hasher, KeyEqual> keyToIndex;
+    std::vector<Entry> entries;
 };
 
-} // namespace base
+} // namespace base::cannonball

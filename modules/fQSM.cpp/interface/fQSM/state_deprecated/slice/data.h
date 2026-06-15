@@ -1,6 +1,6 @@
 #pragma once
 
-#include <base/containers/denseTable_deprecated.h>
+#include <base/containers_deprecated/denseTable_deprecated.h>
 
 #include <fQSM/state/slice/view.h>
 

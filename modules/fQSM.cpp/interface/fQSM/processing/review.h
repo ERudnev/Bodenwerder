@@ -4,6 +4,7 @@
 #include <string>
 #include <fQSM/processing/commit.h>
 #include <fQSM/state/world/draft.h>
+#include <fQSM/state/slice/delta.h>
 
 namespace fqsm::processing {
 
@@ -18,17 +19,17 @@ namespace fqsm::processing {
         };
 
         state::world::Draft draft;
-        PatchRef patch;
+        PatchRef corrections;
         Notes& notes;
 
         // TODO: rename will_be -> something like "planed_updates"?
         template<aspect::Any Meta>
-        auto will_be() const -> state::slice::Delta<Meta> {
+        auto changes() const -> state::slice::Delta<Meta> {
             return draft.template delta<Meta>();
         }
 
-        operator Gate() const {
-            return Gate{ draft, std::make_shared<Commit>(Commit{draft, patch,{}}) };
+        operator GateWrite() const {
+            return GateWrite{ draft, std::make_shared<Commit>(Commit{draft, corrections,{}}) };
         }
     };
 

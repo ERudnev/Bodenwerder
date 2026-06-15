@@ -8,7 +8,7 @@
 #include <fQSM/meta/axis.h>
 #include <fQSM/meta/concepts.h>
 #include <fQSM/meta/interface.include.h>
-#include <fQSM/state/slice/preview.h>
+#include <fQSM/state/slice/draft.h>
 #include <fQSM/state/slice/view.h>
 
 namespace fqsm::state::item {
@@ -29,7 +29,7 @@ namespace fqsm::state::item {
 
         Id id;
         const Item* before;
-        const Item* after;        
+        const Item* after;
 
         bool good() const { return before || after; }
         bool add() const { return !before && after; }
@@ -177,7 +177,7 @@ namespace fqsm::state::slice {
         };
 
         Delta(cref<StateSlice> state, cref<PatchSlice> patch) : state(state), patch(patch) {}
-        explicit Delta(const Preview<Meta>& preview) : Delta(preview.state, preview.patch) {}
+        explicit Delta(const Draft<Meta>& preview) : Delta(preview.state, preview.patch) {}
 
         auto begin() const -> Iterator {
             if (patch->tainted()) return Iterator{state, patch, state->items().begin(), state->items().end(), Layer::all, true};
@@ -197,5 +197,5 @@ namespace fqsm::state::slice {
         cref<StateSlice> state;
         cref<PatchSlice> patch;
     };
-    
+
 }

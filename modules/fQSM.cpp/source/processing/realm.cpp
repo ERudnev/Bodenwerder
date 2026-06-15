@@ -15,7 +15,7 @@ namespace fqsm::processing {
             }
         });
 
-        return Gate{world, context};
+        return GateWriting{world, context};
     }
 
     auto Realm::makeChildPolicy() -> ChildPolicy {

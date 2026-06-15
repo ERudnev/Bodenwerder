@@ -1,6 +1,6 @@
 #pragma once
 
-#include <base/containers/delta.h>
+#include <base/containers_deprecated/delta.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/references.h>
 #include <fQSM/state/slice/actual.h>
@@ -14,12 +14,17 @@ namespace fqsm::state::slice {
         using ItemChange = base::Change<Id<Meta>, Quantum<Meta>>;
         using StateSlice = Actual<Meta>;
         using PatchSlice = Patch<Meta>;
+        using StateInterpretation = typename Items::StateInterpretation;
 
-        Items items;
-        cref<StateSlice> state;
-        cref<PatchSlice> patch;
+        const Items items;
+        const cref<StateSlice> state;
+        const cref<PatchSlice> patch;
 
-        Delta(cref<StateSlice> state, cref<PatchSlice> patch) : items{state->items(), patch->elements}, state{state}, patch{patch} {}
+        Delta(cref<StateSlice> state, cref<PatchSlice> patch, StateInterpretation interpretation)
+            : items{state->items(), patch->elements, interpretation}
+            , state{state}
+            , patch{patch}
+        {}
     };
 
 }

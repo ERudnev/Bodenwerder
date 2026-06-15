@@ -1,6 +1,6 @@
 #pragma once
 
-#include <base/containers/patch.h>
+#include <base/containers_deprecated/patch.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/state/slice/interface.h>
 

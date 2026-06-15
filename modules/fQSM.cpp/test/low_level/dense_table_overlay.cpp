@@ -4,7 +4,7 @@
 #include <map>
 #include <optional>
 
-#include <fQSM/state/world/preview.h>
+#include <fQSM/state/world/draft.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/state/world/data.h>
 
@@ -31,7 +31,7 @@ void dense_table_overlay()
     patch.items<SomeEntity>().insert(Id{4}, PatchItem{Item{40}});
     patch.items<SomeEntity>().insert(Id{5}, PatchItem{std::nullopt});
 
-    fqsm::state::world::Preview preview(state, patch);
+    fqsm::state::world::Draft preview(state, patch);
 
     const View& view = state.items<SomeEntity>();
     const View& overlayView = preview.items<SomeEntity>();

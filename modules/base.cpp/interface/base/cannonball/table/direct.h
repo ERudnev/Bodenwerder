@@ -3,83 +3,89 @@
 #include <cstddef>
 #include <iterator>
 #include <memory>
-#include <optional>
 #include <utility>
 
-namespace base::table {
+#include <base/cannonball/table/operational.h>
+
+namespace base::cannonball::table {
 
 template<typename Key, typename Val>
-class Read {
+class Direct : public Operational<Key, Val> {
 public:
-    using KeyType = Key;
-    using MappedType = Val;
+    using Interface = Operational<Key, Val>;
+    using KeyType = typename Interface::KeyType;
+    using MappedType = typename Interface::MappedType;
+    using SizeType = typename Interface::SizeType;
 
-    struct EntryView {
-        const Key& first;
-        const Val& second;
+    using EntryView = typename Interface::EntryView;
+    using ReadIterator = typename Interface::ReadIterator;
+
+    struct EntryRef {
+        const Key& key;
+        Val& value;
     };
 
-    class ReadIterator {
+    class WriteIterator {
     public:
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
-        using value_type = EntryView;
-        using pointer = const EntryView*;
-        using reference = const EntryView&;
+        using value_type = EntryRef;
+        using pointer = EntryRef*;
+        using reference = EntryRef&;
 
-        ReadIterator(const ReadIterator& other)
+        WriteIterator(const WriteIterator& other)
             : state(other.state ? other.state->clone() : nullptr)
         {}
 
-        ReadIterator(ReadIterator&&) noexcept = default;
+        WriteIterator(WriteIterator&&) noexcept = default;
 
-        ReadIterator& operator=(const ReadIterator& other) {
+        WriteIterator& operator=(const WriteIterator& other) {
             if (this == std::addressof(other)) return *this;
             state = other.state ? other.state->clone() : nullptr;
             return *this;
         }
 
-        ReadIterator& operator=(ReadIterator&&) noexcept = default;
+        WriteIterator& operator=(WriteIterator&&) noexcept = default;
 
-        EntryView operator*() const {
+        EntryRef operator*() const {
             return state->dereference();
         }
 
         struct ArrowProxy {
-            EntryView view;
-            const EntryView* operator->() const { return &view; }
+            EntryRef view;
+            const EntryRef* operator->() const { return &view; }
         };
 
         ArrowProxy operator->() const {
             return ArrowProxy{state->dereference()};
         }
 
-        ReadIterator& operator++() {
+        WriteIterator& operator++() {
             state->increment();
             return *this;
         }
 
-        ReadIterator operator++(int) {
-            ReadIterator copy = *this;
+        WriteIterator operator++(int) {
+            WriteIterator copy = *this;
             ++*this;
             return copy;
         }
 
-        bool operator==(const ReadIterator& other) const {
+        bool operator==(const WriteIterator& other) const {
             if (!state || !other.state) return state == other.state;
             return state->equals(*other.state);
         }
 
-        bool operator!=(const ReadIterator& other) const {
+        bool operator!=(const WriteIterator& other) const {
             return !(*this == other);
         }
 
     private:
-        friend class Read;
+        friend class Direct;
 
         struct State {
             virtual ~State() = default;
-            virtual EntryView dereference() const = 0;
+            virtual EntryRef dereference() const = 0;
             virtual void increment() = 0;
             virtual bool equals(const State& other) const = 0;
             virtual std::unique_ptr<State> clone() const = 0;
@@ -91,9 +97,9 @@ public:
                 : iterator(std::move(iterator))
             {}
 
-            EntryView dereference() const override {
-                const auto entry = *iterator;
-                return EntryView{entry.first, entry.second};
+            EntryRef dereference() const override {
+                auto entry = *iterator;
+                return EntryRef{entry.key, entry.value};
             }
 
             void increment() override {
@@ -113,43 +119,39 @@ public:
         };
 
         template<typename Iterator>
-        explicit ReadIterator(Iterator iterator)
+        explicit WriteIterator(Iterator iterator)
             : state(std::make_unique<IteratorState<Iterator>>(std::move(iterator)))
         {}
 
         std::unique_ptr<State> state;
     };
 
-    virtual ~Read() = default;
+    virtual ~Direct() = default;
 
-    virtual bool contains(const Key& key) const = 0;
-    virtual const Val* find(const Key& key) const = 0;
-    virtual const Val& at(const Key& key) const = 0;
-    virtual std::size_t size() const = 0;
+    using Interface::at;
+    using Interface::begin;
+    using Interface::end;
+    using Interface::find;
 
-    bool empty() const { return size() == 0; }
+    virtual Val* find(const Key& key) = 0;
+    virtual Val& at(const Key& key) = 0;
 
-    std::optional<Val> get(const Key& key) const {
-        if (const auto* found = find(key)) return *found;
-        return std::nullopt;
+    WriteIterator begin() {
+        return write_begin();
     }
 
-    ReadIterator begin() const {
-        return read_begin();
-    }
-
-    ReadIterator end() const {
-        return read_end();
+    WriteIterator end() {
+        return write_end();
     }
 
 protected:
     template<typename Iterator>
-    ReadIterator make_read_iterator(Iterator iterator) const {
-        return ReadIterator(std::move(iterator));
+    WriteIterator make_write_iterator(Iterator iterator) {
+        return WriteIterator(std::move(iterator));
     }
 
-    virtual ReadIterator read_begin() const = 0;
-    virtual ReadIterator read_end() const = 0;
+    virtual WriteIterator write_begin() = 0;
+    virtual WriteIterator write_end() = 0;
 };
 
-} // namespace base::table
+} // namespace base::cannonball::table

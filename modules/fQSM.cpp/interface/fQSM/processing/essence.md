@@ -12,7 +12,7 @@ A codex contains a set of **norms**.
 
 A **norm** defines which world state is considered valid.
 
-A norm analyzes **Preview** and produces a reaction patch.
+A norm analyzes **Draft** and produces a reaction patch.
 
 A norm is a special case of a **reaction**.
 
@@ -56,7 +56,7 @@ Observable world state.
 
 ### Review
 
-**View** + the patch under consideration + **Preview** of the future state + review notes.
+**View** + the patch under consideration + **Draft** of the future state + review notes.
 
 Used by reactions and norms.
 

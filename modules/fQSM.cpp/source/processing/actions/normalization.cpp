@@ -10,7 +10,7 @@
 #include <fQSM/processing/actions/integration.h>
 #include <fQSM/processing/actions/merge.h>
 #include <fQSM/processing/review.h>
-#include <fQSM/state/world/preview.h>
+#include <fQSM/state/world/draft.h>
 #include <fQSM/state/details/analysis.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/features/reaction.h>
@@ -65,7 +65,7 @@ namespace fqsm::processing::actions::normalization {
     auto normalizer(Reading source, const Patch& patch) -> actions::NormalizationResult {
         Review::Notes notes;
         auto review = Reviewing{
-            state::world::Preview{source, patch},
+            state::world::Draft{source, patch},
             ::base::make_shared<Patch>(patch.schema),
             notes,
         };

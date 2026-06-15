@@ -1,6 +1,6 @@
 #pragma once
 
-#include <base/containers/denseTable_deprecated.h>
+#include <base/containers_deprecated/denseTable_deprecated.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/specializations.h>
 

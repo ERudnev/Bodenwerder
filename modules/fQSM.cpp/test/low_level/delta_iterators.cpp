@@ -9,7 +9,7 @@
 #include <fQSM/processing/commit.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/state/world/data.h>
-#include <fQSM/state/world/preview.h>
+#include <fQSM/state/world/draft.h>
 
 namespace {
     using namespace fqsm::api;
@@ -51,7 +51,7 @@ void delta_iterators()
         patch,
         {}
     });
-    auto writing = fqsm::processing::Gate{state, patch_context};
+    auto writing = fqsm::processing::GateWriting{state, patch_context};
 
     std::vector<Id> added_ids;
     for (int i = 101; i <= 110; ++i) {
@@ -64,7 +64,7 @@ void delta_iterators()
         ask::item::update<A>(writing, ids.at(i))->value = (i + 1) * 10;
     }
 
-    const fqsm::state::world::Preview preview(state, *patch);
+    const fqsm::state::world::Draft preview(state, *patch);
 
     using Layer = fqsm::state::slice::Delta<A>::Layer;
     std::unordered_map<Layer, std::set<Id>> collected;

@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <base/containers/relations.h>
+#include <base/containers_deprecated/relations.h>
 #include <fQSM/meta/interface.include.h>
 
 namespace fqsm::state::relations {

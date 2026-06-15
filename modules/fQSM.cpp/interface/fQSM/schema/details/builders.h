@@ -37,7 +37,7 @@ namespace fqsm::schema::details {
     template<aspect::Any Meta>
     auto createOverlay(const state::world::View& state, const state::world::Patch& patch) -> ref<state::slice::Abstract<axis::order::state>> {
         return base::shared_ref_cast<state::slice::Abstract<axis::order::state>>(
-            base::make_shared<state::slice::Preview<Meta>>(
+            base::make_shared<state::slice::Draft<Meta>>(
                 state.template slice<Meta>(),
                 patch.template slice<Meta>())
         );
