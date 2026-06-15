@@ -9,6 +9,7 @@
 #define CANNONBALL_TESTS(X) \
     X(cannonballSmoke) \
     X(denseTable) \
+    X(delta_demonstration) \
     X(patch_operations) \
     X(patch_integrate) \
     X(patch_merge) \
@@ -35,6 +36,7 @@ int main() {
         group{ "cannonball", BASETEST_LIST(
             BASETEST_NAMED("smoke", &tests::cannonballSmoke),
             BASETEST_NAMED("denseTable", &tests::denseTable),
+            BASETEST_NAMED("delta_demonstration", &tests::delta_demonstration),
             BASETEST_NAMED("patch_operations", &tests::patch_operations),
             BASETEST_NAMED("patch_integrate", &tests::patch_integrate),
             BASETEST_NAMED("patch_merge", &tests::patch_merge),
