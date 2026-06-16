@@ -2,10 +2,6 @@
 
 #include <vector>
 
-#define CONTAINERS_TESTS(X) \
-    X(tableDelta) \
-    // end
-
 #define CANNONBALL_TESTS(X) \
     X(cannonballSmoke) \
     X(denseTable) \
@@ -20,7 +16,6 @@
 
 #define BASE_TESTS(X) \
     X(smoke) \
-    CONTAINERS_TESTS(X) \
     CANNONBALL_TESTS(X) \
     // end
 
@@ -33,7 +28,6 @@ int main() {
     };
 
     const std::vector<group> groups{
-        group{ "containers", BASETEST_MAKE_LIST_TESTS(CONTAINERS_TESTS) },
         group{ "cannonball", BASETEST_LIST(
             BASETEST_NAMED("smoke", &tests::cannonballSmoke),
             BASETEST_NAMED("denseTable", &tests::denseTable),

@@ -6,10 +6,12 @@
 #include <optional>
 #include <utility>
 
+#include <base/cannonball/table/erased.h>
+
 namespace base::cannonball::table {
 
 template<typename Key, typename Val>
-class Read {
+class Read : public Erased {
 public:
     using KeyType = Key;
     using MappedType = Val;

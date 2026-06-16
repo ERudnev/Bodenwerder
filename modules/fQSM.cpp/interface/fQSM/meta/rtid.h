@@ -5,12 +5,13 @@
 #include <string_view>
 #include <typeindex>
 
+#include <base/runtimeTypeId.h>
 #include <fQSM/meta/concepts.h>
 
 namespace fqsm::meta::aspect {
 
     struct Rtid {
-        std::type_index value;
+        base::RuntimeTypeId value;
 
         template<Any Meta>
         static Rtid of() { return Rtid{typeid(Meta)}; }
@@ -28,7 +29,7 @@ namespace fqsm::meta::aspect {
         };
 
     private:
-        explicit Rtid(std::type_index value) : value(value) {}
+        explicit Rtid(base::RuntimeTypeId value) : value(value) {}
     };
 
     using TypeSet = std::set<aspect::Rtid>;

@@ -22,6 +22,7 @@ namespace fqsm::schema {
 
     namespace axis = meta::axis;
 
+    // TODO: replace with base::cannonball::composite::Lazy::Fabric Adapter
     struct Binding {
         std::function<ref<state::slice::Erased>()> createState;
         std::function<ref<state::slice::Erased>()> createPatch;
