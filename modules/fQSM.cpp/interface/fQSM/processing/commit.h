@@ -3,13 +3,14 @@
 #include <functional>
 #include <memory>
 #include <base/logging.h>
-#include <fQSM/state/_forwards.h>
-#include <fQSM/state/world/patch.h>
-#include <fQSM/state/world/actual.h>
+#include <fQSM/model/_forwards.h>
+#include <fQSM/model/complex/patch.h>
+#include <fQSM/model/complex/actual.h>
 #include <fQSM/processing/_forwards.h>
 
 namespace fqsm::processing {
 
+    // TODO: rename to Context / context::Operational / OperationalContext or something like "TransitionalRAIIOperationalBuffer" :[
     struct Commit final {
         using PatchRef = fqsm::ref<Patch>;
         using Upstream = std::function<void(PatchRef)>;
@@ -27,6 +28,7 @@ namespace fqsm::processing {
         }
     };
 
+    // TODO: rename to GateOperational
     struct GateWrite {
         using PatchRef = Commit::PatchRef;
 

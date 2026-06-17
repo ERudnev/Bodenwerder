@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <fQSM/state/_forwards.h>
+#include <fQSM/model/_forwards.h>
 #include <fQSM/processing/review.h>
 
 namespace fqsm::manipulation {}

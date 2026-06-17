@@ -14,13 +14,13 @@ using Patchlet = std::optional<T>;
 
 // set of changes for some table
 template<typename Key, typename Val, typename Hasher = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
-class Patch : public DenseTable<Key, Patchlet<Val>, Hasher, KeyEqual> {
+class Patch : public Table<Key, Patchlet<Val>, Hasher, KeyEqual> {
 public:
-    using Base = DenseTable<Key, Patchlet<Val>, Hasher, KeyEqual>;
+    using Base = Table<Key, Patchlet<Val>, Hasher, KeyEqual>;
     using RelatedOperational = table::Operational<Key, Val>;
     using RelatedDirect = table::Direct<Key, Val>;
 
-    // Unlike DenseTable::insert, replacing deletion keeps deletion.
+    // Unlike Table::insert, replacing deletion keeps deletion.
     void modify(const Key& key, const Val& value);
     void modify(Key&& key, Val&& value);
 

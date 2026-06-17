@@ -2,7 +2,7 @@
 #include "minimodel/aspects.q1.h"
 
 #include <fQSM/api/interface.h>
-#include <fQSM/state/world/data.h>
+#include <fQSM/model/complex/data.h>
 
 namespace {
     using namespace ::tests::model;
@@ -43,4 +43,3 @@ namespace tests {
 
     }
 }
-

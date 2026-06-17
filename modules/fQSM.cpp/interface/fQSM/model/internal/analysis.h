@@ -3,7 +3,7 @@
 #include <unordered_map>
 
 #include <fQSM/meta/rtid.h>
-#include <fQSM/state/_forwards.h>
+#include <fQSM/model/_forwards.h>
 
 namespace fqsm::analysis {
 
@@ -17,7 +17,7 @@ namespace fqsm::analysis {
 
         std::unordered_map<meta::aspect::Rtid, SliceEntry, meta::aspect::Rtid::Hash> perSlice;
 
-        explicit Patch(const state::world::Patch&);
+        explicit Patch(const model::complex::Patch&);
 
         int overallChanges() const;
     };

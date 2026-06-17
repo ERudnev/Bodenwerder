@@ -14,7 +14,7 @@
 namespace base::cannonball {
 
 template<typename Key, typename Val, typename Hasher = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
-class DenseTable : public table::Direct<Key, Val> {
+class Table : public table::Direct<Key, Val> {
 public:
     using Interface = table::Direct<Key, Val>;
     using KeyType = typename Interface::KeyType;
@@ -67,7 +67,7 @@ public:
         }
 
     private:
-        friend class DenseTable;
+        friend class Table;
 
         ConstIterator(const std::vector<Entry>& entries, SizeType index)
             : entries(entries)
@@ -119,7 +119,7 @@ public:
         }
 
     private:
-        friend class DenseTable;
+        friend class Table;
 
         Iterator(std::vector<Entry>& entries, SizeType index)
             : entries(entries)
@@ -130,9 +130,9 @@ public:
         SizeType index;
     };
 
-    DenseTable() = default;
+    Table() = default;
 
-    explicit DenseTable(const Hasher& hash, const KeyEqual& equal = KeyEqual())
+    explicit Table(const Hasher& hash, const KeyEqual& equal = KeyEqual())
         : keyToIndex(0, hash, equal)
     {}
 
@@ -154,13 +154,13 @@ public:
 
     const Val& at(const Key& key) const override {
         const auto* found = find(key);
-        if (!found) throw std::out_of_range("DenseTable::at");
+        if (!found) throw std::out_of_range("Table::at");
         return *found;
     }
 
     Val& at(const Key& key) override {
         auto* found = find(key);
-        if (!found) throw std::out_of_range("DenseTable::at");
+        if (!found) throw std::out_of_range("Table::at");
         return *found;
     }
 

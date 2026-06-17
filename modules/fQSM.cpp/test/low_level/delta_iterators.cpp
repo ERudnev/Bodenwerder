@@ -8,8 +8,8 @@
 #include <fQSM/api/interface.h>
 #include <fQSM/processing/commit.h>
 #include <fQSM/state/patch.h>
-#include <fQSM/state/world/data.h>
-#include <fQSM/state/world/draft.h>
+#include <fQSM/model/complex/data.h>
+#include <fQSM/model/complex/draft.h>
 
 namespace {
     using namespace fqsm::api;

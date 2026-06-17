@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fQSM/processing/actions/merge.h>
-#include <fQSM/state/world/draft.h>
+#include <fQSM/model/complex/draft.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/processing/transaction.h>
 

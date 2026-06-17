@@ -4,14 +4,14 @@
 
 #include <fQSM/references.h>
 #include <fQSM/meta/concepts.h>
-#include <fQSM/state/_forwards.h>
+#include <fQSM/model/_forwards.h>
 
 //#include <fQSM/state/world.h>
 
 namespace fqsm::processing {
 
-    using World = ::fqsm::state::world::Write;
-    using Patch = ::fqsm::state::world::Patch;
+    using World = ::fqsm::model::World;
+    using Patch = ::fqsm::model::Patch;
 
     struct Commit;
     struct GateWriting;

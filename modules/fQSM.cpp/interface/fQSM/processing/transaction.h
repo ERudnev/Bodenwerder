@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include <fQSM/state/_forwards.h>
+#include <fQSM/model/_forwards.h>
 #include <fQSM/processing/commit.h>
 
 namespace fqsm::processing {
