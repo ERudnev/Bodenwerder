@@ -28,11 +28,6 @@ namespace fqsm::model::complex {
 
         Container lines;
     };
-
-    struct StateAddressable : State {
-        //template<aspect::Any Meta>
-        //linear::StateAddressable<Meta>& aspect();
-    };
 }
 
 

@@ -35,7 +35,7 @@ namespace fqsm::schema::details {
     }
 
     template<aspect::Any Meta>
-    auto createOverlay(const state::world::View& state, const state::world::Patch& patch) -> ref<state::slice::Abstract<axis::order::state>> {
+    auto createOverlay(const state::world::View& state, const model::complex::Patch& patch) -> ref<state::slice::Abstract<axis::order::state>> {
         return base::shared_ref_cast<state::slice::Abstract<axis::order::state>>(
             base::make_shared<state::slice::Draft<Meta>>(
                 state.template slice<Meta>(),
@@ -44,13 +44,13 @@ namespace fqsm::schema::details {
     }
 
     template<aspect::Any Meta>
-    void integratePatchSlice(state::world::Data& world, const state::world::Patch& patch) {
+    void integratePatchSlice(state::world::Data& world, const model::complex::Patch& patch) {
         if (patch.template slice<Meta>()->tainted()) return;
         fqsm::processing::actions::details::integrate<Meta>(world, patch);
     }
 
     template<aspect::Any Meta>
-    void mergePatchSlice(const state::world::View& base, ref<state::world::Patch> target, cref<state::world::Patch> source) {
+    void mergePatchSlice(const state::world::View& base, ref<model::complex::Patch> target, cref<model::complex::Patch> source) {
         if (source->template slice<Meta>()->tainted()) {
             const auto aspectId = aspect::Rtid::of<Meta>();
             if (!target->composite().slices.contains(aspectId)) {
@@ -62,7 +62,7 @@ namespace fqsm::schema::details {
     }
 
     template<aspect::Any Meta>
-    void analyzePatchSlice(const state::world::Patch& patch, analysis::Patch& out) {
+    void analyzePatchSlice(const model::complex::Patch& patch, analysis::Patch& out) {
         if (patch.template slice<Meta>()->tainted()) return;
         auto entry = analysis::Patch::SliceEntry{};
         if (patch.template global<Meta>().has_value()) {

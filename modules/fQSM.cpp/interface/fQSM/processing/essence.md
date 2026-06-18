@@ -1,3 +1,5 @@
+THIS DOC IS OUTDATED AND MUST BE REWORKED ASAP
+
 # Features — Current Model
 
 ## Core Entities
@@ -44,21 +46,24 @@ The same norm may use different reflexes.
 
 ## Contexts
 
-### View
+### Context (default)
+Is abstraction of data ownership
 
-Observable world state.
+### Gate
+Is abstraction of access to some context
 
-**Read-only.**
+#### GateReading ("Reading")
+is context access mode allows only reading, including fast const Val& semantic
+equal to ~const State&
 
-### Writing
+#### GateOperational ("Writing")
+this kind of access allows full capacity of GateReading + operational (through commands)
+writing to targeted context.
+Designd to implement buffered write, where Patch actas as buffer
 
-**View** + ability to produce a patch.
-
-### Review
-
-**View** + the patch under consideration + **Draft** of the future state + review notes.
-
-Used by reactions and norms.
+#### GateAddressabe ("Immediate")
+this is planar immediate access to Tables with Val& semantic
+Worker/operation through this context leaves no Patch and made for fast-massive-updating stuff
 
 ## Integration
 

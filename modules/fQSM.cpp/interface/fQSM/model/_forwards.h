@@ -32,5 +32,5 @@ namespace fqsm::model {
     using Schema = cref<structure::AspectGraph>;
     using World = complex::State;
     using WorldAddressable = complex::StateAddressable;
-    using Patch = complex::Patch;
+    // hiding as "1s class": using Patch = complex::Patch;
 }

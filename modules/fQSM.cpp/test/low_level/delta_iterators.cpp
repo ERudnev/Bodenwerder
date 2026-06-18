@@ -45,7 +45,7 @@ void delta_iterators()
     }
 
     const fqsm::state::world::Data state(fill);
-    auto patch = base::make_shared<fqsm::state::world::Patch>(schema);
+    auto patch = base::make_shared<fqsm::model::complex::Patch>(schema);
     auto patch_context = std::make_shared<fqsm::processing::Commit>(fqsm::processing::Commit{
         state,
         patch,
@@ -64,7 +64,7 @@ void delta_iterators()
         ask::item::update<A>(writing, ids.at(i))->value = (i + 1) * 10;
     }
 
-    const fqsm::state::world::Draft preview(state, *patch);
+    const fqsm::model::complex::Future preview(state, *patch);
 
     using Layer = fqsm::state::slice::Delta<A>::Layer;
     std::unordered_map<Layer, std::set<Id>> collected;

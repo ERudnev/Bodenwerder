@@ -25,7 +25,7 @@ void dense_table_overlay()
     state.items<SomeEntity>().insert(Id{2}, Item{2});
     state.items<SomeEntity>().insert(Id{3}, Item{3});
 
-    fqsm::state::world::Patch patch(schema);
+    fqsm::model::complex::Patch patch(schema);
     patch.items<SomeEntity>().insert(Id{2}, PatchItem{Item{20}});
     patch.items<SomeEntity>().insert(Id{3}, PatchItem{std::nullopt});
     patch.items<SomeEntity>().insert(Id{4}, PatchItem{Item{40}});

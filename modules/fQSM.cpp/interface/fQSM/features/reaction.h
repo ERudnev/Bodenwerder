@@ -17,7 +17,7 @@ namespace fqsm::features {
     struct Reaction {
         using Reviewing = processing::Review;
         using Draft = state::world::Draft;
-        using Patch = state::world::Patch;
+        using Patch = model::complex::Patch;
         using Sources = meta::aspect::TypeSet;
 
         virtual ~Reaction() = default;

@@ -1,16 +1,14 @@
 #pragma once
 
-#include <fQSM/processing/immediate.h>
+#include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/review.h>
 #include <fQSM/model/complex/data.h>
-#include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/transaction.h>
 
 namespace fqsm::processing {
 
     struct Realm : Transaction {
         Realm(const View& initial) : world(initial) {}
-
         // as Transaction:
         operator Reading() const override { return world; }
 
@@ -23,7 +21,7 @@ namespace fqsm::processing {
         auto notes() const -> const Review::Notes& { return lastNotes; }
 
     private:
-        state::world::Data world;
+        model::complex::State world;
         Review::Notes lastNotes;
 
         auto writing() -> Writing override;

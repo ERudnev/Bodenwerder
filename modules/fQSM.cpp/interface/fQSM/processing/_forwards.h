@@ -9,22 +9,19 @@
 //#include <fQSM/state/world.h>
 
 namespace fqsm::processing {
-
-    using World = ::fqsm::model::World;
-    using Patch = ::fqsm::model::Patch;
-
+    //using World = ::fqsm::model::World;
+    //using Patch = ::fqsm::model::Patch;
     struct Commit;
-    struct GateWriting;
-    struct GateImmediate;
+    struct GateOperational;
+    struct GateDirect;
     struct Review;
-    struct Immediate; // clarify this
-    using ContextShared = std::shared_ptr<Commit>;
 }
 
+// exportin this as 1st class citizen of fQSM:
 namespace fqsm {
     //using Reading = const processing::View&; // cleanup
     using Reading = const ::fqsm::model::complex::State&;
-    using Writing = processing::GateWriting;
-    using Immediate = processing::GateImmediate;
+    using Writing = processing::GateOperational; // rename to "Draft"?
+    using Access = processing::GateDirect;
     using Reviewing = processing::Review;
 }

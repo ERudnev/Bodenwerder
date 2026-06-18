@@ -5,14 +5,14 @@
 
 // facade
 namespace fqsm::processing::actions {
-    void integrate(state::world::Actual&, const state::world::Patch&);
+    void integrate(state::world::Actual&, const model::complex::Patch&);
 }
 
 // implementation
 namespace fqsm::processing::actions::details {
 
     template<aspect::Any Meta>
-    void integrate(state::world::Data& world, const state::world::Patch& patch) {
+    void integrate(state::world::Data& world, const model::complex::Patch& patch) {
         if (patch.template global<Meta>().has_value()) {
             world.template global<Meta>() = patch.template global<Meta>().value();
         }

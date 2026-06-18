@@ -1,6 +1,6 @@
-/*
 #include <fQSM/processing/actions/normalization.h>
 
+/*
 #include <format>
 #include <set>
 #include <stdexcept>
@@ -19,8 +19,8 @@
 namespace fqsm::processing::actions {
     static constexpr int temp_defence_normalization_waves = 10;
 
-    using State = fqsm::state::world::Data;
-    using Patch = fqsm::state::world::Patch;
+    using State = fqsm::model::complex::StateAddressable;
+    using Patch = fqsm::model::complex::Patch;
     using PatchRef = fqsm::ref<Patch>;
 }
 

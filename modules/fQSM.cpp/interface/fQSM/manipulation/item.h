@@ -9,6 +9,7 @@
 #include <fQSM/processing/transactions/quantal.h>
 #include <fQSM/processing/commit.h>
 
+// must disappear with cannonball refactoring and Writing ~ State& buffered writing
 namespace fqsm::manipulation::item {
     template<aspect::Standalone Meta>
     auto create(Writing, Quantum<Meta> value) -> Id<Meta>;

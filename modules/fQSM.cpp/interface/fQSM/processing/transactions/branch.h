@@ -12,7 +12,7 @@ namespace fqsm::processing::transaction {
         Branch(Transaction& parent) : Branch(parent.childPolicy()) {}
 
         Branch(ChildPolicy policy)
-            : patch(base::make_shared<state::world::Patch>(policy.view.schema))
+            : patch(base::make_shared<model::complex::Patch>(policy.view.schema))
             , preview(policy.view, *patch)
         {
             context = std::make_shared<Commit>(Commit{
