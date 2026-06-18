@@ -4,8 +4,6 @@
 #include <memory>
 #include <base/logging.h>
 #include <fQSM/model/_forwards.h>
-#include <fQSM/model/complex/patch.h>
-#include <fQSM/model/complex/actual.h>
 #include <fQSM/processing/_forwards.h>
 
 namespace fqsm::processing {
@@ -43,22 +41,15 @@ namespace fqsm::processing {
     struct GateImmediate {
         using PatchRef = Commit::PatchRef;
 
-        World& state;
+        model::WorldAddressable& state;
         ContextShared parent;
 
         operator Reading() const { return state; }
 
         Patch& patch() const { return *parent->patch; }
 
-        // optimization stuff:
-        template<aspect::Any Meta>
-        void reserve_broad_update() const;
+        // optimization stuff: looks as oxymoron (broad updates do not resize container?)
+        //template<aspect::Any Meta>
+        //void reserve_broad_update() const;
     };
-}
-
-namespace fqsm::processing {
-    template<aspect::Any Meta>
-    void GateImmediate::reserve_broad_update() const {
-        patch().template slice<Meta>().reserve(state.slice<Meta>().size());
-    }
 }

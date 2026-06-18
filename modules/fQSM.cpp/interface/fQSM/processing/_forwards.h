@@ -23,7 +23,7 @@ namespace fqsm::processing {
 
 namespace fqsm {
     //using Reading = const processing::View&; // cleanup
-    using Reading = const ::fqsm::state::world::Actual&;
+    using Reading = const ::fqsm::model::complex::State&;
     using Writing = processing::GateWriting;
     using Immediate = processing::GateImmediate;
     using Reviewing = processing::Review;

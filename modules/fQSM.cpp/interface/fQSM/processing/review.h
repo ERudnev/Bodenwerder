@@ -3,8 +3,8 @@
 #include <vector>
 #include <string>
 #include <fQSM/processing/commit.h>
-#include <fQSM/model/complex/draft.h>
-#include <fQSM/state/slice/delta.h>
+#include <fQSM/model/complex/future.h>
+#include <fQSM/model/linear/delta.h>
 
 namespace fqsm::processing {
 
@@ -18,18 +18,17 @@ namespace fqsm::processing {
             bool rejection() const { return not critical.empty(); }
         };
 
-        state::world::Draft draft;
+        model::complex::Future expectation;
         PatchRef corrections;
         Notes& notes;
 
-        // TODO: rename will_be -> something like "planed_updates"?
         template<aspect::Any Meta>
-        auto changes() const -> state::slice::Delta<Meta> {
-            return draft.template delta<Meta>();
+        auto changes() const -> model::linear::Delta<Meta> {
+            return expectation.delta<Meta>();
         }
 
         operator GateWrite() const {
-            return GateWrite{ draft, std::make_shared<Commit>(Commit{draft, corrections,{}}) };
+            return GateWrite{ expectation, std::make_shared<Commit>(Commit{expectation, corrections,{}}) };
         }
     };
 

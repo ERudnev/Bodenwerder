@@ -131,7 +131,7 @@ The type axis does not exist in linear models.
 
 ---
 
-## Preview
+## Future
 
 A preview presents a future state without allowing modification.
 A preview combines:

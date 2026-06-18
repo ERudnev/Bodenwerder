@@ -10,7 +10,7 @@
 namespace base::cannonball {
 
 template<typename Key, typename Val, typename Hasher = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
-class Preview : public table::Read<Key, Val> {
+class Future : public table::Read<Key, Val> {
 public:
     using Interface = table::Read<Key, Val>;
     using View = table::Read<Key, Val>;
@@ -32,7 +32,7 @@ public:
     class ConstIterator {
     public:
         ConstIterator(
-            const Preview& owner,
+            const Future& owner,
             Phase phase,
             StateIterator stateIt,
             StateIterator stateEnd,
@@ -124,7 +124,7 @@ public:
             }
         }
 
-        const Preview* owner;
+        const Future* owner;
         Phase phase;
         StateIterator stateIt;
         StateIterator stateEnd;
@@ -132,7 +132,7 @@ public:
         PatchIterator patchEnd;
     };
 
-    Preview(const View& state, const PatchType& patch);
+    Future(const View& state, const PatchType& patch);
 
     bool contains(const Key& key) const override;
     const Val* find(const Key& key) const override;
@@ -152,19 +152,19 @@ protected:
 namespace base::cannonball {
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-Preview<Key, Val, Hasher, KeyEqual>::Preview(const View& state, const PatchType& patch)
+Future<Key, Val, Hasher, KeyEqual>::Future(const View& state, const PatchType& patch)
     : state(state)
     , patch(patch)
 {}
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-bool Preview<Key, Val, Hasher, KeyEqual>::contains(const Key& key) const
+bool Future<Key, Val, Hasher, KeyEqual>::contains(const Key& key) const
 {
     return find(key) != nullptr;
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-const Val* Preview<Key, Val, Hasher, KeyEqual>::find(const Key& key) const
+const Val* Future<Key, Val, Hasher, KeyEqual>::find(const Key& key) const
 {
     if (const auto* patched = patch.find(key)) {
         if (!patched->has_value()) return nullptr;
@@ -175,14 +175,14 @@ const Val* Preview<Key, Val, Hasher, KeyEqual>::find(const Key& key) const
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-const Val& Preview<Key, Val, Hasher, KeyEqual>::at(const Key& key) const
+const Val& Future<Key, Val, Hasher, KeyEqual>::at(const Key& key) const
 {
     if (const auto* found = find(key)) return *found;
-    throw std::out_of_range("Preview::at");
+    throw std::out_of_range("Future::at");
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-auto Preview<Key, Val, Hasher, KeyEqual>::size() const -> SizeType
+auto Future<Key, Val, Hasher, KeyEqual>::size() const -> SizeType
 {
     SizeType result = state.size();
 
@@ -200,7 +200,7 @@ auto Preview<Key, Val, Hasher, KeyEqual>::size() const -> SizeType
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-auto Preview<Key, Val, Hasher, KeyEqual>::read_begin() const -> ReadIterator
+auto Future<Key, Val, Hasher, KeyEqual>::read_begin() const -> ReadIterator
 {
     return this->make_read_iterator(ConstIterator{
         *this,
@@ -213,7 +213,7 @@ auto Preview<Key, Val, Hasher, KeyEqual>::read_begin() const -> ReadIterator
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-auto Preview<Key, Val, Hasher, KeyEqual>::read_end() const -> ReadIterator
+auto Future<Key, Val, Hasher, KeyEqual>::read_end() const -> ReadIterator
 {
     return this->make_read_iterator(ConstIterator{
         *this,
