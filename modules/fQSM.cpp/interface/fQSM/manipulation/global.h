@@ -3,7 +3,7 @@
 #include <utility>
 
 #include <fQSM/meta/interface.include.h>
-#include <fQSM/processing/commit.h>
+#include <fQSM/processing/context.h>
 
 namespace fqsm::manipulation::global {
     template<aspect::Any Meta>

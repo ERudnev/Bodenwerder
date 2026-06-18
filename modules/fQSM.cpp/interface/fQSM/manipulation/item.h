@@ -7,7 +7,7 @@
 
 #include <fQSM/identifier.h>
 #include <fQSM/processing/transactions/quantal.h>
-#include <fQSM/processing/commit.h>
+#include <fQSM/processing/context.h>
 
 // must disappear with cannonball refactoring and Writing ~ State& buffered writing
 namespace fqsm::manipulation::item {

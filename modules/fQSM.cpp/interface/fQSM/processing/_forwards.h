@@ -11,7 +11,7 @@
 namespace fqsm::processing {
     //using World = ::fqsm::model::World;
     //using Patch = ::fqsm::model::Patch;
-    struct Commit;
+    struct Context;
     struct GateOperational;
     struct GateDirect;
     struct Review;

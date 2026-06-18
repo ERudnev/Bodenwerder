@@ -7,10 +7,10 @@
 namespace fqsm::processing {
     auto Realm::writing() -> Writing {
         auto patch = base::make_shared<model::complex::Patch>(world.schema);
-        auto context = std::make_shared<Commit>(Commit{
+        auto context = std::make_shared<Context>(Context{
             world,
             patch,
-            [this](Commit::PatchRef patch) {
+            [this](Context::PatchRef patch) {
                 accept(patch);
             }
         });
@@ -21,13 +21,13 @@ namespace fqsm::processing {
     auto Realm::makeChildPolicy() -> ChildPolicy {
         return ChildPolicy{
             world,
-            [this](Commit::PatchRef patch) {
+            [this](Context::PatchRef patch) {
                 accept(patch);
             }
         };
     }
 
-    void Realm::accept(Commit::PatchRef patch) {
+    void Realm::accept(Context::PatchRef patch) {
         lastNotes = {};
         lastNotes = actions::update(world, *patch);
     }

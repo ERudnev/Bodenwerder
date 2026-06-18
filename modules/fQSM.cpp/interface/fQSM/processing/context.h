@@ -9,7 +9,8 @@
 namespace fqsm::processing {
 
     // TODO: rename to Context / context::Operational / OperationalContext or something like "TransitionalRAIIOperationalBuffer" :[
-    struct Commit final {
+    struct Context final {
+        using Ptr = std::shared_ptr<Context>;
         using PatchRef = fqsm::ref<Patch>;
         using Upstream = std::function<void(PatchRef)>;
 
@@ -17,7 +18,7 @@ namespace fqsm::processing {
         PatchRef patch; // always created outside
         Upstream upstream;
 
-        ~Commit() { finish(); } // _DEBUG_REPORT_;
+        ~Context() { finish(); } // _DEBUG_REPORT_;
 
         void finish() {
             if (upstream) {
@@ -28,10 +29,10 @@ namespace fqsm::processing {
 
     // TODO: rename to GateOperational
     struct GateWrite {
-        using PatchRef = Commit::PatchRef;
+        using PatchRef = Context::PatchRef;
 
         const World& state;
-        ContextShared parent;
+        Context::Ptr parent;
 
         operator Reading() const { return state; }
 
@@ -39,10 +40,10 @@ namespace fqsm::processing {
     };
 
     struct GateImmediate {
-        using PatchRef = Commit::PatchRef;
+        using PatchRef = Context::PatchRef;
 
-        model::WorldAddressable& state;
-        ContextShared parent;
+        WorldAddressable& state;
+        Context::Ptr parent;
 
         operator Reading() const { return state; }
 

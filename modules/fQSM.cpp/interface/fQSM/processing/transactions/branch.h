@@ -15,7 +15,7 @@ namespace fqsm::processing::transaction {
             : patch(base::make_shared<model::complex::Patch>(policy.view.schema))
             , preview(policy.view, *patch)
         {
-            context = std::make_shared<Commit>(Commit{
+            context = std::make_shared<Context>(Context{
                 preview,
                 patch,
                 policy.upstream
@@ -26,7 +26,7 @@ namespace fqsm::processing::transaction {
 
     private:
         ContextShared context;
-        Commit::PatchRef patch;
+        Context::PatchRef patch;
         state::world::Draft preview;
 
         auto writing() -> Writing override {
@@ -36,11 +36,11 @@ namespace fqsm::processing::transaction {
         auto makeChildPolicy() -> ChildPolicy override {
             return ChildPolicy{
                 preview,
-                [this](Commit::PatchRef patch) { accept(patch); }
+                [this](Context::PatchRef patch) { accept(patch); }
             };
         }
 
-        void accept(Commit::PatchRef child) {
+        void accept(Context::PatchRef child) {
             actions::merge(preview, patch, child);
         }
 

@@ -1,5 +1,34 @@
 {
   "files.associations": {
     "*.tome": "kqm"
+    "*.q1.types": "q1"
+  },
+  "cmake.useCMakePresets": "always",
+  "cmake.configureOnOpen": true,
+  "cmake.defaultConfigurePreset": "ninja-clang-debug",
+  "cmake.defaultBuildPreset": "debug",
+  // After switching configure preset (debug/release), run CMake: Configure so compile_commands.json updates.
+  "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
+  "clangd.path": "C:/Program Files/LLVM/bin/clangd.exe",
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}",
+    "--background-index",
+    "--header-insertion=never"
+  ],
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "C_Cpp.errorSquiggles": "disabled",
+  "editor.inlayHints.enabled": "off",
+  "[cpp]": {
+    "editor.inlayHints.enabled": "off"
+  },
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      {
+        "scope": "variable.parameter.q1",
+        "settings": {
+          "fontStyle": "italic"
+        }
+      }
+    ]
   }
 }

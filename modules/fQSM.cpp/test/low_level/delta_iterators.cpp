@@ -6,7 +6,7 @@
 #include <vector>
 
 #include <fQSM/api/interface.h>
-#include <fQSM/processing/commit.h>
+#include <fQSM/processing/context.h>
 #include <fQSM/state/patch.h>
 #include <fQSM/model/complex/data.h>
 #include <fQSM/model/complex/draft.h>
@@ -46,7 +46,7 @@ void delta_iterators()
 
     const fqsm::state::world::Data state(fill);
     auto patch = base::make_shared<fqsm::model::complex::Patch>(schema);
-    auto patch_context = std::make_shared<fqsm::processing::Commit>(fqsm::processing::Commit{
+    auto patch_context = std::make_shared<fqsm::processing::Context>(fqsm::processing::Context{
         state,
         patch,
         {}

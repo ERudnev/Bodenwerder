@@ -2,14 +2,14 @@
 
 #include <vector>
 #include <string>
-#include <fQSM/processing/commit.h>
+#include <fQSM/processing/context.h>
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/linear/delta.h>
 
 namespace fqsm::processing {
 
     struct Review final {
-        using PatchRef = Commit::PatchRef;
+        using PatchRef = Context::PatchRef;
         struct Notes {
             using Category = std::vector<std::string>;
             Category critical;
@@ -28,7 +28,7 @@ namespace fqsm::processing {
         }
 
         operator GateWrite() const {
-            return GateWrite{ expectation, std::make_shared<Commit>(Commit{expectation, corrections,{}}) };
+            return GateWrite{ expectation, std::make_shared<Context>(Context{expectation, corrections,{}}) };
         }
     };
 

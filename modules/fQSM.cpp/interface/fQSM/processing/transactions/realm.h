@@ -27,7 +27,7 @@ namespace fqsm::processing {
         auto writing() -> Writing override;
         auto makeChildPolicy() -> ChildPolicy override;
 
-        void accept(Commit::PatchRef);
+        void accept(Context::PatchRef);
         void accept_immediate(aspect::Rtid type);
     };
 }

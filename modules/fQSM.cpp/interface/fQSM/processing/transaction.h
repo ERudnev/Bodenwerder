@@ -3,14 +3,14 @@
 #include <memory>
 
 #include <fQSM/model/_forwards.h>
-#include <fQSM/processing/commit.h>
+#include <fQSM/processing/context.h>
 
 namespace fqsm::processing {
 
     struct Transaction {
         struct ChildPolicy {
             Reading view;
-            Commit::Upstream upstream;
+            Context::Upstream upstream;
         };
 
         virtual ~Transaction() = default;
