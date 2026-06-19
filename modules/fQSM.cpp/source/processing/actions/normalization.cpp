@@ -119,7 +119,7 @@ namespace fqsm::processing::actions {
         return { normalized, std::move(notes) };
     }
 
-    auto update(State& state, const Patch& patch) -> Review::Notes {
+    auto update(Reality& state, const Patch& patch) -> Review::Notes {
         const auto normalized = normalize(state, patch);
         if (normalized.notes.rejection()) return normalized.notes;
 

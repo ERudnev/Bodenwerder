@@ -18,14 +18,9 @@ namespace fqsm::manipulation::global {
 namespace fqsm::manipulation::global {
     template<aspect::Any Meta>
     struct update {
-        explicit update(Writing gate)
-            : gate(std::move(gate))
-            , buffer(this->gate.state.template global<Meta>())
-        {}
+        explicit update(Writing gate) : gate(std::move(gate)), buffer(this->gate.state.aspect<Meta>().global()) {}
 
-        ~update() {
-            gate.patch().template global<Meta>() = std::move(buffer);
-        }
+        ~update() { gate.patch().aspect<Meta>().global() = std::move(buffer); }
 
         update(const update&) = delete;
         update& operator=(const update&) = delete;
@@ -42,6 +37,6 @@ namespace fqsm::manipulation::global {
 
     template<aspect::Any Meta>
     auto get(Reading view) -> const GlobalValue<Meta>& {
-        return view.template global<Meta>();
+        return view.aspect<Meta>.global();
     }
 }

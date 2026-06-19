@@ -29,7 +29,7 @@ namespace fqsm::features::reactions::morms::constraints {
 
     template<aspect::Any Meta>
     void local<Meta>::apply(Reviewing context) {
-        for (const auto change : will_be<Meta>(context).addedOrUpdated()) {
+        for (const auto change : changes<Meta>(context).addedOrUpdated()) {
             if (!change.after) continue;
             if (!corrector) {
                 ask::feedback::critical<Meta>(

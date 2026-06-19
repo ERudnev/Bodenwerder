@@ -18,7 +18,7 @@ namespace fqsm::features {
         using Reviewing = processing::Review;
         using Draft = model::complex::Draft;
         using Patch = model::complex::Patch;
-        using Sources = meta::aspect::TypeSet;
+        using Sources = meta::aspect::Rtid::Set;
 
         virtual ~Reaction() = default;
 
@@ -33,8 +33,8 @@ namespace fqsm::features {
         }
 
         template<aspect::Any Meta>
-        static auto will_be(const Reviewing& context) -> state::slice::Delta<Meta> {
-            return context.template will_be<Meta>();
+        static auto changes(const Reviewing& context) -> model::linear::Delta<Meta> {
+            return context.template changes<Meta>();
         }
     };
 }

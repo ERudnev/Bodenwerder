@@ -6,16 +6,29 @@
 
 namespace fqsm::model::linear {
 
-
     template<aspect::Any Meta>
-    class Reality : state::Erased {
-        using Container = base::cannonball::table::Operational<Id<Meta>, Quantum<Meta>>
+    class Reality : State<Meta> {
+        Reality()=default;
+        Reality(const Global& initial) : line{}, globalValue(initial) {}
+        //Reality(const state::Erased& initial) { _INCOMPLETE_; }
 
-        virtual Container& items();
-        virtual const Container& items();
+        virtual Items& items() override;
+        virtual const Items& items() override;
+        virtual Global& global() override;
+        virtual const Global& global() const override;
+    private:
+        Items line;
+        GlobalValue<Meta> globalValue;
     };
 
     template<aspect::Any Meta>
     class StateAddressable : State<Meta> {
     };
+}
+
+
+// impl:
+namespace fqsm::model::linear {
+
+
 }

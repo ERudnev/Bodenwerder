@@ -1,18 +1,21 @@
 #pragma once
 
 #include <fQSM/model/complex/state.h>
+#include <fQSM/model/structure/composite.h>
+#include <fQSM/model/linear/state.h>
 
 namespace fqsm::model::complex {
 
     class Reality : public State {
-        Reality(Schema schema) : State(schema), { generate(); }
+    public:
+        Reality(Schema schema) : State(schema) { generate(); }
 
     protected:
-        cref<Erased> aspect(meta::aspect::Rtid) const override;
-        ref<Erased> aspect(meta::aspect::Rtid) override;
+        cref<Erased> aspect(Rtid) const override;
+        ref<Erased> aspect(Rtid) override;
 
         void generate();
 
-        Container lines;
+        Composite<linear::state::Erased> lines;
     };
 }

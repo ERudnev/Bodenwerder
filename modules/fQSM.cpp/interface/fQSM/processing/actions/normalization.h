@@ -11,5 +11,5 @@ namespace fqsm::processing::actions {
     };
 
     auto normalize(Reading base, const model::complex::Patch&) -> NormalizationResult;
-    auto update(model::complex::StateAddressable&, const model::complex::Patch&, ) -> Review::Notes;
+    auto update(model::complex::Reality&, const model::complex::Patch&) -> Review::Notes;
 }

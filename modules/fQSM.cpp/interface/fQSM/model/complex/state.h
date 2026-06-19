@@ -9,7 +9,8 @@ namespace fqsm::model::complex {
 
     class State {
     public:
-        using Container = composite::Container<linear::state::Erased>;
+        //using Container = composite::Container<linear::state::Erased>;
+        using Composition = Composite<linear::state::Erased>;
 
         State(Schema schema) : schema(schema) {}
         virtual ~State()=default;

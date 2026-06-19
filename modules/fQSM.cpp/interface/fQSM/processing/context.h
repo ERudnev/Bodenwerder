@@ -28,8 +28,7 @@ namespace fqsm::processing {
         }
     };
 
-    // TODO: rename to GateOperational
-    struct GateWrite {
+    struct GateOperational {
         using PatchRef = Context::PatchRef;
 
         const State& state; // TODO: consider removal of "const"

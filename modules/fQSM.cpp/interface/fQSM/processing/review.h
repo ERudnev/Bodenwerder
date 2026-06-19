@@ -27,8 +27,8 @@ namespace fqsm::processing {
             return expectation.delta<Meta>();
         }
 
-        operator GateWrite() const {
-            return GateWrite{ expectation, std::make_shared<Context>(Context{expectation, corrections,{}}) };
+        operator Writing() const {
+            return Writing{ expectation, std::make_shared<Context>(Context{expectation, corrections,{}}) };
         }
     };
 

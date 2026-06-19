@@ -20,11 +20,6 @@ namespace fqsm::schema::details {
     }
 
     template<aspect::Any Meta>
-    auto createDirtyVirtualPatch() -> ref<state::slice::Abstract<axis::order::patch>> {
-        return base::make_shared<state::slice::Taint<Meta>>();
-    }
-
-    template<aspect::Any Meta>
     auto cloneState(const model::complex::State& source) -> ref<state::slice::Abstract<axis::order::state>> {
         auto out = base::make_shared<state::slice::Data<Meta, axis::order::state>>();
         out->global() = source.template global<Meta>();
@@ -34,6 +29,8 @@ namespace fqsm::schema::details {
         return out;
     }
 
+
+    // TODO: remove
     template<aspect::Any Meta>
     auto createOverlay(const model::complex::State& state, const model::complex::Patch& patch) -> ref<state::slice::Abstract<axis::order::state>> {
         return base::shared_ref_cast<state::slice::Abstract<axis::order::state>>(

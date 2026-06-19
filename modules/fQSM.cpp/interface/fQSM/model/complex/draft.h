@@ -8,7 +8,7 @@
 namespace fqsm::model::complex {
 
     class Draft : public State {
-        Draft(const State& state, Patch& patch, const aspect::Rtid::Set& dirty = {}) : State(state), patch(patch), dirty(std::move(dirty)) {}
+        Draft(const State& state, Patch& patch, const aspect::Rtid::Set& dirty = {}) : State(state.schema), state(state), patch(patch), dirty(std::move(dirty)) {}
 
         template<aspect::Any Meta>
         linear::Delta<Meta> delta() const;

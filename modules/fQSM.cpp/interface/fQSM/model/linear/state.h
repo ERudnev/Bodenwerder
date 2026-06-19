@@ -8,12 +8,16 @@ namespace fqsm::model::linear {
 
     template<aspect::Any Meta>
     class State : state::Erased {
-        using Container = base::cannonball::table::Operational<Id<Meta>, Quantum<Meta>>;
+        using Items = base::cannonball::table::Operational<Id<Meta>, Quantum<Meta>>;
+        using Global = GlobalValue<Meta>;
 
-        virtual Container& items();
-        virtual const Container& items();
+        virtual Items& items() = 0;
+        virtual const Items& items() const = 0;
+        virtual Global& global() = 0;
+        virtual const Global& global() const = 0;
     };
 
+    // TODO: remove
     template<aspect::Any Meta>
     class StateAddressable : State<Meta> {
     };

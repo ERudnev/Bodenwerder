@@ -1,26 +1,26 @@
 
 #include <fQSM/processing/transactions/realm.h>
 
-#include <fQSM/state/patch.h>
+#include <fQSM/model/complex/patch.h>
 #include <fQSM/processing/actions/normalization.h>
 
 namespace fqsm::processing {
     auto Realm::writing() -> Writing {
-        auto patch = base::make_shared<model::complex::Patch>(world.schema);
+        auto patch = base::make_shared<model::complex::Patch>(reality.schema);
         auto context = std::make_shared<Context>(Context{
-            world,
+            reality,
             patch,
             [this](Context::PatchRef patch) {
                 accept(patch);
             }
         });
 
-        return GateWriting{world, context};
+        return GateOperational{reality, context};
     }
 
     auto Realm::makeChildPolicy() -> ChildPolicy {
         return ChildPolicy{
-            world,
+            reality,
             [this](Context::PatchRef patch) {
                 accept(patch);
             }
@@ -29,14 +29,15 @@ namespace fqsm::processing {
 
     void Realm::accept(Context::PatchRef patch) {
         lastNotes = {};
-        lastNotes = actions::update(world, *patch);
+        lastNotes = actions::update(reality, *patch);
     }
 
     void Realm::accept_immediate(aspect::Rtid type) {
-        auto patch = model::complex::Patch(world.schema);
-        patch.composite().slices.emplace(type, world.schema->nodes.at(type).binding.createDirtyVirtualPatch());
+        //auto patch = model::complex::Patch(reality.schema);
+        //patch.composite().slices.emplace(type, world.schema->nodes.at(type).binding.createDirtyVirtualPatch());
 
         lastNotes = {};
-        lastNotes = actions::update(world, patch);
+        _INCOMPLETE_; // redesing this stuff to "notify"
+        //lastNotes = actions::update(reality, patch);
     }
 }

@@ -1,13 +1,13 @@
-#include <fQSM/model/complex/state.h>
+#include <fQSM/model/complex/reality.h>
 
 namespace fqsm::model::complex {
 
-    cref<State::Erased> Reality::aspect(composite::TypeId typeId) const {
+    cref<State::Erased> Reality::aspect(Rtid typeId) const {
         _INCOMPLETE_;
         return lines.at(typeId);
     }
 
-    ref<State::Erased> Reality::aspect(composite::TypeId typeId) {
+    ref<State::Erased> Reality::aspect(Rtid typeId) {
         _INCOMPLETE_;
         return lines.at(typeId);
     }
