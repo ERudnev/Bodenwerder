@@ -8,7 +8,7 @@
 namespace fqsm::model::complex {
 
     class Draft : public State {
-        Draft(const State& state, Patch& patch, const aspect::Rtid::Set& dirty = {}) : State(state.schema), state(state), patch(patch), dirty(std::move(dirty)) {}
+        Draft(const State& state, ref<Patch> patch, const aspect::Rtid::Set& dirty = {}) : State(state.schema), state(state), patch(patch), dirty(std::move(dirty)) {}
 
         template<aspect::Any Meta>
         linear::Delta<Meta> delta() const;
@@ -18,8 +18,8 @@ namespace fqsm::model::complex {
         cref<Erased> aspect(meta::aspect::Rtid) const override;
         ref<Erased> aspect(meta::aspect::Rtid) override;
 
-        const State& state; // yep, technically, Draft may be Draft over Draft which is over Draft. Consider to
-        Patch& patch;
+        const State& state; // yep, technically, Draft may be Draft over Draft which is over Draft. Be carefull!
+        ref<Patch> patch;
         const aspect::Rtid::Set dirty;
     };
 }
@@ -32,5 +32,4 @@ namespace fqsm::model::complex {
         const auto mode = dirty.contains(aspect::Rtid::of<Meta>()) ? Delta::Mode::dirty : Delta::Mode::clean;
         return Delta{state.aspect<Meta>(), patch.aspect<Meta>(), mode};
     }
-
 }

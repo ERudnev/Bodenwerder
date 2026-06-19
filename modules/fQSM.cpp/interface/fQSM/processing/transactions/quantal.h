@@ -28,7 +28,7 @@ namespace fqsm::processing::transaction {
             : id(id), gate(std::move(gate)), buffer(std::move(value)) {}
 
         ~Quantal() {
-            auto& patchItems = gate.patch().template items<Meta>();
+            auto& patchItems = gate.patch().aspect<Meta>().items;
             if (removed) {
                 if (getActual(gate.state, id))
                     patchItems.insert(id, std::nullopt);
@@ -49,7 +49,7 @@ namespace fqsm::processing::transaction {
 
     protected:
         std::optional<Quantum<Meta>> getActual(Reading source, Id<Meta> itemId) const {
-            return source.items<Meta>().get(itemId);
+            return source.aspect<Meta>().items().get(itemId);
         }
 
         Quantum<Meta> requireActual(Reading source, Id<Meta> itemId) const {

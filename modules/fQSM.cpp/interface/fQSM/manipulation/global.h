@@ -7,9 +7,6 @@
 
 namespace fqsm::manipulation::global {
     template<aspect::Any Meta>
-    auto get(Reading) -> const GlobalValue<Meta>&;
-
-    template<aspect::Any Meta>
     struct update;
 }
 
@@ -35,8 +32,4 @@ namespace fqsm::manipulation::global {
         GlobalValue<Meta> buffer;
     };
 
-    template<aspect::Any Meta>
-    auto get(Reading view) -> const GlobalValue<Meta>& {
-        return view.aspect<Meta>.global();
-    }
 }

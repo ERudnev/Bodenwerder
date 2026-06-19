@@ -12,10 +12,10 @@ namespace fqsm::model::linear {
         Reality(const Global& initial) : line{}, globalValue(initial) {}
         //Reality(const state::Erased& initial) { _INCOMPLETE_; }
 
-        virtual Items& items() override;
-        virtual const Items& items() override;
-        virtual Global& global() override;
-        virtual const Global& global() const override;
+        Items& items() override { return line.at(Rtid::of<Meta>()); }
+        const Items& items() override { return line.at(Rtid::of<Meta>()); }
+        Global& global() override { return globalValue; }
+        const Global& global() const override { return globalValue; }
     private:
         Items line;
         GlobalValue<Meta> globalValue;

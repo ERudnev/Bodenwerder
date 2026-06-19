@@ -1,12 +1,15 @@
 #include <fQSM/model/complex/draft.h>
+#include <fQSM/model/structure/schema.h>
 
 namespace fqsm::model::complex {
+    // TODO: return imple here
 
-    cref<State::Erased> Draft::aspect(composite::TypeId typeId) const {
-        _INCOMPLETE_;
+    // draft tries to look like a State.
+    cref<State::Erased> Draft::aspect(Rtid typeId) const {
+        //return schema->nodes.at(typeId).binding.createPreview(state, patch);
     }
 
-    ref<State::Erased> Draft::aspect(composite::TypeId typeId) {
-        _INCOMPLETE_;
+    ref<State::Erased> Draft::aspect(Rtid typeId) {
+        //return schema->nodes.at(typeId).binding.createPreview(state, patch);
     }
 }

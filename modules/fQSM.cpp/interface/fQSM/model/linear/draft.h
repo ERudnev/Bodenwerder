@@ -9,7 +9,7 @@ namespace fqsm::model::linear {
     template<aspect::Any Meta>
     class Draft : public State<Meta> {
     public:
-        Draft(const linear::State<Meta>& state, linear::Patch<Meta>& patch) : itemsDraft(state, patch) {}
+        Draft(const linear::State<Meta>& state, ref<linear::Patch<Meta>> patch) : itemsDraft(state, patch), patchGlobal(patch.global) {}
 
         virtual Items& items() override { return itemsDraft; }
         virtual const Items& items() override { return itemsDraft; }
@@ -17,12 +17,14 @@ namespace fqsm::model::linear {
         virtual const Global& global() const = 0;
 
     private:
-        base::cannonball::Draft<Id<Meta>, Quantum<Meta>> itemsDraft;
-        const Global& globalState;
-        //base::cannonball::Patchlet&
+        struct DraftGlobal {
 
+        };
+
+        ref<linear::Pa
+
+
+        //base::cannonball::Draft<Id<Meta>, Quantum<Meta>> itemsDraft;
+        //base::cannonball::Patchlet& patchGlobal;
     };
-}
-
-namespace fqsm::model::linear {
 }

@@ -13,7 +13,6 @@
 #include <optional>
 #include <vector>
 
-#include <fQSM/manipulation/global.h>
 #include <fQSM/manipulation/item.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/processing/_forwards.h>
@@ -25,8 +24,7 @@ namespace fqsm::actions {
     struct Base {
         using Reading = ::fqsm::Reading;
         using Writing = ::fqsm::Writing;
-        template<typename Meta>
-        using Immediate = ::fqsm::Immediate<Meta>;
+        using Access = ::fqsm::Access;
     };
 
     template<typename Meta>
@@ -100,7 +98,7 @@ namespace fqsm::actions {
 
     template<typename Meta>
     auto Any<Meta>::global(Reading context) -> const Global& {
-        return ::fqsm::manipulation::global::get<Meta>(context);
+        return context.aspect<Meta>().global();
     }
 
     template<typename Meta, typename HostType>

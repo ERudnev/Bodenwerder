@@ -15,7 +15,7 @@ namespace fqsm::model::structure {
         std::function<ref<linear::state::Erased>()> createState;
         std::function<ref<linear::patch::Erased>()> createPatch;
         std::function<ref<linear::state::Erased>(const complex::State&)> cloneState;
-        std::function<ref<linear::preview::Erased>(const complex::State&, const complex::Patch&)> createPreview;
+        //std::function<ref<linear::preview::Erased>(const complex::State&, const complex::Patch&)> createPreview;
         std::function<void(complex::Reality&, const complex::Patch&)> integratePatchSlice;
         //std::function<void(const complex::State&, ref<complex::Patch>, cref<complex::Patch>)> mergePatchSlice;
         std::function<void(const complex::State&, complex::Patch&, const complex::Patch&)> mergePatchSlice;
