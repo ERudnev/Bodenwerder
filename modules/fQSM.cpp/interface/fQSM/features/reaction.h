@@ -16,7 +16,7 @@ namespace fqsm::features {
     // Norma is a special kind of Reaction; Codex collects morms specifically.
     struct Reaction {
         using Reviewing = processing::Review;
-        using Draft = state::world::Draft;
+        using Draft = model::complex::Draft;
         using Patch = model::complex::Patch;
         using Sources = meta::aspect::TypeSet;
 

@@ -15,7 +15,7 @@ namespace fqsm::processing {
         using PatchRef = fqsm::ref<Patch>;
         using Upstream = std::function<void(PatchRef)>;
 
-        const World& state;
+        const State& state;
         PatchRef patch; // always created outside
         Upstream upstream;
 
@@ -32,7 +32,7 @@ namespace fqsm::processing {
     struct GateWrite {
         using PatchRef = Context::PatchRef;
 
-        const World& state;
+        const State& state; // TODO: consider removal of "const"
         Context::Ptr parent;
 
         operator Reading() const { return state; }
@@ -43,10 +43,11 @@ namespace fqsm::processing {
     struct GateImmediate {
         using PatchRef = Context::PatchRef;
 
-        WorldAddressable& state;
+        const State& placeholder;
+        //WorldAddressable& state;
         Context::Ptr parent;
 
-        operator Reading() const { return state; }
+        operator Reading() const { return placeholder; }
 
         Patch& patch() const { return *parent->patch; }
 

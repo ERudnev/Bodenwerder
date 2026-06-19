@@ -27,7 +27,7 @@ namespace fqsm::processing::transaction {
     private:
         ContextShared context;
         Context::PatchRef patch;
-        state::world::Draft preview;
+        model::complex::Draft preview;
 
         auto writing() -> Writing override {
             return GateWriting{preview, context};

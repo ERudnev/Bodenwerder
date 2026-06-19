@@ -65,7 +65,7 @@ namespace fqsm::processing::actions::normalization {
     auto normalizer(Reading source, const Patch& patch) -> actions::NormalizationResult {
         Review::Notes notes;
         auto review = Reviewing{
-            state::world::Draft{source, patch},
+            model::complex::Draft{source, patch},
             ::base::make_shared<Patch>(patch.schema),
             notes,
         };

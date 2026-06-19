@@ -95,7 +95,7 @@ A
 - Reactions do **not** modify the patch under consideration.
 - Reactions produce their **own** patch.
 - Normalization is an iterative patch-to-patch process.
-- World integration happens only once, after a stable normalized patch `P*` is found.
+- Realm' state integration happens only once, after a stable normalized patch `P*` is found.
 
 ## Transactions
 
@@ -130,6 +130,6 @@ So for a branch the main result is not a new world, but a refined patch.
 - Knowledge of state validity lives **outside** objects.
 - Causality is **directed**.
 - **Changes** matter more than events.
-- World state is the **primary source of information**.
+- Realm state is the **primary source of information**.
 - Reactions operate on **intentions of change**, not on facts that have already occurred.
 - The codex is applied **recursively** until a consistent state is reached.

@@ -31,7 +31,7 @@ void dense_table_overlay()
     patch.items<SomeEntity>().insert(Id{4}, PatchItem{Item{40}});
     patch.items<SomeEntity>().insert(Id{5}, PatchItem{std::nullopt});
 
-    fqsm::state::world::Draft preview(state, patch);
+    fqsm::model::complex::Draft preview(state, patch);
 
     const View& view = state.items<SomeEntity>();
     const View& overlayView = preview.items<SomeEntity>();

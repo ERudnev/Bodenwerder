@@ -25,7 +25,7 @@ namespace fqsm::schema::details {
     }
 
     template<aspect::Any Meta>
-    auto cloneState(const state::world::View& source) -> ref<state::slice::Abstract<axis::order::state>> {
+    auto cloneState(const model::complex::State& source) -> ref<state::slice::Abstract<axis::order::state>> {
         auto out = base::make_shared<state::slice::Data<Meta, axis::order::state>>();
         out->global() = source.template global<Meta>();
         for (const auto entry : source.template slice<Meta>()->items()) {
@@ -35,7 +35,7 @@ namespace fqsm::schema::details {
     }
 
     template<aspect::Any Meta>
-    auto createOverlay(const state::world::View& state, const model::complex::Patch& patch) -> ref<state::slice::Abstract<axis::order::state>> {
+    auto createOverlay(const model::complex::State& state, const model::complex::Patch& patch) -> ref<state::slice::Abstract<axis::order::state>> {
         return base::shared_ref_cast<state::slice::Abstract<axis::order::state>>(
             base::make_shared<state::slice::Draft<Meta>>(
                 state.template slice<Meta>(),

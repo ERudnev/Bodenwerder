@@ -2,6 +2,7 @@
 
 This document describes the conceptual vocabulary used within the FQSM model layer. These terms are not intended to be interpreted as direct analogues of their physical or mathematical counterparts. Physical and mathematical terminology is used as a source of intuition and structural analogy.
 
+
 ## Realm
 
 A realm is a complete, self-consistent state space together with its evolution rules.
@@ -46,6 +47,8 @@ Particles are persistent members of the realm state.
 
 ## Atom
 
+_Atoms are not "atomic"_
+
 An atom is a composition of particles sharing the same object identity.
 An atom is formed by combining multiple particles from different lines.
 Example:
@@ -74,52 +77,52 @@ This term is intentionally conceptual and may evolve over time.
 
 ---
 
-## State
+## Dimensions
+Axis of model
 
-A state is a persistent arrangement of particles within a realm.
-States are stable and serializable.
-Realm evolution transforms one state into another.
+### Elementary (0D)
+Something could be called "atomic", but this old word lies. Atoms are not atomic, this is 100-year old paradox.
+Elementary entities are minimal entities possible.
+Minimal data chunk
+Minimal delta or patch
+Each meta-type (Aspect) defines shape of its minimal element as "Quantum" where Elementary Data ~ Quantum and Elementary Patch is std::optional<Quantum>
+
+### Linear (1D)
+It is homogenous 1-D set of Elementary objects
+Linear Patch is simple container of Patclets
+Linear State is container of data ~ [ Quantum ]
+
+### Complex
+Comlex data is heterogenous set of Lines
+Complex Patch is set of Linear Patches, e.t.c
+
 
 ---
 
-## Delta
+## Shapes
+Evetu chape can be Elementary/Linear/Complex
 
+### State
+Something can be materialized, read, written
+
+### Reality
+Reality is State, which is already materialized
+
+### Patch
+A patch is a collection of bosons.
+A patch describes a set of changes applicable to a state.
+Patches are transition structures.
+Patches are not themselves persistent state. Other side, Patch is best candidate for intermodel communication.
+
+### Draft
+Draft is State, which has hidden "current" Reality and Patch against it.
+Reads from Draft show "State which should be after Patch be applied"
+Writes to the Draft do not mutate State - Patch is affected instead.
+
+### Delta
 A delta describes the observable difference between states. Physically, Delta is {state, patch} view
 A delta is derived information.
 A delta may be computed from states, patches, bosons, or other transition structures.
-
----
-
-## Line
-
-A line is a linear collection of homogeneous particles.
-All particles within a line share the same quantum type.
-A line is indexed by object identifiers.
-
-Examples:
-
-- Body line
-- Physics line
-- Mind line
-
-Lines form the fundamental one-dimensional structures of the model.
-
----
-
-## Linear Model
-
-## A linear model contains a single line.
-Mathematically it behaves as a one-dimensional structure.
-The primary coordinate is object identity.
-
-## Complex Model
-
-A complex model contains multiple lines.
-Mathematically it behaves as a two-dimensional structure.
-The first coordinate is object identity.
-The second coordinate is line type.
-This interpretation is conceptually similar to extending a real axis with an orthogonal imaginary axis.
-The analogy is structural rather than mathematical.
 
 ---
 
@@ -128,27 +131,6 @@ The analogy is structural rather than mathematical.
 The type axis is the conceptual dimension separating lines inside a complex model.
 A vector of type identifiers may be interpreted as movement along the type axis.
 The type axis does not exist in linear models.
-
----
-
-## Draft
-
-A draft presents a future state while allowing modification.
-A draft combines:
-
-- state,
-- mutable transition information.
-
-Operational changes applied to a draft are accumulated rather than immediately committed.
-
----
-
-## Patch
-
-A patch is a collection of bosons.
-A patch describes a set of changes applicable to a state.
-Patches are transition structures.
-Patches are not themselves persistent state. Other side, Patch is best candidate for intermodel communication.
 
 ---
 

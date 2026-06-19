@@ -9,7 +9,6 @@
 //#include <fQSM/state/world.h>
 
 namespace fqsm::processing {
-    //using World = ::fqsm::model::World;
     //using Patch = ::fqsm::model::Patch;
     struct Context;
     struct GateOperational;

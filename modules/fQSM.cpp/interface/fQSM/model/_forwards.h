@@ -8,10 +8,10 @@ namespace fqsm::model::structure {
 }
 
 namespace fqsm::model::complex {
-    struct State;
-    struct StateAddressable;
+    class State;
+    class Reality;
+    class Draft;
     struct Patch;
-    struct Draft;
 }
 
 namespace fqsm::analysis {
@@ -30,7 +30,8 @@ namespace fqsm::model::linear {
 namespace fqsm {
     using Patch = ::fqsm::model::complex::Patch;
     using Schema = cref<model::structure::AspectGraph>;
-    using World = model::complex::State;
-    using WorldAddressable = model::complex::StateAddressable;
+    using State = model::complex::State;
+    //using Reality = model::complex::Reality;
+    //using WorldAddressable = model::complex::StateAddressable;
     // hiding as "1s class": using Patch = complex::Patch;
 }
