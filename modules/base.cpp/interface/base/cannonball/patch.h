@@ -4,7 +4,7 @@
 #include <optional>
 #include <utility>
 
-#include <base/cannonball/denseTable.h>
+#include <base/cannonball/table.h>
 
 namespace base::cannonball {
 

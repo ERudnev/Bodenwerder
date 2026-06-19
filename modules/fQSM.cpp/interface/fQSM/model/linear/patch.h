@@ -5,12 +5,7 @@
 
 namespace fqsm::model::linear {
 
-
     template<aspect::Any Meta>
-    struct State : state::Erased {
-    };
-
-    template<aspect::Any Meta>
-    struct StateAddressable : State<Meta> {
+    struct Patch : patch::Erased {
     };
 }

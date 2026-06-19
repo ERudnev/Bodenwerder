@@ -14,7 +14,7 @@ namespace fqsm::model::complex {
 
         const Schema schema;
 
-        // reading:
+        // TODO: pus this r/w erased acces into provate part
         template<aspect::Any Meta>
         const linear::State<Meta>& aspect() const;
 
@@ -27,6 +27,10 @@ namespace fqsm::model::complex {
         void generateEmptyLines();
 
         Container lines;
+    };
+
+    struct StateAddressable : State {
+        // own template casting accessors...
     };
 }
 

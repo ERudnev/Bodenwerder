@@ -4,6 +4,7 @@
 #include <memory>
 #include <base/logging.h>
 #include <fQSM/model/_forwards.h>
+#include <fQSM/model/complex/state.h>
 #include <fQSM/processing/_forwards.h>
 
 namespace fqsm::processing {

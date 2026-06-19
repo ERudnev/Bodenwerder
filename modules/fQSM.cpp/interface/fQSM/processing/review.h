@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 #include <fQSM/processing/context.h>
-#include <fQSM/model/complex/future.h>
+#include <fQSM/model/complex/draft.h>
 #include <fQSM/model/linear/delta.h>
 
 namespace fqsm::processing {
@@ -18,7 +18,7 @@ namespace fqsm::processing {
             bool rejection() const { return not critical.empty(); }
         };
 
-        model::complex::Future expectation;
+        const model::complex::Draft expectation;
         PatchRef corrections;
         Notes& notes;
 

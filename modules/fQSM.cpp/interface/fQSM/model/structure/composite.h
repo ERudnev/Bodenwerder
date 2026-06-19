@@ -2,15 +2,14 @@
 
 #include <unordered_map>
 
-//#include <fQSM/meta/interface.include.h>
-#include <base/runtimeTypeId.h>
+#include <fQSM/meta/rtid.h>
+#include <fQSM/references.h>
 
 namespace fqsm::model::composite {
 
-    using TypeId = base::RuntimeTypeId;
+    using TypeId = meta::aspect::Rtid;
 
     template<typename ErasedContainerType>
-    using Container = std::unordered_map<TypeId, ref<ErasedContainerType>>;
-
+    using Container = std::unordered_map<TypeId, ref<ErasedContainerType>, meta::aspect::Rtid::Hash>;
 
 }

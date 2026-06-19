@@ -64,7 +64,7 @@ void delta_iterators()
         ask::item::update<A>(writing, ids.at(i))->value = (i + 1) * 10;
     }
 
-    const fqsm::model::complex::Future preview(state, *patch);
+    const fqsm::model::complex::Draft preview(state, *patch);
 
     using Layer = fqsm::state::slice::Delta<A>::Layer;
     std::unordered_map<Layer, std::set<Id>> collected;

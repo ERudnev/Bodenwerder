@@ -9,8 +9,8 @@ namespace fqsm::model::structure {
 
 namespace fqsm::model::complex {
     struct State;
+    struct StateAddressable;
     struct Patch;
-    struct Future;
     struct Draft;
 }
 
@@ -31,5 +31,6 @@ namespace fqsm {
     using Patch = ::fqsm::model::complex::Patch;
     using Schema = cref<model::structure::AspectGraph>;
     using World = model::complex::State;
+    using WorldAddressable = model::complex::StateAddressable;
     // hiding as "1s class": using Patch = complex::Patch;
 }

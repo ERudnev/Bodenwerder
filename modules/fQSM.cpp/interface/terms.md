@@ -131,18 +131,6 @@ The type axis does not exist in linear models.
 
 ---
 
-## Future
-
-A preview presents a future state without allowing modification.
-A preview combines:
-
-- state,
-- transition information.
-
-The result behaves as a read-only view of the projected state.
-
----
-
 ## Draft
 
 A draft presents a future state while allowing modification.

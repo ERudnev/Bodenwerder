@@ -13,6 +13,8 @@ namespace fqsm::meta::aspect {
     struct Rtid {
         base::RuntimeTypeId value;
 
+        using Set = std::set<Rtid>;
+
         template<Any Meta>
         static Rtid of() { return Rtid{typeid(Meta)}; }
 
@@ -32,7 +34,7 @@ namespace fqsm::meta::aspect {
         explicit Rtid(base::RuntimeTypeId value) : value(value) {}
     };
 
-    using TypeSet = std::set<aspect::Rtid>;
+    //using TypeSet = std::set<aspect::Rtid>;
 }
 
 // impl:
