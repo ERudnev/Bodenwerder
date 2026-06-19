@@ -11,7 +11,7 @@ namespace fqsm::model::complex {
         const Schema schema;
         const Composite<linear::patch::Erased> lines;
 
-        Patch(Schema schema) : schema(schema) { init_zeroes(); }
+        Patch(Schema schema) : schema(schema) { initStructure(); }
 
         template<aspect::Any Meta>
         linear::Patch<Meta>& aspect();
@@ -23,7 +23,7 @@ namespace fqsm::model::complex {
         const linear::patch::Erased& aspect(meta::aspect::Rtid) const;
 
     private:
-        void init_zeroes() { _INCOMPLETE_; }
+        void initStructure() { _INCOMPLETE_; }
     };
 }
 
@@ -31,11 +31,11 @@ namespace fqsm::model::complex {
 
     template<aspect::Any Meta>
     linear::Patch<Meta>& Patch::aspect() {
-        return base::shared_ref_cast<linear::Patch<Meta>>(lines.slices.at(Rtid::of<Meta>));
+        return base::shared_ref_cast<linear::Patch<Meta>>(lines.container.at(Rtid::of<Meta>));
     };
 
     template<aspect::Any Meta>
     const linear::Patch<Meta>& Patch::aspect() const {
-        return base::shared_ref_cast<linear::Patch<Meta>>(lines.slices.at(Rtid::of<Meta>));
+        return base::shared_ref_cast<linear::Patch<Meta>>(lines.container.at(Rtid::of<Meta>));
     }
 }

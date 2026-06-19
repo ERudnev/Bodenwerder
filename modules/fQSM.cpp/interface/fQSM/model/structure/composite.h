@@ -11,7 +11,7 @@ namespace fqsm::model {
     struct Composite {
         using Container = std::unordered_map<meta::aspect::Rtid, ref<ErasedLineType>, meta::aspect::Rtid::Hash>;
 
-        Container slices;
+        Container container;
     };
 }
 

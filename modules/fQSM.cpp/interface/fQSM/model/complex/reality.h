@@ -8,13 +8,13 @@ namespace fqsm::model::complex {
 
     class Reality : public State {
     public:
-        Reality(Schema schema) : State(schema) { generate(); }
+        Reality(Schema schema) : State(schema) { initStructure(); }
 
     protected:
         cref<Erased> aspect(Rtid) const override;
         ref<Erased> aspect(Rtid) override;
 
-        void generate();
+        void initStructure();
 
         Composite<linear::state::Erased> lines;
     };

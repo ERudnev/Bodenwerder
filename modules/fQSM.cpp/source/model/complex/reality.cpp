@@ -4,16 +4,16 @@
 namespace fqsm::model::complex {
 
     cref<State::Erased> Reality::aspect(Rtid typeId) const {
-        return lines.slices.at(typeId);
+        return lines.container.at(typeId);
     }
 
     ref<State::Erased> Reality::aspect(Rtid typeId) {
-        return lines.slices.at(typeId);
+        return lines.container.at(typeId);
     }
 
-    void Reality::generate() {
+    void Reality::initStructure() {
         for (const auto& [typeId, node] : schema->nodes) {
-            lines.slices.emplace(typeId, node.binding.createState());
+            lines.container.emplace(typeId, node.binding.createState());
         }
     }
 }

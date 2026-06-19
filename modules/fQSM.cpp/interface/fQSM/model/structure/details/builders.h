@@ -14,10 +14,11 @@
 namespace fqsm::schema::details {
     namespace axis = meta::axis;
 
-    template<aspect::Any Meta, axis::order Order>
+    template<aspect::Any Meta>
     auto createSlice() -> ref<state::slice::Abstract<Order>> {
         return base::make_shared<state::slice::Data<Meta, Order>>();
     }
+
 
     template<aspect::Any Meta>
     auto cloneState(const model::complex::State& source) -> ref<state::slice::Abstract<axis::order::state>> {
@@ -29,14 +30,11 @@ namespace fqsm::schema::details {
         return out;
     }
 
-
-    // TODO: remove
     template<aspect::Any Meta>
-    auto createOverlay(const model::complex::State& state, const model::complex::Patch& patch) -> ref<state::slice::Abstract<axis::order::state>> {
-        return base::shared_ref_cast<state::slice::Abstract<axis::order::state>>(
-            base::make_shared<state::slice::Draft<Meta>>(
-                state.template slice<Meta>(),
-                patch.template slice<Meta>())
+    auto createDraft(const complex::State& state, ref<complex::Patch> patch) -> ref<linear::state::Erased>{
+        return base::make_shared<linear::Draft<Meta>>(
+            state.aspect<Meta>(),
+            base::shared_ref_cast<linear::Patch<Meta>>(patch->lines.slices.at(aspect::Rtid::of<Meta>()))
         );
     }
 
@@ -81,11 +79,9 @@ namespace fqsm::schema::details {
     template<aspect::Any Meta>
     auto binding() -> Binding {
         return Binding{
-            &createSlice<Meta, axis::order::state>,
-            &createSlice<Meta, axis::order::patch>,
-            &createDirtyVirtualPatch<Meta>,
-            &cloneState<Meta>,
-            &createOverlay<Meta>,
+            &createSlice<Meta>,
+            &createSlice<Meta>,
+            &createDraft<Meta>,
             &integratePatchSlice<Meta>,
             &mergePatchSlice<Meta>,
             &analyzePatchSlice<Meta>,

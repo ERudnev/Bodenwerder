@@ -8,6 +8,7 @@ namespace fqsm::model::linear {
 
     template<aspect::Any Meta>
     class State : state::Erased {
+    public:
         using Items = base::cannonball::table::Operational<Id<Meta>, Quantum<Meta>>;
         using Global = GlobalValue<Meta>;
 

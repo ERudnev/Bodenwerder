@@ -9,6 +9,6 @@ namespace fqsm::model::linear {
     template<aspect::Any Meta>
     struct Patch : patch::Erased {
         base::cannonball::Patch<Id<Meta>, Quantum<Meta>> items;
-        base::cannonball::Patchlet<GlobalValue<Meta>> global;
+        std::optional<GlobalValue<Meta>> global; // nullopt means "no change"
     };
 }
