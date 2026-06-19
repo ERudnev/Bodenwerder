@@ -6,8 +6,7 @@
 
 #include <fQSM/features/codex.h>
 #include <fQSM/meta/concepts.h>
-#include <fQSM/schema/dag.h>
-#include <fQSM/schema/details/builders.h>
+#include <fQSM/model/structure/details/builders.h>
 
 namespace fqsm::manipulation::schema {
 

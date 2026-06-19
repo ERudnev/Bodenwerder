@@ -17,7 +17,6 @@ namespace fqsm::processing {
         //operator Immediate<Meta>() {
         //    return {reality.aspect<Meta>(), [this](aspect::Rtid type) { accept_immediate(type); }};
         //}
-
         auto notes() const -> const Review::Notes& { return lastNotes; }
 
     private:
@@ -27,7 +26,7 @@ namespace fqsm::processing {
         auto writing() -> Writing override;
         auto makeChildPolicy() -> ChildPolicy override;
 
-        void accept(Context::PatchRef);
+        void accept(Context::Result);
         void accept_immediate(aspect::Rtid type);
     };
 }

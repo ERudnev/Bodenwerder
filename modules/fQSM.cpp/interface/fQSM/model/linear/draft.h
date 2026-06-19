@@ -9,6 +9,9 @@ namespace fqsm::model::linear {
     template<aspect::Any Meta>
     class Draft : public State<Meta> {
     public:
+        using Items = State<Meta>::Items;
+        using Global = State<Meta>::Global;
+
         Draft(const linear::State<Meta>& state, ref<linear::Patch<Meta>> patch)
             : draftItems(state.items(), patch->items), draftGlobal(state.global(), patch->global) {}
 

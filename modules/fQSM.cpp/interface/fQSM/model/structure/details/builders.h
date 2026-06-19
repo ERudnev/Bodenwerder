@@ -3,84 +3,74 @@
 #include <base/shared_reference.h>
 
 #include <fQSM/meta/concepts.h>
+#include <fQSM/model/_forwards.h>
+#include <fQSM/model/analysis.h>
+#include <fQSM/model/complex/reality.h>
+#include <fQSM/model/linear/draft.h>
+#include <fQSM/model/linear/patch.h>
+#include <fQSM/model/linear/reality.h>
+#include <fQSM/model/structure/binding.h>
 #include <fQSM/processing/actions/integration.h>
 #include <fQSM/processing/actions/merge.h>
-#include <fQSM/schema/binding.h>
-#include <fQSM/state/details/analysis.h>
-#include <fQSM/state/patch.h>
-#include <fQSM/state/slice/taint.h>
-#include <fQSM/model/complex/view.h>
 
 namespace fqsm::schema::details {
-    namespace axis = meta::axis;
 
     template<aspect::Any Meta>
-    auto createSlice() -> ref<state::slice::Abstract<Order>> {
-        return base::make_shared<state::slice::Data<Meta, Order>>();
+    auto createState() -> ref<model::linear::state::Erased> {
+        return base::make_shared<model::linear::Reality<Meta>>();
     }
 
+    template<aspect::Any Meta>
+    auto createPatch() -> ref<model::linear::patch::Erased> {
+        return base::make_shared<model::linear::Patch<Meta>>();
+    }
 
     template<aspect::Any Meta>
-    auto cloneState(const model::complex::State& source) -> ref<state::slice::Abstract<axis::order::state>> {
-        auto out = base::make_shared<state::slice::Data<Meta, axis::order::state>>();
-        out->global() = source.template global<Meta>();
-        for (const auto entry : source.template slice<Meta>()->items()) {
-            out->items().insert(entry.first, entry.second);
+    auto cloneState(const model::complex::State& source) -> ref<model::linear::state::Erased> {
+        auto out = base::make_shared<model::linear::Reality<Meta>>();
+        out->global() = source.aspect<Meta>().global();
+        for (const auto entry : source.aspect<Meta>().items()) {
+            out->items().insert(entry.key, entry.value);
         }
         return out;
     }
 
     template<aspect::Any Meta>
-    auto createDraft(const complex::State& state, ref<complex::Patch> patch) -> ref<linear::state::Erased>{
-        return base::make_shared<linear::Draft<Meta>>(
+    auto createDraft(const model::complex::State& state, ref<model::complex::Patch> patch) -> ref<model::linear::state::Erased> {
+        return base::make_shared<model::linear::Draft<Meta>>(
             state.aspect<Meta>(),
-            base::shared_ref_cast<linear::Patch<Meta>>(patch->lines.slices.at(aspect::Rtid::of<Meta>()))
+            base::shared_ref_cast<model::linear::Patch<Meta>>(patch->lines.container.at(aspect::Rtid::of<Meta>()))
         );
     }
 
     template<aspect::Any Meta>
-    void integratePatchSlice(state::world::Data& world, const model::complex::Patch& patch) {
-        if (patch.template slice<Meta>()->tainted()) return;
+    void integratePatchSlice(model::complex::Reality& world, const model::complex::Patch& patch) {
         fqsm::processing::actions::details::integrate<Meta>(world, patch);
     }
 
     template<aspect::Any Meta>
-    void mergePatchSlice(const state::world::View& base, ref<model::complex::Patch> target, cref<model::complex::Patch> source) {
-        if (source->template slice<Meta>()->tainted()) {
-            const auto aspectId = aspect::Rtid::of<Meta>();
-            if (!target->composite().slices.contains(aspectId)) {
-                target->composite().slices.emplace(aspectId, target->schema->nodes.at(aspectId).binding.createDirtyVirtualPatch());
-            }
-            return;
-        }
+    void mergePatchSlice(const model::complex::State& base, model::complex::Patch& target, const model::complex::Patch& source) {
         fqsm::processing::actions::details::merge<Meta>(base, target, source);
     }
 
     template<aspect::Any Meta>
     void analyzePatchSlice(const model::complex::Patch& patch, analysis::Patch& out) {
-        if (patch.template slice<Meta>()->tainted()) return;
         auto entry = analysis::Patch::SliceEntry{};
-        if (patch.template global<Meta>().has_value()) {
-            ++entry.modified;
+        const auto& slice = patch.aspect<Meta>();
+        if (slice.global.has_value()) ++entry.modified;
+        for (const auto patchEntry : slice.items) {
+            if (patchEntry.value.has_value()) ++entry.modified;
+            else ++entry.deleted;
         }
-        for (const auto patchEntry : patch.template items<Meta>()) {
-            if (patchEntry.second.has_value()) {
-                ++entry.modified;
-            } else {
-                ++entry.deleted;
-            }
-        }
-
-        if (entry.total() != 0) {
-            out.perSlice.emplace(aspect::Rtid::of<Meta>(), entry);
-        }
+        if (entry.total() != 0) out.perSlice.emplace(aspect::Rtid::of<Meta>(), entry);
     }
 
     template<aspect::Any Meta>
-    auto binding() -> Binding {
-        return Binding{
-            &createSlice<Meta>,
-            &createSlice<Meta>,
+    auto binding() -> model::structure::Binding {
+        return model::structure::Binding{
+            &createState<Meta>,
+            &createPatch<Meta>,
+            &cloneState<Meta>,
             &createDraft<Meta>,
             &integratePatchSlice<Meta>,
             &mergePatchSlice<Meta>,

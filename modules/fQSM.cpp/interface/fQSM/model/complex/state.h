@@ -16,16 +16,21 @@ namespace fqsm::model::complex {
         virtual ~State()=default;
 
         template<aspect::Any Meta>
-        const linear::State<Meta>& aspect() const;
+        const linear::State<Meta>& aspect() const {
+            return base::shared_ref_cast<linear::State<Meta>>(composition().container.at(Rtid::of<Meta>));
+        }
 
         template<aspect::Any Meta>
-        linear::State<Meta>& aspect() { _INCOMPLETE_; }
+        linear::State<Meta>& aspect() {
+            return base::shared_ref_cast<linear::State<Meta>>(composition().container.at(Rtid::of<Meta>));
+        }
 
         const Schema schema; // defined for Reality/Draft/any homogenous material object
     protected:
         using Erased = linear::state::Erased;
-        virtual cref<Erased> aspect(meta::aspect::Rtid) const = 0;
-        virtual ref<Erased> aspect(meta::aspect::Rtid) = 0;
+        virtual cref<Erased> getLine(meta::aspect::Rtid) const = 0;
+        virtual ref<Erased> getLine(meta::aspect::Rtid) = 0;
+        virtual const Composition& composition() const = 0;
     };
 
     struct StateAddressable : State {

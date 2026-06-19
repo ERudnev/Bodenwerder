@@ -11,8 +11,9 @@ namespace fqsm::model::complex {
         Reality(Schema schema) : State(schema) { initStructure(); }
 
     protected:
-        cref<Erased> aspect(Rtid) const override;
-        ref<Erased> aspect(Rtid) override;
+        cref<Erased> getLine(Rtid typeId) const override { return lines.container.at(typeId); }
+        ref<Erased> getLine(Rtid typeId) override { return lines.container.at(typeId); }
+        const Composition& composition() const override { return lines; }
 
         void initStructure();
 

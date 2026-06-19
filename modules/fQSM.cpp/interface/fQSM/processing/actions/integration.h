@@ -1,30 +1,26 @@
 #pragma once
 
-#include <fQSM/model/complex/actual.h>
-#include <fQSM/state/patch.h>
+#include <fQSM/model/_forwards.h>
+#include <fQSM/model/complex/patch.h>
+#include <fQSM/model/complex/reality.h>
 
 // facade
 namespace fqsm::processing::actions {
-    void integrate(state::world::Actual&, const model::complex::Patch&);
+    void integrate(model::complex::Reality&, const model::complex::Patch&);
 }
 
 // implementation
 namespace fqsm::processing::actions::details {
 
     template<aspect::Any Meta>
-    void integrate(state::world::Data& world, const model::complex::Patch& patch) {
-        if (patch.template global<Meta>().has_value()) {
-            world.template global<Meta>() = patch.template global<Meta>().value();
-        }
+    void integrate(model::complex::Reality& world, const model::complex::Patch& patch) {
+        const auto& slice = patch.aspect<Meta>();
+        if (slice.global.has_value()) world.aspect<Meta>().global() = slice.global.value();
 
-        auto& target = world.slice<Meta>()->items();
-
-        for (const auto entry : patch.template items<Meta>()) {
-            if (entry.second) {
-                target.insert(entry.first, *entry.second);
-            } else {
-                target.erase(entry.first);
-            }
+        auto& target = world.aspect<Meta>().items();
+        for (const auto entry : slice.items) {
+            if (entry.value.has_value()) target.insert(entry.key, entry.value.value());
+            else target.erase(entry.key);
         }
     }
 }

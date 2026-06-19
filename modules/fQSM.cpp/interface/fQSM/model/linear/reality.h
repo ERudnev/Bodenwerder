@@ -8,6 +8,7 @@ namespace fqsm::model::linear {
 
     template<aspect::Any Meta>
     class Reality : State<Meta> {
+    public:
         Reality()=default;
         Reality(const Global& initial) : line{}, globalValue(initial) {}
         //Reality(const state::Erased& initial) { _INCOMPLETE_; }

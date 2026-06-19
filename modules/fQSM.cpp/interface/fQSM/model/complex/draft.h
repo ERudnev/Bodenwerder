@@ -20,13 +20,14 @@ namespace fqsm::model::complex {
     private:
         void initStructure();
         // impl as State (entry builder)
-        cref<Erased> aspect(meta::aspect::Rtid) const override;
-        ref<Erased> aspect(meta::aspect::Rtid) override;
+        cref<Erased> getLine(meta::aspect::Rtid) const override;
+        ref<Erased> getLine(meta::aspect::Rtid) override;
+        const State::Composition& composition() const override { return lines; }
 
         const State& state; // yep, technically, Draft may be Draft over Draft which is over Draft. Be carefull!
         ref<Patch> patch;
         aspect::Rtid::Set dirty; // add the way to mark as dirty..
-        Composite<linear::draft::Erased> lines;
+        Composite<linear::state::Erased> lines;
     };
 }
 

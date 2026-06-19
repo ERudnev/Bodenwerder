@@ -1,6 +1,5 @@
 #include <fQSM/processing/actions/normalization.h>
 
-/*
 #include <format>
 #include <set>
 #include <stdexcept>
@@ -127,4 +126,3 @@ namespace fqsm::processing::actions {
         return normalized.notes;
     }
 }
-*/

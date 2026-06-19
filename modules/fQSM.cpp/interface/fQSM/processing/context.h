@@ -13,28 +13,31 @@ namespace fqsm::processing {
     // Abstraction between "own" Draft and "someones"
     struct Context final {
         using Ptr = std::shared_ptr<Context>;
+        using PatchRef = ref<model::complex::Patch>;
         using Result = cref<model::complex::Patch>;
         using Upstream = std::function<void(Result)>;
 
-        ref<model::complex::Draft> draft;
+        const model::complex::State& view;
+        PatchRef patch;
         Upstream upstream;
 
         ~Context() { finish(); } // _DEBUG_REPORT_;
 
         void finish() {
             if (upstream) {
-                upstream(draft->retreivePatch());
+                upstream(patch);
             }
         }
     };
 
     // Clarify role of this dinosaur...
     struct GateOperational {
+        const model::complex::State& view;
         Context::Ptr parent;
 
-        operator Reading() const { return *freeze(parent->draft); }
+        operator Reading() const { return view; }
 
-        //Patch& patch() const { return *parent->patch; }
+        Context::Result result() const { return freeze(parent->patch); }
     };
 
     struct GateImmediate {
