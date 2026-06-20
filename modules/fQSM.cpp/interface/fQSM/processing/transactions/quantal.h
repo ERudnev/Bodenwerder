@@ -22,15 +22,15 @@ namespace fqsm::processing::transaction {
             : id(Id<Meta>::generate_random()), gate(std::move(gate)), buffer(std::move(value)) {}
 
         explicit Quantal(Writing gate, Id<Meta> id)
-            : id(id), gate(std::move(gate)), buffer(requireActual(this->gate.view, id)) {}
+            : id(id), gate(std::move(gate)), buffer(requireActual(this->gate, id)) {}
 
         explicit Quantal(Writing gate, Id<Meta> id, Quantum<Meta> value) requires aspect::Parasitic<Meta>
             : id(id), gate(std::move(gate)), buffer(std::move(value)) {}
 
         ~Quantal() {
-            auto& patchItems = gate.result()->aspect<Meta>().items;
+            auto& patchItems = gate.patch()->aspect<Meta>().items;
             if (removed) {
-                if (getActual(gate.view, id))
+                if (getActual(gate, id))
                     patchItems.insert(id, std::nullopt);
                 return;
             }

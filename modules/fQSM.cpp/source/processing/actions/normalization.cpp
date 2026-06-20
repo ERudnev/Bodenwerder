@@ -31,7 +31,7 @@ namespace fqsm::processing::actions::normalization {
         std::vector<analysis::Patch> statistics;
     };
 
-    void append(Review::Notes& dst, Review::Notes src) {
+    void append(review::Notes& dst, review::Notes src) {
         dst.critical.insert(dst.critical.end(), src.critical.begin(), src.critical.end());
         dst.warning.insert(dst.warning.end(), src.warning.begin(), src.warning.end());
     }
@@ -61,12 +61,17 @@ namespace fqsm::processing::actions::normalization {
 
     // build one normalization wave
     auto normalizer(Reading source, PatchRef patch) -> actions::NormalizationResult {
-        Review::Notes notes;
-        auto review = Review{
+        review::Notes notes;
+
+        auto correctionsPatch = base::make_shared<Patch>(source.schema);
+        auto review = Review(model::complex::Draft{source, patch}, correctionsPatch, notes);
+
+        /*auto review = Review{
             model::complex::Draft{source, patch},
             base::make_shared<Patch>(patch->schema),
             notes,
         };
+        */
 
         std::set<model::structure::AspectGraph::ReactionId> selectedReactions;
         for (const auto& [sourceType, _] : patch->lines.container) {
@@ -82,11 +87,11 @@ namespace fqsm::processing::actions::normalization {
             patch->schema->reactions.at(reactionId.raw())->apply(review);
         }
 
-        return { review.corrections, std::move(notes) };
+        return { correctionsPatch, std::move(notes) };
     }
 
 
-    auto normalize_recursive(Reading source, PatchRef accumulated, UpdateControl& control) -> Review::Notes {
+    auto normalize_recursive(Reading source, PatchRef accumulated, UpdateControl& control) -> review::Notes {
         control.statistics.emplace_back(*accumulated);
 
         const auto fix = normalizer(source, accumulated);
@@ -117,7 +122,7 @@ namespace fqsm::processing::actions {
         return { normalized, std::move(notes) };
     }
 
-    auto update(model::complex::Reality& state, const Patch& patch) -> Review::Notes {
+    auto update(model::complex::Reality& state, const Patch& patch) -> review::Notes {
         const auto normalized = normalize(state, patch);
         if (normalized.notes.rejection()) return normalized.notes;
 

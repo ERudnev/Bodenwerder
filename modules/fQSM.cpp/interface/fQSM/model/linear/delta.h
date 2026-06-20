@@ -13,6 +13,7 @@ namespace fqsm::model::linear {
     template<aspect::Any Meta>
     struct Delta {
         using Interface = base::cannonball::delta::Interface<Id<Meta>, Quantum<Meta>>;
+        using Layer = Interface::Layer;
         enum class Mode {
             clean,
             dirty,
@@ -20,7 +21,14 @@ namespace fqsm::model::linear {
 
         Delta(const State<Meta>& state, const Patch<Meta>& patch, Mode mode);
 
-        const Interface& get() const { return *actual; }
+        // Funnt LLM artifact? const Interface& get() const { return *actual; }
+
+        auto begin() const { return actual->begin(); }
+        auto end() const { return actual->end(); }
+        auto added() const { return actual->added(); }
+        auto addedOrUpdated() const { return actual->addedOrUpdated(); }
+        auto removed() const { return actual->removed(); }
+        auto updated() const { return actual->updated(); }
 
     private:
         using Clean = base::cannonball::delta::Operational<Id<Meta>, Quantum<Meta>>;

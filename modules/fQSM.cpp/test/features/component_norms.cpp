@@ -56,7 +56,7 @@ void component_norms()
         ask::schema::aspect<C>(),
     });
 
-    fqsm::state::world::Data world(schema);
+    fqsm::model::complex::Reality world(schema);
     context::Realm main(world);
 
     { // Scenario 1: B::Codex::component<> aborted creation of A

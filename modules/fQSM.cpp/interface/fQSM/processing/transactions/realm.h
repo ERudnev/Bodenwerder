@@ -18,16 +18,16 @@ namespace fqsm::processing {
         //operator Immediate<Meta>() {
         //    return {reality.aspect<Meta>(), [this](aspect::Rtid type) { accept_immediate(type); }};
         //}
-        auto notes() const -> const Review::Notes& { return lastNotes; }
+        auto notes() const -> const review::Notes& { return lastNotes; }
 
     private:
         model::complex::Reality reality;
-        Review::Notes lastNotes;
+        review::Notes lastNotes;
 
         auto writing() -> Writing override;
         auto makeChildPolicy() -> ChildPolicy override;
 
-        void accept(Context::Result);
+        void accept(Context::PatchRef);
         void accept_immediate(aspect::Rtid type);
     };
 }

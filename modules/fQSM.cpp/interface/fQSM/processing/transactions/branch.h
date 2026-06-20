@@ -30,17 +30,17 @@ namespace fqsm::processing::transaction {
         model::complex::Draft preview;
 
         auto writing() -> Writing override {
-            return GateOperational{preview, context};
+            return Gate(context);
         }
 
         auto makeChildPolicy() -> ChildPolicy override {
             return ChildPolicy{
                 preview,
-                [this](Context::Result patch) { accept(patch); }
+                [this](Context::PatchRef patch) { accept(patch); }
             };
         }
 
-        void accept(Context::Result child) {
+        void accept(Context::PatchRef child) {
             actions::merge(preview, patch, child);
         }
 

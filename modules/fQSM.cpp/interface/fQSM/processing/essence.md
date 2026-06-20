@@ -56,7 +56,7 @@ Is abstraction of access to some context
 is context access mode allows only reading, including fast const Val& semantic
 equal to ~const State&
 
-#### GateOperational ("Writing")
+#### Gate ("Writing")
 this kind of access allows full capacity of GateReading + operational (through commands)
 writing to targeted context.
 Designd to implement buffered write, where Patch actas as buffer

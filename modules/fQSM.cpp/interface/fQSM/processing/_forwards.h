@@ -11,7 +11,7 @@
 namespace fqsm::processing {
     //using Patch = ::fqsm::model::Patch;
     struct Context;
-    struct GateOperational;
+    struct Gate;
     struct GateDirect;
     struct Review;
 }
@@ -20,7 +20,7 @@ namespace fqsm::processing {
 namespace fqsm {
     //using Reading = const processing::View&; // cleanup
     using Reading = const ::fqsm::model::complex::State&;
-    using Writing = processing::GateOperational; // rename to "Draft"?
+    using Writing = processing::Gate; // rename to "Draft"?
     using Access = processing::GateDirect;
     using Reviewing = processing::Review;
 }

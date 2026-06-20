@@ -11,24 +11,24 @@ namespace fqsm::processing {
         auto context = std::make_shared<Context>(Context{
             reality,
             patch,
-            [this](Context::Result patch) {
+            [this](Context::PatchRef patch) {
                 accept(patch);
             }
         });
 
-        return GateOperational{reality, context};
+        return Gate(context);
     }
 
     auto Realm::makeChildPolicy() -> ChildPolicy {
         return ChildPolicy{
             reality,
-            [this](Context::Result patch) {
+            [this](Context::PatchRef patch) {
                 accept(patch);
             }
         };
     }
 
-    void Realm::accept(Context::Result patch) {
+    void Realm::accept(Context::PatchRef patch) {
         lastNotes = {};
         lastNotes = actions::update(reality, *patch);
     }

@@ -15,6 +15,7 @@ namespace fqsm::model::complex {
         cref<Erased> getLine(Rtid typeId) const override { return lines.container.at(typeId); }
         ref<Erased> getLine(Rtid typeId) override { return lines.container.at(typeId); }
         const Composition& composition() const override { return lines; }
+        Composition& composition() override { return lines; }
 
         void initStructure();
 

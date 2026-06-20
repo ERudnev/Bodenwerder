@@ -34,13 +34,13 @@ namespace fqsm::manipulation::item {
     template<aspect::Standalone Meta>
     auto create(Writing context, Quantum<Meta> value) -> Id<Meta> {
         const auto id = Id<Meta>::generate_random();
-        context.result()->aspect<Meta>().items.insert(id, std::move(value));
+        context.patch()->aspect<Meta>().items.insert(id, std::move(value));
         return id;
     }
 
     template<aspect::Parasitic Meta>
     void create(Writing context, Id<Meta> id, Quantum<Meta> value) {
-        context.result()->aspect<Meta>().items.insert(id, std::move(value));
+        context.patch()->aspect<Meta>().items.insert(id, std::move(value));
     }
 
     template<aspect::Any Meta>

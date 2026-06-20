@@ -17,12 +17,12 @@ namespace fqsm::model::complex {
 
         template<aspect::Any Meta>
         const linear::State<Meta>& aspect() const {
-            return base::shared_ref_cast<linear::State<Meta>>(composition().container.at(Rtid::of<Meta>));
+            return base::shared_ref_cast<linear::State<Meta>>(composition().container.at(Rtid::of<Meta>()));
         }
 
         template<aspect::Any Meta>
         linear::State<Meta>& aspect() {
-            return base::shared_ref_cast<linear::State<Meta>>(composition().container.at(Rtid::of<Meta>));
+            return base::shared_ref_cast<linear::State<Meta>>(composition().container.at(Rtid::of<Meta>()));
         }
 
         const Schema schema; // defined for Reality/Draft/any homogenous material object
@@ -31,6 +31,7 @@ namespace fqsm::model::complex {
         virtual cref<Erased> getLine(meta::aspect::Rtid) const = 0;
         virtual ref<Erased> getLine(meta::aspect::Rtid) = 0;
         virtual const Composition& composition() const = 0;
+        virtual Composition& composition()=0;
     };
 
     struct StateAddressable : State {

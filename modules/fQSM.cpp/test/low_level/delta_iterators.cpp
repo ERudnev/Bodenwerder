@@ -22,6 +22,9 @@ namespace {
     namespace local {
         const A::Codex A::codex = {};
     }
+
+    // temp lib. placeholder:
+    inline const fqsm::model::complex::State& look(fqsm::Reading source) { return source; }
 }
 
 namespace tests {
@@ -40,14 +43,14 @@ void delta_iterators()
         ids.push_back(ask::item::create<A>(fill, {i}));
     }
 
-    const fqsm::state::world::Data state(fill);
+    const fqsm::model::complex::Reality state(look(fill));
     auto patch = base::make_shared<fqsm::model::complex::Patch>(schema);
     auto patch_context = std::make_shared<fqsm::processing::Context>(fqsm::processing::Context{
         state,
         patch,
         {}
     });
-    auto writing = fqsm::processing::GateWriting{state, patch_context};
+    auto writing = fqsm::processing::Gate{patch_context};
 
     std::vector<Id> added_ids;
     for (int i = 101; i <= 110; ++i) {
@@ -60,46 +63,49 @@ void delta_iterators()
         ask::item::update<A>(writing, ids.at(i))->value = (i + 1) * 10;
     }
 
-    const fqsm::model::complex::Draft preview(state, *patch);
+    const fqsm::model::complex::Draft preview(state, patch);
 
-    using Layer = fqsm::state::slice::Delta<A>::Layer;
+    using Layer = fqsm::model::linear::Delta<A>::Layer;
     std::unordered_map<Layer, std::set<Id>> collected;
 
     for (const auto change : preview.delta<A>()) {
-        collected[Layer::all].insert(change.id);
+        collected[Layer::all].insert(change.key);
     }
 
     for (const auto change : preview.delta<A>().added()) {
         EXPECT_TRUE(change.add());
         EXPECT_FALSE(change.update());
         EXPECT_FALSE(change.remove());
-        EXPECT_TRUE(change.before == nullptr);
+        EXPECT_TRUE(change.before.has_value());
+        EXPECT_TRUE(change.before.value() == nullptr);
         EXPECT_TRUE(change.after != nullptr);
-        collected[Layer::added].insert(change.id);
+        collected[Layer::added].insert(change.key);
     }
 
     for (const auto change : preview.delta<A>().addedOrUpdated()) {
         EXPECT_FALSE(change.remove());
         EXPECT_TRUE(change.after != nullptr);
-        collected[Layer::addedOrUpdated].insert(change.id);
+        collected[Layer::addedOrUpdated].insert(change.key);
     }
 
     for (const auto change : preview.delta<A>().removed()) {
         EXPECT_FALSE(change.add());
         EXPECT_FALSE(change.update());
         EXPECT_TRUE(change.remove());
-        EXPECT_TRUE(change.before != nullptr);
+        EXPECT_TRUE(change.before.has_value());
+        EXPECT_TRUE(change.before.value() != nullptr);
         EXPECT_TRUE(change.after == nullptr);
-        collected[Layer::removed].insert(change.id);
+        collected[Layer::removed].insert(change.key);
     }
 
     for (const auto change : preview.delta<A>().updated()) {
         EXPECT_FALSE(change.add());
         EXPECT_TRUE(change.update());
         EXPECT_FALSE(change.remove());
-        EXPECT_TRUE(change.before != nullptr);
+        EXPECT_TRUE(change.before.has_value());
+        EXPECT_TRUE(change.before.value() != nullptr);
         EXPECT_TRUE(change.after != nullptr);
-        collected[Layer::updated].insert(change.id);
+        collected[Layer::updated].insert(change.key);
     }
 
     EXPECT_EQ(collected[Layer::all].size(), std::size_t{60});

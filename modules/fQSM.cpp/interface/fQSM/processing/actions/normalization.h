@@ -7,9 +7,9 @@ namespace fqsm::processing::actions {
 
     struct NormalizationResult {
         fqsm::ref<model::complex::Patch> patch;
-        Review::Notes notes;
+        review::Notes notes;
     };
 
     auto normalize(Reading base, const model::complex::Patch&) -> NormalizationResult;
-    auto update(model::complex::Reality&, const model::complex::Patch&) -> Review::Notes;
+    auto update(model::complex::Reality&, const model::complex::Patch&) -> review::Notes;
 }

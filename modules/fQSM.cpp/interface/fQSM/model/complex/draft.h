@@ -23,6 +23,7 @@ namespace fqsm::model::complex {
         cref<Erased> getLine(meta::aspect::Rtid) const override;
         ref<Erased> getLine(meta::aspect::Rtid) override;
         const State::Composition& composition() const override { return lines; }
+        State::Composition& composition() override { return lines; }
 
         const State& state; // yep, technically, Draft may be Draft over Draft which is over Draft. Be carefull!
         ref<Patch> patch;
