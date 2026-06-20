@@ -6,8 +6,8 @@
 #include <vector>
 
 #include <fQSM/features/_forwards.h>
+#include <fQSM/meta/interface.include.h>
 #include <fQSM/identifier.h>
-#include <fQSM/meta/rtid.h>
 #include <fQSM/model/structure/binding.h>
 
 namespace fqsm::model::structure {
@@ -25,7 +25,7 @@ namespace fqsm::model::structure {
 
         // sugar:
         template<aspect::Any Meta>
-        bool accepts() const { return nodes.contains(aspect::Rtid::of<Meta>()); }
+        bool accepts() const { return nodes.contains(TypeId<Meta>); }
 
         std::unordered_map<aspect::Rtid, Node, aspect::Rtid::Hash> nodes;
         Reactions reactions;

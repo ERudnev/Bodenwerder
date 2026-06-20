@@ -17,12 +17,12 @@ namespace fqsm::model::complex {
 
         template<aspect::Any Meta>
         const linear::State<Meta>& aspect() const {
-            return base::shared_ref_cast<linear::State<Meta>>(composition().container.at(Rtid::of<Meta>()));
+            return *base::shared_ref_cast<linear::State<Meta>>(composition().container.at(TypeId<Meta>));
         }
 
         template<aspect::Any Meta>
         linear::State<Meta>& aspect() {
-            return base::shared_ref_cast<linear::State<Meta>>(composition().container.at(Rtid::of<Meta>()));
+            return *base::shared_ref_cast<linear::State<Meta>>(composition().container.at(TypeId<Meta>));
         }
 
         const Schema schema; // defined for Reality/Draft/any homogenous material object

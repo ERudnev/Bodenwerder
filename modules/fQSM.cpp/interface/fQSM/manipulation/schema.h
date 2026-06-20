@@ -56,7 +56,7 @@ namespace fqsm::manipulation::schema {
             fqsm::schema::details::binding<Meta>(),
         };
 
-        out->nodes.emplace(fqsm::meta::aspect::Rtid::of<Meta>(), node);
+        out->nodes.emplace(TypeId<Meta>, node);
 
         for (const auto& reaction : Meta::codex.morms) {
             const auto reactionId = model::structure::AspectGraph::ReactionId{ out->reactions.size() };

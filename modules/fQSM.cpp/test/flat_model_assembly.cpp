@@ -27,8 +27,7 @@ namespace tests {
         });
 
         //fqsm::World world = ask::world::create(schema);
-        fqsm::state::world::Data world(schema);
-        context::Realm main(world);
+        context::Realm main(schema);
 
         const auto id = ask::item::create<SomeEntity>(main, {7});
         ask::item::update<SomeComponent>(main, id, {"seven"});

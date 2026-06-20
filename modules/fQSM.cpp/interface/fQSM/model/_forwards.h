@@ -21,9 +21,9 @@ namespace fqsm::analysis {
 namespace fqsm::model::linear {
 
     //this is base class, acting as forwarding for containers:
-    namespace state { struct Erased { ~Erased()=default; }; }
-    namespace patch { struct Erased { ~Erased()=default; }; }
-    namespace preview { struct Erased { ~Erased()=default; }; }
+    namespace state { struct Erased { virtual ~Erased()=default; }; }
+    namespace patch { struct Erased { virtual ~Erased()=default; }; }
+    namespace preview { struct Erased { virtual ~Erased()=default; }; }
 }
 
 // alias, mostly for external use

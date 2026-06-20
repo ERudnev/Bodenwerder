@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include <fQSM/meta/interface.include.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/processing/review.h>
 
@@ -29,7 +30,7 @@ namespace fqsm::features {
         // derived class helper:
         template<aspect::Any... Metas>
         static Sources typed_set() {
-            return Sources{ meta::aspect::Rtid::of<Metas>()... };
+            return Sources{ TypeId<Metas>... };
         }
 
         template<aspect::Any Meta>

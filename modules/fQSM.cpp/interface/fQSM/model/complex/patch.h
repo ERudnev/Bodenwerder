@@ -28,11 +28,11 @@ namespace fqsm::model::complex {
 
     template<aspect::Any Meta>
     linear::Patch<Meta>& Patch::aspect() {
-        return base::shared_ref_cast<linear::Patch<Meta>>(lines.container.at(Rtid::of<Meta>));
+        return *base::shared_ref_cast<linear::Patch<Meta>>(lines.container.at(TypeId<Meta>));
     };
 
     template<aspect::Any Meta>
     const linear::Patch<Meta>& Patch::aspect() const {
-        return base::shared_ref_cast<linear::Patch<Meta>>(lines.container.at(Rtid::of<Meta>));
+        return *base::shared_ref_cast<linear::Patch<Meta>>(lines.container.at(TypeId<Meta>));
     }
 }

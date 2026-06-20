@@ -3,6 +3,7 @@
 #include <type_traits>
 
 #include <fQSM/meta/concepts.h> // pre-registered level mechanism
+#include <fQSM/meta/rtid.h>
 
 // this concepts are common:
 namespace fqsm {
@@ -39,6 +40,10 @@ namespace fqsm {
     template<typename Meta>
     requires meta::aspect::has::Quantum<Meta> // yes, require Quantum to allow (even empty) Global
     using GlobalValue = typename detail::aspect::GlobalValue<Meta>::Type;
+
+    template<typename Meta>
+    requires meta::aspect::Any<Meta>
+    inline const aspect::Rtid TypeId = aspect::Rtid::of<Meta>();
 
 }
 

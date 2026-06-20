@@ -15,8 +15,7 @@ void globals()
         ask::schema::aspect<SomeComponent>(),
     });
 
-    fqsm::state::world::Data world(schema);
-    context::Realm main(world);
+    context::Realm main(schema);
 
     EXPECT_EQ(ask::global::get<SomeEntity>(main).modulus, 2);
 

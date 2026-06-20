@@ -8,7 +8,7 @@
 namespace fqsm::model::linear {
 
     template<aspect::Any Meta>
-    class Reality : State<Meta> {
+    class Reality : public State<Meta> {
     public:
         using Global = State<Meta>::Global;
         using Items = State<Meta>::Items;

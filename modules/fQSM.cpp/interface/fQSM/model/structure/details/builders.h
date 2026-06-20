@@ -2,7 +2,7 @@
 
 #include <base/shared_reference.h>
 
-#include <fQSM/meta/concepts.h>
+#include <fQSM/meta/interface.include.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/model/analysis.h>
 #include <fQSM/model/complex/reality.h>
@@ -39,7 +39,7 @@ namespace fqsm::schema::details {
     auto createDraft(const model::complex::State& state, ref<model::complex::Patch> patch) -> ref<model::linear::state::Erased> {
         return base::make_shared<model::linear::Draft<Meta>>(
             state.aspect<Meta>(),
-            base::shared_ref_cast<model::linear::Patch<Meta>>(patch->lines.container.at(aspect::Rtid::of<Meta>()))
+            base::shared_ref_cast<model::linear::Patch<Meta>>(patch->lines.container.at(TypeId<Meta>))
         );
     }
 
@@ -62,7 +62,7 @@ namespace fqsm::schema::details {
             if (patchEntry.value.has_value()) ++entry.modified;
             else ++entry.deleted;
         }
-        if (entry.total() != 0) out.perSlice.emplace(aspect::Rtid::of<Meta>(), entry);
+        if (entry.total() != 0) out.perSlice.emplace(TypeId<Meta>, entry);
     }
 
     template<aspect::Any Meta>

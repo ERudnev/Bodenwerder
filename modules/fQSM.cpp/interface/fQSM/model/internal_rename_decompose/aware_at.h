@@ -22,14 +22,7 @@ namespace fqsm::state {
 
     template<aspect::Any Meta, typename Map>
     auto aware_at(const Map& map) -> const typename Map::mapped_type& {
-        const auto aspectId = aspect::Rtid::of<Meta>();
-        const auto found = map.find(aspectId);
-        if (found == map.end()) {
-            throw std::runtime_error(std::format(
-                R"(aware_at: missing entry, aspect "{}")",
-                aspect::Rtid::name(aspectId)));
-        }
-        return found->second;
+        return aware_at(map, TypeId<Meta>);
     }
 
 }
