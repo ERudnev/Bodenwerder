@@ -9,6 +9,7 @@ namespace fqsm::model::complex {
     class Reality : public State {
     public:
         Reality(Schema schema) : State(schema) { initStructure(); }
+        Reality(const State& source);
 
     protected:
         cref<Erased> getLine(Rtid typeId) const override { return lines.container.at(typeId); }

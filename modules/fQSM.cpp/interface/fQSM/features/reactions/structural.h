@@ -44,21 +44,21 @@ namespace fqsm::features::reactions::morms::structural {
     void component<Follower, Origin>::apply(Reviewing context) {
         // all modes:
         for (const auto change : changes<Origin>(context).removed()) {
-            if (!manipulation::item::exists<Follower>(context.preview, change.id)) continue;
+            if (!manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
             manipulation::item::update<Follower>(context, change.id).remove();
         }
 
         switch (policy) {
             case ComponentMissing::remove_parent: {
                 for (const auto change : changes<Origin>(context).added()) {
-                    if (manipulation::item::exists<Follower>(context.preview, change.id)) continue;
+                    if (manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
                     manipulation::item::update<Origin>(context, change.id).remove();
                 }
             } break;
 
             case ComponentMissing::make_default: {
                 for (const auto change : changes<Origin>(context).added()) {
-                    if (manipulation::item::exists<Follower>(context.preview, change.id)) continue;
+                    if (manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
                     if (!autoConstructor) {
                         ask::feedback::critical<Follower>(context, std::format(R"(structural::component no constructor on "{}" {})", aspect::Rtid::name<Origin>(), change.id));
                         continue;
@@ -69,7 +69,7 @@ namespace fqsm::features::reactions::morms::structural {
 
             case ComponentMissing::inacceptable: {
                 for (const auto change : changes<Origin>(context).added()) {
-                    if (manipulation::item::exists<Follower>(context.preview, change.id)) continue;
+                    if (manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
                     ask::feedback::critical<Follower>(context, std::format(R"(structural::component inacceptable: missing for "{}" {})", aspect::Rtid::name<Origin>(), change.id));
                 }
             } break;

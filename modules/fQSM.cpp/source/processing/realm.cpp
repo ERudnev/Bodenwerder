@@ -5,6 +5,7 @@
 #include <fQSM/processing/actions/normalization.h>
 
 namespace fqsm::processing {
+
     auto Realm::writing() -> Writing {
         auto patch = base::make_shared<model::complex::Patch>(reality.schema);
         auto context = std::make_shared<Context>(Context{

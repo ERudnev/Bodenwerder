@@ -8,4 +8,9 @@ namespace fqsm::model::complex {
             lines.container.emplace(typeId, node.binding.createState());
         }
     }
+
+    Reality::Reality(const State& source) : State(source.schema) {
+        for (const auto& [typeId, node] : source.schema->nodes)
+            lines.container.emplace(typeId, node.binding.cloneState(source));
+    }
 }

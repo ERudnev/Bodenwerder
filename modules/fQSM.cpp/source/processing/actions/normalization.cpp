@@ -9,16 +9,15 @@
 #include <fQSM/processing/actions/integration.h>
 #include <fQSM/processing/actions/merge.h>
 #include <fQSM/processing/review.h>
+#include <fQSM/model/analysis.h>
 #include <fQSM/model/complex/draft.h>
-#include <fQSM/state/details/analysis.h>
-#include <fQSM/state/patch.h>
+#include <fQSM/model/structure/schema.h>
 #include <fQSM/features/reaction.h>
 
 // local alias:
 namespace fqsm::processing::actions {
     static constexpr int temp_defence_normalization_waves = 10;
 
-    using State = fqsm::model::complex::StateAddressable;
     using Patch = fqsm::model::complex::Patch;
     using PatchRef = fqsm::ref<Patch>;
 }
@@ -61,18 +60,18 @@ namespace fqsm::processing::actions::normalization {
     }
 
     // build one normalization wave
-    auto normalizer(Reading source, const Patch& patch) -> actions::NormalizationResult {
+    auto normalizer(Reading source, PatchRef patch) -> actions::NormalizationResult {
         Review::Notes notes;
-        auto review = Reviewing{
+        auto review = Review{
             model::complex::Draft{source, patch},
-            ::base::make_shared<Patch>(patch.schema),
+            base::make_shared<Patch>(patch->schema),
             notes,
         };
 
-        std::set<schema::Dag::ReactionId> selectedReactions;
-        for (const auto& [sourceType, _] : patch.composite().slices) {
-            const auto found = patch.schema->nodes.find(sourceType);
-            if (found == patch.schema->nodes.end()) continue;
+        std::set<model::structure::AspectGraph::ReactionId> selectedReactions;
+        for (const auto& [sourceType, _] : patch->lines.container) {
+            const auto found = patch->schema->nodes.find(sourceType);
+            if (found == patch->schema->nodes.end()) continue;
 
             for (const auto reactionId : found->second.reactions) {
                 selectedReactions.insert(reactionId);
@@ -80,17 +79,17 @@ namespace fqsm::processing::actions::normalization {
         }
 
         for (const auto reactionId : selectedReactions) {
-            patch.schema->reactions.at(reactionId.raw())->apply(review);
+            patch->schema->reactions.at(reactionId.raw())->apply(review);
         }
 
-        return { review.patch, std::move(notes) };
+        return { review.corrections, std::move(notes) };
     }
 
 
     auto normalize_recursive(Reading source, PatchRef accumulated, UpdateControl& control) -> Review::Notes {
         control.statistics.emplace_back(*accumulated);
 
-        const auto fix = normalizer(source, *accumulated);
+        const auto fix = normalizer(source, accumulated);
         auto notes = fix.notes;
         if (notes.rejection()) return notes;
 
@@ -112,13 +111,13 @@ namespace fqsm::processing::actions::normalization {
 namespace fqsm::processing::actions {
 
     auto normalize(Reading source, const Patch& patch) -> NormalizationResult {
-        auto normalized = ::base::make_shared<Patch>(patch);
+        auto normalized = base::make_shared<Patch>(patch);
         normalization::UpdateControl control{temp_defence_normalization_waves};
         auto notes = normalization::normalize_recursive(source, normalized, control);
         return { normalized, std::move(notes) };
     }
 
-    auto update(Reality& state, const Patch& patch) -> Review::Notes {
+    auto update(model::complex::Reality& state, const Patch& patch) -> Review::Notes {
         const auto normalized = normalize(state, patch);
         if (normalized.notes.rejection()) return normalized.notes;
 

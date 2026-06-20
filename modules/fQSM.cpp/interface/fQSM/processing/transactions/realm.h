@@ -9,6 +9,7 @@ namespace fqsm::processing {
 
     struct Realm : Transaction {
         Realm(Schema schema) : reality(schema) {}
+        Realm(const State& other) : reality(other) {}
         // as Transaction:
         operator Reading() const override { return reality; }
 

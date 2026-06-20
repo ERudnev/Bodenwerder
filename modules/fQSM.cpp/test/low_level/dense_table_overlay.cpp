@@ -2,11 +2,11 @@
 #include "minimodel/aspects.q1.h"
 
 #include <map>
-#include <optional>
 
+#include <base/shared_reference.h>
 #include <fQSM/model/complex/draft.h>
-#include <fQSM/state/patch.h>
-#include <fQSM/model/complex/data.h>
+#include <fQSM/model/complex/patch.h>
+#include <fQSM/model/complex/reality.h>
 
 namespace tests {
 
@@ -14,31 +14,29 @@ void dense_table_overlay()
 {
     using namespace ::tests::model;
     using Id = fqsm::Id<SomeEntity>;
-    using Item = fqsm::state::slice::View<SomeEntity, fqsm::meta::axis::order::state>::Item;
-    using PatchItem = fqsm::state::slice::View<SomeEntity, fqsm::meta::axis::order::patch>::Item;
-    using View = base::TableView<Id, Item>;
+    using Quantum = fqsm::Quantum<SomeEntity>;
 
     const fqsm::Schema schema = fqsm::manipulation::schema::aspect<SomeEntity>();
 
-    fqsm::state::world::Data state(schema);
-    state.items<SomeEntity>().insert(Id{1}, Item{1});
-    state.items<SomeEntity>().insert(Id{2}, Item{2});
-    state.items<SomeEntity>().insert(Id{3}, Item{3});
+    fqsm::model::complex::Reality state(schema);
+    state.aspect<SomeEntity>().items().insert(Id{1}, Quantum{1});
+    state.aspect<SomeEntity>().items().insert(Id{2}, Quantum{2});
+    state.aspect<SomeEntity>().items().insert(Id{3}, Quantum{3});
 
-    fqsm::model::complex::Patch patch(schema);
-    patch.items<SomeEntity>().insert(Id{2}, PatchItem{Item{20}});
-    patch.items<SomeEntity>().insert(Id{3}, PatchItem{std::nullopt});
-    patch.items<SomeEntity>().insert(Id{4}, PatchItem{Item{40}});
-    patch.items<SomeEntity>().insert(Id{5}, PatchItem{std::nullopt});
+    auto patch = base::make_shared<fqsm::model::complex::Patch>(schema);
+    patch->aspect<SomeEntity>().items.insert(Id{2}, Quantum{20});
+    patch->aspect<SomeEntity>().items.insert(Id{3}, std::nullopt);
+    patch->aspect<SomeEntity>().items.insert(Id{4}, Quantum{40});
+    patch->aspect<SomeEntity>().items.insert(Id{5}, std::nullopt);
 
     fqsm::model::complex::Draft preview(state, patch);
 
-    const View& view = state.items<SomeEntity>();
-    const View& overlayView = preview.items<SomeEntity>();
+    const auto& view = state.aspect<SomeEntity>().items();
+    const auto& overlayView = preview.aspect<SomeEntity>().items();
 
     EXPECT_TRUE(view.contains(Id{1}));
     EXPECT_EQ(view.at(Id{1}).value, 1);
-    EXPECT_TRUE(patch.items<SomeEntity>().at(Id{2}).has_value());
+    EXPECT_TRUE(patch->aspect<SomeEntity>().items.at(Id{2}).has_value());
 
     EXPECT_TRUE(overlayView.contains(Id{1}));
     EXPECT_TRUE(overlayView.contains(Id{2}));
@@ -53,7 +51,7 @@ void dense_table_overlay()
     std::map<int, int> visible;
 
     for (const auto entry : overlayView) {
-        visible.emplace(entry.first.raw(), entry.second.value);
+        visible.emplace(entry.key.raw(), entry.value.value);
     }
 
     EXPECT_EQ(visible.size(), std::size_t{3});
@@ -65,10 +63,10 @@ void dense_table_overlay()
 
     std::map<int, std::string> delta;
 
-    for (const auto change : preview.delta<SomeEntity>()) {
-        if (change.add()) delta.emplace(change.id.raw(), "add");
-        if (change.update()) delta.emplace(change.id.raw(), "update");
-        if (change.remove()) delta.emplace(change.id.raw(), "remove");
+    for (const auto change : preview.delta<SomeEntity>().get()) {
+        if (change.add()) delta.emplace(change.key.raw(), "add");
+        if (change.update()) delta.emplace(change.key.raw(), "update");
+        if (change.remove()) delta.emplace(change.key.raw(), "remove");
     }
 
     EXPECT_EQ(delta.size(), std::size_t{3});

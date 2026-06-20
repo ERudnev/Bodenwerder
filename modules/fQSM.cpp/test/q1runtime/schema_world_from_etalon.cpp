@@ -3,7 +3,6 @@
 //#include <Etalon.fqsm/aspects.q1.h>
 
 #include <fQSM/api/interface.h>
-#include <fQSM/model/complex/data.h>
 
 namespace tests {
 

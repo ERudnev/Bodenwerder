@@ -18,17 +18,17 @@ namespace fqsm::processing {
             bool rejection() const { return not critical.empty(); }
         };
 
-        const model::complex::Draft expectation;
+        const model::complex::Draft proposal;
         PatchRef corrections;
         Notes& notes;
 
         template<aspect::Any Meta>
         auto changes() const -> model::linear::Delta<Meta> {
-            return expectation.delta<Meta>();
+            return proposal.delta<Meta>();
         }
 
         operator Writing() const {
-            return Writing{ expectation, std::make_shared<Context>(Context{expectation, corrections,{}}) };
+            return Writing{ proposal, std::make_shared<Context>(Context{proposal, corrections,{}}) };
         }
     };
 

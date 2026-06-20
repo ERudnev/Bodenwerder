@@ -1,5 +1,6 @@
 #pragma once
 
+#include <base/cannonball/draft.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/model/linear/state.h>

@@ -14,7 +14,6 @@
     X(manipulation) \
     X(globals) \
     X(connections) \
-    X(relations_table) \
     X(containers_updated) \
     // end
 

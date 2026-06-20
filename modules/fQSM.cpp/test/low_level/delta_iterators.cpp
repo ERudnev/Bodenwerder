@@ -7,8 +7,6 @@
 
 #include <fQSM/api/interface.h>
 #include <fQSM/processing/context.h>
-#include <fQSM/state/patch.h>
-#include <fQSM/model/complex/data.h>
 #include <fQSM/model/complex/draft.h>
 
 namespace {
@@ -31,13 +29,11 @@ namespace tests {
 void delta_iterators()
 {
     using namespace local;
-
     using Id = fqsm::Id<A>;
 
     const fqsm::Schema schema = fqsm::manipulation::schema::aspect<A>();
 
-    fqsm::state::world::Data seed(schema);
-    context::Realm fill(seed);
+    context::Realm fill(schema);
 
     std::vector<Id> ids;
     for (int i = 1; i <= 100; ++i) {

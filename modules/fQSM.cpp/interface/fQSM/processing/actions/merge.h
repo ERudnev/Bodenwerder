@@ -2,6 +2,8 @@
 
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/model/linear/delta.h>
+#include <fQSM/model/complex/patch.h>
+#include <fQSM/model/complex/state.h>
 
 namespace fqsm::processing::actions {
     void merge(Reading base, fqsm::ref<Patch> target, fqsm::cref<Patch> source);

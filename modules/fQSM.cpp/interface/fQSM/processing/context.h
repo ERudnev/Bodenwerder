@@ -6,6 +6,7 @@
 #include <fQSM/model/_forwards.h>
 #include <fQSM/model/complex/state.h>
 #include <fQSM/model/complex/draft.h>
+#include <fQSM/model/complex/patch.h>
 #include <fQSM/processing/_forwards.h>
 
 namespace fqsm::processing {
@@ -38,6 +39,7 @@ namespace fqsm::processing {
         operator Reading() const { return view; }
 
         Context::Result result() const { return freeze(parent->patch); }
+        Patch& patch() { return *parent->patch; }
     };
 
     struct GateImmediate {
