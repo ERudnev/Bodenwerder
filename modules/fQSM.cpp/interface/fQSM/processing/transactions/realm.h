@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fQSM/model/complex/reality.h>
+#include <fQSM/processing/context.h>
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/review.h>
 #include <fQSM/processing/transaction.h>
@@ -13,11 +14,9 @@ namespace fqsm::processing {
         // as Transaction:
         operator Reading() const override { return reality; }
 
-        // as unique non-transactional data interface:
-        //template<aspect::Any Meta>
-        //operator Immediate<Meta>() {
-        //    return {reality.aspect<Meta>(), [this](aspect::Rtid type) { accept_immediate(type); }};
-        //}
+        template<category::Any Meta>
+        operator Direct<Meta>() { return Direct<Meta>(reality); }
+
         auto notes() const -> const review::Notes& { return lastNotes; }
 
     private:
@@ -28,6 +27,6 @@ namespace fqsm::processing {
         auto makeChildPolicy() -> ChildPolicy override;
 
         void accept(Context::PatchRef);
-        void accept_immediate(aspect::Rtid type);
+        void accept_immediate(Rtid type);
     };
 }

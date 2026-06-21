@@ -15,7 +15,7 @@ namespace fqsm::analysis {
             int total() const { return deleted + modified; }
         };
 
-        std::unordered_map<meta::aspect::Rtid, SliceEntry, meta::aspect::Rtid::Hash> perSlice;
+        std::unordered_map<meta::Rtid, SliceEntry, meta::Rtid::Hash> perSlice;
 
         explicit Patch(const model::complex::Patch&);
 

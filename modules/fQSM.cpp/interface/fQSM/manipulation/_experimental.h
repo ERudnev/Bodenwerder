@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-#include <fQSM/meta/concepts.h>
+#include <fQSM/meta/categories.h>
 
 namespace fqsm::manipulation::detail {
     template<typename Meta, typename = void>

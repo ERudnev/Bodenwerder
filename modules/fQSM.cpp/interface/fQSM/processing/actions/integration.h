@@ -12,7 +12,7 @@ namespace fqsm::processing::actions {
 // implementation
 namespace fqsm::processing::actions::details {
 
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     void integrate(model::complex::Reality& world, const model::complex::Patch& patch) {
         const auto& slice = patch.aspect<Meta>();
         if (slice.global.has_value()) world.aspect<Meta>().global() = slice.global.value();

@@ -30,7 +30,7 @@ namespace fqsm::processing {
         review::Notes& notes;
         Context::Ptr context;
 
-        template<aspect::Any Meta>
+        template<category::Any Meta>
         auto changes() const -> model::linear::Delta<Meta> {
             return proposal.delta<Meta>();
         }

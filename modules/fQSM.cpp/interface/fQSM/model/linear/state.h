@@ -5,8 +5,7 @@
 
 namespace fqsm::model::linear {
 
-
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     class State : public state::Erased {
     public:
         using Items = base::cannonball::table::Operational<Id<Meta>, Quantum<Meta>>;
@@ -19,7 +18,7 @@ namespace fqsm::model::linear {
     };
 
     // TODO: remove
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     class StateAddressable : State<Meta> {
     };
 }

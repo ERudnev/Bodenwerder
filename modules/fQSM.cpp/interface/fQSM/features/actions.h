@@ -24,7 +24,8 @@ namespace fqsm::actions {
     struct Base {
         using Reading = ::fqsm::Reading;
         using Writing = ::fqsm::Writing;
-        using Access = ::fqsm::Access;
+        template<meta::category::Any Meta>
+        using Direct = ::fqsm::Direct<Meta>;
     };
 
     template<typename Meta>
@@ -86,7 +87,7 @@ namespace fqsm::actions {
     auto Any<Meta>::get(Reading context, Id id) -> const Quantum& {
         const auto found = ::fqsm::manipulation::item::get<Meta>(context, id);
         if (!found) {
-            throw std::runtime_error(std::format(R"(actions::get "{}" {}: not present)", ::fqsm::meta::aspect::Rtid::name<Meta>(), id));
+            throw std::runtime_error(std::format(R"(actions::get "{}" {}: not present)", ::fqsm::meta::Rtid::name<Meta>(), id));
         }
         return found.value();
     }
@@ -103,7 +104,7 @@ namespace fqsm::actions {
 
     template<typename Meta, typename HostType>
     void Parasitic<Meta, HostType>::kill(Writing context, Own::Id id) {
-        if constexpr (aspect::Standalone<HostType>) {
+        if constexpr (category::Standalone<HostType>) {
             manipulation::item::update<HostType>(context, id).remove();
         } else {
             HostType::Actions::kill(context, id);

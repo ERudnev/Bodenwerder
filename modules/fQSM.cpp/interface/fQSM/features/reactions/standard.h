@@ -5,14 +5,14 @@
 
 namespace  fqsm::features::reactions::standard {
 
-    template<aspect::Component Aspect>
+    template<category::Component Meta>
     struct debug_death_event : Reaction {
         debug_death_event(std::string text) : message(std::move(text)) {}
 
         const std::string message;
 
         Sources listens() const override {
-            return typed_set<Aspect>();
+            return typed_set<Meta>();
         }
 
         void apply(Reviewing) override {

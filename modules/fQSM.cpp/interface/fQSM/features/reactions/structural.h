@@ -22,7 +22,7 @@ namespace fqsm::features::reactions::morms::structural {
     using fqsm::features::reflexes::ComponentMissing;
 
     // NG: public visibility of this "classes" is made object-like
-    template<aspect::Component Follower, aspect::Any Origin>
+    template<category::Component Follower, category::Any Origin>
     struct component : Reaction {
         static_assert(std::same_as<typename Follower::HostAspect, Origin>);
         using ConstructorDefault = typename Follower::BaseActions::ConstructorDefault;
@@ -40,11 +40,11 @@ namespace fqsm::features::reactions::morms::structural {
 // Impl:
 namespace fqsm::features::reactions::morms::structural {
     // component:
-    template<aspect::Component Follower, aspect::Any Origin>
+    template<category::Component Follower, category::Any Origin>
     void component<Follower, Origin>::apply(Reviewing context) {
         // all modes:
         for (const auto change : changes<Origin>(context).removed()) {
-            if (!manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
+            if (!manipulation::item::exists<Follower>(context.proposal, change.key)) continue;
             manipulation::item::update<Follower>(context, change.id).remove();
         }
 
@@ -60,7 +60,7 @@ namespace fqsm::features::reactions::morms::structural {
                 for (const auto change : changes<Origin>(context).added()) {
                     if (manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
                     if (!autoConstructor) {
-                        ask::feedback::critical<Follower>(context, std::format(R"(structural::component no constructor on "{}" {})", aspect::Rtid::name<Origin>(), change.id));
+                        ask::feedback::critical<Follower>(context, std::format(R"(structural::component no constructor on "{}" {})", Rtid::name<Origin>(), change.id));
                         continue;
                     }
                     (*autoConstructor)(context, change.id);
@@ -70,7 +70,7 @@ namespace fqsm::features::reactions::morms::structural {
             case ComponentMissing::inacceptable: {
                 for (const auto change : changes<Origin>(context).added()) {
                     if (manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
-                    ask::feedback::critical<Follower>(context, std::format(R"(structural::component inacceptable: missing for "{}" {})", aspect::Rtid::name<Origin>(), change.id));
+                    ask::feedback::critical<Follower>(context, std::format(R"(structural::component inacceptable: missing for "{}" {})", Rtid::name<Origin>(), change.id));
                 }
             } break;
         }

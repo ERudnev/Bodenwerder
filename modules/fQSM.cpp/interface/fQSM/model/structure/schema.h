@@ -24,10 +24,10 @@ namespace fqsm::model::structure {
         };
 
         // sugar:
-        template<aspect::Any Meta>
+        template<category::Any Meta>
         bool accepts() const { return nodes.contains(TypeId<Meta>); }
 
-        std::unordered_map<aspect::Rtid, Node, aspect::Rtid::Hash> nodes;
+        std::unordered_map<Rtid, Node, Rtid::Hash> nodes;
         Reactions reactions;
     };
 }

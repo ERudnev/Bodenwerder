@@ -15,12 +15,12 @@ namespace fqsm::model::complex {
         State(Schema schema) : schema(schema) {}
         virtual ~State()=default;
 
-        template<aspect::Any Meta>
+        template<category::Any Meta>
         const linear::State<Meta>& aspect() const {
             return *base::shared_ref_cast<linear::State<Meta>>(composition().container.at(TypeId<Meta>));
         }
 
-        template<aspect::Any Meta>
+        template<category::Any Meta>
         linear::State<Meta>& aspect() {
             return *base::shared_ref_cast<linear::State<Meta>>(composition().container.at(TypeId<Meta>));
         }
@@ -28,8 +28,8 @@ namespace fqsm::model::complex {
         const Schema schema; // defined for Reality/Draft/any homogenous material object
     protected:
         using Erased = linear::state::Erased;
-        virtual cref<Erased> getLine(meta::aspect::Rtid) const = 0;
-        virtual ref<Erased> getLine(meta::aspect::Rtid) = 0;
+        virtual cref<Erased> getLine(meta::Rtid) const = 0;
+        virtual ref<Erased> getLine(meta::Rtid) = 0;
         virtual const Composition& composition() const = 0;
         virtual Composition& composition()=0;
     };

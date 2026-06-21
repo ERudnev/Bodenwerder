@@ -21,7 +21,7 @@ namespace fqsm::model::structure {
         std::function<void(const complex::State&, complex::Patch&, const complex::Patch&)> mergePatchSlice;
         std::function<void(const complex::Patch&, analysis::Patch&)> analyzePatchSlice;
 
-        template<aspect::Any Meta>
+        template<category::Any Meta>
         static Binding make();
     };
 }

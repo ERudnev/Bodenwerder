@@ -7,7 +7,7 @@
 
 namespace fqsm::model::linear {
 
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     class Draft : public State<Meta> {
     public:
         using Items = State<Meta>::Items;

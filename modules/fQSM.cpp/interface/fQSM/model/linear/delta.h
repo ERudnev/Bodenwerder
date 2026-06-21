@@ -10,7 +10,7 @@
 
 namespace fqsm::model::linear {
 
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     struct Delta {
         using Interface = base::cannonball::delta::Interface<Id<Meta>, Quantum<Meta>>;
         using Layer = Interface::Layer;
@@ -39,7 +39,7 @@ namespace fqsm::model::linear {
 
 namespace fqsm::model::linear {
 
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     Delta<Meta>::Delta(const State<Meta>& state, const Patch<Meta>& patch, Mode mode)
         : actual(mode == Mode::clean
             ? std::unique_ptr<const Interface>(std::make_unique<Clean>(state.items(), patch.items))

@@ -6,7 +6,7 @@
 #include <utility>
 
 #include <fQSM/meta/interface.include.h>
-#include <fQSM/meta/concepts.h>
+#include <fQSM/meta/categories.h>
 #include <fQSM/meta/rtid.h>
 #include <fQSM/processing/context.h>
 
@@ -14,17 +14,17 @@ namespace fqsm::processing::transaction {
 
     // not derived from Transaction, because it is... "final" one, not allowed to propagate context
     // TODO: consider to remove this thing one day...
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     struct Quantal {
         const Id<Meta> id;
 
-        explicit Quantal(Writing gate, Quantum<Meta> value) requires aspect::Standalone<Meta>
+        explicit Quantal(Writing gate, Quantum<Meta> value) requires category::Standalone<Meta>
             : id(Id<Meta>::generate_random()), gate(std::move(gate)), buffer(std::move(value)) {}
 
         explicit Quantal(Writing gate, Id<Meta> id)
             : id(id), gate(std::move(gate)), buffer(requireActual(this->gate, id)) {}
 
-        explicit Quantal(Writing gate, Id<Meta> id, Quantum<Meta> value) requires aspect::Parasitic<Meta>
+        explicit Quantal(Writing gate, Id<Meta> id, Quantum<Meta> value) requires category::Parasitic<Meta>
             : id(id), gate(std::move(gate)), buffer(std::move(value)) {}
 
         ~Quantal() {
@@ -57,7 +57,7 @@ namespace fqsm::processing::transaction {
             if (!actual) {
                 throw std::runtime_error(std::format(
                     R"(cannot modify "{}" {}: not present)",
-                    aspect::Rtid::name<Meta>(),
+                    Rtid::name<Meta>(),
                     itemId));
             }
             return *actual;

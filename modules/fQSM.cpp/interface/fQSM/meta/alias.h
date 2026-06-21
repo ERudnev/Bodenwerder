@@ -2,12 +2,12 @@
 
 #include <type_traits>
 
-#include <fQSM/meta/concepts.h> // pre-registered level mechanism
+#include <fQSM/meta/categories.h> // pre-registered level mechanism
 #include <fQSM/meta/rtid.h>
 
 // this concepts are common:
 namespace fqsm {
-    namespace aspect = meta::aspect;
+    namespace category = meta::category;
 }
 
 // default empty Aspect::Global
@@ -30,20 +30,19 @@ namespace fqsm::detail::aspect {
 
 namespace fqsm {
     template<typename Meta>
-    requires meta::aspect::has::Id<Meta>
+    requires meta::category::musthave::Id<Meta>
     using Id = typename Meta::Id;
 
     template<typename Meta>
-    requires meta::aspect::has::Quantum<Meta>
+    requires meta::category::musthave::Quantum<Meta>
     using Quantum = typename Meta::Quantum;
 
     template<typename Meta>
-    requires meta::aspect::has::Quantum<Meta> // yes, require Quantum to allow (even empty) Global
+    requires meta::category::musthave::Quantum<Meta> // yes, require Quantum to allow (even empty) Global
     using GlobalValue = typename detail::aspect::GlobalValue<Meta>::Type;
 
     template<typename Meta>
-    requires meta::aspect::Any<Meta>
-    inline const aspect::Rtid TypeId = aspect::Rtid::of<Meta>();
+    requires meta::category::Any<Meta>
+    inline const meta::Rtid TypeId = meta::Rtid::of<Meta>();
 
 }
-

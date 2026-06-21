@@ -2,15 +2,15 @@
 
 #include <concepts>
 
-namespace fqsm::meta::aspect {
-    
-    namespace has {
+namespace fqsm::meta::category {
+
+    namespace musthave {
         template<typename Meta>
         concept Id = requires(const typename Meta::Id& id) {
             typename Meta::Id;
             { id.generate_random() } -> std::same_as<typename Meta::Id>;
         };
-    
+
         template<typename Meta>
         concept Quantum = requires { typename Meta::Quantum; };
 
@@ -19,31 +19,31 @@ namespace fqsm::meta::aspect {
 
         template<typename Meta>
         concept Host = std::same_as<typename Meta::Id, typename Meta::HostAspect::Id>;
-    
+
         template<typename Meta>
         concept Passport = requires(typename Meta::Quantum quantum) { quantum.passport; };
 
         template<typename Meta>
-        concept Autonomy = not has::Host<Meta>;
+        concept Autonomy = not musthave::Host<Meta>;
     }
 
     // abstractions: can not be final concepts to be usef for domain archetypes:
     // (intended to be used in library code)
     template<typename Meta>
-    concept Any = has::Id<Meta> and has::Quantum<Meta>;
+    concept Any = musthave::Id<Meta> and musthave::Quantum<Meta>;
 
     template<typename Meta>
-    concept Standalone = Any<Meta> and has::Autonomy<Meta>;
+    concept Standalone = Any<Meta> and musthave::Autonomy<Meta>;
 
     template<typename Meta>
-    concept Parasitic = Any<Meta> and has::Host<Meta>;
+    concept Parasitic = Any<Meta> and musthave::Host<Meta>;
 
     // final archetype kind to be used in domains aspect meta-classes
     template<typename Meta>
     concept Entity = Standalone<Meta>; // TODO: add Entity-specific requirements later...
 
     template<typename Meta>
-    concept Controller = Standalone<Meta> and has::Passport<Meta> and has::Worker<Meta>;
+    concept Controller = Standalone<Meta> and musthave::Passport<Meta> and musthave::Worker<Meta>;
 
     template<typename Meta>
     concept Component = Parasitic<Meta>;

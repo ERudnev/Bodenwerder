@@ -9,9 +9,9 @@
 
 namespace fqsm::manipulation::feedback {
 
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     void critical(processing::Review context, std::string reason) {
         context.notes.critical.push_back(
-            std::format(R"(Aspect({}): {})", aspect::Rtid::name<Meta>(), reason));
+            std::format(R"(Aspect({}): {})", Rtid::name<Meta>(), reason));
     }
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fQSM/references.h>
+#include <fQSM/meta/categories.h>
 
 // model forwards
 namespace fqsm::model::structure {
@@ -12,6 +13,11 @@ namespace fqsm::model::complex {
     class Reality;
     class Draft;
     struct Patch;
+}
+
+namespace fqsm::model::linear {
+    template<meta::category::Any T>
+    class Reality;
 }
 
 namespace fqsm::analysis {

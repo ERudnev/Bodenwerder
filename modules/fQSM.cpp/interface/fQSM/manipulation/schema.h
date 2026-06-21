@@ -5,7 +5,7 @@
 #include <base/shared_reference.h>
 
 #include <fQSM/features/codex.h>
-#include <fQSM/meta/concepts.h>
+#include <fQSM/meta/categories.h>
 #include <fQSM/model/structure/schema.h>
 #include <fQSM/model/structure/details/builders.h>
 
@@ -13,7 +13,7 @@ namespace fqsm::manipulation::schema {
 
     Schema merge(std::initializer_list<Schema> parts);
 
-    template<meta::aspect::Any Meta>
+    template<meta::category::Any Meta>
     Schema aspect();
 }
 // impl:
@@ -47,11 +47,11 @@ namespace fqsm::manipulation::schema {
         return fqsm::freeze(out);
     }
 
-    template<meta::aspect::Any Meta>
+    template<meta::category::Any Meta>
     fqsm::Schema aspect() {
         auto out = base::make_shared<model::structure::AspectGraph>();
         auto node = model::structure::AspectGraph::Node{
-            std::string{fqsm::meta::aspect::Rtid::name<Meta>()},
+            std::string{fqsm::meta::Rtid::name<Meta>()},
             model::structure::AspectGraph::ReactionIds{},
             fqsm::schema::details::binding<Meta>(),
         };

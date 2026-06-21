@@ -13,10 +13,10 @@ namespace fqsm::model::complex {
 
         Patch(Schema schema) : schema(schema), lines(composition(schema)) {}
 
-        template<aspect::Any Meta>
+        template<category::Any Meta>
         linear::Patch<Meta>& aspect();
 
-        template<aspect::Any Meta>
+        template<category::Any Meta>
         const linear::Patch<Meta>& aspect() const;
 
     private:
@@ -26,12 +26,12 @@ namespace fqsm::model::complex {
 
 namespace fqsm::model::complex {
 
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     linear::Patch<Meta>& Patch::aspect() {
         return *base::shared_ref_cast<linear::Patch<Meta>>(lines.container.at(TypeId<Meta>));
     };
 
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     const linear::Patch<Meta>& Patch::aspect() const {
         return *base::shared_ref_cast<linear::Patch<Meta>>(lines.container.at(TypeId<Meta>));
     }

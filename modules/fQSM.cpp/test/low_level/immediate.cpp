@@ -13,11 +13,9 @@ namespace {
         static const Codex codex;
         struct Actions : BaseActions {
             struct Private;
-            static void fastJob(Immediate<A> context, int bonus) {
-                for (auto& item : context.items)
-                    item->value += bonus;
-                //if (context.items.size() > 3)
-                //    context.items[3] = context.items[2];
+            static void fastJob(Direct<A> context, int bonus) {
+                for (auto [_, item] : context.items)
+                    item.value += bonus;
             }
         };
     };
@@ -50,8 +48,7 @@ void immediate()
         ask::schema::aspect<A>(),
     });
 
-    fqsm::state::world::Data world(schema);
-    context::Realm main(world);
+    context::Realm main(schema);
 
     std::vector<A::Id> ids;
     {
@@ -59,6 +56,11 @@ void immediate()
         for (int xx = 0; xx < 10; ++xx)
             ids.push_back(ask::item::create<A>(local, {xx}));
     }
+
+    // will compare different update path with 2 identical realms;
+    context::Realm duplicate(main);
+
+    // 1st path: mutate through Realm->
 
     A::Actions::fastJob(main, -5);
 

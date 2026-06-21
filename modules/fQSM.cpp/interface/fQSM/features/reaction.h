@@ -19,7 +19,7 @@ namespace fqsm::features {
         using Reviewing = processing::Review;
         using Draft = model::complex::Draft;
         using Patch = model::complex::Patch;
-        using Sources = meta::aspect::Rtid::Set;
+        using Sources = meta::Rtid::Set;
 
         virtual ~Reaction() = default;
 
@@ -28,12 +28,12 @@ namespace fqsm::features {
 
     protected:
         // derived class helper:
-        template<aspect::Any... Metas>
+        template<category::Any... Metas>
         static Sources typed_set() {
             return Sources{ TypeId<Metas>... };
         }
 
-        template<aspect::Any Meta>
+        template<category::Any Meta>
         static auto changes(const Reviewing& context) -> model::linear::Delta<Meta> {
             return context.template changes<Meta>();
         }

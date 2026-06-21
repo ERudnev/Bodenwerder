@@ -10,7 +10,7 @@
 namespace fqsm::features::reactions::morms::constraints {
 
     // Local data constraint: ItemChange handler from Aspect::Actions (or its Private).
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     struct local : Reaction {
         using Corrector = typename Meta::BaseActions::ItemUpdate;
 
@@ -27,14 +27,14 @@ namespace fqsm::features::reactions::morms::constraints {
 // Impl:
 namespace fqsm::features::reactions::morms::constraints {
 
-    template<aspect::Any Meta>
+    template<category::Any Meta>
     void local<Meta>::apply(Reviewing context) {
         for (const auto change : changes<Meta>(context).addedOrUpdated()) {
             if (!change.after) continue;
             if (!corrector) {
                 ask::feedback::critical<Meta>(
                     context,
-                    std::format(R"(constraints::local no corrector on "{}" {})", aspect::Rtid::name<Meta>(), change.id));
+                    std::format(R"(constraints::local no corrector on "{}" {})", Rtid::name<Meta>(), change.id));
                 continue;
             }
             const auto fix = (*corrector)(*change.after);

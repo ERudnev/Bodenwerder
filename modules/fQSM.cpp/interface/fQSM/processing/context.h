@@ -4,9 +4,6 @@
 #include <memory>
 #include <base/logging.h>
 #include <fQSM/model/_forwards.h>
-#include <fQSM/model/complex/state.h>
-#include <fQSM/model/complex/draft.h>
-#include <fQSM/model/complex/patch.h>
 #include <fQSM/model/complex/reality.h>
 #include <fQSM/processing/_forwards.h>
 
@@ -46,11 +43,21 @@ namespace fqsm::processing {
         const Context::Ptr context;
     };
 
-    struct Breach {
-        Breach(model::complex::Reality& area) : reality(area) {}
-        model::complex::Reality& reality;
+    template<category::Any Meta>
+    struct Direct {
+        using Container = base::cannonball::Table<Id<Meta>, Quantum<Meta>>;
+        Direct(model::complex::Reality& reality)
+            : items(static_cast<Container&>(reality.aspect<Meta>().items()))
+            , full(reality)
+        {}
 
-        operator Reading() const { return reality; }
+        Container& items;
+
+        operator Reading() const { return full; }
+
+    private:
+        const model::complex::State& full;
+
     };
 
 }

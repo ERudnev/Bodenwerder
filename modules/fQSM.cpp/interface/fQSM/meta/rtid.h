@@ -6,19 +6,19 @@
 #include <typeindex>
 
 #include <base/runtimeTypeId.h>
-#include <fQSM/meta/concepts.h>
+#include <fQSM/meta/categories.h>
 
-namespace fqsm::meta::aspect {
+namespace fqsm::meta {
 
     struct Rtid {
         base::RuntimeTypeId value;
 
         using Set = std::set<Rtid>;
 
-        template<Any Meta>
+        template<category::Any Meta>
         static Rtid of() { return Rtid{typeid(Meta)}; }
 
-        template<Any Meta>
+        template<category::Any Meta>
         static std::string_view name() { return name(of<Meta>()); }
 
         static std::string_view name(Rtid id);
@@ -34,11 +34,11 @@ namespace fqsm::meta::aspect {
         explicit Rtid(base::RuntimeTypeId value) : value(value) {}
     };
 
-    //using TypeSet = std::set<aspect::Rtid>;
+    //using TypeSet = std::set<Rtid>;
 }
 
 // impl:
-namespace fqsm::meta::aspect {
+namespace fqsm::meta {
 
     namespace detail {
         constexpr std::string_view strip_decorations(std::string_view name) {
