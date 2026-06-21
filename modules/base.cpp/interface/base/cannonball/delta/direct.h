@@ -92,7 +92,7 @@ public:
             }
 
             while (patchCurrent != patchEnd) {
-                if (state->contains((*patchCurrent)->key)) {
+                if (state->contains((*patchCurrent)->id)) {
                     ++*patchCurrent;
                     continue;
                 }
@@ -103,18 +103,18 @@ public:
 
         auto make_dirty_state_value(StateIterator iterator) const -> ChangeType {
             const auto entry = *iterator;
-            if (const auto* patchEntry = patch->find(entry.key)) {
+            if (const auto* patchEntry = patch->find(entry.id)) {
                 const auto* after = patchEntry->has_value() ? std::addressof(patchEntry->value()) : nullptr;
-                return ChangeType{entry.key, std::optional<const Val*>{std::addressof(entry.value)}, after};
+                return ChangeType{entry.id, std::optional<const Val*>{std::addressof(entry.value)}, after};
             }
-            return ChangeType{entry.key, std::nullopt, std::addressof(entry.value)};
+            return ChangeType{entry.id, std::nullopt, std::addressof(entry.value)};
         }
 
         auto make_patch_only_value(PatchIterator iterator) const -> ChangeType {
             const auto entry = *iterator;
-            const auto* before = state->find(entry.key);
+            const auto* before = state->find(entry.id);
             const auto* after = entry.value.has_value() ? std::addressof(entry.value.value()) : nullptr;
-            return ChangeType{entry.key, std::optional<const Val*>{before}, after};
+            return ChangeType{entry.id, std::optional<const Val*>{before}, after};
         }
 
         const View* state;

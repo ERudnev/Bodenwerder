@@ -19,8 +19,8 @@ namespace fqsm::processing::actions::details {
 
         auto& target = world.aspect<Meta>().items();
         for (const auto entry : slice.items) {
-            if (entry.value.has_value()) target.insert(entry.key, entry.value.value());
-            else target.erase(entry.key);
+            if (entry.value.has_value()) target.insert(entry.id, entry.value.value());
+            else target.erase(entry.id);
         }
     }
 }

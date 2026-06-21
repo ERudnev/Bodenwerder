@@ -29,8 +29,7 @@ void transaction_hierarchy()
         ask::schema::aspect<SomeComponent>(),
     });
 
-    fqsm::state::world::Data world(schema);
-    context::Realm main(world);
+    context::Realm main(schema);
 
     { // 2 trivial syncronous changes.. each with potentially heavy integration/normalization
         const auto id = ask::item::create<SomeEntity>(main, {7});

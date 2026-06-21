@@ -21,11 +21,11 @@ public:
     using RelatedDirect = table::Direct<Key, Val>;
 
     // Unlike Table::insert, replacing deletion keeps deletion.
-    void modify(const Key& key, const Val& value);
-    void modify(Key&& key, Val&& value);
+    void modify(const Key& id, const Val& value);
+    void modify(Key&& id, Val&& value);
 
-    // Forget local change for key completely.
-    bool discard_changes(const Key& key);
+    // Forget local change for id completely.
+    bool discard_changes(const Key& id);
 
     // Mutates target with current patchlets. No normalization is implied.
     static void integrate(RelatedOperational& target, const Patch& patch);
@@ -44,27 +44,27 @@ public:
 namespace base::cannonball {
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>::modify(const Key& key, const Val& value)
+void Patch<Key, Val, Hasher, KeyEqual>::modify(const Key& id, const Val& value)
 {
-    const auto* current = this->find(key);
+    const auto* current = this->find(id);
     if (current && !current->has_value()) return;
 
-    Base::insert(key, Patchlet<Val>{value});
+    Base::insert(id, Patchlet<Val>{value});
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>::modify(Key&& key, Val&& value)
+void Patch<Key, Val, Hasher, KeyEqual>::modify(Key&& id, Val&& value)
 {
-    const auto* current = this->find(key);
+    const auto* current = this->find(id);
     if (current && !current->has_value()) return;
 
-    Base::insert(std::move(key), Patchlet<Val>{std::move(value)});
+    Base::insert(std::move(id), Patchlet<Val>{std::move(value)});
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-bool Patch<Key, Val, Hasher, KeyEqual>::discard_changes(const Key& key)
+bool Patch<Key, Val, Hasher, KeyEqual>::discard_changes(const Key& id)
 {
-    return Base::erase(key);
+    return Base::erase(id);
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
@@ -72,11 +72,11 @@ void Patch<Key, Val, Hasher, KeyEqual>::integrate(RelatedOperational& target, co
 {
     for (const auto entry : patch) {
         if (!entry.value.has_value()) {
-            target.erase(entry.key);
+            target.erase(entry.id);
             continue;
         }
 
-        target.insert(entry.key, entry.value.value());
+        target.insert(entry.id, entry.value.value());
     }
 }
 
@@ -85,16 +85,16 @@ void Patch<Key, Val, Hasher, KeyEqual>::integrate(RelatedDirect& target, const P
 {
     for (const auto entry : patch) {
         if (!entry.value.has_value()) {
-            target.erase(entry.key);
+            target.erase(entry.id);
             continue;
         }
 
-        if (auto* current = target.find(entry.key)) {
+        if (auto* current = target.find(entry.id)) {
             *current = entry.value.value();
             continue;
         }
 
-        target.insert(entry.key, entry.value.value());
+        target.insert(entry.id, entry.value.value());
     }
 }
 
@@ -103,11 +103,11 @@ void Patch<Key, Val, Hasher, KeyEqual>::merge(Patch& receiver, const Patch& othe
 {
     for (const auto entry : other) {
         if (!entry.value.has_value()) {
-            receiver.Base::insert(entry.key, std::nullopt);
+            receiver.Base::insert(entry.id, std::nullopt);
             continue;
         }
 
-        receiver.modify(entry.key, entry.value.value());
+        receiver.modify(entry.id, entry.value.value());
     }
 }
 

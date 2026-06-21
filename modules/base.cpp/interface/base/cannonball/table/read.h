@@ -16,7 +16,7 @@ public:
     using SizeType = std::size_t;
 
     struct EntryView {
-        const Key& key;
+        const Key& id;
         const Val& value;
     };
 
@@ -94,7 +94,7 @@ public:
 
             EntryView dereference() const override {
                 const auto entry = *iterator;
-                return EntryView{entry.key, entry.value};
+                return EntryView{entry.id, entry.value};
             }
 
             void increment() override {
@@ -123,15 +123,15 @@ public:
 
     virtual ~Read() = default;
 
-    virtual bool contains(const Key& key) const = 0;
-    virtual const Val* find(const Key& key) const = 0;
-    virtual const Val& at(const Key& key) const = 0;
+    virtual bool contains(const Key& id) const = 0;
+    virtual const Val* find(const Key& id) const = 0;
+    virtual const Val& at(const Key& id) const = 0;
     virtual std::size_t size() const = 0;
 
     bool empty() const { return size() == 0; }
 
-    std::optional<Val> get(const Key& key) const {
-        if (const auto* found = find(key)) return *found;
+    std::optional<Val> get(const Key& id) const {
+        if (const auto* found = find(id)) return *found;
         return std::nullopt;
     }
 

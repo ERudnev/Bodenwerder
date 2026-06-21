@@ -15,8 +15,7 @@ void manipulation()
         ask::schema::aspect<SomeComponent>(),
     });
 
-    fqsm::state::world::Data world(schema);
-    context::Realm main(world);
+    context::Realm main(schema);
 
     { // create + get (standalone)
         const auto id = ask::item::create<SomeEntity>(main, {7});

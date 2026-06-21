@@ -38,7 +38,7 @@ void preview_future_world()
 
     std::set<int> visibleKeys;
     for (const auto entry : preview)
-        visibleKeys.insert(entry.key);
+        visibleKeys.insert(entry.id);
 
     EXPECT_TRUE(visibleKeys == std::set<int>({1, 2, 4}));
 }

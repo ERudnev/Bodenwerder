@@ -9,7 +9,7 @@ namespace base::cannonball::delta {
 
 template<typename Key, typename Val>
 struct Change {
-    const Key& key;
+    const Key& id;
     std::optional<const Val*> before; // TODO: implement "Taint mode" as std::optional<const Val*>
     const Val* after;
 

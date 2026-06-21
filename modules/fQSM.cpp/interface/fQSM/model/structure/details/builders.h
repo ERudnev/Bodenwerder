@@ -30,7 +30,7 @@ namespace fqsm::schema::details {
         auto out = base::make_shared<model::linear::Reality<Meta>>();
         out->global() = source.aspect<Meta>().global();
         for (const auto entry : source.aspect<Meta>().items()) {
-            out->items().insert(entry.key, entry.value);
+            out->items().insert(entry.id, entry.value);
         }
         return out;
     }

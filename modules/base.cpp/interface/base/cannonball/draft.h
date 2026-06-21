@@ -54,13 +54,13 @@ public:
         EntryView operator*() const {
             if (phase == Phase::state) {
                 const auto entry = *stateIt;
-                if (const auto* patched = owner->patch_view().find(entry.key))
-                    return EntryView{entry.key, patched->value()};
-                return EntryView{entry.key, entry.value};
+                if (const auto* patched = owner->patch_view().find(entry.id))
+                    return EntryView{entry.id, patched->value()};
+                return EntryView{entry.id, entry.value};
             }
 
             const auto entry = *patchIt;
-            return EntryView{entry.key, entry.value.value()};
+            return EntryView{entry.id, entry.value.value()};
         }
 
         ConstIterator& operator++() {
@@ -98,7 +98,7 @@ public:
             while (phase == Phase::state) {
                 while (stateIt != stateEnd) {
                     const auto entry = *stateIt;
-                    const auto* patched = owner->patch_view().find(entry.key);
+                    const auto* patched = owner->patch_view().find(entry.id);
 
                     if (patched && !patched->has_value()) {
                         ++stateIt;
@@ -115,7 +115,7 @@ public:
                 while (patchIt != patchEnd) {
                     const auto entry = *patchIt;
 
-                    if (!entry.value.has_value() || owner->state.contains(entry.key)) {
+                    if (!entry.value.has_value() || owner->state.contains(entry.id)) {
                         ++patchIt;
                         continue;
                     }
@@ -137,16 +137,16 @@ public:
 
     Draft(const View& state, PatchType& patch);
 
-    bool contains(const Key& key) const override;
-    const Val* find(const Key& key) const override;
-    const Val& at(const Key& key) const override;
+    bool contains(const Key& id) const override;
+    const Val* find(const Key& id) const override;
+    const Val& at(const Key& id) const override;
     SizeType size() const override;
 
     void clear() override;
     void reserve(SizeType capacity) override;
-    void insert(const Key& key, const Val& value) override;
-    void insert(Key&& key, Val&& value) override;
-    bool erase(const Key& key) override;
+    void insert(const Key& id, const Val& value) override;
+    void insert(Key&& id, Val&& value) override;
+    bool erase(const Key& id) override;
 
 protected:
     ReadIterator read_begin() const override;
@@ -171,26 +171,26 @@ Draft<Key, Val, Hasher, KeyEqual>::Draft(const View& state, PatchType& patch)
 {}
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-bool Draft<Key, Val, Hasher, KeyEqual>::contains(const Key& key) const
+bool Draft<Key, Val, Hasher, KeyEqual>::contains(const Key& id) const
 {
-    return find(key) != nullptr;
+    return find(id) != nullptr;
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-const Val* Draft<Key, Val, Hasher, KeyEqual>::find(const Key& key) const
+const Val* Draft<Key, Val, Hasher, KeyEqual>::find(const Key& id) const
 {
-    if (const auto* patched = patch_view().find(key)) {
+    if (const auto* patched = patch_view().find(id)) {
         if (!patched->has_value()) return nullptr;
         return std::addressof(patched->value());
     }
 
-    return state.find(key);
+    return state.find(id);
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-const Val& Draft<Key, Val, Hasher, KeyEqual>::at(const Key& key) const
+const Val& Draft<Key, Val, Hasher, KeyEqual>::at(const Key& id) const
 {
-    if (const auto* found = find(key)) return *found;
+    if (const auto* found = find(id)) return *found;
     throw std::out_of_range("Draft::at");
 }
 
@@ -200,7 +200,7 @@ auto Draft<Key, Val, Hasher, KeyEqual>::size() const -> SizeType
     SizeType result = state.size();
 
     for (const auto entry : patch_view()) {
-        const bool existed = state.contains(entry.key);
+        const bool existed = state.contains(entry.id);
         if (!entry.value.has_value()) {
             if (existed) --result;
             continue;
@@ -219,7 +219,7 @@ void Draft<Key, Val, Hasher, KeyEqual>::clear()
     patch.reserve(state.size());
 
     for (const auto entry : state)
-        patch.insert(entry.key, std::nullopt);
+        patch.insert(entry.id, std::nullopt);
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
@@ -229,35 +229,35 @@ void Draft<Key, Val, Hasher, KeyEqual>::reserve(SizeType capacity)
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Draft<Key, Val, Hasher, KeyEqual>::insert(const Key& key, const Val& value)
+void Draft<Key, Val, Hasher, KeyEqual>::insert(const Key& id, const Val& value)
 {
-    patch.insert(key, Patchlet<Val>{value});
+    patch.insert(id, Patchlet<Val>{value});
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Draft<Key, Val, Hasher, KeyEqual>::insert(Key&& key, Val&& value)
+void Draft<Key, Val, Hasher, KeyEqual>::insert(Key&& id, Val&& value)
 {
-    patch.insert(std::move(key), Patchlet<Val>{std::move(value)});
+    patch.insert(std::move(id), Patchlet<Val>{std::move(value)});
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-bool Draft<Key, Val, Hasher, KeyEqual>::erase(const Key& key)
+bool Draft<Key, Val, Hasher, KeyEqual>::erase(const Key& id)
 {
-    const bool existed_in_state = state.contains(key);
-    const auto* patched = patch.find(key);
+    const bool existed_in_state = state.contains(id);
+    const auto* patched = patch.find(id);
 
     if (patched) {
         if (!patched->has_value()) return false;
 
-        if (!existed_in_state) return patch.discard_changes(key);
+        if (!existed_in_state) return patch.discard_changes(id);
 
-        patch.insert(key, std::nullopt);
+        patch.insert(id, std::nullopt);
         return true;
     }
 
     if (!existed_in_state) return false;
 
-    patch.insert(key, std::nullopt);
+    patch.insert(id, std::nullopt);
     return true;
 }
 

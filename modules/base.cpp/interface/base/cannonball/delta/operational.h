@@ -81,9 +81,9 @@ public:
 
         auto make_patch_value(PatchIterator iterator) const -> ChangeType {
             const auto entry = *iterator;
-            const auto* before = state->find(entry.key);
+            const auto* before = state->find(entry.id);
             const auto* after = entry.value.has_value() ? std::addressof(entry.value.value()) : nullptr;
-            return ChangeType{entry.key, std::optional<const Val*>{before}, after};
+            return ChangeType{entry.id, std::optional<const Val*>{before}, after};
         }
 
         const View* state;

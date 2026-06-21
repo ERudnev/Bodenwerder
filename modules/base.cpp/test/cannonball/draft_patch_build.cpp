@@ -35,7 +35,7 @@ void draft_patch_build()
 
     std::set<int> visibleKeys;
     for (const auto entry : draft)
-        visibleKeys.insert(entry.key);
+        visibleKeys.insert(entry.id);
 
     EXPECT_TRUE(visibleKeys == std::set<int>({1, 2, 4}));
 

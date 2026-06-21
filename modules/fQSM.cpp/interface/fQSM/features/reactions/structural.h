@@ -44,7 +44,7 @@ namespace fqsm::features::reactions::morms::structural {
     void component<Follower, Origin>::apply(Reviewing context) {
         // all modes:
         for (const auto change : changes<Origin>(context).removed()) {
-            if (!manipulation::item::exists<Follower>(context.proposal, change.key)) continue;
+            if (!manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
             manipulation::item::update<Follower>(context, change.id).remove();
         }
 

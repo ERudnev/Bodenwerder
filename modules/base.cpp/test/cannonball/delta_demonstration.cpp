@@ -32,9 +32,9 @@ void delta_demonstration()
         EXPECT_TRUE(change.before.has_value());
         EXPECT_TRUE(change.before.value() == nullptr);
         EXPECT_TRUE(change.after != nullptr);
-        EXPECT_EQ(change.key, 4);
+        EXPECT_EQ(change.id, 4);
         EXPECT_EQ(*change.after, 40);
-        added.insert(change.key);
+        added.insert(change.id);
     }
 
     std::set<int> addedOrUpdated;
@@ -42,20 +42,20 @@ void delta_demonstration()
         EXPECT_FALSE(change.remove());
         EXPECT_TRUE(change.after != nullptr);
 
-        if (change.key == 2) {
+        if (change.id == 2) {
             EXPECT_TRUE(change.before.has_value());
             EXPECT_TRUE(change.before.value() != nullptr);
             EXPECT_EQ(*change.before.value(), 20);
             EXPECT_EQ(*change.after, 200);
         }
 
-        if (change.key == 4) {
+        if (change.id == 4) {
             EXPECT_TRUE(change.before.has_value());
             EXPECT_TRUE(change.before.value() == nullptr);
             EXPECT_EQ(*change.after, 40);
         }
 
-        addedOrUpdated.insert(change.key);
+        addedOrUpdated.insert(change.id);
     }
 
     std::set<int> removed;
@@ -64,9 +64,9 @@ void delta_demonstration()
         EXPECT_TRUE(change.before.has_value());
         EXPECT_TRUE(change.before.value() != nullptr);
         EXPECT_TRUE(change.after == nullptr);
-        EXPECT_EQ(change.key, 3);
+        EXPECT_EQ(change.id, 3);
         EXPECT_EQ(*change.before.value(), 30);
-        removed.insert(change.key);
+        removed.insert(change.id);
     }
 
     std::set<int> updated;
@@ -75,10 +75,10 @@ void delta_demonstration()
         EXPECT_TRUE(change.before.has_value());
         EXPECT_TRUE(change.before.value() != nullptr);
         EXPECT_TRUE(change.after != nullptr);
-        EXPECT_EQ(change.key, 2);
+        EXPECT_EQ(change.id, 2);
         EXPECT_EQ(*change.before.value(), 20);
         EXPECT_EQ(*change.after, 200);
-        updated.insert(change.key);
+        updated.insert(change.id);
     }
 
     EXPECT_TRUE(added == std::set<int>({4}));

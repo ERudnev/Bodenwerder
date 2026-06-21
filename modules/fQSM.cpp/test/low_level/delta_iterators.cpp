@@ -69,7 +69,7 @@ void delta_iterators()
     std::unordered_map<Layer, std::set<Id>> collected;
 
     for (const auto change : preview.delta<A>()) {
-        collected[Layer::all].insert(change.key);
+        collected[Layer::all].insert(change.id);
     }
 
     for (const auto change : preview.delta<A>().added()) {
@@ -79,13 +79,13 @@ void delta_iterators()
         EXPECT_TRUE(change.before.has_value());
         EXPECT_TRUE(change.before.value() == nullptr);
         EXPECT_TRUE(change.after != nullptr);
-        collected[Layer::added].insert(change.key);
+        collected[Layer::added].insert(change.id);
     }
 
     for (const auto change : preview.delta<A>().addedOrUpdated()) {
         EXPECT_FALSE(change.remove());
         EXPECT_TRUE(change.after != nullptr);
-        collected[Layer::addedOrUpdated].insert(change.key);
+        collected[Layer::addedOrUpdated].insert(change.id);
     }
 
     for (const auto change : preview.delta<A>().removed()) {
@@ -95,7 +95,7 @@ void delta_iterators()
         EXPECT_TRUE(change.before.has_value());
         EXPECT_TRUE(change.before.value() != nullptr);
         EXPECT_TRUE(change.after == nullptr);
-        collected[Layer::removed].insert(change.key);
+        collected[Layer::removed].insert(change.id);
     }
 
     for (const auto change : preview.delta<A>().updated()) {
@@ -105,7 +105,7 @@ void delta_iterators()
         EXPECT_TRUE(change.before.has_value());
         EXPECT_TRUE(change.before.value() != nullptr);
         EXPECT_TRUE(change.after != nullptr);
-        collected[Layer::updated].insert(change.key);
+        collected[Layer::updated].insert(change.id);
     }
 
     EXPECT_EQ(collected[Layer::all].size(), std::size_t{60});

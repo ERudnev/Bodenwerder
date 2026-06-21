@@ -21,7 +21,7 @@ public:
     using ReadIterator = typename Interface::ReadIterator;
 
     struct EntryRef {
-        const Key& key;
+        const Key& id;
         Val& value;
     };
 
@@ -99,7 +99,7 @@ public:
 
             EntryRef dereference() const override {
                 auto entry = *iterator;
-                return EntryRef{entry.key, entry.value};
+                return EntryRef{entry.id, entry.value};
             }
 
             void increment() override {
@@ -133,8 +133,8 @@ public:
     using Interface::end;
     using Interface::find;
 
-    virtual Val* find(const Key& key) = 0;
-    virtual Val& at(const Key& key) = 0;
+    virtual Val* find(const Key& id) = 0;
+    virtual Val& at(const Key& id) = 0;
 
     WriteIterator begin() {
         return write_begin();

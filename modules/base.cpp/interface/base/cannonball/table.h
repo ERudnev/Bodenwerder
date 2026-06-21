@@ -22,7 +22,7 @@ public:
     using SizeType = typename Interface::SizeType;
 
     struct Entry {
-        Key key;
+        Key id;
         Val value;
     };
 
@@ -35,7 +35,7 @@ public:
         using reference = const value_type&;
 
         value_type operator*() const {
-            return value_type{entries[index].key, entries[index].value};
+            return value_type{entries[index].id, entries[index].value};
         }
 
         struct ArrowProxy {
@@ -44,7 +44,7 @@ public:
         };
 
         ArrowProxy operator->() const {
-            return ArrowProxy{value_type{entries[index].key, entries[index].value}};
+            return ArrowProxy{value_type{entries[index].id, entries[index].value}};
         }
 
         ConstIterator& operator++() {
@@ -87,7 +87,7 @@ public:
         using reference = value_type&;
 
         value_type operator*() const {
-            return value_type{entries[index].key, entries[index].value};
+            return value_type{entries[index].id, entries[index].value};
         }
 
         struct ArrowProxy {
@@ -96,7 +96,7 @@ public:
         };
 
         ArrowProxy operator->() const {
-            return ArrowProxy{value_type{entries[index].key, entries[index].value}};
+            return ArrowProxy{value_type{entries[index].id, entries[index].value}};
         }
 
         Iterator& operator++() {
@@ -133,33 +133,33 @@ public:
     Table() = default;
 
     explicit Table(const Hasher& hash, const KeyEqual& equal = KeyEqual())
-        : keyToIndex(0, hash, equal)
+        : idToIndex(0, hash, equal)
     {}
 
-    bool contains(const Key& key) const override {
-        return keyToIndex.find(key) != keyToIndex.end();
+    bool contains(const Key& id) const override {
+        return idToIndex.find(id) != idToIndex.end();
     }
 
-    const Val* find(const Key& key) const override {
-        const auto lookup = keyToIndex.find(key);
-        if (lookup == keyToIndex.end()) return nullptr;
+    const Val* find(const Key& id) const override {
+        const auto lookup = idToIndex.find(id);
+        if (lookup == idToIndex.end()) return nullptr;
         return std::addressof(entries[lookup->second].value);
     }
 
-    Val* find(const Key& key) override {
-        const auto lookup = keyToIndex.find(key);
-        if (lookup == keyToIndex.end()) return nullptr;
+    Val* find(const Key& id) override {
+        const auto lookup = idToIndex.find(id);
+        if (lookup == idToIndex.end()) return nullptr;
         return std::addressof(entries[lookup->second].value);
     }
 
-    const Val& at(const Key& key) const override {
-        const auto* found = find(key);
+    const Val& at(const Key& id) const override {
+        const auto* found = find(id);
         if (!found) throw std::out_of_range("Table::at");
         return *found;
     }
 
-    Val& at(const Key& key) override {
-        auto* found = find(key);
+    Val& at(const Key& id) override {
+        auto* found = find(id);
         if (!found) throw std::out_of_range("Table::at");
         return *found;
     }
@@ -169,33 +169,33 @@ public:
     }
 
     void clear() override {
-        keyToIndex.clear();
+        idToIndex.clear();
         entries.clear();
     }
 
     void reserve(SizeType capacity) override {
-        keyToIndex.reserve(capacity);
+        idToIndex.reserve(capacity);
         entries.reserve(capacity);
     }
 
-    void insert(const Key& key, const Val& value) override {
-        insert_impl(key, value);
+    void insert(const Key& id, const Val& value) override {
+        insert_impl(id, value);
     }
 
-    void insert(Key&& key, Val&& value) override {
-        insert_impl(std::move(key), std::move(value));
+    void insert(Key&& id, Val&& value) override {
+        insert_impl(std::move(id), std::move(value));
     }
 
-    bool erase(const Key& key) override {
-        const auto lookup = keyToIndex.find(key);
-        if (lookup == keyToIndex.end()) return false;
+    bool erase(const Key& id) override {
+        const auto lookup = idToIndex.find(id);
+        if (lookup == idToIndex.end()) return false;
 
         const SizeType removedSlot = lookup->second;
-        keyToIndex.erase(lookup);
+        idToIndex.erase(lookup);
 
         if (removedSlot != entries.size() - 1) {
             entries[removedSlot] = std::move(entries.back());
-            keyToIndex[entries[removedSlot].key] = removedSlot;
+            idToIndex[entries[removedSlot].id] = removedSlot;
         }
 
         entries.pop_back();
@@ -221,19 +221,19 @@ protected:
 
 private:
     template<typename KeyArg, typename ValArg>
-    void insert_impl(KeyArg&& key, ValArg&& value) {
-        const auto lookup = keyToIndex.find(key);
-        if (lookup != keyToIndex.end()) {
+    void insert_impl(KeyArg&& id, ValArg&& value) {
+        const auto lookup = idToIndex.find(id);
+        if (lookup != idToIndex.end()) {
             entries[lookup->second].value = std::forward<ValArg>(value);
             return;
         }
 
         const SizeType slot = entries.size();
-        entries.emplace_back(Entry{std::forward<KeyArg>(key), std::forward<ValArg>(value)});
-        keyToIndex.emplace(entries.back().key, slot);
+        entries.emplace_back(Entry{std::forward<KeyArg>(id), std::forward<ValArg>(value)});
+        idToIndex.emplace(entries.back().id, slot);
     }
 
-    std::unordered_map<Key, SizeType, Hasher, KeyEqual> keyToIndex;
+    std::unordered_map<Key, SizeType, Hasher, KeyEqual> idToIndex;
     std::vector<Entry> entries;
 };
 

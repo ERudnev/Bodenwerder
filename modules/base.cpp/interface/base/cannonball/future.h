@@ -51,13 +51,13 @@ public:
         EntryView operator*() const {
             if (phase == Phase::state) {
                 const auto entry = *stateIt;
-                if (const auto* patched = owner->patch.find(entry.key))
-                    return EntryView{entry.key, patched->value()};
-                return EntryView{entry.key, entry.value};
+                if (const auto* patched = owner->patch.find(entry.id))
+                    return EntryView{entry.id, patched->value()};
+                return EntryView{entry.id, entry.value};
             }
 
             const auto entry = *patchIt;
-            return EntryView{entry.key, entry.value.value()};
+            return EntryView{entry.id, entry.value.value()};
         }
 
         ConstIterator& operator++() {
@@ -95,7 +95,7 @@ public:
             while (phase == Phase::state) {
                 while (stateIt != stateEnd) {
                     const auto entry = *stateIt;
-                    const auto* patched = owner->patch.find(entry.key);
+                    const auto* patched = owner->patch.find(entry.id);
 
                     if (patched && !patched->has_value()) {
                         ++stateIt;
@@ -112,7 +112,7 @@ public:
                 while (patchIt != patchEnd) {
                     const auto entry = *patchIt;
 
-                    if (!entry.value.has_value() || owner->state.contains(entry.key)) {
+                    if (!entry.value.has_value() || owner->state.contains(entry.id)) {
                         ++patchIt;
                         continue;
                     }
@@ -134,9 +134,9 @@ public:
 
     Future(const View& state, const PatchType& patch);
 
-    bool contains(const Key& key) const override;
-    const Val* find(const Key& key) const override;
-    const Val& at(const Key& key) const override;
+    bool contains(const Key& id) const override;
+    const Val* find(const Key& id) const override;
+    const Val& at(const Key& id) const override;
     SizeType size() const override;
 
 protected:
@@ -158,26 +158,26 @@ Future<Key, Val, Hasher, KeyEqual>::Future(const View& state, const PatchType& p
 {}
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-bool Future<Key, Val, Hasher, KeyEqual>::contains(const Key& key) const
+bool Future<Key, Val, Hasher, KeyEqual>::contains(const Key& id) const
 {
-    return find(key) != nullptr;
+    return find(id) != nullptr;
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-const Val* Future<Key, Val, Hasher, KeyEqual>::find(const Key& key) const
+const Val* Future<Key, Val, Hasher, KeyEqual>::find(const Key& id) const
 {
-    if (const auto* patched = patch.find(key)) {
+    if (const auto* patched = patch.find(id)) {
         if (!patched->has_value()) return nullptr;
         return std::addressof(patched->value());
     }
 
-    return state.find(key);
+    return state.find(id);
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-const Val& Future<Key, Val, Hasher, KeyEqual>::at(const Key& key) const
+const Val& Future<Key, Val, Hasher, KeyEqual>::at(const Key& id) const
 {
-    if (const auto* found = find(key)) return *found;
+    if (const auto* found = find(id)) return *found;
     throw std::out_of_range("Future::at");
 }
 
@@ -187,7 +187,7 @@ auto Future<Key, Val, Hasher, KeyEqual>::size() const -> SizeType
     SizeType result = state.size();
 
     for (const auto entry : patch) {
-        const bool existed = state.contains(entry.key);
+        const bool existed = state.contains(entry.id);
         if (!entry.value.has_value()) {
             if (existed) --result;
             continue;

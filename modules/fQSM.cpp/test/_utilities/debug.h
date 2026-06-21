@@ -30,7 +30,7 @@ namespace tests::debug {
         if (!has<Meta>(view)) return 0;
 
         std::size_t out = 0;
-        for (const auto entry : view.aspect<Meta>()) {
+        for (const auto entry : view.aspect<Meta>().items()) {
             ++out;
         }
         return out;

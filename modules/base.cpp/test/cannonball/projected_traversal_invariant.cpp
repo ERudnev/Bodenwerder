@@ -48,22 +48,22 @@ void projected_traversal_invariant()
 
     std::map<int, int> previewVisible;
     for (const auto entry : preview)
-        previewVisible.emplace(entry.key, entry.value);
+        previewVisible.emplace(entry.id, entry.value);
 
     std::map<int, int> draftVisible;
     for (const auto entry : draft)
-        draftVisible.emplace(entry.key, entry.value);
+        draftVisible.emplace(entry.id, entry.value);
 
     EXPECT_TRUE(previewVisible == expectedVisible);
     EXPECT_TRUE(draftVisible == expectedVisible);
     EXPECT_EQ(preview.size(), expectedVisible.size());
     EXPECT_EQ(draft.size(), expectedVisible.size());
 
-    for (const auto [key, value] : expectedVisible) {
-        EXPECT_TRUE(preview.contains(key));
-        EXPECT_TRUE(draft.contains(key));
-        EXPECT_EQ(preview.at(key), value);
-        EXPECT_EQ(draft.at(key), value);
+    for (const auto [id, value] : expectedVisible) {
+        EXPECT_TRUE(preview.contains(id));
+        EXPECT_TRUE(draft.contains(id));
+        EXPECT_EQ(preview.at(id), value);
+        EXPECT_EQ(draft.at(id), value);
     }
 
     EXPECT_FALSE(preview.contains(3));
@@ -78,7 +78,7 @@ void projected_traversal_invariant()
             else before = std::optional<int>{};
         }
         const std::optional<int> after = change.after ? std::optional<int>{*change.after} : std::nullopt;
-        allChanges.emplace(change.key, ChangeSnapshot{change.before.has_value(), before, after});
+        allChanges.emplace(change.id, ChangeSnapshot{change.before.has_value(), before, after});
     }
 
     const std::map<int, ChangeSnapshot> expectedChanges{
@@ -92,19 +92,19 @@ void projected_traversal_invariant()
 
     std::set<int> added;
     for (const auto change : delta.added())
-        added.insert(change.key);
+        added.insert(change.id);
 
     std::set<int> addedOrUpdated;
     for (const auto change : delta.addedOrUpdated())
-        addedOrUpdated.insert(change.key);
+        addedOrUpdated.insert(change.id);
 
     std::set<int> removed;
     for (const auto change : delta.removed())
-        removed.insert(change.key);
+        removed.insert(change.id);
 
     std::set<int> updated;
     for (const auto change : delta.updated())
-        updated.insert(change.key);
+        updated.insert(change.id);
 
     const std::set<int> expectedAdded{4};
     const std::set<int> expectedAddedOrUpdated{2, 4, 5};
