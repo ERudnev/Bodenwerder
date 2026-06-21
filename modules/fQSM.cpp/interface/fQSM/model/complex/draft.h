@@ -20,8 +20,8 @@ namespace fqsm::model::complex {
     private:
         void initStructure();
         // impl as State (entry builder)
-        cref<Erased> getLine(meta::Rtid) const override;
-        ref<Erased> getLine(meta::Rtid) override;
+        cref<Erased> getLine(meta::Rtid typeId) const override { return lines.container.at(typeId); }
+        ref<Erased> getLine(meta::Rtid typeId) override { return lines.container.at(typeId); }
         const State::Composition& composition() const override { return lines; }
         State::Composition& composition() override { return lines; }
 

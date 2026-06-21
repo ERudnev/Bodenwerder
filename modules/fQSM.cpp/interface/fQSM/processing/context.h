@@ -35,6 +35,13 @@ namespace fqsm::processing {
         operator Reading() const { return context->view; }
         const model::complex::State* operator->() const { return &context->view; }
         Context::PatchRef patch() { return context->patch; }
+
+        //optimization stuff
+        template<category::Any Meta>
+        void expect_broad_update() {
+            // TODO: enable this later when no necessary to include complex::Patch will be
+            //patch->aspect<Meta>().items.reserve(view.aspect<Meta>().items().size());
+        }
     private:
         // There is one fundamental problem around.
         // shared_ptr<Context> is quite ineffective for lightweinght Gate

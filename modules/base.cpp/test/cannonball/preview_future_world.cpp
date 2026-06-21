@@ -1,8 +1,8 @@
 #include "_common.h"
 
-#include <base/cannonball/denseTable.h>
+#include <base/cannonball/table.h>
 #include <base/cannonball/patch.h>
-#include <base/cannonball/preview.h>
+#include <base/cannonball/draft.h>
 
 #include <set>
 
@@ -10,9 +10,9 @@ namespace tests {
 
 void preview_future_world()
 {
-    using Table = base::cannonball::DenseTable<int, int>;
+    using Table = base::cannonball::Table<int, int>;
     using Patch = base::cannonball::Patch<int, int>;
-    using Preview = base::cannonball::Preview<int, int>;
+    using Draft = base::cannonball::Draft<int, int>;
 
     Table state;
     state.insert(1, 10);
@@ -24,7 +24,7 @@ void preview_future_world()
     patch.insert(3, std::nullopt);
     patch.modify(4, 40);
 
-    Preview preview(state, patch);
+    Draft preview(state, patch);
 
     EXPECT_TRUE(preview.contains(1));
     EXPECT_TRUE(preview.contains(2));

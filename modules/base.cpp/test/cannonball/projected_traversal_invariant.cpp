@@ -1,10 +1,9 @@
 #include "_common.h"
 
-#include <base/cannonball/denseTable.h>
+#include <base/cannonball/table.h>
 #include <base/cannonball/draft.h>
 #include <base/cannonball/patch.h>
-#include <base/cannonball/preview.h>
-#include <base/cannonball/delta.h>
+#include <base/cannonball/delta/operational.h>
 
 #include <map>
 #include <optional>
@@ -17,9 +16,8 @@ namespace tests {
 // traversal order may change, but completeness and reported meaning must not.
 void projected_traversal_invariant()
 {
-    using Table = base::cannonball::DenseTable<int, int>;
+    using Table = base::cannonball::Table<int, int>;
     using Patch = base::cannonball::Patch<int, int>;
-    using Preview = base::cannonball::Preview<int, int>;
     using Draft = base::cannonball::Draft<int, int>;
     using Delta = base::cannonball::delta::Operational<int, int>;
 
@@ -35,7 +33,7 @@ void projected_traversal_invariant()
     patch.modify(4, 40);
     patch.modify(5, 55);
 
-    Preview preview(state, patch);
+    Draft preview(state, patch);
     Draft draft(state, patch);
     Delta delta(state, patch);
 

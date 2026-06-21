@@ -8,7 +8,7 @@ void patch_operations()
 {
     using Patch = base::cannonball::Patch<int, int>;
     using Patchlet = base::cannonball::Patchlet<int>;
-    using Table = base::cannonball::DenseTable<int, int>;
+    using Table = base::cannonball::Table<int, int>;
 
     Patch patch;
     patch.modify(1, 10);

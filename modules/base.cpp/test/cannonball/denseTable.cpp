@@ -1,6 +1,6 @@
 #include "_common.h"
 
-#include <base/cannonball/denseTable.h>
+#include <base/cannonball/table.h>
 
 #include <set>
 
@@ -8,7 +8,7 @@ namespace tests {
 
 void denseTable()
 {
-    base::cannonball::DenseTable<int, int> table;
+    base::cannonball::Table<int, int> table;
 
     EXPECT_TRUE(table.empty());
 

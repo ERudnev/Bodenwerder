@@ -7,7 +7,6 @@
     // end
 
 #define FQSM_INTERNALS_TESTS(X) \
-    X(dense_table_overlay) \
     X(delta_iterators) \
     X(immediate) \
     X(transaction_hierarchy) \
@@ -75,7 +74,7 @@ int main_all_test() {
 
 int main() {
     const auto s = base::testing::run_tests(
-        //BASETEST_LIST(BASETEST_NAMED("all", &tests::flat_model_assembly)));
-        BASETEST_LIST(BASETEST_NAMED("internals/dense_table_overlay", &tests::dense_table_overlay)));
+        BASETEST_LIST(BASETEST_NAMED("all", &tests::flat_model_assembly)));
+        //BASETEST_LIST(BASETEST_NAMED("internals/dense_table_overlay", &tests::dense_table_overlay)));
     return s.ok() ? 0 : 1;
 }

@@ -47,7 +47,7 @@ This interface is for true owning tables, not for projected proxy worlds.
 
 ## Concrete Entities
 
-### `DenseTable`
+### `Table`
 
 Owning dense keyed table.
 
@@ -107,7 +107,7 @@ Purpose:
 
 Preferred public vocabulary:
 
-- `DenseTable`
+- `Table`
 - `Patch`
 - `Preview`
 - `Draft`

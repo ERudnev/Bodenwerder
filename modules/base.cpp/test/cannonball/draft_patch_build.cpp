@@ -1,6 +1,6 @@
 #include "_common.h"
 
-#include <base/cannonball/denseTable.h>
+#include <base/cannonball/table.h>
 #include <base/cannonball/draft.h>
 
 #include <set>
@@ -9,7 +9,7 @@ namespace tests {
 
 void draft_patch_build()
 {
-    using Table = base::cannonball::DenseTable<int, int>;
+    using Table = base::cannonball::Table<int, int>;
     using Patch = base::cannonball::Patch<int, int>;
     using Draft = base::cannonball::Draft<int, int>;
 

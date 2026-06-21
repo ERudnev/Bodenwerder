@@ -1,7 +1,7 @@
 #include "_common.h"
 
-#include <base/cannonball/delta.h>
-#include <base/cannonball/denseTable.h>
+#include <base/cannonball/delta/operational.h>
+#include <base/cannonball/table.h>
 #include <base/cannonball/patch.h>
 
 #include <set>
@@ -10,7 +10,7 @@ namespace tests {
 
 void delta_demonstration()
 {
-    using Table = base::cannonball::DenseTable<int, int>;
+    using Table = base::cannonball::Table<int, int>;
     using Patch = base::cannonball::Patch<int, int>;
     using Delta = base::cannonball::delta::Operational<int, int>;
 

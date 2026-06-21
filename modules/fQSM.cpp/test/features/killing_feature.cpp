@@ -37,9 +37,10 @@ namespace {
                     return Quantum{q.clock+1};
                 }
                 static void update(Writing context, Id) {
-                    context.reserve_broad_update<Life>();
-                    for (const auto entry : context.state.items<Life>()) {
-                        context.patch().template items<Life>().insert(entry.first, update(entry.second));
+                    context.expect_broad_update<Life>();
+                    for (const auto entry : context->aspect<Life>().items()) {
+                        _INCOMPLETE_; // NB to mage Gate == Draft!
+                        context.patch()->aspect<Life>().items.insert(entry.id, update(entry.value));
                     }
                 }
             };
@@ -56,9 +57,9 @@ namespace {
                     ask::item::create<Death>(context, id, {body->powerOfMass + 1} ); // mass 1kg lives 1 sec
                 }
                 static void update(Writing context, Id) {
-                    for (const auto entry : static_cast<Reading>(context).items<Death>()) {
-                        if (with<Life>::get(context, entry.first).clock > entry.second.limit)
-                            with<Life>::kill(context, entry.first);
+                    for (const auto entry : context->aspect<Death>().items()) {
+                        if (with<Life>::get(context, entry.id).clock > entry.value.limit)
+                            with<Life>::kill(context, entry.id);
                     }
                 }
             };
@@ -89,8 +90,7 @@ void killing_feature()
         ask::schema::aspect<Death>(),
     });
 
-    fqsm::state::world::Data world(schema);
-    context::Realm main(world);
+    context::Realm main(schema);
 
     { // Single Stone kill:
         const auto id = [&] {

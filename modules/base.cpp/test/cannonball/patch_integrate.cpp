@@ -1,13 +1,13 @@
 #include "_common.h"
 
-#include <base/cannonball/denseTable.h>
+#include <base/cannonball/table.h>
 #include <base/cannonball/patch.h>
 
 namespace tests {
 
 void patch_integrate()
 {
-    using Table = base::cannonball::DenseTable<int, int>;
+    using Table = base::cannonball::Table<int, int>;
     using Patch = base::cannonball::Patch<int, int>;
 
     Table state;
