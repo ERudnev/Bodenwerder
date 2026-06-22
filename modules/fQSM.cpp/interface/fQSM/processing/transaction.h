@@ -3,11 +3,12 @@
 #include <memory>
 
 #include <fQSM/model/_forwards.h>
-#include <fQSM/processing/context.h>
+#include <fQSM/processing/contexts/operational.h>
 
 namespace fqsm::processing {
 
     struct Transaction {
+        using Context = context::Operational;
         struct ChildPolicy {
             Reading view;
             Context::Upstream upstream;

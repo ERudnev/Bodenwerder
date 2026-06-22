@@ -1,7 +1,8 @@
 #pragma once
 
 #include <fQSM/model/complex/reality.h>
-#include <fQSM/processing/context.h>
+#include <fQSM/processing/contexts/operational.h>
+#include <fQSM/processing/contexts/direct.h>
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/review.h>
 #include <fQSM/processing/transaction.h>
@@ -15,7 +16,7 @@ namespace fqsm::processing {
         operator Reading() const override { return reality; }
 
         template<category::Any Meta>
-        operator Direct<Meta>() { return Direct<Meta>(reality); }
+        operator Direct<Meta>();
 
         auto notes() const -> const review::Notes& { return lastNotes; }
 
@@ -27,6 +28,21 @@ namespace fqsm::processing {
         auto makeChildPolicy() -> ChildPolicy override;
 
         void accept(Context::PatchRef);
-        void accept_immediate(Rtid type);
+        void accept_immediate(Rtid::Set dirtyTypes);
     };
+}
+
+// Impl:
+namespace fqsm::processing {
+    template<category::Any Meta>
+    Realm::operator Direct<Meta>() {
+        auto context = std::make_shared<context::Direct>(context::Direct{
+            reality,
+            [this](Rtid::Set affected) {
+                accept_immediate(std::move(affected));
+            },
+            {}
+        });
+        return Direct<Meta>(context);
+    }
 }

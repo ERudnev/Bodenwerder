@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <string>
-#include <fQSM/processing/context.h>
+#include <fQSM/processing/contexts/operational.h>
 #include <fQSM/model/complex/draft.h>
 #include <fQSM/model/linear/delta.h>
 
@@ -20,6 +20,7 @@ namespace fqsm::processing::review {
 namespace fqsm::processing {
 
     struct Review final {
+        using Context = context::Operational;
         Review(model::complex::Draft draft, Context::PatchRef target, review::Notes& notes)
             : proposal(std::move(draft)), corrections(target), notes(notes), context(std::make_shared<Context>(Context{proposal, corrections, {}})) {}
 

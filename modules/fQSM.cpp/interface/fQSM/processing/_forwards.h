@@ -8,12 +8,17 @@
 
 //#include <fQSM/state/world.h>
 
+namespace fqsm::processing::context {
+    struct Operational;
+    struct Direct;
+}
+
 namespace fqsm::processing {
-    //using Patch = ::fqsm::model::Patch;
-    struct Context;
     struct Gate;
-    template<meta::category::Any> struct Direct;
     struct Review;
+
+    template<meta::category::Any>
+    struct Breach;
 }
 
 // exportin this as 1st class citizen of fQSM:
@@ -22,6 +27,6 @@ namespace fqsm {
     using Reading = const ::fqsm::model::complex::State&;
     using Writing = processing::Gate; // rename to "Draft"?
     template<meta::category::Any Meta>
-    using Direct = processing::Direct<Meta>;
+    using Direct = processing::Breach<Meta>;
     using Reviewing = processing::Review;
 }

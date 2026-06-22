@@ -8,12 +8,14 @@
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/categories.h>
 #include <fQSM/meta/rtid.h>
-#include <fQSM/processing/context.h>
+#include <fQSM/processing/contexts/operational.h>
 
 namespace fqsm::processing::transaction {
 
     // not derived from Transaction, because it is... "final" one, not allowed to propagate context
     // TODO: consider to remove this thing one day...
+
+    // [deprecated]
     template<category::Any Meta>
     struct Quantal {
         const Id<Meta> id;

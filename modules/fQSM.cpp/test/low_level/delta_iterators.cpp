@@ -6,7 +6,7 @@
 #include <vector>
 
 #include <fQSM/api/interface.h>
-#include <fQSM/processing/context.h>
+#include <fQSM/processing/contexts/operational.h>
 #include <fQSM/model/complex/draft.h>
 
 namespace {
@@ -33,6 +33,7 @@ void delta_iterators()
 {
     using namespace local;
     using Id = fqsm::Id<A>;
+    using Context = fqsm::processing::context::Operational;
 
     const fqsm::Schema schema = fqsm::manipulation::schema::aspect<A>();
 
@@ -45,11 +46,7 @@ void delta_iterators()
 
     const fqsm::model::complex::Reality state(look(fill));
     auto patch = base::make_shared<fqsm::model::complex::Patch>(schema);
-    auto patch_context = std::make_shared<fqsm::processing::Context>(fqsm::processing::Context{
-        state,
-        patch,
-        {}
-    });
+    auto patch_context = std::make_shared<Context>(Context{state, patch, {}});
     auto writing = fqsm::processing::Gate{patch_context};
 
     std::vector<Id> added_ids;

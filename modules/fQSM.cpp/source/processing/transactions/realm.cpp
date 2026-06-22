@@ -33,11 +33,12 @@ namespace fqsm::processing {
         lastNotes = actions::update(reality, *patch);
     }
 
-    void Realm::accept_immediate(Rtid type) {
+    void Realm::accept_immediate(Rtid::Set affected) {
         //auto patch = model::complex::Patch(reality.schema);
         //patch.composite().slices.emplace(type, world.schema->nodes.at(type).binding.createDirtyVirtualPatch());
 
         lastNotes = {};
+        if (affected.empty()) return;
         _INCOMPLETE_; // redesing this stuff to "notify"
         //lastNotes = actions::update(reality, patch);
     }

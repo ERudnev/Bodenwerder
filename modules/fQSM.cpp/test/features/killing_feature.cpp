@@ -39,7 +39,6 @@ namespace {
                     return Quantum{q.clock+timePassed};
                 }
                 static void update(Writing context, int timePassed) {
-                    context.expect_broad_update<Life>();
                     for (const auto entry : context->aspect<Life>().items()) {
                         //_INCOMPLETE_; // NB to mage Gate == Draft!
                         context.patch()->aspect<Life>().items.insert(entry.id, update(entry.value, timePassed));

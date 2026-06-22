@@ -76,6 +76,10 @@ void immediate()
     EXPECT_EQ(ask::item::get<A>(main, ids.at(0))->value, 0);
     EXPECT_EQ(ask::item::get<A>(main, ids.at(5))->value, 0);
     EXPECT_EQ(ask::item::get<A>(main, ids.at(6))->value, 1);
+
+    EXPECT_EQ(ask::item::get<A>(main, ids.at(0))->value, ask::item::get<A>(duplicate, ids.at(0))->value);
+    EXPECT_EQ(ask::item::get<A>(main, ids.at(5))->value, ask::item::get<A>(duplicate, ids.at(5))->value);
+    EXPECT_EQ(ask::item::get<A>(main, ids.at(6))->value, ask::item::get<A>(duplicate, ids.at(6))->value);
 }
 
 } // namespace tests

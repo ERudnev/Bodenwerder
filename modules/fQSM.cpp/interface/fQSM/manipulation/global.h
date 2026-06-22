@@ -3,7 +3,7 @@
 #include <utility>
 
 #include <fQSM/meta/interface.include.h>
-#include <fQSM/processing/context.h>
+#include <fQSM/processing/_forwards.h>
 
 namespace fqsm::manipulation::global {
     template<category::Any Meta>
