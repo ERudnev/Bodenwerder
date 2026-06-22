@@ -62,13 +62,6 @@ namespace {
                     const auto body = ask::item::get<Body>(context, id);
                     ask::item::create<Death>(context, id, {body->powerOfMass + 1} ); // mass 1kg lives 1 sec
                 }
-                /* remade as reaction ot Life changes:
-                static void update(Writing context) {
-                    for (const auto entry : context->aspect<Death>().items()) {
-                        if (with<Life>::get(context, entry.id).clock > entry.value.limit)
-                            with<Life>::kill(context, entry.id);
-                    }
-                }*/
             };
         };
     }
@@ -87,25 +80,25 @@ namespace {
 
         // Behavior:
         const Body::Behavior Body::behavior = {
-            rule::constraints::item_destroyed<Body>(&Actions::Private::reactOnDeath),
+            reaction::deletion<Body>(&Actions::Private::reactOnDeath),
         };
     }
 
     // this kind of code may appear in the separate *.cpp
     namespace local {
         const Life::Behavior Life::behavior = {
-            rule::component<Life, Body>(ComponentMissing::make_default, &Life::Actions::create),
+            rule::structural::component<Life, Body>(ComponentMissing::make_default, &Life::Actions::create),
         };
     }
 
     // this kind of code may appear in the separate *.cpp
     namespace local {
-        struct Body::Actions::Private {
-            static void reactOnParentUpdates(Reviewing context, HostAspect::Id id, const HostAspect::Quantum& newState) {
+        struct Death::Actions::Private {
+            static void reactOnParentUpdates(fqsm::Reviewing context, HostAspect::Id id, const HostAspect::Quantum& newState) {
             }
         };
         const Death::Behavior Death::behavior = {
-            rule::component<Death, Life>(ComponentMissing::make_default, &Death::Actions::create),
+            rule::structural::component<Death, Life>(ComponentMissing::make_default, &Death::Actions::create),
         };
     }
 }

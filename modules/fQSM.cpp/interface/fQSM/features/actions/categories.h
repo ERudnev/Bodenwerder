@@ -28,6 +28,8 @@ namespace fqsm::actions {
         using Writing = ::fqsm::Writing;
         template<meta::category::Any Meta>
         using Direct = ::fqsm::Direct<Meta>;
+        // TODO: remove this after Behavior incapsulated in Meta as local structure
+        using Reviewing = ::fqsm::Reviewing; // this enables Reactions role for Actions and reqires separation
     };
 
     template<typename Meta>

@@ -17,6 +17,16 @@ namespace {
                 for (auto [_, item] : context.items)
                     item.value += bonus;
             }
+            static void slowJob(Writing context, int bonus) {
+                auto& items = context->aspect<A>().items();
+                for (auto [id, item] : items)
+                    ask::item::update<A>(context, id)->value += bonus;
+            }
+            /* TODO: this is other story, "modern" access to patch through Draft interface (needs reworked Gate)
+            static void modernJob(ModernGate context, int bonus) {
+                for (auto [_, item] : context->aspect<A>().items())
+                    item.value += bonus;
+            }*/
         };
     };
 }
@@ -33,7 +43,7 @@ namespace {
     };
 
     const A::Behavior A::behavior = {
-        rule::constraints::value_X<A>(&A::Actions::Private::allow_non_negative),
+        rule::constraint::value_X<A>(&A::Actions::Private::allow_non_negative),
     };
 }
 
@@ -60,9 +70,8 @@ void immediate()
     // will compare different update path with 2 identical realms;
     context::Realm duplicate(main);
 
-    // 1st path: mutate through Realm->
-
     A::Actions::fastJob(main, -5);
+    A::Actions::slowJob(duplicate, -5);
 
     EXPECT_EQ(ask::item::get<A>(main, ids.at(0))->value, 0);
     EXPECT_EQ(ask::item::get<A>(main, ids.at(5))->value, 0);

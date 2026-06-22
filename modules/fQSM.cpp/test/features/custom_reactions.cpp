@@ -7,7 +7,7 @@ namespace {
     namespace local {
         struct A : Entity<A> {
             struct Quantum { integer value; };
-            static const Behavior behavior;
+            static const Behavior behavior; // TODO: struct Behavoir : BaseReactions { static const Rules rules; }
         };
 
         struct B : Component<B, A> {
@@ -32,20 +32,20 @@ namespace {
     }
     namespace local {
         const B::Behavior B::behavior = {
-            rule::component<B, A>(ComponentMissing::inacceptable),
-            reaction::debug_death_event<B>("death-event message for {}"),
+            rule::structural::component<B, A>(ComponentMissing::inacceptable),
+            reaction::debug::death_log<B>("death-event message for {}"),
         };
     }
     namespace local {
         const C::Behavior C::behavior = {
-            rule::component<C, A>(ComponentMissing::make_default, &C::Actions::create),
+            rule::structural::component<C, A>(ComponentMissing::make_default, &C::Actions::create),
         };
     }
 }
 
 namespace tests {
 
-void component_norms()
+void custom_reactions()
 {
     using namespace local;
     using namespace fqsm::api;
@@ -86,6 +86,8 @@ void component_norms()
         EXPECT_FALSE(ask::item::exists<A>(main, id));
         EXPECT_FALSE(ask::item::exists<B>(main, id));
         EXPECT_FALSE(ask::item::exists<C>(main, id));
+
+        EXPECT_FALSE(true) << "feature is incompleted: separate Behavior as base class";
     }
     // TDO: use this some day
     //EXPECT_EQ(ask::item::get<B>(main, id)->text, "generated");

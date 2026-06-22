@@ -6,38 +6,42 @@
     X(flat_model_assembly) \
     // end
 
-#define FQSM_INTERNALS_TESTS(X) \
-    X(delta_iterators) \
-    X(immediate) \
-    X(transaction_hierarchy) \
-    X(manipulation) \
-    X(globals) \
+#define FQSM_FEATURES_TESTS(X) \
+    X(attribute_norms) \
+    X(custom_reactions) \
+    X(killing_feature) \
+    // end
+
+#define FQSM_LOW_LEVEL_TESTS(X) \
     X(connections) \
     X(containers_updated) \
+    X(delta_iterators) \
+    X(globals) \
+    X(immediate) \
+    X(manipulation) \
+    X(transaction_hierarchy) \
+    // end
+
+#define FQSM_MINIMODEL_TESTS(X) \
     // end
 
 #define FQSM_Q1RUNTIME_TESTS(X) \
     X(schema_world_from_etalon) \
     // end
 
-#define FQSM_REACTIONS_TESTS(X) \
-    X(component_norms) \
-    X(attribute_norms) \
-    X(killing_feature) \
-    // end
-
-// Workshop: верни каталог test/workshop/ целиком и раскомментируй блок ниже + group "Workshop" в groups.
-//#define IQSM_WORKSHOP_TESTS(X) \
+// Workshop: restore test/workshop/ in full, then uncomment the block below and add group "workshop" to groups.
+//#define FQSM_WORKSHOP_TESTS(X) \
 //    X(linear_commits) \
 //    // end
 
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_TESTS)
-BASETEST_FORWARD_DECLARE_TESTS(FQSM_INTERNALS_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(FQSM_FEATURES_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(FQSM_LOW_LEVEL_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(FQSM_MINIMODEL_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_Q1RUNTIME_TESTS)
-BASETEST_FORWARD_DECLARE_TESTS(FQSM_REACTIONS_TESTS)
-//BASETEST_FORWARD_DECLARE_TESTS(IQSM_WORKSHOP_TESTS)
+//BASETEST_FORWARD_DECLARE_TESTS(FQSM_WORKSHOP_TESTS)
 
-int main_all_test() {
+int main() {
     struct group final {
         const char* name = "";
         std::vector<base::testing::test_case> tests{};
@@ -45,9 +49,10 @@ int main_all_test() {
 
     const std::vector<group> groups{
         group{ "all", BASETEST_MAKE_LIST_TESTS(FQSM_TESTS) },
-        group{ "internals", BASETEST_MAKE_LIST_TESTS(FQSM_INTERNALS_TESTS) },
+        group{ "features", BASETEST_MAKE_LIST_TESTS(FQSM_FEATURES_TESTS) },
+        group{ "low_level", BASETEST_MAKE_LIST_TESTS(FQSM_LOW_LEVEL_TESTS) },
+        group{ "minimodel", BASETEST_MAKE_LIST_TESTS(FQSM_MINIMODEL_TESTS) },
         group{ "q1runtime", BASETEST_MAKE_LIST_TESTS(FQSM_Q1RUNTIME_TESTS) },
-        group{ "reactions", BASETEST_MAKE_LIST_TESTS(FQSM_REACTIONS_TESTS) },
     };
 
     base::testing::run_summary total{};
@@ -72,9 +77,8 @@ int main_all_test() {
     return total.ok() ? 0 : 1;
 }
 
-int main() {
+int main_one_test_only() {
     const auto s = base::testing::run_tests(
         BASETEST_LIST(BASETEST_NAMED("all", &tests::flat_model_assembly)));
-        //BASETEST_LIST(BASETEST_NAMED("internals/dense_table_overlay", &tests::dense_table_overlay)));
     return s.ok() ? 0 : 1;
 }
