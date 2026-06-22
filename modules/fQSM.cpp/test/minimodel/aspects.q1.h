@@ -14,7 +14,7 @@ namespace tests::model {
         struct Global {
             integer modulus = 2;
         };
-        static const Codex codex;
+        static const Behavior behavior;
         struct Actions : BaseActions {
             struct Private;
             static auto constantFunc(Reading, Id)->integer;
@@ -25,7 +25,7 @@ namespace tests::model {
         struct Quantum {
             string name;
         };
-        static const Codex codex;
+        static const Behavior behavior;
         struct Actions : BaseActions {};
     };
 
@@ -33,7 +33,7 @@ namespace tests::model {
         struct Quantum {
             integer attribute;
         };
-        static const Codex codex;
+        static const Behavior behavior;
         struct Actions : BaseActions {};
     };
 }

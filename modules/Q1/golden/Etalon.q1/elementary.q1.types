@@ -20,7 +20,7 @@ namespace Q1_iQSM
         ?length() -> Scalar
         =normalize(Scalar)
         >fromScalar(argument: Scalar) -> StructWithMethods // {x,x}
-        // morms "!" not allowed
+        // rules "!" not allowed
 
     namespace Namespaces
       namespace Some

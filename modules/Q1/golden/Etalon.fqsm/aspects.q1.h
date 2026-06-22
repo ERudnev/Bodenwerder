@@ -9,7 +9,7 @@ namespace Q1_iQSM::Etalon {
     struct Trivia : Entity<Trivia> {
         struct Quantum {};
         struct Global {};
-        static const Codex codex;
+        static const Behavior behavior;
         struct Service : BaseActions{};
     };
 
@@ -18,7 +18,7 @@ namespace Q1_iQSM::Etalon {
             integer data_field;
         };
         struct Global {};
-        static const Codex codex;
+        static const Behavior behavior;
         struct Service : BaseActions {
             static constexpr integer max_elements = integer{2000};
             static constexpr integer absolute_min = integer{-1000};
@@ -39,7 +39,7 @@ namespace Q1_iQSM::Etalon {
         struct Global {
             integer modulus = integer{2};
         };
-        static const Codex codex;
+        static const Behavior behavior;
         struct Service : BaseActions{};
     };
 
@@ -49,14 +49,14 @@ namespace Q1_iQSM::Etalon {
             Trivia::Id trivia;
         };
         struct Global {};
-        static const Codex codex;
+        static const Behavior behavior;
         struct Service : BaseActions{};
     };
 
     struct SampleComponent : Component<SampleComponent, SampleEntity> {
         struct Quantum {};
         struct Global {};
-        static const Codex codex;
+        static const Behavior behavior;
         struct Service : BaseActions{
             static auto example_op_multiply(Writing, Id, integer factor)->void;
             static auto example_op_div_with_remainder(Writing, Id, integer divisor)->integer; // returns remainder
@@ -71,7 +71,7 @@ namespace Q1_iQSM::Etalon {
             std::vector<SampleComponent::Id> at_least_one_required;
         };
         struct Global {};
-        static const Codex codex;
+        static const Behavior behavior;
         struct Manipulators : BaseActions{
             static auto create_complex_constructor(Writing, SampleEntity::Id existing) -> Id;
         };

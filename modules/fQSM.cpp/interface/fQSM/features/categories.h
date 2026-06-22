@@ -16,7 +16,7 @@
 #include <fQSM/manipulation/item.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/processing/_forwards.h>
-#include <fQSM/features/codex.h>
+#include <fQSM/features/behavior.h>
 
 
 // rename to fqsm::actions::categories {
@@ -32,7 +32,7 @@ namespace fqsm::actions {
 
     template<typename Meta>
     struct Any : Base {
-        friend class ::fqsm::features::Codex;
+        friend class ::fqsm::features::Behavior;
 
         // basic alias
         using Id = ::fqsm::Id<Meta>;

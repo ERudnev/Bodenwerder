@@ -14,7 +14,7 @@ namespace {
             struct Global {
                 integer dustKgs = 0;// == mass (kg)
             };
-            static const Codex codex;
+            static const Behavior behavior;
             struct Actions : BaseActions {
                 struct Private; // important forward to allow Protave part defined in *.cpp file
                 static integer mass(Reading context, Id id) {
@@ -30,7 +30,7 @@ namespace {
             struct Quantum {
                 integer clock = 0;
             };
-            static const Codex codex;
+            static const Behavior behavior;
             struct Actions : BaseActions {
                 static void create(Writing context, Body::Id id) {
                     ask::item::create<Life>(context, id, {0});
@@ -55,18 +55,20 @@ namespace {
             struct Quantum {
                 integer limit;
             };
-            static const Codex codex;
+            static const Behavior behavior;
             struct Actions : BaseActions {
+                struct Private;
                 static void create(Writing context, Life::Id id) {
                     const auto body = ask::item::get<Body>(context, id);
                     ask::item::create<Death>(context, id, {body->powerOfMass + 1} ); // mass 1kg lives 1 sec
                 }
+                /* remade as reaction ot Life changes:
                 static void update(Writing context) {
                     for (const auto entry : context->aspect<Death>().items()) {
                         if (with<Life>::get(context, entry.id).clock > entry.value.limit)
                             with<Life>::kill(context, entry.id);
                     }
-                }
+                }*/
             };
         };
     }
@@ -83,23 +85,27 @@ namespace {
             }
         };
 
-        // Codex:
-        const Body::Codex Body::codex = {
-            norma::item_destroyed<Body>(&Actions::Private::reactOnDeath),
+        // Behavior:
+        const Body::Behavior Body::behavior = {
+            rule::constraints::item_destroyed<Body>(&Actions::Private::reactOnDeath),
         };
     }
 
     // this kind of code may appear in the separate *.cpp
     namespace local {
-        const Life::Codex Life::codex = {
-            norma::component<Life, Body>(ComponentMissing::make_default, &Life::Actions::create),
+        const Life::Behavior Life::behavior = {
+            rule::component<Life, Body>(ComponentMissing::make_default, &Life::Actions::create),
         };
     }
 
     // this kind of code may appear in the separate *.cpp
     namespace local {
-        const Death::Codex Death::codex = {
-            norma::component<Death, Life>(ComponentMissing::make_default, &Death::Actions::create),
+        struct Body::Actions::Private {
+            static void reactOnParentUpdates(Reviewing context, HostAspect::Id id, const HostAspect::Quantum& newState) {
+            }
+        };
+        const Death::Behavior Death::behavior = {
+            rule::component<Death, Life>(ComponentMissing::make_default, &Death::Actions::create),
         };
     }
 }

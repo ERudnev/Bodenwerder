@@ -11,6 +11,6 @@ namespace fqsm::features::reactions {
 }
 
 namespace fqsm::features {
-    struct Codex;
+    struct Behavior;
     using Reactions = std::vector<std::shared_ptr<reactions::Abstract>>;
 }

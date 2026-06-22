@@ -4,7 +4,7 @@
 
 #include <base/shared_reference.h>
 
-#include <fQSM/features/codex.h>
+#include <fQSM/features/behavior.h>
 #include <fQSM/meta/categories.h>
 #include <fQSM/model/structure/schema.h>
 #include <fQSM/model/structure/details/builders.h>
@@ -58,7 +58,7 @@ namespace fqsm::manipulation::schema {
 
         out->nodes.emplace(TypeId<Meta>, node);
 
-        for (const auto& reaction : Meta::codex.morms) {
+        for (const auto& reaction : Meta::behavior.rules) {
             const auto reactionId = model::structure::AspectGraph::ReactionId{ out->reactions.size() };
             out->reactions.push_back(reaction);
 

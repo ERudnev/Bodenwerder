@@ -7,17 +7,22 @@
 #include <fQSM/manipulation/feedback.h>
 #include <fQSM/manipulation/item.h>
 
-namespace fqsm::features::reactions::morms::constraints {
+namespace fqsm::features::reactions::rules::constraints {
 
     // Local data constraint: ItemChange handler from Aspect::Actions (or its Private).
     template<category::Any Meta>
-    struct quantum_local : Functional<typename Meta::BaseActions::QuantumLocal> {
+    struct value_X : Functional<typename Meta::BaseActions::QuantumLocal> {
         using Parent = Functional<typename Meta::BaseActions::QuantumLocal>;
 
-        explicit quantum_local(Parent::ActionFunction corrector) : Parent(corrector) {}
+        explicit value_X(Parent::ActionFunction corrector) : Parent(corrector) {}
 
         Parent::Sources listens() const override { return Abstract::typed_set<Meta>(); }
         void apply(Reviewing context) override;
+    };
+
+    template<category::Any Meta>
+    struct quantum_dependent : Functional<typename Meta::BaseActions::UpdateValue> {
+        // TODO: generic version of value_X (sees whole world to get access to dependencies
     };
 
     template<category::Any Meta>
@@ -28,17 +33,13 @@ namespace fqsm::features::reactions::morms::constraints {
         Parent::Sources listens() const override { return Abstract::typed_set<Meta>(); }
         void apply(Reviewing context) override;
     };
-
-    template<category::Any Meta>
-    struct quantum_dependent : Functional<typename Meta::BaseActions::UpdateValue> {
-    };
 }
 
 // Impl:
-namespace fqsm::features::reactions::morms::constraints {
+namespace fqsm::features::reactions::rules::constraints {
 
     template<category::Any Meta>
-    void quantum_local<Meta>::apply(Reviewing context) {
+    void value_X<Meta>::apply(Reviewing context) {
         for (const auto change : Abstract::changes<Meta>(context).addedOrUpdated()) {
             if (not change.after) {
                 // TOFO: wrap block under "if"

@@ -4,11 +4,11 @@ THIS DOC IS OUTDATED AND MUST BE REWORKED ASAP
 
 ## Core Entities
 
-### Codex
+### Behavior
 
-A **codex** defines which world changes are of interest.
+A **behavior** defines which world changes are of interest.
 
-A codex contains a set of **norms**.
+A behavior contains a set of **rules**.
 
 ### Norms
 
@@ -132,4 +132,4 @@ So for a branch the main result is not a new world, but a refined patch.
 - **Changes** matter more than events.
 - Realm state is the **primary source of information**.
 - Reactions operate on **intentions of change**, not on facts that have already occurred.
-- The codex is applied **recursively** until a consistent state is reached.
+- The behavior is applied **recursively** until a consistent state is reached.

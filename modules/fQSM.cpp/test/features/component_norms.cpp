@@ -7,17 +7,17 @@ namespace {
     namespace local {
         struct A : Entity<A> {
             struct Quantum { integer value; };
-            static const Codex codex;
+            static const Behavior behavior;
         };
 
         struct B : Component<B, A> {
             struct Quantum { string text; };
-            static const Codex codex;
+            static const Behavior behavior;
         };
 
         struct C : Component<C, A> {
             struct Quantum { integer power; };
-            static const Codex codex;
+            static const Behavior behavior;
             struct Actions : BaseActions {
                 static void create(Writing context, A::Id id) {
                     ask::item::create<C>(context, id, {with<A>::get(context, id).value});
@@ -28,17 +28,17 @@ namespace {
 
     // kinda impl in come *.cpp file:
     namespace local {
-        const A::Codex A::codex = {};
+        const A::Behavior A::behavior = {};
     }
     namespace local {
-        const B::Codex B::codex = {
-            norma::component<B, A>(ComponentMissing::inacceptable),
+        const B::Behavior B::behavior = {
+            rule::component<B, A>(ComponentMissing::inacceptable),
             reaction::debug_death_event<B>("death-event message for {}"),
         };
     }
     namespace local {
-        const C::Codex C::codex = {
-            norma::component<C, A>(ComponentMissing::make_default, &C::Actions::create),
+        const C::Behavior C::behavior = {
+            rule::component<C, A>(ComponentMissing::make_default, &C::Actions::create),
         };
     }
 }
@@ -59,7 +59,7 @@ void component_norms()
     fqsm::model::complex::Reality world(schema);
     context::Realm main(world);
 
-    { // Scenario 1: B::Codex::component<> aborted creation of A
+    { // Scenario 1: B::Behavior::component<> aborted creation of A
         const auto id = ask::item::create<A>(main, {4});
         EXPECT_FALSE(ask::item::exists<A>(main, id));
         EXPECT_TRUE(main.notes().rejection());

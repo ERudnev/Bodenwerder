@@ -10,7 +10,7 @@ namespace {
         struct Quantum {
             integer value;
         };
-        static const Codex codex;
+        static const Behavior behavior;
         struct Actions : BaseActions {
             struct Private;
             static void fastJob(Direct<A> context, int bonus) {
@@ -32,8 +32,8 @@ namespace {
         }
     };
 
-    const A::Codex A::codex = {
-        norma::quantum_local<A>(&A::Actions::Private::allow_non_negative),
+    const A::Behavior A::behavior = {
+        rule::constraints::value_X<A>(&A::Actions::Private::allow_non_negative),
     };
 }
 

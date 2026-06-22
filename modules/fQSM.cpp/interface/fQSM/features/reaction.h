@@ -15,7 +15,7 @@ namespace fqsm::features::reactions {
 
 namespace fqsm::features::reactions {
 
-    // Norma is a special kind of Reaction; Codex collects morms specifically.
+    // Norma is a special kind of Reaction; Behavior collects rules specifically.
     // TODO: consider as template<ActionType>,
     struct Abstract {
         using Reviewing = processing::Review;

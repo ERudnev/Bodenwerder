@@ -17,10 +17,10 @@
 #include <fQSM/processing/transactions/realm.h>
 #include <fQSM/processing/transactions/branch.h>
 
-// Codex definition for Aspects:
+// Behavior definition for Aspects:
 #include <fQSM/features/reactions/structural.h>
 #include <fQSM/features/reactions/constraints.h>
-#include <fQSM/features/reactions/standard.h>
+#include <fQSM/features/reactions/binding.h>
 
 namespace fqsm::api {
     // Q1 language builtin types
@@ -55,15 +55,15 @@ namespace fqsm::api {
         using Branch = ::fqsm::processing::transaction::Branch;
     }
 
-    // Codex builder:
+    // Behavior builder:
     namespace reflex {
         using namespace ::fqsm::features::reflexes;
     }
-    namespace norma {
-        using namespace ::fqsm::features::reactions::morms::structural;
-        using namespace ::fqsm::features::reactions::morms::constraints;
+    namespace rule {
+        using namespace ::fqsm::features::reactions::rules;
+        using namespace ::fqsm::features::reactions::rules;
     }
     namespace reaction {
-        using namespace ::fqsm::features::reactions::standard;
+        using namespace ::fqsm::features::reactions;
     }
 }

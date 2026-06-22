@@ -17,7 +17,7 @@ namespace fqsm::features::reflexes {
     };
 }
 
-namespace fqsm::features::reactions::morms::structural {
+namespace fqsm::features::reactions::rules::structural {
 
     using fqsm::features::reflexes::ComponentMissing;
 
@@ -37,7 +37,7 @@ namespace fqsm::features::reactions::morms::structural {
 }
 
 // Impl:
-namespace fqsm::features::reactions::morms::structural {
+namespace fqsm::features::reactions::rules::structural {
     // component:
     template<category::Component Follower, category::Any Origin>
     void component<Follower, Origin>::apply(Reviewing context) {

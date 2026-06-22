@@ -15,12 +15,12 @@ namespace {
     namespace local {
         struct A : Entity<A> {
             struct Quantum { integer value; };
-            static const Codex codex;
+            static const Behavior behavior;
         };
     }
 
     namespace local {
-        const A::Codex A::codex = {};
+        const A::Behavior A::behavior = {};
     }
 
     // temp lib. placeholder:
