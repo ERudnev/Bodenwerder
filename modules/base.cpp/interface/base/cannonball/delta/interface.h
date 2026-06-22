@@ -19,6 +19,9 @@ struct Change {
     bool update() const { return before.has_value() && before.value() && after; }
     bool addedOrUpdated() const { return add() || update() || tainted(); }
     bool remove() const { return before.has_value() && before.value() && !after; }
+
+    // experimental:
+    const Val& throwing_before() const { return *(*before); }
 };
 
 template<typename Key, typename Val>

@@ -3,10 +3,14 @@
 #include <memory>
 #include <vector>
 
-// TODO: remove?
+namespace fqsm::features::reactions {
+    struct Abstract;
+
+    template<typename ActionFunction>
+    struct Functional;
+}
+
 namespace fqsm::features {
     struct Codex;
-    struct Reaction;
-
-    using Reactions = std::vector<std::shared_ptr<Reaction>>;
+    using Reactions = std::vector<std::shared_ptr<reactions::Abstract>>;
 }

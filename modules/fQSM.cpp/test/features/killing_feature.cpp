@@ -4,6 +4,8 @@
 
 namespace {
     using namespace fqsm::api;
+
+    // this kind of code may appear in the separate *.h header file
     namespace local {
         struct Body : Entity<Body> {
             struct Quantum {
@@ -14,16 +16,16 @@ namespace {
             };
             static const Codex codex;
             struct Actions : BaseActions {
+                struct Private; // important forward to allow Protave part defined in *.cpp file
                 static integer mass(Reading context, Id id) {
                     return 1 << get(context, id).powerOfMass;
                 }
-                static void resetField(Writing context) {
-                    ask::global::update<Own>(context)->dustKgs = 0;
-                    //global(context).dustKgs = 0;
-                }
             };
         };
+    }
 
+    // this kind of code may appear in the separate *.h header file
+    namespace local {
         struct Life : Component<Life, Body> {
             struct Quantum {
                 integer clock = 0;
@@ -33,19 +35,22 @@ namespace {
                 static void create(Writing context, Body::Id id) {
                     ask::item::create<Life>(context, id, {0});
                 }
-                static Quantum update(const Quantum& q) {
-                    return Quantum{q.clock+1};
+                static Quantum update(const Quantum& q, int timePassed) {
+                    return Quantum{q.clock+timePassed};
                 }
-                static void update(Writing context, Id) {
+                static void update(Writing context, int timePassed) {
                     context.expect_broad_update<Life>();
                     for (const auto entry : context->aspect<Life>().items()) {
-                        _INCOMPLETE_; // NB to mage Gate == Draft!
-                        context.patch()->aspect<Life>().items.insert(entry.id, update(entry.value));
+                        //_INCOMPLETE_; // NB to mage Gate == Draft!
+                        context.patch()->aspect<Life>().items.insert(entry.id, update(entry.value, timePassed));
                     }
                 }
             };
         };
+    }
 
+    // this kind of code may appear in the separate *.h header file
+    namespace local {
         struct Death : Component<Death, Life> {
             struct Quantum {
                 integer limit;
@@ -56,7 +61,7 @@ namespace {
                     const auto body = ask::item::get<Body>(context, id);
                     ask::item::create<Death>(context, id, {body->powerOfMass + 1} ); // mass 1kg lives 1 sec
                 }
-                static void update(Writing context, Id) {
+                static void update(Writing context) {
                     for (const auto entry : context->aspect<Death>().items()) {
                         if (with<Life>::get(context, entry.id).clock > entry.value.limit)
                             with<Life>::kill(context, entry.id);
@@ -66,11 +71,33 @@ namespace {
         };
     }
 
+    // this kind of code may appear in the separate *.cpp
     namespace local {
-        const Body::Codex Body::codex = {};
+        // Private part of Actions
+        struct Body::Actions::Private {
+            // this reaction id private (as any reaction) because it must not be called manually
+            static void reactOnDeath(Writing context, Id id, const Quantum& lastValue) {
+                // simple create 2 lesser stones:
+                ask::item::create<Body>(context, {lastValue.powerOfMass - 1});
+                ask::item::create<Body>(context, {lastValue.powerOfMass - 1});
+            }
+        };
+
+        // Codex:
+        const Body::Codex Body::codex = {
+            norma::item_destroyed<Body>(&Actions::Private::reactOnDeath),
+        };
+    }
+
+    // this kind of code may appear in the separate *.cpp
+    namespace local {
         const Life::Codex Life::codex = {
             norma::component<Life, Body>(ComponentMissing::make_default, &Life::Actions::create),
         };
+    }
+
+    // this kind of code may appear in the separate *.cpp
+    namespace local {
         const Death::Codex Death::codex = {
             norma::component<Death, Life>(ComponentMissing::make_default, &Death::Actions::create),
         };
@@ -90,9 +117,9 @@ void killing_feature()
         ask::schema::aspect<Death>(),
     });
 
-    context::Realm main(schema);
-
     { // Single Stone kill:
+        context::Realm main(schema);
+
         const auto id = [&] {
             context::Branch tx(main);
             // this is valid case to build Entity when Item value normalization is present:
@@ -111,11 +138,11 @@ void killing_feature()
         EXPECT_FALSE(ask::item::exists<Body>(main, id));
     }
     { // Lifetime simulation
-        // create one Stone with
-        with<Body>::resetField(main);
+        context::Realm main(schema);
+
         ask::item::create<Body>(main, {4});
-        //for (int xx = 0; xx < 100; ++xx)
-        //    with<Life>::update(main, 1);
+        for (int xx = 0; xx < 100; ++xx)
+            with<Life>::update(main, 1);
         //EXPECT_EQ()
         // run as many updates as needed for first death/echo
         // run next updates for second

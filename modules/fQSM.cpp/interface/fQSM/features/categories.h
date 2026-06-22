@@ -18,6 +18,8 @@
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/features/codex.h>
 
+
+// rename to fqsm::actions::categories {
 namespace fqsm::actions {
     // each Aspect must (may?) have own Interface
     // this set of interfaces is used to generate Aspect-specific parts of their interfaces
@@ -39,7 +41,12 @@ namespace fqsm::actions {
         using Update = std::optional<Quantum>;
 
         // signatures
-        using ItemUpdate = Update(*)(const Quantum&);
+        // read-only:
+        using QuantumLocal = Update(*)(const Quantum&); // new quantum value can be evaluated only from old one
+        using QuantumDependent = Update(*)(Reading, Id, const Quantum&); // Id is major, but basic stuff uses only Quantum
+
+        // read-write
+        using Action = void(*)(Writing, Id, const Quantum&); // abstract "action" - "do something with specific element"
 
         // helpers:
         static auto get(Reading, Id) -> const Quantum&;
@@ -57,7 +64,8 @@ namespace fqsm::actions {
     struct Parasitic : Any<Meta> {
         using Own = Any<Meta>;
         using Parent = Standalone<HostType>;
-        using ConstructorDefault = void(Writing, typename Parent::Id);
+
+        using ConstructFromParent = void(*)(Writing, typename Parent::Id);
 
         // feature:
         static void kill(Writing context, Own::Id id);

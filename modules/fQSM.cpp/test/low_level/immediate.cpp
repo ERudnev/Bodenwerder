@@ -26,14 +26,14 @@ namespace {
     using namespace fqsm::api;
 
     struct A::Actions::Private : A::Actions {
-        static auto normalize_value(const Quantum& data) -> Update {
+        static auto allow_non_negative(const Quantum& data) -> Update {
             if (data.value >= 0) return std::nullopt;
             return Quantum{.value = 0};
         }
     };
 
     const A::Codex A::codex = {
-        norma::local<A>(&A::Actions::Private::normalize_value),
+        norma::quantum_local<A>(&A::Actions::Private::allow_non_negative),
     };
 }
 

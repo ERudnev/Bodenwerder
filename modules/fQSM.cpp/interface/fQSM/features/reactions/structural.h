@@ -23,17 +23,16 @@ namespace fqsm::features::reactions::morms::structural {
 
     // NG: public visibility of this "classes" is made object-like
     template<category::Component Follower, category::Any Origin>
-    struct component : Reaction {
+    struct component : Functional<typename Follower::BaseActions::ConstructFromParent> {
+        using Parent = Functional<typename Follower::BaseActions::ConstructFromParent>;
+
         static_assert(std::same_as<typename Follower::HostAspect, Origin>);
-        using ConstructorDefault = typename Follower::BaseActions::ConstructorDefault;
+        component(ComponentMissing strat, Parent::ActionFunction autoConstructor = nullptr) : Parent(autoConstructor), policy(strat) {}
 
-        component(ComponentMissing strat, ConstructorDefault autoConstr = nullptr) : policy(strat), autoConstructor(autoConstr) {}
-
-        Sources listens() const override { return typed_set<Origin>(); }
+        Parent::Sources listens() const override { return Abstract::typed_set<Origin>(); }
         void apply(Reviewing context) override;
     private:
         const ComponentMissing policy;
-        ConstructorDefault* autoConstructor = nullptr;
     };
 }
 
@@ -43,34 +42,34 @@ namespace fqsm::features::reactions::morms::structural {
     template<category::Component Follower, category::Any Origin>
     void component<Follower, Origin>::apply(Reviewing context) {
         // all modes:
-        for (const auto change : changes<Origin>(context).removed()) {
+        for (const auto change : Abstract::changes<Origin>(context).removed()) {
             if (!manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
             manipulation::item::update<Follower>(context, change.id).remove();
         }
 
         switch (policy) {
             case ComponentMissing::remove_parent: {
-                for (const auto change : changes<Origin>(context).added()) {
+                for (const auto change : Abstract::changes<Origin>(context).added()) {
                     if (manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
                     manipulation::item::update<Origin>(context, change.id).remove();
                 }
             } break;
 
             case ComponentMissing::make_default: {
-                for (const auto change : changes<Origin>(context).added()) {
-                    if (manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
-                    if (!autoConstructor) {
-                        ask::feedback::critical<Follower>(context, std::format(R"(structural::component no constructor on "{}" {})", Rtid::name<Origin>(), change.id));
+                for (const auto change : Abstract::changes<Origin>(context).added()) {
+                    if (manipulation::item::exists<Follower>(context.proposal, change.id))
                         continue;
-                    }
-                    (*autoConstructor)(context, change.id);
+                    static const std::string prepared_message = std::format("required default c-tor: {}", Rtid::name<Follower>());
+                    if (not this->optionally_callable(context, prepared_message))
+                        continue;
+                    this->action(context, change.id);
                 }
             } break;
 
             case ComponentMissing::inacceptable: {
-                for (const auto change : changes<Origin>(context).added()) {
+                for (const auto change : Abstract::changes<Origin>(context).added()) {
                     if (manipulation::item::exists<Follower>(context.proposal, change.id)) continue;
-                    ask::feedback::critical<Follower>(context, std::format(R"(structural::component inacceptable: missing for "{}" {})", Rtid::name<Origin>(), change.id));
+                    ask::feedback::critical(context, std::format(R"({}: structural::component inacceptable: missing for "{}" {})", Rtid::name<Follower>(), Rtid::name<Origin>(), change.id));
                 }
             } break;
         }

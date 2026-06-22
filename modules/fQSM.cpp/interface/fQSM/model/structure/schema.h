@@ -13,7 +13,7 @@
 namespace fqsm::model::structure {
 
     struct AspectGraph {
-        using ReactionId = Identifier<features::Reaction, std::size_t>;
+        using ReactionId = Identifier<features::reactions::Abstract, std::size_t>;
         using ReactionIds = std::vector<ReactionId>;
         using Reactions = features::Reactions;
 
