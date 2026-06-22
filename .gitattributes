@@ -1,11 +1,10 @@
 * text=auto eol=lf
-
 *.md   text eol=lf
 *.txt  text eol=lf
 *.d1   text eol=lf
 *.types text eol=lf
 *.tome text eol=lf
-
-*.png  binary
-*.jpg  binary
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
 *.bin  binary
+*.fbx filter=lfs diff=lfs merge=lfs -text
