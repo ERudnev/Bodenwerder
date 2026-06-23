@@ -60,18 +60,16 @@ namespace fqsm::processing::actions::normalization {
     }
 
     // build one normalization wave
-    auto normalizer(Reading source, PatchRef patch) -> actions::NormalizationResult {
+    auto normalizer(Reading source, fqsm::cref<Patch> patch, const Rtid::Set& taintedLines) -> actions::NormalizationResult {
         review::Notes notes;
 
         auto correctionsPatch = base::make_shared<Patch>(source.schema);
-        auto review = Review(model::complex::Draft{source, patch}, correctionsPatch, notes);
 
-        /*auto review = Review{
-            model::complex::Draft{source, patch},
-            base::make_shared<Patch>(patch->schema),
-            notes,
-        };
-        */
+        // this is very important place: this cast is saves about ~300 lines of code for new class
+        // complex::Proposal === const complex::Draft
+        fqsm::ref<Patch> non_const_patch(std::const_pointer_cast<Patch>(patch.std_ptr()));
+
+        auto review = Review(model::complex::Draft{source, non_const_patch, taintedLines}, correctionsPatch, notes);
 
         std::set<model::structure::AspectGraph::ReactionId> selectedReactions;
         for (const auto& [sourceType, _] : patch->lines.container) {
@@ -87,26 +85,29 @@ namespace fqsm::processing::actions::normalization {
             patch->schema->reactions.at(reactionId.raw())->apply(review);
         }
 
-        return { correctionsPatch, std::move(notes) };
+        // TODO: allow Reviewers to call Immediate/Direct contexts and collect new tainted flags
+        const Rtid::Set fakeModifiedTaintFlags{}; // will be populated with taints from Review process
+
+        return { correctionsPatch, std::move(fakeModifiedTaintFlags), std::move(notes) };
     }
 
 
-    auto normalize_recursive(Reading source, PatchRef accumulated, UpdateControl& control) -> review::Notes {
+    auto normalize_recursive(Reading source, PatchRef accumulated, Rtid::Set taintedLines, UpdateControl& control) -> review::Notes {
         control.statistics.emplace_back(*accumulated);
 
-        const auto fix = normalizer(source, accumulated);
+        const auto fix = normalizer(source, accumulated, taintedLines);
         auto notes = fix.notes;
         if (notes.rejection()) return notes;
 
         const auto fixStats = analysis::Patch{*fix.patch};
-        if (fixStats.overallChanges() == 0) return notes;
+        if (fixStats.overallChanges() == 0 and fix.taintedDuringPatch.empty() ) return notes;
 
         if (is_suspicious_growth(control)) return notes;
 
         ensure_depth_limit(control);
         ++control.counter;
         actions::merge(source, accumulated, fix.patch);
-        append(notes, normalize_recursive(source, accumulated, control));
+        append(notes, normalize_recursive(source, accumulated, fix.taintedDuringPatch, control));
         return notes;
     }
 }
@@ -115,15 +116,15 @@ namespace fqsm::processing::actions::normalization {
 // facade part
 namespace fqsm::processing::actions {
 
-    auto normalize(Reading source, const Patch& patch) -> NormalizationResult {
+    auto normalize(Reading source, const Patch& patch, Rtid::Set taintedLines) -> NormalizationResult {
         auto normalized = base::make_shared<Patch>(patch);
         normalization::UpdateControl control{temp_defence_normalization_waves};
-        auto notes = normalization::normalize_recursive(source, normalized, control);
-        return { normalized, std::move(notes) };
+        auto notes = normalization::normalize_recursive(source, normalized, taintedLines, control);
+        return { normalized, {}, std::move(notes) };
     }
 
-    auto update(model::complex::Reality& state, const Patch& patch) -> review::Notes {
-        const auto normalized = normalize(state, patch);
+    auto update(model::complex::Reality& state, const Patch& patch, Rtid::Set taintedLines) -> review::Notes {
+        const auto normalized = normalize(state, patch, taintedLines);
         if (normalized.notes.rejection()) return normalized.notes;
 
         integrate(state, *normalized.patch);

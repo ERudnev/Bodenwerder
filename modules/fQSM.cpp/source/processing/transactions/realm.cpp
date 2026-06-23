@@ -30,16 +30,15 @@ namespace fqsm::processing {
 
     void Realm::accept(Context::PatchRef patch) {
         lastNotes = {};
-        lastNotes = actions::update(reality, *patch);
+        lastNotes = actions::update(reality, *patch, {});
     }
 
     void Realm::accept_immediate(Rtid::Set affected) {
-        //auto patch = model::complex::Patch(reality.schema);
-        //patch.composite().slices.emplace(type, world.schema->nodes.at(type).binding.createDirtyVirtualPatch());
-
-        lastNotes = {};
+        lastNotes = {}; // reset stored "error buffer"
         if (affected.empty()) return;
-        _INCOMPLETE_; // redesing this stuff to "notify"
-        //lastNotes = actions::update(reality, patch);
+        // TODO: make this as combined PAtch+taint later...
+        auto zeroPatch = std::make_shared<Patch>(reality.schema);
+        lastNotes = actions::update(reality, *zeroPatch, affected);
+;
     }
 }

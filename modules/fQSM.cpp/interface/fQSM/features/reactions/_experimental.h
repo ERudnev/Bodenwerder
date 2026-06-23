@@ -15,8 +15,8 @@ namespace  fqsm::features::reactions::debug {
             return typed_set<Meta>();
         }
 
-        void apply(Reviewing) override {
-            base::message("hey, I am here!");
+        void apply(Reviewing context) override {
+            context.notes.warning.push_back("experimental death detected");
         }
     };
 }

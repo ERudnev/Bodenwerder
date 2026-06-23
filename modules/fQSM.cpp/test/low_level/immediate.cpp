@@ -37,7 +37,8 @@ namespace {
 
     struct A::Actions::Private : A::Actions {
         static auto allow_non_negative(const Quantum& data) -> Update {
-            if (data.value >= 0) return std::nullopt;
+            if (data.value >= 0)
+                return std::nullopt;
             return Quantum{.value = 0};
         }
     };
