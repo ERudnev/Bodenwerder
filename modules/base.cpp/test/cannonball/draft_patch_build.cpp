@@ -1,7 +1,7 @@
 #include "_common.h"
 
 #include <base/cannonball/table.h>
-#include <base/cannonball/draft.h>
+#include <base/cannonball/future.h>
 
 #include <set>
 
@@ -11,7 +11,7 @@ void draft_patch_build()
 {
     using Table = base::cannonball::Table<int, int>;
     using Patch = base::cannonball::Patch<int, int>;
-    using Draft = base::cannonball::Draft<int, int>;
+    using Draft = base::cannonball::Future<int, int>;
 
     Table state;
     state.insert(1, 10);
@@ -21,7 +21,7 @@ void draft_patch_build()
     patch.insert(2, 200);
     patch.insert(4, 40);
 
-    Draft draft(state, patch);
+    Draft draft(state, patch, base::cannonball::SeeChanges::observable);
 
     EXPECT_TRUE(draft.contains(1));
     EXPECT_TRUE(draft.contains(2));

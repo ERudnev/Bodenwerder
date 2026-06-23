@@ -10,7 +10,7 @@
 #include <fQSM/processing/actions/merge.h>
 #include <fQSM/processing/review.h>
 #include <fQSM/model/analysis.h>
-#include <fQSM/model/complex/draft.h>
+#include <fQSM/model/complex/future.h>
 #include <fQSM/model/structure/schema.h>
 #include <fQSM/features/reaction.h>
 
@@ -69,7 +69,11 @@ namespace fqsm::processing::actions::normalization {
         // complex::Proposal === const complex::Draft
         fqsm::ref<Patch> non_const_patch(std::const_pointer_cast<Patch>(patch.std_ptr()));
 
-        auto review = Review(model::complex::Draft{source, non_const_patch, taintedLines}, correctionsPatch, notes);
+        auto review = Review(
+            model::complex::Future{source, non_const_patch, base::cannonball::SeeChanges::observable, taintedLines},
+            // TODO: change this patch -> blind Futire to get plain semantics if needed
+            correctionsPatch,
+            notes);
 
         std::set<model::structure::AspectGraph::ReactionId> selectedReactions;
         for (const auto& [sourceType, _] : patch->lines.container) {

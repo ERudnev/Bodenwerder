@@ -6,7 +6,7 @@
 #include <fQSM/model/_forwards.h>
 #include <fQSM/model/analysis.h>
 #include <fQSM/model/complex/reality.h>
-#include <fQSM/model/linear/draft.h>
+#include <fQSM/model/linear/future.h>
 #include <fQSM/model/linear/patch.h>
 #include <fQSM/model/linear/reality.h>
 #include <fQSM/model/structure/binding.h>
@@ -36,11 +36,9 @@ namespace fqsm::schema::details {
     }
 
     template<category::Any Meta>
-    auto createDraft(const model::complex::State& state, ref<model::complex::Patch> patch) -> ref<model::linear::state::Erased> {
-        return base::make_shared<model::linear::Draft<Meta>>(
-            state.aspect<Meta>(),
-            base::shared_ref_cast<model::linear::Patch<Meta>>(patch->lines.container.at(TypeId<Meta>))
-        );
+    auto createFuture(const model::complex::State& state, ref<model::complex::Patch> patch, base::cannonball::SeeChanges mode) -> ref<model::linear::state::Erased> {
+        auto castedPatch = base::shared_ref_cast<model::linear::Patch<Meta>>(patch->lines.container.at(TypeId<Meta>));
+        return base::make_shared<model::linear::Future<Meta>>(state.aspect<Meta>(), castedPatch, mode);
     }
 
     template<category::Any Meta>
@@ -71,7 +69,7 @@ namespace fqsm::schema::details {
             &createState<Meta>,
             &createPatch<Meta>,
             &cloneState<Meta>,
-            &createDraft<Meta>,
+            &createFuture<Meta>,
             &integratePatchSlice<Meta>,
             &mergePatchSlice<Meta>,
             &analyzePatchSlice<Meta>,

@@ -45,5 +45,4 @@ namespace fqsm::model::linear {
             ? std::unique_ptr<const Interface>(std::make_unique<Clean>(state.items(), patch.items))
             : std::unique_ptr<const Interface>(std::make_unique<Dirty>(state.items(), patch.items)))
     {}
-
 }

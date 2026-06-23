@@ -7,7 +7,7 @@
 
 #include <fQSM/api/interface.h>
 #include <fQSM/processing/contexts/operational.h>
-#include <fQSM/model/complex/draft.h>
+#include <fQSM/model/complex/future.h>
 
 namespace {
     using namespace fqsm::api;
@@ -60,7 +60,7 @@ void delta_iterators()
         ask::item::update<A>(writing, ids.at(i))->value = (i + 1) * 10;
     }
 
-    const fqsm::model::complex::Draft preview(state, patch);
+    const fqsm::model::complex::Future preview(state, patch, base::cannonball::SeeChanges::observable);
 
     using Layer = fqsm::model::linear::Delta<A>::Layer;
     std::unordered_map<Layer, std::set<Id>> collected;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <base/cannonball/draft.h>
+#include <base/cannonball/future.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/model/linear/state.h>
@@ -8,26 +8,28 @@
 namespace fqsm::model::linear {
 
     template<category::Any Meta>
-    class Draft : public State<Meta> {
+    class Future : public State<Meta> {
     public:
+        using Mode = base::cannonball::SeeChanges;
         using Items = State<Meta>::Items;
         using Global = State<Meta>::Global;
 
-        Draft(const linear::State<Meta>& state, ref<linear::Patch<Meta>> patch)
-            : draftItems(state.items(), patch->items), draftGlobal(state.global(), patch->global) {}
+        Future(const linear::State<Meta>& state, ref<linear::Patch<Meta>> patch, Mode mode)
+            : draftItems(state.items(), patch->items, mode), futureGlobal(state.global(), patch->global) {}
 
         virtual Items& items() override { return draftItems; }
         virtual const Items& items() const override { return draftItems; }
-        virtual Global& global() override { return draftGlobal.access(); }
-        virtual const Global& global() const override { return draftGlobal.get(); }
+        virtual Global& global() override { return futureGlobal.access(); }
+        virtual const Global& global() const override { return futureGlobal.get(); }
 
     private:
-        struct DraftGlobal {
+        struct FutureGlobal {
             const Global& stateGlobal;
             base::cannonball::Patchlet<Global>& patchGlobal;
+            Mode mode;
             const Global& get() const {
-                if (patchGlobal)
-                    return patchGlobal.value();
+                if (mode == Mode::blind) return stateGlobal;
+                if (patchGlobal) return patchGlobal.value();
                 return stateGlobal;
             }
             Global& access() {
@@ -37,7 +39,7 @@ namespace fqsm::model::linear {
             }
         };
 
-        base::cannonball::Draft<Id<Meta>, Quantum<Meta>> draftItems;
-        DraftGlobal draftGlobal;
+        base::cannonball::Future<Id<Meta>, Quantum<Meta>> draftItems;
+        FutureGlobal futureGlobal;
     };
 }

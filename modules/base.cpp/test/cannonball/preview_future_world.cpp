@@ -2,7 +2,7 @@
 
 #include <base/cannonball/table.h>
 #include <base/cannonball/patch.h>
-#include <base/cannonball/draft.h>
+#include <base/cannonball/future.h>
 
 #include <set>
 
@@ -12,7 +12,7 @@ void preview_future_world()
 {
     using Table = base::cannonball::Table<int, int>;
     using Patch = base::cannonball::Patch<int, int>;
-    using Draft = base::cannonball::Draft<int, int>;
+    using Draft = base::cannonball::Future<int, int>;
 
     Table state;
     state.insert(1, 10);
@@ -24,7 +24,7 @@ void preview_future_world()
     patch.insert(3, std::nullopt);
     patch.modify(4, 40);
 
-    Draft preview(state, patch);
+    Draft preview(state, patch, base::cannonball::SeeChanges::observable);
 
     EXPECT_TRUE(preview.contains(1));
     EXPECT_TRUE(preview.contains(2));

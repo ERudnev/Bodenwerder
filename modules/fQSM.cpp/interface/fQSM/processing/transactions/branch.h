@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fQSM/processing/actions/merge.h>
-#include <fQSM/model/complex/draft.h>
+#include <fQSM/model/complex/future.h>
 #include <fQSM/model/complex/patch.h>
 #include <fQSM/processing/transaction.h>
 
@@ -13,7 +13,7 @@ namespace fqsm::processing::transaction {
 
         Branch(ChildPolicy policy)
             : patch(base::make_shared<model::complex::Patch>(policy.view.schema))
-            , preview(policy.view, patch)
+            , preview(policy.view, patch, base::cannonball::SeeChanges::observable)
         {
             context = std::make_shared<Context>(Context{
                 preview,
@@ -27,7 +27,7 @@ namespace fqsm::processing::transaction {
     private:
         Context::Ptr context;
         Context::PatchRef patch;
-        model::complex::Draft preview;
+        model::complex::Future preview;
 
         auto writing() -> Writing override {
             return Gate(context);
