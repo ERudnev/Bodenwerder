@@ -24,12 +24,12 @@ namespace fqsm::features::reactions::rules::structural_deprecated {
     // NG: public visibility of this "classes" is made object-like
     template<category::Component Follower, category::Any Origin>
     struct component : Functional<typename Follower::BaseActions::ConstructFromParent> {
-        using Parent = Functional<typename Follower::BaseActions::ConstructFromParent>;
+        using Base = Functional<typename Follower::BaseActions::ConstructFromParent>;
 
         static_assert(std::same_as<typename Follower::HostAspect, Origin>);
-        component(ComponentMissing strat, Parent::ActionFunction autoConstructor = nullptr) : Parent(autoConstructor), policy(strat) {}
+        component(ComponentMissing strat, Base::ActionFunction autoConstructor = nullptr) : Base(autoConstructor), policy(strat) {}
 
-        Parent::Sources listens() const override { return Abstract::typed_set<Origin>(); }
+        Abstract::Sources listens() const override { return Abstract::typed_set<Origin>(); }
         void apply(Reviewing context) override;
     private:
         const ComponentMissing policy;

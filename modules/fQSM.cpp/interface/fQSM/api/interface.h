@@ -19,7 +19,8 @@
 
 // Behavior definition for Aspects:
 //#include <fQSM/features/rules/structural.h>
-#include <fQSM/features/rules/structural_deprecated.h>
+#include <fQSM/features/rules/structural_deprecated.h> // deprecated!
+#include <fQSM/features/rules/structural.h>
 #include <fQSM/features/rules/constraints.h>
 #include <fQSM/features/reactions/binding.h>
 #include <fQSM/features/reactions/deletion.h>

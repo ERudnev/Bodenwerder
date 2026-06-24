@@ -39,7 +39,6 @@ namespace fqsm::features::reactions {
         static auto changes(const Reviewing& context) -> model::linear::Delta<Meta> {
             return context.template changes<Meta>();
         }
-
     };
 
     template<typename ActionFunctionType>

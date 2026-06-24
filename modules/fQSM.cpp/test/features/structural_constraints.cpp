@@ -27,11 +27,8 @@ namespace local {
 
     struct Archetype {
         static A::Id spawn(fqsm::Writing context, int val) {
-            base::message("spawn A");
             const auto id = ask::item::create<A>(context, {val});
-            base::message("spawn B");
             ask::item::create<B>(context, id, {std::format("it is {}", val)});
-            base::message("spawn C");
             with<C>::create(context, id);
             return id;
         }
@@ -44,13 +41,15 @@ namespace local {
 }
 namespace local {
     const B::Behavior B::behavior = {
-        rule::structural_deprecated::component<B, A>(reflex::ComponentMissing::inacceptable),
+        rule::structural::remove_with_parent<B,A>(),
+        //rule::structural_deprecated::component<B, A>(reflex::ComponentMissing::inacceptable),
         reaction::debug::death_log<B>("death-event message for {}"),
     };
 }
 namespace local {
     const C::Behavior C::behavior = {
-        rule::structural_deprecated::component<C, A>(reflex::ComponentMissing::remove_parent, &C::Actions::create),
+        rule::structural::remove_with_parent<B,A>(),
+        //rule::structural_deprecated::component<C, A>(reflex::ComponentMissing::remove_parent, &C::Actions::create),
         reaction::debug::death_log<C>("death-event message for {}"),
     };
 }
