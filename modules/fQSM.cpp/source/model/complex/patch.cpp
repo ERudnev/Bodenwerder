@@ -1,4 +1,5 @@
 #include <fQSM/model/complex/patch.h>
+
 #include <fQSM/model/structure/schema.h>
 
 namespace fqsm::model::complex {
@@ -9,4 +10,5 @@ namespace fqsm::model::complex {
             lines.container.emplace(typeId, node.binding.createPatch());
         return lines;
     }
+
 }

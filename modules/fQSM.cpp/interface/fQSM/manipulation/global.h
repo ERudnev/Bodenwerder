@@ -25,7 +25,7 @@ namespace fqsm::manipulation::global {
     struct update {
         explicit update(Writing gate) : gate(std::move(gate)), buffer(this->gate->aspect<Meta>().global()) {}
 
-        ~update() { gate.patch()->aspect<Meta>().global = std::move(buffer); }
+        ~update() { gate.patch().aspect<Meta>().global = std::move(buffer); }
 
         update(const update&) = delete;
         update& operator=(const update&) = delete;

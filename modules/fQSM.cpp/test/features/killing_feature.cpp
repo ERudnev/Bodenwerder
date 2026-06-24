@@ -41,7 +41,7 @@ namespace {
                 static void update(Writing context, int timePassed) {
                     for (const auto entry : context->aspect<Life>().items()) {
                         //_INCOMPLETE_; // NB to mage Gate == Draft!
-                        context.patch()->aspect<Life>().items.insert(entry.id, update(entry.value, timePassed));
+                        context.patch().aspect<Life>().items.insert(entry.id, update(entry.value, timePassed));
                     }
                 }
             };
@@ -86,7 +86,7 @@ namespace {
     // this kind of code may appear in the separate *.cpp
     namespace local {
         const Life::Behavior Life::behavior = {
-            rule::structural::component<Life, Body>(ComponentMissing::make_default, &Life::Actions::create),
+            rule::structural_deprecated::component<Life, Body>(reflex::ComponentMissing::make_default, &Life::Actions::create),
         };
     }
 
@@ -97,7 +97,7 @@ namespace {
             }
         };
         const Death::Behavior Death::behavior = {
-            rule::structural::component<Death, Life>(ComponentMissing::make_default, &Death::Actions::create),
+            rule::structural_deprecated::component<Death, Life>(reflex::ComponentMissing::make_default, &Death::Actions::create),
         };
     }
 }

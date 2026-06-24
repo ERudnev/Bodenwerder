@@ -30,7 +30,7 @@ namespace fqsm::processing::transaction {
             : id(id), gate(std::move(gate)), buffer(std::move(value)) {}
 
         ~Quantal() {
-            auto& patchItems = gate.patch()->aspect<Meta>().items;
+            auto& patchItems = gate.patch().aspect<Meta>().items;
             if (removed) {
                 if (getActual(gate, id))
                     patchItems.insert(id, std::nullopt);

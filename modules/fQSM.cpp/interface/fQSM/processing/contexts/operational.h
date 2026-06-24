@@ -2,35 +2,28 @@
 
 #include <functional>
 #include <memory>
-#include <base/logging.h>
-#include <fQSM/meta/interface.include.h>
-#include <fQSM/model/_forwards.h>
+#include <fQSM/references.h>
 #include <fQSM/processing/_forwards.h>
+#include <fQSM/model/_forwards.h>
+#include <fQSM/model/complex/future.h>
 
-// TODO:
-// this part of library needs major restructurisation.
 namespace fqsm::processing::context {
 
-    // Abstraction between "own" Draft and "someones else draft"
     struct Operational final {
         using Ptr = std::shared_ptr<Operational>;
-        // this may look not clear, but the truth is: Patch is mutable all ehe way through all systems
         using PatchRef = ref<model::complex::Patch>;
         using Upstream = std::function<void(PatchRef)>;
+        using Future = model::complex::Future;
 
-        const model::complex::State& view;
-        PatchRef patch;
-        Upstream upstream;
+        PatchRef accumulator; // abstraction: ownership of Patch (local/remote)??
+        const model::complex::Future world;
+        Upstream callback;
 
-        ~Operational() { finish(); } // _DEBUG_REPORT_;
+        Operational(const State& initial, PatchRef patch, Future::Visibility, Upstream);
+        ~Operational() { collapse(); }
 
-        void finish() {
-            if (upstream) {
-                upstream(patch);
-            }
-            // TODO: clarify this (not tested yet)
-            upstream = nullptr;
-        }
+    private:
+        void collapse();
     };
 }
 
@@ -40,15 +33,15 @@ namespace fqsm::processing {
         using Context = context::Operational;
         Gate(Context::Ptr parent) : context(std::move(parent)) {}
 
-        operator Reading() const { return context->view; }
-        const model::complex::State* operator->() const { return &context->view; }
-        Context::PatchRef patch() { return context->patch; }
-
+        operator View() const { return context->world; }
+        const model::complex::State* operator->() const { return &context->world; }
+        model::complex::Patch& patch() { return *context->accumulator; }
+        //Context::PatchRef patch() { return context->accumulator; }
     private:
         // There is one fundamental problem around.
         // shared_ptr<Context> is quite ineffective for lightweinght Gate
-        // but no other way to make transaction living as long as needed is visible
-        // TODO: find better day to sovle this
+        // but no other way to make transaction living
+        // TODO: find better day to do this
         const Context::Ptr context;
     };
 }

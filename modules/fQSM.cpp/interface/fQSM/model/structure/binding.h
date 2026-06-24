@@ -1,6 +1,8 @@
 #pragma once
 
 #include <functional>
+#include <string>
+#include <string_view>
 
 #include <base/shared_reference.h>
 #include <base/cannonball/future.h>
@@ -21,6 +23,7 @@ namespace fqsm::model::structure {
         //std::function<void(const complex::State&, ref<complex::Patch>, cref<complex::Patch>)> mergePatchSlice;
         std::function<void(const complex::State&, complex::Patch&, const complex::Patch&)> mergePatchSlice;
         std::function<void(const complex::Patch&, analysis::Patch&)> analyzePatchSlice;
+        std::function<std::string(const complex::Patch&, std::string_view aspectName)> logPatchSlice;
 
         template<category::Any Meta>
         static Binding make();

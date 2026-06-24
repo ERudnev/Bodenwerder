@@ -11,23 +11,18 @@ namespace fqsm::processing::transaction {
     struct Branch : Transaction {
         Branch(Transaction& parent) : Branch(parent.childPolicy()) {}
 
-        Branch(ChildPolicy policy)
-            : patch(base::make_shared<model::complex::Patch>(policy.view.schema))
-            , preview(policy.view, patch, base::cannonball::SeeChanges::observable)
-        {
-            context = std::make_shared<Context>(Context{
-                preview,
-                patch,
-                policy.upstream
-            });
-        }
+        Branch(ChildPolicy policy) : context(std::make_shared<Context>(
+            policy.view,
+            base::make_shared<Patch>(policy.view.schema),
+            base::cannonball::SeeChanges::observable,
+            policy.upstream
+        ))
+        {}
 
-        operator Reading() const override { return preview; }
+        operator Reading() const override { return context->world; }
 
     private:
         Context::Ptr context;
-        Context::PatchRef patch;
-        model::complex::Future preview;
 
         auto writing() -> Writing override {
             return Gate(context);
@@ -35,13 +30,13 @@ namespace fqsm::processing::transaction {
 
         auto makeChildPolicy() -> ChildPolicy override {
             return ChildPolicy{
-                preview,
+                context->world,
                 [this](Context::PatchRef patch) { accept(patch); }
             };
         }
 
         void accept(Context::PatchRef child) {
-            actions::merge(preview, patch, child);
+            actions::merge(context->world, context->accumulator, child);
         }
 
     };

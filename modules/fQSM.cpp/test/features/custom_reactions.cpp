@@ -32,13 +32,13 @@ namespace {
     }
     namespace local {
         const B::Behavior B::behavior = {
-            rule::structural::component<B, A>(ComponentMissing::inacceptable),
+            rule::structural_deprecated::component<B, A>(reflex::ComponentMissing::inacceptable),
             reaction::debug::death_log<B>("death-event message for {}"),
         };
     }
     namespace local {
         const C::Behavior C::behavior = {
-            rule::structural::component<C, A>(ComponentMissing::make_default, &C::Actions::create),
+            rule::structural_deprecated::component<C, A>(reflex::ComponentMissing::make_default, &C::Actions::create),
         };
     }
 }

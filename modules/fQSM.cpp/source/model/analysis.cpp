@@ -11,13 +11,10 @@ namespace fqsm::analysis {
         for (const auto& [_, node] : patch.schema->nodes) {
             node.binding.analyzePatchSlice(patch, *this);
         }
+        for (const auto& [_, slice] : perSlice) {
+            ++overall.nonEmptyLines;
+            overall.patchlets += slice.total();
+        }
     }
 
-    int Patch::overallChanges() const {
-        int out = 0;
-        for (const auto& [_, slice] : perSlice) {
-            out += slice.total();
-        }
-        return out;
-    }
 }

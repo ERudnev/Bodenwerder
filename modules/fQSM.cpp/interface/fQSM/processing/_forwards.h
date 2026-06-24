@@ -14,6 +14,7 @@ namespace fqsm::processing::context {
 }
 
 namespace fqsm::processing {
+    using View = const model::complex::State&;
     struct Gate;
     struct Review;
 
@@ -24,7 +25,7 @@ namespace fqsm::processing {
 // exportin this as 1st class citizen of fQSM:
 namespace fqsm {
     //using Reading = const processing::View&; // cleanup
-    using Reading = const ::fqsm::model::complex::State&;
+    using Reading = processing::View;
     using Writing = processing::Gate; // rename to "Draft"?
     template<meta::category::Any Meta>
     using Direct = processing::Breach<Meta>;

@@ -46,7 +46,9 @@ void delta_iterators()
 
     const fqsm::model::complex::Reality state(look(fill));
     auto patch = base::make_shared<fqsm::model::complex::Patch>(schema);
-    auto patch_context = std::make_shared<Context>(Context{state, patch, {}});
+    auto patch_context = std::make_shared<Context>(
+        state, patch, base::cannonball::SeeChanges::observable, Context::Upstream{}
+    );
     auto writing = fqsm::processing::Gate{patch_context};
 
     std::vector<Id> added_ids;

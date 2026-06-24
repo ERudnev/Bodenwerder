@@ -8,13 +8,15 @@ namespace fqsm::processing {
 
     auto Realm::writing() -> Writing {
         auto patch = base::make_shared<model::complex::Patch>(reality.schema);
-        auto context = std::make_shared<Context>(Context{
+        auto context = std::make_shared<Context>(
             reality,
             patch,
-            [this](Context::PatchRef patch) {
+            base::cannonball::SeeChanges::observable,
+            Context::Upstream{[this](Context::PatchRef patch) {
                 accept(patch);
-            }
-        });
+            }}
+        );
+        base::message(std::format("writing() this={} op={}", (void*)this, (void*)context.get()));
 
         return Gate(context);
     }

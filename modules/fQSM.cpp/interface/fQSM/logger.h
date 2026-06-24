@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include <base/logging.h>
-#include <iQSM/api/builtins.h>
+#include <fQSM/api/builtins.h>
 
 namespace fqsm::logger {
 
@@ -13,4 +13,12 @@ namespace fqsm::logger {
     using base::to_string;
 
     inline fqsm::q1::timepoint now() { return base::now(); }
+
+}
+
+namespace fqsm::logger::settings {
+
+    namespace processing {
+        static constexpr bool contextResult = true;
+    }
 }

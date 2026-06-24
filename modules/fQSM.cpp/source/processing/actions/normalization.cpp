@@ -2,7 +2,6 @@
 
 #include <format>
 #include <set>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -42,21 +41,15 @@ namespace fqsm::processing::actions::normalization {
         if (control.statistics.size() < early_window) return false;
 
         const auto offset = control.statistics.size() - early_window;
-        int previous = control.statistics[offset].overallChanges();
+        int previous = control.statistics[offset].overall.patchlets;
         if (previous == 0) return false;
 
         for (std::size_t i = offset + 1; i < control.statistics.size(); ++i) {
-            const int current = control.statistics[i].overallChanges();
+            const int current = control.statistics[i].overall.patchlets;
             if (current <= previous) return false;
             previous = current;
         }
         return true;
-    }
-
-    void ensure_depth_limit(const UpdateControl& control) {
-        if (control.counter < control.limit) return;
-
-        throw std::runtime_error(std::format("normalization: depth limit {} reached", control.limit));
     }
 
     // build one normalization wave
@@ -69,6 +62,7 @@ namespace fqsm::processing::actions::normalization {
         // complex::Proposal === const complex::Draft
         fqsm::ref<Patch> non_const_patch(std::const_pointer_cast<Patch>(patch.std_ptr()));
 
+        base::message("creating review");
         auto review = Review(
             model::complex::Future{source, non_const_patch, base::cannonball::SeeChanges::observable, taintedLines},
             // TODO: change this patch -> blind Futire to get plain semantics if needed
@@ -97,6 +91,12 @@ namespace fqsm::processing::actions::normalization {
 
 
     auto normalize_recursive(Reading source, PatchRef accumulated, Rtid::Set taintedLines, UpdateControl& control) -> review::Notes {
+        if (control.counter >= control.limit) {
+            review::Notes notes;
+            notes.critical.push_back(std::format("normalization: depth limit {} reached", control.limit));
+            return notes;
+        }
+
         control.statistics.emplace_back(*accumulated);
 
         const auto fix = normalizer(source, accumulated, taintedLines);
@@ -104,11 +104,10 @@ namespace fqsm::processing::actions::normalization {
         if (notes.rejection()) return notes;
 
         const auto fixStats = analysis::Patch{*fix.patch};
-        if (fixStats.overallChanges() == 0 and fix.taintedDuringPatch.empty() ) return notes;
+        if (fixStats.overall.patchlets == 0 and fix.taintedDuringPatch.empty() ) return notes;
 
         if (is_suspicious_growth(control)) return notes;
 
-        ensure_depth_limit(control);
         ++control.counter;
         actions::merge(source, accumulated, fix.patch);
         append(notes, normalize_recursive(source, accumulated, fix.taintedDuringPatch, control));

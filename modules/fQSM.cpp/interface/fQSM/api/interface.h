@@ -18,7 +18,8 @@
 #include <fQSM/processing/transactions/branch.h>
 
 // Behavior definition for Aspects:
-#include <fQSM/features/rules/structural.h>
+//#include <fQSM/features/rules/structural.h>
+#include <fQSM/features/rules/structural_deprecated.h>
 #include <fQSM/features/rules/constraints.h>
 #include <fQSM/features/reactions/binding.h>
 #include <fQSM/features/reactions/deletion.h>
@@ -49,8 +50,6 @@ namespace fqsm::api {
 
     using Schema = fqsm::Schema;
 
-    using ComponentMissing = fqsm::features::reflexes::ComponentMissing;
-
     // processing/transactions/contexts Big Objects
     namespace context {
         using Realm = ::fqsm::processing::Realm;
@@ -59,7 +58,8 @@ namespace fqsm::api {
 
     // Behavior builder:
     namespace reflex {
-        using namespace ::fqsm::features::reflexes;
+        using ComponentMissing = fqsm::features::reflexes_deprecated::ComponentMissing;
+        using namespace ::fqsm::features::reflexes_deprecated;
     }
     namespace rule {
         using namespace ::fqsm::features::reactions::rules;

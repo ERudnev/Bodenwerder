@@ -12,6 +12,7 @@
 #include <fQSM/model/structure/binding.h>
 #include <fQSM/processing/actions/integration.h>
 #include <fQSM/processing/actions/merge.h>
+#include <fQSM/utility/logging.h>
 
 namespace fqsm::schema::details {
 
@@ -52,6 +53,11 @@ namespace fqsm::schema::details {
     }
 
     template<category::Any Meta>
+    auto logPatchSlice(const model::complex::Patch& patch, std::string_view aspectName) -> std::string {
+        return fqsm::utility::detail::log_patch_slice<Meta>(patch, aspectName);
+    }
+
+    template<category::Any Meta>
     void analyzePatchSlice(const model::complex::Patch& patch, analysis::Patch& out) {
         auto entry = analysis::Patch::SliceEntry{};
         const auto& slice = patch.aspect<Meta>();
@@ -73,6 +79,7 @@ namespace fqsm::schema::details {
             &integratePatchSlice<Meta>,
             &mergePatchSlice<Meta>,
             &analyzePatchSlice<Meta>,
+            &logPatchSlice<Meta>,
         };
     }
 }

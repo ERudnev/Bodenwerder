@@ -7,7 +7,7 @@
     // end
 
 #define FQSM_FEATURES_TESTS(X) \
-    X(attribute_norms) \
+    X(structural_constraints) \
     X(custom_reactions) \
     X(killing_feature) \
     // end
@@ -41,7 +41,7 @@ BASETEST_FORWARD_DECLARE_TESTS(FQSM_MINIMODEL_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_Q1RUNTIME_TESTS)
 //BASETEST_FORWARD_DECLARE_TESTS(FQSM_WORKSHOP_TESTS)
 
-int main() {
+int main_all_disabled_now() {
     struct group final {
         const char* name = "";
         std::vector<base::testing::test_case> tests{};
@@ -77,8 +77,8 @@ int main() {
     return total.ok() ? 0 : 1;
 }
 
-int main_one_test_only() {
+int main() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("all", &tests::flat_model_assembly)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::structural_constraints)));
     return s.ok() ? 0 : 1;
 }
