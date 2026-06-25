@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <fQSM/references.h>
 #include <fQSM/meta/categories.h>
 
@@ -27,8 +28,18 @@ namespace fqsm::analysis {
 namespace fqsm::model::linear {
 
     //this is base class, acting as forwarding for containers:
-    namespace state { struct Erased { virtual ~Erased()=default; }; }
-    namespace patch { struct Erased { virtual ~Erased()=default; }; }
+    namespace state {
+        struct Erased {
+            virtual ~Erased()=default;
+            virtual std::size_t quanta() const = 0;
+        };
+    }
+    namespace patch {
+        struct Erased {
+            virtual ~Erased()=default;
+            virtual std::size_t quanta() const = 0;
+        };
+    }
     namespace preview { struct Erased { virtual ~Erased()=default; }; }
 }
 

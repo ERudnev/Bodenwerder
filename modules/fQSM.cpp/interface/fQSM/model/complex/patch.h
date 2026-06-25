@@ -19,6 +19,8 @@ namespace fqsm::model::complex {
         template<category::Any Meta>
         const linear::Patch<Meta>& aspect() const;
 
+        std::size_t quanta() const;
+
     private:
         static Composite<linear::patch::Erased> composition(Schema);
     };

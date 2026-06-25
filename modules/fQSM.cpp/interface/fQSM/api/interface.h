@@ -49,6 +49,10 @@ namespace fqsm::api {
     template<typename Meta, typename Parent>
     using Component = ::fqsm::aspects::Component<Meta, Parent>;
 
+    // Interpretation mechanism:
+    using Archetype = ::fqsm::aspects::Archetype;
+
+    // Types graph
     using Schema = fqsm::Schema;
 
     // processing/transactions/contexts Big Objects

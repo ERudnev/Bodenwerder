@@ -88,6 +88,12 @@ namespace fqsm::actions {
 
     template<typename Meta, typename HostType>
     using Component = Parasitic<Meta, HostType>;
+
+    // Interpretation category ations ant typedefs:
+    struct Archetype : Base {
+        // TODO: consider to add type lists and other stuff here
+    };
+
 }
 
 // Impl

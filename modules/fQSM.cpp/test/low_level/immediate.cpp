@@ -44,7 +44,7 @@ namespace {
     };
 
     const A::Behavior A::behavior = {
-        rule::constraint::value_X<A>(&A::Actions::Private::allow_non_negative),
+        rule::constraint::element<A>(&A::Actions::Private::allow_non_negative),
     };
 }
 

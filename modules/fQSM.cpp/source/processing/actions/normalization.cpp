@@ -115,7 +115,7 @@ namespace fqsm::processing::actions::normalization {
 
     // build one normalization wave
     auto reactions_pass(Reading source, fqsm::cref<Patch> changes, const Rtid::Set& taintedLines) -> PassResult {
-        base::message("creating review context");
+        //base::message("creating review context");
         PassResult result{
             base::make_shared<Patch>(source.schema),
             {}, // TODO: consider filling Tainted Flags once Reviewers will become context::Direct<T> compatible

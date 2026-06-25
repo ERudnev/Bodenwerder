@@ -16,7 +16,7 @@ namespace fqsm::processing {
                 accept(patch);
             }}
         );
-        base::message(std::format("writing() this={} op={}", (void*)this, (void*)context.get()));
+        //base::message(std::format("writing() this={} op={}", (void*)this, (void*)context.get()));
 
         return Gate(context);
     }

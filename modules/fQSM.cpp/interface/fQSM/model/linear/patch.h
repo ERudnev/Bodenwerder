@@ -11,6 +11,8 @@ namespace fqsm::model::linear {
         base::cannonball::Patch<Id<Meta>, Quantum<Meta>> items;
         std::optional<GlobalValue<Meta>> global; // nullopt means "no change"
 
+        std::size_t quanta() const override { return items.size(); }
+
         // experimental (avoiding manipulators:: at all, allowing type-bould batches
         void put_modification(Id<Meta>, Quantum<Meta>);
         void put_deletion(Id<Meta>);

@@ -19,6 +19,6 @@ namespace fqsm::logger {
 namespace fqsm::logger::settings {
 
     namespace processing {
-        static constexpr bool contextResult = true;
+        static constexpr bool contextResult = false;
     }
 }

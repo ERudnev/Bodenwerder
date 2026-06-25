@@ -25,6 +25,8 @@ namespace fqsm::model::complex {
             return static_cast<linear::State<Meta>&>(*composition().container.at(TypeId<Meta>).get());
         }
 
+        std::size_t quanta() const;
+
         const Schema schema; // defined for Reality/Draft/any homogenous material object
     protected:
         using Erased = linear::state::Erased;

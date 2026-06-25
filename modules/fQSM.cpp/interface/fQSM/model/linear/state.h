@@ -15,6 +15,8 @@ namespace fqsm::model::linear {
         virtual const Items& items() const = 0;
         virtual Global& global() = 0;
         virtual const Global& global() const = 0;
+
+        std::size_t quanta() const override { return items().size(); }
     };
 
     // TODO: remove

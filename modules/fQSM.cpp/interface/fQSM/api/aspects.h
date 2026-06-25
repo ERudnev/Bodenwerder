@@ -40,4 +40,9 @@ namespace fqsm::aspects {
         using HostAspect = HostType;
         using BaseActions = actions::Component<Meta, HostType>;
     };
+
+    // Interpretation of several types:
+    struct Archetype : actions::Archetype {
+        //using BaseActions = actions::Archetype;
+    };
 }
