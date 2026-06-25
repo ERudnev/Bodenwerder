@@ -58,7 +58,7 @@ namespace fqsm::manipulation::schema {
 
         out->nodes.emplace(TypeId<Meta>, node);
 
-        for (const auto& reaction : Meta::behavior.rules) {
+        for (const auto& reaction : Meta::allReactions().rules) {
             const auto reactionId = model::structure::AspectGraph::ReactionId{ out->reactions.size() };
             out->reactions.push_back(reaction);
 

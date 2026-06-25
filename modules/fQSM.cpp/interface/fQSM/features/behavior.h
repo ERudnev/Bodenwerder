@@ -16,6 +16,14 @@ namespace fqsm::features {
 
         Behavior(Reactions in) : rules(std::move(in)) {}
 
+        static Behavior merged(const Behavior& lhs, const Behavior& rhs) {
+            Reactions out;
+            out.reserve(lhs.rules.size() + rhs.rules.size());
+            out.insert(out.end(), lhs.rules.begin(), lhs.rules.end());
+            out.insert(out.end(), rhs.rules.begin(), rhs.rules.end());
+            return Behavior(std::move(out));
+        }
+
         // syntax sugar for Aspect definitions: {normaA(), normaB(p), normaC(c,d)}
         template<typename FirstReaction, typename... RestReactions, typename = std::enable_if_t<std::is_base_of_v<features::reactions::Abstract, std::decay_t<FirstReaction>> && (std::is_base_of_v<features::reactions::Abstract, std::decay_t<RestReactions>> && ...)>>
         Behavior(FirstReaction&& firstReaction, RestReactions&&... restReactions)

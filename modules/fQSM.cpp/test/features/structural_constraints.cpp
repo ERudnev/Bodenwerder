@@ -7,17 +7,17 @@ namespace local {
 
     struct EntFree : Entity<EntFree> {
         struct Quantum { integer value; };
-        static const Behavior behavior; // TODO: struct Behavoir : BaseReactions { static const Rules rules; }
+        static const Behavior custom;
     };
 
     struct CompSimple : Component<CompSimple, EntFree> {
         struct Quantum { string text; };
-        static const Behavior behavior;
+        static const Behavior custom;
     };
 
     struct CompWithCreate : Component<CompWithCreate, EntFree> {
         struct Quantum { integer square; };
-        static const Behavior behavior;
+        static const Behavior custom;
         struct Actions : BaseActions {
         private:
             static int square(int x) { return x*x; };
@@ -32,12 +32,12 @@ namespace local {
 
     struct AttrPrimary : Attribute<AttrPrimary, EntFree> {
         struct Quantum { string description; };
-        static const Behavior behavior;
+        static const Behavior custom;
     };
 
     struct AttrSecondary : Attribute<AttrSecondary, AttrPrimary> {
         struct Quantum { string clarification; };
-        static const Behavior behavior;
+        static const Behavior custom;
     };
 
     namespace Archetypes {
@@ -63,41 +63,26 @@ namespace local {
 
 // kinda impl in come *.cpp file:
 namespace local {
-    const EntFree::Behavior EntFree::behavior = {};
+    const EntFree::Behavior EntFree::custom = {};
 }
 namespace local {
-    const CompSimple::Behavior CompSimple::behavior = {
-        rule::structural::remove_with_parent<CompSimple,EntFree>(),
-        rule::structural::dead_component_kill_parent<CompSimple, EntFree>(),
-        rule::structural::parastic_requires_parent_to_appear<CompSimple, EntFree>(),
-        rule::structural::parrent_appears_requires_component<CompSimple, EntFree>(),
+    const CompSimple::Behavior CompSimple::custom = {
         //rule::structural_deprecated::component<CompSimple, EntFree>(reflex::ComponentMissing::inacceptable),
         reaction::debug::death_log<CompSimple>("death-event message for {}"),
     };
 }
 namespace local {
-    const CompWithCreate::Behavior CompWithCreate::behavior = {
-        rule::structural::remove_with_parent<CompWithCreate,EntFree>(),
-        rule::structural::dead_component_kill_parent<CompWithCreate, EntFree>(),
-        rule::structural::parastic_requires_parent_to_appear<CompWithCreate, EntFree>(),
-        rule::structural::parrent_appears_requires_component<CompWithCreate, EntFree>(),
-        //rule::structural_deprecated::component<CompWithCreate, EntFree>(reflex::ComponentMissing::remove_parent, &CompWithCreate::Actions::create),
+    const CompWithCreate::Behavior CompWithCreate::custom = {
         reaction::debug::death_log<CompWithCreate>("death-event message for {}"),
     };
 }
 
 namespace local {
-    const AttrPrimary::Behavior AttrPrimary::behavior = {
-        rule::structural::remove_with_parent<AttrPrimary, EntFree>(),
-        rule::structural::parastic_requires_parent_to_appear<AttrPrimary, EntFree>(),
-    };
+    const AttrPrimary::Behavior AttrPrimary::custom = {};
 }
 
 namespace local {
-    const AttrSecondary::Behavior AttrSecondary::behavior = {
-        rule::structural::remove_with_parent<AttrSecondary, AttrPrimary>(),
-        rule::structural::parastic_requires_parent_to_appear<AttrSecondary, AttrPrimary>(),
-    };
+    const AttrSecondary::Behavior AttrSecondary::custom = {};
 }
 
 

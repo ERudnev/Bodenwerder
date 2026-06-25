@@ -41,7 +41,7 @@ BASETEST_FORWARD_DECLARE_TESTS(FQSM_MINIMODEL_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_Q1RUNTIME_TESTS)
 //BASETEST_FORWARD_DECLARE_TESTS(FQSM_WORKSHOP_TESTS)
 
-int main_all_disabled_now() {
+int main() {
     struct group final {
         const char* name = "";
         std::vector<base::testing::test_case> tests{};
@@ -77,7 +77,7 @@ int main_all_disabled_now() {
     return total.ok() ? 0 : 1;
 }
 
-int main() {
+int main_only_one() {
     const auto s = base::testing::run_tests(
         BASETEST_LIST(BASETEST_NAMED("selected", &tests::structural_constraints)));
     return s.ok() ? 0 : 1;

@@ -4,7 +4,7 @@ namespace tests::model {
     using namespace fqsm::api;
 
     // SomeEntity:
-    const SomeEntity::Behavior SomeEntity::behavior{};
+    const SomeEntity::Behavior SomeEntity::custom{};
 
     struct SomeEntity::Actions::Private {
         static integer somePrivateFunc(integer val, integer mod) {
@@ -20,7 +20,7 @@ namespace tests::model {
 namespace tests::model {
     using namespace fqsm::api;
     // SomeComponent:
-    const SomeComponent::Behavior SomeComponent::behavior{
+    const SomeComponent::Behavior SomeComponent::custom{
         //.structural = {
         //}
     };
@@ -30,6 +30,6 @@ namespace tests::model {
     using namespace fqsm::api;
 
     // SecondaryAttribute:
-    const SecondaryAttribute::Behavior SecondaryAttribute::behavior{};
+    const SecondaryAttribute::Behavior SecondaryAttribute::custom{};
 
 }

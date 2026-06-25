@@ -14,7 +14,7 @@ namespace {
             struct Global {
                 integer dustKgs = 0;// == mass (kg)
             };
-            static const Behavior behavior;
+            static const Behavior custom;
             struct Actions : BaseActions {
                 struct Private; // important forward to allow Protave part defined in *.cpp file
                 static integer mass(Reading context, Id id) {
@@ -30,7 +30,7 @@ namespace {
             struct Quantum {
                 integer clock = 0;
             };
-            static const Behavior behavior;
+            static const Behavior custom;
             struct Actions : BaseActions {
                 static void create(Writing context, Body::Id id) {
                     ask::item::create<Life>(context, id, {0});
@@ -54,7 +54,7 @@ namespace {
             struct Quantum {
                 integer limit;
             };
-            static const Behavior behavior;
+            static const Behavior custom;
             struct Actions : BaseActions {
                 struct Private;
                 static void create(Writing context, Life::Id id) {
@@ -78,14 +78,14 @@ namespace {
         };
 
         // Behavior:
-        const Body::Behavior Body::behavior = {
+        const Body::Behavior Body::custom = {
             reaction::deletion<Body>(&Actions::Private::reactOnDeath),
         };
     }
 
     // this kind of code may appear in the separate *.cpp
     namespace local {
-        const Life::Behavior Life::behavior = {
+        const Life::Behavior Life::custom = {
             rule::structural_deprecated::component<Life, Body>(reflex::ComponentMissing::make_default, &Life::Actions::create),
         };
     }
@@ -96,7 +96,7 @@ namespace {
             static void reactOnParentUpdates(fqsm::Reviewing context, HostAspect::Id id, const HostAspect::Quantum& newState) {
             }
         };
-        const Death::Behavior Death::behavior = {
+        const Death::Behavior Death::custom = {
             rule::structural_deprecated::component<Death, Life>(reflex::ComponentMissing::make_default, &Death::Actions::create),
         };
     }

@@ -7,17 +7,17 @@ namespace {
     namespace local {
         struct A : Entity<A> {
             struct Quantum { integer value; };
-            static const Behavior behavior; // TODO: struct Behavoir : BaseReactions { static const Rules rules; }
+            static const Behavior custom;
         };
 
         struct B : Component<B, A> {
             struct Quantum { string text; };
-            static const Behavior behavior;
+            static const Behavior custom;
         };
 
         struct C : Component<C, A> {
             struct Quantum { integer power; };
-            static const Behavior behavior;
+            static const Behavior custom;
             struct Actions : BaseActions {
                 static void create(Writing context, A::Id id) {
                     ask::item::create<C>(context, id, {with<A>::get(context, id).value});
@@ -28,16 +28,16 @@ namespace {
 
     // kinda impl in come *.cpp file:
     namespace local {
-        const A::Behavior A::behavior = {};
+        const A::Behavior A::custom = {};
     }
     namespace local {
-        const B::Behavior B::behavior = {
+        const B::Behavior B::custom = {
             rule::structural_deprecated::component<B, A>(reflex::ComponentMissing::inacceptable),
             reaction::debug::death_log<B>("death-event message for {}"),
         };
     }
     namespace local {
-        const C::Behavior C::behavior = {
+        const C::Behavior C::custom = {
             rule::structural_deprecated::component<C, A>(reflex::ComponentMissing::make_default, &C::Actions::create),
         };
     }
