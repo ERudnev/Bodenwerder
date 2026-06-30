@@ -1,5 +1,5 @@
 #include <fQSM/model/complex/reality.h>
-#include <fQSM/model/structure/schema.h>
+#include <fQSM/model/intertype/schema.h>
 
 namespace fqsm::model::complex {
 

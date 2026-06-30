@@ -1,5 +1,5 @@
 #include <fQSM/processing/actions/merge.h>
-#include <fQSM/model/structure/schema.h>
+#include <fQSM/model/intertype/schema.h>
 
 namespace fqsm::processing::actions {
 

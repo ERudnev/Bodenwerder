@@ -5,8 +5,8 @@
 #include <fQSM/meta/categories.h>
 
 // model forwards
-namespace fqsm::model::structure {
-    struct AspectGraph;
+namespace fqsm::model::intertype {
+    struct Graph;
 }
 
 namespace fqsm::model::complex {
@@ -42,7 +42,7 @@ namespace fqsm::model::linear {
 // alias, mostly for external use
 namespace fqsm {
     using Patch = ::fqsm::model::complex::Patch;
-    using Schema = cref<model::structure::AspectGraph>;
+    using Schema = cref<model::intertype::Graph>;
     using State = model::complex::State;
     //using Reality = model::complex::Reality;
     //using WorldAddressable = model::complex::StateAddressable;

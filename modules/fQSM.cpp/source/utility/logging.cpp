@@ -3,7 +3,7 @@
 #include <format>
 #include <string>
 #include <vector>
-#include <fQSM/model/structure/schema.h>
+#include <fQSM/model/intertype/schema.h>
 
 namespace fqsm::utility {
 

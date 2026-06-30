@@ -8,11 +8,11 @@
 #include <fQSM/features/_forwards.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/identifier.h>
-#include <fQSM/model/structure/binding.h>
+#include <fQSM/model/intertype/binding.h>
 
-namespace fqsm::model::structure {
+namespace fqsm::model::intertype {
 
-    struct AspectGraph {
+    struct Graph {
         using ReactionId = Identifier<features::reactions::Abstract, std::size_t>;
         using ReactionIds = std::vector<ReactionId>;
         using Reactions = features::Reactions;

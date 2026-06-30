@@ -5,7 +5,7 @@
 #include <fQSM/meta/rtid.h>
 #include <fQSM/references.h>
 
-namespace fqsm::model {
+namespace fqsm::model::intertype {
 
     template<typename ErasedLineType>
     struct Composite {
@@ -13,9 +13,4 @@ namespace fqsm::model {
 
         Container container;
     };
-}
-
-namespace fqsm::model::composite {
-
-    // TODO: add general cast?
 }

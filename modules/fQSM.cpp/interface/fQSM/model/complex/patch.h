@@ -3,13 +3,13 @@
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/model/linear/patch.h>
-#include <fQSM/model/structure/composite.h>
+#include <fQSM/model/intertype/composite.h>
 
 namespace fqsm::model::complex {
 
     struct Patch {
         const Schema schema;
-        const Composite<linear::patch::Erased> lines;
+        const intertype::Composite<linear::patch::Erased> lines;
 
         Patch(Schema schema) : schema(schema), lines(composition(schema)) {}
 
@@ -35,7 +35,7 @@ namespace fqsm::model::complex {
         }
 
     private:
-        static Composite<linear::patch::Erased> composition(Schema);
+        static intertype::Composite<linear::patch::Erased> composition(Schema);
     };
 }
 

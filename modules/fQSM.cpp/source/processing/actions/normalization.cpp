@@ -6,7 +6,7 @@
 #include <fQSM/processing/actions/integration.h>
 #include <fQSM/processing/review.h>
 #include <fQSM/model/complex/future.h>
-#include <fQSM/model/structure/schema.h>
+#include <fQSM/model/intertype/schema.h>
 #include <fQSM/features/reaction.h>
 
 // local alias:
@@ -49,7 +49,7 @@ namespace fqsm::processing::actions::normalization {
             result.patch,
             result.notes);
 
-        std::set<model::structure::AspectGraph::ReactionId> selectedReactions;
+        std::set<model::intertype::Graph::ReactionId> selectedReactions;
         for (const auto& [sourceType, _] : changes->lines.container) {
             const auto found = changes->schema->nodes.find(sourceType);
             if (found == changes->schema->nodes.end()) continue;

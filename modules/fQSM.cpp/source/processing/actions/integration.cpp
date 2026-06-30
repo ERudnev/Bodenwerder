@@ -1,5 +1,5 @@
 #include <fQSM/processing/actions/integration.h>
-#include <fQSM/model/structure/schema.h>
+#include <fQSM/model/intertype/schema.h>
 
 namespace fqsm::processing::actions {
     void integrate(model::complex::Reality& world, const model::complex::Patch& patch) {

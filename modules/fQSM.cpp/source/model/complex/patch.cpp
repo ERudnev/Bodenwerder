@@ -1,6 +1,6 @@
 #include <fQSM/model/complex/patch.h>
 
-#include <fQSM/model/structure/schema.h>
+#include <fQSM/model/intertype/schema.h>
 
 namespace fqsm::model::complex {
 
@@ -11,8 +11,8 @@ namespace fqsm::model::complex {
         return total;
     }
 
-    Composite<linear::patch::Erased> Patch::composition(Schema schema) {
-        Composite<linear::patch::Erased> lines;
+    intertype::Composite<linear::patch::Erased> Patch::composition(Schema schema) {
+        intertype::Composite<linear::patch::Erased> lines;
         for (const auto& [typeId, node] : schema->nodes)
             lines.container.emplace(typeId, node.binding.patch.create());
         return lines;

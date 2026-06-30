@@ -7,7 +7,7 @@
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/rtid.h>
 #include <fQSM/processing/_forwards.h>
-#include <fQSM/model/structure/schema.h>
+#include <fQSM/model/intertype/schema.h>
 #include <fQSM/model/complex/state.h>
 
 namespace tests::debug {

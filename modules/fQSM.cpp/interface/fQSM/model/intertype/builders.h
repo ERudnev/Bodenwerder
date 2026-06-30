@@ -9,7 +9,7 @@
 #include <fQSM/model/linear/future.h>
 #include <fQSM/model/linear/patch.h>
 #include <fQSM/model/linear/reality.h>
-#include <fQSM/model/structure/binding.h>
+#include <fQSM/model/intertype/binding.h>
 #include <fQSM/processing/actions/integration.h>
 #include <fQSM/processing/actions/merge.h>
 #include <fQSM/utility/logging.h>
@@ -33,8 +33,8 @@ namespace fqsm::schema::details {
     }
 
     template<category::Any Meta>
-    auto binding() -> model::structure::Binding {
-        return model::structure::Binding{
+    auto binding() -> model::intertype::Binding {
+        return model::intertype::Binding{
             .patch = {
                 .create = &model::linear::Patch<Meta>::create,
                 .absorb = &model::complex::Patch::absorb<Meta>,

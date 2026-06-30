@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fQSM/meta/interface.include.h>
-#include <fQSM/model/structure/schema.h>
+#include <fQSM/model/intertype/schema.h>
 #include <fQSM/model/complex/state.h>
 #include <fQSM/model/complex/patch.h>
 #include <fQSM/model/linear/future.h>
@@ -25,13 +25,13 @@ namespace fqsm::model::complex {
         // impl as State (entry builder)
         cref<Erased> getLine(meta::Rtid typeId) const override { return lines.container.at(typeId); }
         ref<Erased> getLine(meta::Rtid typeId) override { return lines.container.at(typeId); }
-        const State::Composition& composition() const override { return lines; }
-        State::Composition& composition() override { return lines; }
+        const State::Composite& composition() const override { return lines; }
+        State::Composite& composition() override { return lines; }
 
         const State& state; // yep, technically, Future may be Future over Future which is over Future. Be carefull!
         ref<Patch> changes;
         Rtid::Set dirty; // add the way to mark as dirty..
-        Composite<linear::state::Erased> lines;
+        intertype::Composite<linear::state::Erased> lines;
     };
 }
 

@@ -10,7 +10,7 @@
 #include <fQSM/model/_forwards.h>
 #include <fQSM/references.h>
 
-namespace fqsm::model::structure {
+namespace fqsm::model::intertype {
 
     // TODO: replace with base::cannonball::composite::Lazy::Fabric Adapter
     struct Binding {
@@ -29,7 +29,6 @@ namespace fqsm::model::structure {
 
         std::function<ref<linear::state::Erased>(const complex::State&, ref<complex::Patch>)> createFuture;
         std::function<void(complex::Reality&, const complex::Patch&)> integratePatchSlice;
-        //std::function<void(const complex::State&, ref<complex::Patch>, cref<complex::Patch>)> mergePatchSlice;
         std::function<void(const complex::State&, complex::Patch&, const complex::Patch&)> mergePatchSlice;
     };
 }

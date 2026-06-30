@@ -2,7 +2,7 @@
 
 #include <fQSM/model/_forwards.h>
 #include <base/cannonball/table.h>
-#include <fQSM/model/structure/composite.h>
+#include <fQSM/model/intertype/composite.h>
 #include <fQSM/model/linear/state.h>
 
 namespace fqsm::model::complex {
@@ -10,7 +10,7 @@ namespace fqsm::model::complex {
     class State {
     public:
         //using Container = composite::Container<linear::state::Erased>;
-        using Composition = Composite<linear::state::Erased>;
+        using Composite = intertype::Composite<linear::state::Erased>;
 
         State(Schema schema) : schema(schema) {}
         virtual ~State()=default;
@@ -32,8 +32,8 @@ namespace fqsm::model::complex {
         using Erased = linear::state::Erased;
         virtual cref<Erased> getLine(meta::Rtid) const = 0;
         virtual ref<Erased> getLine(meta::Rtid) = 0;
-        virtual const Composition& composition() const = 0;
-        virtual Composition& composition()=0;
+        virtual const Composite& composition() const = 0;
+        virtual Composite& composition()=0;
     };
 
     struct StateAddressable : State {
