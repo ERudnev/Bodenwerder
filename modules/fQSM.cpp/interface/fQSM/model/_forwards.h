@@ -21,10 +21,6 @@ namespace fqsm::model::linear {
     class Reality;
 }
 
-namespace fqsm::analysis {
-    struct Patch;
-}
-
 namespace fqsm::model::linear {
 
     //this is base class, acting as forwarding for containers:

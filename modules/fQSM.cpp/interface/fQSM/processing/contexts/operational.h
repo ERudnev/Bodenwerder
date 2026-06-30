@@ -19,7 +19,7 @@ namespace fqsm::processing::context {
         const model::complex::Future world;
         Upstream callback;
 
-        Operational(const State& initial, PatchRef patch, Future::Visibility, Upstream);
+        Operational(const State& initial, PatchRef patch, Upstream);
         ~Operational() { collapse(); }
 
     private:

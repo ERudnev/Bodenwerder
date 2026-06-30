@@ -1,25 +1,28 @@
 #include <fQSM/utility/logging.h>
 
-#include <fQSM/model/analysis.h>
-#include <fQSM/model/complex/patch.h>
+#include <format>
+#include <string>
+#include <vector>
 #include <fQSM/model/structure/schema.h>
 
 namespace fqsm::utility {
 
     void log_patch(std::string_view legend, cref<model::complex::Patch> patch) {
-        const analysis::Patch stats{*patch};
-        const auto& overall = stats.overall;
+        std::vector<std::string> lines;
+        for (const auto& [_, node] : patch->schema->nodes) {
+            const auto line = node.binding.patch.log(*patch, node.name);
+            if (!line.empty()) lines.push_back(line);
+        }
 
-        const auto summary = overall.patchlets == 0
+        const auto patchlets = patch->quanta();
+        const auto summary = patchlets == 0
             ? std::string{"empty"}
-            : std::format("{{H:{}:S:{}}}", overall.nonEmptyLines, overall.patchlets);
+            : std::format("{{H:{}:S:{}}}", lines.size(), patchlets);
 
         base::message(std::format("{}: {}", legend, summary));
 
-        for (const auto& [rtid, node] : patch->schema->nodes) {
-            const auto line = node.binding.logPatchSlice(*patch, node.name);
-            if (!line.empty()) base::message("    {}", line);
-        }
+        for (const auto& line : lines)
+            base::message("    {}", line);
     }
 
 }

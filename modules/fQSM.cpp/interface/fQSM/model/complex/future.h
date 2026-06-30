@@ -11,9 +11,8 @@ namespace fqsm::model::complex {
 
     class Future : public State {
     public:
-        using Visibility = base::cannonball::SeeChanges;
-        Future(const State& state, ref<Patch> patch, Visibility mode, const Rtid::Set& dirty = {})
-            : State(state.schema), state(state), changes(patch), dirty(std::move(dirty)) { initStructure(mode); }
+        Future(const State& state, ref<Patch> patch, const Rtid::Set& dirty = {})
+            : State(state.schema), state(state), changes(patch), dirty(std::move(dirty)) { initStructure(); }
 
         template<category::Any Meta>
         linear::Delta<Meta> delta() const;
@@ -22,7 +21,7 @@ namespace fqsm::model::complex {
         cref<Patch> patch() const { return fqsm::freeze(changes); }
 
     private:
-        void initStructure(Visibility);
+        void initStructure();
         // impl as State (entry builder)
         cref<Erased> getLine(meta::Rtid typeId) const override { return lines.container.at(typeId); }
         ref<Erased> getLine(meta::Rtid typeId) override { return lines.container.at(typeId); }
@@ -45,9 +44,9 @@ namespace fqsm::model::complex {
         return Delta{state.aspect<Meta>(), changes->aspect<Meta>(), mode};
     }
 
-    inline void Future::initStructure(Visibility mode) {
+    inline void Future::initStructure() {
         for (const auto& [typeId, node] : schema->nodes) {
-            lines.container.emplace(typeId, node.binding.createFuture(state, changes, mode));
+            lines.container.emplace(typeId, node.binding.createFuture(state, changes));
         }
     }
 }

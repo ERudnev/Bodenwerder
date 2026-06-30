@@ -7,7 +7,7 @@
 #include <fQSM/features/behavior.h>
 #include <fQSM/meta/categories.h>
 #include <fQSM/model/structure/schema.h>
-#include <fQSM/model/structure/details/builders.h>
+#include <fQSM/model/structure/builders.h>
 
 namespace fqsm::manipulation::schema {
 

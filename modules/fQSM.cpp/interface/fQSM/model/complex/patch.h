@@ -23,6 +23,17 @@ namespace fqsm::model::complex {
         void absorb(const Patch&);
         void clear();
 
+        // schema
+        template<category::Any Meta>
+        static void absorb(Patch& target, const Patch& source) {
+            target.aspect<Meta>().absorb(source.aspect<Meta>());
+        }
+
+        template<category::Any Meta>
+        static void clear(Patch& patch) {
+            patch.aspect<Meta>().clear();
+        }
+
     private:
         static Composite<linear::patch::Erased> composition(Schema);
     };

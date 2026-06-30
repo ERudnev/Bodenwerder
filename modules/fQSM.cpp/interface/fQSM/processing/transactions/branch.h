@@ -14,7 +14,6 @@ namespace fqsm::processing::transaction {
         Branch(ChildPolicy policy) : context(std::make_shared<Context>(
             policy.view,
             base::make_shared<Patch>(policy.view.schema),
-            base::cannonball::SeeChanges::observable,
             policy.upstream
         ))
         {}

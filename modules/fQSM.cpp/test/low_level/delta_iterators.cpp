@@ -42,7 +42,7 @@ void delta_iterators()
     const fqsm::model::complex::Reality state(look(fill));
     auto patch = base::make_shared<fqsm::model::complex::Patch>(schema);
     auto patch_context = std::make_shared<Context>(
-        state, patch, base::cannonball::SeeChanges::observable, Context::Upstream{}
+        state, patch, Context::Upstream{}
     );
     auto writing = fqsm::processing::Gate{patch_context};
 
@@ -57,7 +57,7 @@ void delta_iterators()
         ask::item::update<A>(writing, ids.at(i))->value = (i + 1) * 10;
     }
 
-    const fqsm::model::complex::Future preview(state, patch, base::cannonball::SeeChanges::observable);
+    const fqsm::model::complex::Future preview(state, patch);
 
     using Layer = fqsm::model::linear::Delta<A>::Layer;
     std::unordered_map<Layer, std::set<Id>> collected;

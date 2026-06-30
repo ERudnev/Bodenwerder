@@ -1,6 +1,7 @@
 #pragma once
 
 #include <base/cannonball/patch.h>
+#include <base/shared_reference.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/meta/interface.include.h>
 
@@ -19,7 +20,9 @@ namespace fqsm::model::linear {
         void put_modification(Id<Meta>, Quantum<Meta>);
         void put_deletion(Id<Meta>);
         void put_add(Id<Meta>, Quantum<Meta>);
-        
+
+        // schema
+        static ref<patch::Erased> create() { return base::make_shared<Patch<Meta>>(); }
     };
 }
 

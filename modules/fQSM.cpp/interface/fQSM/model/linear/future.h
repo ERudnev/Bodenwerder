@@ -10,12 +10,13 @@ namespace fqsm::model::linear {
     template<category::Any Meta>
     class Future : public State<Meta> {
     public:
-        using Mode = base::cannonball::SeeChanges;
         using Items = State<Meta>::Items;
         using Global = State<Meta>::Global;
 
-        Future(const linear::State<Meta>& state, ref<linear::Patch<Meta>> patch, Mode mode)
-            : draftItems(state.items(), patch->items, mode), futureGlobal(state.global(), patch->global) {}
+        Future(const linear::State<Meta>& state, ref<linear::Patch<Meta>> patch)
+            : draftItems(state.items(), patch->items, base::cannonball::SeeChanges::observable)
+            , futureGlobal(state.global(), patch->global)
+        {}
 
         virtual Items& items() override { return draftItems; }
         virtual const Items& items() const override { return draftItems; }
@@ -26,9 +27,7 @@ namespace fqsm::model::linear {
         struct FutureGlobal {
             const Global& stateGlobal;
             base::cannonball::Patchlet<Global>& patchGlobal;
-            Mode mode;
             const Global& get() const {
-                if (mode == Mode::blind) return stateGlobal;
                 if (patchGlobal) return patchGlobal.value();
                 return stateGlobal;
             }

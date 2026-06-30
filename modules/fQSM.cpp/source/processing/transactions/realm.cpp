@@ -11,7 +11,6 @@ namespace fqsm::processing {
         auto context = std::make_shared<Context>(
             reality,
             patch,
-            base::cannonball::SeeChanges::observable,
             Context::Upstream{[this](Context::PatchRef patch) {
                 accept(patch);
             }}

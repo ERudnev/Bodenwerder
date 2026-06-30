@@ -5,7 +5,6 @@
 
 #include <fQSM/processing/actions/integration.h>
 #include <fQSM/processing/review.h>
-#include <fQSM/model/analysis.h>
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/structure/schema.h>
 #include <fQSM/features/reaction.h>
@@ -44,7 +43,7 @@ namespace fqsm::processing::actions::normalization {
         // this is very important place: this cast is saves about ~300 lines of code for new class
         // complex::Proposal === const complex::Draft
         fqsm::ref<Patch> non_const_patch(std::const_pointer_cast<Patch>(changes.std_ptr()));
-        const auto proposal = model::complex::Future{source, non_const_patch, base::cannonball::SeeChanges::observable, taintedLines};
+        const auto proposal = model::complex::Future{source, non_const_patch, taintedLines};
         auto context = Review(
             proposal,
             result.patch,
@@ -75,7 +74,7 @@ namespace fqsm::processing::actions::normalization {
         incoming->absorb(*patch);
         patch->clear();
 
-        model::complex::Future advancing(world, patch, base::cannonball::SeeChanges::observable, taintedLines);
+        model::complex::Future advancing(world, patch, taintedLines);
         ref<Patch> lastCorrection = incoming;
         int wave = 0;
 
@@ -97,8 +96,7 @@ namespace fqsm::processing::actions::normalization {
             patch->absorb(*lastCorrection);
             append(notesAccumulated, fix.notes);
 
-            const auto fixStats = analysis::Patch{*fix.patch};
-            const bool anotherWave = not (fixStats.overall.patchlets == 0 and fix.taintedDuringPatch.empty());
+            const bool anotherWave = not (fix.patch->quanta() == 0 and fix.taintedDuringPatch.empty());
             if (not anotherWave)
                 break;
 

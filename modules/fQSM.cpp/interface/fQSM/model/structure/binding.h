@@ -5,9 +5,9 @@
 #include <string_view>
 
 #include <base/shared_reference.h>
-#include <base/cannonball/future.h>
 
 #include <fQSM/meta/interface.include.h>
+#include <fQSM/model/_forwards.h>
 #include <fQSM/references.h>
 
 namespace fqsm::model::structure {
@@ -15,19 +15,21 @@ namespace fqsm::model::structure {
     // TODO: replace with base::cannonball::composite::Lazy::Fabric Adapter
     struct Binding {
         // this is pack of linear state fabrics:
-        std::function<ref<linear::state::Erased>()> createState;
-        std::function<ref<linear::patch::Erased>()> createPatch;
-        std::function<ref<linear::state::Erased>(const complex::State&)> cloneState;
-        std::function<ref<linear::state::Erased>(const complex::State&, ref<complex::Patch>, base::cannonball::SeeChanges)> createFuture;
+        struct {
+            std::function<ref<linear::patch::Erased>()> create;
+            std::function<void(complex::Patch&, const complex::Patch&)> absorb;
+            std::function<void(complex::Patch&)> clear;
+            std::function<std::string(const complex::Patch&, std::string_view aspectName)> log;
+        } patch;
+
+        struct {
+            std::function<ref<linear::state::Erased>()> create;
+            std::function<ref<linear::state::Erased>(const complex::State&)> clone;
+        } state;
+
+        std::function<ref<linear::state::Erased>(const complex::State&, ref<complex::Patch>)> createFuture;
         std::function<void(complex::Reality&, const complex::Patch&)> integratePatchSlice;
         //std::function<void(const complex::State&, ref<complex::Patch>, cref<complex::Patch>)> mergePatchSlice;
         std::function<void(const complex::State&, complex::Patch&, const complex::Patch&)> mergePatchSlice;
-        std::function<void(complex::Patch&, const complex::Patch&)> absorbPatchSlice;
-        std::function<void(complex::Patch&)> clearPatchSlice;
-        std::function<void(const complex::Patch&, analysis::Patch&)> analyzePatchSlice;
-        std::function<std::string(const complex::Patch&, std::string_view aspectName)> logPatchSlice;
-
-        template<category::Any Meta>
-        static Binding make();
     };
 }

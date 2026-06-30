@@ -5,9 +5,9 @@
 
 namespace fqsm::processing::context {
 
-    Operational::Operational(const State& initial, PatchRef patch, Future::Visibility mode, Upstream cb)
+    Operational::Operational(const State& initial, PatchRef patch, Upstream cb)
         : accumulator(std::move(patch))
-        , world(initial, accumulator, mode, {})
+        , world(initial, accumulator, {})
         , callback(cb)
     {}
 
