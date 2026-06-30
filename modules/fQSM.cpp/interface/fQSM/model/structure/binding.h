@@ -22,6 +22,8 @@ namespace fqsm::model::structure {
         std::function<void(complex::Reality&, const complex::Patch&)> integratePatchSlice;
         //std::function<void(const complex::State&, ref<complex::Patch>, cref<complex::Patch>)> mergePatchSlice;
         std::function<void(const complex::State&, complex::Patch&, const complex::Patch&)> mergePatchSlice;
+        std::function<void(complex::Patch&, const complex::Patch&)> absorbPatchSlice;
+        std::function<void(complex::Patch&)> clearPatchSlice;
         std::function<void(const complex::Patch&, analysis::Patch&)> analyzePatchSlice;
         std::function<std::string(const complex::Patch&, std::string_view aspectName)> logPatchSlice;
 

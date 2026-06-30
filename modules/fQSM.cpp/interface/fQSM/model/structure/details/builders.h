@@ -53,6 +53,16 @@ namespace fqsm::schema::details {
     }
 
     template<category::Any Meta>
+    void absorbPatchSlice(model::complex::Patch& target, const model::complex::Patch& source) {
+        target.aspect<Meta>().absorb(source.aspect<Meta>());
+    }
+
+    template<category::Any Meta>
+    void clearPatchSlice(model::complex::Patch& target) {
+        target.aspect<Meta>().clear();
+    }
+
+    template<category::Any Meta>
     auto logPatchSlice(const model::complex::Patch& patch, std::string_view aspectName) -> std::string {
         return fqsm::utility::detail::log_patch_slice<Meta>(patch, aspectName);
     }
@@ -78,6 +88,8 @@ namespace fqsm::schema::details {
             &createFuture<Meta>,
             &integratePatchSlice<Meta>,
             &mergePatchSlice<Meta>,
+            &absorbPatchSlice<Meta>,
+            &clearPatchSlice<Meta>,
             &analyzePatchSlice<Meta>,
             &logPatchSlice<Meta>,
         };

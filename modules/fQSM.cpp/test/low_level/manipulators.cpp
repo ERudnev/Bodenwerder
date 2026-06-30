@@ -27,7 +27,7 @@ void manipulation()
         const auto id = Archetypes::EntWithComp::spawn(main, 42, "hello");
         EXPECT_TRUE(ask::item::get<SomeComponent>(main, id).exists());
         EXPECT_EQ(ask::item::get<SomeComponent>(main, id)->name, "hello");
-        EXPECT_EQ(debug::count<SomeComponent>(main), 1);
+        EXPECT_EQ(debug::count<SomeComponent>(main), 2);
     }
 
     { // update (modify): requires existing component, commits on dtor

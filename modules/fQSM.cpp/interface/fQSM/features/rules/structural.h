@@ -1,8 +1,11 @@
 #pragma once
 
+#include <format>
+
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
 #include <fQSM/manipulation/item.h>
+#include <fQSM/manipulation/feedback.h>
 
 namespace fqsm::features::reactions::rules::structural {
 
@@ -61,23 +64,23 @@ namespace fqsm::features::reactions::rules::structural {
     };
 
 
-    // component_default_construction_if_defined
+    // parrent_appears_requires_component
     template<category::Component Parasitic, category::Any Parent>
     struct parrent_appears_requires_component : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parent>(); }
         void apply(Reviewing context) override {
-            // component class has constraint: component item must be added manually in the same patch as parent
-            // this is strict, nut effective against "lost" parts of Archetype init and default c-tors (with hard-to-catch zeroes)
-            // and if component is forgotten, kill PARENT!
-            // yes, so rude but very strict policy
-            auto& target = context.reaction<Parent>();
             const auto& source = context.proposal.aspect<Parasitic>();
             for (const auto& change : Abstract::changes<Parent>(context).added()) {
                 if (source.items().find(change.id))
                     continue;
-                target.put_deletion(change.id);
+                ask::feedback::critical(
+                    context,
+                    std::format(
+                        R"(structural: {} missing for new {} {})",
+                        Rtid::name<Parasitic>(),
+                        Rtid::name<Parent>(),
+                        change.id));
             }
-
         }
     };
 }

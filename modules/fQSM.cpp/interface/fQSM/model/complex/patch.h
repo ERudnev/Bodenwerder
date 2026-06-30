@@ -20,6 +20,8 @@ namespace fqsm::model::complex {
         const linear::Patch<Meta>& aspect() const;
 
         std::size_t quanta() const;
+        void absorb(const Patch&);
+        void clear();
 
     private:
         static Composite<linear::patch::Erased> composition(Schema);

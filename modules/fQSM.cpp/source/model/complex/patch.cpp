@@ -18,4 +18,14 @@ namespace fqsm::model::complex {
         return lines;
     }
 
+    void Patch::absorb(const Patch& other) {
+        for (const auto& [_, node] : schema->nodes)
+            node.binding.absorbPatchSlice(*this, other);
+    }
+
+    void Patch::clear() {
+        for (const auto& [_, node] : schema->nodes)
+            node.binding.clearPatchSlice(*this);
+    }
+
 }

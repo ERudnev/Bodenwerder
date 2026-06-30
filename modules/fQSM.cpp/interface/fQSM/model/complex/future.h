@@ -13,12 +13,13 @@ namespace fqsm::model::complex {
     public:
         using Visibility = base::cannonball::SeeChanges;
         Future(const State& state, ref<Patch> patch, Visibility mode, const Rtid::Set& dirty = {})
-            : State(state.schema), state(state), patch(patch), dirty(std::move(dirty)) { initStructure(mode); }
+            : State(state.schema), state(state), changes(patch), dirty(std::move(dirty)) { initStructure(mode); }
 
         template<category::Any Meta>
         linear::Delta<Meta> delta() const;
 
-        cref<Patch> retreivePatch() const { return fqsm::freeze(patch); }
+        ref<Patch> patch() { return changes; }
+        cref<Patch> patch() const { return fqsm::freeze(changes); }
 
     private:
         void initStructure(Visibility);
@@ -29,7 +30,7 @@ namespace fqsm::model::complex {
         State::Composition& composition() override { return lines; }
 
         const State& state; // yep, technically, Future may be Future over Future which is over Future. Be carefull!
-        ref<Patch> patch;
+        ref<Patch> changes;
         Rtid::Set dirty; // add the way to mark as dirty..
         Composite<linear::state::Erased> lines;
     };
@@ -41,12 +42,12 @@ namespace fqsm::model::complex {
     linear::Delta<Meta> Future::delta() const {
         using Delta = linear::Delta<Meta>;
         const auto mode = dirty.contains(TypeId<Meta>) ? Delta::Mode::dirty : Delta::Mode::clean;
-        return Delta{state.aspect<Meta>(), patch->aspect<Meta>(), mode};
+        return Delta{state.aspect<Meta>(), changes->aspect<Meta>(), mode};
     }
 
     inline void Future::initStructure(Visibility mode) {
         for (const auto& [typeId, node] : schema->nodes) {
-            lines.container.emplace(typeId, node.binding.createFuture(state, patch, mode));
+            lines.container.emplace(typeId, node.binding.createFuture(state, changes, mode));
         }
     }
 }

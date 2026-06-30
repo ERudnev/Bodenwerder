@@ -121,13 +121,15 @@ void killing_feature()
         EXPECT_FALSE(main.notes().rejection());
         EXPECT_TRUE(ask::item::exists<Body>(main, id));
 
-        // TEMP: reworked for debug
-        //Death::Actions::kill(main, id);
-        context::Branch branch(main);
-        Death::Actions::kill(branch, id);
+        {
+            context::Branch branch(main);
+            Death::Actions::kill(branch, id);
 
+            EXPECT_FALSE(main.notes().rejection());
+            EXPECT_TRUE(ask::item::exists<Body>(main, id)) << "removed in still not commited Branch";
+        }
         EXPECT_FALSE(main.notes().rejection());
-        EXPECT_FALSE(ask::item::exists<Body>(main, id));
+        EXPECT_FALSE(ask::item::exists<Body>(main, id)) << "removed from world after Branch commit";
     }
     { // Lifetime simulation
         context::Realm main(schema);

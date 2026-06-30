@@ -32,14 +32,14 @@ namespace fqsm::processing {
 
     void Realm::accept(Context::PatchRef patch) {
         lastNotes = {};
-        lastNotes = actions::update(reality, freeze(patch), {});
+        lastNotes = actions::update(reality, patch, {});
     }
 
     void Realm::accept_immediate(Rtid::Set affected) {
         lastNotes = {}; // reset stored "error buffer"
         if (affected.empty()) return;
         // TODO: make this as combined PAtch+taint later...
-        auto zeroPatch = base::make_shared<const Patch>(reality.schema);
+        auto zeroPatch = base::make_shared<Patch>(reality.schema);
         lastNotes = actions::update(reality, zeroPatch, affected);
 ;
     }
