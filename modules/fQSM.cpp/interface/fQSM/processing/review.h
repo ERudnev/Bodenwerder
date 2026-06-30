@@ -30,7 +30,7 @@ namespace fqsm::processing {
         Review(const model::complex::Future& proposal, Context::PatchRef target, review::Notes& notes)
             : proposal(proposal)
             , notes(notes)
-            , reactions(std::make_shared<Context>(proposal, target, base::cannonball::SeeChanges::blind, Context::Upstream{}))
+            , reactions(std::make_shared<Context>(proposal, target, base::cannonball::SeeChanges::observable, Context::Upstream{}))
         {}
         // helpers:
         template<category::Any Meta>

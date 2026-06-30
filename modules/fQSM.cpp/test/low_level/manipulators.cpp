@@ -18,24 +18,20 @@ void manipulation()
     context::Realm main(schema);
 
     { // create + get (standalone)
-        const auto id = ask::item::create<SomeEntity>(main, {7});
+        const auto id = Archetypes::EntWithComp::spawn(main, 7, "seven");
         EXPECT_EQ(ask::item::get<SomeEntity>(main, id)->value, 7);
         EXPECT_EQ(debug::count<SomeEntity>(main), 1);
     }
 
     { // create + get (parasitic)
-        const auto id = ask::item::create<SomeEntity>(main, {42});
-        EXPECT_FALSE(ask::item::get<SomeComponent>(main, id).exists());
-
-        ask::item::create<SomeComponent>(main, id, {"hello"});
+        const auto id = Archetypes::EntWithComp::spawn(main, 42, "hello");
         EXPECT_TRUE(ask::item::get<SomeComponent>(main, id).exists());
         EXPECT_EQ(ask::item::get<SomeComponent>(main, id)->name, "hello");
         EXPECT_EQ(debug::count<SomeComponent>(main), 1);
     }
 
     { // update (modify): requires existing component, commits on dtor
-        const auto id = ask::item::create<SomeEntity>(main, {1});
-        ask::item::create<SomeComponent>(main, id, {"before"});
+        const auto id = Archetypes::EntWithComp::spawn(main, 1, "before");
 
         {
             auto tx = ask::item::update<SomeComponent>(main, id);

@@ -17,9 +17,17 @@ namespace fqsm::reactions {
             Behavior{}
         );
 
-        static const Behavior& allReactions() {
-            static const Behavior value = Behavior::merged(Meta::BaseReactions::defaultReactions, Meta::custom);
-            return value;
+        static const Behavior allReactions() {
+            if constexpr (requires { Meta::custom; }) {
+                static const Behavior value = Behavior::merged(
+                    Meta::BaseReactions::defaultReactions,
+                    Meta::custom
+                );
+                return value;
+            } else {
+                static const Behavior value = Meta::BaseReactions::defaultReactions;
+                return value;
+            }
         }
     };
 

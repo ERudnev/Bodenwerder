@@ -14,7 +14,6 @@ namespace tests::model {
         struct Global {
             integer modulus = 2;
         };
-        static const Behavior custom;
         struct Actions : BaseActions {
             struct Private;
             static auto constantFunc(Reading, Id)->integer;
@@ -25,7 +24,6 @@ namespace tests::model {
         struct Quantum {
             string name;
         };
-        static const Behavior custom;
         struct Actions : BaseActions {};
     };
 
@@ -33,7 +31,16 @@ namespace tests::model {
         struct Quantum {
             integer attribute;
         };
-        static const Behavior custom;
         struct Actions : BaseActions {};
+    };
+
+    namespace Archetypes {
+        struct EntWithComp : Archetype {
+            static SomeEntity::Id spawn(Writing context, int value, string name) {
+                const auto id = ask::item::create<SomeEntity>(context, {value});
+                ask::item::create<SomeComponent>(context, id, {std::move(name)});
+                return id;
+            }
+        };
     };
 }

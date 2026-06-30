@@ -121,7 +121,7 @@ namespace fqsm::actions {
     template<typename Meta, typename HostType>
     void Parasitic<Meta, HostType>::kill(Writing context, Own::Id id) {
         if constexpr (category::Standalone<HostType>) {
-            manipulation::item::update<HostType>(context, id).remove();
+            context.patch().aspect<HostType>().put_deletion(id);
         } else {
             HostType::Actions::kill(context, id);
         }

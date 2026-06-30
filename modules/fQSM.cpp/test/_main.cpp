@@ -77,8 +77,8 @@ int main() {
     return total.ok() ? 0 : 1;
 }
 
-int main_only_one() {
+int main_one_test() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("selected", &tests::structural_constraints)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::killing_feature)));
     return s.ok() ? 0 : 1;
 }

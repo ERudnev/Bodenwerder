@@ -15,12 +15,7 @@ namespace {
     namespace local {
         struct A : Entity<A> {
             struct Quantum { integer value; };
-            static const Behavior custom;
         };
-    }
-
-    namespace local {
-        const A::Behavior A::custom = {};
     }
 
     // temp lib. placeholder:

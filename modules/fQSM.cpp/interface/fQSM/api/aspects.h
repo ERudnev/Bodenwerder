@@ -10,7 +10,7 @@ namespace fqsm::detail::aspects {
         Any() = delete;
         using Behavior = fqsm::features::Behavior;
 
-        static const Behavior& allReactions() {
+        static const Behavior allReactions() {
             return reactions::Any<Meta>::allReactions();
         }
     };

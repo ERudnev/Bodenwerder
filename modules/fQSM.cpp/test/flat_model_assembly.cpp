@@ -29,8 +29,7 @@ namespace tests {
         //fqsm::World world = ask::world::create(schema);
         context::Realm main(schema);
 
-        const auto id = ask::item::create<SomeEntity>(main, {7});
-        ask::item::update<SomeComponent>(main, id, {"seven"});
+        const auto id = Archetypes::EntWithComp::spawn(main, 7, "seven");
         {
             auto tx = ask::item::update<SecondaryAttribute>(main, id,
                 {static_cast<integer>(ask::item::get<SomeComponent>(main, id)->name.length())}

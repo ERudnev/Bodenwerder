@@ -19,7 +19,6 @@
 
 // Behavior definition for Aspects:
 //#include <fQSM/features/rules/structural.h>
-#include <fQSM/features/rules/structural_deprecated.h> // deprecated!
 #include <fQSM/features/rules/structural.h>
 #include <fQSM/features/rules/constraints.h>
 #include <fQSM/features/reactions/binding.h>
@@ -62,10 +61,6 @@ namespace fqsm::api {
     }
 
     // Behavior builder:
-    namespace reflex {
-        using ComponentMissing = fqsm::features::reflexes_deprecated::ComponentMissing;
-        using namespace ::fqsm::features::reflexes_deprecated;
-    }
     namespace rule {
         using namespace ::fqsm::features::reactions::rules;
     }

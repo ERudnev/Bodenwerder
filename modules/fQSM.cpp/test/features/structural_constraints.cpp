@@ -7,7 +7,6 @@ namespace local {
 
     struct EntFree : Entity<EntFree> {
         struct Quantum { integer value; };
-        static const Behavior custom;
     };
 
     struct CompSimple : Component<CompSimple, EntFree> {
@@ -32,12 +31,10 @@ namespace local {
 
     struct AttrPrimary : Attribute<AttrPrimary, EntFree> {
         struct Quantum { string description; };
-        static const Behavior custom;
     };
 
     struct AttrSecondary : Attribute<AttrSecondary, AttrPrimary> {
         struct Quantum { string clarification; };
-        static const Behavior custom;
     };
 
     namespace Archetypes {
@@ -63,9 +60,6 @@ namespace local {
 
 // kinda impl in come *.cpp file:
 namespace local {
-    const EntFree::Behavior EntFree::custom = {};
-}
-namespace local {
     const CompSimple::Behavior CompSimple::custom = {
         //rule::structural_deprecated::component<CompSimple, EntFree>(reflex::ComponentMissing::inacceptable),
         reaction::debug::death_log<CompSimple>("death-event message for {}"),
@@ -76,15 +70,6 @@ namespace local {
         reaction::debug::death_log<CompWithCreate>("death-event message for {}"),
     };
 }
-
-namespace local {
-    const AttrPrimary::Behavior AttrPrimary::custom = {};
-}
-
-namespace local {
-    const AttrSecondary::Behavior AttrSecondary::custom = {};
-}
-
 
 namespace tests {
 

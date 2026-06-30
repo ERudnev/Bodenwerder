@@ -7,7 +7,6 @@ namespace {
     namespace local {
         struct A : Entity<A> {
             struct Quantum { integer value; };
-            static const Behavior custom;
         };
 
         struct B : Component<B, A> {
@@ -17,7 +16,6 @@ namespace {
 
         struct C : Component<C, A> {
             struct Quantum { integer power; };
-            static const Behavior custom;
             struct Actions : BaseActions {
                 static void create(Writing context, A::Id id) {
                     ask::item::create<C>(context, id, {with<A>::get(context, id).value});
@@ -26,19 +24,21 @@ namespace {
         };
     }
 
-    // kinda impl in come *.cpp file:
-    namespace local {
-        const A::Behavior A::custom = {};
-    }
-    namespace local {
-        const B::Behavior B::custom = {
-            rule::structural_deprecated::component<B, A>(reflex::ComponentMissing::inacceptable),
-            reaction::debug::death_log<B>("death-event message for {}"),
+    namespace local::Archetypes {
+        struct EntABC : Archetype {
+            static A::Id spawn(Writing context, int val) {
+                const auto id = ask::item::create<A>(context, {val});
+                ask::item::create<B>(context, id, {"manual"});
+                C::Actions::create(context, id);
+                return id;
+            }
         };
     }
+
+    // kinda impl in come *.cpp file:
     namespace local {
-        const C::Behavior C::custom = {
-            rule::structural_deprecated::component<C, A>(reflex::ComponentMissing::make_default, &C::Actions::create),
+        const B::Behavior B::custom = {
+            reaction::debug::death_log<B>("death-event message for {}"),
         };
     }
 }
@@ -67,9 +67,7 @@ void custom_reactions()
     { // Scenario 2: A+B manual, C via make_default; parent removal cascades to both components
         const auto id = [&] {
             context::Branch tx(main);
-            const auto id = ask::item::create<A>(tx, {4});
-            ask::item::create<B>(tx, id, {"manual"});
-            return id;
+            return Archetypes::EntABC::spawn(tx, 4);
         }();
 
         EXPECT_FALSE(main.notes().rejection());

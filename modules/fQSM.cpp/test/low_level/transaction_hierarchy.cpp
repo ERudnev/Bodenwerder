@@ -32,8 +32,7 @@ void transaction_hierarchy()
     context::Realm main(schema);
 
     { // 2 trivial syncronous changes.. each with potentially heavy integration/normalization
-        const auto id = ask::item::create<SomeEntity>(main, {7});
-        ask::item::create<SomeComponent>(main, id, {"seven"});
+        experimental_manipulator(main, 7, "seven");
     }
     EXPECT_EQ(debug::count<SomeEntity>(main), 1);
     EXPECT_EQ(debug::count<SomeComponent>(main), 1);
