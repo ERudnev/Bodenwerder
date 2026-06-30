@@ -27,7 +27,8 @@ namespace fqsm {
     //using Reading = const processing::View&; // cleanup
     using Reading = processing::View;
     using Writing = processing::Gate; // rename to "Draft"?
+    using Reacting = processing::Review;
     template<meta::category::Any Meta>
     using Direct = processing::Breach<Meta>;
-    using Reviewing = processing::Review;
+
 }

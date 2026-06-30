@@ -18,5 +18,5 @@ namespace fqsm::manipulation::detail {
 
 namespace fqsm::manipulation {
     template<typename Meta>
-    using call = typename detail::actions<Meta>::type;
+    using call_action = typename detail::actions<Meta>::type;
 }

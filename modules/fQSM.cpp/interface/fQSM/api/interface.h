@@ -33,7 +33,7 @@ namespace fqsm::api {
     namespace ask = ::fqsm::manipulation;
     //experimental:
     template<typename Meta>
-    using with = ::fqsm::manipulation::call<Meta>;
+    using with = ::fqsm::manipulation::call_action<Meta>;
 
     // Aspect types:
     template<typename Meta>

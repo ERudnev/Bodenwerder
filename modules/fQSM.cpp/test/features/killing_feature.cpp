@@ -95,7 +95,7 @@ namespace {
     // this kind of code may appear in the separate *.cpp
     namespace local {
         struct Death::Actions::Private {
-            static void reactOnParentUpdates(fqsm::Reviewing context, HostAspect::Id id, const HostAspect::Quantum& newState) {
+            static void reactOnParentUpdates(fqsm::Reacting context, HostAspect::Id id, const HostAspect::Quantum& newState) {
             }
         };
     }

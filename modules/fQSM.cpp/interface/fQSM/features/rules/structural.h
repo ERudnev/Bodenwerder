@@ -30,7 +30,7 @@ namespace fqsm::features::reactions::rules::structural {
     template<category::Parasitic Parasitic, category::Any Parent>
     struct remove_with_parent : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parent>(); }
-        void apply(Reviewing context) override {
+        void apply(Reacting context) override {
             auto& target = context.reaction<Parasitic>();
             for (const auto& change : Abstract::changes<Parent>(context).removed())
                 target.put_deletion(change.id);
@@ -41,7 +41,7 @@ namespace fqsm::features::reactions::rules::structural {
     template<category::Component Parasitic, category::Any Parent>
     struct dead_component_kill_parent : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parasitic>(); }
-        void apply(Reviewing context) override {
+        void apply(Reacting context) override {
             auto& target = context.reaction<Parent>();
             for (const auto& change : Abstract::changes<Parasitic>(context).removed())
                 target.put_deletion(change.id);
@@ -52,7 +52,7 @@ namespace fqsm::features::reactions::rules::structural {
     template<category::Parasitic Parasitic, category::Any Parent>
     struct parastic_requires_parent_to_appear : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parasitic>(); }
-        void apply(Reviewing context) override {
+        void apply(Reacting context) override {
             auto& target = context.reaction<Parasitic>();
             const auto& source = context.proposal.aspect<Parent>();
             for (const auto& change : Abstract::changes<Parasitic>(context).added()) {
@@ -68,7 +68,7 @@ namespace fqsm::features::reactions::rules::structural {
     template<category::Component Parasitic, category::Any Parent>
     struct parrent_appears_requires_component : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parent>(); }
-        void apply(Reviewing context) override {
+        void apply(Reacting context) override {
             const auto& source = context.proposal.aspect<Parasitic>();
             for (const auto& change : Abstract::changes<Parent>(context).added()) {
                 if (source.items().find(change.id))

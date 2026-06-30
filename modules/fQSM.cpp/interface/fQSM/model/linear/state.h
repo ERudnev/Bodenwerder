@@ -2,12 +2,14 @@
 
 #include <fQSM/model/_forwards.h>
 #include <fQSM/meta/interface.include.h>
+#include <fQSM/model/elementary/state.h>
 
 namespace fqsm::model::linear {
 
     template<category::Any Meta>
     class State : public state::Erased {
     public:
+        //using Items = base::cannonball::table::Operational<Id<Meta>, elem::State<Meta>>;
         using Items = base::cannonball::table::Operational<Id<Meta>, Quantum<Meta>>;
         using Global = GlobalValue<Meta>;
 

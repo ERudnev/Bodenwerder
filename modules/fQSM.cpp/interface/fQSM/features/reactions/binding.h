@@ -17,6 +17,6 @@ namespace fqsm::features::reactions {
         Parent::Sources listens() const override {
             return Abstract::typed_set<Meta>();
         }
-        void apply(Reviewing context) override;
+        void apply(Reacting context) override;
     };
 }

@@ -15,7 +15,7 @@ namespace  fqsm::features::reactions::debug {
             return typed_set<Meta>();
         }
 
-        void apply(Reviewing context) override {
+        void apply(Reacting context) override {
             context.notes.warning.push_back("experimental death detected");
         }
     };

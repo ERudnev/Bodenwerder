@@ -15,7 +15,7 @@ namespace fqsm::features::reactions {
 
         explicit deletion(Parent::ActionFunction reaction) : Parent(reaction) {}
         Parent::Sources listens() const override { return Abstract::typed_set<Meta>(); }
-        void apply(Reviewing context) override;
+        void apply(Reacting context) override;
     };
 }
 
@@ -23,7 +23,7 @@ namespace fqsm::features::reactions {
 namespace fqsm::features::reactions {
 
     template<category::Any Meta>
-    void deletion<Meta>::apply(Reviewing context) {
+    void deletion<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).removed()) {
             if (not change.before)
                 ask::feedback::critical(context, std::format(R"(reaction::deletion failed on "{}" {})", Rtid::name<Meta>(), change.id));

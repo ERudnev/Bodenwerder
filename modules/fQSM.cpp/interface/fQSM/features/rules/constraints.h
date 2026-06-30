@@ -17,7 +17,7 @@ namespace fqsm::features::reactions::rules::constraint {
         explicit element(Parent::ActionFunction corrector) : Parent(corrector) {}
 
         Parent::Sources listens() const override { return Abstract::typed_set<Meta>(); }
-        void apply(Reviewing context) override;
+        void apply(Reacting context) override;
     };
 
     template<category::Any Meta>
@@ -30,7 +30,7 @@ namespace fqsm::features::reactions::rules::constraint {
 namespace fqsm::features::reactions::rules::constraint {
 
     template<category::Any Meta>
-    void element<Meta>::apply(Reviewing context) {
+    void element<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).addedOrUpdated()) {
             if (not change.after) {
                 // TOFO: wrap block under "if"
