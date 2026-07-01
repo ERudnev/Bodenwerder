@@ -18,7 +18,6 @@
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/features/behavior.h>
 
-
 // rename to fqsm::actions::categories {
 namespace fqsm::aspect::action {
     // each Aspect must (may?) have own Interface
@@ -38,14 +37,15 @@ namespace fqsm::aspect::action {
 
         // basic alias
         using Id = ::fqsm::Id<Meta>;
+        //experiment: switch do state:: as language of types: using Quantum = ::fqsm::model::
         using Quantum = ::fqsm::Quantum<Meta>;
         using Global = ::fqsm::GlobalValue<Meta>;
-        using Update = std::optional<Quantum>;
+        using Update = std::optional<Quantum>; // use model::elementary::Patch here
 
         // signatures
         // read-only:
-        using QuantumLocal = Update(*)(const Quantum&); // new quantum value can be evaluated only from old one
-        using QuantumDependent = Update(*)(Reading, Id, const Quantum&); // Id is major, but basic stuff uses only Quantum
+        using QuantumLocal = std::function<Update(const Quantum&)>; // new quantum value can be evaluated only from old one
+        using QuantumDependent = std::function<Update(Reading, Id, const Quantum&)>; // Id is major, but basic stuff uses only Quantum
 
         // read-write
         using Action = void(*)(Writing, Id, const Quantum&); // abstract "action" - "do something with specific element"

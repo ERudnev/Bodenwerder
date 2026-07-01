@@ -19,11 +19,6 @@ namespace fqsm::features::reactions::rules::constraint {
         Parent::Sources listens() const override { return Abstract::typed_set<Meta>(); }
         void apply(Reacting context) override;
     };
-
-    template<category::Any Meta>
-    struct quantum_dependent : Functional<typename Meta::BaseActions::UpdateValue> {
-        // TODO: generic version of element (sees whole world to get access to dependencies
-    };
 }
 
 // Impl:

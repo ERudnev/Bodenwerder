@@ -4,7 +4,7 @@
 #include <fQSM/api/builtins.h>
 
 // aspect types (Entity/Component/Attribute):
-#include <fQSM/aspect/categories.h>
+#include <fQSM/aspect/assembly.interface.h>
 
 // manipulation
 #include <fQSM/manipulation/schema.h>
@@ -18,7 +18,6 @@
 #include <fQSM/processing/transactions/branch.h>
 
 // Behavior definition for Aspects:
-//#include <fQSM/features/rules/structural.h>
 #include <fQSM/features/rules/structural.h>
 #include <fQSM/features/rules/constraints.h>
 #include <fQSM/features/reactions/binding.h>

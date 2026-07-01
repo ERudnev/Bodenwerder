@@ -5,8 +5,15 @@
 #include <fQSM/meta/categories.h>
 
 // model forwards
-namespace fqsm::model::intertype {
-    struct Graph;
+
+
+namespace fqsm::model::elementary {
+    // consider to use experimental "elementary" layer
+}
+
+namespace fqsm::model::linear {
+    template<meta::category::Any T>
+    class Reality;
 }
 
 namespace fqsm::model::complex {
@@ -16,14 +23,16 @@ namespace fqsm::model::complex {
     struct Patch;
 }
 
-namespace fqsm::model::linear {
-    template<meta::category::Any T>
-    class Reality;
+namespace fqsm::model::intertype {
+    struct Graph;
 }
 
+// suspecious (cleanup)
 namespace fqsm::model::linear {
 
     //this is base class, acting as forwarding for containers:
+
+    // TODO: keep this as forwards, move daclaration to linear/state.h
     namespace state {
         struct Erased {
             virtual ~Erased()=default;
