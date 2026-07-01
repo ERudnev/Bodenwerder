@@ -2,6 +2,8 @@
 
 #include <concepts>
 
+#include <fQSM/meta/pfr.h>
+
 namespace fqsm::meta::category {
 
     namespace musthave {
@@ -9,10 +11,11 @@ namespace fqsm::meta::category {
         concept Id = requires(const typename Meta::Id& id) {
             typename Meta::Id;
             { id.generate_random() } -> std::same_as<typename Meta::Id>;
-        };
+        } and detail::meta::pfr_element<typename Meta::Id>;
 
         template<typename Meta>
-        concept Quantum = requires { typename Meta::Quantum; };
+        concept Quantum = requires { typename Meta::Quantum; }
+            and detail::meta::pfr_structure<typename Meta::Quantum>;
 
         template<typename Meta>
         concept Worker = requires { typename Meta::WorkerAspect; };

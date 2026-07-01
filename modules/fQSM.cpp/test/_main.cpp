@@ -8,6 +8,7 @@
 
 #define FQSM_FEATURES_TESTS(X) \
     X(structural_constraints) \
+    X(anchor_constraints) \
     X(custom_reactions) \
     X(killing_feature) \
     // end
@@ -79,6 +80,6 @@ int main_all() {
 
 int main() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("selected", &tests::polymorphic_behavior_exp)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::anchor_constraints)));
     return s.ok() ? 0 : 1;
 }

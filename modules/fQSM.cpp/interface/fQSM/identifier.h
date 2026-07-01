@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <ostream>
 #include <string>
 
 namespace fqsm {
@@ -33,6 +34,12 @@ namespace fqsm {
     private:
         BaseType value;
     };
+
+    // ostream << Identifier (pfr_element / patch field logging).
+    template<typename Meta, typename BaseType>
+    std::ostream& operator<<(std::ostream& os, const Identifier<Meta, BaseType>& id) {
+        return os << std::format("{}", id);
+    }
 
 }
 
