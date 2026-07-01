@@ -19,8 +19,8 @@ namespace Model {
 
         auto schema() const -> iqsm::Schema override { return schema_; }
 
-        auto access() -> Update override {
-            return Update{
+        auto access() -> PossibleChange override {
+            return PossibleChange{
                 .current = main,
                 .replace =
                     [this](iqsm::Reading next) {

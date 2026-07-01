@@ -58,5 +58,6 @@ namespace fqsm::aspect {
 
     // Interpretation of several types:
     struct Archetype : action::Archetype {
+        struct BaseActions {}; // placeholder for the project growth
     };
 }

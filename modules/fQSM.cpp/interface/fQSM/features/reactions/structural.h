@@ -7,7 +7,7 @@
 #include <fQSM/manipulation/item.h>
 #include <fQSM/manipulation/feedback.h>
 
-namespace fqsm::features::reactions::rules::structural {
+namespace fqsm::features::reactions::structural {
 
     template<category::Parasitic Parasitic, category::Any Parent>
     struct remove_with_parent;
@@ -24,7 +24,7 @@ namespace fqsm::features::reactions::rules::structural {
 }
 
 // Impl:
-namespace fqsm::features::reactions::rules::structural {
+namespace fqsm::features::reactions::structural {
 
     // remove_with_parent
     template<category::Parasitic Parasitic, category::Any Parent>

@@ -18,8 +18,8 @@
 #include <fQSM/processing/transactions/branch.h>
 
 // Behavior definition for Aspects:
-#include <fQSM/features/rules/structural.h>
-#include <fQSM/features/rules/constraints.h>
+#include <fQSM/features/reactions/structural.h>
+#include <fQSM/features/reactions/constraints.h>
 #include <fQSM/features/reactions/binding.h>
 #include <fQSM/features/reactions/deletion.h>
 #include <fQSM/features/reactions/_experimental.h>
@@ -59,10 +59,7 @@ namespace fqsm::api {
         using Branch = ::fqsm::processing::transaction::Branch;
     }
 
-    // Behavior builder:
-    namespace rule {
-        using namespace ::fqsm::features::reactions::rules;
-    }
+    // reactions builder:
     namespace reaction {
         using namespace ::fqsm::features::reactions;
     }

@@ -7,7 +7,7 @@
 #include <fQSM/manipulation/feedback.h>
 #include <fQSM/manipulation/item.h>
 
-namespace fqsm::features::reactions::rules::constraint {
+namespace fqsm::features::reactions::constraint {
 
     // Local data constraint: ItemChange handler from Aspect::Actions (or its Private).
     template<category::Any Meta>
@@ -22,7 +22,7 @@ namespace fqsm::features::reactions::rules::constraint {
 }
 
 // Impl:
-namespace fqsm::features::reactions::rules::constraint {
+namespace fqsm::features::reactions::constraint {
 
     template<category::Any Meta>
     void element<Meta>::apply(Reacting context) {

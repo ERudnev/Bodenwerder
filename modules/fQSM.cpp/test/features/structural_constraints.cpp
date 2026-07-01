@@ -29,7 +29,7 @@ namespace local {
             static void create(Writing context, EntFree::Id id, bool askPowerOf4) {
                 int x = square(ask::item::get<EntFree>(context, id)->value);
                 if (askPowerOf4) x = square(x);
-                ask::item::create<CompWithCreate>(context, id, {x});
+                new_element(context, id, {x});
             };
         };
 
@@ -52,23 +52,25 @@ namespace local {
         };
     };
 
-    namespace Archetypes {
+    namespace archetype {
 
         // simulates decomposition, where CompSimple~CompWithCreate and it is not fair to choose one as "main thing", ABC is "above"
         struct EntTwoComps : Archetype {
-            static EntFree::Id spawn_correct(Writing context, int val) {
-                const auto id = ask::item::create<EntFree>(context, {val});
-                ask::item::create<CompSimple>(context, id, {std::format("it is {}", val)});
-                with<CompWithCreate>::create(context, id, true);
-                return id;
-            }
+            struct Actions : BaseActions {
+                static EntFree::Id spawn_correct(Writing context, int val) {
+                    const auto id = ask::item::create<EntFree>(context, {val});
+                    ask::item::create<CompSimple>(context, id, {std::format("it is {}", val)});
+                    with<CompWithCreate>::create(context, id, true);
+                    return id;
+                }
 
-            static EntFree::Id spawn_forgot_init_one_comp(Writing context, int val) {
-                const auto id = ask::item::create<EntFree>(context, {val});
-                // two comps are forgot to init. CompWithCreate passes this, but CompNoDefault kill entire Aggregate
-                // end! for testing purposes
-                return id;
-            }
+                static EntFree::Id spawn_forgot_init_one_comp(Writing context, int val) {
+                    const auto id = ask::item::create<EntFree>(context, {val});
+                    // two comps are forgot to init. CompWithCreate passes this, but CompNoDefault kill entire Aggregate
+                    // end! for testing purposes
+                    return id;
+                }
+            };
         };
     }
 }
@@ -106,13 +108,13 @@ void structural_constraints()
 
     {
         context::Realm main(world);
-        const auto id = Archetypes::EntTwoComps::spawn_correct(main, 1);
+        const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
         EXPECT_EQ(fqsm::Reading(main).quanta(), 3) << "all 3 items created, verified and part of realm now";
     }
 
     {
         context::Realm main(world);
-        const auto id = Archetypes::EntTwoComps::spawn_correct(main, 1);
+        const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
         const auto storedVal = ask::item::get<EntFree>(main, id)->value;
         ask::item::update<EntFree>(main, id).remove();
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "normalization killed everything by parent remove";
@@ -122,7 +124,7 @@ void structural_constraints()
 
     {
         context::Realm main(world);
-        const auto id = Archetypes::EntTwoComps::spawn_forgot_init_one_comp(main, 1);
+        const auto id = with<archetype::EntTwoComps>::spawn_forgot_init_one_comp(main, 1);
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "invalid implementation (forgot component) of spawn succesfully detected";
     }
 
@@ -130,7 +132,7 @@ void structural_constraints()
 
     {
         context::Realm main(world);
-        const auto id = Archetypes::EntTwoComps::spawn_correct(main, 1);
+        const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
         with<CompSimple>::kill(main, id);
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "composite killed by component";
     }

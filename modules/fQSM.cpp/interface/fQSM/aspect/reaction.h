@@ -1,6 +1,6 @@
 #pragma once
 
-#include <fQSM/features/rules/structural.h>
+#include <fQSM/features/reactions/structural.h>
 
 namespace fqsm::aspect::reaction::internal {
 
@@ -34,8 +34,8 @@ namespace fqsm::aspect::reaction::internal {
         inline static const Behavior defaultReactions = Behavior::merged(
             Any<Meta>::defaultReactions,
             Behavior{
-                features::reactions::rules::structural::remove_with_parent<Meta, HostType>(),
-                features::reactions::rules::structural::parastic_requires_parent_to_appear<Meta, HostType>(),
+                features::reactions::structural::remove_with_parent<Meta, HostType>(),
+                features::reactions::structural::parastic_requires_parent_to_appear<Meta, HostType>(),
             }
         );
     };
@@ -66,8 +66,8 @@ namespace fqsm::aspect::reaction {
         inline static const internal::Behavior defaultReactions = internal::Behavior::merged(
             internal::Parasitic<Meta, HostType>::defaultReactions,
             internal::Behavior{
-                features::reactions::rules::structural::dead_component_kill_parent<Meta, HostType>(),
-                features::reactions::rules::structural::parrent_appears_requires_component<Meta, HostType>(),
+                features::reactions::structural::dead_component_kill_parent<Meta, HostType>(),
+                features::reactions::structural::parrent_appears_requires_component<Meta, HostType>(),
             }
         );
     };

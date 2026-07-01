@@ -22,7 +22,7 @@ namespace rmmr {
         ~Engine() noexcept;
 
         auto schema() const -> iqsm::Schema override;
-        auto access() -> iqsm::agents::Subsystem::Update override;
+        auto access() -> iqsm::agents::Subsystem::PossibleChange override;
 
         // Runs the OpenGL demo. Returns 0 on success, non-zero on failure.
         int run_render_demo();
@@ -41,4 +41,3 @@ namespace rmmr {
         std::shared_ptr<State> state;
     };
 }
-

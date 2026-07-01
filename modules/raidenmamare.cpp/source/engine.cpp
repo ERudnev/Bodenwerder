@@ -32,12 +32,12 @@ namespace rmmr {
 
 struct Engine::State {
     iqsm::q1_gateway::resources::Manager resourceManager;
-    iqsm::repo::Branch main;    
+    iqsm::repo::Branch main;
     maybe<rmmr::Renderer> renderer;
     maybe<Device::Id> device;
 
     // this objects may vary a lot with Engine develops in time
-    maybe<Viewport::Id> viewport; // TODO: remove this link later        
+    maybe<Viewport::Id> viewport; // TODO: remove this link later
     maybe<scene::Core::Id> scene;
     struct {
         maybe<material::Core::Id> materialAmbient;
@@ -135,8 +135,8 @@ auto Engine::schema() const -> iqsm::Schema {
     return Engine::schema_static();
 }
 
-auto Engine::access() -> iqsm::agents::Subsystem::Update {
-    return iqsm::agents::Subsystem::Update{
+auto Engine::access() -> iqsm::agents::Subsystem::PossibleChange {
+    return iqsm::agents::Subsystem::PossibleChange{
         .current = state->main,
         .replace =
             [st = state.get()](iqsm::Reading next) {
@@ -290,4 +290,3 @@ int Engine::run_render_demo() {
 }
 
 } // namespace rmmr
-

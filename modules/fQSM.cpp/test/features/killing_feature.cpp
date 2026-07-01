@@ -34,7 +34,7 @@ namespace {
             };
             struct Actions : BaseActions {
                 static void create(Writing context, Body::Id id) {
-                    ask::item::create<Life>(context, id, {0});
+                    new_element(context, id, {0});
                 }
                 static Quantum update(const Quantum& q, int timePassed) {
                     return Quantum{q.clock+timePassed};
@@ -62,7 +62,7 @@ namespace {
                 struct Private;
                 static void create(Writing context, Life::Id id) {
                     const auto body = ask::item::get<Body>(context, id);
-                    ask::item::create<Death>(context, id, {body->powerOfMass + 1} ); // mass 1kg lives 1 sec
+                    new_element(context, id, {body->powerOfMass + 1}); // mass 1kg lives 1 sec
                 }
             };
             struct Reactions : BaseReactions {
@@ -71,14 +71,16 @@ namespace {
         };
     }
 
-    namespace local::Archetypes {
+    namespace local::archetype {
         struct Stone : Archetype {
-            static Body::Id spawn(Writing context, int powerOfMass) {
-                const auto id = ask::item::create<Body>(context, {powerOfMass});
-                Life::Actions::create(context, id);
-                Death::Actions::create(context, id);
-                return id;
-            }
+            struct Actions : BaseActions {
+                static Body::Id spawn(Writing context, int powerOfMass) {
+                    const auto id = ask::item::create<Body>(context, {powerOfMass});
+                    with<Life>::create(context, id);
+                    with<Death>::create(context, id);
+                    return id;
+                }
+            };
         };
     }
 
@@ -89,8 +91,8 @@ namespace {
             // this reaction id private (as any reaction) because it must not be called manually
             static void reactOnDeath(Writing context, Id id, const Quantum& lastValue) {
                 // simple create 2 lesser stones:
-                Archetypes::Stone::spawn(context, lastValue.powerOfMass - 1);
-                Archetypes::Stone::spawn(context, lastValue.powerOfMass - 1);
+                with<archetype::Stone>::spawn(context, lastValue.powerOfMass - 1);
+                with<archetype::Stone>::spawn(context, lastValue.powerOfMass - 1);
             }
         };
 
@@ -125,7 +127,7 @@ void killing_feature()
 
     { // Single Stone kill:
         context::Realm main(schema);
-        const auto id = Archetypes::Stone::spawn(main, 4);
+        const auto id = with<archetype::Stone>::spawn(main, 4);
 
         EXPECT_FALSE(main.notes().rejection());
         EXPECT_TRUE(ask::item::exists<Body>(main, id));
@@ -143,7 +145,7 @@ void killing_feature()
     { // Lifetime simulation
         context::Realm main(schema);
 
-        const auto id = Archetypes::Stone::spawn(main, 4);
+        const auto id = with<archetype::Stone>::spawn(main, 4);
         for (int xx = 0; xx < 100; ++xx)
             with<Life>::update(main, 1);
         //EXPECT_EQ()

@@ -40,15 +40,15 @@ namespace fqsm::aspect::action {
         //experiment: switch do state:: as language of types: using Quantum = ::fqsm::model::
         using Quantum = ::fqsm::Quantum<Meta>;
         using Global = ::fqsm::GlobalValue<Meta>;
-        using Update = std::optional<Quantum>; // use model::elementary::Patch here
+        using PossibleChange = std::optional<Quantum>; // use model::elementary::Patch here
 
         // signatures
         // read-only:
-        using QuantumLocal = std::function<Update(const Quantum&)>; // new quantum value can be evaluated only from old one
-        using QuantumDependent = std::function<Update(Reading, Id, const Quantum&)>; // Id is major, but basic stuff uses only Quantum
+        using QuantumLocal = std::function<PossibleChange(const Quantum&)>; // new quantum value can be evaluated only from old one
+        using QuantumDependent = std::function<PossibleChange(Reading, Id, const Quantum&)>; // Id is major, but basic stuff uses only Quantum
 
         // read-write
-        using Action = void(*)(Writing, Id, const Quantum&); // abstract "action" - "do something with specific element"
+        using Elementary = std::function<void(Writing, Id, const Quantum&)>;
 
         // helpers:
         static auto get(Reading, Id) -> const Quantum&;
@@ -60,6 +60,13 @@ namespace fqsm::aspect::action {
     template<typename Meta>
     struct Standalone : Any<Meta> {
         using Own = Any<Meta>;
+
+    protected:
+        static Own::Id new_element(Writing context, Own::Quantum val) {
+            const auto id = Identifier<Meta>::generate_random();
+            context.patch().aspect<Meta>().put_add(id, std::move(val));
+            return id;
+        }
     };
 
     template<typename Meta, typename HostType>
@@ -69,8 +76,11 @@ namespace fqsm::aspect::action {
 
         using ConstructFromParent = void(*)(Writing, typename Parent::Id);
 
-        // feature:
+        // experimantal:
         static void kill(Writing context, Own::Id id);
+    protected:
+        // derived actions helpers:
+        static void new_element(Writing context, Own::Id id, Own::Quantum val) { context.patch().aspect<Meta>().put_add(id, std::move(val)); }
     };
 
 

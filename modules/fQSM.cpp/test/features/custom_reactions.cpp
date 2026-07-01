@@ -23,7 +23,7 @@ namespace {
             struct Quantum { integer power; };
             struct Actions : BaseActions {
                 static void create(Writing context, A::Id id) {
-                    ask::item::create<C>(context, id, {with<A>::get(context, id).value});
+                    new_element(context, id, {with<A>::get(context, id).value});
                 }
             };
             struct Reactions : BaseReactions {
@@ -32,14 +32,16 @@ namespace {
         };
     }
 
-    namespace local::Archetypes {
+    namespace local::archetype {
         struct EntABC : Archetype {
-            static A::Id spawn(Writing context, int val) {
-                const auto id = ask::item::create<A>(context, {val});
-                ask::item::create<B>(context, id, {"manual"});
-                C::Actions::create(context, id);
-                return id;
-            }
+            struct Actions : BaseActions {
+                static A::Id spawn(Writing context, int val) {
+                    const auto id = ask::item::create<A>(context, {val});
+                    ask::item::create<B>(context, id, {"manual"});
+                    with<C>::create(context, id);
+                    return id;
+                }
+            };
         };
     }
 
@@ -77,7 +79,7 @@ void custom_reactions()
     { // Scenario 2: A+B manual, C via make_default; parent removal cascades to both components
         const auto id = [&] {
             context::Branch tx(main);
-            return Archetypes::EntABC::spawn(tx, 4);
+            return with<archetype::EntABC>::spawn(tx, 4);
         }();
 
         EXPECT_FALSE(main.notes().rejection());

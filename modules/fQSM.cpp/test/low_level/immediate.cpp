@@ -38,7 +38,7 @@ namespace {
     using namespace fqsm::api;
 
     struct A::Actions::Private : A::Actions {
-        static auto allow_non_negative(const Quantum& data) -> Update {
+        static auto allow_non_negative(const Quantum& data) -> PossibleChange {
             if (data.value >= 0)
                 return std::nullopt;
             return Quantum{.value = 0};
@@ -46,7 +46,7 @@ namespace {
     };
 
     const A::Reactions::Behavior A::Reactions::custom = {
-        rule::constraint::element<A>(&A::Actions::Private::allow_non_negative),
+        reaction::constraint::element<A>(&A::Actions::Private::allow_non_negative),
     };
 }
 
