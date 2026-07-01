@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <optional>
 #include <ostream>
 #include <string>
 
@@ -39,6 +40,12 @@ namespace fqsm {
     template<typename Meta, typename BaseType>
     std::ostream& operator<<(std::ostream& os, const Identifier<Meta, BaseType>& id) {
         return os << std::format("{}", id);
+    }
+
+    template<typename Meta, typename BaseType>
+    std::ostream& operator<<(std::ostream& os, const std::optional<Identifier<Meta, BaseType>>& id) {
+        if (!id.has_value()) return os << "nullopt";
+        return os << *id;
     }
 
 }

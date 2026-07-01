@@ -7,8 +7,21 @@
 #include <fQSM/aspect/reaction.h>
 
 namespace fqsm::detail::aspect {
+
+    struct Base {
+        // Aspect internal alias:
+        template<typename Meta>
+        using Anchor = Identifier<Meta>;
+
+        template<typename Meta>
+        using AnchorOpt = std::optional<Identifier<Meta>>;
+
+        template<typename Meta>
+        using Control = Identifier<Meta>;
+    };
+
     template<typename Meta>
-    struct Any {
+    struct Any : Base {
         Any() = delete;
     };
 }

@@ -84,3 +84,5 @@ namespace fqsm::features::reactions::structural {
         }
     };
 }
+
+#include <fQSM/features/reactions/anchoring.h>

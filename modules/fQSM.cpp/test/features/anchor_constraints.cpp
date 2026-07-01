@@ -1,34 +1,9 @@
 #include "_common.h"
 
 #include <fQSM/api/interface.h>
-#include <fQSM/features/reaction.h>
-
-namespace fqsm::workshop_temp {
-
-    template<typename Client, typename Observed>
-    using LinkValue = Id<Observed> Quantum<Client>::*;
-
-    // Draft for future features::reactions::anchor::remove_when_observed_dies<Client, Observed, link>.
-    template<category::Any Client, category::Any Observed, LinkValue<Client, Observed> link>
-    struct remove_when_host_removed final : features::reactions::Abstract {
-        Sources listens() const override { return typed_set<Observed>(); }
-
-        void apply(Reacting context) override {
-            auto& clientPatch = context.reaction<Client>();
-            for (const auto& change : changes<Observed>(context).removed()) {
-                for (const auto& entry : context.proposal.aspect<Client>().items()) {
-                    if ((entry.value.*link) == change.id)
-                        clientPatch.put_deletion(entry.id);
-                }
-            }
-        }
-    };
-
-}
 
 namespace local {
     using namespace fqsm::api;
-    using namespace fqsm::workshop_temp;
 
     struct A : Entity<A> {
         struct Quantum {};
@@ -37,7 +12,9 @@ namespace local {
 
     struct B : Entity<B> {
         struct Quantum {
-            A::Id anchor;
+            Anchor<A> iNeedThis;
+            AnchorOpt<A> iNeedThisOnlyNow;
+            Control<A> controlledOther;
         };
 
         struct Reactions : BaseReactions {
@@ -46,7 +23,9 @@ namespace local {
     };
 
     const B::Reactions::Behavior B::Reactions::custom = {
-        remove_when_host_removed<B, A, &B::Quantum::anchor>{},
+        reaction::structural::anchored<B, A, &B::Quantum::iNeedThis>{},
+        reaction::structural::anchored_optional<B, A, &B::Quantum::iNeedThisOnlyNow>{},
+        reaction::structural::anchors_other<B, A, &B::Quantum::controlledOther>{},
     };
 }
 
@@ -64,12 +43,21 @@ void anchor_constraints()
 
     context::Realm main(schema);
 
-    const auto aId = ask::item::create<A>(main, {});
-    const auto bId = ask::item::create<B>(main, {.anchor = aId});
+    const auto a1 = ask::item::create<A>(main, {});
+    const auto a2 = ask::item::create<A>(main, {});
+    const auto a1dummy = ask::item::create<A>(main, {});
+    const auto a2dummy = ask::item::create<A>(main, {});
 
-    ask::item::update<A>(main, aId).remove();
+    const auto b1 = ask::item::create<B>(main, {.iNeedThis = a1, .iNeedThisOnlyNow{}, .controlledOther = a1dummy});
+    const auto b2 = ask::item::create<B>(main, {.iNeedThis = a1, .iNeedThisOnlyNow{a2}, .controlledOther = a2dummy});
 
-    EXPECT_FALSE(ask::item::exists<B>(main, bId)) << "B must die when anchored A is removed";
+    ask::item::update<A>(main, a2).remove();
+    EXPECT_TRUE(ask::item::exists<B>(main, b1)) << "b1 must survive removal of a2";
+    EXPECT_FALSE(ask::item::exists<B>(main, b2)) << "b2 removed by optional anchor";
+    EXPECT_FALSE(ask::item::exists<A>(main, a2dummy)) << "a2dummy removed with b2";
+
+    ask::item::update<A>(main, a1).remove();
+    EXPECT_FALSE(ask::item::exists<B>(main, b1)) << "b1 must die with a1";
 }
 
 } // namespace tests
