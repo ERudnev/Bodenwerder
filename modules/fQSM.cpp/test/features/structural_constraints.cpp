@@ -27,7 +27,7 @@ namespace local {
             static int square(int x) { return x*x; };
         public:
             static void create(Writing context, EntFree::Id id, bool askPowerOf4) {
-                int x = square(ask::item::get<EntFree>(context, id)->value);
+                int x = square(with<EntFree>::get(context, id).value);
                 if (askPowerOf4) x = square(x);
                 new_element(context, id, {x});
             };
@@ -115,7 +115,7 @@ void structural_constraints()
     {
         context::Realm main(world);
         const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
-        const auto storedVal = ask::item::get<EntFree>(main, id)->value;
+        const auto storedVal = with<EntFree>::get(main, id).value;
         ask::item::update<EntFree>(main, id).remove();
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "normalization killed everything by parent remove";
         ask::item::create<CompSimple>(main, id, {std::format("i am sorry, i am late", storedVal)});

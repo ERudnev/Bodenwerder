@@ -61,8 +61,8 @@ namespace {
             struct Actions : BaseActions {
                 struct Private;
                 static void create(Writing context, Life::Id id) {
-                    const auto body = ask::item::get<Body>(context, id);
-                    new_element(context, id, {body->powerOfMass + 1}); // mass 1kg lives 1 sec
+                    const auto& body = with<Body>::get(context, id);
+                    new_element(context, id, {body.powerOfMass + 1}); // mass 1kg lives 1 sec
                 }
             };
             struct Reactions : BaseReactions {
@@ -134,7 +134,7 @@ void killing_feature()
 
         {
             context::Branch branch(main);
-            Death::Actions::kill(branch, id);
+            with<Death>::kill(branch, id);
 
             EXPECT_FALSE(main.notes().rejection());
             EXPECT_TRUE(ask::item::exists<Body>(main, id)) << "removed in still not commited Branch";

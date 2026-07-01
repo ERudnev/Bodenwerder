@@ -85,7 +85,7 @@ void custom_reactions()
         EXPECT_FALSE(main.notes().rejection());
         EXPECT_TRUE(ask::item::exists<A>(main, id));
         EXPECT_TRUE(ask::item::exists<B>(main, id));
-        EXPECT_EQ(ask::item::get<C>(main, id)->power, 4);
+        EXPECT_EQ(with<C>::get(main, id).power, 4);
 
         {
             context::Branch tx(main);

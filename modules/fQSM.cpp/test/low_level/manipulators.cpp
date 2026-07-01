@@ -19,14 +19,14 @@ void manipulation()
 
     { // create + get (standalone)
         const auto id = with<archetype::EntWithComp>::spawn(main, 7, "seven");
-        EXPECT_EQ(ask::item::get<SomeEntity>(main, id)->value, 7);
+        EXPECT_EQ(with<SomeEntity>::get(main, id).value, 7);
         EXPECT_EQ(debug::count<SomeEntity>(main), 1);
     }
 
     { // create + get (parasitic)
         const auto id = with<archetype::EntWithComp>::spawn(main, 42, "hello");
-        EXPECT_TRUE(ask::item::get<SomeComponent>(main, id).exists());
-        EXPECT_EQ(ask::item::get<SomeComponent>(main, id)->name, "hello");
+        EXPECT_TRUE(with<SomeComponent>::find(main, id).exists());
+        EXPECT_EQ(with<SomeComponent>::get(main, id).name, "hello");
         EXPECT_EQ(debug::count<SomeComponent>(main), 2);
     }
 
@@ -38,7 +38,7 @@ void manipulation()
             tx->name = "after";
         }
 
-        EXPECT_EQ(ask::item::get<SomeComponent>(main, id)->name, "after");
+        EXPECT_EQ(with<SomeComponent>::get(main, id).name, "after");
     }
 
     { // update without precondition: modify ctor must fail

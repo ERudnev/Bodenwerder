@@ -73,16 +73,16 @@ void immediate()
     // will compare different update path with 2 identical realms;
     context::Realm duplicate(main);
 
-    A::Actions::fastJob(main, -5);
-    A::Actions::slowJob(duplicate, -5);
+    with<A>::fastJob(main, -5);
+    with<A>::slowJob(duplicate, -5);
 
-    EXPECT_EQ(ask::item::get<A>(main, ids.at(0))->value, 0);
-    EXPECT_EQ(ask::item::get<A>(main, ids.at(5))->value, 0);
-    EXPECT_EQ(ask::item::get<A>(main, ids.at(6))->value, 1);
+    EXPECT_EQ(with<A>::get(main, ids.at(0)).value, 0);
+    EXPECT_EQ(with<A>::get(main, ids.at(5)).value, 0);
+    EXPECT_EQ(with<A>::get(main, ids.at(6)).value, 1);
 
-    EXPECT_EQ(ask::item::get<A>(main, ids.at(0))->value, ask::item::get<A>(duplicate, ids.at(0))->value);
-    EXPECT_EQ(ask::item::get<A>(main, ids.at(5))->value, ask::item::get<A>(duplicate, ids.at(5))->value);
-    EXPECT_EQ(ask::item::get<A>(main, ids.at(6))->value, ask::item::get<A>(duplicate, ids.at(6))->value);
+    EXPECT_EQ(with<A>::get(main, ids.at(0)).value, with<A>::get(duplicate, ids.at(0)).value);
+    EXPECT_EQ(with<A>::get(main, ids.at(5)).value, with<A>::get(duplicate, ids.at(5)).value);
+    EXPECT_EQ(with<A>::get(main, ids.at(6)).value, with<A>::get(duplicate, ids.at(6)).value);
 }
 
 } // namespace tests
