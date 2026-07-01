@@ -18,6 +18,9 @@ namespace tests::model {
             struct Private;
             static auto constantFunc(Reading, Id)->integer;
         };
+        struct Reactions : BaseReactions {
+            inline static const Behavior custom = {};
+        };
     };
 
     struct SomeComponent : Component<SomeComponent, SomeEntity> {
@@ -25,6 +28,9 @@ namespace tests::model {
             string name;
         };
         struct Actions : BaseActions {};
+        struct Reactions : BaseReactions {
+            inline static const Behavior custom = {};
+        };
     };
 
     struct SecondaryAttribute : Attribute<SecondaryAttribute, SomeComponent> {
@@ -32,6 +38,9 @@ namespace tests::model {
             integer attribute;
         };
         struct Actions : BaseActions {};
+        struct Reactions : BaseReactions {
+            inline static const Behavior custom = {};
+        };
     };
 
     namespace Archetypes {

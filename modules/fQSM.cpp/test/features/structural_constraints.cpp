@@ -7,16 +7,21 @@ namespace local {
 
     struct EntFree : Entity<EntFree> {
         struct Quantum { integer value; };
+        struct Reactions : BaseReactions {
+            static const Behavior custom;
+        };
     };
 
     struct CompSimple : Component<CompSimple, EntFree> {
         struct Quantum { string text; };
-        static const Behavior custom;
+        struct Reactions : BaseReactions {
+            static const Behavior custom;
+        };
     };
 
     struct CompWithCreate : Component<CompWithCreate, EntFree> {
         struct Quantum { integer square; };
-        static const Behavior custom;
+
         struct Actions : BaseActions {
         private:
             static int square(int x) { return x*x; };
@@ -27,14 +32,24 @@ namespace local {
                 ask::item::create<CompWithCreate>(context, id, {x});
             };
         };
+
+        struct Reactions : BaseReactions {
+            static const Behavior custom;
+        };
     };
 
     struct AttrPrimary : Attribute<AttrPrimary, EntFree> {
         struct Quantum { string description; };
+        struct Reactions : BaseReactions {
+            static const Behavior custom;
+        };
     };
 
     struct AttrSecondary : Attribute<AttrSecondary, AttrPrimary> {
         struct Quantum { string clarification; };
+        struct Reactions : BaseReactions {
+            static const Behavior custom;
+        };
     };
 
     namespace Archetypes {
@@ -60,13 +75,16 @@ namespace local {
 
 // kinda impl in come *.cpp file:
 namespace local {
-    const CompSimple::Behavior CompSimple::custom = {
+    const EntFree::Reactions::Behavior EntFree::Reactions::custom = {};
+    const AttrPrimary::Reactions::Behavior AttrPrimary::Reactions::custom = {};
+    const AttrSecondary::Reactions::Behavior AttrSecondary::Reactions::custom = {};
+    const CompSimple::Reactions::Behavior CompSimple::Reactions::custom = {
         //rule::structural_deprecated::component<CompSimple, EntFree>(reflex::ComponentMissing::inacceptable),
         reaction::debug::death_log<CompSimple>("death-event message for {}"),
     };
 }
 namespace local {
-    const CompWithCreate::Behavior CompWithCreate::custom = {
+    const CompWithCreate::Reactions::Behavior CompWithCreate::Reactions::custom = {
         reaction::debug::death_log<CompWithCreate>("death-event message for {}"),
     };
 }

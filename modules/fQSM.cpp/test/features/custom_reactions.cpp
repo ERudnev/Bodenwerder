@@ -7,11 +7,16 @@ namespace {
     namespace local {
         struct A : Entity<A> {
             struct Quantum { integer value; };
+            struct Reactions : BaseReactions {
+                static const Behavior custom;
+            };
         };
 
         struct B : Component<B, A> {
             struct Quantum { string text; };
-            static const Behavior custom;
+            struct Reactions : BaseReactions {
+                static const Behavior custom;
+            };
         };
 
         struct C : Component<C, A> {
@@ -20,6 +25,9 @@ namespace {
                 static void create(Writing context, A::Id id) {
                     ask::item::create<C>(context, id, {with<A>::get(context, id).value});
                 }
+            };
+            struct Reactions : BaseReactions {
+                static const Behavior custom;
             };
         };
     }
@@ -37,9 +45,11 @@ namespace {
 
     // kinda impl in come *.cpp file:
     namespace local {
-        const B::Behavior B::custom = {
+        const A::Reactions::Behavior A::Reactions::custom = {};
+        const B::Reactions::Behavior B::Reactions::custom = {
             reaction::debug::death_log<B>("death-event message for {}"),
         };
+        const C::Reactions::Behavior C::Reactions::custom = {};
     }
 }
 

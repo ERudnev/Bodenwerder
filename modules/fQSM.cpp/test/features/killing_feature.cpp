@@ -14,12 +14,14 @@ namespace {
             struct Global {
                 integer dustKgs = 0;// == mass (kg)
             };
-            static const Behavior custom;
             struct Actions : BaseActions {
                 struct Private; // important forward to allow Protave part defined in *.cpp file
                 static integer mass(Reading context, Id id) {
                     return 1 << get(context, id).powerOfMass;
                 }
+            };
+            struct Reactions : BaseReactions {
+                static const Behavior custom;
             };
         };
     }
@@ -44,6 +46,9 @@ namespace {
                     }
                 }
             };
+            struct Reactions : BaseReactions {
+                static const Behavior custom;
+            };
         };
     }
 
@@ -59,6 +64,9 @@ namespace {
                     const auto body = ask::item::get<Body>(context, id);
                     ask::item::create<Death>(context, id, {body->powerOfMass + 1} ); // mass 1kg lives 1 sec
                 }
+            };
+            struct Reactions : BaseReactions {
+                static const Behavior custom;
             };
         };
     }
@@ -86,10 +94,11 @@ namespace {
             }
         };
 
-        // Behavior:
-        const Body::Behavior Body::custom = {
+        const Body::Reactions::Behavior Body::Reactions::custom = {
             reaction::deletion<Body>(&Actions::Private::reactOnDeath),
         };
+        const Life::Reactions::Behavior Life::Reactions::custom = {};
+        const Death::Reactions::Behavior Death::Reactions::custom = {};
     }
 
     // this kind of code may appear in the separate *.cpp

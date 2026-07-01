@@ -10,7 +10,6 @@ namespace {
         struct Quantum {
             integer value;
         };
-        static const Behavior custom;
         struct Actions : BaseActions {
             struct Private;
             static void fastJob(Direct<A> context, int bonus) {
@@ -28,6 +27,9 @@ namespace {
                     item.value += bonus;
             }*/
         };
+        struct Reactions : BaseReactions {
+            static const Behavior custom;
+        };
     };
 }
 
@@ -43,7 +45,7 @@ namespace {
         }
     };
 
-    const A::Behavior A::custom = {
+    const A::Reactions::Behavior A::Reactions::custom = {
         rule::constraint::element<A>(&A::Actions::Private::allow_non_negative),
     };
 }

@@ -58,7 +58,7 @@ namespace fqsm::manipulation::schema {
 
         out->nodes.emplace(TypeId<Meta>, node);
 
-        for (const auto& reaction : Meta::allReactions().rules) {
+        for (const auto& reaction : Meta::Reactions::allReactions().rules) {
             const auto reactionId = model::intertype::Graph::ReactionId{ out->reactions.size() };
             out->reactions.push_back(reaction);
 

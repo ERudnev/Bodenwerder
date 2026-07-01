@@ -20,7 +20,7 @@
 
 
 // rename to fqsm::actions::categories {
-namespace fqsm::actions {
+namespace fqsm::aspect::action {
     // each Aspect must (may?) have own Interface
     // this set of interfaces is used to generate Aspect-specific parts of their interfaces
     struct Base {
@@ -97,7 +97,7 @@ namespace fqsm::actions {
 }
 
 // Impl
-namespace fqsm::actions {
+namespace fqsm::aspect::action {
 
     template<typename Meta>
     auto Any<Meta>::get(Reading context, Id id) -> const Quantum& {

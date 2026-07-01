@@ -4,7 +4,7 @@
 #include <fQSM/api/builtins.h>
 
 // aspect types (Entity/Component/Attribute):
-#include <fQSM/api/aspects.h>
+#include <fQSM/aspect/categories.h>
 
 // manipulation
 #include <fQSM/manipulation/schema.h>
@@ -37,19 +37,19 @@ namespace fqsm::api {
 
     // Aspect types:
     template<typename Meta>
-    using Entity = ::fqsm::aspects::Entity<Meta>;
+    using Entity = ::fqsm::aspect::Entity<Meta>;
 
     template<typename Meta, typename Runtime>
-    using Controller = ::fqsm::aspects::Controller<Meta, Runtime>;
+    using Controller = ::fqsm::aspect::Controller<Meta, Runtime>;
 
     template<typename Meta, typename Parent>
-    using Attribute = ::fqsm::aspects::Attribute<Meta, Parent>;
+    using Attribute = ::fqsm::aspect::Attribute<Meta, Parent>;
 
     template<typename Meta, typename Parent>
-    using Component = ::fqsm::aspects::Component<Meta, Parent>;
+    using Component = ::fqsm::aspect::Component<Meta, Parent>;
 
     // Interpretation mechanism:
-    using Archetype = ::fqsm::aspects::Archetype;
+    using Archetype = ::fqsm::aspect::Archetype;
 
     // Types graph
     using Schema = fqsm::Schema;

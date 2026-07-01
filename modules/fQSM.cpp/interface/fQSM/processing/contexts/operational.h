@@ -36,6 +36,7 @@ namespace fqsm::processing {
         operator View() const { return context->world; }
         const model::complex::State* operator->() const { return &context->world; }
         model::complex::Patch& patch() { return *context->accumulator; }
+
         //Context::PatchRef patch() { return context->accumulator; }
     private:
         // There is one fundamental problem around.
