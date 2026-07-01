@@ -35,12 +35,16 @@ namespace fqsm::aspect {
     struct Entity : Standalone<Meta> {
         using BaseActions = action::Entity<Meta>;
         using BaseReactions = reaction::Entity<Meta>;
+        struct DefaultActions final : BaseActions {};
+        struct DefaultReactions final : BaseReactions { inline static const features::Behavior custom{}; };
     };
 
     template<typename Meta, typename WorkerType>
     struct Controller : Standalone<Meta> {
         using BaseActions = action::Controller<Meta, WorkerType>;
         using BaseReactions = reaction::Controller<Meta, WorkerType>;
+        struct DefaultActions final : BaseActions {};
+        struct DefaultReactions final : BaseReactions { inline static const features::Behavior custom{}; };
         using WorkerAspect = WorkerType;
     };
 
@@ -48,12 +52,16 @@ namespace fqsm::aspect {
     struct Attribute : Parasitic<Meta, HostType> {
         using BaseActions = action::Attribute<Meta, HostType>;
         using BaseReactions = reaction::Attribute<Meta, HostType>;
+        struct DefaultActions final : BaseActions {};
+        struct DefaultReactions final : BaseReactions { inline static const features::Behavior custom{}; };
     };
 
     template<typename Meta, typename HostType>
     struct Component : Parasitic<Meta, HostType> {
         using BaseActions = action::Component<Meta, HostType>;
         using BaseReactions = reaction::Component<Meta, HostType>;
+        struct DefaultActions final : BaseActions {};
+        struct DefaultReactions final : BaseReactions { inline static const features::Behavior custom{}; };
     };
 
     // Interpretation of several types:

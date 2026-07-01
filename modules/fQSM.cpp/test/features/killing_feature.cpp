@@ -46,9 +46,7 @@ namespace {
                     }
                 }
             };
-            struct Reactions : BaseReactions {
-                static const Behavior custom;
-            };
+            using Reactions = DefaultReactions;
         };
     }
 
@@ -65,9 +63,7 @@ namespace {
                     new_element(context, id, {body.powerOfMass + 1}); // mass 1kg lives 1 sec
                 }
             };
-            struct Reactions : BaseReactions {
-                static const Behavior custom;
-            };
+            using Reactions = DefaultReactions;
         };
     }
 
@@ -99,8 +95,6 @@ namespace {
         const Body::Reactions::Behavior Body::Reactions::custom = {
             reaction::deletion<Body>(&Actions::Private::reactOnDeath),
         };
-        const Life::Reactions::Behavior Life::Reactions::custom = {};
-        const Death::Reactions::Behavior Death::Reactions::custom = {};
     }
 
     // this kind of code may appear in the separate *.cpp

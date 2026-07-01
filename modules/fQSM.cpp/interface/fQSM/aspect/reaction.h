@@ -7,8 +7,12 @@ namespace fqsm::aspect::reaction::internal {
 
     using Behavior = ::fqsm::features::Behavior;
 
+    struct Base {
+        using Reacting = ::fqsm::Reacting;
+    };
+
     template<typename Meta>
-    struct Any  {
+    struct Any : Base {
 
         inline static const Behavior defaultReactions = {};
 

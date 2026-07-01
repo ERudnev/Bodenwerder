@@ -28,7 +28,7 @@ namespace fqsm::aspect::action {
         template<meta::category::Any Meta>
         using Direct = ::fqsm::Direct<Meta>;
         // TODO: remove this after Behavior incapsulated in Meta as local structure
-        using Reacting = ::fqsm::Reacting; // this enables Reactions role for Actions and reqires separation
+        //using Reacting = ::fqsm::Reacting; // this enables Reactions role for Actions and reqires separation
     };
 
     template<typename Meta>

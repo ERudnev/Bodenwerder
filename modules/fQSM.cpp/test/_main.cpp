@@ -29,19 +29,18 @@
     X(schema_world_from_etalon) \
     // end
 
-// Workshop: restore test/workshop/ in full, then uncomment the block below and add group "workshop" to groups.
-//#define FQSM_WORKSHOP_TESTS(X) \
-//    X(linear_commits) \
-//    // end
+#define FQSM_WORKSHOP_TESTS(X) \
+    X(polymorphic_behavior_exp) \
+    // end
 
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_FEATURES_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_LOW_LEVEL_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_MINIMODEL_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_Q1RUNTIME_TESTS)
-//BASETEST_FORWARD_DECLARE_TESTS(FQSM_WORKSHOP_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(FQSM_WORKSHOP_TESTS)
 
-int main() {
+int main_all() {
     struct group final {
         const char* name = "";
         std::vector<base::testing::test_case> tests{};
@@ -53,6 +52,7 @@ int main() {
         group{ "low_level", BASETEST_MAKE_LIST_TESTS(FQSM_LOW_LEVEL_TESTS) },
         group{ "minimodel", BASETEST_MAKE_LIST_TESTS(FQSM_MINIMODEL_TESTS) },
         group{ "q1runtime", BASETEST_MAKE_LIST_TESTS(FQSM_Q1RUNTIME_TESTS) },
+        group{ "workshop", BASETEST_MAKE_LIST_TESTS(FQSM_WORKSHOP_TESTS) },
     };
 
     base::testing::run_summary total{};
@@ -77,8 +77,8 @@ int main() {
     return total.ok() ? 0 : 1;
 }
 
-int main_one_test() {
+int main() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("selected", &tests::killing_feature)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::polymorphic_behavior_exp)));
     return s.ok() ? 0 : 1;
 }
