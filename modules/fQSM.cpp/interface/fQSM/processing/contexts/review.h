@@ -8,12 +8,12 @@
 
 
 namespace fqsm::processing::review {
-    struct Notes {
+    struct Result {
         using Category = std::vector<std::string>;
         Category critical;
         Category warning;
 
-        bool rejection() const { return not critical.empty(); }
+        bool good() const { return critical.empty(); }
     };
 }
 
@@ -24,12 +24,12 @@ namespace fqsm::processing {
         using PatchRef = Context::PatchRef;
 
         const model::complex::Future& proposal;
-        review::Notes& notes;
+        review::Result& result;
         Context::Ptr reactions;
 
-        Review(const model::complex::Future& proposal, Context::PatchRef target, review::Notes& notes)
+        Review(const model::complex::Future& proposal, Context::PatchRef target, review::Result& result)
             : proposal(proposal)
-            , notes(notes)
+            , result(result)
             , reactions(std::make_shared<Context>(proposal, target, Context::Upstream{}))
         {}
         // helpers:

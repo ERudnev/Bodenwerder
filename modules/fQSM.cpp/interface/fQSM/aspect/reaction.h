@@ -4,7 +4,6 @@
 
 namespace fqsm::aspect::reaction::internal {
 
-
     using Behavior = ::fqsm::features::Behavior;
 
     struct Base {

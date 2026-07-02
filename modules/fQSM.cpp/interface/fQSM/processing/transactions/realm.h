@@ -19,11 +19,11 @@ namespace fqsm::processing {
         template<category::Any Meta>
         operator Direct<Meta>();
 
-        auto notes() const -> const review::Notes& { return lastNotes; }
+        auto result() const -> const review::Result& { return lastResult; }
 
     private:
         model::complex::Reality reality;
-        review::Notes lastNotes;
+        review::Result lastResult;
 
         auto writing() -> Writing override;
         auto makeChildPolicy() -> ChildPolicy override;

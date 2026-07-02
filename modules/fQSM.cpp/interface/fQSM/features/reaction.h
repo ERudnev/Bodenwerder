@@ -74,7 +74,7 @@ namespace fqsm::features::reactions {
 
         bool optionally_callable(Reacting context, std::string_view reason) const {
             if (actionFunc) return true;
-            context.notes.critical.push_back(std::string{reason});
+            context.result.critical.push_back(std::string{reason});
             return false;
         }
 

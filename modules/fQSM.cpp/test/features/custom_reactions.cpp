@@ -74,7 +74,7 @@ void custom_reactions()
     { // Scenario 1: B::Behavior::component<> aborted creation of A
         const auto id = ask::item::create<A>(main, {4});
         EXPECT_FALSE(ask::item::exists<A>(main, id));
-        EXPECT_TRUE(main.notes().rejection());
+        EXPECT_FALSE(main.result().good());
     }
     { // Scenario 2: A+B manual, C via make_default; parent removal cascades to both components
         const auto id = [&] {
@@ -82,7 +82,7 @@ void custom_reactions()
             return with<archetype::EntABC>::spawn(tx, 4);
         }();
 
-        EXPECT_FALSE(main.notes().rejection());
+        EXPECT_TRUE(main.result().good());
         EXPECT_TRUE(ask::item::exists<A>(main, id));
         EXPECT_TRUE(ask::item::exists<B>(main, id));
         EXPECT_EQ(with<C>::get(main, id).power, 4);
@@ -92,7 +92,7 @@ void custom_reactions()
             ask::item::update<A>(tx, id).remove();
         }
 
-        EXPECT_FALSE(main.notes().rejection());
+        EXPECT_TRUE(main.result().good());
         EXPECT_FALSE(ask::item::exists<A>(main, id));
         EXPECT_FALSE(ask::item::exists<B>(main, id));
         EXPECT_FALSE(ask::item::exists<C>(main, id));

@@ -60,5 +60,3 @@ namespace base::common_types {
     using vec4 = glm::vec4;
     using quat = glm::quat;
 }
-
-

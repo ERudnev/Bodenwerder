@@ -11,11 +11,11 @@ namespace fqsm::manipulation::feedback {
 
     /*template<category::Any Meta>
     void critical(processing::Review context, std::string reason) {
-        context.notes.critical.push_back(
+        context.result.critical.push_back(
             std::format(R"(Aspect({}): {})", Rtid::name<Meta>(), reason));
     }*/
 
     inline void critical(processing::Review context, std::string reason) {
-        context.notes.critical.push_back(reason);
+        context.result.critical.push_back(reason);
     };
 }

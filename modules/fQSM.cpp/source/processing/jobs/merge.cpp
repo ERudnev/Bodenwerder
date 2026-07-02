@@ -1,7 +1,7 @@
-#include <fQSM/processing/actions/merge.h>
+#include <fQSM/processing/jobs/merge.h>
 #include <fQSM/model/intertype/schema.h>
 
-namespace fqsm::processing::actions {
+namespace fqsm::processing::jobs {
 
     void merge(Reading base, fqsm::ref<Patch> target, fqsm::cref<Patch> source) {
         for (const auto& entry : source->schema->nodes) {

@@ -5,12 +5,12 @@
 #include <fQSM/model/complex/reality.h>
 
 // facade
-namespace fqsm::processing::actions {
+namespace fqsm::processing::jobs {
     void integrate(model::complex::Reality&, const model::complex::Patch&);
 }
 
 // implementation
-namespace fqsm::processing::actions::details {
+namespace fqsm::processing::jobs::details {
 
     template<category::Any Meta>
     void integrate(model::complex::Reality& world, const model::complex::Patch& patch) {

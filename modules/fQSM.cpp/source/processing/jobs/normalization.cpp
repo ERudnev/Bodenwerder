@@ -1,16 +1,16 @@
-#include <fQSM/processing/actions/normalization.h>
+#include <fQSM/processing/jobs/normalization.h>
 
 #include <format>
 #include <set>
 
-#include <fQSM/processing/actions/integration.h>
+#include <fQSM/processing/jobs/integration.h>
 #include <fQSM/processing/contexts/review.h>
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/intertype/schema.h>
 #include <fQSM/features/reaction.h>
 
 // local alias:
-namespace fqsm::processing::actions {
+namespace fqsm::processing::jobs {
     static constexpr int temp_defence_normalization_waves = 10;
 
     using Patch = fqsm::model::complex::Patch;
@@ -18,9 +18,9 @@ namespace fqsm::processing::actions {
 }
 
 // internal part of normalization
-namespace fqsm::processing::actions::normalization {
+namespace fqsm::processing::jobs::normalization {
 
-    void append(review::Notes& dst, review::Notes src) {
+    void append(review::Result& dst, review::Result src) {
         dst.critical.insert(dst.critical.end(), src.critical.begin(), src.critical.end());
         dst.warning.insert(dst.warning.end(), src.warning.begin(), src.warning.end());
     }
@@ -28,13 +28,13 @@ namespace fqsm::processing::actions::normalization {
     struct PassResult {
         fqsm::ref<model::complex::Patch> patch;
         Rtid::Set taintedDuringPatch;
-        review::Notes notes;
+        review::Result result;
     };
 
     // build one normalization wave
     auto reactions_pass(Reading source, fqsm::cref<Patch> changes, const Rtid::Set& taintedLines) -> PassResult {
         //base::message("creating review context");
-        PassResult result{
+        PassResult pass{
             base::make_shared<Patch>(source.schema),
             {}, // TODO: consider filling Tainted Flags once Reviewers will become context::Direct<T> compatible
             {}
@@ -46,8 +46,8 @@ namespace fqsm::processing::actions::normalization {
         const auto proposal = model::complex::Future{source, non_const_patch, taintedLines};
         auto context = Review(
             proposal,
-            result.patch,
-            result.notes);
+            pass.patch,
+            pass.result);
 
         std::set<model::intertype::Graph::ReactionId> selectedReactions;
         for (const auto& [sourceType, _] : changes->lines.container) {
@@ -63,11 +63,11 @@ namespace fqsm::processing::actions::normalization {
             changes->schema->reactions.at(reactionId.raw())->apply(context);
         }
 
-        return result;
+        return pass;
     }
 
-    review::Notes normalization(const model::complex::State& world, ref<Patch> patch, Rtid::Set taintedLines) {
-        review::Notes notesAccumulated;
+    review::Result normalization(const model::complex::State& world, ref<Patch> patch, Rtid::Set taintedLines) {
+        review::Result accumulated;
         Rtid::Set taintedLinesAccumulated = taintedLines;
 
         const auto incoming = base::make_shared<Patch>(world.schema);
@@ -80,21 +80,21 @@ namespace fqsm::processing::actions::normalization {
 
         for (;;) {
             if (wave >= temp_defence_normalization_waves) {
-                notesAccumulated.critical.push_back(
+                accumulated.critical.push_back(
                     std::format("normalization: depth limit {} reached", temp_defence_normalization_waves));
-                return notesAccumulated;
+                return accumulated;
             }
             ++wave;
 
             const auto fix = reactions_pass(advancing, lastCorrection, taintedLinesAccumulated);
 
-            if (fix.notes.rejection()) {
-                append(notesAccumulated, fix.notes);
-                return notesAccumulated;
+            if (not fix.result.good()) {
+                append(accumulated, fix.result);
+                return accumulated;
             }
 
             patch->absorb(*lastCorrection);
-            append(notesAccumulated, fix.notes);
+            append(accumulated, fix.result);
 
             const bool anotherWave = not (fix.patch->quanta() == 0 and fix.taintedDuringPatch.empty());
             if (not anotherWave)
@@ -104,18 +104,18 @@ namespace fqsm::processing::actions::normalization {
             // TODO: extend taintedLinesAccumulated with fix.taintedDuringPatch
         }
 
-        return notesAccumulated;
+        return accumulated;
     }
 }
 
 
 // facade part
-namespace fqsm::processing::actions {
+namespace fqsm::processing::jobs {
 
-    auto update(model::complex::Reality& state, fqsm::ref<Patch> patch, Rtid::Set taintedLines) -> review::Notes {
-        const auto notes = normalization::normalization(state, patch, taintedLines);
-        if (not notes.rejection())
+    auto update(model::complex::Reality& state, fqsm::ref<Patch> patch, Rtid::Set taintedLines) -> review::Result {
+        const auto result = normalization::normalization(state, patch, taintedLines);
+        if (result.good())
             integrate(state, *patch);
-        return notes;
+        return result;
     }
 }

@@ -123,17 +123,17 @@ void killing_feature()
         context::Realm main(schema);
         const auto id = with<archetype::Stone>::spawn(main, 4);
 
-        EXPECT_FALSE(main.notes().rejection());
+        EXPECT_TRUE(main.result().good());
         EXPECT_TRUE(ask::item::exists<Body>(main, id));
 
         {
             context::Branch branch(main);
             with<Death>::kill(branch, id);
 
-            EXPECT_FALSE(main.notes().rejection());
+            EXPECT_TRUE(main.result().good());
             EXPECT_TRUE(ask::item::exists<Body>(main, id)) << "removed in still not commited Branch";
         }
-        EXPECT_FALSE(main.notes().rejection());
+        EXPECT_TRUE(main.result().good());
         EXPECT_FALSE(ask::item::exists<Body>(main, id)) << "removed from world after Branch commit";
     }
     { // Lifetime simulation

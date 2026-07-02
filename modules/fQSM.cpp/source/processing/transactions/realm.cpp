@@ -2,7 +2,7 @@
 #include <fQSM/processing/transactions/realm.h>
 
 #include <fQSM/model/complex/patch.h>
-#include <fQSM/processing/actions/normalization.h>
+#include <fQSM/processing/jobs/normalization.h>
 
 namespace fqsm::processing {
 
@@ -30,16 +30,15 @@ namespace fqsm::processing {
     }
 
     void Realm::accept(Context::PatchRef patch) {
-        lastNotes = {};
-        lastNotes = actions::update(reality, patch, {});
+        lastResult = {};
+        lastResult = jobs::update(reality, patch, {});
     }
 
     void Realm::accept_immediate(Rtid::Set affected) {
-        lastNotes = {}; // reset stored "error buffer"
+        lastResult = {};
         if (affected.empty()) return;
         // TODO: make this as combined PAtch+taint later...
         auto zeroPatch = base::make_shared<Patch>(reality.schema);
-        lastNotes = actions::update(reality, zeroPatch, affected);
-;
+        lastResult = jobs::update(reality, zeroPatch, affected);
     }
 }

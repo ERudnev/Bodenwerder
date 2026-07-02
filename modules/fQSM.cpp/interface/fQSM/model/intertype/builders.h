@@ -10,8 +10,8 @@
 #include <fQSM/model/linear/patch.h>
 #include <fQSM/model/linear/reality.h>
 #include <fQSM/model/intertype/binding.h>
-#include <fQSM/processing/actions/integration.h>
-#include <fQSM/processing/actions/merge.h>
+#include <fQSM/processing/jobs/integration.h>
+#include <fQSM/processing/jobs/merge.h>
 #include <fQSM/utility/logging.h>
 
 namespace fqsm::schema::details {
@@ -24,12 +24,12 @@ namespace fqsm::schema::details {
 
     template<category::Any Meta>
     void integratePatchSlice(model::complex::Reality& world, const model::complex::Patch& patch) {
-        fqsm::processing::actions::details::integrate<Meta>(world, patch);
+        fqsm::processing::jobs::details::integrate<Meta>(world, patch);
     }
 
     template<category::Any Meta>
     void mergePatchSlice(const model::complex::State& base, model::complex::Patch& target, const model::complex::Patch& source) {
-        fqsm::processing::actions::details::merge<Meta>(base, target, source);
+        fqsm::processing::jobs::details::merge<Meta>(base, target, source);
     }
 
     template<category::Any Meta>
