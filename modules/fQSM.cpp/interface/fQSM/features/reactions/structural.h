@@ -21,6 +21,8 @@ namespace fqsm::features::reactions::structural {
     template<category::Component Parasitic, category::Any Parent>
     struct parrent_appears_requires_component;
 
+    //template<category::Manager Manager, category::A
+
 }
 
 // Impl:
@@ -64,7 +66,6 @@ namespace fqsm::features::reactions::structural {
     };
 
 
-    // parrent_appears_requires_component
     template<category::Component Parasitic, category::Any Parent>
     struct parrent_appears_requires_component : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parent>(); }

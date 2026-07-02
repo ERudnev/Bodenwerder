@@ -74,8 +74,6 @@ namespace fqsm::aspect::action {
         using Own = Any<Meta>;
         using Parent = Standalone<HostType>;
 
-        using ConstructFromParent = void(*)(Writing, typename Parent::Id);
-
         // experimantal:
         static void kill(Writing context, Own::Id id);
     protected:
@@ -87,17 +85,14 @@ namespace fqsm::aspect::action {
     template<typename Meta>
     using Entity = Standalone<Meta>;
 
-
-    template<typename Meta, typename WorkerType> // WorkerType is not used yet
-    using Controller = Standalone<Meta>;
-
-
     template<typename Meta, typename HostType>
     using Attribute = Parasitic<Meta, HostType>;
 
-
     template<typename Meta, typename HostType>
     using Component = Parasitic<Meta, HostType>;
+
+    template<typename Meta, typename HostType, typename WorkerType>
+    using Manager = Parasitic<Meta, HostType>;
 
     // Interpretation category ations ant typedefs:
     struct Archetype : Base {

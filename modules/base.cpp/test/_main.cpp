@@ -16,6 +16,7 @@
 
 #define BASE_TESTS(X) \
     X(smoke) \
+    X(serialization_roundtrip) \
     CANNONBALL_TESTS(X) \
     // end
 

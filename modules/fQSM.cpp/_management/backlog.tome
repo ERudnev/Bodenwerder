@@ -29,4 +29,12 @@ namespace backlog {
     Reason:
       Тема ресурсов долго остаётся пограничной между данными, сервисами и runtime-агентами, а новая форма `Controller` даёт шанс собрать это в одну ясную концепцию.
   }
+
+  materialize_controller_archetype: @Statement(~0.8) {
+    Core:
+      `aspect::Controller<Meta, Worker>` объявлен в API и `category::Controller`, но не имеет semantics в action/reaction, тестов и runtime-использования.
+      Вернуться после первичной стабилизации нового Q1.
+    Reason:
+      Роль controller↔worker должна быть зафиксирована в языке, прежде чем наращивать рантайм вокруг декларации.
+  }
 }

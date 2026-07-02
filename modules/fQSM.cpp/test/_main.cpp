@@ -11,6 +11,8 @@
     X(anchor_constraints) \
     X(custom_reactions) \
     X(killing_feature) \
+    X(ctor_dtor) \
+    X(serialization) \
     // end
 
 #define FQSM_LOW_LEVEL_TESTS(X) \
@@ -41,7 +43,7 @@ BASETEST_FORWARD_DECLARE_TESTS(FQSM_MINIMODEL_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_Q1RUNTIME_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_WORKSHOP_TESTS)
 
-int main_all() {
+int call_all_tests() {
     struct group final {
         const char* name = "";
         std::vector<base::testing::test_case> tests{};
@@ -78,8 +80,12 @@ int main_all() {
     return total.ok() ? 0 : 1;
 }
 
-int main() {
+int call_specific_test() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("selected", &tests::anchor_constraints)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::ctor_dtor)));
     return s.ok() ? 0 : 1;
 }
+
+int main() {
+    return call_all_tests();
+};

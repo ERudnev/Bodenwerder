@@ -13,7 +13,6 @@ namespace local {
     struct B : Entity<B> {
         struct Quantum {
             Anchor<A> iNeedThis;
-            AnchorOpt<A> iNeedThisOnlyNow;
             Control<A> controlledOther;
         };
 
@@ -24,7 +23,6 @@ namespace local {
 
     const B::Reactions::Behavior B::Reactions::custom = {
         reaction::structural::anchored<B, A, &B::Quantum::iNeedThis>{},
-        reaction::structural::anchored_optional<B, A, &B::Quantum::iNeedThisOnlyNow>{},
         reaction::structural::controls<B, A, &B::Quantum::controlledOther>{},
     };
 }
@@ -46,18 +44,20 @@ void anchor_constraints()
     const auto a1 = ask::item::create<A>(main, {});
     const auto a2 = ask::item::create<A>(main, {});
     const auto a1dummy = ask::item::create<A>(main, {});
-    const auto a2dummy = ask::item::create<A>(main, {});
 
-    const auto b1 = ask::item::create<B>(main, {.iNeedThis = a1, .iNeedThisOnlyNow{}, .controlledOther = a1dummy});
-    const auto b2 = ask::item::create<B>(main, {.iNeedThis = a1, .iNeedThisOnlyNow{a2}, .controlledOther = a2dummy});
+    const auto b1 = ask::item::create<B>(main, {.iNeedThis = a1, .controlledOther = a1dummy});
 
     ask::item::update<A>(main, a2).remove();
-    EXPECT_TRUE(ask::item::exists<B>(main, b1)) << "b1 must survive removal of a2";
-    EXPECT_FALSE(ask::item::exists<B>(main, b2)) << "b2 removed by optional anchor";
-    EXPECT_FALSE(ask::item::exists<A>(main, a2dummy)) << "a2dummy removed with b2";
+    EXPECT_TRUE(ask::item::exists<B>(main, b1)) << "b1 must survive removal of unrelated a2";
+    EXPECT_TRUE(ask::item::exists<A>(main, a1dummy));
 
+    ask::item::update<B>(main, b1).remove();
+    EXPECT_FALSE(ask::item::exists<A>(main, a1dummy)) << "controlledOther removed with b1";
+
+    const auto a1dummy2 = ask::item::create<A>(main, {});
+    const auto b2 = ask::item::create<B>(main, {.iNeedThis = a1, .controlledOther = a1dummy2});
     ask::item::update<A>(main, a1).remove();
-    EXPECT_FALSE(ask::item::exists<B>(main, b1)) << "b1 must die with a1";
+    EXPECT_FALSE(ask::item::exists<B>(main, b2)) << "b2 must die with anchored a1";
 }
 
 } // namespace tests

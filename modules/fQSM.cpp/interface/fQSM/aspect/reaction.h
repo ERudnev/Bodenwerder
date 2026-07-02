@@ -52,11 +52,6 @@ namespace fqsm::aspect::reaction {
         using Behavior = internal::Behavior;
     };
 
-    template<typename Meta, typename WorkerType>
-    struct Controller : internal::Standalone<Meta> {
-        using Behavior = internal::Behavior;
-    };
-
     template<typename Meta, typename HostType>
     struct Attribute : internal::Parasitic<Meta, HostType> {
         using Behavior = internal::Behavior;
@@ -71,6 +66,19 @@ namespace fqsm::aspect::reaction {
             internal::Behavior{
                 features::reactions::structural::dead_component_kill_parent<Meta, HostType>(),
                 features::reactions::structural::parrent_appears_requires_component<Meta, HostType>(),
+            }
+        );
+    };
+
+    template<typename Meta, typename HostType, typename WorkerType>
+    struct Manager : internal::Standalone<Meta> {
+        using Behavior = internal::Behavior;
+
+        inline static const internal::Behavior defaultReactions = internal::Behavior::merged(
+            internal::Parasitic<Meta, HostType>::defaultReactions,
+            internal::Behavior{
+                //features::reactions::structural::manager_removal_removes_workers<Meta, WorkerType>(),
+                //features::reactions::structural::management<, category::Any Observed, details::LinkValue<Client, Observed> link>
             }
         );
     };

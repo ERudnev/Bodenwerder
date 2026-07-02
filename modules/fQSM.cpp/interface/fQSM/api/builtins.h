@@ -1,15 +1,15 @@
 #pragma once
 
 #include <base/types/common_types.h>
-// for anchoring:
-//#include <fQSM/state/relations.h>
+#include <fQSM/identifier.h>
+#include <fQSM/aspect/assembly.interface.h>
 
 namespace fqsm::q1 {
     using namespace base::common_types;
 
-    //template<typename Meta>
-    //using anchor =
+    template<typename Meta>
+    using Anchor = ::fqsm::detail::aspect::Base::Anchor<Meta>;
 
-    //template<category::Any Meta>
-    //using anchor = ::fqsm::state::relations::Anchor<Meta>;
+    template<typename Meta>
+    using Control = ::fqsm::detail::aspect::Base::Control<Meta>;
 }

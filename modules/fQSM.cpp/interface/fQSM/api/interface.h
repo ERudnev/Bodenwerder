@@ -38,14 +38,14 @@ namespace fqsm::api {
     template<typename Meta>
     using Entity = ::fqsm::aspect::Entity<Meta>;
 
-    template<typename Meta, typename Runtime>
-    using Controller = ::fqsm::aspect::Controller<Meta, Runtime>;
-
     template<typename Meta, typename Parent>
     using Attribute = ::fqsm::aspect::Attribute<Meta, Parent>;
 
     template<typename Meta, typename Parent>
     using Component = ::fqsm::aspect::Component<Meta, Parent>;
+
+    template<typename Meta, typename Host, typename Worker>
+    using Manager = ::fqsm::aspect::Manager<Meta, Host, Worker>;
 
     // Interpretation mechanism:
     using Archetype = ::fqsm::aspect::Archetype;

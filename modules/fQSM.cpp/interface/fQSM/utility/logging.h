@@ -6,9 +6,8 @@
 #include <string_view>
 #include <type_traits>
 
-#include <boost/pfr/io.hpp>
-
 #include <base/logging.h>
+#include <base/serialization.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/complex/patch.h>
 #include <fQSM/model/linear/patch.h>
@@ -23,13 +22,7 @@ namespace fqsm::utility::detail {
 
     template<typename T>
     auto format_quantum(const T& value) -> std::string {
-        if constexpr (std::is_aggregate_v<std::remove_cvref_t<T>>) {
-            std::ostringstream stream;
-            stream << boost::pfr::io(value);
-            return stream.str();
-        } else {
-            return std::format("{}", value);
-        }
+        return base::serialization::to_string(value);
     }
 
     template<category::Any Meta>

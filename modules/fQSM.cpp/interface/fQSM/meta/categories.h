@@ -2,7 +2,7 @@
 
 #include <concepts>
 
-#include <fQSM/meta/pfr.h>
+#include <base/serialization.h>
 
 namespace fqsm::meta::category {
 
@@ -11,11 +11,11 @@ namespace fqsm::meta::category {
         concept Id = requires(const typename Meta::Id& id) {
             typename Meta::Id;
             { id.generate_random() } -> std::same_as<typename Meta::Id>;
-        } and detail::meta::pfr_element<typename Meta::Id>;
+        } and base::serialization::serializable<typename Meta::Id>;
 
         template<typename Meta>
         concept Quantum = requires { typename Meta::Quantum; }
-            and detail::meta::pfr_structure<typename Meta::Quantum>;
+            and base::serialization::serializable<typename Meta::Quantum>;
 
         template<typename Meta>
         concept Worker = requires { typename Meta::WorkerAspect; };
@@ -46,12 +46,12 @@ namespace fqsm::meta::category {
     concept Entity = Standalone<Meta>; // TODO: add Entity-specific requirements later...
 
     template<typename Meta>
-    concept Controller = Standalone<Meta> and musthave::Passport<Meta> and musthave::Worker<Meta>;
-
-    template<typename Meta>
     concept Component = Parasitic<Meta>;
 
     template<typename Meta>
     concept Attribute = Parasitic<Meta>; // TODO: add attribute-specific stuff, for example "rule of creation(ctor)"
+
+    template<typename Meta>
+    concept Manager = Parasitic<Meta> and musthave::Passport<Meta> and musthave::Worker<Meta>;
 
 }
