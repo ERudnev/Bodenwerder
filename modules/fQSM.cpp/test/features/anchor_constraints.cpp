@@ -25,7 +25,7 @@ namespace local {
     const B::Reactions::Behavior B::Reactions::custom = {
         reaction::structural::anchored<B, A, &B::Quantum::iNeedThis>{},
         reaction::structural::anchored_optional<B, A, &B::Quantum::iNeedThisOnlyNow>{},
-        reaction::structural::anchors_other<B, A, &B::Quantum::controlledOther>{},
+        reaction::structural::controls<B, A, &B::Quantum::controlledOther>{},
     };
 }
 

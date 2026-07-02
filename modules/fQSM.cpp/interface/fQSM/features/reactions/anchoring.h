@@ -1,10 +1,12 @@
 #pragma once
 
 #include <optional>
+#include <set>
+#include <vector>
 
+#include <base/logging.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
-
 namespace fqsm::features::reactions::structural::details {
 
     template<typename Client, typename Observed>
@@ -12,6 +14,12 @@ namespace fqsm::features::reactions::structural::details {
 
     template<typename Client, typename Observed>
     using OptionalLinkValue = std::optional<Id<Observed>> Quantum<Client>::*;
+
+    template<typename Client, typename Observed>
+    using LinkVector = std::vector<Id<Observed>> Quantum<Client>::*;
+
+    template<typename Client, typename Observed>
+    using LinkSet = std::set<Id<Observed>> Quantum<Client>::*;
 
 }
 
@@ -24,7 +32,16 @@ namespace fqsm::features::reactions::structural {
     struct anchored_optional;
 
     template<category::Any Client, category::Any Observed, details::LinkValue<Client, Observed> link>
-    struct anchors_other;
+    struct controls;
+
+    template<category::Any Client, category::Any Observed, details::LinkVector<Client, Observed> link>
+    struct anchored_all;
+
+    template<category::Any Client, category::Any Observed, details::LinkSet<Client, Observed> link>
+    struct anchored_any;
+
+    template<category::Any Client, category::Any Observed, details::LinkVector<Client, Observed> link>
+    struct controls_all;
 
 }
 
@@ -64,7 +81,7 @@ namespace fqsm::features::reactions::structural {
 
     // Client owns Observed at link: when Client is removed, remove linked Observed.
     template<category::Any Client, category::Any Observed, details::LinkValue<Client, Observed> link>
-    struct anchors_other final : Abstract {
+    struct controls final : Abstract {
         Sources listens() const override { return typed_set<Client>(); }
 
         void apply(Reacting context) override {
@@ -72,6 +89,27 @@ namespace fqsm::features::reactions::structural {
             for (const auto& change : changes<Client>(context).removed())
                 observedPatch.put_deletion(change.throwing_before().*link);
         }
+    };
+
+    // _INCOMPLETE_: Client anchored to every Observed::Id in link vector.
+    template<category::Any Client, category::Any Observed, details::LinkVector<Client, Observed> link>
+    struct anchored_all final : Abstract {
+        Sources listens() const override { return typed_set<Observed>(); }
+        void apply(Reacting) override { _INCOMPLETE_; }
+    };
+
+    // _INCOMPLETE_: Client anchored to any Observed::Id from link set.
+    template<category::Any Client, category::Any Observed, details::LinkSet<Client, Observed> link>
+    struct anchored_any final : Abstract {
+        Sources listens() const override { return typed_set<Observed>(); }
+        void apply(Reacting) override { _INCOMPLETE_; }
+    };
+
+    // _INCOMPLETE_: Client owns every Observed::Id in link vector.
+    template<category::Any Client, category::Any Observed, details::LinkVector<Client, Observed> link>
+    struct controls_all final : Abstract {
+        Sources listens() const override { return typed_set<Client>(); }
+        void apply(Reacting) override { _INCOMPLETE_; }
     };
 
 }
