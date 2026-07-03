@@ -19,6 +19,7 @@
 
 // Behavior definition for Aspects:
 #include <fQSM/features/reactions/structural.h>
+#include <fQSM/features/reactions/anchoring.h>
 #include <fQSM/features/reactions/constraints.h>
 #include <fQSM/features/reactions/binding.h>
 #include <fQSM/features/reactions/deletion.h>
@@ -44,11 +45,12 @@ namespace fqsm::api {
     template<typename Meta, typename Parent>
     using Component = ::fqsm::aspect::Component<Meta, Parent>;
 
-    template<typename Meta, typename Host, typename Worker>
-    using Manager = ::fqsm::aspect::Manager<Meta, Host, Worker>;
+    template<typename Meta, typename Host, typename Element>
+    using Group = ::fqsm::aspect::Group<Meta, Host, Element>;
 
     // Interpretation mechanism:
-    using Archetype = ::fqsm::aspect::Archetype;
+    template<typename Meta>
+    using Archetype = ::fqsm::aspect::Archetype<Meta>;
 
     // Types graph
     using Schema = fqsm::Schema;

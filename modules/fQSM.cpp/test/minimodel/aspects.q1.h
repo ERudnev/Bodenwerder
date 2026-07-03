@@ -43,14 +43,12 @@ namespace tests::model {
     };
 
     namespace archetype {
-        struct EntWithComp : Archetype {
-            struct Actions : BaseActions {
-                static SomeEntity::Id spawn(Writing context, int value, string name) {
-                    const auto id = ask::item::create<SomeEntity>(context, {value});
-                    ask::item::create<SomeComponent>(context, id, {std::move(name)});
-                    return id;
-                }
-            };
+        struct EntWithComp : Archetype<EntWithComp> {
+            static SomeEntity::Id spawn(Writing context, int value, string name) {
+                const auto id = ask::item::create<SomeEntity>(context, {value});
+                ask::item::create<SomeComponent>(context, id, {std::move(name)});
+                return id;
+            }
         };
     };
 }

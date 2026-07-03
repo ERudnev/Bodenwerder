@@ -70,15 +70,14 @@ namespace fqsm::aspect::reaction {
         );
     };
 
-    template<typename Meta, typename HostType, typename WorkerType>
-    struct Manager : internal::Standalone<Meta> {
+    template<typename Meta, typename HostType, typename ElementType>
+    struct Group : internal::Parasitic<Meta, HostType> {
         using Behavior = internal::Behavior;
 
         inline static const internal::Behavior defaultReactions = internal::Behavior::merged(
             internal::Parasitic<Meta, HostType>::defaultReactions,
             internal::Behavior{
-                //features::reactions::structural::manager_removal_removes_workers<Meta, WorkerType>(),
-                //features::reactions::structural::management<, category::Any Observed, details::LinkValue<Client, Observed> link>
+                features::reactions::structural::group_removal_removes_elements<Meta, ElementType>(),
             }
         );
     };

@@ -55,22 +55,20 @@ namespace local {
     namespace archetype {
 
         // simulates decomposition, where CompSimple~CompWithCreate and it is not fair to choose one as "main thing", ABC is "above"
-        struct EntTwoComps : Archetype {
-            struct Actions : BaseActions {
-                static EntFree::Id spawn_correct(Writing context, int val) {
-                    const auto id = ask::item::create<EntFree>(context, {val});
-                    ask::item::create<CompSimple>(context, id, {std::format("it is {}", val)});
-                    with<CompWithCreate>::create(context, id, true);
-                    return id;
-                }
+        struct EntTwoComps : Archetype<EntTwoComps> {
+            static EntFree::Id spawn_correct(Writing context, int val) {
+                const auto id = ask::item::create<EntFree>(context, {val});
+                ask::item::create<CompSimple>(context, id, {std::format("it is {}", val)});
+                with<CompWithCreate>::create(context, id, true);
+                return id;
+            }
 
-                static EntFree::Id spawn_forgot_init_one_comp(Writing context, int val) {
-                    const auto id = ask::item::create<EntFree>(context, {val});
-                    // two comps are forgot to init. CompWithCreate passes this, but CompNoDefault kill entire Aggregate
-                    // end! for testing purposes
-                    return id;
-                }
-            };
+            static EntFree::Id spawn_forgot_init_one_comp(Writing context, int val) {
+                const auto id = ask::item::create<EntFree>(context, {val});
+                // two comps are forgot to init. CompWithCreate passes this, but CompNoDefault kill entire Aggregate
+                // end! for testing purposes
+                return id;
+            }
         };
     }
 }

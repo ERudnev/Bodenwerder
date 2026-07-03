@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_set>
+
 #include <fQSM/identifier.h>
 //#include <fQSM/features/interface.include.h>
 //#include <fQSM/features/reactions/categories.h>
@@ -65,18 +67,21 @@ namespace fqsm::aspect {
         struct DefaultReactions final : BaseReactions { inline static const features::Behavior custom{}; };
     };
 
-    // Component to manage Entities
-    template<typename Meta, typename HostType, typename WorkerType>
-    struct Manager : Parasitic<Meta, HostType> {
-        using BaseActions = action::Manager<Meta, HostType, WorkerType>;
-        using BaseReactions = reaction::Manager<Meta, HostType, WorkerType>;
-        struct DefaultActions final : BaseActions {};
-        struct DefaultReactions final : BaseReactions { inline static const features::Behavior custom{}; };
-        using WorkerAspect = WorkerType;
+    // Thin parasitic group of managed Elements
+    template<typename Meta, typename HostType, typename ElementType>
+    struct Group : Parasitic<Meta, HostType> {
+        using Quantum = std::unordered_set<typename ElementType::Id>;
+        using BaseActions = action::Group<Meta, HostType, ElementType>;
+        using BaseReactions = reaction::Group<Meta, HostType, ElementType>;
+        struct Actions final : BaseActions {};
+        struct Reactions final : BaseReactions { inline static const features::Behavior custom{}; };
+        using ElementAspect = ElementType;
+        using WorkerAspect = ElementType;
     };
 
-    // Interpretation of several types:
+    // Interpretation helper: archetype resolves actions to the final Meta itself.
+    template<typename Meta>
     struct Archetype : action::Archetype {
-        struct BaseActions {}; // placeholder for the project growth
+        using BaseActions = Meta;
     };
 }

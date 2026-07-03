@@ -10,19 +10,13 @@
 namespace local {
     using namespace fqsm::api;
 
+    // this type is like "needed by several aspects" and made outside of any Metaclass
     struct JobTable {
         std::map<int, std::string> entries;
     };
 
-    struct MyFieldNeedsCodec : Entity<MyFieldNeedsCodec> {
-        struct Quantum {
-            JobTable jobs;
-        };
-
-        using Reactions = DefaultReactions;
-    };
-
-    struct GoodSerializable : Entity<GoodSerializable> {
+    // this Aspect works well with built-in (PFR-wrapped) serialization
+    struct BoxSerializable : Entity<BoxSerializable> {
         struct Quantum {
             std::map<int, std::string> temp_field;
         };
@@ -30,7 +24,18 @@ namespace local {
         using Reactions = DefaultReactions;
     };
 
-    struct NeedsManualCodec : Entity<NeedsManualCodec> {
+    // Quantum of this aspect has mix of fields, one requires custom serialization, other - works by default
+    struct CustomFieldCodec : Entity<CustomFieldCodec> {
+        struct Quantum {
+            JobTable jobs;
+            std::string goodField;
+        };
+
+        using Reactions = DefaultReactions;
+    };
+
+    // this Aspect has custom serializaion for entire Quantum type (must not rely on by-field serialization)
+    struct CustomQuantumCodec : Entity<CustomQuantumCodec> {
         struct Quantum {
             std::deque<std::string> jobs;
         };
@@ -62,16 +67,16 @@ struct codec<local::JobTable, void> {
 // IMPORTANT:
 // this test demonstrates, that codec for "Good enough" Aspect is unnecessary
 //template<>
-//struct codec<local::GoodSerializable::Quantum, void> {
+//struct codec<local::BoxSerializable::Quantum, void> {
 // ...
 // ...
 //};
 // you dond need strings above
 
 template<>
-struct codec<local::NeedsManualCodec::Quantum, void> {
-    static auto read(std::istream& in) -> local::NeedsManualCodec::Quantum {
-        local::NeedsManualCodec::Quantum out{};
+struct codec<local::CustomQuantumCodec::Quantum, void> {
+    static auto read(std::istream& in) -> local::CustomQuantumCodec::Quantum {
+        local::CustomQuantumCodec::Quantum out{};
         detail::expect(in, '{');
         detail::read_sequence(in, '[', ']', [&] {
             out.jobs.push_back(detail::read<std::string>(in));
@@ -80,7 +85,7 @@ struct codec<local::NeedsManualCodec::Quantum, void> {
         return out;
     }
 
-    static void write(std::ostream& out, const local::NeedsManualCodec::Quantum& value) {
+    static void write(std::ostream& out, const local::CustomQuantumCodec::Quantum& value) {
         out << '{';
         detail::write_sequence(out, '[', ']', value.jobs, [&](const auto& entry) {
             detail::write(out, entry);
@@ -99,16 +104,16 @@ void serialization()
     using namespace fqsm::api;
 
     const Schema schema = ask::schema::merge({
-        ask::schema::aspect<MyFieldNeedsCodec>(),
-        ask::schema::aspect<GoodSerializable>(),
-        ask::schema::aspect<NeedsManualCodec>(),
+        ask::schema::aspect<BoxSerializable>(),
+        ask::schema::aspect<CustomFieldCodec>(),
+        ask::schema::aspect<CustomQuantumCodec>(),
     });
 
     context::Realm main(schema);
 
-    ask::item::create<MyFieldNeedsCodec>(main, {.jobs = {.entries = {{1, "one"}, {2, "two"}}}});
-    ask::item::create<GoodSerializable>(main, {.temp_field = {{7, "seven"}}});
-    ask::item::create<NeedsManualCodec>(main, {.jobs = std::deque<std::string>{"nine", "ten"}});
+    ask::item::create<BoxSerializable>(main, {.temp_field = {{7, "seven"}}});
+    ask::item::create<CustomFieldCodec>(main, {.jobs = {.entries = {{1, "one"}, {2, "two"}}}, .goodField = "some text"});
+    ask::item::create<CustomQuantumCodec>(main, {.jobs = std::deque<std::string>{"nine", "ten"}});
 }
 
 } // namespace tests

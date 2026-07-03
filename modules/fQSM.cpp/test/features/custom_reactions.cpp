@@ -33,15 +33,13 @@ namespace {
     }
 
     namespace local::archetype {
-        struct EntABC : Archetype {
-            struct Actions : BaseActions {
-                static A::Id spawn(Writing context, int val) {
-                    const auto id = ask::item::create<A>(context, {val});
-                    ask::item::create<B>(context, id, {"manual"});
-                    with<C>::create(context, id);
-                    return id;
-                }
-            };
+        struct EntABC : Archetype<EntABC> {
+            static A::Id spawn(Writing context, int val) {
+                const auto id = ask::item::create<A>(context, {val});
+                ask::item::create<B>(context, id, {"manual"});
+                with<C>::create(context, id);
+                return id;
+            }
         };
     }
 

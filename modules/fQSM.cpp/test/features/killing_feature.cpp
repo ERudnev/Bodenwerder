@@ -68,15 +68,13 @@ namespace {
     }
 
     namespace local::archetype {
-        struct Stone : Archetype {
-            struct Actions : BaseActions {
-                static Body::Id spawn(Writing context, int powerOfMass) {
-                    const auto id = ask::item::create<Body>(context, {powerOfMass});
-                    with<Life>::create(context, id);
-                    with<Death>::create(context, id);
-                    return id;
-                }
-            };
+        struct Stone : Archetype<Stone> {
+            static Body::Id spawn(Writing context, int powerOfMass) {
+                const auto id = ask::item::create<Body>(context, {powerOfMass});
+                with<Life>::create(context, id);
+                with<Death>::create(context, id);
+                return id;
+            }
         };
     }
 

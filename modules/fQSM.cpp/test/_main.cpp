@@ -11,8 +11,9 @@
     X(anchor_constraints) \
     X(custom_reactions) \
     X(killing_feature) \
-    X(ctor_dtor) \
+    X(group_category) \
     X(serialization) \
+    X(destructor) \
     // end
 
 #define FQSM_LOW_LEVEL_TESTS(X) \
@@ -82,10 +83,10 @@ int call_all_tests() {
 
 int call_specific_test() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("selected", &tests::ctor_dtor)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::group_category)));
     return s.ok() ? 0 : 1;
 }
 
 int main() {
-    return call_all_tests();
+    return call_specific_test();
 };

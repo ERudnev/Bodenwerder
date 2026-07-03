@@ -21,7 +21,8 @@ namespace fqsm::features::reactions::structural {
     template<category::Component Parasitic, category::Any Parent>
     struct parrent_appears_requires_component;
 
-    //template<category::Manager Manager, category::A
+    template<category::Group GroupMeta, category::Any Element>
+    struct group_removal_removes_elements;
 
 }
 
@@ -84,6 +85,17 @@ namespace fqsm::features::reactions::structural {
             }
         }
     };
-}
 
-#include <fQSM/features/reactions/anchoring.h>
+    template<category::Group GroupMeta, category::Any Element>
+    struct group_removal_removes_elements : Abstract {
+        Abstract::Sources listens() const override { return Abstract::typed_set<GroupMeta>(); }
+        void apply(Reacting context) override {
+            auto& target = context.reaction<Element>();
+            for (const auto& change : Abstract::changes<GroupMeta>(context).removed()) {
+                for (const auto& id : change.throwing_before()) {
+                    target.put_deletion(id);
+                }
+            }
+        }
+    };
+}

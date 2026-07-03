@@ -54,6 +54,7 @@ namespace fqsm::aspect::action {
         static auto get(Reading, Id) -> const Quantum&;
         static auto find(Reading, Id) -> base::maybe<std::reference_wrapper<const Quantum>>;
         static auto global(Reading) -> const Global&;
+        static void remove(Writing, Id);
 
     };
 
@@ -74,7 +75,7 @@ namespace fqsm::aspect::action {
         using Own = Any<Meta>;
         using Parent = Standalone<HostType>;
 
-        // experimantal:
+        // experimental:
         static void kill(Writing context, Own::Id id);
     protected:
         // derived actions helpers:
@@ -91,8 +92,8 @@ namespace fqsm::aspect::action {
     template<typename Meta, typename HostType>
     using Component = Parasitic<Meta, HostType>;
 
-    template<typename Meta, typename HostType, typename WorkerType>
-    using Manager = Parasitic<Meta, HostType>;
+    template<typename Meta, typename HostType, typename ElementType>
+    struct Group : Parasitic<Meta, HostType> {};
 
     // Interpretation category ations ant typedefs:
     struct Archetype : Base {
@@ -130,5 +131,10 @@ namespace fqsm::aspect::action {
         } else {
             HostType::Actions::kill(context, id);
         }
+    }
+
+    template<typename Meta>
+    void Any<Meta>::remove(Writing context, Id id) {
+        context.patch().aspect<Meta>().put_deletion(id);
     }
 }
