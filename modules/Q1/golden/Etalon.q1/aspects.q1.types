@@ -17,6 +17,7 @@ namespace Q1_iQSM
         !min_value()
         !max_value()
       all
+        common_data: integer
         >from_float(value_approximate: float) -> #
         ?find_first(integer) -> #?
         ?const_fieldwide_method() -> integer // just sum of all values
@@ -47,4 +48,12 @@ namespace Q1_iQSM
         // TODO: rework syntax and even conception of "constructor"
         >complex_constructor(existing: #SampleEntity) -> #
 
-    group XX
+    // experimental one-line form of syntax (sorry, parser!)
+    entity Note one text: string
+
+    group<Note> of SampleEntity
+
+    // Hint: '=' functions aka "item modifiers" are meaningless for Archetype (has no own state/quantum)
+    archetype Notebook
+      ?notes_count(#SampleEntity)->integer
+      >add_note(#SamleEntity, ~Note::text)-> #Note

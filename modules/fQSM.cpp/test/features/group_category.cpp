@@ -18,13 +18,11 @@ namespace local {
     struct Fragment_group : Group<Fragment_group, Host, Fragment> {};
 
     struct Manager : Archetype<Manager> {
-        struct TempActions {
-            static Fragment::Id create(Writing context, Host::Id hostId) {
-                const auto fragmentId = ask::item::create<Fragment>(context, {});
-                ask::item::update<Fragment_group>(context, hostId)->insert(fragmentId);
-                return fragmentId;
-            }
-        };
+        static Fragment::Id create(Writing context, Host::Id hostId) {
+            const auto fragmentId = ask::item::create<Fragment>(context, {});
+            ask::item::update<Fragment_group>(context, hostId)->insert(fragmentId);
+            return fragmentId;
+        }
     };
 }
 
@@ -46,7 +44,7 @@ void group_category()
     const auto hostId = ask::item::create<Host>(main, {});
     ask::item::create<Fragment_group>(main, hostId, {});
 
-    Manager::TempActions::create(main, hostId);
+    with<Manager>::create(main, hostId);
 }
 
 } // namespace tests

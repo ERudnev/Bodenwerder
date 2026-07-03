@@ -56,12 +56,17 @@ namespace fqsm::features::reactions::structural {
     struct parastic_requires_parent_to_appear : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parasitic>(); }
         void apply(Reacting context) override {
-            auto& target = context.reaction<Parasitic>();
             const auto& source = context.proposal.aspect<Parent>();
             for (const auto& change : Abstract::changes<Parasitic>(context).added()) {
                 if (source.items().find(change.id))
                     continue;
-                target.put_deletion(change.id);
+                ask::feedback::critical(
+                    context,
+                    std::format(
+                        R"(structural: {} missing for new {} {})",
+                        Rtid::name<Parent>(),
+                        Rtid::name<Parasitic>(),
+                        change.id));
             }
         }
     };

@@ -6,7 +6,7 @@ project("fQSM"
     VERSION 0.1
 )
 
-# main target 
+# main target
 add_library(${PROJECT_NAME} STATIC)
 
 target_sources(${PROJECT_NAME}
@@ -41,6 +41,5 @@ target_include_directories(${PROJECT_NAME}_tests
 target_link_libraries(${PROJECT_NAME}_tests
     PRIVATE
         ${PROJECT_NAME}
-        #Q1_Etalon_iqsm
+        Q1_Etalon_fqsm
 )
-

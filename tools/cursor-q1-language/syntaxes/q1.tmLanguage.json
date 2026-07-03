@@ -86,7 +86,7 @@
       "patterns": [
         {
           "name": "keyword.control.q1",
-          "match": "\\b(namespace|declare|type|template|struct|as|enum|entity|attribute|component|agent|depends|always|one|all|model|passport)\\b"
+          "match": "\\b(namespace|declare|type|template|struct|as|enum|entity|attribute|component|agent|depends|always|one|all|archetype|group|model|passport)\\b"
         }
       ]
     },
@@ -106,6 +106,15 @@
     },
     "typeExpressionMarkers": {
       "patterns": [
+        {
+          "match": "\\b(anchor|control)\\s*(<)\\s*([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)\\s*(>)",
+          "captures": {
+            "1": { "name": "keyword.other.q1.link-type" },
+            "2": { "name": "keyword.operator.q1" },
+            "3": { "name": "entity.name.type.q1" },
+            "4": { "name": "keyword.operator.q1" }
+          }
+        },
         {
           "match": "(#)(\\?)(?=\\s*(?:$|//|,|\\)|\\]|>|<|@|;))",
           "captures": {

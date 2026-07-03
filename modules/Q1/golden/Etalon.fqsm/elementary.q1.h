@@ -1,9 +1,9 @@
 #pragma once
 
-#include <iQSM/api/_gateway.h>
+#include <fQSM/api/interface.h>
 
 namespace Q1_iQSM {
-    using namespace iqsm::q1_gateway;
+    using namespace fqsm::api;
     namespace Syntax {
         namespace Typization {
 

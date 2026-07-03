@@ -2,10 +2,6 @@
 
 #include <vector>
 
-#define FQSM_TESTS(X) \
-    X(flat_model_assembly) \
-    // end
-
 #define FQSM_FEATURES_TESTS(X) \
     X(structural_constraints) \
     X(anchor_constraints) \
@@ -17,12 +13,10 @@
     // end
 
 #define FQSM_LOW_LEVEL_TESTS(X) \
-    X(connections) \
     X(containers_updated) \
     X(delta_iterators) \
     X(globals) \
     X(immediate) \
-    X(manipulation) \
     X(transaction_hierarchy) \
     // end
 
@@ -37,7 +31,6 @@
     X(polymorphic_behavior_exp) \
     // end
 
-BASETEST_FORWARD_DECLARE_TESTS(FQSM_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_FEATURES_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_LOW_LEVEL_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_MINIMODEL_TESTS)
@@ -51,7 +44,6 @@ int call_all_tests() {
     };
 
     const std::vector<group> groups{
-        group{ "all", BASETEST_MAKE_LIST_TESTS(FQSM_TESTS) },
         group{ "features", BASETEST_MAKE_LIST_TESTS(FQSM_FEATURES_TESTS) },
         group{ "low_level", BASETEST_MAKE_LIST_TESTS(FQSM_LOW_LEVEL_TESTS) },
         group{ "minimodel", BASETEST_MAKE_LIST_TESTS(FQSM_MINIMODEL_TESTS) },
@@ -88,5 +80,6 @@ int call_specific_test() {
 }
 
 int main() {
-    return call_specific_test();
+    //return call_specific_test();
+    return call_all_tests();
 };

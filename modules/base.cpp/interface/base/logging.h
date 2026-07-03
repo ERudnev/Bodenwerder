@@ -81,7 +81,7 @@ namespace base {
     std::string report(const T& value) {
         std::stringstream ss;
         ss << value;
-        return "concept is passed: " + ss.str();
+        return ss.str();
     };
 
     template<has_to_string_method T>

@@ -9,29 +9,32 @@ namespace Q1_fQSM::Etalon {
     struct Trivia : Entity<Trivia> {
         struct Quantum {};
         struct Global {};
-        static const Behavior behavior;
-        struct Service : BaseActions{};
+        using Actions = BaseActions;
+        using Reactions = DefaultReactions;
     };
 
     struct SampleEntity : Entity<SampleEntity> {
+        static constexpr integer max_elements = integer{2000};
+        static constexpr integer absolute_min = integer{-1000};
+        static constexpr integer absolute_max = integer{1000};
         struct Quantum {
             integer data_field;
         };
-        struct Global {};
-        static const Behavior behavior;
-        struct Service : BaseActions {
-            static constexpr integer max_elements = integer{2000};
-            static constexpr integer absolute_min = integer{-1000};
-            static constexpr integer absolute_max = integer{1000};
-            static auto from_float(float) -> integer;
-
-            static auto create_from_float(Writing, float field_value) -> Id;
-
-            static auto example_const_fieldwide_method(Reading) -> integer;
-            static auto example_const_element_method(Reading, Id) -> float;
-            static void example_nonconst_fieldwide_method(Writing);
-            static void example_nonconst_element_method(Writing, Id);
+        struct Global {
+            integer common_data{};
         };
+        struct Actions : BaseActions {
+            //@  methods from SampleEntity::one '?' '=' '>' dwelled here. NB: "reactions aka normalizaers"declared with '!' are ALVAYS private
+            static auto const_element_method(Reading, Id) -> string;
+            static void nonconst_element_method(Writing, Id);
+
+            // @ methods from SampleEntity::all (all, except '!')
+            static auto from_float(Writing, float value_approximate) -> Id;
+            static auto find_first(Reading, integer) -> optional<Id>;
+            static auto const_fieldwide_method(Reading) -> integer;
+            static void nonconst_fieldwide_method(Writing);
+        };
+        struct Reactions : BaseReactions { static const Behavior custom; };
     };
 
     struct Tag : Attribute<Tag, SampleEntity> {
@@ -39,8 +42,7 @@ namespace Q1_fQSM::Etalon {
         struct Global {
             integer modulus = integer{2};
         };
-        static const Behavior behavior;
-        struct Service : BaseActions{};
+        struct Reactions : BaseReactions { static const Behavior custom; };
     };
 
     struct Remnant : Component<Remnant, Tag> {
@@ -48,19 +50,16 @@ namespace Q1_fQSM::Etalon {
             integer power;
             Trivia::Id trivia;
         };
-        struct Global {};
-        static const Behavior behavior;
-        struct Service : BaseActions{};
+        struct Reactions : BaseReactions { static const Behavior custom; };
     };
 
     struct SampleComponent : Component<SampleComponent, SampleEntity> {
         struct Quantum {};
-        struct Global {};
-        static const Behavior behavior;
-        struct Service : BaseActions{
-            static auto example_op_multiply(Writing, Id, integer factor)->void;
+        struct Actions : BaseActions{
+            static void example_op_multiply(Writing, Id, integer factor);
             static auto example_op_div_with_remainder(Writing, Id, integer divisor)->integer; // returns remainder
         };
+        struct Reactions : BaseReactions { static const Behavior custom; };
     };
 
     struct SampleAttribute : Attribute<SampleAttribute, SampleEntity> {
@@ -69,9 +68,22 @@ namespace Q1_fQSM::Etalon {
             Control<Trivia> main_dummy;
         };
         struct Global {};
-        static const Behavior behavior;
-        struct Manipulators : BaseActions{
-            static auto create_complex_constructor(Writing, SampleEntity::Id existing) -> Id;
+        struct Actions : BaseActions{
+            static auto complex_constructor(Writing, SampleEntity::Id) -> Id;
         };
+        struct Reactions : BaseReactions { static const Behavior custom; };
+    };
+
+    // experimental one-liner syntax for Q1 "one-liner entities"
+    struct Note : Entity<Note> {
+        struct Quantum { string text; };
+        using Reactions = DefaultReactions;
+    };
+
+    struct Note_group : Group<Note_group, Note, SampleEntity> {};
+
+    struct Notebook : Archetype<Notebook> {
+        static auto notes_count(Reading, SampleEntity::Id)->integer;
+        static auto add_note(Writing, decltype(Note::Quantum::text))-> Note::Id;
     };
 }

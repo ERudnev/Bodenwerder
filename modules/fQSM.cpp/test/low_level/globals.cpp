@@ -1,30 +1,42 @@
 #include "_common.h"
-#include "minimodel/aspects.q1.h"
 
 #include <fQSM/api/interface.h>
+
+using namespace fqsm::api;
+
+namespace model {
+
+    struct A : Entity<A> {
+        struct Quantum {};
+        struct Global {
+            int globalValue{};
+        };
+        using Reactions = DefaultReactions;
+    };
+}
 
 namespace tests {
 
 void globals()
 {
-    using namespace ::tests::model;
+    using namespace model;
     using namespace fqsm::api;
 
     const Schema schema = ask::schema::merge({
-        ask::schema::aspect<SomeEntity>(),
-        ask::schema::aspect<SomeComponent>(),
+        ask::schema::aspect<A>(),
     });
 
     context::Realm main(schema);
 
-    EXPECT_EQ(ask::global::get<SomeEntity>(main).modulus, 2);
+    auto tx = ask::global::update<A>(main)->globalValue = 2;
+    EXPECT_EQ(ask::global::get<A>(main).globalValue, 2);
 
     {
-        auto tx = ask::global::update<SomeEntity>(main);
-        tx->modulus = 7;
+        auto tx = ask::global::update<A>(main);
+        tx->globalValue = 7;
     }
 
-    EXPECT_EQ(ask::global::get<SomeEntity>(main).modulus, 7);
+    EXPECT_EQ(ask::global::get<A>(main).globalValue, 7);
 }
 
 } // namespace tests
