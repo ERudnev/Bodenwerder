@@ -10,6 +10,7 @@ namespace Q1_iQSM {
           using Index2Alias = index2;
           using Basic = integer;
           using Alias = Basic;
+          using OptionalInt = std::optional<integer>;
 
           struct Struct {
               Basic field1;
@@ -47,4 +48,3 @@ namespace Q1_iQSM {
         }
     }
 }
-

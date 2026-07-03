@@ -2,7 +2,7 @@
 
 #include <fQSM/api/interface.h>
 
-namespace Q1_iQSM::Etalon {
+namespace Q1_fQSM::Etalon {
 
     using namespace fqsm::api;
 
@@ -65,10 +65,8 @@ namespace Q1_iQSM::Etalon {
 
     struct SampleAttribute : Attribute<SampleAttribute, SampleEntity> {
         struct Quantum {
-            Id neighbor_anchor;
-            optional<SampleComponent::Id> optional_anchor;
-            std::vector<SampleEntity::Id> every_essential;
-            std::vector<SampleComponent::Id> at_least_one_required;
+            Anchor<Trivia> main_anchor;
+            Control<Trivia> main_dummy;
         };
         struct Global {};
         static const Behavior behavior;

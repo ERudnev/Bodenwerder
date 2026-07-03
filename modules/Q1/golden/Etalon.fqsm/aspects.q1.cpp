@@ -1,11 +1,8 @@
 #include <Etalon.fqsm/aspects.q1.h>
 
-#include <iQSM/api/_gateway_equal.h>
+#include <fQSM/api/interface.h>
 
-#include <algorithm>
-#include <vector>
-
-namespace Q1_iQSM::Etalon {
+namespace Q1_fQSM::Etalon {
 
     using namespace iqsm::q1_gateway;
 
@@ -192,14 +189,13 @@ namespace Q1_iQSM::Etalon {
         }
 
         static void construct(Writing commit, Id id, Node<SampleEntity>) {
+            const auto trivia = ops::particle::create<Trivia>(commit, Trivia::Quantum{});
             ops::particle::create<SampleAttribute>(
                 commit,
                 id,
                 SampleAttribute::Quantum{
-                    .neighbor_anchor = id,
-                    .optional_anchor = id,
-                    .every_essential = { id },
-                    .at_least_one_required = { id },
+                    .main_anchor = trivia,
+                    .main_dummy = trivia,
                 });
         }
     };
@@ -207,10 +203,7 @@ namespace Q1_iQSM::Etalon {
     const Norms SampleAttribute::rules{
         .structural = {
             invariant::anchor_attribute<SampleEntity, SampleAttribute>,
-            invariant::anchor<SampleEntity, SampleAttribute, &SampleAttribute::Quantum::neighbor_anchor>,
-            invariant::anchor_optional<SampleComponent, SampleAttribute, &SampleAttribute::Quantum::optional_anchor>,
-            invariant::anchor_all<SampleEntity, SampleAttribute, &SampleAttribute::Quantum::every_essential>,
-            invariant::anchor_any<SampleComponent, SampleAttribute, &SampleAttribute::Quantum::at_least_one_required>,
+            invariant::anchor<Trivia, SampleAttribute, &SampleAttribute::Quantum::main_anchor>,
         },
         .logical = {
             invariant::existence<SampleAttribute, SampleEntity, &SampleAttribute_private::need_even, &SampleAttribute_private::construct>,
@@ -229,10 +222,8 @@ namespace Q1_iQSM::Etalon {
             tx,
             created,
             SampleAttribute::Quantum{
-                .neighbor_anchor = existing,
-                .optional_anchor = {},
-                .every_essential = {},
-                .at_least_one_required = { existing },
+                .main_anchor = existing,
+                .main_dummy = existing,
             }
         );
         return created;

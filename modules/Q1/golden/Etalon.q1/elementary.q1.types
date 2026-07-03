@@ -5,10 +5,12 @@ namespace Q1_iQSM
       type Index2Alias as index2
       type Basic as integer
       type Alias as Basic
+      type OptionalInt as integer?
       struct Struct
         field1: Basic
         field2: Alias
       type AliasByField ~ Struct::field1 // AliasByField == type of(Struct::field1) == Basic == integer
+      type ExternalDomainType @external(similar to OpenGL texture handle) // external types are bound as "free style description"
       struct HasLocalType
         type LocalType as integer
         field: string

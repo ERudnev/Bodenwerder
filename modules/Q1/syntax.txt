@@ -1,5 +1,5 @@
   intendation matters (Python-style)
-  
+
   Q1 language specification
   keywords:
     'import' : line at top of file; pulls in another `.q1.types` module (see directives below)
@@ -20,11 +20,10 @@
     'attribute' : declares attribute (particle with Owner)
     'component' : declares component (mandatory particle with Owner)
     'agent' : declares external runtime-bound agent (wrapper/binding to an external resource)
-    // NOTE: Anchor semantics are expressed via @directives (see below), not via type keywords.
     'depends' : adds dependency manually
-    'element' : opens per-item data+operations block inside aspect definition
-    'table' : opens field-own data+operations block inside aspect definition
-    'static' : opens static constants + pure functions block inside aspect definition
+    'one' : opens per-item data+operations block inside aspect definition
+    'all' : opens field-own data+operations block inside aspect definition
+    'always' : opens static constants + pure functions block inside aspect definition
     '#' : id type constructor (inside type expressions only):  #T == T::id (decode only) ; # == id (local Aspect type; decode only)
     '?' : postfix Optional type constructor (inside type expressions only):  T? == optional<T> (decode only)
 
@@ -44,9 +43,6 @@
     line-oriented import (processed before Q1 parse):
       `import "..."` : bring another `.q1.types` module into scope. The string is a logical path within the module (commonly rooted at that module's `aspects/` tree). Do not repeat the `.q1.types` suffix in the string.
 
-    @anchor : marks an anchor reference field (special persistent link semantics)
-    @anchor(any) : for containers of anchors; the dependee exists if at least one anchor is valid
-    @anchor(all) : for containers of anchors; the dependee exists only if all anchors are valid
 
   agent declarations:
     `agent R @external(X)` : declares an agent aspect R bound to an opaque external runtime **resource** type X.
@@ -66,7 +62,7 @@
     'set<K>' : ordered key container
     'umap<K,V>' : unordered key-value container
     'uset<T>' : unordered key container
-  
+
     'seconds' : relative time duration (in seconds)
     'time' : timepoint
 
@@ -82,5 +78,3 @@
     'element' : per-item state+queries/commands (stored in Field container as Item Quantum)
     'table' : field-own state+queries/commands (Global + fieldwide ops)
     'static' : compile-time constants + referentially transparent functions (no World/Global/Id dependency)
-
-  
