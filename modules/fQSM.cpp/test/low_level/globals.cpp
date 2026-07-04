@@ -2,6 +2,7 @@
 
 #include <fQSM/api/interface.h>
 
+namespace {
 using namespace fqsm::api;
 
 namespace model {
@@ -14,6 +15,7 @@ namespace model {
         using Reactions = DefaultReactions;
     };
 }
+} // namespace
 
 namespace tests {
 

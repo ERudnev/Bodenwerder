@@ -1,6 +1,5 @@
 #include <fQSM/processing/contexts/operational.h>
 
-#include <fQSM/logger.h>
 #include <fQSM/utility/logging.h>
 
 namespace fqsm::processing::context {
@@ -12,8 +11,7 @@ namespace fqsm::processing::context {
     {}
 
     void Operational::collapse() {
-        if (logger::settings::processing::contextResult)
-            utility::log_patch("context deleted, sending patch", fqsm::freeze(accumulator));
+        _DBG_TX_("context is up to close: patch={}", fqsm::utility::format_patch(fqsm::freeze(accumulator)));
         if (callback)
             callback(accumulator);
         callback = nullptr;

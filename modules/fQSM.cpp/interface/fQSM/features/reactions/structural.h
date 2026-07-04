@@ -6,6 +6,7 @@
 #include <fQSM/features/reaction.h>
 #include <fQSM/manipulation/item.h>
 #include <fQSM/manipulation/feedback.h>
+#include <fQSM/processing/_forwards.h>
 
 namespace fqsm::features::reactions::structural {
 
@@ -35,8 +36,10 @@ namespace fqsm::features::reactions::structural {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parent>(); }
         void apply(Reacting context) override {
             auto& target = context.reaction<Parasitic>();
-            for (const auto& change : Abstract::changes<Parent>(context).removed())
+            for (const auto& change : Abstract::changes<Parent>(context).removed()) {
+                _DBG_TX_("structural remove_with_parent: {} removed -> put_deletion {} {}", Rtid::name<Parent>(), Rtid::name<Parasitic>(), change.id);
                 target.put_deletion(change.id);
+            }
         }
     };
 
@@ -46,8 +49,10 @@ namespace fqsm::features::reactions::structural {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parasitic>(); }
         void apply(Reacting context) override {
             auto& target = context.reaction<Parent>();
-            for (const auto& change : Abstract::changes<Parasitic>(context).removed())
+            for (const auto& change : Abstract::changes<Parasitic>(context).removed()) {
+                _DBG_TX_("structural dead_component_kill_parent: {} removed -> put_deletion {} {}", Rtid::name<Parasitic>(), Rtid::name<Parent>(), change.id);
                 target.put_deletion(change.id);
+            }
         }
     };
 
@@ -58,8 +63,11 @@ namespace fqsm::features::reactions::structural {
         void apply(Reacting context) override {
             const auto& source = context.proposal.aspect<Parent>();
             for (const auto& change : Abstract::changes<Parasitic>(context).added()) {
-                if (source.items().find(change.id))
+                if (source.items().find(change.id)) {
+                    _DBG_TX_("structural parastic_requires_parent: {} {} ok, {} in proposal", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
                     continue;
+                }
+                _DBG_TX_("structural parastic_requires_parent: CRITICAL {} {}, {} missing in proposal", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
                 ask::feedback::critical(
                     context,
                     std::format(
@@ -78,8 +86,11 @@ namespace fqsm::features::reactions::structural {
         void apply(Reacting context) override {
             const auto& source = context.proposal.aspect<Parasitic>();
             for (const auto& change : Abstract::changes<Parent>(context).added()) {
-                if (source.items().find(change.id))
+                if (source.items().find(change.id)) {
+                    _DBG_TX_("structural parrent_requires_component: {} {} ok, {} in proposal", Rtid::name<Parent>(), change.id, Rtid::name<Parasitic>());
                     continue;
+                }
+                _DBG_TX_("structural parrent_requires_component: CRITICAL {} {}, {} missing in proposal", Rtid::name<Parent>(), change.id, Rtid::name<Parasitic>());
                 ask::feedback::critical(
                     context,
                     std::format(
@@ -98,6 +109,7 @@ namespace fqsm::features::reactions::structural {
             auto& target = context.reaction<Element>();
             for (const auto& change : Abstract::changes<GroupMeta>(context).removed()) {
                 for (const auto& id : change.throwing_before()) {
+                    _DBG_TX_("structural group_removal: {} removed -> put_deletion {} {}", Rtid::name<GroupMeta>(), Rtid::name<Element>(), id);
                     target.put_deletion(id);
                 }
             }

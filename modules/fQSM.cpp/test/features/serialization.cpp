@@ -7,6 +7,7 @@
 #include <base/serialization.h>
 #include <fQSM/api/interface.h>
 
+namespace {
 namespace local {
     using namespace fqsm::api;
 
@@ -43,6 +44,7 @@ namespace local {
         using Reactions = DefaultReactions;
     };
 }
+} // namespace
 
 namespace base::serialization {
 

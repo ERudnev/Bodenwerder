@@ -2,6 +2,7 @@
 
 #include <fQSM/api/interface.h>
 
+namespace {
 namespace local {
     using namespace fqsm::api;
 
@@ -26,6 +27,7 @@ namespace local {
         reaction::structural::controls<B, A, &B::Quantum::controlledOther>{},
     };
 }
+} // namespace
 
 namespace tests {
 

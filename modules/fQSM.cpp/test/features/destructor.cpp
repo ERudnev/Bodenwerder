@@ -2,6 +2,7 @@
 
 #include <fQSM/api/interface.h>
 
+namespace {
 namespace local {
     using namespace fqsm::api;
 
@@ -28,6 +29,7 @@ namespace local {
         };
     };
 }
+} // namespace
 
 namespace tests {
 

@@ -4,6 +4,8 @@
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/complex/patch.h>
 #include <fQSM/processing/transaction.h>
+#include <fQSM/processing/_forwards.h>
+#include <fQSM/utility/logging.h>
 
 
 namespace fqsm::processing::transaction {
@@ -35,6 +37,7 @@ namespace fqsm::processing::transaction {
         }
 
         void accept(Context::PatchRef child) {
+            _DBG_TX_("branch: merge child={} into accumulator={}", utility::format_patch(fqsm::freeze(child)), utility::format_patch(fqsm::freeze(context->accumulator)));
             jobs::merge(context->world, context->accumulator, child);
         }
 

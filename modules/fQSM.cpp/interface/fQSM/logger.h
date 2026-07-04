@@ -15,10 +15,3 @@ namespace fqsm::logger {
     inline fqsm::q1::timepoint now() { return base::now(); }
 
 }
-
-namespace fqsm::logger::settings {
-
-    namespace processing {
-        static constexpr bool contextResult = false;
-    }
-}

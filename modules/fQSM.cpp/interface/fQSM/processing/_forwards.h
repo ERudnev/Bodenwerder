@@ -1,12 +1,17 @@
 #pragma once
 
+#include <format>
 #include <memory>
 
+//#include <base/logging.h> // required for _DBG_TX_ (make this better)
 #include <fQSM/references.h>
 #include <fQSM/meta/categories.h>
 #include <fQSM/model/_forwards.h>
 
-//#include <fQSM/state/world.h>
+#ifndef _DBG_TX_
+//#define _DBG_TX_(...) ::base::message(std::format(__VA_ARGS__))
+#define _DBG_TX_(...) {}
+#endif
 
 namespace fqsm::processing::context {
     struct Operational;
@@ -30,5 +35,4 @@ namespace fqsm {
     using Reacting = processing::Review;
     template<meta::category::Any Meta>
     using Direct = processing::Breach<Meta>;
-
 }

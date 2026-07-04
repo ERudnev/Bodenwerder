@@ -2,7 +2,9 @@
 #include <fQSM/processing/transactions/realm.h>
 
 #include <fQSM/model/complex/patch.h>
+#include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/jobs/normalization.h>
+#include <fQSM/utility/logging.h>
 
 namespace fqsm::processing {
 
@@ -30,6 +32,7 @@ namespace fqsm::processing {
     }
 
     void Realm::accept(Context::PatchRef patch) {
+        _DBG_TX_("realm: accept patch={}", utility::format_patch(fqsm::freeze(patch)));
         lastResult = {};
         lastResult = jobs::update(reality, patch, {});
     }

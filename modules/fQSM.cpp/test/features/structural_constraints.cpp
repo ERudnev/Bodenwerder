@@ -2,7 +2,9 @@
 
 #include <fQSM/api/interface.h>
 
+namespace {
 using namespace fqsm::api;
+
 namespace local {
 
     struct EntFree : Entity<EntFree> {
@@ -71,10 +73,7 @@ namespace local {
             }
         };
     }
-}
 
-// kinda impl in come *.cpp file:
-namespace local {
     const EntFree::Reactions::Behavior EntFree::Reactions::custom = {};
     const AttrPrimary::Reactions::Behavior AttrPrimary::Reactions::custom = {};
     const AttrSecondary::Reactions::Behavior AttrSecondary::Reactions::custom = {};
@@ -82,12 +81,12 @@ namespace local {
         //rule::structural_deprecated::component<CompSimple, EntFree>(reflex::ComponentMissing::inacceptable),
         reaction::debug::death_log<CompSimple>("death-event message for {}"),
     };
-}
-namespace local {
+
     const CompWithCreate::Reactions::Behavior CompWithCreate::Reactions::custom = {
         reaction::debug::death_log<CompWithCreate>("death-event message for {}"),
     };
 }
+} // namespace
 
 namespace tests {
 

@@ -3,11 +3,13 @@
 #include <format>
 #include <set>
 
+#include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/jobs/integration.h>
 #include <fQSM/processing/contexts/review.h>
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/intertype/schema.h>
 #include <fQSM/features/reaction.h>
+#include <fQSM/utility/logging.h>
 
 // local alias:
 namespace fqsm::processing::jobs {
@@ -63,6 +65,7 @@ namespace fqsm::processing::jobs::normalization {
             changes->schema->reactions.at(reactionId.raw())->apply(context);
         }
 
+        _DBG_TX_("norm pass: {} reactions, changes={}, reaction={}", selectedReactions.size(), utility::format_patch(changes), utility::format_patch(fqsm::freeze(pass.patch)));
         return pass;
     }
 
@@ -70,9 +73,13 @@ namespace fqsm::processing::jobs::normalization {
         review::Result accumulated;
         Rtid::Set taintedLinesAccumulated = taintedLines;
 
+        _DBG_TX_("norm: start user patch={}", utility::format_patch(fqsm::freeze(patch)));
+
         const auto incoming = base::make_shared<Patch>(world.schema);
         incoming->absorb(*patch);
         patch->clear();
+
+        _DBG_TX_("norm: incoming={}", utility::format_patch(fqsm::freeze(incoming)));
 
         model::complex::Future advancing(world, patch, taintedLines);
         ref<Patch> lastCorrection = incoming;
@@ -80,15 +87,19 @@ namespace fqsm::processing::jobs::normalization {
 
         for (;;) {
             if (wave >= temp_defence_normalization_waves) {
+                _DBG_TX_("norm: DEPTH LIMIT {}", temp_defence_normalization_waves);
                 accumulated.critical.push_back(
                     std::format("normalization: depth limit {} reached", temp_defence_normalization_waves));
                 return accumulated;
             }
             ++wave;
 
+            _DBG_TX_("norm: wave {} correction={}", wave, utility::format_patch(fqsm::freeze(lastCorrection)));
+
             const auto fix = reactions_pass(advancing, lastCorrection, taintedLinesAccumulated);
 
             if (not fix.result.good()) {
+                _DBG_TX_("norm: wave {} REJECT critical={} warning={}", wave, fix.result.critical.size(), fix.result.warning.size());
                 append(accumulated, fix.result);
                 return accumulated;
             }
@@ -97,6 +108,7 @@ namespace fqsm::processing::jobs::normalization {
             append(accumulated, fix.result);
 
             const bool anotherWave = not (fix.patch->quanta() == 0 and fix.taintedDuringPatch.empty());
+            _DBG_TX_("norm: wave {} merged={}, reaction={}, another={}", wave, utility::format_patch(fqsm::freeze(patch)), utility::format_patch(fqsm::freeze(fix.patch)), anotherWave);
             if (not anotherWave)
                 break;
 
@@ -104,6 +116,7 @@ namespace fqsm::processing::jobs::normalization {
             // TODO: extend taintedLinesAccumulated with fix.taintedDuringPatch
         }
 
+        _DBG_TX_("norm: done final patch={}", utility::format_patch(fqsm::freeze(patch)));
         return accumulated;
     }
 }
@@ -114,8 +127,13 @@ namespace fqsm::processing::jobs {
 
     auto update(model::complex::Reality& state, fqsm::ref<Patch> patch, Rtid::Set taintedLines) -> review::Result {
         const auto result = normalization::normalization(state, patch, taintedLines);
-        if (result.good())
+        if (result.good()) {
+            _DBG_TX_("update: INTEGRATE patch={}", utility::format_patch(fqsm::freeze(patch)));
             integrate(state, *patch);
+        } else {
+            _DBG_TX_("update: REJECT critical={} warning={}", result.critical.size(), result.warning.size());
+            utility::log_rejected_transaction(result);
+        }
         return result;
     }
 }
