@@ -15,6 +15,7 @@
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/processing/_forwards.h>
+#include <fQSM/processing/transactions/quantal.h>
 #include <fQSM/features/behavior.h>
 
 // rename to fqsm::actions::categories {
@@ -56,6 +57,11 @@ namespace fqsm::aspect::action {
         static auto global(Reading) -> const Global&;
         static void global_set(Writing, Global);
         static void remove(Writing, Id);
+
+        using Modify = ::fqsm::processing::transaction::Quantal<Meta>;
+        static Modify modify(Writing context, Id id) {
+            return Modify{context, id};
+        }
 
     };
 
@@ -156,8 +162,8 @@ namespace fqsm::aspect::action {
     template<typename Meta>
     void Any<Meta>
     ::global_set(Writing context, Global val) {
-        context.patch().aspect<Meta>().global = {std::move(val)};
-        //return context.aspect<Meta>().global();
+        //context.patch().aspect<Meta>().global = {std::move(val)};
+        context.workers_interface().updates<Meta>().put_global(std::move(val));
     }
 
 

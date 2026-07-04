@@ -5,7 +5,6 @@
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
 #include <fQSM/manipulation/feedback.h>
-#include <fQSM/manipulation/item.h>
 
 namespace fqsm::features::reactions::constraint {
 
@@ -36,7 +35,7 @@ namespace fqsm::features::reactions::constraint {
             else {
                 const auto fix = this->action(*change.after);
                 if (!fix) continue;
-                *manipulation::item::update<Meta>(context, change.id) = *fix;
+                *Meta::BaseActions::modify(context, change.id) = *fix;
             }
         }
     }

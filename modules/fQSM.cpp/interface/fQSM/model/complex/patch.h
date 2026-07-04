@@ -7,11 +7,24 @@
 
 namespace fqsm::model::complex {
 
-    struct Patch {
+    struct WorkersInterface {
+        WorkersInterface(Schema schema, intertype::Composite<linear::patch::Erased> builtLines) : schema(schema), lines(std::move(builtLines)) {}
+
+        template<category::Any Meta>
+        linear::WorkersInterface<Meta>& updates();
+
+        template<category::Any Meta>
+        const linear::WorkersInterface<Meta>& updates() const;
+    protected:
         const Schema schema;
         const intertype::Composite<linear::patch::Erased> lines;
+    };
 
-        Patch(Schema schema) : schema(schema), lines(composition(schema)) {}
+    struct Patch : WorkersInterface {
+        using WorkersInterface::schema;
+        using WorkersInterface::lines;
+
+        Patch(Schema schema) : WorkersInterface(schema, composition(schema)) {}
 
         template<category::Any Meta>
         linear::Patch<Meta>& aspect();
@@ -48,6 +61,16 @@ namespace fqsm::model::complex {
 
     template<category::Any Meta>
     const linear::Patch<Meta>& Patch::aspect() const {
+        return static_cast<const linear::Patch<Meta>&>(*lines.container.at(TypeId<Meta>).get());
+    }
+
+    template<category::Any Meta>
+    linear::WorkersInterface<Meta>& WorkersInterface::updates() {
+        return static_cast<linear::Patch<Meta>&>(*lines.container.at(TypeId<Meta>).get());
+    };
+
+    template<category::Any Meta>
+    const linear::WorkersInterface<Meta>& WorkersInterface::updates() const {
         return static_cast<const linear::Patch<Meta>&>(*lines.container.at(TypeId<Meta>).get());
     }
 }

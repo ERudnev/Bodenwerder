@@ -46,8 +46,8 @@ namespace workshop {
 
         private:
             static void income(Writing context, Wallet::Id wallet, int amount) {
-                auto& mem = ask::item::update<Steady>(context, wallet)->lastIncomeMemory;
-                auto w = ask::item::update<Wallet>(context, wallet);
+                auto& mem = with<Steady>::modify(context, wallet)->lastIncomeMemory;
+                auto w = with<Wallet>::modify(context, wallet);
                 if (amount > 0) {
                     w->stocks += amount;
                 } else {
@@ -77,7 +77,7 @@ namespace workshop {
         private:
             static void income(Writing context, Wallet::Id wallet, int amount) {
                 if (amount > 0) {
-                    ask::item::update<Wallet>(context, wallet)->stocks += amount;
+                    with<Wallet>::modify(context, wallet)->stocks += amount;
                 }
             }
         };

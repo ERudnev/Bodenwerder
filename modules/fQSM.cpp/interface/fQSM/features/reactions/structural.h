@@ -4,7 +4,6 @@
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
-#include <fQSM/manipulation/item.h>
 #include <fQSM/manipulation/feedback.h>
 #include <fQSM/processing/_forwards.h>
 

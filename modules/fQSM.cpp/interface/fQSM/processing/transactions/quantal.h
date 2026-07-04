@@ -20,23 +20,11 @@ namespace fqsm::processing::transaction {
     struct Quantal {
         const Id<Meta> id;
 
-        explicit Quantal(Writing gate, Quantum<Meta> value) requires category::Standalone<Meta>
-            : id(Id<Meta>::generate_random()), gate(std::move(gate)), buffer(std::move(value)) {}
-
         explicit Quantal(Writing gate, Id<Meta> id)
             : id(id), gate(std::move(gate)), buffer(requireActual(this->gate, id)) {}
 
-        explicit Quantal(Writing gate, Id<Meta> id, Quantum<Meta> value) requires category::Parasitic<Meta>
-            : id(id), gate(std::move(gate)), buffer(std::move(value)) {}
-
         ~Quantal() {
-            auto& patchItems = gate.patch().aspect<Meta>().items;
-            if (removed) {
-                if (getActual(gate, id))
-                    patchItems.insert(id, std::nullopt);
-                return;
-            }
-            patchItems.insert(id, std::move(buffer));
+            gate.patch().aspect<Meta>().put_modification(id, std::move(buffer));
         }
 
         Quantal(const Quantal&) = delete;
@@ -65,7 +53,6 @@ namespace fqsm::processing::transaction {
 
         Writing gate;
         Quantum<Meta> buffer;
-        bool removed = false;
     };
 
 }

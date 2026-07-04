@@ -8,7 +8,17 @@
 namespace fqsm::model::linear {
 
     template<category::Any Meta>
-    struct Patch : patch::Erased {
+    struct WorkersInterface { // Zag Zag!
+        virtual ~WorkersInterface()=default;
+
+        virtual void put_modification(Id<Meta>, Quantum<Meta>) = 0;
+        virtual void put_deletion(Id<Meta>) = 0;
+        virtual void put_add(Id<Meta>, Quantum<Meta>) = 0;
+        virtual void put_global(GlobalValue<Meta>) = 0;
+    };
+
+    template<category::Any Meta>
+    struct Patch : patch::Erased, WorkersInterface<Meta> {
         // TODO: make private with const access (give monopoly to "put_.." functions?
         // or.. remove "put_..." functions :)
         // or.. make "PatchAssemblyInterface"
@@ -20,9 +30,10 @@ namespace fqsm::model::linear {
         void clear();
 
         // experimental (avoiding manipulators:: at all, allowing type-bould batches
-        void put_modification(Id<Meta>, Quantum<Meta>);
-        void put_deletion(Id<Meta>);
-        void put_add(Id<Meta>, Quantum<Meta>);
+        void put_modification(Id<Meta>, Quantum<Meta>) override;
+        void put_deletion(Id<Meta>) override;
+        void put_add(Id<Meta>, Quantum<Meta>) override;
+        void put_global(GlobalValue<Meta>) override;
 
         // schema
         static ref<patch::Erased> create() { return base::make_shared<Patch<Meta>>(); }
@@ -45,6 +56,11 @@ namespace fqsm::model::linear {
     template<category::Any Meta>
     void Patch<Meta>::put_add(Id<Meta> id, Quantum<Meta> value) {
         items.insert(std::move(id), std::move(value));
+    }
+
+    template<category::Any Meta>
+    void Patch<Meta>::put_global(GlobalValue<Meta> value) {
+        global = {std::move(value)};
     }
 
     template<category::Any Meta>

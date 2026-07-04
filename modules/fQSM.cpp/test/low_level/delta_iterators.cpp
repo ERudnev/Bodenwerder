@@ -57,7 +57,7 @@ void delta_iterators()
         with<A>::remove(writing, ids.at(i));
     }
     for (int i = 20; i < 50; ++i) {
-        ask::item::update<A>(writing, ids.at(i))->value = (i + 1) * 10;
+        with<A>::modify(writing, ids.at(i))->value = (i + 1) * 10;
     }
 
     const fqsm::model::complex::Future preview(state, patch);

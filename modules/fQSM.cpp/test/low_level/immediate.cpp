@@ -19,7 +19,7 @@ namespace {
             static void slowJob(Writing context, int bonus) {
                 auto& items = context->aspect<A>().items();
                 for (auto [id, item] : items)
-                    ask::item::update<A>(context, id)->value += bonus;
+                    with<A>::modify(context, id)->value += bonus;
             }
             /* TODO: this is other story, "modern" access to patch through Draft interface (needs reworked Gate)
             static void modernJob(ModernGate context, int bonus) {

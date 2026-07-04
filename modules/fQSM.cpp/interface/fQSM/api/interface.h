@@ -10,7 +10,6 @@
 #include <fQSM/manipulation/schema.h>
 #include <fQSM/manipulation/global.h>
 #include <fQSM/manipulation/feedback.h>
-#include <fQSM/manipulation/item.h>
 #include <fQSM/manipulation/_experimental.h>
 
 // processing (transactions, e.t.c)
