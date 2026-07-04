@@ -35,7 +35,7 @@ namespace workshop {
 
         struct Actions : BaseActions {
             static Wallet::Id spawn(Writing context, int cash) {
-                const auto id = ask::item::create<Wallet>(context, Wallet::Quantum{
+                const auto id = with<Wallet>::create_new(context, Wallet::Quantum{
                     .cash = cash,
                     .stocks = 0,
                     .incomeAction = &income,
@@ -65,7 +65,7 @@ namespace workshop {
 
         struct Actions : BaseActions {
             static Wallet::Id spawn(Writing context, int cash) {
-                const auto id = ask::item::create<Wallet>(context, Wallet::Quantum{
+                const auto id = with<Wallet>::create_new(context, Wallet::Quantum{
                     .cash = cash,
                     .stocks = 0,
                     .incomeAction = &income,

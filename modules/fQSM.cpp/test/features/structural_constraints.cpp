@@ -59,14 +59,14 @@ namespace local {
         // simulates decomposition, where CompSimple~CompWithCreate and it is not fair to choose one as "main thing", ABC is "above"
         struct EntTwoComps : Archetype<EntTwoComps> {
             static EntFree::Id spawn_correct(Writing context, int val) {
-                const auto id = ask::item::create<EntFree>(context, {val});
-                ask::item::create<CompSimple>(context, id, {std::format("it is {}", val)});
+                const auto id = with<EntFree>::create_new(context, {val});
+                with<CompSimple>::create_for(context, id, {std::format("it is {}", val)});
                 with<CompWithCreate>::create(context, id, true);
                 return id;
             }
 
             static EntFree::Id spawn_forgot_init_one_comp(Writing context, int val) {
-                const auto id = ask::item::create<EntFree>(context, {val});
+                const auto id = with<EntFree>::create_new(context, {val});
                 // two comps are forgot to init. CompWithCreate passes this, but CompNoDefault kill entire Aggregate
                 // end! for testing purposes
                 return id;
@@ -115,7 +115,7 @@ void structural_constraints()
         const auto storedVal = with<EntFree>::get(main, id).value;
         ask::item::update<EntFree>(main, id).remove();
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "normalization killed everything by parent remove";
-        ask::item::create<CompSimple>(main, id, {std::format("i am sorry, i am late", storedVal)});
+        with<CompSimple>::create_for(main, id, {std::format("i am sorry, i am late", storedVal)});
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "normalization killed ill-formed componet";
     }
 

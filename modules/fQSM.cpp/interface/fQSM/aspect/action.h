@@ -64,12 +64,12 @@ namespace fqsm::aspect::action {
         using Own = Any<Meta>;
 
         // used in other aspets. May be entry point for "make dependencies by deriving Action interface"
-        static Own::Id new_identity() { return Identifier<Meta>::generate_random();}
 
-    protected:
-        // remove/redesign
-        static Own::Id new_element(Writing context, Own::Quantum val) {
-            const auto id = new_identity();
+        // TODO: remove ASAP
+        //static Own::Id new_identity() { return Identifier<Meta>::generate_random();}
+
+        static Own::Id create_new(Writing context, Own::Quantum val) {
+            const auto id = Identifier<Meta>::generate_random();
             context.patch().aspect<Meta>().put_add(id, std::move(val));
             return id;
         }
@@ -79,6 +79,10 @@ namespace fqsm::aspect::action {
     struct Parasitic : Any<Meta> {
         using Own = Any<Meta>;
         using Parent = Standalone<HostType>;
+
+        static void create_for(Writing context, Own::Id id, Own::Quantum val) {
+            context.patch().aspect<Meta>().put_add(id, std::move(val));
+        }
 
         // experimental:
         static void kill(Writing context, Own::Id id);
@@ -184,9 +188,7 @@ namespace fqsm::aspect::action {
     auto Group<Meta, HostType, ElementType>
     ::addElement(Writing context, Own::Id myId, Client::Quantum element)
     ->Client::Id {
-        const auto workerId = Client::Actions::new_identity();
-        context.patch().aspect<ElementType>().put_add(workerId, std::move(element));
-
+        const auto workerId = Client::Actions::create_new(context, std::move(element));
 
         // this is very impletant place.
         // place where fQSM, even DAQL and Q1 may become recursive.

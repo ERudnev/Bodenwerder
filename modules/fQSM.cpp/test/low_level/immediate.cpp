@@ -67,7 +67,7 @@ void immediate()
     {
         context::Branch local(main);
         for (int xx = 0; xx < 10; ++xx)
-            ids.push_back(ask::item::create<A>(local, {xx}));
+            ids.push_back(with<A>::create_new(local, {xx}));
     }
 
     // will compare different update path with 2 identical realms;

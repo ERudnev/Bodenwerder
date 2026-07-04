@@ -22,8 +22,8 @@ namespace local {
 
     struct Arch : Archetype<Arch> {
         static void spawn(Writing context, int number, std::string str) {
-            const auto id = ask::item::create<A>(context, { .value = number });
-            ask::item::create<B>(context, id, { .name = std::move(str) });
+            const auto id = with<A>::create_new(context, { .value = number });
+            with<B>::create_for(context, id, { .name = std::move(str) });
         }
     };
 

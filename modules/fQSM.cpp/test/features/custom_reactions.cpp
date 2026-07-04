@@ -35,8 +35,8 @@ namespace {
     namespace local::archetype {
         struct EntABC : Archetype<EntABC> {
             static A::Id spawn(Writing context, int val) {
-                const auto id = ask::item::create<A>(context, {val});
-                ask::item::create<B>(context, id, {"manual"});
+                const auto id = with<A>::create_new(context, {val});
+                with<B>::create_for(context, id, {"manual"});
                 with<C>::create(context, id);
                 return id;
             }
@@ -70,7 +70,7 @@ void custom_reactions()
     context::Realm main(world);
 
     { // Scenario 1: B::Behavior::component<> aborted creation of A
-        const auto id = ask::item::create<A>(main, {4});
+        const auto id = with<A>::create_new(main, {4});
         EXPECT_FALSE(ask::item::exists<A>(main, id));
         EXPECT_FALSE(main.result().good());
     }

@@ -80,8 +80,8 @@ void group_category_demo_scenario(fqsm::api::Schema schema)
 
     context::Realm main(schema);
 
-    const auto primaryVault = ask::item::create<Keyring>(main, {"vault-primary"});
-    const auto backupVault = ask::item::create<Keyring>(main, {"vault-backup"});
+    const auto primaryVault = with<Keyring>::create_new(main, {"vault-primary"});
+    const auto backupVault = with<Keyring>::create_new(main, {"vault-backup"});
 
     with<KeyManager>::attachManager(main, primaryVault);
     with<KeyManager>::attachManager(main, backupVault);
@@ -113,7 +113,7 @@ void group_category()
     {
         context::Realm main(schema);
 
-        const auto keyring = ask::item::create<Keyring>(main, {"ring-A"});
+        const auto keyring = with<Keyring>::create_new(main, {"ring-A"});
         with<KeyManager>::attachManager(main, keyring);
 
         EXPECT_TRUE(main.result().good());
@@ -127,7 +127,7 @@ void group_category()
     {
         context::Realm main(schema);
 
-        const auto keyring = ask::item::create<Keyring>(main, {"ring-B"});
+        const auto keyring = with<Keyring>::create_new(main, {"ring-B"});
         with<KeyManager>::attachManager(main, keyring);
 
         const auto firstClient = with<KeyManager>::addClient(main, keyring);
@@ -156,7 +156,7 @@ void group_category()
     {
         context::Realm main(schema);
 
-        const auto keyring = ask::item::create<Keyring>(main, {"ring-C"});
+        const auto keyring = with<Keyring>::create_new(main, {"ring-C"});
         with<KeyManager>::attachManager(main, keyring);
 
         const auto firstClient = with<KeyManager>::addClient(main, keyring);

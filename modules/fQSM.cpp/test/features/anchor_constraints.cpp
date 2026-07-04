@@ -43,11 +43,11 @@ void anchor_constraints()
 
     context::Realm main(schema);
 
-    const auto a1 = ask::item::create<A>(main, {});
-    const auto a2 = ask::item::create<A>(main, {});
-    const auto a1dummy = ask::item::create<A>(main, {});
+    const auto a1 = with<A>::create_new(main, {});
+    const auto a2 = with<A>::create_new(main, {});
+    const auto a1dummy = with<A>::create_new(main, {});
 
-    const auto b1 = ask::item::create<B>(main, {.iNeedThis = a1, .controlledOther = a1dummy});
+    const auto b1 = with<B>::create_new(main, {.iNeedThis = a1, .controlledOther = a1dummy});
 
     ask::item::update<A>(main, a2).remove();
     EXPECT_TRUE(ask::item::exists<B>(main, b1)) << "b1 must survive removal of unrelated a2";
@@ -56,8 +56,8 @@ void anchor_constraints()
     ask::item::update<B>(main, b1).remove();
     EXPECT_FALSE(ask::item::exists<A>(main, a1dummy)) << "controlledOther removed with b1";
 
-    const auto a1dummy2 = ask::item::create<A>(main, {});
-    const auto b2 = ask::item::create<B>(main, {.iNeedThis = a1, .controlledOther = a1dummy2});
+    const auto a1dummy2 = with<A>::create_new(main, {});
+    const auto b2 = with<B>::create_new(main, {.iNeedThis = a1, .controlledOther = a1dummy2});
     ask::item::update<A>(main, a1).remove();
     EXPECT_FALSE(ask::item::exists<B>(main, b2)) << "b2 must die with anchored a1";
 }
