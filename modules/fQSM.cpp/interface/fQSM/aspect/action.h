@@ -71,7 +71,7 @@ namespace fqsm::aspect::action {
         // rename to just "create" after API cleanup
         static Own::Id create_new(Writing context, Own::Quantum val) {
             const auto id = Identifier<Meta>::generate_random();
-            context.patch().aspect<Meta>().put_add(id, std::move(val));
+            context.workers_interface().updates<Meta>().put_add(id, std::move(val));
             return id;
         }
     };
@@ -82,14 +82,14 @@ namespace fqsm::aspect::action {
         using Parent = Standalone<HostType>;
 
         static void create_for(Writing context, Own::Id id, Own::Quantum val) {
-            context.patch().aspect<Meta>().put_add(id, std::move(val));
+            context.workers_interface().updates<Meta>().put_add(id, std::move(val));
         }
 
         // experimental:
         static void kill(Writing context, Own::Id id);
     protected:
         // derived actions helpers:
-        static void new_element(Writing context, Own::Id id, Own::Quantum val) { context.patch().aspect<Meta>().put_add(id, std::move(val)); }
+        static void new_element(Writing context, Own::Id id, Own::Quantum val) { context.workers_interface().updates<Meta>().put_add(id, std::move(val)); }
     };
 
 
@@ -172,7 +172,7 @@ namespace fqsm::aspect::action {
     void Parasitic<Meta, HostType>
     ::kill(Writing context, Own::Id id) {
         if constexpr (category::Standalone<HostType>) {
-            context.patch().aspect<HostType>().put_deletion(id);
+            context.workers_interface().updates<HostType>().put_deletion(id);
         } else {
             HostType::Actions::kill(context, id);
         }
@@ -181,7 +181,7 @@ namespace fqsm::aspect::action {
     template<typename Meta>
     void Any<Meta>
     ::remove(Writing context, Id id) {
-        context.patch().aspect<Meta>().put_deletion(id);
+        context.workers_interface().updates<Meta>().put_deletion(id);
     }
 
 
@@ -189,7 +189,7 @@ namespace fqsm::aspect::action {
     template<typename Meta, typename HostType, category::Entity ElementType>
     void Group<Meta, HostType, ElementType>
     ::create_for(Writing context, Id<HostType> id) {
-        context.patch().aspect<Meta>().put_add(id, {});
+        context.workers_interface().updates<Meta>().put_add(id, {});
     }
 
 
@@ -208,7 +208,7 @@ namespace fqsm::aspect::action {
         // So... lets sacrifice performance to avoid this stuff.
         auto myQuantum = context->aspect<Meta>().items().at(myId);
         myQuantum.insert(workerId);
-        context.patch().aspect<Meta>().put_modification(myId, std::move(myQuantum));
+        context.workers_interface().updates<Meta>().put_modification(myId, std::move(myQuantum));
         return workerId;
     }
 
@@ -217,7 +217,7 @@ namespace fqsm::aspect::action {
     ::deleteElement(Writing context, Own::Id myId, Client::Id worker) {
         auto myQuantum = context->aspect<Meta>().items().at(myId);
         myQuantum.erase(worker);
-        context.patch().aspect<Meta>().put_modification(myId, std::move(myQuantum));
-        context.patch().aspect<ElementType>().put_deletion(worker);
+        context.workers_interface().updates<Meta>().put_modification(myId, std::move(myQuantum));
+        context.workers_interface().updates<ElementType>().put_deletion(worker);
     }
 }

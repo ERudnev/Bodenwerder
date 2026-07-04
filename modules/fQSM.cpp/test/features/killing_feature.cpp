@@ -36,13 +36,10 @@ namespace {
                 static void create(Writing context, Body::Id id) {
                     new_element(context, id, {0});
                 }
-                static Quantum update(const Quantum& q, int timePassed) {
-                    return Quantum{q.clock+timePassed};
-                }
+
                 static void update(Writing context, int timePassed) {
                     for (const auto entry : context->aspect<Life>().items()) {
-                        //_INCOMPLETE_; // NB to mage Gate == Draft!
-                        context.patch().aspect<Life>().items.insert(entry.id, update(entry.value, timePassed));
+                        modify(context, entry.id)->clock += timePassed;
                     }
                 }
             };
