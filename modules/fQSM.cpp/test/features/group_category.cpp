@@ -73,6 +73,30 @@ namespace local {
 
 namespace tests {
 
+void group_category_demo_scenario(fqsm::api::Schema schema)
+{
+    using namespace local;
+    using namespace fqsm::api;
+
+    context::Realm main(schema);
+
+    const auto primaryVault = ask::item::create<Keyring>(main, {"vault-primary"});
+    const auto backupVault = ask::item::create<Keyring>(main, {"vault-backup"});
+
+    with<KeyManager>::attachManager(main, primaryVault);
+    with<KeyManager>::attachManager(main, backupVault);
+
+    for (integer slot = 0; slot < 10; ++slot)
+        with<KeyManager>::addClient(main, primaryVault);
+
+    with<KeyManager>::addClient(main, backupVault);
+    with<KeyManager>::addClient(main, backupVault);
+
+    ask::item::update<Keyring>(main, primaryVault).remove();
+
+    EXPECT_EQ(with<Keyring>::global(main).activeCount, 2);
+}
+
 void group_category()
 {
     using namespace local;
@@ -83,6 +107,8 @@ void group_category()
         ask::schema::aspect<Client>(),
         ask::schema::aspect<Client_group>(),
     });
+
+    group_category_demo_scenario(schema);
 
     {
         context::Realm main(schema);
