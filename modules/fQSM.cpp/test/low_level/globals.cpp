@@ -30,15 +30,16 @@ void globals()
 
     context::Realm main(schema);
 
-    auto tx = ask::global::update<A>(main)->globalValue = 2;
-    EXPECT_EQ(ask::global::get<A>(main).globalValue, 2);
+    with<A>::modify_global(main)->globalValue = 2;
+    EXPECT_EQ(with<A>::get_global(main).globalValue, 2) << "update commited immediately (unnamed RAII already dead)";
 
     {
-        auto tx = ask::global::update<A>(main);
+        auto tx = with<A>::modify_global(main);
         tx->globalValue = 7;
+        EXPECT_EQ(with<A>::get_global(main).globalValue, 2) << "update is postponed till the end of the scope";
     }
 
-    EXPECT_EQ(ask::global::get<A>(main).globalValue, 7);
+    EXPECT_EQ(with<A>::get_global(main).globalValue, 7) << "update comitted after the scope";
 }
 
 } // namespace tests

@@ -20,15 +20,15 @@ namespace local {
         struct Actions : BaseActions {
             static auto generatePassword(Writing context, Id id)->Password {
                 const auto& me = get(context, id);
-                integer last = global(context).generationCount;
-                integer active = global(context).activeCount;
-                global_set(context, {last + 1, active + 1});
+                integer last = get_global(context).generationCount;
+                integer active = get_global(context).activeCount;
+                *modify_global(context) = Global{last + 1, active + 1};
                 return me.name + std::to_string(last);
             }
             static void removePassword(Writing context, Id id, Password value) {
-                auto globalCopy = global(context);
+                auto globalCopy = get_global(context);
                 --globalCopy.activeCount;
-                global_set(context, globalCopy);
+                *modify_global(context) = globalCopy;
             }
         };
         using Reactions = DefaultReactions;
@@ -94,7 +94,7 @@ void group_category_demo_scenario(fqsm::api::Schema schema)
 
     with<Keyring>::remove(main, primaryVault);
 
-    EXPECT_EQ(with<Keyring>::global(main).activeCount, 2);
+    EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 2);
 }
 
 void group_category()
@@ -120,8 +120,8 @@ void group_category()
         EXPECT_TRUE(with<Keyring>::exists(main, keyring));
         EXPECT_TRUE(with<Client_group>::exists(main, keyring));
         EXPECT_TRUE(with<Client_group>::get(main, keyring).empty());
-        EXPECT_EQ(with<Keyring>::global(main).generationCount, 0);
-        EXPECT_EQ(with<Keyring>::global(main).activeCount, 0);
+        EXPECT_EQ(with<Keyring>::get_global(main).generationCount, 0);
+        EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 0);
     }
 
     {
@@ -149,8 +149,8 @@ void group_category()
         EXPECT_EQ(firstState.password, "ring-B0");
         EXPECT_EQ(secondState.password, "ring-B1");
 
-        EXPECT_EQ(with<Keyring>::global(main).generationCount, 2);
-        EXPECT_EQ(with<Keyring>::global(main).activeCount, 2);
+        EXPECT_EQ(with<Keyring>::get_global(main).generationCount, 2);
+        EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 2);
     }
 
     {
@@ -169,8 +169,8 @@ void group_category()
         EXPECT_TRUE(with<Client>::exists(main, secondClient));
         EXPECT_TRUE(with<Client_group>::get(main, keyring).contains(secondClient));
         EXPECT_FALSE(with<Client_group>::get(main, keyring).contains(firstClient));
-        EXPECT_EQ(with<Keyring>::global(main).generationCount, 2);
-        EXPECT_EQ(with<Keyring>::global(main).activeCount, 1);
+        EXPECT_EQ(with<Keyring>::get_global(main).generationCount, 2);
+        EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 1);
 
         with<Client_group>::remove(main, keyring);
 
@@ -178,8 +178,8 @@ void group_category()
         EXPECT_TRUE(with<Keyring>::exists(main, keyring));
         EXPECT_FALSE(with<Client_group>::exists(main, keyring));
         EXPECT_FALSE(with<Client>::exists(main, secondClient));
-        EXPECT_EQ(with<Keyring>::global(main).generationCount, 2);
-        EXPECT_EQ(with<Keyring>::global(main).activeCount, 0);
+        EXPECT_EQ(with<Keyring>::get_global(main).generationCount, 2);
+        EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 0);
     }
 }
 

@@ -16,9 +16,9 @@ namespace model {
         };
         struct Actions : BaseActions {
             static void countDeletion(Writing context, Id, const Quantum&) {
-                auto copy = global(context);
+                auto copy = get_global(context);
                 ++copy.deletions;
-                global_set(context, copy);
+                *modify_global(context) = copy;
             }
         };
         struct Reactions : BaseReactions {
@@ -44,13 +44,13 @@ void global_is_change_too()
     context::Realm main(schema);
 
     const auto id = with<A>::create_new(main, {1});
-    EXPECT_EQ(with<A>::global(main).deletions, 0);
+    EXPECT_EQ(with<A>::get_global(main).deletions, 0);
 
     with<A>::remove(main, id);
 
     EXPECT_TRUE(main.result().good());
     EXPECT_FALSE(with<A>::exists(main, id));
-    EXPECT_EQ(with<A>::global(main).deletions, 1)
+    EXPECT_EQ(with<A>::get_global(main).deletions, 1)
         << "deletion reaction changed only Global; this must still count as a non-empty reaction wave";
 }
 

@@ -54,14 +54,11 @@ namespace fqsm::aspect::action {
         static auto get(Reading, Id) -> const Quantum&;
         static const Quantum* find(Reading, Id);
         static bool exists(Reading, Id);
-        static auto global(Reading) -> const Global&;
-        static void global_set(Writing, Global);
+        static auto get_global(Reading) -> const Global&;
         static void remove(Writing, Id);
 
-        using Modify = ::fqsm::processing::transaction::Quantal<Meta>;
-        static Modify modify(Writing context, Id id) {
-            return Modify{context, id};
-        }
+        static auto modify(Writing, Id) -> ::fqsm::processing::transaction::Quantal<Meta>;
+        static auto modify_global(Writing) -> ::fqsm::processing::transaction::Global<Meta>;
 
     };
 
@@ -153,20 +150,23 @@ namespace fqsm::aspect::action {
 
     template<typename Meta>
     auto Any<Meta>
-    ::global(Reading context)
+    ::get_global(Reading context)
     ->const Global&
     {
         return context.aspect<Meta>().global();
     }
 
     template<typename Meta>
-    void Any<Meta>
-    ::global_set(Writing context, Global val) {
-        //context.patch().aspect<Meta>().global = {std::move(val)};
-        context.workers_interface().updates<Meta>().put_global(std::move(val));
+    auto Any<Meta>
+    ::modify(Writing context, Id id) -> ::fqsm::processing::transaction::Quantal<Meta> {
+        return ::fqsm::processing::transaction::Quantal<Meta>{context, id};
     }
 
-
+    template<typename Meta>
+    auto Any<Meta>
+    ::modify_global(Writing context) -> ::fqsm::processing::transaction::Global<Meta> {
+        return ::fqsm::processing::transaction::Global<Meta>{context};
+    }
 
     template<typename Meta, typename HostType>
     void Parasitic<Meta, HostType>

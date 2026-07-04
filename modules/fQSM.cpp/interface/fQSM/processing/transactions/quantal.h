@@ -24,7 +24,7 @@ namespace fqsm::processing::transaction {
             : id(id), gate(std::move(gate)), buffer(requireActual(this->gate, id)) {}
 
         ~Quantal() {
-            gate.patch().aspect<Meta>().put_modification(id, std::move(buffer));
+            gate.workers_interface().updates<Meta>().put_modification(id, std::move(buffer));
         }
 
         Quantal(const Quantal&) = delete;
@@ -53,6 +53,28 @@ namespace fqsm::processing::transaction {
 
         Writing gate;
         Quantum<Meta> buffer;
+    };
+
+    template<category::Any Meta>
+    struct Global {
+        explicit Global(Writing gate)
+            : gate(std::move(gate)), buffer(this->gate->aspect<Meta>().global()) {}
+
+        ~Global() {
+            gate.workers_interface().updates<Meta>().put_global(std::move(buffer));
+        }
+
+        Global(const Global&) = delete;
+        Global& operator=(const Global&) = delete;
+        Global(Global&&) = delete;
+        Global& operator=(Global&&) = delete;
+
+        GlobalValue<Meta>* operator->() { return &buffer; }
+        GlobalValue<Meta>& operator*() { return buffer; }
+
+    private:
+        Writing gate;
+        GlobalValue<Meta> buffer;
     };
 
 }
