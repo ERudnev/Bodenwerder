@@ -13,7 +13,6 @@
 #include <optional>
 #include <vector>
 
-#include <fQSM/manipulation/item.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/features/behavior.h>
@@ -52,7 +51,7 @@ namespace fqsm::aspect::action {
 
         // helpers:
         static auto get(Reading, Id) -> const Quantum&;
-        static auto find(Reading, Id) -> base::maybe<std::reference_wrapper<const Quantum>>;
+        static const Quantum* find(Reading, Id);
         static auto global(Reading) -> const Global&;
         static void global_set(Writing, Global);
         static void remove(Writing, Id);
@@ -65,9 +64,7 @@ namespace fqsm::aspect::action {
 
         // used in other aspets. May be entry point for "make dependencies by deriving Action interface"
 
-        // TODO: remove ASAP
-        //static Own::Id new_identity() { return Identifier<Meta>::generate_random();}
-
+        // rename to just "create" after API cleanup
         static Own::Id create_new(Writing context, Own::Quantum val) {
             const auto id = Identifier<Meta>::generate_random();
             context.patch().aspect<Meta>().put_add(id, std::move(val));
@@ -127,19 +124,18 @@ namespace fqsm::aspect::action {
     template<typename Meta>
     auto Any<Meta>
     ::get(Reading context, Id id) -> const Quantum& {
-        const auto found = ::fqsm::manipulation::item::get<Meta>(context, id);
+        const auto* found = context.aspect<Meta>().items().find(id);
         if (!found) {
             throw std::runtime_error(std::format(R"(actions::get "{}" {}: not present)", ::fqsm::meta::Rtid::name<Meta>(), id));
         }
-        return found.value();
+        return *found;
     }
 
     template<typename Meta>
     auto Any<Meta>
     ::find(Reading context, Id id)
-    ->base::maybe<std::reference_wrapper<const Quantum>>
-    {
-        return ::fqsm::manipulation::item::get<Meta>(context, id);
+    ->const Quantum*{
+        return context.aspect<Meta>().items().find(id);
     }
 
     template<typename Meta>

@@ -98,7 +98,7 @@ void custom_reactions()
         //EXPECT_FALSE(true) << "feature is incompleted: separate Behavior as base class";
     }
     // TDO: use this some day
-    //EXPECT_EQ(ask::item::get<B>(main, id)->text, "generated");
+    //EXPECT_EQ(with<B>::get(main, id).text, "generated");
 
 }
 

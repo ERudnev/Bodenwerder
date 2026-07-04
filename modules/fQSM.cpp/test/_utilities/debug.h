@@ -1,9 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <optional>
-#include <functional>
-
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/rtid.h>
 #include <fQSM/processing/_forwards.h>
@@ -18,11 +15,9 @@ namespace tests::debug {
     }
 
     template<fqsm::category::Any Meta>
-    auto read(fqsm::Reading view, fqsm::Id<Meta> id) -> std::optional<std::reference_wrapper<const fqsm::Quantum<Meta>>> {
-        if (!has<Meta>(view)) return std::nullopt;
-        const auto* found = view.aspect<Meta>().find(id);
-        if (!found) return std::nullopt;
-        return std::cref(*found);
+    auto read(fqsm::Reading view, fqsm::Id<Meta> id) -> const fqsm::Quantum<Meta>* {
+        if (!has<Meta>(view)) return nullptr;
+        return view.aspect<Meta>().items().find(id);
     }
 
     template<fqsm::category::Any Meta>
