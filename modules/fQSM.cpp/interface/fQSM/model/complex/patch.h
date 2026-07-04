@@ -19,7 +19,7 @@ namespace fqsm::model::complex {
         template<category::Any Meta>
         const linear::Patch<Meta>& aspect() const;
 
-        std::size_t quanta() const;
+        bool has_changes() const;
         void absorb(const Patch&);
         void clear();
 

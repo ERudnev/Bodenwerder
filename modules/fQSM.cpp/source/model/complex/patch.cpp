@@ -4,11 +4,12 @@
 
 namespace fqsm::model::complex {
 
-    std::size_t Patch::quanta() const {
-        std::size_t total = 0;
-        for (const auto& entry : lines.container)
-            total += entry.second->quanta();
-        return total;
+    bool Patch::has_changes() const {
+        for (const auto& entry : lines.container) {
+            if (entry.second->has_changes())
+                return true;
+        }
+        return false;
     }
 
     intertype::Composite<linear::patch::Erased> Patch::composition(Schema schema) {

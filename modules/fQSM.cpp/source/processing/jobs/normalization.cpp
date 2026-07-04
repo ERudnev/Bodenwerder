@@ -107,7 +107,7 @@ namespace fqsm::processing::jobs::normalization {
             patch->absorb(*lastCorrection);
             append(accumulated, fix.result);
 
-            const bool anotherWave = not (fix.patch->quanta() == 0 and fix.taintedDuringPatch.empty());
+            const bool anotherWave = fix.patch->has_changes() or not fix.taintedDuringPatch.empty();
             _DBG_TX_("norm: wave {} merged={}, reaction={}, another={}", wave, utility::format_patch(fqsm::freeze(patch)), utility::format_patch(fqsm::freeze(fix.patch)), anotherWave);
             if (not anotherWave)
                 break;

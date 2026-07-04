@@ -18,10 +18,9 @@ namespace fqsm::utility {
             if (!line.empty()) lines.push_back(line);
         }
 
-        const auto patchlets = patch.quanta();
-        const auto summary = patchlets == 0
+        const auto summary = not patch.has_changes()
             ? std::string{"empty"}
-            : std::format("{{H:{}:S:{}}}", lines.size(), patchlets);
+            : std::format("{{H:{}}}", lines.size());
 
         if (lines.empty()) return summary;
 
@@ -40,10 +39,9 @@ namespace fqsm::utility {
             if (!line.empty()) lines.push_back(line);
         }
 
-        const auto patchlets = patch->quanta();
-        const auto summary = patchlets == 0
+        const auto summary = not patch->has_changes()
             ? std::string{"empty"}
-            : std::format("{{H:{}:S:{}}}", lines.size(), patchlets);
+            : std::format("{{H:{}}}", lines.size());
 
         base::message(std::format("{}: {}", legend, summary));
 

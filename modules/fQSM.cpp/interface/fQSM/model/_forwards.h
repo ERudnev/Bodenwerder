@@ -42,7 +42,7 @@ namespace fqsm::model::linear {
     namespace patch {
         struct Erased {
             virtual ~Erased()=default;
-            virtual std::size_t quanta() const = 0;
+            virtual bool has_changes() const = 0;
         };
     }
     namespace preview { struct Erased { virtual ~Erased()=default; }; }
