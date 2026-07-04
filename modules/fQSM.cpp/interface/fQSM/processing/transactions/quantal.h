@@ -47,8 +47,6 @@ namespace fqsm::processing::transaction {
         Quantum<Meta>* operator->() { return &buffer; }
         Quantum<Meta>& operator*() { return buffer; }
 
-        void remove() { removed = true; }
-
     protected:
         std::optional<Quantum<Meta>> getActual(Reading source, Id<Meta> itemId) const {
             return source.aspect<Meta>().items().get(itemId);

@@ -55,7 +55,7 @@ namespace local {
 
     struct KeyManager : Archetype<KeyManager> {
         static void attachManager(Writing context, Keyring::Id keyring) {
-            with<Client_group>::install(context, keyring);
+            with<Client_group>::create_for(context, keyring);
         }
 
         static auto addClient(Writing context, Keyring::Id keyring)->Client::Id {
@@ -92,7 +92,7 @@ void group_category_demo_scenario(fqsm::api::Schema schema)
     with<KeyManager>::addClient(main, backupVault);
     with<KeyManager>::addClient(main, backupVault);
 
-    ask::item::update<Keyring>(main, primaryVault).remove();
+    with<Keyring>::remove(main, primaryVault);
 
     EXPECT_EQ(with<Keyring>::global(main).activeCount, 2);
 }
@@ -117,8 +117,8 @@ void group_category()
         with<KeyManager>::attachManager(main, keyring);
 
         EXPECT_TRUE(main.result().good());
-        EXPECT_TRUE(ask::item::exists<Keyring>(main, keyring));
-        EXPECT_TRUE(ask::item::exists<Client_group>(main, keyring));
+        EXPECT_TRUE(with<Keyring>::exists(main, keyring));
+        EXPECT_TRUE(with<Client_group>::exists(main, keyring));
         EXPECT_TRUE(with<Client_group>::get(main, keyring).empty());
         EXPECT_EQ(with<Keyring>::global(main).generationCount, 0);
         EXPECT_EQ(with<Keyring>::global(main).activeCount, 0);
@@ -134,8 +134,8 @@ void group_category()
         const auto secondClient = with<KeyManager>::addClient(main, keyring);
 
         EXPECT_TRUE(main.result().good());
-        EXPECT_TRUE(ask::item::exists<Client>(main, firstClient));
-        EXPECT_TRUE(ask::item::exists<Client>(main, secondClient));
+        EXPECT_TRUE(with<Client>::exists(main, firstClient));
+        EXPECT_TRUE(with<Client>::exists(main, secondClient));
 
         const auto& group = with<Client_group>::get(main, keyring);
         EXPECT_EQ(group.size(), 2);
@@ -165,19 +165,19 @@ void group_category()
         with<Client_group>::deleteElement(main, keyring, firstClient);
 
         EXPECT_TRUE(main.result().good());
-        EXPECT_FALSE(ask::item::exists<Client>(main, firstClient));
-        EXPECT_TRUE(ask::item::exists<Client>(main, secondClient));
+        EXPECT_FALSE(with<Client>::exists(main, firstClient));
+        EXPECT_TRUE(with<Client>::exists(main, secondClient));
         EXPECT_TRUE(with<Client_group>::get(main, keyring).contains(secondClient));
         EXPECT_FALSE(with<Client_group>::get(main, keyring).contains(firstClient));
         EXPECT_EQ(with<Keyring>::global(main).generationCount, 2);
         EXPECT_EQ(with<Keyring>::global(main).activeCount, 1);
 
-        ask::item::update<Client_group>(main, keyring).remove();
+        with<Client_group>::remove(main, keyring);
 
         EXPECT_TRUE(main.result().good());
-        EXPECT_TRUE(ask::item::exists<Keyring>(main, keyring));
-        EXPECT_FALSE(ask::item::exists<Client_group>(main, keyring));
-        EXPECT_FALSE(ask::item::exists<Client>(main, secondClient));
+        EXPECT_TRUE(with<Keyring>::exists(main, keyring));
+        EXPECT_FALSE(with<Client_group>::exists(main, keyring));
+        EXPECT_FALSE(with<Client>::exists(main, secondClient));
         EXPECT_EQ(with<Keyring>::global(main).generationCount, 2);
         EXPECT_EQ(with<Keyring>::global(main).activeCount, 0);
     }

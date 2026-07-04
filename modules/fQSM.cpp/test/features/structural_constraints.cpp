@@ -113,7 +113,7 @@ void structural_constraints()
         context::Realm main(world);
         const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
         const auto storedVal = with<EntFree>::get(main, id).value;
-        ask::item::update<EntFree>(main, id).remove();
+        with<EntFree>::remove(main, id);
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "normalization killed everything by parent remove";
         with<CompSimple>::create_for(main, id, {std::format("i am sorry, i am late", storedVal)});
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "normalization killed ill-formed componet";

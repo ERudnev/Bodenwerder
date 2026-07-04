@@ -49,17 +49,17 @@ void anchor_constraints()
 
     const auto b1 = with<B>::create_new(main, {.iNeedThis = a1, .controlledOther = a1dummy});
 
-    ask::item::update<A>(main, a2).remove();
-    EXPECT_TRUE(ask::item::exists<B>(main, b1)) << "b1 must survive removal of unrelated a2";
-    EXPECT_TRUE(ask::item::exists<A>(main, a1dummy));
+    with<A>::remove(main, a2);
+    EXPECT_TRUE(with<B>::exists(main, b1)) << "b1 must survive removal of unrelated a2";
+    EXPECT_TRUE(with<A>::exists(main, a1dummy));
 
-    ask::item::update<B>(main, b1).remove();
-    EXPECT_FALSE(ask::item::exists<A>(main, a1dummy)) << "controlledOther removed with b1";
+    with<B>::remove(main, b1);
+    EXPECT_FALSE(with<A>::exists(main, a1dummy)) << "controlledOther removed with b1";
 
     const auto a1dummy2 = with<A>::create_new(main, {});
     const auto b2 = with<B>::create_new(main, {.iNeedThis = a1, .controlledOther = a1dummy2});
-    ask::item::update<A>(main, a1).remove();
-    EXPECT_FALSE(ask::item::exists<B>(main, b2)) << "b2 must die with anchored a1";
+    with<A>::remove(main, a1);
+    EXPECT_FALSE(with<B>::exists(main, b2)) << "b2 must die with anchored a1";
 }
 
 } // namespace tests

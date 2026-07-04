@@ -48,14 +48,14 @@ void destructor()
     const auto resourceId = with<Resource>::create_new(main, {"owned"});
     const auto handlerId = with<Handler>::create_new(main, {.resourceId = resourceId});
 
-    EXPECT_TRUE(ask::item::exists<Resource>(main, resourceId));
-    EXPECT_TRUE(ask::item::exists<Handler>(main, handlerId));
+    EXPECT_TRUE(with<Resource>::exists(main, resourceId));
+    EXPECT_TRUE(with<Handler>::exists(main, handlerId));
 
-    ask::item::update<Handler>(main, handlerId).remove();
+    with<Handler>::remove(main, handlerId);
 
     EXPECT_TRUE(main.result().good());
-    EXPECT_FALSE(ask::item::exists<Handler>(main, handlerId));
-    EXPECT_FALSE(ask::item::exists<Resource>(main, resourceId));
+    EXPECT_FALSE(with<Handler>::exists(main, handlerId));
+    EXPECT_FALSE(with<Resource>::exists(main, resourceId));
 }
 
 } // namespace tests

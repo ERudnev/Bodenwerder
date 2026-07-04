@@ -71,7 +71,7 @@ void custom_reactions()
 
     { // Scenario 1: B::Behavior::component<> aborted creation of A
         const auto id = with<A>::create_new(main, {4});
-        EXPECT_FALSE(ask::item::exists<A>(main, id));
+        EXPECT_FALSE(with<A>::exists(main, id));
         EXPECT_FALSE(main.result().good());
     }
     { // Scenario 2: A+B manual, C via make_default; parent removal cascades to both components
@@ -81,19 +81,19 @@ void custom_reactions()
         }();
 
         EXPECT_TRUE(main.result().good());
-        EXPECT_TRUE(ask::item::exists<A>(main, id));
-        EXPECT_TRUE(ask::item::exists<B>(main, id));
+        EXPECT_TRUE(with<A>::exists(main, id));
+        EXPECT_TRUE(with<B>::exists(main, id));
         EXPECT_EQ(with<C>::get(main, id).power, 4);
 
         {
             context::Branch tx(main);
-            ask::item::update<A>(tx, id).remove();
+            with<A>::remove(tx, id);
         }
 
         EXPECT_TRUE(main.result().good());
-        EXPECT_FALSE(ask::item::exists<A>(main, id));
-        EXPECT_FALSE(ask::item::exists<B>(main, id));
-        EXPECT_FALSE(ask::item::exists<C>(main, id));
+        EXPECT_FALSE(with<A>::exists(main, id));
+        EXPECT_FALSE(with<B>::exists(main, id));
+        EXPECT_FALSE(with<C>::exists(main, id));
 
         //EXPECT_FALSE(true) << "feature is incompleted: separate Behavior as base class";
     }

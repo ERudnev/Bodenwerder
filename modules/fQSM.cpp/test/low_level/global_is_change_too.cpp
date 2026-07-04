@@ -46,10 +46,10 @@ void global_is_change_too()
     const auto id = with<A>::create_new(main, {1});
     EXPECT_EQ(with<A>::global(main).deletions, 0);
 
-    ask::item::update<A>(main, id).remove();
+    with<A>::remove(main, id);
 
     EXPECT_TRUE(main.result().good());
-    EXPECT_FALSE(ask::item::exists<A>(main, id));
+    EXPECT_FALSE(with<A>::exists(main, id));
     EXPECT_EQ(with<A>::global(main).deletions, 1)
         << "deletion reaction changed only Global; this must still count as a non-empty reaction wave";
 }

@@ -52,6 +52,7 @@ namespace fqsm::aspect::action {
         // helpers:
         static auto get(Reading, Id) -> const Quantum&;
         static const Quantum* find(Reading, Id);
+        static bool exists(Reading, Id);
         static auto global(Reading) -> const Global&;
         static void global_set(Writing, Global);
         static void remove(Writing, Id);
@@ -104,8 +105,8 @@ namespace fqsm::aspect::action {
         using Parent = Parasitic<Meta, HostType>::Parent;
         using Client = ElementType;
 
-        // like punlic interface:
-        static void install(Writing, Id<HostType>);
+        // like public interface:
+        static void create_for(Writing, Id<HostType>); // simplier version of Parasitic::create_for
         static auto addElement(Writing, Own::Id me, Client::Quantum) -> Client::Id;
         // static auto addElement(Writing, Own::Id me, &func, Args...) -> Client::Id;
         static void deleteElement(Writing, Own::Id me, Client::Id);
@@ -136,6 +137,12 @@ namespace fqsm::aspect::action {
     ::find(Reading context, Id id)
     ->const Quantum*{
         return context.aspect<Meta>().items().find(id);
+    }
+
+    template<typename Meta>
+    bool Any<Meta>
+    ::exists(Reading context, Id id) {
+        return context.aspect<Meta>().items().find(id) != nullptr;
     }
 
     template<typename Meta>
@@ -175,7 +182,7 @@ namespace fqsm::aspect::action {
     // Group:
     template<typename Meta, typename HostType, category::Entity ElementType>
     void Group<Meta, HostType, ElementType>
-    ::install(Writing context, Id<HostType> id) {
+    ::create_for(Writing context, Id<HostType> id) {
         context.patch().aspect<Meta>().put_add(id, {});
     }
 

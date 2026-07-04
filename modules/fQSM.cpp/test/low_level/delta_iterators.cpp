@@ -54,7 +54,7 @@ void delta_iterators()
         added_ids.push_back(with<A>::create_new(writing, {i * 10}));
     }
     for (int i = 0; i < 20; ++i) {
-        ask::item::update<A>(writing, ids.at(i)).remove();
+        with<A>::remove(writing, ids.at(i));
     }
     for (int i = 20; i < 50; ++i) {
         ask::item::update<A>(writing, ids.at(i))->value = (i + 1) * 10;
