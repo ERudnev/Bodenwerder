@@ -9,6 +9,9 @@ namespace fqsm::model::linear {
 
     template<category::Any Meta>
     struct Patch : patch::Erased {
+        // TODO: make private with const access (give monopoly to "put_.." functions?
+        // or.. remove "put_..." functions :)
+        // or.. make "PatchAssemblyInterface"
         base::cannonball::Patch<Id<Meta>, Quantum<Meta>> items;
         std::optional<GlobalValue<Meta>> global; // nullopt means "no change"
 

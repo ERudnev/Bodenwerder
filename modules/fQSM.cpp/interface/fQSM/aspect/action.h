@@ -54,6 +54,7 @@ namespace fqsm::aspect::action {
         static auto get(Reading, Id) -> const Quantum&;
         static auto find(Reading, Id) -> base::maybe<std::reference_wrapper<const Quantum>>;
         static auto global(Reading) -> const Global&;
+        static void global_set(Writing, Global);
         static void remove(Writing, Id);
 
     };
@@ -62,9 +63,13 @@ namespace fqsm::aspect::action {
     struct Standalone : Any<Meta> {
         using Own = Any<Meta>;
 
+        // used in other aspets. May be entry point for "make dependencies by deriving Action interface"
+        static Own::Id new_identity() { return Identifier<Meta>::generate_random();}
+
     protected:
+        // remove/redesign
         static Own::Id new_element(Writing context, Own::Quantum val) {
-            const auto id = Identifier<Meta>::generate_random();
+            const auto id = new_identity();
             context.patch().aspect<Meta>().put_add(id, std::move(val));
             return id;
         }
@@ -92,8 +97,18 @@ namespace fqsm::aspect::action {
     template<typename Meta, typename HostType>
     using Component = Parasitic<Meta, HostType>;
 
-    template<typename Meta, typename HostType, typename ElementType>
-    struct Group : Parasitic<Meta, HostType> {};
+    template<typename Meta, typename HostType, category::Entity ElementType>
+    struct Group : Parasitic<Meta, HostType> { //, protected ElementType::Actions {
+        using Own = Parasitic<Meta, HostType>::Own;
+        using Parent = Parasitic<Meta, HostType>::Parent;
+        using Client = ElementType;
+
+        // like punlic interface:
+        static void install(Writing, Id<HostType>);
+        static auto addElement(Writing, Own::Id me, Client::Quantum) -> Client::Id;
+        // static auto addElement(Writing, Own::Id me, &func, Args...) -> Client::Id;
+        static void deleteElement(Writing, Own::Id me, Client::Id);
+    };
 
     // Interpretation category ations ant typedefs:
     struct Archetype : Base {
@@ -106,7 +121,8 @@ namespace fqsm::aspect::action {
 namespace fqsm::aspect::action {
 
     template<typename Meta>
-    auto Any<Meta>::get(Reading context, Id id) -> const Quantum& {
+    auto Any<Meta>
+    ::get(Reading context, Id id) -> const Quantum& {
         const auto found = ::fqsm::manipulation::item::get<Meta>(context, id);
         if (!found) {
             throw std::runtime_error(std::format(R"(actions::get "{}" {}: not present)", ::fqsm::meta::Rtid::name<Meta>(), id));
@@ -115,17 +131,33 @@ namespace fqsm::aspect::action {
     }
 
     template<typename Meta>
-    auto Any<Meta>::find(Reading context, Id id) -> base::maybe<std::reference_wrapper<const Quantum>> {
+    auto Any<Meta>
+    ::find(Reading context, Id id)
+    ->base::maybe<std::reference_wrapper<const Quantum>>
+    {
         return ::fqsm::manipulation::item::get<Meta>(context, id);
     }
 
     template<typename Meta>
-    auto Any<Meta>::global(Reading context) -> const Global& {
+    auto Any<Meta>
+    ::global(Reading context)
+    ->const Global&
+    {
         return context.aspect<Meta>().global();
     }
 
+    template<typename Meta>
+    void Any<Meta>
+    ::global_set(Writing context, Global val) {
+        context.patch().aspect<Meta>().global = {std::move(val)};
+        //return context.aspect<Meta>().global();
+    }
+
+
+
     template<typename Meta, typename HostType>
-    void Parasitic<Meta, HostType>::kill(Writing context, Own::Id id) {
+    void Parasitic<Meta, HostType>
+    ::kill(Writing context, Own::Id id) {
         if constexpr (category::Standalone<HostType>) {
             context.patch().aspect<HostType>().put_deletion(id);
         } else {
@@ -134,7 +166,47 @@ namespace fqsm::aspect::action {
     }
 
     template<typename Meta>
-    void Any<Meta>::remove(Writing context, Id id) {
+    void Any<Meta>
+    ::remove(Writing context, Id id) {
         context.patch().aspect<Meta>().put_deletion(id);
+    }
+
+
+    // Group:
+    template<typename Meta, typename HostType, category::Entity ElementType>
+    void Group<Meta, HostType, ElementType>
+    ::install(Writing context, Id<HostType> id) {
+        context.patch().aspect<Meta>().put_add(id, {});
+    }
+
+
+    template<typename Meta, typename HostType, category::Entity ElementType>
+    auto Group<Meta, HostType, ElementType>
+    ::addElement(Writing context, Own::Id myId, Client::Quantum element)
+    ->Client::Id {
+        const auto workerId = Client::Actions::new_identity();
+        context.patch().aspect<ElementType>().put_add(workerId, std::move(element));
+
+
+        // this is very impletant place.
+        // place where fQSM, even DAQL and Q1 may become recursive.
+        // current "Group" is object with Fat Quantum (set of id's)
+        // each mutation of this set must treat is as immutable object (copy to change)
+        // this hits limits of fQSM, where Quantum can not be System itself.
+        // it is realy big story of recursive ECS where Component mey be a System of inner Components
+        // So... lets sacrifice performance to avoid this stuff.
+        auto myQuantum = context->aspect<Meta>().items().at(myId);
+        myQuantum.insert(workerId);
+        context.patch().aspect<Meta>().put_modification(myId, std::move(myQuantum));
+        return workerId;
+    }
+
+    template<typename Meta, typename HostType, category::Entity ElementType>
+    void Group<Meta, HostType, ElementType>
+    ::deleteElement(Writing context, Own::Id myId, Client::Id worker) {
+        auto myQuantum = context->aspect<Meta>().items().at(myId);
+        myQuantum.erase(worker);
+        context.patch().aspect<Meta>().put_modification(myId, std::move(myQuantum));
+        context.patch().aspect<ElementType>().put_deletion(worker);
     }
 }

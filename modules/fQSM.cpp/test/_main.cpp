@@ -16,6 +16,7 @@
     X(containers_updated) \
     X(delta_iterators) \
     X(globals) \
+    X(global_is_change_too) \
     X(immediate) \
     X(transaction_hierarchy) \
     // end

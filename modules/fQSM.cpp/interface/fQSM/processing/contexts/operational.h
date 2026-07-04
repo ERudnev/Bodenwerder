@@ -35,6 +35,9 @@ namespace fqsm::processing {
 
         operator View() const { return context->world; }
         const model::complex::State* operator->() const { return &context->world; }
+
+        // TODO: replace with "PAtchAssemblyInterface" (write-only Workers channel)
+        // fun: good possible name is "WorkerInterface" Zag-zag
         model::complex::Patch& patch() { return *context->accumulator; }
 
         //Context::PatchRef patch() { return context->accumulator; }

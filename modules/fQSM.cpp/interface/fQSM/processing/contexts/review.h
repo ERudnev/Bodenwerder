@@ -25,6 +25,7 @@ namespace fqsm::processing {
 
         const model::complex::Future& proposal;
         review::Result& result;
+        // TODO: (really Do): tighten Context -> WorkersInterface Zag-Zag
         Context::Ptr reactions;
 
         Review(const model::complex::Future& proposal, Context::PatchRef target, review::Result& result)
