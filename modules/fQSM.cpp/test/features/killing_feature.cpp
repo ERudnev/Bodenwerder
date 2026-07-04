@@ -34,7 +34,7 @@ namespace {
             };
             struct Actions : BaseActions {
                 static void create(Writing context, Body::Id id) {
-                    new_element(context, id, {0});
+                    create_for(context, id, {0});
                 }
 
                 static void update(Writing context, int timePassed) {
@@ -57,7 +57,7 @@ namespace {
                 struct Private;
                 static void create(Writing context, Life::Id id) {
                     const auto& body = with<Body>::get(context, id);
-                    new_element(context, id, {body.powerOfMass + 1}); // mass 1kg lives 1 sec
+                    create_for(context, id, {body.powerOfMass + 1}); // mass 1kg lives 1 sec
                 }
             };
             using Reactions = DefaultReactions;
@@ -67,7 +67,7 @@ namespace {
     namespace local::archetype {
         struct Stone : Archetype<Stone> {
             static Body::Id spawn(Writing context, int powerOfMass) {
-                const auto id = with<Body>::create_new(context, {powerOfMass});
+                const auto id = with<Body>::create(context, {powerOfMass});
                 with<Life>::create(context, id);
                 with<Death>::create(context, id);
                 return id;
@@ -114,7 +114,7 @@ void killing_feature()
         ask::schema::aspect<Death>(),
     });
 
-    { // Single Stone kill:
+    { // Single Stone kraken:
         context::Realm main(schema);
         const auto id = with<archetype::Stone>::spawn(main, 4);
 
@@ -123,7 +123,7 @@ void killing_feature()
 
         {
             context::Branch branch(main);
-            with<Death>::kill(branch, id);
+            with<Death>::kraken(branch, id);
 
             EXPECT_TRUE(main.result().good());
             EXPECT_TRUE(with<Body>::exists(main, id)) << "removed in still not commited Branch";

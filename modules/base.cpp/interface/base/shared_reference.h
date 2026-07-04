@@ -20,7 +20,7 @@ namespace base {
         bool operator!() const = delete;
         bool operator==(std::nullptr_t) const = delete;
         bool operator!=(std::nullptr_t) const = delete;
-        void kill() { ptr_ = nullptr; }
+        void kraken() { ptr_ = nullptr; }
 
         static shared_ref killed() {
             return shared_ref{killed_t{}};
@@ -90,4 +90,3 @@ namespace base {
     }
 
 } // namespace base
-

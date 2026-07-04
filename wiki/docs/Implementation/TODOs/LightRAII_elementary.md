@@ -6,7 +6,7 @@
 
 Цель — заменить этот паттерн на **прямую мутацию слота в patch** по ссылке `Quantum&`, без промежуточного буфера и без commit в деструкторе. RAII остаётся на уровне **`Writing` / `Branch` / `Realm`** (граница транзакции и интеграция patch), а не на уровне отдельного элемента.
 
-Публичный вызов для домена и тестов — единообразно через **`with<Meta>::update(...)`** (и при необходимости `with<Meta>::change(...)`), по той же оси, что уже приняты `with<>::create`, `with<>::kill`, `with<>::get`.
+Публичный вызов для домена и тестов — единообразно через **`with<Meta>::update(...)`** (и при необходимости `with<Meta>::change(...)`), по той же оси, что уже приняты `with<>::create`, `with<>::kraken`, `with<>::get`.
 
 Итог для автора аспекта:
 
@@ -47,7 +47,7 @@ with<SomeComponent>::update(main, id).name = "after";
 |--|------|------|
 | **read** | `get(Reading, Id)` → `const Quantum&` | `find(Reading, Id)` → `optional<const Quantum&>` |
 | **write** | `update(Writing, Id)` → `Quantum&` | `change(Writing, Id)` → `optional<Quantum&>` |
-| **create** | `new_element` (Standalone / Parasitic) | — |
+| **create** | `create_for` (Standalone / Parasitic) | — |
 
 Правила **`update` (hard)**:
 
@@ -61,14 +61,14 @@ with<SomeComponent>::update(main, id).name = "after";
 - Как в экспериментальном черновике `manipulation/item.h` (закомментированный `quantum::change`): если нет в мире и нет живого слота в patch — `nullopt`.
 - Tombstone в patch → `nullopt`.
 
-**`remove`**: не через guard `.remove()` на `Quantal`, а отдельная операция (например `with<Meta>::remove` / наследуемый `kill` для parasitic / явный tombstone в patch). Нужно явно спроектировать, чтобы не потерять семантику `Quantal::remove()`.
+**`remove`**: не через guard `.remove()` на `Quantal`, а отдельная операция (например `with<Meta>::remove` / наследуемый `kraken` для parasitic / явный tombstone в patch). Нужно явно спроектировать, чтобы не потерять семантику `Quantal::remove()`.
 
 ---
 
 ## Где разместить реализацию
 
-- **Объявление**: `aspect/action.h`, mixin `aspect::action::Any<Meta>` — рядом с `get` / `find` / `new_element` (язык среза `Actions`, не глобальный `ask::item`).
-- **Диспетчер**: `with<Meta>` = `Meta::Actions` (`manipulation::call_action`), как для `create` / `kill`.
+- **Объявление**: `aspect/action.h`, mixin `aspect::action::Any<Meta>` — рядом с `get` / `find` / `create_for` (язык среза `Actions`, не глобальный `ask::item`).
+- **Диспетчер**: `with<Meta>` = `Meta::Actions` (`manipulation::call_action`), как для `create` / `kraken`.
 - **Impl**: один проход по patch + world; логика из черновика `quantum::change` / `quantum::get(Writing)` в `manipulation/item.h` (строки 30–70, сейчас закомментировано).
 - **`ask::item::update`**: пометить deprecated, оставить alias на `Quantal` на переходный период или убрать после миграции.
 
@@ -87,7 +87,7 @@ with<SomeComponent>::update(main, id).name = "after";
 
 ### 2. Удаление / tombstone
 
-- [ ] Вынести `remove` из микро-RAII: явный API на `Any` или reuse `Parasitic::kill` где уместно
+- [ ] Вынести `remove` из микро-RAII: явный API на `Any` или reuse `Parasitic::kraken` где уместно
 - [ ] Проверить сценарии: `structural_constraints` (`update<EntFree>(...).remove()`), `custom_reactions`, `delta_iterators`
 
 ### 3. Миграция вызовов
@@ -99,7 +99,7 @@ with<SomeComponent>::update(main, id).name = "after";
 ### 4. Deprecate `Quantal`
 
 - [ ] Пометить `processing/transaction/Quantal` и `item::update` alias
-- [ ] Убедиться, что standalone-create через `Quantal(gate, value)` не нужен (заменён `new_element` + `with<>::create`)
+- [ ] Убедиться, что standalone-create через `Quantal(gate, value)` не нужен (заменён `create_for` + `with<>::create`)
 - [ ] Удалить после отсутствия ссылок
 
 ### 5. Документация и контракт

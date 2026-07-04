@@ -69,7 +69,7 @@ namespace fqsm::aspect::action {
         // used in other aspets. May be entry point for "make dependencies by deriving Action interface"
 
         // rename to just "create" after API cleanup
-        static Own::Id create_new(Writing context, Own::Quantum val) {
+        static Own::Id create(Writing context, Own::Quantum val) {
             const auto id = Identifier<Meta>::generate_random();
             context.workers_interface().updates<Meta>().put_add(id, std::move(val));
             return id;
@@ -85,11 +85,8 @@ namespace fqsm::aspect::action {
             context.workers_interface().updates<Meta>().put_add(id, std::move(val));
         }
 
-        // experimental:
-        static void kill(Writing context, Own::Id id);
-    protected:
-        // derived actions helpers:
-        static void new_element(Writing context, Own::Id id, Own::Quantum val) { context.workers_interface().updates<Meta>().put_add(id, std::move(val)); }
+        // experimental: kills parasite AND its host
+        static void kraken(Writing context, Own::Id id);
     };
 
 
@@ -170,11 +167,11 @@ namespace fqsm::aspect::action {
 
     template<typename Meta, typename HostType>
     void Parasitic<Meta, HostType>
-    ::kill(Writing context, Own::Id id) {
+    ::kraken(Writing context, Own::Id id) {
         if constexpr (category::Standalone<HostType>) {
             context.workers_interface().updates<HostType>().put_deletion(id);
         } else {
-            HostType::Actions::kill(context, id);
+            HostType::Actions::kraken(context, id);
         }
     }
 
@@ -197,7 +194,7 @@ namespace fqsm::aspect::action {
     auto Group<Meta, HostType, ElementType>
     ::addElement(Writing context, Own::Id myId, Client::Quantum element)
     ->Client::Id {
-        const auto workerId = Client::Actions::create_new(context, std::move(element));
+        const auto workerId = Client::Actions::create(context, std::move(element));
 
         // this is very impletant place.
         // place where fQSM, even DAQL and Q1 may become recursive.

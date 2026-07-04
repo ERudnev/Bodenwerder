@@ -35,12 +35,12 @@ namespace workshop {
 
         struct Actions : BaseActions {
             static Wallet::Id spawn(Writing context, int cash) {
-                const auto id = with<Wallet>::create_new(context, Wallet::Quantum{
+                const auto id = with<Wallet>::create(context, Wallet::Quantum{
                     .cash = cash,
                     .stocks = 0,
                     .incomeAction = &income,
                 });
-                new_element(context, id, Quantum{.lastIncomeMemory = 0});
+                create_for(context, id, Quantum{.lastIncomeMemory = 0});
                 return id;
             }
 
@@ -65,12 +65,12 @@ namespace workshop {
 
         struct Actions : BaseActions {
             static Wallet::Id spawn(Writing context, int cash) {
-                const auto id = with<Wallet>::create_new(context, Wallet::Quantum{
+                const auto id = with<Wallet>::create(context, Wallet::Quantum{
                     .cash = cash,
                     .stocks = 0,
                     .incomeAction = &income,
                 });
-                new_element(context, id, Quantum{});
+                create_for(context, id, Quantum{});
                 return id;
             }
 

@@ -38,7 +38,6 @@ namespace fqsm::processing {
 
         model::complex::WorkersInterface& workers_interface() { return *context->accumulator; }
 
-        //Context::PatchRef patch() { return context->accumulator; }
     private:
         // There is one fundamental problem around.
         // shared_ptr<Context> is quite ineffective for lightweinght Gate

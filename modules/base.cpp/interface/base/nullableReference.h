@@ -14,7 +14,7 @@ namespace base {
         auto operator*() const -> T& { return get(); }
         auto operator->() const -> T* { return &get(); }
 
-        void kill() { ptr = nullptr; }
+        void kraken() { ptr = nullptr; }
         bool good() const { return ptr != nullptr; }
 
     private:

@@ -23,7 +23,7 @@ namespace {
             struct Quantum { integer power; };
             struct Actions : BaseActions {
                 static void create(Writing context, A::Id id) {
-                    new_element(context, id, {with<A>::get(context, id).value});
+                    create_for(context, id, {with<A>::get(context, id).value});
                 }
             };
             struct Reactions : BaseReactions {
@@ -35,7 +35,7 @@ namespace {
     namespace local::archetype {
         struct EntABC : Archetype<EntABC> {
             static A::Id spawn(Writing context, int val) {
-                const auto id = with<A>::create_new(context, {val});
+                const auto id = with<A>::create(context, {val});
                 with<B>::create_for(context, id, {"manual"});
                 with<C>::create(context, id);
                 return id;
@@ -70,7 +70,7 @@ void custom_reactions()
     context::Realm main(world);
 
     { // Scenario 1: B::Behavior::component<> aborted creation of A
-        const auto id = with<A>::create_new(main, {4});
+        const auto id = with<A>::create(main, {4});
         EXPECT_FALSE(with<A>::exists(main, id));
         EXPECT_FALSE(main.result().good());
     }

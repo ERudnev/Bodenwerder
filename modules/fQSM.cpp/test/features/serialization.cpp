@@ -113,9 +113,9 @@ void serialization()
 
     context::Realm main(schema);
 
-    with<BoxSerializable>::create_new(main, {.temp_field = {{7, "seven"}}});
-    with<CustomFieldCodec>::create_new(main, {.jobs = {.entries = {{1, "one"}, {2, "two"}}}, .goodField = "some text"});
-    with<CustomQuantumCodec>::create_new(main, {.jobs = std::deque<std::string>{"nine", "ten"}});
+    with<BoxSerializable>::create(main, {.temp_field = {{7, "seven"}}});
+    with<CustomFieldCodec>::create(main, {.jobs = {.entries = {{1, "one"}, {2, "two"}}}, .goodField = "some text"});
+    with<CustomQuantumCodec>::create(main, {.jobs = std::deque<std::string>{"nine", "ten"}});
 }
 
 } // namespace tests

@@ -31,7 +31,7 @@ namespace local {
             static void create(Writing context, EntFree::Id id, bool askPowerOf4) {
                 int x = square(with<EntFree>::get(context, id).value);
                 if (askPowerOf4) x = square(x);
-                new_element(context, id, {x});
+                create_for(context, id, {x});
             };
         };
 
@@ -59,15 +59,15 @@ namespace local {
         // simulates decomposition, where CompSimple~CompWithCreate and it is not fair to choose one as "main thing", ABC is "above"
         struct EntTwoComps : Archetype<EntTwoComps> {
             static EntFree::Id spawn_correct(Writing context, int val) {
-                const auto id = with<EntFree>::create_new(context, {val});
+                const auto id = with<EntFree>::create(context, {val});
                 with<CompSimple>::create_for(context, id, {std::format("it is {}", val)});
                 with<CompWithCreate>::create(context, id, true);
                 return id;
             }
 
             static EntFree::Id spawn_forgot_init_one_comp(Writing context, int val) {
-                const auto id = with<EntFree>::create_new(context, {val});
-                // two comps are forgot to init. CompWithCreate passes this, but CompNoDefault kill entire Aggregate
+                const auto id = with<EntFree>::create(context, {val});
+                // two comps are forgot to init. CompWithCreate passes this, but CompNoDefault kraken entire Aggregate
                 // end! for testing purposes
                 return id;
             }
@@ -130,7 +130,7 @@ void structural_constraints()
     {
         context::Realm main(world);
         const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
-        with<CompSimple>::kill(main, id);
+        with<CompSimple>::kraken(main, id);
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "composite killed by component";
     }
 

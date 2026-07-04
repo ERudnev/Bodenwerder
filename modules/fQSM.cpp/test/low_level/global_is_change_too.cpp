@@ -43,7 +43,7 @@ void global_is_change_too()
 
     context::Realm main(schema);
 
-    const auto id = with<A>::create_new(main, {1});
+    const auto id = with<A>::create(main, {1});
     EXPECT_EQ(with<A>::get_global(main).deletions, 0);
 
     with<A>::remove(main, id);

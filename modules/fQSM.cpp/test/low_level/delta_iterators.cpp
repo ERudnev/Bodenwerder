@@ -39,7 +39,7 @@ void delta_iterators()
 
     std::vector<Id> ids;
     for (int i = 1; i <= 100; ++i) {
-        ids.push_back(with<A>::create_new(fill, {i}));
+        ids.push_back(with<A>::create(fill, {i}));
     }
 
     const fqsm::model::complex::Reality state(look(fill));
@@ -51,7 +51,7 @@ void delta_iterators()
 
     std::vector<Id> added_ids;
     for (int i = 101; i <= 110; ++i) {
-        added_ids.push_back(with<A>::create_new(writing, {i * 10}));
+        added_ids.push_back(with<A>::create(writing, {i * 10}));
     }
     for (int i = 0; i < 20; ++i) {
         with<A>::remove(writing, ids.at(i));

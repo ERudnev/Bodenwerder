@@ -45,8 +45,8 @@ void destructor()
 
     context::Realm main(schema);
 
-    const auto resourceId = with<Resource>::create_new(main, {"owned"});
-    const auto handlerId = with<Handler>::create_new(main, {.resourceId = resourceId});
+    const auto resourceId = with<Resource>::create(main, {"owned"});
+    const auto handlerId = with<Handler>::create(main, {.resourceId = resourceId});
 
     EXPECT_TRUE(with<Resource>::exists(main, resourceId));
     EXPECT_TRUE(with<Handler>::exists(main, handlerId));
