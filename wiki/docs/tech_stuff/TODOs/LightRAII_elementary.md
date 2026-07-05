@@ -87,8 +87,8 @@ with<SomeComponent>::update(main, id).name = "after";
 
 ### 2. Удаление / tombstone
 
-- [ ] Вынести `remove` из микро-RAII: явный API на `Any` или reuse `Parasitic::kraken` где уместно
-- [ ] Проверить сценарии: `structural_constraints` (`update<EntFree>(...).remove()`), `custom_reactions`, `delta_iterators`
+- [x] Вынести `remove` из микро-RAII: явный API на `Any` или reuse `Parasitic::kraken` где уместно
+- [x] Проверить сценарии: `structural_constraints` (`update<EntFree>(...).remove()`), `custom_reactions`, `delta_iterators`
 
 ### 3. Миграция вызовов
 
@@ -99,7 +99,7 @@ with<SomeComponent>::update(main, id).name = "after";
 ### 4. Deprecate `Quantal`
 
 - [ ] Пометить `processing/transaction/Quantal` и `item::update` alias
-- [ ] Убедиться, что standalone-create через `Quantal(gate, value)` не нужен (заменён `create_for` + `with<>::create`)
+- [x] Убедиться, что standalone-create через `Quantal(gate, value)` не нужен (заменён `create_for` + `with<>::create`)
 - [ ] Удалить после отсутствия ссылок
 
 ### 5. Документация и контракт

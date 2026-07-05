@@ -1,5 +1,4 @@
 file (GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "source/*.cpp")
-file (GLOB_RECURSE TESTING_SOURCES CONFIGURE_DEPENDS "test/*.cpp")
 
 project("fQSM"
     DESCRIPTION "iqsm.cpp - C++ implementation of 'flat Quantized State Mechanism'"
@@ -29,6 +28,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # test target
+file (GLOB_RECURSE TESTING_SOURCES CONFIGURE_DEPENDS "test/*.cpp")
 add_executable(${PROJECT_NAME}_tests)
 target_sources(${PROJECT_NAME}_tests
     PRIVATE
@@ -42,4 +42,20 @@ target_link_libraries(${PROJECT_NAME}_tests
     PRIVATE
         ${PROJECT_NAME}
         Q1_Etalon_fqsm
+)
+
+#workshop target
+file (GLOB_RECURSE WORKSHOP_SOURCES CONFIGURE_DEPENDS "test/*.cpp")
+add_executable(${PROJECT_NAME}_workshop)
+target_sources(${PROJECT_NAME}_workshop
+    PRIVATE
+        ${WORKSHOP_SOURCES}
+)
+target_include_directories(${PROJECT_NAME}_workshop
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/workshop
+)
+target_link_libraries(${PROJECT_NAME}_workshop
+    PRIVATE
+        ${PROJECT_NAME}
 )

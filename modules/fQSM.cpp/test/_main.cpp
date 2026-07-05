@@ -76,7 +76,7 @@ int call_all_tests() {
 
 int call_specific_test() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("selected", &tests::group_category)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::schema_world_from_etalon)));
     return s.ok() ? 0 : 1;
 }
 

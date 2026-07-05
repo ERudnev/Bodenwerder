@@ -8,8 +8,7 @@ namespace Q1_fQSM::Etalon {
 
     struct Trivia : Entity<Trivia> {
         struct Quantum {};
-        struct Global {};
-        using Actions = BaseActions;
+        //TODO: clarify to cleanup: using Actions = DefaultActions;
         using Reactions = DefaultReactions;
     };
 
@@ -24,6 +23,7 @@ namespace Q1_fQSM::Etalon {
             integer common_data{};
         };
         struct Actions : BaseActions {
+            struct Private;
             //@  methods from SampleEntity::one '?' '=' '>' dwelled here. NB: "reactions aka normalizaers"declared with '!' are ALVAYS private
             static auto const_element_method(Reading, Id) -> string;
             static void nonconst_element_method(Writing, Id);

@@ -1,16 +1,19 @@
+// Q1 Codogen Etalon
+//@ dont inject this comments to mirrored files
+
 namespace Q1_iQSM
   namespace Etalon
 
-    //@ in is not forward, it is mature Aspect definition
+    //@ in is not forward, it is mature Aspect definition (just minimal Aspect)
     entity Trivia
 
     entity SampleEntity
-      always
-        max_elements: integer = 2000
-        absolute_min: integer = -1000 // static constants are always defined
+      always //@ treat as public static const (constexpr) in the Aspect root
+        max_elements: integer = 2000 // static constants values must be always defined
+        absolute_min: integer = -1000
         absolute_max: integer = 1000
-        ?from_float(float) -> integer
-      one
+        ?from_float(float) -> integer //@ always-level functions havw no additional parameters
+      one //@ item-level data and oprtaions
         data_field: integer
         ?const_element_method() -> string
         =nonconst_element_method()
