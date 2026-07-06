@@ -16,10 +16,12 @@
 #include <fQSM/processing/transactions/branch.h>
 
 // Behavior definition for Aspects:
+#include <fQSM/features/behavior.h>
 #include <fQSM/features/reactions/structural.h>
+#include <fQSM/features/reactions/aspect_wide.h>
 #include <fQSM/features/reactions/anchoring.h>
 #include <fQSM/features/reactions/constraints.h>
-#include <fQSM/features/reactions/binding.h>
+//#include <fQSM/features/reactions/binding.h>
 #include <fQSM/features/reactions/deletion.h>
 #include <fQSM/features/reactions/_experimental.h>
 
@@ -45,6 +47,8 @@ namespace fqsm::api {
 
     template<typename Meta, typename Host, typename Element>
     using Group = ::fqsm::aspect::Group<Meta, Host, Element>;
+
+    using Behavior = ::fqsm::features::Behavior;
 
     // Interpretation mechanism:
     template<typename Meta>

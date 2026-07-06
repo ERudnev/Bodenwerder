@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <iterator>
 #include <memory>
 #include <optional>
@@ -149,6 +150,10 @@ public:
 
         auto end() const -> Iterator {
             return owner->delta_end(layer);
+        }
+
+        auto size() const -> std::size_t {
+            return static_cast<std::size_t>(std::distance(begin(), end()));
         }
     };
 

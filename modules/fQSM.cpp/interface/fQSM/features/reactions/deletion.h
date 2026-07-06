@@ -9,8 +9,8 @@
 namespace fqsm::features::reactions {
 
     template<category::Any Meta>
-    struct deletion : Functional<typename Meta::BaseActions::Elementary> {
-        using Parent = Functional<typename Meta::BaseActions::Elementary>;
+    struct deletion : Functional<typename Meta::BaseActions::Vocabulary::JustWriting> {
+        using Parent = Functional<typename Meta::BaseActions::Vocabulary::JustWriting>;
 
         explicit deletion(Parent::ActionFunction reaction) : Parent(reaction) {}
         Parent::Sources listens() const override { return Abstract::typed_set<Meta>(); }

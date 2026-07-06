@@ -10,8 +10,10 @@ namespace fqsm::features::reactions::constraint {
 
     // Local data constraint: ItemChange handler from Aspect::Actions (or its Private).
     template<category::Any Meta>
-    struct element : Functional<typename Meta::BaseActions::QuantumLocal> {
-        using Parent = Functional<typename Meta::BaseActions::QuantumLocal>;
+    //struct element : Functional<typename Meta::BaseActions::QuantumLocal> {
+    //    using Parent = Functional<typename Meta::BaseActions::QuantumLocal>;
+    struct element : Functional<typename Meta::BaseActions::Vocabulary::EvaluateQuantumLocal> {
+        using Parent = Functional<typename Meta::BaseActions::Vocabulary::EvaluateQuantumLocal>;
 
         explicit element(Parent::ActionFunction corrector) : Parent(corrector) {}
 

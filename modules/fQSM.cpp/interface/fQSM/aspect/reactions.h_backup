@@ -2,7 +2,7 @@
 
 #include <fQSM/features/reactions/structural.h>
 
-namespace fqsm::aspect::reaction::internal {
+namespace fqsm::aspect::reactions::internal {
 
     using Behavior = ::fqsm::features::Behavior;
 
@@ -12,13 +12,16 @@ namespace fqsm::aspect::reaction::internal {
 
     template<typename Meta>
     struct Any : Base {
+        using Id = ::fqsm::Id<Meta>;
+        using Quantum = ::fqsm::Quantum<Meta>;
+        using PossibleChange = std::optional<Quantum>;
 
         inline static const Behavior defaultReactions = {};
 
         static const Behavior allReactions() {
             static const Behavior value = Behavior::merged(
                 Meta::BaseReactions::defaultReactions,
-                Meta::Reactions::custom
+                Meta::Reactions::custom()
             );
             return value;
         }
@@ -44,7 +47,24 @@ namespace fqsm::aspect::reaction::internal {
     };
 }
 
-namespace fqsm::aspect::reaction {
+namespace fqsm::aspect::reactions {
+
+    template<typename Meta>
+    struct Default : Meta::BaseReactions {
+        using Behavior = internal::Behavior;
+
+        static const Behavior& custom() {
+            static const Behavior value{};
+            return value;
+        }
+    };
+
+    template<typename Meta>
+    struct Custom : Meta::BaseReactions {
+        using Behavior = internal::Behavior;
+
+        static const Behavior& custom();
+    };
 
 
     template<typename Meta>

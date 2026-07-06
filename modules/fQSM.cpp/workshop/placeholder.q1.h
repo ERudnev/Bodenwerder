@@ -6,12 +6,31 @@ namespace placeholder {
 
     using namespace fqsm::api;
 
-    struct MyEntity : Entity<MyEntity> {
+    // minimal possible Aspect, dont need *.cpp at all
+    struct BoldEntity : Entity<BoldEntity> {
+        struct Quantum {};
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct TriviaAttribute : Attribute<TriviaAttribute, BoldEntity> {
+        struct Quantum {};
+        struct Internals : DefaultInternals{};
+    };
+
+    struct MyAttribute : Attribute<MyAttribute, BoldEntity> {
+        struct Always {
+            static constexpr integer recommendedUpdateSize = 2;
+        };
         struct Quantum {
             int x;
             int y;
         };
+
+        struct Actions : BaseActions {
+            static void justlog(Reading, Id);
+        };
         struct Internals;
-        struct Reactions : BaseReactions {};
+        static const Behavior customAspectReactions();
     };
 };

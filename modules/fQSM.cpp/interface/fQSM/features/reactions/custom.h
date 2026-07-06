@@ -8,7 +8,7 @@ namespace fqsm::features::reactions {
 
     // Local data constraint: ItemChange handler from Aspect::Actions (or its Private).
     template<category::Any Meta>
-    struct binding : Functional<typename Meta::BaseActions::Action> {
+    struct custom : Functional<typename ZZZ> {
         using Parent = Functional<typename Meta::BaseActions::Action>;
 
         explicit binding(Parent::ActionFunction corrector) : Parent(corrector) {}

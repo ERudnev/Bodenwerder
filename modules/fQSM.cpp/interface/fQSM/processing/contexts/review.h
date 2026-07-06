@@ -19,6 +19,8 @@ namespace fqsm::processing::review {
 
 namespace fqsm::processing {
 
+    // TODO: consider to tighten type scope, make mini-schema's
+    // and give different Reaction scoped Review, like [typeA, typeB, typeC]
     struct Review final {
         using Context = context::Operational;
         using PatchRef = Context::PatchRef;

@@ -1,0 +1,16 @@
+namespace placeholder
+
+  entity BoldEntity
+
+  attribute MyAttribute of BoldEntity
+    always
+      recommendedUpdateSize: integer = 2
+    one
+      x: integer
+      y: integer
+      // all "one" reactions may listen only own aspect updates?
+      !ruleOne(-) // reacts on deletion
+      !ruleTwo(=) // reacts on change (Quantum constraint)
+    all
+      !localRule() // own type MyAttribute is iplicit argument
+      !globalRule(BoldEntity) // including implicit MyAttribute

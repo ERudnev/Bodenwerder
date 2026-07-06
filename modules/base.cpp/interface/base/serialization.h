@@ -480,3 +480,13 @@ namespace base::serialization {
     };
 
 } // namespace base::serialization
+
+namespace base {
+
+    template<typename T>
+    requires serialization::writable<T>
+    [[nodiscard]] auto encoded(const T& value) -> std::string {
+        return serialization::to_string(value);
+    }
+
+}

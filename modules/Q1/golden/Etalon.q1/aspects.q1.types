@@ -17,8 +17,8 @@ namespace Q1_iQSM
         data_field: integer
         ?const_element_method() -> string
         =nonconst_element_method()
-        !min_value()
-        !max_value()
+        !min_value(#)
+        !max_value(#)
       all
         common_data: integer
         >from_float(value_approximate: float) -> #

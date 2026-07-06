@@ -45,7 +45,7 @@ target_link_libraries(${PROJECT_NAME}_tests
 )
 
 #workshop target
-file (GLOB_RECURSE WORKSHOP_SOURCES CONFIGURE_DEPENDS "test/*.cpp")
+file (GLOB_RECURSE WORKSHOP_SOURCES CONFIGURE_DEPENDS "workshop/*.cpp")
 add_executable(${PROJECT_NAME}_workshop)
 target_sources(${PROJECT_NAME}_workshop
     PRIVATE
