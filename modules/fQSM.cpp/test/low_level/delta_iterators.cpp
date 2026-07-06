@@ -15,9 +15,8 @@ namespace {
     namespace local {
         struct A : Entity<A> {
             struct Quantum { integer value; };
-            struct Reactions : BaseReactions {
-                inline static const Behavior custom = {};
-            };
+            struct Internals : DefaultInternals{};
+            static const Behavior customAspectReactions() { return {}; }
         };
     }
 

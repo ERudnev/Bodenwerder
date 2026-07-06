@@ -11,7 +11,6 @@ namespace {
             integer value;
         };
         struct Actions : BaseActions {
-            struct Private;
             static void fastJob(Direct<A> context, int bonus) {
                 for (auto [_, item] : context.items)
                     item.value += bonus;
@@ -27,9 +26,8 @@ namespace {
                     item.value += bonus;
             }*/
         };
-        struct Reactions : BaseReactions {
-            static const Behavior custom;
-        };
+        struct Internals;
+        static const Behavior customAspectReactions();
     };
 }
 
@@ -37,7 +35,7 @@ namespace {
 namespace {
     using namespace fqsm::api;
 
-    struct A::Actions::Private : A::Actions {
+    struct A::Internals : DefaultInternals {
         static auto allow_non_negative(const Quantum& data) -> PossibleChange {
             if (data.value >= 0)
                 return std::nullopt;
@@ -45,9 +43,11 @@ namespace {
         }
     };
 
-    const A::Reactions::Behavior A::Reactions::custom = {
-        reaction::constraint::element<A>(&A::Actions::Private::allow_non_negative),
-    };
+    auto A::customAspectReactions() -> const Behavior {
+        return {
+            reaction::constraint::element<A>(&Internals::allow_non_negative),
+        };
+    }
 }
 
 // test itself:

@@ -101,14 +101,13 @@ namespace fqsm::aspect::actions {
 
     template<typename Meta, typename HostType, category::Entity ElementType>
     struct Group : Parasitic<Meta, HostType> { //, protected ElementType::Actions {
-        using Own = Parasitic<Meta, HostType>::Own;
+        using Own = Parasitic<Meta, HostType>;
         using Parent = Parasitic<Meta, HostType>::Parent;
         using Client = ElementType;
 
         // like public interface:
         static void create_for(Writing, Id<HostType>); // simplier version of Parasitic::create_for
         static auto addElement(Writing, Own::Id me, Client::Quantum) -> Client::Id;
-        // static auto addElement(Writing, Own::Id me, &func, Args...) -> Client::Id;
         static void deleteElement(Writing, Own::Id me, Client::Id);
     private:
         using Parasitic<Meta, HostType>::create_for;
@@ -228,7 +227,7 @@ namespace fqsm::aspect::actions {
     auto Group<Meta, HostType, ElementType>
     ::addElement(Writing context, Own::Id myId, Client::Quantum element)
     ->Client::Id {
-        const auto workerId = Client::Actions::create(context, std::move(element));
+        const auto workerId = Client::BaseActions::create(context, std::move(element));
         // this is very important place.
         // place where fQSM, even DAQL and Q1 may become recursive.
         // current "Group" is object with Fat Quantum (set of id's)

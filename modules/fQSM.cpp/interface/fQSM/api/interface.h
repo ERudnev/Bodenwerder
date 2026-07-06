@@ -45,8 +45,8 @@ namespace fqsm::api {
     template<typename Meta, typename Parent>
     using Component = ::fqsm::aspect::Component<Meta, Parent>;
 
-    template<typename Meta, typename Host, typename Element>
-    using Group = ::fqsm::aspect::Group<Meta, Host, Element>;
+    template<typename Meta, typename Host, typename Worker>
+    using Group = ::fqsm::aspect::Group<Meta, Host, Worker>;
 
     using Behavior = ::fqsm::features::Behavior;
 

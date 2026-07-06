@@ -22,7 +22,8 @@ namespace local {
             std::map<int, std::string> temp_field;
         };
 
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     // Quantum of this aspect has mix of fields, one requires custom serialization, other - works by default
@@ -32,7 +33,8 @@ namespace local {
             std::string goodField;
         };
 
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     // this Aspect has custom serializaion for entire Quantum type (must not rely on by-field serialization)
@@ -41,7 +43,8 @@ namespace local {
             std::deque<std::string> jobs;
         };
 
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 }
 } // namespace

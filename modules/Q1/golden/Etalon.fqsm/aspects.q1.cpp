@@ -14,14 +14,14 @@ namespace Q1_fQSM::Etalon {
             if (inspected.data_field >= Always::absolute_min)
                 return {};
             else
-                return {Always::absolute_min};
+                return PossibleChange{Always::absolute_min};
         }
 
         static auto max_value(const Quantum& inspected) -> PossibleChange {
             if (inspected.data_field <= Always::absolute_max)
                 return {};
             else
-                return {Always::absolute_max};
+                return PossibleChange{Always::absolute_max};
         }
 
         static void some_logic_fieldwide_invariant(Reacting context) {
@@ -81,7 +81,7 @@ namespace Q1_fQSM::Etalon {
 
     void SampleEntity::Actions::nonconst_fieldwide_method(Writing context) {
         const auto& items = context->aspect<SampleEntity>().items();
-        if (items.size() == 0)
+        if (items.empty())
             return;
 
         auto it = items.begin();
@@ -134,9 +134,7 @@ namespace Q1_fQSM::Etalon {
             if (last_value.power == expected_power)
                 return {};
 
-            auto fixed = last_value;
-            fixed.power = expected_power;
-            return fixed;
+            return PossibleChange{expected_power};
         }
 
         static void sync(Reacting context) {
@@ -213,14 +211,14 @@ namespace Q1_fQSM::Etalon {
     }
 
     auto Notebook::notes_count(Reading context, SampleEntity::Id id) -> integer {
-        if (!with<Note_group>::exists(context, id))
+        if (not with<Note_group>::exists(context, id))
             return integer{0};
 
         return static_cast<integer>(with<Note_group>::get(context, id).size());
     }
 
     auto Notebook::add_note(Writing context, SampleEntity::Id id, decltype(Note::Quantum::text) text) -> Note::Id {
-        if (!with<Note_group>::exists(context, id))
+        if (not with<Note_group>::exists(context, id))
             with<Note_group>::create_for(context, id);
 
         return with<Note_group>::addElement(context, id, Note::Quantum{

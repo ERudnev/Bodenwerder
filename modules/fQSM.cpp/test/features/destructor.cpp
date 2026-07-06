@@ -10,23 +10,24 @@ namespace local {
         struct Quantum {
             std::string text;
         };
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct Handler : Entity<Handler> {
         struct Quantum {
             Resource::Id resourceId;
         };
-        struct Actions : BaseActions {
+        struct Internals : DefaultInternals {
             static void releaseResource(Writing context, Id, const Quantum& last) {
                 with<Resource>::remove(context, last.resourceId);
             }
         };
-        struct Reactions : BaseReactions {
-            inline static const Behavior custom = {
-                reaction::deletion<Handler>(&Actions::releaseResource),
+        static const Behavior customAspectReactions() {
+            return {
+                reaction::deletion<Handler>(&Internals::releaseResource),
             };
-        };
+        }
     };
 }
 } // namespace

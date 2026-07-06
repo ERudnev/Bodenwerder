@@ -31,7 +31,8 @@ namespace local {
                 *modify_global(context) = globalCopy;
             }
         };
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct Client : Entity<Client> {
@@ -39,19 +40,22 @@ namespace local {
             Keyring::Id keyring;
             Keyring::Password password;
         };
-        struct Actions : BaseActions {
+        struct Internals : DefaultInternals {
             static void onDestroy(Writing context, Id, const Quantum& last) {
                 with<Keyring>::removePassword(context, last.keyring, last.password);
             }
         };
-        struct Reactions : BaseReactions {
-            inline static const Behavior custom = {
-                reaction::deletion<Client>(&Actions::onDestroy),
+        static const Behavior customAspectReactions() {
+            return {
+                reaction::deletion<Client>(&Internals::onDestroy),
             };
-        };
+        }
     };
 
-    struct Client_group : Group<Client_group, Keyring, Client> {};
+    struct Client_group : Group<Client_group, Keyring, Client> {
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
 
     struct KeyManager : Archetype<KeyManager> {
         static void attachManager(Writing context, Keyring::Id keyring) {

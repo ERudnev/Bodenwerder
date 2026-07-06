@@ -1,0 +1,137 @@
+(* Draft grammar for the currently used golden subset of Q1.
+   This is intentionally narrow.
+   It describes only constructs found in:
+   - modules/Q1/golden/Etalon.q1/aspects.q1.types
+   - modules/Q1/golden/Etalon.q1/elementary.q1.types
+
+   Indentation is semantic. The real parser treats INDENT/DEDENT as structural tokens.
+   Reaction scopes are not normal function parameters. *)
+
+file                ::= declaration* ;
+
+declaration         ::= namespace_decl
+                      | type_alias_decl
+                      | struct_decl
+                      | aspect_decl
+                      ;
+
+namespace_decl      ::= "namespace" IDENT INDENT declaration+ DEDENT ;
+
+type_alias_decl     ::= "type" IDENT type_alias_rhs annotation* ;
+type_alias_rhs      ::= "as" type_expr
+                      | "~" qualified_name "::" IDENT
+                      | external_type
+                      ;
+
+annotation          ::= "@" IDENT [ "(" annotation_body ")" ] ;
+annotation_body     ::= TEXT ;
+
+struct_decl         ::= "struct" IDENT INDENT struct_member+ DEDENT ;
+struct_member       ::= type_alias_decl
+                      | field_decl
+                      | query_op
+                      | command_op
+                      | factory_op
+                      ;
+
+aspect_decl         ::= entity_decl
+                      | attribute_decl
+                      | component_decl
+                      | group_decl
+                      | archetype_decl
+                      ;
+
+entity_decl         ::= "entity" IDENT aspect_body_or_one_line ;
+attribute_decl      ::= "attribute" IDENT "of" IDENT aspect_body ;
+component_decl      ::= "component" IDENT "of" IDENT aspect_body ;
+group_decl          ::= "group" "<" IDENT ">" "of" IDENT [ aspect_body ] ;
+archetype_decl      ::= "archetype" IDENT INDENT archetype_member+ DEDENT ;
+
+aspect_body_or_one_line
+                    ::= aspect_body
+                      | "one" field_decl
+                      | ε
+                      ;
+
+aspect_body         ::= INDENT aspect_block+ DEDENT ;
+
+aspect_block        ::= "always" INDENT always_member+ DEDENT
+                      | "one"    INDENT one_member+    DEDENT
+                      | "all"    INDENT all_member+    DEDENT
+                      ;
+
+always_member       ::= const_field
+                      | query_op
+                      ;
+
+one_member          ::= field_decl
+                      | query_op
+                      | command_op
+                      | reaction_decl
+                      ;
+
+all_member          ::= field_decl
+                      | query_op
+                      | command_op
+                      | factory_op
+                      | reaction_decl
+                      ;
+
+archetype_member    ::= query_op
+                      | factory_op
+                      ;
+
+field_decl          ::= IDENT ":" type_expr field_directive* ;
+field_directive     ::= "@" IDENT [ "(" annotation_body ")" ] ;
+
+const_field         ::= IDENT ":" type_expr "=" literal ;
+
+query_op            ::= "?" IDENT "(" [ param_list ] ")" "->" type_expr ;
+command_op          ::= "=" IDENT "(" [ param_list ] ")" [ "->" type_expr ] ;
+factory_op          ::= ">" IDENT "(" [ param_list ] ")" "->" type_expr ;
+
+param_list          ::= param ( "," param )* ;
+param               ::= IDENT ":" type_expr
+                      | type_expr
+                      ;
+
+reaction_decl       ::= "!" IDENT "(" reaction_scope ")" ;
+reaction_scope      ::= one_scope | all_scope ;
+
+one_scope           ::= "-" "one"
+                      | "=" "one"
+                      | ">" "one"
+                      ;
+
+all_scope           ::= "~" [ IDENT ] ;
+
+type_expr           ::= type_primary type_suffix* ;
+type_suffix         ::= "?" ;
+
+type_primary        ::= builtin_type
+                      | id_type
+                      | anchor_type
+                      | control_type
+                      | member_type_of
+                      | external_type
+                      | qualified_name
+                      ;
+
+id_type             ::= "#" [ IDENT ] ;
+anchor_type         ::= "anchor" "<" type_expr ">" ;
+control_type        ::= "control" "<" type_expr ">" ;
+member_type_of      ::= "~" qualified_name "::" IDENT ;
+external_type       ::= "@external" "(" annotation_body ")" ;
+
+qualified_name      ::= IDENT ( "::" IDENT )* ;
+builtin_type        ::= "integer" | "float" | "string" | "index2" ;
+
+literal             ::= INTEGER ;
+
+(* Notes:
+   1. command_op allows an optional return type because the golden file uses it.
+   2. group_decl has no body in the current golden inputs, but optional body is left open.
+   3. struct_decl does not allow reactions semantically, even though the parser may choose to
+      preserve raw lines and let the linter report that violation.
+   4. spacing around "->" is not treated as significant by tooling.
+   5. "@" directives are recorded conservatively as metadata. *)

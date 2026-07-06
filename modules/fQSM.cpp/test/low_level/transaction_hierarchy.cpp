@@ -12,12 +12,14 @@ namespace local {
 
     struct A : Entity<A> {
         struct Quantum { integer value; };
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct B : Component<B, A> {
         struct Quantum { string name; };
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct Arch : Archetype<Arch> {

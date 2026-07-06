@@ -14,18 +14,18 @@ namespace model {
         struct Global {
             integer deletions = 0;
         };
-        struct Actions : BaseActions {
+        struct Internals : DefaultInternals {
             static void countDeletion(Writing context, Id, const Quantum&) {
-                auto copy = get_global(context);
+                auto copy = with<A>::get_global(context);
                 ++copy.deletions;
-                *modify_global(context) = copy;
+                *with<A>::modify_global(context) = copy;
             }
         };
-        struct Reactions : BaseReactions {
-            inline static const Behavior custom = {
-                reaction::deletion<A>(&Actions::countDeletion),
+        static const Behavior customAspectReactions() {
+            return {
+                reaction::deletion<A>(&Internals::countDeletion),
             };
-        };
+        }
     };
 }
 } // namespace

@@ -55,7 +55,7 @@ Each Q1 aspect becomes one C++ `struct` derived from the matching fQSM category:
 - `entity X` -> `struct X : Entity<X>`
 - `attribute A of Host` -> `struct A : Attribute<A, Host>`
 - `component C of Host` -> `struct C : Component<C, Host>`
-- `group<E> of Host` -> a dedicated group aspect type, e.g. `GroupName : Group<GroupName, E, Host>`
+- `group<E> of Host` -> a dedicated group aspect type, e.g. `GroupName : Group<GroupName, Host, E>`
 - `archetype T` -> `struct T : Archetype<T>`
 
 ### Why

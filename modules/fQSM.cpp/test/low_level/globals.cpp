@@ -12,7 +12,8 @@ namespace model {
         struct Global {
             int globalValue{};
         };
-        // REWORK: using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 }
 } // namespace

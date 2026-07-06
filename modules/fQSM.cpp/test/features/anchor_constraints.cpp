@@ -8,7 +8,8 @@ namespace local {
 
     struct A : Entity<A> {
         struct Quantum {};
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct B : Entity<B> {
@@ -16,15 +17,13 @@ namespace local {
             Anchor<A> iNeedThis;
             Control<A> controlledOther;
         };
-
-        struct Reactions : BaseReactions {
-            static const Behavior custom;
-        };
-    };
-
-    const B::Reactions::Behavior B::Reactions::custom = {
-        reaction::structural::anchored<B, A, &B::Quantum::iNeedThis>{},
-        reaction::structural::controls<B, A, &B::Quantum::controlledOther>{},
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() {
+            return {
+                reaction::structural::anchored<B, A, &B::Quantum::iNeedThis>{},
+                reaction::structural::controls<B, A, &B::Quantum::controlledOther>{},
+            };
+        }
     };
 }
 } // namespace

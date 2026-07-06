@@ -97,7 +97,7 @@ namespace Q1_fQSM::Etalon {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct Note_group : Group<Note_group, Note, SampleEntity> {
+    struct Note_group : Group<Note_group, SampleEntity, Note> {
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };

@@ -25,7 +25,8 @@ namespace workshop {
             }
         };
 
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct Steady : Attribute<Steady, Wallet> {
@@ -57,7 +58,8 @@ namespace workshop {
             }
         };
 
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct Risky : Attribute<Risky, Wallet> {
@@ -82,7 +84,8 @@ namespace workshop {
             }
         };
 
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };*/
 }
 

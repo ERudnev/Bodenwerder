@@ -15,14 +15,12 @@ namespace {
                 integer dustKgs = 0;// == mass (kg)
             };
             struct Actions : BaseActions {
-                struct Private; // important forward to allow Protave part defined in *.cpp file
                 static integer mass(Reading context, Id id) {
                     return 1 << get(context, id).powerOfMass;
                 }
             };
-            struct Reactions : BaseReactions {
-                static const Behavior custom;
-            };
+            struct Internals;
+            static const Behavior customAspectReactions();
         };
     }
 
@@ -43,7 +41,8 @@ namespace {
                     }
                 }
             };
-            using Reactions = DefaultReactions;
+            struct Internals : DefaultInternals{};
+            static const Behavior customAspectReactions() { return {}; }
         };
     }
 
@@ -60,7 +59,8 @@ namespace {
                     create_for(context, id, {body.powerOfMass + 1}); // mass 1kg lives 1 sec
                 }
             };
-            using Reactions = DefaultReactions;
+            struct Internals : DefaultInternals{};
+            static const Behavior customAspectReactions() { return {}; }
         };
     }
 
@@ -77,9 +77,8 @@ namespace {
 
     // this kind of code may appear in the separate *.cpp
     namespace local {
-        // Private part of Actions
-        struct Body::Actions::Private {
-            // this reaction id private (as any reaction) because it must not be called manually
+        struct Body::Internals : DefaultInternals {
+            // this reaction is private (as any reaction) because it must not be called manually
             static void reactOnDeath(Writing context, Id id, const Quantum& lastValue) {
                 // simple create 2 lesser stones:
                 with<archetype::Stone>::spawn(context, lastValue.powerOfMass - 1);
@@ -87,9 +86,11 @@ namespace {
             }
         };
 
-        const Body::Reactions::Behavior Body::Reactions::custom = {
-            reaction::deletion<Body>(&Actions::Private::reactOnDeath),
-        };
+        auto Body::customAspectReactions() -> const Behavior {
+            return {
+                reaction::deletion<Body>(&Internals::reactOnDeath),
+            };
+        }
     }
 
     // this kind of code may appear in the separate *.cpp

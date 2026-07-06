@@ -9,16 +9,19 @@ namespace local {
 
     struct EntFree : Entity<EntFree> {
         struct Quantum { integer value; };
-        struct Reactions : BaseReactions {
-            static const Behavior custom;
-        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct CompSimple : Component<CompSimple, EntFree> {
         struct Quantum { string text; };
-        struct Reactions : BaseReactions {
-            static const Behavior custom;
-        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() {
+            return {
+                //rule::structural_deprecated::component<CompSimple, EntFree>(reflex::ComponentMissing::inacceptable),
+                reaction::debug::death_log<CompSimple>("death-event message for {}"),
+            };
+        }
     };
 
     struct CompWithCreate : Component<CompWithCreate, EntFree> {
@@ -35,23 +38,24 @@ namespace local {
             };
         };
 
-        struct Reactions : BaseReactions {
-            static const Behavior custom;
-        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() {
+            return {
+                reaction::debug::death_log<CompWithCreate>("death-event message for {}"),
+            };
+        }
     };
 
     struct AttrPrimary : Attribute<AttrPrimary, EntFree> {
         struct Quantum { string description; };
-        struct Reactions : BaseReactions {
-            static const Behavior custom;
-        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct AttrSecondary : Attribute<AttrSecondary, AttrPrimary> {
         struct Quantum { string clarification; };
-        struct Reactions : BaseReactions {
-            static const Behavior custom;
-        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     namespace archetype {
@@ -73,18 +77,6 @@ namespace local {
             }
         };
     }
-
-    const EntFree::Reactions::Behavior EntFree::Reactions::custom = {};
-    const AttrPrimary::Reactions::Behavior AttrPrimary::Reactions::custom = {};
-    const AttrSecondary::Reactions::Behavior AttrSecondary::Reactions::custom = {};
-    const CompSimple::Reactions::Behavior CompSimple::Reactions::custom = {
-        //rule::structural_deprecated::component<CompSimple, EntFree>(reflex::ComponentMissing::inacceptable),
-        reaction::debug::death_log<CompSimple>("death-event message for {}"),
-    };
-
-    const CompWithCreate::Reactions::Behavior CompWithCreate::Reactions::custom = {
-        reaction::debug::death_log<CompWithCreate>("death-event message for {}"),
-    };
 }
 } // namespace
 

@@ -7,16 +7,18 @@ namespace {
     namespace local {
         struct A : Entity<A> {
             struct Quantum { integer value; };
-            struct Reactions : BaseReactions {
-                static const Behavior custom;
-            };
+            struct Internals : DefaultInternals{};
+            static const Behavior customAspectReactions() { return {}; }
         };
 
         struct B : Component<B, A> {
             struct Quantum { string text; };
-            struct Reactions : BaseReactions {
-                static const Behavior custom;
-            };
+            struct Internals : DefaultInternals{};
+            static const Behavior customAspectReactions() {
+                return {
+                    reaction::debug::death_log<B>("death-event message for {}"),
+                };
+            }
         };
 
         struct C : Component<C, A> {
@@ -26,9 +28,8 @@ namespace {
                     create_for(context, id, {with<A>::get(context, id).value});
                 }
             };
-            struct Reactions : BaseReactions {
-                static const Behavior custom;
-            };
+            struct Internals : DefaultInternals{};
+            static const Behavior customAspectReactions() { return {}; }
         };
     }
 
@@ -41,15 +42,6 @@ namespace {
                 return id;
             }
         };
-    }
-
-    // kinda impl in come *.cpp file:
-    namespace local {
-        const A::Reactions::Behavior A::Reactions::custom = {};
-        const B::Reactions::Behavior B::Reactions::custom = {
-            reaction::debug::death_log<B>("death-event message for {}"),
-        };
-        const C::Reactions::Behavior C::Reactions::custom = {};
     }
 }
 

@@ -7,6 +7,7 @@
 namespace fqsm::aspect::internals {
 
     struct Base {
+        using Reading = ::fqsm::Reading;
         using Writing = ::fqsm::Writing;
         using Reacting = ::fqsm::Reacting;
         using Behavior = ::fqsm::features::Behavior;
