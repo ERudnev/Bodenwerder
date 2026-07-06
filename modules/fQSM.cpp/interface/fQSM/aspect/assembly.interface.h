@@ -8,9 +8,6 @@
 #include <fQSM/aspect/actions.h>
 #include <fQSM/aspect/internals.h>
 
-// workshop:
-#include <type_traits>
-
 namespace fqsm::detail::aspect {
 
     struct Base {
@@ -57,19 +54,25 @@ namespace fqsm::aspect {
         using DefaultInternals = internals::Attribute<Meta, HostType>;
     };
 
-
-    // temp:
     template<typename Meta, typename HostType>
     struct Component : detail::aspect::Parasitic<Meta, HostType> {
+        using HostAspect = HostType;
+        using BaseActions = actions::Component<Meta, HostType>;
+        using DefaultInternals = internals::Component<Meta, HostType>;
     };
 
-    template<typename Meta, typename HostType, typename ElementType>
+    template<typename Meta, typename HostType, typename WorkerType>
     struct Group : detail::aspect::Parasitic<Meta, HostType> {
+        using Quantum = std::unordered_set<typename WorkerType::Id>;
+        using HostAspect = HostType;
+        using BaseActions = actions::Group<Meta, HostType, WorkerType>;
+        using DefaultInternals = internals::Group<Meta, HostType, WorkerType>;
+        using WorkerAspect = WorkerType;
     };
 
     template<typename Meta>
     struct Archetype : actions::Archetype {
-        //using BaseActions = Meta;
+        using BaseActions = Meta;
     };
 
 

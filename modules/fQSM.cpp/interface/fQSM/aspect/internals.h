@@ -86,4 +86,39 @@ namespace fqsm::aspect::internals {
             );
         };
     };
+
+    template<typename Meta, typename HostType>
+    struct Component : Parasitic<Meta, HostType> {
+        using Behavior = Base::Behavior;
+        inline static const Behavior reactions() {
+            base::message("assembly: intenlals::Component::reactions");
+            return Behavior::merged(
+                Behavior::merged(
+                    Parasitic<Meta, HostType>::reactions(),
+                    Behavior{
+                        features::reactions::structural::dead_component_kill_parent<Meta, HostType>(),
+                        features::reactions::structural::parrent_appears_requires_component<Meta, HostType>(),
+                    }
+                ),
+                Meta::customAspectReactions()
+            );
+        };
+    };
+
+    template<typename Meta, typename HostType, typename ElementType>
+    struct Group : Parasitic<Meta, HostType> {
+        using Behavior = Base::Behavior;
+        inline static const Behavior reactions() {
+            base::message("assembly: intenlals::Group::reactions");
+            return Behavior::merged(
+                Behavior::merged(
+                    Parasitic<Meta, HostType>::reactions(),
+                    Behavior{
+                        features::reactions::structural::group_removal_removes_elements<Meta, ElementType>(),
+                    }
+                ),
+                Meta::customAspectReactions()
+            );
+        };
+    };
 }

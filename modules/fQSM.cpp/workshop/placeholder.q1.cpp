@@ -21,15 +21,14 @@ namespace placeholder {
         }
 
         static void globalRule(Reacting context) {
-            const auto boldsAround = context.proposal.aspect<BoldEntity>().items().size();
-            for (const auto& newBold : context.changes<BoldEntity>().added())
+            const auto boldsAround = context.proposal.aspect<Minimal>().items().size();
+            for (const auto& newBold : context.changes<Minimal>().added())
                 base::message("family of MyAttribute sees new Bold: {}, total: {}", newBold.id, boldsAround);
         }
     };
 
     void MyAttribute::Actions::justlog(Reading context, Id id) {
-        const auto me = get(context, id);
-        base::message(std::format("MyAttribute holds {},{}", me.x, me.y));
+        base::message(std::format("MyAttribute holds {}", base::encoded(get(context, id))));
     }
 
     auto MyAttribute::customAspectReactions()-> const Behavior {
@@ -37,7 +36,7 @@ namespace placeholder {
             reaction::deletion<MyAttribute>(&MyAttribute::Internals::ruleOne),
             reaction::constraint::element<MyAttribute>(&MyAttribute::Internals::ruleTwo),
             reaction::aspect_wide<MyAttribute>(&MyAttribute::Internals::localRule),
-            reaction::aspect_wide<MyAttribute, BoldEntity>(&MyAttribute::Internals::globalRule),
+            reaction::aspect_wide<MyAttribute, Minimal>(&MyAttribute::Internals::globalRule),
         };
     };
     /*const Behavior MyAttribute::own_reactions_exp = {

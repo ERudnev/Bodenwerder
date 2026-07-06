@@ -1,16 +1,16 @@
 namespace placeholder
 
-  entity BoldEntity
+  entity Minimal
 
-  attribute MyAttribute of BoldEntity
+  attribute MyAttribute of Minimal
     always
       recommendedUpdateSize: integer = 2
     one
       x: integer
       y: integer
       // all "one" reactions may listen only own aspect updates?
-      !ruleOne(-) // reacts on deletion
-      !ruleTwo(=) // reacts on change (Quantum constraint)
+      !ruleOne(-one) // reacts on deletion
+      !ruleTwo(=one) // reacts on change (Quantum constraint)
     all
-      !localRule() // own type MyAttribute is iplicit argument
-      !globalRule(BoldEntity) // including implicit MyAttribute
+      !localRule(~) // ('~' mrans "type of"own type MyAttribute is iplicit argument
+      !globalRule(~Minimal) // including implicit MyAttribute
