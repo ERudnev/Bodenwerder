@@ -6,60 +6,74 @@ namespace Q1_fQSM::Etalon {
 
     using namespace fqsm::api;
 
+    //@ in is not forward, it is mature Aspect definition (just minimal Aspect)
     struct Trivia : Entity<Trivia> {
         struct Quantum {};
-        //TODO: clarify to cleanup: using Actions = DefaultActions;
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct SampleEntity : Entity<SampleEntity> {
-        static constexpr integer max_elements = integer{2000};
-        static constexpr integer absolute_min = integer{-1000};
-        static constexpr integer absolute_max = integer{1000};
+        //@ always: treat constants as static constexpr in Always; pure functions likewise
+        struct Always {
+            static constexpr integer max_elements = integer{2000};
+            static constexpr integer absolute_min = integer{-1000};
+            static constexpr integer absolute_max = integer{1000};
+            //@ always-level functions have no additional parameters
+            static auto from_float(float value_approximate) -> integer;
+        };
+        //@ one: item-level data
         struct Quantum {
             integer data_field;
         };
+        //@ all: field-own data (one Global per aspect in world instance)
         struct Global {
             integer common_data{};
         };
         struct Actions : BaseActions {
-            struct Private;
-            //@  methods from SampleEntity::one '?' '=' '>' dwelled here. NB: "reactions aka normalizaers"declared with '!' are ALVAYS private
+            //@ methods from SampleEntity::one '?' '=' '>' dwell here
+            //@ NB: "reactions aka normalizaers"declared with '!' are ALVAYS hidden in Internals
             static auto const_element_method(Reading, Id) -> string;
             static void nonconst_element_method(Writing, Id);
 
-            // @ methods from SampleEntity::all (all, except '!')
+            //@ methods from SampleEntity::all (all, except '!')
             static auto from_float(Writing, float value_approximate) -> Id;
             static auto find_first(Reading, integer) -> optional<Id>;
             static auto const_fieldwide_method(Reading) -> integer;
             static void nonconst_fieldwide_method(Writing);
         };
-        struct Reactions : BaseReactions { static const Behavior custom; };
+        //@ '!' reactions aka normalizers: Internals + customAspectReactions (.cpp)
+        struct Internals;
+        static const Behavior customAspectReactions();
     };
 
     struct Tag : Attribute<Tag, SampleEntity> {
-        struct Quantum{};
+        struct Quantum {};
         struct Global {
             integer modulus = integer{2};
         };
-        struct Reactions : BaseReactions { static const Behavior custom; };
+        //@ '!' reactions aka normalizers: Internals + customAspectReactions (.cpp)
+        struct Internals;
+        static const Behavior customAspectReactions();
     };
 
     struct Remnant : Component<Remnant, Tag> {
         struct Quantum {
             integer power;
-            Trivia::Id trivia;
         };
-        struct Reactions : BaseReactions { static const Behavior custom; };
+        //@ '!' reactions aka normalizers: Internals + customAspectReactions (.cpp)
+        struct Internals;
+        static const Behavior customAspectReactions();
     };
 
     struct SampleComponent : Component<SampleComponent, SampleEntity> {
         struct Quantum {};
-        struct Actions : BaseActions{
+        struct Actions : BaseActions {
             static void example_op_multiply(Writing, Id, integer factor);
-            static auto example_op_div_with_remainder(Writing, Id, integer divisor)->integer; // returns remainder
+            static auto example_op_div_with_remainder(Writing, Id, integer divisor) -> integer;
         };
-        struct Reactions : BaseReactions { static const Behavior custom; };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct SampleAttribute : Attribute<SampleAttribute, SampleEntity> {
@@ -67,23 +81,30 @@ namespace Q1_fQSM::Etalon {
             Anchor<Trivia> main_anchor;
             Control<Trivia> main_dummy;
         };
-        struct Global {};
-        struct Actions : BaseActions{
+        struct Actions : BaseActions {
+            //@ TODO: rework syntax and even conception of "constructor"
             static auto complex_constructor(Writing, SampleEntity::Id) -> Id;
         };
-        struct Reactions : BaseReactions { static const Behavior custom; };
+        //@ custom because of anchor/control and all-reaction !limit_by_tag_count(~Tag)
+        struct Internals;
+        static const Behavior customAspectReactions();
     };
 
-    // experimental one-liner syntax for Q1 "one-liner entities"
+    //@ experimental one-line form of syntax (sorry, parser!)
     struct Note : Entity<Note> {
         struct Quantum { string text; };
-        using Reactions = DefaultReactions;
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct Note_group : Group<Note_group, Note, SampleEntity> {};
+    struct Note_group : Group<Note_group, Note, SampleEntity> {
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
 
+    //@ Hint: '=' functions aka "item modifiers" are meaningless for Archetype (has no own state/quantum)
     struct Notebook : Archetype<Notebook> {
-        static auto notes_count(Reading, SampleEntity::Id)->integer;
-        static auto add_note(Writing, decltype(Note::Quantum::text))-> Note::Id;
+        static auto notes_count(Reading, SampleEntity::Id) -> integer;
+        static auto add_note(Writing, decltype(Note::Quantum::text)) -> Note::Id;
     };
 }

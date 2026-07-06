@@ -3,121 +3,229 @@
 #include <fQSM/api/interface.h>
 
 namespace Q1_fQSM::Etalon {
-    using namespace fqsm::api;
+
+    using namespace iqsm::q1_gateway;
 
     //
-    // SampleEtity (reassembld)
-    struct SampleEntity::Actions::Private : SampleEntity::Actions {
+    // Trivia
+    const Norms Trivia::rules{
+        .structural = {},
+        .logical = {},
     };
-
-    /*
 
     //
     // SampleEntity
-    struct SampleEntity::Actions::Private : SampleEntity::Actions {
+    struct SampleEntity_private : SampleEntity::Service {
 
-        // always: ?from_float(float) -> integer
-        static auto from_float(float value_approximate) -> integer {
-            const auto value = static_cast<integer>(value_approximate);
-            return std::min(absolute_max, std::max(absolute_min, value));
+        //@ Reading interface is required for possible other aspects
+        static auto min_value(Reading, Id, const Quantum& before) -> ItemChange {
+            auto after = before;
+            after.data_field = std::max(after.data_field, absolute_min);
+
+            if (ops::particle::equal<SampleEntity>(after, before)) return {};
+            return after;
         }
 
-        // one: !min_value()
-        static auto min_value(const Quantum& before) -> PossibleChange {
-            if (before.data_field >= absolute_min)
-                return std::nullopt;
-            return Quantum{.data_field = absolute_min};
+        static auto max_value(Reading, Id, const Quantum& before) -> ItemChange {
+            auto after = before;
+            after.data_field = std::min(after.data_field, absolute_max);
+
+            if (ops::particle::equal<SampleEntity>(after, before)) return {};
+            return after;
         }
 
-        // one: !max_value()
-        static auto max_value(const Quantum& before) -> PossibleChange {
-            if (before.data_field <= absolute_max)
-                return std::nullopt;
-            return Quantum{.data_field = absolute_max};
-        }
-
-        // all: !some_logic_fieldwide_invariant()
-        static void some_logic_fieldwide_invariant(Reacting context) {
-            const auto& items = context.proposal.aspect<SampleEntity>().items();
+        static void some_logic_fieldwide_invariant(Writing commit) {
+            repo::Sequence tx{commit};
+            const auto& container = tx->slice<SampleEntity>()->container;
             const auto cap = static_cast<std::size_t>(max_elements);
-            if (items.size() <= cap)
-                return;
+            if (container.size() <= cap) return;
 
             std::vector<Id> ids;
-            ids.reserve(items.size());
-            for (const auto entry : items)
-                ids.push_back(entry.id);
+            ids.reserve(container.size());
+            for (const auto& kv : container) {
+                ids.push_back(kv.first);
+            }
 
-            const std::size_t over = items.size() - cap;
-            auto& patch = context.reaction<SampleEntity>();
-            for (std::size_t i = 0; i < over; ++i)
-                patch.put_deletion(ids[i]);
-        }
-    };
-
-    struct some_logic_fieldwide_invariant final : reaction::Abstract {
-        Sources listens() const override { return typed_set<SampleEntity>(); }
-        void apply(Reacting context) override {
-            SampleEntity::Actions::Private::some_logic_fieldwide_invariant(context);
-        }
-    };
-
-    // all: >from_float(value_approximate: float) -> #
-    auto SampleEntity::Actions::from_float(Writing context, float value_approximate) -> Id {
-        return create(context, Quantum{.data_field = Private::from_float(value_approximate)});
-    }
-
-    // all: ?find_first(integer) -> #?
-    auto SampleEntity::Actions::find_first(Reading context, integer sought) -> optional<Id> {
-        for (const auto entry : context.aspect<SampleEntity>().items()) {
-            if (entry.value.data_field == sought)
-                return entry.id;
-        }
-        return std::nullopt;
-    }
-
-    // all: ?const_fieldwide_method() -> integer
-    auto SampleEntity::Actions::const_fieldwide_method(Reading context) -> integer {
-        integer sum = integer{0};
-        for (const auto entry : context.aspect<SampleEntity>().items())
-            sum += entry.value.data_field;
-        return sum;
-    }
-
-    // all: =nonconst_fieldwide_method()
-    void SampleEntity::Actions::nonconst_fieldwide_method(Writing context) {
-        const auto& items = context->aspect<SampleEntity>().items();
-        if (items.empty())
-            return;
-
-        auto it = items.begin();
-        Id min_id = it->id;
-        integer min_val = it->value.data_field;
-        for (++it; it != items.end(); ++it) {
-            const auto v = it->value.data_field;
-            if (v < min_val) {
-                min_val = v;
-                min_id = it->id;
+            const std::size_t over = container.size() - cap;
+            for (std::size_t i = 0; i < over; ++i) {
+                ops::particle::remove<SampleEntity>(tx, ids[i]);
             }
         }
-        remove(context, min_id);
-    }
-
-    // one: ?const_element_method() -> string
-    auto SampleEntity::Actions::const_element_method(Reading context, Id id) -> string {
-        return std::to_string(get(context, id).data_field);
-    }
-
-    // one: =nonconst_element_method()
-    void SampleEntity::Actions::nonconst_element_method(Writing context, Id id) {
-        modify(context, id)->data_field += integer{1};
-    }
-
-    const SampleEntity::Reactions::Behavior SampleEntity::Reactions::custom = {
-        reaction::constraint::element<SampleEntity>(&Actions::Private::min_value),
-        reaction::constraint::element<SampleEntity>(&Actions::Private::max_value),
-        some_logic_fieldwide_invariant{},
     };
-    */
+    auto SampleEntity::Service::from_float(float value_approximate) -> integer {
+        const auto value = static_cast<integer>(value_approximate);
+        return std::min(absolute_max, std::max(absolute_min, value));
+    }
+    auto SampleEntity::Service::create_from_float(Writing gate, float field_value) -> Id {
+        return ops::particle::create<SampleEntity>(gate, Quantum{from_float(field_value)});
+    }
+    auto SampleEntity::Service::example_const_fieldwide_method(Reading world) -> integer {
+        integer sum = integer{0};
+        for (const auto& kv : world->field<SampleEntity>()->container) {
+            sum = sum + kv.second->data_field;
+        }
+        return sum;
+    }
+    auto SampleEntity::Service::example_const_element_method(Reading, Id) -> float { return 0.0f; }
+    void SampleEntity::Service::example_nonconst_fieldwide_method(Writing commit) {
+        repo::Sequence tx{commit};
+        const auto& container = tx->field<SampleEntity>()->container;
+        if (container.empty()) return;
 
+        auto it = container.begin();
+        Id min_id = it->first;
+        integer min_val = it->second->data_field;
+        for (++it; it != container.end(); ++it) {
+            const auto v = it->second->data_field;
+            if (v < min_val) {
+                min_val = v;
+                min_id = it->first;
+            }
+        }
+        ops::particle::remove<SampleEntity>(tx, min_id);
+    }
+    void SampleEntity::Service::example_nonconst_element_method(Writing, Id) {}
+
+    const Norms SampleEntity::rules{
+        .structural = {},
+        .logical = {
+            invariant::for_each_item<SampleEntity, &SampleEntity_private::min_value>,
+            invariant::for_each_item<SampleEntity, &SampleEntity_private::max_value>,
+            &SampleEntity_private::some_logic_fieldwide_invariant,
+        },
+    };
+
+    //
+    // Tag (exists for even SampleEntity::data_field)
+    struct Tag_private : Tag::Service {
+        static void modulus_clamped(Writing commit) {
+            auto g = ops::global::modifier<Tag>(commit);
+            if (g->modulus > integer{0}) return;
+            g->modulus = integer{1};
+        }
+
+        static bool needs_tag(Reading world, SampleEntity::Id, Node<SampleEntity> node) {
+            const auto mod = ops::global::get<Tag>(world)->modulus;
+            return (node->data_field % mod) == integer{0};
+        }
+    };
+
+    const Norms Tag::rules{
+        .structural = {
+            invariant::anchor_attribute<SampleEntity, Tag>,
+        },
+        .logical = {
+            &Tag_private::modulus_clamped,
+            invariant::existence<Tag, SampleEntity, &Tag_private::needs_tag>,
+        },
+    };
+
+    //
+    // Remnant
+    struct Remnant_private : Remnant::Service {
+        static void construct(Writing permit, Id id, Node<Tag>) {
+            repo::Sequence sequence(permit);
+            const auto trivia = ops::particle::create<Trivia>(sequence, Trivia::Quantum{});
+            ops::particle::create<Remnant>(
+                sequence,
+                id,
+                Quantum{
+                    .power = ops::particle::get<SampleEntity>(sequence, id).data_field / ops::global::get<Tag>(sequence)->modulus,
+                    .trivia = trivia,
+                });
+        }
+
+        static auto renmant_calculated(Reading world, Id id, const Quantum& before) -> ItemChange {
+            const auto expected_power = ops::particle::get<SampleEntity>(world, id).data_field / ops::global::get<Tag>(world)->modulus;
+            auto after = before;
+            after.power = expected_power;
+            if (ops::particle::equal<Remnant>(after, before)) return {};
+            return after;
+        }
+    };
+
+    const Norms Remnant::rules{
+        .structural = {
+            invariant::isomorphic<Tag, Remnant, &Remnant_private::construct>,
+            invariant::anchor<Trivia, Remnant, &Remnant::Quantum::trivia>,
+        },
+        .logical = {
+            invariant::for_each_item<Remnant, &Remnant_private::renmant_calculated>,
+        },
+    };
+
+    //
+    // SampleComponent
+    struct SampleComponent_private : SampleComponent::Service {
+        static void private_construct(Writing commit, Id id, Node<SampleEntity>) {
+            ops::particle::create<SampleComponent>(commit, id, Quantum{});
+        }
+    };
+
+    void SampleComponent::Service::example_op_multiply(Writing commit, Id id, integer factor) {
+        ops::particle::modifier<SampleEntity>(commit, id)->data_field *= factor;
+    }
+
+    auto SampleComponent::Service::example_op_div_with_remainder(Writing commit, Id id, integer divisor) -> integer {
+        const auto safe = divisor > integer{0} ? divisor : integer{1};
+        auto m = ops::particle::modifier<SampleEntity>(commit, id);
+        const auto remainder = (m->data_field % safe);
+        m->data_field /= safe;
+        return remainder;
+    }
+
+    const Norms SampleComponent::rules{
+        .structural = {
+            invariant::isomorphic<SampleEntity, SampleComponent, &SampleComponent_private::private_construct>,
+        },
+        .logical = {},
+    };
+
+    //
+    // SampleAttribute
+    struct SampleAttribute_private : SampleAttribute::Service {
+        static bool need_even(Reading, SampleEntity::Id, Node<SampleEntity> node) {
+            return (node->data_field % integer{2}) == integer{0};
+        }
+
+        static void construct(Writing commit, Id id, Node<SampleEntity>) {
+            const auto trivia = ops::particle::create<Trivia>(commit, Trivia::Quantum{});
+            ops::particle::create<SampleAttribute>(
+                commit,
+                id,
+                SampleAttribute::Quantum{
+                    .main_anchor = trivia,
+                    .main_dummy = trivia,
+                });
+        }
+    };
+
+    const Norms SampleAttribute::rules{
+        .structural = {
+            invariant::anchor_attribute<SampleEntity, SampleAttribute>,
+            invariant::anchor<Trivia, SampleAttribute, &SampleAttribute::Quantum::main_anchor>,
+        },
+        .logical = {
+            invariant::existence<SampleAttribute, SampleEntity, &SampleAttribute_private::need_even, &SampleAttribute_private::construct>,
+        },
+    };
+
+    auto SampleAttribute::Service::create_complex_constructor(Writing commit, SampleEntity::Id existing) -> Id {
+        repo::Accumulator tx(commit);
+        const auto& existing_entity = ops::particle::get<SampleEntity>(tx, existing);
+
+        auto data_field = existing_entity.data_field;
+        if ((data_field % 2) != 0) data_field += 1;
+
+        const auto created = ops::particle::create<SampleEntity>(tx, SampleEntity::Quantum{ data_field });
+        ops::particle::create<SampleAttribute>(
+            tx,
+            created,
+            SampleAttribute::Quantum{
+                .main_anchor = existing,
+                .main_dummy = existing,
+            }
+        );
+        return created;
+    }
 }

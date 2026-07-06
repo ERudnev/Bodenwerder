@@ -12,7 +12,7 @@ namespace model {
         struct Global {
             int globalValue{};
         };
-        using Reactions = DefaultReactions;
+        // REWORK: using Reactions = DefaultReactions;
     };
 }
 } // namespace
