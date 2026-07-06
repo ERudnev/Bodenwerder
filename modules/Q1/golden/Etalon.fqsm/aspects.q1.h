@@ -61,7 +61,7 @@ namespace Q1_fQSM::Etalon {
         struct Quantum {
             integer power;
         };
-        //@ '!' reactions aka normalizers: Internals + customAspectReactions (.cpp)
+        //@ custom because of all-reaction !sync(~Tag)
         struct Internals;
         static const Behavior customAspectReactions();
     };
@@ -105,6 +105,6 @@ namespace Q1_fQSM::Etalon {
     //@ Hint: '=' functions aka "item modifiers" are meaningless for Archetype (has no own state/quantum)
     struct Notebook : Archetype<Notebook> {
         static auto notes_count(Reading, SampleEntity::Id) -> integer;
-        static auto add_note(Writing, decltype(Note::Quantum::text)) -> Note::Id;
+        static auto add_note(Writing, SampleEntity::Id, decltype(Note::Quantum::text)) -> Note::Id;
     };
 }

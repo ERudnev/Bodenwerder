@@ -131,9 +131,19 @@ This is not an ordinary function parameter list. It is a DSL-level declaration o
 For reactions declared in the `one` block, the scope is expressed in the language of changes related to one item.
 
 - `!name(-one)` means reaction to deletion of one item
-- `!name(=one)` means reaction to change of one item
+- `!name(=one)` means one-item-local normalization on item change
+- `!name(>one)` means one-item-triggered world-aware corrector on item change
 
-The `-` and `=` symbols intentionally reuse the same visual vocabulary as operation classes, but here they do not mean "public command". Here they describe the kind of item-level change being analyzed by the reaction.
+The symbol inside `one` reactions therefore carries two pieces of meaning:
+
+- what kind of item event wakes the reaction up
+- what kind of worker shape the projection is expected to use
+
+Practical reading:
+
+- `-one` -> deletion-triggered worker
+- `=one` -> local per-item corrector
+- `>one` -> world-aware per-item corrector
 
 ### `all` reactions
 
@@ -149,11 +159,15 @@ Canonical examples from this etalon:
 - `!some_logic_fieldwide_invariant(~)` means aspect-wide analysis over the owning type only
 - `!limit_by_tag_count(~Tag)` means aspect-wide analysis over the owning type plus `Tag`
 
+Canonical example from `one` reactions:
+
+- `!sync(>one)` means wake up on changed `Remnant` items and compute a corrected `Quantum` with world access
+
 ### Why
 
 This distinction is easy to lose if one reads `!name(...)` as if it were just another function signature. It is not. The parentheses describe reaction analysis scope:
 
-- in `one`, scope is phrased as item-level change kind
+- in `one`, scope is phrased as item-level wakeup plus worker shape
 - in `all`, scope is phrased as analyzed source types
 
 That difference is part of Q1 semantics and must survive projection.

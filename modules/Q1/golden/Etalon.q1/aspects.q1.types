@@ -35,7 +35,7 @@ namespace Q1_fQSM
     component Remnant of Tag
       one
         power: integer @cache// == SampleEntity::data_field / Tag::Modulus (Tag quarantees integer)
-        !sync(=one)
+        !sync(>one)
 
     component SampleComponent of SampleEntity
       one
