@@ -35,7 +35,7 @@ with<SomeComponent>::update(main, id).name = "after";
 | Удобство API | guard-объект, нужен scope | `Quantum&`, без лишнего блока |
 | Move/copy guard | запрещены | не применимо (ссылка) |
 
-Файлы: `processing/transactions/quantal.h`, alias `manipulation/item.h` → `using update = Quantal<Meta>`.
+Файлы: `processing/orchestrators/quantal.h`, alias `manipulation/item.h` → `using update = Quantal<Meta>`.
 
 ---
 
@@ -148,7 +148,7 @@ if (auto q = with<Meta>::change(context, id))
 |------|------|
 | `interface/fQSM/aspect/action.h` | целевое объявление `update` / `change` |
 | `interface/fQSM/manipulation/item.h` | черновик `quantum::change`, текущий alias `update = Quantal` |
-| `interface/fQSM/processing/transactions/quantal.h` | текущий микро-RAII (deprecated path) |
+| `interface/fQSM/processing/orchestrators/quantal.h` | текущий микро-RAII (deprecated path) |
 | `interface/fQSM/manipulation/_experimental.h` | `with` = `call_action<Meta>` |
 | `test/low_level/manipulators.cpp` | эталонный неудобный RAII-фрагмент для замены |
 

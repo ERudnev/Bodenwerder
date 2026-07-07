@@ -10,9 +10,14 @@
 Минимальный пример в Q1:
 
 ```q1
+one
+  !itemRule(-one) // reacts on item deleted
+  !itemRule(=one) // reacts on item changed
+  !itemRule(>one) // (proposal, not done) reacts on item context changed
+  !itemRule(+one) // (proposal, not done) reacts on item added
 all
-  !localRule()
-  !globalRule(BoldEntity)
+  !localRule(~)
+  !globalRule(~BoldEntity)
 ```
 
 Его рабочая форма в C++:
@@ -35,8 +40,8 @@ reaction::aspect_wide<MyAttribute, BoldEntity>(&MyAttribute::Internals::globalRu
 
 Это соответствует смыслу DSL:
 
-- `!localRule()` не указывает тип явно, потому что собственный аспект уже неявно присутствует;
-- `!globalRule(BoldEntity)` не заменяет собственный аспект, а добавляет к нему ещё один источник событий.
+- `!localRule(~)` не указывает тип явно, потому что собственный аспект уже неявно присутствует;
+- `!globalRule(~BoldEntity)` не заменяет собственный аспект, а добавляет к нему ещё один источник событий.
 
 Таким образом, `all`-реакция всегда остаётся реакцией аспекта-владельца, даже если фактически анализирует изменения внешнего типа.
 

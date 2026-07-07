@@ -1,65 +1,26 @@
-﻿# DAQL Workspace
+﻿# Bodenwerder
 
-**DAQL** (Domain Agnostic Quantization Language) is an experimental workspace dedicated to the description, execution and exploration of quantized world models.
+*Private research workshop*
 
-The project combines a domain-agnostic specification language, execution mechanisms and practical experiments built on top of them.
+ - I think in different language; translating into English is not hard, but keeping everything in two languages is. The blog, informal thoughts, and many of the harder definitions (which get revised from time to time) stay in my mother tongue.
+ - Some ideas here may look uncommon; some terms do too. I am looking for the best words that don't lie, every day. Sorry in advance if some terms do not look final — that's because they are not.
 
-The long-term goal of DAQL is to provide a unified approach for describing structured state, defining its behavior and executing resulting world models in C++.
+An experimental workspace for describing, executing, and exploring quantized world models.
 
----
+**Ideas:**
 
-## Components
+- Data first, operations later.
+- Any system is just a `map<type, map<Id, Value>>`.
+- Any change is just a `map<type, map<Id, Value>>`.
+- Any operation is just a function `(Context, type, identity) -> change`.
 
-### Q1
+## How this documentation is organized
 
-Q1 is a specification language used to describe world models.
-
-A Q1 document defines the structure of a domain, its types, relationships, actions, reactions and other elements required to construct an executable model.
-
-Q1 serves as the primary authoring language of the workspace.
-
----
-
-### FQSM
-
-FQSM (Flat Quantized State Mechanism) is the execution mechanism used by generated models.
-
-It provides the runtime infrastructure required to store, access, modify and synchronize quantized state.
-
-FQSM defines the operational layer on which Q1-generated systems are executed.
-
----
-
-### Raidenmamare
-Small visualization mechanism for current research. Written on Q1 language and animated with fQSM runtime.
-Literally, it is fat OpenGL tutorial "your first triangle" developed a bit.
-
----
-
-### Aeris
-
-Aeris is the primary application project developed within the DAQL workspace.
-
-The project serves both as a practical target and as a long-term validation environment for DAQL and FQSM concepts.
-
-Additional documentation will be provided separately.
-
----
-
-## Philosophy
-
-DAQL is based on a simple separation of responsibilities:
-
-* Q1 describes a world.
-* FQSM executes a world.
-* Applications define concrete domains and behaviors.
-
-This separation allows structural models, behavioral models and execution mechanisms to evolve independently while remaining compatible through a common language and execution layer.
-
----
+- **Blog** — [blog/](blog/)
+- **Ideas and debt** — [tech_stuff/](tech_stuff/)
+- **Q1** — language for model definitions: [aspects etalon](Q1/aspects.q1.types.md)
+- **Aeris** — proof-of-concept game for this codebase: [reading](Aeris/reading/fragments/aeris.md), [engineering](Aeris/engineering/design_tech.md)
 
 ## Status
 
-DAQL is an active research and development project.
-
-Concepts, APIs, naming and implementation details are expected to evolve as the system matures.
+Active research and development. Concepts, APIs, naming, and implementation details are expected to change as the system matures.

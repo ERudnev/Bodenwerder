@@ -1,4 +1,4 @@
-# Разделить Detection/Evaluation/Correction для части реакций
+# Reaction == Detection->Evaluation->Correction
 
 Сейчас в реакциях fQSM/Q1 слиплись сразу несколько разных ролей.
 
