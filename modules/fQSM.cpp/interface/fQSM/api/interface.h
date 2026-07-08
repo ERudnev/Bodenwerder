@@ -55,6 +55,9 @@ namespace fqsm::api {
     template<typename Meta>
     using Archetype = ::fqsm::aspect::Archetype<Meta>;
 
+    template<typename Meta, meta::category::Any PrimaryType>
+    using Manipulation = ::fqsm::aspect::Manipulation<Meta, PrimaryType>;
+
     // Types graph
     using Schema = fqsm::Schema;
 

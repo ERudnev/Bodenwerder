@@ -74,4 +74,12 @@ namespace fqsm::aspect {
     struct Archetype : actions::Archetype {
         using BaseActions = Meta;
     };
+
+    template<typename Meta, meta::category::Any PrimaryType>
+    struct Manipulation : actions::Manipulation {
+        using PrimaryAspect = PrimaryType;
+        using Id = typename PrimaryType::Id;
+        using Quantum = typename PrimaryType::Quantum;
+        using BaseActions = Meta;
+    };
 }

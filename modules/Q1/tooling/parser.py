@@ -469,11 +469,15 @@ def _parse_aspect_blocks(cursor: Cursor, parent_indent: int) -> list[dict[str, A
     return blocks
 
 
-def _parse_archetype_members(cursor: Cursor, parent_indent: int) -> list[dict[str, Any]]:
+def _parse_operation_only_members(cursor: Cursor, parent_indent: int) -> list[dict[str, Any]]:
     indent = _child_indent(cursor, parent_indent)
     if indent is None:
         return []
     return _parse_generic_members(cursor, indent, allow_const=False)
+
+
+def _parse_archetype_members(cursor: Cursor, parent_indent: int) -> list[dict[str, Any]]:
+    return _parse_operation_only_members(cursor, parent_indent)
 
 
 def _parse_struct(cursor: Cursor, line: Line) -> dict[str, Any]:
@@ -560,6 +564,21 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             members=_parse_archetype_members(cursor, line.indent),
             comment=line.comment,
         )
+    if category == "manipulation":
+        match = re.fullmatch(r"manipulation\s+([A-Za-z_][A-Za-z0-9_]*)\s+of\s+([A-Za-z_][A-Za-z0-9_]*)", text)
+        if not match:
+            raise ParseError("Malformed manipulation declaration", line.number)
+        name, owner = match.groups()
+        return _node(
+            "AspectDecl",
+            line.number,
+            category=category,
+            name=name,
+            owner=owner,
+            element=None,
+            members=_parse_operation_only_members(cursor, line.indent),
+            comment=line.comment,
+        )
     raise ParseError(f"Unsupported aspect category: {category!r}", line.number)
 
 
@@ -596,6 +615,8 @@ def _parse_declaration(cursor: Cursor, indent: int) -> dict[str, Any]:
         return _parse_aspect(cursor, line, "group")
     if text.startswith("archetype "):
         return _parse_aspect(cursor, line, "archetype")
+    if text.startswith("manipulation "):
+        return _parse_aspect(cursor, line, "manipulation")
     raise ParseError(f"Unsupported declaration: {text!r}", line.number)
 
 

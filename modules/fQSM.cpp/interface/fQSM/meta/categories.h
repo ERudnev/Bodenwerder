@@ -31,6 +31,8 @@ namespace fqsm::meta::category {
 
         template<typename Meta>
         concept Autonomy = not musthave::Host<Meta>;
+        template<typename Meta>
+        concept Primary = requires { typename Meta::PrimaryAspect; };
     }
 
     // abstractions: can not be final concepts to be usef for domain archetypes:
@@ -56,5 +58,8 @@ namespace fqsm::meta::category {
 
     template<typename Meta>
     concept Group = Parasitic<Meta> and musthave::Worker<Meta>; // redesigned: "and musthave::Passport<Meta>"
+
+    template<typename Meta>
+    concept Manipulation = musthave::Primary<Meta> and musthave::Id<Meta> and musthave::Quantum<Meta>;
 
 }

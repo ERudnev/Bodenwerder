@@ -121,6 +121,10 @@ namespace fqsm::aspect::actions {
         // TODO: consider to add type lists and other stuff here
     };
 
+    struct Manipulation : Base {
+        // operation-only facade; Id/Quantum aliases come from PrimaryAspect in assembly layer
+    };
+
 }
 
 // Impl

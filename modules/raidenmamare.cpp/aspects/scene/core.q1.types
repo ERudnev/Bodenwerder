@@ -14,8 +14,8 @@ namespace rmmr
     group<Camera> of Core
     group<Light> of Core
 
-    archetype Interface
-      >createScene()->#Core
-      >createRawNode(#Core, Locator)->#Node
-      >createCamera(#Core, Locator, one<Camera>)->#Camera
-      >createLight(#Core, Locator, one<Light>)->#Light
+    manipulation Interface of Core
+      >createScene()->#
+      >createRawNode(#, Locator)->#Node
+      >createCamera(#, Locator, one<Camera>)->#Camera
+      >createLight(#, Locator, one<Light>)->#Light

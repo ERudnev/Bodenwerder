@@ -115,14 +115,18 @@ def test_parse_quantum_type_of_expression() -> None:
     text = """
 namespace rmmr
   namespace scene
-    archetype Interface
-      >createRawNode(#Core, one<Node>) -> #Node
-      >createCamera(#Core, one<Node>, one<Camera>) -> #Camera
+    manipulation Interface of Core
+      >createRawNode(#, one<Node>) -> #Node
+      >createCamera(#, one<Node>, one<Camera>) -> #Camera
 """
     ast = q1_parser.parse_text(text, source="<snippet>")
     iface = ast["declarations"][0]["declarations"][0]["declarations"][0]
+    assert iface["category"] == "manipulation"
+    assert iface["owner"] == "Core"
     raw_node = iface["members"][0]
     create_camera = iface["members"][1]
+    assert raw_node["params"][0]["type"]["kind"] == "IdType"
+    assert raw_node["params"][0]["type"]["target"] is None
     assert raw_node["params"][1]["type"]["kind"] == "QuantumTypeOf"
     assert raw_node["params"][1]["type"]["target"]["raw"] == "Node"
     assert create_camera["params"][2]["type"]["kind"] == "QuantumTypeOf"

@@ -39,6 +39,7 @@ aspect_decl         ::= entity_decl
                       | component_decl
                       | group_decl
                       | archetype_decl
+                      | manipulation_decl
                       ;
 
 entity_decl         ::= "entity" IDENT aspect_body_or_one_line ;
@@ -46,6 +47,7 @@ attribute_decl      ::= "attribute" IDENT "of" IDENT aspect_body ;
 component_decl      ::= "component" IDENT "of" IDENT aspect_body ;
 group_decl          ::= "group" "<" IDENT ">" "of" IDENT [ aspect_body ] ;
 archetype_decl      ::= "archetype" IDENT INDENT archetype_member+ DEDENT ;
+manipulation_decl   ::= "manipulation" IDENT "of" IDENT INDENT manipulation_member+ DEDENT ;
 
 aspect_body_or_one_line
                     ::= aspect_body
@@ -78,6 +80,10 @@ all_member          ::= field_decl
                       ;
 
 archetype_member    ::= query_op
+                      | factory_op
+                      ;
+
+manipulation_member ::= query_op
                       | factory_op
                       ;
 

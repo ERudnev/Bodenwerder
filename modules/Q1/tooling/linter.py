@@ -157,6 +157,7 @@ def lint_type_expr(
     diags: list[Diagnostic],
     line: int,
     entity_local_types: dict[str, dict[str, Any]] | None = None,
+    primary_aspect: str | None = None,
 ) -> None:
     kind = expr["kind"]
     if kind == "BuiltinType":
@@ -164,16 +165,20 @@ def lint_type_expr(
     if kind == "ExternalType":
         return
     if kind == "OptionalType":
-        lint_type_expr(expr["inner"], namespace, symbols, diags, line, entity_local_types)
+        lint_type_expr(expr["inner"], namespace, symbols, diags, line, entity_local_types, primary_aspect)
         return
     if kind in {"AnchorType", "ControlType", "QuantumTypeOf"}:
-        lint_type_expr(expr["target"], namespace, symbols, diags, line, entity_local_types)
+        lint_type_expr(expr["target"], namespace, symbols, diags, line, entity_local_types, primary_aspect)
         if kind == "QuantumTypeOf" and expr["target"]["kind"] == "NamedType":
             if not resolve_name(expr["target"]["parts"], namespace, symbols):
                 warn(diags, line, "unknown-quantum-type", f"Unknown aspect in one<...>: {expr['target']['raw']}")
         return
     if kind == "IdType":
         target = expr.get("target")
+        if target is None and primary_aspect is not None:
+            if not resolve_name([primary_aspect], namespace, symbols):
+                warn(diags, line, "unknown-primary-id", f"Unknown primary aspect for bare #: {primary_aspect}")
+            return
         if target and not resolve_name([target], namespace, symbols):
             warn(diags, line, "unknown-id-target", f"Unknown id target: {target}")
         return
@@ -207,6 +212,7 @@ def lint_members(
     context: str,
     block_role: str | None = None,
     entity_local_types: dict[str, dict[str, Any]] | None = None,
+    primary_aspect: str | None = None,
 ) -> None:
     seen: dict[str, dict[str, Any]] = {}
     for member in members:
@@ -219,17 +225,17 @@ def lint_members(
                 seen[key] = member
 
         if member["kind"] == "FieldDecl":
-            lint_type_expr(member["type"], namespace, symbols, diags, member["line"], entity_local_types)
+            lint_type_expr(member["type"], namespace, symbols, diags, member["line"], entity_local_types, primary_aspect)
         elif member["kind"] == "ConstField":
-            lint_type_expr(member["type"], namespace, symbols, diags, member["line"], entity_local_types)
+            lint_type_expr(member["type"], namespace, symbols, diags, member["line"], entity_local_types, primary_aspect)
         elif member["kind"] == "TypeAliasDecl":
             if member["target"] is not None:
-                lint_type_expr(member["target"], namespace, symbols, diags, member["line"], entity_local_types)
+                lint_type_expr(member["target"], namespace, symbols, diags, member["line"], entity_local_types, primary_aspect)
         elif member["kind"] in {"QueryOp", "CommandOp", "FactoryOp"}:
             for param in member["params"]:
-                lint_type_expr(param["type"], namespace, symbols, diags, member["line"], entity_local_types)
+                lint_type_expr(param["type"], namespace, symbols, diags, member["line"], entity_local_types, primary_aspect)
             if member["return_type"] is not None:
-                lint_type_expr(member["return_type"], namespace, symbols, diags, member["line"], entity_local_types)
+                lint_type_expr(member["return_type"], namespace, symbols, diags, member["line"], entity_local_types, primary_aspect)
         elif member["kind"] == "ReactionDecl":
             scope = member["scope"]
             if block_role == "one" and scope["kind"] != "OneScope":
@@ -294,6 +300,25 @@ def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagn
                             warn(diags, member["line"], "reaction-in-archetype", "Current golden archetype subset does not use reactions")
                         if member["kind"] in {"FieldDecl", "ConstField", "TypeAliasDecl"}:
                             warn(diags, member["line"], "data-in-archetype", "Current golden archetype subset is operation-only")
+                    continue
+
+                if decl["category"] == "manipulation":
+                    members = decl.get("members", [])
+                    lint_members(
+                        members,
+                        namespace,
+                        symbols,
+                        diags,
+                        f"manipulation {decl['name']}",
+                        primary_aspect=owner,
+                    )
+                    for member in members:
+                        if member["kind"] == "CommandOp":
+                            warn(diags, member["line"], "command-in-manipulation", "Manipulation subset does not use `=` operations")
+                        if member["kind"] == "ReactionDecl":
+                            warn(diags, member["line"], "reaction-in-manipulation", "Manipulation subset does not use reactions")
+                        if member["kind"] in {"FieldDecl", "ConstField", "TypeAliasDecl"}:
+                            warn(diags, member["line"], "data-in-manipulation", "Manipulation subset is operation-only")
                     continue
 
                 block_roles: set[str] = set()
