@@ -114,7 +114,7 @@ void serialization()
         ask::schema::aspect<CustomQuantumCodec>(),
     });
 
-    context::Realm main(schema);
+    establish::Realm main(schema);
 
     with<BoxSerializable>::create(main, {.temp_field = {{7, "seven"}}});
     with<CustomFieldCodec>::create(main, {.jobs = {.entries = {{1, "one"}, {2, "two"}}}, .goodField = "some text"});

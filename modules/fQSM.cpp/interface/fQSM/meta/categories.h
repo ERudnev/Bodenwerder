@@ -7,15 +7,18 @@
 namespace fqsm::meta::category {
 
     namespace musthave {
+        template<typename T>
+        concept Serialization = base::serialization::serializable<T>;
+
         template<typename Meta>
         concept Id = requires(const typename Meta::Id& id) {
             typename Meta::Id;
             { id.generate_random() } -> std::same_as<typename Meta::Id>;
-        } and base::serialization::serializable<typename Meta::Id>;
+        };
 
         template<typename Meta>
-        concept Quantum = requires { typename Meta::Quantum; }
-            and base::serialization::serializable<typename Meta::Quantum>;
+        concept Quantum = requires { typename Meta::Quantum; };
+            //and base::serialization::serializable<typename Meta::Quantum>;
 
         template<typename Meta>
         concept Worker = requires { typename Meta::WorkerAspect; };

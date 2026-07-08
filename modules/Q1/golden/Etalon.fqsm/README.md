@@ -220,6 +220,7 @@ When reading an aspect header in this folder, use this mental model:
 1. `Quantum`, `Global`, and `Always` come from Q1 data blocks.
 2. `Actions` contains only the public callable API.
 3. `Internals` plus `customAspectReactions()` mean that Q1 declared or implied nontrivial behavior.
-4. Missing data in Q1 must not quietly reappear in C++.
+4. `Internals` in `.cpp` may also hold private helpers when projection needs them — even if (3) does not apply.
+5. Missing data in Q1 must not quietly reappear in C++.
 
 That is the intended discipline for this etalon.

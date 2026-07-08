@@ -4,18 +4,22 @@
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
+#include <stdexcept>
 
 namespace rmmr {
-    struct Viewport_private : Viewport::Operations {
-        static auto window(Reading world, Id id) -> GLFWwindow* {
-            const auto& quantum = ops::particle::get<Viewport>(world, id);
-            return Device::Operations::provide(world, quantum.device);
+    struct Viewport::Internals : Viewport::DefaultInternals {
+        static auto device_window_handle(Reading context, Device::Id device) -> Window::Handle {
+            const auto& deviceQuantum = with<Device>::get(context, device);
+            if (!with<Window>::exists(context, deviceQuantum.window)) {
+                throw std::runtime_error("Viewport: device window is not initialized");
+            }
+            return with<Window>::get(context, deviceQuantum.window).handle;
         }
     };
 
-    void Viewport::Operations::activate(Reading world, Id id) {
-        const auto& quantum = ops::particle::get<Viewport>(world, id);
-        glfwMakeContextCurrent(Viewport_private::window(world, id));
+    void Viewport::Actions::activate(Reading context, Id id) {
+        const auto& quantum = get(context, id);
+        glfwMakeContextCurrent(Internals::device_window_handle(context, quantum.device));
 
         const int x = static_cast<int>(quantum.origin.x);
         const int y = static_cast<int>(quantum.origin.y);
@@ -24,9 +28,9 @@ namespace rmmr {
         glViewport(x, y, width, height);
     }
 
-    void Viewport::Operations::clear(Reading world, Id id) {
-        const auto& quantum = ops::particle::get<Viewport>(world, id);
-        glfwMakeContextCurrent(Viewport_private::window(world, id));
+    void Viewport::Actions::clear(Reading context, Id id) {
+        const auto& quantum = get(context, id);
+        glfwMakeContextCurrent(Internals::device_window_handle(context, quantum.device));
         glClearColor(
             quantum.clear_color.x,
             quantum.clear_color.y,
@@ -34,9 +38,4 @@ namespace rmmr {
             quantum.clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
-
-    const Invariants Viewport::invariants{
-        .structural = {},
-        .logical = {},
-    };
 }

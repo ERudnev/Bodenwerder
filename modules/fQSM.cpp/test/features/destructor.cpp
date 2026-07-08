@@ -44,7 +44,7 @@ void destructor()
         ask::schema::aspect<Handler>(),
     });
 
-    context::Realm main(schema);
+    establish::Realm main(schema);
 
     const auto resourceId = with<Resource>::create(main, {"owned"});
     const auto handlerId = with<Handler>::create(main, {.resourceId = resourceId});

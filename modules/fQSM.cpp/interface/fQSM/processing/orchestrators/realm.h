@@ -7,7 +7,7 @@
 #include <fQSM/processing/contexts/review.h>
 #include <fQSM/processing/transaction.h>
 
-namespace fqsm::processing {
+namespace fqsm::processing::orchestrator {
 
     struct Realm : Transaction {
         Realm(Schema schema) : reality(schema) {}
@@ -34,7 +34,7 @@ namespace fqsm::processing {
 }
 
 // Impl:
-namespace fqsm::processing {
+namespace fqsm::processing::orchestrator {
     template<category::Any Meta>
     Realm::operator Direct<Meta>() {
         auto context = std::make_shared<context::Direct>(context::Direct{

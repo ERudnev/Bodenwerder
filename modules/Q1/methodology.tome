@@ -90,11 +90,19 @@ namespace Q1 {
       Нам нужно явно отвечать на вопрос: "на какие изменения данных модели должен реагировать данный аспект".
   }
 
+  projection_internals_for_cpp_helpers: @Statement(~0.85) {
+    Core:
+      Полноценный `struct Aspect::Internals : Aspect::DefaultInternals` в проекции обязателен, если Q1 объявил `!`, `anchor<>` или `control<>` (плюс `customAspectReactions()`).
+      Если Q1 этого не требует, но в `.cpp` нужны приватные static-хелперы — тот же `Internals` предпочтительнее безымянного namespace или отдельного `*_private`: хелперы живут рядом с воркерами инвариантов, заголовок объявляет `struct Internals;`.
+      Пустой `customAspectReactions() { return {}; }` при этом допустим.
+    Reason:
+      Один узнаваемый «приватный подкласс аспекта» вместо разрозненных file-local обходов; граница публичного API не размывается.
+  }
+
   domain_logic_is_separate_layer: @Statement(~0.85) {
     Core:
       Публичный доменный namespace (например `Q1_iQSM::...`) содержит структуру данных аспектов (Quantum/Global) и структуру инвариантов.
-      Прикладная логика (update/construct и утилиты) размещается в `.cpp` как локальные статические функции/типы (например `Aspect_private`)
-      и подключается доменом только ссылками из `rules`.
+      Прикладная логика (update/construct, утилиты, glue между аспектами) размещается в `.cpp` в `struct Aspect::Internals : Aspect::DefaultInternals` и подключается из `Actions` и `customAspectReactions()`.
     Reason:
       Данные и логика имеют разные жизненные циклы и уровни стабильности. Разделение устраняет утечки утилит в публичный API,
       удерживает заголовки чистыми и делает границы ответственности очевидными.

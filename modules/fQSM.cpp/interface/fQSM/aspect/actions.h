@@ -15,7 +15,7 @@
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/processing/_forwards.h>
-#include <fQSM/processing/transactions/quantal.h>
+#include <fQSM/processing/orchestrators/quantal.h>
 #include <fQSM/features/behavior.h>
 
 // rename to fqsm::actions::categories {
@@ -61,8 +61,8 @@ namespace fqsm::aspect::actions {
         static auto get_global(Reading) -> const Global&;
         static void remove(Writing, Id);
         // elementary (RAII):
-        static auto modify(Writing, Id) -> ::fqsm::processing::transaction::Quantal<Meta>;
-        static auto modify_global(Writing) -> ::fqsm::processing::transaction::Global<Meta>;
+        static auto modify(Writing, Id) -> ::fqsm::processing::orchestrator::Quantal<Meta>;
+        static auto modify_global(Writing) -> ::fqsm::processing::orchestrator::Global<Meta>;
     };
 
 
@@ -83,7 +83,7 @@ namespace fqsm::aspect::actions {
         using Quantum = typename Any<Meta>::Quantum;
         using Parent = Standalone<HostType>;
 
-        static void create_for(Writing context, Id id, Quantum val);
+        static void extend(Writing context, Id id, Quantum val);
 
         // experimental: kills parasite AND its host
         static void kraken(Writing context, Id id);
@@ -106,11 +106,11 @@ namespace fqsm::aspect::actions {
         using Client = ElementType;
 
         // like public interface:
-        static void create_for(Writing, Id<HostType>); // simplier version of Parasitic::create_for
+        static void extend(Writing, Id<HostType>); // simplier version of Parasitic::extend
         static auto addElement(Writing, Own::Id me, Client::Quantum) -> Client::Id;
         static void deleteElement(Writing, Own::Id me, Client::Id);
     private:
-        using Parasitic<Meta, HostType>::create_for;
+        using Parasitic<Meta, HostType>::extend;
     };
 
     // Interpretation category ations ant typedefs:
@@ -174,15 +174,15 @@ namespace fqsm::aspect::actions {
     template<typename Meta>
     auto Any<Meta>
     ::modify(Writing context, Id id)
-    -> ::fqsm::processing::transaction::Quantal<Meta> {
-        return ::fqsm::processing::transaction::Quantal<Meta>{context, id};
+    -> ::fqsm::processing::orchestrator::Quantal<Meta> {
+        return ::fqsm::processing::orchestrator::Quantal<Meta>{context, id};
     }
 
     template<typename Meta>
     auto Any<Meta>
     ::modify_global(Writing context)
-    -> ::fqsm::processing::transaction::Global<Meta> {
-        return ::fqsm::processing::transaction::Global<Meta>{context};
+    -> ::fqsm::processing::orchestrator::Global<Meta> {
+        return ::fqsm::processing::orchestrator::Global<Meta>{context};
     }
 
     //
@@ -200,7 +200,7 @@ namespace fqsm::aspect::actions {
     // Parasitic:
     template<typename Meta, typename HostType>
     void Parasitic<Meta, HostType>
-    ::create_for(Writing context, Id id, Quantum val) {
+    ::extend(Writing context, Id id, Quantum val) {
         context.workers_interface().updates<Meta>().put_add(id, std::move(val));
     }
 
@@ -218,7 +218,7 @@ namespace fqsm::aspect::actions {
     // Group:
     template<typename Meta, typename HostType, category::Entity ElementType>
     void Group<Meta, HostType, ElementType>
-    ::create_for(Writing context, Id<HostType> id) {
+    ::extend(Writing context, Id<HostType> id) {
         context.workers_interface().updates<Meta>().put_add(id, {});
     }
 

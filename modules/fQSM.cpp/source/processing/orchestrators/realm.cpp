@@ -1,12 +1,12 @@
 
-#include <fQSM/processing/transactions/realm.h>
+#include <fQSM/processing/orchestrators/realm.h>
 
 #include <fQSM/model/complex/patch.h>
 #include <fQSM/processing/_forwards.h>
-#include <fQSM/processing/jobs/normalization.h>
+#include <fQSM/processing/algorithms/normalization.h>
 #include <fQSM/utility/logging.h>
 
-namespace fqsm::processing {
+namespace fqsm::processing::orchestrator {
 
     auto Realm::writing() -> Writing {
         auto patch = base::make_shared<model::complex::Patch>(reality.schema);
@@ -34,7 +34,7 @@ namespace fqsm::processing {
     void Realm::accept(Context::PatchRef patch) {
         _DBG_TX_("realm: accept patch={}", utility::format_patch(fqsm::freeze(patch)));
         lastResult = {};
-        lastResult = jobs::update(reality, patch, {});
+        lastResult = algorithm::update(reality, patch, {});
     }
 
     void Realm::accept_immediate(Rtid::Set affected) {
@@ -42,6 +42,6 @@ namespace fqsm::processing {
         if (affected.empty()) return;
         // TODO: make this as combined PAtch+taint later...
         auto zeroPatch = base::make_shared<Patch>(reality.schema);
-        lastResult = jobs::update(reality, zeroPatch, affected);
+        lastResult = algorithm::update(reality, zeroPatch, affected);
     }
 }

@@ -32,7 +32,7 @@ namespace {
             };
             struct Actions : BaseActions {
                 static void create(Writing context, Body::Id id) {
-                    create_for(context, id, {0});
+                    extend(context, id, {0});
                 }
 
                 static void update(Writing context, int timePassed) {
@@ -56,7 +56,7 @@ namespace {
                 struct Private;
                 static void create(Writing context, Life::Id id) {
                     const auto& body = with<Body>::get(context, id);
-                    create_for(context, id, {body.powerOfMass + 1}); // mass 1kg lives 1 sec
+                    extend(context, id, {body.powerOfMass + 1}); // mass 1kg lives 1 sec
                 }
             };
             struct Internals : DefaultInternals{};
@@ -116,14 +116,14 @@ void killing_feature()
     });
 
     { // Single Stone kraken:
-        context::Realm main(schema);
+        establish::Realm main(schema);
         const auto id = with<archetype::Stone>::spawn(main, 4);
 
         EXPECT_TRUE(main.result().good());
         EXPECT_TRUE(with<Body>::exists(main, id));
 
         {
-            context::Branch branch(main);
+            establish::Branch branch(main);
             with<Death>::kraken(branch, id);
 
             EXPECT_TRUE(main.result().good());
@@ -133,7 +133,7 @@ void killing_feature()
         EXPECT_FALSE(with<Body>::exists(main, id)) << "removed from world after Branch commit";
     }
     { // Lifetime simulation
-        context::Realm main(schema);
+        establish::Realm main(schema);
 
         const auto id = with<archetype::Stone>::spawn(main, 4);
         for (int xx = 0; xx < 100; ++xx)

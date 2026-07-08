@@ -1,10 +1,10 @@
-#include <fQSM/processing/jobs/normalization.h>
+#include <fQSM/processing/algorithms/normalization.h>
 
 #include <format>
 #include <set>
 
 #include <fQSM/processing/_forwards.h>
-#include <fQSM/processing/jobs/integration.h>
+#include <fQSM/processing/algorithms/integration.h>
 #include <fQSM/processing/contexts/review.h>
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/intertype/schema.h>
@@ -12,7 +12,7 @@
 #include <fQSM/utility/logging.h>
 
 // local alias:
-namespace fqsm::processing::jobs {
+namespace fqsm::processing::algorithm {
     static constexpr int temp_defence_normalization_waves = 10;
 
     using Patch = fqsm::model::complex::Patch;
@@ -20,7 +20,7 @@ namespace fqsm::processing::jobs {
 }
 
 // internal part of normalization
-namespace fqsm::processing::jobs::normalization {
+namespace fqsm::processing::algorithm::normalization {
 
     void append(review::Result& dst, review::Result src) {
         dst.critical.insert(dst.critical.end(), src.critical.begin(), src.critical.end());
@@ -123,7 +123,7 @@ namespace fqsm::processing::jobs::normalization {
 
 
 // facade part
-namespace fqsm::processing::jobs {
+namespace fqsm::processing::algorithm {
 
     auto update(model::complex::Reality& state, fqsm::ref<Patch> patch, Rtid::Set taintedLines) -> review::Result {
         const auto result = normalization::normalization(state, patch, taintedLines);

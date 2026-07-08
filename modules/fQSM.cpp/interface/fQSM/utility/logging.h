@@ -25,8 +25,8 @@ namespace fqsm::utility {
 namespace fqsm::utility::detail {
 
     template<typename T>
-    auto format_quantum(const T& value) -> std::string {
-        return base::serialization::to_string(value);
+    auto format_quantum(const T&) -> std::string {
+        return "??";
     }
 
     template<category::Any Meta>

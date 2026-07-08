@@ -16,14 +16,14 @@ int main()
     });
     base::message("...done Schema");
 
-    context::Realm main(schema);
+    establish::Realm main(schema);
 
     base::message("creariing Bold...");
     const auto bold = with<Minimal>::create(main,{});
     base::message("...done Bold");
 
     base::message("creariing MyAttribute...");
-    with<MyAttribute>::create_for(main, bold, {7, -7});
+    with<MyAttribute>::extend(main, bold, {7, -7});
     base::message("...done MyAttribute");
 
     // just log
@@ -34,19 +34,19 @@ int main()
     // provoke "demo" warning of "heawy" update (see Q1 MyAttribute::!localRule()
     {
         base::message("making too many Bolds at once (MyAttribute dont like such updates at once)");
-        context::Branch branch(main);
+        establish::Branch branch(main);
         // 3 new Bold+MyAttribute will be too much for MyAttribute constraints
         // this will provoke transaction failure
         for (int xx = 0; xx < 3; ++xx) {
             const auto id = with<Minimal>::create(branch, {});
-            with<MyAttribute>::create_for(branch, id, { -1 - xx, -1 - xx});
+            with<MyAttribute>::extend(branch, id, { -1 - xx, -1 - xx});
         }
     }
     base::message("Bolds after experimental failure: {}", with<Minimal>::count(main));
 
     // Call Kraken!
     base::message("Bold before Kraken: {}", with<Minimal>::exists(main, bold));
-    with<Tag>::create_for(main, bold, {});
+    with<Tag>::extend(main, bold, {});
     with<Tag>::kraken(main, bold);
     base::message("Bold after Kraken: {}", with<Minimal>::exists(main, bold));
 

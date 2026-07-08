@@ -27,10 +27,15 @@
     '#' : id type constructor (inside type expressions only):  #T == T::id (decode only) ; # == id (local Aspect type; decode only)
     '?' : postfix Optional type constructor (inside type expressions only):  T? == optional<T> (decode only)
 
+  function prefix symbols:
     '?' : declares read-only operation (query) signature
-    '=' : declares state-changing operation (command) signature
-    '>' : declares factory (convenience create) signature; must include return type after `)`: `-> #` for the enclosing aspect’s id, or a concrete type (e.g. `-> S` for a factory inside `struct S`)
-    '!' : declares validator/invariant signature
+    '=' : declares modifier limited with scope of local item (for "one") this Type item set (for "all")
+    '>' : declares effector: may change object state or not, but changes world state. Facrics are effectors (returning '#' or '#T')
+    '!' : declares reaction (normalizator) signature. Has no return parameter. Has no arguments, but defined scope (see section below)
+
+  function scope symbols:
+    '-' : "T::!foo(-one)" reacts on one T element deletion
+    '=' : "T::!foo(=one)" reacts on one T element value changed
 
   reserved:
     'composite' - subjective and scope-dependent "soft" type for building composites of entities/attributes/components

@@ -74,6 +74,7 @@ class Cursor:
 
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 QUALIFIED_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*$")
+IMPORT_RE = re.compile(r'^import\s+"([^"]+)"$')
 
 
 def _external_type_span(text: str) -> int:
@@ -229,7 +230,7 @@ def parse_type_expr(text: str) -> dict[str, Any]:
             "target": [part.strip() for part in target.split("::")],
             "member": member.strip(),
         }
-    builtin = {"integer", "float", "string", "index2", "boolean"}
+    builtin = {"integer", "float", "string", "index2", "boolean", "vec2", "vec3", "vec4", "quat", "mat4"}
     if raw in builtin:
         return {"kind": "BuiltinType", "raw": raw, "name": raw}
     if not QUALIFIED_RE.match(raw):
@@ -419,6 +420,30 @@ def _parse_generic_members(cursor: Cursor, indent: int, allow_const: bool) -> li
     return members
 
 
+def _parse_import(line: Line) -> dict[str, Any]:
+    match = IMPORT_RE.fullmatch(line.content)
+    if not match:
+        raise ParseError("Malformed import; expected import \"logical/path\"", line.number)
+    return _node("ImportDecl", line.number, path=match.group(1), comment=line.comment)
+
+
+def _parse_aspect_local_types(cursor: Cursor, parent_indent: int) -> list[dict[str, Any]]:
+    indent = _child_indent(cursor, parent_indent)
+    if indent is None:
+        return []
+    local_types: list[dict[str, Any]] = []
+    while True:
+        line = cursor.peek()
+        if line is None or line.indent < indent:
+            break
+        if line.indent > indent:
+            raise ParseError("Unexpected indentation in aspect body", line.number)
+        if not line.content.startswith("type "):
+            break
+        local_types.append(_parse_type_alias(cursor.pop()))
+    return local_types
+
+
 def _parse_aspect_blocks(cursor: Cursor, parent_indent: int) -> list[dict[str, Any]]:
     indent = _child_indent(cursor, parent_indent)
     if indent is None:
@@ -467,12 +492,25 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             raise ParseError("Malformed entity declaration", line.number)
         name, inline_one = match.groups()
         blocks: list[dict[str, Any]]
+        local_types: list[dict[str, Any]]
         if inline_one:
+            local_types = []
             fake_line = Line(line.number, line.indent, inline_one.strip(), line.comment)
             blocks = [_node("AspectBlock", line.number, role="one", members=[_parse_field(fake_line, allow_const=False)])]
         else:
+            local_types = _parse_aspect_local_types(cursor, line.indent)
             blocks = _parse_aspect_blocks(cursor, line.indent)
-        return _node("AspectDecl", line.number, category=category, name=name, owner=None, element=None, blocks=blocks, comment=line.comment)
+        return _node(
+            "AspectDecl",
+            line.number,
+            category=category,
+            name=name,
+            owner=None,
+            element=None,
+            local_types=local_types,
+            blocks=blocks,
+            comment=line.comment,
+        )
     if category in {"attribute", "component"}:
         match = re.fullmatch(rf"{category}\s+([A-Za-z_][A-Za-z0-9_]*)\s+of\s+([A-Za-z_][A-Za-z0-9_]*)", text)
         if not match:
@@ -485,6 +523,7 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             name=name,
             owner=owner,
             element=None,
+            local_types=_parse_aspect_local_types(cursor, line.indent),
             blocks=_parse_aspect_blocks(cursor, line.indent),
             comment=line.comment,
         )
@@ -500,6 +539,7 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             name=f"{element}_group",
             owner=owner,
             element=element,
+            local_types=_parse_aspect_local_types(cursor, line.indent),
             blocks=_parse_aspect_blocks(cursor, line.indent),
             comment=line.comment,
         )
@@ -534,6 +574,10 @@ def _parse_namespace(cursor: Cursor, line: Line) -> dict[str, Any]:
 def _parse_declaration(cursor: Cursor, indent: int) -> dict[str, Any]:
     line = cursor.pop()
     text = line.content
+    if text.startswith("import "):
+        if indent != 0:
+            raise ParseError("Import must appear at file top level", line.number)
+        return _parse_import(line)
     if text.startswith("namespace "):
         return _parse_namespace(cursor, line)
     if text.startswith("type "):

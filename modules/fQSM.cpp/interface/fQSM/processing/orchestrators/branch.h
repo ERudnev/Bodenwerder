@@ -1,6 +1,6 @@
 #pragma once
 
-#include <fQSM/processing/jobs/merge.h>
+#include <fQSM/processing/algorithms/merge.h>
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/complex/patch.h>
 #include <fQSM/processing/transaction.h>
@@ -8,7 +8,7 @@
 #include <fQSM/utility/logging.h>
 
 
-namespace fqsm::processing::transaction {
+namespace fqsm::processing::orchestrator {
 
     struct Branch : Transaction {
         Branch(Transaction& parent) : Branch(parent.childPolicy()) {}
@@ -38,7 +38,7 @@ namespace fqsm::processing::transaction {
 
         void accept(Context::PatchRef child) {
             _DBG_TX_("branch: merge child={} into accumulator={}", utility::format_patch(fqsm::freeze(child)), utility::format_patch(fqsm::freeze(context->accumulator)));
-            jobs::merge(context->world, context->accumulator, child);
+            algorithm::merge(context->world, context->accumulator, child);
         }
 
     };

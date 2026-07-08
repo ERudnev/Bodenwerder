@@ -103,9 +103,20 @@ So the parser allows command operations with an optional return type.
 4. Should `>one` remain only a documented shape, or should future golden inputs reactivate it as syntax in use?
 5. Is the active language subset expected to stay indentation-only, or do future Q1 files plan additional inline compact forms beyond the current one-line entity?
 
+### 11. `import "logical/path"` is a top-level file directive
+
+Used in module aspect files such as:
+
+- `import "window"`
+- `import "device"`
+
+The string is a logical path relative to the current file's directory, without the `.q1.types` suffix.
+
+The parser records it as `ImportDecl`. The linter resolves imported modules from sibling `.q1.types` files and merges their symbols for name checking.
+
 ## Known non-goals
 
-- full import handling
+- transitive import semantics beyond sibling `.q1.types` resolution in the linter
 - full template support
 - enum parsing
 - agent aspect execution semantics

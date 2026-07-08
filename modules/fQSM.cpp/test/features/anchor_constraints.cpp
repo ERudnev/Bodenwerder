@@ -40,7 +40,7 @@ void anchor_constraints()
         ask::schema::aspect<B>(),
     });
 
-    context::Realm main(schema);
+    establish::Realm main(schema);
 
     const auto a1 = with<A>::create(main, {});
     const auto a2 = with<A>::create(main, {});

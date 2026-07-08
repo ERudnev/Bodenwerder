@@ -13,7 +13,7 @@ if __package__ in {None, ""}:
 from parser import ParseError, parse_file, parse_text
 
 
-BUILTINS = {"integer", "float", "string", "index2", "boolean"}
+BUILTINS = {"integer", "float", "string", "index2", "boolean", "vec2", "vec3", "vec4", "quat", "mat4"}
 
 
 @dataclass
@@ -51,6 +51,8 @@ def collect_symbols(ast: dict[str, Any]) -> tuple[dict[tuple[str, ...], Symbol],
     def visit_decls(decls: list[dict[str, Any]], namespace: tuple[str, ...]) -> None:
         local: dict[str, dict[str, Any]] = {}
         for decl in decls:
+            if decl["kind"] == "ImportDecl":
+                continue
             if decl["kind"] == "NamespaceDecl":
                 visit_decls(decl["declarations"], namespace + (decl["name"],))
                 continue
@@ -64,6 +66,57 @@ def collect_symbols(ast: dict[str, Any]) -> tuple[dict[tuple[str, ...], Symbol],
             symbols[qualified] = Symbol(name=name, qualified=qualified, namespace=namespace, node=decl)
 
     visit_decls(ast["declarations"], ())
+    return symbols, diags
+
+
+def _import_targets(ast: dict[str, Any]) -> list[str]:
+    return [decl["path"] for decl in ast["declarations"] if decl["kind"] == "ImportDecl"]
+
+
+def _resolve_import_path(source_file: Path, logical_path: str) -> Path:
+    return source_file.parent / f"{logical_path}.q1.types"
+
+
+def collect_import_symbols(
+    ast: dict[str, Any],
+    source_file: Path,
+    seen: set[Path] | None = None,
+) -> tuple[dict[tuple[str, ...], Symbol], list[Diagnostic]]:
+    if seen is None:
+        seen = set()
+    source_file = source_file.resolve()
+    if source_file in seen:
+        return {}, []
+    seen.add(source_file)
+
+    symbols: dict[tuple[str, ...], Symbol] = {}
+    diags: list[Diagnostic] = []
+
+    for logical_path in _import_targets(ast):
+        imported_path = _resolve_import_path(source_file, logical_path)
+        if not imported_path.is_file():
+            import_line = next(
+                decl["line"] for decl in ast["declarations"] if decl["kind"] == "ImportDecl" and decl["path"] == logical_path
+            )
+            warn(diags, import_line, "missing-import", f"Imported module not found: {imported_path}")
+            continue
+        try:
+            imported_ast = parse_file(imported_path)
+        except ParseError as exc:
+            import_line = next(
+                decl["line"] for decl in ast["declarations"] if decl["kind"] == "ImportDecl" and decl["path"] == logical_path
+            )
+            warn(diags, import_line, "import-parse-error", f"Failed to parse import {logical_path!r}: {exc}")
+            continue
+
+        imported_symbols, imported_diags = collect_symbols(imported_ast)
+        diags.extend(imported_diags)
+        symbols.update(imported_symbols)
+
+        transitive_symbols, transitive_diags = collect_import_symbols(imported_ast, imported_path, seen)
+        diags.extend(transitive_diags)
+        symbols.update(transitive_symbols)
+
     return symbols, diags
 
 
@@ -103,6 +156,7 @@ def lint_type_expr(
     symbols: dict[tuple[str, ...], Symbol],
     diags: list[Diagnostic],
     line: int,
+    entity_local_types: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     kind = expr["kind"]
     if kind == "BuiltinType":
@@ -110,10 +164,10 @@ def lint_type_expr(
     if kind == "ExternalType":
         return
     if kind == "OptionalType":
-        lint_type_expr(expr["inner"], namespace, symbols, diags, line)
+        lint_type_expr(expr["inner"], namespace, symbols, diags, line, entity_local_types)
         return
     if kind in {"AnchorType", "ControlType"}:
-        lint_type_expr(expr["target"], namespace, symbols, diags, line)
+        lint_type_expr(expr["target"], namespace, symbols, diags, line, entity_local_types)
         return
     if kind == "IdType":
         target = expr.get("target")
@@ -123,6 +177,10 @@ def lint_type_expr(
     if kind == "NamedType":
         raw = expr["raw"]
         if raw in BUILTINS:
+            return
+        if entity_local_types and raw in entity_local_types:
+            if entity_local_types[raw]["target"] is not None:
+                lint_type_expr(entity_local_types[raw]["target"], namespace, symbols, diags, line, entity_local_types)
             return
         if not resolve_name(expr["parts"], namespace, symbols):
             warn(diags, line, "unknown-type", f"Unknown type reference: {raw}")
@@ -145,6 +203,7 @@ def lint_members(
     diags: list[Diagnostic],
     context: str,
     block_role: str | None = None,
+    entity_local_types: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     seen: dict[str, dict[str, Any]] = {}
     for member in members:
@@ -157,17 +216,17 @@ def lint_members(
                 seen[key] = member
 
         if member["kind"] == "FieldDecl":
-            lint_type_expr(member["type"], namespace, symbols, diags, member["line"])
+            lint_type_expr(member["type"], namespace, symbols, diags, member["line"], entity_local_types)
         elif member["kind"] == "ConstField":
-            lint_type_expr(member["type"], namespace, symbols, diags, member["line"])
+            lint_type_expr(member["type"], namespace, symbols, diags, member["line"], entity_local_types)
         elif member["kind"] == "TypeAliasDecl":
             if member["target"] is not None:
-                lint_type_expr(member["target"], namespace, symbols, diags, member["line"])
+                lint_type_expr(member["target"], namespace, symbols, diags, member["line"], entity_local_types)
         elif member["kind"] in {"QueryOp", "CommandOp", "FactoryOp"}:
             for param in member["params"]:
-                lint_type_expr(param["type"], namespace, symbols, diags, member["line"])
+                lint_type_expr(param["type"], namespace, symbols, diags, member["line"], entity_local_types)
             if member["return_type"] is not None:
-                lint_type_expr(member["return_type"], namespace, symbols, diags, member["line"])
+                lint_type_expr(member["return_type"], namespace, symbols, diags, member["line"], entity_local_types)
         elif member["kind"] == "ReactionDecl":
             scope = member["scope"]
             if block_role == "one" and scope["kind"] != "OneScope":
@@ -181,12 +240,18 @@ def lint_members(
                     warn(diags, member["line"], "unknown-reaction-source", f"Unknown all-reaction source: {scope['extra_source']}")
 
 
-def lint_ast(ast: dict[str, Any]) -> list[Diagnostic]:
+def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagnostic]:
     symbols, diags = collect_symbols(ast)
+    if source_file is not None:
+        imported_symbols, import_diags = collect_import_symbols(ast, source_file)
+        diags.extend(import_diags)
+        symbols.update(imported_symbols)
 
     def visit_decls(decls: list[dict[str, Any]], namespace: tuple[str, ...]) -> None:
         for decl in decls:
             kind = decl["kind"]
+            if kind == "ImportDecl":
+                continue
             if kind == "NamespaceDecl":
                 visit_decls(decl["declarations"], namespace + (decl["name"],))
                 continue
@@ -210,6 +275,11 @@ def lint_ast(ast: dict[str, Any]) -> list[Diagnostic]:
                 element = decl.get("element")
                 if element and not resolve_name([element], namespace, symbols):
                     warn(diags, decl["line"], "unknown-group-element", f"Unknown group element: {element}")
+
+                entity_local_types = {local_type["name"]: local_type for local_type in decl.get("local_types", [])}
+                for local_type in entity_local_types.values():
+                    if local_type["target"] is not None:
+                        lint_type_expr(local_type["target"], namespace, symbols, diags, local_type["line"], entity_local_types)
 
                 if decl["category"] == "archetype":
                     members = decl.get("members", [])
@@ -236,6 +306,7 @@ def lint_ast(ast: dict[str, Any]) -> list[Diagnostic]:
                         diags,
                         f"{decl['category']} {decl['name']} block {role}",
                         block_role=role,
+                        entity_local_types=entity_local_types,
                     )
                     if role == "always":
                         for member in block["members"]:
@@ -259,7 +330,7 @@ def lint_file(path: str | Path) -> tuple[dict[str, Any] | None, list[Diagnostic]
         ast = parse_file(path)
     except ParseError as exc:
         return None, [], exc
-    return ast, lint_ast(ast), None
+    return ast, lint_ast(ast, Path(path)), None
 
 
 def lint_text(text: str, source: str = "<memory>") -> tuple[dict[str, Any] | None, list[Diagnostic], ParseError | None]:
@@ -267,7 +338,8 @@ def lint_text(text: str, source: str = "<memory>") -> tuple[dict[str, Any] | Non
         ast = parse_text(text, source=source)
     except ParseError as exc:
         return None, [], exc
-    return ast, lint_ast(ast), None
+    source_file = Path(source) if source != "<memory>" and Path(source).is_file() else None
+    return ast, lint_ast(ast, source_file), None
 
 
 def main(argv: list[str] | None = None) -> int:

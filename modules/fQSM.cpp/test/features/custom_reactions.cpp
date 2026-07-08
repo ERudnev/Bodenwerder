@@ -25,7 +25,7 @@ namespace {
             struct Quantum { integer power; };
             struct Actions : BaseActions {
                 static void create(Writing context, A::Id id) {
-                    create_for(context, id, {with<A>::get(context, id).value});
+                    extend(context, id, {with<A>::get(context, id).value});
                 }
             };
             struct Internals : DefaultInternals{};
@@ -37,7 +37,7 @@ namespace {
         struct EntABC : Archetype<EntABC> {
             static A::Id spawn(Writing context, int val) {
                 const auto id = with<A>::create(context, {val});
-                with<B>::create_for(context, id, {"manual"});
+                with<B>::extend(context, id, {"manual"});
                 with<C>::create(context, id);
                 return id;
             }
@@ -59,7 +59,7 @@ void custom_reactions()
     });
 
     fqsm::model::complex::Reality world(schema);
-    context::Realm main(world);
+    establish::Realm main(world);
 
     { // Scenario 1: B::Behavior::component<> aborted creation of A
         const auto id = with<A>::create(main, {4});
@@ -68,7 +68,7 @@ void custom_reactions()
     }
     { // Scenario 2: A+B manual, C via make_default; parent removal cascades to both components
         const auto id = [&] {
-            context::Branch tx(main);
+            establish::Branch tx(main);
             return with<archetype::EntABC>::spawn(tx, 4);
         }();
 
@@ -78,7 +78,7 @@ void custom_reactions()
         EXPECT_EQ(with<C>::get(main, id).power, 4);
 
         {
-            context::Branch tx(main);
+            establish::Branch tx(main);
             with<A>::remove(tx, id);
         }
 

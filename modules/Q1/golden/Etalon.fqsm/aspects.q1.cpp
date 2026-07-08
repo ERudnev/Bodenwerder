@@ -60,7 +60,7 @@ namespace Q1_fQSM::Etalon {
 
     auto SampleEntity::Actions::from_float(Writing context, float value_approximate) -> Id {
         const auto id = create(context, Quantum{.data_field = Always::from_float(value_approximate)});
-        with<SampleComponent>::create_for(context, id, {});
+        with<SampleComponent>::extend(context, id, {});
         return id;
     }
 
@@ -186,20 +186,25 @@ namespace Q1_fQSM::Etalon {
         }
     };
 
-    auto SampleAttribute::Actions::complex_constructor(Writing context, SampleEntity::Id existing) -> Id {
-        const auto seed = with<SampleEntity>::get(context, existing);
-
-        const auto created = with<SampleEntity>::create(context, SampleEntity::Quantum{
-            .data_field = seed.data_field,
-        });
-        with<SampleComponent>::create_for(context, created, {});
+    auto SampleAttribute::Actions::create(Writing context, integer sample_value) -> Id {
+        const auto created = with<SampleEntity>::create(context, SampleEntity::Quantum{sample_value});
+        with<SampleComponent>::extend(context, created, {});
 
         const auto trivia = with<Trivia>::create(context, {});
-        create_for(context, created, SampleAttribute::Quantum{
+        BaseActions::extend(context, created, SampleAttribute::Quantum{
             .main_anchor = trivia,
             .main_dummy = trivia,
         });
         return created;
+    }
+
+    void SampleAttribute::Actions::extend(Writing context, SampleEntity::Id parent) {
+        with<SampleComponent>::extend(context, parent, {});
+        const auto trivia = with<Trivia>::create(context, {});
+        BaseActions::extend(context, parent, SampleAttribute::Quantum{
+            .main_anchor = trivia,
+            .main_dummy = trivia,
+        });
     }
 
     auto SampleAttribute::customAspectReactions() -> const Behavior {
@@ -219,7 +224,7 @@ namespace Q1_fQSM::Etalon {
 
     auto Notebook::add_note(Writing context, SampleEntity::Id id, decltype(Note::Quantum::text) text) -> Note::Id {
         if (not with<Note_group>::exists(context, id))
-            with<Note_group>::create_for(context, id);
+            with<Note_group>::extend(context, id);
 
         return with<Note_group>::addElement(context, id, Note::Quantum{
             .text = std::move(text),

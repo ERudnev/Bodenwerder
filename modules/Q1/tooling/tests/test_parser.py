@@ -109,3 +109,22 @@ def test_golden_elementary_external_type_alias() -> None:
     assert external["mode"] == "external"
     assert external["target"]["kind"] == "ExternalType"
     assert "OpenGL texture handle" in external["target"]["description"]
+
+
+def test_parse_import_and_entity_local_type() -> None:
+    text = """
+import "window"
+
+namespace rmmr
+  entity Device
+    type WindowHandle @external(OpenGL window C++ pointer aka "GLFwindow")
+    one
+      window: WindowHandle
+      !deinit(-one)
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    assert ast["declarations"][0]["kind"] == "ImportDecl"
+    assert ast["declarations"][0]["path"] == "window"
+    device = ast["declarations"][1]["declarations"][0]
+    assert device["local_types"][0]["name"] == "WindowHandle"
+    assert device["local_types"][0]["mode"] == "external"

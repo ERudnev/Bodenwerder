@@ -12,8 +12,8 @@
 #include <fQSM/manipulation/_experimental.h>
 
 // processing (transactions, e.t.c)
-#include <fQSM/processing/transactions/realm.h>
-#include <fQSM/processing/transactions/branch.h>
+#include <fQSM/processing/orchestrators/realm.h>
+#include <fQSM/processing/orchestrators/branch.h>
 
 // Behavior definition for Aspects:
 #include <fQSM/features/behavior.h>
@@ -57,10 +57,10 @@ namespace fqsm::api {
     // Types graph
     using Schema = fqsm::Schema;
 
-    // processing/transactions/contexts Big Objects
-    namespace context {
-        using Realm = ::fqsm::processing::Realm;
-        using Branch = ::fqsm::processing::transaction::Branch;
+    // processing/orchestrators/contexts Big Objects
+    namespace establish {
+        using Realm = ::fqsm::processing::orchestrator::Realm;
+        using Branch = ::fqsm::processing::orchestrator::Branch;
     }
 
     // reactions builder:

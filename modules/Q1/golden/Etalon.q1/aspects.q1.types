@@ -49,8 +49,10 @@ namespace Q1_fQSM
         main_anchor: anchor<Trivia> //@ any anchor<> / contro<> leads to custom Internals to add achnor/conrol behavior
         main_dummy: control<Trivia>
       all
-        // TODO: rework syntax and even conception of "constructor"
-        >complex_constructor(existing: #SampleEntity) -> #
+        // this function name "create" is reserved for "creating minimal set of Aspect items for this class, including Identity source (Entity)"
+        // in this example main_anchor Trivia is necessary, so it is included
+        >create(sample_value: integer)->#
+        >extend(existing: #SampleEntity)
         !limit_by_tag_count(~Tag)
 
     // experimental one-line form of syntax (sorry, parser!)

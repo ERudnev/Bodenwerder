@@ -1,38 +1,43 @@
 #pragma once
 
-#include <iQSM/api/_gateway.h>
+#include <fQSM/api/interface.h>
 
 struct GLFWwindow;
 
 namespace rmmr {
 
-    using namespace iqsm::q1_gateway;
+    using namespace fqsm::api;
 
-    struct Device : Handle<Device, GLFWwindow*, GLFWwindow*> {
-        struct Materializer : iqsm::resources::Materializer<Device> {
-            struct Passport {
-                string assets_root;
-                string title;
-                index2 size;
-                integer context_major;
-                integer context_minor;
-            };
-
-            void materialize(resources::Manager, Reading, Id) const override;
-            void release(resources::Manager, Reading, Id) const override;
-        };
+    struct Window : Entity<Window> {
+        using Handle = GLFWwindow*;
 
         struct Quantum {
-            const Materializer::Passport passport;
+            string title;
+            index2 size;
+            Handle handle;
+        };
+        struct Internals;
+        static const Behavior customAspectReactions();
+    };
+
+    struct Device : Entity<Device> {
+        struct Quantum {
+            string assets_root;
+            integer context_major;
+            integer context_minor;
+            Control<Window> window;
         };
         struct Global {};
-        struct Operations : OwnTypeOperations {
+        struct Actions : BaseActions {
             static void present(Reading, Id);
             static void poll_events(Reading, Id);
-            static void materialize(Reading, Id, resources::Manager);
-            static void release(Reading, Id, resources::Manager);
-            static auto provide(Reading, Id) -> RuntimeAccess;
+            static void init(
+                Writing,
+                Id,
+                decltype(Window::Quantum::title) title,
+                decltype(Window::Quantum::size) size);
         };
-        static const Invariants invariants;
+        struct Internals;
+        static const Behavior customAspectReactions();
     };
 }

@@ -61,17 +61,17 @@ void immediate()
         ask::schema::aspect<A>(),
     });
 
-    context::Realm main(schema);
+    establish::Realm main(schema);
 
     std::vector<A::Id> ids;
     {
-        context::Branch local(main);
+        establish::Branch local(main);
         for (int xx = 0; xx < 10; ++xx)
             ids.push_back(with<A>::create(local, {xx}));
     }
 
     // will compare different update path with 2 identical realms;
-    context::Realm duplicate(main);
+    establish::Realm duplicate(main);
 
     with<A>::fastJob(main, -5);
     with<A>::slowJob(duplicate, -5);

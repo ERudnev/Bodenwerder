@@ -5,7 +5,7 @@ namespace rmmr
   // Viewport configuration for rendering into Device's default framebuffer.
   // Later this can grow camera / render-target semantics without bloating Device.
   entity Viewport
-    element
+    one
       device: #Device
       origin: index2
       size: index2

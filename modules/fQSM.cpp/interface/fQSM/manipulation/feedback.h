@@ -9,12 +9,7 @@
 
 namespace fqsm::manipulation::feedback {
 
-    /*template<category::Any Meta>
-    void critical(processing::Review context, std::string reason) {
-        context.result.critical.push_back(
-            std::format(R"(Aspect({}): {})", Rtid::name<Meta>(), reason));
-    }*/
-
+    // placeholder-state interface for Reactions
     inline void critical(processing::Review context, std::string reason) {
         context.result.critical.push_back(reason);
     };

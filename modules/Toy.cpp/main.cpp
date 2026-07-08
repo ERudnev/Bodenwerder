@@ -1,61 +1,44 @@
 #include <iostream>
 #include <filesystem>
 
-#include <iQSM/api/_gateway.h>
-#include <iQSM/logger.h>
-#include <iQSM/references.h>
-#include <iQSM/repository/agents/collaboration.h>
-#include <iQSM/repository/agents/subsystem.h>
-#include <iQSM/repository/transactions/branch.h>
+#include <base/logging.h>
+#include <fQSM/api/interface.h>
 #include <Raidenmamare/engine.h>
 
 
-namespace Model {
-    struct Logic : iqsm::agents::Subsystem {
-        explicit Logic(iqsm::Schema schema)
-            : schema_(schema)
-            , main(iqsm::helpers::world::create_no_resources(schema_))
-        {}
-
-        auto schema() const -> iqsm::Schema override { return schema_; }
-
-        auto access() -> PossibleChange override {
-            return PossibleChange{
-                .current = main,
-                .replace =
-                    [this](iqsm::Reading next) {
-                        main.rebase(next);
-                    },
-            };
-        }
-
-    private:
-        iqsm::Schema schema_;
-        iqsm::repo::Branch main;
-    };
-
-}
+struct State {
+    std::shared_ptr<rmmr::Engine> renderer;
+};
 
 
 int main() {
-    using namespace iqsm::logger;
-    message("[{}] Test app is started...", to_string(now()));
+    using namespace base;
+    using namespace fqsm::api;
+    message("[{}] Test app is started...", now());
 
-    const auto assets_root = std::filesystem::path(DAQL_ASSETS_DIR).string();
-    const auto engine_startup_parameters = rmmr::Engine::StartupParameters{
-        .assets_root = assets_root,
-        .title = "Raidenmamare",
-        .size = rmmr::index2{.x = 3000, .y = 1200},
-        .context_major = 3,
-        .context_minor = 3,
-    };
+    try {
+        State state;
 
-    const auto engineObj = base::make_shared<rmmr::Engine>(engine_startup_parameters);
-    const auto schema = engineObj->schema();
-    const auto logicObj = base::make_shared<Model::Logic>(schema);
+        const auto assets_root = std::filesystem::path(DAQL_ASSETS_DIR).string();
+        // TODO: implement deseralize<Meta>()->MEta::Quantum;
+        const auto engine_startup_parameters = rmmr::Engine::StartupParameters{
+            .assets_root = assets_root,
+            .title = "Raidenmamare",
+            .size = rmmr::index2{.x = 3000, .y = 1200},
+            .context_major = 3,
+            .context_minor = 3,
+        };
 
-    iqsm::agents::Collaboration collaboration(logicObj, engineObj); // placeholder
-    collaboration.sync();
+        state.renderer = std::make_shared<rmmr::Engine>(engine_startup_parameters);
+        // TODO: ask renderer interface different way?
+        //const auto schema = engineObj->schema();
 
-    return engineObj->run_render_demo();
+        return state.renderer->run_render_demo();
+    } catch (const std::exception& e) {
+        message("[{}] Engine error: {}", to_string(now()), e.what());
+        return -1;
+    } catch (...) {
+        message("[{}] Engine error: unknown exception", to_string(now()));
+        return -1;
+    }
 }

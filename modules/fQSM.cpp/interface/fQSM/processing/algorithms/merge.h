@@ -5,11 +5,11 @@
 #include <fQSM/model/complex/patch.h>
 #include <fQSM/model/complex/state.h>
 
-namespace fqsm::processing::jobs {
+namespace fqsm::processing::algorithm {
     void merge(Reading base, fqsm::ref<Patch> target, fqsm::cref<Patch> source);
 }
 
-namespace fqsm::processing::jobs::details {
+namespace fqsm::processing::algorithm::details {
     template<category::Any Meta>
     void merge(Reading base, model::complex::Patch& target, const model::complex::Patch& source) {
         auto& targetPatch = target.aspect<Meta>();

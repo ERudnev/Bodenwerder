@@ -59,7 +59,7 @@ namespace local {
 
     struct KeyManager : Archetype<KeyManager> {
         static void attachManager(Writing context, Keyring::Id keyring) {
-            with<Client_group>::create_for(context, keyring);
+            with<Client_group>::extend(context, keyring);
         }
 
         static auto addClient(Writing context, Keyring::Id keyring)->Client::Id {
@@ -82,7 +82,7 @@ void group_category_demo_scenario(fqsm::api::Schema schema)
     using namespace local;
     using namespace fqsm::api;
 
-    context::Realm main(schema);
+    establish::Realm main(schema);
 
     const auto primaryVault = with<Keyring>::create(main, {"vault-primary"});
     const auto backupVault = with<Keyring>::create(main, {"vault-backup"});
@@ -115,7 +115,7 @@ void group_category()
     group_category_demo_scenario(schema);
 
     {
-        context::Realm main(schema);
+        establish::Realm main(schema);
 
         const auto keyring = with<Keyring>::create(main, {"ring-A"});
         with<KeyManager>::attachManager(main, keyring);
@@ -129,7 +129,7 @@ void group_category()
     }
 
     {
-        context::Realm main(schema);
+        establish::Realm main(schema);
 
         const auto keyring = with<Keyring>::create(main, {"ring-B"});
         with<KeyManager>::attachManager(main, keyring);
@@ -158,7 +158,7 @@ void group_category()
     }
 
     {
-        context::Realm main(schema);
+        establish::Realm main(schema);
 
         const auto keyring = with<Keyring>::create(main, {"ring-C"});
         with<KeyManager>::attachManager(main, keyring);

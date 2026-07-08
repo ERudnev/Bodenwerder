@@ -47,7 +47,7 @@ with<SomeComponent>::update(main, id).name = "after";
 |--|------|------|
 | **read** | `get(Reading, Id)` → `const Quantum&` | `find(Reading, Id)` → `optional<const Quantum&>` |
 | **write** | `update(Writing, Id)` → `Quantum&` | `change(Writing, Id)` → `optional<Quantum&>` |
-| **create** | `create_for` (Standalone / Parasitic) | — |
+| **create** | `extend` (Standalone / Parasitic) | — |
 
 Правила **`update` (hard)**:
 
@@ -67,7 +67,7 @@ with<SomeComponent>::update(main, id).name = "after";
 
 ## Где разместить реализацию
 
-- **Объявление**: `aspect/action.h`, mixin `aspect::action::Any<Meta>` — рядом с `get` / `find` / `create_for` (язык среза `Actions`, не глобальный `ask::item`).
+- **Объявление**: `aspect/action.h`, mixin `aspect::action::Any<Meta>` — рядом с `get` / `find` / `extend` (язык среза `Actions`, не глобальный `ask::item`).
 - **Диспетчер**: `with<Meta>` = `Meta::Actions` (`manipulation::call_action`), как для `create` / `kraken`.
 - **Impl**: один проход по patch + world; логика из черновика `quantum::change` / `quantum::get(Writing)` в `manipulation/item.h` (строки 30–70, сейчас закомментировано).
 - **`ask::item::update`**: пометить deprecated, оставить alias на `Quantal` на переходный период или убрать после миграции.
@@ -99,7 +99,7 @@ with<SomeComponent>::update(main, id).name = "after";
 ### 4. Deprecate `Quantal`
 
 - [ ] Пометить `processing/transaction/Quantal` и `item::update` alias
-- [x] Убедиться, что standalone-create через `Quantal(gate, value)` не нужен (заменён `create_for` + `with<>::create`)
+- [x] Убедиться, что standalone-create через `Quantal(gate, value)` не нужен (заменён `extend` + `with<>::create`)
 - [ ] Удалить после отсутствия ссылок
 
 ### 5. Документация и контракт

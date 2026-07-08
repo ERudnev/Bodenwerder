@@ -2,11 +2,11 @@
 
 #include <Raidenmamare/device.q1.h>
 
-#include <iQSM/api/_gateway.h>
+#include <fQSM/api/interface.h>
 
 namespace rmmr {
 
-    using namespace iqsm::q1_gateway;
+    using namespace fqsm::api;
 
     struct Viewport : Entity<Viewport> {
         struct Quantum {
@@ -16,10 +16,11 @@ namespace rmmr {
             vec4 clear_color;
         };
         struct Global {};
-        struct Operations : OwnTypeOperations {
+        struct Actions : BaseActions {
             static void activate(Reading, Id);
             static void clear(Reading, Id);
         };
-        static const Invariants invariants;
+        struct Internals;
+        static const Behavior customAspectReactions() { return {}; }
     };
 }

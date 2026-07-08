@@ -24,7 +24,7 @@ target_compile_definitions(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PUBLIC glm
     PUBLIC base
-    PRIVATE iQSM
+    PRIVATE fQSM
     PRIVATE Raidenmamare
     PUBLIC libglew_static
     PUBLIC glfw

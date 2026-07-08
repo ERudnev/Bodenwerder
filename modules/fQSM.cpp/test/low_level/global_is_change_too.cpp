@@ -41,7 +41,7 @@ void global_is_change_too()
         ask::schema::aspect<A>(),
     });
 
-    context::Realm main(schema);
+    establish::Realm main(schema);
 
     const auto id = with<A>::create(main, {1});
     EXPECT_EQ(with<A>::get_global(main).deletions, 0);

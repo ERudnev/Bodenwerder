@@ -34,7 +34,7 @@ namespace local {
             static void create(Writing context, EntFree::Id id, bool askPowerOf4) {
                 int x = square(with<EntFree>::get(context, id).value);
                 if (askPowerOf4) x = square(x);
-                create_for(context, id, {x});
+                extend(context, id, {x});
             };
         };
 
@@ -64,7 +64,7 @@ namespace local {
         struct EntTwoComps : Archetype<EntTwoComps> {
             static EntFree::Id spawn_correct(Writing context, int val) {
                 const auto id = with<EntFree>::create(context, {val});
-                with<CompSimple>::create_for(context, id, {std::format("it is {}", val)});
+                with<CompSimple>::extend(context, id, {std::format("it is {}", val)});
                 with<CompWithCreate>::create(context, id, true);
                 return id;
             }
@@ -96,23 +96,23 @@ void structural_constraints()
     fqsm::model::complex::Reality world(schema);
 
     {
-        context::Realm main(world);
+        establish::Realm main(world);
         const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
         EXPECT_EQ(fqsm::Reading(main).quanta(), 3) << "all 3 items created, verified and part of realm now";
     }
 
     {
-        context::Realm main(world);
+        establish::Realm main(world);
         const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
         const auto storedVal = with<EntFree>::get(main, id).value;
         with<EntFree>::remove(main, id);
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "normalization killed everything by parent remove";
-        with<CompSimple>::create_for(main, id, {std::format("i am sorry, i am late", storedVal)});
-        EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "normalization killed ill-formed componet";
+        with<CompSimple>::extend(main, id, {std::format("i am sorry, i am late", storedVal)});
+        EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "normalization killed ill-formed component";
     }
 
     {
-        context::Realm main(world);
+        establish::Realm main(world);
         const auto id = with<archetype::EntTwoComps>::spawn_forgot_init_one_comp(main, 1);
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "invalid implementation (forgot component) of spawn succesfully detected";
     }
@@ -120,7 +120,7 @@ void structural_constraints()
 
 
     {
-        context::Realm main(world);
+        establish::Realm main(world);
         const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
         with<CompSimple>::kraken(main, id);
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "composite killed by component";

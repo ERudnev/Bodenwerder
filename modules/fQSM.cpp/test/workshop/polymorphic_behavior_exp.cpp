@@ -41,7 +41,7 @@ namespace workshop {
                     .stocks = 0,
                     .incomeAction = &income,
                 });
-                create_for(context, id, Quantum{.lastIncomeMemory = 0});
+                extend(context, id, Quantum{.lastIncomeMemory = 0});
                 return id;
             }
 
@@ -72,7 +72,7 @@ namespace workshop {
                     .stocks = 0,
                     .incomeAction = &income,
                 });
-                create_for(context, id, Quantum{});
+                extend(context, id, Quantum{});
                 return id;
             }
 
@@ -103,13 +103,13 @@ void polymorphic_behavior_exp()
         ask::schema::aspect<Risky>(),
     });
 
-    context::Realm main(schema);
+    establish::Realm main(schema);
 
     const auto steadyId = with<Steady>::spawn(main, 10);
     const auto riskyId = with<Risky>::spawn(main, 50);
 
     {
-        context::Branch tx(main);
+        establish::Branch tx(main);
         with<Wallet>::income(tx, steadyId, 100);
         with<Wallet>::income(tx, riskyId, 100);
     }

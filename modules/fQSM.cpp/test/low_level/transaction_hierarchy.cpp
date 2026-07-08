@@ -25,7 +25,7 @@ namespace local {
     struct Arch : Archetype<Arch> {
         static void spawn(Writing context, int number, std::string str) {
             const auto id = with<A>::create(context, { .value = number });
-            with<B>::create_for(context, id, { .name = std::move(str) });
+            with<B>::extend(context, id, { .name = std::move(str) });
         }
     };
 
@@ -44,7 +44,7 @@ void transaction_hierarchy()
         ask::schema::aspect<B>(),
     });
 
-    context::Realm main(schema);
+    establish::Realm main(schema);
 
 
     // trivial call in Realm->Writing context
@@ -59,7 +59,7 @@ void transaction_hierarchy()
     EXPECT_EQ(debug::count<B>(main), 2);
 
     { // Branch changes will be applied with RAII (exiting this scope)
-        context::Branch tx(main);
+        establish::Branch tx(main);
         with<Arch>::spawn(tx, 27, "twenty-seven");
 
         // Branch sees base + patch, Realm stays stable.
@@ -72,9 +72,9 @@ void transaction_hierarchy()
     EXPECT_EQ(debug::count<B>(main), 3);
 
     { // 10 workers are branches: each will make their job independently, which will be applied after all
-        std::vector<context::Branch> workers;
+        std::vector<establish::Branch> workers;
         for (int xx = 0; xx < 10; ++xx)
-            workers.emplace_back(context::Branch(main));
+            workers.emplace_back(establish::Branch(main));
 
         // while each worker does its job, actual world state in realm is constant, so it may work in MT environment
         for (int xx = 0; xx < 10; ++xx) {

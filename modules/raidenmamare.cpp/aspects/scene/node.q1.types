@@ -6,11 +6,11 @@ namespace rmmr
     // Basic transformable scene node.
     // Rendering payloads (primitive, camera, light, viewport bindings) can be layered later.
     entity Node
-      element
+      one
         position: Pos
         rotation: quat
-        ?transform(): mat4
-        ?hpb(): HPB // heading/pitch/bank (degrees)
+        ?transform() -> mat4
+        ?hpb() -> HPB // heading/pitch/bank (degrees)
         =hpb(HPB)
-      table
-        >posHpb(pos: Pos, hpb: HPB): # // convenience c-tor
+      all
+        >create(pos: Pos, hpb: HPB) -> # // convenience c-tor

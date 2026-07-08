@@ -10,7 +10,7 @@
 #include <fQSM/meta/rtid.h>
 #include <fQSM/processing/contexts/operational.h>
 
-namespace fqsm::processing::transaction {
+namespace fqsm::processing::orchestrator {
 
     // not derived from Transaction, because it is... "final" one, not allowed to propagate context
     // TODO: consider to remove this thing one day...

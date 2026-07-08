@@ -5,41 +5,64 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 namespace rmmr {
-    struct Device_private : Device::Operations {
-        using Passport = Device::Materializer::Passport;
+    struct Window::Internals : Window::DefaultInternals {
+        static void release(Writing, Id, const Quantum& last) {
+            if (!last.handle) {
+                return;
+            }
+            glfwDestroyWindow(last.handle);
+        }
+    };
 
-        static auto init_window(const Passport& passport) -> GLFWwindow* {
+    auto Window::customAspectReactions() -> const Behavior {
+        return {
+            reaction::deletion<Window>(&Internals::release),
+        };
+    }
+
+    struct Device::Internals : Device::DefaultInternals {
+        static bool has_window(Reading context, Window::Id window) {
+            return with<Window>::exists(context, window);
+        }
+
+        static auto resolved_handle(Reading context, Window::Id window) -> Window::Handle {
+            return with<Window>::get(context, window).handle;
+        }
+
+        static auto create_handle(
+            const Quantum& device,
+            const decltype(Window::Quantum::title)& title,
+            const decltype(Window::Quantum::size)& size) -> Window::Handle {
             if (!glfwInit()) {
-                throw std::runtime_error("Device::Materializer::materialize: glfwInit() failed");
+                throw std::runtime_error("Device::Actions::init: glfwInit() failed");
             }
 
-            const int width = std::max(static_cast<int>(passport.size.x), 1);
-            const int height = std::max(static_cast<int>(passport.size.y), 1);
-            const int context_major = std::max(static_cast<int>(passport.context_major), 1);
-            const int context_minor = std::max(static_cast<int>(passport.context_minor), 0);
-            const char* title = passport.title.empty() ? "Raidenmamare" : passport.title.c_str();
+            const int width = std::max(static_cast<int>(size.x), 1);
+            const int height = std::max(static_cast<int>(size.y), 1);
+            const int context_major = std::max(static_cast<int>(device.context_major), 1);
+            const int context_minor = std::max(static_cast<int>(device.context_minor), 0);
+            const char* window_title = title.empty() ? "Raidenmamare" : title.c_str();
 
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, context_major);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, context_minor);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-            GLFWwindow* window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+            GLFWwindow* window = glfwCreateWindow(width, height, window_title, nullptr, nullptr);
             if (!window) {
                 glfwTerminate();
-                throw std::runtime_error("Device::Materializer::materialize: glfwCreateWindow() failed");
+                throw std::runtime_error("Device::Actions::init: glfwCreateWindow() failed");
             }
 
-            // Rough center on a 5000×1400 display when using a ~3000×1200 client area (tweak if your WM differs).
             glfwSetWindowPos(window, 1000, 100);
-
             glfwMakeContextCurrent(window);
             glewExperimental = GL_TRUE;
             if (glewInit() != GLEW_OK) {
                 glfwDestroyWindow(window);
                 glfwTerminate();
-                throw std::runtime_error("Device::Materializer::materialize: glewInit() failed");
+                throw std::runtime_error("Device::Actions::init: glewInit() failed");
             }
 
             glEnable(GL_DEPTH_TEST);
@@ -51,51 +74,49 @@ namespace rmmr {
             return window;
         }
 
-        static void release_window(GLFWwindow* window) {
-            if (!window) return;
-            glfwDestroyWindow(window);
+        static void deinit(Writing context, Id, const Quantum& last) {
+            if (has_window(context, last.window)) {
+                with<Window>::remove(context, last.window);
+            }
             glfwTerminate();
         }
     };
 
-    void Device::Materializer::materialize(resources::Manager manager, Reading world, Id id) const {
-        if (manager->materialized<Device>(id)) {
-            throw std::runtime_error("Device::Materializer::materialize: resource is already materialized");
+    void Device::Actions::present(Reading context, Id id) {
+        const auto& quantum = get(context, id);
+        if (!Internals::has_window(context, quantum.window)) {
+            throw std::runtime_error("Device::Actions::present: window is not initialized");
         }
-
-        const auto& passport = ops::particle::get<Device>(world, id).passport;
-        manager->layer<Device>().materialize(id, Device_private::init_window(passport));
+        glfwSwapBuffers(Internals::resolved_handle(context, quantum.window));
     }
 
-    void Device::Materializer::release(resources::Manager manager, Reading, Id id) const {
-        auto& layer = manager->layer<Device>();
-        GLFWwindow* window = layer.value(id);
-        Device_private::release_window(window);
-        layer.release(id);
-    }
-
-    void Device::Operations::present(Reading world, Id id) {
-        glfwSwapBuffers(world->resources->layer<Device>().provide(id));
-    }
-
-    void Device::Operations::poll_events(Reading, Id) {
+    void Device::Actions::poll_events(Reading, Id) {
         glfwPollEvents();
     }
 
-    void Device::Operations::materialize(Reading world, Id id, resources::Manager manager) {
-        ops::resource::materialize<Device>(world, manager, id);
+    void Device::Actions::init(
+        Writing context,
+        Id id,
+        decltype(Window::Quantum::title) title,
+        decltype(Window::Quantum::size) size) {
+        const auto& before = get(context, id);
+        if (Internals::has_window(context, before.window)) {
+            return;
+        }
+
+        const auto handle = Internals::create_handle(before, title, size);
+        const auto windowId = with<Window>::create(context, Window::Quantum{
+            .title = std::move(title),
+            .size = size,
+            .handle = handle,
+        });
+        modify(context, id)->window = windowId;
     }
 
-    void Device::Operations::release(Reading world, Id id, resources::Manager manager) {
-        ops::resource::release<Device>(world, manager, id);
+    auto Device::customAspectReactions() -> const Behavior {
+        return {
+            reaction::structural::controls<Device, Window, &Device::Quantum::window>{},
+            reaction::deletion<Device>(&Internals::deinit),
+        };
     }
-
-    auto Device::Operations::provide(Reading world, Id id) -> RuntimeAccess {
-        return world->resources->layer<Device>().provide(id);
-    }
-
-    const Invariants Device::invariants{
-        .structural = {},
-        .logical = {},
-    };
 }

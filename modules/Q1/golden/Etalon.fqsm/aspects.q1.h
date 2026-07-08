@@ -82,8 +82,8 @@ namespace Q1_fQSM::Etalon {
             Control<Trivia> main_dummy;
         };
         struct Actions : BaseActions {
-            //@ TODO: rework syntax and even conception of "constructor"
-            static auto complex_constructor(Writing, SampleEntity::Id) -> Id;
+            static auto create(Writing, integer sample_value) -> Id;
+            static void extend(Writing, SampleEntity::Id);
         };
         //@ custom because of anchor/control and all-reaction !limit_by_tag_count(~Tag)
         struct Internals;

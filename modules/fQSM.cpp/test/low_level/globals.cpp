@@ -29,7 +29,7 @@ void globals()
         ask::schema::aspect<A>(),
     });
 
-    context::Realm main(schema);
+    establish::Realm main(schema);
 
     with<A>::modify_global(main)->globalValue = 2;
     EXPECT_EQ(with<A>::get_global(main).globalValue, 2) << "update commited immediately (unnamed RAII already dead)";

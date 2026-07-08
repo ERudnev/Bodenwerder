@@ -1,16 +1,23 @@
+import "window"
+
 namespace rmmr
 
-  // Root OpenGL window/context resource for the demo application.
-  agent Device @external(opengl_window)
-    passport
-      assets_root: string
+  entity Window
+    type Handle @external(OpenGL window C++ pointer aka "GLFwindow")
+    one
       title: string
       size: index2
+      handle: Handle
+      !release(-one)
+
+
+  entity Device
+    one
+      assets_root: string
       context_major: integer
       context_minor: integer
-    element
-      ?provide(): opengl_window
+      window: control<Window> // empty by default
       ?present()
       ?poll_events()
-      ?materialize()
-      ?release()
+      >init(title: ~Window::title, size: ~Window::size) // including create() window
+      !deinit(-one) // keep valid destruction order, kill Window manually in time
