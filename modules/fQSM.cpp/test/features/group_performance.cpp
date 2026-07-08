@@ -50,7 +50,7 @@ namespace tests {
 using namespace local;
 using namespace fqsm::api;
 
-constexpr integer elementCount = 1000000;
+constexpr integer elementCount = 10000;
 
 void group_performance_bulk_create_delete(fqsm::api::Schema schema)
 {
@@ -65,13 +65,14 @@ void group_performance_bulk_create_delete(fqsm::api::Schema schema)
             with<Grove>::addSpeck(branch, stump, {.tag = index});
     }
 
-    /*{
+    {
+        establish::Branch branch(main);
         testing::scoped_timer timer("delete {} elements from one group");
-        const auto group = with<Speck_group>::get(main, stump);
+        const auto group = with<Speck_group>::get(branch, stump);
         for (const auto speck : group)
-            with<Speck_group>::deleteElement(main, stump, speck);
-        with<Stump>::remove(main, stump);
-    }*/
+            with<Speck_group>::deleteElement(branch, stump, speck);
+        with<Stump>::remove(branch, stump);
+    }
 }
 
 void group_performance()

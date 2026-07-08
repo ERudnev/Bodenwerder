@@ -1,6 +1,7 @@
 #pragma once
 
 #include <base/cannonball/patch.h>
+#include <base/function_ref.h>
 #include <base/shared_reference.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/meta/interface.include.h>
@@ -15,7 +16,7 @@ namespace fqsm::model::linear {
         virtual void put_deletion(Id<Meta>) = 0;
         virtual void put_add(Id<Meta>, Quantum<Meta>) = 0;
         virtual void put_global(GlobalValue<Meta>) = 0;
-        virtual Quantum<Meta>& update_modification(Id<Meta>, const Quantum<Meta>& providedPrepatchData) = 0;
+        virtual Quantum<Meta>& update_modification(Id<Meta>, base::function_ref<const Quantum<Meta>&()> prepatch) = 0;
     };
 
     template<category::Any Meta>
@@ -35,7 +36,7 @@ namespace fqsm::model::linear {
         void put_deletion(Id<Meta>) override;
         void put_add(Id<Meta>, Quantum<Meta>) override;
         void put_global(GlobalValue<Meta>) override;
-        Quantum<Meta>& update_modification(Id<Meta>, const Quantum<Meta>& providedPrepatchData) override;
+        Quantum<Meta>& update_modification(Id<Meta>, base::function_ref<const Quantum<Meta>&()> prepatch) override;
 
         // schema
         static ref<patch::Erased> create() { return base::make_shared<Patch<Meta>>(); }
@@ -67,8 +68,8 @@ namespace fqsm::model::linear {
 
     template<category::Any Meta>
     Quantum<Meta>& Patch<Meta>
-    ::update_modification(Id<Meta> id, const Quantum<Meta>& providedPrepatchData) {
-        return items.modify_modification(id, providedPrepatchData);
+    ::update_modification(Id<Meta> id, base::function_ref<const Quantum<Meta>&()> prepatch) {
+        return items.modify_modification(std::move(id), prepatch);
     }
 
     template<category::Any Meta>

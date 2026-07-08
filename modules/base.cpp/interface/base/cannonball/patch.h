@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <base/cannonball/table.h>
+#include <base/function_ref.h>
 
 namespace base::cannonball {
 
@@ -23,7 +24,7 @@ public:
     // Unlike Table::insert, replacing deletion keeps deletion.
     void modify(const Key& id, const Val& value); // DOTO: consider Key by its value here
     void modify(Key&& id, Val&& value);
-    Val& modify_modification(Key, const Val& prepatchCache);
+    Val& modify_modification(Key, base::function_ref<const Val&()> prepatch);
 
     // Forget local change for id completely.
     bool discard_changes(const Key& id);
@@ -66,13 +67,13 @@ void Patch<Key, Val, Hasher, KeyEqual>
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
 Val& Patch<Key, Val, Hasher, KeyEqual>
-::modify_modification(Key id, const Val& prepatchCache)
+::modify_modification(Key id, base::function_ref<const Val&()> prepatch)
 {
     if (auto* patchlet = Base::find(id))
         return patchlet->value();
 
     const Key& key = id;
-    Base::insert(std::move(id), Patchlet<Val>{prepatchCache});
+    Base::insert(std::move(id), Patchlet<Val>{prepatch()});
     return Base::at(key).value();
 }
 
