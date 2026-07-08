@@ -10,7 +10,7 @@ namespace rmmr {
 
     struct Viewport : Entity<Viewport> {
         struct Quantum {
-            Device::Id device;
+            Window::Id window;
             index2 origin;
             index2 size;
             vec4 clear_color;

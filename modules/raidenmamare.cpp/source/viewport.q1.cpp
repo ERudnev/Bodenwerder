@@ -8,18 +8,18 @@
 
 namespace rmmr {
     struct Viewport::Internals : Viewport::DefaultInternals {
-        static auto device_window_handle(Reading context, Device::Id device) -> Window::Handle {
-            const auto& deviceQuantum = with<Device>::get(context, device);
-            if (!with<Window>::exists(context, deviceQuantum.window)) {
-                throw std::runtime_error("Viewport: device window is not initialized");
+        static auto window_handle(Reading context, Window::Id window) -> Window::Handle {
+            const Window::Handle handle = with<Window>::get(context, window).handle;
+            if (!handle) {
+                throw std::runtime_error("Viewport: window handle is not initialized");
             }
-            return with<Window>::get(context, deviceQuantum.window).handle;
+            return handle;
         }
     };
 
     void Viewport::Actions::activate(Reading context, Id id) {
         const auto& quantum = get(context, id);
-        glfwMakeContextCurrent(Internals::device_window_handle(context, quantum.device));
+        glfwMakeContextCurrent(Internals::window_handle(context, quantum.window));
 
         const int x = static_cast<int>(quantum.origin.x);
         const int y = static_cast<int>(quantum.origin.y);
@@ -30,7 +30,7 @@ namespace rmmr {
 
     void Viewport::Actions::clear(Reading context, Id id) {
         const auto& quantum = get(context, id);
-        glfwMakeContextCurrent(Internals::device_window_handle(context, quantum.device));
+        glfwMakeContextCurrent(Internals::window_handle(context, quantum.window));
         glClearColor(
             quantum.clear_color.x,
             quantum.clear_color.y,

@@ -4,39 +4,15 @@ namespace rmmr
   namespace material
 
     entity Program
+      type Handle @external(OpenGL C++ opengl_program)
       always
-        ?vertexFilename(name: string, library: string): string  // returns "library/shaders/name.vert.glsl"
-        ?fragmentFilename(name: string, library: string): string // returns "library/shaders/name.frag.glsl"
+        ?vertexFilename(name: string, library: string) -> string
+        ?fragmentFilename(name: string, library: string) -> string
       one
         name: string
         library: string
+        handle: Handle
+        >compile(#Window)              // reads assets_root from Application, links shaders, writes handle
+        !release(-one)                 // glDeleteProgram
 
-    component Handle of Program
-      type opengl_program @external(similar to OpenGL handle)
-      one
-        handle: opengl_program?
-        !removed() // releases OpenGL programs
-
-    // rare syntax, see Q1 spec for details (generates type name Program_group)
-    group<Program> of Device
-
-
-    archetype Manager
-      >load(*Facade) -> #Instance
-
-
-    /* obsolete, reworking with Q1 v1.0
-    // OpenGL-backed linked program resource assembled from shader stage files.
-    agent Program @external(opengl_program)
-      static
-        ?vertexFilename(name: string, library: string): string  // returns "library/shaders/name.vert.glsl"
-        ?fragmentFilename(name: string, library: string): string // returns "library/shaders/name.frag.glsl"
-      passport
-        name: string
-        library: string
-      element
-        device: #Device
-        ?provide(): opengl_program
-        ?materialize()
-        ?release()
-    */
+    group<Program> of Window

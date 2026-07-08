@@ -1,4 +1,5 @@
 #include <Raidenmamare/engine.h>
+#include <Raidenmamare/scene/core.q1.h>
 #include <Raidenmamare/viewport.q1.h>
 
 #include <GLFW/glfw3.h>
@@ -14,9 +15,16 @@ namespace {
 
     Schema generateInternalEngineSchema_static() {
         return ask::schema::merge({
+            ask::schema::aspect<Application>(),
             ask::schema::aspect<Window>(),
-            ask::schema::aspect<Device>(),
             ask::schema::aspect<Viewport>(),
+            ask::schema::aspect<scene::Core>(),
+            ask::schema::aspect<scene::Node>(),
+            ask::schema::aspect<scene::Node_group>(),
+            ask::schema::aspect<scene::Camera>(),
+            ask::schema::aspect<scene::Camera_group>(),
+            ask::schema::aspect<scene::Light>(),
+            ask::schema::aspect<scene::Light_group>(),
         });
     }
 
@@ -32,8 +40,9 @@ namespace rmmr {
 
     struct Engine::State {
         establish::Realm main;
-        maybe<Device::Id> device;
+        maybe<Window::Id> window;
         maybe<Viewport::Id> viewport;
+        maybe<scene::Core::Id> scene;
     };
 
     Engine::Engine(StartupParameters params)
@@ -42,15 +51,16 @@ namespace rmmr {
             .main = establish::Realm{generateInternalEngineSchema_static()},
         }))
     {
-        base::message("rmmr: creating device...");
-        state->device = with<Device>::create(state->main, Device::Quantum{
+        base::message("rmmr: starting device...");
+        Device::start(state->main);
+        *with<Application>::modify_global(state->main) = Application::Global{
             .assets_root = std::move(params.assets_root),
             .context_major = params.context_major,
             .context_minor = params.context_minor,
-            .window = Window::Id{0},
-        });
-        with<Device>::init(state->main, state->device, std::move(params.title), params.size);
+        };
+        state->window = Device::openWindow(state->main, std::move(params.title), params.size);
         createViewport(params.size);
+        createScene();
 
         if (not state->main.result().good()) {
             throw std::runtime_error("Engine bootstrap failed");
@@ -63,21 +73,21 @@ namespace rmmr {
 
     int Engine::run_render_demo() {
         auto& main = state->main;
-        const auto& device = state->device;
+        const auto& window = state->window;
         const auto& viewport = state->viewport;
 
-        GLFWwindow* const window = with<Window>::get(main, with<Device>::get(main, device).window).handle;
-        if (not window) throw std::runtime_error("Engine::run_render_demo: window is not initialized");
+        GLFWwindow* const handle = with<Window>::get(main, window).handle;
+        if (not handle) throw std::runtime_error("Engine::run_render_demo: window is not initialized");
 
-        while (not glfwWindowShouldClose(window)) {
-            with<Device>::poll_events(main, device);
+        while (not glfwWindowShouldClose(handle)) {
+            with<Application>::poll_events(main);
 
-            if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-                glfwSetWindowShouldClose(window, true);
+            if (glfwGetKey(handle, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+                glfwSetWindowShouldClose(handle, true);
 
             with<Viewport>::activate(main, viewport);
             with<Viewport>::clear(main, viewport);
-            with<Device>::present(main, device);
+            with<Window>::present(main, window);
         }
 
         return 0;
@@ -88,12 +98,30 @@ namespace rmmr {
     }
 
     void Engine::createScene() {
-        _INCOMPLETE_;
+        auto& main = state->main;
+        const auto core = with<scene::Interface>::createScene(main);
+        with<scene::Interface>::createCamera(main, core, Locator{
+            .pos = Pos{0.0f, 1.3f, 4.0f},
+            .euler = HPB{0.0f, -12.5f, 0.0f},
+        }, scene::Camera::Quantum{
+            .fov_y = 1.04719755f,
+            .z_near = 0.1f,
+            .z_far = 100.0f,
+        });
+        with<scene::Interface>::createLight(main, core, Locator{
+            .pos = Pos{2.0f, 2.0f, 2.0f},
+            .euler = HPB{0.0f, 0.0f, 0.0f},
+        }, scene::Light::Quantum{
+            .color = RGB{1.0f, 1.0f, 1.0f},
+            .intensity = 5.0f,
+            .range = 10.0f,
+        });
+        state->scene = core;
     }
 
     void Engine::createViewport(index2 size, index2 origin) {
         state->viewport = with<Viewport>::create(state->main, Viewport::Quantum{
-            .device = state->device,
+            .window = state->window,
             .origin = origin,
             .size = size,
             .clear_color = vec4{0.2f, 0.3f, 0.3f, 1.0f},
@@ -102,6 +130,6 @@ namespace rmmr {
 
     void Engine::shutdown() noexcept {
         ask::temp_sugar::drop_reference<Viewport>(state->main, state->viewport);
-        ask::temp_sugar::drop_reference<Device>(state->main, state->device);
+        Device::shutdown(state->main);
     }
 }

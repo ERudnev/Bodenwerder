@@ -2,11 +2,11 @@ import "device"
 
 namespace rmmr
 
-  // Viewport configuration for rendering into Device's default framebuffer.
-  // Later this can grow camera / render-target semantics without bloating Device.
+  // Viewport configuration for rendering into a Window framebuffer.
+  // Later this can grow camera / render-target semantics without bloating Window.
   entity Viewport
     one
-      device: #Device
+      window: #Window
       origin: index2
       size: index2
       clear_color: vec4
