@@ -110,6 +110,7 @@ type_suffix         ::= "?" ;
 
 type_primary        ::= builtin_type
                       | id_type
+                      | quantum_type_of
                       | anchor_type
                       | control_type
                       | member_type_of
@@ -118,6 +119,7 @@ type_primary        ::= builtin_type
                       ;
 
 id_type             ::= "#" [ IDENT ] ;
+quantum_type_of     ::= "one" "<" type_expr ">" ;
 anchor_type         ::= "anchor" "<" type_expr ">" ;
 control_type        ::= "control" "<" type_expr ">" ;
 member_type_of      ::= "~" qualified_name "::" IDENT ;

@@ -83,11 +83,20 @@ Used in:
 
 The tooling records it as a directive attached to the field and does not assign stronger executable semantics.
 
-### 9. `anchor<T>` and `control<T>` are recognized as type forms
+### 9. `one<Meta>` is the aspect quantum type projection
+
+Used in archetype operation signatures such as:
+
+- `>createRawNode(#Core, one<Node>) -> #Node`
+- `>createCamera(#Core, one<Node>, one<Camera>) -> #Camera`
+
+The tooling treats `one<Meta>` as a dedicated type-expression form meaning “the `one`-block quantum payload of aspect `Meta`”, projected to C++ as `Meta::Quantum`.
+
+### 10. `anchor<T>` and `control<T>` are recognized as type forms
 
 The parser and linter treat them as special type constructors and also record their presence because project rules already interpret them as behavior-carrying field kinds.
 
-### 10. `=` operations may carry a return type
+### 11. `=` operations may carry a return type
 
 The current golden file contains:
 

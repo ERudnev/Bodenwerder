@@ -214,6 +214,8 @@ def parse_type_expr(text: str) -> dict[str, Any]:
         if remainder:
             raise ParseError(f"Unexpected tokens after external type: {remainder!r}")
         return {"kind": "ExternalType", "raw": raw[:end], "description": description}
+    if raw.startswith("one<") and raw.endswith(">"):
+        return {"kind": "QuantumTypeOf", "raw": raw, "target": parse_type_expr(raw[4:-1])}
     if raw.startswith("anchor<") and raw.endswith(">"):
         return {"kind": "AnchorType", "raw": raw, "target": parse_type_expr(raw[7:-1])}
     if raw.startswith("control<") and raw.endswith(">"):

@@ -111,6 +111,24 @@ def test_golden_elementary_external_type_alias() -> None:
     assert "OpenGL texture handle" in external["target"]["description"]
 
 
+def test_parse_quantum_type_of_expression() -> None:
+    text = """
+namespace rmmr
+  namespace scene
+    archetype Interface
+      >createRawNode(#Core, one<Node>) -> #Node
+      >createCamera(#Core, one<Node>, one<Camera>) -> #Camera
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    iface = ast["declarations"][0]["declarations"][0]["declarations"][0]
+    raw_node = iface["members"][0]
+    create_camera = iface["members"][1]
+    assert raw_node["params"][1]["type"]["kind"] == "QuantumTypeOf"
+    assert raw_node["params"][1]["type"]["target"]["raw"] == "Node"
+    assert create_camera["params"][2]["type"]["kind"] == "QuantumTypeOf"
+    assert create_camera["params"][2]["type"]["target"]["raw"] == "Camera"
+
+
 def test_parse_import_and_entity_local_type() -> None:
     text = """
 import "window"

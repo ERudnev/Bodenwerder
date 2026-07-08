@@ -166,8 +166,11 @@ def lint_type_expr(
     if kind == "OptionalType":
         lint_type_expr(expr["inner"], namespace, symbols, diags, line, entity_local_types)
         return
-    if kind in {"AnchorType", "ControlType"}:
+    if kind in {"AnchorType", "ControlType", "QuantumTypeOf"}:
         lint_type_expr(expr["target"], namespace, symbols, diags, line, entity_local_types)
+        if kind == "QuantumTypeOf" and expr["target"]["kind"] == "NamedType":
+            if not resolve_name(expr["target"]["parts"], namespace, symbols):
+                warn(diags, line, "unknown-quantum-type", f"Unknown aspect in one<...>: {expr['target']['raw']}")
         return
     if kind == "IdType":
         target = expr.get("target")
