@@ -99,7 +99,7 @@ namespace fqsm::aspect::actions {
     template<typename Meta, typename HostType>
     struct Component : Parasitic<Meta, HostType> {};
 
-    template<typename Meta, typename HostType, category::Entity ElementType>
+    template<typename Meta, typename HostType, category::Any ElementType>
     struct Group : Parasitic<Meta, HostType> { //, protected ElementType::Actions {
         using Own = Parasitic<Meta, HostType>;
         using Parent = Parasitic<Meta, HostType>::Parent;
@@ -107,7 +107,10 @@ namespace fqsm::aspect::actions {
 
         // like public interface:
         static void extend(Writing, Id<HostType>); // simplier version of Parasitic::extend
-        static auto addElement(Writing, Own::Id me, Client::Quantum) -> Client::Id;
+        static auto addElement(Writing, Own::Id me, Client::Quantum) -> Client::Id
+            requires category::Standalone<Client>;
+        static auto addElement(Writing, Own::Id me, Client::Id worker, Client::Quantum) -> Client::Id
+            requires category::Parasitic<Client>;
         static void deleteElement(Writing, Own::Id me, Client::Id);
     private:
         using Parasitic<Meta, HostType>::extend;
@@ -216,17 +219,18 @@ namespace fqsm::aspect::actions {
 
     //
     // Group:
-    template<typename Meta, typename HostType, category::Entity ElementType>
+    template<typename Meta, typename HostType, category::Any ElementType>
     void Group<Meta, HostType, ElementType>
     ::extend(Writing context, Id<HostType> id) {
         context.workers_interface().updates<Meta>().put_add(id, {});
     }
 
 
-    template<typename Meta, typename HostType, category::Entity ElementType>
+    template<typename Meta, typename HostType, category::Any ElementType>
     auto Group<Meta, HostType, ElementType>
     ::addElement(Writing context, Own::Id myId, Client::Quantum element)
-    ->Client::Id {
+    ->Client::Id
+    requires category::Standalone<Client> {
         const auto workerId = Client::BaseActions::create(context, std::move(element));
         // this is very important place.
         // place where fQSM, even DAQL and Q1 may become recursive.
@@ -241,9 +245,22 @@ namespace fqsm::aspect::actions {
         return workerId;
     }
 
-    template<typename Meta, typename HostType, category::Entity ElementType>
+    template<typename Meta, typename HostType, category::Any ElementType>
+    auto Group<Meta, HostType, ElementType>
+    ::addElement(Writing context, Own::Id myId, Client::Id workerId, Client::Quantum element)
+    ->Client::Id
+    requires category::Parasitic<Client> {
+        Client::BaseActions::extend(context, workerId, std::move(element));
+        auto myQuantum = context->aspect<Meta>().items().at(myId);
+        myQuantum.insert(workerId);
+        context.workers_interface().updates<Meta>().put_modification(myId, std::move(myQuantum));
+        return workerId;
+    }
+
+    template<typename Meta, typename HostType, category::Any ElementType>
     void Group<Meta, HostType, ElementType>
     ::deleteElement(Writing context, Own::Id myId, Client::Id worker) {
+        // TODO: call kraken if managed ElementType is Parasitic it its Actions have ::kraken() func
         auto myQuantum = context->aspect<Meta>().items().at(myId);
         myQuantum.erase(worker);
         context.workers_interface().updates<Meta>().put_modification(myId, std::move(myQuantum));

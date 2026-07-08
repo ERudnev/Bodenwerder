@@ -101,5 +101,7 @@ namespace rmmr {
     }
 
     void Engine::shutdown() noexcept {
+        ask::temp_sugar::drop_reference<Viewport>(state->main, state->viewport);
+        ask::temp_sugar::drop_reference<Device>(state->main, state->device);
     }
 }

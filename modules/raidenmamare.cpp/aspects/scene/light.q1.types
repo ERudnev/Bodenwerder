@@ -6,10 +6,9 @@ namespace rmmr
 
     // Simple point light bound to a scene node.
     attribute Light of Node
-      element
+      one
         color: RGB
         intensity: float
         range: float
-      table
+      all
         >create(Pos, HPB, RGB, intensity: float, range: float): #
-

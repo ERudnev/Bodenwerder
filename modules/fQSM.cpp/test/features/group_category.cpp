@@ -52,17 +52,32 @@ namespace local {
         }
     };
 
+    struct Tag : Attribute<Tag, Client> {
+        struct Quantum {};
+        using Internals = DefaultInternals;
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
     struct Client_group : Group<Client_group, Keyring, Client> {
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct KeyManager : Archetype<KeyManager> {
-        static void attachManager(Writing context, Keyring::Id keyring) {
-            with<Client_group>::extend(context, keyring);
-        }
+    struct Tag_group : Group<Tag_group, Client_group, Tag> {
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
 
-        static auto addClient(Writing context, Keyring::Id keyring)->Client::Id {
+    struct KeyManager : Archetype<KeyManager> {
+        static Keyring::Id
+        create_keyring(Writing context, Keyring::Quantum val) {
+            const auto id = with<Keyring>::create(context, val);
+            with<Client_group>::extend(context, id);
+            return id;
+        };
+
+        static Client::Id
+        addClient(Writing context, Keyring::Id keyring) {
             const auto newClient = with<Client_group>::addElement(
                 context,
                 keyring,
@@ -71,24 +86,37 @@ namespace local {
             return newClient;
         }
     };
+
+    struct TaggedKeyManager : Archetype<TaggedKeyManager> {
+        static Keyring::Id
+        create_keyring_tagged(Writing context, Keyring::Quantum val) {
+            const auto id = KeyManager::create_keyring(context, val);
+            with<Tag_group>::extend(context, id);
+            return id;
+        }
+
+        static Client::Id
+        addTaggedClient(Writing context, Keyring::Id keyring, Tag::Quantum tagValue) {
+            const auto client = KeyManager::addClient(context, keyring);
+            with<Tag_group>::addElement(context, keyring, client, tagValue);
+            return client;
+        }
+    };
 }
 
 } // namespace
 
 namespace tests {
 
+using namespace local;
+using namespace fqsm::api;
+
 void group_category_demo_scenario(fqsm::api::Schema schema)
 {
-    using namespace local;
-    using namespace fqsm::api;
-
     establish::Realm main(schema);
 
-    const auto primaryVault = with<Keyring>::create(main, {"vault-primary"});
-    const auto backupVault = with<Keyring>::create(main, {"vault-backup"});
-
-    with<KeyManager>::attachManager(main, primaryVault);
-    with<KeyManager>::attachManager(main, backupVault);
+    const auto primaryVault = with<KeyManager>::create_keyring(main, {"vault-primary"});
+    const auto backupVault = with<KeyManager>::create_keyring(main, {"vault-backup"});
 
     for (integer slot = 0; slot < 10; ++slot)
         with<KeyManager>::addClient(main, primaryVault);
@@ -101,24 +129,27 @@ void group_category_demo_scenario(fqsm::api::Schema schema)
     EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 2);
 }
 
-void group_category()
+void group_category_group_hierarchy_scenario(fqsm::api::Schema schema)
 {
-    using namespace local;
-    using namespace fqsm::api;
+    establish::Realm main(schema);
+    const auto vault = with<TaggedKeyManager>::create_keyring_tagged(main, {"vault"});
+    const auto taggedClient = with<TaggedKeyManager>::addTaggedClient(main, vault, {});
+    const auto plainClient = with<KeyManager>::addClient(main, vault);
 
-    const Schema schema = ask::schema::merge({
-        ask::schema::aspect<Keyring>(),
-        ask::schema::aspect<Client>(),
-        ask::schema::aspect<Client_group>(),
-    });
+    EXPECT_TRUE(main.result().good());
+    EXPECT_TRUE(with<Tag>::exists(main, taggedClient));
+    EXPECT_FALSE(with<Tag>::exists(main, plainClient));
+    EXPECT_TRUE(with<Tag_group>::exists(main, vault));
+    EXPECT_TRUE(with<Tag_group>::get(main, vault).contains(taggedClient));
+    EXPECT_FALSE(with<Tag_group>::get(main, vault).contains(plainClient));
+}
 
-    group_category_demo_scenario(schema);
-
+void group_category_ring_scenarios(fqsm::api::Schema schema)
+{
     {
         establish::Realm main(schema);
 
-        const auto keyring = with<Keyring>::create(main, {"ring-A"});
-        with<KeyManager>::attachManager(main, keyring);
+        const auto keyring = with<KeyManager>::create_keyring(main, {"ring-A"});
 
         EXPECT_TRUE(main.result().good());
         EXPECT_TRUE(with<Keyring>::exists(main, keyring));
@@ -131,8 +162,7 @@ void group_category()
     {
         establish::Realm main(schema);
 
-        const auto keyring = with<Keyring>::create(main, {"ring-B"});
-        with<KeyManager>::attachManager(main, keyring);
+        const auto keyring = with<KeyManager>::create_keyring(main, {"ring-B"});
 
         const auto firstClient = with<KeyManager>::addClient(main, keyring);
         const auto secondClient = with<KeyManager>::addClient(main, keyring);
@@ -160,8 +190,7 @@ void group_category()
     {
         establish::Realm main(schema);
 
-        const auto keyring = with<Keyring>::create(main, {"ring-C"});
-        with<KeyManager>::attachManager(main, keyring);
+        const auto keyring = with<KeyManager>::create_keyring(main, {"ring-C"});
 
         const auto firstClient = with<KeyManager>::addClient(main, keyring);
         const auto secondClient = with<KeyManager>::addClient(main, keyring);
@@ -185,6 +214,29 @@ void group_category()
         EXPECT_EQ(with<Keyring>::get_global(main).generationCount, 2);
         EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 0);
     }
+}
+
+
+void group_category()
+{
+    const Schema schema = ask::schema::merge({
+        ask::schema::aspect<Keyring>(),
+        ask::schema::aspect<Client>(),
+        ask::schema::aspect<Client_group>(),
+    });
+
+    const Schema schema_extended = ask::schema::merge({
+        ask::schema::aspect<Keyring>(),
+        ask::schema::aspect<Client>(),
+        ask::schema::aspect<Client_group>(),
+        ask::schema::aspect<Tag>(),
+        ask::schema::aspect<Tag_group>(),
+    });
+
+    group_category_demo_scenario(schema);
+    group_category_group_hierarchy_scenario(schema_extended);
+    group_category_ring_scenarios(schema);
+
 }
 
 } // namespace tests
