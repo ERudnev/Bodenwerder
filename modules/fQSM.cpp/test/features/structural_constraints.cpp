@@ -113,11 +113,11 @@ void structural_constraints()
 
     {
         establish::Realm main(world);
+        const auto attempted = with<EntFree>::create(main, {42});
+        EXPECT_FALSE(with<EntFree>::exists(main, attempted)) << "bare EntFree must not survive structural normalization";
         const auto id = with<archetype::EntTwoComps>::spawn_forgot_init_one_comp(main, 1);
         EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "invalid implementation (forgot component) of spawn succesfully detected";
     }
-
-
 
     {
         establish::Realm main(world);

@@ -144,6 +144,18 @@ void group_category_group_hierarchy_scenario(fqsm::api::Schema schema)
     EXPECT_FALSE(with<Tag_group>::get(main, vault).contains(plainClient));
 }
 
+void group_category_attribute_group_krakens(fqsm::api::Schema schema)
+{
+    establish::Realm main(schema);
+
+    const auto vault = with<TaggedKeyManager>::create_keyring_tagged(main, {"vault"});
+    const auto client = with<TaggedKeyManager>::addTaggedClient(main, vault, {});
+
+    with<Tag_group>::deleteElement(main, vault, client);
+
+    EXPECT_FALSE(with<Client>::exists(main, client));
+}
+
 void group_category_ring_scenarios(fqsm::api::Schema schema)
 {
     {
@@ -235,6 +247,7 @@ void group_category()
 
     group_category_demo_scenario(schema);
     group_category_group_hierarchy_scenario(schema_extended);
+    group_category_attribute_group_krakens(schema_extended);
     group_category_ring_scenarios(schema);
 
 }

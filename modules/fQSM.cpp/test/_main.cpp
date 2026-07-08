@@ -81,6 +81,6 @@ int call_specific_test() {
 }
 
 int main() {
-    return call_specific_test();
-    //return call_all_tests();
+    //return call_specific_test();
+    return call_all_tests();
 };

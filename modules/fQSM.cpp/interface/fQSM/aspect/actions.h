@@ -264,6 +264,10 @@ namespace fqsm::aspect::actions {
         auto myQuantum = context->aspect<Meta>().items().at(myId);
         myQuantum.erase(worker);
         context.workers_interface().updates<Meta>().put_modification(myId, std::move(myQuantum));
-        context.workers_interface().updates<ElementType>().put_deletion(worker);
+        if constexpr (category::Parasitic<Client>) {
+            Client::BaseActions::kraken(context, worker);
+        } else {
+            Client::BaseActions::remove(context, worker);
+        }
     }
 }
