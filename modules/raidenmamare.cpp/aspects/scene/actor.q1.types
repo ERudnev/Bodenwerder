@@ -7,9 +7,9 @@ namespace rmmr
   namespace scene
 
     attribute PrimitiveActor of Node
-      element
+      one
         geometry: #primitive::Base
         material: #material::Core
         albedo: RGB
-      table
-        >create(Pos, HPB, geometry: #primitive::Base, material: #material::Core, albedo: RGB): #
+      all
+        >create(Pos, HPB, geometry: #primitive::Base, material: #material::Core, albedo: RGB) -> #

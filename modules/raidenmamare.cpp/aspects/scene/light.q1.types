@@ -11,4 +11,4 @@ namespace rmmr
         intensity: float
         range: float
       all
-        >create(Pos, HPB, RGB, intensity: float, range: float): #
+        >create(Locator, RGB, intensity: float, range: float) -> #

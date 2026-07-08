@@ -45,6 +45,6 @@ namespace rmmr::scene {
     }
 
     void Node::Actions::hpb(Writing context, Id id, HPB hpb) {
-        *modify(context, id)->rotation = rotation_from_hpb(hpb);
+        modify(context, id)->rotation = rotation_from_hpb(hpb);
     }
 }

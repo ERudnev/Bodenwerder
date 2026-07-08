@@ -6,8 +6,9 @@ namespace rmmr
   namespace scene
 
     entity Core
-      ambient: RGB
-      ambient_intensity: float
+      one
+        ambient: RGB
+        ambient_intensity: float
 
     group<Node> of Core
     group<Camera> of Core
@@ -15,6 +16,6 @@ namespace rmmr
 
     archetype Interface
       >createScene()->#Core
-      >createRawNode(#Core, one<Node>)->#Node
-      >createCamera(#Core, one<Node>, one<Camera>)->#Camera
-      >createLight(#Core, one<Node>, one<Light>)->#Light
+      >createRawNode(#Core, Locator)->#Node
+      >createCamera(#Core, Locator, one<Camera>)->#Camera
+      >createLight(#Core, Locator, one<Light>)->#Light
