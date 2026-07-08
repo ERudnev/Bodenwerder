@@ -8,6 +8,7 @@
     X(custom_reactions) \
     X(killing_feature) \
     X(group_category) \
+    X(group_performance) \
     X(serialization) \
     X(destructor) \
     // end
@@ -76,11 +77,11 @@ int call_all_tests() {
 
 int call_specific_test() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("selected", &tests::group_category)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::group_performance)));
     return s.ok() ? 0 : 1;
 }
 
 int main() {
-    //return call_specific_test();
-    return call_all_tests();
+    return call_specific_test();
+    //return call_all_tests();
 };

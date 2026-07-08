@@ -239,9 +239,9 @@ namespace fqsm::aspect::actions {
         // this hits limits of fQSM, where Quantum can not be System itself.
         // it is realy big story of recursive ECS where Component mey be a System of inner Components
         // So... lets sacrifice performance to avoid this stuff.
-        auto myQuantum = context->aspect<Meta>().items().at(myId);
+        auto& myQuantum = context.workers_interface().updates<Meta>().update_modification(
+            myId, context->aspect<Meta>().items().at(myId));
         myQuantum.insert(workerId);
-        context.workers_interface().updates<Meta>().put_modification(myId, std::move(myQuantum));
         return workerId;
     }
 
@@ -251,9 +251,9 @@ namespace fqsm::aspect::actions {
     ->Client::Id
     requires category::Parasitic<Client> {
         Client::BaseActions::extend(context, workerId, std::move(element));
-        auto myQuantum = context->aspect<Meta>().items().at(myId);
+        auto& myQuantum = context.workers_interface().updates<Meta>().update_modification(
+            myId, context->aspect<Meta>().items().at(myId));
         myQuantum.insert(workerId);
-        context.workers_interface().updates<Meta>().put_modification(myId, std::move(myQuantum));
         return workerId;
     }
 
@@ -261,9 +261,9 @@ namespace fqsm::aspect::actions {
     void Group<Meta, HostType, ElementType>
     ::deleteElement(Writing context, Own::Id myId, Client::Id worker) {
         // TODO: call kraken if managed ElementType is Parasitic it its Actions have ::kraken() func
-        auto myQuantum = context->aspect<Meta>().items().at(myId);
+        auto& myQuantum = context.workers_interface().updates<Meta>().update_modification(
+            myId, context->aspect<Meta>().items().at(myId));
         myQuantum.erase(worker);
-        context.workers_interface().updates<Meta>().put_modification(myId, std::move(myQuantum));
         if constexpr (category::Parasitic<Client>) {
             Client::BaseActions::kraken(context, worker);
         } else {

@@ -5,26 +5,16 @@ import "scene/light"
 namespace rmmr
   namespace scene
 
-    entity Root
+    entity Core
       ambient: RGB
       ambient_intensity: float
 
-    group<Node> of Root
-    group<Camera> of Root
+    group<Node> of Core
+    group<Camera> of Core
+    group<Light> of Core
 
-
-
-    // Passive scene root that gathers nodes.
-    // Cameras, lights and other scene-wide bindings can be added later.
-    entity Core
-      one
-        nodes: vector<#Node>
-        cameras: vector<#Camera>
-        lights: vector<#Light>
-        ambient: RGB
-        ambient_intensity: float
-        !maintain_camera_list(~Camera) // tracks Cameras within
-        !maintain_lights_list(~Light)
-
-        //!cameras_registered() // cameras = lookup {nodes} and querying world->field<scene::Camera>
-        //!lights_registered()
+    archetype Interface
+      >createScene()->#Core
+      >createRawNode(#Core, one<Node>)->#Node
+      >createCamera(#Core, one<Node>, one<Camera>)->#Camera
+      >createLight(#Core, one<Node>, one<Light>)->#Light

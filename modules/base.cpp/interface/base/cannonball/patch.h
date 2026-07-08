@@ -21,8 +21,9 @@ public:
     using RelatedDirect = table::Direct<Key, Val>;
 
     // Unlike Table::insert, replacing deletion keeps deletion.
-    void modify(const Key& id, const Val& value);
+    void modify(const Key& id, const Val& value); // DOTO: consider Key by its value here
     void modify(Key&& id, Val&& value);
+    Val& modify_modification(Key, const Val& prepatchCache);
 
     // Forget local change for id completely.
     bool discard_changes(const Key& id);
@@ -44,7 +45,8 @@ public:
 namespace base::cannonball {
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>::modify(const Key& id, const Val& value)
+void Patch<Key, Val, Hasher, KeyEqual>
+::modify(const Key& id, const Val& value)
 {
     const auto* current = this->find(id);
     if (current && !current->has_value()) return;
@@ -53,7 +55,8 @@ void Patch<Key, Val, Hasher, KeyEqual>::modify(const Key& id, const Val& value)
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>::modify(Key&& id, Val&& value)
+void Patch<Key, Val, Hasher, KeyEqual>
+::modify(Key&& id, Val&& value)
 {
     const auto* current = this->find(id);
     if (current && !current->has_value()) return;
@@ -62,13 +65,28 @@ void Patch<Key, Val, Hasher, KeyEqual>::modify(Key&& id, Val&& value)
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-bool Patch<Key, Val, Hasher, KeyEqual>::discard_changes(const Key& id)
+Val& Patch<Key, Val, Hasher, KeyEqual>
+::modify_modification(Key id, const Val& prepatchCache)
+{
+    if (auto* patchlet = Base::find(id))
+        return patchlet->value();
+
+    const Key& key = id;
+    Base::insert(std::move(id), Patchlet<Val>{prepatchCache});
+    return Base::at(key).value();
+}
+
+
+template<typename Key, typename Val, typename Hasher, typename KeyEqual>
+bool Patch<Key, Val, Hasher, KeyEqual>
+::discard_changes(const Key& id)
 {
     return Base::erase(id);
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>::integrate(RelatedOperational& target, const Patch& patch)
+void Patch<Key, Val, Hasher, KeyEqual>
+::integrate(RelatedOperational& target, const Patch& patch)
 {
     for (const auto entry : patch) {
         if (!entry.value.has_value()) {
@@ -81,7 +99,8 @@ void Patch<Key, Val, Hasher, KeyEqual>::integrate(RelatedOperational& target, co
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>::integrate(RelatedDirect& target, const Patch& patch)
+void Patch<Key, Val, Hasher, KeyEqual>
+::integrate(RelatedDirect& target, const Patch& patch)
 {
     for (const auto entry : patch) {
         if (!entry.value.has_value()) {
@@ -99,7 +118,8 @@ void Patch<Key, Val, Hasher, KeyEqual>::integrate(RelatedDirect& target, const P
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>::merge(Patch& receiver, const Patch& other)
+void Patch<Key, Val, Hasher, KeyEqual>
+::merge(Patch& receiver, const Patch& other)
 {
     for (const auto entry : other) {
         if (!entry.value.has_value()) {
@@ -112,7 +132,8 @@ void Patch<Key, Val, Hasher, KeyEqual>::merge(Patch& receiver, const Patch& othe
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>::merge_three_way(const RelatedOperational&, Patch& receiver, const Patch& other)
+void Patch<Key, Val, Hasher, KeyEqual>
+::merge_three_way(const RelatedOperational&, Patch& receiver, const Patch& other)
 {
     // placeholder
     merge(receiver, other);

@@ -6,7 +6,7 @@ namespace rmmr
 
     // Camera settings bound to a scene node.
     attribute Camera of Node
-      element
+      one
         fov_y: float
         z_near: float
         z_far: float
@@ -15,4 +15,3 @@ namespace rmmr
         ?view_projection(aspect_ratio: float): mat4
       table
         >create(Pos, HPB, fov_y: float, z_near: float, z_far: float): #
-

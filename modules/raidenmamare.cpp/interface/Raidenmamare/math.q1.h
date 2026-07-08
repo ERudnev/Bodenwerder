@@ -9,4 +9,9 @@ namespace rmmr {
     using HPB = vec3;
     using RGB = vec3;
     using UV = vec2;
+
+    struct Locator {
+        Pos pos;
+        HPB euler;
+    };
 }

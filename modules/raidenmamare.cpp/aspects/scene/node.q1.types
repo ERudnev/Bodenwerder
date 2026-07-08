@@ -13,4 +13,4 @@ namespace rmmr
         ?hpb() -> HPB // heading/pitch/bank (degrees)
         =hpb(HPB)
       all
-        >create(pos: Pos, hpb: HPB) -> # // convenience c-tor
+        >create(Locator) -> # // convenience c-tor

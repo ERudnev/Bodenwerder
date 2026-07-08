@@ -15,6 +15,7 @@ namespace fqsm::model::linear {
         virtual void put_deletion(Id<Meta>) = 0;
         virtual void put_add(Id<Meta>, Quantum<Meta>) = 0;
         virtual void put_global(GlobalValue<Meta>) = 0;
+        virtual Quantum<Meta>& update_modification(Id<Meta>, const Quantum<Meta>& providedPrepatchData) = 0;
     };
 
     template<category::Any Meta>
@@ -34,6 +35,7 @@ namespace fqsm::model::linear {
         void put_deletion(Id<Meta>) override;
         void put_add(Id<Meta>, Quantum<Meta>) override;
         void put_global(GlobalValue<Meta>) override;
+        Quantum<Meta>& update_modification(Id<Meta>, const Quantum<Meta>& providedPrepatchData) override;
 
         // schema
         static ref<patch::Erased> create() { return base::make_shared<Patch<Meta>>(); }
@@ -61,6 +63,12 @@ namespace fqsm::model::linear {
     template<category::Any Meta>
     void Patch<Meta>::put_global(GlobalValue<Meta> value) {
         global = {std::move(value)};
+    }
+
+    template<category::Any Meta>
+    Quantum<Meta>& Patch<Meta>
+    ::update_modification(Id<Meta> id, const Quantum<Meta>& providedPrepatchData) {
+        return items.modify_modification(id, providedPrepatchData);
     }
 
     template<category::Any Meta>
