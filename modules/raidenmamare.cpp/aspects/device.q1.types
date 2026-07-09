@@ -8,7 +8,7 @@ namespace rmmr
       ?poll_events(~)
 
   entity Window
-    type Handle @external(OpenGL window C++ pointer aka "GLFWwindow")
+    using Handle @external(OpenGL window C++ pointer aka "GLFWwindow")
     one
       title: string
       size: index2
@@ -20,23 +20,3 @@ namespace rmmr
     >start()
     >openWindow(~Window::title, ~Window::size)->#Window
     >shutdown()
-
-  // --- superseded: Device owned a single Window via control<Window> and Device::init ---
-  // entity Window
-  //   type Handle @external(OpenGL window C++ pointer aka "GLFwindow")
-  //   one
-  //     title: string
-  //     size: index2
-  //     handle: Handle
-  //     !release(-one)
-  //
-  // entity Device
-  //   one
-  //     assets_root: string
-  //     context_major: integer
-  //     context_minor: integer
-  //     window: control<Window>
-  //     ?present()
-  //     ?poll_events()
-  //     >init(title: ~Window::title, size: ~Window::size)
-  //     !deinit(-one)

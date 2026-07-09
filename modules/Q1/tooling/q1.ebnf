@@ -17,9 +17,8 @@ declaration         ::= namespace_decl
 
 namespace_decl      ::= "namespace" IDENT INDENT declaration+ DEDENT ;
 
-type_alias_decl     ::= "type" IDENT type_alias_rhs annotation* ;
+type_alias_decl     ::= "using" IDENT type_alias_rhs annotation* ;
 type_alias_rhs      ::= "as" type_expr
-                      | "~" qualified_name "::" IDENT
                       | external_type
                       ;
 

@@ -55,11 +55,11 @@ Current golden input uses:
 
 The parser supports this exact shape as a compact `entity` with an inline `one` block and does not try to generalize beyond it.
 
-### 6. `type ... ~ Type::member` is interpreted as member type-of
+### 6. `using ... as ~Type::member` is interpreted as member type-of
 
 Used in:
 
-- `type AliasByField ~ Struct::field1`
+- `using AliasByField as ~Struct::field1`
 - `>add_note(#SampleEntity, ~Note::text) -> #Note`
 
 The tooling treats this as a specific type-expression form rather than a general unary operator over arbitrary expressions.
@@ -68,7 +68,7 @@ The tooling treats this as a specific type-expression form rather than a general
 
 Used in:
 
-- `type ExternalDomainType @external(similar to OpenGL texture handle)`
+- `using ExternalDomainType @external(similar to OpenGL texture handle)`
 - field types such as `handle: @external(opengl_window)`
 
 The text inside parentheses is a free-form description string. It is not metadata attached to another type; it replaces a type name in that position.

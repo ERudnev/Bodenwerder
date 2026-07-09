@@ -39,7 +39,7 @@ namespace rmmr {
 
     struct Device : Archetype<Device> {
         static void start(Writing);
-        static auto openWindow(Writing, decltype(Window::Quantum::title) title, decltype(Window::Quantum::size) size) -> Window::Id;
+        static auto openWindow(Writing, decltype(Window::Quantum::title),  decltype(Window::Quantum::size)) -> Window::Id;
         static void shutdown(Writing);
     };
 }

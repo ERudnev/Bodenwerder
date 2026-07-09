@@ -3,23 +3,30 @@ import "materials/program"
 namespace rmmr
   namespace material
 
+    using PersistentUniformId as @external(rmmr::material::Semantics::PersistentId)
+    using UniformValueType as @external(rmmr::material::Semantics::Type)
+    using UniformLocation as @external(rmmr::material::Semantics::RenderId)
+    using ProgramHandle as ~Program::handle
+
+    struct Compiled
+      struct UniformBinding
+        id: PersistentUniformId
+        type: UniformValueType
+        location: UniformLocation
+      using UniformLocations as umap<PersistentUniformId, UniformLocation>
+
+      program: ProgramHandle
+      locations: UniformLocations
+      bindings: vector<UniformBinding>
+
     entity Core
-      type PersistentUniformId as @external(material::Semantics::PersistentId)
       always
         ?uniformIds(vector<string>) -> vector<PersistentUniformId>
-
-
-
-
-    type PersistentUniformId as @external(material::Semantics::PersistentId)
-
-    agent Core @external(set_of_material_handles)// fully defined with rmmr types
-      static
-        ?uniformIds(vector<string>): vector<PersistentUniformId> // convenience for hardcoded materials
-      passport
+      one
+        name: string
         program: #Program
         uniforms: vector<PersistentUniformId>
-      element
-        name: string
-        ?apply(#Device)
-        ?provide(): set_of_material_handles
+        compiled: Compiled?
+        >compile(#Window)
+        ?apply(#Window)
+        ?provide() -> Compiled?

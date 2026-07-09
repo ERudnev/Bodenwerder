@@ -5,11 +5,11 @@
     'import' : line at top of file; pulls in another `.q1.types` module (see directives below)
     'namespace' : opens named namespace
     'declare' : declares existing external type
-    'type' : defines new type or alias
+    'using' : defines new type or alias
     'template' : similar to C++ template
     '<...>' : similar to C++ template parameter list
     'struct' : defines structural type (body: local type aliases, fields, and optionally operation lines `?` `=` `>` — not `!`)
-    'as' : similar to "typedef/using in C++"
+    'as' : introduces alias target in `using A as B` (when B is a type_expr; for type-of use `using A as ~Expr`)
     'enum'
     '~' : type-of operator (reference to the type of an expression/member)
     '::' : namespace scope or global namespace if starts path

@@ -85,7 +85,7 @@ namespace Demo
 def test_parse_external_type_expression() -> None:
     text = """
 namespace Demo
-  type ExternalDomainType @external(similar to OpenGL texture handle)
+  using ExternalDomainType @external(similar to OpenGL texture handle)
   struct Resource
     handle: @external(opengl_window)
 """
@@ -133,13 +133,30 @@ namespace rmmr
     assert create_camera["params"][2]["type"]["target"]["raw"] == "Camera"
 
 
+def test_parse_typeof_using_alias() -> None:
+    text = """
+namespace Demo
+  using AliasByField as ~Struct::field1
+  struct Struct
+    field1: integer
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    alias = ast["declarations"][0]["declarations"][0]
+    assert alias["kind"] == "TypeAliasDecl"
+    assert alias["name"] == "AliasByField"
+    assert alias["mode"] == "typeof"
+    assert alias["target"]["kind"] == "MemberTypeOf"
+    assert alias["target"]["target"] == ["Struct"]
+    assert alias["target"]["member"] == "field1"
+
+
 def test_parse_import_and_entity_local_type() -> None:
     text = """
 import "window"
 
 namespace rmmr
   entity Device
-    type WindowHandle @external(OpenGL window C++ pointer aka "GLFwindow")
+    using WindowHandle @external(OpenGL window C++ pointer aka "GLFwindow")
     one
       window: WindowHandle
       !deinit(-one)

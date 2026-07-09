@@ -2,21 +2,22 @@
 namespace Q1_iQSM
   namespace Syntax
     namespace Typization
-      type Index2Alias as index2
-      type Basic as integer
-      type Alias as Basic
-      type OptionalInt as integer?
+      using Index2Alias as index2
+      using Basic as integer
+      using Alias as Basic
+      using OptionalInt as integer?
       struct Struct
         field1: Basic
         field2: Alias
-      type AliasByField ~ Struct::field1 // AliasByField == type of(Struct::field1) == Basic == integer
-      type ExternalDomainType @external(similar to OpenGL texture handle) // external types are bound as "free style description"
+
+      using AliasByField as ~Struct::field1 // AliasByField == type of(Struct::field1) == Basic == integer
+      using ExternalDomainType @external(similar to OpenGL texture handle) // external types are bound as "free style description"
       struct HasLocalType
-        type LocalType as integer
+        using LocalType as integer
         field: string
 
       struct StructWithMethods
-        type Scalar as float
+        using Scalar as float
         x: Scalar
         y: Scalar
         ?length() -> Scalar
@@ -26,7 +27,7 @@ namespace Q1_iQSM
 
     namespace Namespaces
       namespace Some
-        type Type as integer
+        using Type as integer
       namespace Other
-        type Type as string  // Type == Q1_iQSM::Syntax::Namespaces::Other::Type
-      type Type as Some::Type // Type == Q1_iQSM::Syntax::Namespaces::Type == Q1_iQSM::Syntax::Namespaces::Some::Type == integer
+        using Type as string  // Type == Q1_iQSM::Syntax::Namespaces::Other::Type
+      using Type as Some::Type // Type == Q1_iQSM::Syntax::Namespaces::Type == Q1_iQSM::Syntax::Namespaces::Some::Type == integer

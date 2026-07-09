@@ -4,7 +4,7 @@ namespace rmmr
   namespace material
 
     entity Program
-      type Handle @external(OpenGL C++ opengl_program)
+      using Handle @external(OpenGL C++ opengl_program)
       always
         ?vertexFilename(name: string, library: string) -> string
         ?fragmentFilename(name: string, library: string) -> string

@@ -1,9 +1,9 @@
 namespace rmmr
 
-  type Pos as vec3
-  type HPB as vec3
-  type RGB as vec3
-  type UV as vec2
+  using Pos as vec3
+  using HPB as vec3
+  using RGB as vec3
+  using UV as vec2
 
   struct Locator
     pos: Pos

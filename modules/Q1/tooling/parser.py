@@ -351,8 +351,10 @@ def _parse_field(line: Line, allow_const: bool) -> dict[str, Any]:
 
 
 def _parse_type_alias(line: Line) -> dict[str, Any]:
-    _, rest = line.content.split("type", 1)
-    rest = rest.strip()
+    prefix = "using "
+    if not line.content.startswith(prefix):
+        raise ParseError("Malformed type declaration", line.number)
+    rest = line.content[len(prefix) :].strip()
     if " " not in rest:
         raise ParseError("Malformed type declaration", line.number)
     name, rhs = rest.split(" ", 1)
@@ -371,22 +373,13 @@ def _parse_type_alias(line: Line) -> dict[str, Any]:
         )
     base, annotations = _extract_annotations(rhs)
     if base.startswith("as "):
+        alias_target = base[3:].strip()
         return _node(
             "TypeAliasDecl",
             line.number,
             name=name,
-            mode="alias",
-            target=parse_type_expr(base[3:].strip()),
-            annotations=annotations,
-            comment=line.comment,
-        )
-    if base.startswith("~"):
-        return _node(
-            "TypeAliasDecl",
-            line.number,
-            name=name,
-            mode="typeof",
-            target=parse_type_expr(base),
+            mode="typeof" if alias_target.startswith("~") else "alias",
+            target=parse_type_expr(alias_target),
             annotations=annotations,
             comment=line.comment,
         )
@@ -409,7 +402,7 @@ def _parse_generic_members(cursor: Cursor, indent: int, allow_const: bool) -> li
         if line.indent > indent:
             raise ParseError("Unexpected indentation", line.number)
         line = cursor.pop()
-        if line.content.startswith("type "):
+        if line.content.startswith("using "):
             members.append(_parse_type_alias(line))
         elif line.content[:1] in "?=>":
             members.append(_parse_operation(line))
@@ -440,7 +433,7 @@ def _parse_aspect_local_types(cursor: Cursor, parent_indent: int) -> list[dict[s
             break
         if line.indent > indent:
             raise ParseError("Unexpected indentation in aspect body", line.number)
-        if not line.content.startswith("type "):
+        if not line.content.startswith("using "):
             break
         local_types.append(_parse_type_alias(cursor.pop()))
     return local_types
@@ -601,7 +594,7 @@ def _parse_declaration(cursor: Cursor, indent: int) -> dict[str, Any]:
         return _parse_import(line)
     if text.startswith("namespace "):
         return _parse_namespace(cursor, line)
-    if text.startswith("type "):
+    if text.startswith("using "):
         return _parse_type_alias(line)
     if text.startswith("struct "):
         return _parse_struct(cursor, line)
