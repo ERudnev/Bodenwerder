@@ -10,19 +10,19 @@
 #include <stdexcept>
 #include <utility>
 
-#include <iQSM/api/builtins.h>
+#include <fQSM/api/builtins.h>
 
 namespace rmmr {
     // use q1 type aliases as own.. ever
-    using namespace iqsm::q1;
+    using namespace fqsm::q1;
 }
 
-namespace rmmr::material {    
+namespace rmmr::material {
 
     struct Semantics {
         using Name = std::string_view;
         using RenderId = GLint;
-        using PersistentId = integer;        
+        using PersistentId = integer;
 
         static auto uniform_name(Name name) -> std::string {
             return std::string("u_").append(name);
@@ -46,7 +46,7 @@ namespace rmmr::material {
             Type type;
             RenderId location;
         };
-        
+
         // Persistent uniform semantics vocabulary.
         //
         // ID convention:
@@ -95,7 +95,7 @@ namespace rmmr::material {
                 if (e.id == id) return e.type;
             }
             throw std::runtime_error("Semantics::type_of: unknown uniform semantic id");
-        }      
+        }
 
         using RuntimeMapping = umap<PersistentId, RenderId>;
     };

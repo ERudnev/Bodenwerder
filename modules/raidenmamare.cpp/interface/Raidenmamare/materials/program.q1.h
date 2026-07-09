@@ -1,14 +1,26 @@
 #pragma once
 
 #include <Raidenmamare/device.q1.h>
+#include <Raidenmamare/materials/uniformSemantics.h>
 
 #include <fQSM/api/interface.h>
-
-#include <GL/glew.h>
 
 namespace rmmr::material {
 
     using namespace fqsm::api;
+
+    struct Uniform {
+        using Id = Semantics::PersistentId;
+        using Type = Semantics::Type;
+        using Location = Semantics::RenderId;
+        using Palette = vector<Id>;
+
+        struct Binding {
+            Id id;
+            Type type;
+            Location location;
+        };
+    };
 
     struct Program : Entity<Program> {
         using Handle = GLuint;

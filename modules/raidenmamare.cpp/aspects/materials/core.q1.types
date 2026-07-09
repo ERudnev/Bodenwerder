@@ -3,29 +3,20 @@ import "materials/program"
 namespace rmmr
   namespace material
 
-    using PersistentUniformId as @external(rmmr::material::Semantics::PersistentId)
-    using UniformValueType as @external(rmmr::material::Semantics::Type)
-    using UniformLocation as @external(rmmr::material::Semantics::RenderId)
-    using ProgramHandle as ~Program::handle
-
     struct Compiled
-      struct UniformBinding
-        id: PersistentUniformId
-        type: UniformValueType
-        location: UniformLocation
-      using UniformLocations as umap<PersistentUniformId, UniformLocation>
-
+      using ProgramHandle as ~Program::handle
+      using Locations as @external(rmmr::material::Semantics::RuntimeMapping)
       program: ProgramHandle
-      locations: UniformLocations
-      bindings: vector<UniformBinding>
+      locations: Locations
+      bindings: vector<Uniform::Binding>
 
     entity Core
       always
-        ?uniformIds(vector<string>) -> vector<PersistentUniformId>
+        ?uniformIds(vector<string>) -> Uniform::Palette
       one
         name: string
         program: #Program
-        uniforms: vector<PersistentUniformId>
+        uniforms: Uniform::Palette
         compiled: Compiled?
         >compile(#Window)
         ?apply(#Window)

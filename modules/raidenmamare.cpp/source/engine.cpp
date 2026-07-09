@@ -1,4 +1,5 @@
 #include <Raidenmamare/engine.h>
+#include <Raidenmamare/materials/core.q1.h>
 #include <Raidenmamare/scene/core.q1.h>
 #include <Raidenmamare/viewport.q1.h>
 
@@ -9,6 +10,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "materials/materialGenerator.h"
+
 namespace {
     using namespace fqsm::api;
     using namespace rmmr;
@@ -17,6 +20,9 @@ namespace {
         return ask::schema::merge({
             ask::schema::aspect<Application>(),
             ask::schema::aspect<Window>(),
+            ask::schema::aspect<material::Program>(),
+            ask::schema::aspect<material::Program_group>(),
+            ask::schema::aspect<material::Core>(),
             ask::schema::aspect<Viewport>(),
             ask::schema::aspect<scene::Core>(),
             ask::schema::aspect<scene::Node>(),
@@ -43,6 +49,11 @@ namespace rmmr {
         maybe<Window::Id> window;
         maybe<Viewport::Id> viewport;
         maybe<scene::Core::Id> scene;
+        struct {
+            maybe<material::Core::Id> materialAmbient;
+            maybe<material::Core::Id> materialLit;
+            maybe<material::Core::Id> materialGrid;
+        } resources;
     };
 
     Engine::Engine(StartupParameters params)
@@ -59,6 +70,7 @@ namespace rmmr {
             .context_minor = params.context_minor,
         };
         state->window = Device::openWindow(state->main, std::move(params.title), params.size);
+        prepareResources();
         createViewport(params.size);
         createScene();
 
@@ -94,7 +106,17 @@ namespace rmmr {
     }
 
     void Engine::prepareResources() {
-        _INCOMPLETE_;
+        auto& main = state->main;
+        const auto& window = state->window;
+
+        base::message("rmmr: loading material resources...");
+        with<material::Program_group>::extend(main, window);
+
+        state->resources.materialAmbient = material::MaterialGenerator::ambient(main, window);
+        state->resources.materialLit = material::MaterialGenerator::lit(main, window);
+        state->resources.materialGrid = material::MaterialGenerator::grid(main, window);
+
+        base::message("rmmr: material resources loaded");
     }
 
     void Engine::createScene() {

@@ -3,8 +3,18 @@ import "device"
 namespace rmmr
   namespace material
 
+    struct Uniform
+      using Id as @external(rmmr::material::Semantics::PersistentId)
+      using Type as @external(rmmr::material::Semantics::Type)
+      using Location as @external(rmmr::material::Semantics::RenderId)
+      using Palette as vector<Id>
+      struct Binding
+        id: Id
+        type: Type
+        location: Location
+
     entity Program
-      using Handle @external(OpenGL C++ opengl_program)
+      using Handle as @external(OpenGL C++ opengl_program)
       always
         ?vertexFilename(name: string, library: string) -> string
         ?fragmentFilename(name: string, library: string) -> string
