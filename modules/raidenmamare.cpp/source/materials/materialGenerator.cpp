@@ -1,34 +1,28 @@
 #include "materialGenerator.h"
 
-#include <Raidenmamare/materials/program.q1.h>
-
 #include <utility>
 
 namespace rmmr::material {
     namespace {
 
-        Core::Id create_preset(fqsm::Writing context, Window::Id window, string program_name, string core_name, string library, Uniform::Palette uniforms) {
-            const auto program = with<Program_group>::addElement(context, window, Program::Quantum{
+        resource::Material::Id create_preset(fqsm::Writing context, system::Device::Id device, string program_name, string core_name, string library, asset::Uniform::Palette uniforms) {
+            const auto asset_shader = with<asset::Shader>::create(context, asset::Shader::Quantum{
                 .name = std::move(program_name),
                 .library = std::move(library),
-                .handle = {},
             });
-            with<Program>::compile(context, program, window);
-
-            const auto core = with<Core>::create(context, Core::Quantum{
+            const auto asset_material = with<asset::Material>::create(context, asset::Material::Quantum{
                 .name = std::move(core_name),
-                .program = program,
+                .program = asset_shader,
                 .uniforms = std::move(uniforms),
             });
-            with<Core>::compile(context, core, window);
-            return core;
+            return asset::Material::Actions::compile(context, asset_material, device);
         }
 
     } // namespace
 
-    auto MaterialGenerator::ambient(fqsm::Writing context, Window::Id window) -> Core::Id {
-        return create_preset(context, window, "ambient", "ambient", "rmmr",
-            Core::Actions::uniformIds(vector<string>{
+    auto MaterialGenerator::ambient(fqsm::Writing context, system::Device::Id device) -> resource::Material::Id {
+        return create_preset(context, device, "ambient", "ambient", "rmmr",
+            asset::Material::Always::uniformIds(vector<string>{
                 "model",
                 "view",
                 "projection",
@@ -38,9 +32,9 @@ namespace rmmr::material {
             }));
     }
 
-    auto MaterialGenerator::lit(fqsm::Writing context, Window::Id window) -> Core::Id {
-        return create_preset(context, window, "lit", "lit", "rmmr",
-            Core::Actions::uniformIds(vector<string>{
+    auto MaterialGenerator::lit(fqsm::Writing context, system::Device::Id device) -> resource::Material::Id {
+        return create_preset(context, device, "lit", "lit", "rmmr",
+            asset::Material::Always::uniformIds(vector<string>{
                 "model",
                 "view",
                 "projection",
@@ -53,9 +47,9 @@ namespace rmmr::material {
             }));
     }
 
-    auto MaterialGenerator::grid(fqsm::Writing context, Window::Id window) -> Core::Id {
-        return create_preset(context, window, "Grid", "grid", "rmmr",
-            Core::Actions::uniformIds(vector<string>{
+    auto MaterialGenerator::grid(fqsm::Writing context, system::Device::Id device) -> resource::Material::Id {
+        return create_preset(context, device, "Grid", "grid", "rmmr",
+            asset::Material::Always::uniformIds(vector<string>{
                 "model",
                 "view",
                 "projection",

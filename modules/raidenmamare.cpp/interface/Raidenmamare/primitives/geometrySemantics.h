@@ -5,11 +5,11 @@
 #include <stdexcept>
 #include <string_view>
 
-#include <iQSM/api/builtins.h>
+#include <fQSM/api/builtins.h>
 
 namespace rmmr {
     // use q1 type aliases as own.. ever
-    using namespace iqsm::q1;
+    using namespace fqsm::q1;
 }
 
 namespace rmmr::primitive {

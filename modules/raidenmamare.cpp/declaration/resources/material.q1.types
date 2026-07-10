@@ -1,5 +1,5 @@
-import "../assets/shader"
-import "../system/core"
+import "assets/shader"
+import "system/core"
 
 namespace rmmr
   namespace resource
