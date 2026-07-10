@@ -1,4 +1,4 @@
-# Reaction == Detection->Evaluation->Correction
+# Reaction anatomy
 
 Сейчас в реакциях fQSM/Q1 слиплись сразу несколько разных ролей.
 

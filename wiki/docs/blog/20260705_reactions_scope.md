@@ -1,4 +1,4 @@
-# Aspect-wide Reactions
+# Reactions scope
 
 В Q1 есть два разных класса реакций.
 
