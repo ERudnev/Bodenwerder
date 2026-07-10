@@ -97,6 +97,9 @@ namespace fqsm::aspect::actions {
     struct Attribute : Parasitic<Meta, HostType> {};
 
     template<typename Meta, typename HostType>
+    struct Feature : Parasitic<Meta, HostType> {};
+
+    template<typename Meta, typename HostType>
     struct Component : Parasitic<Meta, HostType> {};
 
     template<typename Meta, typename HostType, category::Any ElementType>

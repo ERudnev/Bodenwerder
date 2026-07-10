@@ -104,6 +104,34 @@ The current golden file contains:
 
 So the parser allows command operations with an optional return type.
 
+### 12. `attribute` aspect declarations
+
+Form:
+
+- `attribute A of Host`
+
+Meaning:
+
+- declares an attribute aspect named `A` parasitic on owner `Host`
+- body uses the active block vocabulary `always` / `one` / `all`
+- operations and reactions follow the same rules as other aspect bodies in the current golden subset
+
+The parser records `category: "attribute"`.
+
+### 13. `feature` aspect declarations
+
+Form:
+
+- `feature F of Host`
+
+Meaning:
+
+- declares a feature aspect named `F` parasitic on owner `Host`
+- body uses the active block vocabulary `always` / `one` / `all`
+- operations and reactions follow the same rules as other aspect bodies in the current golden subset
+
+The parser records `category: "feature"`.
+
 ## Open questions
 
 1. Should future tooling also accept the older vocabulary `element` / `table` / `static`, or should that stay outside this tooling folder until a real migration is needed?

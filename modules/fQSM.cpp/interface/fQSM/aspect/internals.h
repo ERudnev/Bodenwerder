@@ -48,7 +48,6 @@ namespace fqsm::aspect::internals {
                 Any<Meta>::reactions(),
                 Behavior{
                     features::reactions::structural::remove_with_parent<Meta, HostType>(),
-                    features::reactions::structural::parastic_requires_parent_to_appear<Meta, HostType>(),
                 }
             );
         };
@@ -76,7 +75,26 @@ namespace fqsm::aspect::internals {
             return Behavior::merged(
                 Behavior::merged(
                     Parasitic<Meta, HostType>::reactions(),
-                    Behavior{}
+                    Behavior{
+                        features::reactions::structural::new_parasitic_requires_existing_parent<Meta, HostType>(),
+                    }
+                ),
+                Meta::customAspectReactions()
+            );
+        };
+    };
+
+    template<typename Meta, typename HostType>
+    struct Feature : Parasitic<Meta, HostType> {
+        using Behavior = Base::Behavior;
+        inline static const Behavior reactions() {
+            return Behavior::merged(
+                Behavior::merged(
+                    Parasitic<Meta, HostType>::reactions(),
+                    Behavior{
+                        features::reactions::structural::dead_parasitic_kill_parent<Meta, HostType>(),
+                        features::reactions::structural::new_parasitic_requires_parent_appears<Meta, HostType>(),
+                    }
                 ),
                 Meta::customAspectReactions()
             );
@@ -91,8 +109,9 @@ namespace fqsm::aspect::internals {
                 Behavior::merged(
                     Parasitic<Meta, HostType>::reactions(),
                     Behavior{
-                        features::reactions::structural::dead_component_kill_parent<Meta, HostType>(),
-                        features::reactions::structural::parrent_appears_requires_component<Meta, HostType>(),
+                        features::reactions::structural::dead_parasitic_kill_parent<Meta, HostType>(),
+                        features::reactions::structural::parent_appears_requires_component<Meta, HostType>(),
+                        features::reactions::structural::new_parasitic_requires_parent_appears<Meta, HostType>(),
                     }
                 ),
                 Meta::customAspectReactions()

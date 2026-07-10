@@ -1,6 +1,8 @@
 # Q1 Etalon (aspects.q1.types)
 
+`attribute A of Host` — attribute aspect parasitic on `Host`.
 
+`feature F of Host` — feature aspect parasitic on `Host`.
 ```
 namespace Q1_fQSM
   namespace Etalon

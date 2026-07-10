@@ -3,7 +3,7 @@
 // Q1 language basic types (alias)
 #include <fQSM/api/builtins.h>
 
-// aspect types (Entity/Component/Attribute):
+// aspect types (Entity/Component/Attribute/Feature):
 #include <fQSM/aspect/assembly.interface.h>
 
 // manipulation
@@ -42,6 +42,9 @@ namespace fqsm::api {
 
     template<typename Meta, typename Parent>
     using Attribute = ::fqsm::aspect::Attribute<Meta, Parent>;
+
+    template<typename Meta, typename Parent>
+    using Feature = ::fqsm::aspect::Feature<Meta, Parent>;
 
     template<typename Meta, typename Parent>
     using Component = ::fqsm::aspect::Component<Meta, Parent>;

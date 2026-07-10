@@ -12,14 +12,17 @@ namespace fqsm::features::reactions::structural {
     template<category::Parasitic Parasitic, category::Any Parent>
     struct remove_with_parent;
 
-    template<category::Component Parasitic, category::Any Parent>
-    struct dead_component_kill_parent;
+    template<category::Parasitic Parasitic, category::Any Parent>
+    struct dead_parasitic_kill_parent;
 
     template<category::Parasitic Parasitic, category::Any Parent>
-    struct parastic_requires_parent_to_appear;
+    struct new_parasitic_requires_existing_parent;
+
+    template<category::Parasitic Parasitic, category::Any Parent>
+    struct new_parasitic_requires_parent_appears;
 
     template<category::Component Parasitic, category::Any Parent>
-    struct parrent_appears_requires_component;
+    struct parent_appears_requires_component;
 
     template<category::Group GroupMeta, category::Any Element>
     struct group_removal_removes_elements;
@@ -42,31 +45,31 @@ namespace fqsm::features::reactions::structural {
         }
     };
 
-    // dead_component_kill_parent
-    template<category::Component Parasitic, category::Any Parent>
-    struct dead_component_kill_parent : Abstract {
+    // dead_parasitic_kill_parent
+    template<category::Parasitic Parasitic, category::Any Parent>
+    struct dead_parasitic_kill_parent : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parasitic>(); }
         void apply(Reacting context) override {
             auto& target = context.reaction<Parent>();
             for (const auto& change : Abstract::changes<Parasitic>(context).removed()) {
-                _DBG_TX_("structural dead_component_kill_parent: {} removed -> put_deletion {} {}", Rtid::name<Parasitic>(), Rtid::name<Parent>(), change.id);
+                _DBG_TX_("structural dead_parasitic_kill_parent: {} removed -> put_deletion {} {}", Rtid::name<Parasitic>(), Rtid::name<Parent>(), change.id);
                 target.put_deletion(change.id);
             }
         }
     };
 
-    // parastic_requires_parent_to_appear
+    // new_parasitic_requires_existing_parent
     template<category::Parasitic Parasitic, category::Any Parent>
-    struct parastic_requires_parent_to_appear : Abstract {
+    struct new_parasitic_requires_existing_parent : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parasitic>(); }
         void apply(Reacting context) override {
             const auto& source = context.proposal.aspect<Parent>();
             for (const auto& change : Abstract::changes<Parasitic>(context).added()) {
                 if (source.items().find(change.id)) {
-                    _DBG_TX_("structural parastic_requires_parent: {} {} ok, {} in proposal", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
+                    _DBG_TX_("structural new_parasitic_requires_existing_parent: {} {} ok, {} in proposal", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
                     continue;
                 }
-                _DBG_TX_("structural parastic_requires_parent: CRITICAL {} {}, {} missing in proposal", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
+                _DBG_TX_("structural new_parasitic_requires_existing_parent: CRITICAL {} {}, {} missing in proposal", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
                 ask::feedback::critical(
                     context,
                     std::format(
@@ -78,18 +81,48 @@ namespace fqsm::features::reactions::structural {
         }
     };
 
+    // new_parasitic_requires_parent_appears
+    template<category::Parasitic Parasitic, category::Any Parent>
+    struct new_parasitic_requires_parent_appears : Abstract {
+        Abstract::Sources listens() const override { return Abstract::typed_set<Parasitic>(); }
+        void apply(Reacting context) override {
+            const auto parent_added = Abstract::changes<Parent>(context).added();
+            for (const auto& change : Abstract::changes<Parasitic>(context).added()) {
+                bool parent_appears_in_same_patch = false;
+                for (const auto& parentChange : parent_added) {
+                    if (parentChange.id == change.id) {
+                        parent_appears_in_same_patch = true;
+                        break;
+                    }
+                }
+                if (parent_appears_in_same_patch) {
+                    _DBG_TX_("structural new_parasitic_requires_parent_appears: {} {} ok, {} added in same patch", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
+                    continue;
+                }
+                _DBG_TX_("structural new_parasitic_requires_parent_appears: CRITICAL {} {}, {} not added in same patch", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
+                ask::feedback::critical(
+                    context,
+                    std::format(
+                        R"(structural: {} must appear in the same patch as new {} {})",
+                        Rtid::name<Parent>(),
+                        Rtid::name<Parasitic>(),
+                        change.id));
+            }
+        }
+    };
+
 
     template<category::Component Parasitic, category::Any Parent>
-    struct parrent_appears_requires_component : Abstract {
+    struct parent_appears_requires_component : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parent>(); }
         void apply(Reacting context) override {
             const auto& source = context.proposal.aspect<Parasitic>();
             for (const auto& change : Abstract::changes<Parent>(context).added()) {
                 if (source.items().find(change.id)) {
-                    _DBG_TX_("structural parrent_requires_component: {} {} ok, {} in proposal", Rtid::name<Parent>(), change.id, Rtid::name<Parasitic>());
+                    _DBG_TX_("structural parent_appears_requires_component: {} {} ok, {} in proposal", Rtid::name<Parent>(), change.id, Rtid::name<Parasitic>());
                     continue;
                 }
-                _DBG_TX_("structural parrent_requires_component: CRITICAL {} {}, {} missing in proposal", Rtid::name<Parent>(), change.id, Rtid::name<Parasitic>());
+                _DBG_TX_("structural parent_appears_requires_component: CRITICAL {} {}, {} missing in proposal", Rtid::name<Parent>(), change.id, Rtid::name<Parasitic>());
                 ask::feedback::critical(
                     context,
                     std::format(

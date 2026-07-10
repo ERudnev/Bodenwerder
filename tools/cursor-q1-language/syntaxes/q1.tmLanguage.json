@@ -86,7 +86,7 @@
       "patterns": [
         {
           "name": "keyword.control.q1",
-          "match": "\\b(namespace|declare|using|template|struct|as|enum|entity|attribute|component|agent|depends|always|one|all|archetype|manipulation|group|model|passport)\\b"
+          "match": "\\b(namespace|declare|using|template|struct|as|enum|entity|attribute|feature|component|agent|depends|always|one|all|archetype|manipulation|group|model|passport)\\b"
         }
       ]
     },

@@ -31,7 +31,7 @@ The current tooling is designed for structural reading of the golden files, not 
 It understands:
 
 - indentation-scoped namespaces
-- `using`, `struct`, `entity`, `attribute`, `component`, `group`, `archetype`
+- `using`, `struct`, `entity`, `attribute`, `feature`, `component`, `group`, `archetype`, `manipulation`
 - aspect blocks `always`, `one`, `all`
 - operations `?`, `=`, `>`
 - reactions `!name(scope)`

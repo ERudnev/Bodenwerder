@@ -510,7 +510,45 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             blocks=blocks,
             comment=line.comment,
         )
-    if category in {"attribute", "component"}:
+    if category == "attribute":
+        match = re.fullmatch(
+            r"attribute\s+([A-Za-z_][A-Za-z0-9_]*)\s+of\s+([A-Za-z_][A-Za-z0-9_]*)",
+            text,
+        )
+        if not match:
+            raise ParseError("Malformed attribute declaration", line.number)
+        name, owner = match.groups()
+        return _node(
+            "AspectDecl",
+            line.number,
+            category="attribute",
+            name=name,
+            owner=owner,
+            element=None,
+            local_types=_parse_aspect_local_types(cursor, line.indent),
+            blocks=_parse_aspect_blocks(cursor, line.indent),
+            comment=line.comment,
+        )
+    if category == "feature":
+        match = re.fullmatch(
+            r"feature\s+([A-Za-z_][A-Za-z0-9_]*)\s+of\s+([A-Za-z_][A-Za-z0-9_]*)",
+            text,
+        )
+        if not match:
+            raise ParseError("Malformed feature declaration", line.number)
+        name, owner = match.groups()
+        return _node(
+            "AspectDecl",
+            line.number,
+            category="feature",
+            name=name,
+            owner=owner,
+            element=None,
+            local_types=_parse_aspect_local_types(cursor, line.indent),
+            blocks=_parse_aspect_blocks(cursor, line.indent),
+            comment=line.comment,
+        )
+    if category == "component":
         match = re.fullmatch(rf"{category}\s+([A-Za-z_][A-Za-z0-9_]*)\s+of\s+([A-Za-z_][A-Za-z0-9_]*)", text)
         if not match:
             raise ParseError(f"Malformed {category} declaration", line.number)
@@ -602,6 +640,8 @@ def _parse_declaration(cursor: Cursor, indent: int) -> dict[str, Any]:
         return _parse_aspect(cursor, line, "entity")
     if text.startswith("attribute "):
         return _parse_aspect(cursor, line, "attribute")
+    if text.startswith("feature "):
+        return _parse_aspect(cursor, line, "feature")
     if text.startswith("component "):
         return _parse_aspect(cursor, line, "component")
     if text.startswith("group<"):

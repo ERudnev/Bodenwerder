@@ -17,7 +17,8 @@
     '->' : operation return type after the closing `)` (for example `name(args) -> ReturnType`). If `ReturnType` is the local aspect id written as `#`, use spaces around the arrow: `-> #`.
     '@' : preprocessor directives (seebelow)
     'entity' : declares entity (root particle)
-    'attribute' : declares attribute (particle with Owner)
+    'attribute' : declares attribute (particle with Owner); form: attribute Name of Owner, body blocks always / one / all
+    'feature' : declares feature (particle with Owner); form: feature Name of Owner, body blocks always / one / all
     'component' : declares component (mandatory particle with Owner)
     'agent' : declares external runtime-bound agent (wrapper/binding to an external resource)
     'depends' : adds dependency manually
@@ -38,7 +39,7 @@
     '=' : "T::!foo(=one)" reacts on one T element value changed
 
   reserved:
-    'composite' - subjective and scope-dependent "soft" type for building composites of entities/attributes/components
+    'composite' - subjective and scope-dependent "soft" type for building composites of entities/attributes/features/components
     'particle'
     'model' : opens "model" block (domain model declaration)
 

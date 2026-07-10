@@ -5,7 +5,6 @@
 namespace workshop {
     using namespace fqsm::api;
 
-    /*
     struct Wallet : Entity<Wallet> {
         // Workshop exploration: spin the idea without pretending this is production-ready.
         // The function pointer is a concept, not the target model. Properly, Quantum
@@ -86,14 +85,14 @@ namespace workshop {
 
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-    };*/
+    };
 }
 
 namespace tests {
 
 void polymorphic_behavior_exp()
 {
-    /*
+
     using namespace workshop;
     using namespace fqsm::api;
 
@@ -119,7 +118,7 @@ void polymorphic_behavior_exp()
     EXPECT_EQ(with<Wallet>::get(main, steadyId).stocks, 100);
     EXPECT_EQ(with<Wallet>::get(main, riskyId).cash, 50);
     EXPECT_EQ(with<Wallet>::get(main, riskyId).stocks, 100);
-    */
+
 }
 
 } // namespace tests

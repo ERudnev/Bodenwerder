@@ -35,6 +35,20 @@ namespace Demo
     assert "reaction-in-struct" in codes
 
 
+def test_feature_unknown_owner_is_warning() -> None:
+    text = """
+namespace Demo
+  feature Attr of Missing
+    one
+      x: integer
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    codes = {diag.code for diag in diagnostics}
+    assert "unknown-owner" in codes
+
+
 def test_unknown_owner_is_warning() -> None:
     text = """
 namespace Demo

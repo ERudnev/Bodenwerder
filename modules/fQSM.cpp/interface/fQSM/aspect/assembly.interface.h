@@ -55,6 +55,13 @@ namespace fqsm::aspect {
     };
 
     template<typename Meta, typename HostType>
+    struct Feature : detail::aspect::Parasitic<Meta, HostType> {
+        using HostAspect = HostType;
+        using BaseActions = actions::Feature<Meta, HostType>;
+        using DefaultInternals = internals::Feature<Meta, HostType>;
+    };
+
+    template<typename Meta, typename HostType>
     struct Component : detail::aspect::Parasitic<Meta, HostType> {
         using HostAspect = HostType;
         using BaseActions = actions::Component<Meta, HostType>;

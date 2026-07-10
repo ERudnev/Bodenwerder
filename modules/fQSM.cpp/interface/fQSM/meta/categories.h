@@ -54,7 +54,10 @@ namespace fqsm::meta::category {
     concept Component = Parasitic<Meta>;
 
     template<typename Meta>
-    concept Attribute = Parasitic<Meta>; // TODO: add attribute-specific stuff, for example "rule of creation(ctor)"
+    concept Attribute = Parasitic<Meta>;
+
+    template<typename Meta>
+    concept Feature = Parasitic<Meta>;
 
     template<typename Meta>
     concept Group = Parasitic<Meta> and musthave::Worker<Meta>; // redesigned: "and musthave::Passport<Meta>"

@@ -150,6 +150,36 @@ namespace Demo
     assert alias["target"]["member"] == "field1"
 
 
+def test_parse_feature_declaration() -> None:
+    text = """
+namespace Demo
+  feature Tag of SampleEntity
+    all
+      modulus: integer
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    tag = ast["declarations"][0]["declarations"][0]
+    assert tag["kind"] == "AspectDecl"
+    assert tag["category"] == "feature"
+    assert tag["name"] == "Tag"
+    assert tag["owner"] == "SampleEntity"
+
+
+def test_parse_attribute_declaration() -> None:
+    text = """
+namespace Demo
+  attribute Tag of SampleEntity
+    all
+      modulus: integer
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    tag = ast["declarations"][0]["declarations"][0]
+    assert tag["kind"] == "AspectDecl"
+    assert tag["category"] == "attribute"
+    assert tag["name"] == "Tag"
+    assert tag["owner"] == "SampleEntity"
+
+
 def test_parse_import_and_entity_local_type() -> None:
     text = """
 import "window"
