@@ -1,0 +1,18 @@
+namespace rmmr
+  namespace system
+
+    entity Core
+
+    // tricky Aspect: its Quantum is a root with a role of "owner of everything", all Actions are "all"(static)
+    entity Device
+      using Handle @external(OpenGL window C++ pointer aka "GLFWwindow")
+      one
+        handle: Handle
+        !release(-one)
+      all
+        assets_root: string
+        context_major: integer
+        context_minor: integer
+        ?poll_events(~)
+
+    group<Device> of Core

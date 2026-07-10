@@ -74,6 +74,8 @@ class Cursor:
 
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 QUALIFIED_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*$")
+SIMPLE_IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
+QUALIFIED_IDENT = rf"{SIMPLE_IDENT}(?:::{SIMPLE_IDENT})*"
 IMPORT_RE = re.compile(r'^import\s+"([^"]+)"$')
 
 
@@ -201,6 +203,42 @@ def _split_named_param(text: str) -> tuple[str, str] | None:
     return None
 
 
+CONTAINER_ARITY: dict[str, int] = {
+    "vector": 1,
+    "set": 1,
+    "uset": 1,
+    "map": 2,
+    "umap": 2,
+}
+
+
+def _parse_container_type(raw: str) -> dict[str, Any] | None:
+    for name, arity in CONTAINER_ARITY.items():
+        prefix = f"{name}<"
+        if not raw.startswith(prefix) or not raw.endswith(">"):
+            continue
+        inner = raw[len(prefix) : -1]
+        if arity == 1:
+            return {
+                "kind": "ContainerType",
+                "raw": raw,
+                "name": name,
+                "params": [parse_type_expr(inner.strip())],
+            }
+        parts = _split_top_level(inner, ",")
+        if len(parts) != arity:
+            raise ParseError(
+                f"Container {name!r} expects {arity} type parameters, got {len(parts)} in {raw!r}"
+            )
+        return {
+            "kind": "ContainerType",
+            "raw": raw,
+            "name": name,
+            "params": [parse_type_expr(part.strip()) for part in parts],
+        }
+    return None
+
+
 def parse_type_expr(text: str) -> dict[str, Any]:
     raw = text.strip()
     if not raw:
@@ -224,6 +262,12 @@ def parse_type_expr(text: str) -> dict[str, Any]:
         return {"kind": "IdType", "raw": raw, "target": None}
     if raw.startswith("#"):
         return {"kind": "IdType", "raw": raw, "target": raw[1:]}
+    if raw == "~":
+        return {"kind": "AllScope", "raw": raw, "extra_source": None, "implicit_owner": True}
+    if raw.startswith("~") and "::" not in raw[1:]:
+        extra = raw[1:].strip()
+        if IDENT_RE.match(extra):
+            return {"kind": "AllScope", "raw": raw, "extra_source": extra, "implicit_owner": True}
     if raw.startswith("~") and "::" in raw[1:]:
         target, member = raw[1:].rsplit("::", 1)
         return {
@@ -232,9 +276,12 @@ def parse_type_expr(text: str) -> dict[str, Any]:
             "target": [part.strip() for part in target.split("::")],
             "member": member.strip(),
         }
-    builtin = {"integer", "float", "string", "index2", "boolean", "vec2", "vec3", "vec4", "quat", "mat4"}
+    builtin = {"integer", "float", "string", "index2", "boolean", "vec2", "vec3", "vec4", "quat", "mat4", "seconds", "time"}
     if raw in builtin:
         return {"kind": "BuiltinType", "raw": raw, "name": raw}
+    container = _parse_container_type(raw)
+    if container is not None:
+        return container
     if not QUALIFIED_RE.match(raw):
         raise ParseError(f"Unsupported type expression: {raw!r}")
     return {"kind": "NamedType", "raw": raw, "parts": raw.split("::")}
@@ -404,6 +451,8 @@ def _parse_generic_members(cursor: Cursor, indent: int, allow_const: bool) -> li
         line = cursor.pop()
         if line.content.startswith("using "):
             members.append(_parse_type_alias(line))
+        elif line.content.startswith("struct "):
+            members.append(_parse_struct(cursor, line))
         elif line.content[:1] in "?=>":
             members.append(_parse_operation(line))
         elif line.content.startswith("!"):
@@ -422,10 +471,11 @@ def _parse_import(line: Line) -> dict[str, Any]:
     return _node("ImportDecl", line.number, path=match.group(1), comment=line.comment)
 
 
-def _parse_aspect_local_types(cursor: Cursor, parent_indent: int) -> list[dict[str, Any]]:
+def _parse_aspect_local_decls(cursor: Cursor, parent_indent: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     indent = _child_indent(cursor, parent_indent)
     if indent is None:
-        return []
+        return [], []
+    local_structs: list[dict[str, Any]] = []
     local_types: list[dict[str, Any]] = []
     while True:
         line = cursor.peek()
@@ -433,10 +483,13 @@ def _parse_aspect_local_types(cursor: Cursor, parent_indent: int) -> list[dict[s
             break
         if line.indent > indent:
             raise ParseError("Unexpected indentation in aspect body", line.number)
-        if not line.content.startswith("using "):
+        if line.content.startswith("struct "):
+            local_structs.append(_parse_struct(cursor, cursor.pop()))
+        elif line.content.startswith("using "):
+            local_types.append(_parse_type_alias(cursor.pop()))
+        else:
             break
-        local_types.append(_parse_type_alias(cursor.pop()))
-    return local_types
+    return local_structs, local_types
 
 
 def _parse_aspect_blocks(cursor: Cursor, parent_indent: int) -> list[dict[str, Any]]:
@@ -491,13 +544,15 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             raise ParseError("Malformed entity declaration", line.number)
         name, inline_one = match.groups()
         blocks: list[dict[str, Any]]
+        local_structs: list[dict[str, Any]]
         local_types: list[dict[str, Any]]
         if inline_one:
+            local_structs = []
             local_types = []
             fake_line = Line(line.number, line.indent, inline_one.strip(), line.comment)
             blocks = [_node("AspectBlock", line.number, role="one", members=[_parse_field(fake_line, allow_const=False)])]
         else:
-            local_types = _parse_aspect_local_types(cursor, line.indent)
+            local_structs, local_types = _parse_aspect_local_decls(cursor, line.indent)
             blocks = _parse_aspect_blocks(cursor, line.indent)
         return _node(
             "AspectDecl",
@@ -506,18 +561,20 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             name=name,
             owner=None,
             element=None,
+            local_structs=local_structs,
             local_types=local_types,
             blocks=blocks,
             comment=line.comment,
         )
     if category == "attribute":
         match = re.fullmatch(
-            r"attribute\s+([A-Za-z_][A-Za-z0-9_]*)\s+of\s+([A-Za-z_][A-Za-z0-9_]*)",
+            rf"attribute\s+({SIMPLE_IDENT})\s+of\s+({QUALIFIED_IDENT})",
             text,
         )
         if not match:
             raise ParseError("Malformed attribute declaration", line.number)
         name, owner = match.groups()
+        local_structs, local_types = _parse_aspect_local_decls(cursor, line.indent)
         return _node(
             "AspectDecl",
             line.number,
@@ -525,18 +582,20 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             name=name,
             owner=owner,
             element=None,
-            local_types=_parse_aspect_local_types(cursor, line.indent),
+            local_structs=local_structs,
+            local_types=local_types,
             blocks=_parse_aspect_blocks(cursor, line.indent),
             comment=line.comment,
         )
     if category == "feature":
         match = re.fullmatch(
-            r"feature\s+([A-Za-z_][A-Za-z0-9_]*)\s+of\s+([A-Za-z_][A-Za-z0-9_]*)",
+            rf"feature\s+({SIMPLE_IDENT})\s+of\s+({QUALIFIED_IDENT})",
             text,
         )
         if not match:
             raise ParseError("Malformed feature declaration", line.number)
         name, owner = match.groups()
+        local_structs, local_types = _parse_aspect_local_decls(cursor, line.indent)
         return _node(
             "AspectDecl",
             line.number,
@@ -544,15 +603,17 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             name=name,
             owner=owner,
             element=None,
-            local_types=_parse_aspect_local_types(cursor, line.indent),
+            local_structs=local_structs,
+            local_types=local_types,
             blocks=_parse_aspect_blocks(cursor, line.indent),
             comment=line.comment,
         )
     if category == "component":
-        match = re.fullmatch(rf"{category}\s+([A-Za-z_][A-Za-z0-9_]*)\s+of\s+([A-Za-z_][A-Za-z0-9_]*)", text)
+        match = re.fullmatch(rf"{category}\s+({SIMPLE_IDENT})\s+of\s+({QUALIFIED_IDENT})", text)
         if not match:
             raise ParseError(f"Malformed {category} declaration", line.number)
         name, owner = match.groups()
+        local_structs, local_types = _parse_aspect_local_decls(cursor, line.indent)
         return _node(
             "AspectDecl",
             line.number,
@@ -560,15 +621,17 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             name=name,
             owner=owner,
             element=None,
-            local_types=_parse_aspect_local_types(cursor, line.indent),
+            local_structs=local_structs,
+            local_types=local_types,
             blocks=_parse_aspect_blocks(cursor, line.indent),
             comment=line.comment,
         )
     if category == "group":
-        match = re.fullmatch(r"group<([A-Za-z_][A-Za-z0-9_]*)>\s+of\s+([A-Za-z_][A-Za-z0-9_]*)", text)
+        match = re.fullmatch(rf"group<({SIMPLE_IDENT})>\s+of\s+({QUALIFIED_IDENT})", text)
         if not match:
             raise ParseError("Malformed group declaration", line.number)
         element, owner = match.groups()
+        local_structs, local_types = _parse_aspect_local_decls(cursor, line.indent)
         return _node(
             "AspectDecl",
             line.number,
@@ -576,7 +639,8 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             name=f"{element}_group",
             owner=owner,
             element=element,
-            local_types=_parse_aspect_local_types(cursor, line.indent),
+            local_structs=local_structs,
+            local_types=local_types,
             blocks=_parse_aspect_blocks(cursor, line.indent),
             comment=line.comment,
         )
@@ -592,11 +656,13 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             name=name,
             owner=None,
             element=None,
+            local_structs=[],
+            local_types=[],
             members=_parse_archetype_members(cursor, line.indent),
             comment=line.comment,
         )
     if category == "manipulation":
-        match = re.fullmatch(r"manipulation\s+([A-Za-z_][A-Za-z0-9_]*)\s+of\s+([A-Za-z_][A-Za-z0-9_]*)", text)
+        match = re.fullmatch(rf"manipulation\s+({SIMPLE_IDENT})\s+of\s+({QUALIFIED_IDENT})", text)
         if not match:
             raise ParseError("Malformed manipulation declaration", line.number)
         name, owner = match.groups()
@@ -607,6 +673,8 @@ def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:
             name=name,
             owner=owner,
             element=None,
+            local_structs=[],
+            local_types=[],
             members=_parse_operation_only_members(cursor, line.indent),
             comment=line.comment,
         )

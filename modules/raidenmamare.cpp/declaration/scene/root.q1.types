@@ -1,0 +1,23 @@
+import "../math"
+import "actor"
+import "camera"
+import "light"
+import "node"
+
+namespace rmmr
+  namespace scene
+
+    entity Root
+      one
+        ambient: RGB
+        ambient_intensity: float
+
+    group<Node> of Root
+    group<Camera> of Root
+    group<Light> of Root
+
+    manipulation Interface of Root
+      >createScene()->#
+      >createCamera(#, Locator, one<Camera>)->#Camera
+      >createLight(#, Locator, one<Light>)->#Light
+      >createPrimitiveActor(#, Locator, one<PrimitiveActor>)->#PrimitiveActor

@@ -1,0 +1,11 @@
+import "../scene/camera"
+import "dispatcher"
+
+namespace rmmr
+  namespace controller
+
+    // Optional input controller for an existing scene::Camera feature.
+    attribute Camera of scene::Camera
+      one
+        >create()-> #
+        =update(now: seconds) // RMB + mouse: rotate anchored scene::Camera node (HPB); input via Dispatcher on Device

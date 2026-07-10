@@ -128,6 +128,7 @@ namespace fqsm::aspect::internals {
                     Parasitic<Meta, HostType>::reactions(),
                     Behavior{
                         features::reactions::structural::group_removal_removes_elements<Meta, ElementType>(),
+                        features::reactions::structural::new_parasitic_requires_existing_parent<Meta, HostType>(),
                     }
                 ),
                 Meta::customAspectReactions()

@@ -1,0 +1,11 @@
+import "../system/core"
+
+namespace rmmr
+  namespace resource
+
+    entity Shader
+      using Handle as @external(OpenGL C++ opengl_program)
+      one
+        handle: Handle
+
+    group<Shader> of Device

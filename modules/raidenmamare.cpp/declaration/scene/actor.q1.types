@@ -1,0 +1,15 @@
+import "../resources/geometry"
+import "../resources/material"
+import "../math"
+import "node"
+
+namespace rmmr
+  namespace scene
+
+    feature PrimitiveActor of Node
+      one
+        geometry: #resource::Geometry
+        material: #resource::Material
+        albedo: RGB
+      all
+        >create(Pos, HPB, geometry: #resource::Geometry, material: #resource::Material, albedo: RGB) -> #

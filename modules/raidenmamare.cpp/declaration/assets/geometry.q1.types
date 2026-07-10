@@ -1,0 +1,20 @@
+import "../math"
+import "../resources/geometry"
+import "../system/core"
+
+namespace rmmr
+  namespace asset
+
+    entity Geometry
+      struct Channel
+        using Id as @external(rmmr::primitive::GeometrySemantics::PersistentId)
+        using Type as @external(rmmr::primitive::GeometrySemantics::Type)
+        using Layout as vector<Id>
+      always
+        ?layoutIds(vector<string>) -> Channel::Layout
+      one
+        debugName: string
+        layout: Channel::Layout
+        positions: vector<Pos>
+        normals: vector<Pos>
+        >compile(#Device) -> #resource::Geometry

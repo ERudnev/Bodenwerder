@@ -1,0 +1,15 @@
+import "../resources/material"
+import "../system/core"
+import "shader"
+
+namespace rmmr
+  namespace asset
+
+    entity Material
+      always
+        ?uniformIds(vector<string>) -> Uniform::Palette
+      one
+        name: string
+        program: #asset::Shader
+        uniforms: Uniform::Palette
+        >compile(#Device) -> #resource::Material // fails are critical (aborting transaction or throw (TBD))

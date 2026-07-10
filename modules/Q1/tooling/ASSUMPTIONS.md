@@ -157,8 +157,31 @@ The parser records it as `ImportDecl`. The linter resolves imported modules from
 - full template support
 - enum parsing
 - agent aspect execution semantics
-- generic container types beyond what is needed by the current golden files
 - code generation or runtime validation
+
+### Builtin container type expressions
+
+Parser and linter support the container forms from `syntax.txt`:
+
+- `vector<T>`
+- `set<K>`
+- `uset<T>`
+- `map<K,V>` (comma-separated key/value type parameters)
+- `umap<K,V>`
+
+Type parameters are parsed recursively via `parse_type_expr`, including `#`, `#Aspect`, and nested containers.
+
+In aspect `one`/`all` field bodies, bare `#` is resolved against the enclosing aspect name (local aspect id).
+
+### Nested struct in struct
+
+`struct` bodies may contain nested `struct` declarations (for example `Uniform::Binding`).
+Type references `Outer::Inner` resolve when `Inner` is a nested struct or local alias inside `Outer`.
+
+### All-scope `~` in operation parameters
+
+`~` and `~Tag` are valid anonymous parameter markers in query/command/factory signatures (same scope family as reaction `!foo(~)`).
+Linter warns with `all-scope-outside-all-block` when `~` appears in a non-`all` block.
 
 ## Conservative behavior policy
 

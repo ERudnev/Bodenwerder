@@ -3,12 +3,15 @@
 #include <Raidenmamare/scene/core.q1.h>
 #include <Raidenmamare/viewport.q1.h>
 
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #include <base/logging.h>
 
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 #include "materials/materialGenerator.h"
 
@@ -41,6 +44,82 @@ namespace {
     }
 }
 
+
+namespace rmmr::device {
+    using namespace fqsm::api;
+    using namespace rmmr;
+
+    namespace {
+
+        auto create_handle(
+            const Application::Global& application,
+            const decltype(Window::Quantum::title)& title,
+            const decltype(Window::Quantum::size)& size) -> Window::Handle {
+            const int width = std::max(static_cast<int>(size.x), 1);
+            const int height = std::max(static_cast<int>(size.y), 1);
+            const int context_major = std::max(static_cast<int>(application.context_major), 1);
+            const int context_minor = std::max(static_cast<int>(application.context_minor), 0);
+            const char* window_title = title.empty() ? "Raidenmamare" : title.c_str();
+
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, context_major);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, context_minor);
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+            GLFWwindow* window = glfwCreateWindow(width, height, window_title, nullptr, nullptr);
+            if (!window) {
+                throw std::runtime_error("device::openWindow: glfwCreateWindow() failed");
+            }
+
+            glfwSetWindowPos(window, 1000, 100);
+            glfwMakeContextCurrent(window);
+            glewExperimental = GL_TRUE;
+            if (glewInit() != GLEW_OK) {
+                glfwDestroyWindow(window);
+                throw std::runtime_error("device::openWindow: glewInit() failed");
+            }
+
+            glEnable(GL_DEPTH_TEST);
+
+            glfwSetFramebufferSizeCallback(window, [](GLFWwindow*, int framebuffer_width, int framebuffer_height) {
+                glViewport(0, 0, framebuffer_width, framebuffer_height);
+            });
+
+            return window;
+        }
+
+    } // namespace
+
+    void start(Writing) {
+        if (!glfwInit()) {
+            throw std::runtime_error("device::start: glfwInit() failed");
+        }
+    }
+
+    auto openWindow(
+        Writing context,
+        decltype(Window::Quantum::title) title,
+        decltype(Window::Quantum::size) size) -> Window::Id {
+        const Application::Global& application = with<Application>::get_global(context);
+        const Window::Handle handle = create_handle(application, title, size);
+        return with<Window>::create(context, Window::Quantum{
+            .title = std::move(title),
+            .size = size,
+            .handle = handle,
+        });
+    }
+
+    void shutdown(Writing context) {
+        std::vector<Window::Id> windowIds;
+        for (const auto entry : context->aspect<Window>().items()) {
+            windowIds.push_back(entry.id);
+        }
+        for (Window::Id windowId : windowIds) {
+            with<Window>::remove(context, windowId);
+        }
+        glfwTerminate();
+    }
+}
+
 namespace rmmr {
     using namespace fqsm::api;
 
@@ -63,13 +142,15 @@ namespace rmmr {
         }))
     {
         base::message("rmmr: starting device...");
-        Device::start(state->main);
-        *with<Application>::modify_global(state->main) = Application::Global{
-            .assets_root = std::move(params.assets_root),
-            .context_major = params.context_major,
-            .context_minor = params.context_minor,
-        };
-        state->window = Device::openWindow(state->main, std::move(params.title), params.size);
+        device::start(state->main);
+
+        {
+            auto global = with<Application>::modify_global(state->main);
+            global.assets_root = std::move(params.assets_root);
+            global.context_major = params.context_major;
+            global.context_minor = params.context_minor;
+        }
+        state->window = device::openWindow(state->main, std::move(params.title), params.size);
         prepareResources();
         createViewport(params.size);
         createScene();
@@ -152,6 +233,6 @@ namespace rmmr {
 
     void Engine::shutdown() noexcept {
         ask::temp_sugar::drop_reference<Viewport>(state->main, state->viewport);
-        Device::shutdown(state->main);
+        device::shutdown(state->main);
     }
 }

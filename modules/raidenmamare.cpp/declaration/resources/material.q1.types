@@ -1,0 +1,15 @@
+import "../assets/shader"
+import "../system/core"
+
+namespace rmmr
+  namespace resource
+
+    entity Material
+      using Locations as @external(rmmr::material::Semantics::RuntimeMapping)
+      one
+        shader: #Shader
+        locations: Locations
+        bindings: vector<Uniform::Binding>
+        ?apply(#Device)
+
+    group<Material> of Device

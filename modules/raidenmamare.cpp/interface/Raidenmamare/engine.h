@@ -7,7 +7,7 @@
 #include <fQSM/processing/orchestrators/subsystem.h>
 
 // this include will be removed from "public" Engine interface after "Engine::StartupParameters" become facade type (just config file to read?)
-#include <Raidenmamare/device.q1.h>
+#include <Raidenmamare/application.q1.h>
 
 namespace rmmr {
 

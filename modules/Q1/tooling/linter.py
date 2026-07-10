@@ -13,7 +13,7 @@ if __package__ in {None, ""}:
 from parser import ParseError, parse_file, parse_text
 
 
-BUILTINS = {"integer", "float", "string", "index2", "boolean", "vec2", "vec3", "vec4", "quat", "mat4"}
+BUILTINS = {"integer", "float", "string", "index2", "boolean", "vec2", "vec3", "vec4", "quat", "mat4", "seconds", "time"}
 
 
 @dataclass
@@ -136,6 +136,42 @@ def resolve_name(parts: list[str], namespace: tuple[str, ...], symbols: dict[tup
     return None
 
 
+def qualified_name_parts(name: str) -> list[str]:
+    return name.split("::")
+
+
+def struct_member_type_names(struct: dict[str, Any]) -> set[str]:
+    names: set[str] = set()
+    for member in struct.get("members", []):
+        if member["kind"] in {"FieldDecl", "ConstField", "TypeAliasDecl", "StructDecl"}:
+            names.add(member["name"])
+    return names
+
+
+def resolve_struct_member_type(
+    parts: list[str],
+    namespace: tuple[str, ...],
+    symbols: dict[tuple[str, ...], Symbol],
+    entity_local_structs: dict[str, dict[str, Any]] | None = None,
+) -> bool:
+    if len(parts) != 2:
+        return False
+    if entity_local_structs and parts[0] in entity_local_structs:
+        return parts[1] in struct_member_type_names(entity_local_structs[parts[0]])
+    symbol = resolve_name([parts[0]], namespace, symbols)
+    if symbol is None:
+        matches = [
+            candidate
+            for candidate in symbols.values()
+            if candidate.name == parts[0] and candidate.node["kind"] == "StructDecl"
+        ]
+        if len(matches) == 1:
+            symbol = matches[0]
+    if symbol and symbol.node["kind"] == "StructDecl":
+        return parts[1] in struct_member_type_names(symbol.node)
+    return False
+
+
 def decl_fields(node: dict[str, Any]) -> set[str]:
     fields: set[str] = set()
     if node["kind"] == "StructDecl":
@@ -157,7 +193,9 @@ def lint_type_expr(
     diags: list[Diagnostic],
     line: int,
     entity_local_types: dict[str, dict[str, Any]] | None = None,
+    entity_local_structs: dict[str, dict[str, Any]] | None = None,
     primary_aspect: str | None = None,
+    block_role: str | None = None,
 ) -> None:
     kind = expr["kind"]
     if kind == "BuiltinType":
@@ -165,10 +203,20 @@ def lint_type_expr(
     if kind == "ExternalType":
         return
     if kind == "OptionalType":
-        lint_type_expr(expr["inner"], namespace, symbols, diags, line, entity_local_types, primary_aspect)
+        lint_type_expr(expr["inner"], namespace, symbols, diags, line, entity_local_types, entity_local_structs, primary_aspect, block_role)
+        return
+    if kind == "ContainerType":
+        for param in expr["params"]:
+            lint_type_expr(param, namespace, symbols, diags, line, entity_local_types, entity_local_structs, primary_aspect, block_role)
+        return
+    if kind == "AllScope":
+        if block_role is not None and block_role != "all":
+            warn(diags, line, "all-scope-outside-all-block", "All-scope `~` is expected in an `all` block")
+        if expr.get("extra_source") and not resolve_name([expr["extra_source"]], namespace, symbols):
+            warn(diags, line, "unknown-all-scope-source", f"Unknown all-scope source: {expr['extra_source']}")
         return
     if kind in {"AnchorType", "ControlType", "QuantumTypeOf"}:
-        lint_type_expr(expr["target"], namespace, symbols, diags, line, entity_local_types, primary_aspect)
+        lint_type_expr(expr["target"], namespace, symbols, diags, line, entity_local_types, entity_local_structs, primary_aspect, block_role)
         if kind == "QuantumTypeOf" and expr["target"]["kind"] == "NamedType":
             if not resolve_name(expr["target"]["parts"], namespace, symbols):
                 warn(diags, line, "unknown-quantum-type", f"Unknown aspect in one<...>: {expr['target']['raw']}")
@@ -176,10 +224,10 @@ def lint_type_expr(
     if kind == "IdType":
         target = expr.get("target")
         if target is None and primary_aspect is not None:
-            if not resolve_name([primary_aspect], namespace, symbols):
+            if not resolve_name(qualified_name_parts(primary_aspect), namespace, symbols):
                 warn(diags, line, "unknown-primary-id", f"Unknown primary aspect for bare #: {primary_aspect}")
             return
-        if target and not resolve_name([target], namespace, symbols):
+        if target and not resolve_name(qualified_name_parts(target), namespace, symbols):
             warn(diags, line, "unknown-id-target", f"Unknown id target: {target}")
         return
     if kind == "NamedType":
@@ -188,9 +236,15 @@ def lint_type_expr(
             return
         if entity_local_types and raw in entity_local_types:
             if entity_local_types[raw]["target"] is not None:
-                lint_type_expr(entity_local_types[raw]["target"], namespace, symbols, diags, line, entity_local_types)
+                lint_type_expr(entity_local_types[raw]["target"], namespace, symbols, diags, line, entity_local_types, entity_local_structs)
             return
-        if not resolve_name(expr["parts"], namespace, symbols):
+        parts = expr["parts"]
+        if resolve_struct_member_type(parts, namespace, symbols, entity_local_structs):
+            return
+        if len(parts) == 2 and entity_local_structs and parts[0] in entity_local_structs:
+            if parts[1] in struct_member_type_names(entity_local_structs[parts[0]]):
+                return
+        if not resolve_name(parts, namespace, symbols):
             warn(diags, line, "unknown-type", f"Unknown type reference: {raw}")
         return
     if kind == "MemberTypeOf":
@@ -212,6 +266,7 @@ def lint_members(
     context: str,
     block_role: str | None = None,
     entity_local_types: dict[str, dict[str, Any]] | None = None,
+    entity_local_structs: dict[str, dict[str, Any]] | None = None,
     primary_aspect: str | None = None,
 ) -> None:
     seen: dict[str, dict[str, Any]] = {}
@@ -225,17 +280,29 @@ def lint_members(
                 seen[key] = member
 
         if member["kind"] == "FieldDecl":
-            lint_type_expr(member["type"], namespace, symbols, diags, member["line"], entity_local_types, primary_aspect)
+            lint_type_expr(member["type"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
         elif member["kind"] == "ConstField":
-            lint_type_expr(member["type"], namespace, symbols, diags, member["line"], entity_local_types, primary_aspect)
+            lint_type_expr(member["type"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
         elif member["kind"] == "TypeAliasDecl":
             if member["target"] is not None:
-                lint_type_expr(member["target"], namespace, symbols, diags, member["line"], entity_local_types, primary_aspect)
+                lint_type_expr(member["target"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
+        elif member["kind"] == "StructDecl":
+            lint_members(
+                member["members"],
+                namespace,
+                symbols,
+                diags,
+                f"{context}::{member['name']}",
+                block_role=block_role,
+                entity_local_types=entity_local_types,
+                entity_local_structs=entity_local_structs,
+                primary_aspect=primary_aspect,
+            )
         elif member["kind"] in {"QueryOp", "CommandOp", "FactoryOp"}:
             for param in member["params"]:
-                lint_type_expr(param["type"], namespace, symbols, diags, member["line"], entity_local_types, primary_aspect)
+                lint_type_expr(param["type"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
             if member["return_type"] is not None:
-                lint_type_expr(member["return_type"], namespace, symbols, diags, member["line"], entity_local_types, primary_aspect)
+                lint_type_expr(member["return_type"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
         elif member["kind"] == "ReactionDecl":
             scope = member["scope"]
             if block_role == "one" and scope["kind"] != "OneScope":
@@ -266,7 +333,19 @@ def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagn
                 continue
 
             if kind == "StructDecl":
-                lint_members(decl["members"], namespace, symbols, diags, f"struct {decl['name']}")
+                struct_local_types = {
+                    member["name"]: member
+                    for member in decl["members"]
+                    if member["kind"] == "TypeAliasDecl"
+                }
+                lint_members(
+                    decl["members"],
+                    namespace,
+                    symbols,
+                    diags,
+                    f"struct {decl['name']}",
+                    entity_local_types=struct_local_types,
+                )
                 for member in decl["members"]:
                     if member["kind"] == "ReactionDecl":
                         warn(diags, member["line"], "reaction-in-struct", "Struct body should not contain `!` reactions")
@@ -279,16 +358,27 @@ def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagn
 
             if kind == "AspectDecl":
                 owner = decl.get("owner")
-                if owner and not resolve_name([owner], namespace, symbols):
+                if owner and not resolve_name(qualified_name_parts(owner), namespace, symbols):
                     warn(diags, decl["line"], "unknown-owner", f"Unknown owner aspect: {owner}")
                 element = decl.get("element")
-                if element and not resolve_name([element], namespace, symbols):
+                if element and not resolve_name(qualified_name_parts(element), namespace, symbols):
                     warn(diags, decl["line"], "unknown-group-element", f"Unknown group element: {element}")
 
                 entity_local_types = {local_type["name"]: local_type for local_type in decl.get("local_types", [])}
+                entity_local_structs = {local_struct["name"]: local_struct for local_struct in decl.get("local_structs", [])}
                 for local_type in entity_local_types.values():
                     if local_type["target"] is not None:
-                        lint_type_expr(local_type["target"], namespace, symbols, diags, local_type["line"], entity_local_types)
+                        lint_type_expr(local_type["target"], namespace, symbols, diags, local_type["line"], entity_local_types, entity_local_structs)
+                for local_struct in entity_local_structs.values():
+                    lint_members(
+                        local_struct["members"],
+                        namespace,
+                        symbols,
+                        diags,
+                        f"local struct {local_struct['name']}",
+                        entity_local_types=entity_local_types,
+                        entity_local_structs=entity_local_structs,
+                    )
 
                 if decl["category"] == "archetype":
                     members = decl.get("members", [])
@@ -335,6 +425,8 @@ def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagn
                         f"{decl['category']} {decl['name']} block {role}",
                         block_role=role,
                         entity_local_types=entity_local_types,
+                        entity_local_structs=entity_local_structs,
+                        primary_aspect=decl["name"],
                     )
                     if role == "always":
                         for member in block["members"]:

@@ -1,0 +1,10 @@
+import "core"
+import "window"
+
+namespace rmmr
+  namespace system
+
+    manipulation Interface of Core
+      >start()
+      >openWindow(title: string, size: index2)->#Window
+      >shutdown()

@@ -1,0 +1,12 @@
+import "core"
+
+namespace rmmr
+  namespace system
+
+    entity Window
+      one
+        title: string
+        size: index2
+        ?present()
+
+    group<Window> of Device

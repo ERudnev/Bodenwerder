@@ -180,6 +180,47 @@ namespace Demo
     assert tag["owner"] == "SampleEntity"
 
 
+def test_parse_qualified_owner_declaration() -> None:
+    text = """
+namespace rmmr
+  namespace controller
+    attribute Camera of scene::Camera
+      one
+        clock: double
+    component Dispatcher of system::Device
+      one
+        clock: double
+    group<Window> of system::Device
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    controller = ast["declarations"][0]["declarations"][0]
+    decls = controller["declarations"]
+    camera = decls[0]
+    dispatcher = decls[1]
+    windows = decls[2]
+    assert camera["owner"] == "scene::Camera"
+    assert dispatcher["owner"] == "system::Device"
+    assert windows["owner"] == "system::Device"
+
+
+def test_parse_entity_local_struct() -> None:
+    text = """
+namespace rmmr
+  namespace asset
+    entity Geometry
+      struct Channel
+        using Id as @external(int)
+        using Layout as integer
+      one
+        layout: Channel::Layout
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    asset = ast["declarations"][0]["declarations"][0]
+    geometry = asset["declarations"][0]
+    assert geometry["local_structs"][0]["name"] == "Channel"
+    assert geometry["local_structs"][0]["members"][0]["name"] == "Id"
+
+
 def test_parse_import_and_entity_local_type() -> None:
     text = """
 import "window"
@@ -197,3 +238,135 @@ namespace rmmr
     device = ast["declarations"][1]["declarations"][0]
     assert device["local_types"][0]["name"] == "WindowHandle"
     assert device["local_types"][0]["mode"] == "external"
+
+
+def test_parse_builtin_container_types() -> None:
+    text = """
+namespace Demo
+  entity Box
+    one
+      seq: vector<integer>
+      keys: set<string>
+      bag: uset<boolean>
+      pairs: map<string, integer>
+      fast: umap<string, float>
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    box = ast["declarations"][0]["declarations"][0]
+    fields = {m["name"]: m["type"] for m in box["blocks"][0]["members"] if m["kind"] == "FieldDecl"}
+
+    assert fields["seq"]["kind"] == "ContainerType"
+    assert fields["seq"]["name"] == "vector"
+    assert fields["seq"]["params"][0]["name"] == "integer"
+
+    assert fields["keys"]["name"] == "set"
+    assert fields["bag"]["name"] == "uset"
+
+    assert fields["pairs"]["name"] == "map"
+    assert len(fields["pairs"]["params"]) == 2
+    assert fields["pairs"]["params"][0]["name"] == "string"
+    assert fields["pairs"]["params"][1]["name"] == "integer"
+
+    assert fields["fast"]["name"] == "umap"
+    assert fields["fast"]["params"][1]["name"] == "float"
+
+
+def test_parse_container_id_type_fields() -> None:
+    text = """
+namespace Demo
+  entity A
+
+  entity B
+    one
+      brother: #
+      parents: vector<#A>
+      siblings: vector<#>
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    decls = ast["declarations"][0]["declarations"]
+    b = decls[1]
+    fields = {m["name"]: m["type"] for m in b["blocks"][0]["members"] if m["kind"] == "FieldDecl"}
+
+    assert fields["brother"]["kind"] == "IdType"
+    assert fields["brother"]["target"] is None
+
+    assert fields["parents"]["kind"] == "ContainerType"
+    assert fields["parents"]["name"] == "vector"
+    assert fields["parents"]["params"][0]["kind"] == "IdType"
+    assert fields["parents"]["params"][0]["target"] == "A"
+
+    assert fields["siblings"]["kind"] == "ContainerType"
+    assert fields["siblings"]["params"][0]["kind"] == "IdType"
+    assert fields["siblings"]["params"][0]["target"] is None
+
+
+def test_parse_nested_container_types() -> None:
+    text = """
+namespace Demo
+  entity A
+    one
+      nested: vector<vector<#A>>
+      keyed: map<string, vector<#>>
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    a = ast["declarations"][0]["declarations"][0]
+    fields = {m["name"]: m["type"] for m in a["blocks"][0]["members"] if m["kind"] == "FieldDecl"}
+
+    nested = fields["nested"]
+    assert nested["name"] == "vector"
+    inner = nested["params"][0]
+    assert inner["name"] == "vector"
+    assert inner["params"][0]["target"] == "A"
+
+    keyed = fields["keyed"]
+    assert keyed["name"] == "map"
+    assert keyed["params"][1]["name"] == "vector"
+    assert keyed["params"][1]["params"][0]["target"] is None
+
+
+def test_parse_nested_struct_in_struct() -> None:
+    text = """
+namespace rmmr
+  namespace asset
+    struct Uniform
+      using Id as integer
+      struct Binding
+        id: Id
+        type: integer
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    asset = ast["declarations"][0]["declarations"][0]
+    uniform = asset["declarations"][0]
+    binding = uniform["members"][1]
+    assert binding["kind"] == "StructDecl"
+    assert binding["name"] == "Binding"
+    assert binding["members"][0]["name"] == "id"
+
+
+def test_parse_query_operation_all_scope_param() -> None:
+    text = """
+namespace rmmr
+  namespace system
+    entity Device
+      all
+        ?poll_events(~)
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    device = ast["declarations"][0]["declarations"][0]["declarations"][0]
+    op = device["blocks"][0]["members"][0]
+    assert op["kind"] == "QueryOp"
+    assert op["name"] == "poll_events"
+    assert op["params"][0]["type"]["kind"] == "AllScope"
+    assert op["params"][0]["type"]["extra_source"] is None
+
+
+def test_parse_typeof_still_distinct_from_all_scope() -> None:
+    text = """
+namespace Demo
+  using Alias as ~Struct::field1
+  struct Struct
+    field1: integer
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    alias = ast["declarations"][0]["declarations"][0]
+    assert alias["target"]["kind"] == "MemberTypeOf"

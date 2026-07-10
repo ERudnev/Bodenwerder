@@ -1,11 +1,11 @@
-import "scene/node"
-import "math"
+import "../math"
+import "node"
 
 namespace rmmr
   namespace scene
 
     // Simple point light bound to a scene node.
-    attribute Light of Node
+    feature Light of Node
       one
         color: RGB
         intensity: float

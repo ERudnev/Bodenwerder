@@ -1,0 +1,14 @@
+import "../system/core"
+
+namespace rmmr
+  namespace resource
+
+    entity Geometry
+      using VertexArray as @external(OpenGL vertex array handle)
+      using VertexBuffer as @external(OpenGL vertex buffer handle)
+      one
+        vao: VertexArray
+        vbo: VertexBuffer
+        vertex_count: integer
+
+    group<Geometry> of Device

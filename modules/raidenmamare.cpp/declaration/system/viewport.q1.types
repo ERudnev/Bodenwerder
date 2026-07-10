@@ -1,0 +1,16 @@
+import "window"
+
+namespace rmmr
+  namespace system
+
+    // Viewport configuration for rendering into a Window framebuffer.
+    // Later this can grow camera / render-target semantics without bloating Window.
+    entity Viewport
+      one
+        origin: index2
+        size: index2
+        clear_color: vec4
+        ?activate()
+        ?clear()
+
+    group<Viewport> of Window
