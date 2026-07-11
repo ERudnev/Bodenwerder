@@ -117,11 +117,11 @@ namespace rmmr::asset {
     auto Shader::Actions::compile(Writing context, Id asset_shader, system::Device::Id device) -> resource::Shader::Id {
         const auto& asset = with<Shader>::get(context, asset_shader);
         const auto& device_quantum = with<system::Device>::get(context, device);
-        const auto& device_global = with<system::Device>::get_global(context);
+        const auto& core_quantum = with<system::Core>::get(context, device_quantum.core);
 
         glfwMakeContextCurrent(device_quantum.handle);
 
-        const std::filesystem::path asset_root(device_global.assets_root);
+        const std::filesystem::path asset_root(core_quantum.assets_root);
         const GLuint program = create_program(asset_root, asset.name, asset.library);
 
         with<resource::Shader_group>::extend(context, device);

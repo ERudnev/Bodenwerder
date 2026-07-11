@@ -24,10 +24,16 @@ namespace rmmr::scene {
     } // namespace
 
     auto Interface::createScene(Writing context) -> Root::Id {
-        return with<Root>::create(context, Root::Quantum{
+        const auto root = with<Root>::create(context, Root::Quantum{
             .ambient = RGB{0.4f, 0.4f, 0.4f},
             .ambient_intensity = 0.8f,
         });
+
+        with<Node_group>::extend(context, root);
+        with<Camera_group>::extend(context, root);
+        with<Light_group>::extend(context, root);
+
+        return root;
     }
 
     auto Interface::createCamera(Writing context, Root::Id root, Locator locator, Camera::Quantum cameraQuantum) -> Camera::Id {

@@ -9,7 +9,15 @@ namespace rmmr::system {
     using namespace fqsm::api;
 
     struct Core : Entity<Core> {
-        struct Quantum {};
+        struct GLVer {
+            integer major;
+            integer minor;
+        };
+
+        struct Quantum {
+            string assets_root;
+            GLVer version;
+        };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };
@@ -18,23 +26,14 @@ namespace rmmr::system {
         using Handle = GLFWwindow*;
 
         struct Quantum {
+            Anchor<Core> core;
             Handle handle;
-        };
-        struct Global {
-            string assets_root;
-            integer context_major;
-            integer context_minor;
         };
         struct Actions : BaseActions {
             static void poll_events(Reading);
         };
         struct Internals;
         static const Behavior customAspectReactions();
-    };
-
-    struct Device_group : Group<Device_group, Core, Device> {
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
     };
 
 }

@@ -20,6 +20,7 @@ namespace rmmr::system {
 
     auto Device::customAspectReactions() -> const Behavior {
         return {
+            reaction::structural::anchored<Device, Core, &Device::Quantum::core>{},
             reaction::deletion<Device>(&Internals::release),
         };
     }

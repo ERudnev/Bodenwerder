@@ -7,11 +7,16 @@
 #include <Raidenmamare/system/viewport.q1.h>
 #include <Raidenmamare/system/window.q1.h>
 
-
-
 namespace rmmr::system {
 
     using namespace fqsm::api;
+
+    auto Interface::create(Writing context, string path, Core::GLVer version) -> Core::Id {
+        return with<Core>::create(context, Core::Quantum{
+            .assets_root = std::move(path),
+            .version = version,
+        });
+    }
 
     auto Interface::createWindow(Writing context, decltype(Window::Quantum::title) title, decltype(Window::Quantum::size) size) -> Window::Id {
         return Window::Actions::create(context, std::move(title), size);

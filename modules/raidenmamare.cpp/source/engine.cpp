@@ -29,7 +29,6 @@ namespace {
         return ask::schema::merge({
             ask::schema::aspect<system::Core>(),
             ask::schema::aspect<system::Device>(),
-            ask::schema::aspect<system::Device_group>(),
             ask::schema::aspect<system::Window>(),
             ask::schema::aspect<system::Viewport>(),
             ask::schema::aspect<system::Viewport_group>(),
@@ -83,15 +82,13 @@ namespace rmmr {
             .main = establish::Realm{generateInternalEngineSchema_static()},
         }))
     {
+        base::message("rmmr: creating system core...");
+        with<system::Interface>::create(state->main, std::move(params.assets_root), system::Core::GLVer{
+            .major = params.context_major,
+            .minor = params.context_minor,
+        });
+
         base::message("rmmr: creating window...");
-
-        {
-            auto global = with<system::Device>::modify_global(state->main);
-            global->assets_root = std::move(params.assets_root);
-            global->context_major = params.context_major;
-            global->context_minor = params.context_minor;
-        }
-
         state->window = with<system::Interface>::createWindow(state->main, std::move(params.title), params.size);
         prepareResources();
         createViewport(params.size);
@@ -138,10 +135,6 @@ namespace rmmr {
         const auto& window = state->window;
 
         base::message("rmmr: loading material resources...");
-        with<resource::Shader_group>::extend(main, window);
-        with<resource::Material_group>::extend(main, window);
-        with<resource::Geometry_group>::extend(main, window);
-
         state->resources.materialAmbient = material::MaterialGenerator::ambient(main, window);
         state->resources.materialLit = material::MaterialGenerator::lit(main, window);
         state->resources.materialGrid = material::MaterialGenerator::grid(main, window);

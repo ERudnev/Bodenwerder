@@ -1,5 +1,10 @@
 #include <Raidenmamare/system/window.q1.h>
 
+#include <Raidenmamare/resources/geometry.q1.h>
+#include <Raidenmamare/resources/material.q1.h>
+#include <Raidenmamare/resources/shader.q1.h>
+#include <Raidenmamare/system/viewport.q1.h>
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -28,18 +33,18 @@ namespace rmmr::system {
             return Window::time{} + std::chrono::duration_cast<Window::time::duration>(std::chrono::duration<double>(glfwGetTime()));
         }
 
-        auto ensure_core(Writing context) -> Core::Id {
+        auto find_core(Reading context) -> Core::Id {
             for (const auto entry : context->aspect<Core>().items()) {
                 return entry.id;
             }
-            return with<Core>::create(context, {});
+            throw std::runtime_error("system::Window::create: Core is missing, call Interface::create first");
         }
 
-        auto create_glfw_handle(const Device::Global& device_global, const string& title, const index2& size) -> GLFWwindow* {
+        auto create_glfw_handle(const Core::GLVer& version, const string& title, const index2& size) -> GLFWwindow* {
             const int width = std::max(static_cast<int>(size.x), 1);
             const int height = std::max(static_cast<int>(size.y), 1);
-            const int context_major = std::max(static_cast<int>(device_global.context_major), 1);
-            const int context_minor = std::max(static_cast<int>(device_global.context_minor), 0);
+            const int context_major = std::max(static_cast<int>(version.major), 1);
+            const int context_minor = std::max(static_cast<int>(version.minor), 0);
             const char* window_title = title.empty() ? "Raidenmamare" : title.c_str();
 
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, context_major);
@@ -90,11 +95,12 @@ namespace rmmr::system {
             throw std::runtime_error("system::Window::create: glfwInit() failed");
         }
 
-        const auto& device_global = with<Device>::get_global(context);
-        const auto core = ensure_core(context);
-        const auto handle = create_glfw_handle(device_global, title, size);
+        const auto core = find_core(context);
+        const auto& core_quantum = with<Core>::get(context, core);
+        const auto handle = create_glfw_handle(core_quantum.version, title, size);
 
-        const auto device = with<Device_group>::addElement(context, core, Device::Quantum{
+        const auto device = with<Device>::create(context, Device::Quantum{
+            .core = core,
             .handle = handle,
         });
 
@@ -104,6 +110,11 @@ namespace rmmr::system {
             .previous = empty_input_state(),
             .current = empty_input_state(),
         });
+
+        with<Viewport_group>::extend(context, device);
+        with<resource::Shader_group>::extend(context, device);
+        with<resource::Material_group>::extend(context, device);
+        with<resource::Geometry_group>::extend(context, device);
 
         return device;
     }
