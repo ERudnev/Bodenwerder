@@ -22,6 +22,7 @@ namespace rmmr::asset {
             Channel::Layout layout;
             vector<Pos> positions;
             vector<Pos> normals;
+            vector<integer> indices;
         };
         struct Always {
             static auto layoutIds(const vector<string>& names) -> Channel::Layout;

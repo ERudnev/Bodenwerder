@@ -13,11 +13,14 @@ namespace rmmr::resource {
     struct Geometry : Entity<Geometry> {
         using VertexArray = GLuint;
         using VertexBuffer = GLuint;
+        using ElementBuffer = GLuint;
 
         struct Quantum {
             VertexArray vao;
             VertexBuffer vbo;
+            ElementBuffer ebo;
             integer vertex_count;
+            integer index_count;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

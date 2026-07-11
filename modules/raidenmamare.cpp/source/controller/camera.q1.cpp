@@ -59,6 +59,7 @@ namespace rmmr::controller {
             const glm::vec3 right_xz = glm::normalize(glm::cross(forward_xz, k_world_up));
             const glm::quat orient = fps_orientation_rh(yaw_rad, pitch_rad);
             const glm::vec3 forward_cam = glm::normalize(orient * glm::vec3(0.0f, 0.0f, -1.0f));
+            const glm::vec3 up_cam = glm::normalize(orient * glm::vec3(0.0f, 1.0f, 0.0f));
             const float step = k_move_units_per_sec * static_cast<float>(delta_sec);
             glm::vec3 delta{0.0f};
 
@@ -66,6 +67,8 @@ namespace rmmr::controller {
             if (key_down(GLFW_KEY_DOWN)) delta -= forward_cam * step;
             if (key_down(GLFW_KEY_LEFT)) delta -= right_xz * step;
             if (key_down(GLFW_KEY_RIGHT)) delta += right_xz * step;
+            if (key_down(GLFW_KEY_PAGE_UP)) delta += up_cam * step;
+            if (key_down(GLFW_KEY_PAGE_DOWN)) delta -= up_cam * step;
 
             if (glm::dot(delta, delta) <= 0.0f) {
                 return;

@@ -121,7 +121,11 @@ namespace rmmr {
         }
 
         glBindVertexArray(geometry.vao);
-        glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(geometry.vertex_count));
+        if (geometry.index_count > integer{0}) {
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(geometry.index_count), GL_UNSIGNED_INT, nullptr);
+        } else {
+            glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(geometry.vertex_count));
+        }
     }
 
     void Renderer::bind_lights(PassArguments args, resource::Material::Id material) {

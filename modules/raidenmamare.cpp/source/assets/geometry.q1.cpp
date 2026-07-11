@@ -41,8 +41,12 @@ namespace rmmr::asset {
             const auto& device_quantum = with<system::Device>::get(context, device);
             glfwMakeContextCurrent(device_quantum.handle);
 
+            const std::size_t vertex_count = asset.positions.size();
+            const bool indexed = not asset.indices.empty();
+
             resource::Geometry::VertexArray vao{};
             resource::Geometry::VertexBuffer vbo{};
+            resource::Geometry::ElementBuffer ebo{};
             glGenVertexArrays(1, &vao);
             glGenBuffers(1, &vbo);
 
@@ -52,7 +56,26 @@ namespace rmmr::asset {
                 throw std::runtime_error("asset::Geometry::compile: failed to allocate VAO/VBO");
             }
 
-            const std::size_t vertex_count = asset.positions.size();
+            std::vector<GLuint> index_data;
+            if (indexed) {
+                index_data.reserve(asset.indices.size());
+                for (const auto index : asset.indices) {
+                    if (index < integer{0} || static_cast<std::size_t>(index) >= vertex_count) {
+                        glDeleteVertexArrays(1, &vao);
+                        glDeleteBuffers(1, &vbo);
+                        throw std::runtime_error("asset::Geometry::compile: index out of positions range");
+                    }
+                    index_data.push_back(static_cast<GLuint>(index));
+                }
+
+                glGenBuffers(1, &ebo);
+                if (not ebo) {
+                    glDeleteVertexArrays(1, &vao);
+                    glDeleteBuffers(1, &vbo);
+                    throw std::runtime_error("asset::Geometry::compile: failed to allocate EBO");
+                }
+            }
+
             std::vector<float> interleaved;
 
             if (position_only) {
@@ -95,10 +118,21 @@ namespace rmmr::asset {
                 glEnableVertexAttribArray(1);
             }
 
+            if (indexed) {
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+                glBufferData(
+                    GL_ELEMENT_ARRAY_BUFFER,
+                    static_cast<GLsizeiptr>(index_data.size() * sizeof(GLuint)),
+                    index_data.data(),
+                    GL_STATIC_DRAW);
+            }
+
             return resource::Geometry::Quantum{
                 .vao = vao,
                 .vbo = vbo,
+                .ebo = ebo,
                 .vertex_count = static_cast<integer>(vertex_count),
+                .index_count = static_cast<integer>(index_data.size()),
             };
         }
 

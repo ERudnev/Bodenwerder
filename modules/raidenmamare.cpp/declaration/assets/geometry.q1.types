@@ -17,4 +17,5 @@ namespace rmmr
         layout: Channel::Layout
         positions: vector<Pos>
         normals: vector<Pos>
+        indices: vector<integer>
         >compile(#Device) -> #resource::Geometry

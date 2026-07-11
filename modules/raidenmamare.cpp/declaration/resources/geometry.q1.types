@@ -6,9 +6,12 @@ namespace rmmr
     entity Geometry
       using VertexArray as @external(OpenGL vertex array handle)
       using VertexBuffer as @external(OpenGL vertex buffer handle)
+      using ElementBuffer as @external(OpenGL element buffer handle)
       one
         vao: VertexArray
         vbo: VertexBuffer
+        ebo: ElementBuffer
         vertex_count: integer
+        index_count: integer
 
     group<Geometry> of Device
