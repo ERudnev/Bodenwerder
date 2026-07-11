@@ -40,9 +40,9 @@ namespace rmmr::system {
             throw std::runtime_error("system::Window::create: Core is missing, call Interface::create first");
         }
 
-        auto create_glfw_handle(const Core::GLVer& version, const string& title, const index2& size) -> GLFWwindow* {
-            const int width = std::max(static_cast<int>(size.x), 1);
-            const int height = std::max(static_cast<int>(size.y), 1);
+        auto create_glfw_handle(const Core::GLVer& version, const string& title, const index2& requested_size) -> GLFWwindow* {
+            const int width = std::max(static_cast<int>(requested_size.x), 1);
+            const int height = std::max(static_cast<int>(requested_size.y), 1);
             const int context_major = std::max(static_cast<int>(version.major), 1);
             const int context_minor = std::max(static_cast<int>(version.minor), 0);
             const char* window_title = title.empty() ? "Raidenmamare" : title.c_str();
@@ -66,10 +66,6 @@ namespace rmmr::system {
 
             glEnable(GL_DEPTH_TEST);
 
-            glfwSetFramebufferSizeCallback(window, [](GLFWwindow*, int framebuffer_width, int framebuffer_height) {
-                glViewport(0, 0, framebuffer_width, framebuffer_height);
-            });
-
             return window;
         }
 
@@ -90,14 +86,14 @@ namespace rmmr::system {
 
     } // namespace
 
-    auto Window::Actions::create(Writing context, string title, index2 size) -> Id {
+    auto Window::Actions::create(Writing context, string title, index2 requested_size) -> Id {
         if (not glfwInit()) {
             throw std::runtime_error("system::Window::create: glfwInit() failed");
         }
 
         const auto core = find_core(context);
         const auto& core_quantum = with<Core>::get(context, core);
-        const auto handle = create_glfw_handle(core_quantum.version, title, size);
+        const auto handle = create_glfw_handle(core_quantum.version, title, requested_size);
 
         const auto device = with<Device>::create(context, Device::Quantum{
             .core = core,
@@ -106,7 +102,6 @@ namespace rmmr::system {
 
         with<Window>::extend(context, device, Window::Quantum{
             .title = std::move(title),
-            .size = size,
             .previous = empty_input_state(),
             .current = empty_input_state(),
         });
@@ -117,6 +112,13 @@ namespace rmmr::system {
         with<resource::Geometry_group>::extend(context, device);
 
         return device;
+    }
+
+    auto Window::Actions::framebufferSize(Reading context, Id window) -> index2 {
+        int width = 0;
+        int height = 0;
+        glfwGetFramebufferSize(with<Device>::get(context, window).handle, &width, &height);
+        return index2{std::max(width, 1), std::max(height, 1)};
     }
 
     void Window::Actions::present(Reading context, Id window) {

@@ -4,13 +4,14 @@ namespace rmmr
   namespace system
 
     // Viewport configuration for rendering into a Window framebuffer.
-    // Later this can grow camera / render-target semantics without bloating Window.
+    // glViewport is owned solely by ?activate() — never from Window callbacks.
     entity Viewport
       one
-        origin: index2
-        size: index2
+        origin: index2               // offset in Window framebuffer pixels
+        size: index2                 // drawable region; refreshed by =syncExtent()
         clear_color: vec4
-        ?activate()
+        ?activate()                  // glViewport(origin, size)
         ?clear()
+        =syncExtent()                // size := parent.?framebufferSize() - origin
 
     group<Viewport> of Window

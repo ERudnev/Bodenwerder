@@ -20,12 +20,12 @@ namespace rmmr::system {
 
         struct Quantum {
             string title;
-            index2 size;
             InputState previous;
             InputState current;
         };
         struct Actions : BaseActions {
-            static auto create(Writing, string title, index2 size) -> Id;
+            static auto create(Writing, string title, index2 requested_size) -> Id;
+            static auto framebufferSize(Reading, Id) -> index2;
             static void present(Reading, Id);
             static auto dt(Reading, Id) -> seconds;
             static auto mouseShift(Reading, Id) -> index2;

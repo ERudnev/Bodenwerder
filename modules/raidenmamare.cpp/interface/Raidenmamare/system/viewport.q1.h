@@ -17,6 +17,7 @@ namespace rmmr::system {
         struct Actions : BaseActions {
             static void activate(Reading, Id);
             static void clear(Reading, Id);
+            static void syncExtent(Writing, Id);
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

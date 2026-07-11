@@ -96,9 +96,9 @@ namespace rmmr {
         });
 
         base::message("rmmr: creating window...");
-        state->window = with<system::Interface>::createWindow(state->main, std::move(params.title), params.size);
+        state->window = with<system::Interface>::createWindow(state->main, std::move(params.title), params.requested_size);
         prepareResources();
-        createViewport(params.size);
+        createViewport(with<system::Window>::framebufferSize(state->main, *state->window));
         createScene();
 
         if (not state->main.result().good()) {
@@ -129,6 +129,7 @@ namespace rmmr {
                 with<controller::Camera>::update(main, state->scene_camera, window);
             }
 
+            with<system::Viewport>::syncExtent(main, viewport);
             with<system::Viewport>::activate(main, viewport);
             with<system::Viewport>::clear(main, viewport);
 

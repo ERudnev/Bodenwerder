@@ -18,8 +18,8 @@ namespace rmmr::system {
         });
     }
 
-    auto Interface::createWindow(Writing context, decltype(Window::Quantum::title) title, decltype(Window::Quantum::size) size) -> Window::Id {
-        return Window::Actions::create(context, std::move(title), size);
+    auto Interface::createWindow(Writing context, decltype(Window::Quantum::title) title, index2 requested_size) -> Window::Id {
+        return Window::Actions::create(context, std::move(title), requested_size);
     }
 
     void Interface::shutdown(Writing context) {

@@ -16,7 +16,7 @@ namespace rmmr {
         struct StartupParameters {
             string assets_root;
             decltype(system::Window::Quantum::title) title;
-            decltype(system::Window::Quantum::size) size;
+            index2 requested_size;
             integer context_major;
             integer context_minor;
         };

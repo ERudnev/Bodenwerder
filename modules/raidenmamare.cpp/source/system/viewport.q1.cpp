@@ -26,6 +26,16 @@ namespace rmmr::system {
         }
     } // namespace
 
+    void Viewport::Actions::syncExtent(Writing context, Id viewportId) {
+        const auto device = device_for_viewport(context, viewportId);
+        const auto framebuffer = Window::Actions::framebufferSize(context, device);
+        auto quantum = with<Viewport>::modify(context, viewportId);
+        quantum->size = index2{
+            std::max(framebuffer.x - quantum->origin.x, integer{1}),
+            std::max(framebuffer.y - quantum->origin.y, integer{1}),
+        };
+    }
+
     void Viewport::Actions::activate(Reading context, Id viewportId) {
         const auto& quantum = with<Viewport>::get(context, viewportId);
         glfwMakeContextCurrent(glfw_handle_for_viewport(context, viewportId));

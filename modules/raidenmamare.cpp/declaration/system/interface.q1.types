@@ -6,5 +6,5 @@ namespace rmmr
 
     manipulation Interface of Core
       >create(path: string, version: Core::GLVer)->#
-      >createWindow(title: string, size: index2)->#Window
+      >createWindow(title: string, requested_size: index2)->#Window
       >shutdown()

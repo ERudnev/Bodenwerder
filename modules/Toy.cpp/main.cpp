@@ -24,7 +24,7 @@ int main() {
         const auto engine_startup_parameters = rmmr::Engine::StartupParameters{
             .assets_root = assets_root,
             .title = "Raidenmamare",
-            .size = rmmr::index2{.x = 3000, .y = 1200},
+            .requested_size = rmmr::index2{.x = 3000, .y = 1200},
             .context_major = 3,
             .context_minor = 3,
         };

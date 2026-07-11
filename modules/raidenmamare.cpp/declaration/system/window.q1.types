@@ -3,19 +3,21 @@ import "core"
 namespace rmmr
   namespace system
 
+    // Drawable surface bound to Device (GLFW window + OpenGL context).
+    // Resize: poll framebuffer each frame — no GLFW resize callback.
     component Window of Device
     struct InputState
-      frame: integer // increentally
+      frame: integer // incrementally
       clock: time
       keys: vector<bool>
       mouse: index2
     one
       title: string
-      size: index2
       InputState previous
       InputState current
-      >create(title: string, size: index2)
+      >create(title: string, requested_size: index2)
+      ?framebufferSize() -> index2   // live drawable extent (glfwGetFramebufferSize)
       ?present()
       ?dt() -> seconds
       ?mouseShift() -> index2
-      =onFrameAdvanced()   // или =updateSnapshot() — не путать с poll_events
+      =onFrameAdvanced()             // input snapshot only
