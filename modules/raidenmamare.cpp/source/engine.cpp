@@ -18,8 +18,11 @@
 #include <base/maybe.h>
 
 #include <stdexcept>
+#include <random>
 
+#include "geometry/geometryGenerator.h"
 #include "materials/materialGenerator.h"
+#include "renderer/renderer.h"
 
 namespace {
     using namespace fqsm::api;
@@ -73,7 +76,11 @@ namespace rmmr {
             maybe<resource::Material::Id> materialAmbient;
             maybe<resource::Material::Id> materialLit;
             maybe<resource::Material::Id> materialGrid;
+            maybe<resource::Geometry::Id> primitive;
+            maybe<resource::Geometry::Id> primitiveKube;
+            maybe<resource::Geometry::Id> primitiveGrid;
         } resources;
+        Renderer renderer;
     };
 
     Engine::Engine(StartupParameters params)
@@ -124,6 +131,17 @@ namespace rmmr {
 
             with<system::Viewport>::activate(main, viewport);
             with<system::Viewport>::clear(main, viewport);
+
+            if (state->scene && state->scene_camera) {
+                state->renderer.render(Renderer::PassArguments{
+                    .world = main,
+                    .viewport = *viewport,
+                    .window = *window,
+                    .scene = *state->scene,
+                    .camera = *state->scene_camera,
+                });
+            }
+
             with<system::Window>::present(main, window);
         }
 
@@ -139,12 +157,56 @@ namespace rmmr {
         state->resources.materialLit = material::MaterialGenerator::lit(main, window);
         state->resources.materialGrid = material::MaterialGenerator::grid(main, window);
 
-        base::message("rmmr: material resources loaded");
+        base::message("rmmr: loading geometry resources...");
+        state->resources.primitive = geometry::GeometryGenerator::triangle(main, window);
+        state->resources.primitiveKube = geometry::GeometryGenerator::kube(main, window);
+        state->resources.primitiveGrid = geometry::GeometryGenerator::gridPlane(main, window);
+
+        base::message("rmmr: material and geometry resources loaded");
     }
 
     void Engine::createScene() {
         auto& main = state->main;
+        const auto& resources = state->resources;
+
         const auto root = with<scene::Interface>::createScene(main);
+
+        for (int i = 0; i < 5; ++i) {
+            with<scene::Interface>::createPrimitiveActor(main, root, Locator{
+                .pos = Pos{-1.4f + 0.7f * static_cast<float>(i), 0.5f, 0.0f},
+                .euler = HPB{0.0f, 0.0f, 0.0f},
+            }, scene::PrimitiveActor::Quantum{
+                .geometry = *resources.primitive,
+                .material = *resources.materialAmbient,
+                .albedo = RGB{1.0f - 0.15f * static_cast<float>(i), 0.5f, 0.2f + 0.15f * static_cast<float>(i)},
+            });
+        }
+
+        std::mt19937 rng{std::random_device{}()};
+        std::uniform_real_distribution<float> heading_deg{-180.0f, 180.0f};
+        std::uniform_real_distribution<float> pitch_deg{-45.0f, 45.0f};
+        std::uniform_real_distribution<float> bank_deg{-45.0f, 45.0f};
+
+        for (int i = 0; i < 4; ++i) {
+            with<scene::Interface>::createPrimitiveActor(main, root, Locator{
+                .pos = Pos{-1.05f + 0.7f * static_cast<float>(i), 0.2f, 0.0f},
+                .euler = HPB{heading_deg(rng), pitch_deg(rng), bank_deg(rng)},
+            }, scene::PrimitiveActor::Quantum{
+                .geometry = *resources.primitiveKube,
+                .material = *resources.materialLit,
+                .albedo = RGB{0.2f + 0.2f * static_cast<float>(i), 0.45f, 1.0f - 0.2f * static_cast<float>(i)},
+            });
+        }
+
+        with<scene::Interface>::createPrimitiveActor(main, root, Locator{
+            .pos = Pos{0.0f, 0.0f, 0.0f},
+            .euler = HPB{0.0f, 0.0f, 0.0f},
+        }, scene::PrimitiveActor::Quantum{
+            .geometry = *resources.primitiveGrid,
+            .material = *resources.materialGrid,
+            .albedo = RGB{0.0f, 0.0f, 0.0f},
+        });
+
         const auto scene_camera = with<scene::Interface>::createCamera(main, root, Locator{
             .pos = Pos{0.0f, 1.3f, 4.0f},
             .euler = HPB{0.0f, -12.5f, 0.0f},
