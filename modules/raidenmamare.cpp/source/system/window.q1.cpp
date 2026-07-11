@@ -30,7 +30,7 @@ namespace rmmr::system {
         }
 
         auto ensure_core(Writing context) -> Core::Id {
-            for (const auto entry : context.aspect<Core>().items()) {
+            for (const auto entry : context->aspect<Core>().items()) {
                 return entry.id;
             }
             return with<Core>::create(context, {});

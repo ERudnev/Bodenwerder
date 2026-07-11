@@ -11,6 +11,7 @@ namespace fqsm::model::complex {
     public:
         Reality(Schema schema) : State(schema) { initStructure(); }
         Reality(const State& source);
+        Reality(const Reality& other)=delete;
 
         // schema
         template<category::Any Meta>

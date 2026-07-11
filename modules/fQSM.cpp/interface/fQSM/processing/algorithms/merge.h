@@ -6,12 +6,12 @@
 #include <fQSM/model/complex/state.h>
 
 namespace fqsm::processing::algorithm {
-    void merge(Reading base, fqsm::ref<Patch> target, fqsm::cref<Patch> source);
+    void merge(const model::complex::State& base, fqsm::ref<Patch> target, fqsm::cref<Patch> source);
 }
 
 namespace fqsm::processing::algorithm::details {
     template<category::Any Meta>
-    void merge(Reading base, model::complex::Patch& target, const model::complex::Patch& source) {
+    void merge(const model::complex::State& base, model::complex::Patch& target, const model::complex::Patch& source) {
         auto& targetPatch = target.aspect<Meta>();
         const auto& sourcePatch = source.aspect<Meta>();
 
@@ -26,7 +26,7 @@ namespace fqsm::processing::algorithm::details {
     }
 
     template<category::Any Meta>
-    void merge(Reading base, fqsm::ref<Patch> target, fqsm::cref<Patch> source) {
+    void merge(const model::complex::State& base, fqsm::ref<Patch> target, fqsm::cref<Patch> source) {
         merge<Meta>(base, *target, *source);
     }
 }

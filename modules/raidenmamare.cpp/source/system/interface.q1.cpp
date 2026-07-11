@@ -14,7 +14,7 @@ namespace rmmr::system {
 
     void Interface::shutdown(Writing context) {
         std::vector<Viewport::Id> viewport_ids;
-        for (const auto entry : context.aspect<Viewport>().items()) {
+        for (const auto entry : context->aspect<Viewport>().items()) {
             viewport_ids.push_back(entry.id);
         }
         for (Viewport::Id viewport_id : viewport_ids) {
@@ -22,7 +22,7 @@ namespace rmmr::system {
         }
 
         std::vector<Device::Id> device_ids;
-        for (const auto entry : context.aspect<Device>().items()) {
+        for (const auto entry : context->aspect<Device>().items()) {
             device_ids.push_back(entry.id);
         }
         for (Device::Id device_id : device_ids) {

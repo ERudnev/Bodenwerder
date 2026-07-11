@@ -86,10 +86,10 @@ namespace fqsm::features::reactions::structural {
     struct new_parasitic_requires_parent_appears : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parasitic>(); }
         void apply(Reacting context) override {
-            const auto parent_added = Abstract::changes<Parent>(context).added();
+            const auto parentDelta = Abstract::changes<Parent>(context);
             for (const auto& change : Abstract::changes<Parasitic>(context).added()) {
                 bool parent_appears_in_same_patch = false;
-                for (const auto& parentChange : parent_added) {
+                for (const auto& parentChange : parentDelta.added()) {
                     if (parentChange.id == change.id) {
                         parent_appears_in_same_patch = true;
                         break;

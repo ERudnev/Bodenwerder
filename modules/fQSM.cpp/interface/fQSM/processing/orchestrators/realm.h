@@ -11,10 +11,10 @@ namespace fqsm::processing::orchestrator {
 
     struct Realm : Transaction {
         Realm(Schema schema) : reality(schema) {}
-        Realm(const Realm& other) : Realm(static_cast<const State&>(other)) {}
+        Realm(const Realm& other) : Realm(static_cast<const State&>(other)) {} // forcing deep copy
         Realm(const State& other) : reality(other) {}
         // as Transaction:
-        operator Reading() const override { return reality; }
+        operator Reading() const override { return View(reality); }
 
         template<category::Any Meta>
         operator Direct<Meta>();

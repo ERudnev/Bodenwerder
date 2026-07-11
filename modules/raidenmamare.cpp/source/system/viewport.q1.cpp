@@ -13,7 +13,7 @@ namespace rmmr::system {
     namespace {
 
         auto device_for_viewport(Reading context, Viewport::Id viewportId) -> Device::Id {
-            for (const auto entry : context.aspect<Viewport_group>().items()) {
+            for (const auto entry : context->aspect<Viewport_group>().items()) {
                 if (entry.value.contains(viewportId)) {
                     return entry.id;
                 }
