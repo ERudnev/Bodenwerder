@@ -9,6 +9,8 @@
 
 namespace rmmr {
 
+    using namespace fqsm::api;
+
     class Engine : public fqsm::processing::orchestrator::Subsystem {
     public:
         struct StartupParameters {

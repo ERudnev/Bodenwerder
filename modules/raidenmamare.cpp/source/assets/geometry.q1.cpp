@@ -13,6 +13,8 @@ namespace rmmr::asset {
 
     namespace {
 
+        using namespace api_for_internals;
+
         auto create_resource_quantum(Writing context, const Geometry::Quantum& asset, system::Device::Id device) -> resource::Geometry::Quantum {
             if (asset.positions.empty()) {
                 throw std::runtime_error("asset::Geometry::compile: positions are empty");

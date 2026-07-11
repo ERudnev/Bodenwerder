@@ -14,13 +14,13 @@ namespace fqsm::processing::orchestrator {
         Branch(Transaction& parent) : Branch(parent.childPolicy()) {}
 
         Branch(ChildPolicy policy) : context(std::make_shared<Context>(
-            policy.view,
-            base::make_shared<Patch>(policy.view.schema),
+            *policy.view,
+            base::make_shared<Patch>(policy.view->schema),
             policy.upstream
         ))
         {}
 
-        operator Reading() const override { return context->world; }
+        operator Reading() const override { return View(context->world); }
 
     private:
         Context::Ptr context;
@@ -31,7 +31,7 @@ namespace fqsm::processing::orchestrator {
 
         auto makeChildPolicy() -> ChildPolicy override {
             return ChildPolicy{
-                context->world,
+                View(context->world),
                 [this](Context::PatchRef patch) { accept(patch); }
             };
         }

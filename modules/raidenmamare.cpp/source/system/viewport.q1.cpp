@@ -9,9 +9,9 @@
 namespace rmmr::system {
 
     using namespace fqsm::api;
+    using namespace api_for_internals;
 
     namespace {
-
         auto device_for_viewport(Reading context, Viewport::Id viewportId) -> Device::Id {
             for (const auto entry : context->aspect<Viewport_group>().items()) {
                 if (entry.value.contains(viewportId)) {
@@ -24,7 +24,6 @@ namespace rmmr::system {
         auto glfw_handle_for_viewport(Reading context, Viewport::Id viewportId) -> GLFWwindow* {
             return with<Device>::get(context, device_for_viewport(context, viewportId)).handle;
         }
-
     } // namespace
 
     void Viewport::Actions::activate(Reading context, Id viewportId) {

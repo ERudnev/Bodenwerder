@@ -47,7 +47,7 @@ namespace fqsm::processing {
 
         Container& items;
 
-        operator Reading() const { return context->reality; }
+        operator Reading() const { return View(context->reality); }
 
     private:
         Context::Ptr context;

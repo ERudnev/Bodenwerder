@@ -98,7 +98,7 @@ void structural_constraints()
     {
         establish::Realm main(world);
         const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
-        EXPECT_EQ(fqsm::Reading(main).quanta(), 3) << "all 3 items created, verified and part of realm now";
+        EXPECT_EQ(fqsm::Reading(main)->quanta(), 3) << "all 3 items created, verified and part of realm now";
     }
 
     {
@@ -106,9 +106,9 @@ void structural_constraints()
         const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
         const auto storedVal = with<EntFree>::get(main, id).value;
         with<EntFree>::remove(main, id);
-        EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "normalization killed everything by parent remove";
+        EXPECT_EQ(fqsm::Reading(main)->quanta(), 0) << "normalization killed everything by parent remove";
         with<CompSimple>::extend(main, id, {std::format("i am sorry, i am late", storedVal)});
-        EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "normalization killed ill-formed component";
+        EXPECT_EQ(fqsm::Reading(main)->quanta(), 0) << "normalization killed ill-formed component";
     }
 
     {
@@ -116,14 +116,14 @@ void structural_constraints()
         const auto attempted = with<EntFree>::create(main, {42});
         EXPECT_FALSE(with<EntFree>::exists(main, attempted)) << "bare EntFree must not survive structural normalization";
         const auto id = with<archetype::EntTwoComps>::spawn_forgot_init_one_comp(main, 1);
-        EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "invalid implementation (forgot component) of spawn succesfully detected";
+        EXPECT_EQ(fqsm::Reading(main)->quanta(), 0) << "invalid implementation (forgot component) of spawn succesfully detected";
     }
 
     {
         establish::Realm main(world);
         const auto id = with<archetype::EntTwoComps>::spawn_correct(main, 1);
         with<CompSimple>::kraken(main, id);
-        EXPECT_EQ(fqsm::Reading(main).quanta(), 0) << "composite killed by component";
+        EXPECT_EQ(fqsm::Reading(main)->quanta(), 0) << "composite killed by component";
     }
 
 }

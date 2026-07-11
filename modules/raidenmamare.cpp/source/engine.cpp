@@ -33,7 +33,6 @@ namespace {
             ask::schema::aspect<system::Window>(),
             ask::schema::aspect<system::Viewport>(),
             ask::schema::aspect<system::Viewport_group>(),
-            ask::schema::aspect<system::Interface>(),
             ask::schema::aspect<asset::Geometry>(),
             ask::schema::aspect<asset::Shader>(),
             ask::schema::aspect<asset::Material>(),
@@ -52,13 +51,12 @@ namespace {
             ask::schema::aspect<scene::Light>(),
             ask::schema::aspect<scene::Light_group>(),
             ask::schema::aspect<scene::PrimitiveActor>(),
-            ask::schema::aspect<scene::Interface>(),
         });
     }
 
     Schema generateInterfaceEngineSchema_static() {
         return ask::schema::merge({
-            ask::schema::aspect<system::Interface>(),
+            //ask::schema::aspect<system::Interface>(),
         });
     }
 }
@@ -89,9 +87,9 @@ namespace rmmr {
 
         {
             auto global = with<system::Device>::modify_global(state->main);
-            global.assets_root = std::move(params.assets_root);
-            global.context_major = params.context_major;
-            global.context_minor = params.context_minor;
+            global->assets_root = std::move(params.assets_root);
+            global->context_major = params.context_major;
+            global->context_minor = params.context_minor;
         }
 
         state->window = with<system::Interface>::createWindow(state->main, std::move(params.title), params.size);

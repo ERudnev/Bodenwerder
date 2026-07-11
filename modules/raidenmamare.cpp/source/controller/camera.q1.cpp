@@ -14,6 +14,8 @@ namespace rmmr::controller {
 
     namespace {
 
+        using namespace api_for_internals;
+
         constexpr float k_mouse_sens_deg_per_pixel = 0.12f;
         constexpr float k_mouse_yaw_scale_x = -1.0f;
         constexpr float k_pitch_min_deg = -89.0f;

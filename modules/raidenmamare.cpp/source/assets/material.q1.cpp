@@ -11,6 +11,8 @@ namespace rmmr::asset {
 
     namespace {
 
+        using namespace api_for_internals;
+
         auto create_resource_quantum(Writing context, const Material::Quantum& asset, system::Device::Id device) -> resource::Material::Quantum {
             const auto resource_shader = Shader::Actions::compile(context, asset.program, device);
             const auto& shader_quantum = with<resource::Shader>::get(context, resource_shader);

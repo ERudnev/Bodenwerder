@@ -4,6 +4,7 @@
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/rtid.h>
 #include <fQSM/processing/_forwards.h>
+#include <fQSM/processing/contexts/operational.h>
 #include <fQSM/model/intertype/schema.h>
 #include <fQSM/model/complex/state.h>
 
@@ -11,13 +12,13 @@ namespace tests::debug {
 
     template<fqsm::category::Any Meta>
     auto has(fqsm::Reading view) -> bool {
-        return view.schema->accepts<Meta>();
+        return view->schema->accepts<Meta>();
     }
 
     template<fqsm::category::Any Meta>
     auto read(fqsm::Reading view, fqsm::Id<Meta> id) -> const fqsm::Quantum<Meta>* {
         if (!has<Meta>(view)) return nullptr;
-        return view.aspect<Meta>().items().find(id);
+        return view->aspect<Meta>().items().find(id);
     }
 
     template<fqsm::category::Any Meta>
@@ -25,7 +26,7 @@ namespace tests::debug {
         if (!has<Meta>(view)) return 0;
 
         std::size_t out = 0;
-        for (const auto entry : view.aspect<Meta>().items()) {
+        for (const auto entry : view->aspect<Meta>().items()) {
             ++out;
         }
         return out;

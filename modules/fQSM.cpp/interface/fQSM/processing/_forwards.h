@@ -19,7 +19,7 @@ namespace fqsm::processing::context {
 }
 
 namespace fqsm::processing {
-    using View = const model::complex::State&;
+    struct View;
     struct Gate;
     struct Review;
 

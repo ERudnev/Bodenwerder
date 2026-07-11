@@ -21,7 +21,7 @@ namespace {
     }
 
     // temp lib. placeholder:
-    inline const fqsm::model::complex::State& look(fqsm::Reading source) { return source; }
+    inline const fqsm::model::complex::State& look(fqsm::Reading source) { return *source; }
 }
 
 namespace tests {

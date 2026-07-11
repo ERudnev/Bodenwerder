@@ -29,11 +29,19 @@ namespace fqsm::processing::context {
 
 namespace fqsm::processing {
 
+    struct View {
+        explicit View(const model::complex::State& world) : state(world) {}
+        const model::complex::State* operator->() const { return &state; }
+        const model::complex::State& operator*() const { return state; }
+    private:
+        const model::complex::State& state;
+    };
+
     struct Gate {
         using Context = context::Operational;
         Gate(Context::Ptr parent) : context(std::move(parent)) {}
 
-        operator View() const { return context->world; }
+        operator View() const { return View(context->world); }
         const model::complex::State* operator->() const { return &context->world; }
 
         model::complex::WorkersInterface& workers_interface() { return *context->accumulator; }

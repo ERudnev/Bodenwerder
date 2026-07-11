@@ -34,7 +34,7 @@ namespace fqsm::processing::algorithm::normalization {
     };
 
     // build one normalization wave
-    auto reactions_pass(Reading source, fqsm::cref<Patch> changes, const Rtid::Set& taintedLines) -> PassResult {
+    auto reactions_pass(const model::complex::State& source, fqsm::cref<Patch> changes, const Rtid::Set& taintedLines) -> PassResult {
         //base::message("creating review context");
         PassResult pass{
             base::make_shared<Patch>(source.schema),

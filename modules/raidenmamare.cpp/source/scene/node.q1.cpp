@@ -34,7 +34,7 @@ namespace rmmr::scene {
     } // namespace
 
     auto Node::Actions::create(Writing context, Locator locator) -> Id {
-        return with<Node>::create(context, Node::Quantum{
+        return Node::BaseActions::create(context, Node::Quantum{
             .position = locator.pos,
             .rotation = rotation_from_hpb(locator.euler),
         });

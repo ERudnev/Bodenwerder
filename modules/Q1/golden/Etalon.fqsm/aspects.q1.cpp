@@ -65,7 +65,7 @@ namespace Q1_fQSM::Etalon {
     }
 
     auto SampleEntity::Actions::find_first(Reading context, integer sought) -> optional<Id> {
-        for (const auto entry : context.aspect<SampleEntity>().items()) {
+        for (const auto entry : context->aspect<SampleEntity>().items()) {
             if (entry.value.data_field == sought)
                 return entry.id;
         }
@@ -74,7 +74,7 @@ namespace Q1_fQSM::Etalon {
 
     auto SampleEntity::Actions::const_fieldwide_method(Reading context) -> integer {
         integer sum = integer{0};
-        for (const auto entry : context.aspect<SampleEntity>().items())
+        for (const auto entry : context->aspect<SampleEntity>().items())
             sum += entry.value.data_field;
         return sum;
     }

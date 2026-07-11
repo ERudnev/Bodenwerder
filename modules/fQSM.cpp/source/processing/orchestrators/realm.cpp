@@ -24,7 +24,7 @@ namespace fqsm::processing::orchestrator {
 
     auto Realm::makeChildPolicy() -> ChildPolicy {
         return ChildPolicy{
-            reality,
+            View(reality),
             [this](Context::PatchRef patch) {
                 accept(patch);
             }

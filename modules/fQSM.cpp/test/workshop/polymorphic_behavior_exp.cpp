@@ -4,13 +4,14 @@
 
 namespace workshop {
     using namespace fqsm::api;
+    using namespace api_for_internals;
 
     struct Wallet : Entity<Wallet> {
         // Workshop exploration: spin the idea without pretending this is production-ready.
         // The function pointer is a concept, not the target model. Properly, Quantum
         // should hold persistent Ids: handler type and handler instance in the world. Turning
         // this into a real feature will be sweaty work.
-        using IncomeStrategy = void(*)(fqsm::Writing, Id id, int income);
+        using IncomeStrategy = void(*)(Writing, Id id, int income);
 
         struct Quantum {
             int cash;

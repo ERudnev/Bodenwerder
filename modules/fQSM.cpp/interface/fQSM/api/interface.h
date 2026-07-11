@@ -74,4 +74,11 @@ namespace fqsm::api {
     namespace reaction {
         using namespace ::fqsm::features::reactions;
     }
+
+    // api for internal namespace with implementations
+    namespace api_for_internals {
+
+        using Writing = fqsm::Writing;
+        using Reading = fqsm::Reading;
+    }
 }

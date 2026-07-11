@@ -37,7 +37,7 @@ namespace fqsm::processing::orchestrator {
 
     protected:
         std::optional<Quantum<Meta>> getActual(Reading source, Id<Meta> itemId) const {
-            return source.aspect<Meta>().items().get(itemId);
+            return source->aspect<Meta>().items().get(itemId);
         }
 
         Quantum<Meta> requireActual(Reading source, Id<Meta> itemId) const {

@@ -9,9 +9,8 @@
 #include <stdexcept>
 
 namespace rmmr::system {
-
     using namespace fqsm::api;
-
+    using namespace api_for_internals;
     namespace {
 
         constexpr integer k_glfw_key_capacity = GLFW_KEY_LAST + 1;

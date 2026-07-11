@@ -1,8 +1,13 @@
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
+#include <vector>
+
 #include <Raidenmamare/system/interface.q1.h>
 #include <Raidenmamare/system/viewport.q1.h>
 #include <Raidenmamare/system/window.q1.h>
 
-#include <vector>
+
 
 namespace rmmr::system {
 

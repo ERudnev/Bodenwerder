@@ -139,7 +139,7 @@ namespace fqsm::aspect::actions {
     auto Any<Meta>
     ::count(Reading context)
     -> size_t {
-        return context.aspect<Meta>().items().size();
+        return context->aspect<Meta>().items().size();
     }
 
 
@@ -147,7 +147,7 @@ namespace fqsm::aspect::actions {
     auto Any<Meta>
     ::get(Reading context, Id id)
     -> const Quantum& {
-        const auto* found = context.aspect<Meta>().items().find(id);
+        const auto* found = context->aspect<Meta>().items().find(id);
         if (!found) {
             throw std::runtime_error(std::format(R"(actions::get "{}" {}: not present)", ::fqsm::meta::Rtid::name<Meta>(), id));
         }
@@ -158,13 +158,13 @@ namespace fqsm::aspect::actions {
     auto Any<Meta>
     ::find(Reading context, Id id)
     ->const Quantum*{
-        return context.aspect<Meta>().items().find(id);
+        return context->aspect<Meta>().items().find(id);
     }
 
     template<typename Meta>
     bool Any<Meta>
     ::exists(Reading context, Id id) {
-        return context.aspect<Meta>().items().find(id) != nullptr;
+        return context->aspect<Meta>().items().find(id) != nullptr;
     }
 
     template<typename Meta>
@@ -172,7 +172,7 @@ namespace fqsm::aspect::actions {
     ::get_global(Reading context)
     ->const Global&
     {
-        return context.aspect<Meta>().global();
+        return context->aspect<Meta>().global();
     }
 
     template<typename Meta>
