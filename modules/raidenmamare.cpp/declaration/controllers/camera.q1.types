@@ -1,5 +1,5 @@
+import "../system/window"
 import "../scene/camera"
-import "dispatcher"
 
 namespace rmmr
   namespace controller
@@ -7,5 +7,8 @@ namespace rmmr
     // Optional input controller for an existing scene::Camera feature.
     attribute Camera of scene::Camera
       one
+        yaw_rad: float
+        pitch_rad: float
+        fps_initialized: bool
         >create()-> #
-        =update(now: seconds) // RMB + mouse: rotate anchored scene::Camera node (HPB); input via Dispatcher on Device
+        =update() // RMB + mouse: rotate anchored scene::Camera node (HPB); input via system::Window on Device

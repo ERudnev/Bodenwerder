@@ -1,5 +1,5 @@
 #include <Raidenmamare/controller/camera.q1.h>
-#include <Raidenmamare/controller/dispatcher.q1.h>
+#include <Raidenmamare/system/window.q1.h>
 
 #include <GLFW/glfw3.h>
 
@@ -7,7 +7,6 @@
 #include <glm/glm.hpp>
 
 #include <algorithm>
-#include <cmath>
 
 namespace rmmr::controller {
 
@@ -37,14 +36,7 @@ namespace rmmr::controller {
             pitch_out = std::asin(std::clamp(forward.y, -1.0f, 1.0f));
         }
 
-        auto resolve_device(Reading context) -> system::Device::Id {
-            for (const auto entry : context.aspect<system::Device>().items()) {
-                return entry.id;
-            }
-            throw std::runtime_error("controller::Camera::update: no system::Device in realm");
-        }
-
-        void apply_arrow_move(Writing context, scene::Camera::Id camera, float yaw_rad, float pitch_rad, const vector<bool>& keys, double delta_sec) {
+        void apply_arrow_move(Writing context, scene::Camera::Id camera, float yaw_rad, float pitch_rad, const vector<bool>& keys, seconds delta_sec) {
             if (delta_sec <= 0.0) {
                 return;
             }
@@ -87,9 +79,6 @@ namespace rmmr::controller {
 
     auto Camera::Actions::create(Writing context, scene::Camera::Id anchor) -> Id {
         with<Camera>::extend(context, anchor, Camera::Quantum{
-            .previous_mouse = index2{0, 0},
-            .has_previous = false,
-            .last_step_sec = -1.0,
             .yaw_rad = 0.0f,
             .pitch_rad = 0.0f,
             .fps_initialized = false,
@@ -97,21 +86,15 @@ namespace rmmr::controller {
         return anchor;
     }
 
-    void Camera::Actions::update(Writing context, Id self, seconds now) {
-        const auto device = resolve_device(context);
-        if (not with<Dispatcher>::exists(context, device)) {
-            return;
-        }
-
-        const auto& dispatcher = with<Dispatcher>::get(context, device);
-        const auto& device_quantum = with<system::Device>::get(context, device);
-        GLFWwindow* const window = device_quantum.handle;
-        if (not window) {
+    void Camera::Actions::update(Writing context, Id self, system::Window::Id window) {
+        const auto& input = with<system::Window>::get(context, window);
+        const auto& device_quantum = with<system::Device>::get(context, window);
+        GLFWwindow* const handle = device_quantum.handle;
+        if (not handle) {
             return;
         }
 
         auto state = with<Camera>::modify(context, self);
-        const index2 mouse = dispatcher.mouse;
 
         float yaw_rad = state->yaw_rad;
         float pitch_rad = state->pitch_rad;
@@ -119,30 +102,20 @@ namespace rmmr::controller {
             yaw_pitch_from_node_rotation(with<scene::Node>::get(context, self).rotation, yaw_rad, pitch_rad);
         }
 
-        const double delta_sec = state->last_step_sec >= 0.0 ? now - state->last_step_sec : 0.0;
-        apply_arrow_move(context, self, yaw_rad, pitch_rad, dispatcher.keys, delta_sec);
+        apply_arrow_move(context, self, yaw_rad, pitch_rad, input.current.keys, with<system::Window>::dt(context, window));
 
-        bool has_previous = false;
-        index2 previous_mouse = state->previous_mouse;
-        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-            has_previous = true;
-            previous_mouse = mouse;
-            if (state->has_previous) {
-                const index2 delta_mouse{mouse.x - state->previous_mouse.x, mouse.y - state->previous_mouse.y};
-                const float sens_rad = glm::radians(k_mouse_sens_deg_per_pixel);
-                yaw_rad += k_mouse_yaw_scale_x * static_cast<float>(delta_mouse.x) * sens_rad;
-                pitch_rad -= static_cast<float>(delta_mouse.y) * sens_rad;
-                pitch_rad = std::clamp(pitch_rad, glm::radians(k_pitch_min_deg), glm::radians(k_pitch_max_deg));
-                with<scene::Node>::modify(context, self)->rotation = fps_orientation_rh(yaw_rad, pitch_rad);
-            }
+        if (glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
+            const index2 delta_mouse = with<system::Window>::mouseShift(context, window);
+            const float sens_rad = glm::radians(k_mouse_sens_deg_per_pixel);
+            yaw_rad += k_mouse_yaw_scale_x * static_cast<float>(delta_mouse.x) * sens_rad;
+            pitch_rad -= static_cast<float>(delta_mouse.y) * sens_rad;
+            pitch_rad = std::clamp(pitch_rad, glm::radians(k_pitch_min_deg), glm::radians(k_pitch_max_deg));
+            with<scene::Node>::modify(context, self)->rotation = fps_orientation_rh(yaw_rad, pitch_rad);
         }
 
-        state->previous_mouse = previous_mouse;
-        state->has_previous = has_previous;
         state->yaw_rad = yaw_rad;
         state->pitch_rad = pitch_rad;
         state->fps_initialized = true;
-        state->last_step_sec = now;
     }
 
 }

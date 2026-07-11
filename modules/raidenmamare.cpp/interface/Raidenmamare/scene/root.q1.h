@@ -36,12 +36,10 @@ namespace rmmr::scene {
     };
 
     struct Interface : Manipulation<Interface, Root> {
-        struct Actions : BaseActions {
-            static auto createScene(Writing) -> Root::Id;
-            static auto createCamera(Writing, Root::Id, Locator, Camera::Quantum) -> Camera::Id;
-            static auto createLight(Writing, Root::Id, Locator, Light::Quantum) -> Light::Id;
-            static auto createPrimitiveActor(Writing, Root::Id, Locator, PrimitiveActor::Quantum) -> PrimitiveActor::Id;
-        };
+        static auto createScene(Writing) -> Root::Id;
+        static auto createCamera(Writing, Root::Id, Locator, Camera::Quantum) -> Camera::Id;
+        static auto createLight(Writing, Root::Id, Locator, Light::Quantum) -> Light::Id;
+        static auto createPrimitiveActor(Writing, Root::Id, Locator, PrimitiveActor::Quantum) -> PrimitiveActor::Id;
     };
 
 }

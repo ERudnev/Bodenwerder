@@ -4,7 +4,18 @@ namespace rmmr
   namespace system
 
     component Window of Device
-      one
-        title: string
-        size: index2
-        ?present()
+    struct InputState
+      frame: integer // increentally
+      clock: time
+      keys: vector<bool>
+      mouse: index2
+    one
+      title: string
+      size: index2
+      InputState previous
+      InputState current
+      >create(title: string, size: index2)
+      ?present()
+      ?dt() -> seconds
+      ?mouseShift() -> index2
+      =onFrameAdvanced()   // или =updateSnapshot() — не путать с poll_events

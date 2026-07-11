@@ -1,7 +1,10 @@
 #include <Raidenmamare/engine.h>
 
+#include <Raidenmamare/assets/geometry.q1.h>
 #include <Raidenmamare/assets/material.q1.h>
 #include <Raidenmamare/assets/shader.q1.h>
+#include <Raidenmamare/controller/camera.q1.h>
+#include <Raidenmamare/resources/geometry.q1.h>
 #include <Raidenmamare/resources/material.q1.h>
 #include <Raidenmamare/resources/shader.q1.h>
 #include <Raidenmamare/scene/root.q1.h>
@@ -31,12 +34,16 @@ namespace {
             ask::schema::aspect<system::Viewport>(),
             ask::schema::aspect<system::Viewport_group>(),
             ask::schema::aspect<system::Interface>(),
+            ask::schema::aspect<asset::Geometry>(),
             ask::schema::aspect<asset::Shader>(),
             ask::schema::aspect<asset::Material>(),
+            ask::schema::aspect<resource::Geometry>(),
+            ask::schema::aspect<resource::Geometry_group>(),
             ask::schema::aspect<resource::Shader>(),
             ask::schema::aspect<resource::Shader_group>(),
             ask::schema::aspect<resource::Material>(),
             ask::schema::aspect<resource::Material_group>(),
+            ask::schema::aspect<controller::Camera>(),
             ask::schema::aspect<scene::Root>(),
             ask::schema::aspect<scene::Node>(),
             ask::schema::aspect<scene::Node_group>(),
@@ -64,6 +71,7 @@ namespace rmmr {
         maybe<system::Window::Id> window;
         maybe<system::Viewport::Id> viewport;
         maybe<scene::Root::Id> scene;
+        maybe<scene::Camera::Id> scene_camera;
         struct {
             maybe<resource::Material::Id> materialAmbient;
             maybe<resource::Material::Id> materialLit;
@@ -114,6 +122,11 @@ namespace rmmr {
                 glfwSetWindowShouldClose(handle, true);
             }
 
+            with<system::Window>::onFrameAdvanced(main, window);
+            if (state->scene_camera) {
+                with<controller::Camera>::update(main, state->scene_camera, window);
+            }
+
             with<system::Viewport>::activate(main, viewport);
             with<system::Viewport>::clear(main, viewport);
             with<system::Window>::present(main, window);
@@ -129,6 +142,7 @@ namespace rmmr {
         base::message("rmmr: loading material resources...");
         with<resource::Shader_group>::extend(main, window);
         with<resource::Material_group>::extend(main, window);
+        with<resource::Geometry_group>::extend(main, window);
 
         state->resources.materialAmbient = material::MaterialGenerator::ambient(main, window);
         state->resources.materialLit = material::MaterialGenerator::lit(main, window);
@@ -140,7 +154,7 @@ namespace rmmr {
     void Engine::createScene() {
         auto& main = state->main;
         const auto root = with<scene::Interface>::createScene(main);
-        with<scene::Interface>::createCamera(main, root, Locator{
+        const auto scene_camera = with<scene::Interface>::createCamera(main, root, Locator{
             .pos = Pos{0.0f, 1.3f, 4.0f},
             .euler = HPB{0.0f, -12.5f, 0.0f},
         }, scene::Camera::Quantum{
@@ -148,6 +162,8 @@ namespace rmmr {
             .z_near = 0.1f,
             .z_far = 100.0f,
         });
+        with<controller::Camera>::create(main, scene_camera);
+        state->scene_camera = scene_camera;
         with<scene::Interface>::createLight(main, root, Locator{
             .pos = Pos{2.0f, 2.0f, 2.0f},
             .euler = HPB{0.0f, 0.0f, 0.0f},

@@ -24,13 +24,13 @@ namespace rmmr::asset {
     };
 
     struct Shader : Entity<Shader> {
-        struct Quantum {
-            string name;
-            string library;
-        };
         struct Always {
             static auto vertexFilename(const string& name, const string& library) -> string;
             static auto fragmentFilename(const string& name, const string& library) -> string;
+        };
+        struct Quantum {
+            string name;
+            string library;
         };
         struct Actions : BaseActions {
             static auto compile(Writing, Id, system::Device::Id) -> resource::Shader::Id;

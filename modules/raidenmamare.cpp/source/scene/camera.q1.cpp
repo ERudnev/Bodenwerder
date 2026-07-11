@@ -13,7 +13,7 @@ namespace rmmr::scene {
             return glm::perspective(quantum.fov_y, aspect_ratio, quantum.z_near, quantum.z_far);
         }
 
-        auto view_matrix(Reading context, Camera::Id id) -> mat4 {
+        auto view_matrix(fqsm::Reading context, Camera::Id id) -> mat4 {
             const mat4 node_transform = Node::Actions::transform(context, id);
             return glm::inverse(node_transform);
         }
