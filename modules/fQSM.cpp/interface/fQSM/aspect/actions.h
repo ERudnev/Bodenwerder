@@ -110,13 +110,13 @@ namespace fqsm::aspect::actions {
 
         // like public interface:
         static void extend(Writing, Id<HostType>); // simplier version of Parasitic::extend
-        static auto addElement(Writing, Own::Id me, Client::Quantum) -> Client::Id
-            requires category::Standalone<Client>;
-        static auto addElement(Writing, Own::Id me, Client::Id worker, Client::Quantum) -> Client::Id
-            requires category::Parasitic<Client>;
+        static auto addElement(Writing, Own::Id me, Client::Quantum) -> Client::Id requires category::Standalone<Client>;
+        static auto addElement(Writing, Own::Id me, Client::Id worker, Client::Quantum) -> Client::Id requires category::Parasitic<Client>;
         static void deleteElement(Writing, Own::Id me, Client::Id);
+        static void clear(Writing, Own::Id me);
     private:
         using Parasitic<Meta, HostType>::extend;
+        using Parasitic<Meta, HostType>::remove;
     };
 
     // Interpretation category ations ant typedefs:
@@ -277,5 +277,14 @@ namespace fqsm::aspect::actions {
         } else {
             Client::BaseActions::remove(context, worker);
         }
+    }
+
+    template<typename Meta, typename HostType, category::Any ElementType>
+    void Group<Meta, HostType, ElementType>
+    ::clear(Writing context, Own::Id myId) {
+        const auto& myList = context->aspect<Meta>().items().at(myId);
+        for (auto& element : myList )
+            deleteElement(context, myId, element);
+        context.workers_interface().updates<Meta>().put_modification(myId, typename Meta::Quantum({}));
     }
 }

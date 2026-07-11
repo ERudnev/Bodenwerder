@@ -217,11 +217,13 @@ void group_category_ring_scenarios(fqsm::api::Schema schema)
         EXPECT_EQ(with<Keyring>::get_global(main).generationCount, 2);
         EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 1);
 
-        with<Client_group>::remove(main, keyring);
+        // Since Group CAtegory was "Component" behavior, "remove" is removed
+        // this line left here as tomstone
+        //with<Client_group>::remove(main, keyring);
+        with<Client_group>::clear(main, keyring);
 
         EXPECT_TRUE(main.result().good());
         EXPECT_TRUE(with<Keyring>::exists(main, keyring));
-        EXPECT_FALSE(with<Client_group>::exists(main, keyring));
         EXPECT_FALSE(with<Client>::exists(main, secondClient));
         EXPECT_EQ(with<Keyring>::get_global(main).generationCount, 2);
         EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 0);

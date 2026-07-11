@@ -127,8 +127,10 @@ namespace fqsm::aspect::internals {
                 Behavior::merged(
                     Parasitic<Meta, HostType>::reactions(),
                     Behavior{
+                        features::reactions::structural::dead_parasitic_kill_parent<Meta, HostType>(),
                         features::reactions::structural::group_removal_removes_elements<Meta, ElementType>(),
-                        features::reactions::structural::new_parasitic_requires_existing_parent<Meta, HostType>(),
+                        features::reactions::structural::parent_appears_requires_component<Meta, HostType>(),
+                        features::reactions::structural::new_parasitic_requires_parent_appears<Meta, HostType>(),
                     }
                 ),
                 Meta::customAspectReactions()
