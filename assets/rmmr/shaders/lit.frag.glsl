@@ -17,6 +17,13 @@ uniform float u_light0Intensity;
 uniform mat4 u_lightSpaceMatrix;
 uniform sampler2D u_shadowMap;
 
+const float k_shadow_bias = 0.005;
+
+float sample_shadow(vec2 uv, float current_depth) {
+    float closest = texture(u_shadowMap, uv).r;
+    return current_depth > closest ? 0.0 : 1.0;
+}
+
 float fetch_shadow(vec4 light_space_pos) {
     vec3 proj = light_space_pos.xyz / light_space_pos.w;
     proj = proj * 0.5 + 0.5;
@@ -25,9 +32,18 @@ float fetch_shadow(vec4 light_space_pos) {
         return 1.0;
     }
 
-    float closest = texture(u_shadowMap, proj.xy).r;
-    float current = proj.z - 0.005;
-    return current > closest ? 0.35 : 1.0;
+    float current_depth = proj.z - k_shadow_bias;
+    vec2 texel = 1.0 / vec2(textureSize(u_shadowMap, 0));
+
+    float shadow = 0.0;
+    for (int x = -1; x <= 1; ++x) {
+        for (int y = -1; y <= 1; ++y) {
+            vec2 offset = vec2(float(x), float(y)) * texel;
+            shadow += sample_shadow(proj.xy + offset, current_depth);
+        }
+    }
+
+    return shadow / 9.0;
 }
 
 void main() {

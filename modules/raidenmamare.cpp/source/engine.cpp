@@ -8,7 +8,6 @@
 #include <rmmr/resources/material.q1.h>
 #include <rmmr/resources/shader.q1.h>
 #include <rmmr/scene/actor.q1.h>
-#include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/interface.q1.h>
@@ -21,7 +20,6 @@
 #include <base/maybe.h>
 
 #include <stdexcept>
-#include <random>
 
 #include "geometry/geometryGenerator.h"
 #include "materials/materialGenerator.h"
@@ -194,31 +192,43 @@ namespace rmmr {
 
         const auto root = with<scene::Interface>::createScene(main);
 
-        for (int i = 0; i < 5; ++i) {
-            with<scene::Interface>::createPrimitiveActor(main, root, Locator{
-                .pos = Pos{-1.4f + 0.7f * static_cast<float>(i), 0.5f, 0.0f},
-                .euler = HPB{0.0f, 0.0f, 0.0f},
-            }, scene::PrimitiveActor::Quantum{
-                .geometry = *resources.primitive,
-                .material = *resources.materialAmbient,
-                .albedo = RGB{1.0f - 0.15f * static_cast<float>(i), 0.5f, 0.2f + 0.15f * static_cast<float>(i)},
-            });
-        }
+        constexpr int grid_extent = 10;
+        constexpr float cube_edge = 1.0f;
+        constexpr float spacing = cube_edge * 1.5f;
+        const float center_offset = (static_cast<float>(grid_extent) - 1.0f) * 0.5f;
+        const float cluster_lift = center_offset * spacing + cube_edge * 0.5f;
 
-        std::mt19937 rng{std::random_device{}()};
-        std::uniform_real_distribution<float> heading_deg{-180.0f, 180.0f};
-        std::uniform_real_distribution<float> pitch_deg{-45.0f, 45.0f};
-        std::uniform_real_distribution<float> bank_deg{-45.0f, 45.0f};
+        {
+            establish::Branch branch(main);
 
-        for (int i = 0; i < 4; ++i) {
-            with<scene::Interface>::createPrimitiveActor(main, root, Locator{
-                .pos = Pos{-1.05f + 0.7f * static_cast<float>(i), 0.2f, 0.0f},
-                .euler = HPB{heading_deg(rng), pitch_deg(rng), bank_deg(rng)},
-            }, scene::PrimitiveActor::Quantum{
-                .geometry = *resources.primitiveKube,
-                .material = *resources.materialLit,
-                .albedo = RGB{0.2f + 0.2f * static_cast<float>(i), 0.45f, 1.0f - 0.2f * static_cast<float>(i)},
-            });
+            for (int z = 0; z < grid_extent; ++z) {
+                for (int y = 0; y < grid_extent; ++y) {
+                    for (int x = 0; x < grid_extent; ++x) {
+                        const Pos pos{
+                            (static_cast<float>(x) - center_offset) * spacing,
+                            (static_cast<float>(y) - center_offset) * spacing + cluster_lift,
+                            (static_cast<float>(z) - center_offset) * spacing,
+                        };
+
+                        with<scene::Interface>::createPrimitiveActor(main, root, Locator{
+                            .pos = pos,
+                            .euler = HPB{
+                                -22.5f + 45.0f * static_cast<float>(x),
+                                -15.0f + 30.0f * static_cast<float>(y),
+                                -12.0f + 24.0f * static_cast<float>(z),
+                            },
+                        }, scene::PrimitiveActor::Quantum{
+                            .geometry = *resources.primitiveKube,
+                            .material = *resources.materialLit,
+                            .albedo = RGB{
+                                0.3f + 0.6f * static_cast<float>(x) / static_cast<float>(grid_extent - 1),
+                                0.3f + 0.6f * static_cast<float>(y) / static_cast<float>(grid_extent - 1),
+                                0.3f + 0.6f * static_cast<float>(z) / static_cast<float>(grid_extent - 1),
+                            },
+                        });
+                    }
+                }
+            }
         }
 
         with<scene::Interface>::createGrid(main, root, Locator{
@@ -231,8 +241,8 @@ namespace rmmr {
         });
 
         const auto scene_camera = with<scene::Interface>::createCamera(main, root, Locator{
-            .pos = Pos{0.0f, 1.3f, 4.0f},
-            .euler = HPB{0.0f, -12.5f, 0.0f},
+            .pos = Pos{11.5f, 8.5f, 15.5f},
+            .euler = HPB{-14.0f, -31.0f, 0.0f},
         }, scene::Camera::Quantum{
             .fov_y = 1.04719755f,
             .z_near = 0.1f,
@@ -241,12 +251,12 @@ namespace rmmr {
         with<controller::Camera>::create(main, scene_camera);
         state->scene_camera = scene_camera;
         with<scene::Interface>::createLight(main, root, Locator{
-            .pos = Pos{2.0f, 2.0f, 2.0f},
+            .pos = Pos{9.5f, 19.0f, 7.5f},
             .euler = HPB{0.0f, 0.0f, 0.0f},
         }, scene::Light::Quantum{
-            .color = RGB{1.0f, 1.0f, 1.0f},
-            .intensity = 5.0f,
-            .range = 10.0f,
+            .color = RGB{1.0f, 0.94f, 0.86f},
+            .intensity = 7.0f,
+            .range = 30.0f,
         });
         state->scene = root;
     }

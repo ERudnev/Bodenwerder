@@ -8,6 +8,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <base/logging.h>
+#include <base/maybe.h>
 
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/material.q1.h>
@@ -104,11 +105,18 @@ namespace rmmr {
 
     } // namespace
 
-    void Renderer::bind_material(FrameContext args, renderer::Pass pass, resource::Material::Id material) {
-        const auto& root_quantum = with<scene::Root>::get(args.world, args.scene);
+    void Renderer::ensure_material(FrameContext args, renderer::Pass pass, resource::Material::Id material, PassDrawState& state) {
+        if (state.bound_material && *state.bound_material == material) {
+            return;
+        }
 
         with<resource::Material>::apply(args.world, material, args.window);
+        bind_pass_uniforms(args, pass, material);
+        state.bound_material = material;
+        state.bound_geometry.reset();
+    }
 
+    void Renderer::bind_pass_uniforms(FrameContext args, renderer::Pass pass, resource::Material::Id material) {
         const auto& material_quantum = with<resource::Material>::get(args.world, material);
 
         if (pass == renderer::Pass::shadow) {
@@ -128,11 +136,17 @@ namespace rmmr {
             throw std::runtime_error("Renderer: scene has no camera");
         }
 
+        const auto& root_quantum = with<scene::Root>::get(args.world, args.scene);
         const float aspect_ratio = viewport_aspect_ratio(args.world, args.viewport);
         const mat4 view = scene::Camera::Actions::view(args.world, args.camera);
         const mat4 projection = scene::Camera::Actions::projection(args.world, args.camera, aspect_ratio);
         const mat4 light_space = light_space_matrix(args.world, args.scene);
         const auto& shadow_quantum = with<resource::ShadowMap>::get(args.world, args.shadow_map);
+
+        const auto light_node = first_light_node(args.world, args.scene);
+        const auto& light = with<scene::Light>::get(args.world, light_node);
+        const mat4 light_transform = scene::Node::Actions::transform(args.world, light_node);
+        const Pos light_world_pos{light_transform[3]};
 
         for (const auto& binding : material_quantum.bindings) {
             if (binding.location < 0) {
@@ -151,21 +165,17 @@ namespace rmmr {
                 set_uniform(binding, light_space);
             } else if (name == "shadowMap") {
                 set_uniform_sampler(binding, shadow_quantum.depth, 1);
+            } else if (name == "light0Pos") {
+                set_uniform(binding, light_world_pos);
+            } else if (name == "light0Color") {
+                set_uniform(binding, light.color);
+            } else if (name == "light0Intensity") {
+                set_uniform(binding, light.intensity);
             }
         }
     }
 
-    void Renderer::draw_geometry(Reading world, resource::Geometry::Id geometry_id) {
-        const auto& geometry = with<resource::Geometry>::get(world, geometry_id);
-        glBindVertexArray(geometry.vao);
-        if (geometry.index_count > renderer::Count{0}) {
-            glDrawElements(GL_TRIANGLES, geometry.index_count, GL_UNSIGNED_INT, nullptr);
-        } else {
-            glDrawArrays(GL_TRIANGLES, 0, geometry.vertex_count);
-        }
-    }
-
-    void Renderer::bind_instance(FrameContext args, resource::Material::Id material, const renderer::Command& command) {
+    void Renderer::draw_instance(FrameContext args, const renderer::Command& command, resource::Material::Id material) {
         const auto& material_quantum = with<resource::Material>::get(args.world, material);
 
         for (const auto& binding : material_quantum.bindings) {
@@ -185,46 +195,6 @@ namespace rmmr {
                 set_uniform(binding, RGB{0.1f, 0.12f, 0.14f} * command.opacity);
             }
         }
-
-        draw_geometry(args.world, command.geometry);
-    }
-
-    void Renderer::bind_lights(FrameContext args, resource::Material::Id material) {
-        const auto light_node = first_light_node(args.world, args.scene);
-        const auto& light = with<scene::Light>::get(args.world, light_node);
-        const mat4 light_transform = scene::Node::Actions::transform(args.world, light_node);
-        const Pos light_world_pos{light_transform[3]};
-        const auto& material_quantum = with<resource::Material>::get(args.world, material);
-
-        for (const auto& binding : material_quantum.bindings) {
-            if (binding.location < 0) {
-                continue;
-            }
-            const auto name = material::Semantics::name_of(binding.id);
-            if (name == "light0Pos") {
-                set_uniform(binding, light_world_pos);
-            } else if (name == "light0Color") {
-                set_uniform(binding, light.color);
-            } else if (name == "light0Intensity") {
-                set_uniform(binding, light.intensity);
-            }
-        }
-    }
-
-    void Renderer::execute_command(FrameContext args, const renderer::Command& command) {
-        const auto& shader = with<resource::Shader>::get(
-            args.world,
-            with<resource::Material>::get(args.world, command.material).shader);
-        if (not shader.handle) {
-            throw std::runtime_error("Renderer: material shader program is null");
-        }
-
-        bind_material(args, command.pass, command.material);
-        if (command.pass != renderer::Pass::shadow) {
-            bind_lights(args, command.material);
-        }
-
-        bind_instance(args, command.material, command);
     }
 
     void Renderer::render(FrameContext args) {
@@ -242,6 +212,7 @@ namespace rmmr {
 
         for (const auto pass : canonical_passes) {
             begin_pass(pass, args);
+            PassDrawState pass_state{};
 
             for (const auto& command : commands) {
                 if (command.pass != pass) {
@@ -254,7 +225,21 @@ namespace rmmr {
                     continue;
                 }
 
-                execute_command(args, command);
+                ensure_material(args, pass, command.material, pass_state);
+
+                const auto& geometry = with<resource::Geometry>::get(args.world, command.geometry);
+                if (not pass_state.bound_geometry || *pass_state.bound_geometry != command.geometry) {
+                    glBindVertexArray(geometry.vao);
+                    pass_state.bound_geometry = command.geometry;
+                }
+
+                draw_instance(args, command, command.material);
+
+                if (geometry.index_count > renderer::Count{0}) {
+                    glDrawElements(GL_TRIANGLES, geometry.index_count, GL_UNSIGNED_INT, nullptr);
+                } else {
+                    glDrawArrays(GL_TRIANGLES, 0, geometry.vertex_count);
+                }
             }
 
             end_pass(pass, args);
