@@ -1,0 +1,17 @@
+import "../system/core"
+
+namespace rmmr
+  namespace resource
+
+    entity ShadowMap
+      using Framebuffer as @external(OpenGL framebuffer handle)
+      using DepthTexture as @external(OpenGL depth texture handle)
+      one
+        fbo: Framebuffer
+        depth: DepthTexture
+        size: index2
+        ?bind()
+        ?clear()
+        ?unbind()
+
+    group<ShadowMap> of Device

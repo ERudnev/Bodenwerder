@@ -12,6 +12,7 @@
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/interface.q1.h>
+#include <rmmr/resources/shadowMap.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
 #include <GLFW/glfw3.h>
@@ -25,6 +26,7 @@
 #include "geometry/geometryGenerator.h"
 #include "materials/materialGenerator.h"
 #include "renderer/renderer.h"
+#include "shadowMap/shadowMapGenerator.h"
 
 namespace {
     using namespace fqsm::api;
@@ -46,6 +48,8 @@ namespace {
             ask::schema::aspect<resource::Shader_group>(),
             ask::schema::aspect<resource::Material>(),
             ask::schema::aspect<resource::Material_group>(),
+            ask::schema::aspect<resource::ShadowMap>(),
+            ask::schema::aspect<resource::ShadowMap_group>(),
             ask::schema::aspect<controller::Camera>(),
             ask::schema::aspect<scene::Root>(),
             ask::schema::aspect<scene::Node>(),
@@ -83,6 +87,7 @@ namespace rmmr {
             maybe<resource::Geometry::Id> primitive;
             maybe<resource::Geometry::Id> primitiveKube;
             maybe<resource::Geometry::Id> primitiveGrid;
+            maybe<resource::ShadowMap::Id> shadowMap;
         } resources;
         Renderer renderer;
     };
@@ -102,6 +107,7 @@ namespace rmmr {
         base::message("rmmr: creating window...");
         state->window = with<system::Interface>::createWindow(state->main, std::move(params.title), params.requested_size);
         prepareResources();
+        prepareRenderTargets();
         createViewport(with<system::Window>::framebufferSize(state->main, *state->window));
         createScene();
 
@@ -137,13 +143,14 @@ namespace rmmr {
             with<system::Viewport>::activate(main, viewport);
             with<system::Viewport>::clear(main, viewport);
 
-            if (state->scene && state->scene_camera) {
+            if (state->scene && state->scene_camera && state->resources.shadowMap) {
                 state->renderer.render(Renderer::FrameContext{
                     .world = main,
                     .viewport = *viewport,
                     .window = *window,
                     .scene = *state->scene,
                     .camera = *state->scene_camera,
+                    .shadow_map = *state->resources.shadowMap,
                 });
             }
 
@@ -170,6 +177,15 @@ namespace rmmr {
         state->resources.primitiveGrid = geometry::GeometryGenerator::gridPlane(main, window);
 
         base::message("rmmr: material and geometry resources loaded");
+    }
+
+    void Engine::prepareRenderTargets() {
+        auto& main = state->main;
+        const auto& window = state->window;
+
+        base::message("rmmr: creating render targets...");
+        state->resources.shadowMap = shadow_map::ShadowMapGenerator::create(main, window, index2{1024, 1024});
+        base::message("rmmr: render targets ready");
     }
 
     void Engine::createScene() {

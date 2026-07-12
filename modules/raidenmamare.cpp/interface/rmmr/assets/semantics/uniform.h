@@ -33,6 +33,7 @@ namespace rmmr::material {
             i32,
             v3f,
             m4f,
+            sampler2d,
         };
 
         struct Entry {
@@ -52,7 +53,7 @@ namespace rmmr::material {
         // ID convention:
         // - 1..99: matrices and structural transforms
         // - 100..: "pixel channels" (material/light parameters, scalars/vectors, etc.)
-        static constexpr auto vocabulary = std::array<Entry, 14>{{
+        static constexpr auto vocabulary = std::array<Entry, 15>{{
             Entry{0, Type::i32, "_undefined"},
 
             // triangle.vert.glsl
@@ -75,6 +76,8 @@ namespace rmmr::material {
             Entry{106, Type::f32, "patternScale"},
             Entry{107, Type::v3f, "colorPrimary"},
             Entry{108, Type::v3f, "colorSecondary"},
+
+            Entry{109, Type::sampler2d, "shadowMap"},
         }};
 
         static constexpr auto name_of(PersistentId id) -> Name {

@@ -1,5 +1,7 @@
 #include "renderer.h"
 
+#include <array>
+#include <cstddef>
 #include <stdexcept>
 #include <GL/glew.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -15,6 +17,8 @@
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/renderer/types.q1.h>
+#include <rmmr/resources/shadowMap.q1.h>
+#include <rmmr/system/viewport.q1.h>
 
 namespace rmmr {
 
@@ -50,6 +54,12 @@ namespace rmmr {
             glUniform1f(binding.location, value);
         }
 
+        void set_uniform_sampler(const asset::Uniform::Binding& binding, GLuint texture, GLint unit) {
+            glActiveTexture(GL_TEXTURE0 + unit);
+            glBindTexture(GL_TEXTURE_2D, texture);
+            glUniform1i(binding.location, unit);
+        }
+
         auto light_space_matrix(Reading context, scene::Root::Id root) -> mat4 {
             const auto light_node = first_light_node(context, root);
             const mat4 light_transform = scene::Node::Actions::transform(context, light_node);
@@ -60,13 +70,37 @@ namespace rmmr {
             return light_projection * light_view;
         }
 
-        void apply_pass(renderer::Pass pass) {
+        void begin_pass(renderer::Pass pass, Renderer::FrameContext args) {
+            if (pass == renderer::Pass::shadow) {
+                resource::ShadowMap::Actions::bind(args.world, args.shadow_map);
+                resource::ShadowMap::Actions::clear(args.world, args.shadow_map);
+                return;
+            }
+
             if (pass == renderer::Pass::transparent || pass == renderer::Pass::gizmo) {
                 glDepthMask(GL_FALSE);
             } else {
                 glDepthMask(GL_TRUE);
             }
         }
+
+        void end_pass(renderer::Pass pass, Renderer::FrameContext args) {
+            if (pass == renderer::Pass::shadow) {
+                resource::ShadowMap::Actions::unbind(args.world, args.shadow_map);
+                system::Viewport::Actions::activate(args.world, args.viewport);
+            }
+        }
+
+        constexpr std::size_t pass_count = 5;
+        static_assert(static_cast<std::size_t>(renderer::Pass::gizmo) + 1 == pass_count);
+
+        constexpr std::array<renderer::Pass, pass_count> canonical_passes{
+            renderer::Pass::shadow,
+            renderer::Pass::opaque,
+            renderer::Pass::transparent,
+            renderer::Pass::gizmo,
+            renderer::Pass::ui,
+        };
 
     } // namespace
 
@@ -97,6 +131,8 @@ namespace rmmr {
         const float aspect_ratio = viewport_aspect_ratio(args.world, args.viewport);
         const mat4 view = scene::Camera::Actions::view(args.world, args.camera);
         const mat4 projection = scene::Camera::Actions::projection(args.world, args.camera, aspect_ratio);
+        const mat4 light_space = light_space_matrix(args.world, args.scene);
+        const auto& shadow_quantum = with<resource::ShadowMap>::get(args.world, args.shadow_map);
 
         for (const auto& binding : material_quantum.bindings) {
             if (binding.location < 0) {
@@ -111,6 +147,10 @@ namespace rmmr {
                 set_uniform(binding, view);
             } else if (name == "projection") {
                 set_uniform(binding, projection);
+            } else if (name == "lightSpaceMatrix") {
+                set_uniform(binding, light_space);
+            } else if (name == "shadowMap") {
+                set_uniform_sampler(binding, shadow_quantum.depth, 1);
             }
         }
     }
@@ -171,6 +211,22 @@ namespace rmmr {
         }
     }
 
+    void Renderer::execute_command(FrameContext args, const renderer::Command& command) {
+        const auto& shader = with<resource::Shader>::get(
+            args.world,
+            with<resource::Material>::get(args.world, command.material).shader);
+        if (not shader.handle) {
+            throw std::runtime_error("Renderer: material shader program is null");
+        }
+
+        bind_material(args, command.pass, command.material);
+        if (command.pass != renderer::Pass::shadow) {
+            bind_lights(args, command.material);
+        }
+
+        bind_instance(args, command.material, command);
+    }
+
     void Renderer::render(FrameContext args) {
         if (not with<scene::Camera>::exists(args.world, args.camera)) {
             base::message("Renderer: scene has no camera");
@@ -184,36 +240,24 @@ namespace rmmr {
         GLboolean depth_write_prev{};
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);
 
-        renderer::Pass active_pass{};
-        bool pass_active = false;
+        for (const auto pass : canonical_passes) {
+            begin_pass(pass, args);
 
-        for (const auto& command : commands) {
-            if (command.instance_count <= renderer::Count{0}) {
-                continue;
-            }
-            if (not with<resource::Geometry>::exists(args.world, command.geometry)) {
-                continue;
-            }
+            for (const auto& command : commands) {
+                if (command.pass != pass) {
+                    continue;
+                }
+                if (command.instance_count <= renderer::Count{0}) {
+                    continue;
+                }
+                if (not with<resource::Geometry>::exists(args.world, command.geometry)) {
+                    continue;
+                }
 
-            if (not pass_active || command.pass != active_pass) {
-                apply_pass(command.pass);
-                active_pass = command.pass;
-                pass_active = true;
-            }
-
-            const auto& shader = with<resource::Shader>::get(
-                args.world,
-                with<resource::Material>::get(args.world, command.material).shader);
-            if (not shader.handle) {
-                throw std::runtime_error("Renderer: material shader program is null");
+                execute_command(args, command);
             }
 
-            bind_material(args, command.pass, command.material);
-            if (command.pass != renderer::Pass::shadow) {
-                bind_lights(args, command.material);
-            }
-
-            bind_instance(args, command.material, command);
+            end_pass(pass, args);
         }
 
         glDepthMask(depth_write_prev);

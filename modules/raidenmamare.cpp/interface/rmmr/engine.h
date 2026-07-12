@@ -31,6 +31,7 @@ namespace rmmr {
 
     private:
         void prepareResources();
+        void prepareRenderTargets();
         void createScene();
         void createViewport(index2 size, index2 origin = index2{0, 0});
         void shutdown() noexcept;

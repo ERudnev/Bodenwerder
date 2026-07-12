@@ -3,6 +3,7 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/material.q1.h>
 #include <rmmr/resources/shader.q1.h>
+#include <rmmr/resources/shadowMap.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
 #include <GL/glew.h>
@@ -110,6 +111,7 @@ namespace rmmr::system {
         with<resource::Shader_group>::extend(context, device);
         with<resource::Material_group>::extend(context, device);
         with<resource::Geometry_group>::extend(context, device);
+        with<resource::ShadowMap_group>::extend(context, device);
 
         return device;
     }

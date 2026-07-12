@@ -43,6 +43,8 @@ namespace rmmr::material {
                 "light0Pos",
                 "light0Color",
                 "light0Intensity",
+                "lightSpaceMatrix",
+                "shadowMap",
             }));
     }
 

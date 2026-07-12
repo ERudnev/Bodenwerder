@@ -2,6 +2,7 @@
 
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/resources/material.q1.h>
+#include <rmmr/resources/shadowMap.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/viewport.q1.h>
@@ -21,6 +22,7 @@ namespace rmmr {
             system::Window::Id window;
             scene::Root::Id scene;
             scene::Camera::Id camera;
+            resource::ShadowMap::Id shadow_map;
         };
 
         void render(FrameContext args);
@@ -30,6 +32,7 @@ namespace rmmr {
         void bind_instance(FrameContext args, resource::Material::Id material, const renderer::Command& command);
         void bind_lights(FrameContext args, resource::Material::Id material);
         void draw_geometry(fqsm::Reading world, resource::Geometry::Id geometry);
+        void execute_command(FrameContext args, const renderer::Command& command);
     };
 
 }
