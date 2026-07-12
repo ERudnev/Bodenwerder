@@ -1,9 +1,11 @@
 #pragma once
 
-#include <Raidenmamare/scene/actor.q1.h>
-#include <Raidenmamare/scene/camera.q1.h>
-#include <Raidenmamare/scene/light.q1.h>
-#include <Raidenmamare/scene/node.q1.h>
+#include <rmmr/renderer/types.q1.h>
+#include <rmmr/scene/actor.q1.h>
+#include <rmmr/scene/camera.q1.h>
+#include <rmmr/scene/gizmos.q1.h>
+#include <rmmr/scene/light.q1.h>
+#include <rmmr/scene/node.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -40,6 +42,8 @@ namespace rmmr::scene {
         static auto createCamera(Writing, Root::Id, Locator, Camera::Quantum) -> Camera::Id;
         static auto createLight(Writing, Root::Id, Locator, Light::Quantum) -> Light::Id;
         static auto createPrimitiveActor(Writing, Root::Id, Locator, PrimitiveActor::Quantum) -> PrimitiveActor::Id;
+        static auto createGrid(Writing, Root::Id, Locator, Grid::Quantum) -> Grid::Id;
+        static void render(Reading, Root::Id, renderer::CommandBuffer& where);
     };
 
 }

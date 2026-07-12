@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Raidenmamare/math.q1.h>
+#include <rmmr/math.q1.h>
 
 #include <fQSM/api/interface.h>
 

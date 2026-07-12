@@ -1,0 +1,30 @@
+import "../math"
+import "../resources/geometry"
+import "../resources/material"
+import "gl"
+
+namespace rmmr
+  namespace renderer
+
+    using InstanceBuffer as ~resource::Geometry::VertexBuffer
+
+    enum Pass : opaque, transparent, shadow, ui, gizmo
+
+    struct RenderState
+
+    struct InstanceSource
+      buffer: InstanceBuffer
+      byte_offset: IntPtr
+
+    struct Command
+      pass: Pass
+      model: mat4
+      geometry: #resource::Geometry
+      material: #resource::Material
+      albedo: RGB
+      opacity: float
+      instance_data: InstanceSource
+      instance_count: Count
+      render_state: RenderState
+
+    using CommandBuffer as vector<Command>

@@ -23,6 +23,9 @@ namespace Q1_iQSM
         ?length() -> Scalar
         =normalize(Scalar)
         >fromScalar(argument: Scalar) -> StructWithMethods // {x,x}
+        ?add_to(>target: StructWithMethods)
+        =add_from(?source: StructWithMethods)
+        >build_from(?source: StructWithMethods) -> StructWithMethods
         // rules "!" not allowed
 
     namespace Namespaces

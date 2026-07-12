@@ -57,4 +57,12 @@ namespace rmmr::material {
                 "colorSecondary",
             }));
     }
+
+    auto MaterialGenerator::shadowDepth(fqsm::Writing context, system::Device::Id device) -> resource::Material::Id {
+        return create_preset(context, device, "shadowDepth", "shadowDepth", "rmmr",
+            asset::Material::Always::uniformIds(vector<string>{
+                "model",
+                "lightSpaceMatrix",
+            }));
+    }
 }

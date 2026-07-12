@@ -34,6 +34,9 @@ namespace Q1_iQSM {
               Scalar length() const;
               void normalize(Scalar);
               static StructWithMethods fromScalar(Scalar argument);
+              void add_to(StructWithMethods& target) const;
+              void add_from(const StructWithMethods& source);
+              static StructWithMethods build_from(const StructWithMethods& source);
           };
         }
 

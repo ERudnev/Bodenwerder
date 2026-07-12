@@ -1,4 +1,4 @@
-#include <Raidenmamare/scene/node.q1.h>
+#include <rmmr/scene/node.q1.h>
 
 #include <glm/common.hpp>
 #include <glm/gtc/matrix_transform.hpp>

@@ -1,4 +1,4 @@
-#include <Raidenmamare/scene/root.q1.h>
+#include <rmmr/scene/root.q1.h>
 
 #include <glm/gtc/quaternion.hpp>
 
@@ -52,6 +52,25 @@ namespace rmmr::scene {
         const auto node = with<Node_group>::addElement(context, root, node_quantum_from_locator(locator));
         with<PrimitiveActor>::extend(context, node, std::move(actorQuantum));
         return node;
+    }
+
+    auto Interface::createGrid(Writing context, Root::Id root, Locator locator, Grid::Quantum gridQuantum) -> Grid::Id {
+        const auto node = with<Node_group>::addElement(context, root, node_quantum_from_locator(locator));
+        with<Grid>::extend(context, node, std::move(gridQuantum));
+        return node;
+    }
+
+    void Interface::render(Reading context, Root::Id root, renderer::CommandBuffer& where) {
+        const auto& node_group = with<Node_group>::get(context, root);
+        for (const auto node : node_group) {
+            if (with<PrimitiveActor>::exists(context, node)) {
+                PrimitiveActor::Actions::submit(context, node, where);
+                continue;
+            }
+            if (with<Grid>::exists(context, node)) {
+                Grid::Actions::submit(context, node, where);
+            }
+        }
     }
 
 }

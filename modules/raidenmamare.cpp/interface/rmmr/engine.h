@@ -5,7 +5,7 @@
 #include <fQSM/api/interface.h>
 #include <fQSM/processing/orchestrators/subsystem.h>
 
-#include <Raidenmamare/system/window.q1.h>
+#include <rmmr/system/window.q1.h>
 
 namespace rmmr {
 

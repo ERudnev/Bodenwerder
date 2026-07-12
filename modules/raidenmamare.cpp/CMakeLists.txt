@@ -16,6 +16,7 @@ set(Raidenmamare_Q1
     scene/camera.q1.types
     scene/light.q1.types
     scene/actor.q1.types
+    scene/gizmos.q1.types
     assets/geometry.q1.types
     assets/shader.q1.types
     assets/material.q1.types
@@ -23,6 +24,8 @@ set(Raidenmamare_Q1
     resources/shader.q1.types
     resources/material.q1.types
     controllers/camera.q1.types
+    renderer/gl.q1.types
+    renderer/types.q1.types
 )
 
 add_library(${PROJECT_NAME} STATIC)

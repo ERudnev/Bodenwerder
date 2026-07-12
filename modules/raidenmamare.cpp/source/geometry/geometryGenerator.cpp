@@ -12,10 +12,10 @@ namespace rmmr::geometry {
             const auto resource_geometry = asset::Geometry::Actions::compile(context, asset_geometry, device);
 
             const auto& runtime = with<resource::Geometry>::get(context, resource_geometry);
-            if (not runtime.vao || not runtime.vbo || runtime.vertex_count <= integer{0}) {
+            if (not runtime.vao || not runtime.vbo || runtime.vertex_count <= renderer::Count{0}) {
                 throw std::runtime_error("geometry::GeometryGenerator: geometry runtime is incomplete (VAO/VBO/vertex_count)");
             }
-            if (runtime.index_count > integer{0} && not runtime.ebo) {
+            if (runtime.index_count > renderer::Count{0} && not runtime.ebo) {
                 throw std::runtime_error("geometry::GeometryGenerator: indexed geometry is missing EBO");
             }
 

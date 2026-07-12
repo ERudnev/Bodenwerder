@@ -104,7 +104,23 @@ The current golden file contains:
 
 So the parser allows command operations with an optional return type.
 
-### 12. `attribute` aspect declarations
+### 12. Parameter name binding qualifiers
+
+Used in named operation parameters:
+
+- `?name: Type` → read-only reference (`binding: "read"`, C++ `const Type& name`)
+- `>name: Type` → mutable/out reference (`binding: "mut"`, C++ `Type& name`)
+- `name: Type` → unqualified (`binding: null`)
+
+Examples in `golden/Etalon.q1/elementary.q1.types`:
+
+- `?add_to(>target: StructWithMethods)`
+- `=add_from(?source: StructWithMethods)`
+- `>build_from(?source: StructWithMethods) -> StructWithMethods`
+
+The prefix is on the **parameter name**, not the type. This is distinct from postfix optional `T?` and from operation-kind prefixes.
+
+### 13. `attribute` aspect declarations
 
 Form:
 
@@ -118,7 +134,7 @@ Meaning:
 
 The parser records `category: "attribute"`.
 
-### 13. `feature` aspect declarations
+### 14. `feature` aspect declarations
 
 Form:
 

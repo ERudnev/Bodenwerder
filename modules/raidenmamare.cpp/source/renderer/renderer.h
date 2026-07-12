@@ -1,12 +1,11 @@
 #pragma once
 
-#include <Raidenmamare/resources/material.q1.h>
-#include <Raidenmamare/scene/actor.q1.h>
-#include <Raidenmamare/scene/camera.q1.h>
-#include <Raidenmamare/scene/node.q1.h>
-#include <Raidenmamare/scene/root.q1.h>
-#include <Raidenmamare/system/viewport.q1.h>
-#include <Raidenmamare/system/window.q1.h>
+#include <rmmr/renderer/types.q1.h>
+#include <rmmr/resources/material.q1.h>
+#include <rmmr/scene/camera.q1.h>
+#include <rmmr/scene/root.q1.h>
+#include <rmmr/system/viewport.q1.h>
+#include <rmmr/system/window.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -16,7 +15,7 @@ namespace rmmr {
 
     class Renderer final {
     public:
-        struct PassArguments {
+        struct FrameContext {
             fqsm::Reading world;
             system::Viewport::Id viewport;
             system::Window::Id window;
@@ -24,12 +23,13 @@ namespace rmmr {
             scene::Camera::Id camera;
         };
 
-        void render(PassArguments args);
+        void render(FrameContext args);
 
     private:
-        void bind_material(PassArguments args, resource::Material::Id material);
-        void bind_actor(PassArguments args, resource::Material::Id material, const scene::PrimitiveActor::Quantum& actor, scene::Node::Id node);
-        void bind_lights(PassArguments args, resource::Material::Id material);
+        void bind_material(FrameContext args, renderer::Pass pass, resource::Material::Id material);
+        void bind_instance(FrameContext args, resource::Material::Id material, const renderer::Command& command);
+        void bind_lights(FrameContext args, resource::Material::Id material);
+        void draw_geometry(fqsm::Reading world, resource::Geometry::Id geometry);
     };
 
 }

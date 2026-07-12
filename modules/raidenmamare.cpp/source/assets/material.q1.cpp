@@ -1,4 +1,4 @@
-#include <Raidenmamare/assets/material.q1.h>
+#include <rmmr/assets/material.q1.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>

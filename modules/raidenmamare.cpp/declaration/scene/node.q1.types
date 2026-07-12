@@ -4,7 +4,6 @@ namespace rmmr
   namespace scene
 
     // Basic transformable scene node.
-    // Rendering payloads (primitive, camera, light, viewport bindings) can be layered later.
     entity Node
       one
         position: Pos

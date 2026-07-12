@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Raidenmamare/assets/shader.q1.h>
-#include <Raidenmamare/resources/material.q1.h>
+#include <rmmr/assets/shader.q1.h>
+#include <rmmr/resources/material.q1.h>
 
 #include <fQSM/api/interface.h>
 

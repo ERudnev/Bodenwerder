@@ -1,9 +1,9 @@
-#include <Raidenmamare/system/window.q1.h>
+#include <rmmr/system/window.q1.h>
 
-#include <Raidenmamare/resources/geometry.q1.h>
-#include <Raidenmamare/resources/material.q1.h>
-#include <Raidenmamare/resources/shader.q1.h>
-#include <Raidenmamare/system/viewport.q1.h>
+#include <rmmr/resources/geometry.q1.h>
+#include <rmmr/resources/material.q1.h>
+#include <rmmr/resources/shader.q1.h>
+#include <rmmr/system/viewport.q1.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>

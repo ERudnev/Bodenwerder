@@ -52,13 +52,14 @@ namespace rmmr::material {
         // ID convention:
         // - 1..99: matrices and structural transforms
         // - 100..: "pixel channels" (material/light parameters, scalars/vectors, etc.)
-        static constexpr auto vocabulary = std::array<Entry, 13>{{
+        static constexpr auto vocabulary = std::array<Entry, 14>{{
             Entry{0, Type::i32, "_undefined"},
 
             // triangle.vert.glsl
             Entry{1, Type::m4f, "model"},
             Entry{2, Type::m4f, "view"},
             Entry{3, Type::m4f, "projection"},
+            Entry{4, Type::m4f, "lightSpaceMatrix"},
 
             // triangle.frag.glsl (pixel channels start at 100)
             Entry{100, Type::v3f, "albedo"},

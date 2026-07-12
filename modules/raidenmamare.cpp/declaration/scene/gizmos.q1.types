@@ -7,12 +7,11 @@ import "node"
 namespace rmmr
   namespace scene
 
-    feature PrimitiveActor of Node
+    feature Grid of Node
       one
         geometry: #resource::Geometry
         material: #resource::Material
-        albedo: RGB
+        opacity: float
         ?submit(>where: renderer::CommandBuffer)
       all
-        shadowMaterial: #resource::Material
-        >create(Pos, HPB, geometry: #resource::Geometry, material: #resource::Material, albedo: RGB) -> #
+        >create(Pos, HPB, one) -> #

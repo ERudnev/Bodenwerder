@@ -3,9 +3,9 @@
 
 #include <vector>
 
-#include <Raidenmamare/system/interface.q1.h>
-#include <Raidenmamare/system/viewport.q1.h>
-#include <Raidenmamare/system/window.q1.h>
+#include <rmmr/system/interface.q1.h>
+#include <rmmr/system/viewport.q1.h>
+#include <rmmr/system/window.q1.h>
 
 namespace rmmr::system {
 

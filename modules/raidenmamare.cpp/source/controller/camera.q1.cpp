@@ -1,5 +1,5 @@
-#include <Raidenmamare/controller/camera.q1.h>
-#include <Raidenmamare/system/window.q1.h>
+#include <rmmr/controller/camera.q1.h>
+#include <rmmr/system/window.q1.h>
 
 #include <GLFW/glfw3.h>
 

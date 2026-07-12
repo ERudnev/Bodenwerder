@@ -1,4 +1,4 @@
-#include <Raidenmamare/scene/light.q1.h>
+#include <rmmr/scene/light.q1.h>
 
 namespace rmmr::scene {
 

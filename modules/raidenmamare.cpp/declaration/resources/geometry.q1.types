@@ -1,4 +1,5 @@
 import "../system/core"
+import "../renderer/gl"
 
 namespace rmmr
   namespace resource
@@ -11,7 +12,7 @@ namespace rmmr
         vao: VertexArray
         vbo: VertexBuffer
         ebo: ElementBuffer
-        vertex_count: integer
-        index_count: integer
+        vertex_count: renderer::Count
+        index_count: renderer::Count
 
     group<Geometry> of Device

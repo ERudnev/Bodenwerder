@@ -1,17 +1,20 @@
 #include "renderer.h"
 
-#include <Raidenmamare/resources/geometry.q1.h>
-#include <Raidenmamare/resources/material.q1.h>
-#include <Raidenmamare/resources/shader.q1.h>
-#include <Raidenmamare/scene/actor.q1.h>
-#include <Raidenmamare/scene/camera.q1.h>
-#include <Raidenmamare/scene/light.q1.h>
-#include <Raidenmamare/scene/node.q1.h>
-
+#include <stdexcept>
 #include <GL/glew.h>
+#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <stdexcept>
+#include <base/logging.h>
+
+#include <rmmr/resources/geometry.q1.h>
+#include <rmmr/resources/material.q1.h>
+#include <rmmr/resources/shader.q1.h>
+#include <rmmr/scene/camera.q1.h>
+#include <rmmr/scene/light.q1.h>
+#include <rmmr/scene/node.q1.h>
+#include <rmmr/scene/root.q1.h>
+#include <rmmr/renderer/types.q1.h>
 
 namespace rmmr {
 
@@ -19,19 +22,6 @@ namespace rmmr {
     using namespace api_for_internals;
 
     namespace {
-
-        auto material_is_grid(Reading context, resource::Material::Id material) -> bool {
-            const auto& quantum = with<resource::Material>::get(context, material);
-            for (const auto& binding : quantum.bindings) {
-                if (binding.location < 0) {
-                    continue;
-                }
-                if (material::Semantics::name_of(binding.id) == "patternScale") {
-                    return true;
-                }
-            }
-            return false;
-        }
 
         auto viewport_aspect_ratio(Reading context, system::Viewport::Id viewport) -> float {
             const auto& quantum = with<system::Viewport>::get(context, viewport);
@@ -60,12 +50,45 @@ namespace rmmr {
             glUniform1f(binding.location, value);
         }
 
+        auto light_space_matrix(Reading context, scene::Root::Id root) -> mat4 {
+            const auto light_node = first_light_node(context, root);
+            const mat4 light_transform = scene::Node::Actions::transform(context, light_node);
+            const glm::vec3 light_position{light_transform[3]};
+            const glm::vec3 scene_center{0.0f, 0.0f, 0.0f};
+            const mat4 light_view = glm::lookAt(light_position, scene_center, glm::vec3{0.0f, 1.0f, 0.0f});
+            const mat4 light_projection = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, 0.1f, 50.0f);
+            return light_projection * light_view;
+        }
+
+        void apply_pass(renderer::Pass pass) {
+            if (pass == renderer::Pass::transparent || pass == renderer::Pass::gizmo) {
+                glDepthMask(GL_FALSE);
+            } else {
+                glDepthMask(GL_TRUE);
+            }
+        }
+
     } // namespace
 
-    void Renderer::bind_material(PassArguments args, resource::Material::Id material) {
+    void Renderer::bind_material(FrameContext args, renderer::Pass pass, resource::Material::Id material) {
         const auto& root_quantum = with<scene::Root>::get(args.world, args.scene);
 
         with<resource::Material>::apply(args.world, material, args.window);
+
+        const auto& material_quantum = with<resource::Material>::get(args.world, material);
+
+        if (pass == renderer::Pass::shadow) {
+            const mat4 light_space = light_space_matrix(args.world, args.scene);
+            for (const auto& binding : material_quantum.bindings) {
+                if (binding.location < 0) {
+                    continue;
+                }
+                if (material::Semantics::name_of(binding.id) == "lightSpaceMatrix") {
+                    set_uniform(binding, light_space);
+                }
+            }
+            return;
+        }
 
         if (not with<scene::Camera>::exists(args.world, args.camera)) {
             throw std::runtime_error("Renderer: scene has no camera");
@@ -74,7 +97,6 @@ namespace rmmr {
         const float aspect_ratio = viewport_aspect_ratio(args.world, args.viewport);
         const mat4 view = scene::Camera::Actions::view(args.world, args.camera);
         const mat4 projection = scene::Camera::Actions::projection(args.world, args.camera, aspect_ratio);
-        const auto& material_quantum = with<resource::Material>::get(args.world, material);
 
         for (const auto& binding : material_quantum.bindings) {
             if (binding.location < 0) {
@@ -89,23 +111,21 @@ namespace rmmr {
                 set_uniform(binding, view);
             } else if (name == "projection") {
                 set_uniform(binding, projection);
-            } else if (name == "patternScale") {
-                set_uniform(binding, 1.0f);
-            } else if (name == "colorPrimary") {
-                set_uniform(binding, RGB{0.45f, 0.48f, 0.52f});
-            } else if (name == "colorSecondary") {
-                set_uniform(binding, RGB{0.1f, 0.12f, 0.14f});
             }
         }
     }
 
-    void Renderer::bind_actor(
-        PassArguments args,
-        resource::Material::Id material,
-        const scene::PrimitiveActor::Quantum& actor,
-        scene::Node::Id node
-    ) {
-        const auto& geometry = with<resource::Geometry>::get(args.world, actor.geometry);
+    void Renderer::draw_geometry(Reading world, resource::Geometry::Id geometry_id) {
+        const auto& geometry = with<resource::Geometry>::get(world, geometry_id);
+        glBindVertexArray(geometry.vao);
+        if (geometry.index_count > renderer::Count{0}) {
+            glDrawElements(GL_TRIANGLES, geometry.index_count, GL_UNSIGNED_INT, nullptr);
+        } else {
+            glDrawArrays(GL_TRIANGLES, 0, geometry.vertex_count);
+        }
+    }
+
+    void Renderer::bind_instance(FrameContext args, resource::Material::Id material, const renderer::Command& command) {
         const auto& material_quantum = with<resource::Material>::get(args.world, material);
 
         for (const auto& binding : material_quantum.bindings) {
@@ -114,21 +134,22 @@ namespace rmmr {
             }
             const auto name = material::Semantics::name_of(binding.id);
             if (name == "model") {
-                set_uniform(binding, scene::Node::Actions::transform(args.world, node));
+                set_uniform(binding, command.model);
             } else if (name == "albedo") {
-                set_uniform(binding, actor.albedo);
+                set_uniform(binding, command.albedo);
+            } else if (name == "patternScale") {
+                set_uniform(binding, 1.0f);
+            } else if (name == "colorPrimary") {
+                set_uniform(binding, RGB{0.45f, 0.48f, 0.52f} * command.opacity);
+            } else if (name == "colorSecondary") {
+                set_uniform(binding, RGB{0.1f, 0.12f, 0.14f} * command.opacity);
             }
         }
 
-        glBindVertexArray(geometry.vao);
-        if (geometry.index_count > integer{0}) {
-            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(geometry.index_count), GL_UNSIGNED_INT, nullptr);
-        } else {
-            glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(geometry.vertex_count));
-        }
+        draw_geometry(args.world, command.geometry);
     }
 
-    void Renderer::bind_lights(PassArguments args, resource::Material::Id material) {
+    void Renderer::bind_lights(FrameContext args, resource::Material::Id material) {
         const auto light_node = first_light_node(args.world, args.scene);
         const auto& light = with<scene::Light>::get(args.world, light_node);
         const mat4 light_transform = scene::Node::Actions::transform(args.world, light_node);
@@ -150,72 +171,49 @@ namespace rmmr {
         }
     }
 
-    void Renderer::render(PassArguments args) {
+    void Renderer::render(FrameContext args) {
         if (not with<scene::Camera>::exists(args.world, args.camera)) {
-            throw std::runtime_error("Renderer: scene has no camera");
+            base::message("Renderer: scene has no camera");
+            return;
         }
         first_light_node(args.world, args.scene);
 
-        struct MaterialBatch {
-            resource::Material::Id material;
-            vector<scene::Node::Id> nodes;
-        };
+        renderer::CommandBuffer commands;
+        scene::Interface::render(args.world, args.scene, commands);
 
-        vector<MaterialBatch> batches;
-        const auto& node_group = with<scene::Node_group>::get(args.world, args.scene);
-        for (const auto node : node_group) {
-            if (not with<scene::PrimitiveActor>::exists(args.world, node)) {
+        GLboolean depth_write_prev{};
+        glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);
+
+        renderer::Pass active_pass{};
+        bool pass_active = false;
+
+        for (const auto& command : commands) {
+            if (command.instance_count <= renderer::Count{0}) {
                 continue;
             }
-            const auto& actor = with<scene::PrimitiveActor>::get(args.world, node);
-
-            bool found = false;
-            for (auto& batch : batches) {
-                if (batch.material == actor.material) {
-                    batch.nodes.push_back(node);
-                    found = true;
-                    break;
-                }
+            if (not with<resource::Geometry>::exists(args.world, command.geometry)) {
+                continue;
             }
-            if (not found) {
-                batches.push_back(MaterialBatch{
-                    .material = actor.material,
-                    .nodes = {node},
-                });
-            }
-        }
 
-        const auto draw_batch = [&](const MaterialBatch& batch) {
-            const auto& shader = with<resource::Shader>::get(args.world, with<resource::Material>::get(args.world, batch.material).shader);
+            if (not pass_active || command.pass != active_pass) {
+                apply_pass(command.pass);
+                active_pass = command.pass;
+                pass_active = true;
+            }
+
+            const auto& shader = with<resource::Shader>::get(
+                args.world,
+                with<resource::Material>::get(args.world, command.material).shader);
             if (not shader.handle) {
                 throw std::runtime_error("Renderer: material shader program is null");
             }
 
-            bind_material(args, batch.material);
-            bind_lights(args, batch.material);
-
-            for (const auto node : batch.nodes) {
-                const auto& actor = with<scene::PrimitiveActor>::get(args.world, node);
-                bind_actor(args, batch.material, actor, node);
+            bind_material(args, command.pass, command.material);
+            if (command.pass != renderer::Pass::shadow) {
+                bind_lights(args, command.material);
             }
-        };
 
-        for (const auto& batch : batches) {
-            if (material_is_grid(args.world, batch.material)) {
-                continue;
-            }
-            draw_batch(batch);
-        }
-
-        GLboolean depth_write_prev{};
-        glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);
-        glDepthMask(GL_FALSE);
-
-        for (const auto& batch : batches) {
-            if (not material_is_grid(args.world, batch.material)) {
-                continue;
-            }
-            draw_batch(batch);
+            bind_instance(args, command.material, command);
         }
 
         glDepthMask(depth_write_prev);

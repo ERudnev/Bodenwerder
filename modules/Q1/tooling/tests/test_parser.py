@@ -370,3 +370,51 @@ namespace Demo
     ast = q1_parser.parse_text(text, source="<snippet>")
     alias = ast["declarations"][0]["declarations"][0]
     assert alias["target"]["kind"] == "MemberTypeOf"
+
+
+def test_parse_param_name_binding_qualifiers() -> None:
+    text = """
+namespace Demo
+  struct S
+    x: float
+    y: float
+    ?add_to(>target: S)
+    =add_from(?source: S)
+    >build_from(?source: S) -> S
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    struct_decl = ast["declarations"][0]["declarations"][0]
+    add_to = struct_decl["members"][2]
+    add_from = struct_decl["members"][3]
+    build_from = struct_decl["members"][4]
+    assert add_to["kind"] == "QueryOp"
+    assert add_to["name"] == "add_to"
+    assert add_to["params"][0]["name"] == "target"
+    assert add_to["params"][0]["binding"] == "mut"
+    assert add_from["kind"] == "CommandOp"
+    assert add_from["params"][0]["name"] == "source"
+    assert add_from["params"][0]["binding"] == "read"
+    assert build_from["kind"] == "FactoryOp"
+    assert build_from["params"][0]["name"] == "source"
+    assert build_from["params"][0]["binding"] == "read"
+
+
+def test_golden_elementary_param_binding_ops() -> None:
+    ast = q1_parser.parse_file(ELEMENTARY)
+    typization = ast["declarations"][0]["declarations"][0]["declarations"][0]
+    struct_with_methods = next(
+        member for member in typization["declarations"] if member.get("name") == "StructWithMethods"
+    )
+    add_to = next(
+        member for member in struct_with_methods["members"] if member.get("name") == "add_to"
+    )
+    add_from = next(
+        member for member in struct_with_methods["members"] if member.get("name") == "add_from"
+    )
+    build_from = next(
+        member for member in struct_with_methods["members"] if member.get("name") == "build_from"
+    )
+    assert add_to["params"][0]["binding"] == "mut"
+    assert add_from["kind"] == "CommandOp"
+    assert add_from["params"][0]["binding"] == "read"
+    assert build_from["params"][0]["binding"] == "read"

@@ -1,0 +1,6 @@
+namespace rmmr
+  namespace renderer
+
+    using IntPtr as @external(OpenGL GLintptr signed byte offset into bound buffer)
+    using SizePtr as @external(OpenGL GLsizeiptr unsigned byte size for buffer operations)
+    using Count as @external(OpenGL GLsizei draw count stride and attrib size)

@@ -1,4 +1,4 @@
-#include <Raidenmamare/scene/camera.q1.h>
+#include <rmmr/scene/camera.q1.h>
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>

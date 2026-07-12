@@ -1,6 +1,8 @@
 import "../math"
+import "../renderer/types"
 import "actor"
 import "camera"
+import "gizmos"
 import "light"
 import "node"
 
@@ -21,3 +23,5 @@ namespace rmmr
       >createCamera(#, Locator, one<Camera>)->#Camera
       >createLight(#, Locator, one<Light>)->#Light
       >createPrimitiveActor(#, Locator, one<PrimitiveActor>)->#PrimitiveActor
+      >createGrid(#, Locator, one<Grid>)->#Grid
+      ?render(#, >where: renderer::CommandBuffer)

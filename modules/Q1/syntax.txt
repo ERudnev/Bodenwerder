@@ -28,6 +28,13 @@
     '#' : id type constructor (inside type expressions only):  #T == T::id (decode only) ; # == id (local Aspect type; decode only)
     '?' : postfix Optional type constructor (inside type expressions only):  T? == optional<T> (decode only)
 
+  parameter name binding qualifiers (named parameters only, inside operation `(...)`):
+    '?name: Type' : read-only reference parameter (C++ projection: const Type& name)
+    '>name: Type' : mutable / out reference parameter (C++ projection: Type& name)
+    'name: Type' : unqualified; projection follows existing value / context rules
+    Note: these prefixes apply to the parameter **name**, not the type. They are distinct from
+    operation-prefix `?`/`>` and from postfix optional `T?`.
+
   function prefix symbols:
     '?' : declares read-only operation (query) signature
     '=' : declares modifier limited with scope of local item (for "one") this Type item set (for "all")

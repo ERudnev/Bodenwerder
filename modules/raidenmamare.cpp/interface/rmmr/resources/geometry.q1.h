@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Raidenmamare/system/core.q1.h>
+#include <rmmr/renderer/gl.q1.h>
+#include <rmmr/system/core.q1.h>
 
 #include <GL/glew.h>
 
@@ -19,8 +20,8 @@ namespace rmmr::resource {
             VertexArray vao;
             VertexBuffer vbo;
             ElementBuffer ebo;
-            integer vertex_count;
-            integer index_count;
+            renderer::Count vertex_count;
+            renderer::Count index_count;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

@@ -102,6 +102,20 @@ Public Q1 operations become declarations in `Actions : BaseActions`, except for 
 - `all =name(...)` -> `static void name(Writing, ...)` inside `Actions`
 - `all >name(...) -> #` -> `static auto name(Writing, ...) -> Id` inside `Actions`
 
+### Parameter name binding qualifiers
+
+Named parameters may carry a prefix on the **parameter name**:
+
+- `?name: Type` -> `const Type& name`
+- `>name: Type` -> `Type& name`
+- `name: Type` -> unqualified (existing projection rules)
+
+Examples in `elementary.q1.h`:
+
+- `?add_to(>target: StructWithMethods)` -> `void add_to(StructWithMethods& target) const`
+- `=add_from(?source: StructWithMethods)` -> `void add_from(const StructWithMethods& source)`
+- `>build_from(?source: StructWithMethods) -> StructWithMethods` -> `static StructWithMethods build_from(const StructWithMethods& source)`
+
 ### Additional rule
 
 Two DSL operations may keep the same human name if they belong to different blocks and therefore project to different C++ signatures.

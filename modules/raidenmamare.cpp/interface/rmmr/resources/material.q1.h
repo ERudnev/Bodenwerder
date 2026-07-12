@@ -1,9 +1,9 @@
 #pragma once
 
-#include <Raidenmamare/assets/shader.q1.h>
-#include <Raidenmamare/materials/uniformSemantics.h>
-#include <Raidenmamare/resources/shader.q1.h>
-#include <Raidenmamare/system/core.q1.h>
+#include <rmmr/assets/shader.q1.h>
+#include <rmmr/assets/semantics/uniform.h>
+#include <rmmr/resources/shader.q1.h>
+#include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
 

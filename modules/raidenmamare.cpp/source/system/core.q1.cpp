@@ -1,4 +1,4 @@
-#include <Raidenmamare/system/core.q1.h>
+#include <rmmr/system/core.q1.h>
 
 #include <GLFW/glfw3.h>
 

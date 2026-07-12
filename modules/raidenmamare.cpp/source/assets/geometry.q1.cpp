@@ -1,4 +1,6 @@
-#include <Raidenmamare/assets/geometry.q1.h>
+#include <rmmr/assets/geometry.q1.h>
+
+#include <rmmr/renderer/gl.q1.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -87,12 +89,12 @@ namespace rmmr::asset {
                     interleaved.push_back(p.z);
                 }
 
-                constexpr GLsizei stride = static_cast<GLsizei>(3 * sizeof(float));
+                constexpr renderer::Count stride = renderer::Count(3 * sizeof(float));
 
                 glBindVertexArray(vao);
                 glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(static_cast<std::uintptr_t>(0)));
+                glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
                 glEnableVertexAttribArray(0);
             } else {
                 interleaved.reserve(vertex_count * 6);
@@ -107,14 +109,14 @@ namespace rmmr::asset {
                     interleaved.push_back(n.z);
                 }
 
-                constexpr GLsizei stride = static_cast<GLsizei>(6 * sizeof(float));
+                constexpr renderer::Count stride = renderer::Count(6 * sizeof(float));
 
                 glBindVertexArray(vao);
                 glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(static_cast<std::uintptr_t>(0)));
+                glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
                 glEnableVertexAttribArray(0);
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(static_cast<std::uintptr_t>(3 * sizeof(float))));
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(3 * sizeof(float))));
                 glEnableVertexAttribArray(1);
             }
 
@@ -122,7 +124,7 @@ namespace rmmr::asset {
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
                 glBufferData(
                     GL_ELEMENT_ARRAY_BUFFER,
-                    static_cast<GLsizeiptr>(index_data.size() * sizeof(GLuint)),
+                    renderer::SizePtr(index_data.size() * sizeof(GLuint)),
                     index_data.data(),
                     GL_STATIC_DRAW);
             }
@@ -131,8 +133,8 @@ namespace rmmr::asset {
                 .vao = vao,
                 .vbo = vbo,
                 .ebo = ebo,
-                .vertex_count = static_cast<integer>(vertex_count),
-                .index_count = static_cast<integer>(index_data.size()),
+                .vertex_count = renderer::Count(vertex_count),
+                .index_count = renderer::Count(index_data.size()),
             };
         }
 

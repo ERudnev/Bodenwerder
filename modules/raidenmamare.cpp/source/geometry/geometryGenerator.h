@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Raidenmamare/assets/geometry.q1.h>
-#include <Raidenmamare/resources/geometry.q1.h>
-#include <Raidenmamare/system/core.q1.h>
+#include <rmmr/assets/geometry.q1.h>
+#include <rmmr/resources/geometry.q1.h>
+#include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
 

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <Raidenmamare/math.q1.h>
-#include <Raidenmamare/primitives/geometrySemantics.h>
-#include <Raidenmamare/resources/geometry.q1.h>
-#include <Raidenmamare/system/core.q1.h>
+#include <rmmr/math.q1.h>
+#include <rmmr/assets/semantics/geometry.h>
+#include <rmmr/resources/geometry.q1.h>
+#include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
 

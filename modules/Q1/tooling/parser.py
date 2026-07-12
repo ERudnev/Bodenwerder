@@ -190,7 +190,8 @@ def _split_named_param(text: str) -> tuple[str, str] | None:
         if ch == "<":
             depth_angle += 1
         elif ch == ">":
-            depth_angle -= 1
+            if depth_angle > 0:
+                depth_angle -= 1
         elif ch == "(":
             depth_paren += 1
         elif ch == ")":
@@ -287,15 +288,37 @@ def parse_type_expr(text: str) -> dict[str, Any]:
     return {"kind": "NamedType", "raw": raw, "parts": raw.split("::")}
 
 
-def _parse_params(text: str) -> list[dict[str, Any]]:
+def _parse_param_name(name_raw: str, line: int) -> tuple[str, str | None]:
+    name = name_raw.strip()
+    binding = None
+    if name.startswith(">"):
+        binding = "mut"
+        name = name[1:].strip()
+    elif name.startswith("?"):
+        binding = "read"
+        name = name[1:].strip()
+    if not name or not IDENT_RE.match(name):
+        raise ParseError(f"Invalid parameter name: {name_raw!r}", line)
+    return name, binding
+
+
+def _parse_params(text: str, line: int) -> list[dict[str, Any]]:
     if not text.strip():
         return []
     params: list[dict[str, Any]] = []
     for item in _split_top_level(text, ","):
         named = _split_named_param(item)
         if named is not None:
-            name, type_text = named
-            params.append({"kind": "NamedParam", "name": name, "type": parse_type_expr(type_text)})
+            name_raw, type_text = named
+            name, binding = _parse_param_name(name_raw, line)
+            params.append(
+                {
+                    "kind": "NamedParam",
+                    "name": name,
+                    "binding": binding,
+                    "type": parse_type_expr(type_text),
+                }
+            )
         else:
             params.append({"kind": "AnonymousParam", "type": parse_type_expr(item.strip())})
     return params
@@ -334,7 +357,7 @@ def _parse_operation(line: Line) -> dict[str, Any]:
         kind_map[prefix],
         line.number,
         name=name,
-        params=_parse_params(params_text),
+        params=_parse_params(params_text, line.number),
         return_type=return_type,
         comment=line.comment,
     )

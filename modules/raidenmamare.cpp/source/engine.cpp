@@ -1,16 +1,18 @@
-#include <Raidenmamare/engine.h>
+#include <rmmr/engine.h>
 
-#include <Raidenmamare/assets/geometry.q1.h>
-#include <Raidenmamare/assets/material.q1.h>
-#include <Raidenmamare/assets/shader.q1.h>
-#include <Raidenmamare/controller/camera.q1.h>
-#include <Raidenmamare/resources/geometry.q1.h>
-#include <Raidenmamare/resources/material.q1.h>
-#include <Raidenmamare/resources/shader.q1.h>
-#include <Raidenmamare/scene/root.q1.h>
-#include <Raidenmamare/system/core.q1.h>
-#include <Raidenmamare/system/interface.q1.h>
-#include <Raidenmamare/system/viewport.q1.h>
+#include <rmmr/assets/geometry.q1.h>
+#include <rmmr/assets/material.q1.h>
+#include <rmmr/assets/shader.q1.h>
+#include <rmmr/controller/camera.q1.h>
+#include <rmmr/resources/geometry.q1.h>
+#include <rmmr/resources/material.q1.h>
+#include <rmmr/resources/shader.q1.h>
+#include <rmmr/scene/actor.q1.h>
+#include <rmmr/scene/gizmos.q1.h>
+#include <rmmr/scene/root.q1.h>
+#include <rmmr/system/core.q1.h>
+#include <rmmr/system/interface.q1.h>
+#include <rmmr/system/viewport.q1.h>
 
 #include <GLFW/glfw3.h>
 
@@ -53,6 +55,7 @@ namespace {
             ask::schema::aspect<scene::Light>(),
             ask::schema::aspect<scene::Light_group>(),
             ask::schema::aspect<scene::PrimitiveActor>(),
+            ask::schema::aspect<scene::Grid>(),
         });
     }
 
@@ -76,6 +79,7 @@ namespace rmmr {
             maybe<resource::Material::Id> materialAmbient;
             maybe<resource::Material::Id> materialLit;
             maybe<resource::Material::Id> materialGrid;
+            maybe<resource::Material::Id> materialShadowDepth;
             maybe<resource::Geometry::Id> primitive;
             maybe<resource::Geometry::Id> primitiveKube;
             maybe<resource::Geometry::Id> primitiveGrid;
@@ -134,7 +138,7 @@ namespace rmmr {
             with<system::Viewport>::clear(main, viewport);
 
             if (state->scene && state->scene_camera) {
-                state->renderer.render(Renderer::PassArguments{
+                state->renderer.render(Renderer::FrameContext{
                     .world = main,
                     .viewport = *viewport,
                     .window = *window,
@@ -157,6 +161,8 @@ namespace rmmr {
         state->resources.materialAmbient = material::MaterialGenerator::ambient(main, window);
         state->resources.materialLit = material::MaterialGenerator::lit(main, window);
         state->resources.materialGrid = material::MaterialGenerator::grid(main, window);
+        state->resources.materialShadowDepth = material::MaterialGenerator::shadowDepth(main, window);
+        scene::PrimitiveActor::Actions::modify_global(main)->shadowMaterial = *state->resources.materialShadowDepth;
 
         base::message("rmmr: loading geometry resources...");
         state->resources.primitive = geometry::GeometryGenerator::triangle(main, window);
@@ -199,13 +205,13 @@ namespace rmmr {
             });
         }
 
-        with<scene::Interface>::createPrimitiveActor(main, root, Locator{
+        with<scene::Interface>::createGrid(main, root, Locator{
             .pos = Pos{0.0f, 0.0f, 0.0f},
             .euler = HPB{0.0f, 0.0f, 0.0f},
-        }, scene::PrimitiveActor::Quantum{
+        }, scene::Grid::Quantum{
             .geometry = *resources.primitiveGrid,
             .material = *resources.materialGrid,
-            .albedo = RGB{0.0f, 0.0f, 0.0f},
+            .opacity = 1.0f,
         });
 
         const auto scene_camera = with<scene::Interface>::createCamera(main, root, Locator{

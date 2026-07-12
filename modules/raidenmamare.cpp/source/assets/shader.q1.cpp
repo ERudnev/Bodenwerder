@@ -1,4 +1,4 @@
-#include <Raidenmamare/assets/shader.q1.h>
+#include <rmmr/assets/shader.q1.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
