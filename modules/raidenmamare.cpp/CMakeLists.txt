@@ -9,6 +9,7 @@ set(Raidenmamare_Q1
     math.q1.types
     system/core.q1.types
     system/interface.q1.types
+    system/imgui.q1.types
     system/window.q1.types
     system/viewport.q1.types
     scene/root.q1.types
@@ -53,5 +54,6 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC fQSM
     PUBLIC libglew_static
     PUBLIC glfw
+    PRIVATE imgui
     ${OPENGL_LIBRARIES}
 )

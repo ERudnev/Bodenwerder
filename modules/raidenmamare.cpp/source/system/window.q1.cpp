@@ -4,6 +4,7 @@
 #include <rmmr/resources/material.q1.h>
 #include <rmmr/resources/shader.q1.h>
 #include <rmmr/resources/shadowMap.q1.h>
+#include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
 #include <GL/glew.h>
@@ -106,12 +107,16 @@ namespace rmmr::system {
             .previous = empty_input_state(),
             .current = empty_input_state(),
         });
+        with<ImGuiHost>::extend(context, device, ImGuiHost::Quantum{
+            .context = nullptr,
+        });
 
         with<Viewport_group>::extend(context, device);
         with<resource::Shader_group>::extend(context, device);
         with<resource::Material_group>::extend(context, device);
         with<resource::Geometry_group>::extend(context, device);
         with<resource::ShadowMap_group>::extend(context, device);
+        with<ImGuiHost>::initialize(context, device);
 
         return device;
     }

@@ -19,6 +19,7 @@
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/resources/shadowMap.q1.h>
+#include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
 namespace rmmr {
@@ -92,15 +93,11 @@ namespace rmmr {
             }
         }
 
-        constexpr std::size_t pass_count = 5;
-        static_assert(static_cast<std::size_t>(renderer::Pass::gizmo) + 1 == pass_count);
-
-        constexpr std::array<renderer::Pass, pass_count> canonical_passes{
+        constexpr std::array<renderer::Pass, 4> render_queue_passes{
             renderer::Pass::shadow,
             renderer::Pass::opaque,
             renderer::Pass::transparent,
             renderer::Pass::gizmo,
-            renderer::Pass::ui,
         };
 
     } // namespace
@@ -197,6 +194,11 @@ namespace rmmr {
         }
     }
 
+    void Renderer::execute_ui(FrameContext args) {
+        with<system::ImGuiHost>::newFrame(args.world, args.window);
+        with<system::ImGuiHost>::render(args.world, args.window);
+    }
+
     void Renderer::render(FrameContext args) {
         if (not with<scene::Camera>::exists(args.world, args.camera)) {
             base::message("Renderer: scene has no camera");
@@ -210,7 +212,7 @@ namespace rmmr {
         GLboolean depth_write_prev{};
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);
 
-        for (const auto pass : canonical_passes) {
+        for (const auto pass : render_queue_passes) {
             begin_pass(pass, args);
             PassDrawState pass_state{};
 
@@ -246,6 +248,7 @@ namespace rmmr {
         }
 
         glDepthMask(depth_write_prev);
+        execute_ui(args);
     }
 
 }

@@ -5,6 +5,7 @@
 #include <rmmr/resources/shadowMap.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
+#include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/viewport.q1.h>
 #include <rmmr/system/window.q1.h>
 
@@ -38,6 +39,7 @@ namespace rmmr {
         void ensure_material(FrameContext args, renderer::Pass pass, resource::Material::Id material, PassDrawState& state);
         void bind_pass_uniforms(FrameContext args, renderer::Pass pass, resource::Material::Id material);
         void draw_instance(FrameContext args, const renderer::Command& command, resource::Material::Id material);
+        void execute_ui(FrameContext args);
     };
 
 }

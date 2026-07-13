@@ -10,6 +10,7 @@
 #include <rmmr/scene/actor.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
+#include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/interface.q1.h>
 #include <rmmr/resources/shadowMap.q1.h>
 #include <rmmr/system/viewport.q1.h>
@@ -20,6 +21,7 @@
 #include <base/maybe.h>
 
 #include <stdexcept>
+#include <vector>
 
 #include "geometry/geometryGenerator.h"
 #include "materials/materialGenerator.h"
@@ -34,6 +36,7 @@ namespace {
         return ask::schema::merge({
             ask::schema::aspect<system::Core>(),
             ask::schema::aspect<system::Device>(),
+            ask::schema::aspect<system::ImGuiHost>(),
             ask::schema::aspect<system::Window>(),
             ask::schema::aspect<system::Viewport>(),
             ask::schema::aspect<system::Viewport_group>(),
@@ -266,7 +269,26 @@ namespace rmmr {
     }
 
     void Engine::shutdown() noexcept {
+        base::message("rmmr teardown: Engine::shutdown begin");
+        // PROBLEM:
+        // fQSM is a value system, handles are cornercase
+        // so, deleting Quantum with handle and making Review, system offers this data as "i will release this handle"
+        // releaseing GLFWwindow must be done later, after all subscribers will use it to release own resources
+        // TODO: find better workaround...
+        std::vector<GLFWwindow*> preserved_handles;
+        for (const auto entry : state->main->aspect<system::Device>().items()) {
+            if (entry.value.handle) {
+                preserved_handles.push_back(entry.value.handle);
+            }
+        }
         ask::temp_sugar::drop_reference<system::Viewport>(state->main, state->viewport);
         with<system::Interface>::shutdown(state->main);
+        for (GLFWwindow* handle : preserved_handles) {
+            base::message("rmmr teardown: Engine::shutdown glfwDestroyWindow handle={}", static_cast<void*>(handle));
+            glfwDestroyWindow(handle);
+        }
+        base::message("rmmr teardown: glfwTerminate");
+        glfwTerminate();
+        base::message("rmmr teardown: Engine::shutdown done");
     }
 }

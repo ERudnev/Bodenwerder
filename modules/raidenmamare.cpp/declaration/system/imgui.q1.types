@@ -1,0 +1,13 @@
+import "core"
+
+namespace rmmr
+  namespace system
+
+    component ImGuiHost of Device
+    using Context as @external(Dear ImGui context pointer)
+    one
+      context: Context
+      >initialize()
+      !release(-one)
+      ?newFrame()
+      ?render()
