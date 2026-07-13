@@ -269,12 +269,9 @@ namespace rmmr {
     }
 
     void Engine::shutdown() noexcept {
-        base::message("rmmr teardown: Engine::shutdown begin");
-        // PROBLEM:
-        // fQSM is a value system, handles are cornercase
-        // so, deleting Quantum with handle and making Review, system offers this data as "i will release this handle"
-        // releaseing GLFWwindow must be done later, after all subscribers will use it to release own resources
-        // TODO: find better workaround...
+        base::message("rmmr teardown: Engine shutdown begin");
+        // Device quanta may die inside fQSM earlier than native GLFW handles should.
+        // Preserve native windows here so retrospective release workers can finish first.
         std::vector<GLFWwindow*> preserved_handles;
         for (const auto entry : state->main->aspect<system::Device>().items()) {
             if (entry.value.handle) {
@@ -284,11 +281,9 @@ namespace rmmr {
         ask::temp_sugar::drop_reference<system::Viewport>(state->main, state->viewport);
         with<system::Interface>::shutdown(state->main);
         for (GLFWwindow* handle : preserved_handles) {
-            base::message("rmmr teardown: Engine::shutdown glfwDestroyWindow handle={}", static_cast<void*>(handle));
             glfwDestroyWindow(handle);
         }
-        base::message("rmmr teardown: glfwTerminate");
         glfwTerminate();
-        base::message("rmmr teardown: Engine::shutdown done");
+        base::message("rmmr teardown: Engine shutdown done");
     }
 }

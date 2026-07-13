@@ -35,22 +35,17 @@ namespace rmmr::system {
     } // namespace
 
     struct ImGuiHost::Internals : ImGuiHost::DefaultInternals {
-        static void release(fqsm::Writing context, Id id, const Quantum& last) {
-            base::message("rmmr teardown: ImGuiHost::release enter id={} context={}", id, static_cast<void*>(last.context));
+        static void release(fqsm::Retrospecting context, Id id, const Quantum& last) {
             if (not last.context) {
-                base::message("rmmr teardown: ImGuiHost::release skip (no context)");
                 return;
             }
 
             make_context_current(context, id);
             ImGui::SetCurrentContext(last.context);
-            base::message("rmmr teardown: ImGuiHost::release ImGui_ImplOpenGL3_Shutdown");
             ImGui_ImplOpenGL3_Shutdown();
-            base::message("rmmr teardown: ImGuiHost::release ImGui_ImplGlfw_Shutdown");
             ImGui_ImplGlfw_Shutdown();
-            base::message("rmmr teardown: ImGuiHost::release DestroyContext");
             ImGui::DestroyContext(last.context);
-            base::message("rmmr teardown: ImGuiHost::release done id={}", id);
+            base::message("rmmr teardown: ImGuiHost shutdown done id={}", id);
         }
     };
 

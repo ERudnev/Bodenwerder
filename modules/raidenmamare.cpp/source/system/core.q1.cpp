@@ -10,13 +10,8 @@ namespace rmmr::system {
 
     struct Device::Internals : Device::DefaultInternals {
         static void release(Writing, Id id, const Quantum& last) {
-            base::message("rmmr teardown: Device::release enter id={} handle={}", id, static_cast<void*>(last.handle));
-            if (last.handle) {
-                base::message("rmmr teardown: Device::release preserving handle for Engine::shutdown");
-            } else {
-                base::message("rmmr teardown: Device::release skip (no handle)");
-            }
-            base::message("rmmr teardown: Device::release done id={}", id);
+            (void)id;
+            (void)last;
         }
     };
 
