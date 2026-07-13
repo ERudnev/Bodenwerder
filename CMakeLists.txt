@@ -14,4 +14,4 @@ include(Q1)
 
 add_subdirectory(3party)
 add_subdirectory(modules)
-
+add_subdirectory(stories)

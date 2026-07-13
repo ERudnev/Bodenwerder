@@ -1,12 +1,14 @@
 #include <rmmr/controller/camera.q1.h>
+#include <rmmr/scene/node.q1.h>
 #include <rmmr/system/window.q1.h>
 
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
+#include <cmath>
+
 #include <glm/gtc/quaternion.hpp>
 #include <glm/glm.hpp>
-
-#include <algorithm>
 
 namespace rmmr::controller {
 
@@ -24,21 +26,54 @@ namespace rmmr::controller {
 
         const glm::vec3 k_world_up{0.0f, 1.0f, 0.0f};
 
-        auto fps_orientation_rh(float yaw_rad, float pitch_rad) -> glm::quat {
-            const glm::quat q_yaw = glm::angleAxis(yaw_rad, k_world_up);
-            const glm::vec3 right_axis = glm::normalize(q_yaw * glm::vec3(1.0f, 0.0f, 0.0f));
-            const glm::quat q_pitch = glm::angleAxis(pitch_rad, right_axis);
-            return glm::normalize(q_pitch * q_yaw);
+        auto orientation_from_forward(glm::vec3 forward) -> glm::quat {
+            forward = glm::normalize(forward);
+            const glm::vec3 right = glm::normalize(glm::cross(k_world_up, forward));
+            const glm::vec3 up = glm::cross(forward, right);
+            const glm::mat3 basis(right, up, -forward);
+            return glm::normalize(glm::quat_cast(basis));
         }
 
-        void yaw_pitch_from_node_rotation(glm::quat rotation, float& yaw_out, float& pitch_out) {
-            rotation = glm::normalize(rotation);
-            const glm::vec3 forward = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
-            yaw_out = std::atan2(forward.x, -forward.z);
-            pitch_out = std::asin(std::clamp(forward.y, -1.0f, 1.0f));
+        void clamp_pitch(glm::quat& rotation) {
+            glm::vec3 forward = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
+            const float min_sin = std::sin(glm::radians(k_pitch_min_deg));
+            const float max_sin = std::sin(glm::radians(k_pitch_max_deg));
+            const float clamped_y = std::clamp(forward.y, min_sin, max_sin);
+            if (std::abs(forward.y - clamped_y) <= 1e-6f) {
+                return;
+            }
+
+            forward.y = clamped_y;
+            const float xz_len = std::sqrt(forward.x * forward.x + forward.z * forward.z);
+            if (xz_len <= 1e-6f) {
+                forward = glm::vec3{0.0f, clamped_y > 0.0f ? 1.0f : -1.0f, 0.0f};
+            } else {
+                const float scale = std::sqrt(1.0f - clamped_y * clamped_y) / xz_len;
+                forward.x *= scale;
+                forward.z *= scale;
+            }
+
+            rotation = orientation_from_forward(forward);
         }
 
-        void apply_arrow_move(Writing context, scene::Camera::Id camera, float yaw_rad, float pitch_rad, const vector<bool>& keys, seconds delta_sec) {
+        void apply_mouse_look(glm::quat& rotation, index2 delta_mouse) {
+            if (delta_mouse.x == 0 && delta_mouse.y == 0) {
+                return;
+            }
+
+            const float sens_rad = glm::radians(k_mouse_sens_deg_per_pixel);
+            const float yaw = k_mouse_yaw_scale_x * static_cast<float>(delta_mouse.x) * sens_rad;
+            const float pitch = -static_cast<float>(delta_mouse.y) * sens_rad;
+
+            rotation = glm::normalize(glm::angleAxis(yaw, k_world_up) * rotation);
+
+            const glm::vec3 right = glm::normalize(rotation * glm::vec3(1.0f, 0.0f, 0.0f));
+            rotation = glm::normalize(glm::angleAxis(pitch, right) * rotation);
+
+            clamp_pitch(rotation);
+        }
+
+        void apply_arrow_move(scene::Node::Quantum& node, glm::quat rotation, const vector<bool>& keys, seconds delta_sec) {
             if (delta_sec <= 0.0) {
                 return;
             }
@@ -47,8 +82,11 @@ namespace rmmr::controller {
                 return static_cast<std::size_t>(key) < keys.size() && keys[static_cast<std::size_t>(key)];
             };
 
-            const glm::quat q_yaw = glm::angleAxis(yaw_rad, k_world_up);
-            glm::vec3 forward_xz = q_yaw * glm::vec3(0.0f, 0.0f, -1.0f);
+            rotation = glm::normalize(rotation);
+            const glm::vec3 forward_cam = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
+            const glm::vec3 up_cam = glm::normalize(rotation * glm::vec3(0.0f, 1.0f, 0.0f));
+
+            glm::vec3 forward_xz = forward_cam;
             forward_xz.y = 0.0f;
             if (glm::dot(forward_xz, forward_xz) < 1e-10f) {
                 forward_xz = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -57,9 +95,6 @@ namespace rmmr::controller {
             }
 
             const glm::vec3 right_xz = glm::normalize(glm::cross(forward_xz, k_world_up));
-            const glm::quat orient = fps_orientation_rh(yaw_rad, pitch_rad);
-            const glm::vec3 forward_cam = glm::normalize(orient * glm::vec3(0.0f, 0.0f, -1.0f));
-            const glm::vec3 up_cam = glm::normalize(orient * glm::vec3(0.0f, 1.0f, 0.0f));
             const float step = k_move_units_per_sec * static_cast<float>(delta_sec);
             glm::vec3 delta{0.0f};
 
@@ -74,20 +109,15 @@ namespace rmmr::controller {
                 return;
             }
 
-            auto node = with<scene::Node>::modify(context, camera);
-            node->position.x += delta.x;
-            node->position.y += delta.y;
-            node->position.z += delta.z;
+            node.position.x += delta.x;
+            node.position.y += delta.y;
+            node.position.z += delta.z;
         }
 
     } // namespace
 
     auto Camera::Actions::create(Writing context, scene::Camera::Id anchor) -> Id {
-        with<Camera>::extend(context, anchor, Camera::Quantum{
-            .yaw_rad = 0.0f,
-            .pitch_rad = 0.0f,
-            .fps_initialized = false,
-        });
+        with<Camera>::extend(context, anchor, Camera::Quantum{});
         return anchor;
     }
 
@@ -99,28 +129,15 @@ namespace rmmr::controller {
             return;
         }
 
-        auto state = with<Camera>::modify(context, self);
+        auto node = with<scene::Node>::modify(context, self);
+        glm::quat rotation = glm::normalize(node->rotation);
 
-        float yaw_rad = state->yaw_rad;
-        float pitch_rad = state->pitch_rad;
-        if (not state->fps_initialized) {
-            yaw_pitch_from_node_rotation(with<scene::Node>::get(context, self).rotation, yaw_rad, pitch_rad);
-        }
-
-        apply_arrow_move(context, self, yaw_rad, pitch_rad, input.current.keys, with<system::Window>::dt(context, window));
+        apply_arrow_move(*node, rotation, input.current.keys, with<system::Window>::dt(context, window));
 
         if (glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-            const index2 delta_mouse = with<system::Window>::mouseShift(context, window);
-            const float sens_rad = glm::radians(k_mouse_sens_deg_per_pixel);
-            yaw_rad += k_mouse_yaw_scale_x * static_cast<float>(delta_mouse.x) * sens_rad;
-            pitch_rad -= static_cast<float>(delta_mouse.y) * sens_rad;
-            pitch_rad = std::clamp(pitch_rad, glm::radians(k_pitch_min_deg), glm::radians(k_pitch_max_deg));
-            with<scene::Node>::modify(context, self)->rotation = fps_orientation_rh(yaw_rad, pitch_rad);
+            apply_mouse_look(rotation, with<system::Window>::mouseShift(context, window));
+            node->rotation = rotation;
         }
-
-        state->yaw_rad = yaw_rad;
-        state->pitch_rad = pitch_rad;
-        state->fps_initialized = true;
     }
 
 }

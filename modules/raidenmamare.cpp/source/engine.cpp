@@ -241,8 +241,8 @@ namespace rmmr {
         });
 
         const auto scene_camera = with<scene::Interface>::createCamera(main, root, Locator{
-            .pos = Pos{11.5f, 8.5f, 15.5f},
-            .euler = HPB{-14.0f, -31.0f, 0.0f},
+            .pos = Pos{10.5f, 10.0f, 14.0f},
+            .euler = HPB{-18.0f, -36.0f, 0.0f},
         }, scene::Camera::Quantum{
             .fov_y = 1.04719755f,
             .z_near = 0.1f,

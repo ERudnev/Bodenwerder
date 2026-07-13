@@ -7,8 +7,5 @@ namespace rmmr
     // Optional input controller for an existing scene::Camera feature.
     attribute Camera of scene::Camera
       one
-        yaw_rad: float
-        pitch_rad: float
-        fps_initialized: bool
         >create()-> #
-        =update() // RMB + mouse: rotate anchored scene::Camera node (HPB); input via system::Window on Device
+        =update() // RMB + mouse: rotate node.rotation (quat); input via system::Window on Device
