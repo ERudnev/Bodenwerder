@@ -34,7 +34,7 @@ namespace fqsm::processing::algorithm::normalization {
     };
 
     // build one normalization wave
-    auto reactions_pass(const model::complex::State& source, fqsm::cref<Patch> changes, const Rtid::Set& taintedLines) -> PassResult {
+    auto reactions_pass(const model::complex::State& source, const model::complex::State& origin, fqsm::cref<Patch> changes, const Rtid::Set& taintedLines) -> PassResult {
         //base::message("creating review context");
         PassResult pass{
             base::make_shared<Patch>(source.schema),
@@ -48,6 +48,7 @@ namespace fqsm::processing::algorithm::normalization {
         const auto proposal = model::complex::Future{source, non_const_patch, taintedLines};
         auto context = Review(
             proposal,
+            origin,
             pass.patch,
             pass.result);
 
@@ -96,7 +97,7 @@ namespace fqsm::processing::algorithm::normalization {
 
             _DBG_TX_("norm: wave {} correction={}", wave, utility::format_patch(fqsm::freeze(lastCorrection)));
 
-            const auto fix = reactions_pass(advancing, lastCorrection, taintedLinesAccumulated);
+            const auto fix = reactions_pass(advancing, world, lastCorrection, taintedLinesAccumulated);
 
             if (not fix.result.good()) {
                 _DBG_TX_("norm: wave {} REJECT critical={} warning={}", wave, fix.result.critical.size(), fix.result.warning.size());

@@ -41,7 +41,7 @@ namespace local {
             Keyring::Password password;
         };
         struct Internals : DefaultInternals {
-            static void onDestroy(Writing context, Id, const Quantum& last) {
+            static void onDestroy(Retrospecting context, Id, const Quantum& last) {
                 with<Keyring>::removePassword(context, last.keyring, last.password);
             }
         };

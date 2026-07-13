@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <fQSM/processing/contexts/operational.h>
+#include <fQSM/processing/contexts/retrospective.h>
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/linear/delta.h>
 
@@ -23,17 +24,21 @@ namespace fqsm::processing {
     // and give different Reaction scoped Review, like [typeA, typeB, typeC]
     struct Review final {
         using Context = context::Operational;
+        using RetrospectiveContext = context::Retrospective;
         using PatchRef = Context::PatchRef;
 
         const model::complex::Future& proposal;
         review::Result& result;
         // TODO: (really Do): tighten Context -> WorkersInterface Zag-Zag
         Context::Ptr reactions;
+        RetrospectiveContext::Ptr retrospective;
 
-        Review(const model::complex::Future& proposal, Context::PatchRef target, review::Result& result)
+        Review(const model::complex::Future& proposal, const model::complex::State& origin, Context::PatchRef target, review::Result& result)
             : proposal(proposal)
+            , origin(origin)
             , result(result)
             , reactions(std::make_shared<Context>(proposal, target, Context::Upstream{}))
+            , retrospective(std::make_shared<RetrospectiveContext>(origin, target, RetrospectiveContext::Upstream{}))
         {}
         // helpers:
         template<category::Any Meta>
@@ -48,6 +53,9 @@ namespace fqsm::processing {
 
         operator Reading() const { return processing::View(proposal); }
         operator Gate() const { return processing::Gate(reactions); }
+
+    private:
+        const model::complex::State& origin;
     };
 
 

@@ -4,7 +4,7 @@ namespace placeholder {
 
     struct MyAttribute::Internals : MyAttribute::DefaultInternals {
 
-        static void ruleOne(Writing context, Id, const Quantum& last) {
+        static void ruleOne(Retrospecting context, Id, const Quantum& last) {
             base::message("i am destroyed!");
         }
 

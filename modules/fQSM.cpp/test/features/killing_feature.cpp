@@ -79,7 +79,7 @@ namespace {
     namespace local {
         struct Body::Internals : DefaultInternals {
             // this reaction is private (as any reaction) because it must not be called manually
-            static void reactOnDeath(Writing context, Id id, const Quantum& lastValue) {
+            static void reactOnDeath(Retrospecting context, Id id, const Quantum& lastValue) {
                 // simple create 2 lesser stones:
                 with<archetype::Stone>::spawn(context, lastValue.powerOfMass - 1);
                 with<archetype::Stone>::spawn(context, lastValue.powerOfMass - 1);

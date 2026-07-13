@@ -19,8 +19,8 @@ namespace local {
             Resource::Id resourceId;
         };
         struct Internals : DefaultInternals {
-            static void releaseResource(Writing context, Id, const Quantum& last) {
-                with<Resource>::remove(context, last.resourceId);
+            static void releaseResource(Retrospecting context, Id, const Quantum& last) {
+                context.workers_interface().updates<Resource>().put_deletion(last.resourceId);
             }
         };
         static const Behavior customAspectReactions() {

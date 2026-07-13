@@ -47,6 +47,7 @@ namespace fqsm::aspect::actions {
             using EvaluateQuantumLocal = std::function<PossibleChange(const Quantum&)>; // Quantum -> Quantum possible modification
             using EvaluateQuantumContextual = std::function<PossibleChange(Reading, Id, const Quantum&)>; // Id is main channel, Quantum& is a cache
             using JustWriting = std::function<void(Writing, Id, const Quantum&)>;
+            using JustRetrospecting = std::function<void(Retrospecting, Id, const Quantum&)>;
         };
         // replaces with Func::
         //using QuantumLocal = std::function<PossibleChange(const Quantum&)>;

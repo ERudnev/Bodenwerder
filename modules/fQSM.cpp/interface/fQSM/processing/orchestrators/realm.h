@@ -16,6 +16,7 @@ namespace fqsm::processing::orchestrator {
         Realm(const State& other) : reality(other) {}
         // as Transaction:
         operator Reading() const override { return View(reality); }
+        const model::complex::State* operator->() const { return &reality; }
 
         template<category::Any Meta>
         operator Direct<Meta>();

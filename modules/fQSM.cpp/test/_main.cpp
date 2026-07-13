@@ -16,6 +16,7 @@
 #define FQSM_LOW_LEVEL_TESTS(X) \
     X(containers_updated) \
     X(delta_iterators) \
+    X(destructor_like_reactions) \
     X(globals) \
     X(global_is_change_too) \
     X(immediate) \
@@ -77,7 +78,7 @@ int call_all_tests() {
 
 int call_specific_test() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("selected", &tests::polymorphic_behavior_exp)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::destructor_like_reactions)));
     return s.ok() ? 0 : 1;
 }
 

@@ -15,10 +15,10 @@ namespace model {
             integer deletions = 0;
         };
         struct Internals : DefaultInternals {
-            static void countDeletion(Writing context, Id, const Quantum&) {
+            static void countDeletion(Retrospecting context, Id, const Quantum&) {
                 auto copy = with<A>::get_global(context);
                 ++copy.deletions;
-                *with<A>::modify_global(context) = copy;
+                context.workers_interface().updates<A>().put_global(copy);
             }
         };
         static const Behavior customAspectReactions() {

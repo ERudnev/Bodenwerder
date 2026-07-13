@@ -10,6 +10,7 @@ namespace fqsm::aspect::internals {
         using Reading = ::fqsm::Reading;
         using Writing = ::fqsm::Writing;
         using Reacting = ::fqsm::Reacting;
+        using Retrospecting = ::fqsm::Retrospecting;
         using Behavior = ::fqsm::features::Behavior;
     };
 

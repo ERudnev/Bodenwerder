@@ -15,12 +15,14 @@
 
 namespace fqsm::processing::context {
     struct Operational;
+    struct Retrospective;
     struct Direct;
 }
 
 namespace fqsm::processing {
     struct View;
     struct Gate;
+    struct Wall;
     struct Review;
 
     template<meta::category::Any>
@@ -29,9 +31,9 @@ namespace fqsm::processing {
 
 // exportin this as 1st class citizen of fQSM:
 namespace fqsm {
-    //using Reading = const processing::View&; // cleanup
     using Reading = processing::View;
-    using Writing = processing::Gate; // rename to "Draft"?
+    using Writing = processing::Gate;
+    using Retrospecting = processing::Wall;
     using Reacting = processing::Review;
     template<meta::category::Any Meta>
     using Direct = processing::Breach<Meta>;

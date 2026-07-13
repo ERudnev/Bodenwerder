@@ -9,8 +9,8 @@
 namespace fqsm::features::reactions {
 
     template<category::Any Meta>
-    struct deletion : Functional<typename Meta::BaseActions::Vocabulary::JustWriting> {
-        using Parent = Functional<typename Meta::BaseActions::Vocabulary::JustWriting>;
+    struct deletion : Functional<typename Meta::BaseActions::Vocabulary::JustRetrospecting> {
+        using Parent = Functional<typename Meta::BaseActions::Vocabulary::JustRetrospecting>;
 
         explicit deletion(Parent::ActionFunction reaction) : Parent(reaction) {}
         Parent::Sources listens() const override { return Abstract::typed_set<Meta>(); }
@@ -27,7 +27,7 @@ namespace fqsm::features::reactions {
             if (not change.before)
                 ask::feedback::critical(context, std::format(R"(reaction::deletion failed on "{}" {})", Rtid::name<Meta>(), change.id));
             else
-                this->action(context, change.id, change.throwing_before());
+                this->action(::fqsm::Retrospecting{context.retrospective}, change.id, change.throwing_before());
                 //if (!fix) continue;
                 //*Meta::BaseActions::modify(context, change.id) = *fix;
         }
