@@ -77,8 +77,8 @@ namespace fqsm::api {
 
     // api for internal namespace with implementations
     namespace api_for_internals {
-
+    } // tired of fqsm::Writing
         using Writing = fqsm::Writing;
         using Reading = fqsm::Reading;
-    }
+    //}
 }

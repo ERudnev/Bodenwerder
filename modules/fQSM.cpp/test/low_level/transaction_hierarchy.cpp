@@ -59,12 +59,12 @@ void transaction_hierarchy()
     EXPECT_EQ(debug::count<B>(main), 2);
 
     { // Branch changes will be applied with RAII (exiting this scope)
-        establish::Branch tx(main);
-        with<Arch>::spawn(tx, 27, "twenty-seven");
+        establish::Branch context(main);
+        with<Arch>::spawn(context, 27, "twenty-seven");
 
         // Branch sees base + patch, Realm stays stable.
-        EXPECT_EQ(debug::count<A>(tx), 3);
-        EXPECT_EQ(debug::count<B>(tx), 3);
+        EXPECT_EQ(debug::count<A>(context), 3);
+        EXPECT_EQ(debug::count<B>(context), 3);
         EXPECT_EQ(debug::count<A>(main), 2);
         EXPECT_EQ(debug::count<B>(main), 2);
     }
@@ -78,13 +78,13 @@ void transaction_hierarchy()
 
         // while each worker does its job, actual world state in realm is constant, so it may work in MT environment
         for (int xx = 0; xx < 10; ++xx) {
-            auto& tx = workers[xx];
+            auto& context = workers[xx];
             for (int yy = 0; yy < 4; ++yy)
-                with<Arch>::spawn(tx, 1000 + xx * 100 + yy, std::format("series: {}, step: {}", xx, yy));
+                with<Arch>::spawn(context, 1000 + xx * 100 + yy, std::format("series: {}, step: {}", xx, yy));
 
             // Each worker sees base + its own patch (4 entities/components).
-            EXPECT_EQ(debug::count<A>(tx), 7);
-            EXPECT_EQ(debug::count<B>(tx), 7);
+            EXPECT_EQ(debug::count<A>(context), 7);
+            EXPECT_EQ(debug::count<B>(context), 7);
             EXPECT_EQ(debug::count<A>(main), 3);
             EXPECT_EQ(debug::count<B>(main), 3);
         }

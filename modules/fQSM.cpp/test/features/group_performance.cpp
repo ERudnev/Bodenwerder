@@ -58,21 +58,19 @@ void group_performance_bulk_create_delete(fqsm::api::Schema schema)
 
     const auto stump = with<Grove>::plant(main, {});
 
-    {
-        establish::Branch branch(main);
+    main.branch([&](Writing context) {
         testing::scoped_timer timer("create {} elements in one group");
         for (integer index = 0; index < elementCount; ++index)
-            with<Grove>::addSpeck(branch, stump, {.tag = index});
-    }
+            with<Grove>::addSpeck(context, stump, {.tag = index});
+    });
 
-    {
-        establish::Branch branch(main);
+    main.branch([&](Writing context) {
         testing::scoped_timer timer("delete {} elements from one group");
-        const auto group = with<Speck_group>::get(branch, stump);
+        const auto group = with<Speck_group>::get(context, stump);
         for (const auto speck : group)
-            with<Speck_group>::deleteElement(branch, stump, speck);
-        with<Stump>::remove(branch, stump);
-    }
+            with<Speck_group>::deleteElement(context, stump, speck);
+        with<Stump>::remove(context, stump);
+    });
 }
 
 void group_performance()

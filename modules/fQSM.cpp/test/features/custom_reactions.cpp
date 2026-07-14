@@ -67,20 +67,18 @@ void custom_reactions()
         EXPECT_FALSE(main.result().good());
     }
     { // Scenario 2: A+B manual, C via make_default; parent removal cascades to both components
-        const auto id = [&] {
-            establish::Branch tx(main);
-            return with<archetype::EntABC>::spawn(tx, 4);
-        }();
+        const auto id = main.branch([](Writing context) {
+            return with<archetype::EntABC>::spawn(context, 4);
+        });
 
         EXPECT_TRUE(main.result().good());
         EXPECT_TRUE(with<A>::exists(main, id));
         EXPECT_TRUE(with<B>::exists(main, id));
         EXPECT_EQ(with<C>::get(main, id).power, 4);
 
-        {
-            establish::Branch tx(main);
-            with<A>::remove(tx, id);
-        }
+        main.branch([&](Writing context) {
+            with<A>::remove(context, id);
+        });
 
         EXPECT_TRUE(main.result().good());
         EXPECT_FALSE(with<A>::exists(main, id));

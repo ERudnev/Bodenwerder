@@ -64,11 +64,10 @@ void immediate()
     establish::Realm main(schema);
 
     std::vector<A::Id> ids;
-    {
-        establish::Branch local(main);
+    main.branch([&](Writing context) {
         for (int xx = 0; xx < 10; ++xx)
-            ids.push_back(with<A>::create(local, {xx}));
-    }
+            ids.push_back(with<A>::create(context, {xx}));
+    });
 
     // will compare different update path with 2 identical realms;
     establish::Realm duplicate(main);

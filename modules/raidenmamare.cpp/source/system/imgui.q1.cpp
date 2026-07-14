@@ -74,8 +74,15 @@ namespace rmmr::system {
             throw std::runtime_error("system::ImGuiHost::initialize: ImGui OpenGL3 backend init failed");
         }
 
+        {
+            ImGuiStyle& style = ImGui::GetStyle();
+            const float dpi_scale = ImGui_ImplGlfw_GetContentScaleForWindow(device.handle);
+            style.FontScaleDpi = dpi_scale;
+            style.ScaleAllSizes(dpi_scale);
+        }
+
         host->context = imgui_context;
-        base::message("rmmr: ImGuiHost::initialize id={} context={}", id, static_cast<void*>(imgui_context));
+        base::message("rmmr: ImGuiHost::initialize id={} context={} dpi_scale={:.2f}", id, static_cast<void*>(imgui_context), ImGui::GetStyle().FontScaleDpi);
     }
 
     void ImGuiHost::Actions::newFrame(fqsm::Reading context, Id id) {

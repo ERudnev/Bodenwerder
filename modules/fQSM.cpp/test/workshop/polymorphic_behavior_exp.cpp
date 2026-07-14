@@ -108,11 +108,10 @@ void polymorphic_behavior_exp()
     const auto steadyId = with<Steady>::spawn(main, 10);
     const auto riskyId = with<Risky>::spawn(main, 50);
 
-    {
-        establish::Branch tx(main);
-        with<Wallet>::income(tx, steadyId, 100);
-        with<Wallet>::income(tx, riskyId, 100);
-    }
+    main.branch([&](Writing context) {
+        with<Wallet>::income(context, steadyId, 100);
+        with<Wallet>::income(context, riskyId, 100);
+    });
 
     // positive income: both strategies park it in stocks; starting cash untouched
     EXPECT_EQ(with<Wallet>::get(main, steadyId).cash, 10);

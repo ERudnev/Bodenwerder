@@ -155,6 +155,7 @@ namespace rmmr {
                 };
                 ui::draw_camera(ui_frame);
                 ui::draw_cubes(ui_frame);
+                ui::draw_materials(ui_frame);
                 state->renderer.render(Renderer::FrameContext{
                     .world = main,
                     .viewport = *viewport,
@@ -212,9 +213,7 @@ namespace rmmr {
         const float center_offset = (static_cast<float>(grid_extent) - 1.0f) * 0.5f;
         const float cluster_lift = center_offset * spacing + cube_edge * 0.5f;
 
-        {
-            establish::Branch branch(main);
-
+        main.branch([&](fqsm::Writing context) {
             for (int z = 0; z < grid_extent; ++z) {
                 for (int y = 0; y < grid_extent; ++y) {
                     for (int x = 0; x < grid_extent; ++x) {
@@ -224,7 +223,7 @@ namespace rmmr {
                             (static_cast<float>(z) - center_offset) * spacing,
                         };
 
-                        with<scene::Interface>::createPrimitiveActor(main, root, Locator{
+                        with<scene::Interface>::createPrimitiveActor(context, root, Locator{
                             .pos = pos,
                             .euler = HPB{
                                 -22.5f + 45.0f * static_cast<float>(x),
@@ -243,7 +242,7 @@ namespace rmmr {
                     }
                 }
             }
-        }
+        });
 
         with<scene::Interface>::createGrid(main, root, Locator{
             .pos = Pos{0.0f, 0.0f, 0.0f},

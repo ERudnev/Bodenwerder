@@ -6,6 +6,7 @@
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/contexts/review.h>
 #include <fQSM/processing/transaction.h>
+#include <fQSM/processing/orchestrators/branch.h>
 
 namespace fqsm::processing::orchestrator {
 
@@ -14,9 +15,13 @@ namespace fqsm::processing::orchestrator {
         //Realm(const Realm& other) : Realm(static_cast<const State&>(other)) {} // forcing deep copy
         Realm(const Realm& other) : reality(static_cast<const State&>(other.reality)) {} // TODO clarify me
         Realm(const State& other) : reality(other) {}
+
         // as Transaction:
         operator Reading() const override { return View(reality); }
         const model::complex::State* operator->() const { return &reality; }
+
+        template<typename F>
+        auto branch(F&& worker) -> std::invoke_result_t<F, Writing> { Branch context(*this); return std::invoke(std::forward<F>(worker), static_cast<Writing>(context)); }
 
         template<category::Any Meta>
         operator Direct<Meta>();
