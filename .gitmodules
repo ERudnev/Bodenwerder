@@ -19,3 +19,6 @@
 [submodule "3party/imgui"]
 	path = 3party/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "3party/sqlite"]
+	path = 3party/sqlite
+	url = https://github.com/sqlite/sqlite.git
