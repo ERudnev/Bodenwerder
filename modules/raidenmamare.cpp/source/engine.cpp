@@ -26,6 +26,7 @@
 #include "geometry/geometryGenerator.h"
 #include "materials/materialGenerator.h"
 #include "renderer/renderer.h"
+#include "ui/overlay.h"
 #include "shadowMap/shadowMapGenerator.h"
 
 namespace {
@@ -145,6 +146,15 @@ namespace rmmr {
             with<system::Viewport>::clear(main, viewport);
 
             if (state->scene && state->scene_camera && state->resources.shadowMap) {
+                with<system::ImGuiHost>::newFrame(main, window);
+                const ui::FrameContext ui_frame{
+                    .world = main,
+                    .window = *window,
+                    .scene = *state->scene,
+                    .camera = *state->scene_camera,
+                };
+                ui::draw_camera(ui_frame);
+                ui::draw_cubes(ui_frame);
                 state->renderer.render(Renderer::FrameContext{
                     .world = main,
                     .viewport = *viewport,
@@ -153,6 +163,7 @@ namespace rmmr {
                     .camera = *state->scene_camera,
                     .shadow_map = *state->resources.shadowMap,
                 });
+                with<system::ImGuiHost>::render(main, window);
             }
 
             with<system::Window>::present(main, window);
@@ -195,7 +206,7 @@ namespace rmmr {
 
         const auto root = with<scene::Interface>::createScene(main);
 
-        constexpr int grid_extent = 10;
+        constexpr int grid_extent = 2;
         constexpr float cube_edge = 1.0f;
         constexpr float spacing = cube_edge * 1.5f;
         const float center_offset = (static_cast<float>(grid_extent) - 1.0f) * 0.5f;
