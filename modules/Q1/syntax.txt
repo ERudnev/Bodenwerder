@@ -69,6 +69,8 @@
     'index2' : 2D signed integer pair (x/y)
     'float' : floating-point number
     'string' : UTF-8 string
+    'filepath' : filesystem path
+    'filename' : file name within a kit/complect (not a full path)
     'boolean' : boolean (true/false)
     'vector<T>' : sequence container
     'map<K,V>' : ordered key-value container

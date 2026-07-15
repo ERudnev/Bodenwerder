@@ -271,6 +271,27 @@ namespace Demo
     assert fields["fast"]["params"][1]["name"] == "float"
 
 
+def test_parse_filepath_and_filename_builtin_types() -> None:
+    text = """
+namespace Demo
+  entity Asset
+    one
+      root: filepath
+      name: filename
+      >load(path: filepath, file: filename) -> #
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    asset = ast["declarations"][0]["declarations"][0]
+    fields = {m["name"]: m["type"] for m in asset["blocks"][0]["members"] if m["kind"] == "FieldDecl"}
+
+    assert fields["root"] == {"kind": "BuiltinType", "raw": "filepath", "name": "filepath"}
+    assert fields["name"] == {"kind": "BuiltinType", "raw": "filename", "name": "filename"}
+
+    factory = next(m for m in asset["blocks"][0]["members"] if m["kind"] == "FactoryOp")
+    assert factory["params"][0]["type"]["name"] == "filepath"
+    assert factory["params"][1]["type"]["name"] == "filename"
+
+
 def test_parse_container_id_type_fields() -> None:
     text = """
 namespace Demo

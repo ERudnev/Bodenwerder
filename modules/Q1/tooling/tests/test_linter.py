@@ -157,3 +157,17 @@ namespace Demo
     assert error is None
     assert ast is not None
     assert diagnostics == []
+
+
+def test_lint_filepath_and_filename_builtin_types() -> None:
+    text = """
+namespace Demo
+  entity Asset
+    one
+      root: filepath
+      name: filename
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    assert diagnostics == []

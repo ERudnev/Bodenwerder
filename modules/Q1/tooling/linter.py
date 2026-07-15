@@ -10,10 +10,7 @@ from typing import Any
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from parser import ParseError, parse_file, parse_text
-
-
-BUILTINS = {"integer", "float", "string", "index2", "boolean", "vec2", "vec3", "vec4", "quat", "mat4", "seconds", "time"}
+from parser import BUILTINS, ParseError, parse_file, parse_text
 
 
 @dataclass

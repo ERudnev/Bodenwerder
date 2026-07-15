@@ -78,6 +78,23 @@ SIMPLE_IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
 QUALIFIED_IDENT = rf"{SIMPLE_IDENT}(?:::{SIMPLE_IDENT})*"
 IMPORT_RE = re.compile(r'^import\s+"([^"]+)"$')
 
+BUILTINS = frozenset({
+    "integer",
+    "float",
+    "string",
+    "index2",
+    "boolean",
+    "vec2",
+    "vec3",
+    "vec4",
+    "quat",
+    "mat4",
+    "seconds",
+    "time",
+    "filepath",
+    "filename",
+})
+
 
 def _external_type_span(text: str) -> int:
     if not text.startswith("@external("):
@@ -277,8 +294,7 @@ def parse_type_expr(text: str) -> dict[str, Any]:
             "target": [part.strip() for part in target.split("::")],
             "member": member.strip(),
         }
-    builtin = {"integer", "float", "string", "index2", "boolean", "vec2", "vec3", "vec4", "quat", "mat4", "seconds", "time"}
-    if raw in builtin:
+    if raw in BUILTINS:
         return {"kind": "BuiltinType", "raw": raw, "name": raw}
     container = _parse_container_type(raw)
     if container is not None:

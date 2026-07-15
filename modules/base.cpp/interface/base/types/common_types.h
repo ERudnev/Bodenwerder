@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <chrono>
+#include <filesystem>
 #include <map>
 #include <optional>
 #include <set>
@@ -20,10 +21,14 @@
 
 namespace base::common_types {
     // Q1 builtins (mapped into the language root)
+    using boolean = bool;
     using integer = std::int32_t;
     // Q1 builtin `float` maps to C++ keyword type: `float`
     using string = std::string;
-    using boolean = bool;
+    // Q1 builtin: filesystem path.
+    using filepath = std::filesystem::path;
+    // Q1 builtin: file name within a kit/complect (not a full path).
+    using filename = std::string;
 
     struct index2 final {
         integer x;
