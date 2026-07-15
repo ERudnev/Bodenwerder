@@ -5,16 +5,16 @@
 #include <rmmr/assets/shader.q1.h>
 #include <rmmr/assets/texture.q1.h>
 #include <rmmr/controller/camera.q1.h>
-#include <rmmr/resources/geometry.q1.h>
-#include <rmmr/resources/material.q1.h>
-#include <rmmr/resources/shader.q1.h>
-#include <rmmr/resources/texture.q1.h>
+#include <rmmr/resources_old/geometry.q1.h>
+#include <rmmr/resources_old/material.q1.h>
+#include <rmmr/resources_old/shader.q1.h>
+#include <rmmr/resources_old/texture.q1.h>
 #include <rmmr/scene/actor.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/interface.q1.h>
-#include <rmmr/resources/shadowMap.q1.h>
+#include <rmmr/resources_old/shadowMap.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
 #include <GLFW/glfw3.h>
@@ -29,7 +29,6 @@
 #include "materials/materialGenerator.h"
 #include "renderer/renderer.h"
 #include "ui/overlay.h"
-#include "shadowMap/shadowMapGenerator.h"
 
 namespace {
     using namespace fqsm::api;
@@ -47,16 +46,16 @@ namespace {
             ask::schema::aspect<asset::Shader>(),
             ask::schema::aspect<asset::Material>(),
             ask::schema::aspect<asset::Texture>(),
-            ask::schema::aspect<resource::Geometry>(),
-            ask::schema::aspect<resource::Geometry_group>(),
-            ask::schema::aspect<resource::Shader>(),
-            ask::schema::aspect<resource::Shader_group>(),
-            ask::schema::aspect<resource::Material>(),
-            ask::schema::aspect<resource::Material_group>(),
-            ask::schema::aspect<resource::Texture>(),
-            ask::schema::aspect<resource::Texture_group>(),
-            ask::schema::aspect<resource::ShadowMap>(),
-            ask::schema::aspect<resource::ShadowMap_group>(),
+            ask::schema::aspect<resource_old::Geometry>(),
+            ask::schema::aspect<resource_old::Geometry_group>(),
+            ask::schema::aspect<resource_old::Shader>(),
+            ask::schema::aspect<resource_old::Shader_group>(),
+            ask::schema::aspect<resource_old::Material>(),
+            ask::schema::aspect<resource_old::Material_group>(),
+            ask::schema::aspect<resource_old::Texture>(),
+            ask::schema::aspect<resource_old::Texture_group>(),
+            ask::schema::aspect<resource_old::ShadowMap>(),
+            ask::schema::aspect<resource_old::ShadowMap_group>(),
             ask::schema::aspect<controller::Camera>(),
             ask::schema::aspect<scene::Root>(),
             ask::schema::aspect<scene::Node>(),
@@ -89,21 +88,21 @@ namespace rmmr {
         maybe<scene::Camera::Id> scene_camera;
         struct {
             struct {
-                maybe<resource::Texture::Id> debug;
+                maybe<resource_old::Texture::Id> debug;
             } texture;
             struct {
-                maybe<resource::Material::Id> ambient;
-                maybe<resource::Material::Id> lit;
-                maybe<resource::Material::Id> litTextured;
-                maybe<resource::Material::Id> grid;
-                maybe<resource::Material::Id> shadowDepth;
+                maybe<resource_old::Material::Id> ambient;
+                maybe<resource_old::Material::Id> lit;
+                maybe<resource_old::Material::Id> litTextured;
+                maybe<resource_old::Material::Id> grid;
+                maybe<resource_old::Material::Id> shadowDepth;
             } material;
             struct {
-                maybe<resource::Geometry::Id> triangle;
-                maybe<resource::Geometry::Id> kube;
-                maybe<resource::Geometry::Id> grid;
+                maybe<resource_old::Geometry::Id> triangle;
+                maybe<resource_old::Geometry::Id> kube;
+                maybe<resource_old::Geometry::Id> grid;
             } primitive;
-            maybe<resource::ShadowMap::Id> shadowMap;
+            maybe<resource_old::ShadowMap::Id> shadowMap;
         } resources;
         Renderer renderer;
     };
@@ -218,7 +217,7 @@ namespace rmmr {
         const auto& device = state->device;
 
         base::message("rmmr: creating render targets...");
-        state->resources.shadowMap = shadow_map::ShadowMapGenerator::create(main, device, index2{1024, 1024});
+        state->resources.shadowMap = resource_old::ShadowMap::Actions::create(main, device, index2{1024, 1024});
         base::message("rmmr: render targets ready");
     }
 

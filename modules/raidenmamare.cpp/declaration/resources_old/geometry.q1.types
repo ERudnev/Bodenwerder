@@ -2,7 +2,7 @@ import "../system/core"
 import "../renderer/gl"
 
 namespace rmmr
-  namespace resource
+  namespace resource_old
 
     entity Geometry
       using VertexArray as @external(OpenGL vertex array handle)

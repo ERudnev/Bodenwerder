@@ -1,8 +1,8 @@
-#include <rmmr/resources/material.q1.h>
+#include <rmmr/resources_old/material.q1.h>
 
 #include <GL/glew.h>
 
-namespace rmmr::resource {
+namespace rmmr::resource_old {
 
     using namespace fqsm::api;
 

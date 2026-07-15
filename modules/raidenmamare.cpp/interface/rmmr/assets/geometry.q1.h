@@ -2,7 +2,7 @@
 
 #include <rmmr/math.q1.h>
 #include <rmmr/assets/semantics/geometry.h>
-#include <rmmr/resources/geometry.q1.h>
+#include <rmmr/resources_old/geometry.q1.h>
 #include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -29,7 +29,7 @@ namespace rmmr::asset {
             static auto layoutIds(const vector<string>& names) -> Channel::Layout;
         };
         struct Actions : BaseActions {
-            static auto compile(Writing, Id, system::Device::Id) -> resource::Geometry::Id;
+            static auto compile(Writing, Id, system::Device::Id) -> resource_old::Geometry::Id;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

@@ -1,7 +1,7 @@
 import "../system/core"
 
 namespace rmmr
-  namespace resource
+  namespace resource_old
 
     entity ShadowMap
       using Framebuffer as @external(OpenGL framebuffer handle)
@@ -10,6 +10,7 @@ namespace rmmr
         fbo: Framebuffer
         depth: DepthTexture
         size: index2
+        >create(#Device, size: index2)->#
         ?bind()
         ?clear()
         ?unbind()

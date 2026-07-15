@@ -3,7 +3,7 @@ import "../system/core"
 import "texture"
 
 namespace rmmr
-  namespace resource
+  namespace resource_old
 
     entity Material
       struct TextureBinding

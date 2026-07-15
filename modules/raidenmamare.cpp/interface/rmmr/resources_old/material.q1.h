@@ -2,13 +2,13 @@
 
 #include <rmmr/assets/shader.q1.h>
 #include <rmmr/assets/semantics/uniform.h>
-#include <rmmr/resources/shader.q1.h>
-#include <rmmr/resources/texture.q1.h>
+#include <rmmr/resources_old/shader.q1.h>
+#include <rmmr/resources_old/texture.q1.h>
 #include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
 
-namespace rmmr::resource {
+namespace rmmr::resource_old {
 
     using namespace fqsm::api;
 

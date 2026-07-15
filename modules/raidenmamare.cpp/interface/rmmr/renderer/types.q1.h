@@ -2,8 +2,8 @@
 
 #include <rmmr/math.q1.h>
 #include <rmmr/renderer/gl.q1.h>
-#include <rmmr/resources/geometry.q1.h>
-#include <rmmr/resources/material.q1.h>
+#include <rmmr/resources_old/geometry.q1.h>
+#include <rmmr/resources_old/material.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -11,7 +11,7 @@ namespace rmmr::renderer {
 
     using namespace fqsm::api;
 
-    using InstanceBuffer = resource::Geometry::VertexBuffer;
+    using InstanceBuffer = resource_old::Geometry::VertexBuffer;
 
     enum class Pass {
         opaque,
@@ -32,8 +32,8 @@ namespace rmmr::renderer {
     struct Command {
         Pass pass;
         mat4 model;
-        resource::Geometry::Id geometry;
-        resource::Material::Id material;
+        resource_old::Geometry::Id geometry;
+        resource_old::Material::Id material;
         RGB albedo;
         float opacity;
         InstanceSource instance_data;

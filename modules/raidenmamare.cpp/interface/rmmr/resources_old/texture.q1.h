@@ -6,21 +6,22 @@
 
 #include <fQSM/api/interface.h>
 
-namespace rmmr::resource {
+namespace rmmr::resource_old {
 
     using namespace fqsm::api;
 
-    struct Shader : Entity<Shader> {
+    struct Texture : Entity<Texture> {
         using Handle = GLuint;
 
         struct Quantum {
             Handle handle;
+            index2 size;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct Shader_group : Group<Shader_group, system::Device, Shader> {
+    struct Texture_group : Group<Texture_group, system::Device, Texture> {
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };

@@ -2,7 +2,7 @@
 
 #include <rmmr/assets/shader.q1.h>
 #include <rmmr/assets/texture.q1.h>
-#include <rmmr/resources/material.q1.h>
+#include <rmmr/resources_old/material.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -25,7 +25,7 @@ namespace rmmr::asset {
             static auto uniformIds(const vector<string>& names) -> Uniform::Palette;
         };
         struct Actions : BaseActions {
-            static auto compile(Writing, Id, system::Device::Id) -> resource::Material::Id;
+            static auto compile(Writing, Id, system::Device::Id) -> resource_old::Material::Id;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

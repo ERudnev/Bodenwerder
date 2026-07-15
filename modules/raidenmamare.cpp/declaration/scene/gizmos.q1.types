@@ -1,5 +1,5 @@
-import "../resources/geometry"
-import "../resources/material"
+import "../resources_old/geometry"
+import "../resources_old/material"
 import "../renderer/types"
 import "../math"
 import "node"
@@ -9,8 +9,8 @@ namespace rmmr
 
     feature Grid of Node
       one
-        geometry: #resource::Geometry
-        material: #resource::Material
+        geometry: #resource_old::Geometry
+        material: #resource_old::Material
         opacity: float
         ?submit(>where: renderer::CommandBuffer)
       all

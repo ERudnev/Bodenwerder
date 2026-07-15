@@ -7,7 +7,7 @@
 
 #include <fQSM/api/interface.h>
 
-namespace rmmr::resource {
+namespace rmmr::resource_old {
 
     using namespace fqsm::api;
 

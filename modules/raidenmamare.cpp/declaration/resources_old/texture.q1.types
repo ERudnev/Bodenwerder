@@ -1,7 +1,7 @@
 import "../system/core"
 
 namespace rmmr
-  namespace resource
+  namespace resource_old
 
     entity Texture
       using Handle as @external(OpenGL C++ texture handle)

@@ -1,4 +1,4 @@
-import "../resources/texture"
+import "../resources_old/texture"
 import "../system/core"
 
 namespace rmmr
@@ -10,4 +10,4 @@ namespace rmmr
       one
         name: string
         library: string
-        >compile(#Device) -> #resource::Texture
+        >compile(#Device) -> #resource_old::Texture

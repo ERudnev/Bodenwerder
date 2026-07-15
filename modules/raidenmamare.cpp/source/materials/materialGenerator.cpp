@@ -5,7 +5,7 @@
 namespace rmmr::material {
     using namespace api_for_internals;
     namespace {
-        resource::Material::Id create_preset(
+        resource_old::Material::Id create_preset(
             Writing context,
             system::Device::Id device,
             string program_name,
@@ -28,7 +28,7 @@ namespace rmmr::material {
         }
     } // namespace
 
-    auto MaterialGenerator::ambient(Writing context, system::Device::Id device) -> resource::Material::Id {
+    auto MaterialGenerator::ambient(Writing context, system::Device::Id device) -> resource_old::Material::Id {
         return create_preset(context, device, "ambient", "ambient", "rmmr",
             asset::Material::Always::uniformIds(vector<string>{
                 "model",
@@ -40,7 +40,7 @@ namespace rmmr::material {
             }));
     }
 
-    auto MaterialGenerator::lit(Writing context, system::Device::Id device) -> resource::Material::Id {
+    auto MaterialGenerator::lit(Writing context, system::Device::Id device) -> resource_old::Material::Id {
         return create_preset(context, device, "lit", "lit", "rmmr",
             asset::Material::Always::uniformIds(vector<string>{
                 "model",
@@ -57,7 +57,7 @@ namespace rmmr::material {
             }));
     }
 
-    auto MaterialGenerator::litTextured(Writing context, system::Device::Id device, asset::Texture::Id albedo_map) -> resource::Material::Id {
+    auto MaterialGenerator::litTextured(Writing context, system::Device::Id device, asset::Texture::Id albedo_map) -> resource_old::Material::Id {
         return create_preset(context, device, "litTextured", "litTextured", "rmmr",
             asset::Material::Always::uniformIds(vector<string>{
                 "model",
@@ -81,7 +81,7 @@ namespace rmmr::material {
             });
     }
 
-    auto MaterialGenerator::grid(fqsm::Writing context, system::Device::Id device) -> resource::Material::Id {
+    auto MaterialGenerator::grid(fqsm::Writing context, system::Device::Id device) -> resource_old::Material::Id {
         return create_preset(context, device, "Grid", "grid", "rmmr",
             asset::Material::Always::uniformIds(vector<string>{
                 "model",
@@ -93,7 +93,7 @@ namespace rmmr::material {
             }));
     }
 
-    auto MaterialGenerator::shadowDepth(fqsm::Writing context, system::Device::Id device) -> resource::Material::Id {
+    auto MaterialGenerator::shadowDepth(fqsm::Writing context, system::Device::Id device) -> resource_old::Material::Id {
         return create_preset(context, device, "shadowDepth", "shadowDepth", "rmmr",
             asset::Material::Always::uniformIds(vector<string>{
                 "model",

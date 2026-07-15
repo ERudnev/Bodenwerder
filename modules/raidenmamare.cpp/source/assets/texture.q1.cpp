@@ -32,7 +32,7 @@ namespace rmmr::asset {
         return library + "/textures/" + name;
     }
 
-    auto Texture::Actions::compile(Writing context, Id asset_texture, system::Device::Id device) -> resource::Texture::Id {
+    auto Texture::Actions::compile(Writing context, Id asset_texture, system::Device::Id device) -> resource_old::Texture::Id {
         const auto& asset = with<Texture>::get(context, asset_texture);
         const auto& device_quantum = with<system::Device>::get(context, device);
         const auto& core_quantum = with<system::Core>::get(context, device_quantum.core);
@@ -50,7 +50,7 @@ namespace rmmr::asset {
             throw std::runtime_error("asset::Texture::compile: failed to load image: " + path.string());
         }
 
-        resource::Texture::Handle handle{};
+        resource_old::Texture::Handle handle{};
         glGenTextures(1, &handle);
         if (not handle) {
             stbi_image_free(pixels);
@@ -68,8 +68,8 @@ namespace rmmr::asset {
 
         stbi_image_free(pixels);
 
-        with<resource::Texture_group>::extend(context, device);
-        return with<resource::Texture_group>::addElement(context, device, resource::Texture::Quantum{
+        with<resource_old::Texture_group>::extend(context, device);
+        return with<resource_old::Texture_group>::addElement(context, device, resource_old::Texture::Quantum{
             .handle = handle,
             .size = index2{width, height},
         });

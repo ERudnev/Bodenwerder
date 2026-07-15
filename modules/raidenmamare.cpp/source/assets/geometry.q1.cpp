@@ -17,7 +17,7 @@ namespace rmmr::asset {
 
         using namespace api_for_internals;
 
-        auto create_resource_quantum(Writing context, const Geometry::Quantum& asset, system::Device::Id device) -> resource::Geometry::Quantum {
+        auto create_resource_quantum(Writing context, const Geometry::Quantum& asset, system::Device::Id device) -> resource_old::Geometry::Quantum {
             if (asset.positions.empty()) {
                 throw std::runtime_error("asset::Geometry::compile: positions are empty");
             }
@@ -65,9 +65,9 @@ namespace rmmr::asset {
             const std::size_t vertex_count = asset.positions.size();
             const bool indexed = not asset.indices.empty();
 
-            resource::Geometry::VertexArray vao{};
-            resource::Geometry::VertexBuffer vbo{};
-            resource::Geometry::ElementBuffer ebo{};
+            resource_old::Geometry::VertexArray vao{};
+            resource_old::Geometry::VertexBuffer vbo{};
+            resource_old::Geometry::ElementBuffer ebo{};
             glGenVertexArrays(1, &vao);
             glGenBuffers(1, &vbo);
 
@@ -175,7 +175,7 @@ namespace rmmr::asset {
                     GL_STATIC_DRAW);
             }
 
-            return resource::Geometry::Quantum{
+            return resource_old::Geometry::Quantum{
                 .vao = vao,
                 .vbo = vbo,
                 .ebo = ebo,
@@ -201,10 +201,10 @@ namespace rmmr::asset {
         return out;
     }
 
-    auto Geometry::Actions::compile(Writing context, Id asset_geometry, system::Device::Id device) -> resource::Geometry::Id {
+    auto Geometry::Actions::compile(Writing context, Id asset_geometry, system::Device::Id device) -> resource_old::Geometry::Id {
         const auto& asset = with<Geometry>::get(context, asset_geometry);
-        with<resource::Geometry_group>::extend(context, device);
-        return with<resource::Geometry_group>::addElement(context, device, create_resource_quantum(context, asset, device));
+        with<resource_old::Geometry_group>::extend(context, device);
+        return with<resource_old::Geometry_group>::addElement(context, device, create_resource_quantum(context, asset, device));
     }
 
 }

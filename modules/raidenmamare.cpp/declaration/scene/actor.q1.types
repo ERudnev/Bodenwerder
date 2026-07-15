@@ -1,5 +1,5 @@
-import "../resources/geometry"
-import "../resources/material"
+import "../resources_old/geometry"
+import "../resources_old/material"
 import "../renderer/types"
 import "../math"
 import "node"
@@ -9,10 +9,10 @@ namespace rmmr
 
     feature PrimitiveActor of Node
       one
-        geometry: #resource::Geometry
-        material: #resource::Material
+        geometry: #resource_old::Geometry
+        material: #resource_old::Material
         albedo: RGB
         ?submit(>where: renderer::CommandBuffer)
       all
-        shadowMaterial: #resource::Material
-        >create(Pos, HPB, geometry: #resource::Geometry, material: #resource::Material, albedo: RGB) -> #
+        shadowMaterial: #resource_old::Material
+        >create(Pos, HPB, geometry: #resource_old::Geometry, material: #resource_old::Material, albedo: RGB) -> #

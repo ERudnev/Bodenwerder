@@ -13,18 +13,18 @@ namespace rmmr::asset {
 
         using namespace api_for_internals;
 
-        auto create_resource_quantum(Writing context, const Material::Quantum& asset, system::Device::Id device) -> resource::Material::Quantum {
+        auto create_resource_quantum(Writing context, const Material::Quantum& asset, system::Device::Id device) -> resource_old::Material::Quantum {
             const auto resource_shader = Shader::Actions::compile(context, asset.program, device);
-            const auto& shader_quantum = with<resource::Shader>::get(context, resource_shader);
+            const auto& shader_quantum = with<resource_old::Shader>::get(context, resource_shader);
             const auto& device_quantum = with<system::Device>::get(context, device);
 
             glfwMakeContextCurrent(device_quantum.handle);
 
-            resource::Material::Locations locations{};
+            resource_old::Material::Locations locations{};
             locations.reserve(asset.uniforms.size());
             vector<Uniform::Binding> bindings{};
             bindings.reserve(asset.uniforms.size());
-            vector<resource::Material::TextureBinding> textures{};
+            vector<resource_old::Material::TextureBinding> textures{};
             textures.reserve(asset.textures.size());
 
             for (const auto persistent_id : asset.uniforms) {
@@ -50,13 +50,13 @@ namespace rmmr::asset {
             }
 
             for (const auto& texture_binding : asset.textures) {
-                textures.push_back(resource::Material::TextureBinding{
+                textures.push_back(resource_old::Material::TextureBinding{
                     .id = texture_binding.id,
                     .texture = asset::Texture::Actions::compile(context, texture_binding.texture, device),
                 });
             }
 
-            return resource::Material::Quantum{
+            return resource_old::Material::Quantum{
                 .shader = resource_shader,
                 .locations = std::move(locations),
                 .bindings = std::move(bindings),
@@ -81,10 +81,10 @@ namespace rmmr::asset {
         return out;
     }
 
-    auto Material::Actions::compile(Writing context, Id asset_material, system::Device::Id device) -> resource::Material::Id {
+    auto Material::Actions::compile(Writing context, Id asset_material, system::Device::Id device) -> resource_old::Material::Id {
         const auto& asset = with<Material>::get(context, asset_material);
-        with<resource::Material_group>::extend(context, device);
-        return with<resource::Material_group>::addElement(context, device, create_resource_quantum(context, asset, device));
+        with<resource_old::Material_group>::extend(context, device);
+        return with<resource_old::Material_group>::addElement(context, device, create_resource_quantum(context, asset, device));
     }
 
 }

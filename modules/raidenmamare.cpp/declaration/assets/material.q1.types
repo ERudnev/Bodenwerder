@@ -1,4 +1,4 @@
-import "../resources/material"
+import "../resources_old/material"
 import "../system/core"
 import "shader"
 import "texture"
@@ -17,4 +17,4 @@ namespace rmmr
         program: #asset::Shader
         uniforms: Uniform::Palette
         textures: vector<TextureBinding>
-        >compile(#Device) -> #resource::Material // fails are critical (aborting transaction or throw (TBD))
+        >compile(#Device) -> #resource_old::Material // fails are critical (aborting transaction or throw (TBD))

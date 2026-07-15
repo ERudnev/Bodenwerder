@@ -1,7 +1,7 @@
 import "../system/core"
 
 namespace rmmr
-  namespace resource
+  namespace resource_old
 
     entity Shader
       using Handle as @external(OpenGL C++ opengl_program)

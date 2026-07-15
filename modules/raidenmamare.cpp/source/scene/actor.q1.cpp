@@ -4,7 +4,7 @@ namespace rmmr::scene {
 
     using namespace fqsm::api;
 
-    auto PrimitiveActor::Actions::create(Writing context, Pos position, HPB hpb, resource::Geometry::Id geometry, resource::Material::Id material, RGB albedo) -> Id {
+    auto PrimitiveActor::Actions::create(Writing context, Pos position, HPB hpb, resource_old::Geometry::Id geometry, resource_old::Material::Id material, RGB albedo) -> Id {
         const auto node = Node::Actions::create(context, Locator{
             .pos = position,
             .euler = hpb,

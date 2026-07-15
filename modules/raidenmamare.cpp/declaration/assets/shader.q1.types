@@ -1,4 +1,4 @@
-import "../resources/shader"
+import "../resources_old/shader"
 import "../system/core"
 
 namespace rmmr
@@ -21,4 +21,4 @@ namespace rmmr
       one
         name: string
         library: string
-        >compile(#Device) -> #resource::Shader
+        >compile(#Device) -> #resource_old::Shader

@@ -6,7 +6,7 @@
 
 #include <fQSM/api/interface.h>
 
-namespace rmmr::resource {
+namespace rmmr::resource_old {
 
     using namespace fqsm::api;
 
@@ -20,6 +20,7 @@ namespace rmmr::resource {
             index2 size;
         };
         struct Actions : BaseActions {
+            static auto create(Writing, system::Device::Id, index2 size) -> Id;
             static void bind(Reading, Id);
             static void clear(Reading, Id);
             static void unbind(Reading, Id);

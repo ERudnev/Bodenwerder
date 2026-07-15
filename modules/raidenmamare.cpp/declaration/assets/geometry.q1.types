@@ -1,5 +1,5 @@
 import "../math"
-import "../resources/geometry"
+import "../resources_old/geometry"
 import "../system/core"
 
 namespace rmmr
@@ -19,4 +19,4 @@ namespace rmmr
         normals: vector<Pos>
         uv0: vector<UV>
         indices: vector<integer>
-        >compile(#Device) -> #resource::Geometry
+        >compile(#Device) -> #resource_old::Geometry

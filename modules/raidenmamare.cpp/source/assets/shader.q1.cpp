@@ -114,7 +114,7 @@ namespace rmmr::asset {
         return library + "/shaders/" + name + ".frag.glsl";
     }
 
-    auto Shader::Actions::compile(Writing context, Id asset_shader, system::Device::Id device) -> resource::Shader::Id {
+    auto Shader::Actions::compile(Writing context, Id asset_shader, system::Device::Id device) -> resource_old::Shader::Id {
         const auto& asset = with<Shader>::get(context, asset_shader);
         const auto& device_quantum = with<system::Device>::get(context, device);
         const auto& core_quantum = with<system::Core>::get(context, device_quantum.core);
@@ -124,8 +124,8 @@ namespace rmmr::asset {
         const std::filesystem::path asset_root(core_quantum.assets_root);
         const GLuint program = create_program(asset_root, asset.name, asset.library);
 
-        with<resource::Shader_group>::extend(context, device);
-        return with<resource::Shader_group>::addElement(context, device, resource::Shader::Quantum{
+        with<resource_old::Shader_group>::extend(context, device);
+        return with<resource_old::Shader_group>::addElement(context, device, resource_old::Shader::Quantum{
             .handle = program,
         });
     }

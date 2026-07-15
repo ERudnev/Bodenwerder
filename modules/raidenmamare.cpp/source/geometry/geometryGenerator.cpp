@@ -7,11 +7,11 @@ namespace rmmr::geometry {
     using namespace api_for_internals;
     namespace {
 
-        auto bake(Writing context, system::Device::Id device, asset::Geometry::Quantum asset_quantum) -> resource::Geometry::Id {
+        auto bake(Writing context, system::Device::Id device, asset::Geometry::Quantum asset_quantum) -> resource_old::Geometry::Id {
             const auto asset_geometry = with<asset::Geometry>::create(context, std::move(asset_quantum));
             const auto resource_geometry = asset::Geometry::Actions::compile(context, asset_geometry, device);
 
-            const auto& runtime = with<resource::Geometry>::get(context, resource_geometry);
+            const auto& runtime = with<resource_old::Geometry>::get(context, resource_geometry);
             if (not runtime.vao || not runtime.vbo || runtime.vertex_count <= renderer::Count{0}) {
                 throw std::runtime_error("geometry::GeometryGenerator: geometry runtime is incomplete (VAO/VBO/vertex_count)");
             }
@@ -24,7 +24,7 @@ namespace rmmr::geometry {
 
     } // namespace
 
-    auto GeometryGenerator::triangle(Writing context, system::Device::Id device) -> resource::Geometry::Id {
+    auto GeometryGenerator::triangle(Writing context, system::Device::Id device) -> resource_old::Geometry::Id {
         return bake(context, device, asset::Geometry::Quantum{
             .debugName = "triangle",
             .layout = asset::Geometry::Always::layoutIds(vector<string>{"position"}),
@@ -38,7 +38,7 @@ namespace rmmr::geometry {
         });
     }
 
-    auto GeometryGenerator::kube(Writing context, system::Device::Id device) -> resource::Geometry::Id {
+    auto GeometryGenerator::kube(Writing context, system::Device::Id device) -> resource_old::Geometry::Id {
         return bake(context, device, asset::Geometry::Quantum{
             .debugName = "kube",
             .layout = asset::Geometry::Always::layoutIds(vector<string>{"position", "normal", "uv0"}),
@@ -113,7 +113,7 @@ namespace rmmr::geometry {
         });
     }
 
-    auto GeometryGenerator::gridPlane(Writing context, system::Device::Id device) -> resource::Geometry::Id {
+    auto GeometryGenerator::gridPlane(Writing context, system::Device::Id device) -> resource_old::Geometry::Id {
         constexpr float half = 80.0f;
 
         return bake(context, device, asset::Geometry::Quantum{

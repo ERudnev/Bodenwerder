@@ -11,16 +11,16 @@
 #include <base/logging.h>
 #include <base/maybe.h>
 
-#include <rmmr/resources/geometry.q1.h>
-#include <rmmr/resources/material.q1.h>
-#include <rmmr/resources/shader.q1.h>
-#include <rmmr/resources/texture.q1.h>
+#include <rmmr/resources_old/geometry.q1.h>
+#include <rmmr/resources_old/material.q1.h>
+#include <rmmr/resources_old/shader.q1.h>
+#include <rmmr/resources_old/texture.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/renderer/types.q1.h>
-#include <rmmr/resources/shadowMap.q1.h>
+#include <rmmr/resources_old/shadowMap.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
 namespace rmmr {
@@ -63,7 +63,7 @@ namespace rmmr {
             glUniform1i(binding.location, unit);
         }
 
-        auto material_texture_for_semantic(const resource::Material::Quantum& material, asset::Uniform::Id semantic) -> base::maybe<resource::Texture::Id> {
+        auto material_texture_for_semantic(const resource_old::Material::Quantum& material, asset::Uniform::Id semantic) -> base::maybe<resource_old::Texture::Id> {
             for (const auto& texture_binding : material.textures) {
                 if (texture_binding.id == semantic) {
                     return texture_binding.texture;
@@ -84,8 +84,8 @@ namespace rmmr {
 
         void begin_pass(renderer::Pass pass, Renderer::FrameContext args) {
             if (pass == renderer::Pass::shadow) {
-                resource::ShadowMap::Actions::bind(args.world, args.shadow_map);
-                resource::ShadowMap::Actions::clear(args.world, args.shadow_map);
+                resource_old::ShadowMap::Actions::bind(args.world, args.shadow_map);
+                resource_old::ShadowMap::Actions::clear(args.world, args.shadow_map);
                 return;
             }
 
@@ -98,7 +98,7 @@ namespace rmmr {
 
         void end_pass(renderer::Pass pass, Renderer::FrameContext args) {
             if (pass == renderer::Pass::shadow) {
-                resource::ShadowMap::Actions::unbind(args.world, args.shadow_map);
+                resource_old::ShadowMap::Actions::unbind(args.world, args.shadow_map);
                 system::Viewport::Actions::activate(args.world, args.viewport);
             }
         }
@@ -112,19 +112,19 @@ namespace rmmr {
 
     } // namespace
 
-    void Renderer::ensure_material(FrameContext args, renderer::Pass pass, resource::Material::Id material, PassDrawState& state) {
+    void Renderer::ensure_material(FrameContext args, renderer::Pass pass, resource_old::Material::Id material, PassDrawState& state) {
         if (state.bound_material && *state.bound_material == material) {
             return;
         }
 
-        with<resource::Material>::apply(args.world, material, args.window);
+        with<resource_old::Material>::apply(args.world, material, args.window);
         bind_pass_uniforms(args, pass, material);
         state.bound_material = material;
         state.bound_geometry.reset();
     }
 
-    void Renderer::bind_pass_uniforms(FrameContext args, renderer::Pass pass, resource::Material::Id material) {
-        const auto& material_quantum = with<resource::Material>::get(args.world, material);
+    void Renderer::bind_pass_uniforms(FrameContext args, renderer::Pass pass, resource_old::Material::Id material) {
+        const auto& material_quantum = with<resource_old::Material>::get(args.world, material);
 
         if (pass == renderer::Pass::shadow) {
             const mat4 light_space = light_space_matrix(args.world, args.scene);
@@ -148,7 +148,7 @@ namespace rmmr {
         const mat4 view = scene::Camera::Actions::view(args.world, args.camera);
         const mat4 projection = scene::Camera::Actions::projection(args.world, args.camera, aspect_ratio);
         const mat4 light_space = light_space_matrix(args.world, args.scene);
-        const auto& shadow_quantum = with<resource::ShadowMap>::get(args.world, args.shadow_map);
+        const auto& shadow_quantum = with<resource_old::ShadowMap>::get(args.world, args.shadow_map);
 
         const auto light_node = first_light_node(args.world, args.scene);
         const auto& light = with<scene::Light>::get(args.world, light_node);
@@ -174,10 +174,10 @@ namespace rmmr {
                 set_uniform_sampler(binding, shadow_quantum.depth, 1);
             } else if (name == "albedoMap") {
                 const auto texture = material_texture_for_semantic(material_quantum, binding.id);
-                if (not texture || not with<resource::Texture>::exists(args.world, *texture)) {
+                if (not texture || not with<resource_old::Texture>::exists(args.world, *texture)) {
                     throw std::runtime_error("Renderer: material is missing albedoMap texture");
                 }
-                set_uniform_sampler(binding, with<resource::Texture>::get(args.world, *texture).handle, 0);
+                set_uniform_sampler(binding, with<resource_old::Texture>::get(args.world, *texture).handle, 0);
             } else if (name == "light0Pos") {
                 set_uniform(binding, light_world_pos);
             } else if (name == "light0Color") {
@@ -188,8 +188,8 @@ namespace rmmr {
         }
     }
 
-    void Renderer::draw_instance(FrameContext args, const renderer::Command& command, resource::Material::Id material) {
-        const auto& material_quantum = with<resource::Material>::get(args.world, material);
+    void Renderer::draw_instance(FrameContext args, const renderer::Command& command, resource_old::Material::Id material) {
+        const auto& material_quantum = with<resource_old::Material>::get(args.world, material);
 
         for (const auto& binding : material_quantum.bindings) {
             if (binding.location < 0) {
@@ -244,13 +244,13 @@ namespace rmmr {
                 if (command.instance_count <= renderer::Count{0}) {
                     continue;
                 }
-                if (not with<resource::Geometry>::exists(args.world, command.geometry)) {
+                if (not with<resource_old::Geometry>::exists(args.world, command.geometry)) {
                     continue;
                 }
 
                 ensure_material(args, pass, command.material, pass_state);
 
-                const auto& geometry = with<resource::Geometry>::get(args.world, command.geometry);
+                const auto& geometry = with<resource_old::Geometry>::get(args.world, command.geometry);
                 if (not pass_state.bound_geometry || *pass_state.bound_geometry != command.geometry) {
                     glBindVertexArray(geometry.vao);
                     pass_state.bound_geometry = command.geometry;

@@ -2,8 +2,8 @@
 
 #include <rmmr/math.q1.h>
 #include <rmmr/renderer/types.q1.h>
-#include <rmmr/resources/geometry.q1.h>
-#include <rmmr/resources/material.q1.h>
+#include <rmmr/resources_old/geometry.q1.h>
+#include <rmmr/resources_old/material.q1.h>
 #include <rmmr/scene/node.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -14,8 +14,8 @@ namespace rmmr::scene {
 
     struct Grid : Feature<Grid, Node> {
         struct Quantum {
-            resource::Geometry::Id geometry;
-            resource::Material::Id material;
+            resource_old::Geometry::Id geometry;
+            resource_old::Material::Id material;
             float opacity;
         };
         struct Actions : BaseActions {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rmmr/resources/texture.q1.h>
+#include <rmmr/resources_old/texture.q1.h>
 #include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -18,7 +18,7 @@ namespace rmmr::asset {
             string library;
         };
         struct Actions : BaseActions {
-            static auto compile(Writing, Id, system::Device::Id) -> resource::Texture::Id;
+            static auto compile(Writing, Id, system::Device::Id) -> resource_old::Texture::Id;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

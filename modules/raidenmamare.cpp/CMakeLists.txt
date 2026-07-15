@@ -22,11 +22,11 @@ set(Raidenmamare_Q1
     assets/shader.q1.types
     assets/material.q1.types
     assets/texture.q1.types
-    resources/geometry.q1.types
-    resources/shader.q1.types
-    resources/material.q1.types
-    resources/texture.q1.types
-    resources/shadowMap.q1.types
+    resources_old/geometry.q1.types
+    resources_old/shader.q1.types
+    resources_old/material.q1.types
+    resources_old/texture.q1.types
+    resources_old/shadowMap.q1.types
     controllers/camera.q1.types
     renderer/gl.q1.types
     renderer/types.q1.types
