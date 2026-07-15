@@ -9,7 +9,7 @@ namespace rmmr::material {
             Writing context,
             system::Device::Id device,
             string program_name,
-            string core_name,
+            string material_name,
             string library,
             asset::Uniform::Palette uniforms,
             vector<asset::Material::TextureBinding> textures = {}
@@ -19,7 +19,7 @@ namespace rmmr::material {
                 .library = std::move(library),
             });
             const auto asset_material = with<asset::Material>::create(context, asset::Material::Quantum{
-                .name = std::move(core_name),
+                .name = std::move(material_name),
                 .program = asset_shader,
                 .uniforms = std::move(uniforms),
                 .textures = std::move(textures),

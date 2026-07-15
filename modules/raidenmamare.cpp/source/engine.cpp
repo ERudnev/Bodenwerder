@@ -88,14 +88,21 @@ namespace rmmr {
         maybe<scene::Root::Id> scene;
         maybe<scene::Camera::Id> scene_camera;
         struct {
-            maybe<resource::Material::Id> materialAmbient;
-            maybe<resource::Material::Id> materialLit;
-            maybe<resource::Material::Id> materialLitTextured;
-            maybe<resource::Material::Id> materialGrid;
-            maybe<resource::Material::Id> materialShadowDepth;
-            maybe<resource::Geometry::Id> primitive;
-            maybe<resource::Geometry::Id> primitiveKube;
-            maybe<resource::Geometry::Id> primitiveGrid;
+            struct {
+                maybe<resource::Texture::Id> debug;
+            } texture;
+            struct {
+                maybe<resource::Material::Id> ambient;
+                maybe<resource::Material::Id> lit;
+                maybe<resource::Material::Id> litTextured;
+                maybe<resource::Material::Id> grid;
+                maybe<resource::Material::Id> shadowDepth;
+            } material;
+            struct {
+                maybe<resource::Geometry::Id> triangle;
+                maybe<resource::Geometry::Id> kube;
+                maybe<resource::Geometry::Id> grid;
+            } primitive;
             maybe<resource::ShadowMap::Id> shadowMap;
         } resources;
         Renderer renderer;
@@ -184,47 +191,24 @@ namespace rmmr {
         const auto& device = state->device;
         auto& resources = state->resources;
 
-        with<asset::Texture>::create(main, asset::Texture::Quantum{
-            .name = "debug_fingers.jfif",
-            .library = "rmmr",
-        });
-        const auto debug01_texture = with<asset::Texture>::create(main, asset::Texture::Quantum{
+        const auto debug_texture = with<asset::Texture>::create(main, asset::Texture::Quantum{
             .name = "debug01.jpg",
             .library = "rmmr",
         });
-        with<asset::Texture>::create(main, asset::Texture::Quantum{
-            .name = "debug02.jpg",
-            .library = "rmmr",
-        });
-        with<asset::Texture>::create(main, asset::Texture::Quantum{
-            .name = "debug03.jpg",
-            .library = "rmmr",
-        });
-        with<asset::Texture>::create(main, asset::Texture::Quantum{
-            .name = "debug04.jpg",
-            .library = "rmmr",
-        });
-        with<asset::Texture>::create(main, asset::Texture::Quantum{
-            .name = "debug05.jpg",
-            .library = "rmmr",
-        });
-        with<asset::Texture>::create(main, asset::Texture::Quantum{
-            .name = "debug06.jpg",
-            .library = "rmmr",
-        });
+        resources.texture.debug = asset::Texture::Actions::compile(main, debug_texture, device);
 
         base::message("rmmr: loading material resources...");
-        resources.materialAmbient = material::MaterialGenerator::ambient(main, device);
-        resources.materialLit = material::MaterialGenerator::lit(main, device);
-        resources.materialLitTextured = material::MaterialGenerator::litTextured(main, device, debug01_texture);
-        resources.materialGrid = material::MaterialGenerator::grid(main, device);
-        resources.materialShadowDepth = material::MaterialGenerator::shadowDepth(main, device);
-        scene::PrimitiveActor::Actions::modify_global(main)->shadowMaterial = *resources.materialShadowDepth;
+        resources.material.ambient = material::MaterialGenerator::ambient(main, device);
+        resources.material.lit = material::MaterialGenerator::lit(main, device);
+        resources.material.litTextured = material::MaterialGenerator::litTextured(main, device, debug_texture);
+        resources.material.grid = material::MaterialGenerator::grid(main, device);
+        resources.material.shadowDepth = material::MaterialGenerator::shadowDepth(main, device);
+        scene::PrimitiveActor::Actions::modify_global(main)->shadowMaterial = *resources.material.shadowDepth;
 
         base::message("rmmr: loading geometry resources...");
-        resources.primitive = geometry::GeometryGenerator::triangle(main, device);
-        resources.primitiveKube = geometry::GeometryGenerator::kube(main, device);
-        resources.primitiveGrid = geometry::GeometryGenerator::gridPlane(main, device);
+        resources.primitive.triangle = geometry::GeometryGenerator::triangle(main, device);
+        resources.primitive.kube = geometry::GeometryGenerator::kube(main, device);
+        resources.primitive.grid = geometry::GeometryGenerator::gridPlane(main, device);
 
         base::message("rmmr: material and geometry resources loaded");
     }
@@ -268,8 +252,8 @@ namespace rmmr {
                                 -12.0f + 24.0f * static_cast<float>(z),
                             },
                         }, scene::PrimitiveActor::Quantum{
-                            .geometry = *resources.primitiveKube,
-                            .material = *resources.materialLitTextured,
+                            .geometry = *resources.primitive.kube,
+                            .material = *resources.material.litTextured,
                             .albedo = RGB{
                                 0.3f + 0.6f * static_cast<float>(x) / static_cast<float>(grid_extent - 1),
                                 0.3f + 0.6f * static_cast<float>(y) / static_cast<float>(grid_extent - 1),
@@ -285,8 +269,8 @@ namespace rmmr {
             .pos = Pos{0.0f, 0.0f, 0.0f},
             .euler = HPB{0.0f, 0.0f, 0.0f},
         }, scene::Grid::Quantum{
-            .geometry = *resources.primitiveGrid,
-            .material = *resources.materialGrid,
+            .geometry = *resources.primitive.grid,
+            .material = *resources.material.grid,
             .opacity = 1.0f,
         });
 
