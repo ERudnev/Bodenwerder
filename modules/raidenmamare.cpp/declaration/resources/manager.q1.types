@@ -1,0 +1,18 @@
+import "system/core"
+
+namespace rmmr
+  namespace resource
+
+  // persistent layer
+    component Manager of system::Core
+      one
+        location: filepath
+
+    // persistent thing
+    entity Unit
+      one
+        manager: #Manager
+        name: string
+        library: string
+
+    group<Unit> of Manager

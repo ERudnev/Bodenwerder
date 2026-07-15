@@ -1,7 +1,6 @@
-#include <GLFW/glfw3.h>
-
 #include <vector>
 
+#include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/interface.q1.h>
 #include <rmmr/system/viewport.q1.h>
@@ -14,10 +13,19 @@ namespace rmmr::system {
     using namespace fqsm::api;
 
     auto Interface::create(Writing context, string path, Core::GLVer version) -> Core::Id {
-        return with<Core>::create(context, Core::Quantum{
+        const filepath manager_path = path;
+
+        const auto core = with<Core>::create(context, Core::Quantum{
             .assets_root = std::move(path),
             .version = version,
         });
+
+        with<resource::Manager>::extend(context, core, resource::Manager::Quantum{
+            .location = manager_path,
+        });
+        with<resource::Assets>::extend(context, core, manager_path);
+
+        return core;
     }
 
     auto Interface::addDeviceAndWindow(Writing context, Core::Id core, decltype(Window::Quantum::title) title, index2 requested_size) -> Device::Id {

@@ -5,6 +5,7 @@
 #include <rmmr/resources_old/shader.q1.h>
 #include <rmmr/resources_old/shadowMap.q1.h>
 #include <rmmr/resources_old/texture.q1.h>
+#include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
@@ -38,6 +39,7 @@ namespace rmmr::system {
 
         void bootstrap_device(Writing context, Device::Id device) {
             with<Viewport_group>::extend(context, device);
+            with<resource::Runtimes>::install(context, device);
             with<resource_old::Shader_group>::extend(context, device);
             with<resource_old::Material_group>::extend(context, device);
             with<resource_old::Geometry_group>::extend(context, device);

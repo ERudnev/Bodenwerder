@@ -1,0 +1,25 @@
+import "resources/manager"
+
+namespace rmmr
+  namespace resource
+    namespace texture
+
+    // abstract texture with unknown kind
+    feature Asset of resource::Unit
+
+    // for texture from file:
+    feature FromFile of Asset
+      one
+        file: filename
+
+    // placeholder for more configurable thing, just means "white circle"
+    feature Generated of Asset
+      one
+        size: index2
+
+    entity Runtime
+      using Handle as @external(OpenGL C++ texture handle)
+      one
+        device: #system::Device
+        handle: Handle
+        size: index2

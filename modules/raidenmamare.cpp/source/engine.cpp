@@ -5,6 +5,9 @@
 #include <rmmr/assets/shader.q1.h>
 #include <rmmr/assets/texture.q1.h>
 #include <rmmr/controller/camera.q1.h>
+#include <rmmr/resources/manager.q1.h>
+#include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/resources/textures.q1.h>
 #include <rmmr/resources_old/geometry.q1.h>
 #include <rmmr/resources_old/material.q1.h>
 #include <rmmr/resources_old/shader.q1.h>
@@ -46,6 +49,18 @@ namespace {
             ask::schema::aspect<asset::Shader>(),
             ask::schema::aspect<asset::Material>(),
             ask::schema::aspect<asset::Texture>(),
+            ask::schema::aspect<resource::Manager>(),
+            ask::schema::aspect<resource::Unit>(),
+            ask::schema::aspect<resource::Unit_group>(),
+            ask::schema::aspect<resource::MaterializeRequest>(),
+            ask::schema::aspect<resource::DeviceRuntimes>(),
+            ask::schema::aspect<resource::Runtime_group>(),
+            ask::schema::aspect<resource::Assets>(),
+            ask::schema::aspect<resource::Runtimes>(),
+            ask::schema::aspect<resource::texture::Asset>(),
+            ask::schema::aspect<resource::texture::FromFile>(),
+            ask::schema::aspect<resource::texture::Generated>(),
+            ask::schema::aspect<resource::texture::Runtime>(),
             ask::schema::aspect<resource_old::Geometry>(),
             ask::schema::aspect<resource_old::Geometry_group>(),
             ask::schema::aspect<resource_old::Shader>(),
@@ -187,8 +202,12 @@ namespace rmmr {
 
     void Engine::prepareResources() {
         auto& main = state->main;
-        const auto& device = state->device;
+        const auto core = *state->core;
+        const auto device = *state->device;
         auto& resources = state->resources;
+
+        base::message("rmmr: bootstrapping parallel resource system...");
+        with<resource::Runtimes>::materialize(main, device, core);
 
         const auto debug_texture = with<asset::Texture>::create(main, asset::Texture::Quantum{
             .name = "debug01.jpg",

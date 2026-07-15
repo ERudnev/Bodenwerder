@@ -1,0 +1,33 @@
+import "resources/manager"
+
+namespace rmmr
+  namespace resource
+
+    entity MaterializeRequest
+      one
+        asset: anchor<Unit>
+        device: #Device
+
+    // TODO: mve to Interface file (dependencies, must be invisible to major types)
+    component DeviceRuntimes of system::Device
+      one
+        manager: #Manager // easy to get system::Core
+
+    group<texture::Runtime> of resource::DeviceRuntimes
+
+
+    // Core-level interface:
+    component Assets of Manager
+      one
+        debug_texture: texture::Asset?
+        >add_texture_file(Unit, texture::Asset, texture::FromFile)->#texture::Asset
+        >add_texture_generated(Unit, texture::Asset, texture::Generated)->#texture::Asset
+      all
+        >extend(#Manager, path: filepath)
+
+    component Runtimes of Device
+      one
+        textures_id_mapping: umap<#texture::Asset, #texture::Runtime> // allows finding Asset presentation of this Device
+        >install(#Device) // cache is zero by default
+        >materialize(#Assets) // iterates all knowd asset-source features (like "texture::FromFile")
+        !maintain_all_mappings(~Assets)
