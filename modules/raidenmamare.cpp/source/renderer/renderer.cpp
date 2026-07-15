@@ -14,6 +14,7 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/material.q1.h>
 #include <rmmr/resources/shader.q1.h>
+#include <rmmr/resources/texture.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/node.q1.h>
@@ -60,6 +61,15 @@ namespace rmmr {
             glActiveTexture(GL_TEXTURE0 + unit);
             glBindTexture(GL_TEXTURE_2D, texture);
             glUniform1i(binding.location, unit);
+        }
+
+        auto material_texture_for_semantic(const resource::Material::Quantum& material, asset::Uniform::Id semantic) -> base::maybe<resource::Texture::Id> {
+            for (const auto& texture_binding : material.textures) {
+                if (texture_binding.id == semantic) {
+                    return texture_binding.texture;
+                }
+            }
+            return {};
         }
 
         auto light_space_matrix(Reading context, scene::Root::Id root) -> mat4 {
@@ -162,6 +172,12 @@ namespace rmmr {
                 set_uniform(binding, light_space);
             } else if (name == "shadowMap") {
                 set_uniform_sampler(binding, shadow_quantum.depth, 1);
+            } else if (name == "albedoMap") {
+                const auto texture = material_texture_for_semantic(material_quantum, binding.id);
+                if (not texture || not with<resource::Texture>::exists(args.world, *texture)) {
+                    throw std::runtime_error("Renderer: material is missing albedoMap texture");
+                }
+                set_uniform_sampler(binding, with<resource::Texture>::get(args.world, *texture).handle, 0);
             } else if (name == "light0Pos") {
                 set_uniform(binding, light_world_pos);
             } else if (name == "light0Color") {

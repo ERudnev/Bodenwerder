@@ -3,10 +3,12 @@
 #include <rmmr/assets/geometry.q1.h>
 #include <rmmr/assets/material.q1.h>
 #include <rmmr/assets/shader.q1.h>
+#include <rmmr/assets/texture.q1.h>
 #include <rmmr/controller/camera.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/material.q1.h>
 #include <rmmr/resources/shader.q1.h>
+#include <rmmr/resources/texture.q1.h>
 #include <rmmr/scene/actor.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -44,12 +46,15 @@ namespace {
             ask::schema::aspect<asset::Geometry>(),
             ask::schema::aspect<asset::Shader>(),
             ask::schema::aspect<asset::Material>(),
+            ask::schema::aspect<asset::Texture>(),
             ask::schema::aspect<resource::Geometry>(),
             ask::schema::aspect<resource::Geometry_group>(),
             ask::schema::aspect<resource::Shader>(),
             ask::schema::aspect<resource::Shader_group>(),
             ask::schema::aspect<resource::Material>(),
             ask::schema::aspect<resource::Material_group>(),
+            ask::schema::aspect<resource::Texture>(),
+            ask::schema::aspect<resource::Texture_group>(),
             ask::schema::aspect<resource::ShadowMap>(),
             ask::schema::aspect<resource::ShadowMap_group>(),
             ask::schema::aspect<controller::Camera>(),
@@ -77,13 +82,15 @@ namespace rmmr {
 
     struct Engine::State {
         establish::Realm main;
-        maybe<system::Window::Id> window;
+        maybe<system::Core::Id> core;
+        maybe<system::Device::Id> device;
         maybe<system::Viewport::Id> viewport;
         maybe<scene::Root::Id> scene;
         maybe<scene::Camera::Id> scene_camera;
         struct {
             maybe<resource::Material::Id> materialAmbient;
             maybe<resource::Material::Id> materialLit;
+            maybe<resource::Material::Id> materialLitTextured;
             maybe<resource::Material::Id> materialGrid;
             maybe<resource::Material::Id> materialShadowDepth;
             maybe<resource::Geometry::Id> primitive;
@@ -101,16 +108,16 @@ namespace rmmr {
         }))
     {
         base::message("rmmr: creating system core...");
-        with<system::Interface>::create(state->main, std::move(params.assets_root), system::Core::GLVer{
+        state->core = with<system::Interface>::create(state->main, std::move(params.assets_root), system::Core::GLVer{
             .major = params.context_major,
             .minor = params.context_minor,
         });
 
-        base::message("rmmr: creating window...");
-        state->window = with<system::Interface>::createWindow(state->main, std::move(params.title), params.requested_size);
+        base::message("rmmr: creating device and window...");
+        state->device = with<system::Interface>::addDeviceAndWindow(state->main, *state->core, std::move(params.title), params.requested_size);
         prepareResources();
         prepareRenderTargets();
-        createViewport(with<system::Window>::framebufferSize(state->main, *state->window));
+        createViewport(with<system::Window>::framebufferSize(state->main, *state->device));
         createScene();
 
         if (not state->main.result().good()) {
@@ -124,10 +131,10 @@ namespace rmmr {
 
     int Engine::run_render_demo() {
         auto& main = state->main;
-        const auto& window = state->window;
+        const auto& device = state->device;
         const auto& viewport = state->viewport;
 
-        GLFWwindow* const handle = with<system::Device>::get(main, window).handle;
+        GLFWwindow* const handle = with<system::Device>::get(main, device).handle;
 
         while (not glfwWindowShouldClose(handle)) {
             with<system::Device>::poll_events(main);
@@ -136,9 +143,9 @@ namespace rmmr {
                 glfwSetWindowShouldClose(handle, true);
             }
 
-            with<system::Window>::onFrameAdvanced(main, window);
+            with<system::Window>::onFrameAdvanced(main, device);
             if (state->scene_camera) {
-                with<controller::Camera>::update(main, state->scene_camera, window);
+                with<controller::Camera>::update(main, state->scene_camera, device);
             }
 
             with<system::Viewport>::syncExtent(main, viewport);
@@ -146,28 +153,27 @@ namespace rmmr {
             with<system::Viewport>::clear(main, viewport);
 
             if (state->scene && state->scene_camera && state->resources.shadowMap) {
-                with<system::ImGuiHost>::newFrame(main, window);
+                with<system::ImGuiHost>::newFrame(main, device);
                 const ui::FrameContext ui_frame{
                     .world = main,
-                    .window = *window,
+                    .window = *device,
                     .scene = *state->scene,
                     .camera = *state->scene_camera,
                 };
                 ui::draw_camera(ui_frame);
-                ui::draw_cubes(ui_frame);
                 ui::draw_materials(ui_frame);
                 state->renderer.render(Renderer::FrameContext{
                     .world = main,
                     .viewport = *viewport,
-                    .window = *window,
+                    .window = *device,
                     .scene = *state->scene,
                     .camera = *state->scene_camera,
                     .shadow_map = *state->resources.shadowMap,
                 });
-                with<system::ImGuiHost>::render(main, window);
+                with<system::ImGuiHost>::render(main, device);
             }
 
-            with<system::Window>::present(main, window);
+            with<system::Window>::present(main, device);
         }
 
         return 0;
@@ -175,29 +181,60 @@ namespace rmmr {
 
     void Engine::prepareResources() {
         auto& main = state->main;
-        const auto& window = state->window;
+        const auto& device = state->device;
+        auto& resources = state->resources;
+
+        with<asset::Texture>::create(main, asset::Texture::Quantum{
+            .name = "debug_fingers.jfif",
+            .library = "rmmr",
+        });
+        const auto debug01_texture = with<asset::Texture>::create(main, asset::Texture::Quantum{
+            .name = "debug01.jpg",
+            .library = "rmmr",
+        });
+        with<asset::Texture>::create(main, asset::Texture::Quantum{
+            .name = "debug02.jpg",
+            .library = "rmmr",
+        });
+        with<asset::Texture>::create(main, asset::Texture::Quantum{
+            .name = "debug03.jpg",
+            .library = "rmmr",
+        });
+        with<asset::Texture>::create(main, asset::Texture::Quantum{
+            .name = "debug04.jpg",
+            .library = "rmmr",
+        });
+        with<asset::Texture>::create(main, asset::Texture::Quantum{
+            .name = "debug05.jpg",
+            .library = "rmmr",
+        });
+        with<asset::Texture>::create(main, asset::Texture::Quantum{
+            .name = "debug06.jpg",
+            .library = "rmmr",
+        });
 
         base::message("rmmr: loading material resources...");
-        state->resources.materialAmbient = material::MaterialGenerator::ambient(main, window);
-        state->resources.materialLit = material::MaterialGenerator::lit(main, window);
-        state->resources.materialGrid = material::MaterialGenerator::grid(main, window);
-        state->resources.materialShadowDepth = material::MaterialGenerator::shadowDepth(main, window);
-        scene::PrimitiveActor::Actions::modify_global(main)->shadowMaterial = *state->resources.materialShadowDepth;
+        resources.materialAmbient = material::MaterialGenerator::ambient(main, device);
+        resources.materialLit = material::MaterialGenerator::lit(main, device);
+        resources.materialLitTextured = material::MaterialGenerator::litTextured(main, device, debug01_texture);
+        resources.materialGrid = material::MaterialGenerator::grid(main, device);
+        resources.materialShadowDepth = material::MaterialGenerator::shadowDepth(main, device);
+        scene::PrimitiveActor::Actions::modify_global(main)->shadowMaterial = *resources.materialShadowDepth;
 
         base::message("rmmr: loading geometry resources...");
-        state->resources.primitive = geometry::GeometryGenerator::triangle(main, window);
-        state->resources.primitiveKube = geometry::GeometryGenerator::kube(main, window);
-        state->resources.primitiveGrid = geometry::GeometryGenerator::gridPlane(main, window);
+        resources.primitive = geometry::GeometryGenerator::triangle(main, device);
+        resources.primitiveKube = geometry::GeometryGenerator::kube(main, device);
+        resources.primitiveGrid = geometry::GeometryGenerator::gridPlane(main, device);
 
         base::message("rmmr: material and geometry resources loaded");
     }
 
     void Engine::prepareRenderTargets() {
         auto& main = state->main;
-        const auto& window = state->window;
+        const auto& device = state->device;
 
         base::message("rmmr: creating render targets...");
-        state->resources.shadowMap = shadow_map::ShadowMapGenerator::create(main, window, index2{1024, 1024});
+        state->resources.shadowMap = shadow_map::ShadowMapGenerator::create(main, device, index2{1024, 1024});
         base::message("rmmr: render targets ready");
     }
 
@@ -207,7 +244,7 @@ namespace rmmr {
 
         const auto root = with<scene::Interface>::createScene(main);
 
-        constexpr int grid_extent = 2;
+        constexpr int grid_extent = 10;
         constexpr float cube_edge = 1.0f;
         constexpr float spacing = cube_edge * 1.5f;
         const float center_offset = (static_cast<float>(grid_extent) - 1.0f) * 0.5f;
@@ -232,7 +269,7 @@ namespace rmmr {
                             },
                         }, scene::PrimitiveActor::Quantum{
                             .geometry = *resources.primitiveKube,
-                            .material = *resources.materialLit,
+                            .material = *resources.materialLitTextured,
                             .albedo = RGB{
                                 0.3f + 0.6f * static_cast<float>(x) / static_cast<float>(grid_extent - 1),
                                 0.3f + 0.6f * static_cast<float>(y) / static_cast<float>(grid_extent - 1),
@@ -275,7 +312,7 @@ namespace rmmr {
     }
 
     void Engine::createViewport(index2 size, index2 origin) {
-        state->viewport = with<system::Viewport_group>::addElement(state->main, *state->window, system::Viewport::Quantum{.origin = origin, .size = size, .clear_color = vec4{0.2f, 0.3f, 0.3f, 1.0f}});
+        state->viewport = with<system::Viewport_group>::addElement(state->main, *state->device, system::Viewport::Quantum{.origin = origin, .size = size, .clear_color = vec4{0.2f, 0.3f, 0.3f, 1.0f}});
     }
 
     void Engine::shutdown() noexcept {

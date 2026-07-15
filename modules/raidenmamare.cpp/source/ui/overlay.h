@@ -18,7 +18,6 @@ namespace rmmr::ui {
     };
 
     void draw_camera(FrameContext args);
-    void draw_cubes(FrameContext args);
     void draw_materials(FrameContext args);
 
 }

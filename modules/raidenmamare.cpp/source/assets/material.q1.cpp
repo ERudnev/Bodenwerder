@@ -24,6 +24,8 @@ namespace rmmr::asset {
             locations.reserve(asset.uniforms.size());
             vector<Uniform::Binding> bindings{};
             bindings.reserve(asset.uniforms.size());
+            vector<resource::Material::TextureBinding> textures{};
+            textures.reserve(asset.textures.size());
 
             for (const auto persistent_id : asset.uniforms) {
                 const auto semantic_name = material::Semantics::name_of(persistent_id);
@@ -47,10 +49,18 @@ namespace rmmr::asset {
                 });
             }
 
+            for (const auto& texture_binding : asset.textures) {
+                textures.push_back(resource::Material::TextureBinding{
+                    .id = texture_binding.id,
+                    .texture = asset::Texture::Actions::compile(context, texture_binding.texture, device),
+                });
+            }
+
             return resource::Material::Quantum{
                 .shader = resource_shader,
                 .locations = std::move(locations),
                 .bindings = std::move(bindings),
+                .textures = std::move(textures),
             };
         }
 

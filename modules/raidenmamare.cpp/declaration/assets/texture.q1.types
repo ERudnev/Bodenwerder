@@ -1,0 +1,13 @@
+import "../resources/texture"
+import "../system/core"
+
+namespace rmmr
+  namespace asset
+
+    entity Texture
+      always
+        ?filename(name: string, library: string) -> string // returns "library/textures/name"
+      one
+        name: string
+        library: string
+        >compile(#Device) -> #resource::Texture

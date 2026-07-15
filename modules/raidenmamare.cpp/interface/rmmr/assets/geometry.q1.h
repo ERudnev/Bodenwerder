@@ -22,6 +22,7 @@ namespace rmmr::asset {
             Channel::Layout layout;
             vector<Pos> positions;
             vector<Pos> normals;
+            vector<UV> uv0;
             vector<integer> indices;
         };
         struct Always {

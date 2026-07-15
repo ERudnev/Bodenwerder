@@ -15,7 +15,7 @@ namespace rmmr
       title: string
       InputState previous
       InputState current
-      >create(title: string, requested_size: index2)
+      >create(#Core, title: string, requested_size: index2)->#
       ?framebufferSize() -> index2   // live drawable extent (glfwGetFramebufferSize)
       ?present()
       ?dt() -> seconds

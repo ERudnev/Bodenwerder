@@ -34,13 +34,14 @@ namespace rmmr::geometry {
                 Pos{0.0f, 0.5f, 0.0f},
             },
             .normals = {},
+            .uv0 = {},
         });
     }
 
     auto GeometryGenerator::kube(Writing context, system::Device::Id device) -> resource::Geometry::Id {
         return bake(context, device, asset::Geometry::Quantum{
             .debugName = "kube",
-            .layout = asset::Geometry::Always::layoutIds(vector<string>{"position", "normal"}),
+            .layout = asset::Geometry::Always::layoutIds(vector<string>{"position", "normal", "uv0"}),
             .positions = vector<Pos>{
                 Pos{-0.5f, -0.5f, 0.5f},
                 Pos{0.5f, -0.5f, 0.5f},
@@ -93,6 +94,14 @@ namespace rmmr::geometry {
                 Pos{0.0f, -1.0f, 0.0f},
                 Pos{0.0f, -1.0f, 0.0f},
             },
+            .uv0 = vector<UV>{
+                UV{0.0f, 0.0f}, UV{1.0f, 0.0f}, UV{1.0f, 1.0f}, UV{0.0f, 1.0f},
+                UV{0.0f, 0.0f}, UV{1.0f, 0.0f}, UV{1.0f, 1.0f}, UV{0.0f, 1.0f},
+                UV{0.0f, 0.0f}, UV{1.0f, 0.0f}, UV{1.0f, 1.0f}, UV{0.0f, 1.0f},
+                UV{0.0f, 0.0f}, UV{1.0f, 0.0f}, UV{1.0f, 1.0f}, UV{0.0f, 1.0f},
+                UV{0.0f, 0.0f}, UV{1.0f, 0.0f}, UV{1.0f, 1.0f}, UV{0.0f, 1.0f},
+                UV{0.0f, 0.0f}, UV{1.0f, 0.0f}, UV{1.0f, 1.0f}, UV{0.0f, 1.0f},
+            },
             .indices = vector<integer>{
                 0, 1, 2, 0, 2, 3,
                 4, 5, 6, 4, 6, 7,
@@ -119,6 +128,7 @@ namespace rmmr::geometry {
                 Pos{-half, 0.0f, half},
             },
             .normals = {},
+            .uv0 = {},
         });
     }
 

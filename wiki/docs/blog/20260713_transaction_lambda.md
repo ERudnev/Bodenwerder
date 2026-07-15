@@ -1,5 +1,17 @@
 # Transaction lambda
 
+**upd: 2026-07-14**
+Прибил как назойливую муху
+```cpp
+    const auto id = main.branch([](Writing context) {
+        const auto id = with<Entity>::create(context, {});
+        with<Component>::extend(context, a, {});
+        with<Feature>::extend(context, a, {});
+        return id;
+    });
+
+```
+
 2026-07-13
 
 Хочется, чтобы у `Realm` появилась совсем простая и выразительная форма локальной транзакции:

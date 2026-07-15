@@ -9,7 +9,6 @@
 
 #include <rmmr/assets/material.q1.h>
 #include <rmmr/assets/semantics/uniform.h>
-#include <rmmr/scene/actor.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -87,6 +86,7 @@ namespace rmmr::ui {
         ImGui::End();
     }
 
+    /*
     void draw_cubes(FrameContext args) {
         if (not with<scene::Root>::exists(args.world, args.scene)) {
             return;
@@ -121,7 +121,7 @@ namespace rmmr::ui {
         }
 
         ImGui::End();
-    }
+    }*/
 
     void draw_materials(FrameContext args) {
         if (not with<scene::Root>::exists(args.world, args.scene)) {

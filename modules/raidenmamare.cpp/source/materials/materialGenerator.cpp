@@ -5,7 +5,15 @@
 namespace rmmr::material {
     using namespace api_for_internals;
     namespace {
-        resource::Material::Id create_preset(Writing context, system::Device::Id device, string program_name, string core_name, string library, asset::Uniform::Palette uniforms) {
+        resource::Material::Id create_preset(
+            Writing context,
+            system::Device::Id device,
+            string program_name,
+            string core_name,
+            string library,
+            asset::Uniform::Palette uniforms,
+            vector<asset::Material::TextureBinding> textures = {}
+        ) {
             const auto asset_shader = with<asset::Shader>::create(context, asset::Shader::Quantum{
                 .name = std::move(program_name),
                 .library = std::move(library),
@@ -14,6 +22,7 @@ namespace rmmr::material {
                 .name = std::move(core_name),
                 .program = asset_shader,
                 .uniforms = std::move(uniforms),
+                .textures = std::move(textures),
             });
             return asset::Material::Actions::compile(context, asset_material, device);
         }
@@ -46,6 +55,30 @@ namespace rmmr::material {
                 "lightSpaceMatrix",
                 "shadowMap",
             }));
+    }
+
+    auto MaterialGenerator::litTextured(Writing context, system::Device::Id device, asset::Texture::Id albedo_map) -> resource::Material::Id {
+        return create_preset(context, device, "litTextured", "litTextured", "rmmr",
+            asset::Material::Always::uniformIds(vector<string>{
+                "model",
+                "view",
+                "projection",
+                "albedo",
+                "albedoMap",
+                "ambientColor",
+                "ambientIntensity",
+                "light0Pos",
+                "light0Color",
+                "light0Intensity",
+                "lightSpaceMatrix",
+                "shadowMap",
+            }),
+            vector<asset::Material::TextureBinding>{
+                asset::Material::TextureBinding{
+                    .id = material::Semantics::id_of("albedoMap"),
+                    .texture = albedo_map,
+                },
+            });
     }
 
     auto MaterialGenerator::grid(fqsm::Writing context, system::Device::Id device) -> resource::Material::Id {

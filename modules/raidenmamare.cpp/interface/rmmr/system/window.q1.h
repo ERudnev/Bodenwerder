@@ -24,7 +24,7 @@ namespace rmmr::system {
             InputState current;
         };
         struct Actions : BaseActions {
-            static auto create(Writing, string title, index2 requested_size) -> Id;
+            static auto create(Writing, Core::Id, string title, index2 requested_size) -> Id;
             static auto framebufferSize(Reading, Id) -> index2;
             static void present(Reading, Id);
             static auto dt(Reading, Id) -> seconds;

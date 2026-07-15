@@ -1,0 +1,12 @@
+import "../system/core"
+
+namespace rmmr
+  namespace resource
+
+    entity Texture
+      using Handle as @external(OpenGL C++ texture handle)
+      one
+        handle: Handle
+        size: index2
+
+    group<Texture> of Device

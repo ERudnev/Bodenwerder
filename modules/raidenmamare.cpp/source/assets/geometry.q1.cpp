@@ -25,19 +25,38 @@ namespace rmmr::asset {
             const auto pos_id = primitive::GeometrySemantics::id_of("position");
             const auto normal_id = primitive::GeometrySemantics::id_of("normal");
 
+            const auto uv0_id = primitive::GeometrySemantics::id_of("uv0");
+
             const bool position_only = asset.layout.size() == std::size_t{1} && asset.layout[0] == pos_id;
             const bool position_normal = asset.layout.size() == std::size_t{2} && asset.layout[0] == pos_id && asset.layout[1] == normal_id;
+            const bool position_normal_uv0 =
+                asset.layout.size() == std::size_t{3}
+                && asset.layout[0] == pos_id
+                && asset.layout[1] == normal_id
+                && asset.layout[2] == uv0_id;
 
-            if (not position_only && not position_normal) {
-                throw std::runtime_error("asset::Geometry::compile: unsupported vertex layout (expect position only, or position+normal)");
+            if (not position_only && not position_normal && not position_normal_uv0) {
+                throw std::runtime_error("asset::Geometry::compile: unsupported vertex layout (expect position only, position+normal, or position+normal+uv0)");
             }
 
             if (position_only) {
                 if (not asset.normals.empty()) {
                     throw std::runtime_error("asset::Geometry::compile: normals must be empty for position-only layout");
                 }
-            } else if (asset.normals.size() != asset.positions.size()) {
-                throw std::runtime_error("asset::Geometry::compile: normals count must match positions");
+                if (not asset.uv0.empty()) {
+                    throw std::runtime_error("asset::Geometry::compile: uv0 must be empty for position-only layout");
+                }
+            } else {
+                if (asset.normals.size() != asset.positions.size()) {
+                    throw std::runtime_error("asset::Geometry::compile: normals count must match positions");
+                }
+                if (position_normal) {
+                    if (not asset.uv0.empty()) {
+                        throw std::runtime_error("asset::Geometry::compile: uv0 must be empty for position+normal layout");
+                    }
+                } else if (asset.uv0.size() != asset.positions.size()) {
+                    throw std::runtime_error("asset::Geometry::compile: uv0 count must match positions");
+                }
             }
 
             const auto& device_quantum = with<system::Device>::get(context, device);
@@ -96,7 +115,7 @@ namespace rmmr::asset {
                 glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
                 glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
                 glEnableVertexAttribArray(0);
-            } else {
+            } else if (position_normal) {
                 interleaved.reserve(vertex_count * 6);
                 for (std::size_t i = 0; i < vertex_count; ++i) {
                     const auto& p = asset.positions[i];
@@ -118,6 +137,33 @@ namespace rmmr::asset {
                 glEnableVertexAttribArray(0);
                 glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(3 * sizeof(float))));
                 glEnableVertexAttribArray(1);
+            } else {
+                interleaved.reserve(vertex_count * 8);
+                for (std::size_t i = 0; i < vertex_count; ++i) {
+                    const auto& p = asset.positions[i];
+                    const auto& n = asset.normals[i];
+                    const auto& uv = asset.uv0[i];
+                    interleaved.push_back(p.x);
+                    interleaved.push_back(p.y);
+                    interleaved.push_back(p.z);
+                    interleaved.push_back(n.x);
+                    interleaved.push_back(n.y);
+                    interleaved.push_back(n.z);
+                    interleaved.push_back(uv.x);
+                    interleaved.push_back(uv.y);
+                }
+
+                constexpr renderer::Count stride = renderer::Count(8 * sizeof(float));
+
+                glBindVertexArray(vao);
+                glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
+                glEnableVertexAttribArray(0);
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(3 * sizeof(float))));
+                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(6 * sizeof(float))));
+                glEnableVertexAttribArray(2);
             }
 
             if (indexed) {

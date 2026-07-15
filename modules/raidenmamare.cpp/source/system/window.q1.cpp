@@ -4,6 +4,7 @@
 #include <rmmr/resources/material.q1.h>
 #include <rmmr/resources/shader.q1.h>
 #include <rmmr/resources/shadowMap.q1.h>
+#include <rmmr/resources/texture.q1.h>
 #include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
@@ -35,11 +36,13 @@ namespace rmmr::system {
             return Window::time{} + std::chrono::duration_cast<Window::time::duration>(std::chrono::duration<double>(glfwGetTime()));
         }
 
-        auto find_core(Reading context) -> Core::Id {
-            for (const auto entry : context->aspect<Core>().items()) {
-                return entry.id;
-            }
-            throw std::runtime_error("system::Window::create: Core is missing, call Interface::create first");
+        void bootstrap_device(Writing context, Device::Id device) {
+            with<Viewport_group>::extend(context, device);
+            with<resource::Shader_group>::extend(context, device);
+            with<resource::Material_group>::extend(context, device);
+            with<resource::Geometry_group>::extend(context, device);
+            with<resource::Texture_group>::extend(context, device);
+            with<resource::ShadowMap_group>::extend(context, device);
         }
 
         auto create_glfw_handle(const Core::GLVer& version, const string& title, const index2& requested_size) -> GLFWwindow* {
@@ -88,12 +91,11 @@ namespace rmmr::system {
 
     } // namespace
 
-    auto Window::Actions::create(Writing context, string title, index2 requested_size) -> Id {
+    auto Window::Actions::create(Writing context, Core::Id core, string title, index2 requested_size) -> Id {
         if (not glfwInit()) {
             throw std::runtime_error("system::Window::create: glfwInit() failed");
         }
 
-        const auto core = find_core(context);
         const auto& core_quantum = with<Core>::get(context, core);
         const auto handle = create_glfw_handle(core_quantum.version, title, requested_size);
 
@@ -111,11 +113,7 @@ namespace rmmr::system {
             .context = nullptr,
         });
 
-        with<Viewport_group>::extend(context, device);
-        with<resource::Shader_group>::extend(context, device);
-        with<resource::Material_group>::extend(context, device);
-        with<resource::Geometry_group>::extend(context, device);
-        with<resource::ShadowMap_group>::extend(context, device);
+        bootstrap_device(context, device);
         with<ImGuiHost>::initialize(context, device);
 
         return device;

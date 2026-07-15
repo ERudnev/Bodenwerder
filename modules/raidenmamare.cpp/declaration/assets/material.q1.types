@@ -1,15 +1,20 @@
 import "../resources/material"
 import "../system/core"
 import "shader"
+import "texture"
 
 namespace rmmr
   namespace asset
 
     entity Material
+      struct TextureBinding
+        id: Uniform::Id
+        texture: #asset::Texture
       always
         ?uniformIds(vector<string>) -> Uniform::Palette
       one
         name: string
         program: #asset::Shader
         uniforms: Uniform::Palette
+        textures: vector<TextureBinding>
         >compile(#Device) -> #resource::Material // fails are critical (aborting transaction or throw (TBD))
