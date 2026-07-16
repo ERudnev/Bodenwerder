@@ -1,0 +1,23 @@
+import "resources/manager"
+
+namespace rmmr
+  namespace resource
+    namespace shader
+
+    // abstract shader with unknown kind
+    feature Asset of resource::Unit
+
+    entity Runtime
+      using Handle as @external(OpenGL C++ program handle)
+      one
+        device: #system::Device
+        handle: Handle
+
+    // for shader from files:
+    feature FromFile of Asset
+      one
+        vertex: filename
+        fragment: filename
+        >materialize(#system::Device) -> Runtime // kind owns compile/link; returns Runtime value (Runtimes inserts into group + mapping)
+
+    

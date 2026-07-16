@@ -7,6 +7,7 @@
 #include <rmmr/controller/camera.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/resources_old/geometry.q1.h>
 #include <rmmr/resources_old/material.q1.h>
@@ -54,12 +55,16 @@ namespace {
             ask::schema::aspect<resource::Unit_group>(),
             ask::schema::aspect<resource::DeviceRuntimes>(),
             ask::schema::aspect<resource::Runtime_group>(),
+            ask::schema::aspect<resource::ShaderRuntime_group>(),
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<resource::Runtimes>(),
             ask::schema::aspect<resource::texture::Asset>(),
             ask::schema::aspect<resource::texture::FromFile>(),
             ask::schema::aspect<resource::texture::Generated>(),
             ask::schema::aspect<resource::texture::Runtime>(),
+            ask::schema::aspect<resource::shader::Asset>(),
+            ask::schema::aspect<resource::shader::FromFile>(),
+            ask::schema::aspect<resource::shader::Runtime>(),
             ask::schema::aspect<resource_old::Geometry>(),
             ask::schema::aspect<resource_old::Geometry_group>(),
             ask::schema::aspect<resource_old::Shader>(),

@@ -9,6 +9,7 @@ namespace rmmr
         debug_texture: texture::Asset?
         >add_texture_file(Unit, texture::Asset, texture::FromFile)->#texture::Asset
         >add_texture_generated(Unit, texture::Asset, texture::Generated)->#texture::Asset
+        >add_shader_file(Unit, shader::Asset, shader::FromFile)->#shader::Asset
       all
         >extend(#Manager, path: filepath)
 
@@ -18,10 +19,12 @@ namespace rmmr
         assets: #Assets
 
     group<texture::Runtime> of resource::DeviceRuntimes
+    group<shader::Runtime> of resource::DeviceRuntimes
 
     component Runtimes of Device
       one
         textures_id_mapping: umap<#texture::Asset, #texture::Runtime> // allows finding Asset presentation of this Device
+        shaders_id_mapping: umap<#shader::Asset, #shader::Runtime>
         >install(#Device) // cache is zero by default
-        >materialize(#Assets) // iterates all knowd asset-source features (like "texture::FromFile")
+        >materialize(#Assets) // facade: explicit pass per known source-feature; each F.materialize(#Device)->Runtime, then rebuild mapping
         !maintain_all_mappings(~Assets)
