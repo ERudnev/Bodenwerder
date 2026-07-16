@@ -8,7 +8,15 @@
 namespace fqsm::model::complex {
 
     struct WorkersInterface {
+        struct Result {
+            using Category = std::vector<std::string>;
+            Category critical;
+            Category warning;
+
+            bool good() const { return critical.empty(); }
+        };
         WorkersInterface(Schema schema, intertype::Composite<linear::patch::Erased> builtLines) : schema(schema), lines(std::move(builtLines)) {}
+        Result summary;
 
         template<category::Any Meta>
         linear::WorkersInterface<Meta>& updates();

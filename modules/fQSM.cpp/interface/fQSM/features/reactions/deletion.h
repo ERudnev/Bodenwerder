@@ -4,7 +4,6 @@
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
-#include <fQSM/manipulation/feedback.h>
 
 namespace fqsm::features::reactions {
 
@@ -25,7 +24,7 @@ namespace fqsm::features::reactions {
     void deletion<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).removed()) {
             if (not change.before)
-                ask::feedback::critical(context, std::format(R"(reaction::deletion failed on "{}" {})", Rtid::name<Meta>(), change.id));
+                context.deny(std::format(R"(reaction::deletion failed on "{}" {})", Rtid::name<Meta>(), change.id));
             else
                 this->action(::fqsm::Retrospecting{context.retrospective}, change.id, change.throwing_before());
                 //if (!fix) continue;

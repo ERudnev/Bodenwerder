@@ -22,11 +22,16 @@ namespace fqsm::model::complex {
     void Patch::absorb(const Patch& other) {
         for (const auto& [_, node] : schema->nodes)
             node.binding.patch.absorb(*this, other);
+
+        summary.critical.insert(summary.critical.end(), other.summary.critical.begin(), other.summary.critical.end());
+        summary.warning.insert(summary.warning.end(), other.summary.warning.begin(), other.summary.warning.end());
     }
 
     void Patch::clear() {
         for (const auto& [_, node] : schema->nodes)
             node.binding.patch.clear(*this);
+
+        summary = {};
     }
 
 }

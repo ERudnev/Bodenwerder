@@ -22,7 +22,7 @@ namespace fqsm::processing::algorithm {
 // internal part of normalization
 namespace fqsm::processing::algorithm::normalization {
 
-    void append(review::Result& dst, review::Result src) {
+    void append(model::complex::Patch::Result& dst, const model::complex::Patch::Result& src) {
         dst.critical.insert(dst.critical.end(), src.critical.begin(), src.critical.end());
         dst.warning.insert(dst.warning.end(), src.warning.begin(), src.warning.end());
     }
@@ -30,7 +30,6 @@ namespace fqsm::processing::algorithm::normalization {
     struct PassResult {
         fqsm::ref<model::complex::Patch> patch;
         Rtid::Set taintedDuringPatch;
-        review::Result result;
     };
 
     // build one normalization wave
@@ -39,7 +38,6 @@ namespace fqsm::processing::algorithm::normalization {
         PassResult pass{
             base::make_shared<Patch>(source.schema),
             {}, // TODO: consider filling Tainted Flags once Reviewers will become context::Direct<T> compatible
-            {}
         };
 
         // this is very important place: this cast is saves about ~300 lines of code for new class
@@ -49,8 +47,7 @@ namespace fqsm::processing::algorithm::normalization {
         auto context = Review(
             proposal,
             origin,
-            pass.patch,
-            pass.result);
+            pass.patch);
 
         std::set<model::intertype::Graph::ReactionId> selectedReactions;
         for (const auto& [sourceType, _] : changes->lines.container) {
@@ -70,8 +67,8 @@ namespace fqsm::processing::algorithm::normalization {
         return pass;
     }
 
-    review::Result normalization(const model::complex::State& world, ref<Patch> patch, Rtid::Set taintedLines) {
-        review::Result accumulated;
+    model::complex::Patch::Result normalization(const model::complex::State& world, ref<Patch> patch, Rtid::Set taintedLines) {
+        model::complex::Patch::Result accumulated;
         Rtid::Set taintedLinesAccumulated = taintedLines;
 
         _DBG_TX_("norm: start user patch={}", utility::format_patch(fqsm::freeze(patch)));
@@ -79,6 +76,10 @@ namespace fqsm::processing::algorithm::normalization {
         const auto incoming = base::make_shared<Patch>(world.schema);
         incoming->absorb(*patch);
         patch->clear();
+        append(accumulated, incoming->summary);
+        if (not incoming->summary.good()) {
+            return accumulated;
+        }
 
         _DBG_TX_("norm: incoming={}", utility::format_patch(fqsm::freeze(incoming)));
 
@@ -98,15 +99,14 @@ namespace fqsm::processing::algorithm::normalization {
             _DBG_TX_("norm: wave {} correction={}", wave, utility::format_patch(fqsm::freeze(lastCorrection)));
 
             const auto fix = reactions_pass(advancing, world, lastCorrection, taintedLinesAccumulated);
+            append(accumulated, fix.patch->summary);
 
-            if (not fix.result.good()) {
-                _DBG_TX_("norm: wave {} REJECT critical={} warning={}", wave, fix.result.critical.size(), fix.result.warning.size());
-                append(accumulated, fix.result);
+            if (not fix.patch->summary.good()) {
+                _DBG_TX_("norm: wave {} REJECT critical={} warning={}", wave, fix.patch->summary.critical.size(), fix.patch->summary.warning.size());
                 return accumulated;
             }
 
             patch->absorb(*lastCorrection);
-            append(accumulated, fix.result);
 
             const bool anotherWave = fix.patch->has_changes() or not fix.taintedDuringPatch.empty();
             _DBG_TX_("norm: wave {} merged={}, reaction={}, another={}", wave, utility::format_patch(fqsm::freeze(patch)), utility::format_patch(fqsm::freeze(fix.patch)), anotherWave);
@@ -126,7 +126,7 @@ namespace fqsm::processing::algorithm::normalization {
 // facade part
 namespace fqsm::processing::algorithm {
 
-    auto update(model::complex::Reality& state, fqsm::ref<Patch> patch, Rtid::Set taintedLines) -> review::Result {
+    auto update(model::complex::Reality& state, fqsm::ref<Patch> patch, Rtid::Set taintedLines) -> model::complex::Patch::Result {
         const auto result = normalization::normalization(state, patch, taintedLines);
         if (result.good()) {
             _DBG_TX_("update: INTEGRATE patch={}", utility::format_patch(fqsm::freeze(patch)));

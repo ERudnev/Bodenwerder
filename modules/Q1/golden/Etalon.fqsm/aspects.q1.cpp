@@ -179,10 +179,7 @@ namespace Q1_fQSM::Etalon {
             if (attributes_count <= tags_count)
                 return;
 
-            context.result.critical.push_back(std::format(
-                "SampleAttribute count ({}) exceeds Tag count ({})",
-                attributes_count,
-                tags_count));
+            context.deny(std::format("SampleAttribute count ({}) exceeds Tag count ({})", attributes_count, tags_count));
         }
     };
 

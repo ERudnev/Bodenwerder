@@ -7,17 +7,6 @@
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/linear/delta.h>
 
-
-namespace fqsm::processing::review {
-    struct Result {
-        using Category = std::vector<std::string>;
-        Category critical;
-        Category warning;
-
-        bool good() const { return critical.empty(); }
-    };
-}
-
 namespace fqsm::processing {
 
     // TODO: consider to tighten type scope, make mini-schema's
@@ -28,19 +17,20 @@ namespace fqsm::processing {
         using PatchRef = Context::PatchRef;
 
         const model::complex::Future& proposal;
-        review::Result& result;
         // TODO: (really Do): tighten Context -> WorkersInterface Zag-Zag
         Context::Ptr reactions;
         RetrospectiveContext::Ptr retrospective;
 
-        Review(const model::complex::Future& proposal, const model::complex::State& origin, Context::PatchRef target, review::Result& result)
+        Review(const model::complex::Future& proposal, const model::complex::State& origin, Context::PatchRef target)
             : proposal(proposal)
             , origin(origin)
-            , result(result)
             , reactions(std::make_shared<Context>(proposal, target, Context::Upstream{}))
             , retrospective(std::make_shared<RetrospectiveContext>(origin, target, RetrospectiveContext::Upstream{}))
         {}
         // helpers:
+        void deny(std::string message) { reactions->accumulator->summary.critical.emplace_back(std::move(message)); }
+        void warning(std::string message) {reactions->accumulator->summary.warning.emplace_back(std::move(message)); }
+
         template<category::Any Meta>
         auto changes() const -> model::linear::Delta<Meta> {
             return proposal.delta<Meta>();

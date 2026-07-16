@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <fQSM/model/intertype/schema.h>
+#include <fQSM/model/complex/patch.h>
 
 namespace fqsm::utility {
 
@@ -49,7 +50,7 @@ namespace fqsm::utility {
             base::message("    {}", line);
     }
 
-    void log_rejected_transaction(const processing::review::Result& result) {
+    void log_rejected_transaction(const model::complex::Patch::Result& result) {
         if (result.good()) return;
 
         base::message("Transaction rejected; proposed changes were not applied. Reported issues:");

@@ -4,7 +4,6 @@
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
-#include <fQSM/manipulation/feedback.h>
 
 namespace fqsm::features::reactions::constraint {
 
@@ -40,17 +39,14 @@ namespace fqsm::features::reactions::constraint {
     void element<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).addedOrUpdated()) {
             if (not change.after) {
-                // TOFO: wrap block under "if"
-                ask::feedback::critical(
-                    context,
-                    std::format(R"(constraint::item_added_changed no corrector on "{}" {})", Rtid::name<Meta>(), change.id));
+                context.deny(std::format(R"(constraint::item_added_changed no corrector on "{}" {})", Rtid::name<Meta>(), change.id));
+                continue;
             }
-            else {
-                const auto fix = this->action(*change.after);
-                if (!fix) continue;
-                //*Meta::BaseActions::modify(context, change.id) = *fix;
-                context.reaction<Meta>().put_modification(change.id, *fix);
-            }
+            const auto fix = this->action(*change.after);
+            if (!fix) continue;
+            //*Meta::BaseActions::modify(context, change.id) = *fix;
+            context.reaction<Meta>().put_modification(change.id, *fix);
+
         }
     }
 
@@ -58,9 +54,7 @@ namespace fqsm::features::reactions::constraint {
     void element_wide<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).addedOrUpdated()) {
             if (not change.after) {
-                ask::feedback::critical(
-                    context,
-                    std::format(R"(constraint::item_added_changed no corrector on "{}" {})", Rtid::name<Meta>(), change.id));
+                context.deny(std::format(R"(constraint::item_added_changed no corrector on "{}" {})", Rtid::name<Meta>(), change.id));
             }
             else {
                 const auto fix = this->action(context, change.id, *change.after);

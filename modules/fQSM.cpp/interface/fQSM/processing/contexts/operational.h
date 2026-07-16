@@ -45,6 +45,9 @@ namespace fqsm::processing {
         const model::complex::State* operator->() const { return &context->world; }
 
         model::complex::WorkersInterface& workers_interface() { return *context->accumulator; }
+        // helpers:
+        void deny(std::string message) { context->accumulator->summary.critical.emplace_back(std::move(message)); }
+        void warning(std::string message) {context->accumulator->summary.warning.emplace_back(std::move(message)); }
 
     private:
         // There is one fundamental problem around.

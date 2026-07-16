@@ -26,11 +26,11 @@ namespace fqsm::processing::orchestrator {
         template<category::Any Meta>
         operator Direct<Meta>();
 
-        auto result() const -> const review::Result& { return lastResult; }
+        auto result() const -> const model::complex::Patch::Result& { return lastResult; }
 
     private:
         model::complex::Reality reality;
-        review::Result lastResult;
+        model::complex::Patch::Result lastResult;
 
         auto writing() -> Writing override;
         auto makeChildPolicy() -> ChildPolicy override;

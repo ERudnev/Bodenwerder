@@ -52,7 +52,6 @@ namespace {
             ask::schema::aspect<resource::Manager>(),
             ask::schema::aspect<resource::Unit>(),
             ask::schema::aspect<resource::Unit_group>(),
-            ask::schema::aspect<resource::MaterializeRequest>(),
             ask::schema::aspect<resource::DeviceRuntimes>(),
             ask::schema::aspect<resource::Runtime_group>(),
             ask::schema::aspect<resource::Assets>(),

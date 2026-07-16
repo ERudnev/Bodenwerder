@@ -16,7 +16,7 @@ namespace  fqsm::features::reactions::debug {
         }
 
         void apply(Reacting context) override {
-            context.result.warning.push_back("experimental death detected");
+            context.warning("experimental death detected");
         }
     };
 }

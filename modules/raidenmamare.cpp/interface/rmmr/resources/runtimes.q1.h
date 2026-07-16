@@ -10,28 +10,6 @@ namespace rmmr::resource {
 
     using namespace fqsm::api;
 
-    struct MaterializeRequest : Entity<MaterializeRequest> {
-        struct Quantum {
-            Anchor<Unit> asset;
-            system::Device::Id device;
-        };
-        struct Internals;
-        static const Behavior customAspectReactions();
-    };
-
-    struct DeviceRuntimes : Component<DeviceRuntimes, system::Device> {
-        struct Quantum {
-            Manager::Id manager;
-        };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
-    struct Runtime_group : Group<Runtime_group, DeviceRuntimes, texture::Runtime> {
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
     struct Assets : Component<Assets, Manager> {
         struct Quantum {
             maybe<texture::Asset::Id> debug_texture;
@@ -41,6 +19,19 @@ namespace rmmr::resource {
             static auto add_texture_generated(Writing, Id, Unit::Quantum, texture::Asset::Quantum, texture::Generated::Quantum) -> texture::Asset::Id;
             static void extend(Writing, Manager::Id, filepath path);
         };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct DeviceRuntimes : Component<DeviceRuntimes, system::Device> {
+        struct Quantum {
+            Assets::Id assets;
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct Runtime_group : Group<Runtime_group, DeviceRuntimes, texture::Runtime> {
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };

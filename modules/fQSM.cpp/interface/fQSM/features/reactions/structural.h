@@ -4,7 +4,6 @@
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
-#include <fQSM/manipulation/feedback.h>
 #include <fQSM/processing/_forwards.h>
 
 namespace fqsm::features::reactions::structural {
@@ -70,13 +69,7 @@ namespace fqsm::features::reactions::structural {
                     continue;
                 }
                 _DBG_TX_("structural new_parasitic_requires_existing_parent: CRITICAL {} {}, {} missing in proposal", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
-                ask::feedback::critical(
-                    context,
-                    std::format(
-                        R"(structural: {} missing for new {} {})",
-                        Rtid::name<Parent>(),
-                        Rtid::name<Parasitic>(),
-                        change.id));
+                context.deny(std::format(R"(structural: {} missing for new {} {})", Rtid::name<Parent>(), Rtid::name<Parasitic>(), change.id));
             }
         }
     };
@@ -100,13 +93,7 @@ namespace fqsm::features::reactions::structural {
                     continue;
                 }
                 _DBG_TX_("structural new_parasitic_requires_parent_appears: CRITICAL {} {}, {} not added in same patch", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
-                ask::feedback::critical(
-                    context,
-                    std::format(
-                        R"(structural: {} must appear in the same patch as new {} {})",
-                        Rtid::name<Parent>(),
-                        Rtid::name<Parasitic>(),
-                        change.id));
+                context.deny(std::format(R"(structural: {} must appear in the same patch as new {} {})", Rtid::name<Parent>(), Rtid::name<Parasitic>(), change.id));
             }
         }
     };
@@ -123,13 +110,7 @@ namespace fqsm::features::reactions::structural {
                     continue;
                 }
                 _DBG_TX_("structural parent_appears_requires_component: CRITICAL {} {}, {} missing in proposal", Rtid::name<Parent>(), change.id, Rtid::name<Parasitic>());
-                ask::feedback::critical(
-                    context,
-                    std::format(
-                        R"(structural: {} missing for new {} {})",
-                        Rtid::name<Parasitic>(),
-                        Rtid::name<Parent>(),
-                        change.id));
+                context.deny(std::format(R"(structural: {} missing for new {} {})", Rtid::name<Parasitic>(), Rtid::name<Parent>(), change.id));
             }
         }
     };

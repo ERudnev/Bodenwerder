@@ -3,19 +3,6 @@ import "resources/manager"
 namespace rmmr
   namespace resource
 
-    entity MaterializeRequest
-      one
-        asset: anchor<Unit>
-        device: #Device
-
-    // TODO: mve to Interface file (dependencies, must be invisible to major types)
-    component DeviceRuntimes of system::Device
-      one
-        manager: #Manager // easy to get system::Core
-
-    group<texture::Runtime> of resource::DeviceRuntimes
-
-
     // Core-level interface:
     component Assets of Manager
       one
@@ -24,6 +11,13 @@ namespace rmmr
         >add_texture_generated(Unit, texture::Asset, texture::Generated)->#texture::Asset
       all
         >extend(#Manager, path: filepath)
+
+    // TODO: mve to Interface file (dependencies, must be invisible to major types)
+    component DeviceRuntimes of system::Device
+      one
+        assets: #Assets
+
+    group<texture::Runtime> of resource::DeviceRuntimes
 
     component Runtimes of Device
       one

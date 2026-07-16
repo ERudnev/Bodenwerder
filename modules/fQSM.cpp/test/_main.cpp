@@ -11,6 +11,7 @@
     X(group_performance) \
     X(serialization) \
     X(destructor) \
+    X(workers_say_no) \
     // end
 
 #define FQSM_LOW_LEVEL_TESTS(X) \

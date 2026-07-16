@@ -9,7 +9,7 @@ namespace fqsm::features::reactions {
     template<typename ActionFunction>
     struct Functional;
 
-    // each entry in review::Result::critical is one failure
+    // each entry in model::complex::Patch::Result::critical is one failure
     using FailedCount = size_t;
 }
 

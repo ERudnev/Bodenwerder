@@ -5,7 +5,6 @@
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/processing/contexts/review.h>
-#include <fQSM/manipulation/feedback.h>
 
 namespace fqsm::manipulation {}
 
@@ -74,7 +73,7 @@ namespace fqsm::features::reactions {
 
         bool optionally_callable(Reacting context, std::string_view reason) const {
             if (actionFunc) return true;
-            context.result.critical.push_back(std::string{reason});
+            context.deny(std::string(reason));
             return false;
         }
 
