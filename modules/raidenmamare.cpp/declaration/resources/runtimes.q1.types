@@ -12,6 +12,7 @@ namespace rmmr
         >add_shader_file(Unit, shader::Asset, shader::FromFile)->#shader::Asset
         >add_material(Unit, material::Asset, material::Composed)->#material::Asset
         >add_shadow_allocated(Unit, shadow::Asset, shadow::Allocated)->#shadow::Asset
+        >add_geometry(Unit, geometry::Asset, geometry::Composed)->#geometry::Asset
       all
         >extend(#Manager, path: filepath)
 
@@ -24,6 +25,7 @@ namespace rmmr
     group<shader::Runtime> of resource::DeviceRuntimes
     group<material::Runtime> of resource::DeviceRuntimes
     group<shadow::Runtime> of resource::DeviceRuntimes
+    group<geometry::Runtime> of resource::DeviceRuntimes
 
     component Runtimes of Device
       one
@@ -31,6 +33,7 @@ namespace rmmr
         shaders_id_mapping: umap<#shader::Asset, #shader::Runtime>
         materials_id_mapping: umap<#material::Asset, #material::Runtime>
         shadows_id_mapping: umap<#shadow::Asset, #shadow::Runtime>
+        geometries_id_mapping: umap<#geometry::Asset, #geometry::Runtime>
         >install(#Device) // cache is zero by default
         >materialize(#Assets) // facade: explicit pass per known source-feature; each F.materialize(#Device)->Runtime, then rebuild mapping
         !maintain_all_mappings(~Assets)

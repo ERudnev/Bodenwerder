@@ -1,0 +1,39 @@
+import "../math"
+import "../renderer/gl"
+import "resources/manager"
+
+namespace rmmr
+  namespace resource
+    namespace geometry
+
+    // Persistent mesh recipe. Scene may hold #geometry::Asset — never Runtime.
+    feature Asset of resource::Unit
+      struct Channel
+        using Id as @external(rmmr::primitive::GeometrySemantics::PersistentId)
+        using Type as @external(rmmr::primitive::GeometrySemantics::Type)
+        using Layout as vector<Id>
+      always
+        ?layoutIds(vector<string>) -> Channel::Layout
+      one
+        layout: Channel::Layout
+        positions: vector<Pos>
+        normals: vector<Pos>
+        uv0: vector<UV>
+        indices: vector<integer>
+
+    entity Runtime
+      using VertexArray as @external(OpenGL vertex array handle)
+      using VertexBuffer as @external(OpenGL vertex buffer handle)
+      using ElementBuffer as @external(OpenGL element buffer handle)
+      one
+        device: #system::Device
+        vao: VertexArray
+        vbo: VertexBuffer
+        ebo: ElementBuffer
+        vertex_count: renderer::Count
+        index_count: renderer::Count
+
+    // CPU buffers on Asset → GL VAO/VBO/EBO on device (same role as material::Composed)
+    feature Composed of Asset
+      one
+        >materialize(#system::Device) -> Runtime

@@ -5,9 +5,12 @@
 #include <rmmr/assets/shader.q1.h>
 #include <rmmr/assets/texture.q1.h>
 #include <rmmr/controller/camera.q1.h>
+#include <rmmr/resources/geometries.q1.h>
 #include <rmmr/resources/manager.q1.h>
+#include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
+#include <rmmr/resources/shadows.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/resources_old/geometry.q1.h>
 #include <rmmr/resources_old/material.q1.h>
@@ -38,6 +41,28 @@ namespace {
     using namespace fqsm::api;
     using namespace rmmr;
 
+    // Parallel catalog (Unit.name), no Engine::resources / Assets named slots. Draw stays on resource_old.
+    void seed_parallel_resource_catalog(Writing context, resource::Assets::Id assets) {
+        using resource::Assets;
+        using resource::Unit;
+
+        const auto debug_texture = *with<Assets>::get(context, assets).debug_texture;
+
+        const auto ambient_shader = Assets::Actions::add_shader_file(context, assets, Unit::Quantum{.manager = assets, .name = "ambient_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::FromFile::Quantum{.vertex = "shaders/ambient.vert.glsl", .fragment = "shaders/ambient.frag.glsl"});
+        const auto lit_shader = Assets::Actions::add_shader_file(context, assets, Unit::Quantum{.manager = assets, .name = "lit_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::FromFile::Quantum{.vertex = "shaders/lit.vert.glsl", .fragment = "shaders/lit.frag.glsl"});
+        const auto lit_textured_shader = Assets::Actions::add_shader_file(context, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::FromFile::Quantum{.vertex = "shaders/litTextured.vert.glsl", .fragment = "shaders/litTextured.frag.glsl"});
+        const auto grid_shader = Assets::Actions::add_shader_file(context, assets, Unit::Quantum{.manager = assets, .name = "grid_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::FromFile::Quantum{.vertex = "shaders/Grid.vert.glsl", .fragment = "shaders/Grid.frag.glsl"});
+        const auto shadow_depth_shader = Assets::Actions::add_shader_file(context, assets, Unit::Quantum{.manager = assets, .name = "shadow_depth_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::FromFile::Quantum{.vertex = "shaders/shadowDepth.vert.glsl", .fragment = "shaders/shadowDepth.frag.glsl"});
+
+        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "ambient_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = ambient_shader, .uniforms = resource::material::Asset::Always::uniformIds({"model", "view", "projection", "albedo", "ambientColor", "ambientIntensity"}), .textures = {}}, resource::material::Composed::Quantum{});
+        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "lit_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = lit_shader, .uniforms = resource::material::Asset::Always::uniformIds({"model", "view", "projection", "albedo", "ambientColor", "ambientIntensity", "light0Pos", "light0Color", "light0Intensity", "lightSpaceMatrix", "shadowMap"}), .textures = {}}, resource::material::Composed::Quantum{});
+        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = lit_textured_shader, .uniforms = resource::material::Asset::Always::uniformIds({"model", "view", "projection", "albedo", "albedoMap", "ambientColor", "ambientIntensity", "light0Pos", "light0Color", "light0Intensity", "lightSpaceMatrix", "shadowMap"}), .textures = {resource::material::Asset::TextureBinding{.id = ::rmmr::material::Semantics::id_of("albedoMap"), .texture = debug_texture}}}, resource::material::Composed::Quantum{});
+        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "grid_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = grid_shader, .uniforms = resource::material::Asset::Always::uniformIds({"model", "view", "projection", "patternScale", "colorPrimary", "colorSecondary"}), .textures = {}}, resource::material::Composed::Quantum{});
+        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "shadow_depth_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = shadow_depth_shader, .uniforms = resource::material::Asset::Always::uniformIds({"model", "lightSpaceMatrix"}), .textures = {}}, resource::material::Composed::Quantum{});
+
+        Assets::Actions::add_shadow_allocated(context, assets, Unit::Quantum{.manager = assets, .name = "main_shadow", .library = "rmmr"}, resource::shadow::Asset::Quantum{}, resource::shadow::Allocated::Quantum{.size = index2{1024, 1024}});
+    }
+
     Schema generateInternalEngineSchema_static() {
         return ask::schema::merge({
             ask::schema::aspect<system::Core>(),
@@ -58,6 +83,7 @@ namespace {
             ask::schema::aspect<resource::ShaderRuntime_group>(),
             ask::schema::aspect<resource::MaterialRuntime_group>(),
             ask::schema::aspect<resource::ShadowRuntime_group>(),
+            ask::schema::aspect<resource::GeometryRuntime_group>(),
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<resource::Runtimes>(),
             ask::schema::aspect<resource::texture::Asset>(),
@@ -73,6 +99,9 @@ namespace {
             ask::schema::aspect<resource::shadow::Asset>(),
             ask::schema::aspect<resource::shadow::Allocated>(),
             ask::schema::aspect<resource::shadow::Runtime>(),
+            ask::schema::aspect<resource::geometry::Asset>(),
+            ask::schema::aspect<resource::geometry::Composed>(),
+            ask::schema::aspect<resource::geometry::Runtime>(),
             ask::schema::aspect<resource_old::Geometry>(),
             ask::schema::aspect<resource_old::Geometry_group>(),
             ask::schema::aspect<resource_old::Shader>(),
@@ -219,6 +248,7 @@ namespace rmmr {
         auto& resources = state->resources;
 
         base::message("rmmr: bootstrapping parallel resource system...");
+        //seed_parallel_resource_catalog(main, core);
         with<resource::Runtimes>::materialize(main, device, core);
 
         const auto debug_texture = with<asset::Texture>::create(main, asset::Texture::Quantum{

@@ -8,6 +8,18 @@ namespace rmmr::resource {
 
     namespace {
 
+        template<typename Asset, typename Kind>
+        auto register_unit(Writing context, Assets::Id assets, Unit::Quantum unit, typename Asset::Quantum asset, typename Kind::Quantum kind) -> typename Asset::Id {
+            unit.manager = assets;
+            if (not with<Unit_group>::exists(context, assets)) {
+                with<Unit_group>::extend(context, assets);
+            }
+            const auto unit_id = with<Unit_group>::addElement(context, assets, std::move(unit));
+            with<Asset>::extend(context, unit_id, std::move(asset));
+            with<Kind>::extend(context, unit_id, std::move(kind));
+            return unit_id;
+        }
+
         template<typename Runtime, typename Group, typename AssetId>
         void rebuild_runtime(Writing context, system::Device::Id device, umap<AssetId, typename Runtime::Id>& mapping, AssetId asset_id, typename Runtime::Quantum runtime) {
             if (const auto existing = mapping.find(asset_id); existing != mapping.end()) {
@@ -41,68 +53,27 @@ namespace rmmr::resource {
     } // namespace
 
     auto Assets::Actions::add_texture_file(Writing context, Id assets, Unit::Quantum unit, texture::Asset::Quantum asset, texture::FromFile::Quantum from_file) -> texture::Asset::Id {
-        unit.manager = assets;
-
-        if (not with<Unit_group>::exists(context, assets)) {
-            with<Unit_group>::extend(context, assets);
-        }
-
-        const auto unit_id = with<Unit_group>::addElement(context, assets, std::move(unit));
-        with<texture::Asset>::extend(context, unit_id, std::move(asset));
-        with<texture::FromFile>::extend(context, unit_id, std::move(from_file));
-        return unit_id;
+        return register_unit<texture::Asset, texture::FromFile>(context, assets, std::move(unit), std::move(asset), std::move(from_file));
     }
 
     auto Assets::Actions::add_texture_generated(Writing context, Id assets, Unit::Quantum unit, texture::Asset::Quantum asset, texture::Generated::Quantum generated) -> texture::Asset::Id {
-        unit.manager = assets;
-
-        if (not with<Unit_group>::exists(context, assets)) {
-            with<Unit_group>::extend(context, assets);
-        }
-
-        const auto unit_id = with<Unit_group>::addElement(context, assets, std::move(unit));
-        with<texture::Asset>::extend(context, unit_id, std::move(asset));
-        with<texture::Generated>::extend(context, unit_id, std::move(generated));
-        return unit_id;
+        return register_unit<texture::Asset, texture::Generated>(context, assets, std::move(unit), std::move(asset), std::move(generated));
     }
 
     auto Assets::Actions::add_shader_file(Writing context, Id assets, Unit::Quantum unit, shader::Asset::Quantum asset, shader::FromFile::Quantum from_file) -> shader::Asset::Id {
-        unit.manager = assets;
-
-        if (not with<Unit_group>::exists(context, assets)) {
-            with<Unit_group>::extend(context, assets);
-        }
-
-        const auto unit_id = with<Unit_group>::addElement(context, assets, std::move(unit));
-        with<shader::Asset>::extend(context, unit_id, std::move(asset));
-        with<shader::FromFile>::extend(context, unit_id, std::move(from_file));
-        return unit_id;
+        return register_unit<shader::Asset, shader::FromFile>(context, assets, std::move(unit), std::move(asset), std::move(from_file));
     }
 
     auto Assets::Actions::add_material(Writing context, Id assets, Unit::Quantum unit, material::Asset::Quantum asset, material::Composed::Quantum composed) -> material::Asset::Id {
-        unit.manager = assets;
-
-        if (not with<Unit_group>::exists(context, assets)) {
-            with<Unit_group>::extend(context, assets);
-        }
-
-        const auto unit_id = with<Unit_group>::addElement(context, assets, std::move(unit));
-        with<material::Asset>::extend(context, unit_id, std::move(asset));
-        with<material::Composed>::extend(context, unit_id, std::move(composed));
-        return unit_id;
+        return register_unit<material::Asset, material::Composed>(context, assets, std::move(unit), std::move(asset), std::move(composed));
     }
 
     auto Assets::Actions::add_shadow_allocated(Writing context, Id assets, Unit::Quantum unit, shadow::Asset::Quantum asset, shadow::Allocated::Quantum allocated) -> shadow::Asset::Id {
-        unit.manager = assets;
+        return register_unit<shadow::Asset, shadow::Allocated>(context, assets, std::move(unit), std::move(asset), std::move(allocated));
+    }
 
-        if (not with<Unit_group>::exists(context, assets)) {
-            with<Unit_group>::extend(context, assets);
-        }
-
-        const auto unit_id = with<Unit_group>::addElement(context, assets, std::move(unit));
-        with<shadow::Asset>::extend(context, unit_id, std::move(asset));
-        with<shadow::Allocated>::extend(context, unit_id, std::move(allocated));
-        return unit_id;
+    auto Assets::Actions::add_geometry(Writing context, Id assets, Unit::Quantum unit, geometry::Asset::Quantum asset, geometry::Composed::Quantum composed) -> geometry::Asset::Id {
+        return register_unit<geometry::Asset, geometry::Composed>(context, assets, std::move(unit), std::move(asset), std::move(composed));
     }
 
     void Assets::Actions::extend(Writing context, Manager::Id manager, filepath path) {
@@ -141,6 +112,7 @@ namespace rmmr::resource {
         with<ShaderRuntime_group>::extend(context, device);
         with<MaterialRuntime_group>::extend(context, device);
         with<ShadowRuntime_group>::extend(context, device);
+        with<GeometryRuntime_group>::extend(context, device);
         BaseActions::extend(context, device, Quantum{});
     }
 
@@ -178,6 +150,14 @@ namespace rmmr::resource {
                 rebuild_runtime<shadow::Runtime, ShadowRuntime_group>(context, device, runtimes->shadows_id_mapping, entry.id, runtime);
             }
         }
+
+        for (const auto entry : context->aspect<geometry::Composed>().items()) {
+            if (with<Unit>::get(context, entry.id).manager != assets) continue;
+            const auto runtime = geometry::Composed::Actions::materialize(context, entry.id, device);
+            if (runtime.vao) {
+                rebuild_runtime<geometry::Runtime, GeometryRuntime_group>(context, device, runtimes->geometries_id_mapping, entry.id, runtime);
+            }
+        }
     }
 
     struct Runtimes::Internals : Runtimes::DefaultInternals {
@@ -187,6 +167,7 @@ namespace rmmr::resource {
                 scrub_mapping<shader::Asset, shader::Runtime>(context, entry.id, entry.value.shaders_id_mapping, &Quantum::shaders_id_mapping);
                 scrub_mapping<material::Asset, material::Runtime>(context, entry.id, entry.value.materials_id_mapping, &Quantum::materials_id_mapping);
                 scrub_mapping<shadow::Asset, shadow::Runtime>(context, entry.id, entry.value.shadows_id_mapping, &Quantum::shadows_id_mapping);
+                scrub_mapping<geometry::Asset, geometry::Runtime>(context, entry.id, entry.value.geometries_id_mapping, &Quantum::geometries_id_mapping);
             }
         }
     };
