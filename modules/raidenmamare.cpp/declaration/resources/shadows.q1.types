@@ -1,0 +1,27 @@
+import "resources/manager"
+
+namespace rmmr
+  namespace resource
+    namespace shadow
+
+    // Persistent shadow-target recipe. Scene (Light, etc.) may hold #shadow::Asset —
+    // never #shadow::Runtime (device-bound; rematerialize would break the link).
+    feature Asset of resource::Unit
+
+    entity Runtime
+      using Framebuffer as @external(OpenGL framebuffer handle)
+      using DepthTexture as @external(OpenGL depth texture handle)
+      one
+        device: #system::Device
+        fbo: Framebuffer
+        depth: DepthTexture
+        size: index2
+        ?bind()
+        ?clear()
+        ?unbind()
+
+    // Kind owns allocation config (unlike empty material::Composed): size → FBO/depth on device
+    feature Allocated of Asset
+      one
+        size: index2
+        >materialize(#system::Device) -> Runtime

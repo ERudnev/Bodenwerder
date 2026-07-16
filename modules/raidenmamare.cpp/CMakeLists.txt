@@ -26,6 +26,7 @@ set(Raidenmamare_Q1
     resources/textures.q1.types
     resources/shaders.q1.types
     resources/materials.q1.types
+    resources/shadows.q1.types
     resources/runtimes.q1.types
     resources_old/geometry.q1.types
     resources_old/shader.q1.types

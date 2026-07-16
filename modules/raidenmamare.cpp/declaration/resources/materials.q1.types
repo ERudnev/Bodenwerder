@@ -1,0 +1,37 @@
+import "../assets/shader"
+import "resources/manager"
+import "resources/shaders"
+import "resources/textures"
+
+namespace rmmr
+  namespace resource
+    namespace material
+
+    // abstract material with unknown kind
+    feature Asset of resource::Unit
+      struct TextureBinding
+        id: Uniform::Id
+        texture: #texture::Asset
+      always
+        ?uniformIds(vector<string>) -> Uniform::Palette
+      one
+        program: #shader::Asset
+        uniforms: Uniform::Palette
+        textures: vector<TextureBinding>
+
+    entity Runtime
+      struct TextureBinding
+        id: Uniform::Id
+        texture: #texture::Runtime
+      using Locations as @external(rmmr::material::Semantics::RuntimeMapping)
+      one
+        shader: #shader::Runtime
+        locations: Locations
+        bindings: vector<Uniform::Binding>
+        textures: vector<TextureBinding>
+        ?apply(#system::Device)
+
+    // recipe: shader asset + palette + texture slots → device Runtime
+    feature Composed of Asset
+      one
+        >materialize(#system::Device) -> Runtime

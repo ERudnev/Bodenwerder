@@ -1,0 +1,61 @@
+#pragma once
+
+#include <rmmr/assets/shader.q1.h>
+#include <rmmr/assets/semantics/uniform.h>
+#include <rmmr/resources/manager.q1.h>
+#include <rmmr/resources/shaders.q1.h>
+#include <rmmr/resources/textures.q1.h>
+#include <rmmr/system/core.q1.h>
+
+#include <fQSM/api/interface.h>
+
+namespace rmmr::resource::material {
+
+    using namespace fqsm::api;
+
+    struct Asset : Feature<Asset, resource::Unit> {
+        struct TextureBinding {
+            asset::Uniform::Id id;
+            texture::Asset::Id texture;
+        };
+        struct Quantum {
+            shader::Asset::Id program;
+            asset::Uniform::Palette uniforms;
+            vector<TextureBinding> textures;
+        };
+        struct Always {
+            static auto uniformIds(const vector<string>& names) -> asset::Uniform::Palette;
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct Runtime : Entity<Runtime> {
+        using Locations = ::rmmr::material::Semantics::RuntimeMapping;
+        struct TextureBinding {
+            asset::Uniform::Id id;
+            texture::Runtime::Id texture;
+        };
+        struct Quantum {
+            shader::Runtime::Id shader;
+            Locations locations;
+            vector<asset::Uniform::Binding> bindings;
+            vector<TextureBinding> textures;
+        };
+        struct Actions : BaseActions {
+            static void apply(Reading, Id, system::Device::Id);
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct Composed : Feature<Composed, Asset> {
+        struct Quantum {};
+        struct Actions : BaseActions {
+            static auto materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum;
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+}

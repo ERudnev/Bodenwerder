@@ -1,7 +1,6 @@
 #include <rmmr/resources/runtimes.q1.h>
 
 #include <format>
-#include <stdexcept>
 
 namespace rmmr::resource {
 
@@ -46,11 +45,20 @@ namespace rmmr::resource {
         return unit_id;
     }
 
-    void Assets::Actions::extend(Writing context, Manager::Id manager, filepath path) {
-        if (not with<Manager>::exists(context, manager)) {
-            throw std::runtime_error("resource::Assets::extend: manager does not exist");
+    auto Assets::Actions::add_material(Writing context, Id assets, Unit::Quantum unit, material::Asset::Quantum asset, material::Composed::Quantum composed) -> material::Asset::Id {
+        unit.manager = assets;
+
+        if (not with<Unit_group>::exists(context, assets)) {
+            with<Unit_group>::extend(context, assets);
         }
 
+        const auto unit_id = with<Unit_group>::addElement(context, assets, std::move(unit));
+        with<material::Asset>::extend(context, unit_id, std::move(asset));
+        with<material::Composed>::extend(context, unit_id, std::move(composed));
+        return unit_id;
+    }
+
+    void Assets::Actions::extend(Writing context, Manager::Id manager, filepath path) {
         with<Manager>::modify(context, manager)->location = std::move(path);
 
         const auto debug_texture = add_texture_file(
@@ -87,26 +95,13 @@ namespace rmmr::resource {
         });
         with<Runtime_group>::extend(context, device);
         with<ShaderRuntime_group>::extend(context, device);
+        with<MaterialRuntime_group>::extend(context, device);
         BaseActions::extend(context, device, Quantum{});
     }
 
     void Runtimes::Actions::materialize(Writing context, Id device, Assets::Id assets) {
-        if (not with<DeviceRuntimes>::exists(context, device)) {
-            throw std::runtime_error("resource::Runtimes::materialize: DeviceRuntimes missing for device");
-        }
         with<DeviceRuntimes>::modify(context, device)->assets = assets;
-
-        if (not with<Runtimes>::exists(context, device)) {
-            throw std::runtime_error("resource::Runtimes::materialize: Runtimes missing for device");
-        }
         auto runtimes = with<Runtimes>::modify(context, device);
-
-        if (not with<Runtime_group>::exists(context, device)) {
-            throw std::runtime_error("resource::Runtimes::materialize: Runtime_group missing for device");
-        }
-        if (not with<ShaderRuntime_group>::exists(context, device)) {
-            throw std::runtime_error("resource::Runtimes::materialize: ShaderRuntime_group missing for device");
-        }
 
         const auto rebuild_texture_runtime = [&](texture::Asset::Id asset_id, texture::Runtime::Quantum runtime) {
             if (const auto existing = runtimes->textures_id_mapping.find(asset_id); existing != runtimes->textures_id_mapping.end()) {
@@ -125,6 +120,15 @@ namespace rmmr::resource {
 
             const auto runtime_id = with<ShaderRuntime_group>::addElement(context, device, std::move(runtime));
             runtimes->shaders_id_mapping.emplace(asset_id, runtime_id);
+        };
+        const auto rebuild_material_runtime = [&](material::Asset::Id asset_id, material::Runtime::Quantum runtime) {
+            if (const auto existing = runtimes->materials_id_mapping.find(asset_id); existing != runtimes->materials_id_mapping.end()) {
+                with<material::Runtime>::remove(context, existing->second);
+                runtimes->materials_id_mapping.erase(asset_id);
+            }
+
+            const auto runtime_id = with<MaterialRuntime_group>::addElement(context, device, std::move(runtime));
+            runtimes->materials_id_mapping.emplace(asset_id, runtime_id);
         };
 
         for (const auto entry : context->aspect<texture::FromFile>().items()) {
@@ -156,12 +160,22 @@ namespace rmmr::resource {
                 rebuild_shader_runtime(unit_id, runtime);
             }
         }
+
+        for (const auto entry : context->aspect<material::Composed>().items()) {
+            const auto unit_id = entry.id;
+            if (with<Unit>::get(context, unit_id).manager != assets) {
+                continue;
+            }
+
+            rebuild_material_runtime(unit_id, material::Composed::Actions::materialize(context, unit_id, device));
+        }
     }
 
     struct Runtimes::Internals : Runtimes::DefaultInternals {
         static void maintain_all_mappings(Reacting context) {
             auto& texture_runtime_patch = context.reaction<texture::Runtime>();
             auto& shader_runtime_patch = context.reaction<shader::Runtime>();
+            auto& material_runtime_patch = context.reaction<material::Runtime>();
             auto& runtimes_patch = context.reaction<Runtimes>();
 
             for (const auto entry : context.proposal.aspect<Runtimes>().items()) {
@@ -199,6 +213,24 @@ namespace rmmr::resource {
                         return with<Runtimes>::get(context, entry.id);
                     });
                     fixed.shaders_id_mapping.erase(asset_id);
+                }
+
+                for (const auto& [asset_id, runtime_id] : entry.value.materials_id_mapping) {
+                    const bool asset_exists = with<material::Asset>::exists(context, asset_id);
+                    const bool runtime_exists = with<material::Runtime>::exists(context, runtime_id);
+
+                    if (asset_exists && runtime_exists) {
+                        continue;
+                    }
+
+                    if (runtime_exists) {
+                        material_runtime_patch.put_deletion(runtime_id);
+                    }
+
+                    auto& fixed = runtimes_patch.update_modification(entry.id, [&]() -> const Quantum& {
+                        return with<Runtimes>::get(context, entry.id);
+                    });
+                    fixed.materials_id_mapping.erase(asset_id);
                 }
             }
         }

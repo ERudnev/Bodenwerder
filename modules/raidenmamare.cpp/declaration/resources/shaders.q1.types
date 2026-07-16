@@ -19,5 +19,3 @@ namespace rmmr
         vertex: filename
         fragment: filename
         >materialize(#system::Device) -> Runtime // kind owns compile/link; returns Runtime value (Runtimes inserts into group + mapping)
-
-    
