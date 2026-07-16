@@ -1,50 +1,56 @@
 {
-  "version": 8,
-  "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 23,
-    "patch": 0
-  },
-  "configurePresets": [
-    {
-      "name": "ninja-clang-base",
-      "hidden": true,
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "C:/Program Files/LLVM/bin/clang.exe",
-        "CMAKE_CXX_COMPILER": "C:/Program Files/LLVM/bin/clang++.exe",
-        "CMAKE_RC_COMPILER": "C:/Program Files/LLVM/bin/llvm-rc.exe",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-      }
+    "version": 8,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 23,
+        "patch": 0
     },
-    {
-      "name": "ninja-clang-debug",
-      "displayName": "Ninja + LLVM (Debug)",
-      "inherits": "ninja-clang-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "ninja-clang-release",
-      "displayName": "Ninja + LLVM (Release)",
-      "inherits": "ninja-clang-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
-    }
-  ],
-  "buildPresets": [
-    {
-      "name": "debug",
-      "displayName": "Debug",
-      "configurePreset": "ninja-clang-debug"
-    },
-    {
-      "name": "release",
-      "displayName": "Release",
-      "configurePreset": "ninja-clang-release"
-    }
-  ]
+    "configurePresets": [
+        {
+            "name": "ninja-clang-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "C:/Program Files/LLVM/bin/clang.exe",
+                "CMAKE_CXX_COMPILER": "C:/Program Files/LLVM/bin/clang++.exe",
+                "CMAKE_RC_COMPILER": "C:/Program Files/LLVM/bin/llvm-rc.exe",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "ninja-clang-debug",
+            "displayName": "Ninja + LLVM (Debug)",
+            "inherits": "ninja-clang-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "ninja-clang-release",
+            "displayName": "Ninja + LLVM (Release)",
+            "inherits": "ninja-clang-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "debug",
+            "displayName": "Debug",
+            "configurePreset": "ninja-clang-debug"
+        },
+        {
+            "name": "release",
+            "displayName": "Release",
+            "configurePreset": "ninja-clang-release"
+        },
+        {
+            "name": "ReleaseKinda",
+            "description": "",
+            "displayName": "",
+            "configurePreset": "ninja-clang-release"
+        }
+    ]
 }

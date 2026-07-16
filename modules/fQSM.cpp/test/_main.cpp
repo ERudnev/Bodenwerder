@@ -9,6 +9,7 @@
     X(killing_feature) \
     X(group_category) \
     X(group_performance) \
+    X(cascade_performance) \
     X(serialization) \
     X(destructor) \
     X(workers_say_no) \
@@ -79,7 +80,7 @@ int call_all_tests() {
 
 int call_specific_test() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("selected", &tests::destructor_like_reactions)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::cascade_performance)));
     return s.ok() ? 0 : 1;
 }
 

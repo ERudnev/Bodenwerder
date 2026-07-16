@@ -50,7 +50,10 @@ namespace fqsm::processing::algorithm::normalization {
             pass.patch);
 
         std::set<model::intertype::Graph::ReactionId> selectedReactions;
-        for (const auto& [sourceType, _] : changes->lines.container) {
+        for (const auto& [sourceType, line] : changes->lines.container) {
+            if (not line->has_changes() and not taintedLines.contains(sourceType)) {
+                continue;
+            }
             const auto found = changes->schema->nodes.find(sourceType);
             if (found == changes->schema->nodes.end()) continue;
 

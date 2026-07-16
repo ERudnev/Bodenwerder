@@ -20,16 +20,26 @@ namespace fqsm::model::complex {
     }
 
     void Patch::absorb(const Patch& other) {
-        for (const auto& [_, node] : schema->nodes)
+        for (const auto& [typeId, node] : schema->nodes) {
+            const auto source = other.lines.container.find(typeId);
+            if (source == other.lines.container.end() or not source->second->has_changes()) {
+                continue;
+            }
             node.binding.patch.absorb(*this, other);
+        }
 
         summary.critical.insert(summary.critical.end(), other.summary.critical.begin(), other.summary.critical.end());
         summary.warning.insert(summary.warning.end(), other.summary.warning.begin(), other.summary.warning.end());
     }
 
     void Patch::clear() {
-        for (const auto& [_, node] : schema->nodes)
+        for (const auto& [typeId, node] : schema->nodes) {
+            const auto line = lines.container.find(typeId);
+            if (line == lines.container.end() or not line->second->has_changes()) {
+                continue;
+            }
             node.binding.patch.clear(*this);
+        }
 
         summary = {};
     }

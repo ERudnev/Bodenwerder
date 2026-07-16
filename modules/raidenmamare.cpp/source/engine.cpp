@@ -214,6 +214,11 @@ namespace rmmr {
             with<system::Viewport>::activate(main, viewport);
             with<system::Viewport>::clear(main, viewport);
 
+            /* natural perfomance test, keep this as comment please
+            for (int xx = 0; xx < 100; ++xx)
+                with<system::Viewport>::modify(main, viewport)->clear_color.r = 0;
+            */
+
             if (state->scene && state->scene_camera && state->resources.shadowMap) {
                 with<system::ImGuiHost>::newFrame(main, device);
                 const ui::FrameContext ui_frame{
