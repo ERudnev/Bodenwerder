@@ -79,5 +79,6 @@ namespace fqsm::api {
     } // tired of fqsm::Writing
         using Writing = fqsm::Writing;
         using Reading = fqsm::Reading;
+        using Reacting = fqsm::Reacting;
     //}
 }
