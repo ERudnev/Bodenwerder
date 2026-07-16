@@ -48,10 +48,12 @@ void workers_say_no()
 
     EXPECT_EQ(with<Cell>::get(main, first).value, 4);
 
+    base::message("test: EXPECTED log message below: worker will refuse to work and provoke transaction to fail...");
     main.branch([&](Writing context){
         with<Cell>::halve(context, first);
         with<Cell>::halve(context, second);
     });
+    base::message("...provoked message is above");
 
     EXPECT_EQ(with<Cell>::get(main, first).value, 4);
 }

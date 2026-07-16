@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdexcept>
-
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
 
@@ -18,7 +16,10 @@ namespace fqsm::features::reactions {
         }
 
         void apply(Reacting context) override {
-            if (!handler) throw std::runtime_error("null func");
+            if (!handler) {
+                context.deny("reaction::aspect_wide: null handler");
+                return;
+            }
             handler(context);
         }
 

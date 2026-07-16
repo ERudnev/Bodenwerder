@@ -47,14 +47,16 @@ namespace rmmr::asset {
         int channels = 0;
         stbi_uc* pixels = stbi_load(path.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
         if (not pixels) {
-            throw std::runtime_error("asset::Texture::compile: failed to load image: " + path.string());
+            context.deny("asset::Texture::compile: failed to load image: " + path.string());
+            return resource_old::Texture::Id::generate_random();
         }
 
         resource_old::Texture::Handle handle{};
         glGenTextures(1, &handle);
         if (not handle) {
             stbi_image_free(pixels);
-            throw std::runtime_error("asset::Texture::compile: glGenTextures failed");
+            context.deny("asset::Texture::compile: glGenTextures failed");
+            return resource_old::Texture::Id::generate_random();
         }
 
         glBindTexture(GL_TEXTURE_2D, handle);

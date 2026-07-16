@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 
+#include <format>
 #include <filesystem>
 #include <stdexcept>
 
@@ -147,7 +148,7 @@ namespace rmmr::resource {
 
     void Runtimes::Actions::install(Writing context, Id device) {
         if (with<Runtimes>::exists(context, device)) {
-            base::message("resource::Runtimes::install: already installed for device {}", device);
+            context.deny(std::format("resource::Runtimes::install: already installed for device {}", device));
             return;
         }
 
