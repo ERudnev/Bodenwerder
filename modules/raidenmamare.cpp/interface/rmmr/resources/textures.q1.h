@@ -15,22 +15,6 @@ namespace rmmr::resource::texture {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct FromFile : Feature<FromFile, Asset> {
-        struct Quantum {
-            filename file;
-        };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
-    struct Generated : Feature<Generated, Asset> {
-        struct Quantum {
-            index2 size;
-        };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
     struct Runtime : Entity<Runtime> {
         using Handle = GLuint;
 
@@ -41,6 +25,28 @@ namespace rmmr::resource::texture {
         };
         struct Internals;
         static const Behavior customAspectReactions();
+    };
+
+    struct FromFile : Feature<FromFile, Asset> {
+        struct Quantum {
+            filename file;
+        };
+        struct Actions : BaseActions {
+            static auto materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum;
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct Generated : Feature<Generated, Asset> {
+        struct Quantum {
+            index2 size;
+        };
+        struct Actions : BaseActions {
+            static auto materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum;
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
 }

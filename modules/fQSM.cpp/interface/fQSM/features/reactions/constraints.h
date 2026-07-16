@@ -39,7 +39,7 @@ namespace fqsm::features::reactions::constraint {
     void element<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).addedOrUpdated()) {
             if (not change.after) {
-                context.deny(std::format(R"(constraint::item_added_changed no corrector on "{}" {})", Rtid::name<Meta>(), change.id));
+                context.refuse(std::format(R"(constraint::item_added_changed no corrector on "{}" {})", Rtid::name<Meta>(), change.id));
                 continue;
             }
             const auto fix = this->action(*change.after);
@@ -54,7 +54,7 @@ namespace fqsm::features::reactions::constraint {
     void element_wide<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).addedOrUpdated()) {
             if (not change.after) {
-                context.deny(std::format(R"(constraint::item_added_changed no corrector on "{}" {})", Rtid::name<Meta>(), change.id));
+                context.refuse(std::format(R"(constraint::item_added_changed no corrector on "{}" {})", Rtid::name<Meta>(), change.id));
             }
             else {
                 const auto fix = this->action(context, change.id, *change.after);

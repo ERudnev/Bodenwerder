@@ -6,6 +6,7 @@
 #include <fQSM/processing/contexts/retrospective.h>
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/linear/delta.h>
+#include <fQSM/utility/poisoned.h>
 
 namespace fqsm::processing {
 
@@ -28,7 +29,7 @@ namespace fqsm::processing {
             , retrospective(std::make_shared<RetrospectiveContext>(origin, target, RetrospectiveContext::Upstream{}))
         {}
         // helpers:
-        void deny(std::string message) { reactions->accumulator->summary.critical.emplace_back(std::move(message)); }
+        utility::Poisoned refuse(std::string message) { reactions->accumulator->summary.critical.emplace_back(std::move(message)); return {};}
         void warning(std::string message) {reactions->accumulator->summary.warning.emplace_back(std::move(message)); }
 
         template<category::Any Meta>

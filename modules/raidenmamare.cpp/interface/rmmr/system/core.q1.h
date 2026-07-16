@@ -15,7 +15,7 @@ namespace rmmr::system {
         };
 
         struct Quantum {
-            string assets_root;
+            filepath assets_root;
             GLVer version;
         };
         struct Internals : DefaultInternals{};

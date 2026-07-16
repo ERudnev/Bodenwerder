@@ -19,7 +19,7 @@ int main() {
     try {
         State state;
 
-        const auto assets_root = std::filesystem::path(DAQL_ASSETS_DIR).string();
+        const auto assets_root = std::filesystem::path(DAQL_ASSETS_DIR);
         // TODO: implement deseralize<Meta>()->MEta::Quantum;
         const auto engine_startup_parameters = rmmr::Engine::StartupParameters{
             .assets_root = assets_root,

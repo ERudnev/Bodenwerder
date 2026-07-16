@@ -14,7 +14,7 @@ namespace {
             struct Actions : BaseActions {
                 static void halve(Writing context, Id id) {
                     if (get(context, id).value % 2 != 0)
-                        context.deny(std::format("Cell::halve(): dividing by 2 of odd value == {} is forbidden", get(context, id).value));
+                        context.refuse(std::format("Cell::halve(): dividing by 2 of odd value == {} is forbidden", get(context, id).value));
                     else
                         modify(context, id)->value /= 2;
                 }
@@ -56,10 +56,10 @@ void workers_say_no()
 
     EXPECT_EQ(with<Cell>::get(main, first).value, 4);
 
-    // simple (no reactions) deny:
+    // simple (no reactions) refuse:
     main.branch([first](Writing context){
         with<Cell>::modify(context, first)->value = 1000;
-        context.deny("i (basic worker) have changed my mind and aborting whole branch");
+        context.refuse("i (basic worker) have changed my mind and aborting whole branch");
     });
     base::message("...provoked message is above");
     EXPECT_EQ(with<Cell>::get(main, first).value, 4);

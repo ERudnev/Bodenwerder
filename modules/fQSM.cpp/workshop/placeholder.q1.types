@@ -8,8 +8,7 @@ namespace placeholder
     one
       x: integer
       y: integer
-      // all "one" reactions may listen only own aspect updates?
-      !ruleOne(-one) // reacts on deletion
+      !ruleOne(-one) // reacts on deletion; all "one" reactions may listen only own aspect updates?
       !ruleTwo(=one) // reacts on change (Quantum constraint)
     all
       !localRule(~) // ('~' mrans "type of"own type MyAttribute is iplicit argument

@@ -16,6 +16,7 @@ namespace Q1_iQSM
         using LocalType as integer
         field: string
 
+      // rules "!" not allowed
       struct StructWithMethods
         using Scalar as float
         x: Scalar
@@ -26,7 +27,6 @@ namespace Q1_iQSM
         ?add_to(>target: StructWithMethods)
         =add_from(?source: StructWithMethods)
         >build_from(?source: StructWithMethods) -> StructWithMethods
-        // rules "!" not allowed
 
     namespace Namespaces
       namespace Some

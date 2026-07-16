@@ -73,7 +73,7 @@ namespace fqsm::features::reactions {
 
         bool optionally_callable(Reacting context, std::string_view reason) const {
             if (actionFunc) return true;
-            context.deny(std::string(reason));
+            context.refuse(std::string(reason));
             return false;
         }
 

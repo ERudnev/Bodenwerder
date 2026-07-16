@@ -6,7 +6,7 @@ namespace rmmr
         major: integer
         minor: integer
       one
-        assets_root: string
+        assets_root: filepath
         version: GLVer
 
     // tricky Aspect: its Quantum is a root with a role of "owner of everything", all Actions are "all"(static)

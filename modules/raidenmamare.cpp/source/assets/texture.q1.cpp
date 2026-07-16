@@ -5,7 +5,6 @@
 #include <stb_image.h>
 
 #include <filesystem>
-#include <stdexcept>
 #include <string_view>
 
 namespace rmmr::asset {
@@ -17,9 +16,6 @@ namespace rmmr::asset {
         auto resolve_under_asset_root(const std::filesystem::path& asset_root, std::string_view relative_path) -> std::filesystem::path {
             const std::filesystem::path path(relative_path);
             if (path.is_absolute()) return path;
-            if (asset_root.empty()) {
-                throw std::runtime_error("asset::Texture::compile: asset root is empty");
-            }
             return asset_root / path;
         }
 
@@ -39,7 +35,7 @@ namespace rmmr::asset {
 
         glfwMakeContextCurrent(device_quantum.handle);
 
-        const std::filesystem::path asset_root(core_quantum.assets_root);
+        const auto& asset_root = core_quantum.assets_root;
         const auto path = resolve_under_asset_root(asset_root, Texture::Always::filename(asset.name, asset.library));
 
         int width = 0;
@@ -47,16 +43,14 @@ namespace rmmr::asset {
         int channels = 0;
         stbi_uc* pixels = stbi_load(path.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
         if (not pixels) {
-            context.deny("asset::Texture::compile: failed to load image: " + path.string());
-            return resource_old::Texture::Id::generate_random();
+            return context.refuse("asset::Texture::compile: failed to load image: " + path.string());
         }
 
         resource_old::Texture::Handle handle{};
         glGenTextures(1, &handle);
         if (not handle) {
             stbi_image_free(pixels);
-            context.deny("asset::Texture::compile: glGenTextures failed");
-            return resource_old::Texture::Id::generate_random();
+            return context.refuse("asset::Texture::compile: glGenTextures failed");
         }
 
         glBindTexture(GL_TEXTURE_2D, handle);

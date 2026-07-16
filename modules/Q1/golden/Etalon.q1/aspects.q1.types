@@ -32,10 +32,10 @@ namespace Q1_fQSM
         modulus: integer
         !modulus_clamped(~) // must be >= 1
 
+    // NOT IMPLEMENTED as Q1 feature: !sync(>one)
     component Remnant of Tag
       one
         power: integer @cache// == SampleEntity::data_field / Tag::Modulus (Tag quarantees integer)
-        // NOT IMPLEMENTED as Q1 feature: !sync(>one)
       all
         !sync(~Tag) //@
 
@@ -49,9 +49,7 @@ namespace Q1_fQSM
         main_anchor: anchor<Trivia> //@ any anchor<> / contro<> leads to custom Internals to add achnor/conrol behavior
         main_dummy: control<Trivia>
       all
-        // this function name "create" is reserved for "creating minimal set of Aspect items for this class, including Identity source (Entity)"
-        // in this example main_anchor Trivia is necessary, so it is included
-        >create(sample_value: integer)->#
+        >create(sample_value: integer)-># // reserved: minimal Aspect set including Identity source (Entity); here includes main_anchor Trivia
         >extend(existing: #SampleEntity)
         !limit_by_tag_count(~Tag)
 

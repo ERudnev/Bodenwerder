@@ -17,7 +17,7 @@ namespace placeholder {
         static void localRule(Reacting context) {
             int changesHappen = context.changes<MyAttribute>().addedOrUpdated().size();
             if (changesHappen > Always::recommendedUpdateSize)
-                context.deny(std::format("demo: MyAttributes {} updated at one, while limited by {}. aborting", changesHappen, Always::recommendedUpdateSize));
+                context.refuse(std::format("demo: MyAttributes {} updated at one, while limited by {}. aborting", changesHappen, Always::recommendedUpdateSize));
         }
 
         static void globalRule(Reacting context) {

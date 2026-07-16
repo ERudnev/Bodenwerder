@@ -14,7 +14,7 @@ namespace rmmr {
     class Engine : public fqsm::processing::orchestrator::Subsystem {
     public:
         struct StartupParameters {
-            string assets_root;
+            filepath assets_root;
             decltype(system::Window::Quantum::title) title;
             index2 requested_size;
             integer context_major;

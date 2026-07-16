@@ -15,15 +15,6 @@ namespace rmmr::resource::shader {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct FromFile : Feature<FromFile, Asset> {
-        struct Quantum {
-            filename vertex;
-            filename fragment;
-        };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
     struct Runtime : Entity<Runtime> {
         using Handle = GLuint;
 
@@ -33,6 +24,18 @@ namespace rmmr::resource::shader {
         };
         struct Internals;
         static const Behavior customAspectReactions();
+    };
+
+    struct FromFile : Feature<FromFile, Asset> {
+        struct Quantum {
+            filename vertex;
+            filename fragment;
+        };
+        struct Actions : BaseActions {
+            static auto materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum;
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
 }

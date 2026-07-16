@@ -12,18 +12,16 @@ namespace rmmr::system {
 
     using namespace fqsm::api;
 
-    auto Interface::create(Writing context, string path, Core::GLVer version) -> Core::Id {
-        const filepath manager_path = path;
-
+    auto Interface::create(Writing context, filepath path, Core::GLVer version) -> Core::Id {
         const auto core = with<Core>::create(context, Core::Quantum{
-            .assets_root = std::move(path),
+            .assets_root = path,
             .version = version,
         });
 
         with<resource::Manager>::extend(context, core, resource::Manager::Quantum{
-            .location = manager_path,
+            .location = path,
         });
-        with<resource::Assets>::extend(context, core, manager_path);
+        with<resource::Assets>::extend(context, core, path);
 
         return core;
     }

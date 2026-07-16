@@ -17,7 +17,7 @@ namespace fqsm::features::reactions {
 
         void apply(Reacting context) override {
             if (!handler) {
-                context.deny("reaction::aspect_wide: null handler");
+                context.refuse("reaction::aspect_wide: null handler");
                 return;
             }
             handler(context);

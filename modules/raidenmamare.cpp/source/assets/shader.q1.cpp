@@ -121,8 +121,7 @@ namespace rmmr::asset {
 
         glfwMakeContextCurrent(device_quantum.handle);
 
-        const std::filesystem::path asset_root(core_quantum.assets_root);
-        const GLuint program = create_program(asset_root, asset.name, asset.library);
+        const GLuint program = create_program(core_quantum.assets_root, asset.name, asset.library);
 
         with<resource_old::Shader_group>::extend(context, device);
         return with<resource_old::Shader_group>::addElement(context, device, resource_old::Shader::Quantum{

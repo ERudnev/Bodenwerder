@@ -24,7 +24,7 @@ namespace fqsm::features::reactions {
     void deletion<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).removed()) {
             if (not change.before)
-                context.deny(std::format(R"(reaction::deletion failed on "{}" {})", Rtid::name<Meta>(), change.id));
+                context.refuse(std::format(R"(reaction::deletion failed on "{}" {})", Rtid::name<Meta>(), change.id));
             else
                 this->action(::fqsm::Retrospecting{context.retrospective}, change.id, change.throwing_before());
                 //if (!fix) continue;
