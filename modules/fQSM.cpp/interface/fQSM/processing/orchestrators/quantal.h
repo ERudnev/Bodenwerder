@@ -1,7 +1,6 @@
 #pragma once
 
 #include <format>
-#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -12,69 +11,72 @@
 
 namespace fqsm::processing::orchestrator {
 
-    // not derived from Transaction, because it is... "final" one, not allowed to propagate context
-    // TODO: consider to remove this thing one day...
-
-    // [deprecated]
+    // Mutable view of a Quantum already living in the Writing patch (no private buffer).
+    // Lifetime of the referenced Quantum is the Writing/patch; this gate only keeps the Gate alive.
     template<category::Any Meta>
-    struct Quantal {
+    struct QuantumGate {
         const Id<Meta> id;
 
-        explicit Quantal(Writing gate, Id<Meta> id)
-            : id(id), gate(std::move(gate)), buffer(requireActual(this->gate, id)) {}
+        explicit QuantumGate(Writing gate, Id<Meta> id)
+            : id(id)
+            , gate(std::move(gate))
+            , value(open_patchlet(this->gate, this->id))
+        {}
 
-        ~Quantal() {
-            gate.workers_interface().updates<Meta>().put_modification(id, std::move(buffer));
-        }
+        QuantumGate(const QuantumGate&) = delete;
+        QuantumGate& operator=(const QuantumGate&) = delete;
+        QuantumGate(QuantumGate&&) = delete;
+        QuantumGate& operator=(QuantumGate&&) = delete;
 
-        Quantal(const Quantal&) = delete;
-        Quantal& operator=(const Quantal&) = delete;
-        Quantal(Quantal&&) = delete;
-        Quantal& operator=(Quantal&&) = delete;
-
-        Quantum<Meta>* operator->() { return &buffer; }
-        Quantum<Meta>& operator*() { return buffer; }
-
-    protected:
-        std::optional<Quantum<Meta>> getActual(Reading source, Id<Meta> itemId) const {
-            return source->aspect<Meta>().items().get(itemId);
-        }
-
-        Quantum<Meta> requireActual(Reading source, Id<Meta> itemId) const {
-            const auto actual = getActual(source, itemId);
-            if (!actual) {
-                throw std::runtime_error(std::format(
-                    R"(cannot modify "{}" {}: not present)",
-                    Rtid::name<Meta>(),
-                    itemId));
-            }
-            return *actual;
-        }
-
-        Writing gate;
-        Quantum<Meta> buffer;
-    };
-
-    template<category::Any Meta>
-    struct Global {
-        explicit Global(Writing gate)
-            : gate(std::move(gate)), buffer(this->gate->aspect<Meta>().global()) {}
-
-        ~Global() {
-            gate.workers_interface().updates<Meta>().put_global(std::move(buffer));
-        }
-
-        Global(const Global&) = delete;
-        Global& operator=(const Global&) = delete;
-        Global(Global&&) = delete;
-        Global& operator=(Global&&) = delete;
-
-        GlobalValue<Meta>* operator->() { return &buffer; }
-        GlobalValue<Meta>& operator*() { return buffer; }
+        Quantum<Meta>* operator->() { return &value; }
+        Quantum<Meta>& operator*() { return value; }
 
     private:
+        static Quantum<Meta>& open_patchlet(Writing& gate, Id<Meta> id) {
+            return gate.workers_interface().updates<Meta>().update_modification(
+                id,
+                [&]() -> const Quantum<Meta>& {
+                    const auto* found = gate->aspect<Meta>().items().find(id);
+                    if (!found) {
+                        throw std::runtime_error(std::format(
+                            R"(cannot modify "{}" {}: not present)",
+                            Rtid::name<Meta>(),
+                            id));
+                    }
+                    return *found;
+                });
+        }
+
         Writing gate;
-        GlobalValue<Meta> buffer;
+        Quantum<Meta>& value;
+    };
+
+    // Mutable view of GlobalValue in the Writing patch (same immediate semantics as QuantumGate).
+    template<category::Any Meta>
+    struct GlobalGate {
+        explicit GlobalGate(Writing gate)
+            : gate(std::move(gate))
+            , value(open_global(this->gate))
+        {}
+
+        GlobalGate(const GlobalGate&) = delete;
+        GlobalGate& operator=(const GlobalGate&) = delete;
+        GlobalGate(GlobalGate&&) = delete;
+        GlobalGate& operator=(GlobalGate&&) = delete;
+
+        GlobalValue<Meta>* operator->() { return &value; }
+        GlobalValue<Meta>& operator*() { return value; }
+
+    private:
+        static GlobalValue<Meta>& open_global(Writing& gate) {
+            return gate.workers_interface().updates<Meta>().update_global(
+                [&]() -> const GlobalValue<Meta>& {
+                    return gate->aspect<Meta>().global();
+                });
+        }
+
+        Writing gate;
+        GlobalValue<Meta>& value;
     };
 
 }

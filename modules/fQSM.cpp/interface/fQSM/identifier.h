@@ -24,6 +24,9 @@ namespace fqsm {
 
         explicit Identifier(BaseType v) : value(v) {}
 
+        /// Sentinel for BadValue / refuse paths; not a valid entity id.
+        static Identifier bad() { return Identifier{BaseType{}}; }
+
         // do not use for any kind of logic! Only for std::map and other containers!
         bool operator<(const Identifier& rhs) const { return value < rhs.value; }
         static Identifier generate_random() { return Identifier{internal::id::generate_unique()}; }

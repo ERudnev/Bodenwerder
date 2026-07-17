@@ -32,15 +32,22 @@ void globals()
     establish::Realm main(schema);
 
     with<A>::modify_global(main)->globalValue = 2;
-    EXPECT_EQ(with<A>::get_global(main).globalValue, 2) << "update commited immediately (unnamed RAII already dead)";
+    EXPECT_EQ(with<A>::get_global(main).globalValue, 2) << "unnamed GlobalGate: Writing collapsed into realm at end of full-expression";
 
     {
         auto tx = with<A>::modify_global(main);
         tx->globalValue = 7;
-        EXPECT_EQ(with<A>::get_global(main).globalValue, 2) << "update is postponed till the end of the scope";
+        // get_global(main) reads committed realm, not the still-open Writing patch
+        EXPECT_EQ(with<A>::get_global(main).globalValue, 2) << "named GlobalGate: realm not updated until Writing collapses";
     }
 
-    EXPECT_EQ(with<A>::get_global(main).globalValue, 7) << "update comitted after the scope";
+    EXPECT_EQ(with<A>::get_global(main).globalValue, 7) << "after GlobalGate destroyed, Writing collapsed into realm";
+
+    main.branch([&](Writing context) {
+        with<A>::modify_global(context)->globalValue = 11;
+        EXPECT_EQ(with<A>::get_global(context).globalValue, 11) << "same Writing: Future sees GlobalGate patchlet immediately";
+    });
+    EXPECT_EQ(with<A>::get_global(main).globalValue, 11);
 }
 
 } // namespace tests

@@ -6,7 +6,7 @@
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/model/complex/future.h>
-#include <fQSM/utility/poisoned.h>
+#include <fQSM/utility/bad_value.h>
 
 namespace fqsm::processing::context {
 
@@ -47,7 +47,7 @@ namespace fqsm::processing {
 
         model::complex::WorkersInterface& workers_interface() { return *context->accumulator; }
         // helpers:
-        utility::Poisoned refuse(std::string message) { context->accumulator->summary.critical.emplace_back(std::move(message)); return {}; }
+        utility::BadValue refuse(std::string message) { context->accumulator->summary.critical.emplace_back(std::move(message)); return {}; }
         void warning(std::string message) {context->accumulator->summary.warning.emplace_back(std::move(message)); }
 
     private:

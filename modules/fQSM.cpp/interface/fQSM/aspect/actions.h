@@ -62,8 +62,8 @@ namespace fqsm::aspect::actions {
         static auto get_global(Reading) -> const Global&;
         static void remove(Writing, Id);
         // elementary (RAII):
-        static auto modify(Writing, Id) -> ::fqsm::processing::orchestrator::Quantal<Meta>;
-        static auto modify_global(Writing) -> ::fqsm::processing::orchestrator::Global<Meta>;
+        static auto modify(Writing, Id) -> ::fqsm::processing::orchestrator::QuantumGate<Meta>;
+        static auto modify_global(Writing) -> ::fqsm::processing::orchestrator::GlobalGate<Meta>;
     };
 
 
@@ -185,15 +185,15 @@ namespace fqsm::aspect::actions {
     template<typename Meta>
     auto Any<Meta>
     ::modify(Writing context, Id id)
-    -> ::fqsm::processing::orchestrator::Quantal<Meta> {
-        return ::fqsm::processing::orchestrator::Quantal<Meta>{context, id};
+    -> ::fqsm::processing::orchestrator::QuantumGate<Meta> {
+        return ::fqsm::processing::orchestrator::QuantumGate<Meta>{context, id};
     }
 
     template<typename Meta>
     auto Any<Meta>
     ::modify_global(Writing context)
-    -> ::fqsm::processing::orchestrator::Global<Meta> {
-        return ::fqsm::processing::orchestrator::Global<Meta>{context};
+    -> ::fqsm::processing::orchestrator::GlobalGate<Meta> {
+        return ::fqsm::processing::orchestrator::GlobalGate<Meta>{context};
     }
 
     //

@@ -22,6 +22,7 @@
     X(globals) \
     X(global_is_change_too) \
     X(immediate) \
+    X(quantal) \
     X(transaction_hierarchy) \
     // end
 

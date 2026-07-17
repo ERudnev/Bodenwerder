@@ -17,6 +17,7 @@ namespace fqsm::model::linear {
         virtual void put_add(Id<Meta>, Quantum<Meta>) = 0;
         virtual void put_global(GlobalValue<Meta>) = 0;
         virtual Quantum<Meta>& update_modification(Id<Meta>, base::function_ref<const Quantum<Meta>&()> prepatch) = 0;
+        virtual GlobalValue<Meta>& update_global(base::function_ref<const GlobalValue<Meta>&()> prepatch) = 0;
     };
 
     template<category::Any Meta>
@@ -37,6 +38,7 @@ namespace fqsm::model::linear {
         void put_add(Id<Meta>, Quantum<Meta>) override;
         void put_global(GlobalValue<Meta>) override;
         Quantum<Meta>& update_modification(Id<Meta>, base::function_ref<const Quantum<Meta>&()> prepatch) override;
+        GlobalValue<Meta>& update_global(base::function_ref<const GlobalValue<Meta>&()> prepatch) override;
 
         // schema
         static ref<patch::Erased> create() { return base::make_shared<Patch<Meta>>(); }
@@ -70,6 +72,15 @@ namespace fqsm::model::linear {
     Quantum<Meta>& Patch<Meta>
     ::update_modification(Id<Meta> id, base::function_ref<const Quantum<Meta>&()> prepatch) {
         return items.modify_modification(std::move(id), prepatch);
+    }
+
+    template<category::Any Meta>
+    GlobalValue<Meta>& Patch<Meta>
+    ::update_global(base::function_ref<const GlobalValue<Meta>&()> prepatch) {
+        if (not global.has_value()) {
+            global = prepatch();
+        }
+        return *global;
     }
 
     template<category::Any Meta>
