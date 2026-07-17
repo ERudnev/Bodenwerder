@@ -27,7 +27,7 @@ namespace rmmr::resource::texture {
         static const Behavior customAspectReactions();
     };
 
-    struct FromFile : Feature<FromFile, Asset> {
+    struct Loader : Feature<Loader, Asset> {
         struct Quantum {
             filename file;
         };
@@ -38,7 +38,7 @@ namespace rmmr::resource::texture {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct Generated : Feature<Generated, Asset> {
+    struct Generator : Feature<Generator, Asset> {
         struct Quantum {
             index2 size;
         };

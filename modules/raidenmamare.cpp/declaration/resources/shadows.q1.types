@@ -20,8 +20,8 @@ namespace rmmr
         ?clear()
         ?unbind()
 
-    // Kind owns allocation config (unlike empty material::Composed): size → FBO/depth on device
-    feature Allocated of Asset
+    // Kind owns allocation config (unlike empty material::Composer): size → FBO/depth on device
+    feature Allocator of Asset
       one
         size: index2
         >materialize(#system::Device) -> Runtime

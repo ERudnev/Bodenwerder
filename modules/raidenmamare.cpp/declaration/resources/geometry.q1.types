@@ -1,5 +1,5 @@
-import "../math"
-import "../renderer/gl"
+import "math"
+import "renderer/gl"
 import "resources/manager"
 
 namespace rmmr
@@ -8,18 +8,8 @@ namespace rmmr
 
     // Persistent mesh recipe. Scene may hold #geometry::Asset — never Runtime.
     feature Asset of resource::Unit
-      struct Channel
-        using Id as @external(rmmr::primitive::GeometrySemantics::PersistentId)
-        using Type as @external(rmmr::primitive::GeometrySemantics::Type)
-        using Layout as vector<Id>
-      always
-        ?layoutIds(vector<string>) -> Channel::Layout
       one
-        layout: Channel::Layout
-        positions: vector<Pos>
-        normals: vector<Pos>
-        uv0: vector<UV>
-        indices: vector<integer>
+        slots: vector<Pos> // i insist on exactly this kind of slots
 
     entity Runtime
       using VertexArray as @external(OpenGL vertex array handle)
@@ -33,7 +23,13 @@ namespace rmmr
         vertex_count: renderer::Count
         index_count: renderer::Count
 
-    // CPU buffers on Asset → GL VAO/VBO/EBO on device (same role as material::Composed)
-    feature Composed of Asset
+    feature Loader of Asset
       one
+        file: filename
+        >materialize(#system::Device) -> Runtime
+
+    feature Generator of Asset
+      enum Type : triangle, kube, gridPlane
+      one
+        type: Type
         >materialize(#system::Device) -> Runtime

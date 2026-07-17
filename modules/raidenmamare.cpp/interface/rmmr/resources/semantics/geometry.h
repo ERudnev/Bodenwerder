@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 
 #include <fQSM/api/builtins.h>
@@ -59,6 +60,19 @@ namespace rmmr::primitive {
             throw std::runtime_error("GeometrySemantics::id_of: unknown geometry semantic name");
         }
 
+        static auto layoutIds(const vector<string>& names) -> vector<PersistentId> {
+            vector<PersistentId> out;
+            out.reserve(names.size());
+            for (const auto& name : names) {
+                const auto id = id_of(name);
+                if (id == PersistentId{0}) {
+                    throw std::runtime_error("GeometrySemantics::layoutIds: unknown geometry channel semantic: " + name);
+                }
+                out.push_back(id);
+            }
+            return out;
+        }
+
         static constexpr auto type_of(PersistentId id) -> Type {
             for (const auto& e : vocabulary) {
                 if (e.id == id) return e.type;
@@ -67,5 +81,20 @@ namespace rmmr::primitive {
         }
     };
 
-}
+    namespace geometry {
+        // Intermediate CPU mesh for Loader/Generator internals (not an Asset field).
+        struct CpuPresentation {
+            struct Channel {
+                using Id = primitive::GeometrySemantics::PersistentId;
+                using Type = primitive::GeometrySemantics::Type;
+                using Layout = vector<Id>;
+            };
 
+            Channel::Layout layout;
+            vector<Pos> positions;
+            vector<Pos> normals;
+            vector<UV> uv0;
+            vector<integer> indices;
+        };
+    }
+}

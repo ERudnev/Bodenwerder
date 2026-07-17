@@ -1,33 +1,12 @@
-#include "geometryGenerator.h"
+#include <rmmr/resources/builders/geometryGenerator.h>
 
-#include <stdexcept>
+namespace rmmr::resource::builders::geometry {
 
-namespace rmmr::geometry {
     using namespace fqsm::api;
-    using namespace api_for_internals;
-    namespace {
 
-        auto bake(Writing context, system::Device::Id device, asset::Geometry::Quantum asset_quantum) -> resource_old::Geometry::Id {
-            const auto asset_geometry = with<asset::Geometry>::create(context, std::move(asset_quantum));
-            const auto resource_geometry = asset::Geometry::Actions::compile(context, asset_geometry, device);
-
-            const auto& runtime = with<resource_old::Geometry>::get(context, resource_geometry);
-            if (not runtime.vao || not runtime.vbo || runtime.vertex_count <= renderer::Count{0}) {
-                throw std::runtime_error("geometry::GeometryGenerator: geometry runtime is incomplete (VAO/VBO/vertex_count)");
-            }
-            if (runtime.index_count > renderer::Count{0} && not runtime.ebo) {
-                throw std::runtime_error("geometry::GeometryGenerator: indexed geometry is missing EBO");
-            }
-
-            return resource_geometry;
-        }
-
-    } // namespace
-
-    auto GeometryGenerator::triangle(Writing context, system::Device::Id device) -> resource_old::Geometry::Id {
-        return bake(context, device, asset::Geometry::Quantum{
-            .debugName = "triangle",
-            .layout = asset::Geometry::Always::layoutIds(vector<string>{"position"}),
+    auto GeometryGenerator::triangle() -> CpuPresentation {
+        return CpuPresentation{
+            .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position"}),
             .positions = vector<Pos>{
                 Pos{-0.5f, -0.5f, 0.0f},
                 Pos{0.5f, -0.5f, 0.0f},
@@ -35,13 +14,13 @@ namespace rmmr::geometry {
             },
             .normals = {},
             .uv0 = {},
-        });
+            .indices = {},
+        };
     }
 
-    auto GeometryGenerator::kube(Writing context, system::Device::Id device) -> resource_old::Geometry::Id {
-        return bake(context, device, asset::Geometry::Quantum{
-            .debugName = "kube",
-            .layout = asset::Geometry::Always::layoutIds(vector<string>{"position", "normal", "uv0"}),
+    auto GeometryGenerator::kube() -> CpuPresentation {
+        return CpuPresentation{
+            .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"}),
             .positions = vector<Pos>{
                 Pos{-0.5f, -0.5f, 0.5f},
                 Pos{0.5f, -0.5f, 0.5f},
@@ -110,15 +89,14 @@ namespace rmmr::geometry {
                 16, 17, 18, 16, 18, 19,
                 20, 21, 22, 20, 22, 23,
             },
-        });
+        };
     }
 
-    auto GeometryGenerator::gridPlane(Writing context, system::Device::Id device) -> resource_old::Geometry::Id {
+    auto GeometryGenerator::gridPlane() -> CpuPresentation {
         constexpr float half = 80.0f;
 
-        return bake(context, device, asset::Geometry::Quantum{
-            .debugName = "gridPlane",
-            .layout = asset::Geometry::Always::layoutIds(vector<string>{"position"}),
+        return CpuPresentation{
+            .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position"}),
             .positions = vector<Pos>{
                 Pos{-half, 0.0f, -half},
                 Pos{half, 0.0f, -half},
@@ -129,7 +107,8 @@ namespace rmmr::geometry {
             },
             .normals = {},
             .uv0 = {},
-        });
+            .indices = {},
+        };
     }
 
 }

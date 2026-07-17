@@ -89,6 +89,19 @@ namespace rmmr::material {
             throw std::runtime_error("Semantics::id_of: unknown uniform semantic name");
         }
 
+        static auto ids_of(const vector<string>& names) -> vector<PersistentId> {
+            vector<PersistentId> out;
+            out.reserve(names.size());
+            for (const auto& name : names) {
+                const auto id = id_of(name);
+                if (id == PersistentId{0}) {
+                    throw std::runtime_error("Semantics::ids_of: unknown uniform semantic: " + name);
+                }
+                out.push_back(id);
+            }
+            return out;
+        }
+
         static constexpr auto type_of(PersistentId id) -> Type {
             for (const auto& e : vocabulary) {
                 if (e.id == id) return e.type;

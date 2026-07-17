@@ -1,12 +1,13 @@
 #pragma once
 
-#include <rmmr/assets/semantics/geometry.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/renderer/gl.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/system/core.q1.h>
 
 #include <GL/glew.h>
+
+#include <cstdint>
 
 #include <fQSM/api/interface.h>
 
@@ -15,20 +16,8 @@ namespace rmmr::resource::geometry {
     using namespace fqsm::api;
 
     struct Asset : Feature<Asset, resource::Unit> {
-        struct Channel {
-            using Id = primitive::GeometrySemantics::PersistentId;
-            using Type = primitive::GeometrySemantics::Type;
-            using Layout = vector<Id>;
-        };
         struct Quantum {
-            Channel::Layout layout;
-            vector<Pos> positions;
-            vector<Pos> normals;
-            vector<UV> uv0;
-            vector<integer> indices;
-        };
-        struct Always {
-            static auto layoutIds(const vector<string>& names) -> Channel::Layout;
+            vector<Pos> slots;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
@@ -51,8 +40,26 @@ namespace rmmr::resource::geometry {
         static const Behavior customAspectReactions();
     };
 
-    struct Composed : Feature<Composed, Asset> {
-        struct Quantum {};
+    struct Loader : Feature<Loader, Asset> {
+        struct Quantum {
+            filename file;
+        };
+        struct Actions : BaseActions {
+            static auto materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum;
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct Generator : Feature<Generator, Asset> {
+        enum class Type : std::uint8_t {
+            triangle,
+            kube,
+            gridPlane,
+        };
+        struct Quantum {
+            Type type;
+        };
         struct Actions : BaseActions {
             static auto materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum;
         };

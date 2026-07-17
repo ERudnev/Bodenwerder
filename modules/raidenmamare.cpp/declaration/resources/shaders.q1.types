@@ -14,7 +14,7 @@ namespace rmmr
         handle: Handle
 
     // for shader from files:
-    feature FromFile of Asset
+    feature Loader of Asset
       one
         vertex: filename
         fragment: filename

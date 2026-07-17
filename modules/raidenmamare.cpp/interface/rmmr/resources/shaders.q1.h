@@ -26,7 +26,7 @@ namespace rmmr::resource::shader {
         static const Behavior customAspectReactions();
     };
 
-    struct FromFile : Feature<FromFile, Asset> {
+    struct Loader : Feature<Loader, Asset> {
         struct Quantum {
             filename vertex;
             filename fragment;

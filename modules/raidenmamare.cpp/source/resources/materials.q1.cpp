@@ -4,34 +4,17 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-#include <stdexcept>
-
 namespace rmmr::resource::material {
 
     using namespace fqsm::api;
 
-    auto Asset::Always::uniformIds(const vector<string>& names) -> Uniform::Palette {
-        Uniform::Palette out;
-        out.reserve(names.size());
-
-        for (const auto& name : names) {
-            const auto id = ::rmmr::material::Semantics::id_of(name);
-            if (id == ::rmmr::material::Semantics::PersistentId{0}) {
-                throw std::runtime_error("resource::material::Asset::uniformIds: unknown uniform semantic: " + name);
-            }
-            out.push_back(id);
-        }
-
-        return out;
-    }
-
-    auto Composed::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> Runtime::Quantum {
+    auto Composer::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> Runtime::Quantum {
         const auto& asset = with<Asset>::get(context, asset_id);
         const auto& runtimes = with<Runtimes>::get(context, device);
 
         const auto shader_it = runtimes.shaders_id_mapping.find(asset.program);
         if (shader_it == runtimes.shaders_id_mapping.end()) {
-            return context.refuse("resource::material::Composed::materialize: shader runtime missing for material asset");
+            return context.refuse("resource::material::Composer::materialize: shader runtime missing for material asset");
         }
 
         const auto& shader_quantum = with<shader::Runtime>::get(context, shader_it->second);
@@ -70,7 +53,7 @@ namespace rmmr::resource::material {
         for (const auto& texture_binding : asset.textures) {
             const auto texture_it = runtimes.textures_id_mapping.find(texture_binding.texture);
             if (texture_it == runtimes.textures_id_mapping.end()) {
-                return context.refuse("resource::material::Composed::materialize: texture runtime missing for material asset");
+                return context.refuse("resource::material::Composer::materialize: texture runtime missing for material asset");
             }
             textures.push_back(Runtime::TextureBinding{
                 .id = texture_binding.id,

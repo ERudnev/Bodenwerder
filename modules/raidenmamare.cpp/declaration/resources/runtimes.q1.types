@@ -6,13 +6,13 @@ namespace rmmr
     // Core-level interface:
     component Assets of Manager
       one
-        debug_texture: texture::Asset?
-        >add_texture_file(Unit, texture::Asset, texture::FromFile)->#texture::Asset
-        >add_texture_generated(Unit, texture::Asset, texture::Generated)->#texture::Asset
-        >add_shader_file(Unit, shader::Asset, shader::FromFile)->#shader::Asset
-        >add_material(Unit, material::Asset, material::Composed)->#material::Asset
-        >add_shadow_allocated(Unit, shadow::Asset, shadow::Allocated)->#shadow::Asset
-        >add_geometry(Unit, geometry::Asset, geometry::Composed)->#geometry::Asset
+        >add_texture_loader(Unit, texture::Asset, texture::Loader)->#texture::Asset
+        >add_texture_generator(Unit, texture::Asset, texture::Generator)->#texture::Asset
+        >add_shader_loader(Unit, shader::Asset, shader::Loader)->#shader::Asset
+        >add_material(Unit, material::Asset, material::Composer)->#material::Asset
+        >add_shadow_allocator(Unit, shadow::Asset, shadow::Allocator)->#shadow::Asset
+        >add_geometry_loader(Unit, geometry::Asset, geometry::Loader)->#geometry::Asset
+        >add_geometry_generator(Unit, geometry::Asset, geometry::Generator)->#geometry::Asset
       all
         >extend(#Manager, path: filepath)
 

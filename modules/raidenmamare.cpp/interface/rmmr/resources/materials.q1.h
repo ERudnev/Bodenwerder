@@ -22,9 +22,6 @@ namespace rmmr::resource::material {
             Uniform::Palette uniforms;
             vector<TextureBinding> textures;
         };
-        struct Always {
-            static auto uniformIds(const vector<string>& names) -> Uniform::Palette;
-        };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };
@@ -48,7 +45,7 @@ namespace rmmr::resource::material {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct Composed : Feature<Composed, Asset> {
+    struct Composer : Feature<Composer, Asset> {
         struct Quantum {};
         struct Actions : BaseActions {
             static auto materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum;

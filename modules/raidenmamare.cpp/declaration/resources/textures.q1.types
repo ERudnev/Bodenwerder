@@ -15,13 +15,13 @@ namespace rmmr
         size: index2
 
     // for texture from file:
-    feature FromFile of Asset
+    feature Loader of Asset
       one
         file: filename
         >materialize(#system::Device) -> Runtime // kind owns GL/load; returns Runtime value (Runtimes inserts into group + mapping)
 
     // placeholder for more configurable thing, just means "white circle"
-    feature Generated of Asset
+    feature Generator of Asset
       one
         size: index2
         >materialize(#system::Device) -> Runtime

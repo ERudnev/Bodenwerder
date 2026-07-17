@@ -9,18 +9,18 @@ namespace rmmr::resource::shadow {
 
     using namespace fqsm::api;
 
-    auto Allocated::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> Runtime::Quantum {
-        const auto& allocated = with<Allocated>::get(context, asset_id);
+    auto Allocator::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> Runtime::Quantum {
+        const auto& allocator = with<Allocator>::get(context, asset_id);
         const auto& device_quantum = with<system::Device>::get(context, device);
         glfwMakeContextCurrent(device_quantum.handle);
 
-        const int width = std::max(static_cast<int>(allocated.size.x), 1);
-        const int height = std::max(static_cast<int>(allocated.size.y), 1);
+        const int width = std::max(static_cast<int>(allocator.size.x), 1);
+        const int height = std::max(static_cast<int>(allocator.size.y), 1);
 
         Runtime::DepthTexture depth{};
         glGenTextures(1, &depth);
         if (not depth) {
-            return context.refuse("resource::shadow::Allocated::materialize: glGenTextures failed");
+            return context.refuse("resource::shadow::Allocator::materialize: glGenTextures failed");
         }
 
         glBindTexture(GL_TEXTURE_2D, depth);
@@ -36,7 +36,7 @@ namespace rmmr::resource::shadow {
         glGenFramebuffers(1, &fbo);
         if (not fbo) {
             glDeleteTextures(1, &depth);
-            return context.refuse("resource::shadow::Allocated::materialize: glGenFramebuffers failed");
+            return context.refuse("resource::shadow::Allocator::materialize: glGenFramebuffers failed");
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
@@ -48,7 +48,7 @@ namespace rmmr::resource::shadow {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glDeleteFramebuffers(1, &fbo);
             glDeleteTextures(1, &depth);
-            return context.refuse("resource::shadow::Allocated::materialize: framebuffer incomplete");
+            return context.refuse("resource::shadow::Allocator::materialize: framebuffer incomplete");
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -58,7 +58,7 @@ namespace rmmr::resource::shadow {
             .device = device,
             .fbo = fbo,
             .depth = depth,
-            .size = allocated.size,
+            .size = allocator.size,
         };
     }
 

@@ -56,40 +56,40 @@ namespace rmmr::resource::shader {
 
     } // namespace
 
-    auto FromFile::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> Runtime::Quantum {
-        const auto& from_file = with<FromFile>::get(context, asset_id);
+    auto Loader::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> Runtime::Quantum {
+        const auto& loader = with<Loader>::get(context, asset_id);
         const auto& unit = with<Unit>::get(context, asset_id);
         const auto& manager = with<Manager>::get(context, unit.manager);
 
         const auto& device_quantum = with<system::Device>::get(context, device);
         glfwMakeContextCurrent(device_quantum.handle);
 
-        const auto vertex_path = resolve_under_manager(manager, unit, from_file.vertex);
-        const auto fragment_path = resolve_under_manager(manager, unit, from_file.fragment);
+        const auto vertex_path = resolve_under_manager(manager, unit, loader.vertex);
+        const auto fragment_path = resolve_under_manager(manager, unit, loader.fragment);
 
         const auto vertex_source = read_text_file(vertex_path);
         if (not vertex_source or vertex_source->empty())
-            return context.refuse("resource::shader::FromFile::materialize: vertex shader unreadable: " + vertex_path.string());
+            return context.refuse("resource::shader::Loader::materialize: vertex shader unreadable: " + vertex_path.string());
 
         const auto fragment_source = read_text_file(fragment_path);
         if (not fragment_source or fragment_source->empty())
-            return context.refuse("resource::shader::FromFile::materialize: fragment shader unreadable: " + fragment_path.string());
+            return context.refuse("resource::shader::Loader::materialize: fragment shader unreadable: " + fragment_path.string());
 
         const auto vertex_shader = compile_shader_stage(GL_VERTEX_SHADER, *vertex_source);
         if (not vertex_shader)
-            return context.refuse("resource::shader::FromFile::materialize: vertex shader compile failed: " + std::string(from_file.vertex));
+            return context.refuse("resource::shader::Loader::materialize: vertex shader compile failed: " + std::string(loader.vertex));
 
         const auto fragment_shader = compile_shader_stage(GL_FRAGMENT_SHADER, *fragment_source);
         if (not fragment_shader) {
             glDeleteShader(*vertex_shader);
-            return context.refuse("resource::shader::FromFile::materialize: fragment shader compile failed: " + std::string(from_file.fragment));
+            return context.refuse("resource::shader::Loader::materialize: fragment shader compile failed: " + std::string(loader.fragment));
         }
 
         const GLuint program = glCreateProgram();
         if (not program) {
             glDeleteShader(*vertex_shader);
             glDeleteShader(*fragment_shader);
-            return context.refuse("resource::shader::FromFile::materialize: glCreateProgram failed");
+            return context.refuse("resource::shader::Loader::materialize: glCreateProgram failed");
         }
 
         glAttachShader(program, *vertex_shader);
@@ -105,7 +105,7 @@ namespace rmmr::resource::shader {
             char info_log[2048];
             glGetProgramInfoLog(program, sizeof(info_log), nullptr, info_log);
             glDeleteProgram(program);
-            return context.refuse(std::string("resource::shader::FromFile::materialize: program link failed: ") + info_log);
+            return context.refuse(std::string("resource::shader::Loader::materialize: program link failed: ") + info_log);
         }
 
         return Runtime::Quantum{

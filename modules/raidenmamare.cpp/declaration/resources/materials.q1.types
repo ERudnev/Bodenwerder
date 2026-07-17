@@ -12,8 +12,6 @@ namespace rmmr
       struct TextureBinding
         id: Uniform::Id
         texture: #texture::Asset
-      always
-        ?uniformIds(vector<string>) -> Uniform::Palette
       one
         program: #shader::Asset
         uniforms: Uniform::Palette
@@ -32,6 +30,6 @@ namespace rmmr
         ?apply(#system::Device)
 
     // recipe: shader asset + palette + texture slots → device Runtime
-    feature Composed of Asset
+    feature Composer of Asset
       one
         >materialize(#system::Device) -> Runtime

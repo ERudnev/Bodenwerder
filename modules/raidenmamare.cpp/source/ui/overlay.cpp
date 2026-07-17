@@ -8,7 +8,7 @@
 #include <unordered_map>
 
 #include <rmmr/assets/material.q1.h>
-#include <rmmr/assets/semantics/uniform.h>
+#include <rmmr/resources/semantics/uniform.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/root.q1.h>

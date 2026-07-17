@@ -5,7 +5,7 @@
 #include <rmmr/assets/shader.q1.h>
 #include <rmmr/assets/texture.q1.h>
 #include <rmmr/controller/camera.q1.h>
-#include <rmmr/resources/geometries.q1.h>
+#include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -46,21 +46,26 @@ namespace {
         using resource::Assets;
         using resource::Unit;
 
-        const auto debug_texture = *with<Assets>::get(context, assets).debug_texture;
+        const auto debug_texture = Assets::Actions::add_texture_loader(
+            context,
+            assets,
+            Unit::Quantum{.manager = assets, .name = "debug_texture", .library = "rmmr"},
+            resource::texture::Asset::Quantum{},
+            resource::texture::Loader::Quantum{.file = "textures/debug01.jpg"});
 
-        const auto ambient_shader = Assets::Actions::add_shader_file(context, assets, Unit::Quantum{.manager = assets, .name = "ambient_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::FromFile::Quantum{.vertex = "shaders/ambient.vert.glsl", .fragment = "shaders/ambient.frag.glsl"});
-        const auto lit_shader = Assets::Actions::add_shader_file(context, assets, Unit::Quantum{.manager = assets, .name = "lit_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::FromFile::Quantum{.vertex = "shaders/lit.vert.glsl", .fragment = "shaders/lit.frag.glsl"});
-        const auto lit_textured_shader = Assets::Actions::add_shader_file(context, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::FromFile::Quantum{.vertex = "shaders/litTextured.vert.glsl", .fragment = "shaders/litTextured.frag.glsl"});
-        const auto grid_shader = Assets::Actions::add_shader_file(context, assets, Unit::Quantum{.manager = assets, .name = "grid_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::FromFile::Quantum{.vertex = "shaders/Grid.vert.glsl", .fragment = "shaders/Grid.frag.glsl"});
-        const auto shadow_depth_shader = Assets::Actions::add_shader_file(context, assets, Unit::Quantum{.manager = assets, .name = "shadow_depth_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::FromFile::Quantum{.vertex = "shaders/shadowDepth.vert.glsl", .fragment = "shaders/shadowDepth.frag.glsl"});
+        const auto ambient_shader = Assets::Actions::add_shader_loader(context, assets, Unit::Quantum{.manager = assets, .name = "ambient_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/ambient.vert.glsl", .fragment = "shaders/ambient.frag.glsl"});
+        const auto lit_shader = Assets::Actions::add_shader_loader(context, assets, Unit::Quantum{.manager = assets, .name = "lit_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/lit.vert.glsl", .fragment = "shaders/lit.frag.glsl"});
+        const auto lit_textured_shader = Assets::Actions::add_shader_loader(context, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/litTextured.vert.glsl", .fragment = "shaders/litTextured.frag.glsl"});
+        const auto grid_shader = Assets::Actions::add_shader_loader(context, assets, Unit::Quantum{.manager = assets, .name = "grid_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/Grid.vert.glsl", .fragment = "shaders/Grid.frag.glsl"});
+        const auto shadow_depth_shader = Assets::Actions::add_shader_loader(context, assets, Unit::Quantum{.manager = assets, .name = "shadow_depth_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/shadowDepth.vert.glsl", .fragment = "shaders/shadowDepth.frag.glsl"});
 
-        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "ambient_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = ambient_shader, .uniforms = resource::material::Asset::Always::uniformIds({"model", "view", "projection", "albedo", "ambientColor", "ambientIntensity"}), .textures = {}}, resource::material::Composed::Quantum{});
-        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "lit_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = lit_shader, .uniforms = resource::material::Asset::Always::uniformIds({"model", "view", "projection", "albedo", "ambientColor", "ambientIntensity", "light0Pos", "light0Color", "light0Intensity", "lightSpaceMatrix", "shadowMap"}), .textures = {}}, resource::material::Composed::Quantum{});
-        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = lit_textured_shader, .uniforms = resource::material::Asset::Always::uniformIds({"model", "view", "projection", "albedo", "albedoMap", "ambientColor", "ambientIntensity", "light0Pos", "light0Color", "light0Intensity", "lightSpaceMatrix", "shadowMap"}), .textures = {resource::material::Asset::TextureBinding{.id = ::rmmr::material::Semantics::id_of("albedoMap"), .texture = debug_texture}}}, resource::material::Composed::Quantum{});
-        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "grid_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = grid_shader, .uniforms = resource::material::Asset::Always::uniformIds({"model", "view", "projection", "patternScale", "colorPrimary", "colorSecondary"}), .textures = {}}, resource::material::Composed::Quantum{});
-        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "shadow_depth_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = shadow_depth_shader, .uniforms = resource::material::Asset::Always::uniformIds({"model", "lightSpaceMatrix"}), .textures = {}}, resource::material::Composed::Quantum{});
+        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "ambient_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = ambient_shader, .uniforms = ::rmmr::material::Semantics::ids_of({"model", "view", "projection", "albedo", "ambientColor", "ambientIntensity"}), .textures = {}}, resource::material::Composer::Quantum{});
+        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "lit_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = lit_shader, .uniforms = ::rmmr::material::Semantics::ids_of({"model", "view", "projection", "albedo", "ambientColor", "ambientIntensity", "light0Pos", "light0Color", "light0Intensity", "lightSpaceMatrix", "shadowMap"}), .textures = {}}, resource::material::Composer::Quantum{});
+        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = lit_textured_shader, .uniforms = ::rmmr::material::Semantics::ids_of({"model", "view", "projection", "albedo", "albedoMap", "ambientColor", "ambientIntensity", "light0Pos", "light0Color", "light0Intensity", "lightSpaceMatrix", "shadowMap"}), .textures = {resource::material::Asset::TextureBinding{.id = ::rmmr::material::Semantics::id_of("albedoMap"), .texture = debug_texture}}}, resource::material::Composer::Quantum{});
+        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "grid_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = grid_shader, .uniforms = ::rmmr::material::Semantics::ids_of({"model", "view", "projection", "patternScale", "colorPrimary", "colorSecondary"}), .textures = {}}, resource::material::Composer::Quantum{});
+        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "shadow_depth_material", .library = "rmmr"}, resource::material::Asset::Quantum{.program = shadow_depth_shader, .uniforms = ::rmmr::material::Semantics::ids_of({"model", "lightSpaceMatrix"}), .textures = {}}, resource::material::Composer::Quantum{});
 
-        Assets::Actions::add_shadow_allocated(context, assets, Unit::Quantum{.manager = assets, .name = "main_shadow", .library = "rmmr"}, resource::shadow::Asset::Quantum{}, resource::shadow::Allocated::Quantum{.size = index2{1024, 1024}});
+        Assets::Actions::add_shadow_allocator(context, assets, Unit::Quantum{.manager = assets, .name = "main_shadow", .library = "rmmr"}, resource::shadow::Asset::Quantum{}, resource::shadow::Allocator::Quantum{.size = index2{1024, 1024}});
     }
 
     Schema generateInternalEngineSchema_static() {
@@ -87,20 +92,21 @@ namespace {
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<resource::Runtimes>(),
             ask::schema::aspect<resource::texture::Asset>(),
-            ask::schema::aspect<resource::texture::FromFile>(),
-            ask::schema::aspect<resource::texture::Generated>(),
+            ask::schema::aspect<resource::texture::Loader>(),
+            ask::schema::aspect<resource::texture::Generator>(),
             ask::schema::aspect<resource::texture::Runtime>(),
             ask::schema::aspect<resource::shader::Asset>(),
-            ask::schema::aspect<resource::shader::FromFile>(),
+            ask::schema::aspect<resource::shader::Loader>(),
             ask::schema::aspect<resource::shader::Runtime>(),
             ask::schema::aspect<resource::material::Asset>(),
-            ask::schema::aspect<resource::material::Composed>(),
+            ask::schema::aspect<resource::material::Composer>(),
             ask::schema::aspect<resource::material::Runtime>(),
             ask::schema::aspect<resource::shadow::Asset>(),
-            ask::schema::aspect<resource::shadow::Allocated>(),
+            ask::schema::aspect<resource::shadow::Allocator>(),
             ask::schema::aspect<resource::shadow::Runtime>(),
             ask::schema::aspect<resource::geometry::Asset>(),
-            ask::schema::aspect<resource::geometry::Composed>(),
+            ask::schema::aspect<resource::geometry::Loader>(),
+            ask::schema::aspect<resource::geometry::Generator>(),
             ask::schema::aspect<resource::geometry::Runtime>(),
             ask::schema::aspect<resource_old::Geometry>(),
             ask::schema::aspect<resource_old::Geometry_group>(),

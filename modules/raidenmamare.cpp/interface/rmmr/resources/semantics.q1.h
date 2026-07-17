@@ -1,6 +1,6 @@
 #pragma once
 
-#include <rmmr/assets/semantics/uniform.h>
+#include <rmmr/resources/semantics/uniform.h>
 
 #include <fQSM/api/interface.h>
 

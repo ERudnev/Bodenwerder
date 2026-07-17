@@ -27,29 +27,29 @@ namespace rmmr::resource::texture {
 
     } // namespace
 
-    auto FromFile::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> Runtime::Quantum {
-        const auto& from_file = with<FromFile>::get(context, asset_id);
+    auto Loader::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> Runtime::Quantum {
+        const auto& loader = with<Loader>::get(context, asset_id);
         const auto& unit = with<Unit>::get(context, asset_id);
         const auto& manager = with<Manager>::get(context, unit.manager);
 
         const auto& device_quantum = with<system::Device>::get(context, device);
         glfwMakeContextCurrent(device_quantum.handle);
 
-        const auto path = resolve_under_manager(manager, unit, from_file.file);
+        const auto path = resolve_under_manager(manager, unit, loader.file);
 
         int width = 0;
         int height = 0;
         int channels = 0;
         stbi_uc* pixels = stbi_load(path.string().c_str(), &width, &height, &channels, STBI_rgb_alpha);
         if (not pixels) {
-            return context.refuse("resource::texture::FromFile::materialize: failed to load image: " + path.string());
+            return context.refuse("resource::texture::Loader::materialize: failed to load image: " + path.string());
         }
 
         Runtime::Handle handle{};
         glGenTextures(1, &handle);
         if (not handle) {
             stbi_image_free(pixels);
-            return context.refuse("resource::texture::FromFile::materialize: glGenTextures failed");
+            return context.refuse("resource::texture::Loader::materialize: glGenTextures failed");
         }
 
         glBindTexture(GL_TEXTURE_2D, handle);
@@ -70,7 +70,7 @@ namespace rmmr::resource::texture {
         };
     }
 
-    auto Generated::Actions::materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum {
+    auto Generator::Actions::materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum {
         _INCOMPLETE_;
     }
 

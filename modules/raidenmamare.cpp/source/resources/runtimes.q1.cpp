@@ -52,54 +52,40 @@ namespace rmmr::resource {
 
     } // namespace
 
-    auto Assets::Actions::add_texture_file(Writing context, Id assets, Unit::Quantum unit, texture::Asset::Quantum asset, texture::FromFile::Quantum from_file) -> texture::Asset::Id {
-        return register_unit<texture::Asset, texture::FromFile>(context, assets, std::move(unit), std::move(asset), std::move(from_file));
+    auto Assets::Actions::add_texture_loader(Writing context, Id assets, Unit::Quantum unit, texture::Asset::Quantum asset, texture::Loader::Quantum loader) -> texture::Asset::Id {
+        return register_unit<texture::Asset, texture::Loader>(context, assets, std::move(unit), std::move(asset), std::move(loader));
     }
 
-    auto Assets::Actions::add_texture_generated(Writing context, Id assets, Unit::Quantum unit, texture::Asset::Quantum asset, texture::Generated::Quantum generated) -> texture::Asset::Id {
-        return register_unit<texture::Asset, texture::Generated>(context, assets, std::move(unit), std::move(asset), std::move(generated));
+    auto Assets::Actions::add_texture_generator(Writing context, Id assets, Unit::Quantum unit, texture::Asset::Quantum asset, texture::Generator::Quantum generator) -> texture::Asset::Id {
+        return register_unit<texture::Asset, texture::Generator>(context, assets, std::move(unit), std::move(asset), std::move(generator));
     }
 
-    auto Assets::Actions::add_shader_file(Writing context, Id assets, Unit::Quantum unit, shader::Asset::Quantum asset, shader::FromFile::Quantum from_file) -> shader::Asset::Id {
-        return register_unit<shader::Asset, shader::FromFile>(context, assets, std::move(unit), std::move(asset), std::move(from_file));
+    auto Assets::Actions::add_shader_loader(Writing context, Id assets, Unit::Quantum unit, shader::Asset::Quantum asset, shader::Loader::Quantum loader) -> shader::Asset::Id {
+        return register_unit<shader::Asset, shader::Loader>(context, assets, std::move(unit), std::move(asset), std::move(loader));
     }
 
-    auto Assets::Actions::add_material(Writing context, Id assets, Unit::Quantum unit, material::Asset::Quantum asset, material::Composed::Quantum composed) -> material::Asset::Id {
-        return register_unit<material::Asset, material::Composed>(context, assets, std::move(unit), std::move(asset), std::move(composed));
+    auto Assets::Actions::add_material(Writing context, Id assets, Unit::Quantum unit, material::Asset::Quantum asset, material::Composer::Quantum composer) -> material::Asset::Id {
+        return register_unit<material::Asset, material::Composer>(context, assets, std::move(unit), std::move(asset), std::move(composer));
     }
 
-    auto Assets::Actions::add_shadow_allocated(Writing context, Id assets, Unit::Quantum unit, shadow::Asset::Quantum asset, shadow::Allocated::Quantum allocated) -> shadow::Asset::Id {
-        return register_unit<shadow::Asset, shadow::Allocated>(context, assets, std::move(unit), std::move(asset), std::move(allocated));
+    auto Assets::Actions::add_shadow_allocator(Writing context, Id assets, Unit::Quantum unit, shadow::Asset::Quantum asset, shadow::Allocator::Quantum allocator) -> shadow::Asset::Id {
+        return register_unit<shadow::Asset, shadow::Allocator>(context, assets, std::move(unit), std::move(asset), std::move(allocator));
     }
 
-    auto Assets::Actions::add_geometry(Writing context, Id assets, Unit::Quantum unit, geometry::Asset::Quantum asset, geometry::Composed::Quantum composed) -> geometry::Asset::Id {
-        return register_unit<geometry::Asset, geometry::Composed>(context, assets, std::move(unit), std::move(asset), std::move(composed));
+    auto Assets::Actions::add_geometry_loader(Writing context, Id assets, Unit::Quantum unit, geometry::Asset::Quantum asset, geometry::Loader::Quantum loader) -> geometry::Asset::Id {
+        return register_unit<geometry::Asset, geometry::Loader>(context, assets, std::move(unit), std::move(asset), std::move(loader));
+    }
+
+    auto Assets::Actions::add_geometry_generator(Writing context, Id assets, Unit::Quantum unit, geometry::Asset::Quantum asset, geometry::Generator::Quantum generator) -> geometry::Asset::Id {
+        return register_unit<geometry::Asset, geometry::Generator>(context, assets, std::move(unit), std::move(asset), std::move(generator));
     }
 
     void Assets::Actions::extend(Writing context, Manager::Id manager, filepath path) {
         with<Manager>::modify(context, manager)->location = std::move(path);
 
-        const auto debug_texture = add_texture_file(
-            context,
-            manager,
-            Unit::Quantum{
-                .manager = manager,
-                .name = "debug_texture",
-                .library = "rmmr",
-            },
-            texture::Asset::Quantum{},
-            texture::FromFile::Quantum{
-                .file = "textures/debug01.jpg",
-            });
-
         if (not with<Assets>::exists(context, manager)) {
-            BaseActions::extend(context, manager, Quantum{
-                .debug_texture = debug_texture,
-            });
-            return;
+            BaseActions::extend(context, manager, Quantum{});
         }
-
-        with<Assets>::modify(context, manager)->debug_texture = debug_texture;
     }
 
     void Runtimes::Actions::install(Writing context, Id device) {
@@ -120,40 +106,48 @@ namespace rmmr::resource {
         with<DeviceRuntimes>::modify(context, device)->assets = assets;
         auto runtimes = with<Runtimes>::modify(context, device);
 
-        for (const auto entry : context->aspect<texture::FromFile>().items()) {
+        for (const auto entry : context->aspect<texture::Loader>().items()) {
             if (with<Unit>::get(context, entry.id).manager != assets) continue;
-            rebuild_runtime<texture::Runtime, Runtime_group>(context, device, runtimes->textures_id_mapping, entry.id, texture::FromFile::Actions::materialize(context, entry.id, device));
+            rebuild_runtime<texture::Runtime, Runtime_group>(context, device, runtimes->textures_id_mapping, entry.id, texture::Loader::Actions::materialize(context, entry.id, device));
         }
 
-        for (const auto entry : context->aspect<texture::Generated>().items()) {
+        for (const auto entry : context->aspect<texture::Generator>().items()) {
             if (with<Unit>::get(context, entry.id).manager != assets) continue;
-            rebuild_runtime<texture::Runtime, Runtime_group>(context, device, runtimes->textures_id_mapping, entry.id, texture::Generated::Actions::materialize(context, entry.id, device));
+            rebuild_runtime<texture::Runtime, Runtime_group>(context, device, runtimes->textures_id_mapping, entry.id, texture::Generator::Actions::materialize(context, entry.id, device));
         }
 
-        for (const auto entry : context->aspect<shader::FromFile>().items()) {
+        for (const auto entry : context->aspect<shader::Loader>().items()) {
             if (with<Unit>::get(context, entry.id).manager != assets) continue;
-            const auto runtime = shader::FromFile::Actions::materialize(context, entry.id, device);
+            const auto runtime = shader::Loader::Actions::materialize(context, entry.id, device);
             if (runtime.handle) {
                 rebuild_runtime<shader::Runtime, ShaderRuntime_group>(context, device, runtimes->shaders_id_mapping, entry.id, runtime);
             }
         }
 
-        for (const auto entry : context->aspect<material::Composed>().items()) {
+        for (const auto entry : context->aspect<material::Composer>().items()) {
             if (with<Unit>::get(context, entry.id).manager != assets) continue;
-            rebuild_runtime<material::Runtime, MaterialRuntime_group>(context, device, runtimes->materials_id_mapping, entry.id, material::Composed::Actions::materialize(context, entry.id, device));
+            rebuild_runtime<material::Runtime, MaterialRuntime_group>(context, device, runtimes->materials_id_mapping, entry.id, material::Composer::Actions::materialize(context, entry.id, device));
         }
 
-        for (const auto entry : context->aspect<shadow::Allocated>().items()) {
+        for (const auto entry : context->aspect<shadow::Allocator>().items()) {
             if (with<Unit>::get(context, entry.id).manager != assets) continue;
-            const auto runtime = shadow::Allocated::Actions::materialize(context, entry.id, device);
+            const auto runtime = shadow::Allocator::Actions::materialize(context, entry.id, device);
             if (runtime.fbo) {
                 rebuild_runtime<shadow::Runtime, ShadowRuntime_group>(context, device, runtimes->shadows_id_mapping, entry.id, runtime);
             }
         }
 
-        for (const auto entry : context->aspect<geometry::Composed>().items()) {
+        for (const auto entry : context->aspect<geometry::Loader>().items()) {
             if (with<Unit>::get(context, entry.id).manager != assets) continue;
-            const auto runtime = geometry::Composed::Actions::materialize(context, entry.id, device);
+            const auto runtime = geometry::Loader::Actions::materialize(context, entry.id, device);
+            if (runtime.vao) {
+                rebuild_runtime<geometry::Runtime, GeometryRuntime_group>(context, device, runtimes->geometries_id_mapping, entry.id, runtime);
+            }
+        }
+
+        for (const auto entry : context->aspect<geometry::Generator>().items()) {
+            if (with<Unit>::get(context, entry.id).manager != assets) continue;
+            const auto runtime = geometry::Generator::Actions::materialize(context, entry.id, device);
             if (runtime.vao) {
                 rebuild_runtime<geometry::Runtime, GeometryRuntime_group>(context, device, runtimes->geometries_id_mapping, entry.id, runtime);
             }

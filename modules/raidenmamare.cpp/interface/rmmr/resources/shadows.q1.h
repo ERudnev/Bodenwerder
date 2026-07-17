@@ -34,7 +34,7 @@ namespace rmmr::resource::shadow {
         static const Behavior customAspectReactions();
     };
 
-    struct Allocated : Feature<Allocated, Asset> {
+    struct Allocator : Feature<Allocator, Asset> {
         struct Quantum {
             index2 size;
         };
