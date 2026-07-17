@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <stdexcept>
+#include <vector>
 #include <GL/glew.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -11,16 +12,14 @@
 #include <base/logging.h>
 #include <base/maybe.h>
 
-#include <rmmr/resources_old/geometry.q1.h>
-#include <rmmr/resources_old/material.q1.h>
-#include <rmmr/resources_old/shader.q1.h>
-#include <rmmr/resources_old/texture.q1.h>
+#include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/resources/semantics.q1.h>
+#include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/renderer/types.q1.h>
-#include <rmmr/resources_old/shadowMap.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
 namespace rmmr {
@@ -30,6 +29,11 @@ namespace rmmr {
 
     namespace {
 
+        struct ShadowCaster {
+            scene::Light::Id light;
+            resource::shadow::Runtime::Id runtime;
+        };
+
         auto viewport_aspect_ratio(Reading context, system::Viewport::Id viewport) -> float {
             const auto& quantum = with<system::Viewport>::get(context, viewport);
             const float width = quantum.size.x > integer{0} ? static_cast<float>(quantum.size.x) : 1.0f;
@@ -37,33 +41,52 @@ namespace rmmr {
             return width / height;
         }
 
-        auto first_light_node(Reading context, scene::Root::Id root) -> scene::Light::Id {
+        auto gather_lights(Reading context, scene::Root::Id root) -> vector<scene::Light::Id> {
             const auto& light_group = with<scene::Light_group>::get(context, root);
             if (light_group.empty()) {
                 throw std::runtime_error("Renderer: scene has no light");
             }
-            return *light_group.begin();
+            return {light_group.begin(), light_group.end()};
         }
 
-        void set_uniform(const asset::Uniform::Binding& binding, const mat4& value) {
+        auto first_shadow_caster(Reading context, system::Device::Id device, const vector<scene::Light::Id>& lights) -> base::maybe<ShadowCaster> {
+            const auto& runtimes = with<resource::Runtimes>::get(context, device);
+            for (const auto light_node : lights) {
+                const auto& light = with<scene::Light>::get(context, light_node);
+                if (not light.shadow) {
+                    continue;
+                }
+                const auto it = runtimes.shadows_id_mapping.find(*light.shadow);
+                if (it == runtimes.shadows_id_mapping.end()) {
+                    continue;
+                }
+                return ShadowCaster{
+                    .light = light_node,
+                    .runtime = it->second,
+                };
+            }
+            return {};
+        }
+
+        void set_uniform(const resource::Uniform::Binding& binding, const mat4& value) {
             glUniformMatrix4fv(binding.location, 1, GL_FALSE, glm::value_ptr(value));
         }
 
-        void set_uniform(const asset::Uniform::Binding& binding, const vec3& value) {
+        void set_uniform(const resource::Uniform::Binding& binding, const vec3& value) {
             glUniform3f(binding.location, value.x, value.y, value.z);
         }
 
-        void set_uniform(const asset::Uniform::Binding& binding, float value) {
+        void set_uniform(const resource::Uniform::Binding& binding, float value) {
             glUniform1f(binding.location, value);
         }
 
-        void set_uniform_sampler(const asset::Uniform::Binding& binding, GLuint texture, GLint unit) {
+        void set_uniform_sampler(const resource::Uniform::Binding& binding, GLuint texture, GLint unit) {
             glActiveTexture(GL_TEXTURE0 + unit);
             glBindTexture(GL_TEXTURE_2D, texture);
             glUniform1i(binding.location, unit);
         }
 
-        auto material_texture_for_semantic(const resource_old::Material::Quantum& material, asset::Uniform::Id semantic) -> base::maybe<resource_old::Texture::Id> {
+        auto material_texture_for_semantic(const resource::material::Runtime::Quantum& material, resource::Uniform::Id semantic) -> base::maybe<resource::texture::Runtime::Id> {
             for (const auto& texture_binding : material.textures) {
                 if (texture_binding.id == semantic) {
                     return texture_binding.texture;
@@ -72,8 +95,7 @@ namespace rmmr {
             return {};
         }
 
-        auto light_space_matrix(Reading context, scene::Root::Id root) -> mat4 {
-            const auto light_node = first_light_node(context, root);
+        auto light_space_matrix(Reading context, scene::Light::Id light_node) -> mat4 {
             const mat4 light_transform = scene::Node::Actions::transform(context, light_node);
             const glm::vec3 light_position{light_transform[3]};
             const glm::vec3 scene_center{0.0f, 0.0f, 0.0f};
@@ -82,10 +104,10 @@ namespace rmmr {
             return light_projection * light_view;
         }
 
-        void begin_pass(renderer::Pass pass, Renderer::FrameContext args) {
+        void begin_pass(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
             if (pass == renderer::Pass::shadow) {
-                resource_old::ShadowMap::Actions::bind(args.world, args.shadow_map);
-                resource_old::ShadowMap::Actions::clear(args.world, args.shadow_map);
+                resource::shadow::Runtime::Actions::bind(args.world, shadow->runtime);
+                resource::shadow::Runtime::Actions::clear(args.world, shadow->runtime);
                 return;
             }
 
@@ -96,9 +118,9 @@ namespace rmmr {
             }
         }
 
-        void end_pass(renderer::Pass pass, Renderer::FrameContext args) {
+        void end_pass(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
             if (pass == renderer::Pass::shadow) {
-                resource_old::ShadowMap::Actions::unbind(args.world, args.shadow_map);
+                resource::shadow::Runtime::Actions::unbind(args.world, shadow->runtime);
                 system::Viewport::Actions::activate(args.world, args.viewport);
             }
         }
@@ -112,22 +134,37 @@ namespace rmmr {
 
     } // namespace
 
-    void Renderer::ensure_material(FrameContext args, renderer::Pass pass, resource_old::Material::Id material, PassDrawState& state) {
+    void Renderer::ensure_material(
+        FrameContext args,
+        renderer::Pass pass,
+        resource::material::Runtime::Id material,
+        PassDrawState& state,
+        scene::Light::Id primary_light,
+        base::maybe<resource::shadow::Runtime::Id> shadow,
+        scene::Light::Id shadow_space_light)
+    {
         if (state.bound_material && *state.bound_material == material) {
             return;
         }
 
-        with<resource_old::Material>::apply(args.world, material, args.window);
-        bind_pass_uniforms(args, pass, material);
+        with<resource::material::Runtime>::apply(args.world, material, args.window);
+        bind_pass_uniforms(args, pass, material, primary_light, shadow, shadow_space_light);
         state.bound_material = material;
         state.bound_geometry.reset();
     }
 
-    void Renderer::bind_pass_uniforms(FrameContext args, renderer::Pass pass, resource_old::Material::Id material) {
-        const auto& material_quantum = with<resource_old::Material>::get(args.world, material);
+    void Renderer::bind_pass_uniforms(
+        FrameContext args,
+        renderer::Pass pass,
+        resource::material::Runtime::Id material,
+        scene::Light::Id primary_light,
+        base::maybe<resource::shadow::Runtime::Id> shadow,
+        scene::Light::Id shadow_space_light)
+    {
+        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
 
         if (pass == renderer::Pass::shadow) {
-            const mat4 light_space = light_space_matrix(args.world, args.scene);
+            const mat4 light_space = light_space_matrix(args.world, shadow_space_light);
             for (const auto& binding : material_quantum.bindings) {
                 if (binding.location < 0) {
                     continue;
@@ -147,12 +184,10 @@ namespace rmmr {
         const float aspect_ratio = viewport_aspect_ratio(args.world, args.viewport);
         const mat4 view = scene::Camera::Actions::view(args.world, args.camera);
         const mat4 projection = scene::Camera::Actions::projection(args.world, args.camera, aspect_ratio);
-        const mat4 light_space = light_space_matrix(args.world, args.scene);
-        const auto& shadow_quantum = with<resource_old::ShadowMap>::get(args.world, args.shadow_map);
+        const mat4 light_space = light_space_matrix(args.world, shadow_space_light);
 
-        const auto light_node = first_light_node(args.world, args.scene);
-        const auto& light = with<scene::Light>::get(args.world, light_node);
-        const mat4 light_transform = scene::Node::Actions::transform(args.world, light_node);
+        const auto& light = with<scene::Light>::get(args.world, primary_light);
+        const mat4 light_transform = scene::Node::Actions::transform(args.world, primary_light);
         const Pos light_world_pos{light_transform[3]};
 
         for (const auto& binding : material_quantum.bindings) {
@@ -171,13 +206,16 @@ namespace rmmr {
             } else if (name == "lightSpaceMatrix") {
                 set_uniform(binding, light_space);
             } else if (name == "shadowMap") {
-                set_uniform_sampler(binding, shadow_quantum.depth, 1);
+                if (not shadow) {
+                    throw std::runtime_error("Renderer: material expects shadowMap but no shadow-casting light");
+                }
+                set_uniform_sampler(binding, with<resource::shadow::Runtime>::get(args.world, *shadow).depth, 1);
             } else if (name == "albedoMap") {
                 const auto texture = material_texture_for_semantic(material_quantum, binding.id);
-                if (not texture || not with<resource_old::Texture>::exists(args.world, *texture)) {
+                if (not texture || not with<resource::texture::Runtime>::exists(args.world, *texture)) {
                     throw std::runtime_error("Renderer: material is missing albedoMap texture");
                 }
-                set_uniform_sampler(binding, with<resource_old::Texture>::get(args.world, *texture).handle, 0);
+                set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, 0);
             } else if (name == "light0Pos") {
                 set_uniform(binding, light_world_pos);
             } else if (name == "light0Color") {
@@ -188,8 +226,8 @@ namespace rmmr {
         }
     }
 
-    void Renderer::draw_instance(FrameContext args, const renderer::Command& command, resource_old::Material::Id material) {
-        const auto& material_quantum = with<resource_old::Material>::get(args.world, material);
+    void Renderer::draw_instance(FrameContext args, const renderer::Command& command, resource::material::Runtime::Id material) {
+        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
 
         for (const auto& binding : material_quantum.bindings) {
             if (binding.location < 0) {
@@ -225,7 +263,16 @@ namespace rmmr {
             base::message("Renderer: scene has no camera");
             return;
         }
-        first_light_node(args.world, args.scene);
+
+        const auto lights = gather_lights(args.world, args.scene);
+        const auto primary_light = lights.front();
+        const auto shadow_caster = first_shadow_caster(args.world, args.window, lights);
+        base::maybe<resource::shadow::Runtime::Id> shadow{};
+        auto shadow_space_light = primary_light;
+        if (shadow_caster) {
+            shadow = shadow_caster->runtime;
+            shadow_space_light = shadow_caster->light;
+        }
 
         renderer::CommandBuffer commands;
         scene::Interface::render(args.world, args.scene, args.window, commands);
@@ -234,7 +281,11 @@ namespace rmmr {
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);
 
         for (const auto pass : render_queue_passes) {
-            begin_pass(pass, args);
+            if (pass == renderer::Pass::shadow && not shadow_caster) {
+                continue;
+            }
+
+            begin_pass(pass, args, shadow_caster);
             PassDrawState pass_state{};
 
             for (const auto& command : commands) {
@@ -244,13 +295,13 @@ namespace rmmr {
                 if (command.instance_count <= renderer::Count{0}) {
                     continue;
                 }
-                if (not with<resource_old::Geometry>::exists(args.world, command.geometry)) {
+                if (not with<resource::geometry::Runtime>::exists(args.world, command.geometry)) {
                     continue;
                 }
 
-                ensure_material(args, pass, command.material, pass_state);
+                ensure_material(args, pass, command.material, pass_state, primary_light, shadow, shadow_space_light);
 
-                const auto& geometry = with<resource_old::Geometry>::get(args.world, command.geometry);
+                const auto& geometry = with<resource::geometry::Runtime>::get(args.world, command.geometry);
                 if (not pass_state.bound_geometry || *pass_state.bound_geometry != command.geometry) {
                     glBindVertexArray(geometry.vao);
                     pass_state.bound_geometry = command.geometry;
@@ -265,7 +316,7 @@ namespace rmmr {
                 }
             }
 
-            end_pass(pass, args);
+            end_pass(pass, args, shadow_caster);
         }
 
         glDepthMask(depth_write_prev);

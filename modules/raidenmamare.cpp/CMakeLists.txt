@@ -18,10 +18,6 @@ set(Raidenmamare_Q1
     scene/light.q1.types
     scene/actor.q1.types
     scene/gizmos.q1.types
-    assets/geometry.q1.types
-    assets/shader.q1.types
-    assets/material.q1.types
-    assets/texture.q1.types
     resources/manager.q1.types
     resources/semantics.q1.types
     resources/textures.q1.types
@@ -30,11 +26,6 @@ set(Raidenmamare_Q1
     resources/shadows.q1.types
     resources/geometry.q1.types
     resources/runtimes.q1.types
-    resources_old/geometry.q1.types
-    resources_old/shader.q1.types
-    resources_old/material.q1.types
-    resources_old/texture.q1.types
-    resources_old/shadowMap.q1.types
     controllers/camera.q1.types
     renderer/gl.q1.types
     renderer/types.q1.types

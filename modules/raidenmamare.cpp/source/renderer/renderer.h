@@ -1,9 +1,11 @@
 #pragma once
 
 #include <rmmr/renderer/types.q1.h>
-#include <rmmr/resources_old/material.q1.h>
-#include <rmmr/resources_old/shadowMap.q1.h>
+#include <rmmr/resources/geometry.q1.h>
+#include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/shadows.q1.h>
 #include <rmmr/scene/camera.q1.h>
+#include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/viewport.q1.h>
 #include <rmmr/system/window.q1.h>
@@ -17,8 +19,8 @@ namespace rmmr {
     using namespace fqsm::api;
 
     struct PassDrawState {
-        base::maybe<resource_old::Material::Id> bound_material;
-        base::maybe<resource_old::Geometry::Id> bound_geometry;
+        base::maybe<resource::material::Runtime::Id> bound_material;
+        base::maybe<resource::geometry::Runtime::Id> bound_geometry;
     };
 
     class Renderer final {
@@ -29,15 +31,27 @@ namespace rmmr {
             system::Window::Id window;
             scene::Root::Id scene;
             scene::Camera::Id camera;
-            resource_old::ShadowMap::Id shadow_map;
         };
 
         void render(FrameContext args);
 
     private:
-        void ensure_material(FrameContext args, renderer::Pass pass, resource_old::Material::Id material, PassDrawState& state);
-        void bind_pass_uniforms(FrameContext args, renderer::Pass pass, resource_old::Material::Id material);
-        void draw_instance(FrameContext args, const renderer::Command& command, resource_old::Material::Id material);
+        void ensure_material(
+            FrameContext args,
+            renderer::Pass pass,
+            resource::material::Runtime::Id material,
+            PassDrawState& state,
+            scene::Light::Id primary_light,
+            base::maybe<resource::shadow::Runtime::Id> shadow,
+            scene::Light::Id shadow_space_light);
+        void bind_pass_uniforms(
+            FrameContext args,
+            renderer::Pass pass,
+            resource::material::Runtime::Id material,
+            scene::Light::Id primary_light,
+            base::maybe<resource::shadow::Runtime::Id> shadow,
+            scene::Light::Id shadow_space_light);
+        void draw_instance(FrameContext args, const renderer::Command& command, resource::material::Runtime::Id material);
         void draw_stats_overlay(FrameContext args);
     };
 

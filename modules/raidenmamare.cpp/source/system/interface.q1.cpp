@@ -21,6 +21,7 @@ namespace rmmr::system {
         with<resource::Manager>::extend(context, core, resource::Manager::Quantum{
             .location = path,
         });
+        with<resource::Unit_group>::extend(context, core);
         with<resource::Assets>::extend(context, core, path);
 
         return core;

@@ -7,8 +7,9 @@
 #include <imgui.h>
 #include <unordered_map>
 
-#include <rmmr/assets/material.q1.h>
-#include <rmmr/resources/semantics/uniform.h>
+#include <rmmr/resources/manager.q1.h>
+#include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/semantics.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -19,7 +20,7 @@ namespace rmmr::ui {
 
     namespace {
 
-        auto palette_contains(const asset::Uniform::Palette& palette, material::Semantics::Name semantic) -> bool {
+        auto palette_contains(const resource::Uniform::Palette& palette, material::Semantics::Name semantic) -> bool {
             for (const auto uniform_id : palette) {
                 if (uniform_id == material::Semantics::PersistentId{0}) {
                     continue;
@@ -31,10 +32,11 @@ namespace rmmr::ui {
             return false;
         }
 
-        void draw_material_entry(fqsm::Writing world, scene::Root::Id scene, asset::Material::Id material_id, const asset::Material::Quantum& material) {
-            push_entity_id<asset::Material>(material_id);
+        void draw_material_entry(fqsm::Writing world, scene::Root::Id scene, resource::material::Asset::Id material_id, const resource::material::Asset::Quantum& material) {
+            push_entity_id<resource::material::Asset>(material_id);
 
-            const auto header = material.name.empty() ? "Material" : material.name.c_str();
+            const auto& unit = with<resource::Unit>::get(world, material_id);
+            const auto header = unit.name.empty() ? "Material" : unit.name.c_str();
             if (ImGui::CollapsingHeader(header, ImGuiTreeNodeFlags_DefaultOpen)) {
                 struct NameEditState {
                     std::array<char, 256> buf{};
@@ -42,13 +44,13 @@ namespace rmmr::ui {
                 };
                 static std::unordered_map<std::uint64_t, NameEditState> name_states;
 
-                auto editable = with<asset::Material>::modify(world, material_id);
+                auto editable_unit = with<resource::Unit>::modify(world, material_id);
                 auto& name_state = name_states[material_id.raw()];
                 if (not name_state.editing) {
-                    std::snprintf(name_state.buf.data(), name_state.buf.size(), "%s", editable->name.c_str());
+                    std::snprintf(name_state.buf.data(), name_state.buf.size(), "%s", editable_unit->name.c_str());
                 }
                 if (ImGui::InputText("Name", name_state.buf.data(), name_state.buf.size())) {
-                    editable->name = string{name_state.buf.data()};
+                    editable_unit->name = string{name_state.buf.data()};
                 }
                 name_state.editing = ImGui::IsItemActive();
 
@@ -129,10 +131,10 @@ namespace rmmr::ui {
         }
 
         if (ImGui::Begin("Material View")) {
-            if (with<asset::Material>::count(args.world) == 0) {
+            if (with<resource::material::Asset>::count(args.world) == 0) {
                 ImGui::TextDisabled("No material assets");
             } else {
-                for (const auto entry : args.world->aspect<asset::Material>().items()) {
+                for (const auto entry : args.world->aspect<resource::material::Asset>().items()) {
                     draw_material_entry(args.world, args.scene, entry.id, entry.value);
                 }
             }

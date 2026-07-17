@@ -1,6 +1,5 @@
 #include <rmmr/engine.h>
 
-#include <GLFW/glfw3.h>
 #include <base/logging.h>
 #include <base/maybe.h>
 #include <stdexcept>
@@ -22,41 +21,14 @@
 #include <rmmr/system/interface.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
-
-
 #include "renderer/renderer.h"
 #include "ui/overlay.h"
+
+#include <GLFW/glfw3.h>
 
 namespace {
     using namespace fqsm::api;
     using namespace rmmr;
-
-    // Parallel catalog (Unit.name), no Engine::resources / Assets named slots. Draw stays on resource_old.
-    void seed_parallel_resource_catalog(Writing context, resource::Assets::Id assets) {
-        using resource::Assets;
-        using resource::Unit;
-
-        const auto debug_texture = Assets::Actions::add_texture_loader(
-            context,
-            assets,
-            Unit::Quantum{.manager = assets, .name = "debug_texture", .library = "rmmr"},
-            resource::texture::Asset::Quantum{},
-            resource::texture::Loader::Quantum{.file = "textures/debug01.jpg"});
-
-        const auto ambient_shader = Assets::Actions::add_shader_loader(context, assets, Unit::Quantum{.manager = assets, .name = "ambient_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/ambient.vert.glsl", .fragment = "shaders/ambient.frag.glsl"});
-        const auto lit_shader = Assets::Actions::add_shader_loader(context, assets, Unit::Quantum{.manager = assets, .name = "lit_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/lit.vert.glsl", .fragment = "shaders/lit.frag.glsl"});
-        const auto lit_textured_shader = Assets::Actions::add_shader_loader(context, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/litTextured.vert.glsl", .fragment = "shaders/litTextured.frag.glsl"});
-        const auto grid_shader = Assets::Actions::add_shader_loader(context, assets, Unit::Quantum{.manager = assets, .name = "grid_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/Grid.vert.glsl", .fragment = "shaders/Grid.frag.glsl"});
-        const auto shadow_depth_shader = Assets::Actions::add_shader_loader(context, assets, Unit::Quantum{.manager = assets, .name = "shadow_depth_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/shadowDepth.vert.glsl", .fragment = "shaders/shadowDepth.frag.glsl"});
-
-        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "ambient_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::ambient(ambient_shader), resource::material::Composer::Quantum{});
-        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "lit_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::lit(lit_shader), resource::material::Composer::Quantum{});
-        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::litTextured(lit_textured_shader, debug_texture), resource::material::Composer::Quantum{});
-        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "grid_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::grid(grid_shader), resource::material::Composer::Quantum{});
-        Assets::Actions::add_material(context, assets, Unit::Quantum{.manager = assets, .name = "shadow_depth_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::shadowDepth(shadow_depth_shader), resource::material::Composer::Quantum{});
-
-        Assets::Actions::add_shadow_allocator(context, assets, Unit::Quantum{.manager = assets, .name = "main_shadow", .library = "rmmr"}, resource::shadow::Asset::Quantum{}, resource::shadow::Allocator::Quantum{.size = index2{1024, 1024}});
-    }
 
     Schema generateInternalEngineSchema_static() {
         return ask::schema::merge({
@@ -66,10 +38,6 @@ namespace {
             ask::schema::aspect<system::Window>(),
             ask::schema::aspect<system::Viewport>(),
             ask::schema::aspect<system::Viewport_group>(),
-            ask::schema::aspect<asset::Geometry>(),
-            ask::schema::aspect<asset::Shader>(),
-            ask::schema::aspect<asset::Material>(),
-            ask::schema::aspect<asset::Texture>(),
             ask::schema::aspect<resource::Manager>(),
             ask::schema::aspect<resource::Unit>(),
             ask::schema::aspect<resource::Unit_group>(),
@@ -98,16 +66,6 @@ namespace {
             ask::schema::aspect<resource::geometry::Loader>(),
             ask::schema::aspect<resource::geometry::Generator>(),
             ask::schema::aspect<resource::geometry::Runtime>(),
-            ask::schema::aspect<resource_old::Geometry>(),
-            ask::schema::aspect<resource_old::Geometry_group>(),
-            ask::schema::aspect<resource_old::Shader>(),
-            ask::schema::aspect<resource_old::Shader_group>(),
-            ask::schema::aspect<resource_old::Material>(),
-            ask::schema::aspect<resource_old::Material_group>(),
-            ask::schema::aspect<resource_old::Texture>(),
-            ask::schema::aspect<resource_old::Texture_group>(),
-            ask::schema::aspect<resource_old::ShadowMap>(),
-            ask::schema::aspect<resource_old::ShadowMap_group>(),
             ask::schema::aspect<controller::Camera>(),
             ask::schema::aspect<scene::Root>(),
             ask::schema::aspect<scene::Node>(),
@@ -138,23 +96,25 @@ namespace rmmr {
         maybe<system::Viewport::Id> viewport;
         maybe<scene::Root::Id> scene;
         maybe<scene::Camera::Id> scene_camera;
+
         struct {
             struct {
-                maybe<resource_old::Texture::Id> debug;
+                maybe<resource::texture::Asset::Id> debug;
             } texture;
             struct {
-                maybe<resource_old::Material::Id> ambient;
-                maybe<resource_old::Material::Id> lit;
-                maybe<resource_old::Material::Id> litTextured;
-                maybe<resource_old::Material::Id> grid;
-                maybe<resource_old::Material::Id> shadowDepth;
+                maybe<resource::material::Asset::Id> ambient;
+                maybe<resource::material::Asset::Id> lit;
+                maybe<resource::material::Asset::Id> litTextured;
+                maybe<resource::material::Asset::Id> grid;
+                maybe<resource::material::Asset::Id> shadowDepth;
             } material;
             struct {
-                maybe<resource_old::Geometry::Id> triangle;
-                maybe<resource_old::Geometry::Id> kube;
-                maybe<resource_old::Geometry::Id> grid;
+                maybe<resource::geometry::Asset::Id> triangle;
+                maybe<resource::geometry::Asset::Id> kube;
+                maybe<resource::geometry::Asset::Id> grid;
             } primitive;
-            maybe<resource_old::ShadowMap::Id> shadowMap;
+
+            maybe<resource::shadow::Asset::Id> shadow;
         } resources;
         Renderer renderer;
     };
@@ -215,7 +175,7 @@ namespace rmmr {
                 with<system::Viewport>::modify(main, viewport)->clear_color.r = 0;
             */
 
-            if (state->scene && state->scene_camera && state->resources.shadowMap) {
+            if (state->scene && state->scene_camera) {
                 with<system::ImGuiHost>::newFrame(main, device);
                 const ui::FrameContext ui_frame{
                     .world = main,
@@ -231,7 +191,6 @@ namespace rmmr {
                     .window = *device,
                     .scene = *state->scene,
                     .camera = *state->scene_camera,
-                    .shadow_map = *state->resources.shadowMap,
                 });
                 with<system::ImGuiHost>::render(main, device);
             }
@@ -244,43 +203,49 @@ namespace rmmr {
 
     void Engine::prepareResources() {
         auto& main = state->main;
-        const auto core = *state->core;
+        const auto assets = *state->core;
         const auto device = *state->device;
         auto& resources = state->resources;
 
-        base::message("rmmr: bootstrapping parallel resource system...");
-        //seed_parallel_resource_catalog(main, core);
-        with<resource::Runtimes>::materialize(main, device, core);
+        using resource::Assets;
+        using resource::Unit;
+        using resource::geometry::Generator;
 
-        const auto debug_texture = with<asset::Texture>::create(main, asset::Texture::Quantum{
-            .name = "debug01.jpg",
-            .library = "rmmr",
-        });
-        resources.texture.debug = asset::Texture::Actions::compile(main, debug_texture, device);
+        base::message("rmmr: loading resources...");
 
-        base::message("rmmr: loading material resources...");
-        resources.material.ambient = material::MaterialGenerator::ambient(main, device);
-        resources.material.lit = material::MaterialGenerator::lit(main, device);
-        resources.material.litTextured = material::MaterialGenerator::litTextured(main, device, debug_texture);
-        resources.material.grid = material::MaterialGenerator::grid(main, device);
-        resources.material.shadowDepth = material::MaterialGenerator::shadowDepth(main, device);
+        resources.texture.debug = with<Assets>::add_texture_loader(
+            main,
+            assets,
+            Unit::Quantum{.manager = assets, .name = "debug_texture", .library = "rmmr"},
+            resource::texture::Asset::Quantum{},
+            resource::texture::Loader::Quantum{.file = "textures/debug01.jpg"});
+
+        const auto ambient_shader = with<Assets>::add_shader_loader(main, assets, Unit::Quantum{.manager = assets, .name = "ambient_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/ambient.vert.glsl", .fragment = "shaders/ambient.frag.glsl"});
+        const auto lit_shader = with<Assets>::add_shader_loader(main, assets, Unit::Quantum{.manager = assets, .name = "lit_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/lit.vert.glsl", .fragment = "shaders/lit.frag.glsl"});
+        const auto lit_textured_shader = with<Assets>::add_shader_loader(main, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/litTextured.vert.glsl", .fragment = "shaders/litTextured.frag.glsl"});
+        const auto grid_shader = with<Assets>::add_shader_loader(main, assets, Unit::Quantum{.manager = assets, .name = "grid_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/Grid.vert.glsl", .fragment = "shaders/Grid.frag.glsl"});
+        const auto shadow_depth_shader = with<Assets>::add_shader_loader(main, assets, Unit::Quantum{.manager = assets, .name = "shadow_depth_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/shadowDepth.vert.glsl", .fragment = "shaders/shadowDepth.frag.glsl"});
+
+        resources.material.ambient = with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "ambient_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::ambient(ambient_shader), resource::material::Composer::Quantum{});
+        resources.material.lit = with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "lit_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::lit(lit_shader), resource::material::Composer::Quantum{});
+        resources.material.litTextured = with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::litTextured(lit_textured_shader, *resources.texture.debug), resource::material::Composer::Quantum{});
+        resources.material.grid = with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "grid_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::grid(grid_shader), resource::material::Composer::Quantum{});
+        resources.material.shadowDepth = with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "shadow_depth_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::shadowDepth(shadow_depth_shader), resource::material::Composer::Quantum{});
         scene::PrimitiveActor::Actions::modify_global(main)->shadowMaterial = *resources.material.shadowDepth;
 
-        base::message("rmmr: loading geometry resources...");
-        resources.primitive.triangle = geometry::GeometryGenerator::triangle(main, device);
-        resources.primitive.kube = geometry::GeometryGenerator::kube(main, device);
-        resources.primitive.grid = geometry::GeometryGenerator::gridPlane(main, device);
+        resources.primitive.triangle = with<Assets>::add_geometry_generator(main, assets, Unit::Quantum{.manager = assets, .name = "triangle", .library = "rmmr"}, resource::geometry::Asset::Quantum{}, Generator::Quantum{.type = Generator::Type::triangle});
+        resources.primitive.kube = with<Assets>::add_geometry_generator(main, assets, Unit::Quantum{.manager = assets, .name = "kube", .library = "rmmr"}, resource::geometry::Asset::Quantum{}, Generator::Quantum{.type = Generator::Type::kube});
+        resources.primitive.grid = with<Assets>::add_geometry_generator(main, assets, Unit::Quantum{.manager = assets, .name = "grid", .library = "rmmr"}, resource::geometry::Asset::Quantum{}, Generator::Quantum{.type = Generator::Type::gridPlane});
 
-        base::message("rmmr: material and geometry resources loaded");
+        resources.shadow = with<Assets>::add_shadow_allocator(main, assets, Unit::Quantum{.manager = assets, .name = "main_shadow", .library = "rmmr"}, resource::shadow::Asset::Quantum{}, resource::shadow::Allocator::Quantum{.size = index2{1024, 1024}});
+
+        with<resource::Runtimes>::materialize(main, device, assets);
+
+        base::message("rmmr: resources loaded");
     }
 
     void Engine::prepareRenderTargets() {
-        auto& main = state->main;
-        const auto& device = state->device;
-
-        base::message("rmmr: creating render targets...");
-        state->resources.shadowMap = resource_old::ShadowMap::Actions::create(main, device, index2{1024, 1024});
-        base::message("rmmr: render targets ready");
+        // Shadow Asset lives in State.resources.shadow and is materialized with the catalog.
     }
 
     void Engine::createScene() {
@@ -299,60 +264,25 @@ namespace rmmr {
             for (int z = 0; z < grid_extent; ++z) {
                 for (int y = 0; y < grid_extent; ++y) {
                     for (int x = 0; x < grid_extent; ++x) {
-                        const Pos pos{
-                            (static_cast<float>(x) - center_offset) * spacing,
-                            (static_cast<float>(y) - center_offset) * spacing + cluster_lift,
-                            (static_cast<float>(z) - center_offset) * spacing,
-                        };
-
-                        with<scene::Interface>::createPrimitiveActor(context, root, Locator{
-                            .pos = pos,
-                            .euler = HPB{
-                                -22.5f + 45.0f * static_cast<float>(x),
-                                -15.0f + 30.0f * static_cast<float>(y),
-                                -12.0f + 24.0f * static_cast<float>(z),
-                            },
-                        }, scene::PrimitiveActor::Quantum{
-                            .geometry = *resources.primitive.kube,
-                            .material = *resources.material.litTextured,
-                            .albedo = RGB{
-                                0.3f + 0.6f * static_cast<float>(x) / static_cast<float>(grid_extent - 1),
-                                0.3f + 0.6f * static_cast<float>(y) / static_cast<float>(grid_extent - 1),
-                                0.3f + 0.6f * static_cast<float>(z) / static_cast<float>(grid_extent - 1),
-                            },
-                        });
+                        const Pos pos{(static_cast<float>(x) - center_offset) * spacing, (static_cast<float>(y) - center_offset) * spacing + cluster_lift, (static_cast<float>(z) - center_offset) * spacing};
+                        with<scene::Interface>::createPrimitiveActor(context, root,
+                            Locator{.pos = pos, .euler = HPB{-22.5f + 45.0f * static_cast<float>(x), -15.0f + 30.0f * static_cast<float>(y), -12.0f + 24.0f * static_cast<float>(z)}},
+                            scene::PrimitiveActor::Quantum{
+                                .geometry = *resources.primitive.kube,
+                                .material = *resources.material.litTextured,
+                                .albedo = RGB{0.3f + 0.6f * static_cast<float>(x) / static_cast<float>(grid_extent - 1), 0.3f + 0.6f * static_cast<float>(y) / static_cast<float>(grid_extent - 1), 0.3f + 0.6f * static_cast<float>(z) / static_cast<float>(grid_extent - 1)},
+                            });
                     }
                 }
             }
         });
 
-        with<scene::Interface>::createGrid(main, root, Locator{
-            .pos = Pos{0.0f, 0.0f, 0.0f},
-            .euler = HPB{0.0f, 0.0f, 0.0f},
-        }, scene::Grid::Quantum{
-            .geometry = *resources.primitive.grid,
-            .material = *resources.material.grid,
-            .opacity = 1.0f,
-        });
+        with<scene::Interface>::createGrid(main, root, Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}}, scene::Grid::Quantum{.geometry = *resources.primitive.grid, .material = *resources.material.grid, .opacity = 1.0f});
 
-        const auto scene_camera = with<scene::Interface>::createCamera(main, root, Locator{
-            .pos = Pos{10.5f, 10.0f, 14.0f},
-            .euler = HPB{-18.0f, -36.0f, 0.0f},
-        }, scene::Camera::Quantum{
-            .fov_y = 1.04719755f,
-            .z_near = 0.1f,
-            .z_far = 100.0f,
-        });
+        const auto scene_camera = with<scene::Interface>::createCamera(main, root, Locator{.pos = Pos{10.5f, 10.0f, 14.0f}, .euler = HPB{-18.0f, -36.0f, 0.0f}}, scene::Camera::Quantum{.fov_y = 1.04719755f, .z_near = 0.1f, .z_far = 100.0f});
         with<controller::Camera>::create(main, scene_camera);
         state->scene_camera = scene_camera;
-        with<scene::Interface>::createLight(main, root, Locator{
-            .pos = Pos{9.5f, 19.0f, 7.5f},
-            .euler = HPB{0.0f, 0.0f, 0.0f},
-        }, scene::Light::Quantum{
-            .color = RGB{1.0f, 0.94f, 0.86f},
-            .intensity = 7.0f,
-            .range = 30.0f,
-        });
+        with<scene::Interface>::createLight(main, root, Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}}, scene::Light::Quantum{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f, .shadow = resources.shadow});
         state->scene = root;
     }
 

@@ -1,10 +1,5 @@
 #include <rmmr/system/window.q1.h>
 
-#include <rmmr/resources_old/geometry.q1.h>
-#include <rmmr/resources_old/material.q1.h>
-#include <rmmr/resources_old/shader.q1.h>
-#include <rmmr/resources_old/shadowMap.q1.h>
-#include <rmmr/resources_old/texture.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/viewport.q1.h>
@@ -40,11 +35,6 @@ namespace rmmr::system {
         void bootstrap_device(Writing context, Device::Id device) {
             with<Viewport_group>::extend(context, device);
             with<resource::Runtimes>::install(context, device);
-            with<resource_old::Shader_group>::extend(context, device);
-            with<resource_old::Material_group>::extend(context, device);
-            with<resource_old::Geometry_group>::extend(context, device);
-            with<resource_old::Texture_group>::extend(context, device);
-            with<resource_old::ShadowMap_group>::extend(context, device);
         }
 
         auto create_glfw_handle(const Core::GLVer& version, const string& title, const index2& requested_size) -> GLFWwindow* {
