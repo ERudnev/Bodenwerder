@@ -45,7 +45,7 @@ namespace rmmr::resource::texture {
             return context.refuse("resource::texture::Loader::materialize: failed to load image: " + path.string());
         }
 
-        Runtime::Handle handle{};
+        renderer::Texture handle{};
         glGenTextures(1, &handle);
         if (not handle) {
             stbi_image_free(pixels);

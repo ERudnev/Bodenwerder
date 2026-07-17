@@ -12,14 +12,11 @@ namespace rmmr
         slots: vector<Pos> // i insist on exactly this kind of slots
 
     entity Runtime
-      using VertexArray as @external(OpenGL vertex array handle)
-      using VertexBuffer as @external(OpenGL vertex buffer handle)
-      using ElementBuffer as @external(OpenGL element buffer handle)
       one
         device: #system::Device
-        vao: VertexArray
-        vbo: VertexBuffer
-        ebo: ElementBuffer
+        vao: renderer::VertexArray
+        vbo: renderer::VertexBuffer
+        ebo: renderer::ElementBuffer
         vertex_count: renderer::Count
         index_count: renderer::Count
 

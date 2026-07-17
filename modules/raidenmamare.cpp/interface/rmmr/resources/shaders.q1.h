@@ -16,11 +16,9 @@ namespace rmmr::resource::shader {
     };
 
     struct Runtime : Entity<Runtime> {
-        using Handle = GLuint;
-
         struct Quantum {
             system::Device::Id device;
-            Handle handle;
+            renderer::Program handle;
         };
         struct Internals;
         static const Behavior customAspectReactions();

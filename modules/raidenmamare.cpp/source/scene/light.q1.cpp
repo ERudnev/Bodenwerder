@@ -10,6 +10,7 @@ namespace rmmr::scene {
             .color = color,
             .intensity = intensity,
             .range = range,
+            .shadow = {},
         });
         return node;
     }

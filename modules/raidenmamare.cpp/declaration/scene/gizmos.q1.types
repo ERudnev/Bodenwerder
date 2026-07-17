@@ -1,6 +1,7 @@
-import "../resources_old/geometry"
-import "../resources_old/material"
+import "../resources/geometry"
+import "../resources/materials"
 import "../renderer/types"
+import "../system/core"
 import "../math"
 import "node"
 
@@ -9,9 +10,9 @@ namespace rmmr
 
     feature Grid of Node
       one
-        geometry: #resource_old::Geometry
-        material: #resource_old::Material
+        geometry: #resource::geometry::Asset
+        material: #resource::material::Asset
         opacity: float
-        ?submit(>where: renderer::CommandBuffer)
+        ?submit(#system::Device, >where: renderer::CommandBuffer)
       all
         >create(Pos, HPB, one) -> #

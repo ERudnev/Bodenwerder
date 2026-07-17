@@ -16,11 +16,9 @@ namespace rmmr::resource::texture {
     };
 
     struct Runtime : Entity<Runtime> {
-        using Handle = GLuint;
-
         struct Quantum {
             system::Device::Id device;
-            Handle handle;
+            renderer::Texture handle;
             index2 size;
         };
         struct Internals;

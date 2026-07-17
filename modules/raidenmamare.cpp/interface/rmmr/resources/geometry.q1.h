@@ -5,8 +5,6 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/system/core.q1.h>
 
-#include <GL/glew.h>
-
 #include <cstdint>
 
 #include <fQSM/api/interface.h>
@@ -24,15 +22,11 @@ namespace rmmr::resource::geometry {
     };
 
     struct Runtime : Entity<Runtime> {
-        using VertexArray = GLuint;
-        using VertexBuffer = GLuint;
-        using ElementBuffer = GLuint;
-
         struct Quantum {
             system::Device::Id device;
-            VertexArray vao;
-            VertexBuffer vbo;
-            ElementBuffer ebo;
+            renderer::VertexArray vao;
+            renderer::VertexBuffer vbo;
+            renderer::ElementBuffer ebo;
             renderer::Count vertex_count;
             renderer::Count index_count;
         };

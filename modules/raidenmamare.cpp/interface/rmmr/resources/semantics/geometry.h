@@ -80,21 +80,4 @@ namespace rmmr::primitive {
             throw std::runtime_error("GeometrySemantics::type_of: unknown geometry semantic id");
         }
     };
-
-    namespace geometry {
-        // Intermediate CPU mesh for Loader/Generator internals (not an Asset field).
-        struct CpuPresentation {
-            struct Channel {
-                using Id = primitive::GeometrySemantics::PersistentId;
-                using Type = primitive::GeometrySemantics::Type;
-                using Layout = vector<Id>;
-            };
-
-            Channel::Layout layout;
-            vector<Pos> positions;
-            vector<Pos> normals;
-            vector<UV> uv0;
-            vector<integer> indices;
-        };
-    }
 }

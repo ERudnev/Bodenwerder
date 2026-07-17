@@ -228,7 +228,7 @@ namespace rmmr {
         first_light_node(args.world, args.scene);
 
         renderer::CommandBuffer commands;
-        scene::Interface::render(args.world, args.scene, commands);
+        scene::Interface::render(args.world, args.scene, args.window, commands);
 
         GLboolean depth_write_prev{};
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);

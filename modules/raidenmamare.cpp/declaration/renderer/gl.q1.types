@@ -1,6 +1,15 @@
 namespace rmmr
   namespace renderer
 
+    // Buffer offsets / sizes / draw counts
     using IntPtr as @external(OpenGL GLintptr signed byte offset into bound buffer)
     using SizePtr as @external(OpenGL GLsizeiptr unsigned byte size for buffer operations)
     using Count as @external(OpenGL GLsizei draw count stride and attrib size)
+
+    // Named GL object handles (all GLuint under the hood)
+    using VertexArray as @external(OpenGL vertex array handle)
+    using VertexBuffer as @external(OpenGL vertex buffer handle)
+    using ElementBuffer as @external(OpenGL element buffer handle)
+    using Texture as @external(OpenGL texture handle)
+    using Program as @external(OpenGL shader program handle)
+    using Framebuffer as @external(OpenGL framebuffer handle)

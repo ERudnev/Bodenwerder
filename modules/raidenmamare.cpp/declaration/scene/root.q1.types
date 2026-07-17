@@ -1,5 +1,6 @@
 import "../math"
 import "../renderer/types"
+import "../system/core"
 import "actor"
 import "camera"
 import "gizmos"
@@ -24,4 +25,4 @@ namespace rmmr
       >createLight(#, Locator, one<Light>)->#Light
       >createPrimitiveActor(#, Locator, one<PrimitiveActor>)->#PrimitiveActor
       >createGrid(#, Locator, one<Grid>)->#Grid
-      ?render(#, >where: renderer::CommandBuffer)
+      ?render(#, #system::Device, >where: renderer::CommandBuffer)

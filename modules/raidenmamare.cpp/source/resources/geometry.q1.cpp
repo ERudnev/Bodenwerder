@@ -64,9 +64,9 @@ namespace rmmr::resource::geometry {
             const std::size_t vertex_count = cpu.positions.size();
             const bool indexed = not cpu.indices.empty();
 
-            Runtime::VertexArray vao{};
-            Runtime::VertexBuffer vbo{};
-            Runtime::ElementBuffer ebo{};
+            renderer::VertexArray vao{};
+            renderer::VertexBuffer vbo{};
+            renderer::ElementBuffer ebo{};
             glGenVertexArrays(1, &vao);
             glGenBuffers(1, &vbo);
 

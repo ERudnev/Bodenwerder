@@ -17,7 +17,7 @@ namespace rmmr::resource::shadow {
         const int width = std::max(static_cast<int>(allocator.size.x), 1);
         const int height = std::max(static_cast<int>(allocator.size.y), 1);
 
-        Runtime::DepthTexture depth{};
+        renderer::Texture depth{};
         glGenTextures(1, &depth);
         if (not depth) {
             return context.refuse("resource::shadow::Allocator::materialize: glGenTextures failed");
@@ -32,7 +32,7 @@ namespace rmmr::resource::shadow {
         const GLfloat border_color[]{1.0f, 1.0f, 1.0f, 1.0f};
         glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color);
 
-        Runtime::Framebuffer fbo{};
+        renderer::Framebuffer fbo{};
         glGenFramebuffers(1, &fbo);
         if (not fbo) {
             glDeleteTextures(1, &depth);

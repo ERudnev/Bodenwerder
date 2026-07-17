@@ -1,3 +1,4 @@
+import "renderer/gl"
 import "resources/manager"
 
 namespace rmmr
@@ -9,12 +10,10 @@ namespace rmmr
     feature Asset of resource::Unit
 
     entity Runtime
-      using Framebuffer as @external(OpenGL framebuffer handle)
-      using DepthTexture as @external(OpenGL depth texture handle)
       one
         device: #system::Device
-        fbo: Framebuffer
-        depth: DepthTexture
+        fbo: renderer::Framebuffer
+        depth: renderer::Texture
         size: index2
         ?bind()
         ?clear()

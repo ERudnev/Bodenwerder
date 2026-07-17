@@ -3,9 +3,10 @@
 #include <base/maybe.h>
 
 #include <rmmr/renderer/types.q1.h>
-#include <rmmr/resources_old/geometry.q1.h>
-#include <rmmr/resources_old/material.q1.h>
+#include <rmmr/resources/geometry.q1.h>
+#include <rmmr/resources/materials.q1.h>
 #include <rmmr/scene/node.q1.h>
+#include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -15,16 +16,16 @@ namespace rmmr::scene {
 
     struct PrimitiveActor : Feature<PrimitiveActor, Node> {
         struct Quantum {
-            resource_old::Geometry::Id geometry;
-            resource_old::Material::Id material;
+            resource::geometry::Asset::Id geometry;
+            resource::material::Asset::Id material;
             RGB albedo;
         };
         struct Global {
-            base::maybe<resource_old::Material::Id> shadowMaterial;
+            base::maybe<resource::material::Asset::Id> shadowMaterial;
         };
         struct Actions : BaseActions {
-            static auto create(Writing, Pos, HPB, resource_old::Geometry::Id, resource_old::Material::Id, RGB albedo) -> Id;
-            static void submit(Reading, Id, renderer::CommandBuffer& where);
+            static auto create(Writing, Pos, HPB, resource::geometry::Asset::Id, resource::material::Asset::Id, RGB albedo) -> Id;
+            static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

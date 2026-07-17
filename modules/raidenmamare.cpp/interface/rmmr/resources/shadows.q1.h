@@ -16,13 +16,10 @@ namespace rmmr::resource::shadow {
     };
 
     struct Runtime : Entity<Runtime> {
-        using Framebuffer = GLuint;
-        using DepthTexture = GLuint;
-
         struct Quantum {
             system::Device::Id device;
-            Framebuffer fbo;
-            DepthTexture depth;
+            renderer::Framebuffer fbo;
+            renderer::Texture depth;
             index2 size;
         };
         struct Actions : BaseActions {

@@ -1,26 +1,24 @@
-import "../math"
-import "../resources_old/geometry"
-import "../resources_old/material"
+import "math"
 import "gl"
+import "../resources/geometry"
+import "../resources/materials"
 
 namespace rmmr
   namespace renderer
-
-    using InstanceBuffer as ~resource_old::Geometry::VertexBuffer
 
     enum Pass : opaque, transparent, shadow, ui, gizmo
 
     struct RenderState
 
     struct InstanceSource
-      buffer: InstanceBuffer
+      buffer: VertexBuffer
       byte_offset: IntPtr
 
     struct Command
       pass: Pass
       model: mat4
-      geometry: #resource_old::Geometry
-      material: #resource_old::Material
+      geometry: #resource::geometry::Runtime
+      material: #resource::material::Runtime
       albedo: RGB
       opacity: float
       instance_data: InstanceSource

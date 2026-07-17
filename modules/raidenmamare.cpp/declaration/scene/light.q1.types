@@ -1,4 +1,5 @@
 import "../math"
+import "../resources/shadows"
 import "node"
 
 namespace rmmr
@@ -10,5 +11,6 @@ namespace rmmr
         color: RGB
         intensity: float
         range: float
+        shadow: #resource::shadow::Asset?
       all
         >create(Locator, RGB, intensity: float, range: float) -> #

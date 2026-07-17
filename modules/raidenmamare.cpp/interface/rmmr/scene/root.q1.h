@@ -43,7 +43,7 @@ namespace rmmr::scene {
         static auto createLight(Writing, Root::Id, Locator, Light::Quantum) -> Light::Id;
         static auto createPrimitiveActor(Writing, Root::Id, Locator, PrimitiveActor::Quantum) -> PrimitiveActor::Id;
         static auto createGrid(Writing, Root::Id, Locator, Grid::Quantum) -> Grid::Id;
-        static void render(Reading, Root::Id, renderer::CommandBuffer& where);
+        static void render(Reading, Root::Id, system::Device::Id, renderer::CommandBuffer& where);
     };
 
 }

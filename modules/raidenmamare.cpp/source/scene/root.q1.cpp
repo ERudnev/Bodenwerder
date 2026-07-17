@@ -60,15 +60,15 @@ namespace rmmr::scene {
         return node;
     }
 
-    void Interface::render(Reading context, Root::Id root, renderer::CommandBuffer& where) {
+    void Interface::render(Reading context, Root::Id root, system::Device::Id device, renderer::CommandBuffer& where) {
         const auto& node_group = with<Node_group>::get(context, root);
         for (const auto node : node_group) {
             if (with<PrimitiveActor>::exists(context, node)) {
-                PrimitiveActor::Actions::submit(context, node, where);
+                PrimitiveActor::Actions::submit(context, node, device, where);
                 continue;
             }
             if (with<Grid>::exists(context, node)) {
-                Grid::Actions::submit(context, node, where);
+                Grid::Actions::submit(context, node, device, where);
             }
         }
     }
