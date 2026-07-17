@@ -1,0 +1,14 @@
+import "system/core"
+
+namespace rmmr
+  namespace resource
+
+    struct Uniform
+      using Id as @external(rmmr::material::Semantics::PersistentId)
+      using Type as @external(rmmr::material::Semantics::Type)
+      using Location as @external(rmmr::material::Semantics::RenderId)
+      using Palette as vector<Id>
+      struct Binding
+        id: Id
+        type: Type
+        location: Location

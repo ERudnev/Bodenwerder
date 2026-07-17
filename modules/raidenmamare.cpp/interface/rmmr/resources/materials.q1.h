@@ -1,8 +1,7 @@
 #pragma once
 
-#include <rmmr/assets/shader.q1.h>
-#include <rmmr/assets/semantics/uniform.h>
 #include <rmmr/resources/manager.q1.h>
+#include <rmmr/resources/semantics.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -15,16 +14,16 @@ namespace rmmr::resource::material {
 
     struct Asset : Feature<Asset, resource::Unit> {
         struct TextureBinding {
-            asset::Uniform::Id id;
+            Uniform::Id id;
             texture::Asset::Id texture;
         };
         struct Quantum {
             shader::Asset::Id program;
-            asset::Uniform::Palette uniforms;
+            Uniform::Palette uniforms;
             vector<TextureBinding> textures;
         };
         struct Always {
-            static auto uniformIds(const vector<string>& names) -> asset::Uniform::Palette;
+            static auto uniformIds(const vector<string>& names) -> Uniform::Palette;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
@@ -33,13 +32,13 @@ namespace rmmr::resource::material {
     struct Runtime : Entity<Runtime> {
         using Locations = ::rmmr::material::Semantics::RuntimeMapping;
         struct TextureBinding {
-            asset::Uniform::Id id;
+            Uniform::Id id;
             texture::Runtime::Id texture;
         };
         struct Quantum {
             shader::Runtime::Id shader;
             Locations locations;
-            vector<asset::Uniform::Binding> bindings;
+            vector<Uniform::Binding> bindings;
             vector<TextureBinding> textures;
         };
         struct Actions : BaseActions {

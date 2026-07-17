@@ -42,12 +42,6 @@ namespace rmmr::material {
             Name name;
         };
 
-        struct Binding {
-            PersistentId id;
-            Type type;
-            RenderId location;
-        };
-
         // Persistent uniform semantics vocabulary.
         //
         // ID convention:

@@ -10,8 +10,8 @@ namespace rmmr::resource::material {
 
     using namespace fqsm::api;
 
-    auto Asset::Always::uniformIds(const vector<string>& names) -> asset::Uniform::Palette {
-        asset::Uniform::Palette out;
+    auto Asset::Always::uniformIds(const vector<string>& names) -> Uniform::Palette {
+        Uniform::Palette out;
         out.reserve(names.size());
 
         for (const auto& name : names) {
@@ -40,7 +40,7 @@ namespace rmmr::resource::material {
 
         Runtime::Locations locations{};
         locations.reserve(asset.uniforms.size());
-        vector<asset::Uniform::Binding> bindings{};
+        vector<Uniform::Binding> bindings{};
         bindings.reserve(asset.uniforms.size());
         vector<Runtime::TextureBinding> textures{};
         textures.reserve(asset.textures.size());
@@ -49,7 +49,7 @@ namespace rmmr::resource::material {
             const auto semantic_name = ::rmmr::material::Semantics::name_of(persistent_id);
             if (semantic_name == ::rmmr::material::Semantics::Name{"_undefined"}) {
                 locations.emplace(persistent_id, GLint{-1});
-                bindings.push_back(asset::Uniform::Binding{
+                bindings.push_back(Uniform::Binding{
                     .id = persistent_id,
                     .type = ::rmmr::material::Semantics::type_of(persistent_id),
                     .location = GLint{-1},
@@ -60,7 +60,7 @@ namespace rmmr::resource::material {
             const auto uniform_name = ::rmmr::material::Semantics::uniform_name(semantic_name);
             const auto location = glGetUniformLocation(shader_quantum.handle, uniform_name.c_str());
             locations.emplace(persistent_id, location);
-            bindings.push_back(asset::Uniform::Binding{
+            bindings.push_back(Uniform::Binding{
                 .id = persistent_id,
                 .type = ::rmmr::material::Semantics::type_of(persistent_id),
                 .location = location,

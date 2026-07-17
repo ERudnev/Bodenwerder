@@ -1,4 +1,4 @@
-import "../assets/shader"
+import "resources/semantics"
 import "resources/manager"
 import "resources/shaders"
 import "resources/textures"

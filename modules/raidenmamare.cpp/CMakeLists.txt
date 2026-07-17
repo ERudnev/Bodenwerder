@@ -23,6 +23,7 @@ set(Raidenmamare_Q1
     assets/material.q1.types
     assets/texture.q1.types
     resources/manager.q1.types
+    resources/semantics.q1.types
     resources/textures.q1.types
     resources/shaders.q1.types
     resources/materials.q1.types
