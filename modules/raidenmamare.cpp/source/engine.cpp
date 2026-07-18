@@ -2,6 +2,7 @@
 
 #include <base/logging.h>
 #include <base/maybe.h>
+#include <random>
 #include <stdexcept>
 #include <vector>
 
@@ -111,6 +112,7 @@ namespace rmmr {
             struct {
                 maybe<resource::geometry::Asset::Id> triangle;
                 maybe<resource::geometry::Asset::Id> kube;
+                maybe<resource::geometry::Asset::Id> bagel;
                 maybe<resource::geometry::Asset::Id> grid;
             } primitive;
 
@@ -235,6 +237,7 @@ namespace rmmr {
 
         resources.primitive.triangle = with<Assets>::add_geometry_generator(main, assets, Unit::Quantum{.manager = assets, .name = "triangle", .library = "rmmr"}, resource::geometry::Asset::Quantum{}, Generator::Quantum{.type = Generator::Type::triangle});
         resources.primitive.kube = with<Assets>::add_geometry_generator(main, assets, Unit::Quantum{.manager = assets, .name = "kube", .library = "rmmr"}, resource::geometry::Asset::Quantum{}, Generator::Quantum{.type = Generator::Type::kube});
+        resources.primitive.bagel = with<Assets>::add_geometry_generator(main, assets, Unit::Quantum{.manager = assets, .name = "bagel", .library = "rmmr"}, resource::geometry::Asset::Quantum{}, Generator::Quantum{.type = Generator::Type::bagel});
         resources.primitive.grid = with<Assets>::add_geometry_generator(main, assets, Unit::Quantum{.manager = assets, .name = "grid", .library = "rmmr"}, resource::geometry::Asset::Quantum{}, Generator::Quantum{.type = Generator::Type::gridPlane});
 
         resources.shadow = with<Assets>::add_shadow_allocator(main, assets, Unit::Quantum{.manager = assets, .name = "main_shadow", .library = "rmmr"}, resource::shadow::Asset::Quantum{}, resource::shadow::Allocator::Quantum{.size = index2{1024, 1024}});
@@ -260,6 +263,9 @@ namespace rmmr {
         const float center_offset = (static_cast<float>(grid_extent) - 1.0f) * 0.5f;
         const float cluster_lift = center_offset * spacing + cube_edge * 0.5f;
 
+        std::mt19937 rng{std::random_device{}()};
+        std::bernoulli_distribution pick_bagel{0.5};
+
         main.branch([&](fqsm::Writing context) {
             for (int z = 0; z < grid_extent; ++z) {
                 for (int y = 0; y < grid_extent; ++y) {
@@ -268,7 +274,7 @@ namespace rmmr {
                         with<scene::Interface>::createPrimitiveActor(context, root,
                             Locator{.pos = pos, .euler = HPB{-22.5f + 45.0f * static_cast<float>(x), -15.0f + 30.0f * static_cast<float>(y), -12.0f + 24.0f * static_cast<float>(z)}},
                             scene::PrimitiveActor::Quantum{
-                                .geometry = *resources.primitive.kube,
+                                .geometry = pick_bagel(rng) ? *resources.primitive.bagel : *resources.primitive.kube,
                                 .material = *resources.material.litTextured,
                                 .albedo = RGB{0.3f + 0.6f * static_cast<float>(x) / static_cast<float>(grid_extent - 1), 0.3f + 0.6f * static_cast<float>(y) / static_cast<float>(grid_extent - 1), 0.3f + 0.6f * static_cast<float>(z) / static_cast<float>(grid_extent - 1)},
                             });

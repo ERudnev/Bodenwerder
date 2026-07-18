@@ -26,6 +26,7 @@ namespace rmmr::resource::builders::geometry {
     struct GeometryGenerator final {
         static CpuPresentation triangle();
         static CpuPresentation kube();
+        static CpuPresentation bagel();
         static CpuPresentation gridPlane();
     };
 

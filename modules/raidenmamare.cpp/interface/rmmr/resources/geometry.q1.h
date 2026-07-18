@@ -49,6 +49,7 @@ namespace rmmr::resource::geometry {
         enum class Type : std::uint8_t {
             triangle,
             kube,
+            bagel,
             gridPlane,
         };
         struct Quantum {
