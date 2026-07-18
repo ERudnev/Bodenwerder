@@ -23,4 +23,4 @@ namespace rmmr
     feature Allocator of Asset
       one
         size: index2
-        >materialize(#system::Device) -> Runtime
+        >materialize(#system::Device) -> #Runtime?

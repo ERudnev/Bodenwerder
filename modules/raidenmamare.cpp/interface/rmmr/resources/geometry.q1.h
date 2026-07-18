@@ -39,7 +39,7 @@ namespace rmmr::resource::geometry {
             filename file;
         };
         struct Actions : BaseActions {
-            static auto materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum;
+            static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
@@ -56,7 +56,7 @@ namespace rmmr::resource::geometry {
             Type type;
         };
         struct Actions : BaseActions {
-            static auto materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum;
+            static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

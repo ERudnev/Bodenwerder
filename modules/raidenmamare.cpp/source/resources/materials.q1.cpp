@@ -8,7 +8,7 @@ namespace rmmr::resource::material {
 
     using namespace fqsm::api;
 
-    auto Composer::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> Runtime::Quantum {
+    auto Composer::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {
         const auto& asset = with<Asset>::get(context, asset_id);
         const auto& runtimes = with<Runtimes>::get(context, device);
 
@@ -61,12 +61,21 @@ namespace rmmr::resource::material {
             });
         }
 
-        return Runtime::Quantum{
+        Runtime::Quantum quantum{
             .shader = shader_it->second,
             .locations = std::move(locations),
             .bindings = std::move(bindings),
             .textures = std::move(textures),
         };
+
+        if (const auto existing = runtimes.materials_id_mapping.find(asset_id); existing != runtimes.materials_id_mapping.end()) {
+            if (with<Runtime>::exists(context, existing->second)) {
+                *with<Runtime>::modify(context, existing->second) = std::move(quantum);
+                return existing->second;
+            }
+        }
+
+        return with<MaterialRuntime_group>::addElement(context, device, std::move(quantum));
     }
 
     void Runtime::Actions::apply(Reading context, Id material, system::Device::Id) {

@@ -35,5 +35,6 @@ namespace rmmr
         shadows_id_mapping: umap<#shadow::Asset, #shadow::Runtime>
         geometries_id_mapping: umap<#geometry::Asset, #geometry::Runtime>
         >install(#Device) // cache is zero by default
-        >materialize(#Assets) // facade: explicit pass per known source-feature; each F.materialize(#Device)->Runtime, then rebuild mapping
+        >materialize(#Assets) // one-shot: family Assets → find Kind by id → materialize+bind
         !maintain_all_mappings(~Assets)
+        !align_from_assets(~texture::Asset, ~shader::Asset, ~material::Asset, ~shadow::Asset, ~geometry::Asset) // events → find Kind by id

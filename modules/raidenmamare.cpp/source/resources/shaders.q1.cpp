@@ -1,4 +1,5 @@
 #include <rmmr/resources/shaders.q1.h>
+#include <rmmr/resources/runtimes.q1.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -54,9 +55,30 @@ namespace rmmr::resource::shader {
             return {};
         }
 
+        void release_gl(Writing context, const Runtime::Quantum& last) {
+            if (not last.handle) {
+                return;
+            }
+            glfwMakeContextCurrent(with<system::Device>::get(context, last.device).handle);
+            glDeleteProgram(last.handle);
+        }
+
+        auto install_runtime(Writing context, system::Device::Id device, Asset::Id asset_id, Runtime::Quantum quantum) -> Runtime::Id {
+            const auto& runtimes = with<Runtimes>::get(context, device);
+            if (const auto existing = runtimes.shaders_id_mapping.find(asset_id); existing != runtimes.shaders_id_mapping.end()) {
+                if (with<Runtime>::exists(context, existing->second)) {
+                    auto runtime = with<Runtime>::modify(context, existing->second);
+                    release_gl(context, *runtime);
+                    *runtime = std::move(quantum);
+                    return existing->second;
+                }
+            }
+            return with<ShaderRuntime_group>::addElement(context, device, std::move(quantum));
+        }
+
     } // namespace
 
-    auto Loader::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> Runtime::Quantum {
+    auto Loader::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {
         const auto& loader = with<Loader>::get(context, asset_id);
         const auto& unit = with<Unit>::get(context, asset_id);
         const auto& manager = with<Manager>::get(context, unit.manager);
@@ -108,20 +130,15 @@ namespace rmmr::resource::shader {
             return context.refuse(std::string("resource::shader::Loader::materialize: program link failed: ") + info_log);
         }
 
-        return Runtime::Quantum{
+        return install_runtime(context, device, asset_id, Runtime::Quantum{
             .device = device,
             .handle = program,
-        };
+        });
     }
 
     struct Runtime::Internals : Runtime::DefaultInternals {
         static void release(Writing context, Id, const Quantum& last) {
-            if (not last.handle) {
-                return;
-            }
-
-            glfwMakeContextCurrent(with<system::Device>::get(context, last.device).handle);
-            glDeleteProgram(last.handle);
+            release_gl(context, last);
         }
     };
 

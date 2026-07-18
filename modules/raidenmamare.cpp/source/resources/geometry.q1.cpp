@@ -1,5 +1,6 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/builders/geometryGenerator.h>
+#include <rmmr/resources/runtimes.q1.h>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -192,19 +193,7 @@ namespace rmmr::resource::geometry {
             }
         }
 
-    } // namespace
-
-    auto Loader::Actions::materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum {
-        _INCOMPLETE_;
-    }
-
-    auto Generator::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> Runtime::Quantum {
-        const auto& generator = with<Generator>::get(context, asset_id);
-        return bake(context, device, cpu_for(generator.type));
-    }
-
-    struct Runtime::Internals : Runtime::DefaultInternals {
-        static void release(Writing context, Id, const Quantum& last) {
+        void release_gl(Writing context, const Runtime::Quantum& last) {
             if (not last.vao && not last.vbo && not last.ebo) {
                 return;
             }
@@ -221,6 +210,39 @@ namespace rmmr::resource::geometry {
                 auto ebo = last.ebo;
                 glDeleteBuffers(1, &ebo);
             }
+        }
+
+        auto install_runtime(Writing context, system::Device::Id device, Asset::Id asset_id, Runtime::Quantum quantum) -> Runtime::Id {
+            const auto& runtimes = with<Runtimes>::get(context, device);
+            if (const auto existing = runtimes.geometries_id_mapping.find(asset_id); existing != runtimes.geometries_id_mapping.end()) {
+                if (with<Runtime>::exists(context, existing->second)) {
+                    auto runtime = with<Runtime>::modify(context, existing->second);
+                    release_gl(context, *runtime);
+                    *runtime = std::move(quantum);
+                    return existing->second;
+                }
+            }
+            return with<GeometryRuntime_group>::addElement(context, device, std::move(quantum));
+        }
+
+    } // namespace
+
+    auto Loader::Actions::materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id> {
+        _INCOMPLETE_;
+    }
+
+    auto Generator::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {
+        const auto& generator = with<Generator>::get(context, asset_id);
+        auto quantum = bake(context, device, cpu_for(generator.type));
+        if (not quantum.vao) {
+            return {};
+        }
+        return install_runtime(context, device, asset_id, std::move(quantum));
+    }
+
+    struct Runtime::Internals : Runtime::DefaultInternals {
+        static void release(Writing context, Id, const Quantum& last) {
+            release_gl(context, last);
         }
     };
 

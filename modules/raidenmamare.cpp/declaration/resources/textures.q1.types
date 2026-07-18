@@ -18,10 +18,10 @@ namespace rmmr
     feature Loader of Asset
       one
         file: filename
-        >materialize(#system::Device) -> Runtime // kind owns GL/load; returns Runtime value (Runtimes inserts into group + mapping)
+        >materialize(#system::Device) -> #Runtime?
 
     // placeholder for more configurable thing, just means "white circle"
     feature Generator of Asset
       one
         size: index2
-        >materialize(#system::Device) -> Runtime
+        >materialize(#system::Device) -> #Runtime?

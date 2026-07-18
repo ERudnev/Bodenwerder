@@ -36,7 +36,7 @@ namespace rmmr::resource::shadow {
             index2 size;
         };
         struct Actions : BaseActions {
-            static auto materialize(Writing, Id, system::Device::Id) -> Runtime::Quantum;
+            static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

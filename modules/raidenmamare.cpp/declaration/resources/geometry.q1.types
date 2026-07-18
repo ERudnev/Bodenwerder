@@ -23,10 +23,10 @@ namespace rmmr
     feature Loader of Asset
       one
         file: filename
-        >materialize(#system::Device) -> Runtime
+        >materialize(#system::Device) -> #Runtime?
 
     feature Generator of Asset
       enum Type : triangle, kube, bagel, gridPlane
       one
         type: Type
-        >materialize(#system::Device) -> Runtime
+        >materialize(#system::Device) -> #Runtime?

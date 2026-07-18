@@ -32,4 +32,4 @@ namespace rmmr
     // recipe: shader asset + palette + texture slots → device Runtime
     feature Composer of Asset
       one
-        >materialize(#system::Device) -> Runtime
+        >materialize(#system::Device) -> #Runtime
