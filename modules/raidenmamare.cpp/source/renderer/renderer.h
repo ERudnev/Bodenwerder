@@ -41,6 +41,7 @@ namespace rmmr {
             FrameContext args,
             renderer::Pass pass,
             resource::material::Runtime::Id material,
+            resource::shader::Runtime::Id shader,
             PassDrawState& state,
             scene::Light::Id primary_light,
             base::maybe<resource::shadow::Runtime::Id> shadow,
@@ -52,7 +53,7 @@ namespace rmmr {
             scene::Light::Id primary_light,
             base::maybe<resource::shadow::Runtime::Id> shadow,
             scene::Light::Id shadow_space_light);
-        void bind_material_samplers(FrameContext args, resource::material::Runtime::Id material);
+        void bind_material_samplers(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material);
         void draw_instance(FrameContext args, const renderer::Command& command, resource::material::Runtime::Id material);
         void draw_stats_overlay(FrameContext args);
     };

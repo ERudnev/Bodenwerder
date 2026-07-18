@@ -87,13 +87,21 @@ namespace rmmr {
             glUniform1i(binding.location, unit);
         }
 
-        auto material_texture_for_semantic(const resource::material::Runtime::Quantum& material, resource::Uniform::Id semantic) -> base::maybe<resource::texture::Runtime::Id> {
-            for (const auto& texture_binding : material.textures) {
+        auto material_texture_for_semantic(const resource::material::Runtime::Technique& technique, resource::Uniform::Id semantic) -> base::maybe<resource::texture::Runtime::Id> {
+            for (const auto& texture_binding : technique.textures) {
                 if (texture_binding.id == semantic) {
                     return texture_binding.texture;
                 }
             }
             return {};
+        }
+
+        auto technique_for(const resource::material::Runtime::Quantum& material, renderer::Pass pass) -> const resource::material::Runtime::Technique& {
+            const auto it = material.techniques.find(pass);
+            if (it == material.techniques.end()) {
+                throw std::runtime_error("Renderer: material has no technique for pass");
+            }
+            return it->second;
         }
 
         auto light_space_matrix(Reading context, scene::Light::Id light_node) -> mat4 {
@@ -161,12 +169,14 @@ namespace rmmr {
             return batch;
         }
 
-        void sort_by_pipeline_state(Reading world, vector<const renderer::Command*>& batch) {
-            std::sort(batch.begin(), batch.end(), [world](const renderer::Command* left, const renderer::Command* right) {
-                const auto& left_material = with<resource::material::Runtime>::get(world, left->material);
-                const auto& right_material = with<resource::material::Runtime>::get(world, right->material);
-                if (left_material.shader != right_material.shader) {
-                    return left_material.shader < right_material.shader;
+        void sort_by_pipeline_state(vector<const renderer::Command*>& batch) {
+            std::sort(batch.begin(), batch.end(), [](const renderer::Command* left, const renderer::Command* right) {
+                if (left->shader != right->shader) {
+                    return left->shader < right->shader;
+                }
+                // Shadow techniques are shared across surface materials: batch by mesh, not material.
+                if (left->pass == renderer::Pass::shadow) {
+                    return left->geometry < right->geometry;
                 }
                 if (left->material != right->material) {
                     return left->material < right->material;
@@ -189,41 +199,53 @@ namespace rmmr {
         FrameContext args,
         renderer::Pass pass,
         resource::material::Runtime::Id material,
+        resource::shader::Runtime::Id shader,
         PassDrawState& state,
         scene::Light::Id primary_light,
         base::maybe<resource::shadow::Runtime::Id> shadow,
         scene::Light::Id shadow_space_light)
     {
+        // Depth-only shadow technique has no material-unique samplers: cache by program.
+        if (pass == renderer::Pass::shadow) {
+            if (state.bound_shader && *state.bound_shader == shader) {
+                return;
+            }
+            with<resource::material::Runtime>::apply(args.world, material, args.window, pass);
+            bind_pass_uniforms(args, pass, material, primary_light, shadow, shadow_space_light);
+            state.bound_shader = shader;
+            state.bound_material = material;
+            state.bound_geometry.reset();
+            return;
+        }
+
         if (state.bound_material && *state.bound_material == material) {
             return;
         }
 
-        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
-        const auto shader = material_quantum.shader;
         const bool program_changed = not state.bound_shader || *state.bound_shader != shader;
 
         if (program_changed) {
-            with<resource::material::Runtime>::apply(args.world, material, args.window);
+            with<resource::material::Runtime>::apply(args.world, material, args.window, pass);
             bind_pass_uniforms(args, pass, material, primary_light, shadow, shadow_space_light);
             state.bound_shader = shader;
             state.bound_geometry.reset();
         } else {
-            bind_material_samplers(args, material);
+            bind_material_samplers(args, pass, material);
         }
 
         state.bound_material = material;
     }
 
-    void Renderer::bind_material_samplers(FrameContext args, resource::material::Runtime::Id material) {
-        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
-        for (const auto& binding : material_quantum.bindings) {
+    void Renderer::bind_material_samplers(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material) {
+        const auto& technique = technique_for(with<resource::material::Runtime>::get(args.world, material), pass);
+        for (const auto& binding : technique.bindings) {
             if (binding.location < 0) {
                 continue;
             }
             if (material::Semantics::name_of(binding.id) != "albedoMap") {
                 continue;
             }
-            const auto texture = material_texture_for_semantic(material_quantum, binding.id);
+            const auto texture = material_texture_for_semantic(technique, binding.id);
             if (not texture || not with<resource::texture::Runtime>::exists(args.world, *texture)) {
                 throw std::runtime_error("Renderer: material is missing albedoMap texture");
             }
@@ -239,11 +261,11 @@ namespace rmmr {
         base::maybe<resource::shadow::Runtime::Id> shadow,
         scene::Light::Id shadow_space_light)
     {
-        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
+        const auto& technique = technique_for(with<resource::material::Runtime>::get(args.world, material), pass);
 
         if (pass == renderer::Pass::shadow) {
             const mat4 light_space = light_space_matrix(args.world, shadow_space_light);
-            for (const auto& binding : material_quantum.bindings) {
+            for (const auto& binding : technique.bindings) {
                 if (binding.location < 0) {
                     continue;
                 }
@@ -268,7 +290,7 @@ namespace rmmr {
         const mat4 light_transform = scene::Node::Actions::transform(args.world, primary_light);
         const Pos light_world_pos{light_transform[3]};
 
-        for (const auto& binding : material_quantum.bindings) {
+        for (const auto& binding : technique.bindings) {
             if (binding.location < 0) {
                 continue;
             }
@@ -289,7 +311,7 @@ namespace rmmr {
                 }
                 set_uniform_sampler(binding, with<resource::shadow::Runtime>::get(args.world, *shadow).depth, 1);
             } else if (name == "albedoMap") {
-                const auto texture = material_texture_for_semantic(material_quantum, binding.id);
+                const auto texture = material_texture_for_semantic(technique, binding.id);
                 if (not texture || not with<resource::texture::Runtime>::exists(args.world, *texture)) {
                     throw std::runtime_error("Renderer: material is missing albedoMap texture");
                 }
@@ -305,9 +327,9 @@ namespace rmmr {
     }
 
     void Renderer::draw_instance(FrameContext args, const renderer::Command& command, resource::material::Runtime::Id material) {
-        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
+        const auto& technique = technique_for(with<resource::material::Runtime>::get(args.world, material), command.pass);
 
-        for (const auto& binding : material_quantum.bindings) {
+        for (const auto& binding : technique.bindings) {
             if (binding.location < 0) {
                 continue;
             }
@@ -372,7 +394,7 @@ namespace rmmr {
             if (pass == renderer::Pass::transparent) {
                 sort_back_to_front(view, batch);
             } else {
-                sort_by_pipeline_state(args.world, batch);
+                sort_by_pipeline_state(batch);
             }
 
             for (const auto* command_ptr : batch) {
@@ -381,7 +403,7 @@ namespace rmmr {
                     continue;
                 }
 
-                ensure_material(args, pass, command.material, pass_state, primary_light, shadow, shadow_space_light);
+                ensure_material(args, pass, command.material, command.shader, pass_state, primary_light, shadow, shadow_space_light);
 
                 const auto& geometry = with<resource::geometry::Runtime>::get(args.world, command.geometry);
                 if (not pass_state.bound_geometry || *pass_state.bound_geometry != command.geometry) {

@@ -26,7 +26,6 @@ namespace rmmr::scene {
             .material = actor.material,
             .albedo = actor.albedo,
             .opacity = 1.0f,
-            .shadow_material = PrimitiveActor::Actions::get_global(context).shadowMaterial,
         }, where);
     }
 

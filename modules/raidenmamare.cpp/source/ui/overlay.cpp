@@ -39,37 +39,39 @@ namespace rmmr::ui {
 
         void draw_material_texture_slots(fqsm::Writing world, resource::material::Asset::Id material_id) {
             auto material = with<resource::material::Asset>::modify(world, material_id);
-            for (integer slot = 0; slot < static_cast<integer>(material->textures.size()); ++slot) {
-                ImGui::PushID(static_cast<int>(slot));
-                auto& binding = material->textures[static_cast<std::size_t>(slot)];
-                const string slot_label{material::Semantics::name_of(binding.id)};
+            integer slot = 0;
+            for (auto& [_, technique] : material->techniques) {
+                for (auto& binding : technique.textures) {
+                    ImGui::PushID(static_cast<int>(slot++));
+                    const string slot_label{material::Semantics::name_of(binding.id)};
 
-                const char* preview = "(missing)";
-                if (with<resource::Unit>::exists(world, binding.texture)) {
-                    const auto& texture_unit = with<resource::Unit>::get(world, binding.texture);
-                    if (not texture_unit.name.empty()) {
-                        preview = texture_unit.name.c_str();
-                    }
-                }
-
-                if (ImGui::BeginCombo(slot_label.c_str(), preview)) {
-                    for (const auto entry : world->aspect<resource::texture::Asset>().items()) {
-                        push_entity_id<resource::texture::Asset>(entry.id);
-                        const auto& texture_unit = with<resource::Unit>::get(world, entry.id);
-                        const char* option = texture_unit.name.empty() ? "(unnamed)" : texture_unit.name.c_str();
-                        const bool selected = entry.id == binding.texture;
-                        if (ImGui::Selectable(option, selected)) {
-                            binding.texture = entry.id;
+                    const char* preview = "(missing)";
+                    if (with<resource::Unit>::exists(world, binding.texture)) {
+                        const auto& texture_unit = with<resource::Unit>::get(world, binding.texture);
+                        if (not texture_unit.name.empty()) {
+                            preview = texture_unit.name.c_str();
                         }
-                        if (selected) {
-                            ImGui::SetItemDefaultFocus();
-                        }
-                        ImGui::PopID();
                     }
-                    ImGui::EndCombo();
-                }
 
-                ImGui::PopID();
+                    if (ImGui::BeginCombo(slot_label.c_str(), preview)) {
+                        for (const auto entry : world->aspect<resource::texture::Asset>().items()) {
+                            push_entity_id<resource::texture::Asset>(entry.id);
+                            const auto& texture_unit = with<resource::Unit>::get(world, entry.id);
+                            const char* option = texture_unit.name.empty() ? "(unnamed)" : texture_unit.name.c_str();
+                            const bool selected = entry.id == binding.texture;
+                            if (ImGui::Selectable(option, selected)) {
+                                binding.texture = entry.id;
+                            }
+                            if (selected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                            ImGui::PopID();
+                        }
+                        ImGui::EndCombo();
+                    }
+
+                    ImGui::PopID();
+                }
             }
         }
 

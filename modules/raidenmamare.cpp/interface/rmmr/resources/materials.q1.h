@@ -17,11 +17,13 @@ namespace rmmr::resource::material {
             Uniform::Id id;
             texture::Asset::Id texture;
         };
-        struct Quantum {
+        struct Technique {
             shader::Asset::Id program;
             Uniform::Palette uniforms;
             vector<TextureBinding> textures;
-            renderer::Passes passes;
+        };
+        struct Quantum {
+            umap<renderer::Pass, Technique> techniques;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
@@ -33,15 +35,17 @@ namespace rmmr::resource::material {
             Uniform::Id id;
             texture::Runtime::Id texture;
         };
-        struct Quantum {
+        struct Technique {
             shader::Runtime::Id shader;
             Locations locations;
             vector<Uniform::Binding> bindings;
             vector<TextureBinding> textures;
-            renderer::Passes passes;
+        };
+        struct Quantum {
+            umap<renderer::Pass, Technique> techniques;
         };
         struct Actions : BaseActions {
-            static void apply(Reading, Id, system::Device::Id);
+            static void apply(Reading, Id, system::Device::Id, renderer::Pass);
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

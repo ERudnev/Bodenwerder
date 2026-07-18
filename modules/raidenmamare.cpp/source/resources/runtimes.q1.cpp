@@ -104,10 +104,18 @@ namespace rmmr::resource {
             const auto mapping = with<Runtimes>::get(context, device).materials_id_mapping;
             for (const auto& [material_id, _] : mapping) {
                 if (not with<material::Asset>::exists(context, material_id)) continue;
-                for (const auto& binding : with<material::Asset>::get(context, material_id).textures) {
-                    if (binding.texture != texture_id) continue;
+                bool uses_texture = false;
+                for (const auto& [_, technique] : with<material::Asset>::get(context, material_id).techniques) {
+                    for (const auto& binding : technique.textures) {
+                        if (binding.texture == texture_id) {
+                            uses_texture = true;
+                            break;
+                        }
+                    }
+                    if (uses_texture) break;
+                }
+                if (uses_texture) {
                     rematerialize_material(context, material_id, device);
-                    break;
                 }
             }
         }
@@ -116,8 +124,16 @@ namespace rmmr::resource {
             const auto mapping = with<Runtimes>::get(context, device).materials_id_mapping;
             for (const auto& [material_id, _] : mapping) {
                 if (not with<material::Asset>::exists(context, material_id)) continue;
-                if (with<material::Asset>::get(context, material_id).program != shader_id) continue;
-                rematerialize_material(context, material_id, device);
+                bool uses_shader = false;
+                for (const auto& [_, technique] : with<material::Asset>::get(context, material_id).techniques) {
+                    if (technique.program == shader_id) {
+                        uses_shader = true;
+                        break;
+                    }
+                }
+                if (uses_shader) {
+                    rematerialize_material(context, material_id, device);
+                }
             }
         }
 

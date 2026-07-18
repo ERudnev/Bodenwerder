@@ -17,24 +17,13 @@ namespace rmmr::scene {
 
         const auto& material = with<resource::material::Runtime>::get(context, material_it->second);
 
-        for (const auto pass : material.passes) {
-            auto command_material = material_it->second;
-            if (pass == renderer::Pass::shadow) {
-                if (not draw.shadow_material) {
-                    continue;
-                }
-                const auto shadow_it = runtimes.materials_id_mapping.find(*draw.shadow_material);
-                if (shadow_it == runtimes.materials_id_mapping.end()) {
-                    continue;
-                }
-                command_material = shadow_it->second;
-            }
-
+        for (const auto& [pass, technique] : material.techniques) {
             where.push_back(renderer::Command{
                 .pass = pass,
                 .model = draw.model,
                 .geometry = geometry_it->second,
-                .material = command_material,
+                .material = material_it->second,
+                .shader = technique.shader,
                 .albedo = draw.albedo,
                 .opacity = draw.opacity,
                 .instance_data = {},

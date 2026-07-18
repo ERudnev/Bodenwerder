@@ -22,7 +22,6 @@ namespace rmmr::scene {
             .material = grid.material,
             .albedo = RGB{0.0f, 0.0f, 0.0f},
             .opacity = grid.opacity,
-            .shadow_material = {},
         }, where);
     }
 

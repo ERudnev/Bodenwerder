@@ -3,6 +3,7 @@ import "gl"
 import "semantics"
 import "resources/geometry"
 import "resources/materials"
+import "resources/shaders"
 
 namespace rmmr
   namespace renderer
@@ -18,6 +19,7 @@ namespace rmmr
       model: mat4
       geometry: #resource::geometry::Runtime
       material: #resource::material::Runtime
+      shader: #resource::shader::Runtime
       albedo: RGB
       opacity: float
       instance_data: InstanceSource

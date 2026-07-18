@@ -1,7 +1,5 @@
 #pragma once
 
-#include <base/maybe.h>
-
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -19,9 +17,6 @@ namespace rmmr::scene {
             resource::geometry::Asset::Id geometry;
             resource::material::Asset::Id material;
             RGB albedo;
-        };
-        struct Global {
-            base::maybe<resource::material::Asset::Id> shadowMaterial;
         };
         struct Actions : BaseActions {
             static auto create(Writing, Pos, HPB, resource::geometry::Asset::Id, resource::material::Asset::Id, RGB albedo) -> Id;

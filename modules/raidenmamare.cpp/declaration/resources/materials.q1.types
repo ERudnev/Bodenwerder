@@ -7,31 +7,31 @@ namespace rmmr
   namespace resource
     namespace material
 
-    // abstract material with unknown kind
     feature Asset of resource::Unit
       struct TextureBinding
         id: Uniform::Id
         texture: #texture::Asset
-      one
+      struct Technique
         program: #shader::Asset
         uniforms: Uniform::Palette
         textures: vector<TextureBinding>
-        passes: renderer::Passes
+      one
+        techniques: umap<renderer::Pass, Technique>
 
     entity Runtime
       struct TextureBinding
         id: Uniform::Id
         texture: #texture::Runtime
       using Locations as @external(rmmr::material::Semantics::RuntimeMapping)
-      one
+      struct Technique
         shader: #shader::Runtime
         locations: Locations
         bindings: vector<Uniform::Binding>
         textures: vector<TextureBinding>
-        passes: renderer::Passes
-        ?apply(#system::Device)
+      one
+        techniques: umap<renderer::Pass, Technique>
+        ?apply(#system::Device, renderer::Pass)
 
-    // recipe: shader asset + palette + texture slots → device Runtime
     feature Composer of Asset
       one
         >materialize(#system::Device) -> #Runtime

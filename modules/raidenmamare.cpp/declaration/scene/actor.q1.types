@@ -15,5 +15,4 @@ namespace rmmr
         albedo: RGB
         ?submit(#system::Device, >where: renderer::CommandBuffer)
       all
-        shadowMaterial: #resource::material::Asset
         >create(Pos, HPB, geometry: #resource::geometry::Asset, material: #resource::material::Asset, albedo: RGB) -> #
