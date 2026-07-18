@@ -150,15 +150,16 @@ namespace rmmr::resource::builders::geometry {
     auto GeometryGenerator::gridPlane() -> CpuPresentation {
         constexpr float half = 80.0f;
 
+        // CCW when viewed from +Y (front faces the sky); required for GL_CULL_FACE.
         return CpuPresentation{
             .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position"}),
             .positions = vector<Pos>{
                 Pos{-half, 0.0f, -half},
+                Pos{half, 0.0f, half},
                 Pos{half, 0.0f, -half},
-                Pos{half, 0.0f, half},
                 Pos{-half, 0.0f, -half},
-                Pos{half, 0.0f, half},
                 Pos{-half, 0.0f, half},
+                Pos{half, 0.0f, half},
             },
             .normals = {},
             .uv0 = {},

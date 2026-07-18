@@ -1,8 +1,6 @@
 #pragma once
 
-#include <concepts>
 #include <format>
-#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -23,9 +21,9 @@ namespace fqsm::processing::orchestrator {
 
     } // namespace detail
 
-    // Mutable view of a Quantum already living in the Writing patch (no private buffer).
-    // Lifetime of the referenced Quantum is the Writing/patch; this gate only keeps the Gate alive.
-    // Soft noop discard: if Quantum is equality_comparable and this gate created an unchanged patchlet, drop it.
+    // Plain patch handle: ensure a modification patchlet exists, then access it by id.
+    // No noop elision — unchanged values still leave a patchlet (ImGui / bind-outliving-gate).
+    // Access always goes through find(id): Table storage is not reference-stable.
     template<category::Any Meta>
     struct QuantumGate {
         const Id<Meta> id;
@@ -33,107 +31,100 @@ namespace fqsm::processing::orchestrator {
         explicit QuantumGate(Writing gate, Id<Meta> id)
             : id(id)
             , gate(std::move(gate))
-            , value(open_patchlet(*this))
-        {}
+        {
+            open_patchlet();
+        }
 
         QuantumGate(const QuantumGate&) = delete;
         QuantumGate& operator=(const QuantumGate&) = delete;
         QuantumGate(QuantumGate&&) = delete;
         QuantumGate& operator=(QuantumGate&&) = delete;
 
-        ~QuantumGate() {
-            discard_if_noop();
-        }
-
-        Quantum<Meta>* operator->() { return &value; }
-        Quantum<Meta>& operator*() { return value; }
+        Quantum<Meta>* operator->() { return &quantum(); }
+        Quantum<Meta>& operator*() { return quantum(); }
 
     private:
-        static Quantum<Meta>& open_patchlet(QuantumGate& self) {
-            auto& patch = detail::patch_line<Meta>(self.gate);
-            if (auto* patchlet = patch.items.find(self.id); patchlet and patchlet->has_value()) {
-                return patchlet->value();
+        auto& items() {
+            return detail::patch_line<Meta>(gate).items;
+        }
+
+        Quantum<Meta>& quantum() {
+            auto* patchlet = items().find(id);
+            if (not patchlet or not patchlet->has_value()) {
+                throw std::runtime_error(std::format(
+                    R"(QuantumGate: patchlet missing for "{}" {})",
+                    Rtid::name<Meta>(),
+                    id));
+            }
+            return patchlet->value();
+        }
+
+        void open_patchlet() {
+            auto& patch = detail::patch_line<Meta>(gate);
+            if (auto* patchlet = patch.items.find(id); patchlet and patchlet->has_value()) {
+                return;
             }
 
-            auto& quantum = patch.update_modification(
-                self.id,
+            patch.update_modification(
+                id,
                 [&]() -> const Quantum<Meta>& {
-                    const auto* found = self.gate->aspect<Meta>().items().find(self.id);
+                    const auto* found = gate->aspect<Meta>().items().find(id);
                     if (!found) {
                         throw std::runtime_error(std::format(
                             R"(cannot modify "{}" {}: not present)",
                             Rtid::name<Meta>(),
-                            self.id));
+                            id));
                     }
                     return *found;
                 });
-            if constexpr (std::equality_comparable<Quantum<Meta>>) {
-                self.original = quantum;
-            }
-            return quantum;
-        }
-
-        void discard_if_noop() {
-            if constexpr (std::equality_comparable<Quantum<Meta>>) {
-                if (original.has_value() and value == *original) {
-                    detail::patch_line<Meta>(gate).items.discard_changes(id);
-                }
-            }
         }
 
         Writing gate;
-        std::optional<Quantum<Meta>> original;
-        Quantum<Meta>& value;
     };
 
-    // Mutable view of GlobalValue in the Writing patch (same immediate semantics as QuantumGate).
     template<category::Any Meta>
     struct GlobalGate {
         explicit GlobalGate(Writing gate)
             : gate(std::move(gate))
-            , value(open_global(*this))
-        {}
+        {
+            open_global();
+        }
 
         GlobalGate(const GlobalGate&) = delete;
         GlobalGate& operator=(const GlobalGate&) = delete;
         GlobalGate(GlobalGate&&) = delete;
         GlobalGate& operator=(GlobalGate&&) = delete;
 
-        ~GlobalGate() {
-            discard_if_noop();
-        }
-
-        GlobalValue<Meta>* operator->() { return &value; }
-        GlobalValue<Meta>& operator*() { return value; }
+        GlobalValue<Meta>* operator->() { return &global(); }
+        GlobalValue<Meta>& operator*() { return global(); }
 
     private:
-        static GlobalValue<Meta>& open_global(GlobalGate& self) {
-            auto& patch = detail::patch_line<Meta>(self.gate);
-            if (patch.global.has_value()) {
-                return *patch.global;
-            }
-
-            auto& global = patch.update_global(
-                [&]() -> const GlobalValue<Meta>& {
-                    return self.gate->aspect<Meta>().global();
-                });
-            if constexpr (std::equality_comparable<GlobalValue<Meta>>) {
-                self.original = global;
-            }
-            return global;
+        auto& patch() {
+            return detail::patch_line<Meta>(gate);
         }
 
-        void discard_if_noop() {
-            if constexpr (std::equality_comparable<GlobalValue<Meta>>) {
-                if (original.has_value() and value == *original) {
-                    detail::patch_line<Meta>(gate).global.reset();
-                }
+        GlobalValue<Meta>& global() {
+            if (not patch().global.has_value()) {
+                throw std::runtime_error(std::format(
+                    R"(GlobalGate: global patchlet missing for "{}")",
+                    Rtid::name<Meta>()));
             }
+            return *patch().global;
+        }
+
+        void open_global() {
+            auto& line = patch();
+            if (line.global.has_value()) {
+                return;
+            }
+
+            line.update_global(
+                [&]() -> const GlobalValue<Meta>& {
+                    return gate->aspect<Meta>().global();
+                });
         }
 
         Writing gate;
-        std::optional<GlobalValue<Meta>> original;
-        GlobalValue<Meta>& value;
     };
 
 }
