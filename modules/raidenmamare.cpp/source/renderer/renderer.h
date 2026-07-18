@@ -19,6 +19,7 @@ namespace rmmr {
     using namespace fqsm::api;
 
     struct PassDrawState {
+        base::maybe<resource::shader::Runtime::Id> bound_shader;
         base::maybe<resource::material::Runtime::Id> bound_material;
         base::maybe<resource::geometry::Runtime::Id> bound_geometry;
     };
@@ -51,6 +52,7 @@ namespace rmmr {
             scene::Light::Id primary_light,
             base::maybe<resource::shadow::Runtime::Id> shadow,
             scene::Light::Id shadow_space_light);
+        void bind_material_samplers(FrameContext args, resource::material::Runtime::Id material);
         void draw_instance(FrameContext args, const renderer::Command& command, resource::material::Runtime::Id material);
         void draw_stats_overlay(FrameContext args);
     };

@@ -147,10 +147,37 @@ namespace rmmr {
             return;
         }
 
-        with<resource::material::Runtime>::apply(args.world, material, args.window);
-        bind_pass_uniforms(args, pass, material, primary_light, shadow, shadow_space_light);
+        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
+        const auto shader = material_quantum.shader;
+        const bool program_changed = not state.bound_shader || *state.bound_shader != shader;
+
+        if (program_changed) {
+            with<resource::material::Runtime>::apply(args.world, material, args.window);
+            bind_pass_uniforms(args, pass, material, primary_light, shadow, shadow_space_light);
+            state.bound_shader = shader;
+            state.bound_geometry.reset();
+        } else {
+            bind_material_samplers(args, material);
+        }
+
         state.bound_material = material;
-        state.bound_geometry.reset();
+    }
+
+    void Renderer::bind_material_samplers(FrameContext args, resource::material::Runtime::Id material) {
+        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
+        for (const auto& binding : material_quantum.bindings) {
+            if (binding.location < 0) {
+                continue;
+            }
+            if (material::Semantics::name_of(binding.id) != "albedoMap") {
+                continue;
+            }
+            const auto texture = material_texture_for_semantic(material_quantum, binding.id);
+            if (not texture || not with<resource::texture::Runtime>::exists(args.world, *texture)) {
+                throw std::runtime_error("Renderer: material is missing albedoMap texture");
+            }
+            set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, 0);
+        }
     }
 
     void Renderer::bind_pass_uniforms(

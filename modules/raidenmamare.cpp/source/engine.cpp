@@ -118,6 +118,7 @@ namespace rmmr {
             maybe<resource::shadow::Asset::Id> shadow;
         } resources;
         Renderer renderer;
+        bool show_materials = true;
     };
 
     Engine::Engine(StartupParameters params)
@@ -183,9 +184,11 @@ namespace rmmr {
                     .window = *device,
                     .scene = *state->scene,
                     .camera = *state->scene_camera,
+                    .show_materials = state->show_materials,
                 };
+                ui::draw_renderer_toggles(ui_frame);
                 ui::draw_camera(ui_frame);
-                ui::draw_materials(ui_frame);
+                if (state->show_materials) ui::draw_materials(ui_frame);
                 state->renderer.render(Renderer::FrameContext{
                     .world = main,
                     .viewport = *viewport,

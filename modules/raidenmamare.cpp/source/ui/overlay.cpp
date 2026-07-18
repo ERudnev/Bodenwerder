@@ -152,6 +152,22 @@ namespace rmmr::ui {
         ImGui::End();
     }*/
 
+    void draw_renderer_toggles(FrameContext args) {
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(ImVec2{viewport->WorkPos.x + 10.0f, viewport->WorkPos.y + 10.0f}, ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.65f);
+        constexpr ImGuiWindowFlags flags =
+            ImGuiWindowFlags_NoDecoration
+            | ImGuiWindowFlags_AlwaysAutoResize
+            | ImGuiWindowFlags_NoSavedSettings
+            | ImGuiWindowFlags_NoFocusOnAppearing
+            | ImGuiWindowFlags_NoNav;
+        if (ImGui::Begin("##renderer_toggles", nullptr, flags)) {
+            ImGui::Checkbox("Materials", &args.show_materials);
+        }
+        ImGui::End();
+    }
+
     void draw_materials(FrameContext args) {
         if (not with<scene::Root>::exists(args.world, args.scene)) {
             return;

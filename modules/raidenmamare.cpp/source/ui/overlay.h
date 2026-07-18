@@ -15,9 +15,11 @@ namespace rmmr::ui {
         system::Window::Id window;
         scene::Root::Id scene;
         scene::Camera::Id camera;
+        bool& show_materials;
     };
 
     void draw_camera(FrameContext args);
     void draw_materials(FrameContext args);
+    void draw_renderer_toggles(FrameContext args);
 
 }
