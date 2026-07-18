@@ -15,7 +15,6 @@ namespace rmmr
       byte_offset: IntPtr
 
     struct Command
-      pass: Pass
       model: mat4
       geometry: #resource::geometry::Runtime
       material: #resource::material::Runtime
@@ -26,4 +25,4 @@ namespace rmmr
       instance_count: Count
       render_state: RenderState
 
-    using CommandBuffer as vector<Command>
+    using CommandBuffer as @external(rmmr::renderer::CommandBuffer)

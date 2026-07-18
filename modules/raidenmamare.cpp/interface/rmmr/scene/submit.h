@@ -11,7 +11,7 @@ namespace rmmr::scene {
 
     using namespace fqsm::api;
 
-    // Instance + assets; passes come from material.techniques keys.
+    // Instance + assets; techniques keys select baskets in CommandBuffer.
     struct DrawInstance {
         mat4 model;
         resource::geometry::Asset::Id geometry;

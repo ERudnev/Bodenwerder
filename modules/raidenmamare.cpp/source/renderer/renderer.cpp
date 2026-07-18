@@ -30,9 +30,34 @@ namespace rmmr {
 
     namespace {
 
+        // Authoring names resolved once; draw/bind path compares PersistentId only.
+        const struct {
+            using Id = material::Semantics::PersistentId;
+            Id model = material::Semantics::id_of("model");
+            Id view = material::Semantics::id_of("view");
+            Id projection = material::Semantics::id_of("projection");
+            Id lightSpaceMatrix = material::Semantics::id_of("lightSpaceMatrix");
+            Id albedo = material::Semantics::id_of("albedo");
+            Id ambientColor = material::Semantics::id_of("ambientColor");
+            Id ambientIntensity = material::Semantics::id_of("ambientIntensity");
+            Id light0Color = material::Semantics::id_of("light0Color");
+            Id light0Intensity = material::Semantics::id_of("light0Intensity");
+            Id light0Pos = material::Semantics::id_of("light0Pos");
+            Id patternScale = material::Semantics::id_of("patternScale");
+            Id colorPrimary = material::Semantics::id_of("colorPrimary");
+            Id colorSecondary = material::Semantics::id_of("colorSecondary");
+            Id shadowMap = material::Semantics::id_of("shadowMap");
+            Id albedoMap = material::Semantics::id_of("albedoMap");
+        } semantic{};
+
         struct ShadowCaster {
             scene::Light::Id light;
             resource::shadow::Runtime::Id runtime;
+        };
+
+        struct FrameLighting {
+            scene::Light::Id primary;
+            base::maybe<ShadowCaster> shadow;
         };
 
         auto viewport_aspect_ratio(Reading context, system::Viewport::Id viewport) -> float {
@@ -50,7 +75,8 @@ namespace rmmr {
             return {light_group.begin(), light_group.end()};
         }
 
-        auto first_shadow_caster(Reading context, system::Device::Id device, const vector<scene::Light::Id>& lights) -> base::maybe<ShadowCaster> {
+        // Prefer a light that owns a materialized shadow map; otherwise shade from the first light and skip shadows.
+        auto resolve_frame_lighting(Reading context, system::Device::Id device, const vector<scene::Light::Id>& lights) -> FrameLighting {
             const auto& runtimes = with<resource::Runtimes>::get(context, device);
             for (const auto light_node : lights) {
                 const auto& light = with<scene::Light>::get(context, light_node);
@@ -61,12 +87,18 @@ namespace rmmr {
                 if (it == runtimes.shadows_id_mapping.end()) {
                     continue;
                 }
-                return ShadowCaster{
-                    .light = light_node,
-                    .runtime = it->second,
+                return FrameLighting{
+                    .primary = light_node,
+                    .shadow = ShadowCaster{
+                        .light = light_node,
+                        .runtime = it->second,
+                    },
                 };
             }
-            return {};
+            return FrameLighting{
+                .primary = lights.front(),
+                .shadow = {},
+            };
         }
 
         void set_uniform(const resource::Uniform::Binding& binding, const mat4& value) {
@@ -154,41 +186,26 @@ namespace rmmr {
             renderer::Pass::gizmo,
         };
 
-        auto collect_pass_commands(const renderer::CommandBuffer& commands, renderer::Pass pass) -> vector<const renderer::Command*> {
-            vector<const renderer::Command*> batch;
-            batch.reserve(commands.size());
-            for (const auto& command : commands) {
-                if (command.pass != pass) {
-                    continue;
-                }
-                if (command.instance_count <= renderer::Count{0}) {
-                    continue;
-                }
-                batch.push_back(&command);
-            }
-            return batch;
-        }
-
-        void sort_by_pipeline_state(vector<const renderer::Command*>& batch) {
-            std::sort(batch.begin(), batch.end(), [](const renderer::Command* left, const renderer::Command* right) {
-                if (left->shader != right->shader) {
-                    return left->shader < right->shader;
+        void sort_by_pipeline_state(renderer::Pass pass, renderer::CommandBuffer::Buffer& batch) {
+            std::sort(batch.begin(), batch.end(), [pass](const renderer::Command& left, const renderer::Command& right) {
+                if (left.shader != right.shader) {
+                    return left.shader < right.shader;
                 }
                 // Shadow techniques are shared across surface materials: batch by mesh, not material.
-                if (left->pass == renderer::Pass::shadow) {
-                    return left->geometry < right->geometry;
+                if (pass == renderer::Pass::shadow) {
+                    return left.geometry < right.geometry;
                 }
-                if (left->material != right->material) {
-                    return left->material < right->material;
+                if (left.material != right.material) {
+                    return left.material < right.material;
                 }
-                return left->geometry < right->geometry;
+                return left.geometry < right.geometry;
             });
         }
 
-        void sort_back_to_front(const mat4& view, vector<const renderer::Command*>& batch) {
-            std::sort(batch.begin(), batch.end(), [&view](const renderer::Command* left, const renderer::Command* right) {
-                const float left_depth = (view * left->model[3]).z;
-                const float right_depth = (view * right->model[3]).z;
+        void sort_back_to_front(const mat4& view, renderer::CommandBuffer::Buffer& batch) {
+            std::sort(batch.begin(), batch.end(), [&view](const renderer::Command& left, const renderer::Command& right) {
+                const float left_depth = (view * left.model[3]).z;
+                const float right_depth = (view * right.model[3]).z;
                 return left_depth < right_depth;
             });
         }
@@ -202,8 +219,7 @@ namespace rmmr {
         resource::shader::Runtime::Id shader,
         PassDrawState& state,
         scene::Light::Id primary_light,
-        base::maybe<resource::shadow::Runtime::Id> shadow,
-        scene::Light::Id shadow_space_light)
+        base::maybe<resource::shadow::Runtime::Id> shadow)
     {
         // Depth-only shadow technique has no material-unique samplers: cache by program.
         if (pass == renderer::Pass::shadow) {
@@ -211,7 +227,7 @@ namespace rmmr {
                 return;
             }
             with<resource::material::Runtime>::apply(args.world, material, args.window, pass);
-            bind_pass_uniforms(args, pass, material, primary_light, shadow, shadow_space_light);
+            bind_pass_uniforms(args, pass, material, primary_light, shadow);
             state.bound_shader = shader;
             state.bound_material = material;
             state.bound_geometry.reset();
@@ -226,7 +242,7 @@ namespace rmmr {
 
         if (program_changed) {
             with<resource::material::Runtime>::apply(args.world, material, args.window, pass);
-            bind_pass_uniforms(args, pass, material, primary_light, shadow, shadow_space_light);
+            bind_pass_uniforms(args, pass, material, primary_light, shadow);
             state.bound_shader = shader;
             state.bound_geometry.reset();
         } else {
@@ -242,7 +258,7 @@ namespace rmmr {
             if (binding.location < 0) {
                 continue;
             }
-            if (material::Semantics::name_of(binding.id) != "albedoMap") {
+            if (binding.id != semantic.albedoMap) {
                 continue;
             }
             const auto texture = material_texture_for_semantic(technique, binding.id);
@@ -258,18 +274,17 @@ namespace rmmr {
         renderer::Pass pass,
         resource::material::Runtime::Id material,
         scene::Light::Id primary_light,
-        base::maybe<resource::shadow::Runtime::Id> shadow,
-        scene::Light::Id shadow_space_light)
+        base::maybe<resource::shadow::Runtime::Id> shadow)
     {
         const auto& technique = technique_for(with<resource::material::Runtime>::get(args.world, material), pass);
 
         if (pass == renderer::Pass::shadow) {
-            const mat4 light_space = light_space_matrix(args.world, shadow_space_light);
+            const mat4 light_space = light_space_matrix(args.world, primary_light);
             for (const auto& binding : technique.bindings) {
                 if (binding.location < 0) {
                     continue;
                 }
-                if (material::Semantics::name_of(binding.id) == "lightSpaceMatrix") {
+                if (binding.id == semantic.lightSpaceMatrix) {
                     set_uniform(binding, light_space);
                 }
             }
@@ -284,7 +299,7 @@ namespace rmmr {
         const float aspect_ratio = viewport_aspect_ratio(args.world, args.viewport);
         const mat4 view = scene::Camera::Actions::view(args.world, args.camera);
         const mat4 projection = scene::Camera::Actions::projection(args.world, args.camera, aspect_ratio);
-        const mat4 light_space = light_space_matrix(args.world, shadow_space_light);
+        const mat4 light_space = light_space_matrix(args.world, primary_light);
 
         const auto& light = with<scene::Light>::get(args.world, primary_light);
         const mat4 light_transform = scene::Node::Actions::transform(args.world, primary_light);
@@ -294,55 +309,53 @@ namespace rmmr {
             if (binding.location < 0) {
                 continue;
             }
-            const auto name = material::Semantics::name_of(binding.id);
-            if (name == "ambientColor") {
+            if (binding.id == semantic.ambientColor) {
                 set_uniform(binding, root_quantum.ambient);
-            } else if (name == "ambientIntensity") {
+            } else if (binding.id == semantic.ambientIntensity) {
                 set_uniform(binding, root_quantum.ambient_intensity);
-            } else if (name == "view") {
+            } else if (binding.id == semantic.view) {
                 set_uniform(binding, view);
-            } else if (name == "projection") {
+            } else if (binding.id == semantic.projection) {
                 set_uniform(binding, projection);
-            } else if (name == "lightSpaceMatrix") {
+            } else if (binding.id == semantic.lightSpaceMatrix) {
                 set_uniform(binding, light_space);
-            } else if (name == "shadowMap") {
+            } else if (binding.id == semantic.shadowMap) {
                 if (not shadow) {
                     throw std::runtime_error("Renderer: material expects shadowMap but no shadow-casting light");
                 }
                 set_uniform_sampler(binding, with<resource::shadow::Runtime>::get(args.world, *shadow).depth, 1);
-            } else if (name == "albedoMap") {
+            } else if (binding.id == semantic.albedoMap) {
                 const auto texture = material_texture_for_semantic(technique, binding.id);
                 if (not texture || not with<resource::texture::Runtime>::exists(args.world, *texture)) {
                     throw std::runtime_error("Renderer: material is missing albedoMap texture");
                 }
                 set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, 0);
-            } else if (name == "light0Pos") {
+            } else if (binding.id == semantic.light0Pos) {
                 set_uniform(binding, light_world_pos);
-            } else if (name == "light0Color") {
+            } else if (binding.id == semantic.light0Color) {
                 set_uniform(binding, light.color);
-            } else if (name == "light0Intensity") {
+            } else if (binding.id == semantic.light0Intensity) {
                 set_uniform(binding, light.intensity);
             }
         }
     }
 
-    void Renderer::draw_instance(FrameContext args, const renderer::Command& command, resource::material::Runtime::Id material) {
-        const auto& technique = technique_for(with<resource::material::Runtime>::get(args.world, material), command.pass);
+    void Renderer::draw_instance(FrameContext args, renderer::Pass pass, const renderer::Command& command, resource::material::Runtime::Id material) {
+        const auto& technique = technique_for(with<resource::material::Runtime>::get(args.world, material), pass);
 
         for (const auto& binding : technique.bindings) {
             if (binding.location < 0) {
                 continue;
             }
-            const auto name = material::Semantics::name_of(binding.id);
-            if (name == "model") {
+            if (binding.id == semantic.model) {
                 set_uniform(binding, command.model);
-            } else if (name == "albedo") {
+            } else if (binding.id == semantic.albedo) {
                 set_uniform(binding, command.albedo);
-            } else if (name == "patternScale") {
+            } else if (binding.id == semantic.patternScale) {
                 set_uniform(binding, 1.0f);
-            } else if (name == "colorPrimary") {
+            } else if (binding.id == semantic.colorPrimary) {
                 set_uniform(binding, RGB{0.45f, 0.48f, 0.52f} * command.opacity);
-            } else if (name == "colorSecondary") {
+            } else if (binding.id == semantic.colorSecondary) {
                 set_uniform(binding, RGB{0.1f, 0.12f, 0.14f} * command.opacity);
             }
         }
@@ -365,13 +378,10 @@ namespace rmmr {
         }
 
         const auto lights = gather_lights(args.world, args.scene);
-        const auto primary_light = lights.front();
-        const auto shadow_caster = first_shadow_caster(args.world, args.window, lights);
+        const auto lighting = resolve_frame_lighting(args.world, args.window, lights);
         base::maybe<resource::shadow::Runtime::Id> shadow{};
-        auto shadow_space_light = primary_light;
-        if (shadow_caster) {
-            shadow = shadow_caster->runtime;
-            shadow_space_light = shadow_caster->light;
+        if (lighting.shadow) {
+            shadow = lighting.shadow->runtime;
         }
 
         renderer::CommandBuffer commands;
@@ -383,27 +393,29 @@ namespace rmmr {
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);
 
         for (const auto pass : render_queue_passes) {
-            if (pass == renderer::Pass::shadow && not shadow_caster) {
+            if (pass == renderer::Pass::shadow && not lighting.shadow) {
                 continue;
             }
 
-            begin_pass(pass, args, shadow_caster);
+            begin_pass(pass, args, lighting.shadow);
             PassDrawState pass_state{};
 
-            auto batch = collect_pass_commands(commands, pass);
+            auto& batch = commands[pass];
             if (pass == renderer::Pass::transparent) {
                 sort_back_to_front(view, batch);
             } else {
-                sort_by_pipeline_state(batch);
+                sort_by_pipeline_state(pass, batch);
             }
 
-            for (const auto* command_ptr : batch) {
-                const auto& command = *command_ptr;
+            for (const auto& command : batch) {
+                if (command.instance_count <= renderer::Count{0}) {
+                    continue;
+                }
                 if (not with<resource::geometry::Runtime>::exists(args.world, command.geometry)) {
                     continue;
                 }
 
-                ensure_material(args, pass, command.material, command.shader, pass_state, primary_light, shadow, shadow_space_light);
+                ensure_material(args, pass, command.material, command.shader, pass_state, lighting.primary, shadow);
 
                 const auto& geometry = with<resource::geometry::Runtime>::get(args.world, command.geometry);
                 if (not pass_state.bound_geometry || *pass_state.bound_geometry != command.geometry) {
@@ -411,7 +423,7 @@ namespace rmmr {
                     pass_state.bound_geometry = command.geometry;
                 }
 
-                draw_instance(args, command, command.material);
+                draw_instance(args, pass, command, command.material);
 
                 if (geometry.index_count > renderer::Count{0}) {
                     glDrawElements(GL_TRIANGLES, geometry.index_count, GL_UNSIGNED_INT, nullptr);
@@ -420,7 +432,7 @@ namespace rmmr {
                 }
             }
 
-            end_pass(pass, args, shadow_caster);
+            end_pass(pass, args, lighting.shadow);
         }
 
         glDepthMask(depth_write_prev);

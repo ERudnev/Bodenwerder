@@ -18,8 +18,7 @@ namespace rmmr::scene {
         const auto& material = with<resource::material::Runtime>::get(context, material_it->second);
 
         for (const auto& [pass, technique] : material.techniques) {
-            where.push_back(renderer::Command{
-                .pass = pass,
+            where[pass].push_back(renderer::Command{
                 .model = draw.model,
                 .geometry = geometry_it->second,
                 .material = material_it->second,

@@ -22,7 +22,6 @@ namespace rmmr::renderer {
     };
 
     struct Command {
-        Pass pass;
         mat4 model;
         resource::geometry::Runtime::Id geometry;
         resource::material::Runtime::Id material;
@@ -34,6 +33,6 @@ namespace rmmr::renderer {
         RenderState render_state;
     };
 
-    using CommandBuffer = vector<Command>;
+    using CommandBuffer = SeparateBuffers<Command>;
 
 }
