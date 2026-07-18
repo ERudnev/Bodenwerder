@@ -5,9 +5,9 @@
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
 
-#include <base/logging.h>
-
+#include <cmath>
 #include <filesystem>
+#include <vector>
 
 namespace rmmr::resource::texture {
 
@@ -93,8 +93,65 @@ namespace rmmr::resource::texture {
         });
     }
 
-    auto Generator::Actions::materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id> {
-        _INCOMPLETE_;
+    auto Generator::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {
+        const auto& generator = with<Generator>::get(context, asset_id);
+        const int width = static_cast<int>(generator.size.x);
+        const int height = static_cast<int>(generator.size.y);
+        if (width <= 0 || height <= 0) {
+            return context.refuse("resource::texture::Generator::materialize: size must be positive");
+        }
+
+        const auto& device_quantum = with<system::Device>::get(context, device);
+        glfwMakeContextCurrent(device_quantum.handle);
+
+        std::vector<unsigned char> pixels(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4u);
+        constexpr float outer_radius = 1.0f;
+        constexpr float inner_radius = 0.82f;
+        const bool invert_alpha = generator.pattern == Generator::Pattern::whiteRing;
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                const float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(width) * 2.0f - 1.0f;
+                const float v = (static_cast<float>(y) + 0.5f) / static_cast<float>(height) * 2.0f - 1.0f;
+                const float radius = std::sqrt(u * u + v * v);
+                float alpha = (radius - outer_radius) / (inner_radius - outer_radius);
+                if (alpha < 0.0f) {
+                    alpha = 0.0f;
+                } else if (alpha > 1.0f) {
+                    alpha = 1.0f;
+                }
+                alpha = alpha * alpha * (3.0f - 2.0f * alpha);
+                if (invert_alpha) {
+                    alpha = 1.0f - alpha;
+                }
+
+                const std::size_t pixel = (static_cast<std::size_t>(y) * static_cast<std::size_t>(width) + static_cast<std::size_t>(x)) * 4u;
+                pixels[pixel + 0] = 255;
+                pixels[pixel + 1] = 255;
+                pixels[pixel + 2] = 255;
+                pixels[pixel + 3] = static_cast<unsigned char>(alpha * 255.0f + 0.5f);
+            }
+        }
+
+        renderer::Texture handle{};
+        glGenTextures(1, &handle);
+        if (not handle) {
+            return context.refuse("resource::texture::Generator::materialize: glGenTextures failed");
+        }
+
+        glBindTexture(GL_TEXTURE_2D, handle);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        return install_runtime(context, device, asset_id, Runtime::Quantum{
+            .device = device,
+            .handle = handle,
+            .size = generator.size,
+        });
     }
 
     struct Runtime::Internals : Runtime::DefaultInternals {

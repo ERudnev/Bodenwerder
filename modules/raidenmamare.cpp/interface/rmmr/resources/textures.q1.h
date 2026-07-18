@@ -3,6 +3,8 @@
 #include <rmmr/renderer/gl.q1.h>
 #include <rmmr/resources/manager.q1.h>
 
+#include <cstdint>
+
 #include <fQSM/api/interface.h>
 
 namespace rmmr::resource::texture {
@@ -37,8 +39,13 @@ namespace rmmr::resource::texture {
     };
 
     struct Generator : Feature<Generator, Asset> {
+        enum class Pattern : std::uint8_t {
+            whiteCircle,
+            whiteRing,
+        };
         struct Quantum {
             index2 size;
+            Pattern pattern = Pattern::whiteCircle;
         };
         struct Actions : BaseActions {
             static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;

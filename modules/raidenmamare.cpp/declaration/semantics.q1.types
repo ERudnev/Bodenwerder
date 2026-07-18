@@ -12,3 +12,8 @@ namespace rmmr
         id: Id
         type: Type
         location: Location
+
+  namespace renderer
+
+    using Pass as @external(rmmr::renderer::Pass)
+    using Passes as @external(rmmr::renderer::Passes)

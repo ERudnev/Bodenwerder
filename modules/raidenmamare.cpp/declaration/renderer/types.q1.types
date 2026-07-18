@@ -1,12 +1,11 @@
 import "math"
 import "gl"
-import "../resources/geometry"
-import "../resources/materials"
+import "semantics"
+import "resources/geometry"
+import "resources/materials"
 
 namespace rmmr
   namespace renderer
-
-    enum Pass : opaque, transparent, shadow, ui, gizmo
 
     struct RenderState
 

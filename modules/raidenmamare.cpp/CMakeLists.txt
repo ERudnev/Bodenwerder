@@ -19,7 +19,7 @@ set(Raidenmamare_Q1
     scene/actor.q1.types
     scene/gizmos.q1.types
     resources/manager.q1.types
-    resources/semantics.q1.types
+    semantics.q1.types
     resources/textures.q1.types
     resources/shaders.q1.types
     resources/materials.q1.types

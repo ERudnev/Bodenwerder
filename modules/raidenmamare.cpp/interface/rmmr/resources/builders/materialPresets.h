@@ -12,6 +12,7 @@ namespace rmmr::resource::builders::material {
         static Configured ambient(resource::shader::Asset::Id program);
         static Configured lit(resource::shader::Asset::Id program);
         static Configured litTextured(resource::shader::Asset::Id program, resource::texture::Asset::Id albedo_map);
+        static Configured litTexturedTransparent(resource::shader::Asset::Id program, resource::texture::Asset::Id albedo_map);
         static Configured grid(resource::shader::Asset::Id program);
         static Configured shadowDepth(resource::shader::Asset::Id program);
     };

@@ -4,20 +4,13 @@
 #include <rmmr/renderer/gl.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/semantics/rendering.h>
 
 #include <fQSM/api/interface.h>
 
 namespace rmmr::renderer {
 
     using namespace fqsm::api;
-
-    enum class Pass {
-        opaque,
-        transparent,
-        shadow,
-        ui,
-        gizmo,
-    };
 
     struct RenderState {
     };

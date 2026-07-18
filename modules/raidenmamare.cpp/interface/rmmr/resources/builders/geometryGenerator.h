@@ -2,7 +2,7 @@
 
 #include <fQSM/api/interface.h>
 #include <rmmr/math.q1.h>
-#include <rmmr/resources/semantics/geometry.h>
+#include <rmmr/semantics/geometry.h>
 
 namespace rmmr::resource::builders::geometry {
 

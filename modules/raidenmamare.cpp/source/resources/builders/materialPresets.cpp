@@ -1,6 +1,6 @@
 #include <rmmr/resources/builders/materialPresets.h>
 
-#include <rmmr/resources/semantics/uniform.h>
+#include <rmmr/semantics/uniform.h>
 
 namespace rmmr::resource::builders::material {
 
@@ -18,6 +18,7 @@ namespace rmmr::resource::builders::material {
                 "ambientIntensity",
             }),
             .textures = {},
+            .passes = renderer::PassesPresets::opaque_casting,
         };
     }
 
@@ -38,6 +39,7 @@ namespace rmmr::resource::builders::material {
                 "shadowMap",
             }),
             .textures = {},
+            .passes = renderer::PassesPresets::opaque_casting,
         };
     }
 
@@ -64,7 +66,14 @@ namespace rmmr::resource::builders::material {
                     .texture = albedo_map,
                 },
             },
+            .passes = renderer::PassesPresets::opaque_casting,
         };
+    }
+
+    auto MaterialPresets::litTexturedTransparent(resource::shader::Asset::Id program, resource::texture::Asset::Id albedo_map) -> Asset::Quantum {
+        auto quantum = litTextured(program, albedo_map);
+        quantum.passes = renderer::PassesPresets::transparent_only;
+        return quantum;
     }
 
     auto MaterialPresets::grid(resource::shader::Asset::Id program) -> Asset::Quantum {
@@ -79,6 +88,7 @@ namespace rmmr::resource::builders::material {
                 "colorSecondary",
             }),
             .textures = {},
+            .passes = renderer::PassesPresets::opaque_only,
         };
     }
 
@@ -90,6 +100,7 @@ namespace rmmr::resource::builders::material {
                 "lightSpaceMatrix",
             }),
             .textures = {},
+            .passes = renderer::PassesPresets::shadow_only,
         };
     }
 

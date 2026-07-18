@@ -1,5 +1,6 @@
 #include "renderer.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <stdexcept>
@@ -13,7 +14,7 @@
 #include <base/maybe.h>
 
 #include <rmmr/resources/runtimes.q1.h>
-#include <rmmr/resources/semantics.q1.h>
+#include <rmmr/semantics.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
@@ -111,7 +112,14 @@ namespace rmmr {
                 return;
             }
 
-            if (pass == renderer::Pass::transparent || pass == renderer::Pass::gizmo) {
+            if (pass == renderer::Pass::transparent) {
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                glDepthMask(GL_FALSE);
+                return;
+            }
+
+            if (pass == renderer::Pass::gizmo) {
                 glDepthMask(GL_FALSE);
             } else {
                 glDepthMask(GL_TRUE);
@@ -122,6 +130,12 @@ namespace rmmr {
             if (pass == renderer::Pass::shadow) {
                 resource::shadow::Runtime::Actions::unbind(args.world, shadow->runtime);
                 system::Viewport::Actions::activate(args.world, args.viewport);
+                return;
+            }
+
+            if (pass == renderer::Pass::transparent) {
+                glDisable(GL_BLEND);
+                glDepthMask(GL_TRUE);
             }
         }
 
@@ -131,6 +145,43 @@ namespace rmmr {
             renderer::Pass::transparent,
             renderer::Pass::gizmo,
         };
+
+        auto collect_pass_commands(const renderer::CommandBuffer& commands, renderer::Pass pass) -> vector<const renderer::Command*> {
+            vector<const renderer::Command*> batch;
+            batch.reserve(commands.size());
+            for (const auto& command : commands) {
+                if (command.pass != pass) {
+                    continue;
+                }
+                if (command.instance_count <= renderer::Count{0}) {
+                    continue;
+                }
+                batch.push_back(&command);
+            }
+            return batch;
+        }
+
+        void sort_by_pipeline_state(Reading world, vector<const renderer::Command*>& batch) {
+            std::sort(batch.begin(), batch.end(), [world](const renderer::Command* left, const renderer::Command* right) {
+                const auto& left_material = with<resource::material::Runtime>::get(world, left->material);
+                const auto& right_material = with<resource::material::Runtime>::get(world, right->material);
+                if (left_material.shader != right_material.shader) {
+                    return left_material.shader < right_material.shader;
+                }
+                if (left->material != right->material) {
+                    return left->material < right->material;
+                }
+                return left->geometry < right->geometry;
+            });
+        }
+
+        void sort_back_to_front(const mat4& view, vector<const renderer::Command*>& batch) {
+            std::sort(batch.begin(), batch.end(), [&view](const renderer::Command* left, const renderer::Command* right) {
+                const float left_depth = (view * left->model[3]).z;
+                const float right_depth = (view * right->model[3]).z;
+                return left_depth < right_depth;
+            });
+        }
 
     } // namespace
 
@@ -304,6 +355,8 @@ namespace rmmr {
         renderer::CommandBuffer commands;
         scene::Interface::render(args.world, args.scene, args.window, commands);
 
+        const mat4 view = scene::Camera::Actions::view(args.world, args.camera);
+
         GLboolean depth_write_prev{};
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);
 
@@ -315,13 +368,15 @@ namespace rmmr {
             begin_pass(pass, args, shadow_caster);
             PassDrawState pass_state{};
 
-            for (const auto& command : commands) {
-                if (command.pass != pass) {
-                    continue;
-                }
-                if (command.instance_count <= renderer::Count{0}) {
-                    continue;
-                }
+            auto batch = collect_pass_commands(commands, pass);
+            if (pass == renderer::Pass::transparent) {
+                sort_back_to_front(view, batch);
+            } else {
+                sort_by_pipeline_state(args.world, batch);
+            }
+
+            for (const auto* command_ptr : batch) {
+                const auto& command = *command_ptr;
                 if (not with<resource::geometry::Runtime>::exists(args.world, command.geometry)) {
                     continue;
                 }

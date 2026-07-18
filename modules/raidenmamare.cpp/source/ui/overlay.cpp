@@ -9,7 +9,7 @@
 
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
-#include <rmmr/resources/semantics.q1.h>
+#include <rmmr/semantics.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>

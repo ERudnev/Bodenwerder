@@ -1,7 +1,7 @@
 #pragma once
 
 #include <rmmr/resources/manager.q1.h>
-#include <rmmr/resources/semantics.q1.h>
+#include <rmmr/semantics.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -21,6 +21,7 @@ namespace rmmr::resource::material {
             shader::Asset::Id program;
             Uniform::Palette uniforms;
             vector<TextureBinding> textures;
+            renderer::Passes passes;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
@@ -37,6 +38,7 @@ namespace rmmr::resource::material {
             Locations locations;
             vector<Uniform::Binding> bindings;
             vector<TextureBinding> textures;
+            renderer::Passes passes;
         };
         struct Actions : BaseActions {
             static void apply(Reading, Id, system::Device::Id);

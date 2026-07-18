@@ -1,4 +1,4 @@
-import "resources/semantics"
+import "semantics"
 import "resources/manager"
 import "resources/shaders"
 import "resources/textures"
@@ -16,6 +16,7 @@ namespace rmmr
         program: #shader::Asset
         uniforms: Uniform::Palette
         textures: vector<TextureBinding>
+        passes: renderer::Passes
 
     entity Runtime
       struct TextureBinding
@@ -27,6 +28,7 @@ namespace rmmr
         locations: Locations
         bindings: vector<Uniform::Binding>
         textures: vector<TextureBinding>
+        passes: renderer::Passes
         ?apply(#system::Device)
 
     // recipe: shader asset + palette + texture slots → device Runtime

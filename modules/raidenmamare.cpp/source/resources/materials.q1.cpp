@@ -66,6 +66,7 @@ namespace rmmr::resource::material {
             .locations = std::move(locations),
             .bindings = std::move(bindings),
             .textures = std::move(textures),
+            .passes = asset.passes,
         };
 
         if (const auto existing = runtimes.materials_id_mapping.find(asset_id); existing != runtimes.materials_id_mapping.end()) {

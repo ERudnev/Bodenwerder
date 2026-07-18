@@ -20,8 +20,10 @@ namespace rmmr
         file: filename
         >materialize(#system::Device) -> #Runtime?
 
-    // placeholder for more configurable thing, just means "white circle"
+    // procedural mask textures (white RGB + alpha shape)
     feature Generator of Asset
+      enum Pattern : whiteCircle, whiteRing
       one
         size: index2
+        pattern: Pattern
         >materialize(#system::Device) -> #Runtime?
