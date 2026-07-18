@@ -10,6 +10,7 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/semantics.q1.h>
+#include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -20,19 +21,59 @@ namespace rmmr::ui {
 
     namespace {
 
-        auto palette_contains(const resource::Uniform::Palette& palette, material::Semantics::Name semantic) -> bool {
-            for (const auto uniform_id : palette) {
-                if (uniform_id == material::Semantics::PersistentId{0}) {
-                    continue;
-                }
-                if (material::Semantics::name_of(uniform_id) == semantic) {
-                    return true;
+        void draw_scene_lighting(fqsm::Writing world, scene::Root::Id scene) {
+            if (ImGui::CollapsingHeader("Scene lighting", ImGuiTreeNodeFlags_DefaultOpen)) {
+                auto root = with<scene::Root>::modify(world, scene);
+                ImGui::ColorEdit3("Ambient", &root->ambient.x);
+
+                const auto& light_group = with<scene::Light_group>::get(world, scene);
+                if (not light_group.empty()) {
+                    const auto light_id = *light_group.begin();
+                    if (with<scene::Light>::exists(world, light_id)) {
+                        auto light = with<scene::Light>::modify(world, light_id);
+                        ImGui::ColorEdit3("Light", &light->color.x);
+                    }
                 }
             }
-            return false;
         }
 
-        void draw_material_entry(fqsm::Writing world, scene::Root::Id scene, resource::material::Asset::Id material_id, const resource::material::Asset::Quantum& material) {
+        void draw_material_texture_slots(fqsm::Writing world, resource::material::Asset::Id material_id) {
+            auto material = with<resource::material::Asset>::modify(world, material_id);
+            for (integer slot = 0; slot < static_cast<integer>(material->textures.size()); ++slot) {
+                ImGui::PushID(static_cast<int>(slot));
+                auto& binding = material->textures[static_cast<std::size_t>(slot)];
+                const string slot_label{material::Semantics::name_of(binding.id)};
+
+                const char* preview = "(missing)";
+                if (with<resource::Unit>::exists(world, binding.texture)) {
+                    const auto& texture_unit = with<resource::Unit>::get(world, binding.texture);
+                    if (not texture_unit.name.empty()) {
+                        preview = texture_unit.name.c_str();
+                    }
+                }
+
+                if (ImGui::BeginCombo(slot_label.c_str(), preview)) {
+                    for (const auto entry : world->aspect<resource::texture::Asset>().items()) {
+                        push_entity_id<resource::texture::Asset>(entry.id);
+                        const auto& texture_unit = with<resource::Unit>::get(world, entry.id);
+                        const char* option = texture_unit.name.empty() ? "(unnamed)" : texture_unit.name.c_str();
+                        const bool selected = entry.id == binding.texture;
+                        if (ImGui::Selectable(option, selected)) {
+                            binding.texture = entry.id;
+                        }
+                        if (selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::EndCombo();
+                }
+
+                ImGui::PopID();
+            }
+        }
+
+        void draw_material_entry(fqsm::Writing world, resource::material::Asset::Id material_id) {
             push_entity_id<resource::material::Asset>(material_id);
 
             const auto& unit = with<resource::Unit>::get(world, material_id);
@@ -54,21 +95,7 @@ namespace rmmr::ui {
                 }
                 name_state.editing = ImGui::IsItemActive();
 
-                if (palette_contains(material.uniforms, "ambientColor") && with<scene::Root>::exists(world, scene)) {
-                    auto root = with<scene::Root>::modify(world, scene);
-                    ImGui::ColorEdit3("Ambient", &root->ambient.x);
-                }
-
-                if (palette_contains(material.uniforms, "light0Color") && with<scene::Root>::exists(world, scene)) {
-                    const auto& light_group = with<scene::Light_group>::get(world, scene);
-                    if (not light_group.empty()) {
-                        const auto light_id = *light_group.begin();
-                        if (with<scene::Light>::exists(world, light_id)) {
-                            auto light = with<scene::Light>::modify(world, light_id);
-                            ImGui::ColorEdit3("Light", &light->color.x);
-                        }
-                    }
-                }
+                draw_material_texture_slots(world, material_id);
             }
 
             ImGui::PopID();
@@ -131,11 +158,13 @@ namespace rmmr::ui {
         }
 
         if (ImGui::Begin("Material View")) {
+            draw_scene_lighting(args.world, args.scene);
+
             if (with<resource::material::Asset>::count(args.world) == 0) {
                 ImGui::TextDisabled("No material assets");
             } else {
                 for (const auto entry : args.world->aspect<resource::material::Asset>().items()) {
-                    draw_material_entry(args.world, args.scene, entry.id, entry.value);
+                    draw_material_entry(args.world, entry.id);
                 }
             }
         }

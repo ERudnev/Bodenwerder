@@ -2,7 +2,6 @@
 
 #include <base/logging.h>
 #include <base/maybe.h>
-#include <random>
 #include <stdexcept>
 #include <vector>
 
@@ -100,12 +99,12 @@ namespace rmmr {
 
         struct {
             struct {
-                maybe<resource::texture::Asset::Id> debug;
+                std::vector<resource::texture::Asset::Id> debug;
             } texture;
             struct {
                 maybe<resource::material::Asset::Id> ambient;
                 maybe<resource::material::Asset::Id> lit;
-                maybe<resource::material::Asset::Id> litTextured;
+                std::vector<resource::material::Asset::Id> debugLitTextured;
                 maybe<resource::material::Asset::Id> grid;
                 maybe<resource::material::Asset::Id> shadowDepth;
             } material;
@@ -215,12 +214,30 @@ namespace rmmr {
 
         base::message("rmmr: loading resources...");
 
-        resources.texture.debug = with<Assets>::add_texture_loader(
+        resources.texture.debug.push_back(with<Assets>::add_texture_loader(
             main,
             assets,
-            Unit::Quantum{.manager = assets, .name = "debug_texture", .library = "rmmr"},
+            Unit::Quantum{.manager = assets, .name = "debug01", .library = "rmmr"},
             resource::texture::Asset::Quantum{},
-            resource::texture::Loader::Quantum{.file = "textures/debug01.jpg"});
+            resource::texture::Loader::Quantum{.file = "textures/debug01.jpg"}));
+        resources.texture.debug.push_back(with<Assets>::add_texture_loader(
+            main,
+            assets,
+            Unit::Quantum{.manager = assets, .name = "debug02", .library = "rmmr"},
+            resource::texture::Asset::Quantum{},
+            resource::texture::Loader::Quantum{.file = "textures/debug02.jpg"}));
+        resources.texture.debug.push_back(with<Assets>::add_texture_loader(
+            main,
+            assets,
+            Unit::Quantum{.manager = assets, .name = "debug03", .library = "rmmr"},
+            resource::texture::Asset::Quantum{},
+            resource::texture::Loader::Quantum{.file = "textures/debug03.jpg"}));
+        resources.texture.debug.push_back(with<Assets>::add_texture_loader(
+            main,
+            assets,
+            Unit::Quantum{.manager = assets, .name = "debug04", .library = "rmmr"},
+            resource::texture::Asset::Quantum{},
+            resource::texture::Loader::Quantum{.file = "textures/debug04.jpg"}));
 
         const auto ambient_shader = with<Assets>::add_shader_loader(main, assets, Unit::Quantum{.manager = assets, .name = "ambient_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/ambient.vert.glsl", .fragment = "shaders/ambient.frag.glsl"});
         const auto lit_shader = with<Assets>::add_shader_loader(main, assets, Unit::Quantum{.manager = assets, .name = "lit_shader", .library = "rmmr"}, resource::shader::Asset::Quantum{}, resource::shader::Loader::Quantum{.vertex = "shaders/lit.vert.glsl", .fragment = "shaders/lit.frag.glsl"});
@@ -230,7 +247,10 @@ namespace rmmr {
 
         resources.material.ambient = with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "ambient_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::ambient(ambient_shader), resource::material::Composer::Quantum{});
         resources.material.lit = with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "lit_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::lit(lit_shader), resource::material::Composer::Quantum{});
-        resources.material.litTextured = with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::litTextured(lit_textured_shader, *resources.texture.debug), resource::material::Composer::Quantum{});
+        resources.material.debugLitTextured.push_back(with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_debug01", .library = "rmmr"}, resource::builders::material::MaterialPresets::litTextured(lit_textured_shader, resources.texture.debug[0]), resource::material::Composer::Quantum{}));
+        resources.material.debugLitTextured.push_back(with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_debug02", .library = "rmmr"}, resource::builders::material::MaterialPresets::litTextured(lit_textured_shader, resources.texture.debug[1]), resource::material::Composer::Quantum{}));
+        resources.material.debugLitTextured.push_back(with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_debug03", .library = "rmmr"}, resource::builders::material::MaterialPresets::litTextured(lit_textured_shader, resources.texture.debug[2]), resource::material::Composer::Quantum{}));
+        resources.material.debugLitTextured.push_back(with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "lit_textured_debug04", .library = "rmmr"}, resource::builders::material::MaterialPresets::litTextured(lit_textured_shader, resources.texture.debug[3]), resource::material::Composer::Quantum{}));
         resources.material.grid = with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "grid_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::grid(grid_shader), resource::material::Composer::Quantum{});
         resources.material.shadowDepth = with<Assets>::add_material(main, assets, Unit::Quantum{.manager = assets, .name = "shadow_depth_material", .library = "rmmr"}, resource::builders::material::MaterialPresets::shadowDepth(shadow_depth_shader), resource::material::Composer::Quantum{});
         scene::PrimitiveActor::Actions::modify_global(main)->shadowMaterial = *resources.material.shadowDepth;
@@ -263,19 +283,17 @@ namespace rmmr {
         const float center_offset = (static_cast<float>(grid_extent) - 1.0f) * 0.5f;
         const float cluster_lift = center_offset * spacing + cube_edge * 0.5f;
 
-        std::mt19937 rng{std::random_device{}()};
-        std::bernoulli_distribution pick_bagel{0.5};
-
         main.branch([&](fqsm::Writing context) {
             for (int z = 0; z < grid_extent; ++z) {
                 for (int y = 0; y < grid_extent; ++y) {
                     for (int x = 0; x < grid_extent; ++x) {
+                        const int cell = x + y + z;
                         const Pos pos{(static_cast<float>(x) - center_offset) * spacing, (static_cast<float>(y) - center_offset) * spacing + cluster_lift, (static_cast<float>(z) - center_offset) * spacing};
                         with<scene::Interface>::createPrimitiveActor(context, root,
                             Locator{.pos = pos, .euler = HPB{-22.5f + 45.0f * static_cast<float>(x), -15.0f + 30.0f * static_cast<float>(y), -12.0f + 24.0f * static_cast<float>(z)}},
                             scene::PrimitiveActor::Quantum{
-                                .geometry = pick_bagel(rng) ? *resources.primitive.bagel : *resources.primitive.kube,
-                                .material = *resources.material.litTextured,
+                                .geometry = (cell % 7 == 0) ? *resources.primitive.bagel : *resources.primitive.kube,
+                                .material = resources.material.debugLitTextured[cell % 4],
                                 .albedo = RGB{0.3f + 0.6f * static_cast<float>(x) / static_cast<float>(grid_extent - 1), 0.3f + 0.6f * static_cast<float>(y) / static_cast<float>(grid_extent - 1), 0.3f + 0.6f * static_cast<float>(z) / static_cast<float>(grid_extent - 1)},
                             });
                     }
