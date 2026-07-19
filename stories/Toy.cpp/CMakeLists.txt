@@ -26,6 +26,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC base
     PRIVATE fQSM
     PRIVATE Raidenmamare
+    PRIVATE imgui
     PUBLIC libglew_static
     PUBLIC glfw
     #PRIVATE assimp

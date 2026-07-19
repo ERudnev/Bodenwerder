@@ -31,7 +31,9 @@ namespace rmmr {
         void showScene(scene::Root::Id, scene::Camera::Id);
 
         bool shouldClose(Reading) const;
-        void frame(Writing);
+        void beginFrame(Writing);
+        void render(Writing);
+        void endFrame(Writing);
         void shutdown(Writing) noexcept;
 
     private:

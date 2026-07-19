@@ -14,7 +14,6 @@
 #include <rmmr/system/viewport.q1.h>
 
 #include "renderer/renderer.h"
-#include "ui/overlay.h"
 
 #include <GLFW/glfw3.h>
 
@@ -84,7 +83,6 @@ namespace rmmr {
             maybe<resource::shadow::Asset::Id> default_shadow;
         } handles;
         Renderer renderer;
-        bool show_materials = false;
 
         explicit State(Schema schema)
             : establish::Module::State(std::move(schema))
@@ -149,7 +147,7 @@ namespace rmmr {
         return glfwWindowShouldClose(with<system::Device>::get(context, state->handles.device).handle);
     }
 
-    void Engine::frame(Writing context) {
+    void Engine::beginFrame(Writing context) {
         const auto& device = state->handles.device;
         const auto& viewport = state->handles.viewport;
 
@@ -180,26 +178,26 @@ namespace rmmr {
 
         if (state->handles.scene && state->handles.scene_camera) {
             with<system::ImGuiHost>::newFrame(context, device);
-            const ui::FrameContext ui_frame{
-                .world = context,
-                .window = *device,
-                .scene = *state->handles.scene,
-                .camera = *state->handles.scene_camera,
-                .show_materials = state->show_materials,
-            };
-            ui::draw_renderer_toggles(ui_frame);
-            ui::draw_camera(ui_frame);
-            if (state->show_materials) ui::draw_materials(ui_frame);
-            state->renderer.render(Renderer::FrameContext{
-                .world = context,
-                .viewport = *viewport,
-                .window = *device,
-                .scene = *state->handles.scene,
-                .camera = *state->handles.scene_camera,
-            });
+        }
+    }
+
+    void Engine::render(Writing context) {
+        if (not state->handles.scene or not state->handles.scene_camera)
+            return;
+        state->renderer.render(Renderer::FrameContext{
+            .world = context,
+            .viewport = *state->handles.viewport,
+            .window = *state->handles.device,
+            .scene = *state->handles.scene,
+            .camera = *state->handles.scene_camera,
+        });
+    }
+
+    void Engine::endFrame(Writing context) {
+        const auto& device = state->handles.device;
+        if (state->handles.scene && state->handles.scene_camera) {
             with<system::ImGuiHost>::render(context, device);
         }
-
         with<system::Window>::present(context, device);
     }
 

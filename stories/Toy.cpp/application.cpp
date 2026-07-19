@@ -15,6 +15,7 @@
 #include <rmmr/system/interface.q1.h>
 
 #include "projection/world.q1.h"
+#include "ui.h"
 
 #include <stdexcept>
 #include <utility>
@@ -46,9 +47,8 @@ namespace toy {
             } primitive;
         } handles;
 
+        ui::State ui;
         establish::Realm world;
-        maybe<scene::Root::Id> scene;
-        maybe<scene::Camera::Id> camera;
 
         explicit State(Schema schema);
         void setupAsDefault(Writing, establish::Module::RootId&);
@@ -169,15 +169,15 @@ namespace toy {
             Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             scene::Grid::Quantum{.geometry = *handles.primitive.grid, .material = *handles.material.grid, .opacity = 1.0f});
 
-        camera = with<scene::Interface>::createCamera(context, root,
+        ui.camera = with<scene::Interface>::createCamera(context, root,
             Locator{.pos = Pos{10.5f, 10.0f, 14.0f}, .euler = HPB{-18.0f, -36.0f, 0.0f}},
             scene::Camera::Quantum{.fov_y = 1.04719755f, .z_near = 0.1f, .z_far = 100.0f});
-        with<controller::Camera>::create(context, camera);
+        with<controller::Camera>::create(context, ui.camera);
         with<scene::Interface>::createLight(context, root,
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             scene::Light::Quantum{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
-        scene = root;
+        ui.scene = root;
     }
 
     void Application::State::setupAsDefault(Writing context, establish::Module::RootId& root) {
@@ -237,7 +237,7 @@ namespace toy {
         });
         state->setupAsDefault(state->world, root);
         engine->materialize(state->world, core);
-        engine->showScene(*state->scene, *state->camera);
+        engine->showScene(*state->ui.scene, *state->ui.camera);
 
         if (not state->world.result().good())
             throw std::runtime_error("app: initDefaultWorld failed");
@@ -250,8 +250,12 @@ namespace toy {
     }
 
     int Application::run() {
-        while (engine and not engine->shouldClose(state->world))
-            engine->frame(state->world);
+        while (engine and not engine->shouldClose(state->world)) {
+            engine->beginFrame(state->world);
+            state->ui.draw(state->world);
+            engine->render(state->world);
+            engine->endFrame(state->world);
+        }
 
         if (engine)
             engine->shutdown(state->world);

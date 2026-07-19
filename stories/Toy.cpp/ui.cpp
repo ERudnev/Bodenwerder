@@ -1,5 +1,4 @@
-#include "overlay.h"
-#include "common.h"
+#include "ui.h"
 
 #include <array>
 #include <cstdint>
@@ -9,19 +8,33 @@
 
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
-#include <rmmr/semantics.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/root.q1.h>
+#include <rmmr/semantics.q1.h>
 
-namespace rmmr::ui {
+namespace toy::ui {
 
     using namespace fqsm::api;
+    using namespace rmmr;
 
     namespace {
 
-        void draw_scene_lighting(fqsm::Writing world, scene::Root::Id scene) {
+        int compressedRaw(std::uint64_t raw) {
+            std::uint64_t x = raw;
+            x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ull;
+            x = (x ^ (x >> 27)) * 0x94d049bb133111ebull;
+            x = x ^ (x >> 31);
+            return static_cast<int>(static_cast<std::uint32_t>(x));
+        }
+
+        template<typename Meta>
+        void pushEntityId(const typename Meta::Id& id) {
+            ImGui::PushID(compressedRaw(id.raw()));
+        }
+
+        void drawSceneLighting(Writing world, scene::Root::Id scene) {
             if (ImGui::CollapsingHeader("Scene lighting", ImGuiTreeNodeFlags_DefaultOpen)) {
                 auto root = with<scene::Root>::modify(world, scene);
                 ImGui::ColorEdit3("Ambient", &root->ambient.x);
@@ -37,7 +50,7 @@ namespace rmmr::ui {
             }
         }
 
-        void draw_material_texture_slots(fqsm::Writing world, resource::material::Asset::Id material_id) {
+        void drawMaterialTextureSlots(Writing world, resource::material::Asset::Id material_id) {
             auto material = with<resource::material::Asset>::modify(world, material_id);
             integer slot = 0;
             for (auto& [_, technique] : material->techniques) {
@@ -55,7 +68,7 @@ namespace rmmr::ui {
 
                     if (ImGui::BeginCombo(slot_label.c_str(), preview)) {
                         for (const auto entry : world->aspect<resource::texture::Asset>().items()) {
-                            push_entity_id<resource::texture::Asset>(entry.id);
+                            pushEntityId<resource::texture::Asset>(entry.id);
                             const auto& texture_unit = with<resource::Unit>::get(world, entry.id);
                             const char* option = texture_unit.name.empty() ? "(unnamed)" : texture_unit.name.c_str();
                             const bool selected = entry.id == binding.texture;
@@ -75,8 +88,8 @@ namespace rmmr::ui {
             }
         }
 
-        void draw_material_entry(fqsm::Writing world, resource::material::Asset::Id material_id) {
-            push_entity_id<resource::material::Asset>(material_id);
+        void drawMaterialEntry(Writing world, resource::material::Asset::Id material_id) {
+            pushEntityId<resource::material::Asset>(material_id);
 
             const auto& unit = with<resource::Unit>::get(world, material_id);
             const auto header = unit.name.empty() ? "Material" : unit.name.c_str();
@@ -97,7 +110,7 @@ namespace rmmr::ui {
                 }
                 name_state.editing = ImGui::IsItemActive();
 
-                draw_material_texture_slots(world, material_id);
+                drawMaterialTextureSlots(world, material_id);
             }
 
             ImGui::PopID();
@@ -105,56 +118,7 @@ namespace rmmr::ui {
 
     } // namespace
 
-    void draw_camera(FrameContext args) {
-        if (not with<scene::Camera>::exists(args.world, args.camera)) {
-            return;
-        }
-
-        if (ImGui::Begin("Camera")) {
-            auto camera = with<scene::Camera>::modify(args.world, args.camera);
-            ImGui::SliderAngle("FoV", &camera->fov_y, 10.0f, 160.0f);
-        }
-        ImGui::End();
-    }
-
-    /*
-    void draw_cubes(FrameContext args) {
-        if (not with<scene::Root>::exists(args.world, args.scene)) {
-            return;
-        }
-
-        if (ImGui::Begin("Cubes")) {
-            if (ImGui::BeginTable("cubes", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2{0.0f, 0.0f})) {
-                ImGui::TableSetupColumn("Cube");
-                ImGui::TableSetupColumn("Color");
-                ImGui::TableHeadersRow();
-
-                const auto& node_group = with<scene::Node_group>::get(args.world, args.scene);
-                integer cube_index = 0;
-                for (const auto node : node_group) {
-                    if (not with<scene::PrimitiveActor>::exists(args.world, node)) {
-                        continue;
-                    }
-
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::Text("Cube %d", static_cast<int>(cube_index));
-
-                    ImGui::TableNextColumn();
-                    push_entity_id<scene::Node>(node);
-                    auto actor = with<scene::PrimitiveActor>::modify(args.world, node);
-                    ImGui::ColorPicker3("##color", &actor->albedo.x);
-                    ImGui::PopID();
-                    ++cube_index;
-                }
-                ImGui::EndTable();
-            }
-        }
-
-        ImGui::End();
-    }*/
-
-    void draw_renderer_toggles(FrameContext args) {
+    void State::drawToggles(Writing) {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(ImVec2{viewport->WorkPos.x + 10.0f, viewport->WorkPos.y + 10.0f}, ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.65f);
@@ -165,28 +129,49 @@ namespace rmmr::ui {
             | ImGuiWindowFlags_NoFocusOnAppearing
             | ImGuiWindowFlags_NoNav;
         if (ImGui::Begin("##renderer_toggles", nullptr, flags)) {
-            ImGui::Checkbox("Materials", &args.show_materials);
+            ImGui::Checkbox("Materials", &materials);
         }
         ImGui::End();
     }
 
-    void draw_materials(FrameContext args) {
-        if (not with<scene::Root>::exists(args.world, args.scene)) {
+    void State::drawCamera(Writing world) {
+        if (not camera.exists() or not with<scene::Camera>::exists(world, *camera)) {
+            return;
+        }
+
+        if (ImGui::Begin("Camera")) {
+            auto quantum = with<scene::Camera>::modify(world, *camera);
+            ImGui::SliderAngle("FoV", &quantum->fov_y, 10.0f, 160.0f);
+        }
+        ImGui::End();
+    }
+
+    void State::drawMaterials(Writing world) {
+        if (not scene.exists() or not with<scene::Root>::exists(world, *scene)) {
             return;
         }
 
         if (ImGui::Begin("Material View")) {
-            draw_scene_lighting(args.world, args.scene);
+            drawSceneLighting(world, *scene);
 
-            if (with<resource::material::Asset>::count(args.world) == 0) {
+            if (with<resource::material::Asset>::count(world) == 0) {
                 ImGui::TextDisabled("No material assets");
             } else {
-                for (const auto entry : args.world->aspect<resource::material::Asset>().items()) {
-                    draw_material_entry(args.world, entry.id);
+                for (const auto entry : world->aspect<resource::material::Asset>().items()) {
+                    drawMaterialEntry(world, entry.id);
                 }
             }
         }
         ImGui::End();
+    }
+
+    void State::draw(Writing world) {
+        if (not scene.exists() or not camera.exists())
+            return;
+        drawToggles(world);
+        drawCamera(world);
+        if (materials)
+            drawMaterials(world);
     }
 
 }
