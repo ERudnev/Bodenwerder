@@ -14,6 +14,7 @@
 // processing (transactions, e.t.c)
 #include <fQSM/processing/orchestrators/realm.h>
 #include <fQSM/processing/orchestrators/branch.h>
+#include <fQSM/processing/orchestrators/module.h>
 
 // Behavior definition for Aspects:
 #include <fQSM/features/behavior.h>
@@ -67,6 +68,7 @@ namespace fqsm::api {
     namespace establish {
         using Realm = ::fqsm::processing::orchestrator::Realm;
         using Branch = ::fqsm::processing::orchestrator::Branch;
+        using Module = ::fqsm::processing::orchestrator::Module;
     }
 
     // reactions builder:

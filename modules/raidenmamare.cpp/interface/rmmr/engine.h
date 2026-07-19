@@ -4,39 +4,44 @@
 
 #include <fQSM/api/interface.h>
 
+#include <rmmr/scene/camera.q1.h>
+#include <rmmr/scene/root.q1.h>
+#include <rmmr/system/core.q1.h>
 #include <rmmr/system/window.q1.h>
 
 namespace rmmr {
 
     using namespace fqsm::api;
 
-    class Engine  {
+    class Engine : public establish::Module {
     public:
-        struct StartupParameters {
-            filepath assets_root;
+        struct WindowParameters {
             decltype(system::Window::Quantum::title) title;
             index2 requested_size;
-            integer context_major;
-            integer context_minor;
         };
 
-        static Schema moduleSchema();
-
         Engine();
-        ~Engine();
+        ~Engine() override;
 
-        void bootstrap(Writing, StartupParameters);
+        Schema domain() override;
+        std::shared_ptr<establish::Module::State> installState(Schema finalSchema) override;
+
+        void setWindowParameters(WindowParameters);
+
+        void open(Writing, system::Core::Id, WindowParameters);
+        void materialize(Writing, system::Core::Id assets);
+        void setScene(scene::Root::Id, scene::Camera::Id);
+
         bool shouldClose(Reading) const;
         void frame(Writing);
         void shutdown(Writing) noexcept;
 
     private:
-        void prepareResources(Writing);
-        void prepareRenderTargets();
-        void createScene(Writing);
         void createViewport(Writing, index2 size, index2 origin = index2{0, 0});
 
         struct State;
         std::shared_ptr<State> state;
+        WindowParameters window;
     };
+
 }
