@@ -3,7 +3,6 @@
 #include <memory>
 
 #include <fQSM/api/interface.h>
-#include <fQSM/processing/orchestrators/subsystem.h>
 
 #include <rmmr/system/window.q1.h>
 
@@ -11,7 +10,7 @@ namespace rmmr {
 
     using namespace fqsm::api;
 
-    class Engine : public fqsm::processing::orchestrator::Subsystem {
+    class Engine  {
     public:
         struct StartupParameters {
             filepath assets_root;
@@ -21,23 +20,23 @@ namespace rmmr {
             integer context_minor;
         };
 
-        explicit Engine(StartupParameters);
-        ~Engine() noexcept;
+        static Schema moduleSchema();
 
-        // fQSM interface to be changed soon
-        fqsm::Schema interfaceSchema() const override { return interface; }
-        // Runs the OpenGL demo. Returns 0 on success, non-zero on failure.
-        int run_render_demo();
+        Engine();
+        ~Engine();
+
+        void bootstrap(Writing, StartupParameters);
+        bool shouldClose(Reading) const;
+        void frame(Writing);
+        void shutdown(Writing) noexcept;
 
     private:
-        void prepareResources();
+        void prepareResources(Writing);
         void prepareRenderTargets();
-        void createScene();
-        void createViewport(index2 size, index2 origin = index2{0, 0});
-        void shutdown() noexcept;
+        void createScene(Writing);
+        void createViewport(Writing, index2 size, index2 origin = index2{0, 0});
 
         struct State;
-        const Schema interface;
         std::shared_ptr<State> state;
     };
 }

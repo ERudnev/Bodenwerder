@@ -1,0 +1,5 @@
+namespace toy
+
+  entity God
+    one
+      time: integer

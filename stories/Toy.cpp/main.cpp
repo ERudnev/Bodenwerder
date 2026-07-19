@@ -5,35 +5,49 @@
 #include <fQSM/api/interface.h>
 #include <rmmr/engine.h>
 
+#include "projection/world.q1.h"
 
-struct State {
-    std::shared_ptr<rmmr::Engine> renderer;
-};
+using namespace base;
+using namespace fqsm::api;
 
+namespace {
+
+    Schema generateSchema() {
+        return ask::schema::merge({
+            rmmr::Engine::moduleSchema(),
+            ask::schema::aspect<toy::God>(),
+        });
+    }
+
+} // namespace
 
 int main() {
-    using namespace base;
-    using namespace fqsm::api;
     message("[{}] Test app is started...", now());
 
     try {
-        State state;
+        establish::Realm world{generateSchema()};
+        rmmr::Engine renderer;
 
         const auto assets_root = std::filesystem::path(DAQL_ASSETS_DIR);
         // TODO: implement deseralize<Meta>()->MEta::Quantum;
-        const auto engine_startup_parameters = rmmr::Engine::StartupParameters{
+        renderer.bootstrap(world, rmmr::Engine::StartupParameters{
             .assets_root = assets_root,
             .title = "Raidenmamare",
             .requested_size = rmmr::index2{.x = 1600, .y = 900},
             .context_major = 3,
             .context_minor = 3,
-        };
+        });
+        if (not world.result().good()) {
+            throw std::runtime_error("Engine bootstrap failed");
+        }
 
-        state.renderer = std::make_shared<rmmr::Engine>(engine_startup_parameters);
-        // TODO: ask renderer interface different way?
-        //const auto schema = engineObj->schema();
+        while (not renderer.shouldClose(world)) {
+            // return close decision here
+            renderer.frame(world);
+        }
 
-        return state.renderer->run_render_demo();
+        renderer.shutdown(world);
+        return 0;
     } catch (const std::exception& e) {
         message("[{}] Engine error: {}", to_string(now()), e.what());
         return -1;
