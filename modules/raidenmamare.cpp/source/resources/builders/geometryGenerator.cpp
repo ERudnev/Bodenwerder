@@ -129,12 +129,13 @@ namespace rmmr::resource::builders::geometry {
             for (integer minor = 0; minor < minor_segments; ++minor) {
                 const integer current = major * stride + minor;
                 const integer next = current + stride;
+                // CCW from outside (outward normals); required for GL_CULL_FACE.
                 indices.push_back(current);
-                indices.push_back(next);
-                indices.push_back(current + 1);
                 indices.push_back(current + 1);
                 indices.push_back(next);
+                indices.push_back(current + 1);
                 indices.push_back(next + 1);
+                indices.push_back(next);
             }
         }
 
