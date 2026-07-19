@@ -41,7 +41,6 @@ namespace rmmr {
         void bind_pass_uniforms(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, scene::Light::Id primary_light, maybe<resource::shadow::Runtime::Id> shadow);
         void bind_material_samplers(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material);
         void draw_instance(FrameContext args, renderer::Pass pass, const renderer::Command& command, resource::material::Runtime::Id material);
-        void draw_stats_overlay(FrameContext args);
     };
 
 }

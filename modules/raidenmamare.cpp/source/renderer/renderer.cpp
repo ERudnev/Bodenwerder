@@ -8,8 +8,6 @@
 #include <GL/glew.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <imgui.h>
-
 #include <base/logging.h>
 #include <base/maybe.h>
 
@@ -354,16 +352,6 @@ namespace rmmr {
         }
     }
 
-    void Renderer::draw_stats_overlay(FrameContext args) {
-        if (ImGui::Begin("Stats")) {
-            const auto dt = with<system::Window>::dt(args.world, args.window);
-            const auto fps = dt > 0.0 ? 1.0 / dt : 0.0;
-            ImGui::Text("FPS: %.1f", fps);
-            ImGui::Text("Frame time: %.3f ms", dt * 1000.0);
-        }
-        ImGui::End();
-    }
-
     void Renderer::render(FrameContext args) {
         if (not with<scene::Camera>::exists(args.world, args.camera)) {
             base::message("Renderer: scene has no camera");
@@ -430,7 +418,6 @@ namespace rmmr {
         }
 
         glDepthMask(depth_write_prev);
-        draw_stats_overlay(args);
     }
 
 }
