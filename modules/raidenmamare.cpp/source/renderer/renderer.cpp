@@ -75,30 +75,23 @@ namespace rmmr {
             return {light_group.begin(), light_group.end()};
         }
 
-        // Prefer a light that owns a materialized shadow map; otherwise shade from the first light and skip shadows.
-        auto resolve_frame_lighting(Reading context, system::Device::Id device, const vector<scene::Light::Id>& lights) -> FrameLighting {
-            const auto& runtimes = with<resource::Runtimes>::get(context, device);
-            for (const auto light_node : lights) {
-                const auto& light = with<scene::Light>::get(context, light_node);
-                if (not light.shadow) {
-                    continue;
-                }
-                const auto it = runtimes.shadows_id_mapping.find(*light.shadow);
-                if (it == runtimes.shadows_id_mapping.end()) {
-                    continue;
-                }
-                return FrameLighting{
-                    .primary = light_node,
-                    .shadow = ShadowCaster{
-                        .light = light_node,
-                        .runtime = it->second,
-                    },
-                };
-            }
-            return FrameLighting{
+        // Placeholder: for each active shadow runtime, bind the first available light.
+        // Lights do not reference shadow assets; assignment is renderer-internal.
+        auto assign_shadows_to_lights(Reading context, system::Device::Id device, const vector<scene::Light::Id>& lights) -> FrameLighting {
+            FrameLighting lighting{
                 .primary = lights.front(),
                 .shadow = {},
             };
+            const auto& runtimes = with<resource::Runtimes>::get(context, device);
+            for (const auto& [_, runtime] : runtimes.shadows_id_mapping) {
+                lighting.shadow = ShadowCaster{
+                    .light = lights.front(),
+                    .runtime = runtime,
+                };
+                lighting.primary = lights.front();
+                break;
+            }
+            return lighting;
         }
 
         void set_uniform(const resource::Uniform::Binding& binding, const mat4& value) {
@@ -378,7 +371,8 @@ namespace rmmr {
         }
 
         const auto lights = gather_lights(args.world, args.scene);
-        const auto lighting = resolve_frame_lighting(args.world, args.window, lights);
+        // Pipeline chunk: assign active shadow runtimes to lights (placeholder policy inside).
+        const auto lighting = assign_shadows_to_lights(args.world, args.window, lights);
         base::maybe<resource::shadow::Runtime::Id> shadow{};
         if (lighting.shadow) {
             shadow = lighting.shadow->runtime;

@@ -23,14 +23,12 @@ namespace rmmr {
         Engine();
         ~Engine() override;
 
-        Schema domain() override;
+        Schema schema() override;
         std::shared_ptr<establish::Module::State> installState(Schema finalSchema) override;
 
-        void setWindowParameters(WindowParameters);
-
-        void open(Writing, system::Core::Id, WindowParameters);
+        void setup(Writing, establish::Module::RootId&, WindowParameters);
         void materialize(Writing, system::Core::Id assets);
-        void setScene(scene::Root::Id, scene::Camera::Id);
+        void showScene(scene::Root::Id, scene::Camera::Id);
 
         bool shouldClose(Reading) const;
         void frame(Writing);
@@ -41,7 +39,6 @@ namespace rmmr {
 
         struct State;
         std::shared_ptr<State> state;
-        WindowParameters window;
     };
 
 }

@@ -7,6 +7,7 @@
 
 #include <rmmr/controller/camera.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/resources/shadows.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/interface.q1.h>
@@ -23,7 +24,7 @@ namespace rmmr {
     namespace {
 
         Schema engineDomain() {
-            return ask::schema::merge({
+            static const Schema once = ask::schema::merge({
                 ask::schema::aspect<system::Core>(),
                 ask::schema::aspect<system::Device>(),
                 ask::schema::aspect<system::ImGuiHost>(),
@@ -69,29 +70,40 @@ namespace rmmr {
                 ask::schema::aspect<scene::PrimitiveActor>(),
                 ask::schema::aspect<scene::Grid>(),
             });
+            return once;
         }
 
     } // namespace
 
     struct Engine::State : establish::Module::State {
-        Engine* engine;
-        maybe<system::Device::Id> device;
-        maybe<system::Viewport::Id> viewport;
-        maybe<scene::Root::Id> scene;
-        maybe<scene::Camera::Id> scene_camera;
+        struct {
+            maybe<system::Device::Id> device;
+            maybe<system::Viewport::Id> viewport;
+            maybe<scene::Root::Id> scene;
+            maybe<scene::Camera::Id> scene_camera;
+            maybe<resource::shadow::Asset::Id> default_shadow;
+        } handles;
         Renderer renderer;
         bool show_materials = false;
 
-        State(Schema schema, Engine* owner)
+        explicit State(Schema schema)
             : establish::Module::State(std::move(schema))
-            , engine(owner)
         {}
 
-        void createDefaultState(Writing context, establish::Module::RootId& root) override {
+        void setup(Writing context, establish::Module::RootId& root) {
             const auto core = root.secretGet<system::Core>();
             if (not core.exists())
                 throw std::runtime_error("rmmr: RootId is not system::Core");
-            engine->open(context, *core, engine->window);
+            if (handles.default_shadow.exists())
+                return;
+            using resource::Assets;
+            using resource::Unit;
+            handles.default_shadow = with<Assets>::add_shadow_allocator(
+                context,
+                *core,
+                Unit::Quantum{.manager = *core, .name = "main_shadow", .library = "rmmr"},
+                resource::shadow::Asset::Quantum{},
+                resource::shadow::Allocator::Quantum{.size = index2{1024, 1024}});
         }
 
         void loadPastState(Writing) override {}
@@ -100,45 +112,46 @@ namespace rmmr {
     Engine::Engine() = default;
     Engine::~Engine() = default;
 
-    Schema Engine::domain() {
+    Schema Engine::schema() {
         return engineDomain();
     }
 
     std::shared_ptr<establish::Module::State> Engine::installState(Schema finalSchema) {
-        state = std::make_shared<State>(std::move(finalSchema), this);
+        state = std::make_shared<State>(std::move(finalSchema));
         return state;
     }
 
-    void Engine::setWindowParameters(WindowParameters params) {
-        window = std::move(params);
-    }
+    void Engine::setup(Writing context, establish::Module::RootId& root, WindowParameters params) {
+        const auto core = root.secretGet<system::Core>();
+        if (not core.exists())
+            throw std::runtime_error("rmmr: RootId is not system::Core");
 
-    void Engine::open(Writing context, system::Core::Id core, WindowParameters params) {
         base::message("rmmr: creating device and window...");
-        state->device = with<system::Interface>::addDeviceAndWindow(
+        state->handles.device = with<system::Interface>::addDeviceAndWindow(
             context,
-            core,
+            *core,
             std::move(params.title),
             params.requested_size);
-        createViewport(context, with<system::Window>::framebufferSize(context, *state->device));
+        createViewport(context, with<system::Window>::framebufferSize(context, *state->handles.device));
+        state->setup(context, root);
     }
 
     void Engine::materialize(Writing context, system::Core::Id assets) {
-        with<resource::Runtimes>::materialize(context, *state->device, assets);
+        with<resource::Runtimes>::materialize(context, *state->handles.device, assets);
     }
 
-    void Engine::setScene(scene::Root::Id scene, scene::Camera::Id camera) {
-        state->scene = scene;
-        state->scene_camera = camera;
+    void Engine::showScene(scene::Root::Id scene, scene::Camera::Id camera) {
+        state->handles.scene = scene;
+        state->handles.scene_camera = camera;
     }
 
     bool Engine::shouldClose(Reading context) const {
-        return glfwWindowShouldClose(with<system::Device>::get(context, state->device).handle);
+        return glfwWindowShouldClose(with<system::Device>::get(context, state->handles.device).handle);
     }
 
     void Engine::frame(Writing context) {
-        const auto& device = state->device;
-        const auto& viewport = state->viewport;
+        const auto& device = state->handles.device;
+        const auto& viewport = state->handles.viewport;
 
         with<system::Device>::poll_events(context);
         with<system::Window>::onFrameAdvanced(context, device);
@@ -152,8 +165,8 @@ namespace rmmr {
             }
         }
 
-        if (state->scene_camera) {
-            with<controller::Camera>::update(context, state->scene_camera, device);
+        if (state->handles.scene_camera) {
+            with<controller::Camera>::update(context, state->handles.scene_camera, device);
         }
 
         with<system::Viewport>::syncExtent(context, viewport);
@@ -165,13 +178,13 @@ namespace rmmr {
             with<system::Viewport>::modify(context, viewport)->clear_color.r = 0;
         */
 
-        if (state->scene && state->scene_camera) {
+        if (state->handles.scene && state->handles.scene_camera) {
             with<system::ImGuiHost>::newFrame(context, device);
             const ui::FrameContext ui_frame{
                 .world = context,
                 .window = *device,
-                .scene = *state->scene,
-                .camera = *state->scene_camera,
+                .scene = *state->handles.scene,
+                .camera = *state->handles.scene_camera,
                 .show_materials = state->show_materials,
             };
             ui::draw_renderer_toggles(ui_frame);
@@ -181,8 +194,8 @@ namespace rmmr {
                 .world = context,
                 .viewport = *viewport,
                 .window = *device,
-                .scene = *state->scene,
-                .camera = *state->scene_camera,
+                .scene = *state->handles.scene,
+                .camera = *state->handles.scene_camera,
             });
             with<system::ImGuiHost>::render(context, device);
         }
@@ -191,7 +204,7 @@ namespace rmmr {
     }
 
     void Engine::createViewport(Writing context, index2 size, index2 origin) {
-        state->viewport = with<system::Viewport_group>::addElement(context, *state->device, system::Viewport::Quantum{
+        state->handles.viewport = with<system::Viewport_group>::addElement(context, *state->handles.device, system::Viewport::Quantum{
             .origin = origin,
             .size = size,
             .clear_color = vec4{0.2f, 0.3f, 0.3f, 1.0f},
@@ -206,7 +219,7 @@ namespace rmmr {
                 preserved_handles.push_back(entry.value.handle);
             }
         }
-        ask::temp_sugar::drop_reference<system::Viewport>(context, state->viewport);
+        ask::temp_sugar::drop_reference<system::Viewport>(context, state->handles.viewport);
         with<system::Interface>::shutdown(context);
         for (GLFWwindow* handle : preserved_handles) {
             glfwDestroyWindow(handle);

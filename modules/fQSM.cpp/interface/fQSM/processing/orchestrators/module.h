@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/maybe.h>
 #include <fQSM/identifier.h>
 #include <fQSM/manipulation/schema.h>
@@ -16,13 +17,14 @@ namespace fqsm::processing::orchestrator {
 
     using fqsm::Writing;
 
-    // Module — shell: domain schema, children, installState → lived State.
+    // Module — shell: submodules, installState → lived State.
+    // schema() — this module's types plus submodules' schema(), recursively.
     // State — life of the module in the world after install.
     class Module {
     public:
         virtual ~Module() = default;
 
-        // Type-erased shared root id for inter-module awaken APIs.
+        // Type-erased shared root id for inter-module start APIs.
         // Not a general id hack: only Module protocol; family secrets via secretGet/secretSet.
         struct RootId {
             template<meta::category::Any Meta>
@@ -40,26 +42,23 @@ namespace fqsm::processing::orchestrator {
             explicit State(Schema schema) : fullSchema(std::move(schema)) {}
             virtual ~State() = default;
 
-            virtual void createDefaultState(Writing, RootId&) = 0;
             virtual void loadPastState(Writing) = 0;
 
             Schema fullSchema;
         };
 
-        virtual Schema domain() = 0;
-        virtual std::shared_ptr<State> installState(Schema finalSchema) = 0;
+        virtual Schema schema() = 0;
 
-        Schema composedDomain();
+        // Default: unused on roots that install via a typed API. Submodules override.
+        virtual std::shared_ptr<State> installState(Schema) { _INCOMPLETE_; }
 
         template<typename M, typename... Args>
         std::shared_ptr<M> add(Args&&... args);
 
-        void add(std::shared_ptr<Module> child) { modules_.push_back(std::move(child)); }
-
-        const std::vector<std::shared_ptr<Module>>& modules() const { return modules_; }
+        void add(std::shared_ptr<Module> child) { submodules.push_back(std::move(child)); }
 
     protected:
-        std::vector<std::shared_ptr<Module>> modules_;
+        std::vector<std::shared_ptr<Module>> submodules;
     };
 
 }
@@ -81,17 +80,10 @@ namespace fqsm::processing::orchestrator {
         actualTypeId = meta::Rtid::of<Meta>();
     }
 
-    inline Schema Module::composedDomain() {
-        Schema result = domain();
-        for (auto& child : modules_)
-            result = manipulation::schema::merge({result, child->composedDomain()});
-        return result;
-    }
-
     template<typename M, typename... Args>
     std::shared_ptr<M> Module::add(Args&&... args) {
         auto child = std::make_shared<M>(std::forward<Args>(args)...);
-        modules_.push_back(child);
+        submodules.push_back(child);
         return child;
     }
 

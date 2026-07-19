@@ -5,8 +5,9 @@ namespace rmmr
   namespace resource
     namespace shadow
 
-    // Persistent shadow-target recipe. Scene (Light, etc.) may hold #shadow::Asset —
-    // never #shadow::Runtime (device-bound; rematerialize would break the link).
+    // Persistent shadow-target recipe. Owned by engine/resources — not by scene::Light.
+    // Scene lights never hold #shadow::Asset; renderer assigns shadow runtimes to lights per frame.
+    // Never store #shadow::Runtime on assets/scene (device-bound; rematerialize would break the link).
     feature Asset of resource::Unit
 
     entity Runtime

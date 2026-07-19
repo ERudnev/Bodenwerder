@@ -12,19 +12,17 @@ int main() {
     message("[{}] Test app is started...", now());
 
     try {
-        toy::Application application{{
+        auto application = std::make_shared<toy::Application>(toy::Application::Settings{
             .assets_root = std::filesystem::path(DAQL_ASSETS_DIR),
             .title = "Raidenmamare",
             .window_size = {.x = 1600, .y = 900},
             .glVersion = {.major = 3, .minor = 3},
-        }};
+        });
 
-        application.addEngine();
-        const auto schema = application.composedDomain();
-        application.install(schema);
-        establish::Realm world{schema};
-        application.initDefaultWorld(world);
-        return application.run(world);
+        const auto schema = application->schema();
+        application->install(schema);
+        application->initDefaultWorld();
+        return application->run();
     } catch (const std::exception& e) {
         message("[{}] Engine error: {}", to_string(now()), e.what());
         return -1;
