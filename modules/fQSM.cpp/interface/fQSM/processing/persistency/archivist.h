@@ -1,7 +1,7 @@
 #pragma once
 
 #include <filesystem>
-#include <fQSM/model/intertype/schema.h>
+#include <fQSM/model/intertype/set.h>
 #include <fQSM/processing/_forwards.h>
 
 namespace fqsm::processing {

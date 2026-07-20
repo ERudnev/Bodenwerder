@@ -28,9 +28,12 @@ int main()
         fqsm::TypeId<Family>,
     };
 
-    if (not archivist.updateFromLocation(main, palette, dbPath)) {
+    const auto loadable = archivist.getTypesAtLocation(main, dbPath) & palette;
+    if (loadable.empty()) {
         base::message("DB load failed, creating new registry");
         with<Registry>::createSixFamilies(main);
+    } else {
+        archivist.updateFromLocation(main, loadable, dbPath);
     }
 
     with<Person>::one_year_passed(main);

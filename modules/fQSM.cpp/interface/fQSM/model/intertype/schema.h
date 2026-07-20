@@ -9,10 +9,9 @@
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/identifier.h>
 #include <fQSM/model/intertype/binding.h>
+#include <fQSM/model/intertype/set.h>
 
 namespace fqsm::model::intertype {
-
-    using Set = meta::Rtid::Set;
 
     struct Graph {
         using ReactionId = Identifier<features::reactions::Abstract, std::size_t>;
