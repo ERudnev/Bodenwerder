@@ -55,7 +55,12 @@ target_include_directories(${PROJECT_NAME}_workshop
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/workshop
 )
+target_compile_definitions(${PROJECT_NAME}_workshop
+    PRIVATE
+        DAQL_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+)
 target_link_libraries(${PROJECT_NAME}_workshop
     PRIVATE
         ${PROJECT_NAME}
+        sqlite3
 )

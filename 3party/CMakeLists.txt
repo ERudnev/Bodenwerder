@@ -1,6 +1,7 @@
 add_subdirectory(glew-cmake)
 add_subdirectory(glfw)
 add_subdirectory(glm)
+add_subdirectory(sqlite_amalgamation)
 #add_subdirectory(assimp)
 
 # Standalone Boost.PFR (vendored as submodule in 3party/pfr).
