@@ -37,4 +37,15 @@ namespace backlog {
     Reason:
       Роль controller↔worker должна быть зафиксирована в языке, прежде чем наращивать рантайм вокруг декларации.
   }
+
+  persistency_away_from_main_schema: @Statement(~0.9) {
+    Core:
+      Пихать персистентные вещи в главную Schema было ошибкой.
+      Нужна отдельная схема персистентности (возможно неполная по типам; связь с основной — опциональна).
+      Основная схема мира об архиве не знает; Writing/Reading получают persist-сведения дополнительными параметрами, не через поля Graph/Node.
+      После конца миграции workshop→lib→test: также обобщить retrospection над database/ (без sqlite3_stmt/void* в карте).
+      Детали: wiki/docs/tech_stuff/TODOs/retrospection_generic_layer.md
+    Reason:
+      Персистентность внутри главной схемы быстро ломает архитектуру: мир начинает «знать» про архив.
+  }
 }

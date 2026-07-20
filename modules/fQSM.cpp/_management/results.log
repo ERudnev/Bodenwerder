@@ -1,0 +1,5 @@
+// Лог действий по управлению модулем fQSM.
+// Формат: [user] YYYY-MM-DD: content
+
+[morta] 2026-07-20: В backlog.tome добавлен persistency_away_from_main_schema; расширен wiki/docs/tech_stuff/TODOs/retrospection_generic_layer.md (отдельная persist-схема, основная Schema не знает про архив)
+[morta] 2026-07-21: Введена persistency::Schema/Graph отдельно от world Schema; Archivist в persistency; workshop: archive = persist::merge({db::aspect<Person>(), ...}), main schema без archive

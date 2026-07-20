@@ -13,6 +13,7 @@
     X(serialization) \
     X(destructor) \
     X(workers_say_no) \
+    X(persistent_families) \
     // end
 
 #define FQSM_LOW_LEVEL_TESTS(X) \

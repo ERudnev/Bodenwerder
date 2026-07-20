@@ -24,10 +24,15 @@ namespace fqsm::processing {
     struct Gate;
     struct Wall;
     struct Review;
-    struct AspectArchive;
 
     template<meta::category::Any>
     struct Breach;
+}
+
+namespace fqsm::processing::persistency {
+    struct AspectArchive;
+    struct Graph;
+    struct Archivist;
 }
 
 // exportin this as 1st class citizen of fQSM:

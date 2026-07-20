@@ -5,7 +5,7 @@
 #include <fQSM/api/interface.h>
 #include <fQSM/processing/persistency/database/retrospection.h>
 
-namespace placeholder {
+namespace community {
 
     using namespace fqsm::api;
     using fqsm::processing::persistency::database::Retrospection;

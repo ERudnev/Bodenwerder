@@ -9,6 +9,7 @@
 #include <fQSM/meta/categories.h>
 #include <fQSM/processing/persistency/archivist.h>
 #include <fQSM/processing/persistency/database/retrospection.h>
+#include <fQSM/processing/persistency/schema.h>
 #include <fQSM/processing/_forwards.h>
 
 namespace fqsm::processing::persistency::database {
@@ -50,7 +51,7 @@ namespace fqsm::processing::persistency::database {
     };
 
     struct DatabaseArchivist : Archivist {
-        DatabaseArchivist() = default;
+        explicit DatabaseArchivist(Schema schema) : Archivist(std::move(schema)) {}
 
         auto getTypesAtLocation(Reading, Location) -> Palette override;
         bool updateFromLocation(Writing, Palette, Location) override;
@@ -58,22 +59,12 @@ namespace fqsm::processing::persistency::database {
         bool saveToLocation(Writing, Palette, Location) override;
     };
 
-}
-
-#include <fQSM/processing/persistency/database/engine.h>
-
-#include <fQSM/manipulation/schema.h>
-
-namespace fqsm::manipulation::schema {
-
     template<meta::category::Any Meta>
-        requires processing::persistency::database::HasRetrospection<Meta>
-    Schema aspect(bool persist) {
-        if (!persist)
-            return aspect<Meta>();
-        return aspect<Meta>(std::shared_ptr<processing::AspectArchive>{
-            processing::persistency::database::ArchiveOps::of<Meta>()
-        });
+        requires HasRetrospection<Meta>
+    auto aspect() -> Schema {
+        return persistency::aspect<Meta>(std::shared_ptr<AspectArchive>{ArchiveOps::of<Meta>()});
     }
 
 }
+
+#include <fQSM/processing/persistency/database/engine.h>

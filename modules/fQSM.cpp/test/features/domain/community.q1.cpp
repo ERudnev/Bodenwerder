@@ -1,6 +1,6 @@
-#include "placeholder.q1.h"
+#include "community.q1.h"
 
-namespace placeholder {
+namespace community {
 
     using namespace fqsm::api;
 
@@ -35,7 +35,7 @@ namespace placeholder {
 
     auto Person::retrospection() -> const Retrospection {
         return {
-            .aspectName = "placeholder::Person",
+            .aspectName = "community::Person",
             .quantum = {
                 Retrospection::column<string>({Retrospection::step<&Person::Quantum::name>("name")}),
                 Retrospection::column<integer>({Retrospection::step<&Person::Quantum::age>("age")}),
@@ -46,21 +46,21 @@ namespace placeholder {
 
     auto Family::retrospection() -> const Retrospection {
         return {
-            .aspectName = "placeholder::Family",
+            .aspectName = "community::Family",
             .quantum = {
                 Retrospection::column<string>({Retrospection::step<&Family::Quantum::lastname>("lastname")}),
-                Retrospection::referenceColumn<Person::Id>("placeholder::Person", {
+                Retrospection::referenceColumn<Person::Id>("community::Person", {
                     Retrospection::step<&Family::Quantum::parents>("parents"),
                     Retrospection::step<&Family::Parents::dad>("dad"),
                 }),
-                Retrospection::referenceColumn<Person::Id>("placeholder::Person", {
+                Retrospection::referenceColumn<Person::Id>("community::Person", {
                     Retrospection::step<&Family::Quantum::parents>("parents"),
                     Retrospection::step<&Family::Parents::mom>("mom"),
                 }),
             },
             .quantum_collections = {
                 Retrospection::referenceCollection<vector<Person::Id>>(
-                    "placeholder::Person",
+                    "community::Person",
                     {Retrospection::step<&Family::Quantum::children>("children")}
                 ),
             },

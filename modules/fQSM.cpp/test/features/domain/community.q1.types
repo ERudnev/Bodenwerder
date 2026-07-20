@@ -1,4 +1,4 @@
-namespace placeholder
+namespace community
 
   entity UselessItem
     one

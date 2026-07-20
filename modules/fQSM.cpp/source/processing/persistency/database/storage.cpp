@@ -23,18 +23,18 @@ namespace fqsm::processing::persistency::database {
             return DatabaseProxy{engine};
         }
 
-        auto ops_for(const fqsm::model::intertype::Graph::Node& node) -> std::shared_ptr<ArchiveOps> {
+        auto ops_for(const Graph::Node& node) -> std::shared_ptr<ArchiveOps> {
             return std::dynamic_pointer_cast<ArchiveOps>(node.archive);
         }
 
     }
 
-    auto DatabaseArchivist::getTypesAtLocation(Reading context, Location location) -> Palette {
+    auto DatabaseArchivist::getTypesAtLocation(Reading, Location location) -> Palette {
         Palette found;
         auto db = open_existing(location);
         if (!db) return found;
 
-        for (const auto& [type, node] : context->schema->nodes) {
+        for (const auto& [type, node] : schema_->nodes) {
             const auto ops = ops_for(node);
             if (!ops) continue;
             if (ops->present(*db))
@@ -49,8 +49,8 @@ namespace fqsm::processing::persistency::database {
 
         bool loaded = false;
         for (const auto& type : palette) {
-            const auto found = context->schema->nodes.find(type);
-            if (found == context->schema->nodes.end()) continue;
+            const auto found = schema_->nodes.find(type);
+            if (found == schema_->nodes.end()) continue;
             const auto ops = ops_for(found->second);
             if (!ops) continue;
             if (!ops->present(*db)) continue;
@@ -62,8 +62,8 @@ namespace fqsm::processing::persistency::database {
 
     bool DatabaseArchivist::replaceFromLocation(Writing context, Palette palette, Location location) {
         for (const auto& type : palette) {
-            const auto found = context->schema->nodes.find(type);
-            if (found == context->schema->nodes.end()) continue;
+            const auto found = schema_->nodes.find(type);
+            if (found == schema_->nodes.end()) continue;
             const auto ops = ops_for(found->second);
             if (!ops) continue;
             ops->clear(context);
@@ -86,8 +86,8 @@ namespace fqsm::processing::persistency::database {
 
             const Reading reading = context;
             for (const auto& type : palette) {
-                const auto found = context->schema->nodes.find(type);
-                if (found == context->schema->nodes.end()) continue;
+                const auto found = schema_->nodes.find(type);
+                if (found == schema_->nodes.end()) continue;
                 const auto ops = ops_for(found->second);
                 if (!ops) continue;
                 ops->push(reading, db);

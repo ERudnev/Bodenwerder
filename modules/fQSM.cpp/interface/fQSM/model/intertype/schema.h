@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -11,7 +10,6 @@
 #include <fQSM/identifier.h>
 #include <fQSM/model/intertype/binding.h>
 #include <fQSM/model/intertype/set.h>
-#include <fQSM/processing/_forwards.h>
 
 namespace fqsm::model::intertype {
 
@@ -24,12 +22,8 @@ namespace fqsm::model::intertype {
             std::string name;
             ReactionIds reactions;
             Binding binding;
-            std::shared_ptr<processing::AspectArchive> archive; // null = not archived
-
-            bool persistent() const { return static_cast<bool>(archive); }
         };
 
-        // sugar:
         template<category::Any Meta>
         bool accepts() const { return nodes.contains(TypeId<Meta>); }
 
