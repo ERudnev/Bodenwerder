@@ -24,6 +24,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC glm
     PUBLIC base
     PUBLIC pfr
+    PUBLIC sqlite3
     ${OPENGL_LIBRARIES}
 )
 
@@ -62,5 +63,4 @@ target_compile_definitions(${PROJECT_NAME}_workshop
 target_link_libraries(${PROJECT_NAME}_workshop
     PRIVATE
         ${PROJECT_NAME}
-        sqlite3
 )

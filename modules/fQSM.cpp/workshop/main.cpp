@@ -1,9 +1,9 @@
 #include <filesystem>
 
 #include <fQSM/api/interface.h>
+#include <fQSM/processing/persistency/database/storage.h>
 
 #include "placeholder.q1.h"
-#include "storage.h"
 
 using namespace fqsm::api;
 
@@ -20,15 +20,11 @@ int main()
     establish::Realm main(schema);
     const auto dbPath = std::filesystem::path(DAQL_ASSETS_DIR) / "fqsm_workshop" / "registry.db";
 
-    // Catalog still workshop-local; next migration step: archive slot on Schema::Node.
-    fqsm_workshop::storage::DatabaseArchivist archivist({
-        {fqsm::TypeId<Person>, fqsm_workshop::storage::ArchiveOps::of<Person>()},
-        {fqsm::TypeId<Family>, fqsm_workshop::storage::ArchiveOps::of<Family>()},
-    });
+    fqsm::processing::persistency::database::DatabaseArchivist archivist;
 
     fqsm::processing::Archivist::Palette palette;
     for (const auto& [type, node] : schema->nodes) {
-        if (node.persistent)
+        if (node.persistent())
             palette.insert(type);
     }
 

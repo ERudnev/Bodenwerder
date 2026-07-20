@@ -6,9 +6,9 @@
 #include <string>
 #include <vector>
 
-#include "sqlPolicy.h"
+#include <fQSM/processing/persistency/database/sql.h>
 
-namespace placeholder {
+namespace fqsm::processing::persistency::database {
 
     namespace detail::retrospection {
 
@@ -62,7 +62,7 @@ namespace placeholder {
     }
 
     struct Retrospection {
-        using StorageAtom = detail::sql_policy::StorageAtom;
+        using StorageAtom = detail::sql::StorageAtom;
         enum struct Persistence {
             scalar_column,
             collection_table,
@@ -115,15 +115,15 @@ namespace placeholder {
 
         template<typename Leaf>
         static auto column(std::string fieldPath, std::initializer_list<detail::retrospection::PathStep> path) -> Field {
-            detail::sql_policy::atom<Leaf>::require();
+            detail::sql::atom<Leaf>::require();
             return {
                 .fieldPath = std::move(fieldPath),
                 .persistence = Persistence::scalar_column,
-                .atom = detail::sql_policy::atom<Leaf>::storage,
+                .atom = detail::sql::atom<Leaf>::storage,
                 .targetAspect = {},
                 .path = path,
-                .bindLeaf = detail::sql_policy::atom<Leaf>::bind,
-                .readLeaf = detail::sql_policy::atom<Leaf>::read,
+                .bindLeaf = detail::sql::atom<Leaf>::bind,
+                .readLeaf = detail::sql::atom<Leaf>::read,
             };
         }
 
@@ -134,16 +134,16 @@ namespace placeholder {
 
         template<typename Reference>
         static auto referenceColumn(std::string fieldPath, std::string targetAspect, std::initializer_list<detail::retrospection::PathStep> path) -> Field {
-            detail::sql_policy::atom<Reference>::require();
-            static_assert(detail::sql_policy::atom<Reference>::storage == StorageAtom::reference, "referenceColumn requires reference-like SQL atom");
+            detail::sql::atom<Reference>::require();
+            static_assert(detail::sql::atom<Reference>::storage == StorageAtom::reference, "referenceColumn requires reference-like SQL atom");
             return {
                 .fieldPath = std::move(fieldPath),
                 .persistence = Persistence::scalar_column,
-                .atom = detail::sql_policy::atom<Reference>::storage,
+                .atom = detail::sql::atom<Reference>::storage,
                 .targetAspect = std::move(targetAspect),
                 .path = path,
-                .bindLeaf = detail::sql_policy::atom<Reference>::bind,
-                .readLeaf = detail::sql_policy::atom<Reference>::read,
+                .bindLeaf = detail::sql::atom<Reference>::bind,
+                .readLeaf = detail::sql::atom<Reference>::read,
             };
         }
 
@@ -173,18 +173,18 @@ namespace placeholder {
 
         template<typename SequenceType>
         static auto collection(std::initializer_list<detail::retrospection::PathStep> path) -> Field {
-            detail::sql_policy::sequence<SequenceType>::require();
+            detail::sql::sequence<SequenceType>::require();
             return {
                 .fieldPath = detail::retrospection::name_of(std::vector<detail::retrospection::PathStep>{path}),
                 .persistence = Persistence::collection_table,
-                .atom = detail::sql_policy::sequence<SequenceType>::storage,
+                .atom = detail::sql::sequence<SequenceType>::storage,
                 .targetAspect = {},
                 .path = path,
-                .bindLeaf = detail::sql_policy::sequence<SequenceType>::bind,
-                .readLeaf = detail::sql_policy::sequence<SequenceType>::read,
-                .countElements = detail::sql_policy::sequence<SequenceType>::count,
-                .elementAt = detail::sql_policy::sequence<SequenceType>::element,
-                .appendElement = detail::sql_policy::sequence<SequenceType>::append,
+                .bindLeaf = detail::sql::sequence<SequenceType>::bind,
+                .readLeaf = detail::sql::sequence<SequenceType>::read,
+                .countElements = detail::sql::sequence<SequenceType>::count,
+                .elementAt = detail::sql::sequence<SequenceType>::element,
+                .appendElement = detail::sql::sequence<SequenceType>::append,
             };
         }
 
@@ -193,14 +193,13 @@ namespace placeholder {
             std::string targetAspect,
             std::initializer_list<detail::retrospection::PathStep> path
         ) -> Field {
-            static_assert(detail::sql_policy::sequence<SequenceType>::storage == StorageAtom::reference, "referenceCollection requires reference-like sequence values");
+            static_assert(detail::sql::sequence<SequenceType>::storage == StorageAtom::reference, "referenceCollection requires reference-like sequence values");
             auto field = collection<SequenceType>(path);
             field.targetAspect = std::move(targetAspect);
             return field;
         }
     };
 
-    // Persistable aspects expose a retrospection map; UselessItem-style types omit it.
     template<typename Meta>
     concept HasRetrospection = requires {
         { Meta::retrospection() } -> std::convertible_to<Retrospection>;

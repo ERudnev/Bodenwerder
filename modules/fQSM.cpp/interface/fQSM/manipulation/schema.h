@@ -1,6 +1,7 @@
 #pragma once
 
 #include <initializer_list>
+#include <memory>
 
 #include <base/shared_reference.h>
 
@@ -8,20 +9,20 @@
 #include <fQSM/meta/categories.h>
 #include <fQSM/model/intertype/schema.h>
 #include <fQSM/model/intertype/builders.h>
+#include <fQSM/processing/persistency/archivist.h>
 
 namespace fqsm::manipulation::schema {
 
     Schema merge(std::initializer_list<Schema> parts);
 
-    // Realm membership only (default): not marked for archive.
+    // Realm membership only: no archive facet.
     template<meta::category::Any Meta>
     Schema aspect();
 
-    // Mark aspect persistent in the schema. Requires Meta::retrospection().
-    // Call site: aspect<Person>(true). Passing false is not the non-persist path — use aspect().
+    // Archive-capable aspect. Requires Meta::retrospection().
     template<meta::category::Any Meta>
         requires requires { Meta::retrospection(); }
-    Schema aspect(bool persist);
+    Schema aspect(std::shared_ptr<processing::AspectArchive> archive);
 }
 // impl:
 namespace fqsm::manipulation::schema {
@@ -56,13 +57,13 @@ namespace fqsm::manipulation::schema {
 
     namespace detail {
         template<meta::category::Any Meta>
-        auto aspect_fragment(bool persistent) -> fqsm::Schema {
+        auto aspect_fragment(std::shared_ptr<processing::AspectArchive> archive) -> fqsm::Schema {
             auto out = base::make_shared<model::intertype::Graph>();
             auto node = model::intertype::Graph::Node{
                 std::string{fqsm::meta::Rtid::name<Meta>()},
                 model::intertype::Graph::ReactionIds{},
                 fqsm::schema::details::binding<Meta>(),
-                persistent,
+                std::move(archive),
             };
 
             out->nodes.emplace(TypeId<Meta>, node);
@@ -85,12 +86,12 @@ namespace fqsm::manipulation::schema {
 
     template<meta::category::Any Meta>
     fqsm::Schema aspect() {
-        return detail::aspect_fragment<Meta>(false);
+        return detail::aspect_fragment<Meta>(nullptr);
     }
 
     template<meta::category::Any Meta>
         requires requires { Meta::retrospection(); }
-    fqsm::Schema aspect(bool persist) {
-        return detail::aspect_fragment<Meta>(persist);
+    fqsm::Schema aspect(std::shared_ptr<processing::AspectArchive> archive) {
+        return detail::aspect_fragment<Meta>(std::move(archive));
     }
 }

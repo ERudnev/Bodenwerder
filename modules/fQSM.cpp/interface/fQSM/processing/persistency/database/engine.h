@@ -1,12 +1,14 @@
-#include "storage.h"
+#pragma once
 
-#include "placeholder.q1.h"
-#include "retrospection.h"
+#include <fQSM/api/interface.h>
+#include <fQSM/processing/persistency/database/retrospection.h>
+#include <fQSM/utility/bad_value.h>
 
 #include <sqlite3.h>
 
 #include <cstdint>
-#include <optional>
+#include <format>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -14,23 +16,21 @@
 #include <utility>
 #include <vector>
 
-#include <fQSM/utility/bad_value.h>
+namespace fqsm::processing::persistency::database::detail {
 
-namespace {
 
     using namespace fqsm::api;
-    using namespace placeholder;
-    using Palette = fqsm::processing::Archivist::Palette;
+    using Retrospection = fqsm::processing::persistency::database::Retrospection;
 
     constexpr std::string_view sequence_owner_column = "owner";
     constexpr std::string_view sequence_ordinal_column = "ordinal";
     constexpr std::string_view sequence_value_column = "value";
 
-    [[noreturn]] void fail(sqlite3* db, std::string_view what) {
+    [[noreturn]] inline void fail(sqlite3* db, std::string_view what) {
         throw std::runtime_error(std::format("{}: {}", what, db ? sqlite3_errmsg(db) : "no db"));
     }
 
-    void exec(sqlite3* db, const char* sql) {
+    inline void exec(sqlite3* db, const char* sql) {
         char* error = nullptr;
         if (sqlite3_exec(db, sql, nullptr, nullptr, &error) != SQLITE_OK) {
             const std::string message = error ? error : "sqlite3_exec failed";
@@ -39,7 +39,7 @@ namespace {
         }
     }
 
-    auto table_exists(sqlite3* db, std::string_view table) -> bool {
+    inline auto table_exists(sqlite3* db, std::string_view table) -> bool {
         sqlite3_stmt* statement = nullptr;
         if (sqlite3_prepare_v2(
                 db,
@@ -55,7 +55,7 @@ namespace {
         return state == SQLITE_ROW;
     }
 
-    void stepDone(sqlite3* db, sqlite3_stmt* statement, std::string_view what) {
+    inline void stepDone(sqlite3* db, sqlite3_stmt* statement, std::string_view what) {
         if (sqlite3_step(statement) != SQLITE_DONE) {
             sqlite3_finalize(statement);
             fail(db, what);
@@ -63,11 +63,11 @@ namespace {
         sqlite3_finalize(statement);
     }
 
-    auto sqlIdentifier(std::string_view name) -> std::string {
+    inline auto sqlIdentifier(std::string_view name) -> std::string {
         return std::string{"\""} + std::string{name} + "\"";
     }
 
-    auto sql_type(Retrospection::StorageAtom atom) -> std::string_view {
+    inline auto sql_type(Retrospection::StorageAtom atom) -> std::string_view {
         switch (atom) {
             case Retrospection::StorageAtom::string: return "TEXT";
             case Retrospection::StorageAtom::integer: return "INTEGER";
@@ -76,7 +76,7 @@ namespace {
         throw std::runtime_error("unsupported StorageAtom");
     }
 
-        auto placeholders(std::size_t count) -> std::string {
+    inline auto placeholders(std::size_t count) -> std::string {
             std::ostringstream out;
             for (std::size_t index = 0; index < count; ++index) {
                 if (index != 0) out << ", ";
@@ -85,7 +85,7 @@ namespace {
             return out.str();
         }
 
-        auto build_quanta_insert_sql(const Retrospection& retrospection) -> std::string {
+    inline auto build_quanta_insert_sql(const Retrospection& retrospection) -> std::string {
             std::ostringstream out;
             out << "INSERT INTO " << sqlIdentifier(retrospection.quantaTable()) << " (\"id\"";
             std::size_t persisted = 0;
@@ -98,7 +98,7 @@ namespace {
             return out.str();
         }
 
-        auto build_collection_insert_sql(std::string_view table) -> std::string {
+    inline auto build_collection_insert_sql(std::string_view table) -> std::string {
             std::ostringstream out;
             out << "INSERT INTO " << sqlIdentifier(table)
                 << " (" << sqlIdentifier(sequence_owner_column)
@@ -108,7 +108,7 @@ namespace {
             return out.str();
         }
 
-        auto build_globals_insert_sql(const Retrospection& retrospection, const std::vector<Retrospection::Field>& global_fields) -> std::string {
+    inline auto build_globals_insert_sql(const Retrospection& retrospection, const std::vector<Retrospection::Field>& global_fields) -> std::string {
             std::ostringstream out;
             out << "INSERT INTO " << sqlIdentifier(retrospection.globalsTable()) << " (\"key\"";
             for (const auto& field : global_fields) {
@@ -124,7 +124,7 @@ namespace {
             return out.str();
         }
 
-        auto build_quanta_select_sql(const Retrospection& retrospection) -> std::string {
+    inline auto build_quanta_select_sql(const Retrospection& retrospection) -> std::string {
             std::ostringstream out;
             out << "SELECT " << sqlIdentifier("id");
             for (const auto& field : retrospection.quantum) {
@@ -136,7 +136,7 @@ namespace {
             return out.str();
         }
 
-        auto build_collection_select_sql(std::string_view table) -> std::string {
+    inline auto build_collection_select_sql(std::string_view table) -> std::string {
             std::ostringstream out;
             out << "SELECT "
                 << sqlIdentifier(sequence_owner_column) << ", "
@@ -147,7 +147,7 @@ namespace {
             return out.str();
         }
 
-        auto build_globals_select_sql(const Retrospection& retrospection, const std::vector<Retrospection::Field>& global_fields) -> std::string {
+    inline auto build_globals_select_sql(const Retrospection& retrospection, const std::vector<Retrospection::Field>& global_fields) -> std::string {
             std::ostringstream out;
             out << "SELECT ";
             bool first = true;
@@ -162,7 +162,7 @@ namespace {
             return out.str();
         }
 
-        void create_quanta_table(sqlite3* db, const Retrospection& retrospection) {
+    inline void create_quanta_table(sqlite3* db, const Retrospection& retrospection) {
             std::ostringstream out;
             out << "CREATE TABLE " << sqlIdentifier(retrospection.quantaTable()) << " (\n"
                 << "    id INTEGER PRIMARY KEY NOT NULL";
@@ -174,7 +174,7 @@ namespace {
             exec(db, out.str().c_str());
         }
 
-        void create_collection_table(sqlite3* db, std::string_view table, const Retrospection::Field& field) {
+    inline void create_collection_table(sqlite3* db, std::string_view table, const Retrospection::Field& field) {
             std::ostringstream out;
             out << "CREATE TABLE " << sqlIdentifier(table) << " (\n"
                 << "    " << sqlIdentifier(sequence_owner_column) << " INTEGER NOT NULL,\n"
@@ -185,7 +185,7 @@ namespace {
             exec(db, out.str().c_str());
         }
 
-        void create_globals_table(sqlite3* db, const Retrospection& retrospection, const std::vector<Retrospection::Field>& global_fields) {
+    inline void create_globals_table(sqlite3* db, const Retrospection& retrospection, const std::vector<Retrospection::Field>& global_fields) {
             std::ostringstream out;
             out << "CREATE TABLE " << sqlIdentifier(retrospection.globalsTable()) << " (\n"
                 << "    key INTEGER PRIMARY KEY NOT NULL CHECK (key = 0)";
@@ -498,44 +498,14 @@ namespace {
                 with<Meta>::remove(context, id);
         }
 
+
 }
 
-namespace fqsm_workshop::storage {
+namespace fqsm::processing::persistency::database {
 
     using namespace fqsm::api;
+    using namespace detail;
 
-    class DatabaseProxy {
-    public:
-        explicit DatabaseProxy(sqlite3* engine) : engine_(engine) {}
-        DatabaseProxy(const DatabaseProxy&) = delete;
-        auto operator=(const DatabaseProxy&) -> DatabaseProxy& = delete;
-        DatabaseProxy(DatabaseProxy&& other) noexcept : engine_(std::exchange(other.engine_, nullptr)) {}
-        auto operator=(DatabaseProxy&& other) noexcept -> DatabaseProxy& {
-            if (this != &other) {
-                if (engine_) sqlite3_close(engine_);
-                engine_ = std::exchange(other.engine_, nullptr);
-            }
-            return *this;
-        }
-        ~DatabaseProxy() {
-            if (engine_) sqlite3_close(engine_);
-        }
-
-        auto engine() const -> sqlite3* { return engine_; }
-
-    private:
-        sqlite3* engine_ = nullptr;
-    };
-
-    auto open_existing(const std::filesystem::path& dbPath) -> std::optional<DatabaseProxy> {
-        if (!std::filesystem::exists(dbPath)) return std::nullopt;
-        sqlite3* engine = nullptr;
-        if (sqlite3_open(dbPath.string().c_str(), &engine) != SQLITE_OK) {
-            sqlite3_close(engine);
-            return std::nullopt;
-        }
-        return DatabaseProxy{engine};
-    }
 
     template<typename Meta>
     struct ArchiveOpsFor final : ArchiveOps {
@@ -558,84 +528,10 @@ namespace fqsm_workshop::storage {
     };
 
     template<fqsm::meta::category::Any Meta>
-        requires placeholder::HasRetrospection<Meta>
+        requires HasRetrospection<Meta>
     auto ArchiveOps::of() -> std::shared_ptr<ArchiveOps> {
         return std::make_shared<ArchiveOpsFor<Meta>>();
     }
 
-    template auto ArchiveOps::of<placeholder::Person>() -> std::shared_ptr<ArchiveOps>;
-    template auto ArchiveOps::of<placeholder::Family>() -> std::shared_ptr<ArchiveOps>;
-
-    DatabaseArchivist::DatabaseArchivist(Catalog catalog)
-        : catalog(std::move(catalog))
-    {}
-
-    auto DatabaseArchivist::getTypesAtLocation(fqsm::Reading context, Location location) -> Palette {
-        Palette found;
-        auto db = open_existing(location);
-        if (!db) return found;
-
-        for (const auto& [type, _] : context->schema->nodes) {
-            const auto entry = catalog.find(type);
-            if (entry == catalog.end()) continue;
-            if (entry->second->present(*db))
-                found.insert(type);
-        }
-        return found;
-    }
-
-    bool DatabaseArchivist::updateFromLocation(fqsm::Writing context, Palette palette, Location location) {
-        auto db = open_existing(location);
-        if (!db) return false;
-
-        bool loaded = false;
-        for (const auto& type : palette) {
-            const auto entry = catalog.find(type);
-            if (entry == catalog.end()) continue;
-            if (!entry->second->present(*db)) continue;
-            entry->second->pull(context, *db);
-            loaded = true;
-        }
-        return loaded;
-    }
-
-    bool DatabaseArchivist::replaceFromLocation(fqsm::Writing context, Palette palette, Location location) {
-        for (const auto& type : palette) {
-            const auto entry = catalog.find(type);
-            if (entry == catalog.end()) continue;
-            entry->second->clear(context);
-        }
-        return updateFromLocation(context, std::move(palette), std::move(location));
-    }
-
-    bool DatabaseArchivist::saveToLocation(fqsm::Writing context, Palette palette, Location location) {
-        std::filesystem::create_directories(location.parent_path());
-
-        sqlite3* engine = nullptr;
-        if (sqlite3_open(location.string().c_str(), &engine) != SQLITE_OK) {
-            sqlite3_close(engine);
-            return false;
-        }
-        DatabaseProxy db{engine};
-
-        try {
-            exec(db.engine(), "BEGIN");
-
-            const Reading reading = context;
-            for (const auto& type : palette) {
-                const auto entry = catalog.find(type);
-                if (entry == catalog.end()) continue;
-                entry->second->push(reading, db);
-            }
-
-            exec(db.engine(), "COMMIT");
-        } catch (...) {
-            sqlite3_exec(db.engine(), "ROLLBACK", nullptr, nullptr, nullptr);
-            throw;
-        }
-
-        base::message("saved registry to {}", location.string());
-        return true;
-    }
 
 }

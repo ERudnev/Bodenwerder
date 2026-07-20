@@ -12,11 +12,11 @@
 #include <fQSM/identifier.h>
 #include <fQSM/utility/bad_value.h>
 
-namespace placeholder {
+namespace fqsm::processing::persistency::database {
     struct Retrospection;
 }
 
-namespace placeholder::detail::sql_policy {
+namespace fqsm::processing::persistency::database::detail::sql {
 
     enum struct StorageAtom {
         string,

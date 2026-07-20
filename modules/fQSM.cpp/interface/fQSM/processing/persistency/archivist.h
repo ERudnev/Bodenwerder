@@ -6,6 +6,12 @@
 
 namespace fqsm::processing {
 
+    // Type-erased per-aspect archive facet (lives on Schema::Node).
+    // Concrete Archivist downcasts to backend-aware ops.
+    struct AspectArchive {
+        virtual ~AspectArchive() = default;
+    };
+
     struct Archivist {
         virtual ~Archivist()=default;
 

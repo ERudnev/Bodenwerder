@@ -3,12 +3,12 @@
 #include <memory>
 
 #include <fQSM/api/interface.h>
-
-#include "retrospection.h"
+#include <fQSM/processing/persistency/database/retrospection.h>
 
 namespace placeholder {
 
     using namespace fqsm::api;
+    using fqsm::processing::persistency::database::Retrospection;
 
     struct UselessItem : Entity<UselessItem> {
         struct Quantum {

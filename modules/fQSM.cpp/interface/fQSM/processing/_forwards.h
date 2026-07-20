@@ -24,6 +24,7 @@ namespace fqsm::processing {
     struct Gate;
     struct Wall;
     struct Review;
+    struct AspectArchive;
 
     template<meta::category::Any>
     struct Breach;

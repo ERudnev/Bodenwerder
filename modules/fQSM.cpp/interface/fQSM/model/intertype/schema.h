@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -10,6 +11,7 @@
 #include <fQSM/identifier.h>
 #include <fQSM/model/intertype/binding.h>
 #include <fQSM/model/intertype/set.h>
+#include <fQSM/processing/_forwards.h>
 
 namespace fqsm::model::intertype {
 
@@ -22,9 +24,9 @@ namespace fqsm::model::intertype {
             std::string name;
             ReactionIds reactions;
             Binding binding;
-            // Migration marker: true when aspect was registered for archive.
-            // Future: replaced/filled by a type-erased archive slot (cf. Binding).
-            bool persistent = false;
+            std::shared_ptr<processing::AspectArchive> archive; // null = not archived
+
+            bool persistent() const { return static_cast<bool>(archive); }
         };
 
         // sugar:
