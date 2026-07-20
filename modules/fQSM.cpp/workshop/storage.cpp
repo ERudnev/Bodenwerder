@@ -6,71 +6,75 @@
 #include <sqlite3.h>
 
 #include <cstdint>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include <fQSM/utility/bad_value.h>
 
-namespace placeholder {
+namespace {
 
     using namespace fqsm::api;
+    using namespace placeholder;
+    using Palette = fqsm::processing::Archivist::Palette;
 
-    namespace {
-        constexpr std::string_view sequence_owner_column = "owner";
-        constexpr std::string_view sequence_ordinal_column = "ordinal";
-        constexpr std::string_view sequence_value_column = "value";
+    constexpr std::string_view sequence_owner_column = "owner";
+    constexpr std::string_view sequence_ordinal_column = "ordinal";
+    constexpr std::string_view sequence_value_column = "value";
 
-        [[noreturn]] void fail(sqlite3* db, std::string_view what) {
-            throw std::runtime_error(std::format("{}: {}", what, db ? sqlite3_errmsg(db) : "no db"));
+    [[noreturn]] void fail(sqlite3* db, std::string_view what) {
+        throw std::runtime_error(std::format("{}: {}", what, db ? sqlite3_errmsg(db) : "no db"));
+    }
+
+    void exec(sqlite3* db, const char* sql) {
+        char* error = nullptr;
+        if (sqlite3_exec(db, sql, nullptr, nullptr, &error) != SQLITE_OK) {
+            const std::string message = error ? error : "sqlite3_exec failed";
+            sqlite3_free(error);
+            throw std::runtime_error(message);
         }
+    }
 
-        void exec(sqlite3* db, const char* sql) {
-            char* error = nullptr;
-            if (sqlite3_exec(db, sql, nullptr, nullptr, &error) != SQLITE_OK) {
-                const std::string message = error ? error : "sqlite3_exec failed";
-                sqlite3_free(error);
-                throw std::runtime_error(message);
-            }
-        }
+    auto table_exists(sqlite3* db, std::string_view table) -> bool {
+        sqlite3_stmt* statement = nullptr;
+        if (sqlite3_prepare_v2(
+                db,
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+                -1,
+                &statement,
+                nullptr
+            ) != SQLITE_OK)
+            fail(db, "prepare sqlite_master");
+        sqlite3_bind_text(statement, 1, table.data(), static_cast<int>(table.size()), SQLITE_TRANSIENT);
+        const auto state = sqlite3_step(statement);
+        sqlite3_finalize(statement);
+        return state == SQLITE_ROW;
+    }
 
-        auto table_exists(sqlite3* db, std::string_view table) -> bool {
-            sqlite3_stmt* statement = nullptr;
-            if (sqlite3_prepare_v2(
-                    db,
-                    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
-                    -1,
-                    &statement,
-                    nullptr
-                ) != SQLITE_OK)
-                fail(db, "prepare sqlite_master");
-            sqlite3_bind_text(statement, 1, table.data(), static_cast<int>(table.size()), SQLITE_TRANSIENT);
-            const auto state = sqlite3_step(statement);
+    void stepDone(sqlite3* db, sqlite3_stmt* statement, std::string_view what) {
+        if (sqlite3_step(statement) != SQLITE_DONE) {
             sqlite3_finalize(statement);
-            return state == SQLITE_ROW;
+            fail(db, what);
         }
+        sqlite3_finalize(statement);
+    }
 
-        void stepDone(sqlite3* db, sqlite3_stmt* statement, std::string_view what) {
-            if (sqlite3_step(statement) != SQLITE_DONE) {
-                sqlite3_finalize(statement);
-                fail(db, what);
-            }
-            sqlite3_finalize(statement);
-        }
+    auto sqlIdentifier(std::string_view name) -> std::string {
+        return std::string{"\""} + std::string{name} + "\"";
+    }
 
-        auto sqlIdentifier(std::string_view name) -> std::string {
-            return std::string{"\""} + std::string{name} + "\"";
+    auto sql_type(Retrospection::StorageAtom atom) -> std::string_view {
+        switch (atom) {
+            case Retrospection::StorageAtom::string: return "TEXT";
+            case Retrospection::StorageAtom::integer: return "INTEGER";
+            case Retrospection::StorageAtom::reference: return "INTEGER";
         }
-
-        auto sql_type(Retrospection::StorageAtom atom) -> std::string_view {
-            switch (atom) {
-                case Retrospection::StorageAtom::string: return "TEXT";
-                case Retrospection::StorageAtom::integer: return "INTEGER";
-                case Retrospection::StorageAtom::reference: return "INTEGER";
-            }
-            throw std::runtime_error("unsupported StorageAtom");
-        }
+        throw std::runtime_error("unsupported StorageAtom");
+    }
 
         auto placeholders(std::size_t count) -> std::string {
             std::ostringstream out;
@@ -412,54 +416,152 @@ namespace placeholder {
             load_globals<Meta>(db, context);
         }
 
-    }
-
-    bool loadRegistry(Writing context, std::filesystem::path dbPath) {
-        if (!std::filesystem::exists(dbPath)) return false;
-
-        sqlite3* db = nullptr;
-        if (sqlite3_open(dbPath.string().c_str(), &db) != SQLITE_OK) {
-            sqlite3_close(db);
-            return false;
+        template<typename Meta>
+        void clear_aspect(Writing context) {
+            std::vector<typename Meta::Id> ids;
+            for (const auto entry : context->aspect<Meta>().items())
+                ids.push_back(entry.id);
+            for (const auto id : ids)
+                with<Meta>::remove(context, id);
         }
 
-        if (!has_storage_schema<Person>(db) || !has_storage_schema<Family>(db)) {
-            sqlite3_close(db);
-            return false;
+}
+
+namespace fqsm_workshop::storage {
+
+    using namespace fqsm::api;
+
+    class DatabaseProxy {
+    public:
+        explicit DatabaseProxy(sqlite3* engine) : engine_(engine) {}
+        DatabaseProxy(const DatabaseProxy&) = delete;
+        auto operator=(const DatabaseProxy&) -> DatabaseProxy& = delete;
+        DatabaseProxy(DatabaseProxy&& other) noexcept : engine_(std::exchange(other.engine_, nullptr)) {}
+        auto operator=(DatabaseProxy&& other) noexcept -> DatabaseProxy& {
+            if (this != &other) {
+                if (engine_) sqlite3_close(engine_);
+                engine_ = std::exchange(other.engine_, nullptr);
+            }
+            return *this;
+        }
+        ~DatabaseProxy() {
+            if (engine_) sqlite3_close(engine_);
         }
 
-        load_aspect<Person>(db, context);
-        load_aspect<Family>(db, context);
+        auto engine() const -> sqlite3* { return engine_; }
 
-        sqlite3_close(db);
-        return true;
+    private:
+        sqlite3* engine_ = nullptr;
+    };
+
+    auto open_existing(const std::filesystem::path& dbPath) -> std::optional<DatabaseProxy> {
+        if (!std::filesystem::exists(dbPath)) return std::nullopt;
+        sqlite3* engine = nullptr;
+        if (sqlite3_open(dbPath.string().c_str(), &engine) != SQLITE_OK) {
+            sqlite3_close(engine);
+            return std::nullopt;
+        }
+        return DatabaseProxy{engine};
     }
 
-    void saveRegistry(Reading context, std::filesystem::path dbPath) {
-        std::filesystem::create_directories(dbPath.parent_path());
+    template<typename Meta>
+    struct ArchiveOpsFor final : ArchiveOps {
+        bool present(DatabaseProxy& db) override {
+            return has_storage_schema<Meta>(db.engine());
+        }
 
-        sqlite3* db = nullptr;
-        if (sqlite3_open(dbPath.string().c_str(), &db) != SQLITE_OK)
-            fail(db, "open");
+        void clear(Writing context) override {
+            clear_aspect<Meta>(context);
+        }
+
+        void pull(Writing context, DatabaseProxy& db) override {
+            load_aspect<Meta>(db.engine(), context);
+        }
+
+        void push(Reading context, DatabaseProxy& db) override {
+            rewrite_tables<Meta>(db.engine());
+            save_aspect<Meta>(db.engine(), context);
+        }
+    };
+
+    template<fqsm::meta::category::Any Meta>
+    auto ArchiveOps::of() -> std::shared_ptr<ArchiveOps> {
+        return std::make_shared<ArchiveOpsFor<Meta>>();
+    }
+
+    template auto ArchiveOps::of<placeholder::Person>() -> std::shared_ptr<ArchiveOps>;
+    template auto ArchiveOps::of<placeholder::Family>() -> std::shared_ptr<ArchiveOps>;
+
+    DatabaseArchivist::DatabaseArchivist(Catalog catalog)
+        : catalog(std::move(catalog))
+    {}
+
+    auto DatabaseArchivist::getTypesAtLocation(fqsm::Reading context, Location location) -> Palette {
+        Palette found;
+        auto db = open_existing(location);
+        if (!db) return found;
+
+        for (const auto& [type, _] : context->schema->nodes) {
+            const auto entry = catalog.find(type);
+            if (entry == catalog.end()) continue;
+            if (entry->second->present(*db))
+                found.insert(type);
+        }
+        return found;
+    }
+
+    bool DatabaseArchivist::updateFromLocation(fqsm::Writing context, Palette palette, Location location) {
+        auto db = open_existing(location);
+        if (!db) return false;
+
+        bool loaded = false;
+        for (const auto& type : palette) {
+            const auto entry = catalog.find(type);
+            if (entry == catalog.end()) continue;
+            if (!entry->second->present(*db)) continue;
+            entry->second->pull(context, *db);
+            loaded = true;
+        }
+        return loaded;
+    }
+
+    bool DatabaseArchivist::replaceFromLocation(fqsm::Writing context, Palette palette, Location location) {
+        for (const auto& type : palette) {
+            const auto entry = catalog.find(type);
+            if (entry == catalog.end()) continue;
+            entry->second->clear(context);
+        }
+        return updateFromLocation(context, std::move(palette), std::move(location));
+    }
+
+    bool DatabaseArchivist::saveToLocation(fqsm::Writing context, Palette palette, Location location) {
+        std::filesystem::create_directories(location.parent_path());
+
+        sqlite3* engine = nullptr;
+        if (sqlite3_open(location.string().c_str(), &engine) != SQLITE_OK) {
+            sqlite3_close(engine);
+            return false;
+        }
+        DatabaseProxy db{engine};
 
         try {
-            exec(db, "BEGIN");
+            exec(db.engine(), "BEGIN");
 
-            rewrite_tables<Person>(db);
-            rewrite_tables<Family>(db);
+            const Reading reading = context;
+            for (const auto& type : palette) {
+                const auto entry = catalog.find(type);
+                if (entry == catalog.end()) continue;
+                entry->second->push(reading, db);
+            }
 
-            save_aspect<Person>(db, context);
-            save_aspect<Family>(db, context);
-
-            exec(db, "COMMIT");
+            exec(db.engine(), "COMMIT");
         } catch (...) {
-            sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
-            sqlite3_close(db);
+            sqlite3_exec(db.engine(), "ROLLBACK", nullptr, nullptr, nullptr);
             throw;
         }
 
-        sqlite3_close(db);
-        base::message("saved registry to {}", dbPath.string());
+        base::message("saved registry to {}", location.string());
+        return true;
     }
 
 }

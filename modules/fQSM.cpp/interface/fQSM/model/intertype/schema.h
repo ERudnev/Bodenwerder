@@ -12,6 +12,8 @@
 
 namespace fqsm::model::intertype {
 
+    using Set = meta::Rtid::Set;
+
     struct Graph {
         using ReactionId = Identifier<features::reactions::Abstract, std::size_t>;
         using ReactionIds = std::vector<ReactionId>;
