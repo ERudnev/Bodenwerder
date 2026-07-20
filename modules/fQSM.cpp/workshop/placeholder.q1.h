@@ -1,6 +1,10 @@
 #pragma once
 
+#include <memory>
+
 #include <fQSM/api/interface.h>
+
+#include "retrospection.h"
 
 namespace placeholder {
 
@@ -10,10 +14,15 @@ namespace placeholder {
         struct Quantum {
             string name;
             integer age;
+            std::shared_ptr<string> cache;
         };
 
+        struct Actions : BaseActions {
+            static auto generate(Writing context, integer age) -> Id;
+        };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+        static const Retrospection retrospection();
     };
 
     struct Family : Entity<Family> {
@@ -32,8 +41,12 @@ namespace placeholder {
             integer sharedMoney = 0;
         };
 
+        struct Actions : BaseActions {
+            static auto generate(Writing context, bool dad, bool mom, integer children) -> Id;
+        };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+        static const Retrospection retrospection();
     };
 
     struct Registry : Archetype<Registry> {

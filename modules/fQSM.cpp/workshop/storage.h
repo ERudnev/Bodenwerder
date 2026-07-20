@@ -1,7 +1,6 @@
 #pragma once
 
 #include <filesystem>
-
 #include <fQSM/api/interface.h>
 
 namespace placeholder {

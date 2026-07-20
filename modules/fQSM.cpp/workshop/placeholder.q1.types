@@ -4,6 +4,9 @@ namespace placeholder
     one
       name: string
       age: integer
+      cache: as @external(some ugly C++ shared_ptr<std::string> as example of non-serializable field)
+    all
+      >generate(age: integer)-># // name is random (can use pre-generated table)
 
   entity Family
     struct Parents
@@ -15,6 +18,7 @@ namespace placeholder
       children: vector<#Person>
     all
       sharedMoney: integer
+      >generate(dad: bool, mom: bool, children: integer)->#
 
   archetype Registry
     >createSixFamilies()
