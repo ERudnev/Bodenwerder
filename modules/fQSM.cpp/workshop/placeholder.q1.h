@@ -6,32 +6,38 @@ namespace placeholder {
 
     using namespace fqsm::api;
 
-    // minimal possible Aspect, dont need *.cpp at all
-    struct Minimal : Entity<Minimal> {
-        struct Quantum {};
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
-    struct Tag : Attribute<Tag, Minimal> {
-        struct Quantum {};
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
-    struct MyAttribute : Attribute<MyAttribute, Minimal> {
-        struct Always {
-            static constexpr integer recommendedUpdateSize = 2;
-        };
+    struct Person : Entity<Person> {
         struct Quantum {
-            int x;
-            int y;
+            string name;
+            integer age;
         };
 
-        struct Actions : BaseActions {
-            static void justlog(Reading, Id);
-        };
-        struct Internals;
-        static const Behavior customAspectReactions();
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
-};
+
+    struct Family : Entity<Family> {
+        struct Parents {
+            Person::Id dad;
+            Person::Id mom;
+        };
+
+        struct Quantum {
+            string lastname;
+            Parents parents;
+            vector<Person::Id> children;
+        };
+
+        struct Global {
+            integer sharedMoney = 0;
+        };
+
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct Registry : Archetype<Registry> {
+        static void createSixFamilies(Writing context);
+    };
+
+}

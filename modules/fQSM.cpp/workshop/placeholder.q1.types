@@ -1,15 +1,21 @@
 namespace placeholder
 
-  entity Minimal
-
-  attribute MyAttribute of Minimal
-    always
-      recommendedUpdateSize: integer = 2
+  entity Person
     one
-      x: integer
-      y: integer
-      !ruleOne(-one) // reacts on deletion; all "one" reactions may listen only own aspect updates?
-      !ruleTwo(=one) // reacts on change (Quantum constraint)
+      name: string
+      age: integer
+
+  entity Family
+    struct Parents
+      dad: #Person
+      mom: #Person
+    one
+      lastname: string
+      parents: Parents
+      children: vector<#Person>
     all
-      !localRule(~) // ('~' mrans "type of"own type MyAttribute is iplicit argument
-      !globalRule(~Minimal) // including implicit MyAttribute
+      sharedMoney: integer
+
+  archetype Registry
+    >createSixFamilies()
+      // six families; children counts cover 0..4 (corners)
