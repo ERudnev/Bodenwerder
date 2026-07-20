@@ -13,8 +13,15 @@ namespace fqsm::manipulation::schema {
 
     Schema merge(std::initializer_list<Schema> parts);
 
+    // Realm membership only (default): not marked for archive.
     template<meta::category::Any Meta>
     Schema aspect();
+
+    // Mark aspect persistent in the schema. Requires Meta::retrospection().
+    // Call site: aspect<Person>(true). Passing false is not the non-persist path — use aspect().
+    template<meta::category::Any Meta>
+        requires requires { Meta::retrospection(); }
+    Schema aspect(bool persist);
 }
 // impl:
 namespace fqsm::manipulation::schema {
@@ -47,29 +54,43 @@ namespace fqsm::manipulation::schema {
         return fqsm::freeze(out);
     }
 
+    namespace detail {
+        template<meta::category::Any Meta>
+        auto aspect_fragment(bool persistent) -> fqsm::Schema {
+            auto out = base::make_shared<model::intertype::Graph>();
+            auto node = model::intertype::Graph::Node{
+                std::string{fqsm::meta::Rtid::name<Meta>()},
+                model::intertype::Graph::ReactionIds{},
+                fqsm::schema::details::binding<Meta>(),
+                persistent,
+            };
+
+            out->nodes.emplace(TypeId<Meta>, node);
+
+            const auto behavior = Meta::DefaultInternals::reactions();
+            for (const auto& reaction : behavior.rules) {
+                const auto reactionId = model::intertype::Graph::ReactionId{ out->reactions.size() };
+                out->reactions.push_back(reaction);
+
+                for (const auto& sourceType : reaction->listens()) {
+                    const auto found = out->nodes.find(sourceType);
+                    if (found == out->nodes.end()) continue;
+                    found->second.reactions.push_back(reactionId);
+                }
+            }
+
+            return fqsm::freeze(out);
+        }
+    }
+
     template<meta::category::Any Meta>
     fqsm::Schema aspect() {
-        auto out = base::make_shared<model::intertype::Graph>();
-        auto node = model::intertype::Graph::Node{
-            std::string{fqsm::meta::Rtid::name<Meta>()},
-            model::intertype::Graph::ReactionIds{},
-            fqsm::schema::details::binding<Meta>(),
-        };
+        return detail::aspect_fragment<Meta>(false);
+    }
 
-        out->nodes.emplace(TypeId<Meta>, node);
-
-        const auto behavior = Meta::DefaultInternals::reactions();
-        for (const auto& reaction : behavior.rules) {
-            const auto reactionId = model::intertype::Graph::ReactionId{ out->reactions.size() };
-            out->reactions.push_back(reaction);
-
-            for (const auto& sourceType : reaction->listens()) {
-                const auto found = out->nodes.find(sourceType);
-                if (found == out->nodes.end()) continue;
-                found->second.reactions.push_back(reactionId);
-            }
-        }
-
-        return fqsm::freeze(out);
+    template<meta::category::Any Meta>
+        requires requires { Meta::retrospection(); }
+    fqsm::Schema aspect(bool persist) {
+        return detail::aspect_fragment<Meta>(persist);
     }
 }

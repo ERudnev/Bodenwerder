@@ -6,6 +6,8 @@
 #include <fQSM/api/interface.h>
 #include <fQSM/processing/persistency/archivist.h>
 
+#include "retrospection.h"
+
 namespace fqsm_workshop::storage {
 
     class DatabaseProxy;
@@ -22,6 +24,7 @@ namespace fqsm_workshop::storage {
         virtual void push(fqsm::Reading, DatabaseProxy&) = 0;
 
         template<fqsm::meta::category::Any Meta>
+            requires placeholder::HasRetrospection<Meta>
         static auto of() -> std::shared_ptr<ArchiveOps>;
     };
 

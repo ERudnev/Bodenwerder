@@ -58,6 +58,15 @@ namespace placeholder::detail::sql_policy {
         *static_cast<std::int32_t*>(target) = static_cast<std::int32_t>(sqlite3_column_int(statement, index));
     }
 
+    inline void bind_bool(sqlite3_stmt* statement, int index, const void* source) {
+        const auto& value = *static_cast<const bool*>(source);
+        sqlite3_bind_int(statement, index, value ? 1 : 0);
+    }
+
+    inline void read_bool(sqlite3_stmt* statement, int index, void* target) {
+        *static_cast<bool*>(target) = sqlite3_column_int(statement, index) != 0;
+    }
+
     template<typename Reference>
     void bind_reference(sqlite3_stmt* statement, int index, const void* source) {
         const auto& value = *static_cast<const Reference*>(source);
@@ -95,6 +104,16 @@ namespace placeholder::detail::sql_policy {
         static constexpr auto storage = StorageAtom::integer;
         static constexpr auto bind = &bind_integer;
         static constexpr auto read = &read_integer;
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct atom<bool> {
+        static constexpr bool supported = true;
+        static constexpr auto storage = StorageAtom::integer;
+        static constexpr auto bind = &bind_bool;
+        static constexpr auto read = &read_bool;
 
         static consteval void require() {}
     };

@@ -10,6 +10,16 @@ namespace placeholder {
 
     using namespace fqsm::api;
 
+    struct UselessItem : Entity<UselessItem> {
+        struct Quantum {
+            bool reallyUseless;
+        };
+
+        struct Actions : BaseActions {};
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
     struct Person : Entity<Person> {
         struct Quantum {
             string name;
@@ -40,6 +50,7 @@ namespace placeholder {
 
         struct Global {
             integer sharedMoney = 0;
+            vector<string> legends;
         };
 
         struct Actions : BaseActions {

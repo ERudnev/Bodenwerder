@@ -22,6 +22,9 @@ namespace fqsm::model::intertype {
             std::string name;
             ReactionIds reactions;
             Binding binding;
+            // Migration marker: true when aspect was registered for archive.
+            // Future: replaced/filled by a type-erased archive slot (cf. Binding).
+            bool persistent = false;
         };
 
         // sugar:

@@ -1,5 +1,9 @@
 namespace placeholder
 
+  entity UselessItem
+    one
+      reallyUseless: bool
+
   entity Person
     one
       name: string
@@ -19,6 +23,7 @@ namespace placeholder
       children: vector<#Person>
     all
       sharedMoney: integer
+      legends: vector<string>
       >generate(dad: bool, mom: bool, children: integer)->#
 
   archetype Registry

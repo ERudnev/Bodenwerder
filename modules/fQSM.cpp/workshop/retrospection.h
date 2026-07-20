@@ -1,7 +1,7 @@
 #pragma once
 
+#include <concepts>
 #include <memory>
-#include <optional>
 #include <sqlite3.h>
 #include <string>
 #include <vector>
@@ -82,18 +82,11 @@ namespace placeholder {
             void (*appendElement)(sqlite3_stmt*, int, void*) = nullptr;
         };
 
-        struct Quanta {
-            std::vector<Field> fields;
-        };
-
-        struct Globals {
-            std::vector<Field> fields;
-        };
-
         std::string aspectName;
-        Quanta quanta;
-        std::vector<Field> collections;
-        std::optional<Globals> globals;
+        std::vector<Field> quantum;
+        std::vector<Field> quantum_collections;
+        std::vector<Field> global;
+        std::vector<Field> global_collections;
 
         template<auto Member>
         static auto step(std::string_view name) -> detail::retrospection::PathStep {
@@ -105,15 +98,19 @@ namespace placeholder {
         }
 
         auto quantaTable() const -> std::string {
-            return detail::retrospection::qualify(aspectName, "table");
+            return aspectName;
         }
 
         auto globalsTable() const -> std::string {
-            return detail::retrospection::qualify(aspectName, "globals");
+            return detail::retrospection::qualify(aspectName, "all");
         }
 
-        auto collectionTable(const Field& field) const -> std::string {
+        auto quantumCollectionTable(const Field& field) const -> std::string {
             return detail::retrospection::qualify(aspectName, field.fieldPath);
+        }
+
+        auto globalCollectionTable(const Field& field) const -> std::string {
+            return detail::retrospection::qualify(globalsTable(), field.fieldPath);
         }
 
         template<typename Leaf>
@@ -175,17 +172,13 @@ namespace placeholder {
         }
 
         template<typename SequenceType>
-        static auto referenceCollection(
-            std::string targetAspect,
-            std::initializer_list<detail::retrospection::PathStep> path
-        ) -> Field {
+        static auto collection(std::initializer_list<detail::retrospection::PathStep> path) -> Field {
             detail::sql_policy::sequence<SequenceType>::require();
-            static_assert(detail::sql_policy::sequence<SequenceType>::storage == StorageAtom::reference, "referenceSequence requires reference-like sequence values");
             return {
                 .fieldPath = detail::retrospection::name_of(std::vector<detail::retrospection::PathStep>{path}),
                 .persistence = Persistence::collection_table,
                 .atom = detail::sql_policy::sequence<SequenceType>::storage,
-                .targetAspect = std::move(targetAspect),
+                .targetAspect = {},
                 .path = path,
                 .bindLeaf = detail::sql_policy::sequence<SequenceType>::bind,
                 .readLeaf = detail::sql_policy::sequence<SequenceType>::read,
@@ -194,6 +187,23 @@ namespace placeholder {
                 .appendElement = detail::sql_policy::sequence<SequenceType>::append,
             };
         }
+
+        template<typename SequenceType>
+        static auto referenceCollection(
+            std::string targetAspect,
+            std::initializer_list<detail::retrospection::PathStep> path
+        ) -> Field {
+            static_assert(detail::sql_policy::sequence<SequenceType>::storage == StorageAtom::reference, "referenceCollection requires reference-like sequence values");
+            auto field = collection<SequenceType>(path);
+            field.targetAspect = std::move(targetAspect);
+            return field;
+        }
+    };
+
+    // Persistable aspects expose a retrospection map; UselessItem-style types omit it.
+    template<typename Meta>
+    concept HasRetrospection = requires {
+        { Meta::retrospection() } -> std::convertible_to<Retrospection>;
     };
 
 }

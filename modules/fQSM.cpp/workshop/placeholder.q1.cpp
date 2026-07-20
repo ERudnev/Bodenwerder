@@ -36,12 +36,10 @@ namespace placeholder {
     auto Person::retrospection() -> const Retrospection {
         return {
             .aspectName = "placeholder::Person",
-            .quanta = {
-                .fields = {
-                    Retrospection::column<string>({Retrospection::step<&Person::Quantum::name>("name")}),
-                    Retrospection::column<integer>({Retrospection::step<&Person::Quantum::age>("age")}),
-                    Retrospection::ignored({Retrospection::step<&Person::Quantum::cache>("cache")}),
-                },
+            .quantum = {
+                Retrospection::column<string>({Retrospection::step<&Person::Quantum::name>("name")}),
+                Retrospection::column<integer>({Retrospection::step<&Person::Quantum::age>("age")}),
+                Retrospection::ignored({Retrospection::step<&Person::Quantum::cache>("cache")}),
             },
         };
     }
@@ -49,29 +47,30 @@ namespace placeholder {
     auto Family::retrospection() -> const Retrospection {
         return {
             .aspectName = "placeholder::Family",
-            .quanta = {
-                .fields = {
-                    Retrospection::column<string>({Retrospection::step<&Family::Quantum::lastname>("lastname")}),
-                    Retrospection::referenceColumn<Person::Id>("placeholder::Person", {
-                        Retrospection::step<&Family::Quantum::parents>("parents"),
-                        Retrospection::step<&Family::Parents::dad>("dad"),
-                    }),
-                    Retrospection::referenceColumn<Person::Id>("placeholder::Person", {
-                        Retrospection::step<&Family::Quantum::parents>("parents"),
-                        Retrospection::step<&Family::Parents::mom>("mom"),
-                    }),
-                },
+            .quantum = {
+                Retrospection::column<string>({Retrospection::step<&Family::Quantum::lastname>("lastname")}),
+                Retrospection::referenceColumn<Person::Id>("placeholder::Person", {
+                    Retrospection::step<&Family::Quantum::parents>("parents"),
+                    Retrospection::step<&Family::Parents::dad>("dad"),
+                }),
+                Retrospection::referenceColumn<Person::Id>("placeholder::Person", {
+                    Retrospection::step<&Family::Quantum::parents>("parents"),
+                    Retrospection::step<&Family::Parents::mom>("mom"),
+                }),
             },
-            .collections = {
+            .quantum_collections = {
                 Retrospection::referenceCollection<vector<Person::Id>>(
                     "placeholder::Person",
                     {Retrospection::step<&Family::Quantum::children>("children")}
                 ),
             },
-            .globals = Retrospection::Globals{
-                .fields = {
-                    Retrospection::column<integer>({Retrospection::step<&Family::Global::sharedMoney>("sharedMoney")}),
-                },
+            .global = {
+                Retrospection::column<integer>({Retrospection::step<&Family::Global::sharedMoney>("sharedMoney")}),
+            },
+            .global_collections = {
+                Retrospection::collection<vector<string>>(
+                    {Retrospection::step<&Family::Global::legends>("legends")}
+                ),
             },
         };
     }
@@ -104,6 +103,8 @@ namespace placeholder {
         if (dad) lastname = with<Person>::get(context, dadId).name;
         else if (mom) lastname = with<Person>::get(context, momId).name;
 
+        modify_global(context)->legends.push_back(lastname);
+
         return create(context, {
             .lastname = std::move(lastname),
             .parents = {.dad = dadId, .mom = momId},
@@ -112,6 +113,9 @@ namespace placeholder {
     }
 
     void Registry::createSixFamilies(Writing context) {
+        with<UselessItem>::create(context, {.reallyUseless = true});
+        with<UselessItem>::create(context, {.reallyUseless = false});
+
         with<Family>::generate(context, true, true, 0);
         with<Family>::generate(context, true, true, 1);
         with<Family>::generate(context, true, true, 2);
