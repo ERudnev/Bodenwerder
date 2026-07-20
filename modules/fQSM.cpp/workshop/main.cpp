@@ -17,8 +17,13 @@ int main()
     });
 
     establish::Realm main(schema);
-    with<Registry>::createSixFamilies(main);
-
     const auto dbPath = std::filesystem::path(DAQL_ASSETS_DIR) / "fqsm_workshop" / "registry.db";
+    if (not loadRegistry(main, dbPath)) {
+        base::message("DB load failed, creating new registry");
+        with<Registry>::createSixFamilies(main);
+    }
+
+    with<Person>::one_year_passed(main);
+
     saveRegistry(main, dbPath);
 }

@@ -19,12 +19,20 @@ namespace placeholder {
         struct PathStep {
             std::string_view name;
             const void* (*project)(const void*) = nullptr;
+            void* (*projectMutable)(void*) = nullptr;
         };
 
         inline auto descend(const void* source, const std::vector<PathStep>& path) -> const void* {
             const void* cursor = source;
             for (const auto step : path)
                 cursor = step.project(cursor);
+            return cursor;
+        }
+
+        inline auto descend(void* source, const std::vector<PathStep>& path) -> void* {
+            void* cursor = source;
+            for (const auto& step : path)
+                cursor = step.projectMutable(cursor);
             return cursor;
         }
 
@@ -45,6 +53,10 @@ namespace placeholder {
             static auto project(const void* source) -> const void* {
                 return std::addressof((static_cast<const Owner*>(source)->*Member));
             }
+
+            static auto projectMutable(void* source) -> void* {
+                return std::addressof((static_cast<Owner*>(source)->*Member));
+            }
         };
 
     }
@@ -64,8 +76,10 @@ namespace placeholder {
             std::string targetAspect;
             std::vector<detail::retrospection::PathStep> path;
             void (*bindLeaf)(sqlite3_stmt*, int, const void*) = nullptr;
+            void (*readLeaf)(sqlite3_stmt*, int, void*) = nullptr;
             std::size_t (*countElements)(const void*) = nullptr;
             const void* (*elementAt)(const void*, std::size_t) = nullptr;
+            void (*appendElement)(sqlite3_stmt*, int, void*) = nullptr;
         };
 
         struct Quanta {
@@ -83,7 +97,11 @@ namespace placeholder {
 
         template<auto Member>
         static auto step(std::string_view name) -> detail::retrospection::PathStep {
-            return {.name = name, .project = &detail::retrospection::member_pointer<Member>::project};
+            return {
+                .name = name,
+                .project = &detail::retrospection::member_pointer<Member>::project,
+                .projectMutable = &detail::retrospection::member_pointer<Member>::projectMutable,
+            };
         }
 
         auto quantaTable() const -> std::string {
@@ -108,6 +126,7 @@ namespace placeholder {
                 .targetAspect = {},
                 .path = path,
                 .bindLeaf = detail::sql_policy::atom<Leaf>::bind,
+                .readLeaf = detail::sql_policy::atom<Leaf>::read,
             };
         }
 
@@ -127,6 +146,7 @@ namespace placeholder {
                 .targetAspect = std::move(targetAspect),
                 .path = path,
                 .bindLeaf = detail::sql_policy::atom<Reference>::bind,
+                .readLeaf = detail::sql_policy::atom<Reference>::read,
             };
         }
 
@@ -143,8 +163,10 @@ namespace placeholder {
                 .targetAspect = {},
                 .path = path,
                 .bindLeaf = nullptr,
+                .readLeaf = nullptr,
                 .countElements = nullptr,
                 .elementAt = nullptr,
+                .appendElement = nullptr,
             };
         }
 
@@ -166,8 +188,10 @@ namespace placeholder {
                 .targetAspect = std::move(targetAspect),
                 .path = path,
                 .bindLeaf = detail::sql_policy::sequence<SequenceType>::bind,
+                .readLeaf = detail::sql_policy::sequence<SequenceType>::read,
                 .countElements = detail::sql_policy::sequence<SequenceType>::count,
                 .elementAt = detail::sql_policy::sequence<SequenceType>::element,
+                .appendElement = detail::sql_policy::sequence<SequenceType>::append,
             };
         }
     };

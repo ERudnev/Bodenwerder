@@ -86,6 +86,11 @@ namespace placeholder {
         });
     }
 
+    void Person::Actions::one_year_passed(Writing context) {
+        for (const auto entry : context->aspect<Person>().items())
+            ++modify(context, entry.id)->age;
+    }
+
     auto Family::Actions::generate(Writing context, bool dad, bool mom, integer children) -> Id {
         const auto familyIndex = static_cast<integer>(count(context));
         const auto dadId = dad ? with<Person>::generate(context, 28 + familyIndex * 3) : Person::Id::bad();

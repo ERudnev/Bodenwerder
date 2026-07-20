@@ -11,6 +11,8 @@
 #include <string>
 #include <string_view>
 
+#include <fQSM/utility/bad_value.h>
+
 namespace placeholder {
 
     using namespace fqsm::api;
@@ -31,6 +33,22 @@ namespace placeholder {
                 sqlite3_free(error);
                 throw std::runtime_error(message);
             }
+        }
+
+        auto table_exists(sqlite3* db, std::string_view table) -> bool {
+            sqlite3_stmt* statement = nullptr;
+            if (sqlite3_prepare_v2(
+                    db,
+                    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+                    -1,
+                    &statement,
+                    nullptr
+                ) != SQLITE_OK)
+                fail(db, "prepare sqlite_master");
+            sqlite3_bind_text(statement, 1, table.data(), static_cast<int>(table.size()), SQLITE_TRANSIENT);
+            const auto state = sqlite3_step(statement);
+            sqlite3_finalize(statement);
+            return state == SQLITE_ROW;
         }
 
         void stepDone(sqlite3* db, sqlite3_stmt* statement, std::string_view what) {
@@ -102,6 +120,44 @@ namespace placeholder {
             return out.str();
         }
 
+        auto build_quanta_select_sql(const Retrospection& retrospection) -> std::string {
+            std::ostringstream out;
+            out << "SELECT " << sqlIdentifier("id");
+            for (const auto& field : retrospection.quanta.fields) {
+                if (field.persistence != Retrospection::Persistence::scalar_column) continue;
+                out << ", " << sqlIdentifier(field.fieldPath);
+            }
+            out << " FROM " << sqlIdentifier(retrospection.quantaTable())
+                << " ORDER BY " << sqlIdentifier("id");
+            return out.str();
+        }
+
+        auto build_collection_select_sql(const Retrospection& retrospection, const Retrospection::Field& field) -> std::string {
+            std::ostringstream out;
+            out << "SELECT "
+                << sqlIdentifier(sequence_owner_column) << ", "
+                << sqlIdentifier(sequence_ordinal_column) << ", "
+                << sqlIdentifier(sequence_value_column)
+                << " FROM " << sqlIdentifier(retrospection.collectionTable(field))
+                << " ORDER BY " << sqlIdentifier(sequence_owner_column) << ", " << sqlIdentifier(sequence_ordinal_column);
+            return out.str();
+        }
+
+        auto build_globals_select_sql(const Retrospection& retrospection, const Retrospection::Globals& globals) -> std::string {
+            std::ostringstream out;
+            out << "SELECT ";
+            bool first = true;
+            for (const auto& field : globals.fields) {
+                if (field.persistence != Retrospection::Persistence::scalar_column) continue;
+                if (!first) out << ", ";
+                out << sqlIdentifier(field.fieldPath);
+                first = false;
+            }
+            out << " FROM " << sqlIdentifier(retrospection.globalsTable())
+                << " WHERE " << sqlIdentifier("key") << " = 0";
+            return out.str();
+        }
+
         void create_quanta_table(sqlite3* db, const Retrospection& retrospection) {
             std::ostringstream out;
             out << "CREATE TABLE " << sqlIdentifier(retrospection.quantaTable()) << " (\n"
@@ -135,6 +191,17 @@ namespace placeholder {
             }
             out << "\n)";
             exec(db, out.str().c_str());
+        }
+
+        template<typename Meta>
+        auto has_storage_schema(sqlite3* db) -> bool {
+            const auto retrospection = Meta::retrospection();
+            if (!table_exists(db, retrospection.quantaTable())) return false;
+            for (const auto& field : retrospection.collections) {
+                if (!table_exists(db, retrospection.collectionTable(field))) return false;
+            }
+            if (retrospection.globals.has_value() && !table_exists(db, retrospection.globalsTable())) return false;
+            return true;
         }
 
         template<typename Meta>
@@ -261,6 +328,111 @@ namespace placeholder {
             save_globals<Meta>(db, context);
         }
 
+        template<typename Meta>
+        void load_quanta(sqlite3* db, Writing context) {
+            const auto retrospection = Meta::retrospection();
+            sqlite3_stmt* statement = nullptr;
+            const auto sql = build_quanta_select_sql(retrospection);
+            if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
+                fail(db, std::format("prepare {}", retrospection.quantaTable()));
+
+            while (sqlite3_step(statement) == SQLITE_ROW) {
+                const auto id = typename Meta::Id{static_cast<typename Meta::Id::Raw>(sqlite3_column_int64(statement, 0))};
+                with<Meta>::restore(context, id, fqsm::utility::BadValue{});
+                auto quantum = with<Meta>::modify(context, id);
+
+                int columnIndex = 1;
+                for (const auto& field : retrospection.quanta.fields) {
+                    if (field.persistence != Retrospection::Persistence::scalar_column) continue;
+                    if (!field.readLeaf) {
+                        sqlite3_finalize(statement);
+                        throw std::runtime_error(std::format("{}:{} has no leaf reader", retrospection.aspectName, field.fieldPath));
+                    }
+                    field.readLeaf(statement, columnIndex++, detail::retrospection::descend(std::addressof(*quantum), field.path));
+                }
+            }
+
+            sqlite3_finalize(statement);
+        }
+
+        template<typename Meta>
+        void load_collections(sqlite3* db, Writing context) {
+            const auto retrospection = Meta::retrospection();
+
+            for (const auto& field : retrospection.collections) {
+                sqlite3_stmt* statement = nullptr;
+                const auto sql = build_collection_select_sql(retrospection, field);
+                if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
+                    fail(db, std::format("prepare {}", retrospection.collectionTable(field)));
+
+                while (sqlite3_step(statement) == SQLITE_ROW) {
+                    const auto owner = typename Meta::Id{static_cast<typename Meta::Id::Raw>(sqlite3_column_int64(statement, 0))};
+                    auto quantum = with<Meta>::modify(context, owner);
+                    if (!field.appendElement) {
+                        sqlite3_finalize(statement);
+                        throw std::runtime_error(std::format("{}:{} has no collection loader", retrospection.aspectName, field.fieldPath));
+                    }
+                    field.appendElement(statement, 2, detail::retrospection::descend(std::addressof(*quantum), field.path));
+                }
+
+                sqlite3_finalize(statement);
+            }
+        }
+
+        template<typename Meta>
+        void load_globals(sqlite3* db, Writing context) {
+            const auto retrospection = Meta::retrospection();
+            if (!retrospection.globals.has_value()) return;
+
+            sqlite3_stmt* statement = nullptr;
+            const auto sql = build_globals_select_sql(retrospection, retrospection.globals.value());
+            if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
+                fail(db, std::format("prepare {}", retrospection.globalsTable()));
+
+            if (sqlite3_step(statement) == SQLITE_ROW) {
+                auto global = with<Meta>::modify_global(context);
+                int columnIndex = 0;
+                for (const auto& field : retrospection.globals->fields) {
+                    if (field.persistence != Retrospection::Persistence::scalar_column) continue;
+                    if (!field.readLeaf) {
+                        sqlite3_finalize(statement);
+                        throw std::runtime_error(std::format("{}:{} has no global leaf reader", retrospection.aspectName, field.fieldPath));
+                    }
+                    field.readLeaf(statement, columnIndex++, detail::retrospection::descend(std::addressof(*global), field.path));
+                }
+            }
+
+            sqlite3_finalize(statement);
+        }
+
+        template<typename Meta>
+        void load_aspect(sqlite3* db, Writing context) {
+            load_quanta<Meta>(db, context);
+            load_collections<Meta>(db, context);
+            load_globals<Meta>(db, context);
+        }
+
+    }
+
+    bool loadRegistry(Writing context, std::filesystem::path dbPath) {
+        if (!std::filesystem::exists(dbPath)) return false;
+
+        sqlite3* db = nullptr;
+        if (sqlite3_open(dbPath.string().c_str(), &db) != SQLITE_OK) {
+            sqlite3_close(db);
+            return false;
+        }
+
+        if (!has_storage_schema<Person>(db) || !has_storage_schema<Family>(db)) {
+            sqlite3_close(db);
+            return false;
+        }
+
+        load_aspect<Person>(db, context);
+        load_aspect<Family>(db, context);
+
+        sqlite3_close(db);
+        return true;
     }
 
     void saveRegistry(Reading context, std::filesystem::path dbPath) {

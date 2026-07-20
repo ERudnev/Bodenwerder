@@ -19,6 +19,7 @@ namespace placeholder {
 
         struct Actions : BaseActions {
             static auto generate(Writing context, integer age) -> Id;
+            static void one_year_passed(Writing context);
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

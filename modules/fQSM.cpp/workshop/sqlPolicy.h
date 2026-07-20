@@ -10,6 +10,7 @@
 
 #include <base/maybe.h>
 #include <fQSM/identifier.h>
+#include <fQSM/utility/bad_value.h>
 
 namespace placeholder {
     struct Retrospection;
@@ -43,15 +44,29 @@ namespace placeholder::detail::sql_policy {
         sqlite3_bind_text(statement, index, value.c_str(), -1, SQLITE_TRANSIENT);
     }
 
+    inline void read_string(sqlite3_stmt* statement, int index, void* target) {
+        const auto* text = reinterpret_cast<const char*>(sqlite3_column_text(statement, index));
+        *static_cast<std::string*>(target) = text ? text : "";
+    }
+
     inline void bind_integer(sqlite3_stmt* statement, int index, const void* source) {
         const auto& value = *static_cast<const std::int32_t*>(source);
         sqlite3_bind_int(statement, index, value);
+    }
+
+    inline void read_integer(sqlite3_stmt* statement, int index, void* target) {
+        *static_cast<std::int32_t*>(target) = static_cast<std::int32_t>(sqlite3_column_int(statement, index));
     }
 
     template<typename Reference>
     void bind_reference(sqlite3_stmt* statement, int index, const void* source) {
         const auto& value = *static_cast<const Reference*>(source);
         sqlite3_bind_int64(statement, index, static_cast<sqlite3_int64>(value.raw()));
+    }
+
+    template<typename Reference>
+    void read_reference(sqlite3_stmt* statement, int index, void* target) {
+        *static_cast<Reference*>(target) = Reference{static_cast<typename Reference::Raw>(sqlite3_column_int64(statement, index))};
     }
 
     template<typename T, typename = void>
@@ -69,6 +84,7 @@ namespace placeholder::detail::sql_policy {
         static constexpr bool supported = true;
         static constexpr auto storage = StorageAtom::string;
         static constexpr auto bind = &bind_string;
+        static constexpr auto read = &read_string;
 
         static consteval void require() {}
     };
@@ -78,6 +94,7 @@ namespace placeholder::detail::sql_policy {
         static constexpr bool supported = true;
         static constexpr auto storage = StorageAtom::integer;
         static constexpr auto bind = &bind_integer;
+        static constexpr auto read = &read_integer;
 
         static consteval void require() {}
     };
@@ -87,6 +104,7 @@ namespace placeholder::detail::sql_policy {
         static constexpr bool supported = true;
         static constexpr auto storage = StorageAtom::reference;
         static constexpr auto bind = &bind_reference<fqsm::Identifier<Meta, BaseType>>;
+        static constexpr auto read = &read_reference<fqsm::Identifier<Meta, BaseType>>;
 
         static consteval void require() {}
     };
@@ -141,13 +159,23 @@ namespace placeholder::detail::sql_policy {
         return std::addressof((*static_cast<const Sequence*>(source))[ordinal]);
     }
 
+    template<typename Sequence>
+    void append_element(sqlite3_stmt* statement, int index, void* target) {
+        using value_type = typename Sequence::value_type;
+        value_type value = fqsm::utility::BadValue{};
+        atom<value_type>::read(statement, index, std::addressof(value));
+        static_cast<Sequence*>(target)->push_back(std::move(value));
+    }
+
     template<typename T>
     struct sequence<std::vector<T>> {
         static constexpr bool supported = atom<T>::supported;
         static constexpr auto storage = atom<T>::storage;
         static constexpr auto bind = atom<T>::bind;
+        static constexpr auto read = atom<T>::read;
         static constexpr auto count = &count_elements<std::vector<T>>;
         static constexpr auto element = &element_at<std::vector<T>>;
+        static constexpr auto append = &append_element<std::vector<T>>;
         using value_type = T;
 
         static consteval void require() {

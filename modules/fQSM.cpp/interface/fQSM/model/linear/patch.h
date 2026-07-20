@@ -15,6 +15,7 @@ namespace fqsm::model::linear {
         virtual void put_modification(Id<Meta>, Quantum<Meta>) = 0;
         virtual void put_deletion(Id<Meta>) = 0;
         virtual void put_add(Id<Meta>, Quantum<Meta>) = 0;
+        virtual void put_as_restored(Id<Meta>, Quantum<Meta>) = 0;
         virtual void put_global(GlobalValue<Meta>) = 0;
         virtual Quantum<Meta>& update_modification(Id<Meta>, base::function_ref<const Quantum<Meta>&()> prepatch) = 0;
         virtual GlobalValue<Meta>& update_global(base::function_ref<const GlobalValue<Meta>&()> prepatch) = 0;
@@ -36,6 +37,7 @@ namespace fqsm::model::linear {
         void put_modification(Id<Meta>, Quantum<Meta>) override;
         void put_deletion(Id<Meta>) override;
         void put_add(Id<Meta>, Quantum<Meta>) override;
+        void put_as_restored(Id<Meta>, Quantum<Meta>) override; // persistency gate
         void put_global(GlobalValue<Meta>) override;
         Quantum<Meta>& update_modification(Id<Meta>, base::function_ref<const Quantum<Meta>&()> prepatch) override;
         GlobalValue<Meta>& update_global(base::function_ref<const GlobalValue<Meta>&()> prepatch) override;
@@ -62,6 +64,13 @@ namespace fqsm::model::linear {
     void Patch<Meta>::put_add(Id<Meta> id, Quantum<Meta> value) {
         items.insert(std::move(id), std::move(value));
     }
+
+    template<category::Any Meta>
+    void Patch<Meta>::put_as_restored(Id<Meta> id, Quantum<Meta> value) {
+        // persistency gate: technically is identical to put_add()
+        items.insert(std::move(id), std::move(value));
+    }
+
 
     template<category::Any Meta>
     void Patch<Meta>::put_global(GlobalValue<Meta> value) {

@@ -7,6 +7,7 @@ namespace placeholder
       cache: as @external(some ugly C++ shared_ptr<std::string> as example of non-serializable field)
     all
       >generate(age: integer)-># // name is random (can use pre-generated table)
+      >one_year_passed() // run all persond age++
 
   entity Family
     struct Parents
