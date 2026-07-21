@@ -14,6 +14,7 @@
     X(destructor) \
     X(workers_say_no) \
     X(persistent_families) \
+    X(temp_persistency) \
     // end
 
 #define FQSM_LOW_LEVEL_TESTS(X) \
@@ -82,7 +83,7 @@ int call_all_tests() {
 
 int call_specific_test() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("selected", &tests::persistent_families)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::temp_persistency)));
     return s.ok() ? 0 : 1;
 }
 
