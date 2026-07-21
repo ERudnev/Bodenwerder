@@ -236,7 +236,22 @@ namespace fqsm::processing::persistency::json {
             out.push_back('"');
         }
 
-        inline void write_value(std::string& out, const Value& value) {
+        inline void write_indent(std::string& out, int depth) {
+            out.append(static_cast<std::size_t>(depth) * 2, ' ');
+        }
+
+        // Break only for tables of rows/records (every element is array/object).
+        // A single quantum row may embed collection arrays and must stay one line.
+        inline auto array_wants_breaks(const Value& value) -> bool {
+            if (value.array.empty()) return false;
+            for (const auto& element : value.array) {
+                if (element.kind != Value::Kind::array && element.kind != Value::Kind::object)
+                    return false;
+            }
+            return true;
+        }
+
+        inline void write_value(std::string& out, const Value& value, int depth) {
             switch (value.kind) {
                 case Value::Kind::null:
                     out += "null";
@@ -251,22 +266,45 @@ namespace fqsm::processing::persistency::json {
                     write_string(out, value.string);
                     break;
                 case Value::Kind::array: {
-                    out.push_back('[');
-                    for (std::size_t index = 0; index < value.array.size(); ++index) {
-                        if (index != 0) out += ", ";
-                        write_value(out, value.array[index]);
+                    if (value.array.empty()) {
+                        out += "[]";
+                        break;
                     }
+                    if (!array_wants_breaks(value)) {
+                        out.push_back('[');
+                        for (std::size_t index = 0; index < value.array.size(); ++index) {
+                            if (index != 0) out += ", ";
+                            write_value(out, value.array[index], depth);
+                        }
+                        out.push_back(']');
+                        break;
+                    }
+                    out += "[\n";
+                    for (std::size_t index = 0; index < value.array.size(); ++index) {
+                        write_indent(out, depth + 1);
+                        write_value(out, value.array[index], depth + 1);
+                        if (index + 1 != value.array.size()) out.push_back(',');
+                        out.push_back('\n');
+                    }
+                    write_indent(out, depth);
                     out.push_back(']');
                     break;
                 }
                 case Value::Kind::object: {
-                    out.push_back('{');
+                    if (value.object.empty()) {
+                        out += "{}";
+                        break;
+                    }
+                    out += "{\n";
                     for (std::size_t index = 0; index < value.object.size(); ++index) {
-                        if (index != 0) out += ", ";
+                        write_indent(out, depth + 1);
                         write_string(out, value.object[index].first);
                         out += ": ";
-                        write_value(out, value.object[index].second);
+                        write_value(out, value.object[index].second, depth + 1);
+                        if (index + 1 != value.object.size()) out.push_back(',');
+                        out.push_back('\n');
                     }
+                    write_indent(out, depth);
                     out.push_back('}');
                     break;
                 }
@@ -286,7 +324,7 @@ namespace fqsm::processing::persistency::json {
 
     inline auto stringify(const Value& value) -> std::string {
         std::string out;
-        detail::document::write_value(out, value);
+        detail::document::write_value(out, value, 0);
         out.push_back('\n');
         return out;
     }

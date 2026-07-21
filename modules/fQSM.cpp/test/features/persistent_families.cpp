@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#include <base/logging.h>
 #include <fQSM/api/interface.h>
 #include <fQSM/processing/persistency/schema.h>
 #include <pQRF/database/engine.h>
@@ -43,7 +44,7 @@ void persistent_families()
     std::size_t personsAfterDay = 0;
     std::size_t familiesAfterDay = 0;
     integer sharedMoneyAfterDay = 0;
-    Person::Id samplePerson = Person::Id::bad();
+    std::optional<Person::Id> samplePerson;
     integer sampleAgeAfterDay = 0;
 
     {
@@ -66,6 +67,8 @@ void persistent_families()
         EXPECT_TRUE(dbArchivist.saveToLocation(origin, dbArchive->types(), dbPath)) << "save sqlite";
 
         js::JsonArchivist jsonArchivist(jsonArchive);
+        // temporary: peek at positional json dump
+        //base::message("json snapshot:\n{}", jsonArchivist.to_string(origin, jsonArchive->types()));
         EXPECT_TRUE(jsonArchivist.saveToLocation(origin, jsonArchive->types(), jsonPath)) << "save json";
     }
 
@@ -83,7 +86,8 @@ void persistent_families()
         EXPECT_EQ(with<Family>::count(fromDb), familiesAfterDay) << "sqlite family count";
         EXPECT_EQ(with<UselessItem>::count(fromDb), 0) << "UselessItem not in persist schema";
         EXPECT_EQ(with<Family>::get_global(fromDb).sharedMoney, sharedMoneyAfterDay) << "sqlite sharedMoney";
-        EXPECT_EQ(with<Person>::get(fromDb, samplePerson).age, sampleAgeAfterDay) << "sqlite aged person";
+        EXPECT_TRUE(samplePerson.has_value());
+        EXPECT_EQ(with<Person>::get(fromDb, *samplePerson).age, sampleAgeAfterDay) << "sqlite aged person";
     }
 
     {
@@ -100,7 +104,8 @@ void persistent_families()
         EXPECT_EQ(with<Family>::count(fromJson), familiesAfterDay) << "json family count";
         EXPECT_EQ(with<UselessItem>::count(fromJson), 0) << "UselessItem not in persist schema";
         EXPECT_EQ(with<Family>::get_global(fromJson).sharedMoney, sharedMoneyAfterDay) << "json sharedMoney";
-        EXPECT_EQ(with<Person>::get(fromJson, samplePerson).age, sampleAgeAfterDay) << "json aged person";
+        EXPECT_TRUE(samplePerson.has_value());
+        EXPECT_EQ(with<Person>::get(fromJson, *samplePerson).age, sampleAgeAfterDay) << "json aged person";
     }
 
     std::filesystem::remove_all(workDir);

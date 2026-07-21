@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <format>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -28,10 +29,14 @@ namespace fqsm::processing::persistency::json::detail::leaf {
             return Value::string_value(value);
         }
 
-        static void read(const Value& value, std::string& target) {
+        static auto decode(const Value& value) -> std::string {
             if (value.kind != Value::Kind::string)
                 throw std::runtime_error("json leaf: expected string");
-            target = value.string;
+            return value.string;
+        }
+
+        static void read(const Value& value, std::string& target) {
+            target = decode(value);
         }
 
         static consteval void require() {}
@@ -43,10 +48,14 @@ namespace fqsm::processing::persistency::json::detail::leaf {
             return Value::number_value(value);
         }
 
-        static void read(const Value& value, std::int32_t& target) {
+        static auto decode(const Value& value) -> std::int32_t {
             if (value.kind != Value::Kind::number)
                 throw std::runtime_error("json leaf: expected number");
-            target = static_cast<std::int32_t>(value.number);
+            return static_cast<std::int32_t>(value.number);
+        }
+
+        static void read(const Value& value, std::int32_t& target) {
+            target = decode(value);
         }
 
         static consteval void require() {}
@@ -58,10 +67,14 @@ namespace fqsm::processing::persistency::json::detail::leaf {
             return Value::boolean_value(value);
         }
 
-        static void read(const Value& value, bool& target) {
+        static auto decode(const Value& value) -> bool {
             if (value.kind != Value::Kind::boolean)
                 throw std::runtime_error("json leaf: expected boolean");
-            target = value.boolean;
+            return value.boolean;
+        }
+
+        static void read(const Value& value, bool& target) {
+            target = decode(value);
         }
 
         static consteval void require() {}
@@ -79,25 +92,48 @@ namespace fqsm::processing::persistency::json::detail::leaf {
 
     template<typename Meta, typename BaseType>
     struct codec<fqsm::Identifier<Meta, BaseType>> {
-        static auto write(const fqsm::Identifier<Meta, BaseType>& value) -> Value {
+        using Id = fqsm::Identifier<Meta, BaseType>;
+
+        static auto write(const Id& value) -> Value {
             return Value::string_value(format_hex_id(static_cast<std::uint64_t>(value.raw())));
         }
 
-        static void read(const Value& value, fqsm::Identifier<Meta, BaseType>& target) {
-            if (value.kind == Value::Kind::string) {
-                target = fqsm::Identifier<Meta, BaseType>{
-                    static_cast<BaseType>(parse_hex_id(value.string))
-                };
-                return;
-            }
-            if (value.kind == Value::Kind::number) {
-                target = fqsm::Identifier<Meta, BaseType>{static_cast<BaseType>(value.number)};
-                return;
-            }
+        static auto decode(const Value& value) -> Id {
+            if (value.kind == Value::Kind::string)
+                return Id{static_cast<BaseType>(parse_hex_id(value.string))};
+            if (value.kind == Value::Kind::number)
+                return Id{static_cast<BaseType>(value.number)};
             throw std::runtime_error("json leaf: expected hex-string id");
         }
 
+        static void read(const Value& value, Id& target) {
+            target = decode(value);
+        }
+
         static consteval void require() {}
+    };
+
+    template<typename T>
+    struct codec<std::optional<T>> {
+        static auto write(const std::optional<T>& value) -> Value {
+            if (!value.has_value())
+                return Value::null();
+            return codec<T>::write(*value);
+        }
+
+        static auto decode(const Value& value) -> std::optional<T> {
+            if (value.kind == Value::Kind::null)
+                return std::nullopt;
+            return codec<T>::decode(value);
+        }
+
+        static void read(const Value& value, std::optional<T>& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {
+            codec<T>::require();
+        }
     };
 
     template<typename T>
@@ -110,6 +146,12 @@ namespace fqsm::processing::persistency::json::detail::leaf {
     void read(const Value& value, T& target) {
         codec<T>::require();
         codec<T>::read(value, target);
+    }
+
+    template<typename T>
+    auto decode(const Value& value) -> T {
+        codec<T>::require();
+        return codec<T>::decode(value);
     }
 
 }

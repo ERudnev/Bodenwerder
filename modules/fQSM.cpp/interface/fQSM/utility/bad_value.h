@@ -34,7 +34,7 @@ namespace detail {
     template<typename Meta, typename BaseType>
     struct MakeBadValue<Identifier<Meta, BaseType>> {
         static Identifier<Meta, BaseType> apply() {
-            return Identifier<Meta, BaseType>::bad();
+            return Identifier<Meta, BaseType>::please_never_use_this_except_patch_rejection_mechanism();
         }
     };
 

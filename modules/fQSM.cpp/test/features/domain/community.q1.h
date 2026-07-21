@@ -43,8 +43,8 @@ namespace community {
 
     struct Family : Entity<Family> {
         struct Parents {
-            Person::Id dad;
-            Person::Id mom;
+            optional<Person::Id> dad;
+            optional<Person::Id> mom;
         };
 
         struct Quantum {

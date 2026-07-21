@@ -88,6 +88,7 @@ namespace fqsm::processing::persistency::database::detail {
     struct LayoutColumn {
         std::string_view name;
         std::string_view sqlType;
+        bool nullable = false;
     };
 
     template<typename Meta>
@@ -104,7 +105,7 @@ namespace fqsm::processing::persistency::database::detail {
         void one(Field<Members...> slot) {
             using Leaf = std::decay_t<decltype(slot.get(std::declval<typename Meta::Quantum&>()))>;
             sql::atom<Leaf>::require();
-            one_fields.push_back({slot.name, sql::atom<Leaf>::sql_name});
+            one_fields.push_back({slot.name, sql::atom<Leaf>::sql_name, sql::atom<Leaf>::nullable});
         }
 
         template<auto... Members>
@@ -112,14 +113,14 @@ namespace fqsm::processing::persistency::database::detail {
             using Container = std::decay_t<decltype(slot.get(std::declval<typename Meta::Quantum&>()))>;
             using Elem = typename Container::value_type;
             sql::atom<Elem>::require();
-            one_collections.push_back({slot.name, sql::atom<Elem>::sql_name});
+            one_collections.push_back({slot.name, sql::atom<Elem>::sql_name, sql::atom<Elem>::nullable});
         }
 
         template<auto... Members>
         void all(Field<Members...> slot) {
             using Leaf = std::decay_t<decltype(slot.get(std::declval<fqsm::GlobalValue<Meta>&>()))>;
             sql::atom<Leaf>::require();
-            all_fields.push_back({slot.name, sql::atom<Leaf>::sql_name});
+            all_fields.push_back({slot.name, sql::atom<Leaf>::sql_name, sql::atom<Leaf>::nullable});
         }
 
         template<auto... Members>
@@ -127,7 +128,7 @@ namespace fqsm::processing::persistency::database::detail {
             using Container = std::decay_t<decltype(slot.get(std::declval<fqsm::GlobalValue<Meta>&>()))>;
             using Elem = typename Container::value_type;
             sql::atom<Elem>::require();
-            all_collections.push_back({slot.name, sql::atom<Elem>::sql_name});
+            all_collections.push_back({slot.name, sql::atom<Elem>::sql_name, sql::atom<Elem>::nullable});
         }
     };
 
@@ -228,8 +229,10 @@ namespace fqsm::processing::persistency::database::detail {
         std::ostringstream out;
         out << "CREATE TABLE " << sqlIdentifier(quanta_table(layout.aspectName)) << " (\n"
             << "    id INTEGER PRIMARY KEY NOT NULL";
-        for (const auto& field : layout.one_fields)
-            out << ",\n    " << sqlIdentifier(field.name) << ' ' << field.sqlType << " NOT NULL";
+        for (const auto& field : layout.one_fields) {
+            out << ",\n    " << sqlIdentifier(field.name) << ' ' << field.sqlType;
+            if (!field.nullable) out << " NOT NULL";
+        }
         out << "\n)";
         exec(db, out.str().c_str());
     }
@@ -251,8 +254,10 @@ namespace fqsm::processing::persistency::database::detail {
         std::ostringstream out;
         out << "CREATE TABLE " << sqlIdentifier(globals_table(layout.aspectName)) << " (\n"
             << "    key INTEGER PRIMARY KEY NOT NULL CHECK (key = 0)";
-        for (const auto& field : layout.all_fields)
-            out << ",\n    " << sqlIdentifier(field.name) << ' ' << field.sqlType << " NOT NULL";
+        for (const auto& field : layout.all_fields) {
+            out << ",\n    " << sqlIdentifier(field.name) << ' ' << field.sqlType;
+            if (!field.nullable) out << " NOT NULL";
+        }
         out << "\n)";
         exec(db, out.str().c_str());
     }
@@ -499,9 +504,7 @@ namespace fqsm::processing::persistency::database::detail {
                     static_cast<typename Meta::Id::Raw>(sqlite3_column_int64(statement, 0))
                 };
                 auto quantum = with<Meta>::modify(context, owner);
-                Elem value = fqsm::utility::BadValue{};
-                sql::read(statement, 2, value);
-                slot.get(*quantum).push_back(std::move(value));
+                slot.get(*quantum).push_back(sql::decode<Elem>(statement, 2));
             }
 
             sqlite3_finalize(statement);
@@ -542,11 +545,8 @@ namespace fqsm::processing::persistency::database::detail {
             if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
                 fail(db, std::format("prepare {}", table));
 
-            while (sqlite3_step(statement) == SQLITE_ROW) {
-                Elem value = fqsm::utility::BadValue{};
-                sql::read(statement, 2, value);
-                slot.get(global).push_back(std::move(value));
-            }
+            while (sqlite3_step(statement) == SQLITE_ROW)
+                slot.get(global).push_back(sql::decode<Elem>(statement, 2));
 
             sqlite3_finalize(statement);
         }

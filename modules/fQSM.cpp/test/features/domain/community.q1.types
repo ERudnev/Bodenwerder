@@ -15,8 +15,8 @@ namespace community
 
   entity Family
     struct Parents
-      dad: #Person
-      mom: #Person
+      dad: #Person?
+      mom: #Person?
     one
       lastname: string
       parents: Parents

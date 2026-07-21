@@ -1,7 +1,9 @@
 #pragma once
 
 #include <filesystem>
+#include <iosfwd>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <fQSM/meta/categories.h>
@@ -41,6 +43,12 @@ namespace fqsm::processing::persistency::json {
 
     struct JsonArchivist : Archivist {
         explicit JsonArchivist(Schema schema) : Archivist(std::move(schema)) {}
+
+        auto capture(Reading, Palette) const -> JsonDocument;
+        auto to_string(Reading, Palette) const -> std::string;
+
+        bool saveToStream(Reading, Palette, std::ostream&) const;
+        bool updateFromStream(Writing, Palette, std::istream&) const;
 
         auto getTypesAtLocation(Reading, Location) -> Palette override;
         bool updateFromLocation(Writing, Palette, Location) override;

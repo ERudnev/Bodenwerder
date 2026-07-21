@@ -23,11 +23,10 @@ namespace fqsm::processing::persistency::json::detail {
     using fqsm::aspect::Collection;
     using fqsm::aspect::Field;
 
-    // File sections (labels only; collections live inlined inside one/all rows).
+    // File sections (omit when empty). Collection *data* is inlined in one/all rows;
+    // reserved names one.collections / all.collections exist for a possible later split.
     constexpr std::string_view section_one = "one";
-    constexpr std::string_view section_one_collections = "one.collections";
     constexpr std::string_view section_all = "all";
-    constexpr std::string_view section_all_collections = "all.collections";
 
     template<typename Meta>
     struct AspectNameDesc {
@@ -97,11 +96,8 @@ namespace fqsm::processing::persistency::json::detail {
             using Elem = typename std::decay_t<decltype(slot.get(quantum))>::value_type;
             auto& container = slot.get(quantum);
             container.clear();
-            for (const auto& element : nested.array) {
-                Elem value = fqsm::utility::BadValue{};
-                leaf::read(element, value);
-                container.push_back(std::move(value));
-            }
+            for (const auto& element : nested.array)
+                container.push_back(leaf::decode<Elem>(element));
         }
 
         template<auto... Members>
@@ -169,11 +165,8 @@ namespace fqsm::processing::persistency::json::detail {
             using Elem = typename std::decay_t<decltype(slot.get(global))>::value_type;
             auto& container = slot.get(global);
             container.clear();
-            for (const auto& element : nested.array) {
-                Elem value = fqsm::utility::BadValue{};
-                leaf::read(element, value);
-                container.push_back(std::move(value));
-            }
+            for (const auto& element : nested.array)
+                container.push_back(leaf::decode<Elem>(element));
         }
     };
 
@@ -205,51 +198,42 @@ namespace fqsm::processing::persistency::json::detail {
             Meta::describe(writer);
             one_table.array.push_back(std::move(row));
         }
-        aspect.set(std::string{section_one}, std::move(one_table));
-        aspect.set(std::string{section_one_collections}, Value::array_value());
+        if (!one_table.array.empty())
+            aspect.set(std::string{section_one}, std::move(one_table));
 
         if (has_all_slots<Meta>()) {
-            Value all_table = Value::array_value();
             Value row = Value::array_value();
             WriteAllRowDesc<Meta> writer{row, with<Meta>::get_global(context)};
             Meta::describe(writer);
-            all_table.array.push_back(std::move(row));
-            aspect.set(std::string{section_all}, std::move(all_table));
-        } else {
-            aspect.set(std::string{section_all}, Value::array_value());
+            aspect.set(std::string{section_all}, std::move(row));
         }
-        aspect.set(std::string{section_all_collections}, Value::array_value());
 
         return aspect;
     }
 
     template<typename Meta>
     void load_aspect_document(Writing context, const Value& aspect) {
-        const auto* one_table = aspect.find(section_one);
-        if (!one_table || !one_table->is_array())
-            throw std::runtime_error("json aspect: missing one table");
-
-        for (const auto& row : one_table->array) {
-            if (!row.is_array() || row.array.empty())
-                throw std::runtime_error("json aspect: broken one-row");
-            typename Meta::Id id = fqsm::utility::BadValue{};
-            leaf::read(row.array[0], id);
-            with<Meta>::restore(context, id, fqsm::utility::BadValue{});
-            auto quantum = with<Meta>::modify(context, id);
-            ReadOneRowDesc<Meta> reader{row, *quantum, 1};
-            Meta::describe(reader);
+        if (const auto* one_table = aspect.find(section_one)) {
+            if (!one_table->is_array())
+                throw std::runtime_error("json aspect: one must be an array");
+            for (const auto& row : one_table->array) {
+                if (!row.is_array() || row.array.empty())
+                    throw std::runtime_error("json aspect: broken one-row");
+                const auto id = leaf::decode<typename Meta::Id>(row.array[0]);
+                with<Meta>::restore(context, id, fqsm::utility::BadValue{});
+                auto quantum = with<Meta>::modify(context, id);
+                ReadOneRowDesc<Meta> reader{row, *quantum, 1};
+                Meta::describe(reader);
+            }
         }
 
         if (!has_all_slots<Meta>()) return;
 
-        const auto* all_table = aspect.find(section_all);
-        if (!all_table || !all_table->is_array() || all_table->array.empty()) return;
+        const auto* all_row = aspect.find(section_all);
+        if (!all_row || !all_row->is_array()) return;
 
-        const auto& row = all_table->array[0];
-        if (!row.is_array())
-            throw std::runtime_error("json aspect: broken all-row");
         auto global = with<Meta>::modify_global(context);
-        ReadAllRowDesc<Meta> reader{row, *global, 0};
+        ReadAllRowDesc<Meta> reader{*all_row, *global, 0};
         Meta::describe(reader);
     }
 
@@ -257,9 +241,7 @@ namespace fqsm::processing::persistency::json::detail {
     auto has_aspect_document(const Value& root) -> bool {
         const auto name = aspect_name_of<Meta>();
         const auto* aspect = root.find(name);
-        if (!aspect || !aspect->is_object()) return false;
-        const auto* one_table = aspect->find(section_one);
-        return one_table && one_table->is_array();
+        return aspect && aspect->is_object();
     }
 
     template<typename Meta>

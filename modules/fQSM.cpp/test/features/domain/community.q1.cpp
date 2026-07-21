@@ -50,16 +50,20 @@ namespace community {
 
     auto Family::Actions::generate(Writing context, bool dad, bool mom, integer children) -> Id {
         const auto familyIndex = static_cast<integer>(count(context));
-        const auto dadId = dad ? with<Person>::generate(context, 28 + familyIndex * 3) : Person::Id::bad();
-        const auto momId = mom ? with<Person>::generate(context, 26 + familyIndex * 3) : Person::Id::bad();
+        const optional<Person::Id> dadId = dad
+            ? optional{with<Person>::generate(context, 28 + familyIndex * 3)}
+            : std::nullopt;
+        const optional<Person::Id> momId = mom
+            ? optional{with<Person>::generate(context, 26 + familyIndex * 3)}
+            : std::nullopt;
 
         vector<Person::Id> childIds;
         for (integer childIndex = 0; childIndex < children; ++childIndex)
             childIds.push_back(with<Person>::generate(context, 4 + (familyIndex + childIndex * 3) % 14));
 
         string lastname = std::format("Household{}", familyIndex + 1);
-        if (dad) lastname = with<Person>::get(context, dadId).name;
-        else if (mom) lastname = with<Person>::get(context, momId).name;
+        if (dadId) lastname = with<Person>::get(context, *dadId).name;
+        else if (momId) lastname = with<Person>::get(context, *momId).name;
 
         modify_global(context)->legends.push_back(lastname);
 
