@@ -1,4 +1,5 @@
 add_subdirectory(base.cpp)
 add_subdirectory(fQSM.cpp)
+add_subdirectory(pQRF)
 add_subdirectory(Q1/golden)
 add_subdirectory(raidenmamare.cpp)

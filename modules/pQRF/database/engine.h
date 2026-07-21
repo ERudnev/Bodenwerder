@@ -1,8 +1,9 @@
 #pragma once
 
 #include <fQSM/api/interface.h>
-#include <fQSM/processing/persistency/database/retrospection.h>
 #include <fQSM/utility/bad_value.h>
+#include <pQRF/database/retrospection.h>
+#include <pQRF/database/storage.h>
 
 #include <sqlite3.h>
 
@@ -533,5 +534,10 @@ namespace fqsm::processing::persistency::database {
         return std::make_shared<ArchiveOpsFor<Meta>>();
     }
 
+    template<fqsm::meta::category::Any Meta>
+        requires HasRetrospection<Meta>
+    auto aspect() -> Schema {
+        return persistency::aspect<Meta>(std::shared_ptr<AspectArchive>{ArchiveOps::of<Meta>()});
+    }
 
 }

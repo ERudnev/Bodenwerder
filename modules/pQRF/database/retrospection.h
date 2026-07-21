@@ -1,12 +1,14 @@
 #pragma once
 
 #include <concepts>
-#include <memory>
+#include <cstddef>
+#include <initializer_list>
 #include <sqlite3.h>
 #include <string>
+#include <string_view>
 #include <vector>
 
-#include <fQSM/processing/persistency/database/sql.h>
+#include <pQRF/database/sql.h>
 
 namespace fqsm::processing::persistency::database {
 

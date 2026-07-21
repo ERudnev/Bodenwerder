@@ -8,7 +8,8 @@
 
 #include <fQSM/meta/categories.h>
 #include <fQSM/processing/persistency/archivist.h>
-#include <fQSM/processing/persistency/database/retrospection.h>
+#include <pQRF/database/retrospection.h>
+
 #include <fQSM/processing/persistency/schema.h>
 #include <fQSM/processing/_forwards.h>
 
@@ -59,12 +60,4 @@ namespace fqsm::processing::persistency::database {
         bool saveToLocation(Writing, Palette, Location) override;
     };
 
-    template<meta::category::Any Meta>
-        requires HasRetrospection<Meta>
-    auto aspect() -> Schema {
-        return persistency::aspect<Meta>(std::shared_ptr<AspectArchive>{ArchiveOps::of<Meta>()});
-    }
-
 }
-
-#include <fQSM/processing/persistency/database/engine.h>

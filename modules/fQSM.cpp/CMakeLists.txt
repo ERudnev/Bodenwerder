@@ -1,7 +1,7 @@
 file (GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "source/*.cpp")
 
 project("fQSM"
-    DESCRIPTION "iqsm.cpp - C++ implementation of 'flat Quantized State Mechanism'"
+    DESCRIPTION "C++ implementation of Q1 as 'flat Quantized State Mechanism'"
     VERSION 0.1
 )
 
@@ -24,7 +24,6 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC glm
     PUBLIC base
     PUBLIC pfr
-    PUBLIC sqlite3
     ${OPENGL_LIBRARIES}
 )
 
@@ -43,6 +42,7 @@ target_link_libraries(${PROJECT_NAME}_tests
     PRIVATE
         ${PROJECT_NAME}
         Q1_Etalon_fqsm
+        pQRF
 )
 
 #workshop target

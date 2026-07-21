@@ -82,11 +82,11 @@ int call_all_tests() {
 
 int call_specific_test() {
     const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("selected", &tests::cascade_performance)));
+        BASETEST_LIST(BASETEST_NAMED("selected", &tests::persistent_families)));
     return s.ok() ? 0 : 1;
 }
 
 int main() {
-    //return call_specific_test();
-    return call_all_tests();
+    return call_specific_test();
+    //return call_all_tests();
 };
