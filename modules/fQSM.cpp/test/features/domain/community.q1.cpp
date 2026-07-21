@@ -33,48 +33,6 @@ namespace community {
         };
     }
 
-    auto Person::retrospection() -> const Retrospection {
-        return {
-            .aspectName = "community::Person",
-            .quantum = {
-                Retrospection::column<string>({Retrospection::step<&Person::Quantum::name>("name")}),
-                Retrospection::column<integer>({Retrospection::step<&Person::Quantum::age>("age")}),
-                Retrospection::ignored({Retrospection::step<&Person::Quantum::cache>("cache")}),
-            },
-        };
-    }
-
-    auto Family::retrospection() -> const Retrospection {
-        return {
-            .aspectName = "community::Family",
-            .quantum = {
-                Retrospection::column<string>({Retrospection::step<&Family::Quantum::lastname>("lastname")}),
-                Retrospection::referenceColumn<Person::Id>("community::Person", {
-                    Retrospection::step<&Family::Quantum::parents>("parents"),
-                    Retrospection::step<&Family::Parents::dad>("dad"),
-                }),
-                Retrospection::referenceColumn<Person::Id>("community::Person", {
-                    Retrospection::step<&Family::Quantum::parents>("parents"),
-                    Retrospection::step<&Family::Parents::mom>("mom"),
-                }),
-            },
-            .quantum_collections = {
-                Retrospection::referenceCollection<vector<Person::Id>>(
-                    "community::Person",
-                    {Retrospection::step<&Family::Quantum::children>("children")}
-                ),
-            },
-            .global = {
-                Retrospection::column<integer>({Retrospection::step<&Family::Global::sharedMoney>("sharedMoney")}),
-            },
-            .global_collections = {
-                Retrospection::collection<vector<string>>(
-                    {Retrospection::step<&Family::Global::legends>("legends")}
-                ),
-            },
-        };
-    }
-
     auto Person::Actions::generate(Writing context, integer age) -> Id {
         constexpr integer names_count = static_cast<integer>(sizeof(person_names) / sizeof(person_names[0]));
         const auto personIndex = static_cast<integer>(count(context));

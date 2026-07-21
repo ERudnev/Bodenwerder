@@ -9,16 +9,12 @@
 #include <vector>
 
 #include <fQSM/api/interface.h>
-#include <fQSM/aspect/persistency.h>
-#include <fQSM/identifier.h>
 
 // Bootstrap: describe with one/all × field/collection; schema collect without SQLite.
 
 namespace experimental {
 
     using namespace fqsm::api;
-    using fqsm::aspect::collection;
-    using fqsm::aspect::field;
 
     struct UselessItem : Entity<UselessItem> {
         struct Quantum {
@@ -183,14 +179,14 @@ struct SchemaDesc {
 
     template<auto... Members>
     void all(fqsm::aspect::Field<Members...> slot) {
-        using Leaf = std::decay_t<decltype(slot.get(std::declval<typename Meta::Global&>()))>;
+        using Leaf = std::decay_t<decltype(slot.get(std::declval<fqsm::GlobalValue<Meta>&>()))>;
         sql_type<Leaf>::require();
         all_fields.push_back({slot.name, sql_type<Leaf>::name});
     }
 
     template<auto... Members>
     void all(fqsm::aspect::Collection<Members...> slot) {
-        using Container = std::decay_t<decltype(slot.get(std::declval<typename Meta::Global&>()))>;
+        using Container = std::decay_t<decltype(slot.get(std::declval<fqsm::GlobalValue<Meta>&>()))>;
         using Elem = typename Container::value_type;
         sql_type<Elem>::require();
         all_collections.push_back({slot.name, sql_type<Elem>::name});

@@ -5,6 +5,7 @@
 
 // aspect types (Entity/Component/Attribute/Feature):
 #include <fQSM/aspect/assembly.interface.h>
+#include <fQSM/aspect/persistency.h>
 
 // manipulation
 #include <fQSM/manipulation/schema.h>
@@ -53,6 +54,10 @@ namespace fqsm::api {
     using Group = ::fqsm::aspect::Group<Meta, Host, Worker>;
 
     using Behavior = ::fqsm::features::Behavior;
+
+    // Persistency form (Meta::describe): one/all × field/collection
+    using ::fqsm::aspect::field;
+    using ::fqsm::aspect::collection;
 
     // Interpretation mechanism:
     template<typename Meta>

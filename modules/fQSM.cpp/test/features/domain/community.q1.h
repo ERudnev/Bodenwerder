@@ -3,12 +3,10 @@
 #include <memory>
 
 #include <fQSM/api/interface.h>
-#include <pQRF/database/retrospection.h>
 
 namespace community {
 
     using namespace fqsm::api;
-    using fqsm::processing::persistency::database::Retrospection;
 
     struct UselessItem : Entity<UselessItem> {
         struct Quantum {
@@ -33,7 +31,14 @@ namespace community {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-        static const Retrospection retrospection();
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("community::Person");
+            d.one(field<&Quantum::name>("name"));
+            d.one(field<&Quantum::age>("age"));
+            // cache omitted = ignored
+        }
     };
 
     struct Family : Entity<Family> {
@@ -58,7 +63,17 @@ namespace community {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-        static const Retrospection retrospection();
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("community::Family");
+            d.one(field<&Quantum::lastname>("lastname"));
+            d.one(field<&Quantum::parents, &Parents::dad>("parents.dad"));
+            d.one(field<&Quantum::parents, &Parents::mom>("parents.mom"));
+            d.one(collection<&Quantum::children>("children"));
+            d.all(field<&Global::sharedMoney>("sharedMoney"));
+            d.all(collection<&Global::legends>("legends"));
+        }
     };
 
     struct Registry : Archetype<Registry> {
