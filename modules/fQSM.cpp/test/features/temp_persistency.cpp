@@ -254,9 +254,9 @@ void temp_persistency()
     using namespace experimental;
     using namespace fqsm::api;
 
-    static_assert(fqsm::aspect::HasRetrospection<Person>);
-    static_assert(fqsm::aspect::HasRetrospection<Family>);
-    static_assert(!fqsm::aspect::HasRetrospection<UselessItem>);
+    static_assert(fqsm::meta::category::musthave::Retrospection<Person>);
+    static_assert(fqsm::meta::category::musthave::Retrospection<Family>);
+    static_assert(!fqsm::meta::category::musthave::Retrospection<UselessItem>);
 
     const auto personSchema = collect_schema<Person>();
     EXPECT_EQ(personSchema.aspectName, "experimental::Person");

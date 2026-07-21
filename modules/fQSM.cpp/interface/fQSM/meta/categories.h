@@ -4,6 +4,16 @@
 
 #include <base/serialization.h>
 
+namespace fqsm::detail::meta::category {
+
+    struct RetrospectionProbe {
+        void aspect(auto) {}
+        void one(auto&&) {}
+        void all(auto&&) {}
+    };
+
+}
+
 namespace fqsm::meta::category {
 
     namespace musthave {
@@ -33,6 +43,11 @@ namespace fqsm::meta::category {
         concept Autonomy = not musthave::Host<Meta>;
         template<typename Meta>
         concept Primary = requires { typename Meta::PrimaryAspect; };
+
+        template<typename Meta>
+        concept Retrospection = requires(fqsm::detail::meta::category::RetrospectionProbe& d) {
+            Meta::describe(d);
+        };
     }
 
     // abstractions: can not be final concepts to be usef for domain archetypes:

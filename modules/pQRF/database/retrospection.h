@@ -1,12 +1,12 @@
 #pragma once
 
-// Compatibility alias: persistency form lives in aspect::persistency (Meta::describe).
+// Compatibility alias: canonical check is meta::category::musthave::Retrospection.
 
-#include <fQSM/aspect/persistency.h>
+#include <fQSM/meta/categories.h>
 
 namespace fqsm::processing::persistency::database {
 
     template<typename Meta>
-    concept HasRetrospection = fqsm::aspect::HasRetrospection<Meta>;
+    concept HasRetrospection = fqsm::meta::category::musthave::Retrospection<Meta>;
 
 }

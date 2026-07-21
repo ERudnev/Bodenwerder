@@ -5,6 +5,7 @@
 #include <fQSM/api/interface.h>
 #include <fQSM/processing/persistency/schema.h>
 #include <pQRF/database/engine.h>
+#include <pQRF/json/engine.h>
 
 #include "features/domain/community.q1.h"
 
@@ -16,6 +17,7 @@ void persistent_families()
     using namespace fqsm::api;
     namespace persist = fqsm::processing::persistency;
     namespace db = fqsm::processing::persistency::database;
+    namespace js = fqsm::processing::persistency::json;
 
     const Schema world = ask::schema::merge({
         ask::schema::aspect<UselessItem>(),
@@ -23,15 +25,20 @@ void persistent_families()
         ask::schema::aspect<Family>(),
     });
 
-    const persist::Schema archive = persist::merge({
+    const persist::Schema dbArchive = persist::merge({
         db::aspect<Person>(),
         db::aspect<Family>(),
     });
+    const persist::Schema jsonArchive = persist::merge({
+        js::aspect<Person>(),
+        js::aspect<Family>(),
+    });
 
-    const auto dbDir = std::filesystem::temp_directory_path() / "fqsm_persistent_families";
-    std::filesystem::remove_all(dbDir);
-    std::filesystem::create_directories(dbDir);
-    const auto dbPath = dbDir / "registry.db";
+    const auto workDir = std::filesystem::temp_directory_path() / "fqsm_persistent_families";
+    std::filesystem::remove_all(workDir);
+    std::filesystem::create_directories(workDir);
+    const auto dbPath = workDir / "registry.db";
+    const auto jsonPath = workDir / "registry.json";
 
     std::size_t personsAfterDay = 0;
     std::size_t familiesAfterDay = 0;
@@ -55,28 +62,48 @@ void persistent_families()
         EXPECT_EQ(familiesAfterDay, 6) << "six families";
         EXPECT_TRUE(personsAfterDay > 0) << "persons created with families";
 
-        db::DatabaseArchivist archivist(archive);
-        EXPECT_TRUE(archivist.saveToLocation(origin, archive->types(), dbPath)) << "save after +1 day";
+        db::DatabaseArchivist dbArchivist(dbArchive);
+        EXPECT_TRUE(dbArchivist.saveToLocation(origin, dbArchive->types(), dbPath)) << "save sqlite";
+
+        js::JsonArchivist jsonArchivist(jsonArchive);
+        EXPECT_TRUE(jsonArchivist.saveToLocation(origin, jsonArchive->types(), jsonPath)) << "save json";
     }
 
     {
-        establish::Realm restored(world);
-        EXPECT_EQ(with<Person>::count(restored), 0) << "second world starts empty";
+        establish::Realm fromDb(world);
+        EXPECT_EQ(with<Person>::count(fromDb), 0) << "db world starts empty";
 
-        db::DatabaseArchivist archivist(archive);
-        const auto palette = archive->types();
-        const auto loadable = archivist.getTypesAtLocation(restored, dbPath) & palette;
+        db::DatabaseArchivist archivist(dbArchive);
+        const auto palette = dbArchive->types();
+        const auto loadable = archivist.getTypesAtLocation(fromDb, dbPath) & palette;
         EXPECT_TRUE(!loadable.empty()) << "db has Person/Family tables";
-        EXPECT_TRUE(archivist.updateFromLocation(restored, loadable, dbPath)) << "load into empty world";
+        EXPECT_TRUE(archivist.updateFromLocation(fromDb, loadable, dbPath)) << "load sqlite";
 
-        EXPECT_EQ(with<Person>::count(restored), personsAfterDay) << "person count matches origin";
-        EXPECT_EQ(with<Family>::count(restored), familiesAfterDay) << "family count matches origin";
-        EXPECT_EQ(with<UselessItem>::count(restored), 0) << "UselessItem not in persist schema";
-        EXPECT_EQ(with<Family>::get_global(restored).sharedMoney, sharedMoneyAfterDay) << "sharedMoney matches origin";
-        EXPECT_EQ(with<Person>::get(restored, samplePerson).age, sampleAgeAfterDay) << "aged person matches origin";
+        EXPECT_EQ(with<Person>::count(fromDb), personsAfterDay) << "sqlite person count";
+        EXPECT_EQ(with<Family>::count(fromDb), familiesAfterDay) << "sqlite family count";
+        EXPECT_EQ(with<UselessItem>::count(fromDb), 0) << "UselessItem not in persist schema";
+        EXPECT_EQ(with<Family>::get_global(fromDb).sharedMoney, sharedMoneyAfterDay) << "sqlite sharedMoney";
+        EXPECT_EQ(with<Person>::get(fromDb, samplePerson).age, sampleAgeAfterDay) << "sqlite aged person";
     }
 
-    std::filesystem::remove_all(dbDir);
+    {
+        establish::Realm fromJson(world);
+        EXPECT_EQ(with<Person>::count(fromJson), 0) << "json world starts empty";
+
+        js::JsonArchivist archivist(jsonArchive);
+        const auto palette = jsonArchive->types();
+        const auto loadable = archivist.getTypesAtLocation(fromJson, jsonPath) & palette;
+        EXPECT_TRUE(!loadable.empty()) << "json has Person/Family sections";
+        EXPECT_TRUE(archivist.updateFromLocation(fromJson, loadable, jsonPath)) << "load json";
+
+        EXPECT_EQ(with<Person>::count(fromJson), personsAfterDay) << "json person count";
+        EXPECT_EQ(with<Family>::count(fromJson), familiesAfterDay) << "json family count";
+        EXPECT_EQ(with<UselessItem>::count(fromJson), 0) << "UselessItem not in persist schema";
+        EXPECT_EQ(with<Family>::get_global(fromJson).sharedMoney, sharedMoneyAfterDay) << "json sharedMoney";
+        EXPECT_EQ(with<Person>::get(fromJson, samplePerson).age, sampleAgeAfterDay) << "json aged person";
+    }
+
+    std::filesystem::remove_all(workDir);
 }
 
 }

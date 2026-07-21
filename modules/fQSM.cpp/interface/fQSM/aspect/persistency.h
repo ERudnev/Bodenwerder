@@ -18,12 +18,6 @@ namespace fqsm::aspect {
             }
         }
 
-        struct Sink {
-            void aspect(std::string_view) {}
-            void one(auto&&) {}
-            void all(auto&&) {}
-        };
-
     }
 
     template<auto... Members>
@@ -65,10 +59,5 @@ namespace fqsm::aspect {
     constexpr auto collection(std::string_view name) -> Collection<Members...> {
         return Collection<Members...>{.name = name};
     }
-
-    template<typename Meta>
-    concept HasRetrospection = requires(detail::retrospection::Sink& sink) {
-        Meta::describe(sink);
-    };
 
 }
