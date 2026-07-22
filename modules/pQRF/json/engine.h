@@ -4,6 +4,7 @@
 #include <fQSM/aspect/persistency.h>
 #include <fQSM/meta/alias.h>
 #include <fQSM/meta/categories.h>
+#include <fQSM/processing/orchestrators/realm.h>
 #include <fQSM/utility/bad_value.h>
 #include <pQRF/json/document.h>
 #include <pQRF/json/leaf.h>
@@ -96,8 +97,12 @@ namespace fqsm::processing::persistency::json::detail {
             using Elem = typename std::decay_t<decltype(slot.get(quantum))>::value_type;
             auto& container = slot.get(quantum);
             container.clear();
-            for (const auto& element : nested.array)
-                container.push_back(leaf::decode<Elem>(element));
+            for (const auto& element : nested.array) {
+                if constexpr (requires { container.push_back(std::declval<Elem>()); })
+                    container.push_back(leaf::decode<Elem>(element));
+                else
+                    container.insert(leaf::decode<Elem>(element));
+            }
         }
 
         template<auto... Members>
@@ -165,8 +170,12 @@ namespace fqsm::processing::persistency::json::detail {
             using Elem = typename std::decay_t<decltype(slot.get(global))>::value_type;
             auto& container = slot.get(global);
             container.clear();
-            for (const auto& element : nested.array)
-                container.push_back(leaf::decode<Elem>(element));
+            for (const auto& element : nested.array) {
+                if constexpr (requires { container.push_back(std::declval<Elem>()); })
+                    container.push_back(leaf::decode<Elem>(element));
+                else
+                    container.insert(leaf::decode<Elem>(element));
+            }
         }
     };
 
@@ -220,7 +229,8 @@ namespace fqsm::processing::persistency::json::detail {
                 if (!row.is_array() || row.array.empty())
                     throw std::runtime_error("json aspect: broken one-row");
                 const auto id = leaf::decode<typename Meta::Id>(row.array[0]);
-                with<Meta>::restore(context, id, fqsm::utility::BadValue{});
+                if (!with<Meta>::exists(context, id))
+                    context.workers_interface().updates<Meta>().put_as_restored(id, fqsm::utility::BadValue{});
                 auto quantum = with<Meta>::modify(context, id);
                 ReadOneRowDesc<Meta> reader{row, *quantum, 1};
                 Meta::describe(reader);
@@ -238,19 +248,38 @@ namespace fqsm::processing::persistency::json::detail {
     }
 
     template<typename Meta>
+    void replace_aspect_document(Direct<Meta>& gate, const Value& aspect) {
+        gate.items.clear();
+
+        if (const auto* one_table = aspect.find(section_one)) {
+            if (!one_table->is_array())
+                throw std::runtime_error("json aspect: one must be an array");
+            for (const auto& row : one_table->array) {
+                if (!row.is_array() || row.array.empty())
+                    throw std::runtime_error("json aspect: broken one-row");
+                const auto id = leaf::decode<typename Meta::Id>(row.array[0]);
+                typename Meta::Quantum quantum = fqsm::utility::BadValue{};
+                ReadOneRowDesc<Meta> reader{row, quantum, 1};
+                Meta::describe(reader);
+                gate.items.insert(id, std::move(quantum));
+            }
+        }
+
+        if (!has_all_slots<Meta>()) return;
+
+        gate.global() = {};
+        const auto* all_row = aspect.find(section_all);
+        if (!all_row || !all_row->is_array()) return;
+
+        ReadAllRowDesc<Meta> reader{*all_row, gate.global(), 0};
+        Meta::describe(reader);
+    }
+
+    template<typename Meta>
     auto has_aspect_document(const Value& root) -> bool {
         const auto name = aspect_name_of<Meta>();
         const auto* aspect = root.find(name);
         return aspect && aspect->is_object();
-    }
-
-    template<typename Meta>
-    void clear_aspect(Writing context) {
-        std::vector<typename Meta::Id> ids;
-        for (const auto entry : context->aspect<Meta>().items())
-            ids.push_back(entry.id);
-        for (const auto id : ids)
-            with<Meta>::remove(context, id);
     }
 
 }
@@ -266,8 +295,12 @@ namespace fqsm::processing::persistency::json {
             return has_aspect_document<Meta>(document.root());
         }
 
-        void clear(Writing context) override {
-            clear_aspect<Meta>(context);
+        void replace(orchestrator::Realm& realm, JsonDocument& document) override {
+            const auto name = aspect_name_of<Meta>();
+            const auto* aspect = document.root().find(name);
+            if (!aspect) return;
+            Direct<Meta> gate = realm;
+            replace_aspect_document<Meta>(gate, *aspect);
         }
 
         void pull(Writing context, JsonDocument& document) override {

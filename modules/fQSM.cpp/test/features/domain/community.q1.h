@@ -41,6 +41,17 @@ namespace community {
         }
     };
 
+    struct UselessItem_group : Group<UselessItem_group, Person, UselessItem> {
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("community::UselessItem_group");
+            d.one(collection<>("members"));
+        }
+    };
+
     struct Family : Entity<Family> {
         struct Parents {
             optional<Person::Id> dad;
@@ -78,6 +89,7 @@ namespace community {
 
     struct Registry : Archetype<Registry> {
         static void createSixFamilies(Writing context);
+        static auto grantPersonSomethingUseless(Writing context, Person::Id person, decltype(UselessItem::Quantum::reallyUseless) meaninglessValue) -> UselessItem::Id;
     };
 
 }

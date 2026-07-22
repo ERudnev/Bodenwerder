@@ -23,15 +23,18 @@ void persistent_families()
     const Schema world = ask::schema::merge({
         ask::schema::aspect<UselessItem>(),
         ask::schema::aspect<Person>(),
+        ask::schema::aspect<UselessItem_group>(),
         ask::schema::aspect<Family>(),
     });
 
     const persist::Schema dbArchive = persist::merge({
         db::aspect<Person>(),
+        db::aspect<UselessItem_group>(),
         db::aspect<Family>(),
     });
     const persist::Schema jsonArchive = persist::merge({
         js::aspect<Person>(),
+        js::aspect<UselessItem_group>(),
         js::aspect<Family>(),
     });
 
@@ -44,20 +47,19 @@ void persistent_families()
     std::size_t personsAfterDay = 0;
     std::size_t familiesAfterDay = 0;
     integer sharedMoneyAfterDay = 0;
-    std::optional<Person::Id> samplePerson;
-    integer sampleAgeAfterDay = 0;
+    maybe<Person::Id> witness;
+    integer witnessAgeAfterDay = 0;
 
     {
         establish::Realm origin(world);
         with<Registry>::createSixFamilies(origin);
+        witness = with<Person>::generate(origin, 99);
         with<Person>::one_year_passed(origin);
 
         personsAfterDay = with<Person>::count(origin);
         familiesAfterDay = with<Family>::count(origin);
         sharedMoneyAfterDay = with<Family>::get_global(origin).sharedMoney;
-        const auto sample = *origin->aspect<Person>().items().begin();
-        samplePerson = sample.id;
-        sampleAgeAfterDay = sample.value.age;
+        witnessAgeAfterDay = with<Person>::get(origin, *witness).age;
 
         EXPECT_EQ(with<UselessItem>::count(origin), 2) << "seed creates two UselessItems";
         EXPECT_EQ(familiesAfterDay, 6) << "six families";
@@ -80,14 +82,13 @@ void persistent_families()
         const auto palette = dbArchive->types();
         const auto loadable = archivist.getTypesAtLocation(fromDb, dbPath) & palette;
         EXPECT_TRUE(!loadable.empty()) << "db has Person/Family tables";
-        EXPECT_TRUE(archivist.updateFromLocation(fromDb, loadable, dbPath)) << "load sqlite";
+        EXPECT_TRUE(archivist.replaceFromLocation(fromDb, loadable, dbPath)) << "load sqlite";
 
         EXPECT_EQ(with<Person>::count(fromDb), personsAfterDay) << "sqlite person count";
         EXPECT_EQ(with<Family>::count(fromDb), familiesAfterDay) << "sqlite family count";
         EXPECT_EQ(with<UselessItem>::count(fromDb), 0) << "UselessItem not in persist schema";
         EXPECT_EQ(with<Family>::get_global(fromDb).sharedMoney, sharedMoneyAfterDay) << "sqlite sharedMoney";
-        EXPECT_TRUE(samplePerson.has_value());
-        EXPECT_EQ(with<Person>::get(fromDb, *samplePerson).age, sampleAgeAfterDay) << "sqlite aged person";
+        EXPECT_EQ(with<Person>::get(fromDb, *witness).age, witnessAgeAfterDay) << "sqlite aged person";
     }
 
     {
@@ -98,14 +99,13 @@ void persistent_families()
         const auto palette = jsonArchive->types();
         const auto loadable = archivist.getTypesAtLocation(fromJson, jsonPath) & palette;
         EXPECT_TRUE(!loadable.empty()) << "json has Person/Family sections";
-        EXPECT_TRUE(archivist.updateFromLocation(fromJson, loadable, jsonPath)) << "load json";
+        EXPECT_TRUE(archivist.replaceFromLocation(fromJson, loadable, jsonPath)) << "load json";
 
         EXPECT_EQ(with<Person>::count(fromJson), personsAfterDay) << "json person count";
         EXPECT_EQ(with<Family>::count(fromJson), familiesAfterDay) << "json family count";
         EXPECT_EQ(with<UselessItem>::count(fromJson), 0) << "UselessItem not in persist schema";
         EXPECT_EQ(with<Family>::get_global(fromJson).sharedMoney, sharedMoneyAfterDay) << "json sharedMoney";
-        EXPECT_TRUE(samplePerson.has_value());
-        EXPECT_EQ(with<Person>::get(fromJson, *samplePerson).age, sampleAgeAfterDay) << "json aged person";
+        EXPECT_EQ(with<Person>::get(fromJson, *witness).age, witnessAgeAfterDay) << "json aged person";
     }
 
     std::filesystem::remove_all(workDir);

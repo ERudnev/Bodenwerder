@@ -6,6 +6,10 @@
 #include <fQSM/processing/persistency/schema.h>
 #include <fQSM/processing/_forwards.h>
 
+namespace fqsm::processing::orchestrator {
+    struct Realm;
+}
+
 namespace fqsm::processing::persistency {
 
     struct Archivist {
@@ -20,7 +24,7 @@ namespace fqsm::processing::persistency {
 
         virtual Palette getTypesAtLocation(Reading, Location) = 0;
         virtual bool updateFromLocation(Writing, Palette, Location) = 0;
-        virtual bool replaceFromLocation(Writing, Palette, Location) = 0;
+        virtual bool replaceFromLocation(orchestrator::Realm&, Palette, Location) = 0;
         virtual bool saveToLocation(Writing, Palette, Location) = 0;
 
     protected:

@@ -3,6 +3,7 @@
 #include <fQSM/api/interface.h>
 #include <fQSM/aspect/persistency.h>
 #include <fQSM/meta/alias.h>
+#include <fQSM/processing/orchestrators/realm.h>
 #include <fQSM/utility/bad_value.h>
 #include <pQRF/database/retrospection.h>
 #include <pQRF/database/sql.h>
@@ -410,12 +411,13 @@ namespace fqsm::processing::persistency::database::detail {
 
             for (const auto entry : context->aspect<Meta>().items()) {
                 const auto& container = slot.get(entry.value);
-                for (std::size_t ordinal = 0; ordinal < container.size(); ++ordinal) {
+                std::size_t ordinal = 0;
+                for (const auto& element : container) {
                     sqlite3_reset(statement);
                     sqlite3_clear_bindings(statement);
                     sqlite3_bind_int64(statement, 1, static_cast<sqlite3_int64>(entry.id.raw()));
-                    sqlite3_bind_int(statement, 2, static_cast<int>(ordinal));
-                    sql::bind(statement, 3, container[ordinal]);
+                    sqlite3_bind_int(statement, 2, static_cast<int>(ordinal++));
+                    sql::bind(statement, 3, element);
 
                     if (sqlite3_step(statement) != SQLITE_DONE) {
                         sqlite3_finalize(statement);
@@ -460,12 +462,13 @@ namespace fqsm::processing::persistency::database::detail {
                 fail(db, std::format("prepare {}", table));
 
             const auto& container = slot.get(global);
-            for (std::size_t ordinal = 0; ordinal < container.size(); ++ordinal) {
+            std::size_t ordinal = 0;
+            for (const auto& element : container) {
                 sqlite3_reset(statement);
                 sqlite3_clear_bindings(statement);
                 sqlite3_bind_int64(statement, 1, 0);
-                sqlite3_bind_int(statement, 2, static_cast<int>(ordinal));
-                sql::bind(statement, 3, container[ordinal]);
+                sqlite3_bind_int(statement, 2, static_cast<int>(ordinal++));
+                sql::bind(statement, 3, element);
 
                 if (sqlite3_step(statement) != SQLITE_DONE) {
                     sqlite3_finalize(statement);
@@ -504,7 +507,11 @@ namespace fqsm::processing::persistency::database::detail {
                     static_cast<typename Meta::Id::Raw>(sqlite3_column_int64(statement, 0))
                 };
                 auto quantum = with<Meta>::modify(context, owner);
-                slot.get(*quantum).push_back(sql::decode<Elem>(statement, 2));
+                auto& container = slot.get(*quantum);
+                if constexpr (requires { container.push_back(std::declval<Elem>()); })
+                    container.push_back(sql::decode<Elem>(statement, 2));
+                else
+                    container.insert(sql::decode<Elem>(statement, 2));
             }
 
             sqlite3_finalize(statement);
@@ -545,8 +552,13 @@ namespace fqsm::processing::persistency::database::detail {
             if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
                 fail(db, std::format("prepare {}", table));
 
-            while (sqlite3_step(statement) == SQLITE_ROW)
-                slot.get(global).push_back(sql::decode<Elem>(statement, 2));
+            while (sqlite3_step(statement) == SQLITE_ROW) {
+                auto& container = slot.get(global);
+                if constexpr (requires { container.push_back(std::declval<Elem>()); })
+                    container.push_back(sql::decode<Elem>(statement, 2));
+                else
+                    container.insert(sql::decode<Elem>(statement, 2));
+            }
 
             sqlite3_finalize(statement);
         }
@@ -630,7 +642,8 @@ namespace fqsm::processing::persistency::database::detail {
             const auto id = typename Meta::Id{
                 static_cast<typename Meta::Id::Raw>(sqlite3_column_int64(statement, 0))
             };
-            with<Meta>::restore(context, id, fqsm::utility::BadValue{});
+            if (!with<Meta>::exists(context, id))
+                context.workers_interface().updates<Meta>().put_as_restored(id, fqsm::utility::BadValue{});
             auto quantum = with<Meta>::modify(context, id);
 
             ReadOneFieldsDesc<Meta> reader{statement, *quantum, 1};
@@ -683,13 +696,136 @@ namespace fqsm::processing::persistency::database::detail {
         load_global_collections<Meta>(db, context);
     }
 
+    template<typename Container, typename Elem>
+    void container_add(Container& container, Elem&& element) {
+        if constexpr (requires { container.push_back(std::forward<Elem>(element)); })
+            container.push_back(std::forward<Elem>(element));
+        else
+            container.insert(std::forward<Elem>(element));
+    }
+
     template<typename Meta>
-    void clear_aspect(Writing context) {
-        std::vector<typename Meta::Id> ids;
-        for (const auto entry : context->aspect<Meta>().items())
-            ids.push_back(entry.id);
-        for (const auto id : ids)
-            with<Meta>::remove(context, id);
+    auto quanta_count(sqlite3* db, const LayoutDesc<Meta>& layout) -> std::size_t {
+        sqlite3_stmt* statement = nullptr;
+        const auto sql = std::format(
+            "SELECT COUNT(*) FROM {}",
+            sqlIdentifier(quanta_table(layout.aspectName))
+        );
+        if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
+            fail(db, std::format("prepare count {}", quanta_table(layout.aspectName)));
+        std::size_t count = 0;
+        if (sqlite3_step(statement) == SQLITE_ROW)
+            count = static_cast<std::size_t>(sqlite3_column_int64(statement, 0));
+        sqlite3_finalize(statement);
+        return count;
+    }
+
+    template<typename Meta>
+    void replace_quanta(sqlite3* db, Direct<Meta>& gate) {
+        const auto layout = layout_of<Meta>();
+        gate.items.clear();
+        gate.items.reserve(quanta_count<Meta>(db, layout));
+
+        sqlite3_stmt* statement = nullptr;
+        const auto sql = build_quanta_select_sql(layout);
+        if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
+            fail(db, std::format("prepare {}", quanta_table(layout.aspectName)));
+
+        while (sqlite3_step(statement) == SQLITE_ROW) {
+            const auto id = typename Meta::Id{
+                static_cast<typename Meta::Id::Raw>(sqlite3_column_int64(statement, 0))
+            };
+            typename Meta::Quantum quantum = fqsm::utility::BadValue{};
+            ReadOneFieldsDesc<Meta> reader{statement, quantum, 1};
+            Meta::describe(reader);
+            gate.items.insert(id, std::move(quantum));
+        }
+
+        sqlite3_finalize(statement);
+    }
+
+    template<typename Meta>
+    struct ReplaceOneCollectionsDesc {
+        sqlite3* db = nullptr;
+        typename Direct<Meta>::Container& items;
+        std::string_view aspectName{};
+
+        void aspect(std::string_view name) { aspectName = name; }
+
+        template<auto... Members>
+        void one(Field<Members...>) {}
+
+        template<auto... Members>
+        void one(Collection<Members...> slot) {
+            using Container = std::decay_t<decltype(slot.get(std::declval<typename Meta::Quantum&>()))>;
+            using Elem = typename Container::value_type;
+
+            const auto table = one_collection_table(aspectName, slot.name);
+            sqlite3_stmt* statement = nullptr;
+            const auto sql = build_collection_select_sql(table);
+            if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
+                fail(db, std::format("prepare {}", table));
+
+            while (sqlite3_step(statement) == SQLITE_ROW) {
+                const auto owner = typename Meta::Id{
+                    static_cast<typename Meta::Id::Raw>(sqlite3_column_int64(statement, 0))
+                };
+                auto* quantum = items.find(owner);
+                if (!quantum)
+                    fail(db, std::format("replace collection: missing owner in {}", table));
+                container_add(slot.get(*quantum), sql::decode<Elem>(statement, 2));
+            }
+
+            sqlite3_finalize(statement);
+        }
+
+        template<auto... Members>
+        void all(Field<Members...>) {}
+
+        template<auto... Members>
+        void all(Collection<Members...>) {}
+    };
+
+    template<typename Meta>
+    void replace_collections(sqlite3* db, Direct<Meta>& gate) {
+        ReplaceOneCollectionsDesc<Meta> desc{db, gate.items, {}};
+        Meta::describe(desc);
+    }
+
+    template<typename Meta>
+    void replace_globals(sqlite3* db, Direct<Meta>& gate) {
+        const auto layout = layout_of<Meta>();
+        if (layout.all_fields.empty()) return;
+
+        sqlite3_stmt* statement = nullptr;
+        const auto sql = build_globals_select_sql(layout);
+        if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
+            fail(db, std::format("prepare {}", globals_table(layout.aspectName)));
+
+        if (sqlite3_step(statement) == SQLITE_ROW) {
+            ReadAllFieldsDesc<Meta> reader{statement, gate.global(), 0};
+            Meta::describe(reader);
+        }
+
+        sqlite3_finalize(statement);
+    }
+
+    template<typename Meta>
+    void replace_global_collections(sqlite3* db, Direct<Meta>& gate) {
+        const auto layout = layout_of<Meta>();
+        if (layout.all_collections.empty()) return;
+
+        LoadAllCollectionsDesc<Meta> desc{db, gate.global(), {}};
+        Meta::describe(desc);
+    }
+
+    template<typename Meta>
+    void replace_aspect(sqlite3* db, Direct<Meta>& gate) {
+        replace_quanta<Meta>(db, gate);
+        replace_collections<Meta>(db, gate);
+        gate.global() = {};
+        replace_globals<Meta>(db, gate);
+        replace_global_collections<Meta>(db, gate);
     }
 
 }
@@ -705,8 +841,9 @@ namespace fqsm::processing::persistency::database {
             return has_storage_schema<Meta>(db.engine());
         }
 
-        void clear(Writing context) override {
-            clear_aspect<Meta>(context);
+        void replace(orchestrator::Realm& realm, DatabaseProxy& db) override {
+            Direct<Meta> gate = realm;
+            replace_aspect<Meta>(db.engine(), gate);
         }
 
         void pull(Writing context, DatabaseProxy& db) override {

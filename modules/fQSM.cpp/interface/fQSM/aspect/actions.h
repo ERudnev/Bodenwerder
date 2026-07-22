@@ -75,7 +75,6 @@ namespace fqsm::aspect::actions {
 
         // elementary (func):
         static Id create(Writing context, Quantum val);
-        static Id restore(Writing context, Id id, Quantum val);
     };
 
 
@@ -205,14 +204,6 @@ namespace fqsm::aspect::actions {
     ->Id {
         const auto id = Identifier<Meta>::generate_random();
         context.workers_interface().updates<Meta>().put_add(id, std::move(val));
-        return id;
-    }
-
-    template<typename Meta>
-    auto Standalone<Meta>
-    ::restore(Writing context, Id id, Quantum val)
-    ->Id {
-        context.workers_interface().updates<Meta>().put_as_restored(id, std::move(val));
         return id;
     }
 

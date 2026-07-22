@@ -13,6 +13,8 @@ namespace community
       >generate(age: integer)-># // name is random (can use pre-generated table)
       >one_year_passed() // run all persond age++
 
+  group<UselessItem> of Person
+
   entity Family
     struct Parents
       dad: #Person?
@@ -28,4 +30,5 @@ namespace community
 
   archetype Registry
     >createSixFamilies()
+    >grantPersonSomethingUseless(#Person, meaninglessValue: ~UselessItem::reallyUseless) // assigns new UselessItem to Person's UselessItem group
       // six families; children counts cover 0..4 (corners)

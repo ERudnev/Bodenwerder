@@ -36,11 +36,13 @@ namespace community {
     auto Person::Actions::generate(Writing context, integer age) -> Id {
         constexpr integer names_count = static_cast<integer>(sizeof(person_names) / sizeof(person_names[0]));
         const auto personIndex = static_cast<integer>(count(context));
-        return create(context, {
+        const auto id = create(context, {
             .name = std::string{person_names[personIndex % names_count]},
             .age = age,
             .cache = std::make_shared<string>(std::format("runtime-cache-{}", personIndex)),
         });
+        with<UselessItem_group>::extend(context, id);
+        return id;
     }
 
     void Person::Actions::one_year_passed(Writing context) {
@@ -86,6 +88,15 @@ namespace community {
         with<Family>::generate(context, false, true, 0);
 
         with<Family>::modify_global(context)->sharedMoney = 15000;
+    }
+
+    auto Registry::grantPersonSomethingUseless(Writing context, Person::Id person, decltype(UselessItem::Quantum::reallyUseless) meaninglessValue) -> UselessItem::Id {
+        if (not with<UselessItem_group>::exists(context, person))
+            with<UselessItem_group>::extend(context, person);
+
+        return with<UselessItem_group>::addElement(context, person, UselessItem::Quantum{
+            .reallyUseless = meaninglessValue,
+        });
     }
 
 }

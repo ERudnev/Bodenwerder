@@ -38,6 +38,8 @@ namespace fqsm::processing {
     struct Breach {
         using Context = context::Direct;
         using Container = base::cannonball::Table<Id<Meta>, Quantum<Meta>>;
+        using Global = GlobalValue<Meta>;
+
         Breach(Context::Ptr parent)
             : items(static_cast<Container&>(parent->reality.aspect<Meta>().items()))
             , context(parent)
@@ -46,6 +48,10 @@ namespace fqsm::processing {
         }
 
         Container& items;
+
+        auto global() -> Global& {
+            return context->reality.aspect<Meta>().global();
+        }
 
         operator Reading() const { return View(context->reality); }
 

@@ -32,7 +32,7 @@ namespace fqsm::processing::persistency::json {
         virtual ~ArchiveOps() = default;
 
         virtual bool present(JsonDocument&) = 0;
-        virtual void clear(Writing) = 0;
+        virtual void replace(orchestrator::Realm&, JsonDocument&) = 0;
         virtual void pull(Writing, JsonDocument&) = 0;
         virtual void push(Reading, JsonDocument&) = 0;
 
@@ -49,10 +49,11 @@ namespace fqsm::processing::persistency::json {
 
         bool saveToStream(Reading, Palette, std::ostream&) const;
         bool updateFromStream(Writing, Palette, std::istream&) const;
+        bool replaceFromStream(orchestrator::Realm&, Palette, std::istream&) const;
 
         auto getTypesAtLocation(Reading, Location) -> Palette override;
         bool updateFromLocation(Writing, Palette, Location) override;
-        bool replaceFromLocation(Writing, Palette, Location) override;
+        bool replaceFromLocation(orchestrator::Realm&, Palette, Location) override;
         bool saveToLocation(Writing, Palette, Location) override;
     };
 

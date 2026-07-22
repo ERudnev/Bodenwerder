@@ -5,6 +5,7 @@
 
 #include <base/logging.h>
 
+#include <fQSM/processing/orchestrators/realm.h>
 #include <pQRF/json/engine.h>
 
 namespace fqsm::processing::persistency::json {
@@ -86,6 +87,23 @@ namespace fqsm::processing::persistency::json {
         return loaded;
     }
 
+    bool JsonArchivist::replaceFromStream(orchestrator::Realm& realm, Palette palette, std::istream& input) const {
+        auto document = open_from_stream(input);
+        if (!document) return false;
+
+        bool loaded = false;
+        for (const auto& type : palette) {
+            const auto found = schema_->nodes.find(type);
+            if (found == schema_->nodes.end()) continue;
+            const auto ops = ops_for(found->second);
+            if (!ops) continue;
+            if (!ops->present(*document)) continue;
+            ops->replace(realm, *document);
+            loaded = true;
+        }
+        return loaded;
+    }
+
     auto JsonArchivist::getTypesAtLocation(Reading, Location location) -> Palette {
         Palette found;
         auto document = open_existing(location);
@@ -117,15 +135,21 @@ namespace fqsm::processing::persistency::json {
         return loaded;
     }
 
-    bool JsonArchivist::replaceFromLocation(Writing context, Palette palette, Location location) {
+    bool JsonArchivist::replaceFromLocation(orchestrator::Realm& realm, Palette palette, Location location) {
+        auto document = open_existing(location);
+        if (!document) return false;
+
+        bool loaded = false;
         for (const auto& type : palette) {
             const auto found = schema_->nodes.find(type);
             if (found == schema_->nodes.end()) continue;
             const auto ops = ops_for(found->second);
             if (!ops) continue;
-            ops->clear(context);
+            if (!ops->present(*document)) continue;
+            ops->replace(realm, *document);
+            loaded = true;
         }
-        return updateFromLocation(context, std::move(palette), std::move(location));
+        return loaded;
     }
 
     bool JsonArchivist::saveToLocation(Writing context, Palette palette, Location location) {

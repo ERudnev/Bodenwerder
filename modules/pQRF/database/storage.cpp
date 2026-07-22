@@ -4,6 +4,7 @@
 
 #include <base/logging.h>
 
+#include <fQSM/processing/orchestrators/realm.h>
 #include <pQRF/database/engine.h>
 
 namespace fqsm::processing::persistency::database {
@@ -60,15 +61,21 @@ namespace fqsm::processing::persistency::database {
         return loaded;
     }
 
-    bool DatabaseArchivist::replaceFromLocation(Writing context, Palette palette, Location location) {
+    bool DatabaseArchivist::replaceFromLocation(orchestrator::Realm& realm, Palette palette, Location location) {
+        auto db = open_existing(location);
+        if (!db) return false;
+
+        bool loaded = false;
         for (const auto& type : palette) {
             const auto found = schema_->nodes.find(type);
             if (found == schema_->nodes.end()) continue;
             const auto ops = ops_for(found->second);
             if (!ops) continue;
-            ops->clear(context);
+            if (!ops->present(*db)) continue;
+            ops->replace(realm, *db);
+            loaded = true;
         }
-        return updateFromLocation(context, std::move(palette), std::move(location));
+        return loaded;
     }
 
     bool DatabaseArchivist::saveToLocation(Writing context, Palette palette, Location location) {
