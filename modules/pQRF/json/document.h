@@ -14,11 +14,12 @@
 namespace fqsm::processing::persistency::json {
 
     struct Value {
-        enum struct Kind { null, boolean, number, string, array, object };
+        enum struct Kind { null, boolean, number, real, string, array, object };
 
         Kind kind = Kind::null;
         bool boolean = false;
         std::int64_t number = 0;
+        double real = 0.0;
         std::string string{};
         std::vector<Value> array{};
         std::vector<std::pair<std::string, Value>> object{};
@@ -36,6 +37,13 @@ namespace fqsm::processing::persistency::json {
             Value out;
             out.kind = Kind::number;
             out.number = value;
+            return out;
+        }
+
+        static auto real_value(double value) -> Value {
+            Value out;
+            out.kind = Kind::real;
+            out.real = value;
             return out;
         }
 
@@ -148,17 +156,38 @@ namespace fqsm::processing::persistency::json {
                 fail("unterminated string");
             }
 
-            auto parse_number() -> std::int64_t {
+            auto parse_numeric() -> Value {
                 skip_ws();
                 const auto begin = cursor;
-                if (cursor < text.size() && (text[cursor] == '-' || text[cursor] == '+')) ++cursor;
+                if (cursor < text.size() && text[cursor] == '-') ++cursor;
                 if (cursor >= text.size() || !std::isdigit(static_cast<unsigned char>(text[cursor])))
                     fail("expected digit");
                 while (cursor < text.size() && std::isdigit(static_cast<unsigned char>(text[cursor])))
                     ++cursor;
-                if (cursor < text.size() && (text[cursor] == '.' || text[cursor] == 'e' || text[cursor] == 'E'))
-                    fail("only integer numbers are supported");
-                return std::stoll(std::string{text.substr(begin, cursor - begin)});
+
+                bool is_real = false;
+                if (cursor < text.size() && text[cursor] == '.') {
+                    is_real = true;
+                    ++cursor;
+                    if (cursor >= text.size() || !std::isdigit(static_cast<unsigned char>(text[cursor])))
+                        fail("expected digit after decimal point");
+                    while (cursor < text.size() && std::isdigit(static_cast<unsigned char>(text[cursor])))
+                        ++cursor;
+                }
+                if (cursor < text.size() && (text[cursor] == 'e' || text[cursor] == 'E')) {
+                    is_real = true;
+                    ++cursor;
+                    if (cursor < text.size() && (text[cursor] == '+' || text[cursor] == '-')) ++cursor;
+                    if (cursor >= text.size() || !std::isdigit(static_cast<unsigned char>(text[cursor])))
+                        fail("expected digit in exponent");
+                    while (cursor < text.size() && std::isdigit(static_cast<unsigned char>(text[cursor])))
+                        ++cursor;
+                }
+
+                const auto token = std::string{text.substr(begin, cursor - begin)};
+                if (is_real)
+                    return Value::real_value(std::stod(token));
+                return Value::number_value(std::stoll(token));
             }
 
             auto parse_value() -> Value {
@@ -214,7 +243,7 @@ namespace fqsm::processing::persistency::json {
                     return out;
                 }
                 if (character == '-' || std::isdigit(static_cast<unsigned char>(character)))
-                    return Value::number_value(parse_number());
+                    return parse_numeric();
                 fail("unexpected token");
             }
         };
@@ -261,6 +290,9 @@ namespace fqsm::processing::persistency::json {
                     break;
                 case Value::Kind::number:
                     out += std::format("{}", value.number);
+                    break;
+                case Value::Kind::real:
+                    out += std::format("{}", value.real);
                     break;
                 case Value::Kind::string:
                     write_string(out, value.string);

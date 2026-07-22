@@ -1,12 +1,15 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <optional>
 #include <sqlite3.h>
 #include <string>
 #include <string_view>
 #include <type_traits>
 
+#include <base/maybe.h>
 #include <fQSM/identifier.h>
 
 namespace fqsm::processing::persistency::database::detail::sql {
@@ -97,6 +100,91 @@ namespace fqsm::processing::persistency::database::detail::sql {
         static consteval void require() {}
     };
 
+    template<>
+    struct atom<float> {
+        static constexpr bool nullable = false;
+        static constexpr std::string_view sql_name = "REAL";
+
+        static void bind(sqlite3_stmt* statement, int index, const float& value) {
+            sqlite3_bind_double(statement, index, static_cast<double>(value));
+        }
+
+        static auto decode(sqlite3_stmt* statement, int index) -> float {
+            return static_cast<float>(sqlite3_column_double(statement, index));
+        }
+
+        static void read(sqlite3_stmt* statement, int index, float& value) {
+            value = decode(statement, index);
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct atom<double> {
+        static constexpr bool nullable = false;
+        static constexpr std::string_view sql_name = "REAL";
+
+        static void bind(sqlite3_stmt* statement, int index, const double& value) {
+            sqlite3_bind_double(statement, index, value);
+        }
+
+        static auto decode(sqlite3_stmt* statement, int index) -> double {
+            return sqlite3_column_double(statement, index);
+        }
+
+        static void read(sqlite3_stmt* statement, int index, double& value) {
+            value = decode(statement, index);
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct atom<std::filesystem::path> {
+        static constexpr bool nullable = false;
+        static constexpr std::string_view sql_name = "TEXT";
+
+        static void bind(sqlite3_stmt* statement, int index, const std::filesystem::path& value) {
+            const auto text = value.generic_string();
+            sqlite3_bind_text(statement, index, text.c_str(), -1, SQLITE_TRANSIENT);
+        }
+
+        static auto decode(sqlite3_stmt* statement, int index) -> std::filesystem::path {
+            const auto* text = reinterpret_cast<const char*>(sqlite3_column_text(statement, index));
+            return std::filesystem::path{text ? text : ""};
+        }
+
+        static void read(sqlite3_stmt* statement, int index, std::filesystem::path& value) {
+            value = decode(statement, index);
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct atom<std::chrono::system_clock::time_point> {
+        using Timepoint = std::chrono::system_clock::time_point;
+
+        static constexpr bool nullable = false;
+        static constexpr std::string_view sql_name = "INTEGER";
+
+        static void bind(sqlite3_stmt* statement, int index, const Timepoint& value) {
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value.time_since_epoch()).count();
+            sqlite3_bind_int64(statement, index, static_cast<sqlite3_int64>(ms));
+        }
+
+        static auto decode(sqlite3_stmt* statement, int index) -> Timepoint {
+            return Timepoint{std::chrono::milliseconds{sqlite3_column_int64(statement, index)}};
+        }
+
+        static void read(sqlite3_stmt* statement, int index, Timepoint& value) {
+            value = decode(statement, index);
+        }
+
+        static consteval void require() {}
+    };
+
     template<typename Meta, typename BaseType>
     struct atom<fqsm::Identifier<Meta, BaseType>> {
         using Id = fqsm::Identifier<Meta, BaseType>;
@@ -139,6 +227,34 @@ namespace fqsm::processing::persistency::database::detail::sql {
         }
 
         static void read(sqlite3_stmt* statement, int index, std::optional<T>& value) {
+            value = decode(statement, index);
+        }
+
+        static consteval void require() {
+            atom<T>::require();
+        }
+    };
+
+    template<typename T>
+    struct atom<base::maybe<T>> {
+        static constexpr bool nullable = true;
+        static constexpr std::string_view sql_name = atom<T>::sql_name;
+
+        static void bind(sqlite3_stmt* statement, int index, const base::maybe<T>& value) {
+            if (!value.exists()) {
+                sqlite3_bind_null(statement, index);
+                return;
+            }
+            atom<T>::bind(statement, index, *value);
+        }
+
+        static auto decode(sqlite3_stmt* statement, int index) -> base::maybe<T> {
+            if (sqlite3_column_type(statement, index) == SQLITE_NULL)
+                return std::nullopt;
+            return atom<T>::decode(statement, index);
+        }
+
+        static void read(sqlite3_stmt* statement, int index, base::maybe<T>& value) {
             value = decode(statement, index);
         }
 

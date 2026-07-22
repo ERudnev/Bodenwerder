@@ -45,6 +45,13 @@ namespace Q1_fQSM::Etalon {
         //@ '!' reactions aka normalizers: Internals + customAspectReactions (.cpp)
         struct Internals;
         static const Behavior customAspectReactions();
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("Q1_fQSM::Etalon::SampleEntity");
+            d.one(field<&Quantum::data_field>("data_field"));
+            d.all(field<&Global::common_data>("common_data"));
+        }
     };
 
     struct Tag : Attribute<Tag, SampleEntity> {
@@ -55,6 +62,12 @@ namespace Q1_fQSM::Etalon {
         //@ '!' reactions aka normalizers: Internals + customAspectReactions (.cpp)
         struct Internals;
         static const Behavior customAspectReactions();
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("Q1_fQSM::Etalon::Tag");
+            d.all(field<&Global::modulus>("modulus"));
+        }
     };
 
     struct Remnant : Component<Remnant, Tag> {
@@ -64,6 +77,12 @@ namespace Q1_fQSM::Etalon {
         //@ custom because of all-reaction !sync(~Tag)
         struct Internals;
         static const Behavior customAspectReactions();
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("Q1_fQSM::Etalon::Remnant");
+            d.one(field<&Quantum::power>("power"));
+        }
     };
 
     struct SampleComponent : Component<SampleComponent, SampleEntity> {
@@ -74,6 +93,11 @@ namespace Q1_fQSM::Etalon {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("Q1_fQSM::Etalon::SampleComponent");
+        }
     };
 
     struct SampleAttribute : Attribute<SampleAttribute, SampleEntity> {
@@ -88,6 +112,13 @@ namespace Q1_fQSM::Etalon {
         //@ custom because of anchor/control and all-reaction !limit_by_tag_count(~Tag)
         struct Internals;
         static const Behavior customAspectReactions();
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("Q1_fQSM::Etalon::SampleAttribute");
+            d.one(field<&Quantum::main_anchor>("main_anchor"));
+            d.one(field<&Quantum::main_dummy>("main_dummy"));
+        }
     };
 
     //@ experimental one-line form of syntax (sorry, parser!)
@@ -95,6 +126,12 @@ namespace Q1_fQSM::Etalon {
         struct Quantum { string text; };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("Q1_fQSM::Etalon::Note");
+            d.one(field<&Quantum::text>("text"));
+        }
     };
 
     struct Note_group : Group<Note_group, SampleEntity, Note> {

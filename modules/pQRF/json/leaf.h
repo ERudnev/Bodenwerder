@@ -1,6 +1,8 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <format>
 #include <optional>
 #include <stdexcept>
@@ -8,6 +10,7 @@
 #include <string_view>
 #include <type_traits>
 
+#include <base/maybe.h>
 #include <fQSM/identifier.h>
 #include <pQRF/json/document.h>
 
@@ -49,9 +52,11 @@ namespace fqsm::processing::persistency::json::detail::leaf {
         }
 
         static auto decode(const Value& value) -> std::int32_t {
-            if (value.kind != Value::Kind::number)
-                throw std::runtime_error("json leaf: expected number");
-            return static_cast<std::int32_t>(value.number);
+            if (value.kind == Value::Kind::number)
+                return static_cast<std::int32_t>(value.number);
+            if (value.kind == Value::Kind::real)
+                return static_cast<std::int32_t>(value.real);
+            throw std::runtime_error("json leaf: expected number");
         }
 
         static void read(const Value& value, std::int32_t& target) {
@@ -74,6 +79,89 @@ namespace fqsm::processing::persistency::json::detail::leaf {
         }
 
         static void read(const Value& value, bool& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct codec<float> {
+        static auto write(const float& value) -> Value {
+            return Value::real_value(static_cast<double>(value));
+        }
+
+        static auto decode(const Value& value) -> float {
+            if (value.kind == Value::Kind::real)
+                return static_cast<float>(value.real);
+            if (value.kind == Value::Kind::number)
+                return static_cast<float>(value.number);
+            throw std::runtime_error("json leaf: expected real");
+        }
+
+        static void read(const Value& value, float& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct codec<double> {
+        static auto write(const double& value) -> Value {
+            return Value::real_value(value);
+        }
+
+        static auto decode(const Value& value) -> double {
+            if (value.kind == Value::Kind::real)
+                return value.real;
+            if (value.kind == Value::Kind::number)
+                return static_cast<double>(value.number);
+            throw std::runtime_error("json leaf: expected real");
+        }
+
+        static void read(const Value& value, double& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct codec<std::filesystem::path> {
+        static auto write(const std::filesystem::path& value) -> Value {
+            return Value::string_value(value.generic_string());
+        }
+
+        static auto decode(const Value& value) -> std::filesystem::path {
+            if (value.kind != Value::Kind::string)
+                throw std::runtime_error("json leaf: expected string path");
+            return std::filesystem::path{value.string};
+        }
+
+        static void read(const Value& value, std::filesystem::path& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct codec<std::chrono::system_clock::time_point> {
+        using Timepoint = std::chrono::system_clock::time_point;
+
+        static auto write(const Timepoint& value) -> Value {
+            const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(value.time_since_epoch()).count();
+            return Value::number_value(static_cast<std::int64_t>(ms));
+        }
+
+        static auto decode(const Value& value) -> Timepoint {
+            if (value.kind != Value::Kind::number)
+                throw std::runtime_error("json leaf: expected integer milliseconds timepoint");
+            return Timepoint{std::chrono::milliseconds{value.number}};
+        }
+
+        static void read(const Value& value, Timepoint& target) {
             target = decode(value);
         }
 
@@ -128,6 +216,29 @@ namespace fqsm::processing::persistency::json::detail::leaf {
         }
 
         static void read(const Value& value, std::optional<T>& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {
+            codec<T>::require();
+        }
+    };
+
+    template<typename T>
+    struct codec<base::maybe<T>> {
+        static auto write(const base::maybe<T>& value) -> Value {
+            if (!value.exists())
+                return Value::null();
+            return codec<T>::write(*value);
+        }
+
+        static auto decode(const Value& value) -> base::maybe<T> {
+            if (value.kind == Value::Kind::null)
+                return std::nullopt;
+            return codec<T>::decode(value);
+        }
+
+        static void read(const Value& value, base::maybe<T>& target) {
             target = decode(value);
         }
 
