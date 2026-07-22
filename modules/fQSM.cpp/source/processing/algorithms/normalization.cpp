@@ -136,7 +136,6 @@ namespace fqsm::processing::algorithm {
             integrate(state, *patch);
         } else {
             _DBG_TX_("update: REJECT critical={} warning={}", result.critical.size(), result.warning.size());
-            utility::log_rejected_transaction(result);
         }
         return result;
     }

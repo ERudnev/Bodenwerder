@@ -25,7 +25,7 @@ namespace fqsm::processing::orchestrator {
     private:
         Context::Ptr context;
 
-        auto writing() -> Writing override {
+        auto writing(Mode) -> Writing override {
             return Gate(context);
         }
 

@@ -8,13 +8,13 @@
 
 namespace fqsm::processing::orchestrator {
 
-    auto Realm::writing() -> Writing {
+    auto Realm::writing(Mode mode) -> Writing {
         auto patch = base::make_shared<model::complex::Patch>(reality.schema);
         auto context = std::make_shared<Context>(
             reality,
             patch,
-            Context::Upstream{[this](Context::PatchRef patch) {
-                acceptWriting(patch);
+            Context::Upstream{[this, mode](Context::PatchRef patch) {
+                acceptWriting(patch, mode);
             }}
         );
         //base::message(std::format("writing() this={} op={}", (void*)this, (void*)context.get()));
@@ -38,20 +38,23 @@ namespace fqsm::processing::orchestrator {
         return ChildPolicy{
             View(reality),
             [this](Context::PatchRef patch) {
-                acceptWriting(patch);
+                acceptWriting(patch, Mode::normal);
             }
         };
     }
 
-    void Realm::acceptWriting(Context::PatchRef patch) {
+    void Realm::acceptWriting(Context::PatchRef patch, Mode mode) {
         _DBG_TX_("realm: acceptWriting patch={}", utility::format_patch(fqsm::freeze(patch)));
         lastResult = {};
         lastResult = algorithm::update(reality, patch, {});
+        if (mode != Mode::silent)
+            utility::log_rejected_transaction(lastResult);
     }
 
     void Realm::acceptStewarding(Context::PatchRef patch, Rtid::Set tainted) {
         _DBG_TX_("realm: acceptStewarding patch={}", utility::format_patch(fqsm::freeze(patch)));
         lastResult = {};
         lastResult = algorithm::update(reality, patch, std::move(tainted));
+        utility::log_rejected_transaction(lastResult);
     }
 }

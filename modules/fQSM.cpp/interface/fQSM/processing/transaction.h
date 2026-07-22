@@ -8,6 +8,10 @@
 namespace fqsm::processing {
 
     struct Transaction {
+        enum class Mode {
+            normal,
+            silent,
+        };
         using Context = context::Operational;
         struct ChildPolicy {
             Reading view;
@@ -17,14 +21,15 @@ namespace fqsm::processing {
         virtual ~Transaction() = default;
 
         virtual operator Reading() const = 0;
-        operator Writing() { return writing(); }
+        operator Writing() { return writing(Mode::normal); }
+        Writing silent_work() { return writing(Mode::silent); }
 
         auto childPolicy() -> ChildPolicy {
             return makeChildPolicy();
         }
 
     protected:
-        virtual auto writing() -> Writing = 0;
+        virtual auto writing(Mode) -> Writing = 0;
         virtual auto makeChildPolicy() -> ChildPolicy = 0;
     };
 }

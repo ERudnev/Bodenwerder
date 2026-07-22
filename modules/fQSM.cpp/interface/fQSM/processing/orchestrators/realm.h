@@ -31,10 +31,10 @@ namespace fqsm::processing::orchestrator {
         model::complex::Reality reality;
         model::complex::Patch::Result lastResult;
 
-        auto writing() -> Writing override;
+        auto writing(Mode) -> Writing override;
         auto makeChildPolicy() -> ChildPolicy override;
 
-        void acceptWriting(Context::PatchRef);
+        void acceptWriting(Context::PatchRef, Mode);
         void acceptStewarding(Context::PatchRef, Rtid::Set dirtyTypes);
     };
 }

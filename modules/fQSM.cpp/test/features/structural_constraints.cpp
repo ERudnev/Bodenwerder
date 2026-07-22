@@ -107,15 +107,15 @@ void structural_constraints()
         const auto storedVal = with<EntFree>::get(main, id).value;
         with<EntFree>::remove(main, id);
         EXPECT_EQ(fqsm::Reading(main)->quanta(), 0) << "normalization killed everything by parent remove";
-        with<CompSimple>::extend(main, id, {std::format("i am sorry, i am late", storedVal)});
+        with<CompSimple>::extend(main.silent_work(), id, {std::format("i am sorry, i am late", storedVal)});
         EXPECT_EQ(fqsm::Reading(main)->quanta(), 0) << "normalization killed ill-formed component";
     }
 
     {
         establish::Realm main(world);
-        const auto attempted = with<EntFree>::create(main, {42});
+        const auto attempted = with<EntFree>::create(main.silent_work(), {42});
         EXPECT_FALSE(with<EntFree>::exists(main, attempted)) << "bare EntFree must not survive structural normalization";
-        const auto id = with<archetype::EntTwoComps>::spawn_forgot_init_one_comp(main, 1);
+        const auto id = with<archetype::EntTwoComps>::spawn_forgot_init_one_comp(main.silent_work(), 1);
         EXPECT_EQ(fqsm::Reading(main)->quanta(), 0) << "invalid implementation (forgot component) of spawn succesfully detected";
     }
 

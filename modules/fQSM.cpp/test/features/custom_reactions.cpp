@@ -62,7 +62,7 @@ void custom_reactions()
     establish::Realm main(world);
 
     { // Scenario 1: B::Behavior::component<> aborted creation of A
-        const auto id = with<A>::create(main, {4});
+        const auto id = with<A>::create(main.silent_work(), {4});
         EXPECT_FALSE(with<A>::exists(main, id));
         EXPECT_FALSE(main.result().good());
     }

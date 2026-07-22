@@ -15,6 +15,7 @@
     X(workers_say_no) \
     X(persistent_families) \
     X(temp_persistency) \
+    X(remap_identities) \
     // end
 
 #define FQSM_LOW_LEVEL_TESTS(X) \
