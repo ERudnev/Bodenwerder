@@ -14,8 +14,9 @@ namespace fqsm::processing::orchestrator {
 
     namespace detail {
 
+        // optimization exception: Writing& is still forbidden (reference to std::shared_ptr)
         template<category::Any Meta>
-        auto& patch_line(Writing& gate) {
+        auto& patch_line(const Writing& gate) {
             return static_cast<model::linear::Patch<Meta>&>(gate.workers_interface().updates<Meta>());
         }
 

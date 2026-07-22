@@ -82,7 +82,10 @@ void persistent_families()
         const auto palette = dbArchive->types();
         const auto loadable = archivist.getTypesAtLocation(fromDb, dbPath) & palette;
         EXPECT_TRUE(!loadable.empty()) << "db has Person/Family tables";
-        EXPECT_TRUE(archivist.replaceFromLocation(fromDb, loadable, dbPath)) << "load sqlite";
+        {
+            Stewarding session = fromDb;
+            EXPECT_TRUE(archivist.replaceFromLocation(session, loadable, dbPath)) << "load sqlite";
+        }
 
         EXPECT_EQ(with<Person>::count(fromDb), personsAfterDay) << "sqlite person count";
         EXPECT_EQ(with<Family>::count(fromDb), familiesAfterDay) << "sqlite family count";
@@ -99,7 +102,10 @@ void persistent_families()
         const auto palette = jsonArchive->types();
         const auto loadable = archivist.getTypesAtLocation(fromJson, jsonPath) & palette;
         EXPECT_TRUE(!loadable.empty()) << "json has Person/Family sections";
-        EXPECT_TRUE(archivist.replaceFromLocation(fromJson, loadable, jsonPath)) << "load json";
+        {
+            Stewarding session = fromJson;
+            EXPECT_TRUE(archivist.replaceFromLocation(session, loadable, jsonPath)) << "load json";
+        }
 
         EXPECT_EQ(with<Person>::count(fromJson), personsAfterDay) << "json person count";
         EXPECT_EQ(with<Family>::count(fromJson), familiesAfterDay) << "json family count";

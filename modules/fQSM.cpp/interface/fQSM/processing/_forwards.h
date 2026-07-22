@@ -16,13 +16,14 @@
 namespace fqsm::processing::context {
     struct Operational;
     struct Retrospective;
-    struct Direct;
+    struct Synchronous;
 }
 
 namespace fqsm::processing {
     struct View;
     struct Gate;
     struct Wall;
+    struct Dock;
     struct Review;
 
     template<meta::category::Any>
@@ -30,17 +31,21 @@ namespace fqsm::processing {
 }
 
 namespace fqsm::processing::persistency {
-    struct AspectArchive;
+    struct Archive;
     struct Graph;
     struct Archivist;
 }
 
-// exportin this as 1st class citizen of fQSM:
+// exporting this as 1st class citizen of fQSM:
 namespace fqsm {
     using Reading = processing::View;
     using Writing = processing::Gate;
     using Retrospecting = processing::Wall;
     using Reacting = processing::Review;
+    using Stewarding = processing::Dock;
+
+    // being aside of verbs, this is a legal tansaction workaround
+    // you can manipulate State direclty with Direct<T>. May be you need it. But be aware
     template<meta::category::Any Meta>
     using Direct = processing::Breach<Meta>;
 }

@@ -14,7 +14,7 @@ namespace fqsm::processing::orchestrator {
             reality,
             patch,
             Context::Upstream{[this](Context::PatchRef patch) {
-                accept(patch);
+                acceptWriting(patch);
             }}
         );
         //base::message(std::format("writing() this={} op={}", (void*)this, (void*)context.get()));
@@ -22,26 +22,36 @@ namespace fqsm::processing::orchestrator {
         return Gate(context);
     }
 
+    Realm::operator Stewarding() {
+        auto patch = base::make_shared<model::complex::Patch>(reality.schema);
+        auto session = std::make_shared<context::Synchronous>(
+            reality,
+            patch,
+            [this](context::Synchronous::PatchRef patch, Rtid::Set dirty) {
+                acceptStewarding(patch, std::move(dirty));
+            }
+        );
+        return Dock(session);
+    }
+
     auto Realm::makeChildPolicy() -> ChildPolicy {
         return ChildPolicy{
             View(reality),
             [this](Context::PatchRef patch) {
-                accept(patch);
+                acceptWriting(patch);
             }
         };
     }
 
-    void Realm::accept(Context::PatchRef patch) {
-        _DBG_TX_("realm: accept patch={}", utility::format_patch(fqsm::freeze(patch)));
+    void Realm::acceptWriting(Context::PatchRef patch) {
+        _DBG_TX_("realm: acceptWriting patch={}", utility::format_patch(fqsm::freeze(patch)));
         lastResult = {};
         lastResult = algorithm::update(reality, patch, {});
     }
 
-    void Realm::accept_immediate(Rtid::Set affected) {
+    void Realm::acceptStewarding(Context::PatchRef patch, Rtid::Set tainted) {
+        _DBG_TX_("realm: acceptStewarding patch={}", utility::format_patch(fqsm::freeze(patch)));
         lastResult = {};
-        if (affected.empty()) return;
-        // TODO: make this as combined PAtch+taint later...
-        auto zeroPatch = base::make_shared<Patch>(reality.schema);
-        lastResult = algorithm::update(reality, zeroPatch, affected);
+        lastResult = algorithm::update(reality, patch, std::move(tainted));
     }
 }

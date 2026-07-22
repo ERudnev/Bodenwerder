@@ -87,7 +87,7 @@ namespace fqsm::processing::persistency::json {
         return loaded;
     }
 
-    bool JsonArchivist::replaceFromStream(orchestrator::Realm& realm, Palette palette, std::istream& input) const {
+    bool JsonArchivist::replaceFromStream(Stewarding steward, Palette palette, std::istream& input) const {
         auto document = open_from_stream(input);
         if (!document) return false;
 
@@ -98,7 +98,7 @@ namespace fqsm::processing::persistency::json {
             const auto ops = ops_for(found->second);
             if (!ops) continue;
             if (!ops->present(*document)) continue;
-            ops->replace(realm, *document);
+            ops->replace(steward, *document);
             loaded = true;
         }
         return loaded;
@@ -135,7 +135,7 @@ namespace fqsm::processing::persistency::json {
         return loaded;
     }
 
-    bool JsonArchivist::replaceFromLocation(orchestrator::Realm& realm, Palette palette, Location location) {
+    bool JsonArchivist::replaceFromLocation(Stewarding steward, Palette palette, Location location) {
         auto document = open_existing(location);
         if (!document) return false;
 
@@ -146,7 +146,7 @@ namespace fqsm::processing::persistency::json {
             const auto ops = ops_for(found->second);
             if (!ops) continue;
             if (!ops->present(*document)) continue;
-            ops->replace(realm, *document);
+            ops->replace(steward, *document);
             loaded = true;
         }
         return loaded;

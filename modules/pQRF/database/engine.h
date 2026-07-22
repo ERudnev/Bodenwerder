@@ -721,7 +721,7 @@ namespace fqsm::processing::persistency::database::detail {
     }
 
     template<typename Meta>
-    void replace_quanta(sqlite3* db, Direct<Meta>& gate) {
+    void replace_quanta(sqlite3* db, Direct<Meta> gate) {
         const auto layout = layout_of<Meta>();
         gate.items.clear();
         gate.items.reserve(quanta_count<Meta>(db, layout));
@@ -787,13 +787,13 @@ namespace fqsm::processing::persistency::database::detail {
     };
 
     template<typename Meta>
-    void replace_collections(sqlite3* db, Direct<Meta>& gate) {
+    void replace_collections(sqlite3* db, Direct<Meta> gate) {
         ReplaceOneCollectionsDesc<Meta> desc{db, gate.items, {}};
         Meta::describe(desc);
     }
 
     template<typename Meta>
-    void replace_globals(sqlite3* db, Direct<Meta>& gate) {
+    void replace_globals(sqlite3* db, Direct<Meta> gate) {
         const auto layout = layout_of<Meta>();
         if (layout.all_fields.empty()) return;
 
@@ -803,7 +803,7 @@ namespace fqsm::processing::persistency::database::detail {
             fail(db, std::format("prepare {}", globals_table(layout.aspectName)));
 
         if (sqlite3_step(statement) == SQLITE_ROW) {
-            ReadAllFieldsDesc<Meta> reader{statement, gate.global(), 0};
+            ReadAllFieldsDesc<Meta> reader{statement, gate.global, 0};
             Meta::describe(reader);
         }
 
@@ -811,19 +811,19 @@ namespace fqsm::processing::persistency::database::detail {
     }
 
     template<typename Meta>
-    void replace_global_collections(sqlite3* db, Direct<Meta>& gate) {
+    void replace_global_collections(sqlite3* db, Direct<Meta> gate) {
         const auto layout = layout_of<Meta>();
         if (layout.all_collections.empty()) return;
 
-        LoadAllCollectionsDesc<Meta> desc{db, gate.global(), {}};
+        LoadAllCollectionsDesc<Meta> desc{db, gate.global, {}};
         Meta::describe(desc);
     }
 
     template<typename Meta>
-    void replace_aspect(sqlite3* db, Direct<Meta>& gate) {
+    void replace_aspect(sqlite3* db, Direct<Meta> gate) {
         replace_quanta<Meta>(db, gate);
         replace_collections<Meta>(db, gate);
-        gate.global() = {};
+        gate.global = {};
         replace_globals<Meta>(db, gate);
         replace_global_collections<Meta>(db, gate);
     }
@@ -841,9 +841,8 @@ namespace fqsm::processing::persistency::database {
             return has_storage_schema<Meta>(db.engine());
         }
 
-        void replace(orchestrator::Realm& realm, DatabaseProxy& db) override {
-            Direct<Meta> gate = realm;
-            replace_aspect<Meta>(db.engine(), gate);
+        void replace(Stewarding steward, DatabaseProxy& db) override {
+            replace_aspect<Meta>(db.engine(), steward);
         }
 
         void pull(Writing context, DatabaseProxy& db) override {
@@ -865,7 +864,7 @@ namespace fqsm::processing::persistency::database {
     template<fqsm::meta::category::Any Meta>
         requires HasRetrospection<Meta>
     auto aspect() -> Schema {
-        return persistency::aspect<Meta>(std::shared_ptr<AspectArchive>{ArchiveOps::of<Meta>()});
+        return persistency::aspect<Meta>(std::shared_ptr<Archive>{ArchiveOps::of<Meta>()});
     }
 
 }

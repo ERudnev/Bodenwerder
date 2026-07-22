@@ -72,7 +72,11 @@ void immediate()
     // will compare different update path with 2 identical realms;
     establish::Realm duplicate(main);
 
-    with<A>::fastJob(main, -5);
+    // Direct only via Stewarding (Realm → Dock → Breach); one UDC chain needs an explicit session.
+    {
+        Stewarding session = main;
+        with<A>::fastJob(session, -5);
+    }
     with<A>::slowJob(duplicate, -5);
 
     EXPECT_EQ(with<A>::get(main, ids.at(0)).value, 0);

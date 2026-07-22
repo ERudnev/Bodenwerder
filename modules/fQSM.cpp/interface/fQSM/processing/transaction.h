@@ -17,10 +17,7 @@ namespace fqsm::processing {
         virtual ~Transaction() = default;
 
         virtual operator Reading() const = 0;
-
-        operator Writing() {
-            return writing();
-        }
+        operator Writing() { return writing(); }
 
         auto childPolicy() -> ChildPolicy {
             return makeChildPolicy();

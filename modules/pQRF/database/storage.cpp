@@ -61,7 +61,7 @@ namespace fqsm::processing::persistency::database {
         return loaded;
     }
 
-    bool DatabaseArchivist::replaceFromLocation(orchestrator::Realm& realm, Palette palette, Location location) {
+    bool DatabaseArchivist::replaceFromLocation(Stewarding steward, Palette palette, Location location) {
         auto db = open_existing(location);
         if (!db) return false;
 
@@ -72,7 +72,7 @@ namespace fqsm::processing::persistency::database {
             const auto ops = ops_for(found->second);
             if (!ops) continue;
             if (!ops->present(*db)) continue;
-            ops->replace(realm, *db);
+            ops->replace(steward, *db);
             loaded = true;
         }
         return loaded;

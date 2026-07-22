@@ -16,15 +16,14 @@ namespace fqsm::processing::orchestrator {
         Realm(const Realm& other) : reality(static_cast<const State&>(other.reality)) {} // TODO clarify me
         Realm(const State& other) : reality(other) {}
 
-        // as Transaction:
-        operator Reading() const override { return View(reality); }
-        const model::complex::State* operator->() const { return &reality; }
-
+        // running local transaction (currently syncronous):
         template<typename F>
         auto branch(F&& worker) -> std::invoke_result_t<F, Writing> { Branch context(*this); return std::invoke(std::forward<F>(worker), static_cast<Writing>(context)); }
 
-        template<category::Any Meta>
-        operator Direct<Meta>();
+        operator Reading() const override { return View(reality); }
+        const model::complex::State* operator->() const { return &reality; }
+
+        operator Stewarding();
 
         auto result() const -> const model::complex::Patch::Result& { return lastResult; }
 
@@ -35,22 +34,7 @@ namespace fqsm::processing::orchestrator {
         auto writing() -> Writing override;
         auto makeChildPolicy() -> ChildPolicy override;
 
-        void accept(Context::PatchRef);
-        void accept_immediate(Rtid::Set dirtyTypes);
+        void acceptWriting(Context::PatchRef);
+        void acceptStewarding(Context::PatchRef, Rtid::Set dirtyTypes);
     };
-}
-
-// Impl:
-namespace fqsm::processing::orchestrator {
-    template<category::Any Meta>
-    Realm::operator Direct<Meta>() {
-        auto context = std::make_shared<context::Direct>(context::Direct{
-            reality,
-            [this](Rtid::Set affected) {
-                accept_immediate(std::move(affected));
-            },
-            {}
-        });
-        return Direct<Meta>(context);
-    }
 }

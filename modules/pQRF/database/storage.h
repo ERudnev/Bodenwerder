@@ -38,11 +38,11 @@ namespace fqsm::processing::persistency::database {
         sqlite3* engine_ = nullptr;
     };
 
-    struct ArchiveOps : AspectArchive {
+    struct ArchiveOps : Archive {
         virtual ~ArchiveOps() = default;
 
         virtual bool present(DatabaseProxy&) = 0;
-        virtual void replace(orchestrator::Realm&, DatabaseProxy&) = 0;
+        virtual void replace(Stewarding, DatabaseProxy&) = 0;
         virtual void pull(Writing, DatabaseProxy&) = 0;
         virtual void push(Reading, DatabaseProxy&) = 0;
 
@@ -56,7 +56,7 @@ namespace fqsm::processing::persistency::database {
 
         auto getTypesAtLocation(Reading, Location) -> Palette override;
         bool updateFromLocation(Writing, Palette, Location) override;
-        bool replaceFromLocation(orchestrator::Realm&, Palette, Location) override;
+        bool replaceFromLocation(Stewarding, Palette, Location) override;
         bool saveToLocation(Writing, Palette, Location) override;
     };
 

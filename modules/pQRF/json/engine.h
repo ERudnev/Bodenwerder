@@ -248,7 +248,7 @@ namespace fqsm::processing::persistency::json::detail {
     }
 
     template<typename Meta>
-    void replace_aspect_document(Direct<Meta>& gate, const Value& aspect) {
+    void replace_aspect_document(Direct<Meta> gate, const Value& aspect) {
         gate.items.clear();
 
         if (const auto* one_table = aspect.find(section_one)) {
@@ -267,11 +267,11 @@ namespace fqsm::processing::persistency::json::detail {
 
         if (!has_all_slots<Meta>()) return;
 
-        gate.global() = {};
+        gate.global = {};
         const auto* all_row = aspect.find(section_all);
         if (!all_row || !all_row->is_array()) return;
 
-        ReadAllRowDesc<Meta> reader{*all_row, gate.global(), 0};
+        ReadAllRowDesc<Meta> reader{*all_row, gate.global, 0};
         Meta::describe(reader);
     }
 
@@ -295,12 +295,11 @@ namespace fqsm::processing::persistency::json {
             return has_aspect_document<Meta>(document.root());
         }
 
-        void replace(orchestrator::Realm& realm, JsonDocument& document) override {
+        void replace(Stewarding steward, JsonDocument& document) override {
             const auto name = aspect_name_of<Meta>();
             const auto* aspect = document.root().find(name);
             if (!aspect) return;
-            Direct<Meta> gate = realm;
-            replace_aspect_document<Meta>(gate, *aspect);
+            replace_aspect_document<Meta>(steward, *aspect);
         }
 
         void pull(Writing context, JsonDocument& document) override {
@@ -324,7 +323,7 @@ namespace fqsm::processing::persistency::json {
     template<fqsm::meta::category::Any Meta>
         requires fqsm::meta::category::musthave::Retrospection<Meta>
     auto aspect() -> Schema {
-        return persistency::aspect<Meta>(std::shared_ptr<AspectArchive>{ArchiveOps::of<Meta>()});
+        return persistency::aspect<Meta>(std::shared_ptr<Archive>{ArchiveOps::of<Meta>()});
     }
 
 }

@@ -30,7 +30,7 @@ namespace fqsm::processing::context {
 
 namespace fqsm::processing {
 
-    struct View {
+    struct View final {
         explicit View(const model::complex::State& world) : state(world) {}
         const model::complex::State* operator->() const { return &state; }
         const model::complex::State& operator*() const { return state; }
@@ -38,14 +38,14 @@ namespace fqsm::processing {
         const model::complex::State& state;
     };
 
-    struct Gate {
+    struct Gate final {
         using Context = context::Operational;
         Gate(Context::Ptr parent) : context(std::move(parent)) {}
 
         operator View() const { return View(context->world); }
         const model::complex::State* operator->() const { return &context->world; }
 
-        model::complex::WorkersInterface& workers_interface() { return *context->accumulator; }
+        model::complex::WorkersInterface& workers_interface() const { return *context->accumulator; }
         // helpers:
         utility::BadValue refuse(std::string message) { context->accumulator->summary.critical.emplace_back(std::move(message)); return {}; }
         void warning(std::string message) {context->accumulator->summary.warning.emplace_back(std::move(message)); }

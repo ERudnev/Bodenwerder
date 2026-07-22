@@ -14,15 +14,15 @@
 namespace fqsm::processing::persistency {
 
     // Type-erased per-aspect archive facet (lives on persistency::Graph::Node).
-    struct AspectArchive {
-        virtual ~AspectArchive() = default;
+    struct Archive {
+        virtual ~Archive() = default;
     };
 
     // Persist schema: may be a subset of world types. World Schema does not know about this.
     struct Graph {
         struct Node {
             std::string name;
-            std::shared_ptr<AspectArchive> archive;
+            std::shared_ptr<Archive> archive;
         };
 
         template<meta::category::Any Meta>
@@ -43,7 +43,7 @@ namespace fqsm::processing::persistency {
     Schema merge(std::initializer_list<Schema> parts);
 
     template<meta::category::Any Meta>
-    Schema aspect(std::shared_ptr<AspectArchive> archive);
+    Schema aspect(std::shared_ptr<Archive> archive);
 
 }
 
@@ -59,7 +59,7 @@ namespace fqsm::processing::persistency {
     }
 
     template<meta::category::Any Meta>
-    Schema aspect(std::shared_ptr<AspectArchive> archive) {
+    Schema aspect(std::shared_ptr<Archive> archive) {
         auto out = base::make_shared<Graph>();
         out->nodes.emplace(
             TypeId<Meta>,

@@ -28,11 +28,11 @@ namespace fqsm::processing::persistency::json {
         Value root_;
     };
 
-    struct ArchiveOps : AspectArchive {
+    struct ArchiveOps : Archive {
         virtual ~ArchiveOps() = default;
 
         virtual bool present(JsonDocument&) = 0;
-        virtual void replace(orchestrator::Realm&, JsonDocument&) = 0;
+        virtual void replace(Stewarding, JsonDocument&) = 0;
         virtual void pull(Writing, JsonDocument&) = 0;
         virtual void push(Reading, JsonDocument&) = 0;
 
@@ -49,11 +49,11 @@ namespace fqsm::processing::persistency::json {
 
         bool saveToStream(Reading, Palette, std::ostream&) const;
         bool updateFromStream(Writing, Palette, std::istream&) const;
-        bool replaceFromStream(orchestrator::Realm&, Palette, std::istream&) const;
+        bool replaceFromStream(Stewarding, Palette, std::istream&) const;
 
         auto getTypesAtLocation(Reading, Location) -> Palette override;
         bool updateFromLocation(Writing, Palette, Location) override;
-        bool replaceFromLocation(orchestrator::Realm&, Palette, Location) override;
+        bool replaceFromLocation(Stewarding, Palette, Location) override;
         bool saveToLocation(Writing, Palette, Location) override;
     };
 
