@@ -12,19 +12,16 @@ namespace rmmr::system {
 
     using namespace fqsm::api;
 
-    auto Interface::create(Writing context, filepath path, Core::GLVer version) -> Core::Id {
-        const auto core = with<Core>::create(context, Core::Quantum{
-            .assets_root = path,
-            .version = version,
-        });
+    auto Interface::create(Writing context, item<Core> core) -> Core::Id {
+        const auto id = with<Core>::create(context, core);
 
-        with<resource::Manager>::extend(context, core, resource::Manager::Quantum{
-            .location = path,
+        with<resource::Manager>::extend(context, id, resource::Manager::Quantum{
+            .location = core.assets_root,
         });
-        with<resource::Unit_group>::extend(context, core);
-        with<resource::Assets>::extend(context, core, path);
+        with<resource::Unit_group>::extend(context, id);
+        with<resource::Assets>::extend(context, id, core.assets_root);
 
-        return core;
+        return id;
     }
 
     auto Interface::addDeviceAndWindow(Writing context, Core::Id core, decltype(Window::Quantum::title) title, index2 requested_size) -> Device::Id {

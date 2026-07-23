@@ -24,9 +24,10 @@ namespace rmmr {
         ~Engine() override;
 
         Schema schema() override;
-        std::shared_ptr<establish::Module::State> installState(Schema finalSchema) override;
+        std::shared_ptr<establish::Module::State> install(Schema finalSchema) override;
 
-        void setup(Writing, establish::Module::RootId&, WindowParameters);
+        // Creates system::Core on the caller's Realm, then device/window.
+        auto setup(Writing, item<system::Core>, WindowParameters) -> system::Core::Id;
         void materialize(Writing, system::Core::Id assets);
         void showScene(scene::Root::Id, scene::Camera::Id);
 

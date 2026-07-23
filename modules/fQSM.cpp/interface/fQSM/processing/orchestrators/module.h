@@ -17,7 +17,7 @@ namespace fqsm::processing::orchestrator {
 
     using fqsm::Writing;
 
-    // Module — shell: submodules, installState → lived State.
+    // Module — shell: install → lived State.
     // schema() — this module's types plus submodules' schema(), recursively.
     // State — life of the module in the world after install.
     class Module {
@@ -49,8 +49,7 @@ namespace fqsm::processing::orchestrator {
 
         virtual Schema schema() = 0;
 
-        // Default: unused on roots that install via a typed API. Submodules override.
-        virtual std::shared_ptr<State> installState(Schema) { _INCOMPLETE_; }
+        virtual std::shared_ptr<State> install(Schema) = 0;
 
         template<typename M, typename... Args>
         std::shared_ptr<M> add(Args&&... args);

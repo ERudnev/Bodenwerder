@@ -76,6 +76,7 @@ namespace rmmr {
 
     struct Engine::State : establish::Module::State {
         struct {
+            maybe<system::Core::Id> core;
             maybe<system::Device::Id> device;
             maybe<system::Viewport::Id> viewport;
             maybe<scene::Root::Id> scene;
@@ -88,18 +89,15 @@ namespace rmmr {
             : establish::Module::State(std::move(schema))
         {}
 
-        void setup(Writing context, establish::Module::RootId& root) {
-            const auto core = root.secretGet<system::Core>();
-            if (not core.exists())
-                throw std::runtime_error("rmmr: RootId is not system::Core");
+        void setupDefaultShadow(Writing context, system::Core::Id core) {
             if (handles.default_shadow.exists())
                 return;
             using resource::Assets;
             using resource::Unit;
             handles.default_shadow = with<Assets>::add_shadow_allocator(
                 context,
-                *core,
-                Unit::Quantum{.manager = *core, .name = "main_shadow", .library = "rmmr"},
+                core,
+                Unit::Quantum{.manager = core, .name = "main_shadow", .library = "rmmr"},
                 resource::shadow::Asset::Quantum{},
                 resource::shadow::Allocator::Quantum{.size = index2{1024, 1024}});
         }
@@ -114,24 +112,25 @@ namespace rmmr {
         return engineDomain();
     }
 
-    std::shared_ptr<establish::Module::State> Engine::installState(Schema finalSchema) {
+    std::shared_ptr<establish::Module::State> Engine::install(Schema finalSchema) {
         state = std::make_shared<State>(std::move(finalSchema));
         return state;
     }
 
-    void Engine::setup(Writing context, establish::Module::RootId& root, WindowParameters params) {
-        const auto core = root.secretGet<system::Core>();
-        if (not core.exists())
-            throw std::runtime_error("rmmr: RootId is not system::Core");
+    auto Engine::setup(Writing context, item<system::Core> core, WindowParameters windowParams) -> system::Core::Id {
+        base::message("rmmr: creating core...");
+        const auto coreId = with<system::Interface>::create(context, std::move(core));
+        state->handles.core = coreId;
 
         base::message("rmmr: creating device and window...");
         state->handles.device = with<system::Interface>::addDeviceAndWindow(
             context,
-            *core,
-            std::move(params.title),
-            params.requested_size);
+            coreId,
+            std::move(windowParams.title),
+            windowParams.requested_size);
         createViewport(context, with<system::Window>::framebufferSize(context, *state->handles.device));
-        state->setup(context, root);
+        state->setupDefaultShadow(context, coreId);
+        return coreId;
     }
 
     void Engine::materialize(Writing context, system::Core::Id assets) {

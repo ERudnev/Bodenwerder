@@ -867,4 +867,11 @@ namespace fqsm::processing::persistency::database {
         return persistency::aspect<Meta>(std::shared_ptr<Archive>{ArchiveOps::of<Meta>()});
     }
 
+    // Class-shaped binder for template-template catalogues (e.g. Engine assets list).
+    template<fqsm::meta::category::Any Meta>
+        requires HasRetrospection<Meta>
+    struct Aspect {
+        operator Schema() const { return aspect<Meta>(); }
+    };
+
 }

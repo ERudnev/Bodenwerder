@@ -25,8 +25,8 @@ namespace toy {
         ~Application() override;
 
         Schema schema() override;
+        std::shared_ptr<establish::Module::State> install(Schema schema) override;
 
-        void install(Schema schema);
         void initDefaultWorld();
         void loadWorld(filepath from);
         int run();

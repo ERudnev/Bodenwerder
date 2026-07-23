@@ -3,57 +3,33 @@
 #include <base/logging.h>
 #include <base/maybe.h>
 #include <rmmr/controller/camera.q1.h>
-#include <rmmr/resources/builders/materialPresets.h>
 #include <rmmr/resources/geometry.q1.h>
-#include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
-#include <rmmr/resources/runtimes.q1.h>
-#include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/actor.q1.h>
 #include <rmmr/scene/root.q1.h>
-#include <rmmr/system/interface.q1.h>
 
 #include "projection/world.q1.h"
+#include "assets/library.h"
 #include "ui.h"
 
 #include <stdexcept>
 #include <utility>
-#include <vector>
 
 namespace toy {
     using namespace fqsm::api;
     using namespace rmmr;
 
     struct Application::State : establish::Module::State {
-        struct {
-            struct {
-                std::vector<resource::texture::Asset::Id> debug;
-                maybe<resource::texture::Asset::Id> whiteCircle;
-                maybe<resource::texture::Asset::Id> whiteRing;
-            } texture;
-            struct {
-                maybe<resource::material::Asset::Id> ambient;
-                maybe<resource::material::Asset::Id> lit;
-                std::vector<resource::material::Asset::Id> debugLitTextured;
-                maybe<resource::material::Asset::Id> litTexturedAlpha;
-                maybe<resource::material::Asset::Id> grid;
-            } material;
-            struct {
-                maybe<resource::geometry::Asset::Id> triangle;
-                maybe<resource::geometry::Asset::Id> kube;
-                maybe<resource::geometry::Asset::Id> bagel;
-                maybe<resource::geometry::Asset::Id> grid;
-            } primitive;
-        } handles;
+        assets::Manager assets;
+        base::maybe<system::Core::Id> core;
 
         ui::State ui;
         establish::Realm world;
 
         explicit State(Schema schema);
-        void setupAsDefault(Writing, establish::Module::RootId&);
+        void setupAsDefault(Writing, system::Core::Id);
         void loadPastState(Writing) override;
-        void loadHandles(Writing, system::Core::Id);
         void spawnDemoScene(Writing);
     };
 
@@ -62,68 +38,8 @@ namespace toy {
         , world(fullSchema)
     {}
 
-    void Application::State::loadHandles(Writing context, system::Core::Id assets) {
-        using namespace resource;
-        using geometry::Generator;
-
-        base::message("toy: loading assets...");
-
-        handles.texture.debug.push_back(with<Assets>::add_texture_loader(
-            context, assets,
-            item<Unit>{.manager = assets, .name = "debug01", .library = "rmmr"},
-            item<texture::Asset>{},
-            item<texture::Loader>{.file = "textures/debug01.jpg"}));
-        handles.texture.debug.push_back(with<Assets>::add_texture_loader(
-            context, assets,
-            item<Unit>{.manager = assets, .name = "debug02", .library = "rmmr"},
-            item<texture::Asset>{},
-            item<texture::Loader>{.file = "textures/debug02.jpg"}));
-        handles.texture.debug.push_back(with<Assets>::add_texture_loader(
-            context, assets,
-            item<Unit>{.manager = assets, .name = "debug03", .library = "rmmr"},
-            item<texture::Asset>{},
-            item<texture::Loader>{.file = "textures/debug03.jpg"}));
-        handles.texture.debug.push_back(with<Assets>::add_texture_loader(
-            context, assets,
-            item<Unit>{.manager = assets, .name = "debug04", .library = "rmmr"},
-            item<texture::Asset>{},
-            item<texture::Loader>{.file = "textures/debug04.jpg"}));
-        handles.texture.whiteCircle = with<Assets>::add_texture_generator(
-            context, assets,
-            item<Unit>{.manager = assets, .name = "white_circle", .library = "rmmr"},
-            item<texture::Asset>{},
-            item<texture::Generator>{.size = index2{256, 256}, .pattern = texture::Generator::Pattern::whiteCircle});
-        handles.texture.whiteRing = with<Assets>::add_texture_generator(
-            context, assets,
-            item<Unit>{.manager = assets, .name = "white_ring", .library = "rmmr"},
-            item<texture::Asset>{},
-            item<texture::Generator>{.size = index2{256, 256}, .pattern = texture::Generator::Pattern::whiteRing});
-
-        const auto ambient_shader = with<Assets>::add_shader_loader(context, assets, item<Unit>{.manager = assets, .name = "ambient_shader", .library = "rmmr"}, item<shader::Asset>{}, item<shader::Loader>{.vertex = "shaders/ambient.vert.glsl", .fragment = "shaders/ambient.frag.glsl"});
-        const auto lit_shader = with<Assets>::add_shader_loader(context, assets, item<Unit>{.manager = assets, .name = "lit_shader", .library = "rmmr"}, item<shader::Asset>{}, item<shader::Loader>{.vertex = "shaders/lit.vert.glsl", .fragment = "shaders/lit.frag.glsl"});
-        const auto lit_textured_shader = with<Assets>::add_shader_loader(context, assets, item<Unit>{.manager = assets, .name = "lit_textured_shader", .library = "rmmr"}, item<shader::Asset>{}, item<shader::Loader>{.vertex = "shaders/litTextured.vert.glsl", .fragment = "shaders/litTextured.frag.glsl"});
-        const auto lit_textured_alpha_shader = with<Assets>::add_shader_loader(context, assets, item<Unit>{.manager = assets, .name = "lit_textured_alpha_shader", .library = "rmmr"}, item<shader::Asset>{}, item<shader::Loader>{.vertex = "shaders/litTextured.vert.glsl", .fragment = "shaders/litTexturedAlpha.frag.glsl"});
-        const auto grid_shader = with<Assets>::add_shader_loader(context, assets, item<Unit>{.manager = assets, .name = "grid_shader", .library = "rmmr"}, item<shader::Asset>{}, item<shader::Loader>{.vertex = "shaders/Grid.vert.glsl", .fragment = "shaders/Grid.frag.glsl"});
-        const auto shadow_depth_shader = with<Assets>::add_shader_loader(context, assets, item<Unit>{.manager = assets, .name = "shadow_depth_shader", .library = "rmmr"}, item<shader::Asset>{}, item<shader::Loader>{.vertex = "shaders/shadowDepth.vert.glsl", .fragment = "shaders/shadowDepth.frag.glsl"});
-
-        handles.material.ambient = with<Assets>::add_material(context, assets, item<Unit>{.manager = assets, .name = "ambient_material", .library = "rmmr"}, builders::material::Presets::ambient(with<Unit>::remember(context, ambient_shader), with<Unit>::remember(context, shadow_depth_shader)), item<resource::material::Composer>{});
-        handles.material.lit = with<Assets>::add_material(context, assets, item<Unit>{.manager = assets, .name = "lit_material", .library = "rmmr"}, builders::material::Presets::lit(with<Unit>::remember(context, lit_shader), with<Unit>::remember(context, shadow_depth_shader)), item<resource::material::Composer>{});
-        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, assets, item<Unit>{.manager = assets, .name = "lit_textured_debug01", .library = "rmmr"}, builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured_shader), with<Unit>::remember(context, handles.texture.debug[0]), with<Unit>::remember(context, shadow_depth_shader)), item<resource::material::Composer>{}));
-        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, assets, item<Unit>{.manager = assets, .name = "lit_textured_debug02", .library = "rmmr"}, builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured_shader), with<Unit>::remember(context, handles.texture.debug[1]), with<Unit>::remember(context, shadow_depth_shader)), item<resource::material::Composer>{}));
-        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, assets, item<Unit>{.manager = assets, .name = "lit_textured_debug03", .library = "rmmr"}, builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured_shader), with<Unit>::remember(context, handles.texture.debug[2]), with<Unit>::remember(context, shadow_depth_shader)), item<resource::material::Composer>{}));
-        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, assets, item<Unit>{.manager = assets, .name = "lit_textured_debug04", .library = "rmmr"}, builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured_shader), with<Unit>::remember(context, handles.texture.debug[3]), with<Unit>::remember(context, shadow_depth_shader)), item<resource::material::Composer>{}));
-        handles.material.litTexturedAlpha = with<Assets>::add_material(context, assets, item<Unit>{.manager = assets, .name = "lit_textured_alpha_ring", .library = "rmmr"}, builders::material::Presets::litTexturedTransparent(with<Unit>::remember(context, lit_textured_alpha_shader), with<Unit>::remember(context, *handles.texture.whiteRing)), item<resource::material::Composer>{});
-        handles.material.grid = with<Assets>::add_material(context, assets, item<Unit>{.manager = assets, .name = "grid_material", .library = "rmmr"}, builders::material::Presets::grid(with<Unit>::remember(context, grid_shader)), item<resource::material::Composer>{});
-
-        handles.primitive.triangle = with<Assets>::add_geometry_generator(context, assets, item<Unit>{.manager = assets, .name = "triangle", .library = "rmmr"}, item<geometry::Asset>{}, item<Generator>{.type = Generator::Type::triangle});
-        handles.primitive.kube = with<Assets>::add_geometry_generator(context, assets, item<Unit>{.manager = assets, .name = "kube", .library = "rmmr"}, item<geometry::Asset>{}, item<Generator>{.type = Generator::Type::kube});
-        handles.primitive.bagel = with<Assets>::add_geometry_generator(context, assets, item<Unit>{.manager = assets, .name = "bagel", .library = "rmmr"}, item<geometry::Asset>{}, item<Generator>{.type = Generator::Type::bagel});
-        handles.primitive.grid = with<Assets>::add_geometry_generator(context, assets, item<Unit>{.manager = assets, .name = "grid", .library = "rmmr"}, item<geometry::Asset>{}, item<Generator>{.type = Generator::Type::gridPlane});
-
-        base::message("toy: assets loaded");
-    }
-
     void Application::State::spawnDemoScene(Writing context) {
+        const auto& handles = assets.handles;
         const auto root = with<scene::Interface>::createScene(context);
 
         constexpr int grid_extent = 4;
@@ -179,11 +95,8 @@ namespace toy {
         ui.scene = root;
     }
 
-    void Application::State::setupAsDefault(Writing context, establish::Module::RootId& root) {
-        const auto core = root.secretGet<system::Core>();
-        if (not core.exists())
-            throw std::runtime_error("app: RootId is not system::Core");
-        loadHandles(context, *core);
+    void Application::State::setupAsDefault(Writing context, system::Core::Id coreId) {
+        assets.hardcodedInit(context, coreId);
         spawnDemoScene(context);
     }
 
@@ -211,31 +124,29 @@ namespace toy {
         return result;
     }
 
-    void Application::install(Schema schema) {
+    std::shared_ptr<establish::Module::State> Application::install(Schema schema) {
         state = std::make_shared<State>(std::move(schema));
         for (auto& child : submodules)
-            child->installState(state->fullSchema);
+            child->install(state->fullSchema);
+        return state;
     }
 
     void Application::initDefaultWorld() {
-        establish::Module::RootId root;
-
-        base::message("app: creating core...");
-        const auto core = with<system::Interface>::create(
+        state->core = engine->setup(
             state->world,
-            settings.assets_root,
-            system::Core::GLVer{
-                .major = settings.glVersion.major,
-                .minor = settings.glVersion.minor,
+            item<system::Core>{
+                .assets_root = settings.assets_root,
+                .version = system::Core::GLVer{
+                    .major = settings.glVersion.major,
+                    .minor = settings.glVersion.minor,
+                },
+            },
+            Engine::WindowParameters{
+                .title = settings.title,
+                .requested_size = settings.window_size,
             });
-        root.secretSet(core);
-
-        engine->setup(state->world, root, Engine::WindowParameters{
-            .title = settings.title,
-            .requested_size = settings.window_size,
-        });
-        state->setupAsDefault(state->world, root);
-        engine->materialize(state->world, core);
+        state->setupAsDefault(state->world, *state->core);
+        engine->materialize(state->world, *state->core);
         engine->showScene(*state->ui.scene, *state->ui.camera);
 
         if (not state->world.result().good())
