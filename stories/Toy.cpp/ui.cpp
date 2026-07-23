@@ -182,8 +182,13 @@ namespace toy::ui {
 
         for (auto& [pass, technique] : material->techniques) {
             if (ImGui::CollapsingHeader(passName(pass), ImGuiTreeNodeFlags_DefaultOpen)) {
-                const auto& shader_unit = with<resource::Unit>::get(world, technique.program);
-                ImGui::Text("Shader: %s", displayName(shader_unit.name));
+                if (with<resource::Unit>::exists(world, technique.program.id)) {
+                    const auto& shader_unit = with<resource::Unit>::get(world, technique.program.id);
+                    ImGui::Text("Shader: %s", displayName(shader_unit.name));
+                } else {
+                    ImGui::TextColored(ImVec4(1.f, 0.25f, 0.25f, 1.f), "Shader: %s",
+                        technique.program.backup.empty() ? "(missing)" : displayName(technique.program.backup));
+                }
 
                 if (technique.textures.empty()) {
                     ImGui::TextDisabled("No texture slots.");
@@ -196,24 +201,31 @@ namespace toy::ui {
 
                     const string slot_label{material::Semantics::name_of(binding.id)};
                     const char* preview = "(missing)";
-                    if (with<resource::Unit>::exists(world, binding.texture)) {
-                        const auto& texture_unit = with<resource::Unit>::get(world, binding.texture);
+                    const bool texture_ok = with<resource::Unit>::exists(world, binding.texture.id);
+                    if (texture_ok) {
+                        const auto& texture_unit = with<resource::Unit>::get(world, binding.texture.id);
                         preview = displayName(texture_unit.name);
+                    } else if (not binding.texture.backup.empty()) {
+                        preview = displayName(binding.texture.backup);
                     }
 
+                    if (not texture_ok)
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.25f, 0.25f, 1.f));
                     if (ImGui::BeginCombo(slot_label.c_str(), preview)) {
                         for (const auto entry : world->aspect<resource::texture::Asset>().items()) {
                             pushEntityId<resource::texture::Asset>(entry.id);
                             const auto& texture_unit = with<resource::Unit>::get(world, entry.id);
-                            const bool selected = entry.id == binding.texture;
+                            const bool selected = entry.id == binding.texture.id;
                             if (ImGui::Selectable(displayName(texture_unit.name), selected))
-                                binding.texture = entry.id;
+                                binding.texture = resource::Unit::Actions::remember(world, entry.id);
                             if (selected)
                                 ImGui::SetItemDefaultFocus();
                             ImGui::PopID();
                         }
                         ImGui::EndCombo();
                     }
+                    if (not texture_ok)
+                        ImGui::PopStyleColor();
 
                     ImGui::PopID();
                     ImGui::PopID();

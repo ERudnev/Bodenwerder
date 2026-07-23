@@ -6,6 +6,8 @@ namespace rmmr
     namespace texture
 
     // abstract texture with unknown kind
+    using Reference as resource::Unit::Reference
+
     feature Asset of resource::Unit
 
     entity Runtime

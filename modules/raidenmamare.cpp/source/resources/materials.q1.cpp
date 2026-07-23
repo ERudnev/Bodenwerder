@@ -18,7 +18,7 @@ namespace rmmr::resource::material {
             const Runtimes::Quantum& runtimes,
             system::Device::Id device) -> optional<Runtime::Technique>
         {
-            const auto shader_it = runtimes.shaders_id_mapping.find(asset_technique.program);
+            const auto shader_it = runtimes.shaders_id_mapping.find(asset_technique.program.id);
             if (shader_it == runtimes.shaders_id_mapping.end()) {
                 return context.refuse("resource::material::Composer::materialize: shader runtime missing for technique");
             }
@@ -57,7 +57,7 @@ namespace rmmr::resource::material {
             }
 
             for (const auto& texture_binding : asset_technique.textures) {
-                const auto texture_it = runtimes.textures_id_mapping.find(texture_binding.texture);
+                const auto texture_it = runtimes.textures_id_mapping.find(texture_binding.texture.id);
                 if (texture_it == runtimes.textures_id_mapping.end()) {
                     return context.refuse("resource::material::Composer::materialize: texture runtime missing for technique");
                 }

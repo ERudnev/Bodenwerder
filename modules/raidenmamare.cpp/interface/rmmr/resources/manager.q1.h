@@ -17,10 +17,20 @@ namespace rmmr::resource {
     };
 
     struct Unit : Entity<Unit> {
+        using Name = string;
+
+        struct Reference {
+            Id id;
+            Name backup;
+        };
+
         struct Quantum {
             Manager::Id manager;
-            string name;
+            Name name;
             string library;
+        };
+        struct Actions : BaseActions {
+            static auto remember(Reading, Id) -> Reference;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

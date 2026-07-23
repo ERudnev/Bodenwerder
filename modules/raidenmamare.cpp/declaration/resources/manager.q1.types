@@ -10,9 +10,14 @@ namespace rmmr
 
     // persistent thing
     entity Unit
+      using Name as string
+      struct Reference
+        id: #
+        backup: Name
       one
         manager: #Manager
-        name: string
+        name: Name
         library: string
+        ?remember()->Reference
 
     group<Unit> of Manager

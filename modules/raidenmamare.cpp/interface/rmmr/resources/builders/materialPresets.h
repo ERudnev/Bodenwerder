@@ -7,13 +7,13 @@ namespace rmmr::resource::builders::material {
     using namespace fqsm::api;
 
     // Catalog recipes for material::Asset (not a resource kind — parallel to GeometryGenerator).
-    struct MaterialPresets final {
+    struct Presets final {
         using Configured = resource::material::Asset::Quantum;
-        static Configured ambient(resource::shader::Asset::Id program, resource::shader::Asset::Id shadow_depth);
-        static Configured lit(resource::shader::Asset::Id program, resource::shader::Asset::Id shadow_depth);
-        static Configured litTextured(resource::shader::Asset::Id program, resource::texture::Asset::Id albedo_map, resource::shader::Asset::Id shadow_depth);
-        static Configured litTexturedTransparent(resource::shader::Asset::Id program, resource::texture::Asset::Id albedo_map);
-        static Configured grid(resource::shader::Asset::Id program);
+        static Configured ambient(resource::shader::Reference program, resource::shader::Reference shadow_depth);
+        static Configured lit(resource::shader::Reference program, resource::shader::Reference shadow_depth);
+        static Configured litTextured(resource::shader::Reference program, resource::texture::Reference albedo_map, resource::shader::Reference shadow_depth);
+        static Configured litTexturedTransparent(resource::shader::Reference program, resource::texture::Reference albedo_map);
+        static Configured grid(resource::shader::Reference program);
     };
 
 }

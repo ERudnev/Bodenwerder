@@ -7,12 +7,14 @@ namespace rmmr
   namespace resource
     namespace material
 
+    using Reference as resource::Unit::Reference
+
     feature Asset of resource::Unit
       struct TextureBinding
         id: Uniform::Id
-        texture: #texture::Asset
+        texture: texture::Reference
       struct Technique
-        program: #shader::Asset
+        program: shader::Reference
         uniforms: Uniform::Palette
         textures: vector<TextureBinding>
       one

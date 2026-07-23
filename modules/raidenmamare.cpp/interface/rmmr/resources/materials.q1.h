@@ -12,13 +12,15 @@ namespace rmmr::resource::material {
 
     using namespace fqsm::api;
 
+    using Reference = resource::Unit::Reference;
+
     struct Asset : Feature<Asset, resource::Unit> {
         struct TextureBinding {
             Uniform::Id id;
-            texture::Asset::Id texture;
+            texture::Reference texture;
         };
         struct Technique {
-            shader::Asset::Id program;
+            shader::Reference program;
             Uniform::Palette uniforms;
             vector<TextureBinding> textures;
         };

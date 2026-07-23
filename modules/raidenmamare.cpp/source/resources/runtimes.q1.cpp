@@ -107,7 +107,7 @@ namespace rmmr::resource {
                 bool uses_texture = false;
                 for (const auto& [_, technique] : with<material::Asset>::get(context, material_id).techniques) {
                     for (const auto& binding : technique.textures) {
-                        if (binding.texture == texture_id) {
+                        if (binding.texture.id == texture_id) {
                             uses_texture = true;
                             break;
                         }
@@ -126,7 +126,7 @@ namespace rmmr::resource {
                 if (not with<material::Asset>::exists(context, material_id)) continue;
                 bool uses_shader = false;
                 for (const auto& [_, technique] : with<material::Asset>::get(context, material_id).techniques) {
-                    if (technique.program == shader_id) {
+                    if (technique.program.id == shader_id) {
                         uses_shader = true;
                         break;
                     }

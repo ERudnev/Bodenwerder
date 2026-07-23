@@ -5,6 +5,8 @@ namespace rmmr
   namespace resource
     namespace shader
 
+    using Reference as resource::Unit::Reference
+
     // abstract shader with unknown kind
     feature Asset of resource::Unit
 

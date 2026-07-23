@@ -8,7 +8,7 @@ namespace rmmr::resource::builders::material {
 
     namespace {
 
-        auto shadow_depth_technique(resource::shader::Asset::Id program) -> Asset::Technique {
+        auto shadow_depth_technique(resource::shader::Reference program) -> Asset::Technique {
             return Asset::Technique{
                 .program = program,
                 .uniforms = ::rmmr::material::Semantics::ids_of({
@@ -21,7 +21,7 @@ namespace rmmr::resource::builders::material {
 
     } // namespace
 
-    auto MaterialPresets::ambient(resource::shader::Asset::Id program, resource::shader::Asset::Id shadow_depth) -> Asset::Quantum {
+    auto Presets::ambient(resource::shader::Reference program, resource::shader::Reference shadow_depth) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {
                 {renderer::Pass::opaque, Asset::Technique{
@@ -41,7 +41,7 @@ namespace rmmr::resource::builders::material {
         };
     }
 
-    auto MaterialPresets::lit(resource::shader::Asset::Id program, resource::shader::Asset::Id shadow_depth) -> Asset::Quantum {
+    auto Presets::lit(resource::shader::Reference program, resource::shader::Reference shadow_depth) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {
                 {renderer::Pass::opaque, Asset::Technique{
@@ -66,7 +66,7 @@ namespace rmmr::resource::builders::material {
         };
     }
 
-    auto MaterialPresets::litTextured(resource::shader::Asset::Id program, resource::texture::Asset::Id albedo_map, resource::shader::Asset::Id shadow_depth) -> Asset::Quantum {
+    auto Presets::litTextured(resource::shader::Reference program, resource::texture::Reference albedo_map, resource::shader::Reference shadow_depth) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {
                 {renderer::Pass::opaque, Asset::Technique{
@@ -97,7 +97,7 @@ namespace rmmr::resource::builders::material {
         };
     }
 
-    auto MaterialPresets::litTexturedTransparent(resource::shader::Asset::Id program, resource::texture::Asset::Id albedo_map) -> Asset::Quantum {
+    auto Presets::litTexturedTransparent(resource::shader::Reference program, resource::texture::Reference albedo_map) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {
                 {renderer::Pass::transparent, Asset::Technique{
@@ -127,7 +127,7 @@ namespace rmmr::resource::builders::material {
         };
     }
 
-    auto MaterialPresets::grid(resource::shader::Asset::Id program) -> Asset::Quantum {
+    auto Presets::grid(resource::shader::Reference program) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {
                 {renderer::Pass::opaque, Asset::Technique{

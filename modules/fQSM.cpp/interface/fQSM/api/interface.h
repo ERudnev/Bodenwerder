@@ -33,9 +33,14 @@ namespace fqsm::api {
 
     // add manipulators as short "ask":
     namespace ask = ::fqsm::manipulation;
-    //experimental:
+
+    // recommended:
     template<typename Meta>
     using with = ::fqsm::manipulation::call_action<Meta>;
+
+    // experimental:
+    template<typename Meta>
+    using item = typename Meta::Quantum;
 
     // Aspect types:
     template<typename Meta>

@@ -9,6 +9,8 @@ namespace rmmr::resource::shadow {
 
     using namespace fqsm::api;
 
+    using Reference = resource::Unit::Reference;
+
     struct Asset : Feature<Asset, resource::Unit> {
         struct Quantum {};
         struct Internals : DefaultInternals{};

@@ -6,6 +6,8 @@ namespace rmmr
   namespace resource
     namespace geometry
 
+    using Reference as resource::Unit::Reference
+
     // Persistent mesh recipe. Scene may hold #geometry::Asset — never Runtime.
     feature Asset of resource::Unit
       one

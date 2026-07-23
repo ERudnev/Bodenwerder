@@ -5,6 +5,8 @@ namespace rmmr
   namespace resource
     namespace shadow
 
+    using Reference as resource::Unit::Reference
+
     // Persistent shadow-target recipe. Owned by engine/resources — not by scene::Light.
     // Scene lights never hold #shadow::Asset; renderer assigns shadow runtimes to lights per frame.
     // Never store #shadow::Runtime on assets/scene (device-bound; rematerialize would break the link).
