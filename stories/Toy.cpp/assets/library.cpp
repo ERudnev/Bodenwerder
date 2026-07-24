@@ -1,11 +1,6 @@
 #include "assets/library.h"
 
-#include <stdexcept>
-#include <unordered_map>
-
 #include <base/logging.h>
-#include <pQRF/database/engine.h>
-#include <pQRF/json/engine.h>
 #include <rmmr/api/_interface.h>
 #include <rmmr/resources/builders/materialPresets.h>
 #include <rmmr/resources/manager.q1.h>
@@ -16,104 +11,15 @@ namespace toy::assets {
 
     using namespace fqsm::api;
     using namespace rmmr;
-    namespace js = fqsm::processing::persistency::json;
-    namespace db = fqsm::processing::persistency::database;
-
-    namespace {
-
-        auto catalogueSchema() -> fqsm::processing::persistency::Schema {
-            return api::Assets::persistencySchema<js::Aspect>();
-        }
-
-        // Temporary (workbench): SQLite mirror schema; remove with the dual-write below.
-        auto catalogueDbSchema() -> fqsm::processing::persistency::Schema {
-            return api::Assets::persistencySchema<db::Aspect>();
-        }
-
-        // Temporary: sibling of catalogue.json → catalogue.sqlite
-        auto catalogueDbPath(const Manager::Location& json_location) -> Manager::Location {
-            auto path = json_location;
-            path.replace_extension(".sqlite");
-            return path;
-        }
-
-        auto unitByName(Reading context) -> umap<string, resource::Unit::Id> {
-            umap<string, resource::Unit::Id> by_name;
-            for (const auto entry : context->aspect<resource::Unit>().items())
-                by_name.insert_or_assign(entry.value.name, entry.id);
-            return by_name;
-        }
-
-        auto requireUnit(const umap<string, resource::Unit::Id>& by_name, const string& name) -> resource::Unit::Id {
-            const auto found = by_name.find(name);
-            if (found == by_name.end())
-                throw std::runtime_error("toy assets: missing unit '" + name + "' after load");
-            return found->second;
-        }
-
-        void fillHandles(Handles& handles, Reading context) {
-            const auto by_name = unitByName(context);
-            handles = {};
-            handles.texture.debug = {
-                requireUnit(by_name, "debug01"),
-                requireUnit(by_name, "debug02"),
-                requireUnit(by_name, "debug03"),
-                requireUnit(by_name, "debug04"),
-            };
-            handles.texture.whiteCircle = requireUnit(by_name, "white_circle");
-            handles.texture.whiteRing = requireUnit(by_name, "white_ring");
-            handles.material.ambient = requireUnit(by_name, "ambient_material");
-            handles.material.lit = requireUnit(by_name, "lit_material");
-            handles.material.debugLitTextured = {
-                requireUnit(by_name, "lit_textured_debug01"),
-                requireUnit(by_name, "lit_textured_debug02"),
-                requireUnit(by_name, "lit_textured_debug03"),
-                requireUnit(by_name, "lit_textured_debug04"),
-            };
-            handles.material.litTexturedAlpha = requireUnit(by_name, "lit_textured_alpha_ring");
-            handles.material.grid = requireUnit(by_name, "grid_material");
-            handles.primitive.triangle = requireUnit(by_name, "triangle");
-            handles.primitive.kube = requireUnit(by_name, "kube");
-            handles.primitive.bagel = requireUnit(by_name, "bagel");
-            handles.primitive.grid = requireUnit(by_name, "grid");
-        }
-
-    }
 
     auto Manager::statePath(const std::filesystem::path& assets_root) -> Location {
         return assets_root / "Toy" / "state" / "resources" / "catalogue.json";
     }
 
-    auto Manager::prepare(establish::Realm& world, Location location) -> PrepareStatus {
-        // Temporary (workshop pt.1): ignore existing catalogue — always reseed.
-        // Load is off so Generated → save will overwrite JSON/SQLite on disk.
-        // Restore the exists/loadFrom path below when load/remap is ready.
-        (void)location;
+    auto Manager::prepare(establish::Realm& world, Location) -> PrepareStatus {
+        // Always reseed from hardcoded presets. Catalogue persistency is archived.
         hardcodedInit(world);
         return PrepareStatus::Generated;
-
-#if 0 // temporary: load path disabled for workshop overwrite mode
-        if (!std::filesystem::exists(location)) {
-            hardcodedInit(world);
-            return PrepareStatus::Generated;
-        }
-
-        try {
-            {
-                Stewarding session = world;
-                if (not loadFrom(session, location)) {
-                    base::message("toy: assets state present but load failed: {}", location.string());
-                    return PrepareStatus::Failed;
-                }
-            }
-            fillHandles(handles, world);
-            base::message("toy: assets loaded from {}", location.string());
-            return PrepareStatus::Loaded;
-        } catch (const std::exception& error) {
-            base::message("toy: assets load threw: {} ({})", error.what(), location.string());
-            return PrepareStatus::Failed;
-        }
-#endif
     }
 
     void Manager::hardcodedInit(Writing context) {
@@ -177,32 +83,13 @@ namespace toy::assets {
         base::message("toy: assets seeded");
     }
 
-    bool Manager::loadFrom(Stewarding steward, Location location) {
-        const auto schema = catalogueSchema();
-        js::JsonArchivist archivist(schema);
-        const auto palette = schema->types();
-        if (not archivist.loadFromLocation(steward, palette, location))
-            return false;
-        // Archive rows are in; mapping onto the live Manager/Unit_group is not done.
-        base::message("Id remap is not implemented, loading is not available");
+    bool Manager::loadFrom(Stewarding, Location) {
+        base::message("toy: assets catalogue load archived (Retrospection offline)");
         return false;
     }
 
-    void Manager::save(Writing context, Location location) {
-        const auto schema = catalogueSchema();
-        js::JsonArchivist archivist(schema);
-        if (not archivist.saveToLocation(context, schema->types(), location))
-            throw std::runtime_error("toy assets: save failed: " + location.string());
-
-        // Temporary workbench mirror: write SQLite next to JSON; never read back.
-        // Drop this block (and catalogueDbSchema / catalogueDbPath) once DB/JSON parity is settled.
-        {
-            const auto db_location = catalogueDbPath(location);
-            const auto db_schema = catalogueDbSchema();
-            db::DatabaseArchivist db_archivist(db_schema);
-            if (not db_archivist.saveToLocation(context, db_schema->types(), db_location))
-                throw std::runtime_error("toy assets: sqlite mirror save failed: " + db_location.string());
-        }
+    void Manager::save(Writing, Location) {
+        // Catalogue persistency archived with Retrospection forms.
     }
 
 }

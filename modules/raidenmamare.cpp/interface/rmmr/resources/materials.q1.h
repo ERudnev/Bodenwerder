@@ -1,7 +1,5 @@
 #pragma once
 
-#include <utility>
-
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/semantics.q1.h>
 #include <rmmr/resources/shaders.q1.h>
@@ -63,47 +61,5 @@ namespace rmmr::resource::material {
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };
-
-}
-
-namespace fqsm::aspect {
-
-template<>
-struct Retrospection<rmmr::resource::material::Asset::TextureBinding> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("TextureBinding");
-        d.one(field<&rmmr::resource::material::Asset::TextureBinding::uniform>("uniform"));
-        d.one(field<&rmmr::resource::material::Asset::TextureBinding::texture>("texture"));
-    }
-};
-
-template<>
-struct Retrospection<rmmr::resource::material::Asset::Technique> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("Technique");
-        d.one(field<&rmmr::resource::material::Asset::Technique::program>("program"));
-        d.one(collection<rmmr::resource::Uniform::Id, &rmmr::resource::material::Asset::Technique::uniforms>("uniforms"));
-        d.one(collection<rmmr::resource::material::Asset::TextureBinding, &rmmr::resource::material::Asset::Technique::textures>("textures"));
-    }
-};
-
-template<>
-struct Retrospection<rmmr::resource::material::Asset> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::material::Asset");
-        d.one(collection<std::pair<rmmr::renderer::Pass, rmmr::resource::material::Asset::Technique>, &rmmr::resource::material::Asset::Quantum::techniques>("techniques", "pass"));
-    }
-};
-
-template<>
-struct Retrospection<rmmr::resource::material::Composer> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::material::Composer");
-    }
-};
 
 }

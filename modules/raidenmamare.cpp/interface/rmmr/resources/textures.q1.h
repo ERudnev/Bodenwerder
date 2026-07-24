@@ -57,34 +57,3 @@ namespace rmmr::resource::texture {
     };
 
 }
-
-namespace fqsm::aspect {
-
-template<>
-struct Retrospection<rmmr::resource::texture::Asset> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::texture::Asset");
-    }
-};
-
-template<>
-struct Retrospection<rmmr::resource::texture::Loader> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::texture::Loader");
-        d.one(field<&rmmr::resource::texture::Loader::Quantum::file>("file"));
-    }
-};
-
-template<>
-struct Retrospection<rmmr::resource::texture::Generator> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::texture::Generator");
-        d.one(field<&rmmr::resource::texture::Generator::Quantum::size>("size"));
-        d.one(field<&rmmr::resource::texture::Generator::Quantum::pattern>("pattern"));
-    }
-};
-
-}

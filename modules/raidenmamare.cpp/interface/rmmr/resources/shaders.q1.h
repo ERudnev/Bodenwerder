@@ -39,25 +39,3 @@ namespace rmmr::resource::shader {
     };
 
 }
-
-namespace fqsm::aspect {
-
-template<>
-struct Retrospection<rmmr::resource::shader::Asset> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::shader::Asset");
-    }
-};
-
-template<>
-struct Retrospection<rmmr::resource::shader::Loader> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::shader::Loader");
-        d.one(field<&rmmr::resource::shader::Loader::Quantum::vertex>("vertex"));
-        d.one(field<&rmmr::resource::shader::Loader::Quantum::fragment>("fragment"));
-    }
-};
-
-}

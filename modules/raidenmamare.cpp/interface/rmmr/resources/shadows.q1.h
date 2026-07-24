@@ -45,24 +45,3 @@ namespace rmmr::resource::shadow {
     };
 
 }
-
-namespace fqsm::aspect {
-
-template<>
-struct Retrospection<rmmr::resource::shadow::Asset> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::shadow::Asset");
-    }
-};
-
-template<>
-struct Retrospection<rmmr::resource::shadow::Allocator> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::shadow::Allocator");
-        d.one(field<&rmmr::resource::shadow::Allocator::Quantum::size>("size"));
-    }
-};
-
-}

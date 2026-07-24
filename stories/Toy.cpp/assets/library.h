@@ -43,8 +43,7 @@ namespace toy::assets {
     };
 
     // Owns Toy asset catalogue lifecycle: seed / load / save.
-    // Temporary: save() also mirrors to catalogue.sqlite beside the JSON (write-only).
-    // Temporary: prepare() skips load and always reseeds (overwrites on-disk catalogue).
+    // Load/save of on-disk catalogue archived with Retrospection; live path is hardcoded seed.
     struct Manager {
         using Location = std::filesystem::path;
 

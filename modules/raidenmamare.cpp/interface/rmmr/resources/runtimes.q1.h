@@ -80,15 +80,3 @@ namespace rmmr::resource {
     };
 
 }
-
-namespace fqsm::aspect {
-
-template<>
-struct Retrospection<rmmr::resource::Assets> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::Assets");
-    }
-};
-
-}

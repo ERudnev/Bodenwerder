@@ -42,37 +42,3 @@ namespace rmmr::resource {
     };
 
 }
-
-namespace fqsm::aspect {
-
-template<>
-struct Retrospection<rmmr::resource::Manager> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::Manager");
-        d.one(field<&rmmr::resource::Manager::Quantum::location>("location"));
-    }
-};
-
-template<>
-struct Retrospection<rmmr::resource::Unit::Reference> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("Reference");
-        d.one(field<&rmmr::resource::Unit::Reference::id>("id"));
-        d.one(field<&rmmr::resource::Unit::Reference::backup>("backup"));
-    }
-};
-
-template<>
-struct Retrospection<rmmr::resource::Unit> {
-    template<typename Desc>
-    static void describe(Desc& d) {
-        d.aspect("rmmr::resource::Unit");
-        d.one(field<&rmmr::resource::Unit::Quantum::manager>("manager"));
-        d.one(field<&rmmr::resource::Unit::Quantum::name>("name"));
-        d.one(field<&rmmr::resource::Unit::Quantum::library>("library"));
-    }
-};
-
-}
