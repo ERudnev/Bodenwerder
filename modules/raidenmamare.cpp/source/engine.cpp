@@ -39,6 +39,7 @@ namespace rmmr {
                 ask::schema::aspect<resource::MaterialRuntime_group>(),
                 ask::schema::aspect<resource::ShadowRuntime_group>(),
                 ask::schema::aspect<resource::GeometryRuntime_group>(),
+                ask::schema::aspect<resource::SpriteRuntime_group>(),
                 ask::schema::aspect<resource::Assets>(),
                 ask::schema::aspect<resource::Runtimes>(),
                 ask::schema::aspect<resource::texture::Asset>(),

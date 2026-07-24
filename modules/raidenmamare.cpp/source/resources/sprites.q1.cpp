@@ -1,6 +1,8 @@
 #include <rmmr/resources/sprites.q1.h>
+#include <rmmr/resources/runtimes.q1.h>
 
-#include <base/logging.h>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 #include <filesystem>
 #include <format>
@@ -84,6 +86,32 @@ namespace rmmr::resource::sprite {
             return entries;
         }
 
+        void release_gl(Writing context, const Runtime::Quantum& last) {
+            const auto& device_quantum = with<system::Device>::get(context, last.device);
+            glfwMakeContextCurrent(device_quantum.handle);
+            if (last.entries_texture) {
+                auto entries_texture = last.entries_texture;
+                glDeleteTextures(1, &entries_texture);
+            }
+            if (last.entries_buffer) {
+                auto entries_buffer = last.entries_buffer;
+                glDeleteBuffers(1, &entries_buffer);
+            }
+        }
+
+        auto install_runtime(Writing context, system::Device::Id device, Pack::Id pack_id, Runtime::Quantum quantum) -> Runtime::Id {
+            const auto& runtimes = with<Runtimes>::get(context, device);
+            if (const auto existing = runtimes.sprites_id_mapping.find(pack_id); existing != runtimes.sprites_id_mapping.end()) {
+                if (with<Runtime>::exists(context, existing->second)) {
+                    auto runtime = with<Runtime>::modify(context, existing->second);
+                    release_gl(context, *runtime);
+                    *runtime = std::move(quantum);
+                    return existing->second;
+                }
+            }
+            return with<SpriteRuntime_group>::addElement(context, device, std::move(quantum));
+        }
+
     } // namespace
 
     void LoaderKenney::Actions::load(Writing context, Id pack_id) {
@@ -101,9 +129,78 @@ namespace rmmr::resource::sprite {
         with<Pack>::modify(context, pack_id)->entries = std::move(*entries);
     }
 
-    auto Pack::Actions::materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id> {
-        base::message("resource::sprite::Pack::materialize: nothing materialized");
-        return {};
+    auto Pack::Actions::materialize(Writing context, Id pack_id, system::Device::Id device) -> optional<Runtime::Id> {
+        const auto& pack = with<Pack>::get(context, pack_id);
+        if (pack.entries.empty()) {
+            return context.refuse("resource::sprite::Pack::materialize: entries are empty");
+        }
+
+        const auto& runtimes = with<Runtimes>::get(context, device);
+        const auto texture_it = runtimes.textures_id_mapping.find(pack.texture.id);
+        if (texture_it == runtimes.textures_id_mapping.end()) {
+            return context.refuse("resource::sprite::Pack::materialize: texture runtime missing");
+        }
+
+        const auto& device_quantum = with<system::Device>::get(context, device);
+        glfwMakeContextCurrent(device_quantum.handle);
+
+        vector<GLint> payload;
+        payload.reserve(pack.entries.size() * std::size_t{8});
+        for (const auto& entry : pack.entries) {
+            payload.push_back(static_cast<GLint>(entry.min.x));
+            payload.push_back(static_cast<GLint>(entry.min.y));
+            payload.push_back(static_cast<GLint>(entry.max.x - entry.min.x));
+            payload.push_back(static_cast<GLint>(entry.max.y - entry.min.y));
+            payload.push_back(static_cast<GLint>(entry.pivot.x));
+            payload.push_back(static_cast<GLint>(entry.pivot.y));
+            payload.push_back(GLint{0});
+            payload.push_back(GLint{0});
+        }
+
+        renderer::VertexBuffer entries_buffer{};
+        glGenBuffers(1, &entries_buffer);
+        if (not entries_buffer) {
+            return context.refuse("resource::sprite::Pack::materialize: glGenBuffers failed");
+        }
+
+        glBindBuffer(GL_TEXTURE_BUFFER, entries_buffer);
+        glBufferData(
+            GL_TEXTURE_BUFFER,
+            static_cast<renderer::SizePtr>(payload.size() * sizeof(GLint)),
+            payload.data(),
+            GL_STATIC_DRAW);
+        glBindBuffer(GL_TEXTURE_BUFFER, 0);
+
+        renderer::Texture entries_texture{};
+        glGenTextures(1, &entries_texture);
+        if (not entries_texture) {
+            glDeleteBuffers(1, &entries_buffer);
+            return context.refuse("resource::sprite::Pack::materialize: glGenTextures failed");
+        }
+
+        glBindTexture(GL_TEXTURE_BUFFER, entries_texture);
+        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32I, entries_buffer);
+        glBindTexture(GL_TEXTURE_BUFFER, 0);
+
+        return install_runtime(context, device, pack_id, Runtime::Quantum{
+            .device = device,
+            .texture = texture_it->second,
+            .entries_buffer = entries_buffer,
+            .entries_texture = entries_texture,
+            .count = static_cast<integer>(pack.entries.size()),
+        });
+    }
+
+    struct Runtime::Internals : Runtime::DefaultInternals {
+        static void release(Writing context, Id, const Quantum& last) {
+            release_gl(context, last);
+        }
+    };
+
+    auto Runtime::customAspectReactions() -> const Behavior {
+        return {
+            reaction::deletion<Runtime>(&Runtime::Internals::release),
+        };
     }
 
 }

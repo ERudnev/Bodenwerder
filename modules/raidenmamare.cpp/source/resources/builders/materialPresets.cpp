@@ -146,4 +146,25 @@ namespace rmmr::resource::builders::material {
         };
     }
 
+    auto Presets::sprite(resource::shader::Reference program) -> Asset::Quantum {
+        return Asset::Quantum{
+            .techniques = {
+                {renderer::Pass::sprite, Asset::Technique{
+                    .program = program,
+                    .uniforms = ::rmmr::material::Semantics::ids_of({
+                        "model",
+                        "view",
+                        "projection",
+                        "albedo",
+                        "atlasTexture",
+                        "atlasEntries",
+                        "spriteIndex",
+                        "inverseAtlasSize",
+                    }),
+                    .textures = {},
+                }},
+            },
+        };
+    }
+
 }

@@ -31,9 +31,11 @@ namespace rmmr::material {
         enum class Type : std::uint8_t {
             f32,
             i32,
+            v2f,
             v3f,
             m4f,
             sampler2d,
+            samplerBuffer,
         };
 
         struct Entry {
@@ -47,7 +49,7 @@ namespace rmmr::material {
         // ID convention:
         // - 1..99: matrices and structural transforms
         // - 100..: "pixel channels" (material/light parameters, scalars/vectors, etc.)
-        static constexpr auto vocabulary = std::array<Entry, 16>{{
+        static constexpr auto vocabulary = std::array<Entry, 20>{{
             Entry{0, Type::i32, "_undefined"},
 
             // triangle.vert.glsl
@@ -73,6 +75,10 @@ namespace rmmr::material {
 
             Entry{109, Type::sampler2d, "shadowMap"},
             Entry{110, Type::sampler2d, "albedoMap"},
+            Entry{111, Type::sampler2d, "atlasTexture"},
+            Entry{112, Type::samplerBuffer, "atlasEntries"},
+            Entry{113, Type::i32, "spriteIndex"},
+            Entry{114, Type::v2f, "inverseAtlasSize"},
         }};
 
         static constexpr auto name_of(PersistentId id) -> Name {

@@ -27,6 +27,7 @@ namespace rmmr
     group<material::Runtime> of resource::DeviceRuntimes
     group<shadow::Runtime> of resource::DeviceRuntimes
     group<geometry::Runtime> of resource::DeviceRuntimes
+    group<sprite::Runtime> of resource::DeviceRuntimes
 
     component Runtimes of Device
       one
@@ -35,7 +36,8 @@ namespace rmmr
         materials_id_mapping: umap<#material::Asset, #material::Runtime>
         shadows_id_mapping: umap<#shadow::Asset, #shadow::Runtime>
         geometries_id_mapping: umap<#geometry::Asset, #geometry::Runtime>
+        sprites_id_mapping: umap<#sprite::Pack, #sprite::Runtime>
         >install(#Device) // cache is zero by default
         >materialize(#Assets) // one-shot: family Assets → find Kind by id → materialize+bind
         !maintain_all_mappings(~Assets)
-        !align_from_assets(~texture::Asset, ~shader::Asset, ~material::Asset, ~shadow::Asset, ~geometry::Asset) // events → find Kind by id
+        !align_from_assets(~texture::Asset, ~shader::Asset, ~material::Asset, ~shadow::Asset, ~geometry::Asset, ~sprite::Pack) // events → find Kind by id

@@ -1,8 +1,10 @@
 #pragma once
 
+#include <base/maybe.h>
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/sprites.q1.h>
 #include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -13,9 +15,15 @@ namespace rmmr::scene {
 
     // Instance + assets; techniques keys select baskets in CommandBuffer.
     struct DrawInstance {
+        struct SpriteSource {
+            resource::sprite::Pack::Id pack;
+            integer index;
+        };
+
         mat4 model;
         resource::geometry::Asset::Id geometry;
         resource::material::Asset::Id material;
+        base::maybe<SpriteSource> sprite;
         RGB albedo;
         float opacity;
     };

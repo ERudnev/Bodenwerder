@@ -12,16 +12,17 @@ namespace rmmr::resource::sprite {
 
     using Reference = resource::Unit::Reference;
 
-    // Rough GPU face — refine later (int VBO layout, bind path, …).
+    // GPU face for sprite atlases: texture + atlas entry table as TBO.
     struct Runtime : Entity<Runtime> {
         struct Quantum {
             system::Device::Id device;
             texture::Runtime::Id texture;
-            renderer::VertexBuffer vbo;
+            renderer::VertexBuffer entries_buffer;
+            renderer::Texture entries_texture;
             integer count;
         };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
+        struct Internals;
+        static const Behavior customAspectReactions();
     };
 
     // Catalog entity is Pack — a "sprite" is an entry index, not an aspect.

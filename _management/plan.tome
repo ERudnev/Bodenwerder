@@ -9,7 +9,7 @@
 namespace plan {
 
   rmmr_sprites_draw_pipeline: @Task {
-    status: 📋
+    status: ✅
     goal:
       Научить raidenmamare загружать и рисовать спрайты как продакшен-путь, не как прототип.
       Спрайт — запись в атласе (буфер из шестёрок целых), общая генерируемая геометрия (два треугольника / unit quad),
@@ -24,9 +24,9 @@ namespace plan {
       ✅ Ввести отдельный renderer::Pass::sprite (ui остаётся запасным; sprite в очереди кадра)
       ✅ Включить pass в render queue Renderer; begin/end и state (blend/depth) под 2D-оверлей
       ✅ Ортографические режимы камеры (Camera::Mode + Quantum; Root fov create; Flat2d ortho из size; parallel запас)
-      📋 Шейдер + material::Technique на sprite-pass; UV/rect из атлас-записи, не из vertex bake на каждый спрайт
-      📋 Submit: один Command = один DC; сортировка по материалу (как opaque), без instance buffer
-      📋 Интеграция в сцену (Actor/space как у существующих полупрозрачных объектов) и smoke в Toy
+      ✅ Шейдер + material::Technique на sprite-pass; UV/rect из атлас-записи, не из vertex bake на каждый спрайт
+      ✅ Submit: один Command = один DC; сортировка по материалу (как opaque), без instance buffer
+      ✅ Интеграция в сцену (Actor/space как у существующих полупрозрачных объектов) и smoke в Toy
     reason:
       Продакшен-критичный контур UI/2D поверх 3D-сцены. Пайплайн уже умеет material-sort и back-to-front для
       transparent; камера и Pass — дыры. Инстансинг откладываем сознательно: сначала корректные отдельные DC,

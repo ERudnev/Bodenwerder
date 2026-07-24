@@ -105,7 +105,10 @@ namespace rmmr::resource {
 
         void rematerialize_sprites(Writing context, sprite::Pack::Id pack_id, system::Device::Id device) {
             if (not with<sprite::Pack>::exists(context, pack_id)) return;
-            sprite::Pack::Actions::materialize(context, pack_id, device);
+            bind_runtime<sprite::Runtime>(
+                with<Runtimes>::modify(context, device)->sprites_id_mapping,
+                pack_id,
+                sprite::Pack::Actions::materialize(context, pack_id, device));
         }
 
         void rematerialize_materials_using_texture(Writing context, texture::Asset::Id texture_id, system::Device::Id device) {
@@ -231,6 +234,7 @@ namespace rmmr::resource {
         with<MaterialRuntime_group>::extend(context, device);
         with<ShadowRuntime_group>::extend(context, device);
         with<GeometryRuntime_group>::extend(context, device);
+        with<SpriteRuntime_group>::extend(context, device);
         BaseActions::extend(context, device, Quantum{});
     }
 
@@ -272,6 +276,7 @@ namespace rmmr::resource {
                 scrub_mapping<material::Asset, material::Runtime>(context, runtimes_id, quantum.materials_id_mapping, &Quantum::materials_id_mapping);
                 scrub_mapping<shadow::Asset, shadow::Runtime>(context, runtimes_id, quantum.shadows_id_mapping, &Quantum::shadows_id_mapping);
                 scrub_mapping<geometry::Asset, geometry::Runtime>(context, runtimes_id, quantum.geometries_id_mapping, &Quantum::geometries_id_mapping);
+                scrub_mapping<sprite::Pack, sprite::Runtime>(context, runtimes_id, quantum.sprites_id_mapping, &Quantum::sprites_id_mapping);
             }
         }
 
@@ -319,13 +324,21 @@ namespace rmmr::resource {
                     rematerialize_geometry(writing, change.id, device);
                 });
             }
+
+            for (const auto change : context.changes<sprite::Pack>().addedOrUpdated()) {
+                if (not with<Unit>::exists(writing, change.id)) continue;
+                const auto assets = with<Unit>::get(writing, change.id).manager;
+                for_devices_of_assets(writing, assets, [&](system::Device::Id device) {
+                    rematerialize_sprites(writing, change.id, device);
+                });
+            }
         }
     };
 
     auto Runtimes::customAspectReactions() -> const Behavior {
         return {
             reaction::aspect_wide<Runtimes, Assets>(&Runtimes::Internals::maintain_all_mappings),
-            reaction::aspect_wide<Runtimes, texture::Asset, shader::Asset, material::Asset, shadow::Asset, geometry::Asset>(&Runtimes::Internals::align_from_assets),
+            reaction::aspect_wide<Runtimes, texture::Asset, shader::Asset, material::Asset, shadow::Asset, geometry::Asset, sprite::Pack>(&Runtimes::Internals::align_from_assets),
         };
     }
 

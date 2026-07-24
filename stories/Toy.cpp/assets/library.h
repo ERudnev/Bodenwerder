@@ -26,6 +26,7 @@ namespace toy::assets {
             std::vector<rmmr::resource::material::Asset::Id> debugLitTextured;
             base::maybe<rmmr::resource::material::Asset::Id> litTexturedAlpha;
             base::maybe<rmmr::resource::material::Asset::Id> grid;
+            base::maybe<rmmr::resource::material::Asset::Id> sprite;
         } material;
     };
 

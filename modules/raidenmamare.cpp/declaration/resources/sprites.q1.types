@@ -8,12 +8,13 @@ namespace rmmr
 
     using Reference as resource::Unit::Reference
 
-    // Rough GPU face — refine later (int VBO layout, bind path, …).
+    // GPU face for sprite atlases: texture + atlas entry table as TBO.
     entity Runtime
       one
         device: #system::Device
         texture: #texture::Runtime
-        vbo: renderer::VertexBuffer
+        entries_buffer: renderer::VertexBuffer
+        entries_texture: renderer::Texture
         count: integer
 
     // Catalog entity is Pack — a "sprite" is an entry index, not an aspect.

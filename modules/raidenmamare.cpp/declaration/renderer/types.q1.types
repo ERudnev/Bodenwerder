@@ -4,6 +4,7 @@ import "semantics"
 import "resources/geometry"
 import "resources/materials"
 import "resources/shaders"
+import "resources/sprites"
 
 namespace rmmr
   namespace renderer
@@ -19,6 +20,8 @@ namespace rmmr
       geometry: #resource::geometry::Runtime
       material: #resource::material::Runtime
       shader: #resource::shader::Runtime
+      sprite: #resource::sprite::Runtime?
+      sprite_index: integer
       albedo: RGB
       opacity: float
       instance_data: InstanceSource

@@ -82,6 +82,10 @@ namespace rmmr::scene {
                 actor::Simple::Actions::submit(context, node, device, where);
                 continue;
             }
+            if (with<actor::Sprite>::exists(context, node)) {
+                actor::Sprite::Actions::submit(context, node, device, where);
+                continue;
+            }
             if (with<Grid>::exists(context, node)) {
                 Grid::Actions::submit(context, node, device, where);
             }

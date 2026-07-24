@@ -12,6 +12,7 @@
 #include <base/maybe.h>
 
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/resources/sprites.q1.h>
 #include <rmmr/semantics.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/camera.q1.h>
@@ -46,6 +47,10 @@ namespace rmmr {
             Id colorSecondary = material::Semantics::id_of("colorSecondary");
             Id shadowMap = material::Semantics::id_of("shadowMap");
             Id albedoMap = material::Semantics::id_of("albedoMap");
+            Id atlasTexture = material::Semantics::id_of("atlasTexture");
+            Id atlasEntries = material::Semantics::id_of("atlasEntries");
+            Id spriteIndex = material::Semantics::id_of("spriteIndex");
+            Id inverseAtlasSize = material::Semantics::id_of("inverseAtlasSize");
         } semantic{};
 
         struct ShadowCaster {
@@ -98,9 +103,23 @@ namespace rmmr {
             glUniform1f(binding.location, value);
         }
 
+        void set_uniform(const resource::Uniform::Binding& binding, integer value) {
+            glUniform1i(binding.location, value);
+        }
+
+        void set_uniform(const resource::Uniform::Binding& binding, const vec2& value) {
+            glUniform2f(binding.location, value.x, value.y);
+        }
+
         void set_uniform_sampler(const resource::Uniform::Binding& binding, GLuint texture, GLint unit) {
             glActiveTexture(GL_TEXTURE0 + unit);
             glBindTexture(GL_TEXTURE_2D, texture);
+            glUniform1i(binding.location, unit);
+        }
+
+        void set_uniform_sampler_buffer(const resource::Uniform::Binding& binding, GLuint texture, GLint unit) {
+            glActiveTexture(GL_TEXTURE0 + unit);
+            glBindTexture(GL_TEXTURE_BUFFER, texture);
             glUniform1i(binding.location, unit);
         }
 
@@ -119,6 +138,13 @@ namespace rmmr {
                 throw std::runtime_error("Renderer: material has no technique for pass");
             }
             return it->second;
+        }
+
+        auto sprite_runtime_for(Reading context, const renderer::Command& command) -> const resource::sprite::Runtime::Quantum& {
+            if (not command.sprite || not with<resource::sprite::Runtime>::exists(context, *command.sprite)) {
+                throw std::runtime_error("Renderer: sprite draw is missing sprite runtime");
+            }
+            return with<resource::sprite::Runtime>::get(context, *command.sprite);
         }
 
         auto light_space_matrix(Reading context, scene::Light::Id light_node) -> mat4 {
@@ -348,6 +374,10 @@ namespace rmmr {
 
     void Renderer::draw_instance(FrameContext args, renderer::Pass pass, const renderer::Command& command, resource::material::Runtime::Id material) {
         const auto& technique = technique_for(with<resource::material::Runtime>::get(args.world, material), pass);
+        const resource::sprite::Runtime::Quantum* sprite = nullptr;
+        if (command.sprite) {
+            sprite = &sprite_runtime_for(args.world, command);
+        }
 
         for (const auto& binding : technique.bindings) {
             if (binding.location < 0) {
@@ -363,6 +393,27 @@ namespace rmmr {
                 set_uniform(binding, RGB{0.45f, 0.48f, 0.52f} * command.opacity);
             } else if (binding.id == semantic.colorSecondary) {
                 set_uniform(binding, RGB{0.1f, 0.12f, 0.14f} * command.opacity);
+            } else if (binding.id == semantic.atlasTexture) {
+                if (not sprite) {
+                    throw std::runtime_error("Renderer: atlasTexture requested on non-sprite draw");
+                }
+                const auto& texture = with<resource::texture::Runtime>::get(args.world, sprite->texture);
+                set_uniform_sampler(binding, texture.handle, 0);
+            } else if (binding.id == semantic.atlasEntries) {
+                if (not sprite) {
+                    throw std::runtime_error("Renderer: atlasEntries requested on non-sprite draw");
+                }
+                set_uniform_sampler_buffer(binding, sprite->entries_texture, 1);
+            } else if (binding.id == semantic.spriteIndex) {
+                set_uniform(binding, command.sprite_index);
+            } else if (binding.id == semantic.inverseAtlasSize) {
+                if (not sprite) {
+                    throw std::runtime_error("Renderer: inverseAtlasSize requested on non-sprite draw");
+                }
+                const auto& texture = with<resource::texture::Runtime>::get(args.world, sprite->texture);
+                const float inverse_width = texture.size.x > integer{0} ? 1.0f / static_cast<float>(texture.size.x) : 0.0f;
+                const float inverse_height = texture.size.y > integer{0} ? 1.0f / static_cast<float>(texture.size.y) : 0.0f;
+                set_uniform(binding, vec2{inverse_width, inverse_height});
             }
         }
     }

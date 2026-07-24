@@ -14,6 +14,16 @@ namespace rmmr::scene {
         if (geometry_it == runtimes.geometries_id_mapping.end() || material_it == runtimes.materials_id_mapping.end()) {
             return;
         }
+        base::maybe<resource::sprite::Runtime::Id> sprite{};
+        integer sprite_index = 0;
+        if (draw.sprite) {
+            const auto sprite_it = runtimes.sprites_id_mapping.find(draw.sprite->pack);
+            if (sprite_it == runtimes.sprites_id_mapping.end()) {
+                return;
+            }
+            sprite = sprite_it->second;
+            sprite_index = draw.sprite->index;
+        }
 
         const auto& material = with<resource::material::Runtime>::get(context, material_it->second);
 
@@ -23,6 +33,8 @@ namespace rmmr::scene {
                 .geometry = geometry_it->second,
                 .material = material_it->second,
                 .shader = technique.shader,
+                .sprite = sprite,
+                .sprite_index = sprite_index,
                 .albedo = draw.albedo,
                 .opacity = draw.opacity,
                 .instance_data = {},
