@@ -15,11 +15,6 @@ namespace rmmr::resource::shader {
         struct Quantum {};
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("rmmr::resource::shader::Asset");
-        }
     };
 
     struct Runtime : Entity<Runtime> {
@@ -41,13 +36,28 @@ namespace rmmr::resource::shader {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("rmmr::resource::shader::Loader");
-            d.one(field<&Quantum::vertex>("vertex"));
-            d.one(field<&Quantum::fragment>("fragment"));
-        }
     };
+
+}
+
+namespace fqsm::aspect {
+
+template<>
+struct Retrospection<rmmr::resource::shader::Asset> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("rmmr::resource::shader::Asset");
+    }
+};
+
+template<>
+struct Retrospection<rmmr::resource::shader::Loader> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("rmmr::resource::shader::Loader");
+        d.one(field<&rmmr::resource::shader::Loader::Quantum::vertex>("vertex"));
+        d.one(field<&rmmr::resource::shader::Loader::Quantum::fragment>("fragment"));
+    }
+};
 
 }

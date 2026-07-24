@@ -31,25 +31,11 @@ namespace community {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("community::Person");
-            d.one(field<&Quantum::name>("name"));
-            d.one(field<&Quantum::age>("age"));
-            // cache omitted = ignored
-        }
     };
 
     struct UselessItem_group : Group<UselessItem_group, Person, UselessItem> {
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("community::UselessItem_group");
-            d.one(collection<UselessItem::Id>("members"));
-        }
     };
 
     struct Family : Entity<Family> {
@@ -74,17 +60,6 @@ namespace community {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("community::Family");
-            d.one(field<&Quantum::lastname>("lastname"));
-            d.one(field<&Quantum::parents, &Parents::dad>("parents.dad"));
-            d.one(field<&Quantum::parents, &Parents::mom>("parents.mom"));
-            d.one(collection<Person::Id, &Quantum::children>("children"));
-            d.all(field<&Global::sharedMoney>("sharedMoney"));
-            d.all(collection<string, &Global::legends>("legends"));
-        }
     };
 
     struct Registry : Archetype<Registry> {
@@ -93,3 +68,41 @@ namespace community {
     };
 
 }
+
+namespace fqsm::aspect {
+
+template<>
+struct Retrospection<community::Person> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("community::Person");
+        d.one(field<&community::Person::Quantum::name>("name"));
+        d.one(field<&community::Person::Quantum::age>("age"));
+    }
+};
+
+template<>
+struct Retrospection<community::UselessItem_group> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("community::UselessItem_group");
+        d.one(collection<community::UselessItem::Id>("members"));
+    }
+};
+
+template<>
+struct Retrospection<community::Family> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("community::Family");
+        d.one(field<&community::Family::Quantum::lastname>("lastname"));
+        d.one(field<&community::Family::Quantum::parents, &community::Family::Parents::dad>("parents.dad"));
+        d.one(field<&community::Family::Quantum::parents, &community::Family::Parents::mom>("parents.mom"));
+        d.one(collection<community::Person::Id, &community::Family::Quantum::children>("children"));
+        d.all(field<&community::Family::Global::sharedMoney>("sharedMoney"));
+        d.all(collection<std::string, &community::Family::Global::legends>("legends"));
+    }
+};
+
+}
+

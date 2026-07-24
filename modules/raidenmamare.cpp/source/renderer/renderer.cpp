@@ -112,7 +112,7 @@ namespace rmmr {
 
         auto material_texture_for_semantic(const resource::material::Runtime::Technique& technique, resource::Uniform::Id semantic) -> base::maybe<resource::texture::Runtime::Id> {
             for (const auto& texture_binding : technique.textures) {
-                if (texture_binding.id == semantic) {
+                if (texture_binding.uniform == semantic) {
                     return texture_binding.texture;
                 }
             }

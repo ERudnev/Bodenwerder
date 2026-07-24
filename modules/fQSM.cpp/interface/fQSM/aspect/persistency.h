@@ -1,11 +1,13 @@
 #pragma once
 
-// Cereal-like describe: one visitor call per slot.
-// Scope: one (Quantum) / all (Global). Shape: field / collection.
-// collection<Elem>() with no member pointers: Quantum (or Global) itself is the container (Group).
-// Elem is mandatory — names the leaf type of each element (archivist layout / codecs).
+// Cereal-like describe via Retrospection<T> specialization (not a member of T).
+// Scope: one (instance / Quantum) / all (Global). Shape: field / collection.
+// collection<Elem>() with no member pointers: root itself is the container (Group).
+// Elem is mandatory — names the element type (atom or nested Retrospection).
 
 #include <string_view>
+
+#include <fQSM/meta/retrospection.h>
 
 namespace fqsm::aspect {
 
@@ -53,6 +55,8 @@ namespace fqsm::aspect {
         using Element = Elem;
 
         std::string_view name{};
+        // Column base name for map keys (umap / pair<Key, Mapped> elements). Ignored for sequences.
+        std::string_view key_name = "key";
 
         template<typename Root>
         decltype(auto) get(Root& root) const {
@@ -71,8 +75,9 @@ namespace fqsm::aspect {
     }
 
     template<typename Elem, auto... Members>
-    constexpr auto collection(std::string_view name) -> Collection<Elem, Members...> {
-        return Collection<Elem, Members...>{.name = name};
+    constexpr auto collection(std::string_view name, std::string_view key_name = "key")
+        -> Collection<Elem, Members...> {
+        return Collection<Elem, Members...>{.name = name, .key_name = key_name};
     }
 
 }

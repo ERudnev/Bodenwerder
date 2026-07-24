@@ -62,7 +62,7 @@ namespace rmmr::resource::material {
                     return context.refuse("resource::material::Composer::materialize: texture runtime missing for technique");
                 }
                 textures.push_back(Runtime::TextureBinding{
-                    .id = texture_binding.id,
+                    .uniform = texture_binding.uniform,
                     .texture = texture_it->second,
                 });
             }

@@ -87,7 +87,7 @@ namespace rmmr::resource::builders::material {
                     }),
                     .textures = {
                         Asset::TextureBinding{
-                            .id = ::rmmr::material::Semantics::id_of("albedoMap"),
+                            .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
                             .texture = albedo_map,
                         },
                     },
@@ -118,7 +118,7 @@ namespace rmmr::resource::builders::material {
                     }),
                     .textures = {
                         Asset::TextureBinding{
-                            .id = ::rmmr::material::Semantics::id_of("albedoMap"),
+                            .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
                             .texture = albedo_map,
                         },
                     },

@@ -28,11 +28,6 @@ namespace rmmr::resource {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("rmmr::resource::Assets");
-        }
     };
 
     struct DeviceRuntimes : Component<DeviceRuntimes, system::Device> {
@@ -83,5 +78,17 @@ namespace rmmr::resource {
         struct Internals;
         static const Behavior customAspectReactions();
     };
+
+}
+
+namespace fqsm::aspect {
+
+template<>
+struct Retrospection<rmmr::resource::Assets> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("rmmr::resource::Assets");
+    }
+};
 
 }

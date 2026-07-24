@@ -3,6 +3,7 @@
 #include <concepts>
 
 #include <base/serialization.h>
+#include <fQSM/meta/retrospection.h>
 
 namespace fqsm::detail::meta::category {
 
@@ -46,7 +47,7 @@ namespace fqsm::meta::category {
 
         template<typename Meta>
         concept Retrospection = requires(fqsm::detail::meta::category::RetrospectionProbe& d) {
-            Meta::describe(d);
+            fqsm::aspect::Retrospection<Meta>::describe(d);
         };
     }
 

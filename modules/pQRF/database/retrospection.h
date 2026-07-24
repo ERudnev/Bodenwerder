@@ -1,6 +1,6 @@
 #pragma once
 
-// Compatibility alias: canonical check is meta::category::musthave::Retrospection.
+// Canonical check: meta::category::musthave::Retrospection (Retrospection<Meta>::describe).
 
 #include <fQSM/meta/categories.h>
 

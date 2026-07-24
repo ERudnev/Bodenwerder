@@ -39,14 +39,6 @@ namespace experimental {
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("experimental::Person");
-            d.one(field<&Quantum::name>("name"));
-            d.one(field<&Quantum::age>("age"));
-            // cache omitted = ignored
-        }
     };
 
     struct Family : Entity<Family> {
@@ -71,17 +63,6 @@ namespace experimental {
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("experimental::Family");
-            d.one(field<&Quantum::lastname>("lastname"));
-            d.one(field<&Quantum::parents, &Parents::dad>("parents.dad"));
-            d.one(field<&Quantum::parents, &Parents::mom>("parents.mom"));
-            d.one(collection<Person::Id, &Quantum::children>("children"));
-            d.all(field<&Global::sharedMoney>("sharedMoney"));
-            d.all(collection<string, &Global::legends>("legends"));
-        }
     };
 
     struct Registry : Archetype<Registry> {
@@ -99,6 +80,38 @@ namespace experimental {
     auto Family::Actions::generate(Writing, bool, bool, integer) -> Id {
         _INCOMPLETE_;
     }
+
+}
+
+namespace fqsm::aspect {
+
+template<>
+struct Retrospection<experimental::Person> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("experimental::Person");
+        d.one(field<&experimental::Person::Quantum::name>("name"));
+        d.one(field<&experimental::Person::Quantum::age>("age"));
+    }
+};
+
+template<>
+struct Retrospection<experimental::Family> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("experimental::Family");
+        d.one(field<&experimental::Family::Quantum::lastname>("lastname"));
+        d.one(field<&experimental::Family::Quantum::parents, &experimental::Family::Parents::dad>("parents.dad"));
+        d.one(field<&experimental::Family::Quantum::parents, &experimental::Family::Parents::mom>("parents.mom"));
+        d.one(collection<experimental::Person::Id, &experimental::Family::Quantum::children>("children"));
+        d.all(field<&experimental::Family::Global::sharedMoney>("sharedMoney"));
+        d.all(collection<std::string, &experimental::Family::Global::legends>("legends"));
+    }
+};
+
+}
+
+namespace experimental {
 
     void Registry::createSixFamilies(Writing) {
         _INCOMPLETE_;
@@ -151,7 +164,7 @@ struct SchemaCollection {
     std::string_view elementSqlType;
 };
 
-// Collects relational layout from Meta::describe — proof we can build schemas from the form.
+// Collects relational layout from Retrospection<Meta> — proof we can build schemas from the form.
 template<typename Meta>
 struct SchemaDesc {
     std::string_view aspectName{};
@@ -196,7 +209,7 @@ struct SchemaDesc {
 template<typename Meta>
 auto collect_schema() -> SchemaDesc<Meta> {
     SchemaDesc<Meta> schema{};
-    Meta::describe(schema);
+    fqsm::aspect::Retrospection<Meta>::describe(schema);
     return schema;
 }
 
@@ -239,7 +252,7 @@ template<typename Meta>
 void archive_aspect_stub(fqsm::Writing context)
 {
     ArchiveDesc<Meta> desc{context};
-    Meta::describe(desc);
+    fqsm::aspect::Retrospection<Meta>::describe(desc);
 }
 
 void archivist_placeholder(fqsm::Writing context)
@@ -304,3 +317,4 @@ void temp_persistency()
 }
 
 }
+

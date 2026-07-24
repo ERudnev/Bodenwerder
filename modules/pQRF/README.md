@@ -1,6 +1,6 @@
 # pQRF
 
-**persistent Quantized Relational Form** — backends for fQSM aspects that declare a retrospection form via `Meta::describe` (`one`/`all` × `field`/`collection`). The aspect-side vocabulary lives in fQSM; this module maps that form onto storage.
+**persistent Quantized Relational Form** — backends for fQSM aspects that declare a retrospection form via `Retrospection<Meta>::describe` (`one`/`all` × `field`/`collection`). The aspect-side vocabulary lives in fQSM; this module maps that form onto storage.
 
 - `database/` — SQLite (separate tables for quanta, collections, globals).
 - `json/` — standard JSON archive: positional rows, no field names; `Id` as `"0x…"`. `one` = table of quantum rows (collections inlined); `all` = single global row (singleton, not a table of rows). Section keys omitted when empty; missing on load means empty. `present` = aspect object exists in the root. Core API: `capture` / `to_string` / `saveToStream` / `updateFromStream`; file I/O is a thin wrapper.
@@ -9,7 +9,7 @@
 
 ## Leaf types (out of the box)
 
-Codecs live in `json/leaf.h` and `database/sql.h`. A `field` / collection element must resolve to one of these (or nest via `field<&…, &member>`).
+Codecs live in `json/leaf.h` and `database/sql.h`. A `field` / collection element must resolve to one of these, nest via `field<&…, &member>`, or (later) nested `Retrospection<T>`.
 
 | C++ / `common_types` | JSON | SQLite |
 |---|---|---|

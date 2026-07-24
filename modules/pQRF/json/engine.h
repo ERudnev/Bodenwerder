@@ -9,6 +9,7 @@
 #include <pQRF/json/document.h>
 #include <pQRF/json/leaf.h>
 #include <pQRF/json/storage.h>
+#include <pQRF/json/value_form.h>
 
 #include <memory>
 #include <stdexcept>
@@ -41,7 +42,7 @@ namespace fqsm::processing::persistency::json::detail {
     template<typename Meta>
     auto aspect_name_of() -> std::string {
         AspectNameDesc<Meta> desc{};
-        Meta::describe(desc);
+        fqsm::aspect::Retrospection<Meta>::describe(desc);
         return std::string{desc.aspectName};
     }
 
@@ -54,14 +55,14 @@ namespace fqsm::processing::persistency::json::detail {
 
         template<auto... Members>
         void one(Field<Members...> slot) {
-            row.array.push_back(leaf::write(slot.get(quantum)));
+            row.array.push_back(form::write_value(slot.get(quantum)));
         }
 
         template<typename Elem, auto... Members>
         void one(Collection<Elem, Members...> slot) {
             Value nested = Value::array_value();
             for (const auto& element : slot.get(quantum))
-                nested.array.push_back(leaf::write(element));
+                nested.array.push_back(form::write_value(element));
             row.array.push_back(std::move(nested));
         }
 
@@ -84,7 +85,7 @@ namespace fqsm::processing::persistency::json::detail {
         void one(Field<Members...> slot) {
             if (index >= row.array.size())
                 throw std::runtime_error("json one-row: missing field");
-            leaf::read(row.array[index++], slot.get(quantum));
+            form::read_value(row.array[index++], slot.get(quantum));
         }
 
         template<typename Elem, auto... Members>
@@ -98,9 +99,9 @@ namespace fqsm::processing::persistency::json::detail {
             container.clear();
             for (const auto& element : nested.array) {
                 if constexpr (requires { container.push_back(std::declval<Elem>()); })
-                    container.push_back(leaf::decode<Elem>(element));
+                    container.push_back(form::decode_value<Elem>(element));
                 else
-                    container.insert(leaf::decode<Elem>(element));
+                    container.insert(form::decode_value<Elem>(element));
             }
         }
 
@@ -126,14 +127,14 @@ namespace fqsm::processing::persistency::json::detail {
 
         template<auto... Members>
         void all(Field<Members...> slot) {
-            row.array.push_back(leaf::write(slot.get(global)));
+            row.array.push_back(form::write_value(slot.get(global)));
         }
 
         template<typename Elem, auto... Members>
         void all(Collection<Elem, Members...> slot) {
             Value nested = Value::array_value();
             for (const auto& element : slot.get(global))
-                nested.array.push_back(leaf::write(element));
+                nested.array.push_back(form::write_value(element));
             row.array.push_back(std::move(nested));
         }
     };
@@ -156,7 +157,7 @@ namespace fqsm::processing::persistency::json::detail {
         void all(Field<Members...> slot) {
             if (index >= row.array.size())
                 throw std::runtime_error("json all-row: missing field");
-            leaf::read(row.array[index++], slot.get(global));
+            form::read_value(row.array[index++], slot.get(global));
         }
 
         template<typename Elem, auto... Members>
@@ -170,9 +171,9 @@ namespace fqsm::processing::persistency::json::detail {
             container.clear();
             for (const auto& element : nested.array) {
                 if constexpr (requires { container.push_back(std::declval<Elem>()); })
-                    container.push_back(leaf::decode<Elem>(element));
+                    container.push_back(form::decode_value<Elem>(element));
                 else
-                    container.insert(leaf::decode<Elem>(element));
+                    container.insert(form::decode_value<Elem>(element));
             }
         }
     };
@@ -189,7 +190,7 @@ namespace fqsm::processing::persistency::json::detail {
     template<typename Meta>
     auto has_all_slots() -> bool {
         HasAllSlotsDesc<Meta> desc{};
-        Meta::describe(desc);
+        fqsm::aspect::Retrospection<Meta>::describe(desc);
         return desc.has_all;
     }
 
@@ -202,7 +203,7 @@ namespace fqsm::processing::persistency::json::detail {
             Value row = Value::array_value();
             row.array.push_back(leaf::write(entry.id));
             WriteOneRowDesc<Meta> writer{row, entry.value};
-            Meta::describe(writer);
+            fqsm::aspect::Retrospection<Meta>::describe(writer);
             one_table.array.push_back(std::move(row));
         }
         if (!one_table.array.empty())
@@ -211,7 +212,7 @@ namespace fqsm::processing::persistency::json::detail {
         if (has_all_slots<Meta>()) {
             Value row = Value::array_value();
             WriteAllRowDesc<Meta> writer{row, with<Meta>::get_global(context)};
-            Meta::describe(writer);
+            fqsm::aspect::Retrospection<Meta>::describe(writer);
             aspect.set(std::string{section_all}, std::move(row));
         }
 
@@ -231,7 +232,7 @@ namespace fqsm::processing::persistency::json::detail {
                     context.workers_interface().updates<Meta>().put_as_restored(id, fqsm::utility::BadValue{});
                 auto quantum = with<Meta>::modify(context, id);
                 ReadOneRowDesc<Meta> reader{row, *quantum, 1};
-                Meta::describe(reader);
+                fqsm::aspect::Retrospection<Meta>::describe(reader);
             }
         }
 
@@ -242,7 +243,7 @@ namespace fqsm::processing::persistency::json::detail {
 
         auto global = with<Meta>::modify_global(context);
         ReadAllRowDesc<Meta> reader{*all_row, *global, 0};
-        Meta::describe(reader);
+        fqsm::aspect::Retrospection<Meta>::describe(reader);
     }
 
     template<typename Meta>
@@ -258,7 +259,7 @@ namespace fqsm::processing::persistency::json::detail {
                 const auto id = leaf::decode<typename Meta::Id>(row.array[0]);
                 typename Meta::Quantum quantum = fqsm::utility::BadValue{};
                 ReadOneRowDesc<Meta> reader{row, quantum, 1};
-                Meta::describe(reader);
+                fqsm::aspect::Retrospection<Meta>::describe(reader);
                 gate.items.insert(id, std::move(quantum));
             }
         }
@@ -270,7 +271,7 @@ namespace fqsm::processing::persistency::json::detail {
         if (!all_row || !all_row->is_array()) return;
 
         ReadAllRowDesc<Meta> reader{*all_row, gate.global, 0};
-        Meta::describe(reader);
+        fqsm::aspect::Retrospection<Meta>::describe(reader);
     }
 
     template<typename Meta>

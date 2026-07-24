@@ -197,9 +197,9 @@ namespace toy::ui {
 
                 for (auto& binding : technique.textures) {
                     pushEntityId<resource::material::Asset>(material_id);
-                    ImGui::PushID(static_cast<int>(binding.id));
+                    ImGui::PushID(static_cast<int>(binding.uniform));
 
-                    const string slot_label{material::Semantics::name_of(binding.id)};
+                    const string slot_label{material::Semantics::name_of(binding.uniform)};
                     const char* preview = "(missing)";
                     const bool texture_ok = with<resource::Unit>::exists(world, binding.texture.id);
                     if (texture_ok) {

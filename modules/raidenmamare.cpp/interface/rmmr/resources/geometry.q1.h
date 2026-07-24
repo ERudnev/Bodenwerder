@@ -21,12 +21,6 @@ namespace rmmr::resource::geometry {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("rmmr::resource::geometry::Asset");
-            d.one(collection<Pos, &Quantum::slots>("slots"));
-        }
     };
 
     struct Runtime : Entity<Runtime> {
@@ -51,12 +45,6 @@ namespace rmmr::resource::geometry {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("rmmr::resource::geometry::Loader");
-            d.one(field<&Quantum::file>("file"));
-        }
     };
 
     struct Generator : Feature<Generator, Asset> {
@@ -74,12 +62,37 @@ namespace rmmr::resource::geometry {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("rmmr::resource::geometry::Generator");
-            d.one(field<&Quantum::type>("type"));
-        }
     };
+
+}
+
+namespace fqsm::aspect {
+
+template<>
+struct Retrospection<rmmr::resource::geometry::Asset> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("rmmr::resource::geometry::Asset");
+        d.one(collection<rmmr::Pos, &rmmr::resource::geometry::Asset::Quantum::slots>("slots"));
+    }
+};
+
+template<>
+struct Retrospection<rmmr::resource::geometry::Loader> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("rmmr::resource::geometry::Loader");
+        d.one(field<&rmmr::resource::geometry::Loader::Quantum::file>("file"));
+    }
+};
+
+template<>
+struct Retrospection<rmmr::resource::geometry::Generator> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("rmmr::resource::geometry::Generator");
+        d.one(field<&rmmr::resource::geometry::Generator::Quantum::type>("type"));
+    }
+};
 
 }

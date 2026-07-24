@@ -11,7 +11,7 @@ namespace rmmr
 
     feature Asset of resource::Unit
       struct TextureBinding
-        id: Uniform::Id
+        uniform: Uniform::Id
         texture: texture::Reference
       struct Technique
         program: shader::Reference
@@ -22,7 +22,7 @@ namespace rmmr
 
     entity Runtime
       struct TextureBinding
-        id: Uniform::Id
+        uniform: Uniform::Id
         texture: #texture::Runtime
       using Locations as @external(rmmr::material::Semantics::RuntimeMapping)
       struct Technique

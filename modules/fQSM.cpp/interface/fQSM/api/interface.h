@@ -60,9 +60,11 @@ namespace fqsm::api {
 
     using Behavior = ::fqsm::features::Behavior;
 
-    // Persistency form (Meta::describe): one/all × field/collection
+    // Persistency form (fqsm::aspect::Retrospection<T>::describe): one/all × field/collection
     using ::fqsm::aspect::field;
     using ::fqsm::aspect::collection;
+    // Specialize ::fqsm::aspect::Retrospection<T> (not an api alias — aliases cannot be specialized).
+    using ::fqsm::aspect::Retrospection;
 
     // Interpretation mechanism:
     template<typename Meta>

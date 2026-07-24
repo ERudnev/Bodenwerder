@@ -15,14 +15,21 @@ namespace {
         struct Actions : BaseActions {};
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("A");
-            d.one(field<&Quantum::value>("value"));
-            d.one(field<&Quantum::neighbor>("neighbor"));
-        }
     };
+
+}
+
+namespace fqsm::aspect {
+
+template<>
+struct Retrospection<A> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("A");
+        d.one(field<&A::Quantum::value>("value"));
+        d.one(field<&A::Quantum::neighbor>("neighbor"));
+    }
+};
 
 }
 
@@ -41,3 +48,4 @@ void remap_identities()
 }
 
 }
+

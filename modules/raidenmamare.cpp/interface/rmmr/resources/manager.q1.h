@@ -14,12 +14,6 @@ namespace rmmr::resource {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("rmmr::resource::Manager");
-            d.one(field<&Quantum::location>("location"));
-        }
     };
 
     struct Unit : Entity<Unit> {
@@ -40,19 +34,45 @@ namespace rmmr::resource {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
-
-        template<typename Desc>
-        static void describe(Desc& d) {
-            d.aspect("rmmr::resource::Unit");
-            d.one(field<&Quantum::manager>("manager"));
-            d.one(field<&Quantum::name>("name"));
-            d.one(field<&Quantum::library>("library"));
-        }
     };
 
     struct Unit_group : Group<Unit_group, Manager, Unit> {
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };
+
+}
+
+namespace fqsm::aspect {
+
+template<>
+struct Retrospection<rmmr::resource::Manager> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("rmmr::resource::Manager");
+        d.one(field<&rmmr::resource::Manager::Quantum::location>("location"));
+    }
+};
+
+template<>
+struct Retrospection<rmmr::resource::Unit::Reference> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("Reference");
+        d.one(field<&rmmr::resource::Unit::Reference::id>("id"));
+        d.one(field<&rmmr::resource::Unit::Reference::backup>("backup"));
+    }
+};
+
+template<>
+struct Retrospection<rmmr::resource::Unit> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("rmmr::resource::Unit");
+        d.one(field<&rmmr::resource::Unit::Quantum::manager>("manager"));
+        d.one(field<&rmmr::resource::Unit::Quantum::name>("name"));
+        d.one(field<&rmmr::resource::Unit::Quantum::library>("library"));
+    }
+};
 
 }
