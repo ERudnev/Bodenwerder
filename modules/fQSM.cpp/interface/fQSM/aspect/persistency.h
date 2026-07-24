@@ -2,7 +2,8 @@
 
 // Cereal-like describe: one visitor call per slot.
 // Scope: one (Quantum) / all (Global). Shape: field / collection.
-// collection<>() with no member pointers: Quantum (or Global) itself is the container (Group).
+// collection<Elem>() with no member pointers: Quantum (or Global) itself is the container (Group).
+// Elem is mandatory — names the leaf type of each element (archivist layout / codecs).
 
 #include <string_view>
 
@@ -47,8 +48,10 @@ namespace fqsm::aspect {
         }
     };
 
-    template<auto... Members>
+    template<typename Elem, auto... Members>
     struct Collection {
+        using Element = Elem;
+
         std::string_view name{};
 
         template<typename Root>
@@ -67,9 +70,9 @@ namespace fqsm::aspect {
         return Field<Members...>{.name = name};
     }
 
-    template<auto... Members>
-    constexpr auto collection(std::string_view name) -> Collection<Members...> {
-        return Collection<Members...>{.name = name};
+    template<typename Elem, auto... Members>
+    constexpr auto collection(std::string_view name) -> Collection<Elem, Members...> {
+        return Collection<Elem, Members...>{.name = name};
     }
 
 }

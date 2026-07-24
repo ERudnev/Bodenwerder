@@ -48,7 +48,7 @@ namespace community {
         template<typename Desc>
         static void describe(Desc& d) {
             d.aspect("community::UselessItem_group");
-            d.one(collection<>("members"));
+            d.one(collection<UselessItem::Id>("members"));
         }
     };
 
@@ -81,9 +81,9 @@ namespace community {
             d.one(field<&Quantum::lastname>("lastname"));
             d.one(field<&Quantum::parents, &Parents::dad>("parents.dad"));
             d.one(field<&Quantum::parents, &Parents::mom>("parents.mom"));
-            d.one(collection<&Quantum::children>("children"));
+            d.one(collection<Person::Id, &Quantum::children>("children"));
             d.all(field<&Global::sharedMoney>("sharedMoney"));
-            d.all(collection<&Global::legends>("legends"));
+            d.all(collection<string, &Global::legends>("legends"));
         }
     };
 

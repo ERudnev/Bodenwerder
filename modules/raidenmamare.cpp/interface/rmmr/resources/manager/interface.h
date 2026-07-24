@@ -20,23 +20,22 @@ namespace rmmr::assets {
     struct Interface {
         template<template<typename> typename Aspect>
         static auto persistencySchema() -> persist::Schema {
-            // Unit_group is Engine ownership — not archived; re-register after load.
+            // Unit_group is Engine ownership — not archived; load does not mount into it.
+            // Workbench: only material::Asset while persistency for nested techniques is reshaped.
             static const auto schema = persist::merge({
-                Aspect<resource::Manager>{},
-                Aspect<resource::Unit>{},
-                Aspect<resource::Assets>{},
-                Aspect<resource::texture::Asset>{},
-                Aspect<resource::texture::Loader>{},
-                Aspect<resource::texture::Generator>{},
-                Aspect<resource::shader::Asset>{},
-                Aspect<resource::shader::Loader>{},
+                // Aspect<resource::Unit>{},
+                // Aspect<resource::texture::Asset>{},
+                // Aspect<resource::texture::Loader>{},
+                // Aspect<resource::texture::Generator>{},
+                // Aspect<resource::shader::Asset>{},
+                // Aspect<resource::shader::Loader>{},
                 Aspect<resource::material::Asset>{},
-                Aspect<resource::material::Composer>{},
-                Aspect<resource::shadow::Asset>{},
-                Aspect<resource::shadow::Allocator>{},
-                Aspect<resource::geometry::Asset>{},
-                Aspect<resource::geometry::Loader>{},
-                Aspect<resource::geometry::Generator>{},
+                // Aspect<resource::material::Composer>{},
+                // Aspect<resource::shadow::Asset>{},
+                // Aspect<resource::shadow::Allocator>{},
+                // Aspect<resource::geometry::Asset>{},
+                // Aspect<resource::geometry::Loader>{},
+                // Aspect<resource::geometry::Generator>{},
             });
             return schema;
         }

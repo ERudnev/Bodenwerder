@@ -135,7 +135,7 @@ namespace fqsm::processing::persistency::json {
         return loaded;
     }
 
-    bool JsonArchivist::replaceFromLocation(Stewarding steward, Palette palette, Location location) {
+    bool JsonArchivist::loadFromLocation(Stewarding steward, Palette palette, Location location) {
         auto document = open_existing(location);
         if (!document) return false;
 

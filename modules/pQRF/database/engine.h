@@ -30,7 +30,7 @@ namespace fqsm::processing::persistency::database::detail {
 
     constexpr std::string_view sequence_owner_column = "owner";
     constexpr std::string_view sequence_ordinal_column = "ordinal";
-    constexpr std::string_view sequence_value_column = "value";
+    constexpr std::string_view sequence_value_base = "value";
 
     [[noreturn]] inline void fail(sqlite3* db, std::string_view what) {
         throw std::runtime_error(std::format("{}: {}", what, db ? sqlite3_errmsg(db) : "no db"));
@@ -87,49 +87,66 @@ namespace fqsm::processing::persistency::database::detail {
     }
 
     struct LayoutColumn {
-        std::string_view name;
+        std::string name;
         std::string_view sqlType;
         bool nullable = false;
     };
+
+    struct LayoutCollection {
+        std::string_view name;
+        std::vector<LayoutColumn> value_columns;
+    };
+
+    template<typename Leaf>
+    void expand_atom_columns(std::string_view base_name, bool nullable, std::vector<LayoutColumn>& out) {
+        sql::atom<Leaf>::require();
+        for (const auto& column : sql::atom<Leaf>::columns) {
+            out.push_back(LayoutColumn{
+                .name = std::string{base_name} + std::string{column.suffix},
+                .sqlType = column.sql_type,
+                .nullable = nullable,
+            });
+        }
+    }
 
     template<typename Meta>
     struct LayoutDesc {
         std::string_view aspectName{};
         std::vector<LayoutColumn> one_fields{};
-        std::vector<LayoutColumn> one_collections{};
+        std::vector<LayoutCollection> one_collections{};
         std::vector<LayoutColumn> all_fields{};
-        std::vector<LayoutColumn> all_collections{};
+        std::vector<LayoutCollection> all_collections{};
 
         void aspect(std::string_view name) { aspectName = name; }
 
         template<auto... Members>
         void one(Field<Members...> slot) {
             using Leaf = std::decay_t<decltype(slot.get(std::declval<typename Meta::Quantum&>()))>;
-            sql::atom<Leaf>::require();
-            one_fields.push_back({slot.name, sql::atom<Leaf>::sql_name, sql::atom<Leaf>::nullable});
+            expand_atom_columns<Leaf>(slot.name, sql::atom<Leaf>::nullable, one_fields);
         }
 
-        template<auto... Members>
-        void one(Collection<Members...> slot) {
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...> slot) {
             using Container = std::decay_t<decltype(slot.get(std::declval<typename Meta::Quantum&>()))>;
-            using Elem = typename Container::value_type;
-            sql::atom<Elem>::require();
-            one_collections.push_back({slot.name, sql::atom<Elem>::sql_name, sql::atom<Elem>::nullable});
+            static_assert(std::is_same_v<Elem, typename Container::value_type>);
+            LayoutCollection collection{.name = slot.name};
+            expand_atom_columns<Elem>(sequence_value_base, sql::atom<Elem>::nullable, collection.value_columns);
+            one_collections.push_back(std::move(collection));
         }
 
         template<auto... Members>
         void all(Field<Members...> slot) {
             using Leaf = std::decay_t<decltype(slot.get(std::declval<fqsm::GlobalValue<Meta>&>()))>;
-            sql::atom<Leaf>::require();
-            all_fields.push_back({slot.name, sql::atom<Leaf>::sql_name, sql::atom<Leaf>::nullable});
+            expand_atom_columns<Leaf>(slot.name, sql::atom<Leaf>::nullable, all_fields);
         }
 
-        template<auto... Members>
-        void all(Collection<Members...> slot) {
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...> slot) {
             using Container = std::decay_t<decltype(slot.get(std::declval<fqsm::GlobalValue<Meta>&>()))>;
-            using Elem = typename Container::value_type;
-            sql::atom<Elem>::require();
-            all_collections.push_back({slot.name, sql::atom<Elem>::sql_name, sql::atom<Elem>::nullable});
+            static_assert(std::is_same_v<Elem, typename Container::value_type>);
+            LayoutCollection collection{.name = slot.name};
+            expand_atom_columns<Elem>(sequence_value_base, sql::atom<Elem>::nullable, collection.value_columns);
+            all_collections.push_back(std::move(collection));
         }
     };
 
@@ -166,13 +183,14 @@ namespace fqsm::processing::persistency::database::detail {
         return out.str();
     }
 
-    inline auto build_collection_insert_sql(std::string_view table) -> std::string {
+    inline auto build_collection_insert_sql(std::string_view table, const std::vector<LayoutColumn>& value_columns) -> std::string {
         std::ostringstream out;
         out << "INSERT INTO " << sqlIdentifier(table)
             << " (" << sqlIdentifier(sequence_owner_column)
-            << ", " << sqlIdentifier(sequence_ordinal_column)
-            << ", " << sqlIdentifier(sequence_value_column)
-            << ") VALUES (?, ?, ?)";
+            << ", " << sqlIdentifier(sequence_ordinal_column);
+        for (const auto& column : value_columns)
+            out << ", " << sqlIdentifier(column.name);
+        out << ") VALUES (" << placeholders(2 + value_columns.size()) << ")";
         return out.str();
     }
 
@@ -200,13 +218,14 @@ namespace fqsm::processing::persistency::database::detail {
         return out.str();
     }
 
-    inline auto build_collection_select_sql(std::string_view table) -> std::string {
+    inline auto build_collection_select_sql(std::string_view table, const std::vector<LayoutColumn>& value_columns) -> std::string {
         std::ostringstream out;
         out << "SELECT "
             << sqlIdentifier(sequence_owner_column) << ", "
-            << sqlIdentifier(sequence_ordinal_column) << ", "
-            << sqlIdentifier(sequence_value_column)
-            << " FROM " << sqlIdentifier(table)
+            << sqlIdentifier(sequence_ordinal_column);
+        for (const auto& column : value_columns)
+            out << ", " << sqlIdentifier(column.name);
+        out << " FROM " << sqlIdentifier(table)
             << " ORDER BY " << sqlIdentifier(sequence_owner_column) << ", "
             << sqlIdentifier(sequence_ordinal_column);
         return out.str();
@@ -238,13 +257,16 @@ namespace fqsm::processing::persistency::database::detail {
         exec(db, out.str().c_str());
     }
 
-    inline void create_collection_table(sqlite3* db, std::string_view table, std::string_view sqlType) {
+    inline void create_collection_table(sqlite3* db, std::string_view table, const std::vector<LayoutColumn>& value_columns) {
         std::ostringstream out;
         out << "CREATE TABLE " << sqlIdentifier(table) << " (\n"
             << "    " << sqlIdentifier(sequence_owner_column) << " INTEGER NOT NULL,\n"
-            << "    " << sqlIdentifier(sequence_ordinal_column) << " INTEGER NOT NULL,\n"
-            << "    " << sqlIdentifier(sequence_value_column) << ' ' << sqlType << " NOT NULL,\n"
-            << "    PRIMARY KEY (" << sqlIdentifier(sequence_owner_column) << ", "
+            << "    " << sqlIdentifier(sequence_ordinal_column) << " INTEGER NOT NULL";
+        for (const auto& column : value_columns) {
+            out << ",\n    " << sqlIdentifier(column.name) << ' ' << column.sqlType;
+            if (!column.nullable) out << " NOT NULL";
+        }
+        out << ",\n    PRIMARY KEY (" << sqlIdentifier(sequence_owner_column) << ", "
             << sqlIdentifier(sequence_ordinal_column) << ")\n"
             << ")";
         exec(db, out.str().c_str());
@@ -291,9 +313,9 @@ namespace fqsm::processing::persistency::database::detail {
 
         create_quanta_table(db, layout);
         for (const auto& field : layout.one_collections)
-            create_collection_table(db, one_collection_table(layout.aspectName, field.name), field.sqlType);
+            create_collection_table(db, one_collection_table(layout.aspectName, field.name), field.value_columns);
         for (const auto& field : layout.all_collections)
-            create_collection_table(db, all_collection_table(layout.aspectName, field.name), field.sqlType);
+            create_collection_table(db, all_collection_table(layout.aspectName, field.name), field.value_columns);
         if (!layout.all_fields.empty())
             create_globals_table(db, layout);
     }
@@ -308,17 +330,17 @@ namespace fqsm::processing::persistency::database::detail {
 
         template<auto... Members>
         void one(Field<Members...> slot) {
-            sql::bind(statement, bindIndex++, slot.get(quantum));
+            bindIndex = sql::bind(statement, bindIndex, slot.get(quantum));
         }
 
-        template<auto... Members>
-        void one(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...>) {}
 
         template<auto... Members>
         void all(Field<Members...>) {}
 
-        template<auto... Members>
-        void all(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...>) {}
     };
 
     template<typename Meta>
@@ -331,17 +353,17 @@ namespace fqsm::processing::persistency::database::detail {
 
         template<auto... Members>
         void one(Field<Members...> slot) {
-            sql::read(statement, columnIndex++, slot.get(quantum));
+            columnIndex = sql::read(statement, columnIndex, slot.get(quantum));
         }
 
-        template<auto... Members>
-        void one(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...>) {}
 
         template<auto... Members>
         void all(Field<Members...>) {}
 
-        template<auto... Members>
-        void all(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...>) {}
     };
 
     template<typename Meta>
@@ -355,16 +377,16 @@ namespace fqsm::processing::persistency::database::detail {
         template<auto... Members>
         void one(Field<Members...>) {}
 
-        template<auto... Members>
-        void one(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...>) {}
 
         template<auto... Members>
         void all(Field<Members...> slot) {
-            sql::bind(statement, bindIndex++, slot.get(global));
+            bindIndex = sql::bind(statement, bindIndex, slot.get(global));
         }
 
-        template<auto... Members>
-        void all(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...>) {}
     };
 
     template<typename Meta>
@@ -378,16 +400,16 @@ namespace fqsm::processing::persistency::database::detail {
         template<auto... Members>
         void one(Field<Members...>) {}
 
-        template<auto... Members>
-        void one(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...>) {}
 
         template<auto... Members>
         void all(Field<Members...> slot) {
-            sql::read(statement, columnIndex++, slot.get(global));
+            columnIndex = sql::read(statement, columnIndex, slot.get(global));
         }
 
-        template<auto... Members>
-        void all(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...>) {}
     };
 
     template<typename Meta>
@@ -401,11 +423,14 @@ namespace fqsm::processing::persistency::database::detail {
         template<auto... Members>
         void one(Field<Members...>) {}
 
-        template<auto... Members>
-        void one(Collection<Members...> slot) {
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...> slot) {
             const auto table = one_collection_table(aspectName, slot.name);
+            std::vector<LayoutColumn> value_columns;
+            expand_atom_columns<Elem>(sequence_value_base, sql::atom<Elem>::nullable, value_columns);
+
             sqlite3_stmt* statement = nullptr;
-            const auto sql = build_collection_insert_sql(table);
+            const auto sql = build_collection_insert_sql(table, value_columns);
             if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
                 fail(db, std::format("prepare {}", table));
 
@@ -432,8 +457,8 @@ namespace fqsm::processing::persistency::database::detail {
         template<auto... Members>
         void all(Field<Members...>) {}
 
-        template<auto... Members>
-        void all(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...>) {}
     };
 
     template<typename Meta>
@@ -447,17 +472,20 @@ namespace fqsm::processing::persistency::database::detail {
         template<auto... Members>
         void one(Field<Members...>) {}
 
-        template<auto... Members>
-        void one(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...>) {}
 
         template<auto... Members>
         void all(Field<Members...>) {}
 
-        template<auto... Members>
-        void all(Collection<Members...> slot) {
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...> slot) {
             const auto table = all_collection_table(aspectName, slot.name);
+            std::vector<LayoutColumn> value_columns;
+            expand_atom_columns<Elem>(sequence_value_base, sql::atom<Elem>::nullable, value_columns);
+
             sqlite3_stmt* statement = nullptr;
-            const auto sql = build_collection_insert_sql(table);
+            const auto sql = build_collection_insert_sql(table, value_columns);
             if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
                 fail(db, std::format("prepare {}", table));
 
@@ -491,14 +519,17 @@ namespace fqsm::processing::persistency::database::detail {
         template<auto... Members>
         void one(Field<Members...>) {}
 
-        template<auto... Members>
-        void one(Collection<Members...> slot) {
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...> slot) {
             using Container = std::decay_t<decltype(slot.get(std::declval<typename Meta::Quantum&>()))>;
-            using Elem = typename Container::value_type;
+            static_assert(std::is_same_v<Elem, typename Container::value_type>);
 
             const auto table = one_collection_table(aspectName, slot.name);
+            std::vector<LayoutColumn> value_columns;
+            expand_atom_columns<Elem>(sequence_value_base, sql::atom<Elem>::nullable, value_columns);
+
             sqlite3_stmt* statement = nullptr;
-            const auto sql = build_collection_select_sql(table);
+            const auto sql = build_collection_select_sql(table, value_columns);
             if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
                 fail(db, std::format("prepare {}", table));
 
@@ -520,8 +551,8 @@ namespace fqsm::processing::persistency::database::detail {
         template<auto... Members>
         void all(Field<Members...>) {}
 
-        template<auto... Members>
-        void all(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...>) {}
     };
 
     template<typename Meta>
@@ -535,20 +566,23 @@ namespace fqsm::processing::persistency::database::detail {
         template<auto... Members>
         void one(Field<Members...>) {}
 
-        template<auto... Members>
-        void one(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...>) {}
 
         template<auto... Members>
         void all(Field<Members...>) {}
 
-        template<auto... Members>
-        void all(Collection<Members...> slot) {
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...> slot) {
             using Container = std::decay_t<decltype(slot.get(global))>;
-            using Elem = typename Container::value_type;
+            static_assert(std::is_same_v<Elem, typename Container::value_type>);
 
             const auto table = all_collection_table(aspectName, slot.name);
+            std::vector<LayoutColumn> value_columns;
+            expand_atom_columns<Elem>(sequence_value_base, sql::atom<Elem>::nullable, value_columns);
+
             sqlite3_stmt* statement = nullptr;
-            const auto sql = build_collection_select_sql(table);
+            const auto sql = build_collection_select_sql(table, value_columns);
             if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
                 fail(db, std::format("prepare {}", table));
 
@@ -755,14 +789,17 @@ namespace fqsm::processing::persistency::database::detail {
         template<auto... Members>
         void one(Field<Members...>) {}
 
-        template<auto... Members>
-        void one(Collection<Members...> slot) {
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...> slot) {
             using Container = std::decay_t<decltype(slot.get(std::declval<typename Meta::Quantum&>()))>;
-            using Elem = typename Container::value_type;
+            static_assert(std::is_same_v<Elem, typename Container::value_type>);
 
             const auto table = one_collection_table(aspectName, slot.name);
+            std::vector<LayoutColumn> value_columns;
+            expand_atom_columns<Elem>(sequence_value_base, sql::atom<Elem>::nullable, value_columns);
+
             sqlite3_stmt* statement = nullptr;
-            const auto sql = build_collection_select_sql(table);
+            const auto sql = build_collection_select_sql(table, value_columns);
             if (sqlite3_prepare_v2(db, sql.c_str(), -1, &statement, nullptr) != SQLITE_OK)
                 fail(db, std::format("prepare {}", table));
 
@@ -782,8 +819,8 @@ namespace fqsm::processing::persistency::database::detail {
         template<auto... Members>
         void all(Field<Members...>) {}
 
-        template<auto... Members>
-        void all(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...>) {}
     };
 
     template<typename Meta>

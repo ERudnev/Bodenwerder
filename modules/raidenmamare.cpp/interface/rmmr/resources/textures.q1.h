@@ -17,6 +17,11 @@ namespace rmmr::resource::texture {
         struct Quantum {};
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::texture::Asset");
+        }
     };
 
     struct Runtime : Entity<Runtime> {
@@ -38,6 +43,12 @@ namespace rmmr::resource::texture {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::texture::Loader");
+            d.one(field<&Quantum::file>("file"));
+        }
     };
 
     struct Generator : Feature<Generator, Asset> {
@@ -54,6 +65,13 @@ namespace rmmr::resource::texture {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::texture::Generator");
+            d.one(field<&Quantum::size>("size"));
+            d.one(field<&Quantum::pattern>("pattern"));
+        }
     };
 
 }

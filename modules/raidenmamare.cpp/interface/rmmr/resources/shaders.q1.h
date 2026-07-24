@@ -15,6 +15,11 @@ namespace rmmr::resource::shader {
         struct Quantum {};
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::shader::Asset");
+        }
     };
 
     struct Runtime : Entity<Runtime> {
@@ -36,6 +41,13 @@ namespace rmmr::resource::shader {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::shader::Loader");
+            d.one(field<&Quantum::vertex>("vertex"));
+            d.one(field<&Quantum::fragment>("fragment"));
+        }
     };
 
 }

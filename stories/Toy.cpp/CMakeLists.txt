@@ -13,6 +13,7 @@ target_sources(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME}
     PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/modules/iQSM.cpp/interface
 )
 
@@ -26,6 +27,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC base
     PRIVATE fQSM
     PRIVATE Raidenmamare
+    PRIVATE pQRF
     PRIVATE imgui
     PUBLIC libglew_static
     PUBLIC glfw

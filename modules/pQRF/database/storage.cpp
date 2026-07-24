@@ -61,7 +61,7 @@ namespace fqsm::processing::persistency::database {
         return loaded;
     }
 
-    bool DatabaseArchivist::replaceFromLocation(Stewarding steward, Palette palette, Location location) {
+    bool DatabaseArchivist::loadFromLocation(Stewarding steward, Palette palette, Location location) {
         auto db = open_existing(location);
         if (!db) return false;
 

@@ -21,6 +21,12 @@ namespace rmmr::resource::geometry {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::geometry::Asset");
+            d.one(collection<Pos, &Quantum::slots>("slots"));
+        }
     };
 
     struct Runtime : Entity<Runtime> {
@@ -45,6 +51,12 @@ namespace rmmr::resource::geometry {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::geometry::Loader");
+            d.one(field<&Quantum::file>("file"));
+        }
     };
 
     struct Generator : Feature<Generator, Asset> {
@@ -62,6 +74,12 @@ namespace rmmr::resource::geometry {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::geometry::Generator");
+            d.one(field<&Quantum::type>("type"));
+        }
     };
 
 }

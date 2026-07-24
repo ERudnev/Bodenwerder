@@ -15,6 +15,11 @@ namespace rmmr::resource::shadow {
         struct Quantum {};
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::shadow::Asset");
+        }
     };
 
     struct Runtime : Entity<Runtime> {
@@ -42,6 +47,12 @@ namespace rmmr::resource::shadow {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::shadow::Allocator");
+            d.one(field<&Quantum::size>("size"));
+        }
     };
 
 }

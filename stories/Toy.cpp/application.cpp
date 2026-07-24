@@ -21,16 +21,16 @@ namespace toy {
     using namespace rmmr;
 
     struct Application::State : establish::Module::State {
-        assets::Manager assets;
-        base::maybe<system::Core::Id> core;
+        base::maybe<assets::Manager> assets;
+        bool assets_ready = false;
 
         ui::State ui;
         establish::Realm world;
 
         explicit State(Schema schema);
-        void setupAsDefault(Writing, system::Core::Id);
-        void loadPastState(Writing) override;
+        auto prepareAssets(filepath assets_root) -> assets::PrepareStatus;
         void spawnDemoScene(Writing);
+        void loadPastState(Writing) override;
     };
 
     Application::State::State(Schema schema)
@@ -38,8 +38,15 @@ namespace toy {
         , world(fullSchema)
     {}
 
+    auto Application::State::prepareAssets(filepath assets_root) -> assets::PrepareStatus {
+        const auto path = assets::Manager::statePath(assets_root);
+        const auto status = assets->prepare(world, path);
+        assets_ready = status != assets::PrepareStatus::Failed;
+        return status;
+    }
+
     void Application::State::spawnDemoScene(Writing context) {
-        const auto& handles = assets.handles;
+        const auto& handles = assets->handles;
         const auto root = with<scene::Interface>::createScene(context);
 
         constexpr int grid_extent = 4;
@@ -95,11 +102,6 @@ namespace toy {
         ui.scene = root;
     }
 
-    void Application::State::setupAsDefault(Writing context, system::Core::Id coreId) {
-        assets.hardcodedInit(context, coreId);
-        spawnDemoScene(context);
-    }
-
     void Application::State::loadPastState(Writing) {
         _INCOMPLETE_;
     }
@@ -132,7 +134,7 @@ namespace toy {
     }
 
     void Application::initDefaultWorld() {
-        state->core = engine->setup(
+        const auto core = engine->setup(
             state->world,
             item<system::Core>{
                 .assets_root = settings.assets_root,
@@ -145,9 +147,25 @@ namespace toy {
                 .title = settings.title,
                 .requested_size = settings.window_size,
             });
-        state->setupAsDefault(state->world, *state->core);
-        engine->materialize(state->world, *state->core);
+        state->assets = assets::Manager{.core = core};
+
+        const auto status = state->prepareAssets(settings.assets_root);
+        if (status == assets::PrepareStatus::Failed) {
+            base::message("toy: refusing to seed over a broken assets save; soft exit");
+            return;
+        }
+
+        state->spawnDemoScene(state->world);
+        engine->materialize(state->world, state->assets->core);
         engine->showScene(*state->ui.scene, *state->ui.camera);
+
+        if (status == assets::PrepareStatus::Generated) {
+            try {
+                state->assets->save(state->world, assets::Manager::statePath(settings.assets_root));
+            } catch (const std::exception& error) {
+                base::message("toy: initial assets save failed: {}", error.what());
+            }
+        }
 
         if (not state->world.result().good())
             throw std::runtime_error("app: initDefaultWorld failed");
@@ -160,11 +178,25 @@ namespace toy {
     }
 
     int Application::run() {
+        if (not state->assets_ready) {
+            if (engine)
+                engine->shutdown(state->world);
+            return 1;
+        }
+
         while (engine and not engine->shouldClose(state->world)) {
             engine->beginFrame(state->world);
             state->ui.draw(state->world);
             engine->render(state->world);
             engine->endFrame(state->world);
+        }
+
+        if (state->assets.exists()) {
+            try {
+                state->assets->save(state->world, assets::Manager::statePath(settings.assets_root));
+            } catch (const std::exception& error) {
+                base::message("toy: assets save failed: {}", error.what());
+            }
         }
 
         if (engine)

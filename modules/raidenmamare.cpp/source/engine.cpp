@@ -94,6 +94,12 @@ namespace rmmr {
                 return;
             using resource::Assets;
             using resource::Unit;
+            for (const auto entry : context->aspect<Unit>().items()) {
+                if (entry.value.manager == core && entry.value.name == "main_shadow") {
+                    handles.default_shadow = entry.id;
+                    return;
+                }
+            }
             handles.default_shadow = with<Assets>::add_shadow_allocator(
                 context,
                 core,
@@ -129,11 +135,11 @@ namespace rmmr {
             std::move(windowParams.title),
             windowParams.requested_size);
         createViewport(context, with<system::Window>::framebufferSize(context, *state->handles.device));
-        state->setupDefaultShadow(context, coreId);
         return coreId;
     }
 
     void Engine::materialize(Writing context, system::Core::Id assets) {
+        state->setupDefaultShadow(context, assets);
         with<resource::Runtimes>::materialize(context, *state->handles.device, assets);
     }
 

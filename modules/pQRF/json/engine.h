@@ -57,8 +57,8 @@ namespace fqsm::processing::persistency::json::detail {
             row.array.push_back(leaf::write(slot.get(quantum)));
         }
 
-        template<auto... Members>
-        void one(Collection<Members...> slot) {
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...> slot) {
             Value nested = Value::array_value();
             for (const auto& element : slot.get(quantum))
                 nested.array.push_back(leaf::write(element));
@@ -68,8 +68,8 @@ namespace fqsm::processing::persistency::json::detail {
         template<auto... Members>
         void all(Field<Members...>) {}
 
-        template<auto... Members>
-        void all(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...>) {}
     };
 
     template<typename Meta>
@@ -87,14 +87,13 @@ namespace fqsm::processing::persistency::json::detail {
             leaf::read(row.array[index++], slot.get(quantum));
         }
 
-        template<auto... Members>
-        void one(Collection<Members...> slot) {
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...> slot) {
             if (index >= row.array.size())
                 throw std::runtime_error("json one-row: missing collection");
             const auto& nested = row.array[index++];
             if (!nested.is_array())
                 throw std::runtime_error("json one-row: collection must be array");
-            using Elem = typename std::decay_t<decltype(slot.get(quantum))>::value_type;
             auto& container = slot.get(quantum);
             container.clear();
             for (const auto& element : nested.array) {
@@ -108,8 +107,8 @@ namespace fqsm::processing::persistency::json::detail {
         template<auto... Members>
         void all(Field<Members...>) {}
 
-        template<auto... Members>
-        void all(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...>) {}
     };
 
     template<typename Meta>
@@ -122,16 +121,16 @@ namespace fqsm::processing::persistency::json::detail {
         template<auto... Members>
         void one(Field<Members...>) {}
 
-        template<auto... Members>
-        void one(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...>) {}
 
         template<auto... Members>
         void all(Field<Members...> slot) {
             row.array.push_back(leaf::write(slot.get(global)));
         }
 
-        template<auto... Members>
-        void all(Collection<Members...> slot) {
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...> slot) {
             Value nested = Value::array_value();
             for (const auto& element : slot.get(global))
                 nested.array.push_back(leaf::write(element));
@@ -150,8 +149,8 @@ namespace fqsm::processing::persistency::json::detail {
         template<auto... Members>
         void one(Field<Members...>) {}
 
-        template<auto... Members>
-        void one(Collection<Members...>) {}
+        template<typename Elem, auto... Members>
+        void one(Collection<Elem, Members...>) {}
 
         template<auto... Members>
         void all(Field<Members...> slot) {
@@ -160,14 +159,13 @@ namespace fqsm::processing::persistency::json::detail {
             leaf::read(row.array[index++], slot.get(global));
         }
 
-        template<auto... Members>
-        void all(Collection<Members...> slot) {
+        template<typename Elem, auto... Members>
+        void all(Collection<Elem, Members...> slot) {
             if (index >= row.array.size())
                 throw std::runtime_error("json all-row: missing collection");
             const auto& nested = row.array[index++];
             if (!nested.is_array())
                 throw std::runtime_error("json all-row: collection must be array");
-            using Elem = typename std::decay_t<decltype(slot.get(global))>::value_type;
             auto& container = slot.get(global);
             container.clear();
             for (const auto& element : nested.array) {

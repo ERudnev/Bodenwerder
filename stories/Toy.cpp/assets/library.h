@@ -12,6 +12,8 @@
 
 namespace toy::assets {
 
+    using namespace fqsm::api;
+
     // Toy's curated asset set (ids for now; References later).
     struct Handles {
         struct {
@@ -34,16 +36,27 @@ namespace toy::assets {
         } primitive;
     };
 
+    enum class PrepareStatus {
+        Generated,
+        Loaded,
+        Failed,
+    };
+
     // Owns Toy asset catalogue lifecycle: seed / load / save.
-    // Remap of Handles after load — next step.
+    // Temporary: save() also mirrors to catalogue.sqlite beside the JSON (write-only).
+    // Temporary: prepare() skips load and always reseeds (overwrites on-disk catalogue).
     struct Manager {
         using Location = std::filesystem::path;
 
+        const rmmr::system::Core::Id core;
         Handles handles;
 
-        void hardcodedInit(fqsm::Writing, rmmr::system::Core::Id);
-        bool loadFrom(fqsm::Stewarding, Location);
-        void save(fqsm::Reading, Location);
+        static auto statePath(const std::filesystem::path& assets_root) -> Location;
+
+        auto prepare(establish::Realm&, Location) -> PrepareStatus;
+        void hardcodedInit(Writing);
+        bool loadFrom(Stewarding, Location);
+        void save(Writing, Location);
     };
 
 }

@@ -14,6 +14,12 @@ namespace rmmr::resource {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::Manager");
+            d.one(field<&Quantum::location>("location"));
+        }
     };
 
     struct Unit : Entity<Unit> {
@@ -34,6 +40,14 @@ namespace rmmr::resource {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::Unit");
+            d.one(field<&Quantum::manager>("manager"));
+            d.one(field<&Quantum::name>("name"));
+            d.one(field<&Quantum::library>("library"));
+        }
     };
 
     struct Unit_group : Group<Unit_group, Manager, Unit> {

@@ -56,7 +56,7 @@ namespace fqsm::processing::persistency::database {
 
         auto getTypesAtLocation(Reading, Location) -> Palette override;
         bool updateFromLocation(Writing, Palette, Location) override;
-        bool replaceFromLocation(Stewarding, Palette, Location) override;
+        bool loadFromLocation(Stewarding, Palette, Location) override;
         bool saveToLocation(Writing, Palette, Location) override;
     };
 

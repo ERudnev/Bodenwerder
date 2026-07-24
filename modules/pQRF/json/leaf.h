@@ -10,7 +10,11 @@
 #include <string_view>
 #include <type_traits>
 
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+
 #include <base/maybe.h>
+#include <base/types/common_types.h>
 #include <fQSM/identifier.h>
 #include <pQRF/json/document.h>
 
@@ -246,6 +250,106 @@ namespace fqsm::processing::persistency::json::detail::leaf {
             codec<T>::require();
         }
     };
+
+    template<>
+    struct codec<base::common_types::index2> {
+        using index2 = base::common_types::index2;
+
+        static auto write(const index2& value) -> Value {
+            return Value::array_value({
+                codec<base::common_types::integer>::write(value.x),
+                codec<base::common_types::integer>::write(value.y),
+            });
+        }
+
+        static auto decode(const Value& value) -> index2 {
+            if (!value.is_array() || value.array.size() != 2)
+                throw std::runtime_error("json leaf: expected index2 array");
+            return index2{
+                .x = codec<base::common_types::integer>::decode(value.array[0]),
+                .y = codec<base::common_types::integer>::decode(value.array[1]),
+            };
+        }
+
+        static void read(const Value& value, index2& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct codec<glm::vec2> {
+        static auto write(const glm::vec2& value) -> Value {
+            return Value::array_value({
+                codec<float>::write(value.x),
+                codec<float>::write(value.y),
+            });
+        }
+
+        static auto decode(const Value& value) -> glm::vec2 {
+            if (!value.is_array() || value.array.size() != 2)
+                throw std::runtime_error("json leaf: expected vec2 array");
+            return glm::vec2{
+                codec<float>::decode(value.array[0]),
+                codec<float>::decode(value.array[1]),
+            };
+        }
+
+        static void read(const Value& value, glm::vec2& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct codec<glm::vec3> {
+        static auto write(const glm::vec3& value) -> Value {
+            return Value::array_value({
+                codec<float>::write(value.x),
+                codec<float>::write(value.y),
+                codec<float>::write(value.z),
+            });
+        }
+
+        static auto decode(const Value& value) -> glm::vec3 {
+            if (!value.is_array() || value.array.size() != 3)
+                throw std::runtime_error("json leaf: expected vec3 array");
+            return glm::vec3{
+                codec<float>::decode(value.array[0]),
+                codec<float>::decode(value.array[1]),
+                codec<float>::decode(value.array[2]),
+            };
+        }
+
+        static void read(const Value& value, glm::vec3& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {}
+    };
+
+    // Enum as integer discriminant (same row / same JSON number — not a string name).
+    template<typename T>
+        requires std::is_enum_v<T>
+    struct codec<T> {
+        static auto write(const T& value) -> Value {
+            return codec<std::int32_t>::write(static_cast<std::int32_t>(value));
+        }
+
+        static auto decode(const Value& value) -> T {
+            return static_cast<T>(codec<std::int32_t>::decode(value));
+        }
+
+        static void read(const Value& value, T& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {}
+    };
+
+    // Containers (vector / umap / …) are not leaves: use describe collection<> or nested field<>.
 
     template<typename T>
     auto write(const T& value) -> Value {

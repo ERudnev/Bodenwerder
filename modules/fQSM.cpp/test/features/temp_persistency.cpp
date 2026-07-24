@@ -78,9 +78,9 @@ namespace experimental {
             d.one(field<&Quantum::lastname>("lastname"));
             d.one(field<&Quantum::parents, &Parents::dad>("parents.dad"));
             d.one(field<&Quantum::parents, &Parents::mom>("parents.mom"));
-            d.one(collection<&Quantum::children>("children"));
+            d.one(collection<Person::Id, &Quantum::children>("children"));
             d.all(field<&Global::sharedMoney>("sharedMoney"));
-            d.all(collection<&Global::legends>("legends"));
+            d.all(collection<string, &Global::legends>("legends"));
         }
     };
 
@@ -169,10 +169,10 @@ struct SchemaDesc {
         one_fields.push_back({slot.name, sql_type<Leaf>::name});
     }
 
-    template<auto... Members>
-    void one(fqsm::aspect::Collection<Members...> slot) {
+    template<typename Elem, auto... Members>
+    void one(fqsm::aspect::Collection<Elem, Members...> slot) {
         using Container = std::decay_t<decltype(slot.get(std::declval<typename Meta::Quantum&>()))>;
-        using Elem = typename Container::value_type;
+        static_assert(std::is_same_v<Elem, typename Container::value_type>);
         sql_type<Elem>::require();
         one_collections.push_back({slot.name, sql_type<Elem>::name});
     }
@@ -184,10 +184,10 @@ struct SchemaDesc {
         all_fields.push_back({slot.name, sql_type<Leaf>::name});
     }
 
-    template<auto... Members>
-    void all(fqsm::aspect::Collection<Members...> slot) {
+    template<typename Elem, auto... Members>
+    void all(fqsm::aspect::Collection<Elem, Members...> slot) {
         using Container = std::decay_t<decltype(slot.get(std::declval<fqsm::GlobalValue<Meta>&>()))>;
-        using Elem = typename Container::value_type;
+        static_assert(std::is_same_v<Elem, typename Container::value_type>);
         sql_type<Elem>::require();
         all_collections.push_back({slot.name, sql_type<Elem>::name});
     }

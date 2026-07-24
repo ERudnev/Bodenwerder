@@ -84,7 +84,7 @@ void persistent_families()
         EXPECT_TRUE(!loadable.empty()) << "db has Person/Family tables";
         {
             Stewarding session = fromDb;
-            EXPECT_TRUE(archivist.replaceFromLocation(session, loadable, dbPath)) << "load sqlite";
+            EXPECT_TRUE(archivist.loadFromLocation(session, loadable, dbPath)) << "load sqlite";
         }
 
         EXPECT_EQ(with<Person>::count(fromDb), personsAfterDay) << "sqlite person count";
@@ -104,7 +104,7 @@ void persistent_families()
         EXPECT_TRUE(!loadable.empty()) << "json has Person/Family sections";
         {
             Stewarding session = fromJson;
-            EXPECT_TRUE(archivist.replaceFromLocation(session, loadable, jsonPath)) << "load json";
+            EXPECT_TRUE(archivist.loadFromLocation(session, loadable, jsonPath)) << "load json";
         }
 
         EXPECT_EQ(with<Person>::count(fromJson), personsAfterDay) << "json person count";

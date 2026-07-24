@@ -29,6 +29,12 @@ namespace rmmr::resource::material {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::material::Asset");
+            // techniques: umap<Pass, Technique> — not a leaf; persist form TBD (not field-as-map).
+        }
     };
 
     struct Runtime : Entity<Runtime> {
@@ -60,6 +66,11 @@ namespace rmmr::resource::material {
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
+
+        template<typename Desc>
+        static void describe(Desc& d) {
+            d.aspect("rmmr::resource::material::Composer");
+        }
     };
 
 }
