@@ -25,6 +25,7 @@ namespace toy {
         std::unique_ptr<Demo> demo;
 
         ui::State ui;
+        base::maybe<Demo::Handles> demo_handles;
         establish::Realm world;
 
         explicit State(Schema schema);
@@ -35,7 +36,7 @@ namespace toy {
     Application::State::State(Schema schema)
         : establish::Module::State(std::move(schema))
         , demo(std::make_unique<demos::SpriteTest>())
-        // , demo(std::make_unique<demos::KubeOfKubes>())
+        //, demo(std::make_unique<demos::KubeOfKubes>())
         , world(fullSchema)
     {}
 
@@ -100,11 +101,9 @@ namespace toy {
         }
 
         state->demo->seedAssets(state->world, core, state->assets->handles);
-        const auto demo_handles = state->demo->setup(state->world, state->assets->handles);
-        state->ui.scene = demo_handles.scene;
-        state->ui.camera = demo_handles.camera;
+        state->demo_handles = state->demo->setup(state->world, state->assets->handles);
         engine->materialize(state->world, state->assets->core);
-        engine->showScene(demo_handles.scene, demo_handles.camera);
+        engine->showScene(state->demo_handles->scene, state->demo_handles->camera);
 
         if (status == assets::PrepareStatus::Generated) {
             try {
@@ -133,7 +132,7 @@ namespace toy {
 
         while (engine and not engine->shouldClose(state->world)) {
             engine->beginFrame(state->world);
-            state->ui.draw(state->world);
+            state->ui.draw(state->world, *state->demo, *state->demo_handles);
             engine->render(state->world);
             engine->endFrame(state->world);
         }

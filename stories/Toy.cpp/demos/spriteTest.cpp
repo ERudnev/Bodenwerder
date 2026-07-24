@@ -1,11 +1,13 @@
 #include "demos/spriteTest.h"
 
 #include <base/logging.h>
+#include <imgui.h>
 #include <rmmr/controller/camera2d.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
+#include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
 
 namespace toy::demos {
@@ -43,9 +45,16 @@ namespace toy::demos {
         });
         with<scene::actor::Sprite>::modify_global(context)->geometry = *assets.unitQuad;
 
-        const auto spawn = [&](Pos position, integer index, float scale) {
+        const auto spawn = [&](index2 pos, integer zet, integer index, float scale) {
             with<scene::Flat2d>::createSpriteActor(context, root,
-                Locator{.pos = position, .euler = HPB{0.0f, 0.0f, 0.0f}},
+                Locator{
+                    .pos = Pos{
+                        static_cast<float>(pos.x),
+                        static_cast<float>(pos.y),
+                        static_cast<float>(zet),
+                    },
+                    .euler = HPB{0.0f, 0.0f, 0.0f},
+                },
                 item<scene::actor::Sprite>{
                     .material = *shared.material.sprite,
                     .tint = RGB{0.0f, 0.0f, 0.0f},
@@ -55,17 +64,53 @@ namespace toy::demos {
                 });
         };
 
-        spawn(Pos{-420.0f, 180.0f, 0.0f}, 0, 2.0f);
-        spawn(Pos{-180.0f, 150.0f, 0.0f}, 1, 2.0f);
-        spawn(Pos{60.0f, 140.0f, 0.0f}, 2, 2.0f);
-        spawn(Pos{300.0f, 180.0f, 0.0f}, 3, 2.0f);
-        spawn(Pos{-260.0f, -140.0f, 0.0f}, 7, 2.0f);
-        spawn(Pos{120.0f, -180.0f, 0.0f}, 8, 2.0f);
+        constexpr integer grid = 10;
+        constexpr integer step = 100;
+        for (integer row = 0; row < grid; ++row) {
+            for (integer col = 0; col < grid; ++col) {
+                spawn(index2{col * step, row * step}, 0, row * grid + col, 1.0f);
+            }
+        }
 
         const auto camera = with<scene::Flat2d>::createCamera(context, root,
             Locator{.pos = Pos{0.0f, 0.0f, 5.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}});
         with<controller::Camera2d>::create(context, camera);
         return Handles{.scene = root, .camera = camera};
+    }
+
+    void SpriteTest::contributeViewMenu() {
+        ImGui::MenuItem("Camera", nullptr, &ui.camera);
+    }
+
+    void SpriteTest::drawUi(Writing world, const Handles& handles) {
+        drawCameraWindow(world, handles);
+    }
+
+    void SpriteTest::drawCameraWindow(Writing world, const Handles& handles) {
+        if (not ui.camera)
+            return;
+
+        bool open = ui.camera;
+        if (ImGui::Begin("Camera", &open)) {
+            if (not with<scene::Camera>::exists(world, handles.camera)) {
+                ImGui::TextDisabled("No camera selected.");
+            } else {
+                auto quantum = with<scene::Camera>::modify(world, handles.camera);
+                if (quantum->mode == scene::Camera::Mode::orthographic) {
+                    int size[2] = {quantum->ortho_size.x, quantum->ortho_size.y};
+                    if (ImGui::DragInt2("Ortho size", size, 1.0f, 1, 8192))
+                        quantum->ortho_size = index2{size[0], size[1]};
+                } else if (quantum->mode == scene::Camera::Mode::perspective) {
+                    ImGui::SliderAngle("FoV", &quantum->fov_y, 10.0f, 160.0f);
+                } else {
+                    ImGui::TextDisabled("Parallel projection (reserved).");
+                }
+                ImGui::DragFloat("Near", &quantum->z_near, 0.01f, 0.001f, quantum->z_far - 0.001f, "%.3f");
+                ImGui::DragFloat("Far", &quantum->z_far, 0.1f, quantum->z_near + 0.001f, 10000.0f, "%.3f");
+            }
+        }
+        ImGui::End();
+        ui.camera = open;
     }
 
 }

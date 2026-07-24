@@ -30,5 +30,5 @@ void main() {
     vec2 uvMax = (spriteMin + spriteSize) * u_inverseAtlasSize;
     v_uv0 = vec2(
         mix(uvMin.x, uvMax.x, aUv0.x),
-        mix(1.0 - uvMax.y, 1.0 - uvMin.y, aUv0.y));
+        mix(uvMin.y, uvMax.y, aUv0.y));
 }

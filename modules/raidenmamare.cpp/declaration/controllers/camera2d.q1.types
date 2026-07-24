@@ -10,4 +10,4 @@ namespace rmmr
       one
         >create()-> #
       all
-        !update(~system::Window) // LMB/RMB drag + arrows on XY
+        !update(~system::Window) // RMB drag + arrows on XY

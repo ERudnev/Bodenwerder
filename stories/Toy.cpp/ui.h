@@ -1,47 +1,23 @@
 #pragma once
 
-#include <array>
-#include <cstdint>
-#include <unordered_map>
-
-#include <base/maybe.h>
 #include <fQSM/api/interface.h>
-#include <rmmr/resources/materials.q1.h>
-#include <rmmr/scene/camera.q1.h>
-#include <rmmr/scene/root.q1.h>
+
+#include "demo.h"
 
 namespace toy::ui {
 
     using namespace fqsm::api;
 
+    // Application-level UI: View menu shell + Stats.
+    // Demo panels contribute via Demo::contributeViewMenu / drawUi.
     struct State {
-        struct {
-            bool camera = true;
-            bool lighting = true;
-            bool materials = true;
-            bool stats = true;
-        } views;
+        bool stats = true;
 
-        base::maybe<rmmr::scene::Root::Id> scene;
-        base::maybe<rmmr::scene::Camera::Id> camera;
-        base::maybe<rmmr::resource::material::Asset::Id> selected_material;
-        std::array<char, 128> material_filter{};
-
-        struct MaterialNameEdit {
-            std::array<char, 256> buf{};
-            bool editing = false;
-        };
-        std::unordered_map<std::uint64_t, MaterialNameEdit> material_name_edits;
-
-        void draw(Writing);
+        void draw(Writing, Demo&, const Demo::Handles&);
 
     private:
-        void drawMainMenuBar();
-        void drawCameraWindow(Writing);
-        void drawLightingWindow(Writing);
-        void drawMaterialsWindow(Writing);
+        void drawMainMenuBar(Demo&);
         void drawStatsWindow(Writing);
-        void drawMaterialInspector(Writing, rmmr::resource::material::Asset::Id);
     };
 
 }

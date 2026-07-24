@@ -23,6 +23,10 @@ namespace toy {
         // Extra catalogue under the same Manager/core; shared Handles as base; before materialize.
         virtual void seedAssets(Writing, rmmr::system::Core::Id, const assets::Handles&) = 0;
         virtual Handles setup(Writing, const assets::Handles&) = 0;
+
+        // Demo-level View menu items (inside open View menu) and panels.
+        virtual void contributeViewMenu() = 0;
+        virtual void drawUi(Writing, const Handles&) = 0;
     };
 
 }

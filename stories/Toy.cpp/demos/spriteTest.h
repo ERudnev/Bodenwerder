@@ -15,10 +15,20 @@ namespace toy::demos {
             base::maybe<rmmr::resource::geometry::Asset::Id> unitQuad;
         };
 
+        struct Ui {
+            bool camera = true;
+        };
+
         Assets assets;
+        Ui ui;
 
         void seedAssets(Writing, rmmr::system::Core::Id, const assets::Handles&) override;
         Handles setup(Writing, const assets::Handles&) override;
+        void contributeViewMenu() override;
+        void drawUi(Writing, const Handles&) override;
+
+    private:
+        void drawCameraWindow(Writing, const Handles&);
     };
 
 }

@@ -56,9 +56,7 @@ namespace rmmr::controller {
 
             apply_arrow_move(*node, input.current.keys, with<system::Window>::dt(context, window));
 
-            if (glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS
-                or glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-            {
+            if (glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
                 apply_mouse_drag(*node, with<system::Window>::mouseShift(context, window));
             }
         }
