@@ -1,6 +1,7 @@
 #include "demos/spriteTest.h"
 
 #include <base/logging.h>
+#include <rmmr/controller/camera2d.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/sprites.q1.h>
@@ -63,6 +64,7 @@ namespace toy::demos {
 
         const auto camera = with<scene::Flat2d>::createCamera(context, root,
             Locator{.pos = Pos{0.0f, 0.0f, 5.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}});
+        with<controller::Camera2d>::create(context, camera);
         return Handles{.scene = root, .camera = camera};
     }
 

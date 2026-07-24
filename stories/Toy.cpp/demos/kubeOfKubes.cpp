@@ -2,7 +2,7 @@
 
 #include <base/logging.h>
 #include <rmmr/api/_interface.h>
-#include <rmmr/controller/camera.q1.h>
+#include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -86,7 +86,7 @@ namespace toy::demos {
         const auto camera = with<scene::Interface>::createCamera(context, root,
             Locator{.pos = Pos{10.5f, 10.0f, 14.0f}, .euler = HPB{-18.0f, -36.0f, 0.0f}},
             1.04719755f);
-        with<controller::Camera>::create(context, camera);
+        with<controller::Camera3d>::create(context, camera);
         with<scene::Interface>::createLight(context, root,
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});

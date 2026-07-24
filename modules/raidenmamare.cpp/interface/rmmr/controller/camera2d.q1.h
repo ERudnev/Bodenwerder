@@ -9,14 +9,13 @@ namespace rmmr::controller {
 
     using namespace fqsm::api;
 
-    struct Camera : Attribute<Camera, scene::Camera> {
+    struct Camera2d : Attribute<Camera2d, scene::Camera> {
         struct Quantum {};
         struct Actions : BaseActions {
             static auto create(Writing, scene::Camera::Id anchor) -> Id;
-            static void update(Writing, Id, system::Window::Id window);
         };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
+        struct Internals;
+        static const Behavior customAspectReactions();
     };
 
 }

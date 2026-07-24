@@ -1,0 +1,13 @@
+import "../system/window"
+import "../scene/camera"
+
+namespace rmmr
+  namespace controller
+
+    // Classic 3D fly/look control for an existing scene::Camera.
+    // Driven by Window input snapshots — no external Engine tick.
+    attribute Camera3d of scene::Camera
+      one
+        >create()-> #
+      all
+        !update(~system::Window) // RMB look + arrows / PageUp/Down

@@ -1,4 +1,4 @@
-#include <rmmr/controller/camera.q1.h>
+#include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/system/window.q1.h>
 
@@ -73,14 +73,14 @@ namespace rmmr::controller {
             clamp_pitch(rotation);
         }
 
+        auto key_down(const vector<bool>& keys, int key) -> bool {
+            return static_cast<std::size_t>(key) < keys.size() && keys[static_cast<std::size_t>(key)];
+        }
+
         void apply_arrow_move(scene::Node::Quantum& node, glm::quat rotation, const vector<bool>& keys, seconds delta_sec) {
             if (delta_sec <= 0.0) {
                 return;
             }
-
-            const auto key_down = [&keys](int key) -> bool {
-                return static_cast<std::size_t>(key) < keys.size() && keys[static_cast<std::size_t>(key)];
-            };
 
             rotation = glm::normalize(rotation);
             const glm::vec3 forward_cam = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
@@ -98,12 +98,12 @@ namespace rmmr::controller {
             const float step = k_move_units_per_sec * static_cast<float>(delta_sec);
             glm::vec3 delta{0.0f};
 
-            if (key_down(GLFW_KEY_UP)) delta += forward_cam * step;
-            if (key_down(GLFW_KEY_DOWN)) delta -= forward_cam * step;
-            if (key_down(GLFW_KEY_LEFT)) delta -= right_xz * step;
-            if (key_down(GLFW_KEY_RIGHT)) delta += right_xz * step;
-            if (key_down(GLFW_KEY_PAGE_UP)) delta += up_cam * step;
-            if (key_down(GLFW_KEY_PAGE_DOWN)) delta -= up_cam * step;
+            if (key_down(keys, GLFW_KEY_UP)) delta += forward_cam * step;
+            if (key_down(keys, GLFW_KEY_DOWN)) delta -= forward_cam * step;
+            if (key_down(keys, GLFW_KEY_LEFT)) delta -= right_xz * step;
+            if (key_down(keys, GLFW_KEY_RIGHT)) delta += right_xz * step;
+            if (key_down(keys, GLFW_KEY_PAGE_UP)) delta += up_cam * step;
+            if (key_down(keys, GLFW_KEY_PAGE_DOWN)) delta -= up_cam * step;
 
             if (glm::dot(delta, delta) <= 0.0f) {
                 return;
@@ -114,30 +114,48 @@ namespace rmmr::controller {
             node.position.z += delta.z;
         }
 
+        void drive(Writing context, Camera3d::Id self, system::Window::Id window, GLFWwindow* handle) {
+            const auto& input = with<system::Window>::get(context, window);
+            auto node = with<scene::Node>::modify(context, self);
+            glm::quat rotation = glm::normalize(node->rotation);
+
+            apply_arrow_move(*node, rotation, input.current.keys, with<system::Window>::dt(context, window));
+
+            if (glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
+                apply_mouse_look(rotation, with<system::Window>::mouseShift(context, window));
+                node->rotation = rotation;
+            }
+        }
+
     } // namespace
 
-    auto Camera::Actions::create(Writing context, scene::Camera::Id anchor) -> Id {
-        with<Camera>::extend(context, anchor, Camera::Quantum{});
+    auto Camera3d::Actions::create(Writing context, scene::Camera::Id anchor) -> Id {
+        with<Camera3d>::extend(context, anchor, Camera3d::Quantum{});
         return anchor;
     }
 
-    void Camera::Actions::update(Writing context, Id self, system::Window::Id window) {
-        const auto& input = with<system::Window>::get(context, window);
-        const auto& device_quantum = with<system::Device>::get(context, window);
-        GLFWwindow* const handle = device_quantum.handle;
-        if (not handle) {
-            return;
+    struct Camera3d::Internals : Camera3d::DefaultInternals {
+        static void update(Reacting context) {
+            Writing writing = context;
+            for (const auto change : context.changes<system::Window>().addedOrUpdated()) {
+                if (not with<system::Window>::exists(writing, change.id)) {
+                    continue;
+                }
+                const auto& device = with<system::Device>::get(writing, change.id);
+                if (not device.handle) {
+                    continue;
+                }
+                for (const auto [id, _] : writing->aspect<Camera3d>().items()) {
+                    drive(writing, id, change.id, device.handle);
+                }
+            }
         }
+    };
 
-        auto node = with<scene::Node>::modify(context, self);
-        glm::quat rotation = glm::normalize(node->rotation);
-
-        apply_arrow_move(*node, rotation, input.current.keys, with<system::Window>::dt(context, window));
-
-        if (glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-            apply_mouse_look(rotation, with<system::Window>::mouseShift(context, window));
-            node->rotation = rotation;
-        }
+    auto Camera3d::customAspectReactions() -> const Behavior {
+        return {
+            reaction::aspect_wide<Camera3d, system::Window>(&Camera3d::Internals::update),
+        };
     }
 
 }

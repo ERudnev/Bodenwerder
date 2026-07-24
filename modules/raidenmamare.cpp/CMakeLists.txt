@@ -28,7 +28,8 @@ set(Raidenmamare_Q1
     resources/geometry.q1.types
     resources/sprites.q1.types
     resources/runtimes.q1.types
-    controllers/camera.q1.types
+    controllers/camera3d.q1.types
+    controllers/camera2d.q1.types
     renderer/gl.q1.types
     renderer/types.q1.types
 )

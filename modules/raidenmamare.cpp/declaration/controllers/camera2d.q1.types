@@ -1,0 +1,13 @@
+import "../system/window"
+import "../scene/camera"
+
+namespace rmmr
+  namespace controller
+
+    // Ortho/2D pan control for an existing scene::Camera.
+    // Driven by Window input snapshots — no external Engine tick.
+    attribute Camera2d of scene::Camera
+      one
+        >create()-> #
+      all
+        !update(~system::Window) // LMB/RMB drag + arrows on XY

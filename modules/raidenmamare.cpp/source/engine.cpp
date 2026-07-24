@@ -5,7 +5,8 @@
 #include <stdexcept>
 #include <vector>
 
-#include <rmmr/controller/camera.q1.h>
+#include <rmmr/controller/camera2d.q1.h>
+#include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -61,7 +62,8 @@ namespace rmmr {
                 ask::schema::aspect<resource::sprite::Pack>(),
                 ask::schema::aspect<resource::sprite::LoaderKenney>(),
                 ask::schema::aspect<resource::sprite::Runtime>(),
-                ask::schema::aspect<controller::Camera>(),
+                ask::schema::aspect<controller::Camera3d>(),
+                ask::schema::aspect<controller::Camera2d>(),
                 ask::schema::aspect<scene::Root>(),
                 ask::schema::aspect<scene::Node>(),
                 ask::schema::aspect<scene::Node_group>(),
@@ -170,10 +172,6 @@ namespace rmmr {
             {
                 glfwSetWindowShouldClose(with<system::Device>::get(context, device).handle, true);
             }
-        }
-
-        if (state->handles.scene_camera) {
-            with<controller::Camera>::update(context, state->handles.scene_camera, device);
         }
 
         with<system::Viewport>::syncExtent(context, viewport);
