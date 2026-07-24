@@ -17,13 +17,13 @@ namespace rmmr::resource {
     struct Assets : Component<Assets, Manager> {
         struct Quantum {};
         struct Actions : BaseActions {
-            static auto add_texture_loader(Writing, Id, Unit::Quantum, texture::Asset::Quantum, texture::Loader::Quantum) -> texture::Asset::Id;
-            static auto add_texture_generator(Writing, Id, Unit::Quantum, texture::Asset::Quantum, texture::Generator::Quantum) -> texture::Asset::Id;
-            static auto add_shader_loader(Writing, Id, Unit::Quantum, shader::Asset::Quantum, shader::Loader::Quantum) -> shader::Asset::Id;
-            static auto add_material(Writing, Id, Unit::Quantum, material::Asset::Quantum, material::Composer::Quantum) -> material::Asset::Id;
-            static auto add_shadow_allocator(Writing, Id, Unit::Quantum, shadow::Asset::Quantum, shadow::Allocator::Quantum) -> shadow::Asset::Id;
-            static auto add_geometry_loader(Writing, Id, Unit::Quantum, geometry::Asset::Quantum, geometry::Loader::Quantum) -> geometry::Asset::Id;
-            static auto add_geometry_generator(Writing, Id, Unit::Quantum, geometry::Asset::Quantum, geometry::Generator::Quantum) -> geometry::Asset::Id;
+            static auto add_texture_loader(Writing, Id, Unit::Quantum, texture::Loader::Quantum) -> texture::Asset::Id;
+            static auto add_texture_generator(Writing, Id, Unit::Quantum, texture::Generator::Quantum) -> texture::Asset::Id;
+            static auto add_shader_loader(Writing, Id, Unit::Quantum, shader::Loader::Quantum) -> shader::Asset::Id;
+            static auto add_material(Writing, Id, Unit::Quantum, material::Asset::Quantum) -> material::Asset::Id;
+            static auto add_shadow_allocator(Writing, Id, Unit::Quantum, shadow::Allocator::Quantum) -> shadow::Asset::Id;
+            static auto add_geometry_loader(Writing, Id, Unit::Quantum, geometry::Loader::Quantum) -> geometry::Asset::Id;
+            static auto add_geometry_generator(Writing, Id, Unit::Quantum, geometry::Generator::Quantum) -> geometry::Asset::Id;
             static void extend(Writing, Manager::Id, filepath path);
         };
         struct Internals : DefaultInternals{};

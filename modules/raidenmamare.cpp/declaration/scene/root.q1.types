@@ -1,7 +1,8 @@
 import "../math"
 import "../renderer/types"
 import "../system/core"
-import "actor"
+import "actors/simple"
+import "actors/sprite"
 import "camera"
 import "gizmos"
 import "light"
@@ -23,6 +24,11 @@ namespace rmmr
       >createScene()->#
       >createCamera(#, Locator, one<Camera>)->#Camera
       >createLight(#, Locator, one<Light>)->#Light
-      >createPrimitiveActor(#, Locator, one<PrimitiveActor>)->#PrimitiveActor
+      >createSimpleActor(#, Locator, one<actor::Simple>)->#actor::Simple
       >createGrid(#, Locator, one<Grid>)->#Grid
       ?render(#, #system::Device, >where: renderer::CommandBuffer)
+
+    feature Flat2d of Root
+      one
+        size: index2
+        >createSpriteActor()->#actor::Sprite

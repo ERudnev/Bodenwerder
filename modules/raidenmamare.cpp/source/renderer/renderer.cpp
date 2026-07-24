@@ -49,12 +49,11 @@ namespace rmmr {
         } semantic{};
 
         struct ShadowCaster {
-            scene::Light::Id light;
             resource::shadow::Runtime::Id runtime;
         };
 
         struct FrameLighting {
-            scene::Light::Id primary;
+            vector<scene::Light::Id> lights;
             base::maybe<ShadowCaster> shadow;
         };
 
@@ -67,26 +66,21 @@ namespace rmmr {
 
         auto gather_lights(Reading context, scene::Root::Id root) -> vector<scene::Light::Id> {
             const auto& light_group = with<scene::Light_group>::get(context, root);
-            if (light_group.empty()) {
-                throw std::runtime_error("Renderer: scene has no light");
-            }
             return {light_group.begin(), light_group.end()};
         }
 
-        // Placeholder: for each active shadow runtime, bind the first available light.
-        // Lights do not reference shadow assets; assignment is renderer-internal.
-        auto assign_shadows_to_lights(Reading context, system::Device::Id device, const vector<scene::Light::Id>& lights) -> FrameLighting {
+        // Empty lights → no shadow; Pass::shadow skipped in render(). Bind uses lights.front().
+        auto assign_shadows_to_lights(Reading context, system::Device::Id device, vector<scene::Light::Id> lights) -> FrameLighting {
             FrameLighting lighting{
-                .primary = lights.front(),
+                .lights = std::move(lights),
                 .shadow = {},
             };
+            if (lighting.lights.empty())
+                return lighting;
+
             const auto& runtimes = with<resource::Runtimes>::get(context, device);
             for (const auto& [_, runtime] : runtimes.shadows_id_mapping) {
-                lighting.shadow = ShadowCaster{
-                    .light = lights.front(),
-                    .runtime = runtime,
-                };
-                lighting.primary = lights.front();
+                lighting.shadow = ShadowCaster{.runtime = runtime};
                 break;
             }
             return lighting;
@@ -378,6 +372,12 @@ namespace rmmr {
             if (pass == renderer::Pass::shadow && not lighting.shadow) {
                 continue;
             }
+            // bind_pass_uniforms still takes Light::Id; current techniques always bind light uniforms.
+            if (lighting.lights.empty()) {
+                if (not commands[pass].empty())
+                    base::message("Renderer: no light; skipping draws for pass");
+                continue;
+            }
 
             begin_pass(pass, args, lighting.shadow);
             PassDrawState pass_state{};
@@ -397,7 +397,7 @@ namespace rmmr {
                     continue;
                 }
 
-                ensure_material(args, pass, command.material, command.shader, pass_state, lighting.primary, shadow);
+                ensure_material(args, pass, command.material, command.shader, pass_state, lighting.lights.front(), shadow);
 
                 const auto& geometry = with<resource::geometry::Runtime>::get(args.world, command.geometry);
                 if (not pass_state.bound_geometry || *pass_state.bound_geometry != command.geometry) {

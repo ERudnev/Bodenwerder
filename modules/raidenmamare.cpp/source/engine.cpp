@@ -66,7 +66,9 @@ namespace rmmr {
                 ask::schema::aspect<scene::Camera_group>(),
                 ask::schema::aspect<scene::Light>(),
                 ask::schema::aspect<scene::Light_group>(),
-                ask::schema::aspect<scene::PrimitiveActor>(),
+                ask::schema::aspect<scene::actor::Simple>(),
+                ask::schema::aspect<scene::actor::Sprite>(),
+                ask::schema::aspect<scene::Flat2d>(),
                 ask::schema::aspect<scene::Grid>(),
             });
             return once;
@@ -104,7 +106,6 @@ namespace rmmr {
                 context,
                 core,
                 Unit::Quantum{.manager = core, .name = "main_shadow", .library = "rmmr"},
-                resource::shadow::Asset::Quantum{},
                 resource::shadow::Allocator::Quantum{.size = index2{1024, 1024}});
         }
 

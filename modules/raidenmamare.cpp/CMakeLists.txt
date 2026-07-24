@@ -16,7 +16,8 @@ set(Raidenmamare_Q1
     scene/node.q1.types
     scene/camera.q1.types
     scene/light.q1.types
-    scene/actor.q1.types
+    scene/actors/simple.q1.types
+    scene/actors/sprite.q1.types
     scene/gizmos.q1.types
     resources/manager.q1.types
     semantics.q1.types
@@ -25,6 +26,7 @@ set(Raidenmamare_Q1
     resources/materials.q1.types
     resources/shadows.q1.types
     resources/geometry.q1.types
+    resources/sprites.q1.types
     resources/runtimes.q1.types
     controllers/camera.q1.types
     renderer/gl.q1.types

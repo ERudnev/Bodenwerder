@@ -1,25 +1,32 @@
 #pragma once
 
+#include <rmmr/math.q1.h>
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/sprites.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
 
-namespace rmmr::scene {
+namespace rmmr::scene::actor {
 
     using namespace fqsm::api;
 
-    struct PrimitiveActor : Feature<PrimitiveActor, Node> {
+    // Sprite draw in scene space. Rotation from Node; local scale here.
+    // tint: relative additive RGB (zero = neutral). vec3 allows negatives.
+    struct Sprite : Feature<Sprite, Node> {
         struct Quantum {
             resource::geometry::Asset::Id geometry;
             resource::material::Asset::Id material;
-            RGB albedo;
+            RGB tint;
+            vec3 scale;
+            resource::sprite::Pack::Id pack;
+            integer index;
         };
         struct Actions : BaseActions {
-            static auto create(Writing, Pos, HPB, resource::geometry::Asset::Id, resource::material::Asset::Id, RGB albedo) -> Id;
+            static auto create(Writing, Pos, HPB, vec3 scale, resource::geometry::Asset::Id, resource::material::Asset::Id, RGB tint, resource::sprite::Pack::Id, integer index) -> Id;
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };
         struct Internals : DefaultInternals{};

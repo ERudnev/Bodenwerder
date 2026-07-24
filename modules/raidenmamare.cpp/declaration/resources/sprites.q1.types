@@ -1,0 +1,34 @@
+import "renderer/gl"
+import "resources/manager"
+import "resources/textures"
+
+namespace rmmr
+  namespace resource
+    namespace sprite
+
+    using Reference as resource::Unit::Reference
+
+    // Catalog entity is Pack — a "sprite" is an entry index, not an aspect.
+    // Entry coords are absolute atlas texels (Photoshop-friendly): min / max / pivot.
+    feature Pack of resource::Unit
+      struct Entry
+        min: index2
+        max: index2
+        pivot: index2
+      one
+        texture: texture::Reference
+        entries: vector<Entry>
+
+    // Rough GPU face — refine later (int VBO layout, bind path, …).
+    entity Runtime
+      one
+        device: #system::Device
+        texture: #texture::Runtime
+        vbo: renderer::VertexBuffer
+        count: integer
+
+    // Kenney TextureAtlas XML (x,y,width,height) → absolute min/max/pivot entries.
+    feature LoaderKenney of Pack
+      one
+        file: filename
+        >materialize(#system::Device) -> #Runtime?

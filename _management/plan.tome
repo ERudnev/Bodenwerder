@@ -1,0 +1,36 @@
+// Структурированные задачи планирования и управления workspace DAQL.
+// Преобразованные из backlog проблемы с конкретными планами выполнения.
+// Образец семантики: _seed/_management/plan.tome (read-only).
+
+#using namespace KQM(file: "core/KQM.tome")
+#using namespace management(file: "methods/management.tome")
+#using namespace backlog(file: "_management/backlog.tome")
+
+namespace plan {
+
+  rmmr_sprites_draw_pipeline: @Task {
+    status: 📋
+    goal:
+      Научить raidenmamare загружать и рисовать спрайты как продакшен-путь, не как прототип.
+      Спрайт — запись в атласе (буфер из шестёрок целых), общая генерируемая геометрия (два треугольника / unit quad),
+      отдельный Draw Call на экземпляр (без «взрослого» GPU-инстансинга), сортировка по материалу в уже существующем
+      пайплайне CommandBuffer, размещение в пространстве сцены, собственный render Pass и собственная камера
+      (несколько ортографических режимов; допустим parasitic feature на scene::Camera).
+      Каталог/загрузка атласа — через resource::Unit + feature Asset (линия texture/material/geometry), без опоры
+      на замороженную Retrospection-сериализацию: live-путь — явная загрузка и hardcoded/seed там, где нужно.
+    subtasks:
+      ✅ Зафиксировать Q1-модель sprite::Pack (Entry min/max/pivot abs; LoaderKenney; грубый Runtime)
+      📋 Добавить генерируемую геометрию unit quad (Generator::Type рядом с triangle/gridPlane)
+      📋 Ввести/оживить отдельный renderer::Pass под спрайты (ui уже в enum, но вне очереди кадра — решить: ui vs sprite)
+      📋 Включить pass в render queue Renderer; begin/end и state (blend/depth) под 2D-оверлей в сцене
+      📋 Ортографические режимы камеры (расширение Quantum и/или feature на scene::Camera); несколько видов ortho
+      📋 Шейдер + material::Technique на sprite-pass; UV/rect из атлас-записи, не из vertex bake на каждый спрайт
+      📋 Submit: один Command = один DC; сортировка по материалу (как opaque), без instance buffer
+      📋 Интеграция в сцену (Actor/space как у существующих полупрозрачных объектов) и smoke в Toy
+    reason:
+      Продакшен-критичный контур UI/2D поверх 3D-сцены. Пайплайн уже умеет material-sort и back-to-front для
+      transparent; камера и Pass — дыры. Инстансинг откладываем сознательно: сначала корректные отдельные DC,
+      атлас и орто-камера. История RDB/JSON-сериализации здесь не продолжается — только загрузка и отрисовка.
+  }
+
+}

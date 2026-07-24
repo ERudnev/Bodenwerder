@@ -1,0 +1,25 @@
+import "../../resources/geometry"
+import "../../resources/materials"
+import "../../resources/sprites"
+import "../../renderer/types"
+import "../../system/core"
+import "../../math"
+import "../node"
+
+namespace rmmr
+  namespace scene
+    namespace actor
+
+    // Sprite draw in scene space. Rotation from Node; local scale here.
+    // tint: relative additive RGB (zero = neutral). vec3 allows negatives.
+    feature Sprite of Node
+      one
+        geometry: #resource::geometry::Asset
+        material: #resource::material::Asset
+        tint: RGB
+        scale: vec3
+        pack: #resource::sprite::Pack
+        index: integer
+        ?submit(#system::Device, >where: renderer::CommandBuffer)
+      all
+        >create(Pos, HPB, scale: vec3, geometry: #resource::geometry::Asset, material: #resource::material::Asset, tint: RGB, pack: #resource::sprite::Pack, index: integer) -> #

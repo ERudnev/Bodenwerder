@@ -1,5 +1,7 @@
 #include <rmmr/scene/root.q1.h>
 
+#include <base/logging.h>
+
 #include <glm/gtc/quaternion.hpp>
 
 namespace rmmr::scene {
@@ -48,9 +50,9 @@ namespace rmmr::scene {
         return node;
     }
 
-    auto Interface::createPrimitiveActor(Writing context, Root::Id root, Locator locator, PrimitiveActor::Quantum actorQuantum) -> PrimitiveActor::Id {
+    auto Interface::createSimpleActor(Writing context, Root::Id root, Locator locator, actor::Simple::Quantum actorQuantum) -> actor::Simple::Id {
         const auto node = with<Node_group>::addElement(context, root, node_quantum_from_locator(locator));
-        with<PrimitiveActor>::extend(context, node, std::move(actorQuantum));
+        with<actor::Simple>::extend(context, node, std::move(actorQuantum));
         return node;
     }
 
@@ -63,14 +65,18 @@ namespace rmmr::scene {
     void Interface::render(Reading context, Root::Id root, system::Device::Id device, renderer::CommandBuffer& where) {
         const auto& node_group = with<Node_group>::get(context, root);
         for (const auto node : node_group) {
-            if (with<PrimitiveActor>::exists(context, node)) {
-                PrimitiveActor::Actions::submit(context, node, device, where);
+            if (with<actor::Simple>::exists(context, node)) {
+                actor::Simple::Actions::submit(context, node, device, where);
                 continue;
             }
             if (with<Grid>::exists(context, node)) {
                 Grid::Actions::submit(context, node, device, where);
             }
         }
+    }
+
+    auto Flat2d::Actions::createSpriteActor(Writing, Id) -> actor::Sprite::Id {
+        _INCOMPLETE_;
     }
 
 }

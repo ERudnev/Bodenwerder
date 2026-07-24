@@ -139,32 +139,32 @@ namespace rmmr::resource {
 
     } // namespace
 
-    auto Assets::Actions::add_texture_loader(Writing context, Id assets, Unit::Quantum unit, texture::Asset::Quantum asset, texture::Loader::Quantum loader) -> texture::Asset::Id {
-        return register_unit<texture::Asset, texture::Loader>(context, assets, std::move(unit), std::move(asset), std::move(loader));
+    auto Assets::Actions::add_texture_loader(Writing context, Id assets, Unit::Quantum unit, texture::Loader::Quantum loader) -> texture::Asset::Id {
+        return register_unit<texture::Asset, texture::Loader>(context, assets, std::move(unit), texture::Asset::Quantum{}, std::move(loader));
     }
 
-    auto Assets::Actions::add_texture_generator(Writing context, Id assets, Unit::Quantum unit, texture::Asset::Quantum asset, texture::Generator::Quantum generator) -> texture::Asset::Id {
-        return register_unit<texture::Asset, texture::Generator>(context, assets, std::move(unit), std::move(asset), std::move(generator));
+    auto Assets::Actions::add_texture_generator(Writing context, Id assets, Unit::Quantum unit, texture::Generator::Quantum generator) -> texture::Asset::Id {
+        return register_unit<texture::Asset, texture::Generator>(context, assets, std::move(unit), texture::Asset::Quantum{}, std::move(generator));
     }
 
-    auto Assets::Actions::add_shader_loader(Writing context, Id assets, Unit::Quantum unit, shader::Asset::Quantum asset, shader::Loader::Quantum loader) -> shader::Asset::Id {
-        return register_unit<shader::Asset, shader::Loader>(context, assets, std::move(unit), std::move(asset), std::move(loader));
+    auto Assets::Actions::add_shader_loader(Writing context, Id assets, Unit::Quantum unit, shader::Loader::Quantum loader) -> shader::Asset::Id {
+        return register_unit<shader::Asset, shader::Loader>(context, assets, std::move(unit), shader::Asset::Quantum{}, std::move(loader));
     }
 
-    auto Assets::Actions::add_material(Writing context, Id assets, Unit::Quantum unit, material::Asset::Quantum asset, material::Composer::Quantum composer) -> material::Asset::Id {
-        return register_unit<material::Asset, material::Composer>(context, assets, std::move(unit), std::move(asset), std::move(composer));
+    auto Assets::Actions::add_material(Writing context, Id assets, Unit::Quantum unit, material::Asset::Quantum asset) -> material::Asset::Id {
+        return register_unit<material::Asset, material::Composer>(context, assets, std::move(unit), std::move(asset), material::Composer::Quantum{});
     }
 
-    auto Assets::Actions::add_shadow_allocator(Writing context, Id assets, Unit::Quantum unit, shadow::Asset::Quantum asset, shadow::Allocator::Quantum allocator) -> shadow::Asset::Id {
-        return register_unit<shadow::Asset, shadow::Allocator>(context, assets, std::move(unit), std::move(asset), std::move(allocator));
+    auto Assets::Actions::add_shadow_allocator(Writing context, Id assets, Unit::Quantum unit, shadow::Allocator::Quantum allocator) -> shadow::Asset::Id {
+        return register_unit<shadow::Asset, shadow::Allocator>(context, assets, std::move(unit), shadow::Asset::Quantum{}, std::move(allocator));
     }
 
-    auto Assets::Actions::add_geometry_loader(Writing context, Id assets, Unit::Quantum unit, geometry::Asset::Quantum asset, geometry::Loader::Quantum loader) -> geometry::Asset::Id {
-        return register_unit<geometry::Asset, geometry::Loader>(context, assets, std::move(unit), std::move(asset), std::move(loader));
+    auto Assets::Actions::add_geometry_loader(Writing context, Id assets, Unit::Quantum unit, geometry::Loader::Quantum loader) -> geometry::Asset::Id {
+        return register_unit<geometry::Asset, geometry::Loader>(context, assets, std::move(unit), geometry::Asset::Quantum{}, std::move(loader));
     }
 
-    auto Assets::Actions::add_geometry_generator(Writing context, Id assets, Unit::Quantum unit, geometry::Asset::Quantum asset, geometry::Generator::Quantum generator) -> geometry::Asset::Id {
-        return register_unit<geometry::Asset, geometry::Generator>(context, assets, std::move(unit), std::move(asset), std::move(generator));
+    auto Assets::Actions::add_geometry_generator(Writing context, Id assets, Unit::Quantum unit, geometry::Generator::Quantum generator) -> geometry::Asset::Id {
+        return register_unit<geometry::Asset, geometry::Generator>(context, assets, std::move(unit), geometry::Asset::Quantum{}, std::move(generator));
     }
 
     void Assets::Actions::extend(Writing context, Manager::Id manager, filepath path) {

@@ -1,7 +1,8 @@
 #pragma once
 
 #include <rmmr/renderer/types.q1.h>
-#include <rmmr/scene/actor.q1.h>
+#include <rmmr/scene/actors/simple.q1.h>
+#include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/scene/light.q1.h>
@@ -41,9 +42,21 @@ namespace rmmr::scene {
         static auto createScene(Writing) -> Root::Id;
         static auto createCamera(Writing, Root::Id, Locator, Camera::Quantum) -> Camera::Id;
         static auto createLight(Writing, Root::Id, Locator, Light::Quantum) -> Light::Id;
-        static auto createPrimitiveActor(Writing, Root::Id, Locator, PrimitiveActor::Quantum) -> PrimitiveActor::Id;
+        static auto createSimpleActor(Writing, Root::Id, Locator, actor::Simple::Quantum) -> actor::Simple::Id;
         static auto createGrid(Writing, Root::Id, Locator, Grid::Quantum) -> Grid::Id;
         static void render(Reading, Root::Id, system::Device::Id, renderer::CommandBuffer& where);
+    };
+
+    // Ortho/2D layer on a scene root — sprite actors live here (not on Interface).
+    struct Flat2d : Feature<Flat2d, Root> {
+        struct Quantum {
+            index2 size;
+        };
+        struct Actions : BaseActions {
+            static auto createSpriteActor(Writing, Id) -> actor::Sprite::Id;
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
 }

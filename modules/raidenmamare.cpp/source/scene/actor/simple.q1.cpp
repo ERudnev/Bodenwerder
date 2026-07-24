@@ -1,16 +1,16 @@
-#include <rmmr/scene/actor.q1.h>
+#include <rmmr/scene/actors/simple.q1.h>
 #include <rmmr/scene/submit.h>
 
-namespace rmmr::scene {
+namespace rmmr::scene::actor {
 
     using namespace fqsm::api;
 
-    auto PrimitiveActor::Actions::create(Writing context, Pos position, HPB hpb, resource::geometry::Asset::Id geometry, resource::material::Asset::Id material, RGB albedo) -> Id {
+    auto Simple::Actions::create(Writing context, Pos position, HPB hpb, resource::geometry::Asset::Id geometry, resource::material::Asset::Id material, RGB albedo) -> Id {
         const auto node = Node::Actions::create(context, Locator{
             .pos = position,
             .euler = hpb,
         });
-        with<PrimitiveActor>::extend(context, node, PrimitiveActor::Quantum{
+        with<Simple>::extend(context, node, Simple::Quantum{
             .geometry = geometry,
             .material = material,
             .albedo = albedo,
@@ -18,8 +18,8 @@ namespace rmmr::scene {
         return node;
     }
 
-    void PrimitiveActor::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {
-        const auto& actor = with<PrimitiveActor>::get(context, node);
+    void Simple::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {
+        const auto& actor = with<Simple>::get(context, node);
         submit_material_passes(context, device, DrawInstance{
             .model = Node::Actions::transform(context, node),
             .geometry = actor.geometry,
