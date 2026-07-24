@@ -5,16 +5,16 @@ namespace rmmr
   namespace resource
     namespace texture
 
-    // abstract texture with unknown kind
     using Reference as resource::Unit::Reference
-
-    feature Asset of resource::Unit
 
     entity Runtime
       one
         device: #system::Device
         handle: renderer::Texture
         size: index2
+
+    // abstract texture with unknown kind
+    feature Asset of resource::Unit
 
     // for texture from file:
     feature Loader of Asset

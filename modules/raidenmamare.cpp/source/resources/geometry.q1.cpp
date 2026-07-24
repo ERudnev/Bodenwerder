@@ -29,13 +29,14 @@ namespace rmmr::resource::geometry {
 
             const bool position_only = cpu.layout.size() == std::size_t{1} && cpu.layout[0] == pos_id;
             const bool position_normal = cpu.layout.size() == std::size_t{2} && cpu.layout[0] == pos_id && cpu.layout[1] == normal_id;
+            const bool position_uv0 = cpu.layout.size() == std::size_t{2} && cpu.layout[0] == pos_id && cpu.layout[1] == uv0_id;
             const bool position_normal_uv0 =
                 cpu.layout.size() == std::size_t{3}
                 && cpu.layout[0] == pos_id
                 && cpu.layout[1] == normal_id
                 && cpu.layout[2] == uv0_id;
 
-            if (not position_only && not position_normal && not position_normal_uv0) {
+            if (not position_only && not position_normal && not position_uv0 && not position_normal_uv0) {
                 return context.refuse("resource::geometry::bake: unsupported vertex layout");
             }
 
@@ -45,6 +46,13 @@ namespace rmmr::resource::geometry {
                 }
                 if (not cpu.uv0.empty()) {
                     return context.refuse("resource::geometry::bake: uv0 must be empty for position-only layout");
+                }
+            } else if (position_uv0) {
+                if (not cpu.normals.empty()) {
+                    return context.refuse("resource::geometry::bake: normals must be empty for position+uv0 layout");
+                }
+                if (cpu.uv0.size() != cpu.positions.size()) {
+                    return context.refuse("resource::geometry::bake: uv0 count must match positions");
                 }
             } else {
                 if (cpu.normals.size() != cpu.positions.size()) {
@@ -114,6 +122,26 @@ namespace rmmr::resource::geometry {
                 glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
                 glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
                 glEnableVertexAttribArray(0);
+            } else if (position_uv0) {
+                interleaved.reserve(vertex_count * 5);
+                for (std::size_t i = 0; i < vertex_count; ++i) {
+                    const auto& p = cpu.positions[i];
+                    const auto& uv = cpu.uv0[i];
+                    interleaved.push_back(p.x);
+                    interleaved.push_back(p.y);
+                    interleaved.push_back(p.z);
+                    interleaved.push_back(uv.x);
+                    interleaved.push_back(uv.y);
+                }
+
+                constexpr renderer::Count stride = renderer::Count(5 * sizeof(float));
+                glBindVertexArray(vao);
+                glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
+                glEnableVertexAttribArray(0);
+                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(3 * sizeof(float))));
+                glEnableVertexAttribArray(1);
             } else if (position_normal) {
                 interleaved.reserve(vertex_count * 6);
                 for (std::size_t i = 0; i < vertex_count; ++i) {
@@ -190,6 +218,7 @@ namespace rmmr::resource::geometry {
                 case Generator::Type::kube: return GeometryGenerator::kube();
                 case Generator::Type::bagel: return GeometryGenerator::bagel();
                 case Generator::Type::gridPlane: return GeometryGenerator::gridPlane();
+                case Generator::Type::unitQuad: return GeometryGenerator::unitQuad();
             }
         }
 

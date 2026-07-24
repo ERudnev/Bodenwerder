@@ -45,6 +45,7 @@ namespace toy::ui {
                 case renderer::Pass::shadow: return "Shadow";
                 case renderer::Pass::ui: return "UI";
                 case renderer::Pass::gizmo: return "Gizmo";
+                case renderer::Pass::sprite: return "Sprite";
                 case renderer::Pass::identity: return "Identity";
             }
             return "Unknown";
@@ -121,7 +122,13 @@ namespace toy::ui {
                 ImGui::TextDisabled("No camera selected.");
             } else {
                 auto quantum = with<scene::Camera>::modify(world, *camera);
-                ImGui::SliderAngle("FoV", &quantum->fov_y, 10.0f, 160.0f);
+                if (quantum->mode == scene::Camera::Mode::perspective) {
+                    ImGui::SliderAngle("FoV", &quantum->fov_y, 10.0f, 160.0f);
+                } else if (quantum->mode == scene::Camera::Mode::orthographic) {
+                    ImGui::Text("Ortho size: %d x %d", quantum->ortho_size.x, quantum->ortho_size.y);
+                } else {
+                    ImGui::TextDisabled("Parallel projection (reserved).");
+                }
                 ImGui::DragFloat("Near", &quantum->z_near, 0.01f, 0.001f, quantum->z_far - 0.001f, "%.3f");
                 ImGui::DragFloat("Far", &quantum->z_far, 0.1f, quantum->z_near + 0.001f, 1000.0f, "%.3f");
             }

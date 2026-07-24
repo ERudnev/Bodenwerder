@@ -85,7 +85,7 @@ namespace toy::demos {
 
         const auto camera = with<scene::Interface>::createCamera(context, root,
             Locator{.pos = Pos{10.5f, 10.0f, 14.0f}, .euler = HPB{-18.0f, -36.0f, 0.0f}},
-            item<scene::Camera>{.fov_y = 1.04719755f, .z_near = 0.1f, .z_far = 100.0f});
+            1.04719755f);
         with<controller::Camera>::create(context, camera);
         with<scene::Interface>::createLight(context, root,
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},

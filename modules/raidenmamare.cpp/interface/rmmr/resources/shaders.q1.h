@@ -11,12 +11,6 @@ namespace rmmr::resource::shader {
 
     using Reference = resource::Unit::Reference;
 
-    struct Asset : Feature<Asset, resource::Unit> {
-        struct Quantum {};
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
     struct Runtime : Entity<Runtime> {
         struct Quantum {
             system::Device::Id device;
@@ -24,6 +18,12 @@ namespace rmmr::resource::shader {
         };
         struct Internals;
         static const Behavior customAspectReactions();
+    };
+
+    struct Asset : Feature<Asset, resource::Unit> {
+        struct Quantum {};
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct Loader : Feature<Loader, Asset> {

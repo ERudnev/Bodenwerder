@@ -9,17 +9,6 @@ namespace rmmr
 
     using Reference as resource::Unit::Reference
 
-    feature Asset of resource::Unit
-      struct TextureBinding
-        uniform: Uniform::Id
-        texture: texture::Reference
-      struct Technique
-        program: shader::Reference
-        uniforms: Uniform::Palette
-        textures: vector<TextureBinding>
-      one
-        techniques: umap<renderer::Pass, Technique>
-
     entity Runtime
       struct TextureBinding
         uniform: Uniform::Id
@@ -34,6 +23,14 @@ namespace rmmr
         techniques: umap<renderer::Pass, Technique>
         ?apply(#system::Device, renderer::Pass)
 
-    feature Composer of Asset
+    feature Asset of resource::Unit
+      struct TextureBinding
+        uniform: Uniform::Id
+        texture: texture::Reference
+      struct Technique
+        program: shader::Reference
+        uniforms: Uniform::Palette
+        textures: vector<TextureBinding>
       one
+        techniques: umap<renderer::Pass, Technique>
         >materialize(#system::Device) -> #Runtime

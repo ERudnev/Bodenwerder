@@ -14,6 +14,7 @@ namespace rmmr::renderer {
         shadow,
         ui,
         gizmo,
+        sprite,
         identity, // keep last: bounds SeparateBuffers
     };
 
@@ -44,6 +45,7 @@ namespace rmmr::renderer {
         inline const Passes transparent_only{Pass::transparent};
         inline const Passes gizmo_only{Pass::gizmo};
         inline const Passes shadow_only{Pass::shadow};
+        inline const Passes sprite_only{Pass::sprite};
 
     }
 

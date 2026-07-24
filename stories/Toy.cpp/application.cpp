@@ -34,8 +34,8 @@ namespace toy {
 
     Application::State::State(Schema schema)
         : establish::Module::State(std::move(schema))
-        // , demo(std::make_unique<demos::SpriteTest>())
-        , demo(std::make_unique<demos::KubeOfKubes>())
+        , demo(std::make_unique<demos::SpriteTest>())
+        // , demo(std::make_unique<demos::KubeOfKubes>())
         , world(fullSchema)
     {}
 

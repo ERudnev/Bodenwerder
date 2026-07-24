@@ -1,4 +1,7 @@
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/resources/sprites.q1.h>
+
+#include <base/logging.h>
 
 #include <format>
 
@@ -76,11 +79,11 @@ namespace rmmr::resource {
         }
 
         void rematerialize_material(Writing context, material::Asset::Id asset_id, system::Device::Id device) {
-            if (not with<material::Composer>::exists(context, asset_id)) return;
+            if (not with<material::Asset>::exists(context, asset_id)) return;
             bind_runtime<material::Runtime>(
                 with<Runtimes>::modify(context, device)->materials_id_mapping,
                 asset_id,
-                material::Composer::Actions::materialize(context, asset_id, device));
+                material::Asset::Actions::materialize(context, asset_id, device));
         }
 
         void rematerialize_shadow(Writing context, shadow::Asset::Id asset_id, system::Device::Id device) {
@@ -98,6 +101,11 @@ namespace rmmr::resource {
             } else if (with<geometry::Generator>::exists(context, asset_id)) {
                 bind_runtime<geometry::Runtime>(mapping, asset_id, geometry::Generator::Actions::materialize(context, asset_id, device));
             }
+        }
+
+        void rematerialize_sprites(Writing context, sprite::Pack::Id pack_id, system::Device::Id device) {
+            if (not with<sprite::Pack>::exists(context, pack_id)) return;
+            sprite::Pack::Actions::materialize(context, pack_id, device);
         }
 
         void rematerialize_materials_using_texture(Writing context, texture::Asset::Id texture_id, system::Device::Id device) {
@@ -152,7 +160,13 @@ namespace rmmr::resource {
     }
 
     auto Assets::Actions::add_material(Writing context, Id assets, Unit::Quantum unit, material::Asset::Quantum asset) -> material::Asset::Id {
-        return register_unit<material::Asset, material::Composer>(context, assets, std::move(unit), std::move(asset), material::Composer::Quantum{});
+        unit.manager = assets;
+        if (not with<Unit_group>::exists(context, assets)) {
+            with<Unit_group>::extend(context, assets);
+        }
+        const auto unit_id = with<Unit_group>::addElement(context, assets, std::move(unit));
+        with<material::Asset>::extend(context, unit_id, std::move(asset));
+        return unit_id;
     }
 
     auto Assets::Actions::add_shadow_allocator(Writing context, Id assets, Unit::Quantum unit, shadow::Allocator::Quantum allocator) -> shadow::Asset::Id {
@@ -165,6 +179,37 @@ namespace rmmr::resource {
 
     auto Assets::Actions::add_geometry_generator(Writing context, Id assets, Unit::Quantum unit, geometry::Generator::Quantum generator) -> geometry::Asset::Id {
         return register_unit<geometry::Asset, geometry::Generator>(context, assets, std::move(unit), geometry::Asset::Quantum{}, std::move(generator));
+    }
+
+    auto Assets::Actions::add_sprites_kenney(Writing context, Id assets, Unit::Quantum unit, sprite::LoaderKenney::Quantum loader) -> sprite::Pack::Id {
+        unit.manager = assets;
+
+        const auto texture_id = add_texture_loader(
+            context,
+            assets,
+            Unit::Quantum{.manager = assets, .name = unit.name + "_atlas", .library = unit.library},
+            texture::Loader::Quantum{.file = loader.image});
+
+        const auto pack_id = register_unit<sprite::Pack, sprite::LoaderKenney>(
+            context,
+            assets,
+            std::move(unit),
+            sprite::Pack::Quantum{
+                .texture = with<Unit>::remember(context, texture_id),
+                .entries = {},
+            },
+            std::move(loader));
+
+        sprite::LoaderKenney::Actions::load(context, pack_id);
+        if (with<sprite::Pack>::get(context, pack_id).entries.empty()) {
+            return context.refuse("resource::Assets::add_sprites_kenney: pack entries empty after load");
+        }
+
+        base::message(
+            "resource::Assets::add_sprites_kenney: pack '{}' loaded ({} entries)",
+            with<Unit>::get(context, pack_id).name,
+            with<sprite::Pack>::get(context, pack_id).entries.size());
+        return pack_id;
     }
 
     void Assets::Actions::extend(Writing context, Manager::Id manager, filepath path) {
@@ -212,6 +257,10 @@ namespace rmmr::resource {
         for (const auto [id, _] : context->aspect<geometry::Asset>().items()) {
             if (with<Unit>::get(context, id).manager != assets) continue;
             rematerialize_geometry(context, id, device);
+        }
+        for (const auto [id, _] : context->aspect<sprite::Pack>().items()) {
+            if (with<Unit>::get(context, id).manager != assets) continue;
+            rematerialize_sprites(context, id, device);
         }
     }
 

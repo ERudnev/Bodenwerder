@@ -7,13 +7,13 @@ namespace rmmr
 
     using Reference as resource::Unit::Reference
 
-    // abstract shader with unknown kind
-    feature Asset of resource::Unit
-
     entity Runtime
       one
         device: #system::Device
         handle: renderer::Program
+
+    // abstract shader with unknown kind
+    feature Asset of resource::Unit
 
     // for shader from files:
     feature Loader of Asset

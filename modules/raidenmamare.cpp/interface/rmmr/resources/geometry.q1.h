@@ -15,14 +15,6 @@ namespace rmmr::resource::geometry {
 
     using Reference = resource::Unit::Reference;
 
-    struct Asset : Feature<Asset, resource::Unit> {
-        struct Quantum {
-            vector<Pos> slots;
-        };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
     struct Runtime : Entity<Runtime> {
         struct Quantum {
             system::Device::Id device;
@@ -34,6 +26,14 @@ namespace rmmr::resource::geometry {
         };
         struct Internals;
         static const Behavior customAspectReactions();
+    };
+
+    struct Asset : Feature<Asset, resource::Unit> {
+        struct Quantum {
+            vector<Pos> slots;
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct Loader : Feature<Loader, Asset> {
@@ -53,6 +53,7 @@ namespace rmmr::resource::geometry {
             kube,
             bagel,
             gridPlane,
+            unitQuad,
         };
         struct Quantum {
             Type type;

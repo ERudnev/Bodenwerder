@@ -137,7 +137,7 @@ namespace rmmr {
                 return;
             }
 
-            if (pass == renderer::Pass::transparent) {
+            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite) {
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                 glDepthMask(GL_FALSE);
@@ -158,16 +158,17 @@ namespace rmmr {
                 return;
             }
 
-            if (pass == renderer::Pass::transparent) {
+            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite) {
                 glDisable(GL_BLEND);
                 glDepthMask(GL_TRUE);
             }
         }
 
-        constexpr std::array<renderer::Pass, 4> render_queue_passes{
+        constexpr std::array<renderer::Pass, 5> render_queue_passes{
             renderer::Pass::shadow,
             renderer::Pass::opaque,
             renderer::Pass::transparent,
+            renderer::Pass::sprite,
             renderer::Pass::gizmo,
         };
 
@@ -203,7 +204,7 @@ namespace rmmr {
         resource::material::Runtime::Id material,
         resource::shader::Runtime::Id shader,
         PassDrawState& state,
-        scene::Light::Id primary_light,
+        base::maybe<scene::Light::Id> primary_light,
         base::maybe<resource::shadow::Runtime::Id> shadow)
     {
         // Depth-only shadow technique has no material-unique samplers: cache by program.
@@ -258,13 +259,16 @@ namespace rmmr {
         FrameContext args,
         renderer::Pass pass,
         resource::material::Runtime::Id material,
-        scene::Light::Id primary_light,
+        base::maybe<scene::Light::Id> primary_light,
         base::maybe<resource::shadow::Runtime::Id> shadow)
     {
         const auto& technique = technique_for(with<resource::material::Runtime>::get(args.world, material), pass);
 
         if (pass == renderer::Pass::shadow) {
-            const mat4 light_space = light_space_matrix(args.world, primary_light);
+            if (not primary_light) {
+                throw std::runtime_error("Renderer: shadow pass requires a light");
+            }
+            const mat4 light_space = light_space_matrix(args.world, *primary_light);
             for (const auto& binding : technique.bindings) {
                 if (binding.location < 0) {
                     continue;
@@ -284,11 +288,16 @@ namespace rmmr {
         const float aspect_ratio = viewport_aspect_ratio(args.world, args.viewport);
         const mat4 view = scene::Camera::Actions::view(args.world, args.camera);
         const mat4 projection = scene::Camera::Actions::projection(args.world, args.camera, aspect_ratio);
-        const mat4 light_space = light_space_matrix(args.world, primary_light);
 
-        const auto& light = with<scene::Light>::get(args.world, primary_light);
-        const mat4 light_transform = scene::Node::Actions::transform(args.world, primary_light);
-        const Pos light_world_pos{light_transform[3]};
+        base::maybe<mat4> light_space{};
+        base::maybe<Pos> light_world_pos{};
+        base::maybe<scene::Light::Quantum> light{};
+        if (primary_light) {
+            light_space = light_space_matrix(args.world, *primary_light);
+            light = with<scene::Light>::get(args.world, *primary_light);
+            const mat4 light_transform = scene::Node::Actions::transform(args.world, *primary_light);
+            light_world_pos = Pos{light_transform[3]};
+        }
 
         for (const auto& binding : technique.bindings) {
             if (binding.location < 0) {
@@ -303,7 +312,10 @@ namespace rmmr {
             } else if (binding.id == semantic.projection) {
                 set_uniform(binding, projection);
             } else if (binding.id == semantic.lightSpaceMatrix) {
-                set_uniform(binding, light_space);
+                if (not light_space) {
+                    throw std::runtime_error("Renderer: material expects lightSpaceMatrix but no light");
+                }
+                set_uniform(binding, *light_space);
             } else if (binding.id == semantic.shadowMap) {
                 if (not shadow) {
                     throw std::runtime_error("Renderer: material expects shadowMap but no shadow-casting light");
@@ -316,11 +328,20 @@ namespace rmmr {
                 }
                 set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, 0);
             } else if (binding.id == semantic.light0Pos) {
-                set_uniform(binding, light_world_pos);
+                if (not light_world_pos) {
+                    throw std::runtime_error("Renderer: material expects light0Pos but no light");
+                }
+                set_uniform(binding, *light_world_pos);
             } else if (binding.id == semantic.light0Color) {
-                set_uniform(binding, light.color);
+                if (not light) {
+                    throw std::runtime_error("Renderer: material expects light0Color but no light");
+                }
+                set_uniform(binding, light->color);
             } else if (binding.id == semantic.light0Intensity) {
-                set_uniform(binding, light.intensity);
+                if (not light) {
+                    throw std::runtime_error("Renderer: material expects light0Intensity but no light");
+                }
+                set_uniform(binding, light->intensity);
             }
         }
     }
@@ -372,8 +393,8 @@ namespace rmmr {
             if (pass == renderer::Pass::shadow && not lighting.shadow) {
                 continue;
             }
-            // bind_pass_uniforms still takes Light::Id; current techniques always bind light uniforms.
-            if (lighting.lights.empty()) {
+            const bool unlit_pass = pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo;
+            if (lighting.lights.empty() && not unlit_pass) {
                 if (not commands[pass].empty())
                     base::message("Renderer: no light; skipping draws for pass");
                 continue;
@@ -383,10 +404,15 @@ namespace rmmr {
             PassDrawState pass_state{};
 
             auto& batch = commands[pass];
-            if (pass == renderer::Pass::transparent) {
+            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite) {
                 sort_back_to_front(view, batch);
             } else {
                 sort_by_pipeline_state(pass, batch);
+            }
+
+            base::maybe<scene::Light::Id> primary_light{};
+            if (not lighting.lights.empty()) {
+                primary_light = lighting.lights.front();
             }
 
             for (const auto& command : batch) {
@@ -397,7 +423,7 @@ namespace rmmr {
                     continue;
                 }
 
-                ensure_material(args, pass, command.material, command.shader, pass_state, lighting.lights.front(), shadow);
+                ensure_material(args, pass, command.material, command.shader, pass_state, primary_light, shadow);
 
                 const auto& geometry = with<resource::geometry::Runtime>::get(args.world, command.geometry);
                 if (not pass_state.bound_geometry || *pass_state.bound_geometry != command.geometry) {

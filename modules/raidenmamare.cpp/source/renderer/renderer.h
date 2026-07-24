@@ -37,8 +37,8 @@ namespace rmmr {
         void render(FrameContext args);
 
     private:
-        void ensure_material(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, PassDrawState& state, scene::Light::Id primary_light, maybe<resource::shadow::Runtime::Id> shadow);
-        void bind_pass_uniforms(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, scene::Light::Id primary_light, maybe<resource::shadow::Runtime::Id> shadow);
+        void ensure_material(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, PassDrawState& state, maybe<scene::Light::Id> primary_light, maybe<resource::shadow::Runtime::Id> shadow);
+        void bind_pass_uniforms(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, maybe<scene::Light::Id> primary_light, maybe<resource::shadow::Runtime::Id> shadow);
         void bind_material_samplers(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material);
         void draw_instance(FrameContext args, renderer::Pass pass, const renderer::Command& command, resource::material::Runtime::Id material);
     };

@@ -28,6 +28,7 @@ namespace rmmr::resource::builders::geometry {
         static CpuPresentation kube();
         static CpuPresentation bagel();
         static CpuPresentation gridPlane();
+        static CpuPresentation unitQuad();
     };
 
 }

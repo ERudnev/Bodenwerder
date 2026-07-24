@@ -13,6 +13,7 @@ namespace rmmr
         >add_shadow_allocator(Unit, shadow::Allocator)->#shadow::Asset
         >add_geometry_loader(Unit, geometry::Loader)->#geometry::Asset
         >add_geometry_generator(Unit, geometry::Generator)->#geometry::Asset
+        >add_sprites_kenney(Unit, sprite::LoaderKenney)->#sprite::Pack
       all
         >extend(#Manager, path: filepath)
 

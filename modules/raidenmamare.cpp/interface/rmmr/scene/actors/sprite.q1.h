@@ -1,5 +1,6 @@
 #pragma once
 
+#include <base/maybe.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -18,15 +19,17 @@ namespace rmmr::scene::actor {
     // tint: relative additive RGB (zero = neutral). vec3 allows negatives.
     struct Sprite : Feature<Sprite, Node> {
         struct Quantum {
-            resource::geometry::Asset::Id geometry;
             resource::material::Asset::Id material;
             RGB tint;
             vec3 scale;
             resource::sprite::Pack::Id pack;
             integer index;
         };
+        struct Global {
+            base::maybe<resource::geometry::Asset::Id> geometry;
+        };
         struct Actions : BaseActions {
-            static auto create(Writing, Pos, HPB, vec3 scale, resource::geometry::Asset::Id, resource::material::Asset::Id, RGB tint, resource::sprite::Pack::Id, integer index) -> Id;
+            static auto create(Writing, Pos, HPB, vec3 scale, resource::material::Asset::Id, RGB tint, resource::sprite::Pack::Id, integer index) -> Id;
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };
         struct Internals : DefaultInternals{};

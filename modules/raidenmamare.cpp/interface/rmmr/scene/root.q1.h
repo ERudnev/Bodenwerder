@@ -40,20 +40,22 @@ namespace rmmr::scene {
 
     struct Interface : Manipulation<Interface, Root> {
         static auto createScene(Writing) -> Root::Id;
-        static auto createCamera(Writing, Root::Id, Locator, Camera::Quantum) -> Camera::Id;
+        static auto createCamera(Writing, Root::Id, Locator, float fov_y) -> Camera::Id;
         static auto createLight(Writing, Root::Id, Locator, Light::Quantum) -> Light::Id;
         static auto createSimpleActor(Writing, Root::Id, Locator, actor::Simple::Quantum) -> actor::Simple::Id;
         static auto createGrid(Writing, Root::Id, Locator, Grid::Quantum) -> Grid::Id;
         static void render(Reading, Root::Id, system::Device::Id, renderer::CommandBuffer& where);
     };
 
-    // Ortho/2D layer on a scene root — sprite actors live here (not on Interface).
+    // Ortho/2D layer on a scene root — sprite actors created here.
+    // createCamera: look along -Z; orthographic extent from Flat2d.size.
     struct Flat2d : Feature<Flat2d, Root> {
         struct Quantum {
             index2 size;
         };
         struct Actions : BaseActions {
-            static auto createSpriteActor(Writing, Id) -> actor::Sprite::Id;
+            static auto createCamera(Writing, Id, Locator) -> Camera::Id;
+            static auto createSpriteActor(Writing, Id, Locator, actor::Sprite::Quantum) -> actor::Sprite::Id;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

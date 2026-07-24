@@ -20,10 +20,10 @@ namespace plan {
       на замороженную Retrospection-сериализацию: live-путь — явная загрузка и hardcoded/seed там, где нужно.
     subtasks:
       ✅ Зафиксировать Q1-модель sprite::Pack (Entry min/max/pivot abs; LoaderKenney; грубый Runtime)
-      📋 Добавить генерируемую геометрию unit quad (Generator::Type рядом с triangle/gridPlane)
-      📋 Ввести/оживить отдельный renderer::Pass под спрайты (ui уже в enum, но вне очереди кадра — решить: ui vs sprite)
-      📋 Включить pass в render queue Renderer; begin/end и state (blend/depth) под 2D-оверлей в сцене
-      📋 Ортографические режимы камеры (расширение Quantum и/или feature на scene::Camera); несколько видов ortho
+      ✅ Добавить генерируемую геометрию unit quad (Generator::Type рядом с triangle/gridPlane)
+      ✅ Ввести отдельный renderer::Pass::sprite (ui остаётся запасным; sprite в очереди кадра)
+      ✅ Включить pass в render queue Renderer; begin/end и state (blend/depth) под 2D-оверлей
+      ✅ Ортографические режимы камеры (Camera::Mode + Quantum; Root fov create; Flat2d ortho из size; parallel запас)
       📋 Шейдер + material::Technique на sprite-pass; UV/rect из атлас-записи, не из vertex bake на каждый спрайт
       📋 Submit: один Command = один DC; сортировка по материалу (как opaque), без instance buffer
       📋 Интеграция в сцену (Actor/space как у существующих полупрозрачных объектов) и smoke в Toy

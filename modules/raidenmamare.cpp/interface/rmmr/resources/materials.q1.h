@@ -14,23 +14,6 @@ namespace rmmr::resource::material {
 
     using Reference = resource::Unit::Reference;
 
-    struct Asset : Feature<Asset, resource::Unit> {
-        struct TextureBinding {
-            Uniform::Id uniform;
-            texture::Reference texture;
-        };
-        struct Technique {
-            shader::Reference program;
-            Uniform::Palette uniforms;
-            vector<TextureBinding> textures;
-        };
-        struct Quantum {
-            umap<renderer::Pass, Technique> techniques;
-        };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
     struct Runtime : Entity<Runtime> {
         using Locations = ::rmmr::material::Semantics::RuntimeMapping;
         struct TextureBinding {
@@ -53,8 +36,19 @@ namespace rmmr::resource::material {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct Composer : Feature<Composer, Asset> {
-        struct Quantum {};
+    struct Asset : Feature<Asset, resource::Unit> {
+        struct TextureBinding {
+            Uniform::Id uniform;
+            texture::Reference texture;
+        };
+        struct Technique {
+            shader::Reference program;
+            Uniform::Palette uniforms;
+            vector<TextureBinding> textures;
+        };
+        struct Quantum {
+            umap<renderer::Pass, Technique> techniques;
+        };
         struct Actions : BaseActions {
             static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;
         };

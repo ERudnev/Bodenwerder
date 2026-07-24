@@ -10,6 +10,9 @@ namespace rmmr::scene {
 
     namespace {
 
+        constexpr float k_camera_z_near = 0.1f;
+        constexpr float k_camera_z_far = 100.0f;
+
         auto node_quantum_from_locator(Locator locator) -> Node::Quantum {
             const vec3 radians = glm::radians(locator.euler);
             const glm::vec3 glm_euler{
@@ -21,6 +24,12 @@ namespace rmmr::scene {
                 .position = locator.pos,
                 .rotation = glm::normalize(quat{glm_euler}),
             };
+        }
+
+        auto attach_camera(Writing context, Root::Id root, Locator locator, Camera::Quantum camera) -> Camera::Id {
+            const auto node = with<Node_group>::addElement(context, root, node_quantum_from_locator(locator));
+            with<Camera_group>::addElement(context, root, node, std::move(camera));
+            return node;
         }
 
     } // namespace
@@ -38,10 +47,14 @@ namespace rmmr::scene {
         return root;
     }
 
-    auto Interface::createCamera(Writing context, Root::Id root, Locator locator, Camera::Quantum cameraQuantum) -> Camera::Id {
-        const auto node = with<Node_group>::addElement(context, root, node_quantum_from_locator(locator));
-        with<Camera_group>::addElement(context, root, node, std::move(cameraQuantum));
-        return node;
+    auto Interface::createCamera(Writing context, Root::Id root, Locator locator, float fov_y) -> Camera::Id {
+        return attach_camera(context, root, locator, Camera::Quantum{
+            .mode = Camera::Mode::perspective,
+            .z_near = k_camera_z_near,
+            .z_far = k_camera_z_far,
+            .fov_y = fov_y,
+            .ortho_size = index2{0, 0},
+        });
     }
 
     auto Interface::createLight(Writing context, Root::Id root, Locator locator, Light::Quantum lightQuantum) -> Light::Id {
@@ -75,8 +88,25 @@ namespace rmmr::scene {
         }
     }
 
-    auto Flat2d::Actions::createSpriteActor(Writing, Id) -> actor::Sprite::Id {
-        _INCOMPLETE_;
+    auto Flat2d::Actions::createCamera(Writing context, Id root, Locator locator) -> Camera::Id {
+        if (not with<Flat2d>::exists(context, root))
+            return context.refuse("scene::Flat2d::createCamera: Flat2d is not installed on this root");
+        const auto& flat = with<Flat2d>::get(context, root);
+        return attach_camera(context, root, locator, Camera::Quantum{
+            .mode = Camera::Mode::orthographic,
+            .z_near = k_camera_z_near,
+            .z_far = k_camera_z_far,
+            .fov_y = 0.0f,
+            .ortho_size = flat.size,
+        });
+    }
+
+    auto Flat2d::Actions::createSpriteActor(Writing context, Id root, Locator locator, actor::Sprite::Quantum sprite) -> actor::Sprite::Id {
+        if (not with<Flat2d>::exists(context, root))
+            return context.refuse("scene::Flat2d::createSpriteActor: Flat2d is not installed on this root");
+        const auto node = with<Node_group>::addElement(context, root, node_quantum_from_locator(locator));
+        with<actor::Sprite>::extend(context, node, std::move(sprite));
+        return node;
     }
 
 }

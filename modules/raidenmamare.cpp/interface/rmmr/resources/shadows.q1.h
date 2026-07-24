@@ -11,12 +11,6 @@ namespace rmmr::resource::shadow {
 
     using Reference = resource::Unit::Reference;
 
-    struct Asset : Feature<Asset, resource::Unit> {
-        struct Quantum {};
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
     struct Runtime : Entity<Runtime> {
         struct Quantum {
             system::Device::Id device;
@@ -31,6 +25,12 @@ namespace rmmr::resource::shadow {
         };
         struct Internals;
         static const Behavior customAspectReactions();
+    };
+
+    struct Asset : Feature<Asset, resource::Unit> {
+        struct Quantum {};
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct Allocator : Feature<Allocator, Asset> {

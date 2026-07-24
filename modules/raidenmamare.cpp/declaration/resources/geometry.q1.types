@@ -8,11 +8,6 @@ namespace rmmr
 
     using Reference as resource::Unit::Reference
 
-    // Persistent mesh recipe. Scene may hold #geometry::Asset — never Runtime.
-    feature Asset of resource::Unit
-      one
-        slots: vector<Pos> // i insist on exactly this kind of slots
-
     entity Runtime
       one
         device: #system::Device
@@ -22,13 +17,18 @@ namespace rmmr
         vertex_count: renderer::Count
         index_count: renderer::Count
 
+    // Persistent mesh recipe. Scene may hold #geometry::Asset — never Runtime.
+    feature Asset of resource::Unit
+      one
+        slots: vector<Pos> // i insist on exactly this kind of slots
+
     feature Loader of Asset
       one
         file: filename
         >materialize(#system::Device) -> #Runtime?
 
     feature Generator of Asset
-      enum Type : triangle, kube, bagel, gridPlane
+      enum Type : triangle, kube, bagel, gridPlane, unitQuad
       one
         type: Type
         >materialize(#system::Device) -> #Runtime?

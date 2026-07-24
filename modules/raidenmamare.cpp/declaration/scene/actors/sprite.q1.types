@@ -14,7 +14,6 @@ namespace rmmr
     // tint: relative additive RGB (zero = neutral). vec3 allows negatives.
     feature Sprite of Node
       one
-        geometry: #resource::geometry::Asset
         material: #resource::material::Asset
         tint: RGB
         scale: vec3
@@ -22,4 +21,5 @@ namespace rmmr
         index: integer
         ?submit(#system::Device, >where: renderer::CommandBuffer)
       all
-        >create(Pos, HPB, scale: vec3, geometry: #resource::geometry::Asset, material: #resource::material::Asset, tint: RGB, pack: #resource::sprite::Pack, index: integer) -> #
+        geometry: #resource::geometry::Asset? // shared unit quad; set before spawn/submit
+        >create(Pos, HPB, scale: vec3, material: #resource::material::Asset, tint: RGB, pack: #resource::sprite::Pack, index: integer) -> #

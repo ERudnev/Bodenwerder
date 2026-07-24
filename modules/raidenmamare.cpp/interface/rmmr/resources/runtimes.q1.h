@@ -5,6 +5,7 @@
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/shadows.q1.h>
+#include <rmmr/resources/sprites.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/system/core.q1.h>
 
@@ -24,6 +25,7 @@ namespace rmmr::resource {
             static auto add_shadow_allocator(Writing, Id, Unit::Quantum, shadow::Allocator::Quantum) -> shadow::Asset::Id;
             static auto add_geometry_loader(Writing, Id, Unit::Quantum, geometry::Loader::Quantum) -> geometry::Asset::Id;
             static auto add_geometry_generator(Writing, Id, Unit::Quantum, geometry::Generator::Quantum) -> geometry::Asset::Id;
+            static auto add_sprites_kenney(Writing, Id, Unit::Quantum, sprite::LoaderKenney::Quantum) -> sprite::Pack::Id;
             static void extend(Writing, Manager::Id, filepath path);
         };
         struct Internals : DefaultInternals{};

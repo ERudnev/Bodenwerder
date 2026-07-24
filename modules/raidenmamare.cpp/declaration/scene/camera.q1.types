@@ -5,13 +5,17 @@ namespace rmmr
   namespace scene
 
     // Camera settings bound to a scene node.
+    // Create APIs do not pass this Quantum: Root/Flat2d helpers fill it.
     feature Camera of Node
+      enum Mode : perspective, orthographic, parallel
       one
-        fov_y: float
+        mode: Mode
         z_near: float
         z_far: float
+        fov_y: float          // perspective
+        ortho_size: index2    // orthographic full extent (world/logical units)
         ?projection(aspect_ratio: float) -> mat4
         ?view() -> mat4
         ?view_projection(aspect_ratio: float) -> mat4
       all
-        >create(Locator, fov_y: float, z_near: float, z_far: float) -> #
+        >create(Locator, fov_y: float) -> #

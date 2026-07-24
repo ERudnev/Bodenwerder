@@ -22,13 +22,16 @@ namespace rmmr
 
     manipulation Interface of Root
       >createScene()->#
-      >createCamera(#, Locator, one<Camera>)->#Camera
+      >createCamera(#, Locator, fov_y: float)->#Camera
       >createLight(#, Locator, one<Light>)->#Light
       >createSimpleActor(#, Locator, one<actor::Simple>)->#actor::Simple
       >createGrid(#, Locator, one<Grid>)->#Grid
       ?render(#, #system::Device, >where: renderer::CommandBuffer)
 
+    // Ortho/2D layer on a scene root — sprite actors created here.
+    // Camera looks along -Z; ortho_size taken from Flat2d.size.
     feature Flat2d of Root
       one
         size: index2
-        >createSpriteActor()->#actor::Sprite
+        >createCamera(Locator)->#Camera
+        >createSpriteActor(Locator, one<actor::Sprite>)->#actor::Sprite

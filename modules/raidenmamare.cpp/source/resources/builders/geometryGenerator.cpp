@@ -168,4 +168,30 @@ namespace rmmr::resource::builders::geometry {
         };
     }
 
+    // Unit square in XY, origin at center. Normalized UV; atlas remaps in shader later.
+    // Two triangles, no IB. CCW from +Z.
+    auto GeometryGenerator::unitQuad() -> CpuPresentation {
+        return CpuPresentation{
+            .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "uv0"}),
+            .positions = vector<Pos>{
+                Pos{-0.5f, -0.5f, 0.0f},
+                Pos{0.5f, -0.5f, 0.0f},
+                Pos{0.5f, 0.5f, 0.0f},
+                Pos{-0.5f, -0.5f, 0.0f},
+                Pos{0.5f, 0.5f, 0.0f},
+                Pos{-0.5f, 0.5f, 0.0f},
+            },
+            .normals = {},
+            .uv0 = vector<UV>{
+                UV{0.0f, 0.0f},
+                UV{1.0f, 0.0f},
+                UV{1.0f, 1.0f},
+                UV{0.0f, 0.0f},
+                UV{1.0f, 1.0f},
+                UV{0.0f, 1.0f},
+            },
+            .indices = {},
+        };
+    }
+
 }
