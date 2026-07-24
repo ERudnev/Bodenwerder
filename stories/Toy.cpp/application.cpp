@@ -99,7 +99,7 @@ namespace toy {
             return;
         }
 
-        state->demo->seedAssets(state->world, core);
+        state->demo->seedAssets(state->world, core, state->assets->handles);
         const auto demo_handles = state->demo->setup(state->world, state->assets->handles);
         state->ui.scene = demo_handles.scene;
         state->ui.camera = demo_handles.camera;

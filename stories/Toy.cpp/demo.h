@@ -20,8 +20,8 @@ namespace toy {
 
         virtual ~Demo() = default;
 
-        // Extra hardcoded catalogue under the same Manager/core; before materialize.
-        virtual void seedAssets(Writing, rmmr::system::Core::Id) = 0;
+        // Extra catalogue under the same Manager/core; shared Handles as base; before materialize.
+        virtual void seedAssets(Writing, rmmr::system::Core::Id, const assets::Handles&) = 0;
         virtual Handles setup(Writing, const assets::Handles&) = 0;
     };
 

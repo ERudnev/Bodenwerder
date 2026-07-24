@@ -12,7 +12,7 @@ namespace toy::demos {
 
         Assets assets;
 
-        void seedAssets(Writing, rmmr::system::Core::Id) override;
+        void seedAssets(Writing, rmmr::system::Core::Id, const assets::Handles&) override;
         Handles setup(Writing, const assets::Handles&) override;
     };
 

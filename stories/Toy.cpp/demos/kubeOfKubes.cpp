@@ -14,7 +14,7 @@ namespace toy::demos {
     using namespace fqsm::api;
     using namespace rmmr;
 
-    void KubeOfKubes::seedAssets(Writing context, system::Core::Id core) {
+    void KubeOfKubes::seedAssets(Writing context, system::Core::Id core, const assets::Handles&) {
         using namespace resource;
         using geometry::Generator;
 

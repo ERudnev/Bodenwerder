@@ -7,8 +7,8 @@ namespace toy::demos {
     using namespace fqsm::api;
     using namespace rmmr;
 
-    void SpriteTest::seedAssets(Writing, system::Core::Id) {
-        // Sprite pack / materials land here later; fills `assets`.
+    void SpriteTest::seedAssets(Writing, system::Core::Id, const assets::Handles&) {
+        // Sprite pack / materials land here later; fills `assets` using shared as base.
     }
 
     auto SpriteTest::setup(Writing context, const assets::Handles&) -> Handles {
