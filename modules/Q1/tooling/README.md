@@ -35,7 +35,7 @@ It understands:
 - aspect blocks `always`, `one`, `all`
 - operations `?`, `=`, `>`
 - reactions `!name(scope)`
-- the currently used type forms such as `#`, `#Type`, `T?`, `anchor<T>`, `custody<T>`, `~Type::member`
+- the currently used type forms such as `#`, `#Type`, `T?`, `anchor<T>`, `custody<T>`, `affects<T>`, `~Type::member`
 - a limited amount of `//@` metadata
 
 It does not attempt to implement:

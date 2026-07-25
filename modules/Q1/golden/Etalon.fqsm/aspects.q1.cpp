@@ -1,5 +1,7 @@
 #include <Etalon.fqsm/aspects.q1.h>
 
+#include <base/logging.h>
+
 #include <algorithm>
 #include <format>
 #include <utility>
@@ -121,6 +123,55 @@ namespace Q1_fQSM::Etalon {
     auto Tag::customAspectReactions() -> const Behavior {
         return {
             reaction::aspect_wide<Tag>(&Tag::Internals::modulus_clamped),
+        };
+    }
+
+    auto Reminder::Actions::add_to(Writing context, SampleEntity::Id sample, integer value) -> Id {
+        return create(context, Quantum{
+            .target = sample,
+            .trigger_value = value,
+        });
+    }
+
+    struct Reminder::Internals : Reminder::DefaultInternals {
+        // ~ : drop self when target is gone (vital) or trigger already satisfied.
+        static void remove_after_happened(Reacting context) {
+            Writing writing{context};
+            std::vector<Id> doomed;
+            for (const auto rem : context.proposal.aspect<Reminder>().items()) {
+                const auto* target = with<Reminder>::vital(writing, rem.id, &Quantum::target);
+                if (not target)
+                    continue;
+                if (target->data_field == with<Reminder>::get(writing, rem.id).trigger_value)
+                    doomed.push_back(rem.id);
+            }
+            for (const auto id : doomed)
+                with<Reminder>::remove(writing, id);
+        }
+
+        // ~SampleEntity : log when watched SampleEntity hits trigger_value, then remove Reminder.
+        static void write_log_when_reached(Reacting context) {
+            Writing writing{context};
+            std::vector<Id> reached;
+            for (const auto& change : context.changes<SampleEntity>().updated()) {
+                for (const auto rem : context.proposal.aspect<Reminder>().items()) {
+                    if (static_cast<SampleEntity::Id>(rem.value.target) != change.id)
+                        continue;
+                    if (change.now.data_field != rem.value.trigger_value)
+                        continue;
+                    base::message("Reminder reached: SampleEntity data_field == {}", rem.value.trigger_value);
+                    reached.push_back(rem.id);
+                }
+            }
+            for (const auto id : reached)
+                with<Reminder>::remove(writing, id);
+        }
+    };
+
+    auto Reminder::customAspectReactions() -> const Behavior {
+        return {
+            reaction::aspect_wide<Reminder>(&Reminder::Internals::remove_after_happened),
+            reaction::aspect_wide<Reminder, SampleEntity>(&Reminder::Internals::write_log_when_reached),
         };
     }
 

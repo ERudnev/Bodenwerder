@@ -1,0 +1,13 @@
+---
+description: Exemplar/howto for fQSM relations, reactions, private Internals (entity_relations)
+globs: modules/fQSM.cpp/test/features/entity_relations.cpp,modules/fQSM.cpp/test/features/HOWTO_entity_relations.md
+alwaysApply: false
+---
+
+# Exemplar: entity_relations
+
+При работе с этими файлами читай и держись:
+
+`modules/fQSM.cpp/test/HOWTO_entity_relations.md`
+
+Это **living how-to**, не assertion-suite. Не раздувай сцену и expects без явной просьбы. Логику связей/реакций клади в `Internals` + тонкие реакции; публичный `Actions` не превращай в свалку политики. По мере закрепления приёмов в диалоге — дописывай HOW-TO, а не оставляй смысл только в чате.

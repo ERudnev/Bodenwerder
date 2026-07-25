@@ -199,11 +199,13 @@ Some Q1 fields imply nontrivial behavior even without an explicit `!` line:
 
 - `anchor<T>` implies custom internal behavior
 - `custody<T>` implies custom internal behavior
+- `affects<T>` is a typed Id link without structural lifecycle (C++ `Affected<T>`); does not by itself force Internals
 
 Therefore:
 
 - explicit `!` means custom reaction-bearing aspect
 - `anchor<>` or `custody<>` also mean custom reaction-bearing aspect
+- `affects<>` alone does not; pair with `!` / `vital` as in `Reminder`
 - no `!` and no `anchor<>`/`custody<>` means the aspect may stay trivial at header level
 
 ### Trivial form
@@ -215,7 +217,7 @@ If an aspect is trivial at header level, it may use:
 
 ### Why
 
-`Internals` is not a mirror of syntax alone. It is a mirror of syntax plus semantics implied by special field kinds. This matters for code generation because anchor/custody are not ordinary payload fields; they carry behavioral consequences even before `.cpp` projection is described in full.
+`Internals` is not a mirror of syntax alone. It is a mirror of syntax plus semantics implied by special field kinds. This matters for code generation because anchor/custody are not ordinary payload fields; they carry behavioral consequences even before `.cpp` projection is described in full. `affects<>` is the third link form: identity-typed, behavior opt-in.
 
 ## Data Honesty Rules
 

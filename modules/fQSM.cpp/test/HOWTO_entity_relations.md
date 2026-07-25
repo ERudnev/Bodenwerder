@@ -93,6 +93,11 @@ Internals::tearOffTrunk(Writing, Id)  // nullopt + remove Trunk
 Internals::boostHappiest / trunklessSadnessAndMelancholy
 ```
 
+### История решений (`History`)
+
+Аспект под `World`: квант `{ world, turn, text }`. Мир про него не знает; остальные аспекты — могут и пишут важные решения через `History::Internals::note` (имена слонов — только когда решение про конкретного слона).  
+В конце стимула — dump в лог, отсортированный по `turn`.
+
 ### Зависть и экология mood (реакция на World)
 
 `aspect_wide<Elephant, World>` на тик часов, по порядку:
@@ -112,7 +117,8 @@ Internals::boostHappiest / trunklessSadnessAndMelancholy
 
 ### Стимул внизу файла
 
-Мир → десять слонов (mood 0..9) → тики: отрывы, afflict, грусть без хобота, тоска. Без лишних expects, пока они не входят в how-to.
+Мир → десять слонов (`elephant1`…, mood 0..9) → тики → один якорь: остаётся 5 слонов.  
+Лог `History` внизу закомментирован — память / корм для LLM, не часть CI-контракта.
 
 ## Анти-паттерны (для агента и автора)
 

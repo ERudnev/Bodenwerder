@@ -27,6 +27,9 @@
     'always' : opens static constants + pure functions block inside aspect definition
     '#' : id type constructor (inside type expressions only):  #T == T::id (decode only) ; # == id (local Aspect type; decode only)
     '?' : postfix Optional type constructor (inside type expressions only):  T? == optional<T> (decode only)
+    'anchor<T>' : typed structural link to aspect T (C++: Anchor<T>; implies anchored reaction behavior)
+    'custody<T>' : typed custody link to aspect T (C++: Custody<T>; implies cleanup reaction behavior)
+    'affects<T>' : typed Id link to aspect T without structural lifecycle (C++: Affected<T>; lookup: relation / vital)
 
   parameter name binding qualifiers (named parameters only, inside operation `(...)`):
     '?name: Type' : read-only reference parameter (C++ projection: const Type& name)

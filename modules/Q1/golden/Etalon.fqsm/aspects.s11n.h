@@ -27,6 +27,16 @@ struct Retrospection<Q1_fQSM::Etalon::Tag> {
 };
 
 template<>
+struct Retrospection<Q1_fQSM::Etalon::Reminder> {
+    template<typename Desc>
+    static void describe(Desc& d) {
+        d.aspect("Q1_fQSM::Etalon::Reminder");
+        d.one(field<&Q1_fQSM::Etalon::Reminder::Quantum::target>("target"));
+        d.one(field<&Q1_fQSM::Etalon::Reminder::Quantum::trigger_value>("trigger_value"));
+    }
+};
+
+template<>
 struct Retrospection<Q1_fQSM::Etalon::Remnant> {
     template<typename Desc>
     static void describe(Desc& d) {

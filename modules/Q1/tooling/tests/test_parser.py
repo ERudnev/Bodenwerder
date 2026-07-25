@@ -61,6 +61,41 @@ namespace Demo
     assert op["params"][1]["type"]["kind"] == "MemberTypeOf"
 
 
+def test_parse_affects_link_type() -> None:
+    text = """
+namespace Demo
+  entity Sample
+    one
+      data_field: integer
+  entity Reminder
+    one
+      target: affects<Sample>
+      trigger_value: integer
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    reminder = ast["declarations"][0]["declarations"][1]
+    field = reminder["blocks"][0]["members"][0]
+    assert field["name"] == "target"
+    assert field["type"]["kind"] == "AffectsType"
+    assert field["type"]["target"]["kind"] == "NamedType"
+    assert field["type"]["target"]["parts"] == ["Sample"]
+
+
+def test_golden_reminder_uses_affects() -> None:
+    ast = q1_parser.parse_file(ASPECTS)
+    etalon = ast["declarations"][0]["declarations"][0]
+    reminder = next(
+        decl for decl in etalon["declarations"]
+        if decl.get("kind") == "AspectDecl" and decl.get("name") == "Reminder"
+    )
+    target = next(
+        m for m in reminder["blocks"][0]["members"]
+        if m.get("kind") == "FieldDecl" and m.get("name") == "target"
+    )
+    assert target["type"]["kind"] == "AffectsType"
+    assert target["type"]["target"]["parts"] == ["SampleEntity"]
+
+
 def test_parse_reaction_scopes() -> None:
     text = """
 namespace Demo

@@ -57,6 +57,20 @@ namespace Q1_fQSM::Etalon {
         static const Behavior customAspectReactions();
     };
 
+    //@ affects<>: typed Id link (no structural lifecycle); sibling of anchor<> / custody<>
+    struct Reminder : Entity<Reminder> {
+        struct Quantum {
+            Affected<SampleEntity> target;
+            integer trigger_value;
+        };
+        struct Actions : BaseActions {
+            static auto add_to(Writing, SampleEntity::Id, integer value) -> Id;
+        };
+        //@ custom because of !remove_after_happened / !write_log_when_reached
+        struct Internals;
+        static const Behavior customAspectReactions();
+    };
+
     struct Remnant : Component<Remnant, Tag> {
         struct Quantum {
             integer power;

@@ -93,6 +93,7 @@ namespace Q1 {
   projection_internals_for_cpp_helpers: @Statement(~0.85) {
     Core:
       Полноценный `struct Aspect::Internals : Aspect::DefaultInternals` в проекции обязателен, если Q1 объявил `!`, `anchor<>` или `custody<>` (плюс `customAspectReactions()`).
+      Поле `affects<>` само по себе структурной реакции не требует (в отличие от `anchor<>` / `custody<>`); Internals появляется от явных `!` / доменного `vital`.
       Если Q1 этого не требует, но в `.cpp` нужны приватные static-хелперы — тот же `Internals` предпочтительнее безымянного namespace или отдельного `*_private`: хелперы живут рядом с воркерами инвариантов, заголовок объявляет `struct Internals;`.
       Пустой `customAspectReactions() { return {}; }` при этом допустим.
     Reason:

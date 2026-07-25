@@ -32,6 +32,15 @@ namespace Q1_fQSM
         modulus: integer
         !modulus_clamped(~) // must be >= 1
 
+    entity Reminder
+      one
+        target: affects<SampleEntity>
+        trigger_value: integer
+        !remove_after_happened(~)
+        !write_log_when_reached(~SampleEntity)
+      all
+        >add_to(#SampleEntity, value: integer)->#
+
     // NOT IMPLEMENTED as Q1 feature: !sync(>one)
     component Remnant of Tag
       one
@@ -46,7 +55,7 @@ namespace Q1_fQSM
 
     attribute SampleAttribute of SampleEntity
       one
-        main_anchor: anchor<Trivia> //@ any anchor<> / custody<> leads to custom Internals to add anchor/custody behavior
+        main_anchor: anchor<Trivia> //@ any anchor<> / custody<> leads to custom Internals; affects<> is typed link (see Reminder)
         main_dummy: custody<Trivia>
       all
         >create(sample_value: integer)-># // reserved: minimal Aspect set including Identity source (Entity); here includes main_anchor Trivia

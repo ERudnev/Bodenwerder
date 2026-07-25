@@ -92,9 +92,17 @@ Used in archetype operation signatures such as:
 
 The tooling treats `one<Meta>` as a dedicated type-expression form meaning “the `one`-block quantum payload of aspect `Meta`”, projected to C++ as `Meta::Quantum`.
 
-### 10. `anchor<T>` and `custody<T>` are recognized as type forms
+### 10. `anchor<T>`, `custody<T>`, and `affects<T>` are recognized as type forms
 
-The parser and linter treat them as special type constructors and also record their presence because project rules already interpret them as behavior-carrying field kinds.
+The parser and linter treat them as special type constructors (AST kinds `AnchorType`, `CustodyType`, `AffectsType`).
+
+Projection notes (C++ / fQSM):
+
+- `anchor<T>` → `Anchor<T>` — structural lifecycle (anchored reaction)
+- `custody<T>` → `Custody<T>` — structural lifecycle (custody cleanup)
+- `affects<T>` → `Affected<T>` — typed Id link **without** structural lifecycle; lookup via `relation` / `vital`
+
+`anchor<>` / `custody<>` imply custom reaction-bearing aspect behavior. `affects<>` alone does not register a structural reaction; domain `!` rules (and optional `vital`) supply behavior.
 
 ### 11. `=` operations may carry a return type
 

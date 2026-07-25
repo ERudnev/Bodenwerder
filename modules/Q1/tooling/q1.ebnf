@@ -120,6 +120,7 @@ type_primary        ::= builtin_type
                       | quantum_type_of
                       | anchor_type
                       | custody_type
+                      | affects_type
                       | member_type_of
                       | external_type
                       | qualified_name
@@ -129,6 +130,7 @@ id_type             ::= "#" [ IDENT ] ;
 quantum_type_of     ::= "one" "<" type_expr ">" ;
 anchor_type         ::= "anchor" "<" type_expr ">" ;
 custody_type        ::= "custody" "<" type_expr ">" ;
+affects_type        ::= "affects" "<" type_expr ">" ;
 member_type_of      ::= "~" qualified_name "::" IDENT ;
 external_type       ::= "@external" "(" annotation_body ")" ;
 
