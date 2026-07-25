@@ -1,7 +1,5 @@
 #pragma once
 
-#include <format>
-
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
 
@@ -23,12 +21,7 @@ namespace fqsm::features::reactions {
     template<category::Any Meta>
     void deletion<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).removed()) {
-            if (not change.before)
-                context.refuse(std::format(R"(reaction::deletion failed on "{}" {})", Rtid::name<Meta>(), change.id));
-            else
-                this->action(::fqsm::Retrospecting{context.retrospective}, change.id, change.throwing_before());
-                //if (!fix) continue;
-                //*Meta::BaseActions::modify(context, change.id) = *fix;
+            this->action(::fqsm::Retrospecting{context.retrospective}, change.id, change.old);
         }
     }
 }

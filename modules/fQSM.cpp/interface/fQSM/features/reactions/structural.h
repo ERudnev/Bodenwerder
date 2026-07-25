@@ -121,7 +121,7 @@ namespace fqsm::features::reactions::structural {
         void apply(Reacting context) override {
             auto& target = context.adjustments<Element>();
             for (const auto& change : Abstract::changes<GroupMeta>(context).removed()) {
-                for (const auto& id : change.throwing_before()) {
+                for (const auto& id : change.old) {
                     _DBG_TX_("structural group_removal: {} removed -> put_deletion {} {}", Rtid::name<GroupMeta>(), Rtid::name<Element>(), id);
                     target.put_deletion(id);
                 }

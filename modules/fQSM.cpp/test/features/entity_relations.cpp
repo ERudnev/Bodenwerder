@@ -4,6 +4,8 @@
 
 #include <fQSM/api/interface.h>
 
+#include <vector>
+
 namespace {
 namespace local {
     using namespace fqsm::api;
@@ -73,13 +75,41 @@ namespace local {
                 }
             }
 
+            // Happiest alive gets +1 (ties: first max wins).
+            static void boostHappiest(Writing context) {
+                optional<Id> best;
+                integer bestMood{};
+                for (const auto e : context->aspect<Elephant>().items()) {
+                    if (not best or e.value.mood > bestMood) {
+                        best = e.id;
+                        bestMood = e.value.mood;
+                    }
+                }
+                if (best)
+                    my::modify(context, *best)->mood += 1;
+            }
+
+            // No trunk → −1 mood; mood < 0 → die of melancholy.
+            static void trunklessSadnessAndMelancholy(Writing context) {
+                for (const auto e : context->aspect<Elephant>().items()) {
+                    if (not my::get(context, e.id).myTrunk.has_value())
+                        my::modify(context, e.id)->mood -= 1;
+                }
+                std::vector<Id> doomed;
+                for (const auto e : context->aspect<Elephant>().items()) {
+                    if (my::get(context, e.id).mood < 0)
+                        doomed.push_back(e.id);
+                }
+                for (const auto id : doomed)
+                    my::remove(context, id);
+            }
+
             static void onWorldTick(Reacting context) {
                 bool worldMoved = false;
                 for (const auto& change : context.changes<World>().updated()) {
-                    if (change.after) {
-                        worldMoved = true;
-                        break;
-                    }
+                    (void)change;
+                    worldMoved = true;
+                    break;
                 }
                 if (not worldMoved)
                     return;
@@ -88,6 +118,8 @@ namespace local {
                 for (const auto entry : context.proposal.aspect<Elephant>().items())
                     syncTrunkToMood(writing, entry.id);
                 envyTearOffs(writing);
+                boostHappiest(writing);
+                trunklessSadnessAndMelancholy(writing);
             }
         };
         static const Behavior customAspectReactions() {
@@ -130,10 +162,7 @@ namespace local {
     struct Disappointment::Internals : DefaultInternals {
         // dt hours from World clock: drain mood and charge; zero charge removes self.
         static void applyTimePassage(Writing context, Id id, integer dt) {
-            if (dt <= 0)
-                return;
-
-            const auto* target = my::demand(context, id, &Quantum::target);
+            const auto* target = my::vital(context, id, &Quantum::target);
             if (not target)
                 return;
 
@@ -146,12 +175,8 @@ namespace local {
 
         static void onWorldClock(Reacting context) {
             Writing writing{context};
-            Retrospecting past{context.retrospective};
             for (const auto& change : context.changes<World>().updated()) {
-                if (not change.after)
-                    continue;
-                const auto pastTime = with<World>::get(past, change.id).time;
-                const integer dt = static_cast<integer>(change.after->time - pastTime);
+                const integer dt = static_cast<integer>(change.now.time - change.old.time);
                 for (const auto entry : context.proposal.aspect<Disappointment>().items())
                     applyTimePassage(writing, entry.id, dt);
             }
@@ -161,12 +186,8 @@ namespace local {
         static void onElephantTrunkLoss(Reacting context) {
             Writing writing{context};
             for (const auto& change : context.changes<Elephant>().updated()) {
-                if (not change.after)
-                    continue;
-                const auto& before = change.throwing_before();
-                if (not (before.myTrunk.has_value() and not change.after->myTrunk.has_value()))
-                    continue;
-                with<Rules>::afflict(writing, change.id);
+                if (field_event(change, &Elephant::Quantum::myTrunk).removed)
+                    with<Rules>::afflict(writing, change.id);
             }
         }
     };

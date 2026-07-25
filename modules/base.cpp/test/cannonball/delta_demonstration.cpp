@@ -28,31 +28,22 @@ void delta_demonstration()
 
     std::set<int> added;
     for (const auto change : delta.added()) {
-        EXPECT_TRUE(change.add());
-        EXPECT_TRUE(change.before.has_value());
-        EXPECT_TRUE(change.before.value() == nullptr);
-        EXPECT_TRUE(change.after != nullptr);
         EXPECT_EQ(change.id, 4);
-        EXPECT_EQ(*change.after, 40);
+        EXPECT_EQ(change.now, 40);
         added.insert(change.id);
     }
 
     std::set<int> addedOrUpdated;
     for (const auto change : delta.addedOrUpdated()) {
-        EXPECT_FALSE(change.remove());
-        EXPECT_TRUE(change.after != nullptr);
-
         if (change.id == 2) {
-            EXPECT_TRUE(change.before.has_value());
-            EXPECT_TRUE(change.before.value() != nullptr);
-            EXPECT_EQ(*change.before.value(), 20);
-            EXPECT_EQ(*change.after, 200);
+            EXPECT_TRUE(change.old != nullptr);
+            EXPECT_EQ(*change.old, 20);
+            EXPECT_EQ(change.now, 200);
         }
 
         if (change.id == 4) {
-            EXPECT_TRUE(change.before.has_value());
-            EXPECT_TRUE(change.before.value() == nullptr);
-            EXPECT_EQ(*change.after, 40);
+            EXPECT_TRUE(change.old == nullptr);
+            EXPECT_EQ(change.now, 40);
         }
 
         addedOrUpdated.insert(change.id);
@@ -60,24 +51,16 @@ void delta_demonstration()
 
     std::set<int> removed;
     for (const auto change : delta.removed()) {
-        EXPECT_TRUE(change.remove());
-        EXPECT_TRUE(change.before.has_value());
-        EXPECT_TRUE(change.before.value() != nullptr);
-        EXPECT_TRUE(change.after == nullptr);
         EXPECT_EQ(change.id, 3);
-        EXPECT_EQ(*change.before.value(), 30);
+        EXPECT_EQ(change.old, 30);
         removed.insert(change.id);
     }
 
     std::set<int> updated;
     for (const auto change : delta.updated()) {
-        EXPECT_TRUE(change.update());
-        EXPECT_TRUE(change.before.has_value());
-        EXPECT_TRUE(change.before.value() != nullptr);
-        EXPECT_TRUE(change.after != nullptr);
         EXPECT_EQ(change.id, 2);
-        EXPECT_EQ(*change.before.value(), 20);
-        EXPECT_EQ(*change.after, 200);
+        EXPECT_EQ(change.old, 20);
+        EXPECT_EQ(change.now, 200);
         updated.insert(change.id);
     }
 

@@ -60,7 +60,7 @@ Lookup того же семейства, что Id-поле: `ward(...)`.
 ```cpp
 relation(context, id, &Quantum::target)  // via with<> / my:: — const Related::Quantum* | nullptr
 
-const auto* target = my::demand(context, id, &Quantum::target); // miss → remove(self), nullptr
+const auto* target = my::vital(context, id, &Quantum::target); // miss → remove(self), nullptr
 if (not target)
     return;
 ```
@@ -68,8 +68,8 @@ if (not target)
 ### Disappointment (механизм в образце)
 
 - `Rules::afflict` + `standardAfflictionHours` (= 3, нарратив «−3»).
-- Часы мира → `Retrospecting`/`Wall` для dt → `demand` related-слона → mood и `remains`; `remains <= 0` → remove.
-- Потеря хобота у слона → `afflict` на потерпевшего.
+- Часы мира → dt из `change.old` / `change.now` → `vital` related-слона → mood и `remains`; `remains <= 0` → remove.
+- Потеря хобота у слона → `field_event(change, &Elephant::Quantum::myTrunk).removed` → `afflict` на потерпевшего.
 - В сценарии пока **не** развешиваем вручную — только механизм (отрыв сам может навесить).
 
 ## Review: читать дельту vs писать следствие
@@ -90,21 +90,29 @@ if (not target)
 ```text
 Internals::syncTrunkToMood(Writing, Id)
 Internals::tearOffTrunk(Writing, Id)  // nullopt + remove Trunk
+Internals::boostHappiest / trunklessSadnessAndMelancholy
 ```
 
-### Зависть к хоботу (реакция на World)
+### Зависть и экология mood (реакция на World)
 
-`aspect_wide<Elephant, World>`: на тик часов — sync углов от mood, затем кто с живым хоботом видит чужой угол выше своего более чем на `envyAngleGapDegrees` → `tearOffTrunk` жертвы.  
-Без хобота слон в зависти не участвует. Параллельные `remove` одного Trunk в одном патче допустимы — нормализация сама схлопывает.
+`aspect_wide<Elephant, World>` на тик часов, по порядку:
+
+1. sync углов хобота от mood;
+2. зависть: живой хобот видит чужой угол выше своего более чем на `envyAngleGapDegrees` → `tearOffTrunk` жертвы (без хобота в зависти не участвует);
+3. самый весёлый (max mood) → `+1`;
+4. без хобота (`nullopt`) → `−1` mood; `mood < 0` → `remove` (тоска).
+
+Параллельные `remove` одного Trunk в одном патче допустимы — нормализация сама схлопывает.
 
 ### Реакция на свой квант
 
-`reaction::aspect_wide<Self>(&Internals::handler)` + в handler’е обход `changes<Self>().addedOrUpdated()` и `adjustments<…>().put_deletion` / `put_modification`.  
+`reaction::aspect_wide<Self>(&Internals::handler)` + в handler’е обход `changes<Self>().updated()` (узкий тип с `old`/`now`) / `addedOrUpdated()` (`now`, опционально `old`) и `adjustments<…>().put_deletion` / `put_modification`.  
+Вычислимое «событие поля»: `field_event(change, &Quantum::member)` → `{ old, now, changed }` (поверх `Updated`); для `optional` ещё `appeared` / `removed` (поля, не методы).
 `constraint::element` — про **правку** кванта, не про самоудаление.
 
 ### Стимул внизу файла
 
-Мир → десять слонов (mood 0..9) → тики. Без лишних expects и без «демонстрационных» подсюжетов, пока они не входят в how-to.
+Мир → десять слонов (mood 0..9) → тики: отрывы, afflict, грусть без хобота, тоска. Без лишних expects, пока они не входят в how-to.
 
 ## Анти-паттерны (для агента и автора)
 
@@ -112,7 +120,8 @@ Internals::tearOffTrunk(Writing, Id)  // nullopt + remove Trunk
 - Публиковать политику в `Actions`, которую никто не должен звать руками.
 - Дефолтные аргументы в API «для удобства» (в этом коде явно не любят).
 - Второй `context` в ручном `get`+`find`, если достаточно `my::ward` / `with<>::ward`.
-- Голые `get`/`modify`/`demand` в Internals (зоопарк в scope) — только `my::`.
+- Голые `get`/`modify`/`vital` в Internals (зоопарк в scope) — только `my::`.
+- `throwing_before` / сырой `Change.before` в доменных реакциях — для слоёв есть `old`/`now`.
 - Путать камерный `controller` / будущий `aspect::Controller` с полем `custody`.
 - Авто-обнулять поле holder’а при смерти ward (для custody — запрещено контрактом).
 

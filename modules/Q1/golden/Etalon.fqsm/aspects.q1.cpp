@@ -148,7 +148,7 @@ namespace Q1_fQSM::Etalon {
 
             // wave 2: direct Remnant updates use the same evaluator
             for (const auto change : context.changes<Remnant>().addedOrUpdated()) {
-                const auto fix = evaluate_sync(context, change.id, *change.after);
+                const auto fix = evaluate_sync(context, change.id, change.now);
                 if (fix) patch.put_modification(change.id, *fix);
             }
         }

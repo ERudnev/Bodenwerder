@@ -50,7 +50,7 @@ namespace fqsm::features::reactions::structural {
         void apply(Reacting context) override {
             auto& observedPatch = context.adjustments<Observed>();
             for (const auto& change : changes<Client>(context).removed())
-                observedPatch.put_deletion(change.throwing_before().*link);
+                observedPatch.put_deletion(change.old.*link);
         }
     };
 

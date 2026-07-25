@@ -79,8 +79,9 @@ namespace fqsm::aspect::actions {
                 return Any<Related>::Capability::find(context, get(context, id).*link);
             }
 
+            // Vital Affected: miss → remove(self), nullptr.
             template<typename Related>
-            static auto demand(Writing context, Id id, ::fqsm::Affected<Related> Quantum::* link)
+            static auto vital(Writing context, Id id, ::fqsm::Affected<Related> Quantum::* link)
                 -> const ::fqsm::Quantum<Related>* {
                 if (const auto* found = relation(context, id, link))
                     return found;

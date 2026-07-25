@@ -69,38 +69,18 @@ void delta_iterators()
     }
 
     for (const auto change : preview.delta<A>().added()) {
-        EXPECT_TRUE(change.add());
-        EXPECT_FALSE(change.update());
-        EXPECT_FALSE(change.remove());
-        EXPECT_TRUE(change.before.has_value());
-        EXPECT_TRUE(change.before.value() == nullptr);
-        EXPECT_TRUE(change.after != nullptr);
         collected[Layer::added].insert(change.id);
     }
 
     for (const auto change : preview.delta<A>().addedOrUpdated()) {
-        EXPECT_FALSE(change.remove());
-        EXPECT_TRUE(change.after != nullptr);
         collected[Layer::addedOrUpdated].insert(change.id);
     }
 
     for (const auto change : preview.delta<A>().removed()) {
-        EXPECT_FALSE(change.add());
-        EXPECT_FALSE(change.update());
-        EXPECT_TRUE(change.remove());
-        EXPECT_TRUE(change.before.has_value());
-        EXPECT_TRUE(change.before.value() != nullptr);
-        EXPECT_TRUE(change.after == nullptr);
         collected[Layer::removed].insert(change.id);
     }
 
     for (const auto change : preview.delta<A>().updated()) {
-        EXPECT_FALSE(change.add());
-        EXPECT_TRUE(change.update());
-        EXPECT_FALSE(change.remove());
-        EXPECT_TRUE(change.before.has_value());
-        EXPECT_TRUE(change.before.value() != nullptr);
-        EXPECT_TRUE(change.after != nullptr);
         collected[Layer::updated].insert(change.id);
     }
 

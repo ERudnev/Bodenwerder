@@ -1,7 +1,5 @@
 #pragma once
 
-#include <format>
-
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
 
@@ -38,13 +36,8 @@ namespace fqsm::features::reactions::constraint {
     template<category::Any Meta>
     void element<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).addedOrUpdated()) {
-            if (not change.after) {
-                context.refuse(std::format(R"(constraint::item_added_changed no corrector on "{}" {})", Rtid::name<Meta>(), change.id));
-                continue;
-            }
-            const auto fix = this->action(*change.after);
+            const auto fix = this->action(change.now);
             if (!fix) continue;
-            //*Meta::BaseActions::modify(context, change.id) = *fix;
             context.adjustments<Meta>().put_modification(change.id, *fix);
 
         }
@@ -53,14 +46,9 @@ namespace fqsm::features::reactions::constraint {
     template<category::Any Meta>
     void element_wide<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).addedOrUpdated()) {
-            if (not change.after) {
-                context.refuse(std::format(R"(constraint::item_added_changed no corrector on "{}" {})", Rtid::name<Meta>(), change.id));
-            }
-            else {
-                const auto fix = this->action(context, change.id, *change.after);
-                if (!fix) continue;
-                context.adjustments<Meta>().put_modification(change.id, *fix);
-            }
+            const auto fix = this->action(context, change.id, change.now);
+            if (!fix) continue;
+            context.adjustments<Meta>().put_modification(change.id, *fix);
         }
     }
 }
