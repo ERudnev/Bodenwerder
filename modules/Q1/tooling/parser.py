@@ -274,8 +274,8 @@ def parse_type_expr(text: str) -> dict[str, Any]:
         return {"kind": "QuantumTypeOf", "raw": raw, "target": parse_type_expr(raw[4:-1])}
     if raw.startswith("anchor<") and raw.endswith(">"):
         return {"kind": "AnchorType", "raw": raw, "target": parse_type_expr(raw[7:-1])}
-    if raw.startswith("control<") and raw.endswith(">"):
-        return {"kind": "ControlType", "raw": raw, "target": parse_type_expr(raw[8:-1])}
+    if raw.startswith("custody<") and raw.endswith(">"):
+        return {"kind": "CustodyType", "raw": raw, "target": parse_type_expr(raw[8:-1])}
     if raw == "#":
         return {"kind": "IdType", "raw": raw, "target": None}
     if raw.startswith("#"):

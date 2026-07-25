@@ -11,5 +11,8 @@ namespace fqsm::q1 {
     using Anchor = ::fqsm::detail::aspect::Base::Anchor<Meta>;
 
     template<typename Meta>
-    using Control = ::fqsm::detail::aspect::Base::Control<Meta>;
+    using Custody = ::fqsm::detail::aspect::Base::Custody<Meta>;
+
+    template<typename Meta>
+    using Affected = ::fqsm::detail::aspect::Base::Affected<Meta>;
 }

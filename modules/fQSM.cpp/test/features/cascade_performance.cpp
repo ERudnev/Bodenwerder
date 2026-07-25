@@ -26,7 +26,7 @@ namespace {
         for (const auto entry : context.proposal.aspect<Self>().items()) {
             auto quantum = entry.value;
             quantum.noise += 1;
-            context.reaction<Self>().put_modification(entry.id, std::move(quantum));
+            context.adjustments<Self>().put_modification(entry.id, std::move(quantum));
             break;
         }
     }

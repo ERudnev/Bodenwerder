@@ -45,7 +45,7 @@ namespace fqsm::features::reactions::constraint {
             const auto fix = this->action(*change.after);
             if (!fix) continue;
             //*Meta::BaseActions::modify(context, change.id) = *fix;
-            context.reaction<Meta>().put_modification(change.id, *fix);
+            context.adjustments<Meta>().put_modification(change.id, *fix);
 
         }
     }
@@ -59,7 +59,7 @@ namespace fqsm::features::reactions::constraint {
             else {
                 const auto fix = this->action(context, change.id, *change.after);
                 if (!fix) continue;
-                context.reaction<Meta>().put_modification(change.id, *fix);
+                context.adjustments<Meta>().put_modification(change.id, *fix);
             }
         }
     }

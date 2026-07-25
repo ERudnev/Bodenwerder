@@ -38,7 +38,7 @@ namespace fqsm::processing {
         }
 
         template<category::Any Meta>
-        auto reaction() -> model::linear::Patch<Meta>& {
+        auto adjustments() -> model::linear::Patch<Meta>& {
             return reactions->accumulator->aspect<Meta>();
         }
 

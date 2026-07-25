@@ -42,8 +42,8 @@ namespace rmmr::resource {
 
         template<typename Asset, typename Runtime>
         void scrub_mapping(Reacting context, Runtimes::Id runtimes_id, const umap<typename Asset::Id, typename Runtime::Id>& mapping, umap<typename Asset::Id, typename Runtime::Id> Runtimes::Quantum::* field) {
-            auto& runtime_patch = context.reaction<Runtime>();
-            auto& runtimes_patch = context.reaction<Runtimes>();
+            auto& runtime_patch = context.adjustments<Runtime>();
+            auto& runtimes_patch = context.adjustments<Runtimes>();
             for (const auto& [asset_id, runtime_id] : mapping) {
                 const bool asset_exists = with<Asset>::exists(context, asset_id);
                 const bool runtime_exists = with<Runtime>::exists(context, runtime_id);

@@ -46,8 +46,8 @@ namespace Q1_fQSM
 
     attribute SampleAttribute of SampleEntity
       one
-        main_anchor: anchor<Trivia> //@ any anchor<> / contro<> leads to custom Internals to add achnor/conrol behavior
-        main_dummy: control<Trivia>
+        main_anchor: anchor<Trivia> //@ any anchor<> / custody<> leads to custom Internals to add anchor/custody behavior
+        main_dummy: custody<Trivia>
       all
         >create(sample_value: integer)-># // reserved: minimal Aspect set including Identity source (Entity); here includes main_anchor Trivia
         >extend(existing: #SampleEntity)

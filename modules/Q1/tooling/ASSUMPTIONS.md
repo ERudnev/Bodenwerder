@@ -92,7 +92,7 @@ Used in archetype operation signatures such as:
 
 The tooling treats `one<Meta>` as a dedicated type-expression form meaning “the `one`-block quantum payload of aspect `Meta`”, projected to C++ as `Meta::Quantum`.
 
-### 10. `anchor<T>` and `control<T>` are recognized as type forms
+### 10. `anchor<T>` and `custody<T>` are recognized as type forms
 
 The parser and linter treat them as special type constructors and also record their presence because project rules already interpret them as behavior-carrying field kinds.
 

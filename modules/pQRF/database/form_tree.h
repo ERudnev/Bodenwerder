@@ -343,7 +343,7 @@ namespace fqsm::processing::persistency::database::detail {
             read_product_fields(statement, index, value);
             return value;
         } else {
-            Bare value{};
+            Bare value = fqsm::utility::BadValue{};
             read_atom(statement, index, value);
             return value;
         }

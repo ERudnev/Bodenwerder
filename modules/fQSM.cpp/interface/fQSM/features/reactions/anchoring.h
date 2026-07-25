@@ -16,7 +16,7 @@ namespace fqsm::features::reactions::structural {
     struct anchored;
 
     template<category::Any Client, category::Any Observed, details::LinkValue<Client, Observed> link>
-    struct controls;
+    struct custody;
 
     template<category::Any Client, category::Any Observed, details::LinkValue<Client, Observed> link>
     struct management;
@@ -31,7 +31,7 @@ namespace fqsm::features::reactions::structural {
         Sources listens() const override { return typed_set<Observed>(); }
 
         void apply(Reacting context) override {
-            auto& clientPatch = context.reaction<Client>();
+            auto& clientPatch = context.adjustments<Client>();
             for (const auto& change : changes<Observed>(context).removed()) {
                 for (const auto& entry : context.proposal.aspect<Client>().items()) {
                     if ((entry.value.*link) == change.id)
@@ -41,13 +41,14 @@ namespace fqsm::features::reactions::structural {
         }
     };
 
-    // Client owns Observed at link: when Client is removed, remove linked Observed.
+    // Local cleanup custody at link: when Client is removed, request deletion of linked Observed.
+    // No uniqueness/liveness warranty; external death of Observed does not touch this field.
     template<category::Any Client, category::Any Observed, details::LinkValue<Client, Observed> link>
-    struct controls final : Abstract {
+    struct custody final : Abstract {
         Sources listens() const override { return typed_set<Client>(); }
 
         void apply(Reacting context) override {
-            auto& observedPatch = context.reaction<Observed>();
+            auto& observedPatch = context.adjustments<Observed>();
             for (const auto& change : changes<Client>(context).removed())
                 observedPatch.put_deletion(change.throwing_before().*link);
         }

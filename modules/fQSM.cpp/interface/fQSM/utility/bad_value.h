@@ -38,6 +38,14 @@ namespace detail {
         }
     };
 
+    template<typename Meta, typename BaseType>
+    struct MakeBadValue<::fqsm::Affected<Meta, BaseType>> {
+        static ::fqsm::Affected<Meta, BaseType> apply() {
+            return ::fqsm::Affected<Meta, BaseType>{
+                Identifier<Meta, BaseType>::please_never_use_this_except_patch_rejection_mechanism()};
+        }
+    };
+
 } // namespace detail
 
     struct BadValue {

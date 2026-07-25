@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <fQSM/meta/interface.include.h>
+#include <fQSM/identifier.h>
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/orchestrators/quantal.h>
 #include <fQSM/features/behavior.h>
@@ -58,6 +59,36 @@ namespace fqsm::aspect::actions {
         static auto count(Reading) -> size_t;
         static auto get(Reading, Id) -> const Quantum&;
         static auto find(Reading, Id) -> const Quantum*;
+        // Follow Id/Custody/Anchor field → ward quantum (nullptr if ward absent).
+        template<typename Ward>
+        static auto ward(Reading context, Id id, ::fqsm::Identifier<Ward> Quantum::* link)
+            -> const ::fqsm::Quantum<Ward>* {
+            return Any<Ward>::find(context, get(context, id).*link);
+        }
+        // optional Custody/Id: nullopt or dead target → nullptr (same live-quantum contract).
+        template<typename Ward>
+        static auto ward(Reading context, Id id, std::optional<::fqsm::Identifier<Ward>> Quantum::* link)
+            -> const ::fqsm::Quantum<Ward>* {
+            const auto& linkId = get(context, id).*link;
+            if (not linkId)
+                return nullptr;
+            return Any<Ward>::find(context, *linkId);
+        }
+        // Follow Affected<> field → related quantum (nullptr if absent).
+        template<typename Related>
+        static auto relation(Reading context, Id id, ::fqsm::Affected<Related> Quantum::* link)
+            -> const ::fqsm::Quantum<Related>* {
+            return Any<Related>::find(context, get(context, id).*link);
+        }
+        // Active lookup: miss → remove(self), nullptr. Caller early-returns on null.
+        template<typename Related>
+        static auto demand(Writing context, Id id, ::fqsm::Affected<Related> Quantum::* link)
+            -> const ::fqsm::Quantum<Related>* {
+            if (const auto* found = relation(context, id, link))
+                return found;
+            remove(context, id);
+            return nullptr;
+        }
         static bool exists(Reading, Id);
         static auto get_global(Reading) -> const Global&;
         static void remove(Writing, Id);

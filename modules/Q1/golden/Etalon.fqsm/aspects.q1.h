@@ -79,13 +79,13 @@ namespace Q1_fQSM::Etalon {
     struct SampleAttribute : Attribute<SampleAttribute, SampleEntity> {
         struct Quantum {
             Anchor<Trivia> main_anchor;
-            Control<Trivia> main_dummy;
+            Custody<Trivia> main_dummy;
         };
         struct Actions : BaseActions {
             static auto create(Writing, integer sample_value) -> Id;
             static void extend(Writing, SampleEntity::Id);
         };
-        //@ custom because of anchor/control and all-reaction !limit_by_tag_count(~Tag)
+        //@ custom because of anchor/custody and all-reaction !limit_by_tag_count(~Tag)
         struct Internals;
         static const Behavior customAspectReactions();
     };

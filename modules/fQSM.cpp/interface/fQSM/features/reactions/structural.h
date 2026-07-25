@@ -36,7 +36,7 @@ namespace fqsm::features::reactions::structural {
     struct remove_with_parent : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parent>(); }
         void apply(Reacting context) override {
-            auto& target = context.reaction<Parasitic>();
+            auto& target = context.adjustments<Parasitic>();
             for (const auto& change : Abstract::changes<Parent>(context).removed()) {
                 _DBG_TX_("structural remove_with_parent: {} removed -> put_deletion {} {}", Rtid::name<Parent>(), Rtid::name<Parasitic>(), change.id);
                 target.put_deletion(change.id);
@@ -49,7 +49,7 @@ namespace fqsm::features::reactions::structural {
     struct dead_parasitic_kill_parent : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<Parasitic>(); }
         void apply(Reacting context) override {
-            auto& target = context.reaction<Parent>();
+            auto& target = context.adjustments<Parent>();
             for (const auto& change : Abstract::changes<Parasitic>(context).removed()) {
                 _DBG_TX_("structural dead_parasitic_kill_parent: {} removed -> put_deletion {} {}", Rtid::name<Parasitic>(), Rtid::name<Parent>(), change.id);
                 target.put_deletion(change.id);
@@ -119,7 +119,7 @@ namespace fqsm::features::reactions::structural {
     struct group_removal_removes_elements : Abstract {
         Abstract::Sources listens() const override { return Abstract::typed_set<GroupMeta>(); }
         void apply(Reacting context) override {
-            auto& target = context.reaction<Element>();
+            auto& target = context.adjustments<Element>();
             for (const auto& change : Abstract::changes<GroupMeta>(context).removed()) {
                 for (const auto& id : change.throwing_before()) {
                     _DBG_TX_("structural group_removal: {} removed -> put_deletion {} {}", Rtid::name<GroupMeta>(), Rtid::name<Element>(), id);

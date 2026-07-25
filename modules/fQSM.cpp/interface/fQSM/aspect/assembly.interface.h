@@ -16,7 +16,10 @@ namespace fqsm::detail::aspect {
         using Anchor = Identifier<Meta>;
 
         template<typename Meta>
-        using Control = Identifier<Meta>;
+        using Custody = Identifier<Meta>;
+
+        template<typename Meta>
+        using Affected = ::fqsm::Affected<Meta>;
     };
 
     template<typename Meta>

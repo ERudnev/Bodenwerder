@@ -198,13 +198,13 @@ That difference is part of Q1 semantics and must survive projection.
 Some Q1 fields imply nontrivial behavior even without an explicit `!` line:
 
 - `anchor<T>` implies custom internal behavior
-- `control<T>` implies custom internal behavior
+- `custody<T>` implies custom internal behavior
 
 Therefore:
 
 - explicit `!` means custom reaction-bearing aspect
-- `anchor<>` or `control<>` also mean custom reaction-bearing aspect
-- no `!` and no `anchor<>`/`control<>` means the aspect may stay trivial at header level
+- `anchor<>` or `custody<>` also mean custom reaction-bearing aspect
+- no `!` and no `anchor<>`/`custody<>` means the aspect may stay trivial at header level
 
 ### Trivial form
 
@@ -215,7 +215,7 @@ If an aspect is trivial at header level, it may use:
 
 ### Why
 
-`Internals` is not a mirror of syntax alone. It is a mirror of syntax plus semantics implied by special field kinds. This matters for code generation because anchor/control are not ordinary payload fields; they carry behavioral consequences even before `.cpp` projection is described in full.
+`Internals` is not a mirror of syntax alone. It is a mirror of syntax plus semantics implied by special field kinds. This matters for code generation because anchor/custody are not ordinary payload fields; they carry behavioral consequences even before `.cpp` projection is described in full.
 
 ## Data Honesty Rules
 

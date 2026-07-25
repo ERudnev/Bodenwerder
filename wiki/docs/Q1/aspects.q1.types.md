@@ -49,8 +49,8 @@ namespace Q1_fQSM
 
     attribute SampleAttribute of SampleEntity
       one
-        main_anchor: anchor<Trivia> //@ any anchor<> / contro<> leads to custom Internals to add achnor/conrol behavior
-        main_dummy: control<Trivia>
+        main_anchor: anchor<Trivia> //@ any anchor<> / custody<> leads to custom Internals to add anchor/custody behavior
+        main_dummy: custody<Trivia>
       all
         // TODO: rework syntax and even conception of "constructor"
         >complex_constructor(existing: #SampleEntity) -> #

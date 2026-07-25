@@ -5,6 +5,7 @@
 #define FQSM_FEATURES_TESTS(X) \
     X(structural_constraints) \
     X(anchor_constraints) \
+    X(entity_relations) \
     X(custom_reactions) \
     X(killing_feature) \
     X(group_category) \

@@ -107,7 +107,7 @@
     "typeExpressionMarkers": {
       "patterns": [
         {
-          "match": "\\b(anchor|control)\\s*(<)\\s*([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)\\s*(>)",
+          "match": "\\b(anchor|custody)\\s*(<)\\s*([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)\\s*(>)",
           "captures": {
             "1": { "name": "keyword.other.q1.link-type" },
             "2": { "name": "keyword.operator.q1" },

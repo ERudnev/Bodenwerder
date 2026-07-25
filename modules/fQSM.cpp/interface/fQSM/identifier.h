@@ -39,6 +39,15 @@ namespace fqsm {
         BaseType value;
     };
 
+    // Passiveally typed Id link: no structural lifecycle. Lookup sugar: Actions::relation.
+    template<typename Meta, typename BaseType = internal::id::BaseType>
+    class Affected : public Identifier<Meta, BaseType> {
+    public:
+        using Base = Identifier<Meta, BaseType>;
+        using Base::Base;
+        Affected(const Base& id) : Base(id) {}
+    };
+
     // ostream << Identifier (pfr_element / patch field logging).
     template<typename Meta, typename BaseType>
     std::ostream& operator<<(std::ostream& os, const Identifier<Meta, BaseType>& id) {
@@ -49,6 +58,11 @@ namespace fqsm {
     std::ostream& operator<<(std::ostream& os, const std::optional<Identifier<Meta, BaseType>>& id) {
         if (!id.has_value()) return os << "nullopt";
         return os << *id;
+    }
+
+    template<typename Meta, typename BaseType>
+    std::ostream& operator<<(std::ostream& os, const Affected<Meta, BaseType>& id) {
+        return os << static_cast<const Identifier<Meta, BaseType>&>(id);
     }
 
 }
@@ -62,10 +76,25 @@ struct std::formatter<fqsm::Identifier<Meta, BaseType>, char> : std::formatter<s
     }
 };
 
+template<typename Meta, typename BaseType>
+struct std::formatter<fqsm::Affected<Meta, BaseType>, char> : std::formatter<fqsm::Identifier<Meta, BaseType>, char> {
+    template<class FormatContext>
+    auto format(const fqsm::Affected<Meta, BaseType>& id, FormatContext& ctx) const {
+        return std::formatter<fqsm::Identifier<Meta, BaseType>, char>::format(id, ctx);
+    }
+};
+
 // Enable using Identifier as key in unordered/hamt maps (e.g. ImmutableUnorderedMap).
 template<typename Meta, typename BaseType>
 struct std::hash<fqsm::Identifier<Meta, BaseType>> {
     size_t operator()(const fqsm::Identifier<Meta, BaseType>& id) const noexcept {
         return std::hash<BaseType>{}(id.raw());
+    }
+};
+
+template<typename Meta, typename BaseType>
+struct std::hash<fqsm::Affected<Meta, BaseType>> {
+    size_t operator()(const fqsm::Affected<Meta, BaseType>& id) const noexcept {
+        return std::hash<fqsm::Identifier<Meta, BaseType>>{}(id);
     }
 };

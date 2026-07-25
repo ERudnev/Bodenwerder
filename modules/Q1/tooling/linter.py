@@ -212,7 +212,7 @@ def lint_type_expr(
         if expr.get("extra_source") and not resolve_name([expr["extra_source"]], namespace, symbols):
             warn(diags, line, "unknown-all-scope-source", f"Unknown all-scope source: {expr['extra_source']}")
         return
-    if kind in {"AnchorType", "ControlType", "QuantumTypeOf"}:
+    if kind in {"AnchorType", "CustodyType", "QuantumTypeOf"}:
         lint_type_expr(expr["target"], namespace, symbols, diags, line, entity_local_types, entity_local_structs, primary_aspect, block_role)
         if kind == "QuantumTypeOf" and expr["target"]["kind"] == "NamedType":
             if not resolve_name(expr["target"]["parts"], namespace, symbols):

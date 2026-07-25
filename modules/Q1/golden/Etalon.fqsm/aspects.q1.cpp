@@ -39,7 +39,7 @@ namespace Q1_fQSM::Etalon {
                     victims.push_back(entry.id);
             }
 
-            auto& patch = context.reaction<SampleEntity>();
+            auto& patch = context.adjustments<SampleEntity>();
             for (const auto id : victims)
                 patch.put_deletion(id);
         }
@@ -114,7 +114,7 @@ namespace Q1_fQSM::Etalon {
                 return;
 
             fixed.modulus = integer{1};
-            context.reaction<Tag>().put_global(fixed);
+            context.adjustments<Tag>().put_global(fixed);
         }
     };
 
@@ -138,7 +138,7 @@ namespace Q1_fQSM::Etalon {
         }
 
         static void sync(Reacting context) {
-            auto& patch = context.reaction<Remnant>();
+            auto& patch = context.adjustments<Remnant>();
 
             // wave 1: Tag updates may force recomputation of matching Remnant items
             for (const auto change : context.changes<Tag>().addedOrUpdated()) {
@@ -207,7 +207,7 @@ namespace Q1_fQSM::Etalon {
     auto SampleAttribute::customAspectReactions() -> const Behavior {
         return {
             reaction::structural::anchored<SampleAttribute, Trivia, &SampleAttribute::Quantum::main_anchor>{},
-            reaction::structural::controls<SampleAttribute, Trivia, &SampleAttribute::Quantum::main_dummy>{},
+            reaction::structural::custody<SampleAttribute, Trivia, &SampleAttribute::Quantum::main_dummy>{},
             reaction::aspect_wide<SampleAttribute, Tag>(&SampleAttribute::Internals::limit_by_tag_count),
         };
     }
