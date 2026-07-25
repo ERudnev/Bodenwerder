@@ -37,18 +37,10 @@ namespace fqsm::detail::aspect {
         using Id = typename HostType::Id;
     };
 
-    // DefaultInternals = reactions base + home BaseActions (no with<Home> in Internals).
-    // Disambiguate shared typedefs only; capability methods come from ActionsBase whole.
+    // DefaultInternals = reactions base + home capability as nested name `my` (not verb flood).
     template<typename InternalsBase, typename ActionsBase>
-    struct InternalsWithActions : InternalsBase, ActionsBase {
-        using Id = typename ActionsBase::Id;
-        using Quantum = typename ActionsBase::Quantum;
-        using Reading = typename InternalsBase::Reading;
-        using Writing = typename InternalsBase::Writing;
-        using Reacting = typename InternalsBase::Reacting;
-        using Retrospecting = typename InternalsBase::Retrospecting;
-        using Behavior = typename InternalsBase::Behavior;
-        using PossibleChange = typename InternalsBase::PossibleChange;
+    struct InternalsWithActions : InternalsBase {
+        using my = ActionsBase;
     };
 
 }
@@ -60,7 +52,7 @@ namespace fqsm::aspect {
 
     template<typename Meta>
     struct Entity : detail::aspect::Standalone<Meta> {
-        using BaseActions = actions::Entity<Meta>;
+        using BaseActions = typename actions::Entity<Meta>::my;
         using DefaultInternals = detail::aspect::InternalsWithActions<
             internals::Entity<Meta>, BaseActions>;
     };
@@ -68,7 +60,7 @@ namespace fqsm::aspect {
     template<typename Meta, typename HostType>
     struct Attribute : detail::aspect::Parasitic<Meta, HostType> {
         using HostAspect = HostType;
-        using BaseActions = actions::Attribute<Meta, HostType>;
+        using BaseActions = typename actions::Attribute<Meta, HostType>::my;
         using DefaultInternals = detail::aspect::InternalsWithActions<
             internals::Attribute<Meta, HostType>, BaseActions>;
     };
@@ -76,7 +68,7 @@ namespace fqsm::aspect {
     template<typename Meta, typename HostType>
     struct Feature : detail::aspect::Parasitic<Meta, HostType> {
         using HostAspect = HostType;
-        using BaseActions = actions::Feature<Meta, HostType>;
+        using BaseActions = typename actions::Feature<Meta, HostType>::my;
         using DefaultInternals = detail::aspect::InternalsWithActions<
             internals::Feature<Meta, HostType>, BaseActions>;
     };
@@ -84,7 +76,7 @@ namespace fqsm::aspect {
     template<typename Meta, typename HostType>
     struct Component : detail::aspect::Parasitic<Meta, HostType> {
         using HostAspect = HostType;
-        using BaseActions = actions::Component<Meta, HostType>;
+        using BaseActions = typename actions::Component<Meta, HostType>::my;
         using DefaultInternals = detail::aspect::InternalsWithActions<
             internals::Component<Meta, HostType>, BaseActions>;
     };
@@ -93,7 +85,7 @@ namespace fqsm::aspect {
     struct Group : detail::aspect::Parasitic<Meta, HostType> {
         using Quantum = std::unordered_set<typename WorkerType::Id>;
         using HostAspect = HostType;
-        using BaseActions = actions::Group<Meta, HostType, WorkerType>;
+        using BaseActions = typename actions::Group<Meta, HostType, WorkerType>::my;
         using DefaultInternals = detail::aspect::InternalsWithActions<
             internals::Group<Meta, HostType, WorkerType>, BaseActions>;
         using WorkerAspect = WorkerType;

@@ -21,12 +21,12 @@ Expects — **мало и в конце** (когда появятся): яко�
 | Слой | Что здесь | Чего здесь нет |
 |---|---|---|
 | `Quantum` | данные и форма связей | бизнес-процедуры |
-| `Actions` / `with<>` | публичный API аспекта (`create`, `get`, `ward`, …); снаружи всегда `with<Meta>` | скрытая политика «почему мир так эволюционирует» |
-| `Internals` | приватные Writing-хелперы и тела реакций; **домашние** actions без `with<>` (`DefaultInternals` = reactions ⊕ BaseActions) | то, что зовут снаружи как API |
+| `Actions` / `with<>` | публичный API (`with<Meta>` = `BaseActions` = `actions::…::my`) | скрытая политика «почему мир так эволюционирует» |
+| `Internals` | приватные Writing-хелперы и тела реакций; home capability только как **`my::`** (без зоопарка глаголов в scope) | то, что зовут снаружи как API |
 | `Manipulation` / `Rules` | составные операции над primary (`spawn` слон+хобот) | персистентное состояние |
 | `customAspectReactions` | когда мир сам отвечает на дельты | ручной вызов «как будто метод» |
 
-Правило большого пальца: **реакция тонкая** (слушает, решает, зовёт Internals); **Internals** умеет Writing; **Actions** остаются лицом аспекта.
+Правило большого пальца: **реакция тонкая** (слушает, решает, зовёт Internals); **Internals** умеет Writing через **`my::`**; снаружи — **`with<Meta>`**; оба смотрят на фасад `actions::…::my` (лестница внутри библиотеки — `Capability`).
 
 ## Связи (краткий контракт)
 
@@ -58,9 +58,9 @@ Lookup того же семейства, что Id-поле: `ward(...)`.
 Тип отдельный от `Identifier` (наследник), чтобы сахар отличал её от `Custody`/`Anchor`.
 
 ```cpp
-relation(context, id, &Quantum::target)  // const Related::Quantum* | nullptr (lookup only)
+relation(context, id, &Quantum::target)  // via with<> / my:: — const Related::Quantum* | nullptr
 
-const auto* target = demand(context, id, &Quantum::target); // miss → remove(self), nullptr
+const auto* target = my::demand(context, id, &Quantum::target); // miss → remove(self), nullptr
 if (not target)
     return;
 ```
@@ -111,7 +111,8 @@ Internals::tearOffTrunk(Writing, Id)  // nullopt + remove Trunk
 - Рано набивать expects и побочные сцены «чтобы было что проверить».
 - Публиковать политику в `Actions`, которую никто не должен звать руками.
 - Дефолтные аргументы в API «для удобства» (в этом коде явно не любят).
-- Второй `context` в ручном `get`+`find`, если достаточно `ward`.
+- Второй `context` в ручном `get`+`find`, если достаточно `my::ward` / `with<>::ward`.
+- Голые `get`/`modify`/`demand` в Internals (зоопарк в scope) — только `my::`.
 - Путать камерный `controller` / будущий `aspect::Controller` с полем `custody`.
 - Авто-обнулять поле holder’а при смерти ward (для custody — запрещено контрактом).
 

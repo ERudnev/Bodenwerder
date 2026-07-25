@@ -9,6 +9,9 @@
 // true statics (methods of Aspect itself, not its Items:
 // static auto Aspect::Actions::static_foo(Reading, Args...)->result
 // static auto Aspect::Actions::static_bar(Writing, Args...)->result
+//
+// Library ladder builds nested Capability; category facade is `my`
+// (BaseActions / with<> / Internals::my → that facade).
 
 #include <optional>
 #include <vector>
@@ -36,119 +39,125 @@ namespace fqsm::aspect::actions {
     struct Any : Base {
         friend class ::fqsm::features::Behavior;
 
-        // basic alias
-        using Id = ::fqsm::Id<Meta>;
-        //experiment: switch do state:: as language of types: using Quantum = ::fqsm::model::
-        using Quantum = ::fqsm::Quantum<Meta>;
-        using Global = ::fqsm::GlobalValue<Meta>;
-        using PossibleChange = std::optional<Quantum>; // use model::elementary::Patch here
+        struct Capability : Base {
+            friend class ::fqsm::features::Behavior;
 
-        // signatures
-        struct Vocabulary {
-            using EvaluateQuantumLocal = std::function<PossibleChange(const Quantum&)>; // Quantum -> Quantum possible modification
-            using EvaluateQuantumContextual = std::function<PossibleChange(Reading, Id, const Quantum&)>; // Id is main channel, Quantum& is a cache
-            using JustWriting = std::function<void(Writing, Id, const Quantum&)>;
-            using JustRetrospecting = std::function<void(Retrospecting, Id, const Quantum&)>;
-        };
-        // replaces with Func::
-        //using QuantumLocal = std::function<PossibleChange(const Quantum&)>;
-        //using QuantumDependent = std::function<PossibleChange(Reading, Id, const Quantum&)>; // Id is major, but basic stuff uses only Quantum
-        //using Elementary = std::function<void(Writing, Id, const Quantum&)>;
+            using Id = ::fqsm::Id<Meta>;
+            using Quantum = ::fqsm::Quantum<Meta>;
+            using Global = ::fqsm::GlobalValue<Meta>;
+            using PossibleChange = std::optional<Quantum>;
 
-        // elementary (func):
-        static auto count(Reading) -> size_t;
-        static auto get(Reading, Id) -> const Quantum&;
-        static auto find(Reading, Id) -> const Quantum*;
-        // Follow Id/Custody/Anchor field → ward quantum (nullptr if ward absent).
-        template<typename Ward>
-        static auto ward(Reading context, Id id, ::fqsm::Identifier<Ward> Quantum::* link)
-            -> const ::fqsm::Quantum<Ward>* {
-            return Any<Ward>::find(context, get(context, id).*link);
-        }
-        // optional Custody/Id: nullopt or dead target → nullptr (same live-quantum contract).
-        template<typename Ward>
-        static auto ward(Reading context, Id id, std::optional<::fqsm::Identifier<Ward>> Quantum::* link)
-            -> const ::fqsm::Quantum<Ward>* {
-            const auto& linkId = get(context, id).*link;
-            if (not linkId)
+            struct Vocabulary {
+                using EvaluateQuantumLocal = std::function<PossibleChange(const Quantum&)>;
+                using EvaluateQuantumContextual = std::function<PossibleChange(Reading, Id, const Quantum&)>;
+                using JustWriting = std::function<void(Writing, Id, const Quantum&)>;
+                using JustRetrospecting = std::function<void(Retrospecting, Id, const Quantum&)>;
+            };
+
+            static auto count(Reading) -> size_t;
+            static auto get(Reading, Id) -> const Quantum&;
+            static auto find(Reading, Id) -> const Quantum*;
+
+            template<typename Ward>
+            static auto ward(Reading context, Id id, ::fqsm::Identifier<Ward> Quantum::* link)
+                -> const ::fqsm::Quantum<Ward>* {
+                return Any<Ward>::Capability::find(context, get(context, id).*link);
+            }
+
+            template<typename Ward>
+            static auto ward(Reading context, Id id, std::optional<::fqsm::Identifier<Ward>> Quantum::* link)
+                -> const ::fqsm::Quantum<Ward>* {
+                const auto& linkId = get(context, id).*link;
+                if (not linkId)
+                    return nullptr;
+                return Any<Ward>::Capability::find(context, *linkId);
+            }
+
+            template<typename Related>
+            static auto relation(Reading context, Id id, ::fqsm::Affected<Related> Quantum::* link)
+                -> const ::fqsm::Quantum<Related>* {
+                return Any<Related>::Capability::find(context, get(context, id).*link);
+            }
+
+            template<typename Related>
+            static auto demand(Writing context, Id id, ::fqsm::Affected<Related> Quantum::* link)
+                -> const ::fqsm::Quantum<Related>* {
+                if (const auto* found = relation(context, id, link))
+                    return found;
+                remove(context, id);
                 return nullptr;
-            return Any<Ward>::find(context, *linkId);
-        }
-        // Follow Affected<> field → related quantum (nullptr if absent).
-        template<typename Related>
-        static auto relation(Reading context, Id id, ::fqsm::Affected<Related> Quantum::* link)
-            -> const ::fqsm::Quantum<Related>* {
-            return Any<Related>::find(context, get(context, id).*link);
-        }
-        // Active lookup: miss → remove(self), nullptr. Caller early-returns on null.
-        template<typename Related>
-        static auto demand(Writing context, Id id, ::fqsm::Affected<Related> Quantum::* link)
-            -> const ::fqsm::Quantum<Related>* {
-            if (const auto* found = relation(context, id, link))
-                return found;
-            remove(context, id);
-            return nullptr;
-        }
-        static bool exists(Reading, Id);
-        static auto get_global(Reading) -> const Global&;
-        static void remove(Writing, Id);
-        // elementary (RAII):
-        static auto modify(Writing, Id) -> ::fqsm::processing::orchestrator::QuantumGate<Meta>;
-        static auto modify_global(Writing) -> ::fqsm::processing::orchestrator::GlobalGate<Meta>;
+            }
+
+            static bool exists(Reading, Id);
+            static auto get_global(Reading) -> const Global&;
+            static void remove(Writing, Id);
+            static auto modify(Writing, Id) -> ::fqsm::processing::orchestrator::QuantumGate<Meta>;
+            static auto modify_global(Writing) -> ::fqsm::processing::orchestrator::GlobalGate<Meta>;
+        };
     };
 
 
     // Standalone (Entities..) have this stuff:
     template<typename Meta>
-    struct Standalone : Any<Meta> {
-        using Id = typename Any<Meta>::Id;
-        using Quantum = typename Any<Meta>::Quantum;
+    struct Standalone {
+        struct Capability : Any<Meta>::Capability {
+            using Id = typename Any<Meta>::Capability::Id;
+            using Quantum = typename Any<Meta>::Capability::Quantum;
 
-        // elementary (func):
-        static Id create(Writing context, Quantum val);
+            static Id create(Writing context, Quantum val);
+        };
     };
 
 
     template<typename Meta, typename HostType>
-    struct Parasitic : Any<Meta> {
-        using Id = typename Any<Meta>::Id;
-        using Quantum = typename Any<Meta>::Quantum;
-        using Parent = Standalone<HostType>;
+    struct Parasitic {
+        struct Capability : Any<Meta>::Capability {
+            using Id = typename Any<Meta>::Capability::Id;
+            using Quantum = typename Any<Meta>::Capability::Quantum;
+            using Parent = typename Standalone<HostType>::Capability;
 
-        static void extend(Writing context, Id id, Quantum val);
-
-        // experimental: kills parasite AND its host
-        static void kraken(Writing context, Id id);
+            static void extend(Writing context, Id id, Quantum val);
+            static void kraken(Writing context, Id id);
+        };
     };
 
 
     template<typename Meta>
-    struct Entity : Standalone<Meta> {};
+    struct Entity {
+        using my = typename Standalone<Meta>::Capability;
+    };
 
     template<typename Meta, typename HostType>
-    struct Attribute : Parasitic<Meta, HostType> {};
+    struct Attribute {
+        using my = typename Parasitic<Meta, HostType>::Capability;
+    };
 
     template<typename Meta, typename HostType>
-    struct Feature : Parasitic<Meta, HostType> {};
+    struct Feature {
+        using my = typename Parasitic<Meta, HostType>::Capability;
+    };
 
     template<typename Meta, typename HostType>
-    struct Component : Parasitic<Meta, HostType> {};
+    struct Component {
+        using my = typename Parasitic<Meta, HostType>::Capability;
+    };
 
     template<typename Meta, typename HostType, category::Any ElementType>
-    struct Group : Parasitic<Meta, HostType> { //, protected ElementType::Actions {
-        using Own = Parasitic<Meta, HostType>;
-        using Parent = Parasitic<Meta, HostType>::Parent;
+    struct Group {
         using Client = ElementType;
 
-        // like public interface:
-        static void extend(Writing, Id<HostType>); // simplier version of Parasitic::extend
-        static auto addElement(Writing, Own::Id me, Client::Quantum) -> Client::Id requires category::Standalone<Client>;
-        static auto addElement(Writing, Own::Id me, Client::Id worker, Client::Quantum) -> Client::Id requires category::Parasitic<Client>;
-        static void deleteElement(Writing, Own::Id me, Client::Id);
-        static void clear(Writing, Own::Id me);
-    private:
-        using Parasitic<Meta, HostType>::extend;
-        using Parasitic<Meta, HostType>::remove;
+        struct my : Parasitic<Meta, HostType>::Capability {
+            using Id = typename Parasitic<Meta, HostType>::Capability::Id;
+
+            static void extend(Writing, ::fqsm::Id<HostType>); // simpler version of Parasitic::extend
+            static auto addElement(Writing, Id me, Client::Quantum) -> Client::Id requires category::Standalone<Client>;
+            static auto addElement(Writing, Id me, Client::Id worker, Client::Quantum) -> Client::Id requires category::Parasitic<Client>;
+            static void deleteElement(Writing, Id me, Client::Id);
+            static void clear(Writing, Id me);
+        private:
+            using Parasitic<Meta, HostType>::Capability::extend;
+            using Parasitic<Meta, HostType>::Capability::remove;
+        };
     };
 
     // Interpretation category ations ant typedefs:
@@ -166,9 +175,9 @@ namespace fqsm::aspect::actions {
 namespace fqsm::aspect::actions {
 
     //
-    // Any
+    // Any::Capability
     template<typename Meta>
-    auto Any<Meta>
+    auto Any<Meta>::Capability
     ::count(Reading context)
     -> size_t {
         return context->aspect<Meta>().items().size();
@@ -176,7 +185,7 @@ namespace fqsm::aspect::actions {
 
 
     template<typename Meta>
-    auto Any<Meta>
+    auto Any<Meta>::Capability
     ::get(Reading context, Id id)
     -> const Quantum& {
         const auto* found = context->aspect<Meta>().items().find(id);
@@ -187,20 +196,20 @@ namespace fqsm::aspect::actions {
     }
 
     template<typename Meta>
-    auto Any<Meta>
+    auto Any<Meta>::Capability
     ::find(Reading context, Id id)
     ->const Quantum*{
         return context->aspect<Meta>().items().find(id);
     }
 
     template<typename Meta>
-    bool Any<Meta>
+    bool Any<Meta>::Capability
     ::exists(Reading context, Id id) {
         return context->aspect<Meta>().items().find(id) != nullptr;
     }
 
     template<typename Meta>
-    auto Any<Meta>
+    auto Any<Meta>::Capability
     ::get_global(Reading context)
     ->const Global&
     {
@@ -208,29 +217,29 @@ namespace fqsm::aspect::actions {
     }
 
     template<typename Meta>
-    void Any<Meta>
+    void Any<Meta>::Capability
     ::remove(Writing context, Id id) {
         context.workers_interface().updates<Meta>().put_deletion(id);
     }
 
     template<typename Meta>
-    auto Any<Meta>
+    auto Any<Meta>::Capability
     ::modify(Writing context, Id id)
     -> ::fqsm::processing::orchestrator::QuantumGate<Meta> {
         return ::fqsm::processing::orchestrator::QuantumGate<Meta>{context, id};
     }
 
     template<typename Meta>
-    auto Any<Meta>
+    auto Any<Meta>::Capability
     ::modify_global(Writing context)
     -> ::fqsm::processing::orchestrator::GlobalGate<Meta> {
         return ::fqsm::processing::orchestrator::GlobalGate<Meta>{context};
     }
 
     //
-    // Standalone:
+    // Standalone::Capability
     template<typename Meta>
-    auto Standalone<Meta>
+    auto Standalone<Meta>::Capability
     ::create(Writing context, Quantum val)
     ->Id {
         const auto id = Identifier<Meta>::generate_random();
@@ -239,15 +248,15 @@ namespace fqsm::aspect::actions {
     }
 
     //
-    // Parasitic:
+    // Parasitic::Capability
     template<typename Meta, typename HostType>
-    void Parasitic<Meta, HostType>
+    void Parasitic<Meta, HostType>::Capability
     ::extend(Writing context, Id id, Quantum val) {
         context.workers_interface().updates<Meta>().put_add(id, std::move(val));
     }
 
     template<typename Meta, typename HostType>
-    void Parasitic<Meta, HostType>
+    void Parasitic<Meta, HostType>::Capability
     ::kraken(Writing context, Id id) {
         if constexpr (category::Standalone<HostType>) {
             context.workers_interface().updates<HostType>().put_deletion(id);
@@ -257,17 +266,17 @@ namespace fqsm::aspect::actions {
     }
 
     //
-    // Group:
+    // Group::my (facade)
     template<typename Meta, typename HostType, category::Any ElementType>
-    void Group<Meta, HostType, ElementType>
-    ::extend(Writing context, Id<HostType> id) {
+    void Group<Meta, HostType, ElementType>::my
+    ::extend(Writing context, ::fqsm::Id<HostType> id) {
         context.workers_interface().updates<Meta>().put_add(id, {});
     }
 
 
     template<typename Meta, typename HostType, category::Any ElementType>
-    auto Group<Meta, HostType, ElementType>
-    ::addElement(Writing context, Own::Id myId, Client::Quantum element)
+    auto Group<Meta, HostType, ElementType>::my
+    ::addElement(Writing context, Id myId, Client::Quantum element)
     ->Client::Id
     requires category::Standalone<Client> {
         const auto workerId = Client::BaseActions::create(context, std::move(element));
@@ -285,8 +294,8 @@ namespace fqsm::aspect::actions {
     }
 
     template<typename Meta, typename HostType, category::Any ElementType>
-    auto Group<Meta, HostType, ElementType>
-    ::addElement(Writing context, Own::Id myId, Client::Id workerId, Client::Quantum element)
+    auto Group<Meta, HostType, ElementType>::my
+    ::addElement(Writing context, Id myId, Client::Id workerId, Client::Quantum element)
     ->Client::Id
     requires category::Parasitic<Client> {
         Client::BaseActions::extend(context, workerId, std::move(element));
@@ -297,8 +306,8 @@ namespace fqsm::aspect::actions {
     }
 
     template<typename Meta, typename HostType, category::Any ElementType>
-    void Group<Meta, HostType, ElementType>
-    ::deleteElement(Writing context, Own::Id myId, Client::Id worker) {
+    void Group<Meta, HostType, ElementType>::my
+    ::deleteElement(Writing context, Id myId, Client::Id worker) {
         // TODO: call kraken if managed ElementType is Parasitic it its Actions have ::kraken() func
         auto& myQuantum = context.workers_interface().updates<Meta>().update_modification(
             myId,
@@ -312,8 +321,8 @@ namespace fqsm::aspect::actions {
     }
 
     template<typename Meta, typename HostType, category::Any ElementType>
-    void Group<Meta, HostType, ElementType>
-    ::clear(Writing context, Own::Id myId) {
+    void Group<Meta, HostType, ElementType>::my
+    ::clear(Writing context, Id myId) {
         const auto& myList = context->aspect<Meta>().items().at(myId);
         for (auto& element : myList )
             deleteElement(context, myId, element);
