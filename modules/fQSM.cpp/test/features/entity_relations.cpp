@@ -34,10 +34,10 @@ namespace local {
             static constexpr float envyAngleGapDegrees = 30.f;
 
             static void syncTrunkToMood(Writing context, Id id) {
-                const auto* trunk = with<Elephant>::ward(context, id, &Quantum::myTrunk);
+                const auto* trunk = ward(context, id, &Quantum::myTrunk);
                 if (not trunk)
                     return;
-                const auto& me = with<Elephant>::get(context, id);
+                const auto& me = get(context, id);
                 const float angle = static_cast<float>(me.mood * 10);
                 with<Trunk>::modify(context, *me.myTrunk)->angleDegrees =
                     angle > 120.f ? 120.f : angle;
@@ -45,11 +45,11 @@ namespace local {
 
             // Explicit detach: clear optional + remove Trunk entity (patch-safe if many act at once).
             static void tearOffTrunk(Writing context, Id victim) {
-                const auto& elephant = with<Elephant>::get(context, victim);
+                const auto& elephant = get(context, victim);
                 if (not elephant.myTrunk.has_value())
                     return;
                 const auto trunkId = *elephant.myTrunk;
-                with<Elephant>::modify(context, victim)->myTrunk = std::nullopt;
+                modify(context, victim)->myTrunk = std::nullopt;
                 if (with<Trunk>::exists(context, trunkId))
                     with<Trunk>::remove(context, trunkId);
             }
@@ -57,14 +57,14 @@ namespace local {
             // Envy: living trunk vs another's higher by > gap → tear the other's trunk off.
             static void envyTearOffs(Writing context) {
                 for (const auto envious : context->aspect<Elephant>().items()) {
-                    const auto* myTrunk = with<Elephant>::ward(context, envious.id, &Quantum::myTrunk);
+                    const auto* myTrunk = ward(context, envious.id, &Quantum::myTrunk);
                     if (not myTrunk)
                         continue;
                     const float myAngle = myTrunk->angleDegrees;
                     for (const auto other : context->aspect<Elephant>().items()) {
                         if (other.id == envious.id)
                             continue;
-                        const auto* theirTrunk = with<Elephant>::ward(context, other.id, &Quantum::myTrunk);
+                        const auto* theirTrunk = ward(context, other.id, &Quantum::myTrunk);
                         if (not theirTrunk)
                             continue;
                         if (theirTrunk->angleDegrees > myAngle + envyAngleGapDegrees)
@@ -133,15 +133,15 @@ namespace local {
             if (dt <= 0)
                 return;
 
-            const auto* target = with<Disappointment>::demand(context, id, &Quantum::target);
+            const auto* target = demand(context, id, &Quantum::target);
             if (not target)
                 return;
 
-            with<Elephant>::modify(context, with<Disappointment>::get(context, id).target)->mood -= dt;
+            with<Elephant>::modify(context, get(context, id).target)->mood -= dt;
 
-            with<Disappointment>::modify(context, id)->remains -= dt;
-            if (with<Disappointment>::get(context, id).remains <= 0)
-                with<Disappointment>::remove(context, id);
+            modify(context, id)->remains -= dt;
+            if (get(context, id).remains <= 0)
+                remove(context, id);
         }
 
         static void onWorldClock(Reacting context) {
