@@ -1,11 +1,7 @@
 #include "story.h"
 
-#include <base/logging.h>
 #include <rmmr/api/_interface.h>
 #include <rmmr/controller/camera2d.q1.h>
-#include <rmmr/resources/geometry.q1.h>
-#include <rmmr/resources/runtimes.q1.h>
-#include <rmmr/resources/sprites.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -20,35 +16,13 @@ namespace tommy {
         return ask::schema::aspect<Placeholder>();
     }
 
-    void SpriteTest::addAssets(Writing context, system::Core::Id core) {
-        using namespace resource;
-        using geometry::Generator;
-
-        base::message("TomSawyer: seeding Kenney sprite pack...");
-        assets.kenney = with<::rmmr::resource::Assets>::add_sprites_kenney(
-            context,
-            core,
-            item<Unit>{.manager = core, .name = "space_shooter_kenney", .library = "TomSawyer"},
-            item<sprite::LoaderKenney>{
-                .image = "sprites/Spritesheet/sheet.png",
-                .descriptor = "sprites/Spritesheet/sheet.xml",
-            });
-
-        base::message("TomSawyer: seeding unit quad geometry...");
-        assets.unitQuad = with<::rmmr::resource::Assets>::add_geometry_generator(
-            context,
-            core,
-            item<Unit>{.manager = core, .name = "sprite_unit_quad", .library = "TomSawyer"},
-            item<Generator>{.type = Generator::Type::unitQuad});
-    }
-
     void SpriteTest::setup(Writing context, system::Core::Id, system::Viewport::Id viewport) {
         const auto root = with<scene::Interface>::createScene(context);
 
         with<scene::Flat2d>::extend(context, root, scene::Flat2d::Quantum{
             .size = index2{1600, 900},
         });
-        with<scene::actor::Sprite>::modify_global(context)->geometry = *assets.unitQuad;
+        with<scene::actor::Sprite>::modify_global(context)->geometry = assets->unitQuad;
 
         const auto spawn = [&](index2 pos, integer zet, integer index, float scale) {
             with<scene::Flat2d>::createSpriteActor(context, root,
@@ -62,9 +36,9 @@ namespace tommy {
                 },
                 item<scene::actor::Sprite>{
                     .material = *shared->material.sprite,
-                    .tint = RGB{1.0f, 1.0f, 1.0f},
+                    .tint = RGB{0.0f, 0.0f, 0.0f},
                     .scale = vec3{scale, scale, 1.0f},
-                    .pack = *assets.kenney,
+                    .pack = assets->kenney,
                     .index = index,
                 });
         };

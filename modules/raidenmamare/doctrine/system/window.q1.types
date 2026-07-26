@@ -5,10 +5,9 @@ namespace rmmr
 
     // Drawable surface bound to Device (GLFW window + OpenGL context).
     // Resize: poll framebuffer each frame — no GLFW resize callback.
+    // Time lives on system::Clock; Window only snapshots input.
     component Window of Device
     struct InputState
-      frame: integer // incrementally
-      clock: time
       keys: vector<bool>
       mouse: index2
     one
@@ -18,6 +17,5 @@ namespace rmmr
       >create(#Core, title: string, requested_size: index2)->#
       ?framebufferSize() -> index2   // live drawable extent (glfwGetFramebufferSize)
       ?present()
-      ?dt() -> seconds
       ?mouseShift() -> index2
       =onFrameAdvanced()             // input snapshot only

@@ -37,6 +37,7 @@ namespace rmmr {
         // Creates system::Core on the caller's Realm, then device/window.
         auto setup(Writing, item<system::Core>, WindowParameters) -> system::Core::Id;
         void materialize(Writing, system::Core::Id assets);
+        auto core() const -> system::Core::Id;
         auto viewport() const -> system::Viewport::Id;
         void setActiveViews(std::vector<ViewContext>);
 

@@ -8,7 +8,6 @@
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <stdexcept>
 
@@ -21,15 +20,9 @@ namespace rmmr::system {
 
         auto empty_input_state() -> Window::InputState {
             return Window::InputState{
-                .frame = 0,
-                .clock = Window::time{},
                 .keys = {},
                 .mouse = index2{0, 0},
             };
-        }
-
-        auto clock_from_glfw() -> Window::time {
-            return Window::time{} + std::chrono::duration_cast<Window::time::duration>(std::chrono::duration<double>(glfwGetTime()));
         }
 
         void bootstrap_device(Writing context, Device::Id device) {
@@ -123,17 +116,9 @@ namespace rmmr::system {
         glfwSwapBuffers(with<Device>::get(context, window).handle);
     }
 
-    auto Window::Actions::dt(Reading context, Id window) -> seconds {
-        const auto& quantum = with<Window>::get(context, window);
-        if (quantum.previous.frame <= 0) {
-            return seconds{0.0};
-        }
-        return std::chrono::duration<double>(quantum.current.clock - quantum.previous.clock).count();
-    }
-
     auto Window::Actions::mouseShift(Reading context, Id window) -> index2 {
         const auto& quantum = with<Window>::get(context, window);
-        if (quantum.previous.frame <= 0) {
+        if (quantum.previous.keys.empty()) {
             return index2{0, 0};
         }
         return index2{quantum.current.mouse.x - quantum.previous.mouse.x, quantum.current.mouse.y - quantum.previous.mouse.y};
@@ -142,11 +127,7 @@ namespace rmmr::system {
     void Window::Actions::onFrameAdvanced(Writing context, Id window) {
         auto quantum = with<Window>::modify(context, window);
         quantum->previous = quantum->current;
-
-        auto& next = quantum->current;
-        next.frame = quantum->previous.frame + 1;
-        next.clock = clock_from_glfw();
-        poll_input(with<Device>::get(context, window).handle, next);
+        poll_input(with<Device>::get(context, window).handle, quantum->current);
     }
 
 }

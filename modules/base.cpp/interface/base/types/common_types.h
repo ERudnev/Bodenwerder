@@ -23,6 +23,8 @@ namespace base::common_types {
     // Q1 builtins (mapped into the language root)
     using boolean = bool;
     using integer = std::int32_t;
+    // Wide counters / clocks (µs ticks, etc.) — not a drop-in for `integer`.
+    using int64 = std::int64_t;
     // Q1 builtin `float` maps to C++ keyword type: `float`
     using string = std::string;
     // Q1 builtin: filesystem path.

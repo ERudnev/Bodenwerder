@@ -15,6 +15,10 @@ namespace rmmr::system {
     auto Interface::create(Writing context, item<Core> core) -> Core::Id {
         const auto id = with<Core>::create(context, core);
 
+        with<Core>::modify_global(context)->instance = id;
+        with<Clock>::extend(context, id, Clock::Quantum{
+            .absolute = 0,
+        });
         with<resource::Manager>::extend(context, id, resource::Manager::Quantum{
             .location = core.assets_root,
         });

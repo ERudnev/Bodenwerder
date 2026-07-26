@@ -8,6 +8,18 @@ namespace rmmr::system {
 
     using namespace fqsm::api;
 
+    auto Core::Actions::singleton(Reading context) -> optional<Id> {
+        return with<Core>::get_global(context).instance;
+    }
+
+    auto Core::Actions::access(Reading context) -> const Quantum* {
+        const auto id = singleton(context);
+        if (not id or not with<Core>::exists(context, *id)) {
+            return nullptr;
+        }
+        return &with<Core>::get(context, *id);
+    }
+
     struct Device::Internals : Device::DefaultInternals {
         static void release(Writing, Id id, const Quantum& last) {
             (void)id;

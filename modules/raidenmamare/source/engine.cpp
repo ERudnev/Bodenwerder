@@ -26,6 +26,7 @@ namespace rmmr {
         Schema engineDomain() {
             static const Schema once = ask::schema::merge({
                 ask::schema::aspect<system::Core>(),
+                ask::schema::aspect<system::Clock>(),
                 ask::schema::aspect<system::Device>(),
                 ask::schema::aspect<system::ImGuiHost>(),
                 ask::schema::aspect<system::Window>(),
@@ -148,6 +149,10 @@ namespace rmmr {
         with<resource::Runtimes>::materialize(context, *state->handles.device, assets);
     }
 
+    auto Engine::core() const -> system::Core::Id {
+        return *state->handles.core;
+    }
+
     auto Engine::viewport() const -> system::Viewport::Id {
         return *state->handles.viewport;
     }
@@ -164,7 +169,14 @@ namespace rmmr {
         const auto& device = state->handles.device;
 
         with<system::Device>::poll_events(context);
+        // Input first, then system clock — Clock reactions see fresh Window snapshots.
         with<system::Window>::onFrameAdvanced(context, device);
+
+        {
+            const auto core = with<system::Device>::get(context, device).core;
+            const auto us = static_cast<int64>(glfwGetTime() * 1'000'000.0);
+            with<system::Clock>::modify(context, core)->absolute = us;
+        }
 
         {
             const auto& input = with<system::Window>::get(context, device).current;

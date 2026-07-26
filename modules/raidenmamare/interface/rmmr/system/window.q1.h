@@ -9,11 +9,7 @@ namespace rmmr::system {
     using namespace fqsm::api;
 
     struct Window : Component<Window, Device> {
-        using time = timepoint;
-
         struct InputState {
-            integer frame;
-            time clock;
             vector<bool> keys;
             index2 mouse;
         };
@@ -27,7 +23,6 @@ namespace rmmr::system {
             static auto create(Writing, Core::Id, string title, index2 requested_size) -> Id;
             static auto framebufferSize(Reading, Id) -> index2;
             static void present(Reading, Id);
-            static auto dt(Reading, Id) -> seconds;
             static auto mouseShift(Reading, Id) -> index2;
             static void onFrameAdvanced(Writing, Id);
         };

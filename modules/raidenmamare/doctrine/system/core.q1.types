@@ -8,6 +8,13 @@ namespace rmmr
       one
         assets_root: filepath
         version: GLVer
+      all
+        ?singleton()->#?
+        ?access()->one?
+
+    component Clock of Core
+      one
+        absolute: int64 // microseconds since process start (glfw)
 
     // tricky Aspect: its Quantum is a root with a role of "owner of everything", all Actions are "all"(static)
     entity Device

@@ -1,3 +1,4 @@
+import "../system/core"
 import "../system/window"
 import "../scene/camera"
 
@@ -5,9 +6,9 @@ namespace rmmr
   namespace controller
 
     // Ortho/2D pan control for an existing scene::Camera.
-    // Driven by Window input snapshots — no external Engine tick.
+    // Time from system::Clock deltas (change.old / change.now); input from Window.
     attribute Camera2d of scene::Camera
       one
         >create()-> #
       all
-        !update(~system::Window) // RMB drag + arrows on XY
+        !update(~system::Clock) // RMB drag + arrows on XY

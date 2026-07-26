@@ -1,5 +1,6 @@
 #include <rmmr/controller/camera2d.q1.h>
 #include <rmmr/scene/node.q1.h>
+#include <rmmr/system/core.q1.h>
 #include <rmmr/system/window.q1.h>
 
 #include <GLFW/glfw3.h>
@@ -45,16 +46,15 @@ namespace rmmr::controller {
             if (delta_mouse.x == 0 && delta_mouse.y == 0) {
                 return;
             }
-            // Drag content with the cursor: mouse right → camera left.
             node.position.x -= static_cast<float>(delta_mouse.x) * k_pan_pixels_to_world;
             node.position.y += static_cast<float>(delta_mouse.y) * k_pan_pixels_to_world;
         }
 
-        void drive(Writing context, Camera2d::Id self, system::Window::Id window, GLFWwindow* handle) {
+        void drive(Writing context, Camera2d::Id self, system::Window::Id window, GLFWwindow* handle, seconds delta_sec) {
             const auto& input = with<system::Window>::get(context, window);
             auto node = with<scene::Node>::modify(context, self);
 
-            apply_arrow_move(*node, input.current.keys, with<system::Window>::dt(context, window));
+            apply_arrow_move(*node, input.current.keys, delta_sec);
 
             if (glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
                 apply_mouse_drag(*node, with<system::Window>::mouseShift(context, window));
@@ -71,16 +71,21 @@ namespace rmmr::controller {
     struct Camera2d::Internals : Camera2d::DefaultInternals {
         static void update(Reacting context) {
             Writing writing = context;
-            for (const auto change : context.changes<system::Window>().addedOrUpdated()) {
-                if (not with<system::Window>::exists(writing, change.id)) {
+            for (const auto& change : context.changes<system::Clock>().updated()) {
+                const int64 dt_us = change.now.absolute - change.old.absolute;
+                if (dt_us <= 0) {
                     continue;
                 }
-                const auto& device = with<system::Device>::get(writing, change.id);
-                if (not device.handle) {
-                    continue;
-                }
-                for (const auto [id, _] : writing->aspect<Camera2d>().items()) {
-                    drive(writing, id, change.id, device.handle);
+                const seconds delta_sec = static_cast<seconds>(dt_us) / 1'000'000.0;
+
+                for (const auto entry : writing->aspect<system::Window>().items()) {
+                    const auto& device = with<system::Device>::get(writing, entry.id);
+                    if (not device.handle) {
+                        continue;
+                    }
+                    for (const auto [id, _] : writing->aspect<Camera2d>().items()) {
+                        drive(writing, id, entry.id, device.handle, delta_sec);
+                    }
                 }
             }
         }
@@ -88,7 +93,7 @@ namespace rmmr::controller {
 
     auto Camera2d::customAspectReactions() -> const Behavior {
         return {
-            reaction::aspect_wide<Camera2d, system::Window>(&Camera2d::Internals::update),
+            reaction::aspect_wide<Camera2d, system::Clock>(&Camera2d::Internals::update),
         };
     }
 

@@ -10,6 +10,7 @@ namespace rmmr::wrapper::ui {
 
     struct State {
         bool stats = true;
+        int64 last_absolute = 0;
 
         void draw(Writing, Product&);
 

@@ -4,22 +4,12 @@
 
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/textures.q1.h>
-#include <rmmr/system/window.q1.h>
+#include <rmmr/system/core.q1.h>
 
 namespace rmmr::wrapper::ui {
 
     using namespace fqsm::api;
     using namespace rmmr;
-
-    namespace {
-
-        auto firstWindow(Reading world) -> base::maybe<system::Window::Id> {
-            for (const auto entry : world->aspect<system::Window>().items())
-                return entry.id;
-            return {};
-        }
-
-    } // namespace
 
     void State::drawMainMenuBar(Product& product) {
         if (not ImGui::BeginMainMenuBar())
@@ -40,14 +30,28 @@ namespace rmmr::wrapper::ui {
 
         bool open = stats;
         if (ImGui::Begin("Stats", &open)) {
-            const auto window = firstWindow(world);
-            if (window.exists()) {
-                const auto dt = with<system::Window>::dt(world, *window);
-                const auto fps = dt > 0.0 ? 1.0 / dt : 0.0;
+            if (const auto core = with<system::Core>::singleton(world)) {
+                const int64 now = with<system::Clock>::get(world, *core).absolute;
+                int64 frame_us = 0;
+                if (last_absolute > 0 and now >= last_absolute) {
+                    frame_us = now - last_absolute;
+                }
+                last_absolute = now;
+
+                const auto total_sec = now / 1'000'000;
+                const auto hours = total_sec / 3600;
+                const auto minutes = (total_sec / 60) % 60;
+                const auto seconds = total_sec % 60;
+                const auto fps = frame_us > 0 ? 1'000'000.0 / static_cast<double>(frame_us) : 0.0;
+
+                ImGui::Text("Time: %02lld:%02lld:%02lld",
+                    static_cast<long long>(hours),
+                    static_cast<long long>(minutes),
+                    static_cast<long long>(seconds));
                 ImGui::Text("FPS: %.1f", fps);
-                ImGui::Text("Frame time: %.3f ms", dt * 1000.0);
+                ImGui::Text("Frame: %.3f ms", static_cast<double>(frame_us) / 1000.0);
             } else {
-                ImGui::TextDisabled("No active window.");
+                ImGui::TextDisabled("No system clock.");
             }
 
             ImGui::Separator();
