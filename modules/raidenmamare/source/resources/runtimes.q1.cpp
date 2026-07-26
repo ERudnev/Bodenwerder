@@ -191,7 +191,7 @@ namespace rmmr::resource {
             context,
             assets,
             Unit::Quantum{.manager = assets, .name = unit.name + "_atlas", .library = unit.library},
-            texture::Loader::Quantum{.file = loader.image});
+            texture::Loader::Quantum{.file = loader.image, .mipmaps = false});
 
         const auto pack_id = register_unit<sprite::Pack, sprite::LoaderKenney>(
             context,

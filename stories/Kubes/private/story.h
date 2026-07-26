@@ -25,9 +25,9 @@ namespace kubes {
         };
 
         struct Ui {
-            bool camera = true;
-            bool lighting = true;
-            bool materials = true;
+            bool camera = false;
+            bool lighting = false;
+            bool materials = false;
 
             base::maybe<rmmr::resource::material::Asset::Id> selected_material;
             std::array<char, 128> material_filter{};

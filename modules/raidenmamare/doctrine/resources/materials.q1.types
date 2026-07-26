@@ -21,6 +21,7 @@ namespace rmmr
         textures: vector<TextureBinding>
       one
         techniques: umap<renderer::Pass, Technique>
+        nearest: bool
         ?apply(#system::Device, renderer::Pass)
 
     feature Asset of resource::Unit
@@ -33,4 +34,5 @@ namespace rmmr
         textures: vector<TextureBinding>
       one
         techniques: umap<renderer::Pass, Technique>
+        nearest: bool
         >materialize(#system::Device) -> #Runtime

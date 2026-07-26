@@ -20,6 +20,7 @@ namespace rmmr
     feature Loader of Asset
       one
         file: filename
+        mipmaps: bool
         >materialize(#system::Device) -> #Runtime?
 
     // procedural mask textures (white RGB + alpha shape)

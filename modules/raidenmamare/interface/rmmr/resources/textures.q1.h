@@ -32,6 +32,7 @@ namespace rmmr::resource::texture {
     struct Loader : Feature<Loader, Asset> {
         struct Quantum {
             filename file;
+            bool mipmaps = true;
         };
         struct Actions : BaseActions {
             static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;

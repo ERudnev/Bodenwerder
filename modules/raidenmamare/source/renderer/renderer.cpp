@@ -111,9 +111,13 @@ namespace rmmr {
             glUniform2f(binding.location, value.x, value.y);
         }
 
-        void set_uniform_sampler(const resource::Uniform::Binding& binding, GLuint texture, GLint unit) {
+        void set_uniform_sampler(const resource::Uniform::Binding& binding, GLuint texture, GLint unit, bool nearest = false) {
             glActiveTexture(GL_TEXTURE0 + unit);
             glBindTexture(GL_TEXTURE_2D, texture);
+            if (nearest) {
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            }
             glUniform1i(binding.location, unit);
         }
 
@@ -265,7 +269,8 @@ namespace rmmr {
     }
 
     void Renderer::bind_material_samplers(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material) {
-        const auto& technique = technique_for(with<resource::material::Runtime>::get(args.world, material), pass);
+        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
+        const auto& technique = technique_for(material_quantum, pass);
         for (const auto& binding : technique.bindings) {
             if (binding.location < 0) {
                 continue;
@@ -277,7 +282,7 @@ namespace rmmr {
             if (not texture || not with<resource::texture::Runtime>::exists(args.world, *texture)) {
                 throw std::runtime_error("Renderer: material is missing albedoMap texture");
             }
-            set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, 0);
+            set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, 0, material_quantum.nearest);
         }
     }
 
@@ -288,7 +293,8 @@ namespace rmmr {
         base::maybe<scene::Light::Id> primary_light,
         base::maybe<resource::shadow::Runtime::Id> shadow)
     {
-        const auto& technique = technique_for(with<resource::material::Runtime>::get(args.world, material), pass);
+        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
+        const auto& technique = technique_for(material_quantum, pass);
 
         if (pass == renderer::Pass::shadow) {
             if (not primary_light) {
@@ -352,7 +358,7 @@ namespace rmmr {
                 if (not texture || not with<resource::texture::Runtime>::exists(args.world, *texture)) {
                     throw std::runtime_error("Renderer: material is missing albedoMap texture");
                 }
-                set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, 0);
+                set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, 0, material_quantum.nearest);
             } else if (binding.id == semantic.light0Pos) {
                 if (not light_world_pos) {
                     throw std::runtime_error("Renderer: material expects light0Pos but no light");
@@ -373,7 +379,8 @@ namespace rmmr {
     }
 
     void Renderer::draw_instance(FrameContext args, renderer::Pass pass, const renderer::Command& command, resource::material::Runtime::Id material) {
-        const auto& technique = technique_for(with<resource::material::Runtime>::get(args.world, material), pass);
+        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
+        const auto& technique = technique_for(material_quantum, pass);
         const resource::sprite::Runtime::Quantum* sprite = nullptr;
         if (command.sprite) {
             sprite = &sprite_runtime_for(args.world, command);
@@ -398,7 +405,7 @@ namespace rmmr {
                     throw std::runtime_error("Renderer: atlasTexture requested on non-sprite draw");
                 }
                 const auto& texture = with<resource::texture::Runtime>::get(args.world, sprite->texture);
-                set_uniform_sampler(binding, texture.handle, 0);
+                set_uniform_sampler(binding, texture.handle, 0, material_quantum.nearest);
             } else if (binding.id == semantic.atlasEntries) {
                 if (not sprite) {
                     throw std::runtime_error("Renderer: atlasEntries requested on non-sprite draw");

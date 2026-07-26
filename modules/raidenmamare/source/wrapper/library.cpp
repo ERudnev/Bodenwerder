@@ -30,19 +30,19 @@ namespace rmmr::wrapper::assets {
         handles.texture.debug.push_back(with<Assets>::add_texture_loader(
             context, core,
             item<Unit>{.manager = core, .name = "debug01", .library = "rmmr"},
-            item<texture::Loader>{.file = "textures/debug01.jpg"}));
+            item<texture::Loader>{.file = "textures/debug01.jpg", .mipmaps = true}));
         handles.texture.debug.push_back(with<Assets>::add_texture_loader(
             context, core,
             item<Unit>{.manager = core, .name = "debug02", .library = "rmmr"},
-            item<texture::Loader>{.file = "textures/debug02.jpg"}));
+            item<texture::Loader>{.file = "textures/debug02.jpg", .mipmaps = true}));
         handles.texture.debug.push_back(with<Assets>::add_texture_loader(
             context, core,
             item<Unit>{.manager = core, .name = "debug03", .library = "rmmr"},
-            item<texture::Loader>{.file = "textures/debug03.jpg"}));
+            item<texture::Loader>{.file = "textures/debug03.jpg", .mipmaps = true}));
         handles.texture.debug.push_back(with<Assets>::add_texture_loader(
             context, core,
             item<Unit>{.manager = core, .name = "debug04", .library = "rmmr"},
-            item<texture::Loader>{.file = "textures/debug04.jpg"}));
+            item<texture::Loader>{.file = "textures/debug04.jpg", .mipmaps = true}));
         handles.texture.whiteCircle = with<Assets>::add_texture_generator(
             context, core,
             item<Unit>{.manager = core, .name = "white_circle", .library = "rmmr"},

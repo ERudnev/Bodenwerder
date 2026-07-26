@@ -164,6 +164,7 @@ namespace rmmr::resource::builders::material {
                     .textures = {},
                 }},
             },
+            .nearest = true,
         };
     }
 
