@@ -281,55 +281,53 @@ namespace rmmr::resource {
         }
 
         static void align_from_assets(Reacting context) {
-            Writing writing = context;
-
             for (const auto change : context.changes<texture::Asset>().addedOrUpdated()) {
-                if (not with<Unit>::exists(writing, change.id)) continue;
-                const auto assets = with<Unit>::get(writing, change.id).manager;
-                for_devices_of_assets(writing, assets, [&](system::Device::Id device) {
-                    rematerialize_texture(writing, change.id, device);
-                    rematerialize_materials_using_texture(writing, change.id, device);
+                if (not with<Unit>::exists(context, change.id)) continue;
+                const auto assets = with<Unit>::get(context, change.id).manager;
+                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                    rematerialize_texture(context, change.id, device);
+                    rematerialize_materials_using_texture(context, change.id, device);
                 });
             }
 
             for (const auto change : context.changes<shader::Asset>().addedOrUpdated()) {
-                if (not with<Unit>::exists(writing, change.id)) continue;
-                const auto assets = with<Unit>::get(writing, change.id).manager;
-                for_devices_of_assets(writing, assets, [&](system::Device::Id device) {
-                    rematerialize_shader(writing, change.id, device);
-                    rematerialize_materials_using_shader(writing, change.id, device);
+                if (not with<Unit>::exists(context, change.id)) continue;
+                const auto assets = with<Unit>::get(context, change.id).manager;
+                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                    rematerialize_shader(context, change.id, device);
+                    rematerialize_materials_using_shader(context, change.id, device);
                 });
             }
 
             for (const auto change : context.changes<material::Asset>().addedOrUpdated()) {
-                if (not with<Unit>::exists(writing, change.id)) continue;
-                const auto assets = with<Unit>::get(writing, change.id).manager;
-                for_devices_of_assets(writing, assets, [&](system::Device::Id device) {
-                    rematerialize_material(writing, change.id, device);
+                if (not with<Unit>::exists(context, change.id)) continue;
+                const auto assets = with<Unit>::get(context, change.id).manager;
+                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                    rematerialize_material(context, change.id, device);
                 });
             }
 
             for (const auto change : context.changes<shadow::Asset>().addedOrUpdated()) {
-                if (not with<Unit>::exists(writing, change.id)) continue;
-                const auto assets = with<Unit>::get(writing, change.id).manager;
-                for_devices_of_assets(writing, assets, [&](system::Device::Id device) {
-                    rematerialize_shadow(writing, change.id, device);
+                if (not with<Unit>::exists(context, change.id)) continue;
+                const auto assets = with<Unit>::get(context, change.id).manager;
+                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                    rematerialize_shadow(context, change.id, device);
                 });
             }
 
             for (const auto change : context.changes<geometry::Asset>().addedOrUpdated()) {
-                if (not with<Unit>::exists(writing, change.id)) continue;
-                const auto assets = with<Unit>::get(writing, change.id).manager;
-                for_devices_of_assets(writing, assets, [&](system::Device::Id device) {
-                    rematerialize_geometry(writing, change.id, device);
+                if (not with<Unit>::exists(context, change.id)) continue;
+                const auto assets = with<Unit>::get(context, change.id).manager;
+                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                    rematerialize_geometry(context, change.id, device);
                 });
             }
 
             for (const auto change : context.changes<sprite::Pack>().addedOrUpdated()) {
-                if (not with<Unit>::exists(writing, change.id)) continue;
-                const auto assets = with<Unit>::get(writing, change.id).manager;
-                for_devices_of_assets(writing, assets, [&](system::Device::Id device) {
-                    rematerialize_sprites(writing, change.id, device);
+                if (not with<Unit>::exists(context, change.id)) continue;
+                const auto assets = with<Unit>::get(context, change.id).manager;
+                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                    rematerialize_sprites(context, change.id, device);
                 });
             }
         }

@@ -69,8 +69,12 @@ template<typename Key, typename Val, typename Hasher, typename KeyEqual>
 Val& Patch<Key, Val, Hasher, KeyEqual>
 ::modify_modification(Key id, base::function_ref<const Val&()> prepatch)
 {
-    if (auto* patchlet = Base::find(id))
+    if (auto* patchlet = Base::find(id)) {
+        if (not patchlet->has_value()) {
+            __debugbreak(); // MSVC or std::abort();
+        }
         return patchlet->value();
+    }
 
     const Key& key = id;
     Base::insert(std::move(id), Patchlet<Val>{prepatch()});

@@ -6,7 +6,11 @@ project("TomSawyer"
 )
 
 set(TomSawyer_Q1
-    placeholder.q1.types
+    world.q1.types
+    invaders/session.q1.types
+    invaders/actors.q1.types
+    invaders/combat.q1.types
+    invaders/bootstrap.q1.types
 )
 
 add_executable(${PROJECT_NAME})

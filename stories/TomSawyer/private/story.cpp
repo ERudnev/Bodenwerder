@@ -5,7 +5,11 @@
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
-#include <tommy/placeholder.h>
+#include <tommy/invaders/actors.h>
+#include <tommy/invaders/bootstrap.h>
+#include <tommy/invaders/combat.h>
+#include <tommy/invaders/session.h>
+#include <tommy/world.h>
 
 namespace tommy {
 
@@ -13,43 +17,34 @@ namespace tommy {
     using namespace rmmr;
 
     Schema SpriteTest::schema() const {
-        return ask::schema::aspect<Placeholder>();
+        return ask::schema::merge({
+            ask::schema::aspect<World>(),
+            ask::schema::aspect<invaders::Session>(),
+            ask::schema::aspect<invaders::Playfield>(),
+            ask::schema::aspect<invaders::Player>(),
+            ask::schema::aspect<invaders::Fleet>(),
+            ask::schema::aspect<invaders::Alien>(),
+            ask::schema::aspect<invaders::Alien_group>(),
+            ask::schema::aspect<invaders::Volley>(),
+            ask::schema::aspect<invaders::Shot>(),
+            ask::schema::aspect<invaders::Shot_group>(),
+        });
     }
 
     void SpriteTest::setup(Writing context, system::Core::Id, system::Viewport::Id viewport) {
-        const auto root = with<scene::Interface>::createScene(context);
+        with<World>::create(context, World::Quantum{.step = 0, .paused = false});
 
+        const auto root = with<scene::Interface>::createScene(context);
         with<scene::Flat2d>::extend(context, root, scene::Flat2d::Quantum{
             .size = index2{1600, 900},
         });
         with<scene::actor::Sprite>::modify_global(context)->geometry = assets->unitQuad;
 
-        const auto spawn = [&](index2 pos, integer zet, integer index, float scale) {
-            with<scene::Flat2d>::createSpriteActor(context, root,
-                Locator{
-                    .pos = Pos{
-                        static_cast<float>(pos.x),
-                        static_cast<float>(pos.y),
-                        static_cast<float>(zet),
-                    },
-                    .euler = HPB{0.0f, 0.0f, 0.0f},
-                },
-                item<scene::actor::Sprite>{
-                    .material = *shared->material.sprite,
-                    .tint = RGB{0.0f, 0.0f, 0.0f},
-                    .scale = vec3{scale, scale, 1.0f},
-                    .pack = assets->kenney,
-                    .index = index,
-                });
-        };
-
-        constexpr integer grid = 10;
-        constexpr integer step = 100;
-        for (integer row = 0; row < grid; ++row) {
-            for (integer col = 0; col < grid; ++col) {
-                spawn(index2{col * step, row * step}, 0, row * grid + col, 1.0f);
-            }
-        }
+        invaders::Bootstrap::newMatch(
+            context,
+            root,
+            assets->kenney,
+            *shared->material.sprite);
 
         const auto camera = with<scene::Flat2d>::createCamera(context, root,
             Locator{.pos = Pos{0.0f, 0.0f, 5.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}});

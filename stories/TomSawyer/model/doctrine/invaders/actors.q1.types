@@ -1,0 +1,61 @@
+import "../world"
+import "session"
+
+namespace tommy
+  namespace invaders
+
+    // Cannon. Reads Window inside ~World ticks (edge/hold vs previous step), never a dt-update.
+    component Player of Session
+      always
+        move_pixels: integer = 4
+        shot_cooldown_steps: integer = 25
+        sprite_idle: integer = 0 // pack entry; story maps Kenney ids
+      one
+        pos: index2
+        cooldown_until: integer // World.step deadline; 0 = ready
+      all
+        >spawn(#Session, index2)->#
+        !steer(~World) // only when change.now.step != old; sample Window keys
+        !tryFire(~World) // rising edge fire → Shot(player) if cooldown elapsed
+        !applyHit(~Shot) // alien bomb → destroy, notify Session
+
+    // Formation march cadence is in World.step units, not seconds.
+    component Fleet of Session
+      enum Dir : left, right
+      always
+        cell_size: index2
+        descend_pixels: integer = 16
+        base_march_steps: integer = 48 // shrinks as aliens die
+      one
+        origin: index2
+        dir: Dir
+        next_march: integer // World.step when next lateral step fires
+      all
+        >spawnWave(#Session, wave: integer)->#
+        !march(~World) // when step crosses next_march
+        !retuneCadence(~Alien)
+        !cleared(~Alien)
+
+    entity Alien
+      enum Kind : squid, crab, octopus
+      one
+        cell: index2
+        kind: Kind
+        points: integer
+        alive: bool
+      all
+        ?worldPos(#Fleet) -> index2
+        !killOnHit(~Shot)
+
+    group<Alien> of Fleet
+
+    entity Saucer
+      one
+        session: affects<Session>
+        pos: index2
+        points: integer
+      all
+        >maybeSpawn(#Session, ~World)->#?
+        !drift(~World) // step-gated motion
+        !killOnHit(~Shot)
+        !despawnOffscreen(~Playfield)

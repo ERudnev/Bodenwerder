@@ -137,7 +137,6 @@ namespace rmmr::controller {
 
     struct Camera3d::Internals : Camera3d::DefaultInternals {
         static void update(Reacting context) {
-            Writing writing = context;
             for (const auto& change : context.changes<system::Clock>().updated()) {
                 const int64 dt_us = change.now.absolute - change.old.absolute;
                 if (dt_us <= 0) {
@@ -145,13 +144,13 @@ namespace rmmr::controller {
                 }
                 const seconds delta_sec = static_cast<seconds>(dt_us) / 1'000'000.0;
 
-                for (const auto entry : writing->aspect<system::Window>().items()) {
-                    const auto& device = with<system::Device>::get(writing, entry.id);
+                for (const auto entry : context.proposal.aspect<system::Window>().items()) {
+                    const auto& device = with<system::Device>::get(context, entry.id);
                     if (not device.handle) {
                         continue;
                     }
-                    for (const auto [id, _] : writing->aspect<Camera3d>().items()) {
-                        drive(writing, id, entry.id, device.handle, delta_sec);
+                    for (const auto [id, _] : context.proposal.aspect<Camera3d>().items()) {
+                        drive(context, id, entry.id, device.handle, delta_sec);
                     }
                 }
             }

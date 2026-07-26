@@ -1,0 +1,30 @@
+import "../world"
+
+namespace tommy
+  namespace invaders
+
+    // Match state. No update(dt): phase transitions wake on domain events or ~World.
+    entity Session
+      enum Phase : attract, playing, wave_clear, lost, won
+      always
+        start_lives: integer = 3
+      one
+        phase: Phase
+        score: integer
+        lives: integer
+        wave: integer
+      all
+        >create()->#
+        >beginPlay()->#
+        !onPlayerDestroyed(~Player) // lives--; attract/lost when exhausted
+        !onFleetCleared(~Fleet) // wave_clear → next wave or won
+        !onWaveReady(~World) // step deadlines while wave_clear; no-op unless step moved
+
+    // Play rectangle in World pixel space (Flat2d ortho units).
+    component Playfield of Session
+      one
+        origin: index2
+        size: index2
+      all
+        >install(origin: index2, size: index2)->#
+        ?contains(index2) -> bool

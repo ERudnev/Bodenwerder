@@ -97,7 +97,7 @@ namespace fqsm::processing {
         template<meta::category::Any Meta>
         operator Breach<Meta>() const { return Breach<Meta>(context); }
 
-        // convenience; same surface as Gate (could also be Writing{*this} and drop these)
+        // same surface as Gate for refuse / workers_interface
         model::complex::WorkersInterface& workers_interface() { return *context->subcontext->accumulator; }
         utility::BadValue refuse(std::string message) { context->subcontext->accumulator->summary.critical.emplace_back(std::move(message)); return {}; }
         void warning(std::string message) { context->subcontext->accumulator->summary.warning.emplace_back(std::move(message)); }

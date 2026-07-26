@@ -76,6 +76,7 @@ if (not target)
 
 - `context.changes<Meta>()` — вход (дельта proposal).
 - `context.adjustments<Meta>()` — выходной патч K (раньше путающе назывался `reaction()`).
+- В теле реакции параметр — **`Reacting`**. В Internals / `with<>` передавай тот же `context`.
 
 Реакции **не** правят proposal напрямую; кладут следствия в adjustments, нормализация крутит `P ← P ⊕ K`.
 

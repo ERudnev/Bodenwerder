@@ -136,22 +136,20 @@ namespace Q1_fQSM::Etalon {
     struct Reminder::Internals : Reminder::DefaultInternals {
         // ~ : drop self when target is gone (vital) or trigger already satisfied.
         static void remove_after_happened(Reacting context) {
-            Writing writing{context};
             std::vector<Id> doomed;
             for (const auto rem : context.proposal.aspect<Reminder>().items()) {
-                const auto* target = with<Reminder>::vital(writing, rem.id, &Quantum::target);
+                const auto* target = with<Reminder>::vital(context, rem.id, &Quantum::target);
                 if (not target)
                     continue;
-                if (target->data_field == with<Reminder>::get(writing, rem.id).trigger_value)
+                if (target->data_field == with<Reminder>::get(context, rem.id).trigger_value)
                     doomed.push_back(rem.id);
             }
             for (const auto id : doomed)
-                with<Reminder>::remove(writing, id);
+                with<Reminder>::remove(context, id);
         }
 
         // ~SampleEntity : log when watched SampleEntity hits trigger_value, then remove Reminder.
         static void write_log_when_reached(Reacting context) {
-            Writing writing{context};
             std::vector<Id> reached;
             for (const auto& change : context.changes<SampleEntity>().updated()) {
                 for (const auto rem : context.proposal.aspect<Reminder>().items()) {
@@ -164,7 +162,7 @@ namespace Q1_fQSM::Etalon {
                 }
             }
             for (const auto id : reached)
-                with<Reminder>::remove(writing, id);
+                with<Reminder>::remove(context, id);
         }
     };
 

@@ -34,7 +34,7 @@ namespace rmmr {
         Schema schema() override;
         std::shared_ptr<establish::Module::State> install(Schema finalSchema) override;
 
-        // Creates system::Core on the caller's Realm, then device/window.
+        // Creates system::Core on the caller's Writing, then device/window.
         auto setup(Writing, item<system::Core>, WindowParameters) -> system::Core::Id;
         void materialize(Writing, system::Core::Id assets);
         auto core() const -> system::Core::Id;

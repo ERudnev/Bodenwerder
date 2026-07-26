@@ -16,9 +16,9 @@ namespace rmmr::wrapper::assets {
         return assets_root / "Toy" / "state" / "resources" / "catalogue.json";
     }
 
-    auto Manager::prepare(establish::Realm& world, Location) -> PrepareStatus {
+    auto Manager::prepare(Writing context, Location) -> PrepareStatus {
         // Always reseed from hardcoded presets. Catalogue persistency is archived.
-        hardcodedInit(world);
+        hardcodedInit(context);
         return PrepareStatus::Generated;
     }
 

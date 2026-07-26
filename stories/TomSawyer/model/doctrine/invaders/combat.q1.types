@@ -1,0 +1,52 @@
+import "../world"
+import "session"
+import "actors"
+
+namespace tommy
+  namespace invaders
+
+    // Bolts advance one speed-slice per World.step change — not per rendered frame.
+    entity Shot
+      enum Side : player, alien
+      always
+        player_speed: integer = 8 // pixels per step
+        alien_speed: integer = 5
+      one
+        session: affects<Session>
+        pos: index2
+        side: Side
+      all
+        >firePlayer(#Session, index2)->#
+        >fireAlien(#Session, index2)->#
+        !advance(~World) // move by (now.step - old.step) * speed; then collide / cull
+        !cullOutOfBounds(~Playfield)
+        !hitAlien(~Alien)
+        !hitPlayer(~Player)
+        !hitBunker(~Bunker)
+        !hitSaucer(~Saucer)
+
+    group<Shot> of Session
+
+    entity Bunker
+      always
+        max_hp: integer = 8
+      one
+        session: affects<Session>
+        pos: index2
+        hp: integer
+      all
+        >place(#Session, index2)->#
+        !erode(~Shot)
+        !blockDescent(~Fleet)
+
+    group<Bunker> of Session
+
+    // Volley deadlines are World.step values.
+    attribute Volley of Fleet
+      always
+        min_gap_steps: integer = 40
+      one
+        next_fire: integer
+      all
+        >arm()->#
+        !schedule(~World)

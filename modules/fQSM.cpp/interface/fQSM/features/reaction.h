@@ -51,12 +51,12 @@ namespace fqsm::features::reactions {
         explicit Functional(ActionFunction fn) : actionFunc(fn) {}
     protected:
 
-        // Review first: Reacting -> Writing for Action/ConstructFromParent signatures.
+        // Forward Review into ActionFunction; do not invent a named Writing from Reacting.
         template<typename... Rest>
         auto action(Reacting reviewing, Rest&&... rest) const
             -> std::invoke_result_t<ActionFunction, Reacting, Rest&&...>
         {
-            return invoke_action(::fqsm::Writing{reviewing}, std::forward<Rest>(rest)...);
+            return invoke_action(reviewing, std::forward<Rest>(rest)...);
         }
 
         // Direct forward (QuantumLocal, explicit Writing, etc.).

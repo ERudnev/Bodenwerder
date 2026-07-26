@@ -150,12 +150,11 @@ namespace local {
                 if (not turn)
                     return;
 
-                Writing writing{context};
                 for (const auto entry : context.proposal.aspect<Elephant>().items())
-                    syncTrunkToMood(writing, entry.id);
-                envyTearOffs(writing, *turn);
-                boostHappiest(writing, *turn);
-                trunklessSadnessAndMelancholy(writing, *turn);
+                    syncTrunkToMood(context, entry.id);
+                envyTearOffs(context, *turn);
+                boostHappiest(context, *turn);
+                trunklessSadnessAndMelancholy(context, *turn);
             }
         };
         static const Behavior customAspectReactions() {
@@ -219,21 +218,19 @@ namespace local {
         }
 
         static void onWorldClock(Reacting context) {
-            Writing writing{context};
             for (const auto& change : context.changes<World>().updated()) {
                 const integer dt = static_cast<integer>(change.now.time - change.old.time);
                 const int turn = change.now.time;
                 for (const auto entry : context.proposal.aspect<Disappointment>().items())
-                    applyTimePassage(writing, entry.id, dt, turn);
+                    applyTimePassage(context, entry.id, dt, turn);
             }
         }
 
         // Explicit detach Some → nullopt → afflict the victim (no friend groups).
         static void onElephantTrunkLoss(Reacting context) {
-            Writing writing{context};
             for (const auto& change : context.changes<Elephant>().updated()) {
                 if (field_event(change, &Elephant::Quantum::myTrunk).removed)
-                    with<Rules>::afflict(writing, change.id);
+                    with<Rules>::afflict(context, change.id);
             }
         }
     };

@@ -14,6 +14,7 @@
 
 // processing (transactions, e.t.c)
 #include <fQSM/processing/orchestrators/realm.h>
+#include <fQSM/processing/orchestrators/realm_safe.h>
 #include <fQSM/processing/orchestrators/branch.h>
 #include <fQSM/processing/orchestrators/module.h>
 
@@ -79,6 +80,7 @@ namespace fqsm::api {
     // processing/orchestrators/contexts Big Objects
     namespace establish {
         using Realm = ::fqsm::processing::orchestrator::Realm;
+        using RealmSafe = ::fqsm::processing::orchestrator::RealmSafe;
         using Branch = ::fqsm::processing::orchestrator::Branch;
         using Module = ::fqsm::processing::orchestrator::Module;
     }

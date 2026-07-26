@@ -1,0 +1,15 @@
+namespace tommy
+
+  // Sim pulse. No classic update(dt) loop for gameplay:
+  //   system::Clock changes → World may advance `step`
+  //   World.step changes    → invaders / logic aspects wake on ~World
+  //   no step change        → no sim update
+  // `paused` freezes step (Clock still ticks; World.step does not).
+  // Input snapshots stay on rmmr::system::Window (pause key only here).
+  entity World
+    one
+      step: integer // discrete ticks; 1 step = 1000 Core μs
+      paused: bool
+    all
+      !keyboardPauseKey(~system::Window) // rising edge toggles paused
+      !advanceStep(~system::Clock) // unpaused: fold Clock μs into step (only writes when step grows)

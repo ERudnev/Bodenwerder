@@ -46,7 +46,7 @@ namespace rmmr::wrapper::assets {
 
         static auto statePath(const std::filesystem::path& assets_root) -> Location;
 
-        auto prepare(establish::Realm&, Location) -> PrepareStatus;
+        auto prepare(Writing, Location) -> PrepareStatus;
         void hardcodedInit(Writing);
         bool loadFrom(Stewarding, Location);
         void save(Writing, Location);

@@ -14,6 +14,7 @@ namespace tommy {
     public:
         struct Ui {
             bool camera = false;
+            bool hud = true;
         };
 
         std::unique_ptr<Assets> assets;
@@ -28,6 +29,7 @@ namespace tommy {
         void drawUi(Writing) override;
 
     private:
+        void drawHud(Writing);
         void drawCameraWindow(Writing);
     };
 
