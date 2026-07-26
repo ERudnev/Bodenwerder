@@ -1,4 +1,4 @@
-#include "demos/kubeOfKubes.h"
+#include "demos/kubes/kubeOfKubes.h"
 
 #include <algorithm>
 #include <array>
@@ -16,7 +16,7 @@
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/semantics.q1.h>
 
-namespace toy::demos {
+namespace kubes {
 
     using namespace fqsm::api;
     using namespace rmmr;
@@ -95,22 +95,23 @@ namespace toy::demos {
         ImGui::MenuItem("Materials", nullptr, &ui.materials);
     }
 
-    void KubeOfKubes::drawUi(Writing world, const Handles& handles) {
-        drawCameraWindow(world, handles);
-        drawLightingWindow(world, handles);
+    void KubeOfKubes::drawUi(Writing world) {
+        drawCameraWindow(world);
+        drawLightingWindow(world);
         drawMaterialsWindow(world);
     }
 
-    void KubeOfKubes::drawCameraWindow(Writing world, const Handles& handles) {
-        if (not ui.camera)
+    void KubeOfKubes::drawCameraWindow(Writing world) {
+        if (not ui.camera or views.empty())
             return;
 
         bool open = ui.camera;
         if (ImGui::Begin("Camera", &open)) {
-            if (not with<scene::Camera>::exists(world, handles.camera)) {
+            const auto camera = views.front().camera;
+            if (not with<scene::Camera>::exists(world, camera)) {
                 ImGui::TextDisabled("No camera selected.");
             } else {
-                auto quantum = with<scene::Camera>::modify(world, handles.camera);
+                auto quantum = with<scene::Camera>::modify(world, camera);
                 if (quantum->mode == scene::Camera::Mode::perspective) {
                     ImGui::SliderAngle("FoV", &quantum->fov_y, 10.0f, 160.0f);
                 } else if (quantum->mode == scene::Camera::Mode::orthographic) {
@@ -126,20 +127,21 @@ namespace toy::demos {
         ui.camera = open;
     }
 
-    void KubeOfKubes::drawLightingWindow(Writing world, const Handles& handles) {
-        if (not ui.lighting)
+    void KubeOfKubes::drawLightingWindow(Writing world) {
+        if (not ui.lighting or views.empty())
             return;
 
         bool open = ui.lighting;
         if (ImGui::Begin("Lighting", &open)) {
-            if (not with<scene::Root>::exists(world, handles.scene)) {
+            const auto scene = views.front().scene;
+            if (not with<scene::Root>::exists(world, scene)) {
                 ImGui::TextDisabled("No scene selected.");
             } else {
-                auto root = with<scene::Root>::modify(world, handles.scene);
+                auto root = with<scene::Root>::modify(world, scene);
                 ImGui::ColorEdit3("Ambient", &root->ambient.x);
                 ImGui::DragFloat("Ambient intensity", &root->ambient_intensity, 0.05f, 0.0f, 20.0f, "%.2f");
 
-                const auto& light_group = with<scene::Light_group>::get(world, handles.scene);
+                const auto& light_group = with<scene::Light_group>::get(world, scene);
                 if (light_group.empty()) {
                     ImGui::Separator();
                     ImGui::TextDisabled("Scene has no lights.");

@@ -1,4 +1,4 @@
-#include "demos/spriteTest.h"
+#include "demos/spriteTest/spriteTest.h"
 
 #include <base/logging.h>
 #include <imgui.h>
@@ -10,12 +10,18 @@
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
 
-namespace toy::demos {
+#include "demos/spriteTest/model.h"
+
+namespace sprdemo {
 
     using namespace fqsm::api;
     using namespace rmmr;
 
-    void SpriteTest::seedAssets(Writing context, system::Core::Id core, const assets::Handles&) {
+    Schema SpriteTest::schema() const {
+        return ask::schema::aspect<God>();
+    }
+
+    void SpriteTest::addAssets(Writing context, system::Core::Id core) {
         using namespace resource;
         using geometry::Generator;
 
@@ -37,7 +43,7 @@ namespace toy::demos {
             item<Generator>{.type = Generator::Type::unitQuad});
     }
 
-    auto SpriteTest::setup(Writing context, const assets::Handles& shared) -> Handles {
+    void SpriteTest::setup(Writing context, system::Core::Id, system::Viewport::Id viewport) {
         const auto root = with<scene::Interface>::createScene(context);
 
         with<scene::Flat2d>::extend(context, root, scene::Flat2d::Quantum{
@@ -56,7 +62,7 @@ namespace toy::demos {
                     .euler = HPB{0.0f, 0.0f, 0.0f},
                 },
                 item<scene::actor::Sprite>{
-                    .material = *shared.material.sprite,
+                    .material = *shared->material.sprite,
                     .tint = RGB{0.0f, 0.0f, 0.0f},
                     .scale = vec3{scale, scale, 1.0f},
                     .pack = *assets.kenney,
@@ -75,27 +81,31 @@ namespace toy::demos {
         const auto camera = with<scene::Flat2d>::createCamera(context, root,
             Locator{.pos = Pos{0.0f, 0.0f, 5.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}});
         with<controller::Camera2d>::create(context, camera);
-        return Handles{.scene = root, .camera = camera};
+
+        views = {
+            View{.viewport = viewport, .scene = root, .camera = camera},
+        };
     }
 
     void SpriteTest::contributeViewMenu() {
         ImGui::MenuItem("Camera", nullptr, &ui.camera);
     }
 
-    void SpriteTest::drawUi(Writing world, const Handles& handles) {
-        drawCameraWindow(world, handles);
+    void SpriteTest::drawUi(Writing world) {
+        drawCameraWindow(world);
     }
 
-    void SpriteTest::drawCameraWindow(Writing world, const Handles& handles) {
-        if (not ui.camera)
+    void SpriteTest::drawCameraWindow(Writing world) {
+        if (not ui.camera or views.empty())
             return;
 
         bool open = ui.camera;
         if (ImGui::Begin("Camera", &open)) {
-            if (not with<scene::Camera>::exists(world, handles.camera)) {
+            const auto camera = views.front().camera;
+            if (not with<scene::Camera>::exists(world, camera)) {
                 ImGui::TextDisabled("No camera selected.");
             } else {
-                auto quantum = with<scene::Camera>::modify(world, handles.camera);
+                auto quantum = with<scene::Camera>::modify(world, camera);
                 if (quantum->mode == scene::Camera::Mode::orthographic) {
                     int size[2] = {quantum->ortho_size.x, quantum->ortho_size.y};
                     if (ImGui::DragInt2("Ortho size", size, 1.0f, 1, 8192))

@@ -4,11 +4,13 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 
-#include "demo.h"
+#include "product.h"
 
-namespace toy::demos {
+namespace sprdemo {
 
-    class SpriteTest : public Demo {
+    using namespace fqsm::api;
+
+    class SpriteTest : public toy::Product {
     public:
         struct Assets {
             base::maybe<rmmr::resource::sprite::Pack::Id> kenney;
@@ -22,13 +24,14 @@ namespace toy::demos {
         Assets assets;
         Ui ui;
 
-        void seedAssets(Writing, rmmr::system::Core::Id, const assets::Handles&) override;
-        Handles setup(Writing, const assets::Handles&) override;
+        Schema schema() const override;
+        void addAssets(Writing, rmmr::system::Core::Id) override;
+        void setup(Writing, rmmr::system::Core::Id, rmmr::system::Viewport::Id) override;
         void contributeViewMenu() override;
-        void drawUi(Writing, const Handles&) override;
+        void drawUi(Writing) override;
 
     private:
-        void drawCameraWindow(Writing, const Handles&);
+        void drawCameraWindow(Writing);
     };
 
 }

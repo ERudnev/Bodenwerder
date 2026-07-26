@@ -21,13 +21,13 @@ namespace toy::ui {
 
     } // namespace
 
-    void State::drawMainMenuBar(Demo& demo) {
+    void State::drawMainMenuBar(toy::Product& product) {
         if (not ImGui::BeginMainMenuBar())
             return;
 
         if (ImGui::BeginMenu("View")) {
             ImGui::MenuItem("Stats", nullptr, &stats);
-            demo.contributeViewMenu();
+            product.contributeViewMenu();
             ImGui::EndMenu();
         }
 
@@ -58,10 +58,10 @@ namespace toy::ui {
         stats = open;
     }
 
-    void State::draw(Writing world, Demo& demo, const Demo::Handles& handles) {
-        drawMainMenuBar(demo);
+    void State::draw(Writing world, toy::Product& product) {
+        drawMainMenuBar(product);
         drawStatsWindow(world);
-        demo.drawUi(world, handles);
+        product.drawUi(world);
     }
 
 }

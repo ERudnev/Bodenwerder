@@ -86,8 +86,7 @@ namespace rmmr {
             maybe<system::Core::Id> core;
             maybe<system::Device::Id> device;
             maybe<system::Viewport::Id> viewport;
-            maybe<scene::Root::Id> scene;
-            maybe<scene::Camera::Id> scene_camera;
+            std::vector<ViewContext> activeViews;
             maybe<resource::shadow::Asset::Id> default_shadow;
         } handles;
         Renderer renderer;
@@ -149,9 +148,12 @@ namespace rmmr {
         with<resource::Runtimes>::materialize(context, *state->handles.device, assets);
     }
 
-    void Engine::showScene(scene::Root::Id scene, scene::Camera::Id camera) {
-        state->handles.scene = scene;
-        state->handles.scene_camera = camera;
+    auto Engine::viewport() const -> system::Viewport::Id {
+        return *state->handles.viewport;
+    }
+
+    void Engine::setActiveViews(std::vector<ViewContext> views) {
+        state->handles.activeViews = std::move(views);
     }
 
     bool Engine::shouldClose(Reading context) const {
@@ -160,7 +162,6 @@ namespace rmmr {
 
     void Engine::beginFrame(Writing context) {
         const auto& device = state->handles.device;
-        const auto& viewport = state->handles.viewport;
 
         with<system::Device>::poll_events(context);
         with<system::Window>::onFrameAdvanced(context, device);
@@ -174,35 +175,33 @@ namespace rmmr {
             }
         }
 
-        with<system::Viewport>::syncExtent(context, viewport);
-        with<system::Viewport>::activate(context, viewport);
-        with<system::Viewport>::clear(context, viewport);
-
-        /* natural perfomance test, keep this as comment please
-        for (int xx = 0; xx < 100; ++xx)
-            with<system::Viewport>::modify(context, viewport)->clear_color.r = 0;
-        */
-
-        if (state->handles.scene && state->handles.scene_camera) {
+        if (not state->handles.activeViews.empty()) {
             with<system::ImGuiHost>::newFrame(context, device);
         }
     }
 
     void Engine::render(Writing context) {
-        if (not state->handles.scene or not state->handles.scene_camera)
-            return;
-        state->renderer.render(Renderer::FrameContext{
-            .world = context,
-            .viewport = *state->handles.viewport,
-            .window = *state->handles.device,
-            .scene = *state->handles.scene,
-            .camera = *state->handles.scene_camera,
-        });
+        for (const auto& view : state->handles.activeViews) {
+            with<system::Viewport>::syncExtent(context, view.viewport);
+            with<system::Viewport>::activate(context, view.viewport);
+            with<system::Viewport>::clear(context, view.viewport);
+
+            /* natural perfomance test, keep this as comment please
+            for (int xx = 0; xx < 100; ++xx)
+                with<system::Viewport>::modify(context, view.viewport)->clear_color.r = 0;
+            */
+
+            state->renderer.render(Renderer::FrameContext{
+                .world = context,
+                .window = *state->handles.device,
+                .view = view,
+            });
+        }
     }
 
     void Engine::endFrame(Writing context) {
         const auto& device = state->handles.device;
-        if (state->handles.scene && state->handles.scene_camera) {
+        if (not state->handles.activeViews.empty()) {
             with<system::ImGuiHost>::render(context, device);
         }
         with<system::Window>::present(context, device);

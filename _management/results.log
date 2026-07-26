@@ -5,3 +5,4 @@
 [morta] 2026-07-21: Введена persistency::Schema/Graph отдельно от world Schema; Archivist в persistency; workshop: archive = persist::merge({db::aspect<Person>(), ...}), main schema без archive
 [morta] 2026-07-24: Создан workspace _management/plan.tome; добавлена задача rmmr_sprites_draw_pipeline (спрайты: атлас 6 int, unit quad, DC без инстансинга, свой pass/ortho-камера)
 [morta] 2026-07-24: Q1 DSL sprite::Pack / Entry(min,max,pivot abs) / LoaderKenney / грубый Runtime; sprites.q1.types + .h; CMake
+[morta] 2026-07-25: В plan.tome добавлена задача rmmr_application_product_layer (дерибан Toy → rmmr App-surface + Product:Module; имя Product фиксировано)

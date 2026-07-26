@@ -180,7 +180,7 @@ namespace rmmr {
         void end_pass(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
             if (pass == renderer::Pass::shadow) {
                 resource::shadow::Runtime::Actions::unbind(args.world, shadow->runtime);
-                system::Viewport::Actions::activate(args.world, args.viewport);
+                system::Viewport::Actions::activate(args.world, args.view.viewport);
                 return;
             }
 
@@ -306,14 +306,14 @@ namespace rmmr {
             return;
         }
 
-        if (not with<scene::Camera>::exists(args.world, args.camera)) {
-            throw std::runtime_error("Renderer: scene has no camera");
+        if (not with<scene::Camera>::exists(args.world, args.view.camera)) {
+            return;
         }
 
-        const auto& root_quantum = with<scene::Root>::get(args.world, args.scene);
-        const float aspect_ratio = viewport_aspect_ratio(args.world, args.viewport);
-        const mat4 view = scene::Camera::Actions::view(args.world, args.camera);
-        const mat4 projection = scene::Camera::Actions::projection(args.world, args.camera, aspect_ratio);
+        const auto& root_quantum = with<scene::Root>::get(args.world, args.view.scene);
+        const float aspect_ratio = viewport_aspect_ratio(args.world, args.view.viewport);
+        const mat4 view = scene::Camera::Actions::view(args.world, args.view.camera);
+        const mat4 projection = scene::Camera::Actions::projection(args.world, args.view.camera, aspect_ratio);
 
         base::maybe<mat4> light_space{};
         base::maybe<Pos> light_world_pos{};
@@ -419,12 +419,12 @@ namespace rmmr {
     }
 
     void Renderer::render(FrameContext args) {
-        if (not with<scene::Camera>::exists(args.world, args.camera)) {
+        if (not with<scene::Camera>::exists(args.world, args.view.camera)) {
             base::message("Renderer: scene has no camera");
             return;
         }
 
-        const auto lights = gather_lights(args.world, args.scene);
+        const auto lights = gather_lights(args.world, args.view.scene);
         // Pipeline chunk: assign active shadow runtimes to lights (placeholder policy inside).
         const auto lighting = assign_shadows_to_lights(args.world, args.window, lights);
         base::maybe<resource::shadow::Runtime::Id> shadow{};
@@ -433,9 +433,9 @@ namespace rmmr {
         }
 
         renderer::CommandBuffer commands;
-        scene::Interface::render(args.world, args.scene, args.window, commands);
+        scene::Interface::render(args.world, args.view.scene, args.window, commands);
 
-        const mat4 view = scene::Camera::Actions::view(args.world, args.camera);
+        const mat4 view = scene::Camera::Actions::view(args.world, args.view.camera);
 
         GLboolean depth_write_prev{};
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);

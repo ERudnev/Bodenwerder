@@ -1,4 +1,4 @@
-#include "demos/kubeOfKubes.h"
+#include "demos/kubes/kubeOfKubes.h"
 
 #include <base/logging.h>
 #include <rmmr/api/_interface.h>
@@ -9,12 +9,18 @@
 #include <rmmr/scene/actors/simple.q1.h>
 #include <rmmr/scene/root.q1.h>
 
-namespace toy::demos {
+#include "demos/kubes/model.h"
+
+namespace kubes {
 
     using namespace fqsm::api;
     using namespace rmmr;
 
-    void KubeOfKubes::seedAssets(Writing context, system::Core::Id core, const assets::Handles&) {
+    Schema KubeOfKubes::schema() const {
+        return ask::schema::aspect<World>();
+    }
+
+    void KubeOfKubes::addAssets(Writing context, system::Core::Id core) {
         using namespace resource;
         using geometry::Generator;
 
@@ -38,7 +44,7 @@ namespace toy::demos {
             item<Generator>{.type = Generator::Type::gridPlane});
     }
 
-    auto KubeOfKubes::setup(Writing context, const assets::Handles& shared) -> Handles {
+    void KubeOfKubes::setup(Writing context, system::Core::Id, system::Viewport::Id viewport) {
         const auto root = with<scene::Interface>::createScene(context);
 
         constexpr int grid_extent = 4;
@@ -68,7 +74,7 @@ namespace toy::demos {
                         },
                         item<scene::actor::Simple>{
                             .geometry = (cell % 7 == 0) ? *assets.primitive.bagel : *assets.primitive.kube,
-                            .material = alpha_cutout ? *shared.material.litTexturedAlpha : shared.material.debugLitTextured[cell % 4],
+                            .material = alpha_cutout ? *shared->material.litTexturedAlpha : shared->material.debugLitTextured[cell % 4],
                             .albedo = RGB{
                                 0.3f + 0.6f * static_cast<float>(x) / static_cast<float>(grid_extent - 1),
                                 0.3f + 0.6f * static_cast<float>(y) / static_cast<float>(grid_extent - 1),
@@ -81,7 +87,7 @@ namespace toy::demos {
 
         with<scene::Interface>::createGrid(context, root,
             Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
-            item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared.material.grid, .opacity = 1.0f});
+            item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 1.0f});
 
         const auto camera = with<scene::Interface>::createCamera(context, root,
             Locator{.pos = Pos{10.5f, 10.0f, 14.0f}, .euler = HPB{-18.0f, -36.0f, 0.0f}},
@@ -91,7 +97,9 @@ namespace toy::demos {
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
-        return Handles{.scene = root, .camera = camera};
+        views = {
+            View{.viewport = viewport, .scene = root, .camera = camera},
+        };
     }
 
 }

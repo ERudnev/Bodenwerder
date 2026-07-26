@@ -4,11 +4,7 @@
 #include <base/maybe.h>
 #include <rmmr/system/core.q1.h>
 
-#include "projection/world.q1.h"
 #include "assets/library.h"
-#include "demo.h"
-#include "demos/spriteTest.h"
-#include "demos/kubeOfKubes.h"
 #include "ui.h"
 
 #include <memory>
@@ -22,10 +18,8 @@ namespace toy {
     struct Application::State : establish::Module::State {
         base::maybe<assets::Manager> assets;
         bool assets_ready = false;
-        std::unique_ptr<Demo> demo;
 
         ui::State ui;
-        base::maybe<Demo::Handles> demo_handles;
         establish::Realm world;
 
         explicit State(Schema schema);
@@ -35,8 +29,6 @@ namespace toy {
 
     Application::State::State(Schema schema)
         : establish::Module::State(std::move(schema))
-        , demo(std::make_unique<demos::SpriteTest>())
-        //, demo(std::make_unique<demos::KubeOfKubes>())
         , world(fullSchema)
     {}
 
@@ -63,9 +55,15 @@ namespace toy {
 
     Application::~Application() = default;
 
+    void Application::setProduct(std::unique_ptr<Product> next) {
+        product = std::move(next);
+    }
+
     Schema Application::schema() {
-        static const Schema native = ask::schema::aspect<God>();
-        Schema result = native;
+        if (not product)
+            throw std::runtime_error("app: setProduct before schema()");
+
+        Schema result = product->schema();
         for (auto& child : submodules)
             result = ask::schema::merge({result, child->schema()});
         return result;
@@ -79,6 +77,9 @@ namespace toy {
     }
 
     void Application::initDefaultWorld() {
+        if (not product)
+            throw std::runtime_error("app: setProduct before initDefaultWorld()");
+
         const auto core = engine->setup(
             state->world,
             item<system::Core>{
@@ -100,10 +101,11 @@ namespace toy {
             return;
         }
 
-        state->demo->seedAssets(state->world, core, state->assets->handles);
-        state->demo_handles = state->demo->setup(state->world, state->assets->handles);
+        product->bindShared(state->assets->handles);
+        product->addAssets(state->world, core);
+        product->setup(state->world, core, engine->viewport());
         engine->materialize(state->world, state->assets->core);
-        engine->showScene(state->demo_handles->scene, state->demo_handles->camera);
+        engine->setActiveViews(product->views);
 
         if (status == assets::PrepareStatus::Generated) {
             try {
@@ -132,7 +134,7 @@ namespace toy {
 
         while (engine and not engine->shouldClose(state->world)) {
             engine->beginFrame(state->world);
-            state->ui.draw(state->world, *state->demo, *state->demo_handles);
+            state->ui.draw(state->world, *product);
             engine->render(state->world);
             engine->endFrame(state->world);
         }

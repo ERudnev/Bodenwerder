@@ -1,13 +1,11 @@
 #pragma once
 
+#include <rmmr/engine.h>
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/shadows.q1.h>
-#include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
-#include <rmmr/scene/root.q1.h>
-#include <rmmr/system/viewport.q1.h>
 #include <rmmr/system/window.q1.h>
 
 #include <base/maybe.h>
@@ -28,10 +26,8 @@ namespace rmmr {
     public:
         struct FrameContext {
             fqsm::Reading world;
-            system::Viewport::Id viewport;
             system::Window::Id window;
-            scene::Root::Id scene;
-            scene::Camera::Id camera;
+            Engine::ViewContext view;
         };
 
         void render(FrameContext args);

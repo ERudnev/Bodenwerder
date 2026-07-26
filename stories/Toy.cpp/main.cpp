@@ -1,9 +1,12 @@
 #include <filesystem>
+#include <memory>
 #include <stdexcept>
 
 #include <base/logging.h>
 
 #include "application.h"
+#include "demos/spriteTest/spriteTest.h"
+#include "demos/kubes/kubeOfKubes.h"
 
 using namespace base;
 using namespace fqsm::api;
@@ -18,6 +21,9 @@ int main() {
             .window_size = {.x = 1600, .y = 900},
             .glVersion = {.major = 3, .minor = 3},
         });
+
+        //application->setProduct(std::make_unique<sprdemo::SpriteTest>());
+        application->setProduct(std::make_unique<kubes::KubeOfKubes>());
 
         const auto schema = application->schema();
         application->install(schema);

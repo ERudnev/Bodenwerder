@@ -8,11 +8,13 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 
-#include "demo.h"
+#include "product.h"
 
-namespace toy::demos {
+namespace kubes {
 
-    class KubeOfKubes : public Demo {
+    using namespace fqsm::api;
+
+    class KubeOfKubes : public toy::Product {
     public:
         struct Assets {
             struct {
@@ -41,14 +43,15 @@ namespace toy::demos {
         Assets assets;
         Ui ui;
 
-        void seedAssets(Writing, rmmr::system::Core::Id, const assets::Handles&) override;
-        Handles setup(Writing, const assets::Handles&) override;
+        Schema schema() const override;
+        void addAssets(Writing, rmmr::system::Core::Id) override;
+        void setup(Writing, rmmr::system::Core::Id, rmmr::system::Viewport::Id) override;
         void contributeViewMenu() override;
-        void drawUi(Writing, const Handles&) override;
+        void drawUi(Writing) override;
 
     private:
-        void drawCameraWindow(Writing, const Handles&);
-        void drawLightingWindow(Writing, const Handles&);
+        void drawCameraWindow(Writing);
+        void drawLightingWindow(Writing);
         void drawMaterialsWindow(Writing);
         void drawMaterialInspector(Writing, rmmr::resource::material::Asset::Id);
     };

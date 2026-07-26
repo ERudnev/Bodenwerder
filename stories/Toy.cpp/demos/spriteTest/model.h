@@ -2,15 +2,16 @@
 
 #include <fQSM/api/interface.h>
 
-namespace toy {
+namespace sprdemo {
 
     using namespace fqsm::api;
 
+    // Placeholder product model entry — Product must contribute types to the app schema.
     struct God : Entity<God> {
         struct Quantum {
             integer time;
         };
-        struct Internals : DefaultInternals{};
+        struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
     };
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include <fQSM/api/interface.h>
 
@@ -8,6 +9,7 @@
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/window.q1.h>
+#include <rmmr/system/viewport.q1.h>
 
 namespace rmmr {
 
@@ -16,8 +18,14 @@ namespace rmmr {
     class Engine : public establish::Module {
     public:
         struct WindowParameters {
-            decltype(system::Window::Quantum::title) title;
+            string title;
             index2 requested_size;
+        };
+
+        struct ViewContext {
+            system::Viewport::Id viewport;
+            scene::Root::Id scene;
+            scene::Camera::Id camera;
         };
 
         Engine();
@@ -29,7 +37,8 @@ namespace rmmr {
         // Creates system::Core on the caller's Realm, then device/window.
         auto setup(Writing, item<system::Core>, WindowParameters) -> system::Core::Id;
         void materialize(Writing, system::Core::Id assets);
-        void showScene(scene::Root::Id, scene::Camera::Id);
+        auto viewport() const -> system::Viewport::Id;
+        void setActiveViews(std::vector<ViewContext>);
 
         bool shouldClose(Reading) const;
         void beginFrame(Writing);

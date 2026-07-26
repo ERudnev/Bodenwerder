@@ -33,4 +33,30 @@ namespace plan {
       атлас и орто-камера. История RDB/JSON-сериализации здесь не продолжается — только загрузка и отрисовка.
   }
 
+  rmmr_application_product_layer: @Task {
+    status: 📋
+    dependencies: rmmr_sprites_draw_pipeline
+    goal:
+      Дерибан Toy: каркас приложения — поверхностный слой rmmr над голым Engine; Toy остаётся story
+      с main и примерами. Имя контракта фиксируем: Product (игра / тул / редактор / что угодно, что
+      подключают и запускают). Product — Module (своя schema / install / loadPastState) плюс app-фазы
+      мира после engine->setup. Application в rmmr владеет Realm как сервисом к Product, UI приложения
+      срезать до «железа» (FPS). demos/* в Toy — примеры «можно такую игру, можно другую, можно 3D-редактор».
+      Отдельную static-lib над rmmr не плодить: App-surface живёт в том же модуле, кто хочет — только Engine.
+    subtasks:
+      📋 Ввести rmmr::Product : establish::Module — контракт «расскажи о себе → подключим и запустим»
+         (schema, install; app-фазы setup/UI отдельно от Module-install)
+      📋 Перенести toy::Application в rmmr как App-surface (Settings, schema merge Engine+Product,
+         initDefaultWorld/run); main в Toy остаётся минимальным стартом
+      📋 Отвязать Product от toy::assets::Handles — seed/setup на Core / тонком app-сервисе, без каталога Toy в контракте
+      📋 Application Services: главный Realm (и задел под разновидности) доступен Product’у на bootstrap и кадре
+      📋 UI приложения → минимум (FPS / Stats); View-меню и панели — у Product (contributeViewMenu / drawUi)
+      📋 Перевести SpriteTest и KubeOfKubes на rmmr::Product; demos остаются в Toy как примеры продуктов
+      📋 Подчистить интерфейс (имена, фазы, убрать лишнее из Demo/Application после переноса)
+    reason:
+      Toy умеет «танец с бубном» вокруг rmmr и бесполезен без него; отдельная lib неудобнее, чем крышка
+      внутри rmmr. 2D-демо растёт в игру — нужен стандарт подключаемого Product как Module со схемой,
+      а не ad-hoc Demo без ontology. Имя Product зафиксировано в обсуждении планирования.
+  }
+
 }

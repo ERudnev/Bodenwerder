@@ -5,6 +5,8 @@
 #include <fQSM/api/interface.h>
 #include <rmmr/engine.h>
 
+#include "product.h"
+
 namespace toy {
 
     using namespace fqsm::api;
@@ -24,6 +26,8 @@ namespace toy {
         explicit Application(Settings settings);
         ~Application() override;
 
+        void setProduct(std::unique_ptr<Product> product);
+
         Schema schema() override;
         std::shared_ptr<establish::Module::State> install(Schema schema) override;
 
@@ -37,6 +41,7 @@ namespace toy {
         struct State;
 
         std::shared_ptr<rmmr::Engine> engine;
+        std::unique_ptr<Product> product;
         std::shared_ptr<State> state;
     };
 
