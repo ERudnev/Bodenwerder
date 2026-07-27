@@ -1,5 +1,6 @@
-// TDD pad: inbound index A ← B.target (Affected) via ask::relations<A>(…).to<B, &…>().
-// Half-measure: rebuild map each reaction call. No scenario / expects yet.
+// TDD pad: inbound index via ask::relations (Affected) + monster C (Anchor/Custody).
+// Half-measure: rebuild map each reaction call, scoped to delta layer (removed/updated/…).
+// No scenario / expects yet.
 #include "_common.h"
 
 #include <fQSM/api/interface.h>
@@ -27,6 +28,17 @@ namespace local {
         static const Behavior customAspectReactions();
     };
 
+    // Monster: Anchor→A + Custody→B; two hand reactions + codegen structural (anchor + custody).
+    struct C : Entity<C> {
+        struct Quantum {
+            Anchor<A> hub;
+            Custody<B> kept;
+            integer ticks = 0;
+        };
+        struct Internals;
+        static const Behavior customAspectReactions();
+    };
+
     struct B::Internals : B::DefaultInternals {
         static auto reached_by(
             const Quantum& watcher,
@@ -40,7 +52,7 @@ namespace local {
         // !on_a_reached(~A) — object reaction; inbound index then probe by changed A
         static void on_a_reached(Reacting context) {
             std::vector<Id> reached;
-            const auto indexation = ask::relations<A>(context).to<B, &B::Quantum::target>();
+            const auto indexation = ask::relations<A>(context).updated<B, &B::Quantum::target>();
             for (const auto& change : context.changes<A>().updated()) {
                 for (auto [id, item] : indexation.items(change.id)) {
                     if (not reached_by(item, change.id, change.now))
@@ -58,6 +70,38 @@ namespace local {
             reaction::aspect_wide<B, A>(&Internals::on_a_reached),
         };
     }
+
+    struct C::Internals : C::DefaultInternals {
+        // Degenerate: each A update that matches hub → ticks++
+        static void pulse_on_hub(Reacting context) {
+            const auto by_hub = ask::relations<A>(context).updated<C, &C::Quantum::hub>();
+            for (const auto& change : context.changes<A>().updated()) {
+                for (auto [id, item] : by_hub.items(change.id)) {
+                    with<C>::modify(context, id)->ticks = item.ticks + 1;
+                }
+            }
+        }
+
+        // Degenerate: if kept B disappears, clear ticks (do not remove C — not vital)
+        static void hush_on_kept_gone(Reacting context) {
+            const auto by_kept = ask::relations<B>(context).removed<C, &C::Quantum::kept>();
+            for (const auto& change : context.changes<B>().removed()) {
+                for (const auto id : by_kept.ids(change.id)) {
+                    with<C>::modify(context, id)->ticks = 0;
+                }
+            }
+        }
+    };
+
+    auto C::customAspectReactions() -> const Behavior {
+        return {
+            reaction::aspect_wide<C, A>(&Internals::pulse_on_hub),
+            reaction::aspect_wide<C, B>(&Internals::hush_on_kept_gone),
+            // codegen for anchor<> / custody<> fields:
+            reaction::structural::anchored<C, A, &C::Quantum::hub>{},
+            reaction::structural::custody<C, B, &C::Quantum::kept>{},
+        };
+    }
 }
 } // namespace
 
@@ -71,12 +115,13 @@ void relations_index_build()
     const Schema schema = ask::schema::merge({
         ask::schema::aspect<A>(),
         ask::schema::aspect<B>(),
+        ask::schema::aspect<C>(),
     });
 
     fqsm::model::complex::Reality world(schema);
     establish::Realm main(world);
 
-    // TDD playground: add fuel + expects when ask::relations lands.
+    // TDD playground: fuel + expects later (Affected index; later Anchor/Custody index).
 }
 
 }

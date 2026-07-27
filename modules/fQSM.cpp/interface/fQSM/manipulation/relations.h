@@ -2,17 +2,19 @@
 
 #include <iterator>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <fQSM/identifier.h>
 #include <fQSM/meta/interface.include.h>
-#include <fQSM/processing/_forwards.h>
+#include <fQSM/manipulation/_experimental.h>
+#include <fQSM/processing/contexts/review.h>
 
 namespace fqsm::manipulation {
 
     namespace detail {
 
-        // Target::Id → Watcher ids.
+        // Target::Id → Watcher ids (scoped to a delta layer of Target).
         //   .ids(target)   → cheap id range (empty if none)
         //   .items(target) → {id, const Quantum&} via get
         template<category::Any Target, category::Any Watchers>
@@ -47,7 +49,7 @@ namespace fqsm::manipulation {
                     auto operator*() const -> Related {
                         return Related{
                             *current,
-                            Watchers::Actions::get(context, *current),
+                            call_action<Watchers>::get(context, *current),
                         };
                     }
 
@@ -106,18 +108,72 @@ namespace fqsm::manipulation {
             }
         };
 
-        // ask::relations<Target>(context).to<Watchers, &Watchers::Quantum::link>()
+        // ask::relations<Target>(reacting).removed|updated|added|addedOrUpdated<Watchers, link>()
+        // Link: Affected<Target> or Id<Target> (Anchor/Custody aliases of Identifier).
+        // Index covers only watchers linked to Target ids present in that delta layer;
+        // empty layer → empty index (no Watchers scan).
         template<category::Any Target>
         struct RelationsOf {
-            Reading context;
+            Reacting context;
 
-            explicit RelationsOf(Reading context) : context(context) {}
+            explicit RelationsOf(Reacting context) : context(std::move(context)) {}
 
             template<category::Any Watchers, ::fqsm::Affected<Target> Watchers::Quantum::* Link>
-            auto to() const -> InboundIndex<Target, Watchers> {
+            auto removed() const -> InboundIndex<Target, Watchers> {
+                return index_for_layer<Watchers, Link>(context.changes<Target>().removed());
+            }
+
+            template<category::Any Watchers, ::fqsm::Id<Target> Watchers::Quantum::* Link>
+            auto removed() const -> InboundIndex<Target, Watchers> {
+                return index_for_layer<Watchers, Link>(context.changes<Target>().removed());
+            }
+
+            template<category::Any Watchers, ::fqsm::Affected<Target> Watchers::Quantum::* Link>
+            auto updated() const -> InboundIndex<Target, Watchers> {
+                return index_for_layer<Watchers, Link>(context.changes<Target>().updated());
+            }
+
+            template<category::Any Watchers, ::fqsm::Id<Target> Watchers::Quantum::* Link>
+            auto updated() const -> InboundIndex<Target, Watchers> {
+                return index_for_layer<Watchers, Link>(context.changes<Target>().updated());
+            }
+
+            template<category::Any Watchers, ::fqsm::Affected<Target> Watchers::Quantum::* Link>
+            auto added() const -> InboundIndex<Target, Watchers> {
+                return index_for_layer<Watchers, Link>(context.changes<Target>().added());
+            }
+
+            template<category::Any Watchers, ::fqsm::Id<Target> Watchers::Quantum::* Link>
+            auto added() const -> InboundIndex<Target, Watchers> {
+                return index_for_layer<Watchers, Link>(context.changes<Target>().added());
+            }
+
+            template<category::Any Watchers, ::fqsm::Affected<Target> Watchers::Quantum::* Link>
+            auto addedOrUpdated() const -> InboundIndex<Target, Watchers> {
+                return index_for_layer<Watchers, Link>(context.changes<Target>().addedOrUpdated());
+            }
+
+            template<category::Any Watchers, ::fqsm::Id<Target> Watchers::Quantum::* Link>
+            auto addedOrUpdated() const -> InboundIndex<Target, Watchers> {
+                return index_for_layer<Watchers, Link>(context.changes<Target>().addedOrUpdated());
+            }
+
+        private:
+            template<category::Any Watchers, auto Link, typename LayerView>
+            auto index_for_layer(LayerView layer) const -> InboundIndex<Target, Watchers> {
                 InboundIndex<Target, Watchers> index{.context = context};
-                for (const auto entry : context->template aspect<Watchers>().items()) {
-                    index.by_target[entry.value.*Link].push_back(entry.id);
+                if (layer.empty())
+                    return index;
+
+                std::unordered_set<typename Target::Id> interesting;
+                for (const auto& change : layer)
+                    interesting.insert(change.id);
+
+                const Reading reading = context;
+                for (const auto entry : reading->template aspect<Watchers>().items()) {
+                    const auto& target = entry.value.*Link;
+                    if (interesting.contains(target))
+                        index.by_target[target].push_back(entry.id);
                 }
                 return index;
             }
@@ -126,8 +182,8 @@ namespace fqsm::manipulation {
     } // namespace detail
 
     template<category::Any Target>
-    auto relations(Reading context) -> detail::RelationsOf<Target> {
-        return detail::RelationsOf<Target>{context};
+    auto relations(Reacting context) -> detail::RelationsOf<Target> {
+        return detail::RelationsOf<Target>{std::move(context)};
     }
 
 }

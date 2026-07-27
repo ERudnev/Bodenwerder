@@ -2,6 +2,7 @@
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
+#include <fQSM/manipulation/relations.h>
 
 namespace fqsm::features::reactions::structural::details {
 
@@ -32,11 +33,10 @@ namespace fqsm::features::reactions::structural {
 
         void apply(Reacting context) override {
             auto& clientPatch = context.adjustments<Client>();
+            const auto holders = ask::relations<Observed>(context).template removed<Client, link>();
             for (const auto& change : changes<Observed>(context).removed()) {
-                for (const auto& entry : context.proposal.aspect<Client>().items()) {
-                    if ((entry.value.*link) == change.id)
-                        clientPatch.put_deletion(entry.id);
-                }
+                for (const auto id : holders.ids(change.id))
+                    clientPatch.put_deletion(id);
             }
         }
     };

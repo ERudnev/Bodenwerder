@@ -99,6 +99,12 @@ public:
     {}
 
 protected:
+    auto layer_empty(Layer layer) const -> bool override {
+        const IteratorImpl first{state, patch, patch.begin(), patch.end(), layer};
+        const IteratorImpl last{state, patch, patch.end(), patch.end(), layer};
+        return first == last;
+    }
+
     auto delta_begin(Layer layer) const -> Iterator override {
         return this->make_delta_iterator(IteratorImpl{state, patch, patch.begin(), patch.end(), layer});
     }

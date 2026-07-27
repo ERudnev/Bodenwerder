@@ -182,6 +182,10 @@ public:
             return Iterator{owner->delta_end(layer)};
         }
 
+        auto empty() const -> bool {
+            return owner->layer_empty(layer);
+        }
+
         auto size() const -> std::size_t {
             return static_cast<std::size_t>(std::distance(begin(), end()));
         }
@@ -192,6 +196,7 @@ public:
 
         auto begin() const -> Iterator { return owner->delta_begin(Layer::all); }
         auto end() const -> Iterator { return owner->delta_end(Layer::all); }
+        auto empty() const -> bool { return owner->layer_empty(Layer::all); }
         auto size() const -> std::size_t {
             return static_cast<std::size_t>(std::distance(begin(), end()));
         }
@@ -222,6 +227,11 @@ protected:
     template<typename IteratorImpl>
     auto make_delta_iterator(IteratorImpl iterator) const -> Iterator {
         return Iterator(std::move(iterator));
+    }
+
+    // Default: type-erased begin==end. Override to avoid unique_ptr churn on hot empty checks.
+    virtual auto layer_empty(Layer layer) const -> bool {
+        return delta_begin(layer) == delta_end(layer);
     }
 
     virtual auto delta_begin(Layer layer) const -> Iterator = 0;

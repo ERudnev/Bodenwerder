@@ -90,6 +90,13 @@ void delta_iterators()
     EXPECT_EQ(collected[Layer::removed].size(), std::size_t{20});
     EXPECT_EQ(collected[Layer::updated].size(), std::size_t{30});
 
+    const auto delta = preview.delta<A>();
+    EXPECT_FALSE(delta.added().empty());
+    EXPECT_FALSE(delta.removed().empty());
+    EXPECT_FALSE(delta.updated().empty());
+    EXPECT_FALSE(delta.addedOrUpdated().empty());
+    EXPECT_EQ(delta.removed().empty(), delta.removed().begin() == delta.removed().end());
+
     EXPECT_TRUE(collected[Layer::all].contains(ids.at(0)));
     EXPECT_TRUE(collected[Layer::all].contains(ids.at(20)));
     EXPECT_TRUE(collected[Layer::all].contains(added_ids.at(0)));
