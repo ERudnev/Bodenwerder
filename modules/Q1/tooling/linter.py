@@ -302,16 +302,21 @@ def lint_members(
                 lint_type_expr(member["return_type"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
         elif member["kind"] == "ReactionDecl":
             scope = member["scope"]
-            if block_role == "one" and scope["kind"] != "OneScope":
-                warn(diags, member["line"], "reaction-scope-mismatch", "Reaction in `one` block should use one-scope syntax")
+            # one: object reactions — item scopes or watch scopes (~ / ~Type)
+            # all: set-as-set — watch scopes only
+            if block_role == "one" and scope["kind"] not in {"OneScope", "AllScope"}:
+                warn(diags, member["line"], "reaction-scope-mismatch", "Reaction in `one` block needs one-scope or watch scope")
             if block_role == "all" and scope["kind"] != "AllScope":
-                warn(diags, member["line"], "reaction-scope-mismatch", "Reaction in `all` block should use all-scope syntax")
+                warn(diags, member["line"], "reaction-scope-mismatch", "Reaction in `all` block should use watch scope (~ / ~Type)")
             if block_role == "always":
                 warn(diags, member["line"], "reaction-in-always", "Reactions are not expected inside `always` blocks")
             if scope["kind"] == "AllScope" and scope.get("extra_source"):
                 if not resolve_name([scope["extra_source"]], namespace, symbols):
-                    warn(diags, member["line"], "unknown-reaction-source", f"Unknown all-reaction source: {scope['extra_source']}")
-
+                    warn(diags, member["line"], "unknown-reaction-source", f"Unknown reaction watch source: {scope['extra_source']}")
+            effect = member.get("effect")
+            if effect is not None:
+                for param in effect.get("params") or []:
+                    lint_type_expr(param["type"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
 
 def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagnostic]:
     symbols, diags = collect_symbols(ast)

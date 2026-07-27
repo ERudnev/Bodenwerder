@@ -42,7 +42,7 @@ namespace Q1_fQSM::Etalon {
             static auto const_fieldwide_method(Reading) -> integer;
             static void nonconst_fieldwide_method(Writing);
         };
-        //@ '!' reactions aka normalizers: Internals + customAspectReactions (.cpp)
+        //@ '!': Internals + customAspectReactions — one: min/max; all: set cardinality invariant
         struct Internals;
         static const Behavior customAspectReactions();
     };
@@ -52,7 +52,27 @@ namespace Q1_fQSM::Etalon {
         struct Global {
             integer modulus = integer{2};
         };
-        //@ '!' reactions aka normalizers: Internals + customAspectReactions (.cpp)
+        //@ all-reaction !modulus_clamped(~) — set-as-set (Global)
+        struct Internals;
+        static const Behavior customAspectReactions();
+    };
+
+    struct Clock : Entity<Clock> {
+        struct Quantum {
+            timepoint current{};
+        };
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct ReactionSketch : Entity<ReactionSketch> {
+        struct Quantum {
+            string value;
+        };
+        struct Actions : BaseActions {
+            static void field_action(Writing);
+        };
+        //@ one-reactions: normalize(=one); watches (~ / ~Clock / ~SampleEntity) — Internals
         struct Internals;
         static const Behavior customAspectReactions();
     };
@@ -66,7 +86,7 @@ namespace Q1_fQSM::Etalon {
         struct Actions : BaseActions {
             static auto add_to(Writing, SampleEntity::Id, integer value) -> Id;
         };
-        //@ custom because of !remove_after_happened / !write_log_when_reached
+        //@ one-reactions !remove_after_happened(~) / !write_log_when_reached(~SampleEntity)
         struct Internals;
         static const Behavior customAspectReactions();
     };
@@ -75,7 +95,7 @@ namespace Q1_fQSM::Etalon {
         struct Quantum {
             integer power;
         };
-        //@ custom because of all-reaction !sync(~Tag)
+        //@ one-reaction !sync(~Tag)
         struct Internals;
         static const Behavior customAspectReactions();
     };
@@ -99,7 +119,7 @@ namespace Q1_fQSM::Etalon {
             static auto create(Writing, integer sample_value) -> Id;
             static void extend(Writing, SampleEntity::Id);
         };
-        //@ custom because of anchor/custody and all-reaction !limit_by_tag_count(~Tag)
+        //@ anchor/custody + all-reaction !limit_by_tag_count(~Tag) — set-as-set
         struct Internals;
         static const Behavior customAspectReactions();
     };

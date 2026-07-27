@@ -134,28 +134,36 @@ namespace Q1_fQSM::Etalon {
     }
 
     struct Reminder::Internals : Reminder::DefaultInternals {
-        // ~ : drop self when target is gone (vital) or trigger already satisfied.
+        // !remove_after_happened(~) — object reaction; fan-out over own changes (not full table)
         static void remove_after_happened(Reacting context) {
             std::vector<Id> doomed;
-            for (const auto rem : context.proposal.aspect<Reminder>().items()) {
-                const auto* target = with<Reminder>::vital(context, rem.id, &Quantum::target);
+            for (const auto change : context.changes<Reminder>().addedOrUpdated()) {
+                const auto* target = with<Reminder>::vital(context, change.id, &Quantum::target);
                 if (not target)
                     continue;
-                if (target->data_field == with<Reminder>::get(context, rem.id).trigger_value)
-                    doomed.push_back(rem.id);
+                if (target->data_field == with<Reminder>::get(context, change.id).trigger_value)
+                    doomed.push_back(change.id);
             }
             for (const auto id : doomed)
                 with<Reminder>::remove(context, id);
         }
 
-        // ~SampleEntity : log when watched SampleEntity hits trigger_value, then remove Reminder.
+        // one-level predicate: this Reminder vs one SampleEntity snapshot
+        static auto reached_by(
+            const Quantum& rem,
+            SampleEntity::Id sample_id,
+            const SampleEntity::Quantum& sample_now) -> bool
+        {
+            return static_cast<SampleEntity::Id>(rem.target) == sample_id
+                and sample_now.data_field == rem.trigger_value;
+        }
+
+        // !write_log_when_reached(~SampleEntity) — object reaction; custom join SampleEntity × Reminder
         static void write_log_when_reached(Reacting context) {
             std::vector<Id> reached;
             for (const auto& change : context.changes<SampleEntity>().updated()) {
                 for (const auto rem : context.proposal.aspect<Reminder>().items()) {
-                    if (static_cast<SampleEntity::Id>(rem.value.target) != change.id)
-                        continue;
-                    if (change.now.data_field != rem.value.trigger_value)
+                    if (not reached_by(rem.value, change.id, change.now))
                         continue;
                     base::message("Reminder reached: SampleEntity data_field == {}", rem.value.trigger_value);
                     reached.push_back(rem.id);
@@ -168,12 +176,14 @@ namespace Q1_fQSM::Etalon {
 
     auto Reminder::customAspectReactions() -> const Behavior {
         return {
+            // still aspect_wide: no item-worker that fans out + allows remove/world
             reaction::aspect_wide<Reminder>(&Reminder::Internals::remove_after_happened),
             reaction::aspect_wide<Reminder, SampleEntity>(&Reminder::Internals::write_log_when_reached),
         };
     }
 
     struct Remnant::Internals : Remnant::DefaultInternals {
+        // one-level evaluator (Reading, Id, Quantum) — fits constraint::element_wide shape
         static auto evaluate_sync(Reading context, Id id, const Quantum& last_value) -> PossibleChange {
             const auto modulus = with<Tag>::get_global(context).modulus;
             if (modulus <= integer{0})
@@ -186,26 +196,47 @@ namespace Q1_fQSM::Etalon {
             return PossibleChange{expected_power};
         }
 
+        // !sync(~Tag) — object reaction; Tag stimulus needs custom fan-out (element_wide listens only Remnant)
         static void sync(Reacting context) {
             auto& patch = context.adjustments<Remnant>();
 
-            // wave 1: Tag updates may force recomputation of matching Remnant items
             for (const auto change : context.changes<Tag>().addedOrUpdated()) {
+                if (not with<Remnant>::exists(context, change.id))
+                    continue;
                 const auto fix = evaluate_sync(context, change.id, with<Remnant>::get(context, change.id));
-                if (fix) patch.put_modification(change.id, *fix);
+                if (fix)
+                    patch.put_modification(change.id, *fix);
             }
 
-            // wave 2: direct Remnant updates use the same evaluator
             for (const auto change : context.changes<Remnant>().addedOrUpdated()) {
                 const auto fix = evaluate_sync(context, change.id, change.now);
-                if (fix) patch.put_modification(change.id, *fix);
+                if (fix)
+                    patch.put_modification(change.id, *fix);
             }
         }
     };
 
     auto Remnant::customAspectReactions() -> const Behavior {
         return {
+            // aspect_wide: must hear Tag; Remnant-only half could be element_wide but would split one DSL !
             reaction::aspect_wide<Remnant, Tag>(&Remnant::Internals::sync),
+        };
+    }
+
+    void ReactionSketch::Actions::field_action(Writing) {}
+
+    struct ReactionSketch::Internals : ReactionSketch::DefaultInternals {
+        static auto normalize(const Quantum& inspected) -> PossibleChange {
+            return {};
+        }
+
+        // Doctrine one-watches (~Clock / ~ / ~SampleEntity, incl. ->> / ->=): not projected yet.
+        // Will need item-worker + fan-out; today would be aspect_wide + custom loops (Tommy noise).
+    };
+
+    auto ReactionSketch::customAspectReactions() -> const Behavior {
+        return {
+            reaction::constraint::element<ReactionSketch>(&ReactionSketch::Internals::normalize),
         };
     }
 

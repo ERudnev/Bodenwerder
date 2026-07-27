@@ -12,8 +12,8 @@ import parser as q1_parser
 
 
 ROOT = TOOLING_DIR.parents[2]
-ASPECTS = ROOT / "modules" / "Q1" / "golden" / "Etalon.q1" / "aspects.q1.types"
-ELEMENTARY = ROOT / "modules" / "Q1" / "golden" / "Etalon.q1" / "elementary.q1.types"
+ASPECTS = ROOT / "modules" / "Q1" / "golden" / "doctrine" / "aspects.q1.types"
+ELEMENTARY = ROOT / "modules" / "Q1" / "golden" / "doctrine" / "elementary.q1.types"
 
 
 def test_golden_aspects_parses() -> None:
@@ -115,7 +115,57 @@ namespace Demo
     all_reactions = [m for m in entity["blocks"][1]["members"] if m["kind"] == "ReactionDecl"]
     assert [r["scope"]["raw"] for r in one_reactions] == ["-one", "=one", ">one"]
     assert [r["scope"]["raw"] for r in all_reactions] == ["~", "~Tag"]
+    assert all(r.get("effect") is None for r in one_reactions + all_reactions)
 
+
+def test_parse_reaction_effect_tails() -> None:
+    text = """
+namespace Demo
+  entity Clock
+    one
+      t: time
+  entity Sketch
+    one
+      value: string
+      !normalize(=one)
+      !watch_clock(~Clock)->=field_update()
+      !watch_self(~)
+      !watch_sample(~SampleEntity)->>reflex()
+      !watch_trigger(~SampleEntity)->>field_action()
+    all
+      >field_action()
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    sketch = ast["declarations"][0]["declarations"][1]
+    one = [m for m in sketch["blocks"][0]["members"] if m["kind"] == "ReactionDecl"]
+    by_name = {r["name"]: r for r in one}
+    assert by_name["normalize"]["effect"] is None
+    assert by_name["watch_self"]["effect"] is None
+    clock = by_name["watch_clock"]["effect"]
+    assert clock["effect_kind"] == "command"
+    assert clock["op_prefix"] == "="
+    assert clock["name"] == "field_update"
+    reflex = by_name["watch_sample"]["effect"]
+    assert reflex["effect_kind"] == "effector"
+    assert reflex["op_prefix"] == ">"
+    assert reflex["name"] == "reflex"
+    action = by_name["watch_trigger"]["effect"]
+    assert action["name"] == "field_action"
+    assert by_name["watch_sample"]["scope"]["raw"] == "~SampleEntity"
+
+
+def test_parse_reaction_rejects_plain_value_return() -> None:
+    text = """
+namespace Demo
+  entity A
+    one
+      !bad(~)->integer
+"""
+    try:
+        q1_parser.parse_text(text, source="<snippet>")
+        assert False, "expected ParseError"
+    except q1_parser.ParseError as exc:
+        assert "->>" in str(exc) or "->=" in str(exc)
 
 def test_parse_external_type_expression() -> None:
     text = """

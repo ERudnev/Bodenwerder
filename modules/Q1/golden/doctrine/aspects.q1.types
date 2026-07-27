@@ -25,12 +25,34 @@ namespace Q1_fQSM
         ?find_first(integer) -> #?
         ?const_fieldwide_method() -> integer // just sum of all values
         =nonconst_fieldwide_method() // removes one item with minimal value
-        !some_logic_fieldwide_invariant(~) // aspect-wide on own type
+        !some_logic_fieldwide_invariant(~) // set-as-set: cardinality vs max_elements
+
+    // reaction = watch + (action | reflex)
+    //   watch  = !name(scope)  — wakeup + condition
+    //   action = >name(...)    — public; one-level or all-level; only when written explicitly
+    //   reflex = ->>name() with no matching > — Internals; not for hand calls
+    // ->>name(): action if >name exists, else reflex — never invent > from ->>
+    // one = reaction of an object; all = reaction of a set as a set (rare)
+    entity Clock
+      one
+        current: time
+
+    entity ReactionSketch
+      one
+        value: string
+        !normalize(=one)
+        !watch_clock(~Clock)->=field_update()
+        !watch_self(~)
+        !echo_sample(~SampleEntity)
+        !watch_sample(~SampleEntity)->>reflex()
+        !watch_trigger(~SampleEntity)->>field_action()
+      all
+        >field_action()
 
     attribute Tag of SampleEntity
       all
         modulus: integer
-        !modulus_clamped(~) // must be >= 1
+        !modulus_clamped(~) // set-as-set: Global modulus
 
     entity Reminder
       one
@@ -41,12 +63,10 @@ namespace Q1_fQSM
       all
         >add_to(#SampleEntity, value: integer)->#
 
-    // NOT IMPLEMENTED as Q1 feature: !sync(>one)
     component Remnant of Tag
       one
         power: integer @cache// == SampleEntity::data_field / Tag::Modulus (Tag quarantees integer)
-      all
-        !sync(~Tag) //@
+        !sync(~Tag)
 
     component SampleComponent of SampleEntity
       one
@@ -60,7 +80,7 @@ namespace Q1_fQSM
       all
         >create(sample_value: integer)-># // reserved: minimal Aspect set including Identity source (Entity); here includes main_anchor Trivia
         >extend(existing: #SampleEntity)
-        !limit_by_tag_count(~Tag)
+        !limit_by_tag_count(~Tag) // set-as-set: cardinality vs Tag
 
     // experimental one-line form of syntax (sorry, parser!)
     entity Note one text: string

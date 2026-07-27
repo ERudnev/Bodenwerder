@@ -4,8 +4,8 @@ This folder contains a small, intentionally narrow toolset for reading and check
 
 The tools here are not a production compiler and do not define a new version of Q1. They only formalize the subset that is already used by the current golden inputs:
 
-- `modules/Q1/golden/Etalon.q1/aspects.q1.types`
-- `modules/Q1/golden/Etalon.q1/elementary.q1.types`
+- `modules/Q1/golden/doctrine/aspects.q1.types`
+- `modules/Q1/golden/doctrine/elementary.q1.types`
 
 If the language evolves, this folder should be updated by extending the documented assumptions rather than silently changing behavior.
 
@@ -34,7 +34,7 @@ It understands:
 - `using`, `struct`, `entity`, `attribute`, `feature`, `component`, `group`, `archetype`, `manipulation`
 - aspect blocks `always`, `one`, `all`
 - operations `?`, `=`, `>`
-- reactions `!name(scope)`
+- reactions `!name(scope)` with optional effect tail `->>op(...)` / `->=op(...)`
 - the currently used type forms such as `#`, `#Type`, `T?`, `anchor<T>`, `custody<T>`, `affects<T>`, `~Type::member`
 - a limited amount of `//@` metadata
 
@@ -52,21 +52,20 @@ Examples assume the working directory is this folder or the repository root.
 ### Parse a Q1 file
 
 ```bash
-python modules/Q1/tooling/parser.py modules/Q1/golden/Etalon.q1/aspects.q1.types
+python modules/Q1/tooling/parser.py modules/Q1/golden/doctrine/aspects.q1.types
 ```
 
 ### Dump JSON
 
 ```bash
-python modules/Q1/tooling/parser.py modules/Q1/golden/Etalon.q1/aspects.q1.types --dump-json
+python modules/Q1/tooling/parser.py modules/Q1/golden/doctrine/aspects.q1.types --dump-json
 ```
 
 ### Run the linter
 
 ```bash
-python modules/Q1/tooling/linter.py modules/Q1/golden/Etalon.q1/aspects.q1.types
+python modules/Q1/tooling/linter.py modules/Q1/golden/doctrine/aspects.q1.types
 ```
-
 ### Run tests
 
 ```bash

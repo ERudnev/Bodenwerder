@@ -137,55 +137,47 @@ Q1 validators are not projected as public methods.
 
 ## Reaction Analysis Scope
 
-For Q1 reactions, the argument inside `!name(...)` declares the analysis scope.
+For Q1 reactions, the argument inside `!name(...)` declares the analysis scope (not a parameter list).
+An optional effect tail may follow: `->>op(...)` or `->=op(...)`.
 
-This is not an ordinary function parameter list. It is a DSL-level declaration of what kind of changes the reaction analyzes.
+### Reaction shapes
 
-### `one` reactions
+- whole: `!name(scope)`
+- watch + action / reflex: `!name(scope)->>op(...)` — public `>` if declared, else Internals **reflex** (never invent `>`)
+- watch + command: `!name(scope)->=op(...)` — same resolve rule for `=`
 
-For reactions declared in the `one` block, the scope is expressed in the language of changes related to one item.
+See `wiki/docs/Q1/reaction_is_effector.md` and `modules/Q1/syntax.txt`.
 
-- `!name(-one)` means reaction to deletion of one item
-- `!name(=one)` means one-item-local normalization on item change
-- `!name(>one)` means one-item-triggered world-aware corrector on item change
+### `one` reactions (object)
 
-The symbol inside `one` reactions therefore carries two pieces of meaning:
+Common case: reaction of an object. Scopes:
 
-- what kind of item event wakes the reaction up
-- what kind of worker shape the projection is expected to use
+- `-one` / `=one` / `>one` — item-event worker shapes (`=one` is strictly local quantum/cache)
+- `~` / `~Type` — watch change sources (world / other aspects), still an **object** reaction
 
-Practical reading:
+### `all` reactions (set as a set)
 
-- `-one` -> deletion-triggered worker
-- `=one` -> local per-item corrector
-- `>one` -> world-aware per-item corrector
+Rare: cardinality, Global invariants, cross-set limits.
 
-### `all` reactions
+- `!name(~)` / `!name(~OtherType)` — owning type implicit; `~OtherType` extends stimulus set
 
-For reactions declared in the `all` block, the scope is expressed in the language of types whose changes are analyzed.
+Canonical set examples:
 
-- `!name(~)` means aspect-wide analysis with the owning aspect type implicitly included
-- `!name(~OtherType)` means aspect-wide analysis where `OtherType` is added as an explicit source type
+- `!some_logic_fieldwide_invariant(~)`
+- `!limit_by_tag_count(~Tag)`
+- `!modulus_clamped(~)` (Global)
 
-The owning aspect type is always implicit for `all` reactions. An explicit `~OtherType` does not replace the owning type; it extends the set of types whose changes may wake the reaction up.
+Canonical object examples:
 
-Canonical examples from this etalon:
-
-- `!some_logic_fieldwide_invariant(~)` means aspect-wide analysis over the owning type only
-- `!limit_by_tag_count(~Tag)` means aspect-wide analysis over the owning type plus `Tag`
-
-Canonical example from `one` reactions:
-
-- `!sync(>one)` means wake up on changed `Remnant` items and compute a corrected `Quantum` with world access
+- `!min_value(=one)`
+- `!sync(~Tag)` on Remnant (in `one`)
+- `!watch_trigger(~SampleEntity)->>field_action()` on ReactionSketch
 
 ### Why
 
-This distinction is easy to lose if one reads `!name(...)` as if it were just another function signature. It is not. The parentheses describe reaction analysis scope:
-
-- in `one`, scope is phrased as item-level wakeup plus worker shape
-- in `all`, scope is phrased as analyzed source types
-
-That difference is part of Q1 semantics and must survive projection.
+- in `one`, prefer object semantics (item worker / object watch); fan-out belongs in runtime/codegen, not in hand-written set loops
+- in `all`, scope is set-level analysis
+- `->>` / `->=` keep mutation behind action / reflex / command and protect public Actions
 
 ### Normative rules
 

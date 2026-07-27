@@ -8,11 +8,12 @@ The goal is not to hide uncertainty. The goal is to keep uncertainty explicit.
 
 The tooling assumes authority only from:
 
-- `modules/Q1/golden/Etalon.q1/aspects.q1.types`
-- `modules/Q1/golden/Etalon.q1/elementary.q1.types`
+- `modules/Q1/golden/doctrine/aspects.q1.types`
+- `modules/Q1/golden/doctrine/elementary.q1.types`
 - `modules/Q1/syntax.txt`
 - `modules/Q1/methodology.tome`
-- `modules/Q1/golden/Etalon.fqSM/README.md`
+- `modules/Q1/golden/golden/README.md`
+- `wiki/docs/Q1/reaction_is_effector.md`
 
 ## Explicit assumptions
 
@@ -28,20 +29,21 @@ The tooling therefore treats `one` / `all` / `always` as the active subset and d
 
 Current supported scopes:
 
-- `-one`
-- `=one`
-- `>one`
-- `~`
-- `~Type`
+- `-one`, `=one`, `>one` — item-event scopes (`OneScope`)
+- `~`, `~Type` — change-source / watch scopes (`AllScope` in AST; usable in both `one` and `all` blocks)
 
-### 3. `>one` is accepted as current etalon syntax
+Optional effect tail after the scope `)`:
 
-The current golden aspect file explicitly contains:
+- `->>name(...)` — yield effector call (`>`): resolves to public **action** if `>name` is declared, else private **reflex** (never invent `>`)
+- `->=name(...)` — yield command call (`=`): same resolve rule for public vs Internals
 
-- a commented note that `!sync(>one)` is not implemented as a current Q1 feature
-- an active `!sync(~Tag)` replacement
+Bare `!name(scope)` remains a whole reaction (no separate tail).
 
-The tooling accepts `>one` syntactically because it is already part of the semantic discussion and documented project rationale, even if it is not currently used as an active rule in the golden file.
+### 3. `>one` remains accepted; object watches use `~` / `~Type` in `one`
+
+Historical `!sync(>one)` is still parseable. Current etalon prefers object reactions in `one` with watch scopes, e.g. `!sync(~Tag)`, `!watch_clock(~Clock)->=field_update()`.
+
+Set-as-set reactions stay in `all` (cardinality / Global / cross-set limits).
 
 ### 4. `group<Note> of SampleEntity` is a dedicated aspect form
 
@@ -120,7 +122,7 @@ Used in named operation parameters:
 - `>name: Type` → mutable/out reference (`binding: "mut"`, C++ `Type& name`)
 - `name: Type` → unqualified (`binding: null`)
 
-Examples in `golden/Etalon.q1/elementary.q1.types`:
+Examples in `golden/doctrine/elementary.q1.types`:
 
 - `?add_to(>target: StructWithMethods)`
 - `=add_from(?source: StructWithMethods)`

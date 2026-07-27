@@ -395,20 +395,81 @@ def _parse_reaction_scope(text: str, line: int) -> dict[str, Any]:
     raise ParseError(f"Unsupported reaction scope: {text!r}", line)
 
 
+def _parse_reaction_effect(tail: str, line: int) -> dict[str, Any]:
+    """Parse optional !name(scope) tail: ->>op(...) or ->=op(...)."""
+    if tail.startswith("->>"):
+        op_prefix = ">"
+        rest = tail[3:].strip()
+        effect_kind = "effector"
+    elif tail.startswith("->="):
+        op_prefix = "="
+        rest = tail[3:].strip()
+        effect_kind = "command"
+    else:
+        raise ParseError(
+            f"Reaction effect tail must be ->>op(...) or ->=op(...), got {tail!r}",
+            line,
+        )
+    name_end = rest.find("(")
+    if name_end == -1:
+        raise ParseError("Malformed reaction effect call", line)
+    name = rest[:name_end].strip()
+    if not IDENT_RE.match(name):
+        raise ParseError(f"Invalid reaction effect name: {name!r}", line)
+    depth = 0
+    close_index = None
+    for index, ch in enumerate(rest[name_end:], start=name_end):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                close_index = index
+                break
+    if close_index is None:
+        raise ParseError("Unclosed reaction effect parameter list", line)
+    if rest[close_index + 1 :].strip():
+        raise ParseError("Unexpected tokens after reaction effect call", line)
+    params_text = rest[name_end + 1 : close_index]
+    return _node(
+        "ReactionEffect",
+        line,
+        effect_kind=effect_kind,
+        op_prefix=op_prefix,
+        name=name,
+        params=_parse_params(params_text, line),
+    )
+
+
 def _parse_reaction(line: Line) -> dict[str, Any]:
     text = line.content[1:].strip()
     name_end = text.find("(")
-    if name_end == -1 or not text.endswith(")"):
+    if name_end == -1:
         raise ParseError("Malformed reaction", line.number)
     name = text[:name_end].strip()
     if not IDENT_RE.match(name):
         raise ParseError(f"Invalid reaction name: {name!r}", line.number)
-    scope_text = text[name_end + 1:-1].strip()
+    depth = 0
+    close_index = None
+    for index, ch in enumerate(text[name_end:], start=name_end):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                close_index = index
+                break
+    if close_index is None:
+        raise ParseError("Unclosed reaction scope", line.number)
+    scope_text = text[name_end + 1 : close_index].strip()
+    tail = text[close_index + 1 :].strip()
+    effect = _parse_reaction_effect(tail, line.number) if tail else None
     return _node(
         "ReactionDecl",
         line.number,
         name=name,
         scope=_parse_reaction_scope(scope_text, line.number),
+        effect=effect,
         comment=line.comment,
     )
 

@@ -1,8 +1,8 @@
 (* Draft grammar for the currently used golden subset of Q1.
    This is intentionally narrow.
    It describes only constructs found in:
-   - modules/Q1/golden/Etalon.q1/aspects.q1.types
-   - modules/Q1/golden/Etalon.q1/elementary.q1.types
+   - modules/Q1/golden/doctrine/aspects.q1.types
+   - modules/Q1/golden/doctrine/elementary.q1.types
 
    Indentation is semantic. The real parser treats INDENT/DEDENT as structural tokens.
    Reaction scopes are not normal function parameters. *)
@@ -102,15 +102,19 @@ param               ::= IDENT ":" type_expr
                       | type_expr
                       ;
 
-reaction_decl       ::= "!" IDENT "(" reaction_scope ")" ;
-reaction_scope      ::= one_scope | all_scope ;
+reaction_decl       ::= "!" IDENT "(" reaction_scope ")" [ reaction_effect ] ;
+reaction_scope      ::= one_scope | watch_scope ;
+reaction_effect     ::= "->>" effect_call
+                      | "->=" effect_call
+                      ;
+effect_call         ::= IDENT "(" [ param_list ] ")" ;
 
 one_scope           ::= "-" "one"
                       | "=" "one"
                       | ">" "one"
                       ;
 
-all_scope           ::= "~" [ IDENT ] ;
+watch_scope         ::= "~" [ IDENT ] ;
 
 type_expr           ::= type_primary type_suffix* ;
 type_suffix         ::= "?" ;
