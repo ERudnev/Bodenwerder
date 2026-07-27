@@ -9,6 +9,7 @@
 
 // manipulation
 #include <fQSM/manipulation/schema.h>
+#include <fQSM/manipulation/relations.h>
 #include <fQSM/manipulation/_experimental.h>
 #include <fQSM/manipulation/_temp_sugar.h>
 

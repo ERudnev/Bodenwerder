@@ -6,6 +6,7 @@
     X(structural_constraints) \
     X(anchor_constraints) \
     X(entity_relations) \
+    X(relations_index_build) \
     X(custom_reactions) \
     X(killing_feature) \
     X(group_category) \

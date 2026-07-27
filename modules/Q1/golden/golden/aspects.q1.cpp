@@ -154,7 +154,7 @@ namespace Q1_fQSM::Etalon {
             SampleEntity::Id sample_id,
             const SampleEntity::Quantum& sample_now) -> bool
         {
-            return static_cast<SampleEntity::Id>(rem.target) == sample_id
+            return rem.target == sample_id
                 and sample_now.data_field == rem.trigger_value;
         }
 
