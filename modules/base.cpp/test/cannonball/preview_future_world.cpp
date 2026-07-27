@@ -21,7 +21,7 @@ void preview_future_world()
 
     Patch patch;
     patch.modify(2, 200);
-    patch.insert(3, std::nullopt);
+    patch.insert(3, base::cannonball::Patchlet<int>::deletion(30));
     patch.modify(4, 40);
 
     Draft preview(state, patch, base::cannonball::SeeChanges::observable);

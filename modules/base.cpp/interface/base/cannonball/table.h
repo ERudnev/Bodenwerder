@@ -178,12 +178,12 @@ public:
         entries.reserve(capacity);
     }
 
-    void insert(const Key& id, const Val& value) override {
-        insert_impl(id, value);
+    Val& insert(const Key& id, const Val& value) override {
+        return insert_impl(id, value);
     }
 
-    void insert(Key&& id, Val&& value) override {
-        insert_impl(std::move(id), std::move(value));
+    Val& insert(Key&& id, Val&& value) override {
+        return insert_impl(std::move(id), std::move(value));
     }
 
     bool erase(const Key& id) override {
@@ -221,16 +221,18 @@ protected:
 
 private:
     template<typename KeyArg, typename ValArg>
-    void insert_impl(KeyArg&& id, ValArg&& value) {
+    Val& insert_impl(KeyArg&& id, ValArg&& value) {
         const auto lookup = idToIndex.find(id);
         if (lookup != idToIndex.end()) {
-            entries[lookup->second].value = std::forward<ValArg>(value);
-            return;
+            auto& slot = entries[lookup->second].value;
+            slot = std::forward<ValArg>(value);
+            return slot;
         }
 
         const SizeType slot = entries.size();
         entries.emplace_back(Entry{std::forward<KeyArg>(id), std::forward<ValArg>(value)});
         idToIndex.emplace(entries.back().id, slot);
+        return entries.back().value;
     }
 
     std::unordered_map<Key, SizeType, Hasher, KeyEqual> idToIndex;

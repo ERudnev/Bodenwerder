@@ -948,7 +948,7 @@ namespace fqsm::processing::persistency::database::detail {
                 static_cast<typename Meta::Id::Raw>(sqlite3_column_int64(statement, 0))
             };
             if (!with<Meta>::exists(context, id))
-                context.workers_interface().updates<Meta>().put_as_restored(id, fqsm::utility::BadValue{});
+                context.workers_interface().updates<Meta>().put_modification(id, fqsm::utility::BadValue{});
             auto quantum = with<Meta>::modify(context, id);
 
             ReadOneFieldsDesc<Meta> reader{statement, *quantum, 1};

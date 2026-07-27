@@ -65,10 +65,12 @@ Carrier of intended changes over some keyed world.
 Semantics:
 
 - stores only changes, not full state;
-- `Patchlet<T> = std::optional<T>`;
+- `Patchlet<T>`: `{ tombstone, verified, value }`;
 - key absent in patch: no local change;
-- key present with value: set/update;
-- key present with `nullopt`: remove.
+- key present, `tombstone == false`: set/update (`value`);
+- key present, `tombstone == true`: remove on integrate (quantum may still be touched; deletion wins);
+- `verified`: Scarlett — honest `put_*` vs touch/`update_modification`;
+- `insert`: absent → place; present → replace `value`+`verified`, `tombstone |= incoming` (never clears tombstone by overwrite).
 
 `Patch` is a composable change set, not a normalized diff.
 

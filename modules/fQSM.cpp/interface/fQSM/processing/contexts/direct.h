@@ -88,8 +88,8 @@ namespace fqsm::processing {
         explicit Dock(Context::Ptr parent) : context(std::move(parent)) {}
 
         // session read = Reality ⊕ patch (same as Writing sees)
-        operator View() const { return View(context->subcontext->world); }
-        const model::complex::State* operator->() const { return &context->subcontext->world; }
+        operator View() const { return View(context->subcontext->future); }
+        const model::complex::State* operator->() const { return &context->subcontext->future; }
 
         // same Operational whose collapse feeds acceptWorkers — not a fresh nested session
         operator Gate() const { return Gate(context->subcontext); }
@@ -98,9 +98,9 @@ namespace fqsm::processing {
         operator Breach<Meta>() const { return Breach<Meta>(context); }
 
         // same surface as Gate for refuse / workers_interface
-        model::complex::WorkersInterface& workers_interface() { return *context->subcontext->accumulator; }
-        utility::BadValue refuse(std::string message) { context->subcontext->accumulator->summary.critical.emplace_back(std::move(message)); return {}; }
-        void warning(std::string message) { context->subcontext->accumulator->summary.warning.emplace_back(std::move(message)); }
+        model::complex::WorkersInterface& workers_interface() { return context->subcontext->future; }
+        utility::BadValue refuse(std::string message) { context->subcontext->future.summary().critical.emplace_back(std::move(message)); return {}; }
+        void warning(std::string message) { context->subcontext->future.summary().warning.emplace_back(std::move(message)); }
 
     private:
         const Context::Ptr context;

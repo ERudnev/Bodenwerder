@@ -9,6 +9,7 @@ void patch_integrate()
 {
     using Table = base::cannonball::Table<int, int>;
     using Patch = base::cannonball::Patch<int, int>;
+    using Patchlet = base::cannonball::Patchlet<int>;
 
     Table state;
     state.insert(1, 10);
@@ -16,7 +17,7 @@ void patch_integrate()
 
     Patch patch;
     patch.modify(1, 11);
-    patch.insert(2, std::nullopt);
+    patch.insert(2, Patchlet::deletion(20));
     patch.modify(3, 30);
 
     Patch::integrate(state, patch);

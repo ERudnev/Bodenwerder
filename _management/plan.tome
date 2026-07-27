@@ -59,4 +59,21 @@ namespace plan {
       а не ad-hoc Demo без ontology. Имя Product зафиксировано в обсуждении планирования.
   }
 
+  fqsm_future_worker_context_interface: @Task {
+    status: 📋
+    goal:
+      Убрать вонючий `get(context, id)` из deletion-путей: неконстантный Future/worker-context должен
+      давать воркерам удобную операцию удаления, которая сама фиксирует наблюдаемый Quantum в patchlet.
+      Это интерфейс контекста, не write-through метод Future-projection: const Future остаётся только
+      projection для реакций и не получает mutation capability.
+    subtasks:
+      📋 Спроектировать отдельный worker-context interface над неконстантным Future; не сломать projection,
+         лёгкие копии context и разделение proposal/output patch у реакций
+      📋 Вычистить нынешний workers/context API после появления нового интерфейса; удалить ручные snapshot-get
+         из deletion-вызовов
+    reason:
+      Deletion обязан хранить реальный Quantum, увиденный worker’ом: параллельная modification может держать
+      ссылку на тот же patchlet. Удобство нельзя получать const-методом или скрытой записью через reaction proposal.
+  }
+
 }

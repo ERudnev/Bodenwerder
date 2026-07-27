@@ -1,0 +1,51 @@
+#pragma once
+
+#include <fQSM/meta/interface.include.h>
+#include <fQSM/model/_forwards.h>
+#include <fQSM/model/linear/patch.h>
+#include <fQSM/model/intertype/composite.h>
+#include <fQSM/model/linear/workersInterface.h>
+
+namespace fqsm::model::complex {
+
+struct WorkersInterface {
+    struct Result {
+        using Category = std::vector<std::string>;
+        Category critical;
+        Category warning;
+
+        bool good() const { return critical.empty(); }
+    };
+    //WorkersInterface(Schema schema, const intertype::Composite<linear::patch::Erased>& builtLines) : schema(schema), patchLines(builtLines) {}
+
+    Result summary;
+
+    /*
+    template<category::Any Meta>
+    linear::WorkersInterface<Meta>& updates();
+
+    template<category::Any Meta>
+    const linear::WorkersInterface<Meta>& updates() const;
+    */
+protected:
+    //ref<Patch> patch;
+    //const Schema schema;
+    //const intertype::Composite<linear::patch::Erased>& patchLines;
+};
+
+}
+
+/*
+namespace fqsm::model::complex {
+    template<category::Any Meta>
+    linear::WorkersInterface<Meta>& WorkersInterface::updates() {
+        return static_cast<linear::Patch<Meta>&>(patch->
+        //return static_cast<linear::Patch<Meta>&>(*patchLines.container.at(TypeId<Meta>).get());
+    }
+
+    template<category::Any Meta>
+    const linear::WorkersInterface<Meta>& WorkersInterface::updates() const {
+        //return static_cast<const linear::Patch<Meta>&>(*patchLines.container.at(TypeId<Meta>).get());
+   }
+}
+*/

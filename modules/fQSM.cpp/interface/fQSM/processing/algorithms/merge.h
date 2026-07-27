@@ -20,8 +20,10 @@ namespace fqsm::processing::algorithm::details {
         const model::linear::Delta<Meta> delta{base.aspect<Meta>(), sourcePatch, model::linear::Delta<Meta>::Mode::clean};
 
         for (const auto entry : delta) {
-            if (entry.add() || entry.update()) targetPatch.items.modify(entry.id, *entry.after);
-            if (entry.remove()) targetPatch.items.insert(entry.id, std::nullopt);
+            if (entry.add() || entry.update())
+                targetPatch.items.modify(entry.id, *entry.after);
+            if (entry.remove())
+                targetPatch.items.insert(entry.id, base::cannonball::Patchlet<Quantum<Meta>>::deletion(entry.throwing_before()));
         }
     }
 

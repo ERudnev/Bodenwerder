@@ -25,11 +25,11 @@ namespace fqsm::processing::orchestrator {
 
         operator Stewarding();
 
-        auto result() const -> const model::complex::Patch::Result& { return lastResult; }
+        auto result() const -> const model::complex::Patch::Summary& { return lastResult; }
 
     private:
         model::complex::Reality reality;
-        model::complex::Patch::Result lastResult;
+        model::complex::Patch::Summary lastResult;
 
         auto writing(Mode) -> Writing override;
         auto makeChildPolicy() -> ChildPolicy override;

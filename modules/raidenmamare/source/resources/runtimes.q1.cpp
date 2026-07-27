@@ -53,9 +53,7 @@ namespace rmmr::resource {
                 if (runtime_exists) {
                     runtime_patch.put_deletion(runtime_id);
                 }
-                auto& fixed = runtimes_patch.update_modification(runtimes_id, [&]() -> const Runtimes::Quantum& {
-                    return with<Runtimes>::get(context, runtimes_id);
-                });
+                auto& fixed = runtimes_patch.get_modification_access(runtimes_id);
                 (fixed.*field).erase(asset_id);
             }
         }

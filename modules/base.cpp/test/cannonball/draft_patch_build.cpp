@@ -18,8 +18,8 @@ void draft_patch_build()
     state.insert(2, 20);
 
     Patch patch;
-    patch.insert(2, 200);
-    patch.insert(4, 40);
+    patch.insert(2, base::cannonball::Patchlet<int>::modification(200));
+    patch.insert(4, base::cannonball::Patchlet<int>::modification(40));
 
     Draft draft(state, patch, base::cannonball::SeeChanges::observable);
 
@@ -45,15 +45,15 @@ void draft_patch_build()
     draft.erase(4);
 
     EXPECT_TRUE(patch.contains(1));
-    EXPECT_TRUE(patch.at(1).has_value());
-    EXPECT_EQ(patch.at(1).value(), 11);
+    EXPECT_FALSE(patch.at(1).tombstone);
+    EXPECT_EQ(patch.at(1).quantum, 11);
 
     EXPECT_TRUE(patch.contains(2));
-    EXPECT_FALSE(patch.at(2).has_value());
+    EXPECT_TRUE(patch.at(2).tombstone);
 
     EXPECT_TRUE(patch.contains(3));
-    EXPECT_TRUE(patch.at(3).has_value());
-    EXPECT_EQ(patch.at(3).value(), 30);
+    EXPECT_FALSE(patch.at(3).tombstone);
+    EXPECT_EQ(patch.at(3).quantum, 30);
 
     EXPECT_FALSE(patch.contains(4));
 

@@ -50,7 +50,7 @@ namespace fqsm::utility {
             base::message("    {}", line);
     }
 
-    void log_rejected_transaction(const model::complex::Patch::Result& result) {
+    void log_rejected_transaction(const model::complex::Patch::Summary& result) {
         if (result.good()) return;
 
         base::message("Transaction rejected; proposed changes were not applied. Reported issues:");

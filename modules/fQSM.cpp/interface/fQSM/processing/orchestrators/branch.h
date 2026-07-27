@@ -20,7 +20,7 @@ namespace fqsm::processing::orchestrator {
         ))
         {}
 
-        operator Reading() const override { return View(context->world); }
+        operator Reading() const override { return View(context->future); }
 
     private:
         Context::Ptr context;
@@ -31,14 +31,14 @@ namespace fqsm::processing::orchestrator {
 
         auto makeChildPolicy() -> ChildPolicy override {
             return ChildPolicy{
-                View(context->world),
+                View(context->future),
                 [this](Context::PatchRef patch) { accept(patch); }
             };
         }
 
         void accept(Context::PatchRef child) {
-            _DBG_TX_("branch: merge child={} into accumulator={}", utility::format_patch(fqsm::freeze(child)), utility::format_patch(fqsm::freeze(context->accumulator)));
-            algorithm::merge(context->world, context->accumulator, child);
+            _DBG_TX_("branch: merge child={} into patch={}", utility::format_patch(fqsm::freeze(child)), utility::format_patch(fqsm::freeze(context->future.patch())));
+            algorithm::merge(context->future, context->future.patch(), child);
         }
 
     };

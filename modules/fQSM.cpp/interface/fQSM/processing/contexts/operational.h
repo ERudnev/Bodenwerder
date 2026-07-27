@@ -16,8 +16,8 @@ namespace fqsm::processing::context {
         using Upstream = std::function<void(PatchRef)>;
         using Future = model::complex::Future;
 
-        PatchRef accumulator; // abstraction: ownership of Patch (local/remote)??
-        const model::complex::Future world;
+        //PatchRef accumulator; // abstraction: ownership of Patch (local/remote)??
+        model::complex::Future future; //was world
         Upstream callback;
 
         Operational(const State& initial, PatchRef patch, Upstream);
@@ -42,13 +42,12 @@ namespace fqsm::processing {
         using Context = context::Operational;
         Gate(Context::Ptr parent) : context(std::move(parent)) {}
 
-        operator View() const { return View(context->world); }
-        const model::complex::State* operator->() const { return &context->world; }
+        operator View() const { return View(context->future); }
+        const model::complex::State* operator->() const { return &context->future; }
 
-        model::complex::WorkersInterface& workers_interface() const { return *context->accumulator; }
-        // helpers:
-        utility::BadValue refuse(std::string message) { context->accumulator->summary.critical.emplace_back(std::move(message)); return {}; }
-        void warning(std::string message) {context->accumulator->summary.warning.emplace_back(std::move(message)); }
+        model::complex::WorkersInterface& workers_interface() const { return context->future; }
+        utility::BadValue refuse(std::string message) { context->future.summary().critical.emplace_back(std::move(message)); return {}; }
+        void warning(std::string message) {context->future.summary().warning.emplace_back(std::move(message)); }
 
     private:
         // There is one fundamental problem around.

@@ -32,7 +32,7 @@ namespace fqsm::processing::orchestrator {
 
         operator Stewarding();
 
-        auto result() const -> const model::complex::Patch::Result& { return lastResult; }
+        auto result() const -> const model::complex::Patch::Summary& { return lastResult; }
 
         void finish_patch();
 
@@ -48,7 +48,7 @@ namespace fqsm::processing::orchestrator {
         };
 
         model::complex::Reality reality;
-        model::complex::Patch::Result lastResult;
+        model::complex::Patch::Summary lastResult;
         std::optional<DeferredWriting> deferred_writing;
         std::optional<DeferredStewarding> deferred_stewarding;
 

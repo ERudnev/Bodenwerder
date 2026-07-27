@@ -1,7 +1,5 @@
 #pragma once
 
-#include <functional>
-#include <optional>
 #include <utility>
 
 #include <base/cannonball/table.h>
@@ -9,9 +7,27 @@
 
 namespace base::cannonball {
 
-// elementary (minimal possible) data update carrier.
+// Change carrier for one id.
+// tombstone: explicit deletion — survives quantum edits; wins on integrate.
+// verified: Scarlett — true after honest put_*; false after reference/touch (modify_modification).
 template<typename T>
-using Patchlet = std::optional<T>;
+struct Patchlet {
+    bool tombstone = false;
+    bool verified = false;
+    T quantum;
+
+    static Patchlet deletion(T quantum ) {
+        return Patchlet{true, true, std::move(quantum)};
+    }
+
+    static Patchlet modification(T quantum) {
+        return Patchlet{false, true, std::move(quantum)};
+    }
+
+    static Patchlet possible(T quantum) {
+        return Patchlet{false, false, std::move(quantum)};
+    }
+};
 
 // set of changes for some table
 template<typename Key, typename Val, typename Hasher = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
@@ -21,23 +37,23 @@ public:
     using RelatedOperational = table::Operational<Key, Val>;
     using RelatedDirect = table::Direct<Key, Val>;
 
-    // Unlike Table::insert, replacing deletion keeps deletion.
-    void modify(const Key& id, const Val& value); // DOTO: consider Key by its value here
-    void modify(Key&& id, Val&& value);
+    // Absent → insert; present → replace quantum+verified, tombstone |= incoming.
+    Patchlet<Val>& insert(const Key& id, const Patchlet<Val>& patchlet);
+    Patchlet<Val>& insert(Key&& id, Patchlet<Val>&& patchlet);
+
+    // Honest put: write quantum, mark verified; never clears tombstone.
+    void modify(const Key& id, const Val& quantum);
+    void modify(Key&& id, Val&& quantum);
+    // Touch / QuantumGate: ensure patchlet, return quantum ref; unverified when created; keeps tombstone.
     Val& modify_modification(Key, base::function_ref<const Val&()> prepatch);
 
-    // Forget local change for id completely.
     bool discard_changes(const Key& id);
 
-    // Mutates target with current patchlets. No normalization is implied.
     static void integrate(RelatedOperational& target, const Patch& patch);
-    // Same semantics, but may use Val& access if target is Direct.
     static void integrate(RelatedDirect& target, const Patch& patch);
 
-    // (remove, update) = remove. Other cases: right wins.
+    // (remove, update) = remove wins via tombstone. Other cases: right wins.
     static void merge(Patch& receiver, const Patch& other);
-    // Placeholder-level implementation for now: equal to merge(receiver, other),
-    // reference is intentionally ignored.
     static void merge_three_way(const RelatedOperational&, Patch& receiver, const Patch& other);
 };
 
@@ -46,23 +62,48 @@ public:
 namespace base::cannonball {
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>
-::modify(const Key& id, const Val& value)
+Patchlet<Val>& Patch<Key, Val, Hasher, KeyEqual>
+::insert(const Key& id, const Patchlet<Val>& patchlet)
 {
-    const auto* current = this->find(id);
-    if (current && !current->has_value()) return;
+    if (auto* current = this->find(id)) {
+        current->tombstone = current->tombstone || patchlet.tombstone;
+        current->verified = patchlet.verified;
+        current->quantum = patchlet.quantum;
+        return *current;
+    }
 
-    Base::insert(id, Patchlet<Val>{value});
+    Base::insert(id, patchlet);
+    return *this->find(id);
+}
+
+template<typename Key, typename Val, typename Hasher, typename KeyEqual>
+Patchlet<Val>& Patch<Key, Val, Hasher, KeyEqual>
+::insert(Key&& id, Patchlet<Val>&& patchlet)
+{
+    if (auto* current = this->find(id)) {
+        current->tombstone = current->tombstone || patchlet.tombstone;
+        current->verified = patchlet.verified;
+        current->quantum = std::move(patchlet.quantum);
+        return *current;
+    }
+
+    const Key key = id;
+    Base::insert(std::move(id), std::move(patchlet));
+    return *this->find(key);
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
 void Patch<Key, Val, Hasher, KeyEqual>
-::modify(Key&& id, Val&& value)
+::modify(const Key& id, const Val& quantum)
 {
-    const auto* current = this->find(id);
-    if (current && !current->has_value()) return;
+    insert(id, Patchlet<Val>::modification(quantum));
+}
 
-    Base::insert(std::move(id), Patchlet<Val>{std::move(value)});
+template<typename Key, typename Val, typename Hasher, typename KeyEqual>
+void Patch<Key, Val, Hasher, KeyEqual>
+::modify(Key&& id, Val&& quantum)
+{
+    insert(std::move(id), Patchlet<Val>::modification(std::move(quantum)));
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
@@ -70,17 +111,13 @@ Val& Patch<Key, Val, Hasher, KeyEqual>
 ::modify_modification(Key id, base::function_ref<const Val&()> prepatch)
 {
     if (auto* patchlet = Base::find(id)) {
-        if (not patchlet->has_value()) {
-            __debugbreak(); // MSVC or std::abort();
-        }
-        return patchlet->value();
+        return patchlet->quantum;
     }
 
     const Key& key = id;
-    Base::insert(std::move(id), Patchlet<Val>{prepatch()});
-    return Base::at(key).value();
+    insert(std::move(id), Patchlet<Val>::possible(prepatch()));
+    return Base::at(key).quantum;
 }
-
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
 bool Patch<Key, Val, Hasher, KeyEqual>
@@ -94,12 +131,12 @@ void Patch<Key, Val, Hasher, KeyEqual>
 ::integrate(RelatedOperational& target, const Patch& patch)
 {
     for (const auto entry : patch) {
-        if (!entry.value.has_value()) {
+        if (entry.value.tombstone) {
             target.erase(entry.id);
             continue;
         }
 
-        target.insert(entry.id, entry.value.value());
+        target.insert(entry.id, entry.value.quantum);
     }
 }
 
@@ -108,17 +145,17 @@ void Patch<Key, Val, Hasher, KeyEqual>
 ::integrate(RelatedDirect& target, const Patch& patch)
 {
     for (const auto entry : patch) {
-        if (!entry.value.has_value()) {
+        if (entry.value.tombstone) {
             target.erase(entry.id);
             continue;
         }
 
         if (auto* current = target.find(entry.id)) {
-            *current = entry.value.value();
+            *current = entry.value.quantum;
             continue;
         }
 
-        target.insert(entry.id, entry.value.value());
+        target.insert(entry.id, entry.value.quantum);
     }
 }
 
@@ -126,21 +163,14 @@ template<typename Key, typename Val, typename Hasher, typename KeyEqual>
 void Patch<Key, Val, Hasher, KeyEqual>
 ::merge(Patch& receiver, const Patch& other)
 {
-    for (const auto entry : other) {
-        if (!entry.value.has_value()) {
-            receiver.Base::insert(entry.id, std::nullopt);
-            continue;
-        }
-
-        receiver.modify(entry.id, entry.value.value());
-    }
+    for (const auto entry : other)
+        receiver.insert(entry.id, entry.value);
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
 void Patch<Key, Val, Hasher, KeyEqual>
 ::merge_three_way(const RelatedOperational&, Patch& receiver, const Patch& other)
 {
-    // placeholder
     merge(receiver, other);
 }
 

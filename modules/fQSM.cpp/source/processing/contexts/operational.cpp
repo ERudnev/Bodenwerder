@@ -5,15 +5,14 @@
 namespace fqsm::processing::context {
 
     Operational::Operational(const State& initial, PatchRef patch, Upstream cb)
-        : accumulator(std::move(patch))
-        , world(initial, accumulator, {})
+        : future(initial, patch, {})
         , callback(cb)
     {}
 
     void Operational::collapse() {
-        _DBG_TX_("context is up to close: patch={}", fqsm::utility::format_patch(fqsm::freeze(accumulator)));
+        _DBG_TX_("context is up to close: patch={}", fqsm::utility::format_patch(fqsm::freeze(future.patch())));
         if (callback)
-            callback(accumulator);
+            callback(future.patch());
         callback = nullptr;
     }
 

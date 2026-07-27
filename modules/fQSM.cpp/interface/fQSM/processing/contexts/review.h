@@ -13,24 +13,25 @@ namespace fqsm::processing {
     // TODO: consider to tighten type scope, make mini-schema's
     // and give different Reaction scoped Review, like [typeA, typeB, typeC]
     struct Review final {
-        using Context = context::Operational;
-        using RetrospectiveContext = context::Retrospective;
-        using PatchRef = Context::PatchRef;
+        using Operational = context::Operational;
+        using Retrospective = context::Retrospective;
+        using PatchRef = Operational::PatchRef;
 
         const model::complex::Future& proposal;
-        // TODO: (really Do): tighten Context -> WorkersInterface Zag-Zag
-        Context::Ptr reactions;
-        RetrospectiveContext::Ptr retrospective;
+        // TODO: (really Do): tighten Operational -> WorkersInterface Zag-Zag
+        Operational::Ptr reactions;
+        Retrospective::Ptr retrospective;
 
-        Review(const model::complex::Future& proposal, const model::complex::State& origin, Context::PatchRef target)
+        Review(const model::complex::Future& proposal, const model::complex::State& origin, Operational::PatchRef target)
             : proposal(proposal)
             , origin(origin)
-            , reactions(std::make_shared<Context>(proposal, target, Context::Upstream{}))
-            , retrospective(std::make_shared<RetrospectiveContext>(origin, target, RetrospectiveContext::Upstream{}))
+            , reactions(std::make_shared<Operational>(proposal, target, Operational::Upstream{}))
+            , retrospective(std::make_shared<Retrospective>(origin, reactions))
         {}
+
         // helpers:
-        utility::BadValue refuse(std::string message) { reactions->accumulator->summary.critical.emplace_back(std::move(message)); return {};}
-        void warning(std::string message) {reactions->accumulator->summary.warning.emplace_back(std::move(message)); }
+        utility::BadValue refuse(std::string message) { reactions->future.summary().critical.emplace_back(std::move(message)); return {};}
+        void warning(std::string message) { reactions->future.summary().warning.emplace_back(std::move(message)); }
 
         template<category::Any Meta>
         auto changes() const -> model::linear::Delta<Meta> {
@@ -38,8 +39,8 @@ namespace fqsm::processing {
         }
 
         template<category::Any Meta>
-        auto adjustments() -> model::linear::Patch<Meta>& {
-            return reactions->accumulator->aspect<Meta>();
+        auto adjustments() -> model::linear::WorkersInterface<Meta>& {
+            return reactions->future.updates<Meta>();
         }
 
         operator Reading() const { return processing::View(proposal); }

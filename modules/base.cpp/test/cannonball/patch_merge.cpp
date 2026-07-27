@@ -7,9 +7,10 @@ namespace tests {
 void patch_merge()
 {
     using Patch = base::cannonball::Patch<int, int>;
+    using Patchlet = base::cannonball::Patchlet<int>;
 
     Patch receiver;
-    receiver.insert(1, std::nullopt);
+    receiver.insert(1, Patchlet::deletion(10));
     receiver.modify(2, 20);
 
     Patch other;
@@ -19,9 +20,9 @@ void patch_merge()
 
     Patch::merge(receiver, other);
 
-    EXPECT_FALSE(receiver.at(1).has_value());
-    EXPECT_EQ(receiver.at(2).value(), 21);
-    EXPECT_EQ(receiver.at(3).value(), 30);
+    EXPECT_TRUE(receiver.at(1).tombstone);
+    EXPECT_EQ(receiver.at(2).quantum, 21);
+    EXPECT_EQ(receiver.at(3).quantum, 30);
 }
 
 } // namespace tests

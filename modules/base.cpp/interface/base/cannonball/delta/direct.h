@@ -104,7 +104,7 @@ public:
         auto make_dirty_state_value(StateIterator iterator) const -> ChangeType {
             const auto entry = *iterator;
             if (const auto* patchEntry = patch->find(entry.id)) {
-                const auto* after = patchEntry->has_value() ? std::addressof(patchEntry->value()) : nullptr;
+                const auto* after = patchEntry->tombstone ? nullptr : std::addressof(patchEntry->quantum);
                 return ChangeType{entry.id, std::optional<const Val*>{std::addressof(entry.value)}, after};
             }
             return ChangeType{entry.id, std::nullopt, std::addressof(entry.value)};
@@ -113,7 +113,7 @@ public:
         auto make_patch_only_value(PatchIterator iterator) const -> ChangeType {
             const auto entry = *iterator;
             const auto* before = state->find(entry.id);
-            const auto* after = entry.value.has_value() ? std::addressof(entry.value.value()) : nullptr;
+            const auto* after = entry.value.tombstone ? nullptr : std::addressof(entry.value.quantum);
             return ChangeType{entry.id, std::optional<const Val*>{before}, after};
         }
 

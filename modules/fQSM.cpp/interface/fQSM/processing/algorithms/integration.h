@@ -19,8 +19,16 @@ namespace fqsm::processing::algorithm::details {
 
         auto& target = world.aspect<Meta>().items();
         for (const auto entry : slice.items) {
-            if (entry.value.has_value()) target.insert(entry.id, entry.value.value());
-            else target.erase(entry.id);
+            if (not entry.value.tombstone) {
+                // Scarlett's Tomorrow Is Came (see docs)
+                // it is best time to check: it this Change real change or replacement of Quantum of State with the same Value
+                // this check costs of find() and calling PFR operator==() but saves from unnecessary reactions
+
+                // Mortazar: Sorry, Scarlett, I will implement this tomorrow
+                target.insert(entry.id, entry.value.quantum);
+            }
+            else
+                target.erase(entry.id);
         }
     }
 }

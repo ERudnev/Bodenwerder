@@ -60,12 +60,12 @@ public:
             if (phase == Phase::state) {
                 const auto entry = *stateIt;
                 if (const auto* patched = owner->patch_view().find(entry.id))
-                    return EntryView{entry.id, patched->value()};
+                    return EntryView{entry.id, patched->quantum};
                 return EntryView{entry.id, entry.value};
             }
 
             const auto entry = *patchIt;
-            return EntryView{entry.id, entry.value.value()};
+            return EntryView{entry.id, entry.value.quantum};
         }
 
         ConstIterator& operator++() {
@@ -105,7 +105,7 @@ public:
                     const auto entry = *stateIt;
                     const auto* patched = owner->patch_view().find(entry.id);
 
-                    if (patched && !patched->has_value()) {
+                    if (patched && patched->tombstone) {
                         ++stateIt;
                         continue;
                     }
@@ -120,7 +120,7 @@ public:
                 while (patchIt != patchEnd) {
                     const auto entry = *patchIt;
 
-                    if (!entry.value.has_value() || owner->state.contains(entry.id)) {
+                    if (entry.value.tombstone || owner->state.contains(entry.id)) {
                         ++patchIt;
                         continue;
                     }
@@ -149,15 +149,19 @@ public:
 
     void clear() override;
     void reserve(SizeType capacity) override;
-    void insert(const Key& id, const Val& value) override;
-    void insert(Key&& id, Val&& value) override;
+    Val& insert(const Key& id, const Val& value) override;
+    Val& insert(Key&& id, Val&& value) override;
     bool erase(const Key& id) override;
 
 protected:
     ReadIterator read_begin() const override;
     ReadIterator read_end() const override;
 
-private:
+
+//private:
+// this breach is made for outer wrapping fqsm::model::linear::Future to get acces for "WorkerInterface"
+// TODO: make this better and restore encapsulation:
+public:
     auto patch_view() const -> const PatchView&;
 
     const View& state;
@@ -190,8 +194,8 @@ const Val* Future<Key, Val, Hasher, KeyEqual>::find(const Key& id) const
         return state.find(id);
 
     if (const auto* patched = patch_view().find(id)) {
-        if (!patched->has_value()) return nullptr;
-        return std::addressof(patched->value());
+        if (patched->tombstone) return nullptr;
+        return std::addressof(patched->quantum);
     }
 
     return state.find(id);
@@ -214,7 +218,7 @@ auto Future<Key, Val, Hasher, KeyEqual>::size() const -> SizeType
 
     for (const auto entry : patch_view()) {
         const bool existed = state.contains(entry.id);
-        if (!entry.value.has_value()) {
+        if (entry.value.tombstone) {
             if (existed) --result;
             continue;
         }
@@ -232,7 +236,7 @@ void Future<Key, Val, Hasher, KeyEqual>::clear()
     patch.reserve(state.size());
 
     for (const auto entry : state)
-        patch.insert(entry.id, std::nullopt);
+        patch.insert(entry.id, Patchlet<Val>::deletion(entry.value));
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
@@ -242,15 +246,15 @@ void Future<Key, Val, Hasher, KeyEqual>::reserve(SizeType capacity)
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Future<Key, Val, Hasher, KeyEqual>::insert(const Key& id, const Val& value)
+Val& Future<Key, Val, Hasher, KeyEqual>::insert(const Key& id, const Val& value)
 {
-    patch.insert(id, Patchlet<Val>{value});
+    return patch.insert(id, Patchlet<Val>::modification(value)).quantum;
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Future<Key, Val, Hasher, KeyEqual>::insert(Key&& id, Val&& value)
+Val& Future<Key, Val, Hasher, KeyEqual>::insert(Key&& id, Val&& value)
 {
-    patch.insert(std::move(id), Patchlet<Val>{std::move(value)});
+    return patch.insert(std::move(id), Patchlet<Val>::modification(std::move(value))).quantum;
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
@@ -260,17 +264,17 @@ bool Future<Key, Val, Hasher, KeyEqual>::erase(const Key& id)
     const auto* patched = patch.find(id);
 
     if (patched) {
-        if (!patched->has_value()) return false;
+        if (patched->tombstone) return false;
 
         if (!existed_in_state) return patch.discard_changes(id);
 
-        patch.insert(id, std::nullopt);
+        patch.insert(id, Patchlet<Val>::deletion(patched->quantum));
         return true;
     }
 
     if (!existed_in_state) return false;
 
-    patch.insert(id, std::nullopt);
+    patch.insert(id, Patchlet<Val>::deletion(*state.find(id)));
     return true;
 }
 

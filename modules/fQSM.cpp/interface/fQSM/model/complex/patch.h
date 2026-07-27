@@ -7,32 +7,16 @@
 
 namespace fqsm::model::complex {
 
-    struct WorkersInterface {
-        struct Result {
+    struct Patch {
+        Patch(Schema schema) : summary(), schema(schema), lines(composition(schema)) {}
+
+        struct Summary {
             using Category = std::vector<std::string>;
             Category critical;
             Category warning;
 
             bool good() const { return critical.empty(); }
         };
-        WorkersInterface(Schema schema, intertype::Composite<linear::patch::Erased> builtLines) : schema(schema), lines(std::move(builtLines)) {}
-        Result summary;
-
-        template<category::Any Meta>
-        linear::WorkersInterface<Meta>& updates();
-
-        template<category::Any Meta>
-        const linear::WorkersInterface<Meta>& updates() const;
-    protected:
-        const Schema schema;
-        const intertype::Composite<linear::patch::Erased> lines;
-    };
-
-    struct Patch : WorkersInterface {
-        using WorkersInterface::schema;
-        using WorkersInterface::lines;
-
-        Patch(Schema schema) : WorkersInterface(schema, composition(schema)) {}
 
         template<category::Any Meta>
         linear::Patch<Meta>& aspect();
@@ -55,6 +39,11 @@ namespace fqsm::model::complex {
             patch.aspect<Meta>().clear();
         }
 
+        // public.. still. sonsider to make write-only for workers
+        Summary summary;
+        const Schema schema;
+        const intertype::Composite<linear::patch::Erased> lines;
+
     private:
         static intertype::Composite<linear::patch::Erased> composition(Schema);
     };
@@ -69,16 +58,6 @@ namespace fqsm::model::complex {
 
     template<category::Any Meta>
     const linear::Patch<Meta>& Patch::aspect() const {
-        return static_cast<const linear::Patch<Meta>&>(*lines.container.at(TypeId<Meta>).get());
-    }
-
-    template<category::Any Meta>
-    linear::WorkersInterface<Meta>& WorkersInterface::updates() {
-        return static_cast<linear::Patch<Meta>&>(*lines.container.at(TypeId<Meta>).get());
-    };
-
-    template<category::Any Meta>
-    const linear::WorkersInterface<Meta>& WorkersInterface::updates() const {
         return static_cast<const linear::Patch<Meta>&>(*lines.container.at(TypeId<Meta>).get());
     }
 }

@@ -22,7 +22,7 @@ namespace fqsm::processing::algorithm {
 // internal part of normalization
 namespace fqsm::processing::algorithm::normalization {
 
-    void append(model::complex::Patch::Result& dst, const model::complex::Patch::Result& src) {
+    void append(model::complex::Patch::Summary& dst, const model::complex::Patch::Summary& src) {
         dst.critical.insert(dst.critical.end(), src.critical.begin(), src.critical.end());
         dst.warning.insert(dst.warning.end(), src.warning.begin(), src.warning.end());
     }
@@ -70,8 +70,8 @@ namespace fqsm::processing::algorithm::normalization {
         return pass;
     }
 
-    model::complex::Patch::Result normalization(const model::complex::State& world, ref<Patch> patch, Rtid::Set taintedLines) {
-        model::complex::Patch::Result accumulated;
+    model::complex::Patch::Summary normalization(const model::complex::State& world, ref<Patch> patch, Rtid::Set taintedLines) {
+        model::complex::Patch::Summary accumulated;
         Rtid::Set taintedLinesAccumulated = taintedLines;
 
         _DBG_TX_("norm: start user patch={}", utility::format_patch(fqsm::freeze(patch)));
@@ -129,7 +129,7 @@ namespace fqsm::processing::algorithm::normalization {
 // facade part
 namespace fqsm::processing::algorithm {
 
-    auto update(model::complex::Reality& state, fqsm::ref<Patch> patch, Rtid::Set taintedLines) -> model::complex::Patch::Result {
+    auto update(model::complex::Reality& state, fqsm::ref<Patch> patch, Rtid::Set taintedLines) -> model::complex::Patch::Summary {
         const auto result = normalization::normalization(state, patch, taintedLines);
         if (result.good()) {
             _DBG_TX_("update: INTEGRATE patch={}", utility::format_patch(fqsm::freeze(patch)));

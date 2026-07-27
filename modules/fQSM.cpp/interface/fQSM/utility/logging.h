@@ -18,7 +18,7 @@ namespace fqsm::utility {
     auto format_patch(cref<model::complex::Patch> patch) -> std::string;
     auto format_patch(const model::complex::Patch& patch) -> std::string;
     void log_patch(std::string_view legend, cref<model::complex::Patch> patch);
-    void log_rejected_transaction(const model::complex::Patch::Result& result);
+    void log_rejected_transaction(const model::complex::Patch::Summary&);
 
 }
 
@@ -42,8 +42,8 @@ namespace fqsm::utility::detail {
         for (const auto entry : slice.items) {
             if (any) chain << ' ';
             chain << '[' << std::format("{}", entry.id) << ", ";
-            if (!entry.value.has_value()) chain << "del";
-            else chain << format_quantum(*entry.value);
+            if (entry.value.tombstone) chain << "del";
+            else chain << format_quantum(entry.value.quantum);
             chain << ']';
             any = true;
         }

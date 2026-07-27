@@ -229,7 +229,7 @@ namespace fqsm::processing::persistency::json::detail {
                     throw std::runtime_error("json aspect: broken one-row");
                 const auto id = leaf::decode<typename Meta::Id>(row.array[0]);
                 if (!with<Meta>::exists(context, id))
-                    context.workers_interface().updates<Meta>().put_as_restored(id, fqsm::utility::BadValue{});
+                    context.workers_interface().updates<Meta>().put_modification(id, fqsm::utility::BadValue{});
                 auto quantum = with<Meta>::modify(context, id);
                 ReadOneRowDesc<Meta> reader{row, *quantum, 1};
                 fqsm::aspect::Retrospection<Meta>::describe(reader);

@@ -19,8 +19,8 @@ public:
 
     virtual void clear() = 0;
     virtual void reserve(SizeType capacity) = 0;
-    virtual void insert(const Key& id, const Val& value) = 0;
-    virtual void insert(Key&& id, Val&& value) = 0;
+    virtual Val& insert(const Key& id, const Val& value) = 0;
+    virtual Val& insert(Key&& id, Val&& value) = 0;
     virtual bool erase(const Key& id) = 0;
 };
 
