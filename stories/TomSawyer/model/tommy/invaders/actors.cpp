@@ -26,9 +26,11 @@ namespace tommy::invaders {
         }
 
         auto player_shot_alive(Reading context, Session::Id session) -> bool {
-            for (const auto [id, _] : context->aspect<Shot>().items()) {
-                const auto& shot = with<Shot>::get(context, id);
-                if (shot.session == session and shot.side == Shot::Side::player) {
+            if (not with<Shot_group>::exists(context, session)) {
+                return false;
+            }
+            for (const auto id : with<Shot_group>::get(context, session)) {
+                if (with<Shot>::get(context, id).side == Shot::Side::player) {
                     return true;
                 }
             }
@@ -37,9 +39,11 @@ namespace tommy::invaders {
 
         auto march_interval(Reading context, Session::Id session, integer wave) -> integer {
             integer alive = 0;
-            for (const auto [id, _] : context->aspect<Alien>().items()) {
-                if (with<Alien>::get(context, id).alive) {
-                    ++alive;
+            if (with<Alien_group>::exists(context, session)) {
+                for (const auto id : with<Alien_group>::get(context, session)) {
+                    if (with<Alien>::get(context, id).alive) {
+                        ++alive;
+                    }
                 }
             }
             const integer base = std::max(Fleet::base_march_steps - (wave - 1) * 40, 120);
@@ -69,6 +73,7 @@ namespace tommy::invaders {
 
     struct Player::Internals : Player::DefaultInternals {
         static void steerAndFire(Reacting context) {
+            const auto by_world = ask::relations<World>(context).updated<Session, &Session::Quantum::world>();
             for (const auto& change : context.changes<World>().updated()) {
                 if (change.now.step <= change.old.step or change.now.paused) {
                     continue;
@@ -78,7 +83,7 @@ namespace tommy::invaders {
                 for (const auto entry : context.proposal.aspect<rmmr::system::Window>().items()) {
                     const auto& input = with<rmmr::system::Window>::get(context, entry.id);
 
-                    for (const auto [session_id, _] : context.proposal.aspect<Session>().items()) {
+                    for (const auto session_id : by_world.ids(change.id)) {
                         if (not sessionPlaying(context, session_id)) {
                             continue;
                         }
@@ -133,12 +138,13 @@ namespace tommy::invaders {
 
     struct Fleet::Internals : Fleet::DefaultInternals {
         static void march(Reacting context) {
+            const auto by_world = ask::relations<World>(context).updated<Session, &Session::Quantum::world>();
             for (const auto& change : context.changes<World>().updated()) {
                 if (change.now.step <= change.old.step or change.now.paused) {
                     continue;
                 }
 
-                for (const auto [session_id, _] : context.proposal.aspect<Session>().items()) {
+                for (const auto session_id : by_world.ids(change.id)) {
                     if (not sessionPlaying(context, session_id)) {
                         continue;
                     }
@@ -154,16 +160,18 @@ namespace tommy::invaders {
                     const auto& field = with<Playfield>::get(context, session_id);
                     const integer lateral = fleet->dir == Fleet::Dir::right ? 12 : -12;
                     bool hit_edge = false;
-                    for (const auto [alien_id, _] : context.proposal.aspect<Alien>().items()) {
-                        const auto& alien = with<Alien>::get(context, alien_id);
-                        if (not alien.alive) {
-                            continue;
-                        }
-                        const index2 next = alienWorldPos(*fleet, alien.cell);
-                        const integer x = next.x + lateral;
-                        if (x < field.origin.x + 40 or x > field.origin.x + field.size.x - 40) {
-                            hit_edge = true;
-                            break;
+                    if (with<Alien_group>::exists(context, session_id)) {
+                        for (const auto alien_id : with<Alien_group>::get(context, session_id)) {
+                            const auto& alien = with<Alien>::get(context, alien_id);
+                            if (not alien.alive) {
+                                continue;
+                            }
+                            const index2 next = alienWorldPos(*fleet, alien.cell);
+                            const integer x = next.x + lateral;
+                            if (x < field.origin.x + 40 or x > field.origin.x + field.size.x - 40) {
+                                hit_edge = true;
+                                break;
+                            }
                         }
                     }
 
@@ -177,17 +185,19 @@ namespace tommy::invaders {
                     const auto& session = with<Session>::get(context, session_id);
                     fleet->next_march = change.now.step + march_interval(context, session_id, session.wave);
 
-                    for (const auto [alien_id, _] : context.proposal.aspect<Alien>().items()) {
-                        auto alien = with<Alien>::modify(context, alien_id);
-                        if (not alien->alive) {
-                            continue;
-                        }
-                        const index2 pos = alienWorldPos(*fleet, alien->cell);
-                        syncVisual(context, alien->visual, pos);
-                        if (with<Player>::exists(context, session_id)
-                            and pos.y <= with<Player>::get(context, session_id).pos.y + 40)
-                        {
-                            with<Session>::modify(context, session_id)->phase = Phase::lost;
+                    if (with<Alien_group>::exists(context, session_id)) {
+                        for (const auto alien_id : with<Alien_group>::get(context, session_id)) {
+                            auto alien = with<Alien>::modify(context, alien_id);
+                            if (not alien->alive) {
+                                continue;
+                            }
+                            const index2 pos = alienWorldPos(*fleet, alien->cell);
+                            syncVisual(context, alien->visual, pos);
+                            if (with<Player>::exists(context, session_id)
+                                and pos.y <= with<Player>::get(context, session_id).pos.y + 40)
+                            {
+                                with<Session>::modify(context, session_id)->phase = Phase::lost;
+                            }
                         }
                     }
                 }
@@ -203,12 +213,13 @@ namespace tommy::invaders {
 
     struct Volley::Internals : Volley::DefaultInternals {
         static void schedule(Reacting context) {
+            const auto by_world = ask::relations<World>(context).updated<Session, &Session::Quantum::world>();
             for (const auto& change : context.changes<World>().updated()) {
                 if (change.now.step <= change.old.step or change.now.paused) {
                     continue;
                 }
 
-                for (const auto [session_id, _] : context.proposal.aspect<Session>().items()) {
+                for (const auto session_id : by_world.ids(change.id)) {
                     if (not sessionPlaying(context, session_id)) {
                         continue;
                     }
@@ -221,9 +232,11 @@ namespace tommy::invaders {
                     }
 
                     vector<Alien::Id> candidates;
-                    for (const auto [alien_id, _] : context.proposal.aspect<Alien>().items()) {
-                        if (with<Alien>::get(context, alien_id).alive) {
-                            candidates.push_back(alien_id);
+                    if (with<Alien_group>::exists(context, session_id)) {
+                        for (const auto alien_id : with<Alien_group>::get(context, session_id)) {
+                            if (with<Alien>::get(context, alien_id).alive) {
+                                candidates.push_back(alien_id);
+                            }
                         }
                     }
                     if (candidates.empty()) {

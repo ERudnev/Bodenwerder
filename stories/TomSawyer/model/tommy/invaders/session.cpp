@@ -20,11 +20,8 @@ namespace tommy::invaders {
             return down(current.keys) and not down(previous.keys);
         }
 
-        auto world_step(Reading context) -> integer {
-            for (const auto [id, _] : context->aspect<World>().items()) {
-                return with<World>::get(context, id).step;
-            }
-            return 0;
+        auto world_step(Reading context, World::Id world) -> integer {
+            return with<World>::get(context, world).step;
         }
 
     } // namespace
@@ -42,7 +39,7 @@ namespace tommy::invaders {
             return;
         }
         session->phase = Phase::wave_clear;
-        session->wave_ready_at = world_step(context) + 800;
+        session->wave_ready_at = world_step(context, session->world) + 800;
     }
 
     void notePlayerHit(Writing context, Session::Id session_id) {
@@ -58,11 +55,12 @@ namespace tommy::invaders {
 
     struct Session::Internals : Session::DefaultInternals {
         static void onWaveReady(Reacting context) {
+            const auto by_world = ask::relations<World>(context).updated<Session, &Session::Quantum::world>();
             for (const auto& change : context.changes<World>().updated()) {
                 if (change.now.step <= change.old.step) {
                     continue;
                 }
-                for (const auto [session_id, _] : context.proposal.aspect<Session>().items()) {
+                for (const auto session_id : by_world.ids(change.id)) {
                     auto session = with<Session>::modify(context, session_id);
                     if (session->phase != Phase::wave_clear) {
                         continue;
@@ -78,6 +76,7 @@ namespace tommy::invaders {
         }
 
         static void attractAndRestart(Reacting context) {
+            const auto by_world = ask::relations<World>(context).updated<Session, &Session::Quantum::world>();
             for (const auto& change : context.changes<World>().updated()) {
                 if (change.now.step <= change.old.step) {
                     continue;
@@ -89,7 +88,7 @@ namespace tommy::invaders {
                     if (not enter and not restart) {
                         continue;
                     }
-                    for (const auto [session_id, _] : context.proposal.aspect<Session>().items()) {
+                    for (const auto session_id : by_world.ids(change.id)) {
                         auto session = with<Session>::modify(context, session_id);
                         if (session->phase == Phase::attract and enter) {
                             session->phase = Phase::playing;

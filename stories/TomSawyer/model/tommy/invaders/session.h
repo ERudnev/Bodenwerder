@@ -31,6 +31,7 @@ namespace tommy::invaders {
 
     struct Session : Entity<Session> {
         struct Quantum {
+            Affected<World> world;
             Phase phase = Phase::attract;
             integer score = 0;
             integer lives = 3;

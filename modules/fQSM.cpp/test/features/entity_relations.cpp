@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <unordered_set>
 #include <vector>
 
 namespace {
@@ -49,7 +50,7 @@ namespace local {
 
     struct Elephant : Entity<Elephant> {
         struct Quantum {
-            Anchor<World> world; // NB: current implementation of anchor links is not effective and thing twice before choosing this type
+            Anchor<World> world;
             optional<Custody<Trunk>> myTrunk; // nullopt == explicitly no trunk (detach is a field change)
             integer mood;
             string name;
@@ -85,33 +86,35 @@ namespace local {
             }
 
             // Envy: living trunk vs another's higher by > gap → tear the other's trunk off.
-            static void envyTearOffs(Writing context, int turn) {
-                for (const auto envious : context->aspect<Elephant>().items()) {
-                    const auto* myTrunk = my::ward(context, envious.id, &Quantum::myTrunk);
+            // herd — слоны одного мира (из inbound-индекса по Anchor<World>).
+            static void envyTearOffs(Writing context, const std::vector<Id>& herd, int turn) {
+                for (const auto enviousId : herd) {
+                    const auto* myTrunk = my::ward(context, enviousId, &Quantum::myTrunk);
                     if (not myTrunk)
                         continue;
                     const float myAngle = myTrunk->angleDegrees;
-                    const auto& enviousQ = my::get(context, envious.id);
-                    for (const auto other : context->aspect<Elephant>().items()) {
-                        if (other.id == envious.id)
+                    const auto& enviousQ = my::get(context, enviousId);
+                    for (const auto otherId : herd) {
+                        if (otherId == enviousId)
                             continue;
-                        const auto* theirTrunk = my::ward(context, other.id, &Quantum::myTrunk);
+                        const auto* theirTrunk = my::ward(context, otherId, &Quantum::myTrunk);
                         if (not theirTrunk)
                             continue;
                         if (theirTrunk->angleDegrees > myAngle + envyAngleGapDegrees)
-                            tearOffTrunk(context, other.id, turn, &enviousQ.name);
+                            tearOffTrunk(context, otherId, turn, &enviousQ.name);
                     }
                 }
             }
 
-            // Happiest alive gets +1 (ties: first max wins).
-            static void boostHappiest(Writing context, int turn) {
+            // Happiest in herd gets +1 (ties: first max wins).
+            static void boostHappiest(Writing context, const std::vector<Id>& herd, int turn) {
                 optional<Id> best;
                 integer bestMood{};
-                for (const auto e : context->aspect<Elephant>().items()) {
-                    if (not best or e.value.mood > bestMood) {
-                        best = e.id;
-                        bestMood = e.value.mood;
+                for (const auto id : herd) {
+                    const auto& e = my::get(context, id);
+                    if (not best or e.mood > bestMood) {
+                        best = id;
+                        bestMood = e.mood;
                     }
                 }
                 if (not best)
@@ -123,15 +126,15 @@ namespace local {
             }
 
             // No trunk → −1 mood; mood < 0 → die of melancholy.
-            static void trunklessSadnessAndMelancholy(Writing context, int turn) {
-                for (const auto e : context->aspect<Elephant>().items()) {
-                    if (not my::get(context, e.id).myTrunk.has_value())
-                        my::modify(context, e.id)->mood -= 1;
+            static void trunklessSadnessAndMelancholy(Writing context, const std::vector<Id>& herd, int turn) {
+                for (const auto id : herd) {
+                    if (not my::get(context, id).myTrunk.has_value())
+                        my::modify(context, id)->mood -= 1;
                 }
                 std::vector<Id> doomed;
-                for (const auto e : context->aspect<Elephant>().items()) {
-                    if (my::get(context, e.id).mood < 0)
-                        doomed.push_back(e.id);
+                for (const auto id : herd) {
+                    if (my::get(context, id).mood < 0)
+                        doomed.push_back(id);
                 }
                 for (const auto id : doomed) {
                     const auto& me = my::get(context, id);
@@ -142,19 +145,16 @@ namespace local {
             }
 
             static void onWorldTick(Reacting context) {
-                optional<int> turn;
+                const auto by_world = ask::relations<World>(context).updated<Elephant, &Elephant::Quantum::world>();
                 for (const auto& change : context.changes<World>().updated()) {
-                    turn = change.now.time;
-                    break;
+                    const int turn = change.now.time;
+                    const auto& herd = by_world.ids(change.id);
+                    for (const auto id : herd)
+                        syncTrunkToMood(context, id);
+                    envyTearOffs(context, herd, turn);
+                    boostHappiest(context, herd, turn);
+                    trunklessSadnessAndMelancholy(context, herd, turn);
                 }
-                if (not turn)
-                    return;
-
-                for (const auto entry : context.proposal.aspect<Elephant>().items())
-                    syncTrunkToMood(context, entry.id);
-                envyTearOffs(context, *turn);
-                boostHappiest(context, *turn);
-                trunklessSadnessAndMelancholy(context, *turn);
             }
         };
         static const Behavior customAspectReactions() {
@@ -218,11 +218,18 @@ namespace local {
         }
 
         static void onWorldClock(Reacting context) {
+            // Тик World → только Disappointment на слонов этого мира (через тот же inbound-индекс).
+            const auto by_world = ask::relations<World>(context).updated<Elephant, &Elephant::Quantum::world>();
             for (const auto& change : context.changes<World>().updated()) {
                 const integer dt = static_cast<integer>(change.now.time - change.old.time);
                 const int turn = change.now.time;
-                for (const auto entry : context.proposal.aspect<Disappointment>().items())
+                const auto& herd = by_world.ids(change.id);
+                std::unordered_set<Elephant::Id> in_world(herd.begin(), herd.end());
+                for (const auto entry : context.proposal.aspect<Disappointment>().items()) {
+                    if (not in_world.contains(entry.value.target))
+                        continue;
                     applyTimePassage(context, entry.id, dt, turn);
+                }
             }
         }
 

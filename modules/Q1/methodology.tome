@@ -65,13 +65,10 @@ namespace Q1 {
 
   agent_runtime_code_is_external: @Statement(~0.85) {
     Core:
-      `agent ... @external(X)` в Q1 объявляет только доменный аспект и факт зависимости от внешнего runtime identifier `X`.
-      Concrete loader implementation, payload interpretation и bind/load glue-code не являются частью DSL и не должны генерироваться автоматически.
-      Генерилка вправе ожидать, что такой код существует вне проекции: в рантайме, тестовом слое или клиентском коде.
-      Операции из `element`/`table` для agent-аспектов проецируются как обычные операции с `Reading`/`Writing`/`Id`; доступ к уже загруженному рантайму в C++ — через привязку менеджера к миру (`World::resources`), без добавления `resources::Manager` в сигнатуры этих операций (см. `modules/Q1/q1-to-iQSM.tome`, `declaration_forms` § agent).
+      `@external(...)` в Q1 помечает внешний C++-тип (`using … @external(...)`): конкретный loader/bind/glue не часть DSL и не генерируется.
+      Историческая форма `agent R @external(X)` в живом эталоне не проецируется; см. `modules/Q1/q1-to-fQSM.tome`.
     Reason:
-      Это удерживает аспектный интерфейс доменным, не протаскивает физические runtime-типы в Q1 и явно разделяет
-      "что объявлено в модели" и "как конкретная платформа материализует внешний ресурс".
+      Держит модель доменной и явно отделяет «что объявлено» от «как платформа материализует ресурс».
   }
 
   no_noise_comments_in_etalon: @Statement(~0.85) {

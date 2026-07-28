@@ -1,0 +1,85 @@
+// Механические правила проекции Q1 → C++ на рельсах fQSM.
+// Детальный header-эталон: `modules/Q1/golden/golden/README.md`
+// (вход: `golden/doctrine/*.q1.types`, выход: `golden/golden/*`).
+
+#using namespace FAL(file: "core/FAL.tome")
+#using namespace KQM(file: "core/KQM.tome")
+#using namespace Q1(file: "modules/Q1/methodology.tome")
+
+namespace Q1-fQSM {
+
+  fqsm_is_the_rail: @Statement(~0.9) {
+    Core:
+      Это не “Q1 → произвольный C++”. Это “Q1 → C++ на рельсах fQSM”:
+      типы/Id из `fqsm::api` (`#include <fQSM/api/interface.h>`), операции через `Reading`/`Writing`.
+    Reason:
+      Устойчивый прикладной контракт fQSM важнее абстрактной формы C++.
+  }
+
+  cpp_generation: @Process {
+    Goal: кодогенерация C++/fQSM-проекции из Q1 DSL.
+    Input: определения на Q1 DSL.
+    Output: C++-проекция в терминах fQSM.
+    Correctness: согласована с этим томом и с `modules/Q1/golden/golden/` (README — нормативный разбор header-формы).
+  }
+
+  file_layout: @Rule {
+    1: `#pragma once`.
+    2: `#include <fQSM/api/interface.h>`.
+    3: внутри целевого namespace — `using namespace fqsm::api;`.
+    4: STL — по факту использованных типов.
+    5: кросс-namespace — через соответствующий `.q1.h`.
+  }
+
+  namespace_projection: @Rule {
+    1: вложенные `namespace` DSL → nested `A::B::C`.
+    2: внутри блока не квалифицировать от корня имена, уже лежащие под тем же корнем
+       (в `RnD::View` тип из `RnD::Logic` — `Logic::T`, не `::RnD::Logic::T`),
+       кроме внешнего контекста, коллизии или явной неоднозначности.
+  }
+
+  declaration_forms: @Rule {
+    1: `struct S` → `struct S { ... };` с полями, локальными `using`, операциями `?`/`=`/`>`
+       (`!` внутри value-struct недопустим).
+      1: `?` → обычно `T name(...) const;`; `=` → `void name(...);`; `>` → `static S name(...);`.
+    2: `using A as B` → `using A = B;` (B без ведущего `~`).
+    3: `using A as ~Expr` → `using A = decltype(<Expr>);`.
+    4: категории аспектов (см. golden README):
+       `entity` → `Entity<X>`; `attribute`/`feature` → `Attribute<…>`;
+       `component` → `Component<…>`; `group<E> of Host` → `Group<…>`; `archetype` → `Archetype<…>`.
+    5: `@external(...)` в DSL сейчас — пометка внешних C++-типов (`using … @external(...)`),
+       не отдельная проекция `agent`/`Handle`/`Materializer`.
+  }
+
+  blocks_and_operations: @Rule {
+    Блоки аспекта: `one` → `Quantum`, `all` → `Global` (пустой `Global` не эмитить),
+    `always` → `Always` (constexpr / чистые функции без Reading/Writing/Id).
+    Публичные `?`/`=`/`>` из `one`/`all` → `struct Actions : BaseActions` с implicit:
+    `Reading`/`Writing` первым аргументом; для `one` ещё `Id`; `>` из `all` возвращает `Id`.
+    Параметры: тяжёлые типы (`string`, контейнеры, не-trivially-copyable struct) — `const&`;
+    скаляры/`Id` — по значению. Имя параметра с `?`/`>` в DSL → `const&` / `&` (см. README).
+    `!` и поля `anchor<>`/`custody<>` — не публичные методы; в header: `struct Internals;` +
+    `customAspectReactions()`. Хелперы в `.cpp` — в `Aspect::Internals`, не в `*_private`/`Service`.
+    Точная сборка `Behavior` и тела реакций — вне этого тома (эталон `.cpp` + README).
+  }
+
+  type_and_id: @Rule {
+    1: builtin DSL-типы и `Id` — из `fqsm::api` / `fqsm::q1` (в т.ч. `optional` через common_types).
+    2: `vector<T>` → `std::vector<T>`; `enum E : a, b` → `enum class E { a, b };`.
+    3: `T?` → `optional<T_пр>`; `#X?` → `optional<X::Id>`.
+    4: `~T::field` → `decltype(T::field)`; `~T.field` → `decltype(T{}.field)`.
+    5: `#Aspect` → `Aspect::Id`.
+  }
+
+  no_require_mixin: @Rule {
+    Миксин `Require<...>` не используется. Parent — базовый тип аспекта;
+    реактивность — через реакции/`listens()`, не через dependency-список в объявлении.
+  }
+
+  writing_culture: @Rule {
+    Рядом с проекцией: мутации через `Writing` у транзакции fQSM (`operator Writing()`, вложенность через child policy).
+    Не держать отдельный `Reading`-снимок там, где нужна согласованность с последующими записями.
+    Не дублировать ручной push дельты, если финализацию делает деструктор/политика транзакции.
+  }
+
+}

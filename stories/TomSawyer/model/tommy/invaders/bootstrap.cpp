@@ -3,6 +3,8 @@
 #include <tommy/invaders/visual.h>
 #include <tommy/world.h>
 
+#include <vector>
+
 namespace tommy::invaders {
 
     using namespace fqsm::api;
@@ -18,10 +20,8 @@ namespace tommy::invaders {
             auto fleet = with<Fleet>::modify(context, session);
             fleet->origin = index2{-350, 260};
             fleet->dir = Fleet::Dir::right;
-            for (const auto [id, _] : context->aspect<World>().items()) {
-                fleet->next_march = with<World>::get(context, id).step + Fleet::base_march_steps;
-                break;
-            }
+            const auto world = with<Session>::get(context, session).world;
+            fleet->next_march = with<World>::get(context, world).step + Fleet::base_march_steps;
 
             const auto& session_q = with<Session>::get(context, session);
             constexpr integer cols = 11;
@@ -54,28 +54,31 @@ namespace tommy::invaders {
     } // namespace
 
     void Bootstrap::clearShots(Writing context, Session::Id session) {
+        if (not with<Shot_group>::exists(context, session)) {
+            return;
+        }
         vector<Shot::Id> shots;
-        for (const auto [id, _] : context->aspect<Shot>().items()) {
-            if (with<Shot>::get(context, id).session == session) {
-                shots.push_back(id);
-            }
+        for (const auto id : with<Shot_group>::get(context, session)) {
+            shots.push_back(id);
         }
         for (const auto id : shots) {
             destroyVisual(context, with<Shot>::get(context, id).visual);
-            with<Shot>::remove(context, id);
+            with<Shot_group>::deleteElement(context, session, id);
         }
     }
 
     void Bootstrap::clearAliens(Writing context, Session::Id session) {
+        if (not with<Alien_group>::exists(context, session)) {
+            return;
+        }
         vector<Alien::Id> aliens;
-        for (const auto [id, _] : context->aspect<Alien>().items()) {
+        for (const auto id : with<Alien_group>::get(context, session)) {
             aliens.push_back(id);
         }
         for (const auto id : aliens) {
             destroyVisual(context, with<Alien>::get(context, id).visual);
-            with<Alien>::remove(context, id);
+            with<Alien_group>::deleteElement(context, session, id);
         }
-        (void)session;
     }
 
     void Bootstrap::installWave(Writing context, Session::Id session, integer wave) {
@@ -83,11 +86,9 @@ namespace tommy::invaders {
         clearAliens(context, session);
         spawn_fleet_aliens(context, session, wave);
         if (with<Volley>::exists(context, session)) {
-            for (const auto [id, _] : context->aspect<World>().items()) {
-                with<Volley>::modify(context, session)->next_fire =
-                    with<World>::get(context, id).step + Volley::min_gap_steps;
-                break;
-            }
+            const auto world = with<Session>::get(context, session).world;
+            with<Volley>::modify(context, session)->next_fire =
+                with<World>::get(context, world).step + Volley::min_gap_steps;
         }
     }
 
@@ -111,11 +112,13 @@ namespace tommy::invaders {
 
     auto Bootstrap::newMatch(
         Writing context,
+        World::Id world,
         rmmr::scene::Root::Id scene,
         rmmr::resource::sprite::Pack::Id pack,
         rmmr::resource::material::Asset::Id material) -> Session::Id
     {
         const auto session = with<Session>::create(context, Session::Quantum{
+            .world = world,
             .phase = Phase::attract,
             .score = 0,
             .lives = 3,

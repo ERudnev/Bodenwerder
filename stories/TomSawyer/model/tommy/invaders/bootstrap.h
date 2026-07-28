@@ -13,6 +13,7 @@ namespace tommy::invaders {
     struct Bootstrap : Manipulation<Bootstrap, Session> {
         static auto newMatch(
             Writing,
+            World::Id,
             rmmr::scene::Root::Id,
             rmmr::resource::sprite::Pack::Id,
             rmmr::resource::material::Asset::Id) -> Session::Id;

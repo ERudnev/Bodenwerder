@@ -32,7 +32,7 @@ namespace tommy {
     }
 
     void SpriteTest::setup(Writing context, system::Core::Id, system::Viewport::Id viewport) {
-        with<World>::create(context, World::Quantum{.step = 0, .paused = false});
+        const auto world = with<World>::create(context, World::Quantum{.step = 0, .paused = false});
 
         const auto root = with<scene::Interface>::createScene(context);
         with<scene::Flat2d>::extend(context, root, scene::Flat2d::Quantum{
@@ -42,6 +42,7 @@ namespace tommy {
 
         invaders::Bootstrap::newMatch(
             context,
+            world,
             root,
             assets->kenney,
             *shared->material.sprite);
