@@ -22,20 +22,15 @@ namespace tommy::invaders {
             return static_cast<std::size_t>(key) < keys.size() && keys[static_cast<std::size_t>(key)];
         }
 
-        auto key_edge(const rmmr::system::Window::InputState& previous, const rmmr::system::Window::InputState& current, int key) -> bool {
-            return key_down(current.keys, key) and not key_down(previous.keys, key);
-        }
-
-        auto player_shot_alive(Reading context, Session::Id session) -> bool {
-            if (not with<Shot_group>::exists(context, session)) {
-                return false;
+        auto player_body(Reading context, Session::Id session_id) -> base::maybe<GameObject::Id> {
+            if (not with<Session>::exists(context, session_id)) {
+                return {};
             }
-            for (const auto id : with<Shot_group>::get(context, session)) {
-                if (with<Shot>::get(context, id).side == Shot::Side::player) {
-                    return true;
-                }
+            const auto player = with<Session>::get(context, session_id).player;
+            if (not player or not with<Player>::exists(context, *player)) {
+                return {};
             }
-            return false;
+            return player;
         }
 
         auto march_interval(Reading context, Session::Id session, integer wave) -> integer {
@@ -52,17 +47,6 @@ namespace tommy::invaders {
                 return base;
             }
             return std::max(base * alive / 55, 80);
-        }
-
-        auto player_body(Reading context, Session::Id session_id) -> base::maybe<GameObject::Id> {
-            if (not with<Session>::exists(context, session_id)) {
-                return {};
-            }
-            const auto player = with<Session>::get(context, session_id).player;
-            if (not player or not with<Player>::exists(context, *player)) {
-                return {};
-            }
-            return player;
         }
 
     } // namespace
@@ -125,35 +109,14 @@ namespace tommy::invaders {
             Writing context,
             GameObject::Id player_id,
             Session::Id session_id,
-            const rmmr::system::Window::InputState& previous,
-            const rmmr::system::Window::InputState& current,
-            integer now_step)
+            const rmmr::system::Window::InputState& held)
         {
-            const bool fire = key_edge(previous, current, GLFW_KEY_SPACE)
-                or key_edge(previous, current, GLFW_KEY_W);
-            if (not fire) {
+            if (not key_down(held.keys, GLFW_KEY_SPACE) and not key_down(held.keys, GLFW_KEY_W)) {
                 return;
             }
-            auto player = with<Player>::modify(context, player_id);
-            if (now_step < player->cooldown_until or player_shot_alive(context, session_id)) {
-                return;
-            }
-            const auto& session = with<Session>::get(context, session_id);
-            const index2 muzzle{player->pos.x, player->pos.y + 40};
-            const auto body = createGameObjectWithSprite(
-                context,
-                session,
-                muzzle,
-                Shot::sprite_index(Shot::Side::player),
-                Shot::sprite_scale,
-                Shot::sprite_bank,
-                Shot::sprite_zet);
-            with<Shot_group>::addElement(context, session_id, body, Shot::Quantum{
-                .session = session_id,
-                .pos = muzzle,
-                .side = Shot::Side::player,
-            });
-            player->cooldown_until = now_step + Player::shot_cooldown_steps;
+            const auto& player = with<Player>::get(context, player_id);
+            const index2 muzzle{player.pos.x, player.pos.y + Gun::muzzle_lift};
+            with<Gun>::fire(context, player.gun, session_id, muzzle);
         }
 
         static void onWorldStep(Reacting context) {
@@ -176,7 +139,7 @@ namespace tommy::invaders {
                             continue;
                         }
                         steer(context, *player_id, session_id, steps, input.current);
-                        tryFire(context, *player_id, session_id, input.previous, input.current, change.now.step);
+                        tryFire(context, *player_id, session_id, input.current);
                     }
                 }
             }
@@ -185,6 +148,7 @@ namespace tommy::invaders {
 
     auto Player::customAspectReactions() -> const Behavior {
         return {
+            reaction::structural::custody<Player, Gun, &Player::Quantum::gun>{},
             reaction::aspect_wide<Player, World>(&Player::Internals::onWorldStep),
         };
     }

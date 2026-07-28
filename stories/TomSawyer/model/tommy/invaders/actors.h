@@ -3,6 +3,7 @@
 #include <cstdint>
 
 #include <rmmr/math.q1.h>
+#include <tommy/invaders/gun.h>
 #include <tommy/invaders/session.h>
 
 #include <fQSM/api/interface.h>
@@ -13,7 +14,6 @@ namespace tommy::invaders {
 
     struct Player : Feature<Player, GameObject> {
         static constexpr integer move_pixels = 2;
-        static constexpr integer shot_cooldown_steps = 200;
         static constexpr integer sprite_idle = 200; // Kenney playerShip1_blue
         static constexpr float sprite_scale = 0.5f;
         static constexpr float sprite_bank = 180.0f; // Node HPB.z degrees
@@ -21,7 +21,7 @@ namespace tommy::invaders {
         struct Quantum {
             Affected<Session> session;
             index2 pos{0, -380};
-            integer cooldown_until = 0;
+            Custody<Gun> gun;
         };
         struct Internals;
         static const Behavior customAspectReactions();

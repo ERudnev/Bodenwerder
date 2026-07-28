@@ -21,6 +21,7 @@ namespace tommy {
             ask::schema::aspect<invaders::GameObject>(),
             ask::schema::aspect<invaders::Session>(),
             ask::schema::aspect<invaders::Playfield>(),
+            ask::schema::aspect<invaders::Gun>(),
             ask::schema::aspect<invaders::Player>(),
             ask::schema::aspect<invaders::Fleet>(),
             ask::schema::aspect<invaders::Alien>(),

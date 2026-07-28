@@ -111,8 +111,13 @@ namespace tommy::invaders {
         if (quantum->player and with<Player>::exists(context, *quantum->player)) {
             auto player = with<Player>::modify(context, *quantum->player);
             player->pos = index2{0, -380};
-            player->cooldown_until = 0;
             syncGameObjectSprite(context, *quantum->player, player->pos);
+            if (with<Gun>::exists(context, player->gun)) {
+                auto gun = with<Gun>::modify(context, player->gun);
+                gun->mech_ready_at = 0;
+                gun->temperature_celsius = 0;
+                gun->cool_step_carry = 0;
+            }
         }
         installWave(context, session, 1);
         syncMenuCameraControl(context, session);
@@ -157,10 +162,16 @@ namespace tommy::invaders {
             Player::sprite_scale,
             Player::sprite_bank,
             Player::sprite_zet);
+        const auto gun = with<Gun>::create(context, Gun::Quantum{
+            .world = world,
+            .mech_ready_at = 0,
+            .temperature_celsius = 0,
+            .cool_step_carry = 0,
+        });
         with<Player>::extend(context, player_body, Player::Quantum{
             .session = session,
             .pos = player_pos,
-            .cooldown_until = 0,
+            .gun = gun,
         });
         with<Session>::modify(context, session)->player = player_body;
 

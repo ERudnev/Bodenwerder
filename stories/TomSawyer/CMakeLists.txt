@@ -9,6 +9,7 @@ set(TomSawyer_Q1
     world.q1.types
     invaders/gameObject.q1.types
     invaders/session.q1.types
+    invaders/gun.q1.types
     invaders/actors.q1.types
     invaders/combat.q1.types
     invaders/bootstrap.q1.types

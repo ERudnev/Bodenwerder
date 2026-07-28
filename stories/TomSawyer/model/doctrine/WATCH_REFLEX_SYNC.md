@@ -6,7 +6,8 @@ After the debt wave: patterns applied only where they fit; not a full sanitize.
 |--------|----------|-------------|
 | GameObject | `sprite: #Sprite?` | `gameObject.h` / `.cpp`; roles share Id |
 | Session | `world: anchor<World>`; `player: #GameObject?` | matches; menu Camera2d sync |
-| Player | `feature of GameObject`; always sprite_idle/scale/bank; `!steer`/`!tryFire` | appear from always; sync via mom |
+| Player | `feature of GameObject`; `gun: custody<Gun>`; `!tryFire` → Gun | custody structural; thin tryFire |
+| Gun | dual limiter: mech ~4/s + °C heat magazine; `>fire`; `!cool(~World)` | `gun.h/.cpp`; custody under Player |
 | Shot | `feature of GameObject`; always sprite_*/scale; `!advance->>advanceMotion` | appear from always; sync/cull via mom |
 | Alien | `feature of GameObject`; always sprite_*/scale/bank; `?sprite_index` | appear from always; sync via mom |
 | Fleet / Volley | whole `!march` / `!schedule` | left whole |

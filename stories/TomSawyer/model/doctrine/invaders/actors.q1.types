@@ -1,16 +1,16 @@
 import "../world"
 import "session"
 import "gameObject"
+import "gun"
 
 namespace tommy
   namespace invaders
 
-    // Cannon. Reads Window inside ~World ticks (edge/hold vs previous step), never a dt-update.
+    // Ship. Reads Window inside ~World ticks; motion here, firing delegated to Gun.
     // Appearance (pack entry + scale) is this role's always; mom GameObject holds the live sprite.
     feature Player of GameObject
       always
         move_pixels: integer = 4
-        shot_cooldown_steps: integer = 25
         sprite_idle: integer = 200 // Kenney playerShip1_blue
         sprite_scale: float = 0.5
         sprite_bank: float = 180 // Node HPB.z degrees — nose toward fleet
@@ -18,9 +18,9 @@ namespace tommy
       one
         session: affects<Session>
         pos: index2
-        cooldown_until: integer // World.step deadline; 0 = ready
+        gun: custody<Gun>
         !steer(~World) // only when change.now.step != old; sample Window keys
-        !tryFire(~World) // rising edge fire → Shot(player) if cooldown elapsed
+        !tryFire(~World) // held Space/W → Gun.fire (mech+heat gates)
         !applyHit(~Shot) // alien bomb → destroy, notify Session
       all
         >spawn(#Session, index2)->#

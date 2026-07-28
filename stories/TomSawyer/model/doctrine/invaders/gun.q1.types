@@ -1,0 +1,26 @@
+import "session"
+import "../world"
+
+namespace tommy
+  namespace invaders
+
+    // Player ship's gun — aggregate owned via Player.gun custody.
+    // Dual limiter: fast mechanical cadence + heat "magazine" (°C) that cools over time.
+    entity Gun
+      always
+        // ~4 shots/sec at World.step = 1 ms (1000 steps/sec). Tune later.
+        mech_cooldown_steps: integer = 250
+        temp_max_celsius: integer = 500
+        // Fire only while temperature is strictly below this; shot may push at/above.
+        fire_below_celsius: integer = 400
+        heat_per_shot_celsius: integer = 100
+        cool_celsius_per_sec: integer = 100 // full 500→0 ≈ 5 s
+        muzzle_lift: integer = 40 // pixels above Player.pos
+      one
+        world: affects<World> // !cool inbound index (World delta → Gun), not Session
+        mech_ready_at: integer // World.step when mechanical gate opens; 0 = ready
+        temperature_celsius: integer // clamped [0, temp_max]
+        cool_step_carry: integer // residual steps toward next °C of cooling
+        !cool(~World) // step delta → shed heat toward 0
+      all
+        >fire(#Session, muzzle: index2)->#? // player Shot or none (mech / heat)
