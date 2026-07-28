@@ -39,14 +39,15 @@ namespace tommy::invaders {
                 for (integer col = 0; col < cols; ++col) {
                     const index2 cell{col, row};
                     const index2 pos = alienWorldPos(*fleet, cell);
-                    const auto body = createSomethingWithSprite(
+                    const auto body = createGameObjectWithSprite(
                         context,
                         session_q,
                         pos,
                         Alien::sprite_index(kind),
                         Alien::sprite_scale,
                         Alien::sprite_bank,
-                        Alien::sprite_zet);
+                        Alien::sprite_zet,
+                        Alien::sprite_tint(cell));
                     with<Alien_group>::addElement(context, session, body, Alien::Quantum{
                         .cell = cell,
                         .kind = kind,
@@ -68,7 +69,7 @@ namespace tommy::invaders {
             shots.push_back(id);
         }
         for (const auto id : shots) {
-            destroySomethingSprite(context, id);
+            destroyGameObjectSprite(context, id);
             with<Shot_group>::deleteElement(context, session, id);
         }
     }
@@ -82,7 +83,7 @@ namespace tommy::invaders {
             aliens.push_back(id);
         }
         for (const auto id : aliens) {
-            destroySomethingSprite(context, id);
+            destroyGameObjectSprite(context, id);
             with<Alien_group>::deleteElement(context, session, id);
         }
     }
@@ -111,7 +112,7 @@ namespace tommy::invaders {
             auto player = with<Player>::modify(context, *quantum->player);
             player->pos = index2{0, -380};
             player->cooldown_until = 0;
-            syncSomethingSprite(context, *quantum->player, player->pos);
+            syncGameObjectSprite(context, *quantum->player, player->pos);
         }
         installWave(context, session, 1);
         syncMenuCameraControl(context, session);
@@ -148,7 +149,7 @@ namespace tommy::invaders {
 
         const auto& session_q = with<Session>::get(context, session);
         const index2 player_pos{0, -380};
-        const auto player_body = createSomethingWithSprite(
+        const auto player_body = createGameObjectWithSprite(
             context,
             session_q,
             player_pos,

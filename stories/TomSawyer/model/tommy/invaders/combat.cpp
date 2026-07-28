@@ -33,11 +33,11 @@ namespace tommy::invaders {
                 return;
             }
             const auto session = with<Shot>::get(context, shot_id).session;
-            destroySomethingSprite(context, shot_id);
+            destroyGameObjectSprite(context, shot_id);
             if (with<Shot_group>::exists(context, session)) {
                 with<Shot_group>::deleteElement(context, session, shot_id);
             } else {
-                with<Something>::remove(context, shot_id);
+                with<GameObject>::remove(context, shot_id);
             }
         }
 
@@ -72,7 +72,7 @@ namespace tommy::invaders {
                     continue;
                 }
                 alien->alive = false;
-                destroySomethingSprite(context, alien_id);
+                destroyGameObjectSprite(context, alien_id);
                 with<Session>::modify(context, session_id)->score += alien->points;
 
                 bool any_alive = false;
@@ -105,7 +105,7 @@ namespace tommy::invaders {
                 shot->pos.y -= shot->motion_carry / alien_speed_period;
                 shot->motion_carry %= alien_speed_period;
             }
-            syncSomethingSprite(context, shot_id, shot->pos);
+            syncGameObjectSprite(context, shot_id, shot->pos);
 
             const auto& field = with<Playfield>::get(context, session_id);
             if (shot->pos.y > field.origin.y + field.size.y + 40

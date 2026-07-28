@@ -1,5 +1,5 @@
 import "../world"
-import "something"
+import "gameObject"
 
 namespace tommy
   namespace invaders
@@ -16,7 +16,7 @@ namespace tommy
         lives: integer
         wave: integer
         wave_ready_at: integer // World.step deadline while wave_clear
-        player: #Something?
+        player: #GameObject?
         !onPlayerDestroyed(~Player) // lives--; attract/lost when exhausted
         !onFleetCleared(~Fleet) // wave_clear → next wave or won
         !onWaveReady(~World) // step deadlines while wave_clear; no-op unless step moved

@@ -8,6 +8,7 @@
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
+#include <cmath>
 
 namespace tommy::invaders {
 
@@ -53,7 +54,7 @@ namespace tommy::invaders {
             return std::max(base * alive / 55, 80);
         }
 
-        auto player_body(Reading context, Session::Id session_id) -> base::maybe<Something::Id> {
+        auto player_body(Reading context, Session::Id session_id) -> base::maybe<GameObject::Id> {
             if (not with<Session>::exists(context, session_id)) {
                 return {};
             }
@@ -82,10 +83,22 @@ namespace tommy::invaders {
         return sprite_crab;
     }
 
+    auto Alien::sprite_tint(index2 cell) -> rmmr::RGB {
+        // Additive tint (neutral is 0). Spread formation slots across a soft hue wheel.
+        constexpr float two_pi = 6.2831853f;
+        const float hue = (static_cast<float>(cell.x) * 0.55f + static_cast<float>(cell.y) * 1.7f) * (two_pi / 11.0f);
+        constexpr float amp = 0.35f;
+        return rmmr::RGB{
+            amp * std::sin(hue),
+            amp * std::sin(hue + 2.0943951f),
+            amp * std::sin(hue + 4.1887902f),
+        };
+    }
+
     struct Player::Internals : Player::DefaultInternals {
         static void steer(
             Writing context,
-            Something::Id player_id,
+            GameObject::Id player_id,
             Session::Id session_id,
             integer steps,
             const rmmr::system::Window::InputState& held)
@@ -105,12 +118,12 @@ namespace tommy::invaders {
             const integer min_x = field.origin.x + 40;
             const integer max_x = field.origin.x + field.size.x - 40;
             player->pos.x = std::clamp(player->pos.x + dx, min_x, max_x);
-            syncSomethingSprite(context, player_id, player->pos);
+            syncGameObjectSprite(context, player_id, player->pos);
         }
 
         static void tryFire(
             Writing context,
-            Something::Id player_id,
+            GameObject::Id player_id,
             Session::Id session_id,
             const rmmr::system::Window::InputState& previous,
             const rmmr::system::Window::InputState& current,
@@ -127,7 +140,7 @@ namespace tommy::invaders {
             }
             const auto& session = with<Session>::get(context, session_id);
             const index2 muzzle{player->pos.x, player->pos.y + 40};
-            const auto body = createSomethingWithSprite(
+            const auto body = createGameObjectWithSprite(
                 context,
                 session,
                 muzzle,
@@ -232,7 +245,7 @@ namespace tommy::invaders {
                                 continue;
                             }
                             const index2 pos = alienWorldPos(*fleet, alien->cell);
-                            syncSomethingSprite(context, alien_id, pos);
+                            syncGameObjectSprite(context, alien_id, pos);
                             const auto player_id = player_body(context, session_id);
                             if (player_id and pos.y <= with<Player>::get(context, *player_id).pos.y + 40) {
                                 with<Session>::modify(context, session_id)->phase = Phase::lost;
@@ -288,7 +301,7 @@ namespace tommy::invaders {
                     const index2 muzzle = alienWorldPos(fleet, alien.cell);
                     const index2 spawn{muzzle.x, muzzle.y - 30};
                     const auto& session = with<Session>::get(context, session_id);
-                    const auto body = createSomethingWithSprite(
+                    const auto body = createGameObjectWithSprite(
                         context,
                         session,
                         spawn,

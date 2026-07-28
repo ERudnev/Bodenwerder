@@ -1,13 +1,13 @@
 import "../world"
 import "session"
-import "something"
+import "gameObject"
 
 namespace tommy
   namespace invaders
 
     // Cannon. Reads Window inside ~World ticks (edge/hold vs previous step), never a dt-update.
-    // Appearance (pack entry + scale) is this role's always; mom Something holds the live sprite.
-    feature Player of Something
+    // Appearance (pack entry + scale) is this role's always; mom GameObject holds the live sprite.
+    feature Player of GameObject
       always
         move_pixels: integer = 4
         shot_cooldown_steps: integer = 25
@@ -42,7 +42,7 @@ namespace tommy
       all
         >spawnWave(#Session, wave: integer)->#
 
-    feature Alien of Something
+    feature Alien of GameObject
       enum Kind : squid, crab, octopus
       always
         sprite_squid: integer = 49 // Kenney enemyBlack1
@@ -52,6 +52,7 @@ namespace tommy
         sprite_bank: float = 180 // Node HPB.z degrees — face player
         sprite_zet: integer = 0
         ?sprite_index(Kind) -> integer
+        ?sprite_tint(index2 cell) -> RGB // per-instance additive tint
       one
         cell: index2
         kind: Kind
@@ -62,7 +63,7 @@ namespace tommy
 
     group<Alien> of Fleet
 
-    feature Saucer of Something
+    feature Saucer of GameObject
       always
         sprite_idle: integer = 0
         sprite_scale: float = 0.5

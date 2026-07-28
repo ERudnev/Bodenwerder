@@ -10,7 +10,7 @@ namespace tommy::invaders {
 
     using namespace fqsm::api;
 
-    struct Shot : Feature<Shot, Something> {
+    struct Shot : Feature<Shot, GameObject> {
         enum class Side : std::uint8_t { player, alien };
         static constexpr integer player_speed = 1; // px per World.step
         static constexpr integer alien_speed = 1; // px per 2 World.steps (half prior rate)

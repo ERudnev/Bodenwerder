@@ -18,7 +18,7 @@ namespace tommy {
     Schema SpriteTest::schema() const {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
-            ask::schema::aspect<invaders::Something>(),
+            ask::schema::aspect<invaders::GameObject>(),
             ask::schema::aspect<invaders::Session>(),
             ask::schema::aspect<invaders::Playfield>(),
             ask::schema::aspect<invaders::Player>(),

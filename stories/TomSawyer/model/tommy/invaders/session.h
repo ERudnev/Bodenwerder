@@ -5,9 +5,9 @@
 #include <base/maybe.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/sprites.q1.h>
-#include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
+#include <tommy/invaders/gameObject.h>
 #include <tommy/world.h>
 
 #include <fQSM/api/interface.h>
@@ -24,14 +24,6 @@ namespace tommy::invaders {
         won,
     };
 
-    struct Something : Entity<Something> {
-        struct Quantum {
-            base::maybe<rmmr::scene::actor::Sprite::Id> sprite;
-        };
-        struct Internals : DefaultInternals {};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
     struct Session : Entity<Session> {
         struct Quantum {
             Anchor<World> world;
@@ -44,7 +36,7 @@ namespace tommy::invaders {
             rmmr::resource::sprite::Pack::Id pack;
             rmmr::resource::material::Asset::Id material;
             integer wave_ready_at = 0;
-            base::maybe<Something::Id> player;
+            base::maybe<GameObject::Id> player;
         };
         struct Internals;
         static const Behavior customAspectReactions();

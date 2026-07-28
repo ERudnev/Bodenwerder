@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include <rmmr/math.q1.h>
 #include <tommy/invaders/session.h>
 
 #include <fQSM/api/interface.h>
@@ -10,7 +11,7 @@ namespace tommy::invaders {
 
     using namespace fqsm::api;
 
-    struct Player : Feature<Player, Something> {
+    struct Player : Feature<Player, GameObject> {
         static constexpr integer move_pixels = 2;
         static constexpr integer shot_cooldown_steps = 200;
         static constexpr integer sprite_idle = 200; // Kenney playerShip1_blue
@@ -40,7 +41,7 @@ namespace tommy::invaders {
         static const Behavior customAspectReactions();
     };
 
-    struct Alien : Feature<Alien, Something> {
+    struct Alien : Feature<Alien, GameObject> {
         enum class Kind : std::uint8_t { squid, crab, octopus };
         static constexpr integer sprite_squid = 49; // Kenney enemyBlack1
         static constexpr integer sprite_crab = 50;
@@ -57,6 +58,7 @@ namespace tommy::invaders {
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
         static auto sprite_index(Kind kind) -> integer;
+        static auto sprite_tint(index2 cell) -> rmmr::RGB;
     };
 
     struct Alien_group : Group<Alien_group, Fleet, Alien> {

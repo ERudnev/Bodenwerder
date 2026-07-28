@@ -1,14 +1,14 @@
 import "../world"
 import "session"
 import "actors"
-import "something"
+import "gameObject"
 
 namespace tommy
   namespace invaders
 
     // Bolts advance one speed-slice per World.step change — not per rendered frame.
-    // Appearance is this role's always; mom Something holds the live sprite.
-    feature Shot of Something
+    // Appearance is this role's always; mom GameObject holds the live sprite.
+    feature Shot of GameObject
       enum Side : player, alien
       always
         player_speed: integer = 8 // pixels per step
