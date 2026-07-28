@@ -15,6 +15,7 @@ namespace tommy {
         struct Ui {
             bool camera = false;
             bool hud = true;
+            bool gun = true;
         };
 
         std::unique_ptr<Assets> assets;
@@ -30,6 +31,7 @@ namespace tommy {
 
     private:
         void drawHud(Writing);
+        void drawGunPanel(Writing);
         void drawCameraWindow(Writing);
     };
 
