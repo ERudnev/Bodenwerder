@@ -1,8 +1,8 @@
-#include <tommy/invaders/gameObject.h>
+#include <si01/invaders/gameObject.h>
 
 #include <algorithm>
 
-namespace tommy::invaders {
+namespace si01::invaders {
 
     using namespace fqsm::api;
 

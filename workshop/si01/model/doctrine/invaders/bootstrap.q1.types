@@ -2,11 +2,11 @@ import "session"
 import "actors"
 import "combat"
 
-namespace tommy
+namespace si01
   namespace invaders
 
     // Story-facing factories: stand up / reset a playable match.
-    // Signatures match tommy::invaders::Bootstrap (scene wiring required at create).
+    // Signatures match si01::invaders::Bootstrap (scene wiring required at create).
     manipulation Bootstrap of Session
       >newMatch(#World, #rmmr::scene::Root, #rmmr::scene::Camera, #rmmr::resource::sprite::Pack, #rmmr::resource::material::Asset)->#Session
       >installWave(#Session, wave: integer)->#

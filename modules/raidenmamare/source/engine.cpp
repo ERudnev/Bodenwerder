@@ -90,11 +90,27 @@ namespace rmmr {
             std::vector<ViewContext> activeViews;
             maybe<resource::shadow::Asset::Id> default_shadow;
         } handles;
+
+        struct {
+            std::vector<GLFWwindow*> windows;
+        } driver;
         Renderer renderer;
 
         explicit State(Schema schema)
             : establish::Module::State(std::move(schema))
         {}
+
+        ~State() override {
+            for (GLFWwindow* handle : driver.windows) {
+                if (handle) {
+                    glfwDestroyWindow(handle);
+                }
+            }
+            if (not driver.windows.empty()) {
+                glfwTerminate();
+                driver.windows.clear();
+            }
+        }
 
         void setupDefaultShadow(Writing context, system::Core::Id core) {
             if (handles.default_shadow.exists())
@@ -229,18 +245,15 @@ namespace rmmr {
 
     void Engine::shutdown(Writing context) noexcept {
         base::message("rmmr teardown: Engine shutdown begin");
-        std::vector<GLFWwindow*> preserved_handles;
+        state->driver.windows.clear();
         for (const auto entry : context->aspect<system::Device>().items()) {
             if (entry.value.handle) {
-                preserved_handles.push_back(entry.value.handle);
+                state->driver.windows.push_back(entry.value.handle);
             }
         }
         ask::temp_sugar::drop_reference<system::Viewport>(context, state->handles.viewport);
         with<system::Interface>::shutdown(context);
-        for (GLFWwindow* handle : preserved_handles) {
-            glfwDestroyWindow(handle);
-        }
-        glfwTerminate();
+        // Native GLFW teardown waits for ~State — after the caller's finish_patch.
         base::message("rmmr teardown: Engine shutdown done");
     }
 }

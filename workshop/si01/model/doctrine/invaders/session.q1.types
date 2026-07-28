@@ -1,7 +1,7 @@
 import "../world"
 import "gameObject"
 
-namespace tommy
+namespace si01
   namespace invaders
 
     // Match state. No update(dt): phase transitions wake on domain events or ~World.

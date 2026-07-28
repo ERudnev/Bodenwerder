@@ -3,7 +3,7 @@ import "session"
 import "gameObject"
 import "gun"
 
-namespace tommy
+namespace si01
   namespace invaders
 
     // Ship. Reads Window inside ~World ticks; motion here, firing delegated to Gun.

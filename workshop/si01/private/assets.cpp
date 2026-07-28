@@ -5,7 +5,7 @@
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 
-namespace tommy {
+namespace si01 {
 
     using namespace fqsm::api;
     using namespace rmmr;
@@ -14,8 +14,7 @@ namespace tommy {
         using namespace resource;
         using geometry::Generator;
 
-        // Same slots as before; atlas files now live under assets/workshop/si01.
-        base::message("TomSawyer: seeding Kenney sprite pack...");
+        base::message("workshop_si01: seeding Kenney sprite pack...");
         const auto kenney = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context,
             core,
@@ -25,11 +24,11 @@ namespace tommy {
                 .descriptor = "sprites/Spritesheet/sheet.xml",
             });
 
-        base::message("TomSawyer: seeding unit quad geometry...");
+        base::message("workshop_si01: seeding unit quad geometry...");
         const auto unitQuad = with<::rmmr::resource::Assets>::add_geometry_generator(
             context,
             core,
-            item<Unit>{.manager = core, .name = "sprite_unit_quad", .library = "TomSawyer"},
+            item<Unit>{.manager = core, .name = "sprite_unit_quad", .library = "workshop/si01"},
             item<Generator>{.type = Generator::Type::unitQuad});
 
         return std::unique_ptr<Assets>(new Assets{

@@ -6,12 +6,12 @@
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
-#include <tommy/invaders/gameObject.h>
-#include <tommy/invaders/session.h>
+#include <si01/invaders/gameObject.h>
+#include <si01/invaders/session.h>
 
 #include <fQSM/api/interface.h>
 
-namespace tommy::invaders {
+namespace si01::invaders {
 
     using namespace fqsm::api;
 

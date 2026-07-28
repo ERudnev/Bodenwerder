@@ -1,4 +1,4 @@
-namespace tommy
+namespace si01
   namespace invaders
 
     // Scene presence + shared vitality. Role features (Player/Alien/Shot/…) share this Id,

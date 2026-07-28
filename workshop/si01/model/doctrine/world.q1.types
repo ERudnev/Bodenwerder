@@ -1,8 +1,8 @@
-namespace tommy
+namespace si01
 
   // Sim pulse. No classic update(dt) loop for gameplay:
   //   system::Clock changes → World may advance `step`
-  //   World.step changes    → domain aspects wake on ~World
+  //   World.step changes    → invaders / logic aspects wake on ~World
   //   no step change        → no sim update
   // `paused` freezes step (Clock still ticks; World.step does not).
   // Input snapshots stay on rmmr::system::Window (pause key only here).

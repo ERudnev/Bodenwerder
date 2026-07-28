@@ -1,7 +1,7 @@
 # Agent × Q1 — Space Invaders design experiment
 
 Лог эксперимента: проектирование игрушки **языком Q1** (doctrine) с синхронной C++-проекцией, руками агента.
-Папка: `stories/TomSawyer/model/doctrine/invaders/`.
+Папка: `workshop/si01/model/doctrine/invaders/`.
 
 Формат записи:
 

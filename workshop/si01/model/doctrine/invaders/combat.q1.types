@@ -2,7 +2,7 @@ import "../world"
 import "session"
 import "gameObject"
 
-namespace tommy
+namespace si01
   namespace invaders
 
     // Bolt: motion + presence. Who fires lives on Gun (player) / Volley (alien) — not here.

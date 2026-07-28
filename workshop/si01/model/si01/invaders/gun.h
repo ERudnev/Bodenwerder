@@ -1,13 +1,13 @@
 #pragma once
 
 #include <base/maybe.h>
-#include <tommy/invaders/gameObject.h>
-#include <tommy/invaders/session.h>
-#include <tommy/world.h>
+#include <si01/invaders/gameObject.h>
+#include <si01/invaders/session.h>
+#include <si01/world.h>
 
 #include <fQSM/api/interface.h>
 
-namespace tommy::invaders {
+namespace si01::invaders {
 
     using namespace fqsm::api;
 

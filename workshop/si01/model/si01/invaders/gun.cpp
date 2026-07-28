@@ -1,11 +1,11 @@
-#include <tommy/invaders/gun.h>
+#include <si01/invaders/gun.h>
 
-#include <tommy/invaders/combat.h>
-#include <tommy/invaders/visual.h>
+#include <si01/invaders/combat.h>
+#include <si01/invaders/visual.h>
 
 #include <algorithm>
 
-namespace tommy::invaders {
+namespace si01::invaders {
 
     using namespace fqsm::api;
 

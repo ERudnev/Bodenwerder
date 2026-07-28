@@ -2,11 +2,11 @@
 
 #include <cstdint>
 
-#include <tommy/invaders/session.h>
+#include <si01/invaders/session.h>
 
 #include <fQSM/api/interface.h>
 
-namespace tommy::invaders {
+namespace si01::invaders {
 
     using namespace fqsm::api;
 

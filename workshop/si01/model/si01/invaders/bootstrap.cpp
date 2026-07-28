@@ -1,11 +1,11 @@
-#include <tommy/invaders/bootstrap.h>
+#include <si01/invaders/bootstrap.h>
 
-#include <tommy/invaders/visual.h>
-#include <tommy/world.h>
+#include <si01/invaders/visual.h>
+#include <si01/world.h>
 
 #include <vector>
 
-namespace tommy::invaders {
+namespace si01::invaders {
 
     using namespace fqsm::api;
 

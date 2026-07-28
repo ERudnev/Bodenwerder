@@ -1,7 +1,7 @@
 import "session"
 import "../world"
 
-namespace tommy
+namespace si01
   namespace invaders
 
     // Player ship's gun — aggregate owned via Player.gun custody.

@@ -3,12 +3,12 @@
 #include <cstdint>
 
 #include <rmmr/math.q1.h>
-#include <tommy/invaders/gun.h>
-#include <tommy/invaders/session.h>
+#include <si01/invaders/gun.h>
+#include <si01/invaders/session.h>
 
 #include <fQSM/api/interface.h>
 
-namespace tommy::invaders {
+namespace si01::invaders {
 
     using namespace fqsm::api;
 

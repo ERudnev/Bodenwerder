@@ -1,14 +1,14 @@
-#include <tommy/invaders/session.h>
+#include <si01/invaders/session.h>
 
-#include <tommy/invaders/bootstrap.h>
-#include <tommy/world.h>
+#include <si01/invaders/bootstrap.h>
+#include <si01/world.h>
 
 #include <rmmr/controller/camera2d.q1.h>
 #include <rmmr/scene/node.q1.h>
 
 #include <GLFW/glfw3.h>
 
-namespace tommy::invaders {
+namespace si01::invaders {
 
     using namespace fqsm::api;
 

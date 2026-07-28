@@ -5,7 +5,7 @@
 
 #include <base/maybe.h>
 
-namespace tommy::invaders {
+namespace si01::invaders {
 
     using namespace fqsm::api;
 
