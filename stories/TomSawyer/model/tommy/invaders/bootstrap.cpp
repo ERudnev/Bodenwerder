@@ -39,13 +39,19 @@ namespace tommy::invaders {
                 for (integer col = 0; col < cols; ++col) {
                     const index2 cell{col, row};
                     const index2 pos = alienWorldPos(*fleet, cell);
-                    const auto visual = spawnSprite(context, session_q, pos, alienSpriteIndex(kind), 0);
-                    with<Alien_group>::addElement(context, session, Alien::Quantum{
+                    const auto body = createSomethingWithSprite(
+                        context,
+                        session_q,
+                        pos,
+                        Alien::sprite_index(kind),
+                        Alien::sprite_scale,
+                        Alien::sprite_bank,
+                        Alien::sprite_zet);
+                    with<Alien_group>::addElement(context, session, body, Alien::Quantum{
                         .cell = cell,
                         .kind = kind,
                         .points = points,
                         .alive = true,
-                        .visual = visual,
                     });
                 }
             }
@@ -62,7 +68,7 @@ namespace tommy::invaders {
             shots.push_back(id);
         }
         for (const auto id : shots) {
-            destroyVisual(context, with<Shot>::get(context, id).visual);
+            destroySomethingSprite(context, id);
             with<Shot_group>::deleteElement(context, session, id);
         }
     }
@@ -76,7 +82,7 @@ namespace tommy::invaders {
             aliens.push_back(id);
         }
         for (const auto id : aliens) {
-            destroyVisual(context, with<Alien>::get(context, id).visual);
+            destroySomethingSprite(context, id);
             with<Alien_group>::deleteElement(context, session, id);
         }
     }
@@ -101,19 +107,21 @@ namespace tommy::invaders {
         quantum->lives = 3;
         quantum->wave = 1;
         quantum->wave_ready_at = 0;
-        if (with<Player>::exists(context, session)) {
-            auto player = with<Player>::modify(context, session);
+        if (quantum->player and with<Player>::exists(context, *quantum->player)) {
+            auto player = with<Player>::modify(context, *quantum->player);
             player->pos = index2{0, -380};
             player->cooldown_until = 0;
-            syncVisual(context, player->visual, player->pos);
+            syncSomethingSprite(context, *quantum->player, player->pos);
         }
         installWave(context, session, 1);
+        syncMenuCameraControl(context, session);
     }
 
     auto Bootstrap::newMatch(
         Writing context,
         World::Id world,
         rmmr::scene::Root::Id scene,
+        rmmr::scene::Camera::Id camera,
         rmmr::resource::sprite::Pack::Id pack,
         rmmr::resource::material::Asset::Id material) -> Session::Id
     {
@@ -124,9 +132,11 @@ namespace tommy::invaders {
             .lives = 3,
             .wave = 1,
             .scene = scene,
+            .camera = camera,
             .pack = pack,
             .material = material,
             .wave_ready_at = 0,
+            .player = {},
         });
 
         with<Playfield>::extend(context, session, Playfield::Quantum{});
@@ -138,14 +148,23 @@ namespace tommy::invaders {
 
         const auto& session_q = with<Session>::get(context, session);
         const index2 player_pos{0, -380};
-        const auto player_visual = spawnSprite(context, session_q, player_pos, k_sprite_player, 2);
-        with<Player>::extend(context, session, Player::Quantum{
+        const auto player_body = createSomethingWithSprite(
+            context,
+            session_q,
+            player_pos,
+            Player::sprite_idle,
+            Player::sprite_scale,
+            Player::sprite_bank,
+            Player::sprite_zet);
+        with<Player>::extend(context, player_body, Player::Quantum{
+            .session = session,
             .pos = player_pos,
             .cooldown_until = 0,
-            .visual = player_visual,
         });
+        with<Session>::modify(context, session)->player = player_body;
 
         installWave(context, session, 1);
+        syncMenuCameraControl(context, session);
         return session;
     }
 

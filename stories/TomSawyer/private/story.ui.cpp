@@ -61,7 +61,8 @@ namespace tommy {
                 ImGui::Text("Lives: %d", session.lives);
                 ImGui::Text("Wave:  %d", session.wave);
                 ImGui::Separator();
-                ImGui::TextUnformatted("A/D or arrows — move");
+                ImGui::TextUnformatted("A/D or arrows — move (in play)");
+                ImGui::TextUnformatted("Arrows / RMB — pan camera (menu)");
                 ImGui::TextUnformatted("Space / W — fire");
                 ImGui::TextUnformatted("P — pause");
                 ImGui::TextUnformatted("Enter — start (attract)");

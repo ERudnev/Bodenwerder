@@ -40,3 +40,5 @@ entity ReactionSketch
 ```
 
 Здесь `->>field_action()` — action (есть `>field_action`), `->>reflex()` и `->=field_update()` — приватные хвосты (reflex / private command).
+
+Живой игровой образец после «долга» оси: `stories/TomSawyer/model/doctrine` + C++ `stories/TomSawyer/model/tommy` (Player/Shot: watch → Internals reflex; Fleet/Volley/World часто цельный `!`).

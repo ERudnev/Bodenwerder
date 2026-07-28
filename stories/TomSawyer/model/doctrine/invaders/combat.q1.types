@@ -1,29 +1,32 @@
 import "../world"
 import "session"
 import "actors"
+import "something"
 
 namespace tommy
   namespace invaders
 
     // Bolts advance one speed-slice per World.step change — not per rendered frame.
-    entity Shot
+    // Appearance is this role's always; mom Something holds the live sprite.
+    feature Shot of Something
       enum Side : player, alien
       always
         player_speed: integer = 8 // pixels per step
-        alien_speed: integer = 5
+        alien_speed: integer = 1 // px; applied every 2 World.steps in runtime (half prior rate)
+        sprite_player: integer = 105 // Kenney laserBlue01
+        sprite_alien: integer = 137 // Kenney laserRed01
+        sprite_scale: float = 0.5
+        sprite_bank: float = 0
+        sprite_zet: integer = 1
+        ?sprite_index(Side) -> integer
       one
         session: affects<Session>
         pos: index2
         side: Side
+        !advance(~World)->>advanceMotion()
       all
         >firePlayer(#Session, index2)->#
         >fireAlien(#Session, index2)->#
-        !advance(~World) // move by (now.step - old.step) * speed; then collide / cull
-        !cullOutOfBounds(~Playfield)
-        !hitAlien(~Alien)
-        !hitPlayer(~Player)
-        !hitBunker(~Bunker)
-        !hitSaucer(~Saucer)
 
     group<Shot> of Session
 
@@ -34,10 +37,10 @@ namespace tommy
         session: affects<Session>
         pos: index2
         hp: integer
-      all
-        >place(#Session, index2)->#
         !erode(~Shot)
         !blockDescent(~Fleet)
+      all
+        >place(#Session, index2)->#
 
     group<Bunker> of Session
 
@@ -47,6 +50,6 @@ namespace tommy
         min_gap_steps: integer = 40
       one
         next_fire: integer
+        !schedule(~World)
       all
         >arm()->#
-        !schedule(~World)

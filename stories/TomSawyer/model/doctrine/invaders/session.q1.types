@@ -1,4 +1,5 @@
 import "../world"
+import "something"
 
 namespace tommy
   namespace invaders
@@ -9,22 +10,26 @@ namespace tommy
       always
         start_lives: integer = 3
       one
+        world: anchor<World>
         phase: Phase
         score: integer
         lives: integer
         wave: integer
-      all
-        >create()->#
-        >beginPlay()->#
+        wave_ready_at: integer // World.step deadline while wave_clear
+        player: #Something?
         !onPlayerDestroyed(~Player) // lives--; attract/lost when exhausted
         !onFleetCleared(~Fleet) // wave_clear → next wave or won
         !onWaveReady(~World) // step deadlines while wave_clear; no-op unless step moved
+        !attractAndRestart(~World) // Enter / R while step moved
+      all
+        >create()->#
+        >beginPlay()->#
 
     // Play rectangle in World pixel space (Flat2d ortho units).
     component Playfield of Session
       one
         origin: index2
         size: index2
+        ?contains(index2) -> bool
       all
         >install(origin: index2, size: index2)->#
-        ?contains(index2) -> bool

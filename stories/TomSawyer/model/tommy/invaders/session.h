@@ -2,8 +2,11 @@
 
 #include <cstdint>
 
+#include <base/maybe.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/sprites.q1.h>
+#include <rmmr/scene/actors/sprite.q1.h>
+#include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <tommy/world.h>
 
@@ -13,14 +16,6 @@ namespace tommy::invaders {
 
     using namespace fqsm::api;
 
-    // Kenney sheet.xml order (spaceShooter).
-    inline constexpr integer k_sprite_player = 200; // playerShip1_blue
-    inline constexpr integer k_sprite_alien_squid = 49; // enemyBlack1
-    inline constexpr integer k_sprite_alien_crab = 50; // enemyBlack2
-    inline constexpr integer k_sprite_alien_octopus = 51; // enemyBlack3
-    inline constexpr integer k_sprite_laser_player = 105; // laserBlue01
-    inline constexpr integer k_sprite_laser_alien = 137; // laserRed01
-
     enum class Phase : std::uint8_t {
         attract,
         playing,
@@ -29,17 +24,27 @@ namespace tommy::invaders {
         won,
     };
 
+    struct Something : Entity<Something> {
+        struct Quantum {
+            base::maybe<rmmr::scene::actor::Sprite::Id> sprite;
+        };
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
     struct Session : Entity<Session> {
         struct Quantum {
-            Affected<World> world;
+            Anchor<World> world;
             Phase phase = Phase::attract;
             integer score = 0;
             integer lives = 3;
             integer wave = 1;
             rmmr::scene::Root::Id scene;
+            rmmr::scene::Camera::Id camera;
             rmmr::resource::sprite::Pack::Id pack;
             rmmr::resource::material::Asset::Id material;
             integer wave_ready_at = 0;
+            base::maybe<Something::Id> player;
         };
         struct Internals;
         static const Behavior customAspectReactions();
@@ -56,6 +61,7 @@ namespace tommy::invaders {
 
     void noteFleetCleared(Writing, Session::Id);
     void notePlayerHit(Writing, Session::Id);
+    void syncMenuCameraControl(Writing, Session::Id);
     auto sessionPlaying(Reading, Session::Id) -> bool;
 
 }

@@ -1,0 +1,7 @@
+namespace tommy
+  namespace invaders
+
+    // Scene presence: optional live sprite. Role features share this Id.
+    entity Something
+      one
+        sprite: #rmmr::scene::actor::Sprite?

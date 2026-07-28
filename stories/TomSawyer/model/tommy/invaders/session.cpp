@@ -3,6 +3,9 @@
 #include <tommy/invaders/bootstrap.h>
 #include <tommy/world.h>
 
+#include <rmmr/controller/camera2d.q1.h>
+#include <rmmr/scene/node.q1.h>
+
 #include <GLFW/glfw3.h>
 
 namespace tommy::invaders {
@@ -24,6 +27,10 @@ namespace tommy::invaders {
             return with<World>::get(context, world).step;
         }
 
+        auto is_menu_phase(Phase phase) -> bool {
+            return phase == Phase::attract or phase == Phase::lost or phase == Phase::won;
+        }
+
     } // namespace
 
     auto sessionPlaying(Reading context, Session::Id session) -> bool {
@@ -33,6 +40,32 @@ namespace tommy::invaders {
         return with<Session>::get(context, session).phase == Phase::playing;
     }
 
+    void syncMenuCameraControl(Writing context, Session::Id session_id) {
+        if (not with<Session>::exists(context, session_id)) {
+            return;
+        }
+        const auto& session = with<Session>::get(context, session_id);
+        const auto camera = session.camera;
+        if (not with<rmmr::scene::Camera>::exists(context, camera)) {
+            return;
+        }
+
+        if (is_menu_phase(session.phase)) {
+            if (not with<rmmr::controller::Camera2d>::exists(context, camera)) {
+                rmmr::controller::Camera2d::Actions::create(context, camera);
+            }
+            return;
+        }
+
+        if (with<rmmr::controller::Camera2d>::exists(context, camera)) {
+            with<rmmr::controller::Camera2d>::remove(context, camera);
+        }
+        // Lock play view to origin after menu pan.
+        auto node = with<rmmr::scene::Node>::modify(context, camera);
+        node->position.x = 0.0f;
+        node->position.y = 0.0f;
+    }
+
     void noteFleetCleared(Writing context, Session::Id session_id) {
         auto session = with<Session>::modify(context, session_id);
         if (session->phase != Phase::playing) {
@@ -40,6 +73,7 @@ namespace tommy::invaders {
         }
         session->phase = Phase::wave_clear;
         session->wave_ready_at = world_step(context, session->world) + 800;
+        syncMenuCameraControl(context, session_id);
     }
 
     void notePlayerHit(Writing context, Session::Id session_id) {
@@ -50,10 +84,12 @@ namespace tommy::invaders {
         session->lives -= 1;
         if (session->lives <= 0) {
             session->phase = Phase::lost;
+            syncMenuCameraControl(context, session_id);
         }
     }
 
     struct Session::Internals : Session::DefaultInternals {
+        // Doctrine !onWaveReady(~World) — whole object watch.
         static void onWaveReady(Reacting context) {
             const auto by_world = ask::relations<World>(context).updated<Session, &Session::Quantum::world>();
             for (const auto& change : context.changes<World>().updated()) {
@@ -71,10 +107,12 @@ namespace tommy::invaders {
                     session->wave += 1;
                     session->phase = Phase::playing;
                     Bootstrap::installWave(context, session_id, session->wave);
+                    syncMenuCameraControl(context, session_id);
                 }
             }
         }
 
+        // Doctrine !attractAndRestart(~World) — whole object watch (Enter / R).
         static void attractAndRestart(Reacting context) {
             const auto by_world = ask::relations<World>(context).updated<Session, &Session::Quantum::world>();
             for (const auto& change : context.changes<World>().updated()) {
@@ -93,6 +131,7 @@ namespace tommy::invaders {
                         if (session->phase == Phase::attract and enter) {
                             session->phase = Phase::playing;
                             session->wave_ready_at = 0;
+                            syncMenuCameraControl(context, session_id);
                         } else if ((session->phase == Phase::lost or session->phase == Phase::won) and restart) {
                             Bootstrap::resetMatch(context, session_id);
                         }
@@ -104,6 +143,7 @@ namespace tommy::invaders {
 
     auto Session::customAspectReactions() -> const Behavior {
         return {
+            reaction::structural::anchored<Session, World, &Session::Quantum::world>{},
             reaction::aspect_wide<Session, World>(&Session::Internals::onWaveReady),
             reaction::aspect_wide<Session, World>(&Session::Internals::attractAndRestart),
         };

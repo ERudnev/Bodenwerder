@@ -15,6 +15,7 @@ namespace tommy::invaders {
             Writing,
             World::Id,
             rmmr::scene::Root::Id,
+            rmmr::scene::Camera::Id,
             rmmr::resource::sprite::Pack::Id,
             rmmr::resource::material::Asset::Id) -> Session::Id;
 

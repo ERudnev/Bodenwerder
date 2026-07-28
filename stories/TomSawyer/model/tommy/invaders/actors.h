@@ -2,7 +2,6 @@
 
 #include <cstdint>
 
-#include <rmmr/scene/node.q1.h>
 #include <tommy/invaders/session.h>
 
 #include <fQSM/api/interface.h>
@@ -11,13 +10,17 @@ namespace tommy::invaders {
 
     using namespace fqsm::api;
 
-    struct Player : Component<Player, Session> {
+    struct Player : Feature<Player, Something> {
         static constexpr integer move_pixels = 2;
         static constexpr integer shot_cooldown_steps = 200;
+        static constexpr integer sprite_idle = 200; // Kenney playerShip1_blue
+        static constexpr float sprite_scale = 0.5f;
+        static constexpr float sprite_bank = 180.0f; // Node HPB.z degrees
+        static constexpr integer sprite_zet = 2;
         struct Quantum {
+            Affected<Session> session;
             index2 pos{0, -380};
             integer cooldown_until = 0;
-            rmmr::scene::Node::Id visual;
         };
         struct Internals;
         static const Behavior customAspectReactions();
@@ -37,17 +40,23 @@ namespace tommy::invaders {
         static const Behavior customAspectReactions();
     };
 
-    struct Alien : Entity<Alien> {
+    struct Alien : Feature<Alien, Something> {
         enum class Kind : std::uint8_t { squid, crab, octopus };
+        static constexpr integer sprite_squid = 49; // Kenney enemyBlack1
+        static constexpr integer sprite_crab = 50;
+        static constexpr integer sprite_octopus = 51;
+        static constexpr float sprite_scale = 0.5f;
+        static constexpr float sprite_bank = 180.0f; // Node HPB.z degrees
+        static constexpr integer sprite_zet = 0;
         struct Quantum {
             index2 cell{0, 0};
             Kind kind = Kind::crab;
             integer points = 10;
             bool alive = true;
-            rmmr::scene::Node::Id visual;
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
+        static auto sprite_index(Kind kind) -> integer;
     };
 
     struct Alien_group : Group<Alien_group, Fleet, Alien> {
@@ -65,6 +74,5 @@ namespace tommy::invaders {
     };
 
     auto alienWorldPos(const Fleet::Quantum& fleet, index2 cell) -> index2;
-    auto alienSpriteIndex(Alien::Kind kind) -> integer;
 
 }

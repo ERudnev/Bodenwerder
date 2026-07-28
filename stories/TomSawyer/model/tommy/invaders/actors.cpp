@@ -53,6 +53,17 @@ namespace tommy::invaders {
             return std::max(base * alive / 55, 80);
         }
 
+        auto player_body(Reading context, Session::Id session_id) -> base::maybe<Something::Id> {
+            if (not with<Session>::exists(context, session_id)) {
+                return {};
+            }
+            const auto player = with<Session>::get(context, session_id).player;
+            if (not player or not with<Player>::exists(context, *player)) {
+                return {};
+            }
+            return player;
+        }
+
     } // namespace
 
     auto alienWorldPos(const Fleet::Quantum& fleet, index2 cell) -> index2 {
@@ -62,17 +73,77 @@ namespace tommy::invaders {
         };
     }
 
-    auto alienSpriteIndex(Alien::Kind kind) -> integer {
+    auto Alien::sprite_index(Kind kind) -> integer {
         switch (kind) {
-            case Alien::Kind::squid: return k_sprite_alien_squid;
-            case Alien::Kind::crab: return k_sprite_alien_crab;
-            case Alien::Kind::octopus: return k_sprite_alien_octopus;
+            case Kind::squid: return sprite_squid;
+            case Kind::crab: return sprite_crab;
+            case Kind::octopus: return sprite_octopus;
         }
-        return k_sprite_alien_crab;
+        return sprite_crab;
     }
 
     struct Player::Internals : Player::DefaultInternals {
-        static void steerAndFire(Reacting context) {
+        static void steer(
+            Writing context,
+            Something::Id player_id,
+            Session::Id session_id,
+            integer steps,
+            const rmmr::system::Window::InputState& held)
+        {
+            auto player = with<Player>::modify(context, player_id);
+            const auto& field = with<Playfield>::get(context, session_id);
+            integer dx = 0;
+            if (key_down(held.keys, GLFW_KEY_A) or key_down(held.keys, GLFW_KEY_LEFT)) {
+                dx -= Player::move_pixels * steps;
+            }
+            if (key_down(held.keys, GLFW_KEY_D) or key_down(held.keys, GLFW_KEY_RIGHT)) {
+                dx += Player::move_pixels * steps;
+            }
+            if (dx == 0) {
+                return;
+            }
+            const integer min_x = field.origin.x + 40;
+            const integer max_x = field.origin.x + field.size.x - 40;
+            player->pos.x = std::clamp(player->pos.x + dx, min_x, max_x);
+            syncSomethingSprite(context, player_id, player->pos);
+        }
+
+        static void tryFire(
+            Writing context,
+            Something::Id player_id,
+            Session::Id session_id,
+            const rmmr::system::Window::InputState& previous,
+            const rmmr::system::Window::InputState& current,
+            integer now_step)
+        {
+            const bool fire = key_edge(previous, current, GLFW_KEY_SPACE)
+                or key_edge(previous, current, GLFW_KEY_W);
+            if (not fire) {
+                return;
+            }
+            auto player = with<Player>::modify(context, player_id);
+            if (now_step < player->cooldown_until or player_shot_alive(context, session_id)) {
+                return;
+            }
+            const auto& session = with<Session>::get(context, session_id);
+            const index2 muzzle{player->pos.x, player->pos.y + 40};
+            const auto body = createSomethingWithSprite(
+                context,
+                session,
+                muzzle,
+                Shot::sprite_index(Shot::Side::player),
+                Shot::sprite_scale,
+                Shot::sprite_bank,
+                Shot::sprite_zet);
+            with<Shot_group>::addElement(context, session_id, body, Shot::Quantum{
+                .session = session_id,
+                .pos = muzzle,
+                .side = Shot::Side::player,
+            });
+            player->cooldown_until = now_step + Player::shot_cooldown_steps;
+        }
+
+        static void onWorldStep(Reacting context) {
             const auto by_world = ask::relations<World>(context).updated<Session, &Session::Quantum::world>();
             for (const auto& change : context.changes<World>().updated()) {
                 if (change.now.step <= change.old.step or change.now.paused) {
@@ -87,43 +158,12 @@ namespace tommy::invaders {
                         if (not sessionPlaying(context, session_id)) {
                             continue;
                         }
-                        if (not with<Player>::exists(context, session_id)) {
+                        const auto player_id = player_body(context, session_id);
+                        if (not player_id) {
                             continue;
                         }
-
-                        auto player = with<Player>::modify(context, session_id);
-                        const auto& field = with<Playfield>::get(context, session_id);
-                        integer dx = 0;
-                        if (key_down(input.current.keys, GLFW_KEY_A) or key_down(input.current.keys, GLFW_KEY_LEFT)) {
-                            dx -= Player::move_pixels * steps;
-                        }
-                        if (key_down(input.current.keys, GLFW_KEY_D) or key_down(input.current.keys, GLFW_KEY_RIGHT)) {
-                            dx += Player::move_pixels * steps;
-                        }
-                        if (dx != 0) {
-                            const integer min_x = field.origin.x + 40;
-                            const integer max_x = field.origin.x + field.size.x - 40;
-                            player->pos.x = std::clamp(player->pos.x + dx, min_x, max_x);
-                            syncVisual(context, player->visual, player->pos);
-                        }
-
-                        const bool fire = key_edge(input.previous, input.current, GLFW_KEY_SPACE)
-                            or key_edge(input.previous, input.current, GLFW_KEY_W);
-                        if (fire
-                            and change.now.step >= player->cooldown_until
-                            and not player_shot_alive(context, session_id))
-                        {
-                            const auto& session = with<Session>::get(context, session_id);
-                            const index2 muzzle{player->pos.x, player->pos.y + 40};
-                            const auto visual = spawnSprite(context, session, muzzle, k_sprite_laser_player, 1);
-                            with<Shot_group>::addElement(context, session_id, Shot::Quantum{
-                                .session = session_id,
-                                .pos = muzzle,
-                                .side = Shot::Side::player,
-                                .visual = visual,
-                            });
-                            player->cooldown_until = change.now.step + Player::shot_cooldown_steps;
-                        }
+                        steer(context, *player_id, session_id, steps, input.current);
+                        tryFire(context, *player_id, session_id, input.previous, input.current, change.now.step);
                     }
                 }
             }
@@ -132,7 +172,7 @@ namespace tommy::invaders {
 
     auto Player::customAspectReactions() -> const Behavior {
         return {
-            reaction::aspect_wide<Player, World>(&Player::Internals::steerAndFire),
+            reaction::aspect_wide<Player, World>(&Player::Internals::onWorldStep),
         };
     }
 
@@ -192,10 +232,9 @@ namespace tommy::invaders {
                                 continue;
                             }
                             const index2 pos = alienWorldPos(*fleet, alien->cell);
-                            syncVisual(context, alien->visual, pos);
-                            if (with<Player>::exists(context, session_id)
-                                and pos.y <= with<Player>::get(context, session_id).pos.y + 40)
-                            {
+                            syncSomethingSprite(context, alien_id, pos);
+                            const auto player_id = player_body(context, session_id);
+                            if (player_id and pos.y <= with<Player>::get(context, *player_id).pos.y + 40) {
                                 with<Session>::modify(context, session_id)->phase = Phase::lost;
                             }
                         }
@@ -249,12 +288,18 @@ namespace tommy::invaders {
                     const index2 muzzle = alienWorldPos(fleet, alien.cell);
                     const index2 spawn{muzzle.x, muzzle.y - 30};
                     const auto& session = with<Session>::get(context, session_id);
-                    const auto visual = spawnSprite(context, session, spawn, k_sprite_laser_alien, 1);
-                    with<Shot_group>::addElement(context, session_id, Shot::Quantum{
+                    const auto body = createSomethingWithSprite(
+                        context,
+                        session,
+                        spawn,
+                        Shot::sprite_index(Shot::Side::alien),
+                        Shot::sprite_scale,
+                        Shot::sprite_bank,
+                        Shot::sprite_zet);
+                    with<Shot_group>::addElement(context, session_id, body, Shot::Quantum{
                         .session = session_id,
                         .pos = spawn,
                         .side = Shot::Side::alien,
-                        .visual = visual,
                     });
                     volley->next_fire = change.now.step + Volley::min_gap_steps;
                 }

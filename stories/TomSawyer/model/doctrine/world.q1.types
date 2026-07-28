@@ -6,10 +6,10 @@ namespace tommy
   //   no step change        → no sim update
   // `paused` freezes step (Clock still ticks; World.step does not).
   // Input snapshots stay on rmmr::system::Window (pause key only here).
+  // Object watches stay in `one` (whole ! — detect+effect one body).
   entity World
     one
       step: integer // discrete ticks; 1 step = 1000 Core μs
       paused: bool
-    all
       !keyboardPauseKey(~system::Window) // rising edge toggles paused
       !advanceStep(~system::Clock) // unpaused: fold Clock μs into step (only writes when step grows)

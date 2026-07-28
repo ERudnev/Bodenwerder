@@ -1,7 +1,6 @@
 #include "story.h"
 
 #include <rmmr/api/_interface.h>
-#include <rmmr/controller/camera2d.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -19,6 +18,7 @@ namespace tommy {
     Schema SpriteTest::schema() const {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
+            ask::schema::aspect<invaders::Something>(),
             ask::schema::aspect<invaders::Session>(),
             ask::schema::aspect<invaders::Playfield>(),
             ask::schema::aspect<invaders::Player>(),
@@ -40,16 +40,16 @@ namespace tommy {
         });
         with<scene::actor::Sprite>::modify_global(context)->geometry = assets->unitQuad;
 
+        const auto camera = with<scene::Flat2d>::createCamera(context, root,
+            Locator{.pos = Pos{0.0f, 0.0f, 5.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}});
+
         invaders::Bootstrap::newMatch(
             context,
             world,
             root,
+            camera,
             assets->kenney,
             *shared->material.sprite);
-
-        const auto camera = with<scene::Flat2d>::createCamera(context, root,
-            Locator{.pos = Pos{0.0f, 0.0f, 5.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}});
-        with<controller::Camera2d>::create(context, camera);
 
         views = {
             View{.viewport = viewport, .scene = root, .camera = camera},

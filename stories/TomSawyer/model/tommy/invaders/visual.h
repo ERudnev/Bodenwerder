@@ -19,7 +19,9 @@ namespace tommy::invaders {
         const Session::Quantum& session,
         index2 pos,
         integer sprite_index,
-        integer zet = 0) -> rmmr::scene::Node::Id
+        float sprite_scale,
+        float sprite_bank = 0.0f,
+        integer zet = 0) -> rmmr::scene::actor::Sprite::Id
     {
         return with<rmmr::scene::Flat2d>::createSpriteActor(
             context,
@@ -30,30 +32,59 @@ namespace tommy::invaders {
                     static_cast<float>(pos.y),
                     static_cast<float>(zet),
                 },
-                .euler = rmmr::HPB{0.0f, 0.0f, 0.0f},
+                .euler = rmmr::HPB{0.0f, 0.0f, sprite_bank},
             },
             item<rmmr::scene::actor::Sprite>{
                 .material = session.material,
                 .tint = rmmr::RGB{0.0f, 0.0f, 0.0f},
-                .scale = vec3{1.0f, 1.0f, 1.0f},
+                .scale = vec3{sprite_scale, sprite_scale, sprite_scale},
                 .pack = session.pack,
                 .index = sprite_index,
             });
     }
 
-    inline void syncVisual(Writing context, rmmr::scene::Node::Id visual, index2 pos) {
-        if (not with<rmmr::scene::Node>::exists(context, visual)) {
+    inline auto createSomethingWithSprite(
+        Writing context,
+        const Session::Quantum& session,
+        index2 pos,
+        integer sprite_index,
+        float sprite_scale,
+        float sprite_bank = 0.0f,
+        integer zet = 0) -> Something::Id
+    {
+        return with<Something>::create(context, Something::Quantum{
+            .sprite = spawnSprite(context, session, pos, sprite_index, sprite_scale, sprite_bank, zet),
+        });
+    }
+
+    inline void syncSomethingSprite(Writing context, Something::Id body, index2 pos) {
+        if (not with<Something>::exists(context, body)) {
             return;
         }
-        auto node = with<rmmr::scene::Node>::modify(context, visual);
+        const auto& something = with<Something>::get(context, body);
+        if (not something.sprite) {
+            return;
+        }
+        if (not with<rmmr::scene::Node>::exists(context, *something.sprite)) {
+            return;
+        }
+        auto node = with<rmmr::scene::Node>::modify(context, *something.sprite);
         node->position.x = static_cast<float>(pos.x);
         node->position.y = static_cast<float>(pos.y);
     }
 
-    inline void destroyVisual(Writing context, rmmr::scene::Node::Id visual) {
-        if (with<rmmr::scene::Node>::exists(context, visual)) {
-            with<rmmr::scene::Node>::remove(context, visual);
+    inline void destroySomethingSprite(Writing context, Something::Id body) {
+        if (not with<Something>::exists(context, body)) {
+            return;
         }
+        auto something = with<Something>::modify(context, body);
+        if (not something->sprite) {
+            return;
+        }
+        if (with<rmmr::scene::Node>::exists(context, *something->sprite)) {
+            with<rmmr::scene::Node>::remove(context, *something->sprite);
+        }
+        something->sprite.reset();
     }
 
     inline auto aabbOverlap(index2 a, index2 a_half, index2 b, index2 b_half) -> bool {
