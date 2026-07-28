@@ -1,55 +1,32 @@
 import "../world"
 import "session"
-import "actors"
 import "gameObject"
 
 namespace tommy
   namespace invaders
 
-    // Bolts advance one speed-slice per World.step change — not per rendered frame.
-    // Appearance is this role's always; mom GameObject holds the live sprite.
+    // Bolt: motion + presence. Who fires lives on Gun (player) / Volley (alien) — not here.
     feature Shot of GameObject
       enum Side : player, alien
       always
-        player_speed: integer = 8 // pixels per step
-        alien_speed: integer = 1 // px; applied every 2 World.steps in runtime (half prior rate)
+        max_hitpoints: integer = 1
+        player_speed: integer = 1 // px per World.step
+        alien_speed: integer = 1 // px per alien_speed_period World.steps
+        alien_speed_period: integer = 2
         sprite_player: integer = 105 // Kenney laserBlue01
         sprite_alien: integer = 137 // Kenney laserRed01
         sprite_scale: float = 0.5
         sprite_bank: float = 0
         sprite_zet: integer = 1
+        hit_half: index2 // projection {3, 10}
         ?sprite_index(Side) -> integer
       one
         session: affects<Session>
         pos: index2
         side: Side
-        !advance(~World)->>advanceMotion()
-      all
-        >firePlayer(#Session, index2)->#
-        >fireAlien(#Session, index2)->#
+        motion_carry: integer // alien half-speed remainder
+        !advance(~World)->>advanceMotion() // move, cull off-field, resolveHit
+      // resolveHit (Internals): alien shot → Player hull; player shot → Alien hull;
+      // on deplete → Session.notePlayerHit / noteFleetCleared (free helpers).
 
     group<Shot> of Session
-
-    entity Bunker
-      always
-        max_hp: integer = 8
-      one
-        session: affects<Session>
-        pos: index2
-        hp: integer
-        !erode(~Shot)
-        !blockDescent(~Fleet)
-      all
-        >place(#Session, index2)->#
-
-    group<Bunker> of Session
-
-    // Volley deadlines are World.step values.
-    attribute Volley of Fleet
-      always
-        min_gap_steps: integer = 40
-      one
-        next_fire: integer
-        !schedule(~World)
-      all
-        >arm()->#

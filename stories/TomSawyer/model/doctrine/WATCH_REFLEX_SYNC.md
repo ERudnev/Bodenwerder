@@ -4,14 +4,14 @@ After the debt wave: patterns applied only where they fit; not a full sanitize.
 
 | Aspect | Doctrine | C++ runtime |
 |--------|----------|-------------|
-| GameObject | `sprite: #Sprite?` | `gameObject.h` / `.cpp`; roles share Id |
-| Session | `world: anchor<World>`; `player: #GameObject?` | matches; menu Camera2d sync |
-| Player | `feature of GameObject`; `gun: custody<Gun>`; `!tryFire` → Gun | custody structural; thin tryFire |
-| Gun | dual limiter: mech ~4/s + °C heat magazine; `>fire`; `!cool(~World)` | `gun.h/.cpp`; custody under Player |
-| Shot | `feature of GameObject`; always sprite_*/scale; `!advance->>advanceMotion` | appear from always; sync/cull via mom |
-| Alien | `feature of GameObject`; always sprite_*/scale/bank; `?sprite_index` | appear from always; sync via mom |
-| Fleet / Volley | whole `!march` / `!schedule` | left whole |
-| Saucer / Bunker | draft / partial | Saucer doctrine only |
-| Bootstrap | `>` factories | creates GameObject+sprite then extends role |
+| GameObject | `sprite?` + `hitpoints`; `>takeDamage` / `?alive` | shared Id HP pool for all role features |
+| Session | `start_lives` / `wave_clear_steps`; scene wiring; free `note*` | matches; Playfield `contains`/`install` |
+| Player | custody Gun; `hit_half`; `!steer`/`!tryFire` | matches |
+| Gun | dual limiter; `>fire`; `!cool(~World)` | matches |
+| Shot | motion + `hit_half`; hits in `advanceMotion` | no fire factories (Gun/Volley own spawn) |
+| Alien | `?worldPos`; `hit_half`; no local alive | `Alien::worldPos`; HP on mom |
+| Fleet / Volley | march constants; `Volley.>fire` + `!schedule` | matches |
+| Bootstrap | `newMatch` + wave/reset/clear | matches |
+| Saucer / Bunker | removed from live doctrine | — |
 
 Public `>` stay factories. Reaction tails stay Internals.

@@ -24,8 +24,8 @@ namespace tommy::invaders {
             fleet->next_march = with<World>::get(context, world).step + Fleet::base_march_steps;
 
             const auto& session_q = with<Session>::get(context, session);
-            constexpr integer cols = 11;
-            constexpr integer rows = 5;
+            constexpr integer cols = Fleet::cols;
+            constexpr integer rows = Fleet::rows;
             for (integer row = 0; row < rows; ++row) {
                 Alien::Kind kind = Alien::Kind::octopus;
                 integer points = 10;
@@ -38,7 +38,7 @@ namespace tommy::invaders {
                 }
                 for (integer col = 0; col < cols; ++col) {
                     const index2 cell{col, row};
-                    const index2 pos = alienWorldPos(*fleet, cell);
+                    const index2 pos = Alien::worldPos(*fleet, cell);
                     const auto body = createGameObjectWithSprite(
                         context,
                         session_q,
@@ -47,12 +47,12 @@ namespace tommy::invaders {
                         Alien::sprite_scale,
                         Alien::sprite_bank,
                         Alien::sprite_zet,
-                        Alien::sprite_tint(cell));
+                        Alien::sprite_tint(cell),
+                        Alien::max_hitpoints);
                     with<Alien_group>::addElement(context, session, body, Alien::Quantum{
                         .cell = cell,
                         .kind = kind,
                         .points = points,
-                        .alive = true,
                     });
                 }
             }
@@ -105,13 +105,14 @@ namespace tommy::invaders {
         auto quantum = with<Session>::modify(context, session);
         quantum->phase = Phase::playing;
         quantum->score = 0;
-        quantum->lives = 3;
+        quantum->lives = Session::start_lives;
         quantum->wave = 1;
         quantum->wave_ready_at = 0;
         if (quantum->player and with<Player>::exists(context, *quantum->player)) {
             auto player = with<Player>::modify(context, *quantum->player);
             player->pos = index2{0, -380};
             syncGameObjectSprite(context, *quantum->player, player->pos);
+            with<GameObject>::modify(context, *quantum->player)->hitpoints = Player::max_hitpoints;
             if (with<Gun>::exists(context, player->gun)) {
                 auto gun = with<Gun>::modify(context, player->gun);
                 gun->mech_ready_at = 0;
@@ -135,7 +136,7 @@ namespace tommy::invaders {
             .world = world,
             .phase = Phase::attract,
             .score = 0,
-            .lives = 3,
+            .lives = Session::start_lives,
             .wave = 1,
             .scene = scene,
             .camera = camera,
@@ -161,7 +162,9 @@ namespace tommy::invaders {
             Player::sprite_idle,
             Player::sprite_scale,
             Player::sprite_bank,
-            Player::sprite_zet);
+            Player::sprite_zet,
+            rmmr::RGB{0.0f, 0.0f, 0.0f},
+            Player::max_hitpoints);
         const auto gun = with<Gun>::create(context, Gun::Quantum{
             .world = world,
             .mech_ready_at = 0,

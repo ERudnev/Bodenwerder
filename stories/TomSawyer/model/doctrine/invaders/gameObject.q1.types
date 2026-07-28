@@ -1,7 +1,12 @@
 namespace tommy
   namespace invaders
 
-    // Scene presence: optional live sprite. Role features share this Id.
+    // Scene presence + shared vitality. Role features (Player/Alien/Shot/…) share this Id,
+    // so hitpoints on the mom is the single HP pool for every feature of GameObject.
     entity GameObject
       one
         sprite: #rmmr::scene::actor::Sprite?
+        hitpoints: integer // 0 = depleted
+        ?alive()->bool // this object: hitpoints > 0 (not “are all GameObjects alive”)
+      all
+        >takeDamage(amount: integer)->integer // remaining hp on the addressed id (clamped ≥ 0)

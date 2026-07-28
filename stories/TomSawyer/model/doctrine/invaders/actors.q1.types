@@ -7,74 +7,68 @@ namespace tommy
   namespace invaders
 
     // Ship. Reads Window inside ~World ticks; motion here, firing delegated to Gun.
-    // Appearance (pack entry + scale) is this role's always; mom GameObject holds the live sprite.
+    // Appearance + max_hitpoints in always; mom GameObject holds sprite + live HP.
     feature Player of GameObject
       always
-        move_pixels: integer = 4
+        move_pixels: integer = 2
+        max_hitpoints: integer = 1 // Session.lives = continues; this is hull HP
         sprite_idle: integer = 200 // Kenney playerShip1_blue
         sprite_scale: float = 0.5
         sprite_bank: float = 180 // Node HPB.z degrees — nose toward fleet
         sprite_zet: integer = 2
+        hit_half: index2 // projection {20, 14}
       one
         session: affects<Session>
         pos: index2
         gun: custody<Gun>
         !steer(~World) // only when change.now.step != old; sample Window keys
         !tryFire(~World) // held Space/W → Gun.fire (mech+heat gates)
-        !applyHit(~Shot) // alien bomb → destroy, notify Session
-      all
-        >spawn(#Session, index2)->#
 
-    // Formation march cadence is in World.step units, not seconds.
+    // Formation march cadence is in World.step units (≈1 ms).
     component Fleet of Session
       enum Dir : left, right
       always
-        cell_size: index2
-        descend_pixels: integer = 16
-        base_march_steps: integer = 48 // shrinks as aliens die
+        cell_size: index2 // projection {70, 56}
+        descend_pixels: integer = 24
+        base_march_steps: integer = 400 // shrinks with alive count / wave (see march_interval)
+        lateral_step: integer = 12
+        edge_margin: integer = 40
+        cols: integer = 11
+        rows: integer = 5
       one
         origin: index2
         dir: Dir
         next_march: integer // World.step when next lateral step fires
-        !march(~World) // when step crosses next_march
-        !retuneCadence(~Alien)
-        !cleared(~Alien)
-      all
-        >spawnWave(#Session, wave: integer)->#
+        !march(~World) // cadence retune + lateral/descend; lose if aliens reach player band
 
     feature Alien of GameObject
       enum Kind : squid, crab, octopus
       always
+        max_hitpoints: integer = 1
         sprite_squid: integer = 49 // Kenney enemyBlack1
         sprite_crab: integer = 50
         sprite_octopus: integer = 51
         sprite_scale: float = 0.5
         sprite_bank: float = 180 // Node HPB.z degrees — face player
         sprite_zet: integer = 0
+        hit_half: index2 // projection {18, 15}
         ?sprite_index(Kind) -> integer
         ?sprite_tint(index2 cell) -> RGB // per-instance additive tint
       one
         cell: index2
         kind: Kind
         points: integer
-        alive: bool
         ?worldPos(#Fleet) -> index2
-        !killOnHit(~Shot)
 
     group<Alien> of Fleet
 
-    feature Saucer of GameObject
+    // Alien bombardment schedule (attribute of Fleet / Session id).
+    attribute Volley of Fleet
       always
-        sprite_idle: integer = 0
-        sprite_scale: float = 0.5
-        sprite_bank: float = 0
-        sprite_zet: integer = 1
+        min_gap_steps: integer = 500
+        muzzle_drop: integer = 30 // pixels below alien cell when spawning bolt
       one
-        session: affects<Session>
-        pos: index2
-        points: integer
-        !drift(~World)
-        !killOnHit(~Shot)
-        !despawnOffscreen(~Playfield)
+        next_fire: integer
+        !schedule(~World) // deadline → pick alive alien → fire
       all
-        >maybeSpawn(#Session, ~World)->#?
+        >fire(#Session, muzzle: index2)-># // spawn alien Shot at muzzle

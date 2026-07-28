@@ -6,9 +6,10 @@ namespace tommy
 
     // Match state. No update(dt): phase transitions wake on domain events or ~World.
     entity Session
-      enum Phase : attract, playing, wave_clear, lost, won
+      enum Phase : attract, playing, wave_clear, lost, won // won reserved; waves currently endless via wave_clear
       always
         start_lives: integer = 3
+        wave_clear_steps: integer = 800 // pause after fleet cleared before next wave
       one
         world: anchor<World>
         phase: Phase
@@ -16,17 +17,21 @@ namespace tommy
         lives: integer
         wave: integer
         wave_ready_at: integer // World.step deadline while wave_clear
+        // Story wiring (raidenmamare handles — not gameplay state, but on Session quantum):
+        scene: #rmmr::scene::Root
+        camera: #rmmr::scene::Camera
+        pack: #rmmr::resource::sprite::Pack
+        material: #rmmr::resource::material::Asset
         player: #GameObject?
-        !onPlayerDestroyed(~Player) // lives--; attract/lost when exhausted
-        !onFleetCleared(~Fleet) // wave_clear → next wave or won
-        !onWaveReady(~World) // step deadlines while wave_clear; no-op unless step moved
-        !attractAndRestart(~World) // Enter / R while step moved
-      all
-        >create()->#
-        >beginPlay()->#
+        !onWaveReady(~World) // wave_clear deadline → wave++ / installWave
+        !attractAndRestart(~World) // Enter start / R resetMatch
+      // Free helpers (session.h): notePlayerHit, noteFleetCleared, syncMenuCameraControl, sessionPlaying.
+      // Hits are resolved in Shot.advanceMotion → these helpers; not Session!~Player / !~Fleet watches.
 
     // Play rectangle in World pixel space (Flat2d ortho units).
     component Playfield of Session
+      always
+        // projection defaults: origin {-800,-450}, size {1600,900}
       one
         origin: index2
         size: index2

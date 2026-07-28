@@ -12,6 +12,7 @@ namespace tommy::invaders {
 
     struct Shot : Feature<Shot, GameObject> {
         enum class Side : std::uint8_t { player, alien };
+        static constexpr integer max_hitpoints = 1;
         static constexpr integer player_speed = 1; // px per World.step
         static constexpr integer alien_speed = 1; // px per 2 World.steps (half prior rate)
         static constexpr integer alien_speed_period = 2;
@@ -20,6 +21,7 @@ namespace tommy::invaders {
         static constexpr float sprite_scale = 0.5f;
         static constexpr float sprite_bank = 0.0f;
         static constexpr integer sprite_zet = 1;
+        static constexpr index2 hit_half{3, 10};
         struct Quantum {
             Affected<Session> session;
             index2 pos{0, 0};

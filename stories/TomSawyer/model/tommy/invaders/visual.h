@@ -53,10 +53,12 @@ namespace tommy::invaders {
         float sprite_scale,
         float sprite_bank = 0.0f,
         integer zet = 0,
-        rmmr::RGB tint = rmmr::RGB{0.0f, 0.0f, 0.0f}) -> GameObject::Id
+        rmmr::RGB tint = rmmr::RGB{0.0f, 0.0f, 0.0f},
+        integer hitpoints = 1) -> GameObject::Id
     {
         return with<GameObject>::create(context, GameObject::Quantum{
             .sprite = spawnSprite(context, session, pos, sprite_index, sprite_scale, sprite_bank, zet, tint),
+            .hitpoints = hitpoints,
         });
     }
 

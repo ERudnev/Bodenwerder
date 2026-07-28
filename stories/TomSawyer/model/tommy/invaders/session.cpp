@@ -40,6 +40,23 @@ namespace tommy::invaders {
         return with<Session>::get(context, session).phase == Phase::playing;
     }
 
+    auto Playfield::Actions::contains(Reading context, Id id, index2 point) -> bool {
+        if (not with<Playfield>::exists(context, id)) {
+            return false;
+        }
+        const auto& field = with<Playfield>::get(context, id);
+        return point.x >= field.origin.x
+            and point.x < field.origin.x + field.size.x
+            and point.y >= field.origin.y
+            and point.y < field.origin.y + field.size.y;
+    }
+
+    void Playfield::Actions::install(Writing context, Id id, index2 origin, index2 size) {
+        auto field = with<Playfield>::modify(context, id);
+        field->origin = origin;
+        field->size = size;
+    }
+
     void syncMenuCameraControl(Writing context, Session::Id session_id) {
         if (not with<Session>::exists(context, session_id)) {
             return;
@@ -72,7 +89,7 @@ namespace tommy::invaders {
             return;
         }
         session->phase = Phase::wave_clear;
-        session->wave_ready_at = world_step(context, session->world) + 800;
+        session->wave_ready_at = world_step(context, session->world) + Session::wave_clear_steps;
         syncMenuCameraControl(context, session_id);
     }
 

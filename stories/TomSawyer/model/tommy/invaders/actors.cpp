@@ -37,7 +37,7 @@ namespace tommy::invaders {
             integer alive = 0;
             if (with<Alien_group>::exists(context, session)) {
                 for (const auto id : with<Alien_group>::get(context, session)) {
-                    if (with<Alien>::get(context, id).alive) {
+                    if (with<GameObject>::alive(context, id)) {
                         ++alive;
                     }
                 }
@@ -51,7 +51,7 @@ namespace tommy::invaders {
 
     } // namespace
 
-    auto alienWorldPos(const Fleet::Quantum& fleet, index2 cell) -> index2 {
+    auto Alien::worldPos(const Fleet::Quantum& fleet, index2 cell) -> index2 {
         return index2{
             fleet.origin.x + cell.x * Fleet::cell_size.x,
             fleet.origin.y - cell.y * Fleet::cell_size.y,
@@ -175,17 +175,21 @@ namespace tommy::invaders {
                     }
 
                     const auto& field = with<Playfield>::get(context, session_id);
-                    const integer lateral = fleet->dir == Fleet::Dir::right ? 12 : -12;
+                    const integer lateral = fleet->dir == Fleet::Dir::right
+                        ? Fleet::lateral_step
+                        : -Fleet::lateral_step;
                     bool hit_edge = false;
                     if (with<Alien_group>::exists(context, session_id)) {
                         for (const auto alien_id : with<Alien_group>::get(context, session_id)) {
                             const auto& alien = with<Alien>::get(context, alien_id);
-                            if (not alien.alive) {
+                            if (not with<GameObject>::alive(context, alien_id)) {
                                 continue;
                             }
-                            const index2 next = alienWorldPos(*fleet, alien.cell);
+                            const index2 next = Alien::worldPos(*fleet, alien.cell);
                             const integer x = next.x + lateral;
-                            if (x < field.origin.x + 40 or x > field.origin.x + field.size.x - 40) {
+                            if (x < field.origin.x + Fleet::edge_margin
+                                or x > field.origin.x + field.size.x - Fleet::edge_margin)
+                            {
                                 hit_edge = true;
                                 break;
                             }
@@ -204,14 +208,14 @@ namespace tommy::invaders {
 
                     if (with<Alien_group>::exists(context, session_id)) {
                         for (const auto alien_id : with<Alien_group>::get(context, session_id)) {
-                            auto alien = with<Alien>::modify(context, alien_id);
-                            if (not alien->alive) {
+                            if (not with<GameObject>::alive(context, alien_id)) {
                                 continue;
                             }
-                            const index2 pos = alienWorldPos(*fleet, alien->cell);
+                            const auto& alien = with<Alien>::get(context, alien_id);
+                            const index2 pos = Alien::worldPos(*fleet, alien.cell);
                             syncGameObjectSprite(context, alien_id, pos);
                             const auto player_id = player_body(context, session_id);
-                            if (player_id and pos.y <= with<Player>::get(context, *player_id).pos.y + 40) {
+                            if (player_id and pos.y <= with<Player>::get(context, *player_id).pos.y + Fleet::edge_margin) {
                                 with<Session>::modify(context, session_id)->phase = Phase::lost;
                             }
                         }
@@ -250,7 +254,7 @@ namespace tommy::invaders {
                     vector<Alien::Id> candidates;
                     if (with<Alien_group>::exists(context, session_id)) {
                         for (const auto alien_id : with<Alien_group>::get(context, session_id)) {
-                            if (with<Alien>::get(context, alien_id).alive) {
+                            if (with<GameObject>::alive(context, alien_id)) {
                                 candidates.push_back(alien_id);
                             }
                         }
@@ -262,27 +266,34 @@ namespace tommy::invaders {
                     const auto pick = candidates[static_cast<std::size_t>(change.now.step) % candidates.size()];
                     const auto& fleet = with<Fleet>::get(context, session_id);
                     const auto& alien = with<Alien>::get(context, pick);
-                    const index2 muzzle = alienWorldPos(fleet, alien.cell);
-                    const index2 spawn{muzzle.x, muzzle.y - 30};
-                    const auto& session = with<Session>::get(context, session_id);
-                    const auto body = createGameObjectWithSprite(
-                        context,
-                        session,
-                        spawn,
-                        Shot::sprite_index(Shot::Side::alien),
-                        Shot::sprite_scale,
-                        Shot::sprite_bank,
-                        Shot::sprite_zet);
-                    with<Shot_group>::addElement(context, session_id, body, Shot::Quantum{
-                        .session = session_id,
-                        .pos = spawn,
-                        .side = Shot::Side::alien,
-                    });
+                    const index2 cell_pos = Alien::worldPos(fleet, alien.cell);
+                    const index2 muzzle{cell_pos.x, cell_pos.y - Volley::muzzle_drop};
+                    with<Volley>::fire(context, session_id, muzzle);
                     volley->next_fire = change.now.step + Volley::min_gap_steps;
                 }
             }
         }
     };
+
+    auto Volley::Actions::fire(Writing context, Id session_id, index2 muzzle) -> GameObject::Id {
+        const auto& session = with<Session>::get(context, session_id);
+        const auto body = createGameObjectWithSprite(
+            context,
+            session,
+            muzzle,
+            Shot::sprite_index(Shot::Side::alien),
+            Shot::sprite_scale,
+            Shot::sprite_bank,
+            Shot::sprite_zet,
+            rmmr::RGB{0.0f, 0.0f, 0.0f},
+            Shot::max_hitpoints);
+        with<Shot_group>::addElement(context, session_id, body, Shot::Quantum{
+            .session = session_id,
+            .pos = muzzle,
+            .side = Shot::Side::alien,
+        });
+        return body;
+    }
 
     auto Volley::customAspectReactions() -> const Behavior {
         return {

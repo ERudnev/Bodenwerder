@@ -25,11 +25,13 @@ namespace tommy::invaders {
     };
 
     struct Session : Entity<Session> {
+        static constexpr integer start_lives = 3;
+        static constexpr integer wave_clear_steps = 800;
         struct Quantum {
             Anchor<World> world;
             Phase phase = Phase::attract;
             integer score = 0;
-            integer lives = 3;
+            integer lives = start_lives;
             integer wave = 1;
             rmmr::scene::Root::Id scene;
             rmmr::scene::Camera::Id camera;
@@ -46,6 +48,10 @@ namespace tommy::invaders {
         struct Quantum {
             index2 origin{-800, -450};
             index2 size{1600, 900};
+        };
+        struct Actions : BaseActions {
+            static auto contains(Reading, Id, index2) -> bool;
+            static void install(Writing, Id, index2 origin, index2 size);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }

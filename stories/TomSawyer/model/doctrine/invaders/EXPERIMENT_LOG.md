@@ -122,3 +122,43 @@
 
 ### Выводы / наблюдения
 - Детект ввода (hold vs edge) — забота Player-watch; лимитеры остаются на Gun. Разделение ролей держится.
+
+---
+
+## 2026-07-28 — GameObject.hitpoints (общий пул для feature)
+
+### Запрос
+Единый hitpoints на GameObject; все feature роли получают HP автоматически; убрать Alien.alive.
+
+### Действие
+Doctrine/C++: `hitpoints` + `>takeDamage` на mom; роли — `max_hitpoints` в `always`; spawn/combat/fleet через `GameObject.alive` / `takeDamage`.
+
+### Выводы / наблюдения
+- Смысл shared Id: HP живёт на mom, роли не дублируют `alive`/`hp`.
+- `Session.lives` ≠ hull HP: lives = continues; после deplete при lives>0 hull снова `max_hitpoints`.
+
+---
+
+## 2026-07-28 — critique: `?alive` не в `all`
+
+### Запрос
+`?alive()->bool` в разделе `all` читается как «живо ли всё множество GameObject».
+
+### Действие
+Перенесён в `one` (предикат этого экземпляра). `>takeDamage` остаётся в `all` как Action по адресованному id.
+
+### Выводы / наблюдения
+- В Q1 `all` + безаргументный `?` легко читается как set-wide; instance-query — в `one`, рядом с полями кванта.
+
+---
+
+## 2026-07-28 — sync doctrine↔C++ (хвост)
+
+### Запрос
+Дотянуть расхождение: константы, Volley.fire, Playfield, Alien.worldPos.
+
+### Действие
+C++: `hit_half` / Fleet march layout / `start_lives` / `wave_clear_steps` / `Volley::fire`+`muzzle_drop` / `Playfield::contains|install` / `Alien::worldPos`. Doctrine уже была выровнена ранее (без Shot.fire*).
+
+### Выводы / наблюдения
+- После чистки doctrine «впереди» остаются только непроецированные always — дотягивать C++ именами, не откатывать значения в магию.

@@ -5,9 +5,11 @@ import "combat"
 namespace tommy
   namespace invaders
 
-    // Story-facing factories: one place to stand up a playable match without scattering spawns.
+    // Story-facing factories: stand up / reset a playable match.
+    // Signatures match tommy::invaders::Bootstrap (scene wiring required at create).
     manipulation Bootstrap of Session
-      >newMatch(playfield_origin: index2, playfield_size: index2)->#Session
-      >installBunkers(#Session)->#
-      >installPlayer(#Session)->#Player
-      >installWave(#Session, wave: integer)->#Fleet
+      >newMatch(#World, #rmmr::scene::Root, #rmmr::scene::Camera, #rmmr::resource::sprite::Pack, #rmmr::resource::material::Asset)->#Session
+      >installWave(#Session, wave: integer)->#
+      >resetMatch(#Session)->#
+      >clearShots(#Session)->#
+      >clearAliens(#Session)->#

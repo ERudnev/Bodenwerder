@@ -10,14 +10,8 @@ namespace tommy::invaders {
     using namespace fqsm::api;
 
     namespace {
-
         using namespace api_for_internals;
-
-        constexpr index2 k_shot_half{3, 10};
-        constexpr index2 k_player_half{20, 14};
-        constexpr index2 k_alien_half{18, 15};
-
-    } // namespace
+    }
 
     auto Shot::sprite_index(Side side) -> integer {
         switch (side) {
@@ -47,8 +41,20 @@ namespace tommy::invaders {
             const auto player = with<Session>::get(context, session_id).player;
             if (shot.side == Side::alien and player and with<Player>::exists(context, *player)) {
                 const auto& player_q = with<Player>::get(context, *player);
-                if (aabbOverlap(shot.pos, k_shot_half, player_q.pos, k_player_half)) {
-                    notePlayerHit(context, session_id);
+                if (not with<GameObject>::alive(context, *player)) {
+                    destroyShot(context, shot_id);
+                    return;
+                }
+                if (aabbOverlap(shot.pos, Shot::hit_half, player_q.pos, Player::hit_half)) {
+                    const integer remaining = with<GameObject>::takeDamage(context, *player, 1);
+                    if (remaining <= 0) {
+                        notePlayerHit(context, session_id);
+                        if (sessionPlaying(context, session_id)
+                            and with<Session>::get(context, session_id).lives > 0)
+                        {
+                            with<GameObject>::modify(context, *player)->hitpoints = Player::max_hitpoints;
+                        }
+                    }
                     destroyShot(context, shot_id);
                 }
                 return;
@@ -63,27 +69,29 @@ namespace tommy::invaders {
 
             const auto& fleet = with<Fleet>::get(context, session_id);
             for (const auto alien_id : with<Alien_group>::get(context, session_id)) {
-                auto alien = with<Alien>::modify(context, alien_id);
-                if (not alien->alive) {
+                if (not with<GameObject>::alive(context, alien_id)) {
                     continue;
                 }
-                const index2 pos = alienWorldPos(fleet, alien->cell);
-                if (not aabbOverlap(shot.pos, k_shot_half, pos, k_alien_half)) {
+                const auto& alien = with<Alien>::get(context, alien_id);
+                const index2 pos = Alien::worldPos(fleet, alien.cell);
+                if (not aabbOverlap(shot.pos, Shot::hit_half, pos, Alien::hit_half)) {
                     continue;
                 }
-                alien->alive = false;
-                destroyGameObjectSprite(context, alien_id);
-                with<Session>::modify(context, session_id)->score += alien->points;
+                const integer remaining = with<GameObject>::takeDamage(context, alien_id, 1);
+                if (remaining <= 0) {
+                    destroyGameObjectSprite(context, alien_id);
+                    with<Session>::modify(context, session_id)->score += alien.points;
 
-                bool any_alive = false;
-                for (const auto id : with<Alien_group>::get(context, session_id)) {
-                    if (with<Alien>::get(context, id).alive) {
-                        any_alive = true;
-                        break;
+                    bool any_alive = false;
+                    for (const auto id : with<Alien_group>::get(context, session_id)) {
+                        if (with<GameObject>::alive(context, id)) {
+                            any_alive = true;
+                            break;
+                        }
                     }
-                }
-                if (not any_alive) {
-                    noteFleetCleared(context, session_id);
+                    if (not any_alive) {
+                        noteFleetCleared(context, session_id);
+                    }
                 }
                 destroyShot(context, shot_id);
                 return;

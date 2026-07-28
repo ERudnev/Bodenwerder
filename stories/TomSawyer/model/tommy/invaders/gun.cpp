@@ -85,7 +85,9 @@ namespace tommy::invaders {
             Shot::sprite_index(Shot::Side::player),
             Shot::sprite_scale,
             Shot::sprite_bank,
-            Shot::sprite_zet);
+            Shot::sprite_zet,
+            rmmr::RGB{0.0f, 0.0f, 0.0f},
+            Shot::max_hitpoints);
         with<Shot_group>::addElement(context, session_id, body, Shot::Quantum{
             .session = session_id,
             .pos = muzzle,
