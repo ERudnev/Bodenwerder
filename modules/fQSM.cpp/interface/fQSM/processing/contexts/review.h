@@ -26,7 +26,9 @@ namespace fqsm::processing {
             : proposal(proposal)
             , origin(origin)
             , reactions(std::make_shared<Operational>(proposal, target, Operational::Upstream{}))
-            , retrospective(std::make_shared<Retrospective>(origin, reactions))
+            , retrospective(std::make_shared<Retrospective>(
+                origin,
+                std::make_shared<Operational>(origin, target, Operational::Upstream{})))
         {}
 
         // helpers:

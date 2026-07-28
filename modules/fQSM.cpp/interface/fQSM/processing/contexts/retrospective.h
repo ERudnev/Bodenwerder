@@ -9,7 +9,10 @@ namespace fqsm::processing::context {
         Operational::Ptr writer;
         const model::complex::State& base;
 
-        Retrospective(const State& initial, Operational::Ptr writer);//, Upstream);
+        Retrospective(const State& initial, Operational::Ptr writer)
+            : writer(std::move(writer))
+            , base(initial)
+        {}
     };
 
 }
