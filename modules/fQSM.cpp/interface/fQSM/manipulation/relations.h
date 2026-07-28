@@ -1,6 +1,8 @@
 #pragma once
 
+#include <concepts>
 #include <iterator>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -108,52 +110,59 @@ namespace fqsm::manipulation {
             }
         };
 
+        template<typename Meta>
+        auto link_key(const ::fqsm::Identifier<Meta>& id) -> std::optional<::fqsm::Identifier<Meta>> {
+            return id;
+        }
+
+        template<typename Meta>
+        auto link_key(const ::fqsm::Affected<Meta>& id) -> std::optional<::fqsm::Identifier<Meta>> {
+            return static_cast<const ::fqsm::Identifier<Meta>&>(id);
+        }
+
+        template<typename Meta>
+        auto link_key(const std::optional<::fqsm::Identifier<Meta>>& id)
+            -> std::optional<::fqsm::Identifier<Meta>>
+        {
+            return id;
+        }
+
+        template<typename Target, typename LinkT>
+        concept InboundLinkValue =
+            std::same_as<LinkT, typename Target::Id>
+            or std::same_as<LinkT, ::fqsm::Affected<Target>>
+            or std::same_as<LinkT, std::optional<typename Target::Id>>;
+
         // ask::relations<Target>(reacting).removed|updated|added|addedOrUpdated<Watchers, link>()
-        // Link: Affected<Target> or Id<Target> (Anchor/Custody aliases of Identifier).
+        // Link: Affected / Id / optional<Id> (Anchor/Custody are Id aliases).
         // Index covers only watchers linked to Target ids present in that delta layer;
-        // empty layer → empty index (no Watchers scan).
+        // empty layer → empty index (no Watchers scan). nullopt links are skipped.
         template<category::Any Target>
         struct RelationsOf {
             Reacting context;
 
             explicit RelationsOf(Reacting context) : context(std::move(context)) {}
 
-            template<category::Any Watchers, ::fqsm::Affected<Target> Watchers::Quantum::* Link>
+            template<category::Any Watchers, auto Link>
+                requires InboundLinkValue<Target, std::remove_cvref_t<decltype(std::declval<typename Watchers::Quantum>().*Link)>>
             auto removed() const -> InboundIndex<Target, Watchers> {
                 return index_for_layer<Watchers, Link>(context.changes<Target>().removed());
             }
 
-            template<category::Any Watchers, ::fqsm::Id<Target> Watchers::Quantum::* Link>
-            auto removed() const -> InboundIndex<Target, Watchers> {
-                return index_for_layer<Watchers, Link>(context.changes<Target>().removed());
-            }
-
-            template<category::Any Watchers, ::fqsm::Affected<Target> Watchers::Quantum::* Link>
+            template<category::Any Watchers, auto Link>
+                requires InboundLinkValue<Target, std::remove_cvref_t<decltype(std::declval<typename Watchers::Quantum>().*Link)>>
             auto updated() const -> InboundIndex<Target, Watchers> {
                 return index_for_layer<Watchers, Link>(context.changes<Target>().updated());
             }
 
-            template<category::Any Watchers, ::fqsm::Id<Target> Watchers::Quantum::* Link>
-            auto updated() const -> InboundIndex<Target, Watchers> {
-                return index_for_layer<Watchers, Link>(context.changes<Target>().updated());
-            }
-
-            template<category::Any Watchers, ::fqsm::Affected<Target> Watchers::Quantum::* Link>
+            template<category::Any Watchers, auto Link>
+                requires InboundLinkValue<Target, std::remove_cvref_t<decltype(std::declval<typename Watchers::Quantum>().*Link)>>
             auto added() const -> InboundIndex<Target, Watchers> {
                 return index_for_layer<Watchers, Link>(context.changes<Target>().added());
             }
 
-            template<category::Any Watchers, ::fqsm::Id<Target> Watchers::Quantum::* Link>
-            auto added() const -> InboundIndex<Target, Watchers> {
-                return index_for_layer<Watchers, Link>(context.changes<Target>().added());
-            }
-
-            template<category::Any Watchers, ::fqsm::Affected<Target> Watchers::Quantum::* Link>
-            auto addedOrUpdated() const -> InboundIndex<Target, Watchers> {
-                return index_for_layer<Watchers, Link>(context.changes<Target>().addedOrUpdated());
-            }
-
-            template<category::Any Watchers, ::fqsm::Id<Target> Watchers::Quantum::* Link>
+            template<category::Any Watchers, auto Link>
+                requires InboundLinkValue<Target, std::remove_cvref_t<decltype(std::declval<typename Watchers::Quantum>().*Link)>>
             auto addedOrUpdated() const -> InboundIndex<Target, Watchers> {
                 return index_for_layer<Watchers, Link>(context.changes<Target>().addedOrUpdated());
             }
@@ -165,15 +174,18 @@ namespace fqsm::manipulation {
                 if (layer.empty())
                     return index;
 
-                std::unordered_set<typename Target::Id> interesting;
+                using TargetId = typename Target::Id;
+                std::unordered_set<TargetId> interesting;
                 for (const auto& change : layer)
                     interesting.insert(change.id);
 
                 const Reading reading = context;
                 for (const auto entry : reading->template aspect<Watchers>().items()) {
-                    const auto& target = entry.value.*Link;
-                    if (interesting.contains(target))
-                        index.by_target[target].push_back(entry.id);
+                    const auto key = link_key(entry.value.*Link);
+                    if (not key.has_value())
+                        continue;
+                    if (interesting.contains(*key))
+                        index.by_target[*key].push_back(entry.id);
                 }
                 return index;
             }

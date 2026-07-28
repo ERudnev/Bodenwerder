@@ -13,6 +13,7 @@
     X(group_performance) \
     X(cascade_performance) \
     X(relations_index_performance) \
+    X(relations_watch_performance) \
     X(serialization) \
     X(destructor) \
     X(workers_say_no) \
