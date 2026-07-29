@@ -14,12 +14,11 @@ namespace tommy {
         using namespace resource;
         using geometry::Generator;
 
-        // Same slots as before; atlas files now live under assets/workshop/si01.
         base::message("TomSawyer: seeding Kenney sprite pack...");
         const auto kenney = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context,
             core,
-            item<Unit>{.manager = core, .name = "space_shooter_kenney", .library = "workshop/si01"},
+            item<Unit>{.manager = core, .name = "space_shooter_kenney", .library = "TomSawyer"},
             item<sprite::LoaderKenney>{
                 .image = "sprites/Spritesheet/sheet.png",
                 .descriptor = "sprites/Spritesheet/sheet.xml",

@@ -1,0 +1,9 @@
+import "gameObject"
+
+namespace tommy
+
+  // Static rock in the opening scene. Appearance in always; mom GameObject holds the live sprite.
+  feature Stone of GameObject
+    always
+      sprite_index: integer = 163 // Kenney meteorGrey_big1
+      sprite_scale: float = 0.5 // base scale; Physical.size multiplies this

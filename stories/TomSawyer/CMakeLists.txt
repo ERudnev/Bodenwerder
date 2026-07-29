@@ -7,6 +7,8 @@ project("TomSawyer"
 
 set(TomSawyer_Q1
     world.q1.types
+    gameObject.q1.types
+    stone.q1.types
 )
 
 add_executable(${PROJECT_NAME})

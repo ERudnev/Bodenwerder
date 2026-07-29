@@ -1,5 +1,7 @@
 #include <tommy/world.h>
 
+#include <tommy/gameObject.h>
+
 #include <GLFW/glfw3.h>
 
 namespace tommy {
@@ -35,7 +37,9 @@ namespace tommy {
         }
 
         // Clock μs → World.step. Write only when step grows so ~World gameplay stays quiet otherwise.
+        // After any step advance, call Physical.resolveCollisions (public all-op).
         static void advanceStep(Reacting context) {
+            bool stepped = false;
             for (const auto& change : context.changes<rmmr::system::Clock>().updated()) {
                 const int64 dt_us = change.now.absolute - change.old.absolute;
                 if (dt_us < k_us_per_step) {
@@ -47,7 +51,11 @@ namespace tommy {
                         continue;
                     }
                     with<World>::modify(context, id)->step += add;
+                    stepped = true;
                 }
+            }
+            if (stepped) {
+                with<Physical>::resolveCollisions(context);
             }
         }
     };
