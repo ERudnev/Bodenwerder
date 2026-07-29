@@ -21,6 +21,7 @@ namespace tommy {
         struct Quantum {
             float size = 1.0f;
             float mass = 1.0f;
+            integer hitpoints = 0;
         };
         struct Actions : BaseActions {
             static void resolveCollisions(Writing);

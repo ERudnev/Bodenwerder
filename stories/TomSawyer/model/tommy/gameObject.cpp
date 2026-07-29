@@ -1,5 +1,7 @@
 #include <tommy/gameObject.h>
 
+#include <tommy/shot.h>
+
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/node.q1.h>
@@ -31,7 +33,8 @@ namespace tommy {
             const auto& entry = pack.entries[static_cast<std::size_t>(sprite.index)];
             const float width = static_cast<float>(entry.max.x - entry.min.x);
             const float height = static_cast<float>(entry.max.y - entry.min.y);
-            const float diameter = std::max(width, height) * sprite.scale.x;
+            const float scale = std::max(std::abs(sprite.scale.x), std::abs(sprite.scale.y));
+            const float diameter = std::max(width, height) * scale;
             return 0.5f * diameter;
         }
 
@@ -51,6 +54,9 @@ namespace tommy {
         vector<Body> bodies;
         for (const auto entry : context->aspect<Physical>().items()) {
             const auto id = entry.id;
+            if (with<Shot>::exists(context, id)) {
+                continue;
+            }
             if (not with<GameObject>::exists(context, id)) {
                 continue;
             }

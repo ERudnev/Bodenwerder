@@ -1,0 +1,19 @@
+import "gameObject"
+
+namespace tommy
+
+  // Player bolt. Motion via Inertia; hits via Shot.resolveHits (not Physical separation).
+  feature Shot of GameObject
+    always
+      sprite_index: integer = 105 // Kenney laserBlue01
+      sprite_scale: float = 2.5 // 5× prior 0.5
+      speed: float = 1.333 // prior 2.0 / 1.5; vel along nose per World.step
+      damage: integer = 25
+      hull_size: float = 0.2 // Physical.size/mass at spawn
+      max_hitpoints: integer = 1
+      lifetime_steps: integer = 2000 // cull after this many World.steps
+    one
+      expires_at: integer // World.step deadline
+    all
+      =resolveHits() // overlap → damage Physical; destroy bolt; deplete → destroy body
+      =cullExpired() // World.step >= expires_at → destroy bolt

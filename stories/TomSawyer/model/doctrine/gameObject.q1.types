@@ -10,6 +10,7 @@ namespace tommy
     one
       size: float // relative scale vs role base (1 = 100%)
       mass: float // for now seeded equal to size
+      hitpoints: integer // 0 = depleted
     all
       =resolveCollisions() // called from Game World game loop directly
 

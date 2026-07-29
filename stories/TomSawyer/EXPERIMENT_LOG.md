@@ -150,7 +150,35 @@
 Слева крупный камень со скоростью врезается в поле; коллизия и инерция параллельны.
 
 ### Действие
-- Story: поле 100 камней — только Physical; слева rammer size=3.5 + Inertia(vel.x=8)
+- Story: поле 100 камней — только Physical; слева rammer + Inertia
 - Physical/GameObject не трогал: импульс в vel через коллизии не протаскивал
+
+### Выводы / наблюдения
+
+---
+
+## 2026-07-29 — Player ship + thrusters → Inertia
+
+### Запрос
+Кораблик игрока: Feature с клавиатуры, Inertia, коллизии; двигатели пишут в вектор скорости инерции.
+
+### Действие
+- Doctrine/C++: `feature Player`; `all =applyThrusters()`
+- World loop: `applyThrusters` → `Inertia.update` → `resolveCollisions`
+- Spawn: Player + Physical + Inertia внизу; WASD/arrows
+
+### Выводы / наблюдения
+
+---
+
+## 2026-07-29 — Gun + Shot (SI01 idea) + SHIP HUD
+
+### Запрос
+Пушка у корабля (идея из SI01); HUD пушки в UI корабля.
+
+### Действие
+- Doctrine/C++: `entity Gun` (mech+heat, `!cool(~World)`, `>fire`); `feature Shot` (Inertia flight, `resolveHits`/`cullExpired`); `Player.gun: custody<Gun>`, `=tryFire` (Space)
+- World loop: thrusters → tryFire → inertia → Shot hits/cull → collisions → camera
+- ImGui `SHIP`: HULL + RATE + HEAT в одной плашке
 
 ### Выводы / наблюдения

@@ -7,10 +7,10 @@ namespace tommy
   // `paused` freezes step (Clock still ticks; World.step does not).
   // Input snapshots stay on rmmr::system::Window (pause key only here).
   // Object watches stay in `one` (whole ! — detect+effect one body).
-  // After step grows: Inertia.update (per advanced step) → Physical.resolveCollisions.
+  // After step grows: thrusters → tryFire → inertia → Shot hits/cull → collisions → followCamera.
   entity World
     one
       step: integer // discrete ticks; 1 step = 1000 Core μs
       paused: bool
       !keyboardPauseKey(~system::Window) // rising edge toggles paused
-      !advanceStep(~system::Clock) // unpaused: fold Clock μs into step; then inertia+collisions
+      !advanceStep(~system::Clock) // unpaused: fold Clock μs into step; then drive loop

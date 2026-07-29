@@ -1,6 +1,8 @@
 #include <tommy/world.h>
 
 #include <tommy/gameObject.h>
+#include <tommy/player.h>
+#include <tommy/shot.h>
 
 #include <GLFW/glfw3.h>
 
@@ -36,7 +38,7 @@ namespace tommy {
             }
         }
 
-        // Clock μs → World.step. Then: Inertia.update × advanced steps → Physical.resolveCollisions.
+        // Clock μs → World.step. Then per step: thrusters → inertia; then collisions once.
         static void advanceStep(Reacting context) {
             integer steps_advanced = 0;
             for (const auto& change : context.changes<rmmr::system::Clock>().updated()) {
@@ -54,10 +56,15 @@ namespace tommy {
                 }
             }
             for (integer step = 0; step < steps_advanced; ++step) {
+                with<Player>::applyThrusters(context);
+                with<Player>::tryFire(context);
                 with<Inertia>::update(context);
             }
             if (steps_advanced > 0) {
+                with<Shot>::resolveHits(context);
+                with<Shot>::cullExpired(context);
                 with<Physical>::resolveCollisions(context);
+                with<Player>::followCamera(context);
             }
         }
     };

@@ -1,0 +1,21 @@
+import "gameObject"
+import "gun"
+
+namespace tommy
+
+  // Keyboard-driven ship. Lateral keys turn Node; W/S thrust along nose into Inertia.vel.
+  feature Player of GameObject
+    always
+      sprite_index: integer = 200 // Kenney playerShip1_blue
+      sprite_scale: float = 0.5
+      thrust_per_step: float = 0.005 // along nose into Inertia.vel while W/S held
+      turn_degrees_per_step: float = 0.35 // Node HPB.z while A/D held
+      hull_size: float = 1.0 // Physical.size/mass at spawn
+      max_hitpoints: integer = 100 // seeded into Physical.hitpoints
+    one
+      camera: #rmmr::scene::Camera
+      gun: custody<Gun>
+    all
+      =applyThrusters() // World: A/D → Node bank; W/S → thrust along nose into Inertia.vel
+      =tryFire() // World: held Space → Gun.fire
+      =followCamera() // World game loop: camera XY tracks ship sprite (keep camera Z)
