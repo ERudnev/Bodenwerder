@@ -12,3 +12,11 @@ namespace tommy
       mass: float // for now seeded equal to size
     all
       =resolveCollisions() // called from Game World game loop directly
+
+  // Optional motion layer. Body does not own "why" vel exists — only integrates it.
+  feature Inertia of Physical
+    one
+      vel: vec3 // current velocity; source unknown to this aspect
+      saturation: float // per-step damping: vel *= (1 - saturation)
+    all
+      =update() // pos += vel * dt; then damp vel (dt = 1 World.step)

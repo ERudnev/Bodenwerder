@@ -36,10 +36,9 @@ namespace tommy {
             }
         }
 
-        // Clock μs → World.step. Write only when step grows so ~World gameplay stays quiet otherwise.
-        // After any step advance, call Physical.resolveCollisions (public all-op).
+        // Clock μs → World.step. Then: Inertia.update × advanced steps → Physical.resolveCollisions.
         static void advanceStep(Reacting context) {
-            bool stepped = false;
+            integer steps_advanced = 0;
             for (const auto& change : context.changes<rmmr::system::Clock>().updated()) {
                 const int64 dt_us = change.now.absolute - change.old.absolute;
                 if (dt_us < k_us_per_step) {
@@ -51,10 +50,13 @@ namespace tommy {
                         continue;
                     }
                     with<World>::modify(context, id)->step += add;
-                    stepped = true;
+                    steps_advanced += add;
                 }
             }
-            if (stepped) {
+            for (integer step = 0; step < steps_advanced; ++step) {
+                with<Inertia>::update(context);
+            }
+            if (steps_advanced > 0) {
                 with<Physical>::resolveCollisions(context);
             }
         }

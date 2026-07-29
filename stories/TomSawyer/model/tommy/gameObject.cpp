@@ -98,4 +98,26 @@ namespace tommy {
         }
     }
 
+    void Inertia::Actions::update(Writing context) {
+        // One World.step unit. Source of vel is outside this aspect.
+        constexpr float dt = 1.0f;
+        for (const auto entry : context->aspect<Inertia>().items()) {
+            const auto id = entry.id;
+            if (not with<GameObject>::exists(context, id)) {
+                continue;
+            }
+            const auto& object = with<GameObject>::get(context, id);
+            if (not object.sprite) {
+                continue;
+            }
+            if (not with<rmmr::scene::Node>::exists(context, *object.sprite)) {
+                continue;
+            }
+            auto inertia = with<Inertia>::modify(context, id);
+            auto node = with<rmmr::scene::Node>::modify(context, *object.sprite);
+            node->position += inertia->vel * dt;
+            inertia->vel *= (1.0f - inertia->saturation);
+        }
+    }
+
 }

@@ -2,6 +2,7 @@
 
 #include <base/maybe.h>
 #include <fQSM/api/interface.h>
+#include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
 
 namespace tommy {
@@ -23,6 +24,18 @@ namespace tommy {
         };
         struct Actions : BaseActions {
             static void resolveCollisions(Writing);
+        };
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct Inertia : Feature<Inertia, Physical> {
+        struct Quantum {
+            rmmr::vec3 vel{0.0f, 0.0f, 0.0f};
+            float saturation = 0.0f;
+        };
+        struct Actions : BaseActions {
+            static void update(Writing);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }

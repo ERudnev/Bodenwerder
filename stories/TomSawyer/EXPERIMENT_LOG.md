@@ -111,3 +111,46 @@
 - World.`advanceStep` после роста `step` зовёт `with<Physical>::resolveCollisions`
 
 ### Выводы / наблюдения
+
+---
+
+## 2026-07-29 — materialized Inertia
+
+### Запрос
+Материализовать `feature Inertia of Physical`, но не навязывать его всем Physical.
+
+### Действие
+- C++ projection: `Inertia : Feature<Inertia, Physical>`
+- Quantum: `vel: vec3`, `saturation: float`
+- Public all-op: `Inertia::Actions::update(Writing)`
+- `SpriteTest::schema()` теперь включает `Inertia`
+
+### Выводы / наблюдения
+- Семантика `update()` пока не задана в проекте, поэтому проекция оставлена честно незавершённой через `_INCOMPLETE_`, без выдумывания движения.
+
+---
+
+## 2026-07-29 — Inertia.update semantics
+
+### Запрос
+Объект не знает источник `vel`; интегрирует `pos += vel * dt`, затем `vel *= (1 - saturation)`.
+
+### Действие
+- `Inertia::update`: dt = 1 World.step; Node.pos += vel; vel *= (1 - saturation)
+- World.`advanceStep`: на каждый advanced step → `Inertia.update`, потом `Physical.resolveCollisions`
+- Камни по-прежнему без `Inertia` (слой опционален)
+
+### Выводы / наблюдения
+
+---
+
+## 2026-07-29 — rammer stone smoke test
+
+### Запрос
+Слева крупный камень со скоростью врезается в поле; коллизия и инерция параллельны.
+
+### Действие
+- Story: поле 100 камней — только Physical; слева rammer size=3.5 + Inertia(vel.x=8)
+- Physical/GameObject не трогал: импульс в vel через коллизии не протаскивал
+
+### Выводы / наблюдения
