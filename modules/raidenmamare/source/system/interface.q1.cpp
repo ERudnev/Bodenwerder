@@ -28,8 +28,8 @@ namespace rmmr::system {
         return id;
     }
 
-    auto Interface::addDeviceAndWindow(Writing context, Core::Id core, decltype(Window::Quantum::title) title, index2 requested_size) -> Device::Id {
-        return Window::Actions::create(context, core, std::move(title), requested_size);
+    auto Interface::addDeviceAndWindow(Writing context, Core::Id core, decltype(Window::Quantum::title) title, index2 requested_size, Window::Presentation presentation) -> Device::Id {
+        return Window::Actions::create(context, core, std::move(title), requested_size, presentation);
     }
 
     void Interface::shutdown(Writing context) {

@@ -18,6 +18,7 @@ int main() {
             .assets_root = std::filesystem::path(DAQL_ASSETS_DIR),
             .title = "workshop_si01",
             .window_size = {.x = 1600, .y = 900},
+            .presentation = rmmr::system::Window::Presentation::windowed,
             .glVersion = {.major = 3, .minor = 3},
         });
 

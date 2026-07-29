@@ -1,5 +1,7 @@
 #include <rmmr/scene/node.q1.h>
 
+#include <cmath>
+
 #include <glm/common.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -10,14 +12,15 @@ namespace rmmr::scene {
 
     namespace {
 
+        // HPB degrees: heading(Y), pitch(X), bank(Z) — intrinsic YXZ.
+        // Not glm::eulerAngles: its yaw() uses asin and only covers [-90°, +90°].
+
         auto rotation_from_hpb(HPB hpb) -> quat {
             const vec3 radians = glm::radians(hpb);
-            const glm::vec3 glm_euler{
-                radians.y,
-                radians.x,
-                radians.z,
-            };
-            return glm::normalize(quat{glm_euler});
+            const quat heading = glm::angleAxis(radians.x, vec3{0.0f, 1.0f, 0.0f});
+            const quat pitch = glm::angleAxis(radians.y, vec3{1.0f, 0.0f, 0.0f});
+            const quat bank = glm::angleAxis(radians.z, vec3{0.0f, 0.0f, 1.0f});
+            return glm::normalize(heading * pitch * bank);
         }
 
         auto make_transform(const Node::Quantum& quantum) -> mat4 {
@@ -27,8 +30,16 @@ namespace rmmr::scene {
         }
 
         auto heading_pitch_bank_from_rotation(quat rotation) -> vec3 {
-            const glm::vec3 euler = glm::eulerAngles(glm::normalize(rotation));
-            return vec3{euler.y, euler.x, euler.z};
+            const glm::mat3 matrix = glm::mat3_cast(glm::normalize(rotation));
+            const float heading = std::atan2(matrix[2][0], matrix[2][2]);
+            const float pitch_cos = std::sqrt(matrix[0][1] * matrix[0][1] + matrix[1][1] * matrix[1][1]);
+            const float pitch = std::atan2(-matrix[2][1], pitch_cos);
+            const float sin_heading = std::sin(heading);
+            const float cos_heading = std::cos(heading);
+            const float bank = std::atan2(
+                sin_heading * matrix[1][2] - cos_heading * matrix[1][0],
+                cos_heading * matrix[0][0] - sin_heading * matrix[0][2]);
+            return vec3{heading, pitch, bank};
         }
 
     } // namespace
@@ -45,8 +56,7 @@ namespace rmmr::scene {
     }
 
     auto Node::Actions::hpb(Reading context, Id id) -> HPB {
-        const vec3 radians = heading_pitch_bank_from_rotation(with<Node>::get(context, id).rotation);
-        return glm::degrees(radians);
+        return glm::degrees(heading_pitch_bank_from_rotation(with<Node>::get(context, id).rotation));
     }
 
     void Node::Actions::hpb(Writing context, Id id, HPB value) {

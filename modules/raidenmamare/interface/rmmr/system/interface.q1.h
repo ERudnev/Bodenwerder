@@ -11,7 +11,7 @@ namespace rmmr::system {
 
     struct Interface : Manipulation<Interface, Core> {
         static auto create(Writing, item<Core>) -> Core::Id;
-        static auto addDeviceAndWindow(Writing, Core::Id, decltype(Window::Quantum::title) title, index2 requested_size) -> Device::Id;
+        static auto addDeviceAndWindow(Writing, Core::Id, decltype(Window::Quantum::title) title, index2 requested_size, Window::Presentation presentation) -> Device::Id;
         static void shutdown(Writing);
     };
 

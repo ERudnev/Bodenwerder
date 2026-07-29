@@ -155,7 +155,8 @@ namespace rmmr {
             context,
             coreId,
             std::move(windowParams.title),
-            windowParams.requested_size);
+            windowParams.requested_size,
+            windowParams.presentation);
         createViewport(context, with<system::Window>::framebufferSize(context, *state->handles.device));
         return coreId;
     }

@@ -15,14 +15,12 @@ namespace rmmr::scene {
 
         auto node_quantum_from_locator(Locator locator) -> Node::Quantum {
             const vec3 radians = glm::radians(locator.euler);
-            const glm::vec3 glm_euler{
-                radians.y,
-                radians.x,
-                radians.z,
-            };
+            const quat heading = glm::angleAxis(radians.x, vec3{0.0f, 1.0f, 0.0f});
+            const quat pitch = glm::angleAxis(radians.y, vec3{1.0f, 0.0f, 0.0f});
+            const quat bank = glm::angleAxis(radians.z, vec3{0.0f, 0.0f, 1.0f});
             return Node::Quantum{
                 .position = locator.pos,
-                .rotation = glm::normalize(quat{glm_euler}),
+                .rotation = glm::normalize(heading * pitch * bank),
             };
         }
 

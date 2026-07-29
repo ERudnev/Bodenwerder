@@ -20,6 +20,7 @@ namespace rmmr {
         struct WindowParameters {
             string title;
             index2 requested_size;
+            system::Window::Presentation presentation;
         };
 
         struct ViewContext {

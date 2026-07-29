@@ -7,6 +7,7 @@ namespace rmmr
     // Resize: poll framebuffer each frame — no GLFW resize callback.
     // Time lives on system::Clock; Window only snapshots input.
     component Window of Device
+    enum Presentation : windowed, maximized
     struct InputState
       keys: vector<bool>
       mouse: index2
@@ -14,7 +15,7 @@ namespace rmmr
       title: string
       InputState previous
       InputState current
-      >create(#Core, title: string, requested_size: index2)->#
+      >create(#Core, title: string, requested_size: index2, presentation: Presentation)->#
       ?framebufferSize() -> index2   // live drawable extent (glfwGetFramebufferSize)
       ?present()
       ?mouseShift() -> index2

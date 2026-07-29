@@ -17,6 +17,7 @@ namespace rmmr::wrapper {
             filepath assets_root;
             string title;
             index2 window_size;
+            system::Window::Presentation presentation;
             struct {
                 integer major;
                 integer minor;

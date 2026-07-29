@@ -30,7 +30,7 @@ namespace rmmr::system {
             with<resource::Runtimes>::install(context, device);
         }
 
-        auto create_glfw_handle(const Core::GLVer& version, const string& title, const index2& requested_size) -> GLFWwindow* {
+        auto create_glfw_handle(const Core::GLVer& version, const string& title, const index2& requested_size, Window::Presentation presentation) -> GLFWwindow* {
             const int width = std::max(static_cast<int>(requested_size.x), 1);
             const int height = std::max(static_cast<int>(requested_size.y), 1);
             const int context_major = std::max(static_cast<int>(version.major), 1);
@@ -46,7 +46,11 @@ namespace rmmr::system {
                 throw std::runtime_error("system::Window::create: glfwCreateWindow() failed");
             }
 
-            glfwSetWindowPos(window, 1000, 100);
+            if (presentation == Window::Presentation::maximized)
+                glfwMaximizeWindow(window);
+            else
+                glfwSetWindowPos(window, 1000, 100);
+
             glfwMakeContextCurrent(window);
             glewExperimental = GL_TRUE;
             if (glewInit() != GLEW_OK) {
@@ -77,13 +81,13 @@ namespace rmmr::system {
 
     } // namespace
 
-    auto Window::Actions::create(Writing context, Core::Id core, string title, index2 requested_size) -> Id {
+    auto Window::Actions::create(Writing context, Core::Id core, string title, index2 requested_size, Presentation presentation) -> Id {
         if (not glfwInit()) {
             throw std::runtime_error("system::Window::create: glfwInit() failed");
         }
 
         const auto& core_quantum = with<Core>::get(context, core);
-        const auto handle = create_glfw_handle(core_quantum.version, title, requested_size);
+        const auto handle = create_glfw_handle(core_quantum.version, title, requested_size, presentation);
 
         const auto device = with<Device>::create(context, Device::Quantum{
             .core = core,

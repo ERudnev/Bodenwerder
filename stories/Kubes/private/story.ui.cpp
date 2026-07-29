@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <cstdio>
 #include <imgui.h>
 #include <string_view>
@@ -13,8 +14,10 @@
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
+#include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/semantics.q1.h>
+#include <rmmr/system/viewport.q1.h>
 
 namespace kubes {
 
@@ -107,13 +110,27 @@ namespace kubes {
 
         bool open = ui.camera;
         if (ImGui::Begin("Camera", &open)) {
-            const auto camera = views.front().camera;
+            const auto& view = views.front();
+            const auto camera = view.camera;
             if (not with<scene::Camera>::exists(world, camera)) {
                 ImGui::TextDisabled("No camera selected.");
             } else {
+                const auto& node = with<scene::Node>::get(world, camera);
+                ImGui::Text("Pos: %.2f, %.2f, %.2f", node.position.x, node.position.y, node.position.z);
+
+                HPB hpb = with<scene::Node>::hpb(world, camera);
+                if (ImGui::DragFloat3("HPB", &hpb.x, 0.1f, -180.0f, 180.0f, "%.1f°"))
+                    with<scene::Node>::hpb(world, camera, hpb);
+
                 auto quantum = with<scene::Camera>::modify(world, camera);
                 if (quantum->mode == scene::Camera::Mode::perspective) {
-                    ImGui::SliderAngle("FoV", &quantum->fov_y, 10.0f, 160.0f);
+                    const auto& viewport = with<system::Viewport>::get(world, view.viewport);
+                    const float width = viewport.size.x > integer{0} ? static_cast<float>(viewport.size.x) : 1.0f;
+                    const float height = viewport.size.y > integer{0} ? static_cast<float>(viewport.size.y) : 1.0f;
+                    const float aspect = width / height;
+                    float fov_x = 2.0f * std::atan(std::tan(quantum->fov_y * 0.5f) * aspect);
+                    if (ImGui::SliderAngle("FoV H", &fov_x, 10.0f, 160.0f))
+                        quantum->fov_y = 2.0f * std::atan(std::tan(fov_x * 0.5f) / aspect);
                 } else if (quantum->mode == scene::Camera::Mode::orthographic) {
                     ImGui::Text("Ortho size: %d x %d", quantum->ortho_size.x, quantum->ortho_size.y);
                 } else {

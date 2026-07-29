@@ -91,6 +91,7 @@ namespace rmmr::wrapper {
             Engine::WindowParameters{
                 .title = settings.title,
                 .requested_size = settings.window_size,
+                .presentation = settings.presentation,
             });
         state->world.finish_patch();
         state->assets = assets::Manager{.core = core};
