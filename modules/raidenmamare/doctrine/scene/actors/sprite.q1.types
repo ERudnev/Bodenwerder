@@ -12,10 +12,12 @@ namespace rmmr
 
     // Sprite draw in scene space. Rotation from Node; local scale here.
     // tint: relative additive RGB (zero = neutral). vec3 allows negatives.
+    // opacity: multiply into fragment alpha (1 = fully opaque).
     feature Sprite of Node
       one
         material: #resource::material::Asset
         tint: RGB
+        opacity: float
         scale: vec3
         pack: #resource::sprite::Pack
         index: integer

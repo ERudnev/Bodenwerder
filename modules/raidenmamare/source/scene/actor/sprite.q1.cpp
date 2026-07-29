@@ -24,6 +24,7 @@ namespace rmmr::scene::actor {
         with<Sprite>::extend(context, node, Sprite::Quantum{
             .material = material,
             .tint = tint,
+            .opacity = 1.0f,
             .scale = scale,
             .pack = pack,
             .index = index,
@@ -49,7 +50,7 @@ namespace rmmr::scene::actor {
                 .index = actor.index,
             },
             .albedo = RGB{1.0f, 1.0f, 1.0f} + actor.tint,
-            .opacity = 1.0f,
+            .opacity = actor.opacity,
         }, where);
     }
 

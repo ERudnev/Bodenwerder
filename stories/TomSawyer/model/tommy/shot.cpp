@@ -1,13 +1,13 @@
 #include <tommy/shot.h>
 
 #include <tommy/player.h>
-#include <tommy/stone.h>
 #include <tommy/world.h>
 
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/node.q1.h>
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -36,32 +36,6 @@ namespace tommy {
             return 0.5f * std::max(width, height) * scale;
         }
 
-        void destroyBody(Writing context, GameObject::Id body) {
-            if (not with<GameObject>::exists(context, body)) {
-                return;
-            }
-            const auto sprite = with<GameObject>::get(context, body).sprite;
-            if (with<Shot>::exists(context, body)) {
-                with<Shot>::remove(context, body);
-            }
-            if (with<Stone>::exists(context, body)) {
-                with<Stone>::remove(context, body);
-            }
-            if (with<Player>::exists(context, body)) {
-                with<Player>::remove(context, body);
-            }
-            if (with<Inertia>::exists(context, body)) {
-                with<Inertia>::remove(context, body);
-            }
-            if (with<Physical>::exists(context, body)) {
-                with<Physical>::remove(context, body);
-            }
-            if (sprite and with<rmmr::scene::Node>::exists(context, *sprite)) {
-                with<rmmr::scene::Node>::remove(context, *sprite);
-            }
-            with<GameObject>::remove(context, body);
-        }
-
     } // namespace
 
     void Shot::Actions::resolveHits(Writing context) {
@@ -73,7 +47,13 @@ namespace tommy {
         vector<Target> targets;
         for (const auto entry : context->aspect<Physical>().items()) {
             const auto id = entry.id;
-            if (with<Shot>::exists(context, id) or with<Player>::exists(context, id)) {
+            if (with<Shot>::exists(context, id)
+                or with<Player>::exists(context, id)
+                or with<AnimatedDecay>::exists(context, id))
+            {
+                continue;
+            }
+            if (with<Physical>::get(context, id).hitpoints <= 0) {
                 continue;
             }
             if (not with<GameObject>::exists(context, id)) {
@@ -93,7 +73,7 @@ namespace tommy {
             });
         }
 
-        vector<GameObject::Id> doomed;
+        vector<GameObject::Id> spent_bolts;
         for (const auto entry : context->aspect<Shot>().items()) {
             const auto shot_id = entry.id;
             if (not with<GameObject>::exists(context, shot_id)) {
@@ -123,17 +103,14 @@ namespace tommy {
                     continue;
                 }
                 auto physical = with<Physical>::modify(context, target.id);
-                physical->hitpoints -= Shot::damage;
-                doomed.push_back(shot_id);
-                if (physical->hitpoints <= 0) {
-                    doomed.push_back(target.id);
-                }
+                physical->hitpoints = std::max(integer{0}, physical->hitpoints - Shot::damage);
+                spent_bolts.push_back(shot_id);
                 break;
             }
         }
 
-        for (const auto id : doomed) {
-            destroyBody(context, id);
+        for (const auto id : spent_bolts) {
+            with<GameObject>::destroy(context, id);
         }
     }
 
@@ -150,7 +127,7 @@ namespace tommy {
             }
         }
         for (const auto id : expired) {
-            destroyBody(context, id);
+            with<GameObject>::destroy(context, id);
         }
     }
 

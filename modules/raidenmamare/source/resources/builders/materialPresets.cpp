@@ -156,6 +156,7 @@ namespace rmmr::resource::builders::material {
                         "view",
                         "projection",
                         "albedo",
+                        "opacity",
                         "atlasTexture",
                         "atlasEntries",
                         "spriteIndex",

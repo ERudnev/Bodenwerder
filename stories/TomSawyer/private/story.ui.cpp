@@ -31,6 +31,7 @@ namespace tommy {
     }
 
     void SpriteTest::drawUi(Writing world) {
+        with<Gun>::flushPending(world);
         drawHud(world);
         drawShipPanel(world);
         drawCameraWindow(world);

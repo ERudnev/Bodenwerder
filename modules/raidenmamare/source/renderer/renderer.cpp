@@ -51,6 +51,7 @@ namespace rmmr {
             Id atlasEntries = material::Semantics::id_of("atlasEntries");
             Id spriteIndex = material::Semantics::id_of("spriteIndex");
             Id inverseAtlasSize = material::Semantics::id_of("inverseAtlasSize");
+            Id opacity = material::Semantics::id_of("opacity");
         } semantic{};
 
         struct ShadowCaster {
@@ -394,6 +395,8 @@ namespace rmmr {
                 set_uniform(binding, command.model);
             } else if (binding.id == semantic.albedo) {
                 set_uniform(binding, command.albedo);
+            } else if (binding.id == semantic.opacity) {
+                set_uniform(binding, command.opacity);
             } else if (binding.id == semantic.patternScale) {
                 set_uniform(binding, 1.0f);
             } else if (binding.id == semantic.colorPrimary) {

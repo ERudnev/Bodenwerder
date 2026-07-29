@@ -51,6 +51,73 @@ namespace tommy {
             return {};
         }
 
+        auto spawn_bolt(Writing context, Gun::Id gun_id, GameObject::Id ship) -> base::maybe<GameObject::Id> {
+            if (not with<Gun>::exists(context, gun_id) or not with<GameObject>::exists(context, ship)) {
+                return {};
+            }
+            const auto world = with<Gun>::get(context, gun_id).world;
+            if (not with<World>::exists(context, world)) {
+                return {};
+            }
+            const integer now_step = with<World>::get(context, world).step;
+            const auto& object = with<GameObject>::get(context, ship);
+            if (not object.sprite) {
+                return {};
+            }
+            if (not with<rmmr::scene::Node>::exists(context, *object.sprite)) {
+                return {};
+            }
+            if (not with<rmmr::scene::actor::Sprite>::exists(context, *object.sprite)) {
+                return {};
+            }
+            const auto root = first_scene_root(context);
+            if (not root) {
+                return {};
+            }
+
+            const auto& ship_node = with<rmmr::scene::Node>::get(context, *object.sprite);
+            const auto& ship_sprite = with<rmmr::scene::actor::Sprite>::get(context, *object.sprite);
+            const float bank = with<rmmr::scene::Node>::hpb(context, *object.sprite).z;
+            const auto nose = nose_xy(bank);
+            const rmmr::Pos muzzle{
+                ship_node.position.x + nose.x * Gun::muzzle_lift,
+                ship_node.position.y + nose.y * Gun::muzzle_lift,
+                ship_node.position.z,
+            };
+            const float scale = Shot::sprite_scale * Shot::hull_size;
+            const auto bolt_sprite = with<rmmr::scene::Flat2d>::createSpriteActor(
+                context,
+                *root,
+                rmmr::Locator{
+                    .pos = muzzle,
+                    .euler = rmmr::HPB{0.0f, 0.0f, bank},
+                },
+                item<rmmr::scene::actor::Sprite>{
+                    .material = ship_sprite.material,
+                    .tint = rmmr::RGB{0.0f, 0.0f, 0.0f},
+                    .opacity = 1.0f,
+                    .scale = vec3{scale, scale, scale},
+                    .pack = ship_sprite.pack,
+                    .index = Shot::sprite_index,
+                });
+            const auto body = with<GameObject>::create(context, GameObject::Quantum{
+                .sprite = bolt_sprite,
+            });
+            with<Physical>::extend(context, body, Physical::Quantum{
+                .size = Shot::hull_size,
+                .mass = Shot::hull_size,
+                .hitpoints = Shot::max_hitpoints,
+            });
+            with<Inertia>::extend(context, body, Inertia::Quantum{
+                .vel = rmmr::vec3{nose.x * Shot::speed, nose.y * Shot::speed, 0.0f},
+                .saturation = 0.0f,
+            });
+            with<Shot>::extend(context, body, Shot::Quantum{
+                .expires_at = now_step + Shot::lifetime_steps,
+            });
+            return body;
+        }
+
     } // namespace
 
     struct Gun::Internals : Gun::DefaultInternals {
@@ -75,90 +142,46 @@ namespace tommy {
         };
     }
 
-    auto Gun::Actions::fire(
-        Writing context,
-        Id gun_id,
-        GameObject::Id ship) -> base::maybe<GameObject::Id>
-    {
+    void Gun::Actions::requestFire(Writing context, Id gun_id, GameObject::Id ship) {
         if (not with<Gun>::exists(context, gun_id) or not with<GameObject>::exists(context, ship)) {
-            return {};
+            return;
         }
         if (not with<Player>::exists(context, ship)) {
-            return {};
+            return;
         }
         const auto world = with<Gun>::get(context, gun_id).world;
         if (not with<World>::exists(context, world)) {
-            return {};
+            return;
         }
         const integer now_step = with<World>::get(context, world).step;
         auto gun = with<Gun>::modify(context, gun_id);
         if (now_step < gun->mech_ready_at) {
-            return {};
+            return;
         }
         if (gun->temperature_celsius >= Gun::fire_below_celsius) {
-            return {};
+            return;
         }
-
-        const auto& object = with<GameObject>::get(context, ship);
-        if (not object.sprite) {
-            return {};
-        }
-        if (not with<rmmr::scene::Node>::exists(context, *object.sprite)) {
-            return {};
-        }
-        if (not with<rmmr::scene::actor::Sprite>::exists(context, *object.sprite)) {
-            return {};
-        }
-        const auto root = first_scene_root(context);
-        if (not root) {
-            return {};
-        }
-
-        const auto& ship_node = with<rmmr::scene::Node>::get(context, *object.sprite);
-        const auto& ship_sprite = with<rmmr::scene::actor::Sprite>::get(context, *object.sprite);
-        const float bank = with<rmmr::scene::Node>::hpb(context, *object.sprite).z;
-        const auto nose = nose_xy(bank);
-        const rmmr::Pos muzzle{
-            ship_node.position.x + nose.x * Gun::muzzle_lift,
-            ship_node.position.y + nose.y * Gun::muzzle_lift,
-            ship_node.position.z,
-        };
-        const float scale = Shot::sprite_scale * Shot::hull_size;
-        const auto bolt_sprite = with<rmmr::scene::Flat2d>::createSpriteActor(
-            context,
-            *root,
-            rmmr::Locator{
-                .pos = muzzle,
-                .euler = rmmr::HPB{0.0f, 0.0f, bank},
-            },
-            item<rmmr::scene::actor::Sprite>{
-                .material = ship_sprite.material,
-                .tint = rmmr::RGB{0.0f, 0.0f, 0.0f},
-                .scale = vec3{scale, scale, scale},
-                .pack = ship_sprite.pack,
-                .index = Shot::sprite_index,
-            });
-        const auto body = with<GameObject>::create(context, GameObject::Quantum{
-            .sprite = bolt_sprite,
-        });
-        with<Physical>::extend(context, body, Physical::Quantum{
-            .size = Shot::hull_size,
-            .mass = Shot::hull_size,
-            .hitpoints = Shot::max_hitpoints,
-        });
-        with<Inertia>::extend(context, body, Inertia::Quantum{
-            .vel = rmmr::vec3{nose.x * Shot::speed, nose.y * Shot::speed, 0.0f},
-            .saturation = 0.0f,
-        });
-        with<Shot>::extend(context, body, Shot::Quantum{
-            .expires_at = now_step + Shot::lifetime_steps,
-        });
-
+        gun->owner = ship;
+        gun->pending_shots += 1;
         gun->mech_ready_at = now_step + Gun::mech_cooldown_steps;
         gun->temperature_celsius = std::min(
             Gun::temp_max_celsius,
             gun->temperature_celsius + Gun::heat_per_shot_celsius);
-        return body;
+    }
+
+    void Gun::Actions::flushPending(Writing context) {
+        for (const auto entry : context->aspect<Gun>().items()) {
+            const auto gun_id = entry.id;
+            auto gun = with<Gun>::modify(context, gun_id);
+            if (gun->pending_shots <= 0 or not gun->owner) {
+                continue;
+            }
+            const auto ship = *gun->owner;
+            while (gun->pending_shots > 0) {
+                gun->pending_shots -= 1;
+                spawn_bolt(context, gun_id, ship);
+            }
+        }
     }
 
 }

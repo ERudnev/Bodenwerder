@@ -1,6 +1,7 @@
 #include <tommy/gameObject.h>
 
 #include <tommy/shot.h>
+#include <tommy/world.h>
 
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
@@ -38,10 +39,85 @@ namespace tommy {
             return 0.5f * diameter;
         }
 
+        auto world_step(Reading context) -> integer {
+            for (const auto entry : context->aspect<World>().items()) {
+                return with<World>::get(context, entry.id).step;
+            }
+            return 0;
+        }
+
     } // namespace
 
     auto GameObject::customAspectReactions() -> const Behavior {
         return {};
+    }
+
+    void GameObject::Actions::destroy(Writing context, Id body) {
+        if (not with<GameObject>::exists(context, body)) {
+            return;
+        }
+        const auto sprite = with<GameObject>::get(context, body).sprite;
+        // Drop Node (Sprite Feature goes with remove_with_parent). Then drop GameObject
+        // (parasitic Stone/Player/Shot/Physical/Inertia/AnimatedDecay follow).
+        if (sprite and with<rmmr::scene::Node>::exists(context, *sprite)) {
+            with<rmmr::scene::Node>::remove(context, *sprite);
+        }
+        with<GameObject>::remove(context, body);
+    }
+
+    void AnimatedDecay::Actions::grantToDepleted(Writing context) {
+        const integer now = world_step(context);
+        for (const auto entry : context->aspect<Physical>().items()) {
+            const auto id = entry.id;
+            if (with<Physical>::get(context, id).hitpoints > 0) {
+                continue;
+            }
+            if (with<AnimatedDecay>::exists(context, id)) {
+                continue;
+            }
+            if (not with<GameObject>::exists(context, id)) {
+                continue;
+            }
+            float initial_opacity = 1.0f;
+            const auto& object = with<GameObject>::get(context, id);
+            if (object.sprite and with<rmmr::scene::actor::Sprite>::exists(context, *object.sprite)) {
+                initial_opacity = with<rmmr::scene::actor::Sprite>::get(context, *object.sprite).opacity;
+            }
+            with<AnimatedDecay>::extend(context, id, AnimatedDecay::Quantum{
+                .born_at = now,
+                .initial_opacity = initial_opacity,
+            });
+        }
+    }
+
+    void AnimatedDecay::Actions::update(Writing context) {
+        const integer now = world_step(context);
+        vector<GameObject::Id> expired;
+        for (const auto entry : context->aspect<AnimatedDecay>().items()) {
+            const auto id = entry.id;
+            if (not with<GameObject>::exists(context, id)) {
+                continue;
+            }
+            const auto& decay = with<AnimatedDecay>::get(context, id);
+            const integer age = now - decay.born_at;
+            const float t = AnimatedDecay::duration_steps > 0
+                ? std::clamp(
+                    static_cast<float>(age) / static_cast<float>(AnimatedDecay::duration_steps),
+                    0.0f,
+                    1.0f)
+                : 1.0f;
+            const float opacity = decay.initial_opacity * (1.0f - t);
+            const auto& object = with<GameObject>::get(context, id);
+            if (object.sprite and with<rmmr::scene::actor::Sprite>::exists(context, *object.sprite)) {
+                with<rmmr::scene::actor::Sprite>::modify(context, *object.sprite)->opacity = opacity;
+            }
+            if (age >= AnimatedDecay::duration_steps) {
+                expired.push_back(id);
+            }
+        }
+        for (const auto id : expired) {
+            with<GameObject>::destroy(context, id);
+        }
     }
 
     void Physical::Actions::resolveCollisions(Writing context) {
@@ -54,7 +130,7 @@ namespace tommy {
         vector<Body> bodies;
         for (const auto entry : context->aspect<Physical>().items()) {
             const auto id = entry.id;
-            if (with<Shot>::exists(context, id)) {
+            if (with<Shot>::exists(context, id) or with<AnimatedDecay>::exists(context, id)) {
                 continue;
             }
             if (not with<GameObject>::exists(context, id)) {
@@ -109,6 +185,9 @@ namespace tommy {
         constexpr float dt = 1.0f;
         for (const auto entry : context->aspect<Inertia>().items()) {
             const auto id = entry.id;
+            if (with<AnimatedDecay>::exists(context, id)) {
+                continue;
+            }
             if (not with<GameObject>::exists(context, id)) {
                 continue;
             }

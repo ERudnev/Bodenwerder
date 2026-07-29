@@ -182,3 +182,30 @@
 - ImGui `SHIP`: HULL + RATE + HEAT в одной плашке
 
 ### Выводы / наблюдения
+
+---
+
+## 2026-07-29 — AnimatedDecay + Sprite.opacity
+
+### Запрос
+`attribute AnimatedDecay of GameObject`: живёт N шагов, твинит альфу спрайта → 0, затем убивает host. World раздаёт всем с HP ≤ 0.
+
+### Действие
+- Doctrine: `AnimatedDecay` сразу после `GameObject`; `GameObject.=destroy()`
+- rmmr: `Sprite.opacity` + `u_opacity` в sprite shader / material / renderer
+- World: `grantToDepleted` → `update` после Shot hits; Shot больше не уничтожает target сразу (только HP → 0)
+
+### Выводы / наблюдения
+
+---
+
+## 2026-07-29 — fire: requestFire queue + flushPending Writing
+
+### Запрос
+Transaction rejected: Node must appear with new Sprite (при стрельбе).
+
+### Действие
+- Причина: `createSpriteActor` из `World::advanceStep` (Reacting) ломает Feature-structural для Sprite/Node
+- `Gun.requestFire` только ставит в очередь (mech+heat); `Gun.flushPending` спавнит спрайты из Writing (`drawUi`)
+
+### Выводы / наблюдения

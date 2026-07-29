@@ -5,6 +5,7 @@ in vec2 v_uv0;
 out vec4 FragColor;
 
 uniform vec3 u_albedo;
+uniform float u_opacity;
 uniform sampler2D u_atlasTexture;
 
 void main() {
@@ -13,5 +14,5 @@ void main() {
         discard;
     }
 
-    FragColor = vec4(texel.rgb * u_albedo, texel.a);
+    FragColor = vec4(texel.rgb * u_albedo, texel.a * u_opacity);
 }

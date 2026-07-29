@@ -22,9 +22,12 @@ namespace tommy {
             integer mech_ready_at = 0;
             integer temperature_celsius = 0;
             integer cool_step_carry = 0;
+            integer pending_shots = 0;
+            base::maybe<GameObject::Id> owner;
         };
         struct Actions : BaseActions {
-            static auto fire(Writing, Id, GameObject::Id ship) -> base::maybe<GameObject::Id>;
+            static void requestFire(Writing, Id, GameObject::Id ship);
+            static void flushPending(Writing);
         };
         struct Internals;
         static const Behavior customAspectReactions();

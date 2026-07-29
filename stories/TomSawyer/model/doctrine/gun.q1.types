@@ -5,6 +5,8 @@ namespace tommy
 
   // Player ship's gun — aggregate owned via Player.gun custody.
   // Dual limiter: fast mechanical cadence + heat "magazine" (°C) that cools over time.
+  // Sprite spawn cannot run inside World Clock reactions (Feature Sprite needs Node
+  // in the same *user* Writing patch); requestFire queues, flushPending spawns.
   entity Gun
     always
       // ~4 shots/sec at World.step = 1 ms (1000 steps/sec).
@@ -20,6 +22,9 @@ namespace tommy
       mech_ready_at: integer // World.step when mechanical gate opens; 0 = ready
       temperature_celsius: integer // clamped [0, temp_max]
       cool_step_carry: integer // residual steps toward next °C of cooling
+      pending_shots: integer // queued by requestFire; drained by flushPending
+      owner: #GameObject? // ship body for muzzle / sprite pack at flush
       !cool(~World) // step delta → shed heat toward 0
     all
-      >fire(#GameObject)->#? // ship body Id → Shot GameObject or none (mech / heat)
+      >requestFire(#GameObject) // mech+heat gates; queue one bolt (no sprite yet)
+      =flushPending() // Writing: spawn queued Shot sprites (call from UI tick)

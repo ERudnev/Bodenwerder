@@ -13,8 +13,25 @@ namespace tommy {
         struct Quantum {
             base::maybe<rmmr::scene::actor::Sprite::Id> sprite;
         };
+        struct Actions : BaseActions {
+            static void destroy(Writing, Id);
+        };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions();
+    };
+
+    struct AnimatedDecay : Attribute<AnimatedDecay, GameObject> {
+        static constexpr integer duration_steps = 500;
+        struct Quantum {
+            integer born_at = 0;
+            float initial_opacity = 1.0f;
+        };
+        struct Actions : BaseActions {
+            static void grantToDepleted(Writing);
+            static void update(Writing);
+        };
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct Physical : Feature<Physical, GameObject> {

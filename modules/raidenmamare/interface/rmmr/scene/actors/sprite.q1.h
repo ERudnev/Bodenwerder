@@ -21,6 +21,7 @@ namespace rmmr::scene::actor {
         struct Quantum {
             resource::material::Asset::Id material;
             RGB tint;
+            float opacity = 1.0f;
             vec3 scale;
             resource::sprite::Pack::Id pack;
             integer index;

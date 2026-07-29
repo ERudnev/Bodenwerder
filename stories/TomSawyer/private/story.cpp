@@ -112,6 +112,8 @@ namespace tommy {
                 .mech_ready_at = 0,
                 .temperature_celsius = 0,
                 .cool_step_carry = 0,
+                .pending_shots = 0,
+                .owner = {},
             });
             with<Player>::extend(context, body, Player::Quantum{
                 .camera = camera,
@@ -126,6 +128,7 @@ namespace tommy {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
             ask::schema::aspect<GameObject>(),
+            ask::schema::aspect<AnimatedDecay>(),
             ask::schema::aspect<Physical>(),
             ask::schema::aspect<Inertia>(),
             ask::schema::aspect<Stone>(),

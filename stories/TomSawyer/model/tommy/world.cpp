@@ -63,6 +63,8 @@ namespace tommy {
             if (steps_advanced > 0) {
                 with<Shot>::resolveHits(context);
                 with<Shot>::cullExpired(context);
+                with<AnimatedDecay>::grantToDepleted(context);
+                with<AnimatedDecay>::update(context);
                 with<Physical>::resolveCollisions(context);
                 with<Player>::followCamera(context);
             }

@@ -4,6 +4,18 @@ namespace tommy
   entity GameObject
     one
       sprite: #rmmr::scene::actor::Sprite?
+      =destroy() // drop parasitic aspects + sprite Node + self
+
+  // Lifetime fade-out. Birth snapshots Sprite.opacity; tween → 0; then GameObject.destroy.
+  attribute AnimatedDecay of GameObject
+    always
+      duration_steps: integer = 500 // 0.5 s at World.step = 1 ms
+    one
+      born_at: integer // World.step at extend
+      initial_opacity: float // Sprite.opacity captured at birth
+    all
+      =grantToDepleted() // World: Physical.hitpoints <= 0 without decay → extend
+      =update() // lerp Sprite.opacity; expire → host.destroy
 
   // Physics payload on a GameObject (same Id).
   feature Physical of GameObject

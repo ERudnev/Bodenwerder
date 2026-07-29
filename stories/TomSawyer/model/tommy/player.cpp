@@ -56,6 +56,9 @@ namespace tommy {
         }
         for (const auto entry : context->aspect<Player>().items()) {
             const auto id = entry.id;
+            if (with<AnimatedDecay>::exists(context, id)) {
+                continue;
+            }
             if (not with<GameObject>::exists(context, id)) {
                 continue;
             }
@@ -93,8 +96,11 @@ namespace tommy {
         }
         for (const auto entry : context->aspect<Player>().items()) {
             const auto id = entry.id;
+            if (with<AnimatedDecay>::exists(context, id)) {
+                continue;
+            }
             const auto& player = with<Player>::get(context, id);
-            with<Gun>::fire(context, player.gun, id);
+            with<Gun>::requestFire(context, player.gun, id);
         }
     }
 
