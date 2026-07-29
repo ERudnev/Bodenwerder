@@ -1,12 +1,12 @@
-#include <tommy/sun.h>
+#include <si02/sun.h>
 
-#include <tommy/shot.h>
+#include <si02/shot.h>
 
 #include <rmmr/scene/node.q1.h>
 
 #include <cmath>
 
-namespace tommy {
+namespace si02 {
 
     using namespace fqsm::api;
 

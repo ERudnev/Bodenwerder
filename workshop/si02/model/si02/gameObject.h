@@ -5,7 +5,7 @@
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
 
-namespace tommy {
+namespace si02 {
 
     using namespace fqsm::api;
 

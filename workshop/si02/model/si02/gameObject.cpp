@@ -1,7 +1,7 @@
-#include <tommy/gameObject.h>
+#include <si02/gameObject.h>
 
-#include <tommy/shot.h>
-#include <tommy/world.h>
+#include <si02/shot.h>
+#include <si02/world.h>
 
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
@@ -11,7 +11,7 @@
 #include <cmath>
 #include <vector>
 
-namespace tommy {
+namespace si02 {
 
     using namespace fqsm::api;
 

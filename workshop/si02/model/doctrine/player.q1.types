@@ -1,7 +1,7 @@
 import "gameObject"
 import "gun"
 
-namespace tommy
+namespace si02
 
   // Keyboard-driven ship. Lateral keys turn Node; W/S thrust along nose into Inertia.vel.
   feature Player of GameObject

@@ -6,7 +6,7 @@
 
 #include "assets.h"
 
-namespace tommy {
+namespace si02 {
 
     using namespace fqsm::api;
 
@@ -15,6 +15,8 @@ namespace tommy {
         struct Ui {
             bool camera = false;
             bool hud = true;
+            bool ship = true;
+            float zoom = 1.0f; // 1 = 1600×900 ortho; larger = zoomed out
         };
 
         std::unique_ptr<Assets> assets;
@@ -30,6 +32,7 @@ namespace tommy {
 
     private:
         void drawHud(Writing);
+        void drawShipPanel(Writing);
         void drawCameraWindow(Writing);
     };
 

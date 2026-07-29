@@ -1,7 +1,7 @@
 import "world"
 import "gameObject"
 
-namespace tommy
+namespace si02
 
   // Player ship's gun — aggregate owned via Player.gun custody.
   // Dual limiter: fast mechanical cadence + heat "magazine" (°C) that cools over time.

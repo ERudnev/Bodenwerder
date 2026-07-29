@@ -1,4 +1,4 @@
-namespace tommy
+namespace si02
 
   // Sim pulse. No classic update(dt) loop for gameplay:
   //   system::Clock changes → World may advance `step`
@@ -7,9 +7,11 @@ namespace tommy
   // `paused` freezes step (Clock still ticks; World.step does not).
   // Input snapshots stay on rmmr::system::Window (pause key only here).
   // Object watches stay in `one` (whole ! — detect+effect one body).
+  // After step grows: thrusters → tryFire → Sun.attract → inertia → Shot hits/cull →
+  // AnimatedDecay grant/update → collisions → followCamera.
   entity World
     one
       step: integer // discrete ticks; 1 step = 1000 Core μs
       paused: bool
       !keyboardPauseKey(~system::Window) // rising edge toggles paused
-      !advanceStep(~system::Clock) // unpaused: fold Clock μs into step (only writes when step grows)
+      !advanceStep(~system::Clock) // unpaused: fold Clock μs into step; then drive loop

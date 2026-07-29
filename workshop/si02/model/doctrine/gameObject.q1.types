@@ -1,4 +1,4 @@
-namespace tommy
+namespace si02
 
   // Scene presence. Role features (Stone/…) share this Id.
   entity GameObject

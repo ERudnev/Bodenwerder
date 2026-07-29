@@ -1,19 +1,25 @@
 file (GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "*.cpp")
 
-project("TomSawyer"
-    DESCRIPTION "Forked Toy project for 2D experiments"
+project("workshop_si02"
+    DESCRIPTION "Workshop sample: Q1 Stargun / orbital rubble experiment (archived, unsupported)"
     VERSION 0.1
 )
 
-set(TomSawyer_Q1
+set(workshop_si02_Q1
     world.q1.types
+    gameObject.q1.types
+    stone.q1.types
+    sun.q1.types
+    gun.q1.types
+    shot.q1.types
+    player.q1.types
 )
 
 add_executable(${PROJECT_NAME})
 
 add_q1_schema(${PROJECT_NAME}
     ROOT ${CMAKE_CURRENT_SOURCE_DIR}/model/doctrine
-    FILES ${TomSawyer_Q1}
+    FILES ${workshop_si02_Q1}
 )
 
 target_sources(${PROJECT_NAME}
@@ -30,7 +36,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_compile_definitions(${PROJECT_NAME}
     PRIVATE
-        DAQL_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+        DAQL_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets" # Unit.library nests under this (workshop/si02)
 )
 
 target_link_libraries(${PROJECT_NAME}

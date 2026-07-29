@@ -1,4 +1,4 @@
-#include <tommy/player.h>
+#include <si02/player.h>
 
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/system/window.q1.h>
@@ -7,7 +7,7 @@
 
 #include <cmath>
 
-namespace tommy {
+namespace si02 {
 
     using namespace fqsm::api;
 

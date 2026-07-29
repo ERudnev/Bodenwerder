@@ -1,12 +1,12 @@
 #pragma once
 
 #include <base/maybe.h>
-#include <tommy/gameObject.h>
-#include <tommy/world.h>
+#include <si02/gameObject.h>
+#include <si02/world.h>
 
 #include <fQSM/api/interface.h>
 
-namespace tommy {
+namespace si02 {
 
     using namespace fqsm::api;
 

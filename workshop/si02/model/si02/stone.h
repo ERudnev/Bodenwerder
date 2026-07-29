@@ -1,10 +1,10 @@
 #pragma once
 
-#include <tommy/gameObject.h>
+#include <si02/gameObject.h>
 
 #include <fQSM/api/interface.h>
 
-namespace tommy {
+namespace si02 {
 
     using namespace fqsm::api;
 

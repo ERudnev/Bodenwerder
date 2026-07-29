@@ -1,8 +1,13 @@
-#include <tommy/world.h>
+#include <si02/world.h>
+
+#include <si02/gameObject.h>
+#include <si02/player.h>
+#include <si02/shot.h>
+#include <si02/sun.h>
 
 #include <GLFW/glfw3.h>
 
-namespace tommy {
+namespace si02 {
 
     using namespace fqsm::api;
 
@@ -34,8 +39,9 @@ namespace tommy {
             }
         }
 
-        // Clock μs → World.step. Write only when step grows so ~World gameplay stays quiet otherwise.
+        // Clock μs → World.step. Then per step: thrusters → inertia; then collisions once.
         static void advanceStep(Reacting context) {
+            integer steps_advanced = 0;
             for (const auto& change : context.changes<rmmr::system::Clock>().updated()) {
                 const int64 dt_us = change.now.absolute - change.old.absolute;
                 if (dt_us < k_us_per_step) {
@@ -47,7 +53,22 @@ namespace tommy {
                         continue;
                     }
                     with<World>::modify(context, id)->step += add;
+                    steps_advanced += add;
                 }
+            }
+            for (integer step = 0; step < steps_advanced; ++step) {
+                with<Player>::applyThrusters(context);
+                with<Player>::tryFire(context);
+                with<Sun>::attract(context);
+                with<Inertia>::update(context);
+            }
+            if (steps_advanced > 0) {
+                with<Shot>::resolveHits(context);
+                with<Shot>::cullExpired(context);
+                with<AnimatedDecay>::grantToDepleted(context);
+                with<AnimatedDecay>::update(context);
+                with<Physical>::resolveCollisions(context);
+                with<Player>::followCamera(context);
             }
         }
     };

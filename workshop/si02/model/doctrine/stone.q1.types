@@ -1,6 +1,6 @@
 import "gameObject"
 
-namespace tommy
+namespace si02
 
   // Static rock in the opening scene. Appearance in always; mom GameObject holds the live sprite.
   feature Stone of GameObject

@@ -1,6 +1,6 @@
 import "gameObject"
 
-namespace tommy
+namespace si02
 
   // Player bolt. Motion via Inertia; hits via Shot.resolveHits (not Physical separation).
   feature Shot of GameObject

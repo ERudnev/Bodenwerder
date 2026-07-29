@@ -1,6 +1,6 @@
 import "gameObject"
 
-namespace tommy
+namespace si02
 
   // Fixed attractor at world origin. Pulls Inertia bodies toward itself each step.
   feature Sun of GameObject
