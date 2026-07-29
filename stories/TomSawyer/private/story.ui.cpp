@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 
 #include <rmmr/scene/camera.q1.h>
@@ -18,8 +19,35 @@ namespace tommy {
 
     namespace {
 
+        constexpr float k_base_ortho_w = 1600.0f;
+        constexpr float k_base_ortho_h = 900.0f;
+        constexpr float k_zoom_min = 0.25f;
+        constexpr float k_zoom_max = 5.0f;
+
         auto clamp01(float value) -> float {
             return std::clamp(value, 0.0f, 1.0f);
+        }
+
+        auto clamp_zoom(float zoom) -> float {
+            return std::clamp(zoom, k_zoom_min, k_zoom_max);
+        }
+
+        void apply_camera_zoom(Writing world, const vector<rmmr::wrapper::Product::View>& views, float zoom) {
+            if (views.empty()) {
+                return;
+            }
+            const auto camera = views.front().camera;
+            if (not with<scene::Camera>::exists(world, camera)) {
+                return;
+            }
+            auto quantum = with<scene::Camera>::modify(world, camera);
+            if (quantum->mode != scene::Camera::Mode::orthographic) {
+                return;
+            }
+            quantum->ortho_size = index2{
+                std::max(integer{1}, static_cast<integer>(std::lround(k_base_ortho_w * zoom))),
+                std::max(integer{1}, static_cast<integer>(std::lround(k_base_ortho_h * zoom))),
+            };
         }
 
     } // namespace
@@ -32,6 +60,14 @@ namespace tommy {
 
     void SpriteTest::drawUi(Writing world) {
         with<Gun>::flushPending(world);
+
+        const ImGuiIO& io = ImGui::GetIO();
+        if (not io.WantCaptureMouse and io.MouseWheel != 0.0f) {
+            // Wheel up → zoom in (smaller ortho).
+            ui.zoom = clamp_zoom(ui.zoom * std::pow(0.9f, io.MouseWheel));
+            apply_camera_zoom(world, views, ui.zoom);
+        }
+
         drawHud(world);
         drawShipPanel(world);
         drawCameraWindow(world);
@@ -51,8 +87,14 @@ namespace tommy {
                 const auto& quantum = with<World>::get(world, id);
                 ImGui::Text("World step: %d%s", quantum.step, quantum.paused ? "  [PAUSED]" : "");
                 ImGui::Separator();
+                if (ImGui::SliderFloat("Zoom", &ui.zoom, k_zoom_min, k_zoom_max, "%.2fx")) {
+                    ui.zoom = clamp_zoom(ui.zoom);
+                    apply_camera_zoom(world, views, ui.zoom);
+                }
+                ImGui::Separator();
                 ImGui::TextUnformatted("WASD / arrows — thrust + turn");
                 ImGui::TextUnformatted("Space — fire");
+                ImGui::TextUnformatted("Wheel — zoom");
                 ImGui::TextUnformatted("P — pause");
                 break;
             }

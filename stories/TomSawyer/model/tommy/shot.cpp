@@ -1,6 +1,7 @@
 #include <tommy/shot.h>
 
 #include <tommy/player.h>
+#include <tommy/sun.h>
 #include <tommy/world.h>
 
 #include <rmmr/resources/sprites.q1.h>
@@ -49,6 +50,7 @@ namespace tommy {
             const auto id = entry.id;
             if (with<Shot>::exists(context, id)
                 or with<Player>::exists(context, id)
+                or with<Sun>::exists(context, id)
                 or with<AnimatedDecay>::exists(context, id))
             {
                 continue;

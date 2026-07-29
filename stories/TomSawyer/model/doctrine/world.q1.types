@@ -7,7 +7,7 @@ namespace tommy
   // `paused` freezes step (Clock still ticks; World.step does not).
   // Input snapshots stay on rmmr::system::Window (pause key only here).
   // Object watches stay in `one` (whole ! — detect+effect one body).
-  // After step grows: thrusters → tryFire → inertia → Shot hits/cull →
+  // After step grows: thrusters → tryFire → Sun.attract → inertia → Shot hits/cull →
   // AnimatedDecay grant/update → collisions → followCamera.
   entity World
     one

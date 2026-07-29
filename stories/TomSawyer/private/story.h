@@ -16,6 +16,7 @@ namespace tommy {
             bool camera = false;
             bool hud = true;
             bool ship = true;
+            float zoom = 1.0f; // 1 = 1600×900 ortho; larger = zoomed out
         };
 
         std::unique_ptr<Assets> assets;

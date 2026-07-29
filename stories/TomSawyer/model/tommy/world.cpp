@@ -3,6 +3,7 @@
 #include <tommy/gameObject.h>
 #include <tommy/player.h>
 #include <tommy/shot.h>
+#include <tommy/sun.h>
 
 #include <GLFW/glfw3.h>
 
@@ -58,6 +59,7 @@ namespace tommy {
             for (integer step = 0; step < steps_advanced; ++step) {
                 with<Player>::applyThrusters(context);
                 with<Player>::tryFire(context);
+                with<Sun>::attract(context);
                 with<Inertia>::update(context);
             }
             if (steps_advanced > 0) {

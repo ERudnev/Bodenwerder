@@ -9,6 +9,7 @@
 #include <tommy/player.h>
 #include <tommy/shot.h>
 #include <tommy/stone.h>
+#include <tommy/sun.h>
 #include <tommy/world.h>
 
 #include <algorithm>
@@ -21,6 +22,21 @@ namespace tommy {
     using namespace rmmr;
 
     namespace {
+
+        constexpr float k_screen_w = 1600.0f;
+        constexpr float k_screen_h = 900.0f;
+        constexpr float k_field_w = 5.0f * k_screen_w;
+        constexpr float k_field_h = 5.0f * k_screen_h;
+
+        // Circular-orbit speed for constant centripetal accel `pull` (dt = 1 step).
+        auto circular_orbit_vel(float x, float y, float pull) -> vec3 {
+            const float r = std::sqrt(x * x + y * y);
+            if (r < 1.0f) {
+                return vec3{0.0f, 0.0f, 0.0f};
+            }
+            const float speed = std::sqrt(pull * r);
+            return vec3{-(y / r) * speed, (x / r) * speed, 0.0f};
+        }
 
         auto spawn_stone(
             Writing context,
@@ -43,6 +59,7 @@ namespace tommy {
                 item<scene::actor::Sprite>{
                     .material = material,
                     .tint = tint,
+                    .opacity = 1.0f,
                     .scale = vec3{scale, scale, scale},
                     .pack = pack,
                     .index = Stone::sprite_index,
@@ -62,13 +79,49 @@ namespace tommy {
             return body;
         }
 
+        auto spawn_sun(
+            Writing context,
+            scene::Root::Id root,
+            resource::sprite::Pack::Id pack,
+            resource::material::Asset::Id material) -> GameObject::Id
+        {
+            const float size = Sun::hull_size;
+            const float scale = Sun::sprite_scale * size;
+            const auto sprite = with<scene::Flat2d>::createSpriteActor(
+                context,
+                root,
+                Locator{
+                    .pos = Pos{0.0f, 0.0f, 0.0f},
+                    .euler = HPB{0.0f, 0.0f, 0.0f},
+                },
+                item<scene::actor::Sprite>{
+                    .material = material,
+                    .tint = RGB{0.55f, 0.25f, -0.35f},
+                    .opacity = 1.0f,
+                    .scale = vec3{scale, scale, scale},
+                    .pack = pack,
+                    .index = Sun::sprite_index,
+                });
+            const auto body = with<GameObject>::create(context, GameObject::Quantum{
+                .sprite = sprite,
+            });
+            with<Physical>::extend(context, body, Physical::Quantum{
+                .size = size,
+                .mass = size * 200.0f,
+                .hitpoints = Sun::max_hitpoints,
+            });
+            with<Sun>::extend(context, body, Sun::Quantum{});
+            return body;
+        }
+
         auto spawn_player(
             Writing context,
             scene::Root::Id root,
             scene::Camera::Id camera,
             resource::sprite::Pack::Id pack,
             resource::material::Asset::Id material,
-            Pos pos) -> GameObject::Id
+            Pos pos,
+            vec3 vel) -> GameObject::Id
         {
             const float size = Player::hull_size;
             const float scale = Player::sprite_scale * size;
@@ -82,6 +135,7 @@ namespace tommy {
                 item<scene::actor::Sprite>{
                     .material = material,
                     .tint = RGB{0.0f, 0.0f, 0.0f},
+                    .opacity = 1.0f,
                     // Kenney ship art is nose-down; flip sprite only (Node/thrust stay +Y).
                     .scale = vec3{-scale, -scale, scale},
                     .pack = pack,
@@ -96,8 +150,8 @@ namespace tommy {
                 .hitpoints = Player::max_hitpoints,
             });
             with<Inertia>::extend(context, body, Inertia::Quantum{
-                .vel = vec3{0.0f, 0.0f, 0.0f},
-                .saturation = 0.002f,
+                .vel = vel,
+                .saturation = 0.0f,
             });
             base::maybe<World::Id> world_id;
             for (const auto entry : context->aspect<World>().items()) {
@@ -132,6 +186,7 @@ namespace tommy {
             ask::schema::aspect<Physical>(),
             ask::schema::aspect<Inertia>(),
             ask::schema::aspect<Stone>(),
+            ask::schema::aspect<Sun>(),
             ask::schema::aspect<Gun>(),
             ask::schema::aspect<Shot>(),
             ask::schema::aspect<Player>(),
@@ -143,57 +198,69 @@ namespace tommy {
 
         const auto root = with<scene::Interface>::createScene(context);
         with<scene::Flat2d>::extend(context, root, scene::Flat2d::Quantum{
-            .size = index2{1600, 900},
+            .size = index2{static_cast<integer>(k_screen_w), static_cast<integer>(k_screen_h)},
         });
         with<scene::actor::Sprite>::modify_global(context)->geometry = assets->unitQuad;
 
         const auto camera = with<scene::Flat2d>::createCamera(context, root,
             Locator{.pos = Pos{0.0f, 0.0f, 5.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}});
 
+        spawn_sun(context, root, assets->kenney, *shared->material.sprite);
+
         std::mt19937 rng{std::random_device{}()};
-        std::uniform_real_distribution<float> x_dist{-500.0f, 700.0f};
-        std::uniform_real_distribution<float> y_dist{-200.0f, 400.0f};
+        std::uniform_real_distribution<float> x_dist{-0.5f * k_field_w, 0.5f * k_field_w};
+        std::uniform_real_distribution<float> y_dist{-0.5f * k_field_h, 0.5f * k_field_h};
         std::uniform_real_distribution<float> bank_dist{0.0f, 360.0f};
         std::uniform_real_distribution<float> size_dist{0.5f, 2.0f};
         std::uniform_real_distribution<float> dark_dist{-0.22f, -0.08f};
+        std::uniform_real_distribution<float> jitter{0.92f, 1.08f};
 
-        constexpr integer stone_count = 100;
+        constexpr float min_orbit_r = 220.0f;
+        constexpr integer stone_count = 220;
         for (integer i = 0; i < stone_count; ++i) {
+            float x = 0.0f;
+            float y = 0.0f;
+            float r = 0.0f;
+            for (integer attempt = 0; attempt < 32; ++attempt) {
+                x = x_dist(rng);
+                y = y_dist(rng);
+                r = std::sqrt(x * x + y * y);
+                if (r >= min_orbit_r) {
+                    break;
+                }
+            }
+            if (r < min_orbit_r) {
+                continue;
+            }
             const float dark = dark_dist(rng);
-            spawn_stone(
+            const float size = size_dist(rng);
+            const auto body = spawn_stone(
                 context,
                 root,
                 assets->kenney,
                 *shared->material.sprite,
-                Pos{x_dist(rng), y_dist(rng), 0.0f},
+                Pos{x, y, 0.0f},
                 bank_dist(rng),
-                size_dist(rng),
+                size,
                 RGB{dark, dark, dark});
+            auto vel = circular_orbit_vel(x, y, Sun::pull);
+            vel *= jitter(rng);
+            with<Inertia>::extend(context, body, Inertia::Quantum{
+                .vel = vel,
+                .saturation = 0.0f,
+            });
         }
 
-        // Optional Inertia only on the rammer — field stones stay Physical-only.
-        // vel is per World.step (≈1 ms); keep it modest so the pass is visible.
-        const auto rammer = spawn_stone(
-            context,
-            root,
-            assets->kenney,
-            *shared->material.sprite,
-            Pos{-650.0f, 0.0f, 0.0f},
-            0.0f,
-            4.0f,
-            RGB{0.55f, -0.15f, -0.25f});
-        with<Inertia>::extend(context, rammer, Inertia::Quantum{
-            .vel = vec3{1.2f, 0.0f, 0.0f},
-            .saturation = 0.0005f,
-        });
-
+        constexpr float player_r = 700.0f;
+        const Pos player_pos{0.0f, -player_r, 0.0f};
         spawn_player(
             context,
             root,
             camera,
             assets->kenney,
             *shared->material.sprite,
-            Pos{0.0f, -350.0f, 0.0f});
+            player_pos,
+            circular_orbit_vel(player_pos.x, player_pos.y, Sun::pull));
         with<Player>::followCamera(context);
 
         views = {

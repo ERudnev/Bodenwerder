@@ -209,3 +209,16 @@ Transaction rejected: Node must appear with new Sprite (при стрельбе)
 - `Gun.requestFire` только ставит в очередь (mech+heat); `Gun.flushPending` спавнит спрайты из Writing (`drawUi`)
 
 ### Выводы / наблюдения
+
+---
+
+## 2026-07-29 — Sun gravity + orbital rubble field
+
+### Запрос
+saturation=0; Солнышко в центре тянет Inertia; инит — поле 5×5 экранов камней на круговых орбитах.
+
+### Действие
+- Spawn: saturation 0; `feature Sun` (`=attract`, pull→vel); World loop: attract → Inertia.update
+- Init: ufoYellow sun @ origin; ~220 Stone + Inertia с |vel|=√(pull·r); камера 1600×900, поле 8000×4500
+
+### Выводы / наблюдения
