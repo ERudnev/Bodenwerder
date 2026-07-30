@@ -44,6 +44,7 @@ namespace rmmr {
         void setActiveViews(std::vector<ViewContext>);
 
         bool shouldClose(Reading) const;
+        auto monotonicUs() const -> int64;
         void beginFrame(Writing);
         void render(Writing);
         void endFrame(Writing);

@@ -25,11 +25,13 @@ namespace tommy {
             assets = Assets::init(context, id);
         }
         void setup(establish::Realm&, rmmr::system::Core::Id, rmmr::system::Window::Id) override;
+        void onFrame(establish::Realm&, int64 dt_us) override;
         void contributeViewMenu() override;
         void drawUi(Writing) override;
 
     private:
         void populateWorld(Writing, rmmr::system::Window::Id);
+        void advanceSim(Writing, int64 dt_us);
         void drawHud(Writing);
         void drawCameraWindow(Writing);
     };

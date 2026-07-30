@@ -15,9 +15,22 @@ namespace tommy {
         }
 
         constexpr int k_pause_key = GLFW_KEY_P;
-        constexpr int64 k_us_per_step = 1000; // 1000 steps/sec from Core μs
+        constexpr int64 k_us_per_step = 1000; // 1000 steps/sec from wall μs
 
     } // namespace
+
+    void World::Actions::advance(Writing context, int64 dt_us) {
+        if (dt_us < k_us_per_step) {
+            return;
+        }
+        const integer add = static_cast<integer>(dt_us / k_us_per_step);
+        for (const auto [id, _] : context->aspect<World>().items()) {
+            if (with<World>::get(context, id).paused) {
+                continue;
+            }
+            with<World>::modify(context, id)->step += add;
+        }
+    }
 
     struct World::Internals : World::DefaultInternals {
         static void keyboardPauseKey(Reacting context) {
@@ -33,29 +46,11 @@ namespace tommy {
                 }
             }
         }
-
-        // Clock μs → World.step. Write only when step grows so ~World gameplay stays quiet otherwise.
-        static void advanceStep(Reacting context) {
-            for (const auto& change : context.changes<rmmr::system::Clock>().updated()) {
-                const int64 dt_us = change.now.absolute - change.old.absolute;
-                if (dt_us < k_us_per_step) {
-                    continue;
-                }
-                const integer add = static_cast<integer>(dt_us / k_us_per_step);
-                for (const auto [id, _] : context.proposal.aspect<World>().items()) {
-                    if (with<World>::get(context, id).paused) {
-                        continue;
-                    }
-                    with<World>::modify(context, id)->step += add;
-                }
-            }
-        }
     };
 
     auto World::customAspectReactions() -> const Behavior {
         return {
             reaction::aspect_wide<World, rmmr::system::Window>(&World::Internals::keyboardPauseKey),
-            reaction::aspect_wide<World, rmmr::system::Clock>(&World::Internals::advanceStep),
         };
     }
 

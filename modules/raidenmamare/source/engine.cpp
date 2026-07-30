@@ -180,6 +180,10 @@ namespace rmmr {
         return glfwWindowShouldClose(with<system::Device>::get(context, state->handles.device).handle);
     }
 
+    auto Engine::monotonicUs() const -> int64 {
+        return static_cast<int64>(glfwGetTime() * 1'000'000.0);
+    }
+
     void Engine::beginFrame(Writing context) {
         const auto& device = state->handles.device;
 

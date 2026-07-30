@@ -17,6 +17,7 @@ namespace rmmr::wrapper {
     struct Application::State : establish::Module::State {
         base::maybe<assets::Manager> assets;
         bool assets_ready = false;
+        int64 last_frame_us = 0;
 
         ui::State ui;
         establish::Realm world;
@@ -97,7 +98,7 @@ namespace rmmr::wrapper {
 
         const auto status = state->prepareAssets(settings.assets_root);
         if (status == assets::PrepareStatus::Failed) {
-            base::message("app: refusing to seed over a broken assets save; soft exit");
+            base::message("app: refusing to populate over a broken assets save; soft exit");
             return;
         }
 
@@ -137,6 +138,10 @@ namespace rmmr::wrapper {
 
         while (engine and not engine->shouldClose(state->world)) {
             engine->beginFrame(state->world);
+            const int64 now_us = engine->monotonicUs();
+            const int64 dt_us = state->last_frame_us == 0 ? int64{0} : now_us - state->last_frame_us;
+            state->last_frame_us = now_us;
+            product->onFrame(state->world, dt_us);
             state->ui.draw(state->world, *product);
             engine->render(state->world);
             engine->endFrame(state->world);

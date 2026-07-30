@@ -61,4 +61,12 @@ namespace kubes {
         populateWorld(world, window);
     }
 
+    void KubeOfKubes::advanceSim(Writing context, int64 dt_us) {
+        with<World>::advance(context, dt_us);
+    }
+
+    void KubeOfKubes::onFrame(establish::Realm& world, int64 dt_us) {
+        advanceSim(world, dt_us);
+    }
+
 }

@@ -44,4 +44,12 @@ namespace tommy {
         populateWorld(world, window);
     }
 
+    void SpriteTest::advanceSim(Writing context, int64 dt_us) {
+        with<World>::advance(context, dt_us);
+    }
+
+    void SpriteTest::onFrame(establish::Realm& world, int64 dt_us) {
+        advanceSim(world, dt_us);
+    }
+
 }

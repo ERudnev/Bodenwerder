@@ -1,15 +1,15 @@
 namespace tommy
 
-  // Sim pulse. No classic update(dt) loop for gameplay:
-  //   system::Clock changes → World may advance `step`
-  //   World.step changes    → domain aspects wake on ~World
-  //   no step change        → no sim update
-  // `paused` freezes step (Clock still ticks; World.step does not).
+  // Sim pulse on World Quantum:
+  //   Product::onFrame(dt_us) → =advance may grow step
+  //   World.step changes      → domain aspects wake on ~World
+  //   no step change          → no sim update
+  // `paused` freezes step (frames still arrive; step does not).
   // Input snapshots stay on rmmr::system::Window (pause key only here).
-  // Object watches stay in `one` (whole ! — detect+effect one body).
   entity World
     one
-      step: integer // discrete ticks; 1 step = 1000 Core μs
+      step: integer // discrete ticks; 1 step = 1000 μs of wall dt
       paused: bool
       !keyboardPauseKey(~system::Window) // rising edge toggles paused
-      !advanceStep(~system::Clock) // unpaused: fold Clock μs into step (only writes when step grows)
+    all
+      =advance(dt_us: int64) // unpaused: fold wall μs into step (only writes when step grows)
