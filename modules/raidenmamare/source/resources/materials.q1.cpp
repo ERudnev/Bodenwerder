@@ -93,6 +93,7 @@ namespace rmmr::resource::material {
         Runtime::Quantum quantum{
             .techniques = std::move(techniques),
             .nearest = asset.nearest,
+            .blend = asset.blend,
         };
 
         if (const auto existing = runtimes.materials_id_mapping.find(asset_id); existing != runtimes.materials_id_mapping.end()) {

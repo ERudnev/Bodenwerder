@@ -130,7 +130,7 @@ namespace rmmr::resource::builders::material {
     auto Presets::grid(resource::shader::Reference program) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {
-                {renderer::Pass::opaque, Asset::Technique{
+                {renderer::Pass::transparent, Asset::Technique{
                     .program = program,
                     .uniforms = ::rmmr::material::Semantics::ids_of({
                         "model",
@@ -139,6 +139,7 @@ namespace rmmr::resource::builders::material {
                         "patternScale",
                         "colorPrimary",
                         "colorSecondary",
+                        "opacity",
                     }),
                     .textures = {},
                 }},

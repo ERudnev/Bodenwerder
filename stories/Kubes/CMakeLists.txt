@@ -7,6 +7,7 @@ project("Kubes"
 
 set(Kubes_Q1
     world.q1.types
+    resources/geometry.q1.types
 )
 
 add_executable(${PROJECT_NAME})

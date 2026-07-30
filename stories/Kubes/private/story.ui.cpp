@@ -47,6 +47,7 @@ namespace kubes {
                 case renderer::Pass::ui: return "UI";
                 case renderer::Pass::gizmo: return "Gizmo";
                 case renderer::Pass::sprite: return "Sprite";
+                case renderer::Pass::environment: return "Environment";
                 case renderer::Pass::identity: return "Identity";
             }
             return "Unknown";

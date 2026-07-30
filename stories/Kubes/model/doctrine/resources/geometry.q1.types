@@ -1,0 +1,13 @@
+import "rmmr/resources/geometry"
+
+namespace kubes
+  namespace resources
+
+    // Story-owned static star-cloud mesh (sphere of inward billboards around origin).
+    // Fail-safe: disk stars only, one atlas sprite, additive.
+    feature SkySphereGenerator of rmmr::resource::geometry::Asset
+      one
+        count: integer // stars to sample into the Galaxy disk
+        seed: integer
+        angular_diameter_deg: float // star billboard angular size
+        >materialize(#system::Device) -> #rmmr::resource::geometry::Runtime?

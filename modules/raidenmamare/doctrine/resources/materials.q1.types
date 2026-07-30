@@ -22,6 +22,7 @@ namespace rmmr
       one
         techniques: umap<renderer::Pass, Technique>
         nearest: bool
+        blend: renderer::BlendMode
         ?apply(#system::Device, renderer::Pass)
 
     feature Asset of resource::Unit
@@ -35,4 +36,5 @@ namespace rmmr
       one
         techniques: umap<renderer::Pass, Technique>
         nearest: bool
+        blend: renderer::BlendMode
         >materialize(#system::Device) -> #Runtime

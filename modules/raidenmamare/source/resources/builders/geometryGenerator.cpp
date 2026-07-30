@@ -190,6 +190,7 @@ namespace rmmr::resource::builders::geometry {
                 UV{1.0f, 1.0f},
                 UV{0.0f, 1.0f},
             },
+            .color0 = {},
             .indices = {},
         };
     }

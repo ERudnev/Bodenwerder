@@ -1,5 +1,7 @@
 #include <kubes/world.h>
 
+#include <rmmr/scene/node.q1.h>
+
 #include <GLFW/glfw3.h>
 
 namespace kubes {
@@ -27,6 +29,21 @@ namespace kubes {
             return;
         }
         with<World>::modify_global(context)->step += static_cast<integer>(dt_us / k_us_per_step);
+    }
+
+    void World::Actions::tetherEnvironment(Writing context) {
+        const auto& global = with<World>::get_global(context);
+        if (not global.sky || not global.camera) {
+            return;
+        }
+        if (not with<rmmr::scene::Node>::exists(context, *global.sky)) {
+            return;
+        }
+        if (not with<rmmr::scene::Node>::exists(context, *global.camera)) {
+            return;
+        }
+        with<rmmr::scene::Node>::modify(context, *global.sky)->position =
+            with<rmmr::scene::Node>::get(context, *global.camera).position;
     }
 
     struct World::Internals : World::DefaultInternals {

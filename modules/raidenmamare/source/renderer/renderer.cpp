@@ -175,6 +175,12 @@ namespace rmmr {
                 return;
             }
 
+            if (pass == renderer::Pass::environment) {
+                // After clear, before opaque: fill backdrop without writing depth.
+                glDepthMask(GL_FALSE);
+                return;
+            }
+
             if (pass == renderer::Pass::gizmo) {
                 glDepthMask(GL_FALSE);
             } else {
@@ -189,19 +195,48 @@ namespace rmmr {
                 return;
             }
 
-            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite) {
+            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::environment) {
                 glDisable(GL_BLEND);
                 glDepthMask(GL_TRUE);
             }
         }
 
-        constexpr std::array<renderer::Pass, 5> render_queue_passes{
+        // shadow is offscreen; environment is first color on the main FB, then opaque…
+        constexpr std::array<renderer::Pass, 6> render_queue_passes{
             renderer::Pass::shadow,
+            renderer::Pass::environment,
             renderer::Pass::opaque,
             renderer::Pass::transparent,
             renderer::Pass::sprite,
             renderer::Pass::gizmo,
         };
+
+        void apply_blend(renderer::Pass pass, renderer::BlendMode blend) {
+            if (blend == renderer::BlendMode::inherit) {
+                if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite) {
+                    blend = renderer::BlendMode::alpha;
+                } else {
+                    return;
+                }
+            }
+
+            if (blend == renderer::BlendMode::alpha) {
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                return;
+            }
+
+            if (blend == renderer::BlendMode::additive) {
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_ONE, GL_ONE);
+                return;
+            }
+
+            if (blend == renderer::BlendMode::premultiplied) {
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            }
+        }
 
         void sort_by_pipeline_state(renderer::Pass pass, renderer::CommandBuffer::Buffer& batch) {
             std::sort(batch.begin(), batch.end(), [pass](const renderer::Command& left, const renderer::Command& right) {
@@ -454,7 +489,9 @@ namespace rmmr {
             if (pass == renderer::Pass::shadow && not lighting.shadow) {
                 continue;
             }
-            const bool unlit_pass = pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo;
+            const bool unlit_pass = pass == renderer::Pass::sprite
+                || pass == renderer::Pass::gizmo
+                || pass == renderer::Pass::environment;
             if (lighting.lights.empty() && not unlit_pass) {
                 if (not commands[pass].empty())
                     base::message("Renderer: no light; skipping draws for pass");
@@ -483,6 +520,8 @@ namespace rmmr {
                 if (not with<resource::geometry::Runtime>::exists(args.world, command.geometry)) {
                     continue;
                 }
+
+                apply_blend(pass, command.render_state.blend);
 
                 ensure_material(args, pass, command.material, command.shader, pass_state, primary_light, shadow);
 

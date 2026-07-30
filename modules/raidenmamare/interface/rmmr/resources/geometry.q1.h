@@ -2,6 +2,7 @@
 
 #include <rmmr/math.q1.h>
 #include <rmmr/renderer/gl.q1.h>
+#include <rmmr/resources/builders/geometryGenerator.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/system/core.q1.h>
 
@@ -31,6 +32,10 @@ namespace rmmr::resource::geometry {
     struct Asset : Feature<Asset, resource::Unit> {
         struct Quantum {
             vector<Pos> slots;
+        };
+        struct Actions : BaseActions {
+            // Bake CPU mesh into a Runtime and bind it in DeviceRuntimes mapping.
+            static auto install(Writing, Id, system::Device::Id, const builders::geometry::CpuPresentation&) -> optional<Runtime::Id>;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

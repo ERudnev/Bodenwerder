@@ -20,6 +20,7 @@ namespace rmmr::resource::builders::geometry {
         vector<Pos> positions;
         vector<Pos> normals;
         vector<UV> uv0;
+        vector<vec4> color0;
         vector<integer> indices;
     };
 

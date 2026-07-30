@@ -17,6 +17,7 @@ namespace rmmr::renderer {
     using namespace fqsm::api;
 
     struct RenderState {
+        BlendMode blend = BlendMode::inherit;
     };
 
     struct InstanceSource {

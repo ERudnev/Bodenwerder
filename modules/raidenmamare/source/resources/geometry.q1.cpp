@@ -26,17 +26,23 @@ namespace rmmr::resource::geometry {
             const auto pos_id = primitive::GeometrySemantics::id_of("position");
             const auto normal_id = primitive::GeometrySemantics::id_of("normal");
             const auto uv0_id = primitive::GeometrySemantics::id_of("uv0");
+            const auto color0_id = primitive::GeometrySemantics::id_of("color0");
 
             const bool position_only = cpu.layout.size() == std::size_t{1} && cpu.layout[0] == pos_id;
             const bool position_normal = cpu.layout.size() == std::size_t{2} && cpu.layout[0] == pos_id && cpu.layout[1] == normal_id;
             const bool position_uv0 = cpu.layout.size() == std::size_t{2} && cpu.layout[0] == pos_id && cpu.layout[1] == uv0_id;
+            const bool position_uv0_color0 =
+                cpu.layout.size() == std::size_t{3}
+                && cpu.layout[0] == pos_id
+                && cpu.layout[1] == uv0_id
+                && cpu.layout[2] == color0_id;
             const bool position_normal_uv0 =
                 cpu.layout.size() == std::size_t{3}
                 && cpu.layout[0] == pos_id
                 && cpu.layout[1] == normal_id
                 && cpu.layout[2] == uv0_id;
 
-            if (not position_only && not position_normal && not position_uv0 && not position_normal_uv0) {
+            if (not position_only && not position_normal && not position_uv0 && not position_uv0_color0 && not position_normal_uv0) {
                 return context.refuse("resource::geometry::bake: unsupported vertex layout");
             }
 
@@ -47,16 +53,35 @@ namespace rmmr::resource::geometry {
                 if (not cpu.uv0.empty()) {
                     return context.refuse("resource::geometry::bake: uv0 must be empty for position-only layout");
                 }
+                if (not cpu.color0.empty()) {
+                    return context.refuse("resource::geometry::bake: color0 must be empty for position-only layout");
+                }
             } else if (position_uv0) {
                 if (not cpu.normals.empty()) {
                     return context.refuse("resource::geometry::bake: normals must be empty for position+uv0 layout");
                 }
+                if (not cpu.color0.empty()) {
+                    return context.refuse("resource::geometry::bake: color0 must be empty for position+uv0 layout");
+                }
                 if (cpu.uv0.size() != cpu.positions.size()) {
                     return context.refuse("resource::geometry::bake: uv0 count must match positions");
+                }
+            } else if (position_uv0_color0) {
+                if (not cpu.normals.empty()) {
+                    return context.refuse("resource::geometry::bake: normals must be empty for position+uv0+color0 layout");
+                }
+                if (cpu.uv0.size() != cpu.positions.size()) {
+                    return context.refuse("resource::geometry::bake: uv0 count must match positions");
+                }
+                if (cpu.color0.size() != cpu.positions.size()) {
+                    return context.refuse("resource::geometry::bake: color0 count must match positions");
                 }
             } else {
                 if (cpu.normals.size() != cpu.positions.size()) {
                     return context.refuse("resource::geometry::bake: normals count must match positions");
+                }
+                if (not cpu.color0.empty()) {
+                    return context.refuse("resource::geometry::bake: color0 must be empty for this layout");
                 }
                 if (position_normal) {
                     if (not cpu.uv0.empty()) {
@@ -142,6 +167,33 @@ namespace rmmr::resource::geometry {
                 glEnableVertexAttribArray(0);
                 glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(3 * sizeof(float))));
                 glEnableVertexAttribArray(1);
+            } else if (position_uv0_color0) {
+                interleaved.reserve(vertex_count * 9);
+                for (std::size_t i = 0; i < vertex_count; ++i) {
+                    const auto& p = cpu.positions[i];
+                    const auto& uv = cpu.uv0[i];
+                    const auto& color = cpu.color0[i];
+                    interleaved.push_back(p.x);
+                    interleaved.push_back(p.y);
+                    interleaved.push_back(p.z);
+                    interleaved.push_back(uv.x);
+                    interleaved.push_back(uv.y);
+                    interleaved.push_back(color.x);
+                    interleaved.push_back(color.y);
+                    interleaved.push_back(color.z);
+                    interleaved.push_back(color.w);
+                }
+
+                constexpr renderer::Count stride = renderer::Count(9 * sizeof(float));
+                glBindVertexArray(vao);
+                glBindBuffer(GL_ARRAY_BUFFER, vbo);
+                glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
+                glEnableVertexAttribArray(0);
+                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(3 * sizeof(float))));
+                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(5 * sizeof(float))));
+                glEnableVertexAttribArray(2);
             } else if (position_normal) {
                 interleaved.reserve(vertex_count * 6);
                 for (std::size_t i = 0; i < vertex_count; ++i) {
@@ -255,6 +307,16 @@ namespace rmmr::resource::geometry {
         }
 
     } // namespace
+
+    auto Asset::Actions::install(Writing context, Id asset_id, system::Device::Id device, const CpuPresentation& cpu) -> optional<Runtime::Id> {
+        auto quantum = bake(context, device, cpu);
+        if (not quantum.vao) {
+            return {};
+        }
+        const auto runtime_id = install_runtime(context, device, asset_id, std::move(quantum));
+        with<Runtimes>::modify(context, device)->geometries_id_mapping.insert_or_assign(asset_id, runtime_id);
+        return runtime_id;
+    }
 
     auto Loader::Actions::materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id> {
         _INCOMPLETE_;

@@ -39,7 +39,7 @@ namespace rmmr::scene {
                 .opacity = draw.opacity,
                 .instance_data = {},
                 .instance_count = renderer::Count{1},
-                .render_state = {},
+                .render_state = renderer::RenderState{.blend = material.blend},
             });
         }
     }

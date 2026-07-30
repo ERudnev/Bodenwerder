@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <type_traits>
 #include <vector>
@@ -15,7 +16,16 @@ namespace rmmr::renderer {
         ui,
         gizmo,
         sprite,
+        environment, // sky / backdrop; main FB, before opaque
         identity, // keep last: bounds SeparateBuffers
+    };
+
+    // Per-draw / per-material; not a queue basket. inherit → pass default.
+    enum class BlendMode : std::uint8_t {
+        inherit,
+        alpha,
+        additive,
+        premultiplied, // ONE, ONE_MINUS_SRC_ALPHA (add when a≈0; occlude when a>0)
     };
 
     inline constexpr std::size_t pass_count = static_cast<std::size_t>(Pass::identity) + 1;
@@ -46,6 +56,7 @@ namespace rmmr::renderer {
         inline const Passes gizmo_only{Pass::gizmo};
         inline const Passes shadow_only{Pass::shadow};
         inline const Passes sprite_only{Pass::sprite};
+        inline const Passes environment_only{Pass::environment};
 
     }
 

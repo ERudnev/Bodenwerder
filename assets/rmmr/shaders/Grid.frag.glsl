@@ -5,6 +5,7 @@ out vec4 FragColor;
 uniform float u_patternScale;
 uniform vec3 u_colorPrimary;
 uniform vec3 u_colorSecondary;
+uniform float u_opacity;
 
 void main() {
     vec2 coord = vWorldPos.xz * u_patternScale;
@@ -21,5 +22,7 @@ void main() {
         color = vec3(0.0, 0.0, 1.0); // +Z
     }
 
-    FragColor = vec4(color, 1.0);
+    // Lines denser than fill; whole plane respects Grid.opacity.
+    float alpha = mix(0.2, 1.0, intensity) * u_opacity;
+    FragColor = vec4(color, alpha);
 }

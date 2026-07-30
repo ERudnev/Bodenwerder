@@ -29,6 +29,7 @@ namespace rmmr::resource::material {
         struct Quantum {
             umap<renderer::Pass, Technique> techniques;
             bool nearest = false;
+            renderer::BlendMode blend = renderer::BlendMode::inherit;
         };
         struct Actions : BaseActions {
             static void apply(Reading, Id, system::Device::Id, renderer::Pass);
@@ -50,6 +51,7 @@ namespace rmmr::resource::material {
         struct Quantum {
             umap<renderer::Pass, Technique> techniques;
             bool nearest = false;
+            renderer::BlendMode blend = renderer::BlendMode::inherit;
         };
         struct Actions : BaseActions {
             static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;
