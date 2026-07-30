@@ -6,7 +6,7 @@ project("Kubes"
 )
 
 set(Kubes_Q1
-    placeholder.q1.types
+    world.q1.types
 )
 
 add_executable(${PROJECT_NAME})

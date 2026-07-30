@@ -1,0 +1,15 @@
+namespace kubes
+
+  // Sim pulse lives in World Global (not per-instance Quantum).
+  //   system::Clock changes → Global.step may advance
+  //   Global.step changes   → domain aspects wake on ~World
+  //   no step change        → no sim update
+  // `paused` freezes step (Clock still ticks; Global.step does not).
+  // Pause input: only Global.window (bound in Product::setup).
+  entity World
+    all
+      step: integer // discrete ticks; 1 step = 1000 Core μs
+      paused: bool
+      window: #system::Window? // pause-key source; unset = ignore
+      !keyboardPauseKey(~system::Window) // rising edge on bound window toggles paused
+      !advanceStep(~system::Clock) // unpaused: fold Clock μs into step (only writes when step grows)

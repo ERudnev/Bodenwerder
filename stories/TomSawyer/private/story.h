@@ -24,7 +24,7 @@ namespace tommy {
         void addAssets(Writing context, rmmr::system::Core::Id id) override {
             assets = Assets::init(context, id);
         }
-        void setup(Writing, rmmr::system::Core::Id, rmmr::system::Viewport::Id) override;
+        void setup(Writing, rmmr::system::Core::Id, rmmr::system::Window::Id) override;
         void contributeViewMenu() override;
         void drawUi(Writing) override;
 

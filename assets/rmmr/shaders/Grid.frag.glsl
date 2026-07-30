@@ -13,11 +13,12 @@ void main() {
     float intensity = 1.0 - clamp(line, 0.0, 1.0);
     vec3 color = mix(u_colorSecondary, u_colorPrimary, intensity);
 
-    if (abs(vWorldPos.x) < 0.02) {
-        color = vec3(1.0, 0.0, 0.0);
-    }
+    // Axis accents on XZ ground: RGB ~ XYZ (Y not drawn on this plane).
     if (abs(vWorldPos.z) < 0.02) {
-        color = vec3(0.0, 0.0, 1.0);
+        color = vec3(1.0, 0.0, 0.0); // +X
+    }
+    if (abs(vWorldPos.x) < 0.02) {
+        color = vec3(0.0, 0.0, 1.0); // +Z
     }
 
     FragColor = vec4(color, 1.0);

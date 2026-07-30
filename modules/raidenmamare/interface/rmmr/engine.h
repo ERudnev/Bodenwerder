@@ -36,10 +36,11 @@ namespace rmmr {
         std::shared_ptr<establish::Module::State> install(Schema finalSchema) override;
 
         // Creates system::Core on the caller's Writing, then device/window.
+        // Viewport is owned by Product::setup.
         auto setup(Writing, item<system::Core>, WindowParameters) -> system::Core::Id;
         void materialize(Writing, system::Core::Id assets);
         auto core() const -> system::Core::Id;
-        auto viewport() const -> system::Viewport::Id;
+        auto window() const -> system::Window::Id;
         void setActiveViews(std::vector<ViewContext>);
 
         bool shouldClose(Reading) const;
@@ -49,8 +50,6 @@ namespace rmmr {
         void shutdown(Writing) noexcept;
 
     private:
-        void createViewport(Writing, index2 size, index2 origin = index2{0, 0});
-
         struct State;
         std::shared_ptr<State> state;
     };

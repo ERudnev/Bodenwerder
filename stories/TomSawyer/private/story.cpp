@@ -4,6 +4,7 @@
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
+#include <rmmr/system/viewport.q1.h>
 #include <tommy/world.h>
 
 namespace tommy {
@@ -15,8 +16,15 @@ namespace tommy {
         return ask::schema::aspect<World>();
     }
 
-    void SpriteTest::setup(Writing context, system::Core::Id, system::Viewport::Id viewport) {
+    void SpriteTest::setup(Writing context, system::Core::Id, system::Window::Id window) {
         with<World>::create(context, World::Quantum{.step = 0, .paused = false});
+
+        const auto framebuffer = with<system::Window>::framebufferSize(context, window);
+        const auto viewport = with<system::Viewport_group>::addElement(context, window, system::Viewport::Quantum{
+            .origin = index2{0, 0},
+            .size = framebuffer,
+            .clear_color = vec4{0.2f, 0.3f, 0.3f, 1.0f},
+        });
 
         const auto root = with<scene::Interface>::createScene(context);
         with<scene::Flat2d>::extend(context, root, scene::Flat2d::Quantum{

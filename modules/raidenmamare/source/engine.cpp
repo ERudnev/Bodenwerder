@@ -86,7 +86,6 @@ namespace rmmr {
         struct {
             maybe<system::Core::Id> core;
             maybe<system::Device::Id> device;
-            maybe<system::Viewport::Id> viewport;
             std::vector<ViewContext> activeViews;
             maybe<resource::shadow::Asset::Id> default_shadow;
         } handles;
@@ -157,7 +156,6 @@ namespace rmmr {
             std::move(windowParams.title),
             windowParams.requested_size,
             windowParams.presentation);
-        createViewport(context, with<system::Window>::framebufferSize(context, *state->handles.device));
         return coreId;
     }
 
@@ -170,8 +168,8 @@ namespace rmmr {
         return *state->handles.core;
     }
 
-    auto Engine::viewport() const -> system::Viewport::Id {
-        return *state->handles.viewport;
+    auto Engine::window() const -> system::Window::Id {
+        return *state->handles.device;
     }
 
     void Engine::setActiveViews(std::vector<ViewContext> views) {
@@ -236,14 +234,6 @@ namespace rmmr {
         with<system::Window>::present(context, device);
     }
 
-    void Engine::createViewport(Writing context, index2 size, index2 origin) {
-        state->handles.viewport = with<system::Viewport_group>::addElement(context, *state->handles.device, system::Viewport::Quantum{
-            .origin = origin,
-            .size = size,
-            .clear_color = vec4{0.2f, 0.3f, 0.3f, 1.0f},
-        });
-    }
-
     void Engine::shutdown(Writing context) noexcept {
         base::message("rmmr teardown: Engine shutdown begin");
         state->driver.windows.clear();
@@ -252,7 +242,11 @@ namespace rmmr {
                 state->driver.windows.push_back(entry.value.handle);
             }
         }
-        ask::temp_sugar::drop_reference<system::Viewport>(context, state->handles.viewport);
+        for (const auto& view : state->handles.activeViews) {
+            auto viewport = maybe<system::Viewport::Id>{view.viewport};
+            ask::temp_sugar::drop_reference<system::Viewport>(context, viewport);
+        }
+        state->handles.activeViews.clear();
         with<system::Interface>::shutdown(context);
         // Native GLFW teardown waits for ~State — after the caller's finish_patch.
         base::message("rmmr teardown: Engine shutdown done");

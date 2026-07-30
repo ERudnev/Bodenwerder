@@ -17,9 +17,6 @@ namespace kubes {
     public:
         struct Assets {
             struct {
-                base::maybe<rmmr::resource::geometry::Asset::Id> triangle;
-                base::maybe<rmmr::resource::geometry::Asset::Id> kube;
-                base::maybe<rmmr::resource::geometry::Asset::Id> bagel;
                 base::maybe<rmmr::resource::geometry::Asset::Id> grid;
             } primitive;
         };
@@ -44,7 +41,7 @@ namespace kubes {
 
         Schema schema() const override;
         void addAssets(Writing, rmmr::system::Core::Id) override;
-        void setup(Writing, rmmr::system::Core::Id, rmmr::system::Viewport::Id) override;
+        void setup(Writing, rmmr::system::Core::Id, rmmr::system::Window::Id) override;
         void contributeViewMenu() override;
         void drawUi(Writing) override;
 

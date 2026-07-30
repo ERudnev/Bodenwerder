@@ -106,7 +106,7 @@ namespace rmmr::wrapper {
         product->bindShared(state->assets->handles);
         product->addAssets(state->world, core);
         state->world.finish_patch();
-        product->setup(state->world, core, engine->viewport());
+        product->setup(state->world, core, engine->window());
         state->world.finish_patch();
         engine->materialize(state->world, state->assets->core);
         state->world.finish_patch();
