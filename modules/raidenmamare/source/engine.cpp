@@ -248,7 +248,7 @@ namespace rmmr {
         }
         state->handles.activeViews.clear();
         with<system::Interface>::shutdown(context);
-        // Native GLFW teardown waits for ~State — after the caller's finish_patch.
+        // Native GLFW teardown waits for ~State — after Writing collapses into Realm.
         base::message("rmmr teardown: Engine shutdown done");
     }
 }

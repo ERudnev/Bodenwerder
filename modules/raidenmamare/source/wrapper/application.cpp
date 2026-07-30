@@ -19,7 +19,7 @@ namespace rmmr::wrapper {
         bool assets_ready = false;
 
         ui::State ui;
-        establish::RealmSafe world;
+        establish::Realm world;
 
         explicit State(Schema schema);
         auto prepareAssets(filepath assets_root) -> assets::PrepareStatus;
@@ -93,11 +93,9 @@ namespace rmmr::wrapper {
                 .requested_size = settings.window_size,
                 .presentation = settings.presentation,
             });
-        state->world.finish_patch();
         state->assets = assets::Manager{.core = core};
 
         const auto status = state->prepareAssets(settings.assets_root);
-        state->world.finish_patch();
         if (status == assets::PrepareStatus::Failed) {
             base::message("app: refusing to seed over a broken assets save; soft exit");
             return;
@@ -105,11 +103,8 @@ namespace rmmr::wrapper {
 
         product->bindShared(state->assets->handles);
         product->addAssets(state->world, core);
-        state->world.finish_patch();
         product->setup(state->world, core, engine->window());
-        state->world.finish_patch();
         engine->materialize(state->world, state->assets->core);
-        state->world.finish_patch();
         engine->setActiveViews(product->views);
 
         if (status == assets::PrepareStatus::Generated) {
@@ -118,7 +113,6 @@ namespace rmmr::wrapper {
             } catch (const std::exception& error) {
                 base::message("app: initial assets save failed: {}", error.what());
             }
-            state->world.finish_patch();
         }
 
         if (not state->world.result().good())
@@ -127,7 +121,6 @@ namespace rmmr::wrapper {
 
     void Application::loadWorld(filepath) {
         state->loadPastState(state->world);
-        state->world.finish_patch();
         if (not state->world.result().good())
             throw std::runtime_error("app: loadWorld failed");
     }
@@ -137,22 +130,16 @@ namespace rmmr::wrapper {
             throw std::runtime_error("app: setProduct before run()");
 
         if (not state->assets_ready) {
-            if (engine) {
+            if (engine)
                 engine->shutdown(state->world);
-                state->world.finish_patch();
-            }
             return 1;
         }
 
         while (engine and not engine->shouldClose(state->world)) {
             engine->beginFrame(state->world);
-            state->world.finish_patch();
             state->ui.draw(state->world, *product);
-            state->world.finish_patch();
             engine->render(state->world);
-            state->world.finish_patch();
             engine->endFrame(state->world);
-            state->world.finish_patch();
         }
 
         if (state->assets.exists()) {
@@ -161,13 +148,10 @@ namespace rmmr::wrapper {
             } catch (const std::exception& error) {
                 base::message("app: assets save failed: {}", error.what());
             }
-            state->world.finish_patch();
         }
 
-        if (engine) {
+        if (engine)
             engine->shutdown(state->world);
-            state->world.finish_patch();
-        }
         return 0;
     }
 

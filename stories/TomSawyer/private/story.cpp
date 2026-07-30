@@ -16,7 +16,7 @@ namespace tommy {
         return ask::schema::aspect<World>();
     }
 
-    void SpriteTest::setup(Writing context, system::Core::Id, system::Window::Id window) {
+    void SpriteTest::populateWorld(Writing context, system::Window::Id window) {
         with<World>::create(context, World::Quantum{.step = 0, .paused = false});
 
         const auto framebuffer = with<system::Window>::framebufferSize(context, window);
@@ -38,6 +38,10 @@ namespace tommy {
         views = {
             View{.viewport = viewport, .scene = root, .camera = camera},
         };
+    }
+
+    void SpriteTest::setup(establish::Realm& world, system::Core::Id, system::Window::Id window) {
+        populateWorld(world, window);
     }
 
 }

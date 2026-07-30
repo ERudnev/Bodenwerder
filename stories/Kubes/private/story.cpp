@@ -28,7 +28,7 @@ namespace kubes {
             item<Generator>{.type = Generator::Type::gridPlane});
     }
 
-    void KubeOfKubes::setup(Writing context, system::Core::Id, system::Window::Id window) {
+    void KubeOfKubes::populateWorld(Writing context, system::Window::Id window) {
         with<World>::modify_global(context)->window = window;
 
         const auto framebuffer = with<system::Window>::framebufferSize(context, window);
@@ -55,6 +55,10 @@ namespace kubes {
         views = {
             View{.viewport = viewport, .scene = root, .camera = camera},
         };
+    }
+
+    void KubeOfKubes::setup(establish::Realm& world, system::Core::Id, system::Window::Id window) {
+        populateWorld(world, window);
     }
 
 }

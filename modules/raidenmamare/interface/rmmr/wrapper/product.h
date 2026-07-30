@@ -25,7 +25,7 @@ namespace rmmr::wrapper {
         virtual Schema schema() const = 0;
 
         virtual void addAssets(Writing, system::Core::Id) = 0;
-        virtual void setup(Writing, system::Core::Id, system::Window::Id) = 0;
+        virtual void setup(establish::Realm&, system::Core::Id, system::Window::Id) = 0;
 
         virtual void contributeViewMenu() = 0;
         virtual void drawUi(Writing) = 0;

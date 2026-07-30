@@ -14,7 +14,7 @@ namespace tommy {
         using namespace resource;
         using geometry::Generator;
 
-        base::message("TomSawyer: seeding Kenney sprite pack...");
+        base::message("TomSawyer: adding Kenney sprite pack...");
         const auto kenney = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context,
             core,
@@ -24,7 +24,7 @@ namespace tommy {
                 .descriptor = "sprites/Spritesheet/sheet.xml",
             });
 
-        base::message("TomSawyer: seeding unit quad geometry...");
+        base::message("TomSawyer: adding unit quad geometry...");
         const auto unitQuad = with<::rmmr::resource::Assets>::add_geometry_generator(
             context,
             core,
