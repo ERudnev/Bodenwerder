@@ -1,6 +1,13 @@
 #include <rmmr/resources/builders/geometryGenerator.h>
 
+#include <algorithm>
+#include <array>
 #include <cmath>
+#include <map>
+#include <numbers>
+#include <utility>
+
+#include <glm/geometric.hpp>
 
 namespace rmmr::resource::builders::geometry {
 
@@ -190,6 +197,116 @@ namespace rmmr::resource::builders::geometry {
                 UV{1.0f, 1.0f},
                 UV{0.0f, 1.0f},
             },
+            .color0 = {},
+            .indices = {},
+        };
+    }
+
+    // Regular icosahedron, one frequency subdivision (20→80 tris). Unit sphere; smooth normals; spherical UV.
+    auto GeometryGenerator::sphere() -> CpuPresentation {
+        constexpr float phi = 1.61803398875f; // (1+√5)/2
+        constexpr float two_pi = 2.0f * std::numbers::pi_v<float>;
+        constexpr float pi = std::numbers::pi_v<float>;
+
+        const Pos raw[12]{
+            Pos{-1.0f, phi, 0.0f}, Pos{1.0f, phi, 0.0f}, Pos{-1.0f, -phi, 0.0f}, Pos{1.0f, -phi, 0.0f},
+            Pos{0.0f, -1.0f, phi}, Pos{0.0f, 1.0f, phi}, Pos{0.0f, -1.0f, -phi}, Pos{0.0f, 1.0f, -phi},
+            Pos{phi, 0.0f, -1.0f}, Pos{phi, 0.0f, 1.0f}, Pos{-phi, 0.0f, -1.0f}, Pos{-phi, 0.0f, 1.0f},
+        };
+        vector<Pos> corners;
+        corners.reserve(42);
+        for (const Pos& p : raw) {
+            corners.push_back(Pos{glm::normalize(glm::vec3{p})});
+        }
+
+        // Cap 5 + belt 10 + cap 5. CCW from outside (outward normals).
+        vector<std::array<int, 3>> faces{
+            {0, 11, 5}, {0, 5, 1}, {0, 1, 7}, {0, 7, 10}, {0, 10, 11},
+            {1, 5, 9}, {5, 11, 4}, {11, 10, 2}, {10, 7, 6}, {7, 1, 8},
+            {3, 9, 4}, {3, 4, 2}, {3, 2, 6}, {3, 6, 8}, {3, 8, 9},
+            {4, 9, 5}, {2, 4, 11}, {6, 2, 10}, {8, 6, 7}, {9, 8, 1},
+        };
+
+        // One subdivision: each triangle → 4, midpoints projected onto the unit sphere.
+        {
+            std::map<std::pair<int, int>, int> midpoint_of;
+            auto midpoint = [&](int left, int right) -> int {
+                const auto key = left < right ? std::pair{left, right} : std::pair{right, left};
+                if (const auto it = midpoint_of.find(key); it != midpoint_of.end()) {
+                    return it->second;
+                }
+                const Pos mid = Pos{glm::normalize(0.5f * (glm::vec3{corners[left]} + glm::vec3{corners[right]}))};
+                const int index = static_cast<int>(corners.size());
+                corners.push_back(mid);
+                midpoint_of.emplace(key, index);
+                return index;
+            };
+
+            vector<std::array<int, 3>> subdivided;
+            subdivided.reserve(faces.size() * 4);
+            for (const auto& face : faces) {
+                const int a = face[0];
+                const int b = face[1];
+                const int c = face[2];
+                const int ab = midpoint(a, b);
+                const int bc = midpoint(b, c);
+                const int ca = midpoint(c, a);
+                subdivided.push_back({a, ab, ca});
+                subdivided.push_back({b, bc, ab});
+                subdivided.push_back({c, ca, bc});
+                subdivided.push_back({ab, bc, ca});
+            }
+            faces = std::move(subdivided);
+        }
+
+        auto spherical_uv = [two_pi, pi](const Pos& p) -> UV {
+            const float u = 0.5f + std::atan2(p.z, p.x) / two_pi;
+            const float v = 0.5f - std::asin(std::clamp(p.y, -1.0f, 1.0f)) / pi;
+            return UV{u, v};
+        };
+
+        vector<Pos> positions;
+        vector<Pos> normals;
+        vector<UV> uv0;
+        positions.reserve(faces.size() * 3);
+        normals.reserve(faces.size() * 3);
+        uv0.reserve(faces.size() * 3);
+
+        for (const auto& face : faces) {
+            const Pos p0 = corners[face[0]];
+            const Pos p1 = corners[face[1]];
+            const Pos p2 = corners[face[2]];
+            UV t0 = spherical_uv(p0);
+            UV t1 = spherical_uv(p1);
+            UV t2 = spherical_uv(p2);
+
+            constexpr float pole = 0.999f;
+            if (std::abs(p0.y) > pole) t0.x = 0.5f * (t1.x + t2.x);
+            if (std::abs(p1.y) > pole) t1.x = 0.5f * (t0.x + t2.x);
+            if (std::abs(p2.y) > pole) t2.x = 0.5f * (t0.x + t1.x);
+
+            const float min_u = std::min({t0.x, t1.x, t2.x});
+            const float max_u = std::max({t0.x, t1.x, t2.x});
+            if (max_u - min_u > 0.5f) {
+                if (t0.x < 0.5f) t0.x += 1.0f;
+                if (t1.x < 0.5f) t1.x += 1.0f;
+                if (t2.x < 0.5f) t2.x += 1.0f;
+            }
+
+            const Pos tri[3]{p0, p1, p2};
+            const UV uv[3]{t0, t1, t2};
+            for (int corner = 0; corner < 3; ++corner) {
+                positions.push_back(tri[corner]);
+                normals.push_back(tri[corner]);
+                uv0.push_back(uv[corner]);
+            }
+        }
+
+        return CpuPresentation{
+            .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"}),
+            .positions = std::move(positions),
+            .normals = std::move(normals),
+            .uv0 = std::move(uv0),
             .color0 = {},
             .indices = {},
         };

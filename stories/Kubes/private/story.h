@@ -10,6 +10,8 @@
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/wrapper/product.h>
 
+#include "physics.h"
+
 namespace kubes {
 
     using namespace fqsm::api;
@@ -19,6 +21,7 @@ namespace kubes {
         struct Assets {
             struct {
                 base::maybe<rmmr::resource::geometry::Asset::Id> grid;
+                base::maybe<rmmr::resource::geometry::Asset::Id> sphere;
             } primitive;
             base::maybe<rmmr::resource::sprite::Pack::Id> skySphere;
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
@@ -29,6 +32,7 @@ namespace kubes {
             bool camera = false;
             bool lighting = false;
             bool materials = false;
+            bool physics = false;
 
             base::maybe<rmmr::resource::material::Asset::Id> selected_material;
             std::array<char, 128> material_filter{};
@@ -42,6 +46,7 @@ namespace kubes {
 
         Assets assets;
         Ui ui;
+        phys::System physics;
 
         Schema schema() const override;
         void addAssets(Writing, rmmr::system::Core::Id) override;

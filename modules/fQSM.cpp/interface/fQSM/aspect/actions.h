@@ -46,6 +46,7 @@ namespace fqsm::aspect::actions {
             using Quantum = ::fqsm::Quantum<Meta>;
             using Global = ::fqsm::GlobalValue<Meta>;
             using PossibleChange = std::optional<Quantum>;
+            using my = Capability; // risky thing, if something is broken... think about it
 
             struct Vocabulary {
                 using EvaluateQuantumLocal = std::function<PossibleChange(const Quantum&)>;

@@ -1,0 +1,15 @@
+namespace kubes
+  namespace phys
+
+    entity Atom
+      one
+        current: vec3
+        prev: vec3 // Verlet planned
+        mass: float
+
+    entity Visual
+      one
+        atom: affects<Atom>
+        actor: custody<rmmr::scene::Node>
+      all
+        >update() // broad pass, for each one maintain custody and move actor (or remove it)

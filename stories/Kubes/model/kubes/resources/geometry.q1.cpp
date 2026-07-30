@@ -1,6 +1,6 @@
-#include <kubes/resources/geometry.h>
+#include <kubes/resources/geometry.q1.h>
 
-#include <kubes/resources/galaxy.h>
+#include "galaxy.h"
 
 #include <base/logging.h>
 #include <rmmr/math.q1.h>

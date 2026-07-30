@@ -59,6 +59,7 @@ namespace rmmr::resource::geometry {
             bagel,
             gridPlane,
             unitQuad,
+            sphere, // regular icosahedron (20 faces); smooth sphere normals + spherical UV
         };
         struct Quantum {
             Type type;

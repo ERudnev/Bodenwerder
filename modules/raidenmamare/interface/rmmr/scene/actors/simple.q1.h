@@ -17,6 +17,7 @@ namespace rmmr::scene::actor {
             resource::geometry::Asset::Id geometry;
             resource::material::Asset::Id material;
             RGB albedo;
+            vec3 scale{1.0f, 1.0f, 1.0f};
         };
         struct Actions : BaseActions {
             static auto create(Writing, Pos, HPB, resource::geometry::Asset::Id, resource::material::Asset::Id, RGB albedo) -> Id;

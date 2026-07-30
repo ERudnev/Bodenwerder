@@ -1,10 +1,8 @@
-#include <kubes/world.h>
-
-#include <rmmr/scene/node.q1.h>
+#include <tommy/world.q1.h>
 
 #include <GLFW/glfw3.h>
 
-namespace kubes {
+namespace tommy {
 
     using namespace fqsm::api;
 
@@ -25,44 +23,27 @@ namespace kubes {
         if (dt_us < k_us_per_step) {
             return;
         }
-        if (with<World>::get_global(context).paused) {
-            return;
+        const integer add = static_cast<integer>(dt_us / k_us_per_step);
+        for (const auto [id, _] : context->aspect<World>().items()) {
+            if (with<World>::get(context, id).paused) {
+                continue;
+            }
+            with<World>::modify(context, id)->step += add;
         }
-        with<World>::modify_global(context)->step += static_cast<integer>(dt_us / k_us_per_step);
-    }
-
-    void World::Actions::tetherEnvironment(Writing context) {
-        const auto& global = with<World>::get_global(context);
-        if (not global.sky || not global.camera) {
-            return;
-        }
-        if (not with<rmmr::scene::Node>::exists(context, *global.sky)) {
-            return;
-        }
-        if (not with<rmmr::scene::Node>::exists(context, *global.camera)) {
-            return;
-        }
-        with<rmmr::scene::Node>::modify(context, *global.sky)->position =
-            with<rmmr::scene::Node>::get(context, *global.camera).position;
     }
 
     struct World::Internals : World::DefaultInternals {
         static void keyboardPauseKey(Reacting context) {
-            const auto bound = with<World>::get_global(context).window;
-            if (not bound) {
-                return;
-            }
             for (const auto& change : context.changes<rmmr::system::Window>().updated()) {
-                if (change.id != *bound) {
-                    continue;
-                }
                 const bool was_down = key_down(change.old.current.keys, k_pause_key);
                 const bool is_down = key_down(change.now.current.keys, k_pause_key);
                 if (was_down || not is_down) {
                     continue;
                 }
-                auto world = with<World>::modify_global(context);
-                world->paused = not world->paused;
+                for (const auto [id, _] : context.proposal.aspect<World>().items()) {
+                    auto world = with<World>::modify(context, id);
+                    world->paused = not world->paused;
+                }
             }
         }
     };

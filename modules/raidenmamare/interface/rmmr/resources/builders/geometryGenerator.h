@@ -30,6 +30,7 @@ namespace rmmr::resource::builders::geometry {
         static CpuPresentation bagel();
         static CpuPresentation gridPlane();
         static CpuPresentation unitQuad();
+        static CpuPresentation sphere();
     };
 
 }

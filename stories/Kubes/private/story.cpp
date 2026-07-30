@@ -1,7 +1,8 @@
 #include "story.h"
 
-#include <kubes/resources/geometry.h>
-#include <kubes/world.h>
+#include <kubes/physics/atom.q1.h>
+#include <kubes/resources/geometry.q1.h>
+#include <kubes/world.q1.h>
 #include <rmmr/api/_interface.h>
 #include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -17,7 +18,11 @@
 #include <rmmr/semantics/uniform.h>
 #include <rmmr/system/viewport.q1.h>
 
+#include <cmath>
 #include <numbers>
+#include <random>
+
+#include <glm/geometric.hpp>
 
 namespace kubes {
 
@@ -27,6 +32,8 @@ namespace kubes {
     Schema KubeOfKubes::schema() const {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
+            ask::schema::aspect<phys::Atom>(),
+            ask::schema::aspect<phys::Visual>(),
             ask::schema::aspect<resources::SkySphereGenerator>(),
         });
     }
@@ -39,6 +46,11 @@ namespace kubes {
             context, core,
             item<Unit>{.manager = core, .name = "grid", .library = "rmmr"},
             item<Generator>{.type = Generator::Type::gridPlane});
+
+        assets.primitive.sphere = with<::rmmr::resource::Assets>::add_geometry_generator(
+            context, core,
+            item<Unit>{.manager = core, .name = "sphere", .library = "rmmr"},
+            item<Generator>{.type = Generator::Type::sphere});
 
         assets.skySphere = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context, core,
@@ -144,6 +156,24 @@ namespace kubes {
         views = {
             View{.viewport = viewport, .scene = root, .camera = camera},
         };
+
+        physics.bind(root, *assets.primitive.sphere, shared->material.debugLitTextured.front());
+
+        {
+            constexpr int k_count = 1000;
+            constexpr float k_cloud_radius = 4.0f;
+            constexpr float k_sigma = k_cloud_radius / 3.0f;
+            std::mt19937 rng{42};
+            std::normal_distribution<float> gauss{0.0f, k_sigma};
+            for (int i = 0; i < k_count; ++i) {
+                vec3 position{gauss(rng), gauss(rng), gauss(rng)};
+                const float distance = glm::length(position);
+                if (distance > k_cloud_radius) {
+                    position *= k_cloud_radius / distance;
+                }
+                physics.addParticle(context, position);
+            }
+        }
     }
 
     void KubeOfKubes::setup(establish::Realm& world, system::Core::Id, system::Window::Id window) {
@@ -156,6 +186,8 @@ namespace kubes {
 
     void KubeOfKubes::onFrame(establish::Realm& world, int64 dt_us) {
         with<World>::tetherEnvironment(world);
+        physics.step(world, dt_us);
+        with<phys::Visual>::update(world);
         advanceSim(world, dt_us);
     }
 

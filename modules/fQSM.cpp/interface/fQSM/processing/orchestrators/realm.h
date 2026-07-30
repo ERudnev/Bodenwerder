@@ -17,8 +17,8 @@ namespace fqsm::processing::orchestrator {
         Realm(const State& other) : reality(other) {}
 
         // running local transaction (currently syncronous):
-        template<typename F>
-        auto branch(F&& worker) -> std::invoke_result_t<F, Writing> { Branch context(*this); return std::invoke(std::forward<F>(worker), static_cast<Writing>(context)); }
+        template<typename Worker>
+        auto branch(Worker&& worker) -> std::invoke_result_t<Worker, Writing> { Branch context(*this); return std::invoke(std::forward<Worker>(worker), static_cast<Writing>(context)); }
 
         operator Reading() const override { return View(reality); }
         const model::complex::State* operator->() const { return &reality; }

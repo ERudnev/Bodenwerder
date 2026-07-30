@@ -28,7 +28,7 @@ namespace rmmr
         >materialize(#system::Device) -> #Runtime?
 
     feature Generator of Asset
-      enum Type : triangle, kube, bagel, gridPlane, unitQuad
+      enum Type : triangle, kube, bagel, gridPlane, unitQuad, sphere
       one
         type: Type
         >materialize(#system::Device) -> #Runtime?

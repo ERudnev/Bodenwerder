@@ -97,12 +97,21 @@ namespace kubes {
         ImGui::MenuItem("Camera", nullptr, &ui.camera);
         ImGui::MenuItem("Lighting", nullptr, &ui.lighting);
         ImGui::MenuItem("Materials", nullptr, &ui.materials);
+        ImGui::MenuItem("Physics", nullptr, &ui.physics);
     }
 
     void KubeOfKubes::drawUi(Writing world) {
         drawCameraWindow(world);
         drawLightingWindow(world);
         drawMaterialsWindow(world);
+        if (ui.physics) {
+            bool open = ui.physics;
+            if (ImGui::Begin("Physics", &open)) {
+                physics.drawUi(world);
+            }
+            ImGui::End();
+            ui.physics = open;
+        }
     }
 
     void KubeOfKubes::drawCameraWindow(Writing world) {

@@ -1,4 +1,4 @@
-#include <kubes/resources/galaxy.h>
+#include "galaxy.h"
 
 #include <algorithm>
 #include <cmath>

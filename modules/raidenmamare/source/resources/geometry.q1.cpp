@@ -271,6 +271,7 @@ namespace rmmr::resource::geometry {
                 case Generator::Type::bagel: return GeometryGenerator::bagel();
                 case Generator::Type::gridPlane: return GeometryGenerator::gridPlane();
                 case Generator::Type::unitQuad: return GeometryGenerator::unitQuad();
+                case Generator::Type::sphere: return GeometryGenerator::sphere();
             }
         }
 
