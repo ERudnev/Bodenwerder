@@ -227,7 +227,7 @@ namespace si01 {
                     if (ImGui::DragInt2("Ortho size", size, 1.0f, 1, 8192))
                         quantum->ortho_size = index2{size[0], size[1]};
                 } else if (quantum->mode == scene::Camera::Mode::perspective) {
-                    ImGui::SliderAngle("FoV", &quantum->fov_y, 10.0f, 160.0f);
+                    ImGui::SliderAngle("FoV H", &quantum->fov_x, 10.0f, 160.0f);
                 } else {
                     ImGui::TextDisabled("Parallel projection (reserved).");
                 }

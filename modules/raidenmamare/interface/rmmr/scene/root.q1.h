@@ -40,7 +40,7 @@ namespace rmmr::scene {
 
     struct Interface : Manipulation<Interface, Root> {
         static auto createScene(Writing) -> Root::Id;
-        static auto createCamera(Writing, Root::Id, Locator, float fov_y) -> Camera::Id;
+        static auto createCamera(Writing, Root::Id, Locator, float fov_x) -> Camera::Id;
         static auto createLight(Writing, Root::Id, Locator, Light::Quantum) -> Light::Id;
         static auto createSimpleActor(Writing, Root::Id, Locator, actor::Simple::Quantum) -> actor::Simple::Id;
         static auto createGrid(Writing, Root::Id, Locator, Grid::Quantum) -> Grid::Id;

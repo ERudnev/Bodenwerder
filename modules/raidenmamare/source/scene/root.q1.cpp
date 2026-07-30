@@ -45,12 +45,12 @@ namespace rmmr::scene {
         return root;
     }
 
-    auto Interface::createCamera(Writing context, Root::Id root, Locator locator, float fov_y) -> Camera::Id {
+    auto Interface::createCamera(Writing context, Root::Id root, Locator locator, float fov_x) -> Camera::Id {
         return attach_camera(context, root, locator, Camera::Quantum{
             .mode = Camera::Mode::perspective,
             .z_near = k_camera_z_near,
             .z_far = k_camera_z_far,
-            .fov_y = fov_y,
+            .fov_x = fov_x,
             .ortho_size = index2{0, 0},
         });
     }
@@ -98,7 +98,7 @@ namespace rmmr::scene {
             .mode = Camera::Mode::orthographic,
             .z_near = k_camera_z_near,
             .z_far = k_camera_z_far,
-            .fov_y = 0.0f,
+            .fov_x = 0.0f,
             .ortho_size = flat.size,
         });
     }

@@ -2,6 +2,8 @@
 
 #include <base/logging.h>
 
+#include <cmath>
+
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -15,8 +17,11 @@ namespace rmmr::scene {
         constexpr float k_z_far = 100.0f;
 
         auto projection_matrix(const Camera::Quantum& quantum, float aspect_ratio) -> mat4 {
-            if (quantum.mode == Camera::Mode::perspective)
-                return glm::perspective(quantum.fov_y, aspect_ratio, quantum.z_near, quantum.z_far);
+            if (quantum.mode == Camera::Mode::perspective) {
+                const float aspect = std::max(aspect_ratio, 1.0e-6f);
+                const float fov_y = 2.0f * std::atan(std::tan(quantum.fov_x * 0.5f) / aspect);
+                return glm::perspective(fov_y, aspect, quantum.z_near, quantum.z_far);
+            }
             if (quantum.mode == Camera::Mode::orthographic) {
                 const float half_w = 0.5f * static_cast<float>(quantum.ortho_size.x);
                 const float half_h = 0.5f * static_cast<float>(quantum.ortho_size.y);
@@ -32,13 +37,13 @@ namespace rmmr::scene {
 
     } // namespace
 
-    auto Camera::Actions::create(Writing context, Locator locator, float fov_y) -> Id {
+    auto Camera::Actions::create(Writing context, Locator locator, float fov_x) -> Id {
         const auto node = Node::Actions::create(context, locator);
         with<Camera>::extend(context, node, Camera::Quantum{
             .mode = Mode::perspective,
             .z_near = k_z_near,
             .z_far = k_z_far,
-            .fov_y = fov_y,
+            .fov_x = fov_x,
             .ortho_size = index2{0, 0},
         });
         return node;

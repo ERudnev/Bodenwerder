@@ -12,10 +12,10 @@ namespace rmmr
         mode: Mode
         z_near: float
         z_far: float
-        fov_y: float          // perspective
+        fov_x: float          // perspective; horizontal FOV (radians)
         ortho_size: index2    // orthographic full extent (world/logical units)
         ?projection(aspect_ratio: float) -> mat4
         ?view() -> mat4
         ?view_projection(aspect_ratio: float) -> mat4
       all
-        >create(Locator, fov_y: float) -> #
+        >create(Locator, fov_x: float) -> #

@@ -125,13 +125,7 @@ namespace kubes {
 
                 auto quantum = with<scene::Camera>::modify(world, camera);
                 if (quantum->mode == scene::Camera::Mode::perspective) {
-                    const auto& viewport = with<system::Viewport>::get(world, view.viewport);
-                    const float width = viewport.size.x > integer{0} ? static_cast<float>(viewport.size.x) : 1.0f;
-                    const float height = viewport.size.y > integer{0} ? static_cast<float>(viewport.size.y) : 1.0f;
-                    const float aspect = width / height;
-                    float fov_x = 2.0f * std::atan(std::tan(quantum->fov_y * 0.5f) * aspect);
-                    if (ImGui::SliderAngle("FoV H", &fov_x, 10.0f, 160.0f))
-                        quantum->fov_y = 2.0f * std::atan(std::tan(fov_x * 0.5f) / aspect);
+                    ImGui::SliderAngle("FoV H", &quantum->fov_x, 10.0f, 160.0f);
                 } else if (quantum->mode == scene::Camera::Mode::orthographic) {
                     ImGui::Text("Ortho size: %d x %d", quantum->ortho_size.x, quantum->ortho_size.y);
                 } else {

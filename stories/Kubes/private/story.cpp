@@ -17,6 +17,8 @@
 #include <rmmr/semantics/uniform.h>
 #include <rmmr/system/viewport.q1.h>
 
+#include <numbers>
+
 namespace kubes {
 
     using namespace fqsm::api;
@@ -124,7 +126,7 @@ namespace kubes {
 
         const auto camera = with<scene::Interface>::createCamera(context, root,
             Locator{.pos = Pos{10.5f, 10.0f, 14.0f}, .euler = HPB{36.87f, -29.74f, 0.0f}},
-            1.04719755f);
+            100.0f * std::numbers::pi_v<float> / 180.0f);
         // R=100 sphere + offset camera: default z_far=100 would clip the far hemisphere.
         with<scene::Camera>::modify(context, camera)->z_far = 250.0f;
         with<controller::Camera3d>::create(context, camera);

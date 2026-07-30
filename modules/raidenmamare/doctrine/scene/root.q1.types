@@ -22,7 +22,7 @@ namespace rmmr
 
     manipulation Interface of Root
       >createScene()->#
-      >createCamera(#, Locator, fov_y: float)->#Camera
+      >createCamera(#, Locator, fov_x: float)->#Camera
       >createLight(#, Locator, one<Light>)->#Light
       >createSimpleActor(#, Locator, one<actor::Simple>)->#actor::Simple
       >createGrid(#, Locator, one<Grid>)->#Grid
