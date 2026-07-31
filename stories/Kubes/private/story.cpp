@@ -18,11 +18,7 @@
 #include <rmmr/semantics/uniform.h>
 #include <rmmr/system/viewport.q1.h>
 
-#include <cmath>
 #include <numbers>
-#include <random>
-
-#include <glm/geometric.hpp>
 
 namespace kubes {
 
@@ -51,6 +47,11 @@ namespace kubes {
             context, core,
             item<Unit>{.manager = core, .name = "sphere", .library = "rmmr"},
             item<Generator>{.type = Generator::Type::sphere});
+
+        assets.primitive.unitQuad = with<::rmmr::resource::Assets>::add_geometry_generator(
+            context, core,
+            item<Unit>{.manager = core, .name = "sprite_unit_quad", .library = "Kubes"},
+            item<Generator>{.type = Generator::Type::unitQuad});
 
         assets.skySphere = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context, core,
@@ -121,6 +122,7 @@ namespace kubes {
         });
 
         const auto root = with<scene::Interface>::createScene(context);
+        with<scene::actor::Sprite>::modify_global(context)->geometry = assets.primitive.unitQuad;
 
         resources::SkySphereGenerator::Actions::materialize(context, *assets.skySphereGeometry, window);
 
@@ -157,23 +159,7 @@ namespace kubes {
             View{.viewport = viewport, .scene = root, .camera = camera},
         };
 
-        physics.bind(root, *assets.primitive.sphere, shared->material.debugLitTextured.front());
-
-        {
-            constexpr int k_count = 1000;
-            constexpr float k_cloud_radius = 4.0f;
-            constexpr float k_sigma = k_cloud_radius / 3.0f;
-            std::mt19937 rng{42};
-            std::normal_distribution<float> gauss{0.0f, k_sigma};
-            for (int i = 0; i < k_count; ++i) {
-                vec3 position{gauss(rng), gauss(rng), gauss(rng)};
-                const float distance = glm::length(position);
-                if (distance > k_cloud_radius) {
-                    position *= k_cloud_radius / distance;
-                }
-                physics.addParticle(context, position);
-            }
-        }
+        physics.bind(root, *assets.skySphere, *shared->material.sprite);
     }
 
     void KubeOfKubes::setup(establish::Realm& world, system::Core::Id, system::Window::Id window) {

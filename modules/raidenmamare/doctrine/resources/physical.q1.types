@@ -1,0 +1,21 @@
+import "resources/manager"
+import "resources/geometry"
+
+namespace rmmr
+  namespace resource
+    namespace physical
+
+    using Reference as resource::Unit::Reference
+
+     feature Asset of resource::Unit
+      struct Face
+        name: string;
+        indices: vector<integer>
+      one
+        points: vector<Pos>
+        faces: vector<Face>
+
+
+    feature Loader of Asset
+      one
+        file: filename

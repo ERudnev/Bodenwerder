@@ -22,6 +22,7 @@ namespace kubes {
             struct {
                 base::maybe<rmmr::resource::geometry::Asset::Id> grid;
                 base::maybe<rmmr::resource::geometry::Asset::Id> sphere;
+                base::maybe<rmmr::resource::geometry::Asset::Id> unitQuad;
             } primitive;
             base::maybe<rmmr::resource::sprite::Pack::Id> skySphere;
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
@@ -32,7 +33,7 @@ namespace kubes {
             bool camera = false;
             bool lighting = false;
             bool materials = false;
-            bool physics = false;
+            bool physics = true;
 
             base::maybe<rmmr::resource::material::Asset::Id> selected_material;
             std::array<char, 128> material_filter{};

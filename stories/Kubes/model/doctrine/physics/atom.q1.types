@@ -10,6 +10,7 @@ namespace kubes
     entity Visual
       one
         atom: affects<Atom>
-        actor: custody<rmmr::scene::Node>
+        actor: custody<rmmr::scene::actor::Sprite> // same Id as Node; Sprite alive ⇒ Node alive
+        tint: vec3 // RGB boost for sprite (spawn / update)
       all
         >update() // broad pass, for each one maintain custody and move actor (or remove it)

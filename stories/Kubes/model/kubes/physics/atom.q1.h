@@ -1,6 +1,7 @@
 #pragma once
 
-#include <rmmr/scene/node.q1.h>
+#include <rmmr/math.q1.h>
+#include <rmmr/scene/actors/sprite.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -21,7 +22,8 @@ namespace kubes::phys {
     struct Visual : Entity<Visual> {
         struct Quantum {
             Affected<Atom> atom;
-            Custody<rmmr::scene::Node> actor;
+            Custody<rmmr::scene::actor::Sprite> actor;
+            rmmr::RGB tint{};
         };
         struct Actions : BaseActions {
             static void update(Writing);

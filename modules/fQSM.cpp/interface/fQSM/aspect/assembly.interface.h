@@ -13,10 +13,10 @@ namespace fqsm::detail::aspect {
     struct Base {
         // Aspect internal alias:
         template<typename Meta>
-        using Anchor = Identifier<Meta>;
+        using Anchor = typename Meta::Id;
 
         template<typename Meta>
-        using Custody = Identifier<Meta>;
+        using Custody = typename Meta::Id;
 
         template<typename Meta>
         using Affected = ::fqsm::Affected<Meta>;
