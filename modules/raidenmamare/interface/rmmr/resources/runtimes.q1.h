@@ -3,6 +3,7 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/physical.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/resources/sprites.q1.h>
@@ -17,16 +18,21 @@ namespace rmmr::resource {
 
     struct Assets : Component<Assets, Manager> {
         struct Quantum {};
+        struct Global {
+            optional<Id> singleton{};
+        };
         struct Actions : BaseActions {
-            static auto add_texture_loader(Writing, Id, Unit::Quantum, texture::Loader::Quantum) -> texture::Asset::Id;
-            static auto add_texture_generator(Writing, Id, Unit::Quantum, texture::Generator::Quantum) -> texture::Asset::Id;
-            static auto add_shader_loader(Writing, Id, Unit::Quantum, shader::Loader::Quantum) -> shader::Asset::Id;
-            static auto add_material(Writing, Id, Unit::Quantum, material::Asset::Quantum) -> material::Asset::Id;
-            static auto add_shadow_allocator(Writing, Id, Unit::Quantum, shadow::Allocator::Quantum) -> shadow::Asset::Id;
-            static auto add_geometry_loader(Writing, Id, Unit::Quantum, geometry::Loader::Quantum) -> geometry::Asset::Id;
-            static auto add_geometry_generator(Writing, Id, Unit::Quantum, geometry::Generator::Quantum) -> geometry::Asset::Id;
-            static auto add_sprites_kenney(Writing, Id, Unit::Quantum, sprite::LoaderKenney::Quantum) -> sprite::Pack::Id;
-            static void extend(Writing, Manager::Id, filepath path);
+            static auto singleton(Reading) -> optional<Id>;
+            static auto add_texture_loader(Writing, Unit::Quantum, texture::Loader::Quantum) -> texture::Asset::Id;
+            static auto add_texture_generator(Writing, Unit::Quantum, texture::Generator::Quantum) -> texture::Asset::Id;
+            static auto add_shader_loader(Writing, Unit::Quantum, shader::Loader::Quantum) -> shader::Asset::Id;
+            static auto add_material(Writing, Unit::Quantum, material::Asset::Quantum) -> material::Asset::Id;
+            static auto add_shadow_allocator(Writing, Unit::Quantum, shadow::Allocator::Quantum) -> shadow::Asset::Id;
+            static auto add_geometry_loader(Writing, Unit::Quantum, geometry::Loader::Quantum) -> geometry::Asset::Id;
+            static auto add_geometry_generator(Writing, Unit::Quantum, geometry::Generator::Quantum) -> geometry::Asset::Id;
+            static auto add_sprites_kenney(Writing, Unit::Quantum, sprite::LoaderKenney::Quantum) -> sprite::Pack::Id;
+            static auto add_physical_loader(Writing, Unit::Quantum, physical::Loader::Quantum) -> physical::Asset::Id;
+            static void extend(Writing, filepath path);
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
@@ -81,7 +87,7 @@ namespace rmmr::resource {
         };
         struct Actions : BaseActions {
             static void install(Writing, Id);
-            static void materialize(Writing, Id, Assets::Id);
+            static void materialize(Writing, Id);
         };
         struct Internals;
         static const Behavior customAspectReactions();

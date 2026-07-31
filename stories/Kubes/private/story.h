@@ -50,8 +50,8 @@ namespace kubes {
         phys::System physics;
 
         Schema schema() const override;
-        void addAssets(Writing, rmmr::system::Core::Id) override;
-        void setup(establish::Realm&, rmmr::system::Core::Id, rmmr::system::Window::Id) override;
+        void addAssets(Writing) override;
+        void setup(establish::Realm&, rmmr::system::Window::Id) override;
         void onFrame(establish::Realm&, int64 dt_us) override;
         void contributeViewMenu() override;
         void drawUi(Writing) override;

@@ -7,6 +7,7 @@
 
 #include <rmmr/controller/camera2d.q1.h>
 #include <rmmr/controller/camera3d.q1.h>
+#include <rmmr/resources/physical.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -60,6 +61,8 @@ namespace rmmr {
                 ask::schema::aspect<resource::geometry::Loader>(),
                 ask::schema::aspect<resource::geometry::Generator>(),
                 ask::schema::aspect<resource::geometry::Runtime>(),
+                ask::schema::aspect<resource::physical::Asset>(),
+                ask::schema::aspect<resource::physical::Loader>(),
                 ask::schema::aspect<resource::sprite::Pack>(),
                 ask::schema::aspect<resource::sprite::LoaderKenney>(),
                 ask::schema::aspect<resource::sprite::Runtime>(),
@@ -84,7 +87,6 @@ namespace rmmr {
 
     struct Engine::State : establish::Module::State {
         struct {
-            maybe<system::Core::Id> core;
             maybe<system::Device::Id> device;
             std::vector<ViewContext> activeViews;
             maybe<resource::shadow::Asset::Id> default_shadow;
@@ -111,21 +113,20 @@ namespace rmmr {
             }
         }
 
-        void setupDefaultShadow(Writing context, system::Core::Id core) {
+        void setupDefaultShadow(Writing context) {
             if (handles.default_shadow.exists())
                 return;
             using resource::Assets;
             using resource::Unit;
             for (const auto entry : context->aspect<Unit>().items()) {
-                if (entry.value.manager == core && entry.value.name == "main_shadow") {
+                if (entry.value.name == "main_shadow") {
                     handles.default_shadow = entry.id;
                     return;
                 }
             }
             handles.default_shadow = with<Assets>::add_shadow_allocator(
                 context,
-                core,
-                Unit::Quantum{.manager = core, .name = "main_shadow", .library = "rmmr"},
+                Unit::Quantum{.name = "main_shadow", .library = "rmmr"},
                 resource::shadow::Allocator::Quantum{.size = index2{1024, 1024}});
         }
 
@@ -144,28 +145,29 @@ namespace rmmr {
         return state;
     }
 
-    auto Engine::setup(Writing context, item<system::Core> core, WindowParameters windowParams) -> system::Core::Id {
-        base::message("rmmr: creating core...");
-        const auto coreId = with<system::Interface>::create(context, std::move(core));
-        state->handles.core = coreId;
+    void Engine::createCore(Writing context, item<system::Core> core) {
+        base::message("rmmr: phase createCore");
+        with<system::Interface>::create(context, std::move(core));
+    }
 
-        base::message("rmmr: creating device and window...");
+    void Engine::prepareAssets(Writing context) {
+        base::message("rmmr: phase prepareAssets");
+        with<resource::Manager>::load(context);
+    }
+
+    void Engine::createWindow(Writing context, WindowParameters windowParams) {
+        base::message("rmmr: phase createWindow");
         state->handles.device = with<system::Interface>::addDeviceAndWindow(
             context,
-            coreId,
             std::move(windowParams.title),
             windowParams.requested_size,
             windowParams.presentation);
-        return coreId;
     }
 
-    void Engine::materialize(Writing context, system::Core::Id assets) {
-        state->setupDefaultShadow(context, assets);
-        with<resource::Runtimes>::materialize(context, *state->handles.device, assets);
-    }
-
-    auto Engine::core() const -> system::Core::Id {
-        return *state->handles.core;
+    void Engine::materialize(Writing context) {
+        base::message("rmmr: phase materialize");
+        state->setupDefaultShadow(context);
+        with<resource::Runtimes>::materialize(context, *state->handles.device);
     }
 
     auto Engine::window() const -> system::Window::Id {
@@ -192,9 +194,11 @@ namespace rmmr {
         with<system::Window>::onFrameAdvanced(context, device);
 
         {
-            const auto core = with<system::Device>::get(context, device).core;
-            const auto us = static_cast<int64>(glfwGetTime() * 1'000'000.0);
-            with<system::Clock>::modify(context, core)->absolute = us;
+            const auto clock = with<system::Clock>::singleton(context);
+            if (clock) {
+                const auto us = static_cast<int64>(glfwGetTime() * 1'000'000.0);
+                with<system::Clock>::modify(context, *clock)->absolute = us;
+            }
         }
 
         {

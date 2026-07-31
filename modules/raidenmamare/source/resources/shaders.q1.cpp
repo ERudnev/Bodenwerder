@@ -4,6 +4,7 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include <base/logging.h>
 #include <base/maybe.h>
 
 #include <filesystem>
@@ -81,13 +82,16 @@ namespace rmmr::resource::shader {
     auto Loader::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {
         const auto& loader = with<Loader>::get(context, asset_id);
         const auto& unit = with<Unit>::get(context, asset_id);
-        const auto& manager = with<Manager>::get(context, unit.manager);
+        const auto manager_id = with<Manager>::singleton(context);
+        if (not manager_id) return context.refuse("resource::shader::Loader::materialize: Manager singleton missing");
+        const auto& manager = with<Manager>::get(context, *manager_id);
 
         const auto& device_quantum = with<system::Device>::get(context, device);
         glfwMakeContextCurrent(device_quantum.handle);
 
         const auto vertex_path = resolve_under_manager(manager, unit, loader.vertex);
         const auto fragment_path = resolve_under_manager(manager, unit, loader.fragment);
+        base::message("rmmr: shader::Loader '{}/{}' ← {} + {}", unit.library, unit.name, vertex_path.string(), fragment_path.string());
 
         const auto vertex_source = read_text_file(vertex_path);
         if (not vertex_source or vertex_source->empty())

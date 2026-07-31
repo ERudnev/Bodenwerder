@@ -34,36 +34,36 @@ namespace kubes {
         });
     }
 
-    void KubeOfKubes::addAssets(Writing context, system::Core::Id core) {
+    void KubeOfKubes::addAssets(Writing context) {
         using namespace resource;
         using geometry::Generator;
 
         assets.primitive.grid = with<::rmmr::resource::Assets>::add_geometry_generator(
-            context, core,
-            item<Unit>{.manager = core, .name = "grid", .library = "rmmr"},
+            context,
+            item<Unit>{.name = "grid", .library = "rmmr"},
             item<Generator>{.type = Generator::Type::gridPlane});
 
         assets.primitive.sphere = with<::rmmr::resource::Assets>::add_geometry_generator(
-            context, core,
-            item<Unit>{.manager = core, .name = "sphere", .library = "rmmr"},
+            context,
+            item<Unit>{.name = "sphere", .library = "rmmr"},
             item<Generator>{.type = Generator::Type::sphere});
 
         assets.primitive.unitQuad = with<::rmmr::resource::Assets>::add_geometry_generator(
-            context, core,
-            item<Unit>{.manager = core, .name = "sprite_unit_quad", .library = "Kubes"},
+            context,
+            item<Unit>{.name = "sprite_unit_quad", .library = "Kubes"},
             item<Generator>{.type = Generator::Type::unitQuad});
 
         assets.skySphere = with<::rmmr::resource::Assets>::add_sprites_kenney(
-            context, core,
-            item<Unit>{.manager = core, .name = "skySphere", .library = "Kubes"},
+            context,
+            item<Unit>{.name = "skySphere", .library = "Kubes"},
             item<sprite::LoaderKenney>{
                 .image = "sprites/skySphere.png",
                 .descriptor = "sprites/skySphere.xml",
             });
 
         const auto sky_sphere_shader = with<::rmmr::resource::Assets>::add_shader_loader(
-            context, core,
-            item<Unit>{.manager = core, .name = "skySphere_shader", .library = "Kubes"},
+            context,
+            item<Unit>{.name = "skySphere_shader", .library = "Kubes"},
             item<shader::Loader>{
                 .vertex = "shaders/skySphere.vert.glsl",
                 .fragment = "shaders/skySphere.frag.glsl",
@@ -71,8 +71,8 @@ namespace kubes {
 
         const auto& sky_sphere_pack = with<sprite::Pack>::get(context, *assets.skySphere);
         assets.skySphereMaterial = with<::rmmr::resource::Assets>::add_material(
-            context, core,
-            item<Unit>{.manager = core, .name = "skySphere_material", .library = "Kubes"},
+            context,
+            item<Unit>{.name = "skySphere_material", .library = "Kubes"},
             resource::material::Asset::Quantum{
                 .techniques = {
                     {renderer::Pass::environment, resource::material::Asset::Technique{
@@ -96,12 +96,13 @@ namespace kubes {
                 .blend = renderer::BlendMode::additive,
             });
 
-        if (not with<Unit_group>::exists(context, core)) {
-            with<Unit_group>::extend(context, core);
+        const auto manager = *with<Manager>::singleton(context);
+        if (not with<Unit_group>::exists(context, manager)) {
+            with<Unit_group>::extend(context, manager);
         }
         const auto sky_geometry_id = with<Unit_group>::addElement(
-            context, core,
-            item<Unit>{.manager = core, .name = "skySphere_geometry", .library = "Kubes"});
+            context, manager,
+            item<Unit>{.name = "skySphere_geometry", .library = "Kubes"});
         with<geometry::Asset>::extend(context, sky_geometry_id, geometry::Asset::Quantum{});
         with<resources::SkySphereGenerator>::extend(context, sky_geometry_id, resources::SkySphereGenerator::Quantum{
             .count = 48800, // 20k×2, then halo ×2 again (~31k disk + ~18k halo)
@@ -162,7 +163,7 @@ namespace kubes {
         physics.bind(root, *assets.skySphere, *shared->material.sprite);
     }
 
-    void KubeOfKubes::setup(establish::Realm& world, system::Core::Id, system::Window::Id window) {
+    void KubeOfKubes::setup(establish::Realm& world, system::Window::Id window) {
         populateWorld(world, window);
     }
 

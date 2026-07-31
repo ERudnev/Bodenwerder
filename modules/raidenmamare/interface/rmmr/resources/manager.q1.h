@@ -12,6 +12,10 @@ namespace rmmr::resource {
         struct Quantum {
             filepath location;
         };
+        struct Actions : BaseActions {
+            static auto singleton(Reading) -> optional<Id>;
+            static void load(Writing);
+        };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };
@@ -25,7 +29,6 @@ namespace rmmr::resource {
         };
 
         struct Quantum {
-            Manager::Id manager;
             Name name;
             string library;
         };

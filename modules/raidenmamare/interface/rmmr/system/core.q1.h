@@ -19,7 +19,7 @@ namespace rmmr::system {
             GLVer version;
         };
         struct Global {
-            optional<Id> instance{};
+            optional<Id> singleton{};
         };
         struct Actions : BaseActions {
             // For change analysis (Clock deltas keyed by Core id).
@@ -34,6 +34,12 @@ namespace rmmr::system {
     struct Clock : Component<Clock, Core> {
         struct Quantum {
             int64 absolute; // microseconds since process start
+        };
+        struct Global {
+            optional<Id> singleton{};
+        };
+        struct Actions : BaseActions {
+            static auto singleton(Reading) -> optional<Id>;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

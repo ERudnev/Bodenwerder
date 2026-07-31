@@ -13,7 +13,6 @@ namespace rmmr::renderer {
         opaque,
         transparent,
         shadow,
-        ui,
         gizmo,
         sprite,
         environment, // sky / backdrop; main FB, before opaque

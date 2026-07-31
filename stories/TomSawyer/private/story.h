@@ -21,10 +21,10 @@ namespace tommy {
         Ui ui;
 
         Schema schema() const override;
-        void addAssets(Writing context, rmmr::system::Core::Id id) override {
-            assets = Assets::init(context, id);
+        void addAssets(Writing context) override {
+            assets = Assets::init(context);
         }
-        void setup(establish::Realm&, rmmr::system::Core::Id, rmmr::system::Window::Id) override;
+        void setup(establish::Realm&, rmmr::system::Window::Id) override;
         void onFrame(establish::Realm&, int64 dt_us) override;
         void contributeViewMenu() override;
         void drawUi(Writing) override;

@@ -12,12 +12,13 @@ namespace rmmr::resource {
     namespace {
 
         template<typename Asset, typename Kind>
-        auto register_unit(Writing context, Assets::Id assets, Unit::Quantum unit, typename Asset::Quantum asset, typename Kind::Quantum kind) -> typename Asset::Id {
-            unit.manager = assets;
-            if (not with<Unit_group>::exists(context, assets)) {
-                with<Unit_group>::extend(context, assets);
+        auto register_unit(Writing context, Unit::Quantum unit, typename Asset::Quantum asset, typename Kind::Quantum kind) -> typename Asset::Id {
+            const auto assets = with<Assets>::singleton(context);
+            if (not assets) return context.refuse("resource::Assets: singleton missing");
+            if (not with<Unit_group>::exists(context, *assets)) {
+                with<Unit_group>::extend(context, *assets);
             }
-            const auto unit_id = with<Unit_group>::addElement(context, assets, std::move(unit));
+            const auto unit_id = with<Unit_group>::addElement(context, *assets, std::move(unit));
             with<Asset>::extend(context, unit_id, std::move(asset));
             with<Kind>::extend(context, unit_id, std::move(kind));
             return unit_id;
@@ -32,9 +33,11 @@ namespace rmmr::resource {
         }
 
         template<typename Fn>
-        void for_devices_of_assets(Writing context, Assets::Id assets, Fn&& fn) {
+        void for_devices_of_assets(Writing context, Fn&& fn) {
+            const auto assets = with<Assets>::singleton(context);
+            if (not assets) return;
             for (const auto [device, host] : context->aspect<DeviceRuntimes>().items()) {
-                if (host.assets != assets) continue;
+                if (host.assets != *assets) continue;
                 if (not with<Runtimes>::exists(context, device)) continue;
                 fn(device);
             }
@@ -148,85 +151,83 @@ namespace rmmr::resource {
 
     } // namespace
 
-    auto Assets::Actions::add_texture_loader(Writing context, Id assets, Unit::Quantum unit, texture::Loader::Quantum loader) -> texture::Asset::Id {
-        return register_unit<texture::Asset, texture::Loader>(context, assets, std::move(unit), texture::Asset::Quantum{}, std::move(loader));
+    auto Assets::Actions::singleton(Reading context) -> optional<Id> {
+        return with<Assets>::get_global(context).singleton;
     }
 
-    auto Assets::Actions::add_texture_generator(Writing context, Id assets, Unit::Quantum unit, texture::Generator::Quantum generator) -> texture::Asset::Id {
-        return register_unit<texture::Asset, texture::Generator>(context, assets, std::move(unit), texture::Asset::Quantum{}, std::move(generator));
+    auto Assets::Actions::add_texture_loader(Writing context, Unit::Quantum unit, texture::Loader::Quantum loader) -> texture::Asset::Id {
+        return register_unit<texture::Asset, texture::Loader>(context, std::move(unit), texture::Asset::Quantum{}, std::move(loader));
     }
 
-    auto Assets::Actions::add_shader_loader(Writing context, Id assets, Unit::Quantum unit, shader::Loader::Quantum loader) -> shader::Asset::Id {
-        return register_unit<shader::Asset, shader::Loader>(context, assets, std::move(unit), shader::Asset::Quantum{}, std::move(loader));
+    auto Assets::Actions::add_texture_generator(Writing context, Unit::Quantum unit, texture::Generator::Quantum generator) -> texture::Asset::Id {
+        return register_unit<texture::Asset, texture::Generator>(context, std::move(unit), texture::Asset::Quantum{}, std::move(generator));
     }
 
-    auto Assets::Actions::add_material(Writing context, Id assets, Unit::Quantum unit, material::Asset::Quantum asset) -> material::Asset::Id {
-        unit.manager = assets;
-        if (not with<Unit_group>::exists(context, assets)) {
-            with<Unit_group>::extend(context, assets);
+    auto Assets::Actions::add_shader_loader(Writing context, Unit::Quantum unit, shader::Loader::Quantum loader) -> shader::Asset::Id {
+        return register_unit<shader::Asset, shader::Loader>(context, std::move(unit), shader::Asset::Quantum{}, std::move(loader));
+    }
+
+    auto Assets::Actions::add_material(Writing context, Unit::Quantum unit, material::Asset::Quantum asset) -> material::Asset::Id {
+        const auto assets = singleton(context);
+        if (not assets) {
+            return context.refuse("resource::Assets: singleton missing");
         }
-        const auto unit_id = with<Unit_group>::addElement(context, assets, std::move(unit));
+        if (not with<Unit_group>::exists(context, *assets)) {
+            with<Unit_group>::extend(context, *assets);
+        }
+        const auto unit_id = with<Unit_group>::addElement(context, *assets, std::move(unit));
         with<material::Asset>::extend(context, unit_id, std::move(asset));
         return unit_id;
     }
 
-    auto Assets::Actions::add_shadow_allocator(Writing context, Id assets, Unit::Quantum unit, shadow::Allocator::Quantum allocator) -> shadow::Asset::Id {
-        return register_unit<shadow::Asset, shadow::Allocator>(context, assets, std::move(unit), shadow::Asset::Quantum{}, std::move(allocator));
+    auto Assets::Actions::add_shadow_allocator(Writing context, Unit::Quantum unit, shadow::Allocator::Quantum allocator) -> shadow::Asset::Id {
+        return register_unit<shadow::Asset, shadow::Allocator>(context, std::move(unit), shadow::Asset::Quantum{}, std::move(allocator));
     }
 
-    auto Assets::Actions::add_geometry_loader(Writing context, Id assets, Unit::Quantum unit, geometry::Loader::Quantum loader) -> geometry::Asset::Id {
-        return register_unit<geometry::Asset, geometry::Loader>(context, assets, std::move(unit), geometry::Asset::Quantum{}, std::move(loader));
+    auto Assets::Actions::add_geometry_loader(Writing context, Unit::Quantum unit, geometry::Loader::Quantum loader) -> geometry::Asset::Id {
+        return register_unit<geometry::Asset, geometry::Loader>(context, std::move(unit), geometry::Asset::Quantum{}, std::move(loader));
     }
 
-    auto Assets::Actions::add_geometry_generator(Writing context, Id assets, Unit::Quantum unit, geometry::Generator::Quantum generator) -> geometry::Asset::Id {
-        return register_unit<geometry::Asset, geometry::Generator>(context, assets, std::move(unit), geometry::Asset::Quantum{}, std::move(generator));
+    auto Assets::Actions::add_geometry_generator(Writing context, Unit::Quantum unit, geometry::Generator::Quantum generator) -> geometry::Asset::Id {
+        return register_unit<geometry::Asset, geometry::Generator>(context, std::move(unit), geometry::Asset::Quantum{}, std::move(generator));
     }
 
-    auto Assets::Actions::add_sprites_kenney(Writing context, Id assets, Unit::Quantum unit, sprite::LoaderKenney::Quantum loader) -> sprite::Pack::Id {
-        unit.manager = assets;
-
+    auto Assets::Actions::add_sprites_kenney(Writing context, Unit::Quantum unit, sprite::LoaderKenney::Quantum loader) -> sprite::Pack::Id {
         const auto texture_id = add_texture_loader(
             context,
-            assets,
-            Unit::Quantum{.manager = assets, .name = unit.name + "_atlas", .library = unit.library},
+            Unit::Quantum{.name = unit.name + "_atlas", .library = unit.library},
             texture::Loader::Quantum{.file = loader.image, .mipmaps = false});
 
-        const auto pack_id = register_unit<sprite::Pack, sprite::LoaderKenney>(
+        return register_unit<sprite::Pack, sprite::LoaderKenney>(
             context,
-            assets,
             std::move(unit),
             sprite::Pack::Quantum{
                 .texture = with<Unit>::remember(context, texture_id),
                 .entries = {},
             },
             std::move(loader));
-
-        sprite::LoaderKenney::Actions::load(context, pack_id);
-        if (with<sprite::Pack>::get(context, pack_id).entries.empty()) {
-            return context.refuse("resource::Assets::add_sprites_kenney: pack entries empty after load");
-        }
-
-        base::message(
-            "resource::Assets::add_sprites_kenney: pack '{}' loaded ({} entries)",
-            with<Unit>::get(context, pack_id).name,
-            with<sprite::Pack>::get(context, pack_id).entries.size());
-        return pack_id;
     }
 
-    void Assets::Actions::extend(Writing context, Manager::Id manager, filepath path) {
-        with<Manager>::modify(context, manager)->location = std::move(path);
+    auto Assets::Actions::add_physical_loader(Writing context, Unit::Quantum unit, physical::Loader::Quantum loader) -> physical::Asset::Id {
+        return register_unit<physical::Asset, physical::Loader>(context, std::move(unit), physical::Asset::Quantum{}, std::move(loader));
+    }
 
-        if (not with<Assets>::exists(context, manager)) {
-            BaseActions::extend(context, manager, Quantum{});
+    void Assets::Actions::extend(Writing context, filepath path) {
+        const auto manager = with<Manager>::singleton(context);
+        if (not manager) return (void)context.refuse("resource::Assets::extend: Manager singleton missing");
+        with<Manager>::modify(context, *manager)->location = std::move(path);
+        if (not with<Assets>::exists(context, *manager)) {
+            BaseActions::extend(context, *manager, Quantum{});
         }
+        with<Assets>::modify_global(context)->singleton = *manager;
     }
 
     void Runtimes::Actions::install(Writing context, Id device) {
         if (with<Runtimes>::exists(context, device)) return (void)context.refuse(std::format("resource::Runtimes::install: already installed for device {}", device));
 
-        with<DeviceRuntimes>::extend(context, device, DeviceRuntimes::Quantum{
-            .assets = with<system::Device>::get(context, device).core,
-        });
+        const auto assets = with<Assets>::singleton(context);
+        if (not assets) return (void)context.refuse("resource::Runtimes::install: Assets singleton missing");
+        with<DeviceRuntimes>::extend(context, device, DeviceRuntimes::Quantum{.assets = *assets});
         with<Runtime_group>::extend(context, device);
         with<ShaderRuntime_group>::extend(context, device);
         with<MaterialRuntime_group>::extend(context, device);
@@ -236,32 +237,27 @@ namespace rmmr::resource {
         BaseActions::extend(context, device, Quantum{});
     }
 
-    void Runtimes::Actions::materialize(Writing context, Id device, Assets::Id assets) {
-        with<DeviceRuntimes>::modify(context, device)->assets = assets;
+    void Runtimes::Actions::materialize(Writing context, Id device) {
+        const auto assets = with<Assets>::singleton(context);
+        if (not assets) return (void)context.refuse("resource::Runtimes::materialize: Assets singleton missing");
+        with<DeviceRuntimes>::modify(context, device)->assets = *assets;
 
-        // Inventory = family Asset tables; handler = Kind found by same id. Family order: deps before dependents.
         for (const auto [id, _] : context->aspect<texture::Asset>().items()) {
-            if (with<Unit>::get(context, id).manager != assets) continue;
             rematerialize_texture(context, id, device);
         }
         for (const auto [id, _] : context->aspect<shader::Asset>().items()) {
-            if (with<Unit>::get(context, id).manager != assets) continue;
             rematerialize_shader(context, id, device);
         }
         for (const auto [id, _] : context->aspect<material::Asset>().items()) {
-            if (with<Unit>::get(context, id).manager != assets) continue;
             rematerialize_material(context, id, device);
         }
         for (const auto [id, _] : context->aspect<shadow::Asset>().items()) {
-            if (with<Unit>::get(context, id).manager != assets) continue;
             rematerialize_shadow(context, id, device);
         }
         for (const auto [id, _] : context->aspect<geometry::Asset>().items()) {
-            if (with<Unit>::get(context, id).manager != assets) continue;
             rematerialize_geometry(context, id, device);
         }
         for (const auto [id, _] : context->aspect<sprite::Pack>().items()) {
-            if (with<Unit>::get(context, id).manager != assets) continue;
             rematerialize_sprites(context, id, device);
         }
     }
@@ -281,8 +277,7 @@ namespace rmmr::resource {
         static void align_from_assets(Reacting context) {
             for (const auto change : context.changes<texture::Asset>().addedOrUpdated()) {
                 if (not with<Unit>::exists(context, change.id)) continue;
-                const auto assets = with<Unit>::get(context, change.id).manager;
-                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                for_devices_of_assets(context, [&](system::Device::Id device) {
                     rematerialize_texture(context, change.id, device);
                     rematerialize_materials_using_texture(context, change.id, device);
                 });
@@ -290,8 +285,7 @@ namespace rmmr::resource {
 
             for (const auto change : context.changes<shader::Asset>().addedOrUpdated()) {
                 if (not with<Unit>::exists(context, change.id)) continue;
-                const auto assets = with<Unit>::get(context, change.id).manager;
-                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                for_devices_of_assets(context, [&](system::Device::Id device) {
                     rematerialize_shader(context, change.id, device);
                     rematerialize_materials_using_shader(context, change.id, device);
                 });
@@ -299,32 +293,28 @@ namespace rmmr::resource {
 
             for (const auto change : context.changes<material::Asset>().addedOrUpdated()) {
                 if (not with<Unit>::exists(context, change.id)) continue;
-                const auto assets = with<Unit>::get(context, change.id).manager;
-                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                for_devices_of_assets(context, [&](system::Device::Id device) {
                     rematerialize_material(context, change.id, device);
                 });
             }
 
             for (const auto change : context.changes<shadow::Asset>().addedOrUpdated()) {
                 if (not with<Unit>::exists(context, change.id)) continue;
-                const auto assets = with<Unit>::get(context, change.id).manager;
-                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                for_devices_of_assets(context, [&](system::Device::Id device) {
                     rematerialize_shadow(context, change.id, device);
                 });
             }
 
             for (const auto change : context.changes<geometry::Asset>().addedOrUpdated()) {
                 if (not with<Unit>::exists(context, change.id)) continue;
-                const auto assets = with<Unit>::get(context, change.id).manager;
-                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                for_devices_of_assets(context, [&](system::Device::Id device) {
                     rematerialize_geometry(context, change.id, device);
                 });
             }
 
             for (const auto change : context.changes<sprite::Pack>().addedOrUpdated()) {
                 if (not with<Unit>::exists(context, change.id)) continue;
-                const auto assets = with<Unit>::get(context, change.id).manager;
-                for_devices_of_assets(context, assets, [&](system::Device::Id device) {
+                for_devices_of_assets(context, [&](system::Device::Id device) {
                     rematerialize_sprites(context, change.id, device);
                 });
             }

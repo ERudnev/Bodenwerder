@@ -9,15 +9,17 @@ namespace rmmr::system {
     using namespace fqsm::api;
 
     auto Core::Actions::singleton(Reading context) -> optional<Id> {
-        return with<Core>::get_global(context).instance;
+        return with<Core>::get_global(context).singleton;
     }
 
     auto Core::Actions::access(Reading context) -> const Quantum* {
         const auto id = singleton(context);
-        if (not id or not with<Core>::exists(context, *id)) {
-            return nullptr;
-        }
+        if (not id) return nullptr;
         return &with<Core>::get(context, *id);
+    }
+
+    auto Clock::Actions::singleton(Reading context) -> optional<Id> {
+        return with<Clock>::get_global(context).singleton;
     }
 
     struct Device::Internals : Device::DefaultInternals {

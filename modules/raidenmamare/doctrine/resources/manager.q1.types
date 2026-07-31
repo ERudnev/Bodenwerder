@@ -7,6 +7,9 @@ namespace rmmr
     component Manager of system::Core
       one
         location: filepath
+        >load()
+      all
+        ?singleton()->#?
 
     // persistent thing
     entity Unit
@@ -15,7 +18,6 @@ namespace rmmr
         id: #
         backup: Name
       one
-        manager: #Manager
         name: Name
         library: string
         ?remember()->Reference

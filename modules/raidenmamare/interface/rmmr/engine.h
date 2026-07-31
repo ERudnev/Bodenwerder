@@ -35,11 +35,12 @@ namespace rmmr {
         Schema schema() override;
         std::shared_ptr<establish::Module::State> install(Schema finalSchema) override;
 
-        // Creates system::Core on the caller's Writing, then device/window.
-        // Viewport is owned by Product::setup.
-        auto setup(Writing, item<system::Core>, WindowParameters) -> system::Core::Id;
-        void materialize(Writing, system::Core::Id assets);
-        auto core() const -> system::Core::Id;
+        // Order: createCore → addAssets → prepareAssets → createWindow → materialize.
+        // Window/Device only after load, so Pack is not sent to GPU while entries are still empty.
+        void createCore(Writing, item<system::Core>);
+        void prepareAssets(Writing);
+        void createWindow(Writing, WindowParameters);
+        void materialize(Writing);
         auto window() const -> system::Window::Id;
         void setActiveViews(std::vector<ViewContext>);
 

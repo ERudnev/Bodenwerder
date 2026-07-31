@@ -40,7 +40,7 @@ namespace tommy {
         };
     }
 
-    void SpriteTest::setup(establish::Realm& world, system::Core::Id, system::Window::Id window) {
+    void SpriteTest::setup(establish::Realm& world, system::Window::Id window) {
         populateWorld(world, window);
     }
 

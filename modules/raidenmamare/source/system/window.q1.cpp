@@ -81,16 +81,18 @@ namespace rmmr::system {
 
     } // namespace
 
-    auto Window::Actions::create(Writing context, Core::Id core, string title, index2 requested_size, Presentation presentation) -> Id {
+    auto Window::Actions::create(Writing context, string title, index2 requested_size, Presentation presentation) -> Id {
         if (not glfwInit()) {
             throw std::runtime_error("system::Window::create: glfwInit() failed");
         }
 
-        const auto& core_quantum = with<Core>::get(context, core);
+        const auto core = with<Core>::singleton(context);
+        if (not core) throw std::runtime_error("system::Window::create: Core singleton missing");
+        const auto& core_quantum = with<Core>::get(context, *core);
         const auto handle = create_glfw_handle(core_quantum.version, title, requested_size, presentation);
 
         const auto device = with<Device>::create(context, Device::Quantum{
-            .core = core,
+            .core = *core,
             .handle = handle,
         });
 

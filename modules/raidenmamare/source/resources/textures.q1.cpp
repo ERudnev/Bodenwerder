@@ -5,6 +5,8 @@
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
 
+#include <base/logging.h>
+
 #include <cmath>
 #include <filesystem>
 #include <vector>
@@ -53,12 +55,15 @@ namespace rmmr::resource::texture {
     auto Loader::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {
         const auto& loader = with<Loader>::get(context, asset_id);
         const auto& unit = with<Unit>::get(context, asset_id);
-        const auto& manager = with<Manager>::get(context, unit.manager);
+        const auto manager_id = with<Manager>::singleton(context);
+        if (not manager_id) return context.refuse("resource::texture::Loader::materialize: Manager singleton missing");
+        const auto& manager = with<Manager>::get(context, *manager_id);
 
         const auto& device_quantum = with<system::Device>::get(context, device);
         glfwMakeContextCurrent(device_quantum.handle);
 
         const auto path = resolve_under_manager(manager, unit, loader.file);
+        base::message("rmmr: texture::Loader '{}/{}' ← {}", unit.library, unit.name, path.string());
 
         int width = 0;
         int height = 0;

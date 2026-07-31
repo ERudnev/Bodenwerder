@@ -4,6 +4,8 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include <base/logging.h>
+
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -117,8 +119,11 @@ namespace rmmr::resource::sprite {
     void LoaderKenney::Actions::load(Writing context, Id pack_id) {
         const auto& loader = with<LoaderKenney>::get(context, pack_id);
         const auto& unit = with<Unit>::get(context, pack_id);
-        const auto& manager = with<Manager>::get(context, unit.manager);
+        const auto manager_id = with<Manager>::singleton(context);
+        if (not manager_id) return (void)context.refuse("resource::sprite::LoaderKenney::load: Manager singleton missing");
+        const auto& manager = with<Manager>::get(context, *manager_id);
         const auto descriptor_path = resolve_under_manager(manager, unit, loader.descriptor);
+        base::message("rmmr: sprite::LoaderKenney '{}/{}' ← {}", unit.library, unit.name, descriptor_path.string());
         const auto entries = parse_kenney_entries(descriptor_path);
         if (not entries) {
             context.refuse(std::format(

@@ -80,7 +80,7 @@ namespace rmmr::wrapper {
         if (not product)
             throw std::runtime_error("app: setProduct before initDefaultWorld()");
 
-        const auto core = engine->setup(
+        engine->createCore(
             state->world,
             item<system::Core>{
                 .assets_root = settings.assets_root,
@@ -88,13 +88,8 @@ namespace rmmr::wrapper {
                     .major = settings.glVersion.major,
                     .minor = settings.glVersion.minor,
                 },
-            },
-            Engine::WindowParameters{
-                .title = settings.title,
-                .requested_size = settings.window_size,
-                .presentation = settings.presentation,
             });
-        state->assets = assets::Manager{.core = core};
+        state->assets = assets::Manager{};
 
         const auto status = state->prepareAssets(settings.assets_root);
         if (status == assets::PrepareStatus::Failed) {
@@ -103,9 +98,17 @@ namespace rmmr::wrapper {
         }
 
         product->bindShared(state->assets->handles);
-        product->addAssets(state->world, core);
-        product->setup(state->world, core, engine->window());
-        engine->materialize(state->world, state->assets->core);
+        product->addAssets(state->world);
+        engine->prepareAssets(state->world);
+        engine->createWindow(
+            state->world,
+            Engine::WindowParameters{
+                .title = settings.title,
+                .requested_size = settings.window_size,
+                .presentation = settings.presentation,
+            });
+        product->setup(state->world, engine->window());
+        engine->materialize(state->world);
         engine->setActiveViews(product->views);
 
         if (status == assets::PrepareStatus::Generated) {

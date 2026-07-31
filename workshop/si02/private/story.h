@@ -23,8 +23,8 @@ namespace si02 {
         Ui ui;
 
         Schema schema() const override;
-        void addAssets(Writing context, rmmr::system::Core::Id id) override {
-            assets = Assets::init(context, id);
+        void addAssets(Writing context) override {
+            assets = Assets::init(context);
         }
         void setup(Writing, rmmr::system::Core::Id, rmmr::system::Viewport::Id) override;
         void contributeViewMenu() override;

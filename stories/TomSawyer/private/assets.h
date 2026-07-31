@@ -5,7 +5,6 @@
 #include <fQSM/api/interface.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/sprites.q1.h>
-#include <rmmr/system/core.q1.h>
 
 namespace tommy {
 
@@ -15,7 +14,7 @@ namespace tommy {
         rmmr::resource::sprite::Pack::Id kenney;
         rmmr::resource::geometry::Asset::Id unitQuad;
 
-        static auto init(Writing, rmmr::system::Core::Id) -> std::unique_ptr<Assets>;
+        static auto init(Writing) -> std::unique_ptr<Assets>;
     };
 
 }

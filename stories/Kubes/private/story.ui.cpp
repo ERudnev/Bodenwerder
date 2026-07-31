@@ -44,7 +44,6 @@ namespace kubes {
                 case renderer::Pass::opaque: return "Opaque";
                 case renderer::Pass::transparent: return "Transparent";
                 case renderer::Pass::shadow: return "Shadow";
-                case renderer::Pass::ui: return "UI";
                 case renderer::Pass::gizmo: return "Gizmo";
                 case renderer::Pass::sprite: return "Sprite";
                 case renderer::Pass::environment: return "Environment";

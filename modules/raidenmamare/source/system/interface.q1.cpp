@@ -15,21 +15,19 @@ namespace rmmr::system {
     auto Interface::create(Writing context, item<Core> core) -> Core::Id {
         const auto id = with<Core>::create(context, core);
 
-        with<Core>::modify_global(context)->instance = id;
-        with<Clock>::extend(context, id, Clock::Quantum{
-            .absolute = 0,
-        });
-        with<resource::Manager>::extend(context, id, resource::Manager::Quantum{
-            .location = core.assets_root,
-        });
+        with<Core>::modify_global(context)->singleton = id;
+        with<Clock>::extend(context, id, Clock::Quantum{.absolute = 0});
+        with<Clock>::modify_global(context)->singleton = id;
+        with<resource::Manager>::extend(context, id, resource::Manager::Quantum{.location = core.assets_root});
         with<resource::Unit_group>::extend(context, id);
-        with<resource::Assets>::extend(context, id, core.assets_root);
+        resource::Assets::BaseActions::extend(context, id, resource::Assets::Quantum{});
+        with<resource::Assets>::modify_global(context)->singleton = id;
 
         return id;
     }
 
-    auto Interface::addDeviceAndWindow(Writing context, Core::Id core, decltype(Window::Quantum::title) title, index2 requested_size, Window::Presentation presentation) -> Device::Id {
-        return Window::Actions::create(context, core, std::move(title), requested_size, presentation);
+    auto Interface::addDeviceAndWindow(Writing context, decltype(Window::Quantum::title) title, index2 requested_size, Window::Presentation presentation) -> Device::Id {
+        return Window::Actions::create(context, std::move(title), requested_size, presentation);
     }
 
     void Interface::shutdown(Writing context) {

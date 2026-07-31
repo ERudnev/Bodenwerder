@@ -27,51 +27,22 @@ namespace rmmr::controller {
 
         const glm::vec3 k_world_up{0.0f, 1.0f, 0.0f};
 
-        auto orientation_from_forward(glm::vec3 forward) -> glm::quat {
-            forward = glm::normalize(forward);
-            const glm::vec3 right = glm::normalize(glm::cross(k_world_up, forward));
-            const glm::vec3 up = glm::cross(forward, right);
-            const glm::mat3 basis(right, up, -forward);
-            return glm::normalize(glm::quat_cast(basis));
-        }
-
-        void clamp_pitch(glm::quat& rotation) {
-            glm::vec3 forward = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
-            const float min_sin = std::sin(glm::radians(k_pitch_min_deg));
-            const float max_sin = std::sin(glm::radians(k_pitch_max_deg));
-            const float clamped_y = std::clamp(forward.y, min_sin, max_sin);
-            if (std::abs(forward.y - clamped_y) <= 1e-6f) {
-                return;
-            }
-
-            forward.y = clamped_y;
-            const float xz_len = std::sqrt(forward.x * forward.x + forward.z * forward.z);
-            if (xz_len <= 1e-6f) {
-                forward = glm::vec3{0.0f, clamped_y > 0.0f ? 1.0f : -1.0f, 0.0f};
-            } else {
-                const float scale = std::sqrt(1.0f - clamped_y * clamped_y) / xz_len;
-                forward.x *= scale;
-                forward.z *= scale;
-            }
-
-            rotation = orientation_from_forward(forward);
-        }
-
         void apply_mouse_look(glm::quat& rotation, index2 delta_mouse) {
-            if (delta_mouse.x == 0 && delta_mouse.y == 0) {
-                return;
-            }
+            if (delta_mouse.x == 0 && delta_mouse.y == 0) return;
 
             const float sens_rad = glm::radians(k_mouse_sens_deg_per_pixel);
             const float yaw = k_mouse_yaw_scale_x * static_cast<float>(delta_mouse.x) * sens_rad;
-            const float pitch = -static_cast<float>(delta_mouse.y) * sens_rad;
+            const float pitch_delta = -static_cast<float>(delta_mouse.y) * sens_rad;
 
             rotation = glm::normalize(glm::angleAxis(yaw, k_world_up) * rotation);
 
+            const glm::vec3 forward = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
+            const float pitch_now = std::asin(std::clamp(forward.y, -1.0f, 1.0f));
+            const float pitch = std::clamp(pitch_now + pitch_delta, glm::radians(k_pitch_min_deg), glm::radians(k_pitch_max_deg)) - pitch_now;
+            if (std::abs(pitch) <= 1e-8f) return;
+
             const glm::vec3 right = glm::normalize(rotation * glm::vec3(1.0f, 0.0f, 0.0f));
             rotation = glm::normalize(glm::angleAxis(pitch, right) * rotation);
-
-            clamp_pitch(rotation);
         }
 
         auto key_down(const vector<bool>& keys, int key) -> bool {
