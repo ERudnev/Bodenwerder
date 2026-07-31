@@ -1,12 +1,14 @@
 #include "story.h"
 
-#include <kubes/resources/geometry.q1.h>
-#include <kubes/world.q1.h>
+#include <eltanin/physics/atom.q1.h>
+#include <eltanin/resources/geometry.q1.h>
+#include <eltanin/world.q1.h>
 #include <rmmr/api/_interface.h>
 #include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/physical.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/sprites.q1.h>
@@ -19,19 +21,20 @@
 
 #include <numbers>
 
-namespace kubes {
+namespace eltanin {
 
     using namespace fqsm::api;
     using namespace rmmr;
 
-    Schema KubeOfKubes::schema() const {
+    Schema Game::schema() const {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
+            ask::schema::aspect<phys::Atom>(),
             ask::schema::aspect<resources::SkySphereGenerator>(),
         });
     }
 
-    void KubeOfKubes::addAssets(Writing context) {
+    void Game::addAssets(Writing context) {
         using namespace resource;
         using geometry::Generator;
 
@@ -47,15 +50,20 @@ namespace kubes {
 
         assets.skySphere = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context,
-            item<Unit>{.name = "skySphere", .library = "Kubes"},
+            item<Unit>{.name = "skySphere", .library = "Eltanin"},
             item<sprite::LoaderKenney>{
                 .image = "sprites/skySphere.png",
                 .descriptor = "sprites/skySphere.xml",
             });
 
+        assets.unitCube = with<::rmmr::resource::Assets>::add_physical_loader(
+            context,
+            item<Unit>{.name = "unit_cube", .library = "rmmr"},
+            item<physical::Loader>{.file = "physical/1kube.atomic"});
+
         const auto sky_sphere_shader = with<::rmmr::resource::Assets>::add_shader_loader(
             context,
-            item<Unit>{.name = "skySphere_shader", .library = "Kubes"},
+            item<Unit>{.name = "skySphere_shader", .library = "Eltanin"},
             item<shader::Loader>{
                 .vertex = "shaders/skySphere.vert.glsl",
                 .fragment = "shaders/skySphere.frag.glsl",
@@ -64,7 +72,7 @@ namespace kubes {
         const auto& sky_sphere_pack = with<sprite::Pack>::get(context, *assets.skySphere);
         assets.skySphereMaterial = with<::rmmr::resource::Assets>::add_material(
             context,
-            item<Unit>{.name = "skySphere_material", .library = "Kubes"},
+            item<Unit>{.name = "skySphere_material", .library = "Eltanin"},
             resource::material::Asset::Quantum{
                 .techniques = {
                     {renderer::Pass::environment, resource::material::Asset::Technique{
@@ -94,7 +102,7 @@ namespace kubes {
         }
         const auto sky_geometry_id = with<Unit_group>::addElement(
             context, manager,
-            item<Unit>{.name = "skySphere_geometry", .library = "Kubes"});
+            item<Unit>{.name = "skySphere_geometry", .library = "Eltanin"});
         with<geometry::Asset>::extend(context, sky_geometry_id, geometry::Asset::Quantum{});
         with<resources::SkySphereGenerator>::extend(context, sky_geometry_id, resources::SkySphereGenerator::Quantum{
             .count = 48800, // 20k×2, then halo ×2 again (~31k disk + ~18k halo)
@@ -104,7 +112,7 @@ namespace kubes {
         assets.skySphereGeometry = sky_geometry_id;
     }
 
-    void KubeOfKubes::populateWorld(Writing context, system::Window::Id window) {
+    void Game::populateWorld(Writing context, system::Window::Id window) {
         with<World>::modify_global(context)->window = window;
 
         const auto framebuffer = with<system::Window>::framebufferSize(context, window);
@@ -152,16 +160,17 @@ namespace kubes {
         };
     }
 
-    void KubeOfKubes::setup(establish::Realm& world, system::Window::Id window) {
+    void Game::setup(establish::Realm& world, system::Window::Id window) {
         populateWorld(world, window);
     }
 
-    void KubeOfKubes::advanceSim(Writing context, int64 dt_us) {
+    void Game::advanceSim(Writing context, int64 dt_us) {
         with<World>::advance(context, dt_us);
     }
 
-    void KubeOfKubes::onFrame(establish::Realm& world, int64 dt_us) {
+    void Game::onFrame(establish::Realm& world, int64 dt_us) {
         with<World>::tetherEnvironment(world);
+        physics.step(world, dt_us);
         advanceSim(world, dt_us);
     }
 

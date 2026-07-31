@@ -1,12 +1,13 @@
 file (GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "*.cpp")
 
-project("Kubes"
-    DESCRIPTION "Succeding former Toy project"
+project("Eltanin"
+    DESCRIPTION "Game project. Space"
     VERSION 0.1
 )
 
-set(Kubes_Q1
+set(Eltanin_Q1
     world.q1.types
+    physics/atom.q1.types
     resources/geometry.q1.types
 )
 
@@ -14,7 +15,7 @@ add_executable(${PROJECT_NAME})
 
 add_q1_schema(${PROJECT_NAME}
     ROOT ${CMAKE_CURRENT_SOURCE_DIR}/model/doctrine
-    FILES ${Kubes_Q1}
+    FILES ${Eltanin_Q1}
 )
 
 target_sources(${PROJECT_NAME}

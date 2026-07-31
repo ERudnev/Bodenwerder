@@ -1,0 +1,19 @@
+namespace eltanin
+
+  // Sim pulse lives in World Global (not per-instance Quantum).
+  //   Product::onFrame(dt_us) → =advance may grow Global.step
+  //   Global.step changes     → domain aspects wake on ~World
+  //   no step change          → no sim update
+  // `paused` freezes step (frames still arrive; Global.step does not).
+  // Pause input: only Global.window (bound in Product::setup).
+  // Environment sky: own Node; =tetherEnvironment copies camera position only (rotation untouched).
+  entity World
+    all
+      step: integer // discrete ticks; 1 step = 1000 μs of wall dt
+      paused: bool
+      window: #system::Window? // pause-key source; unset = ignore
+      sky: #scene::Node? // skybox Simple node
+      camera: #scene::Camera? // view camera node
+      =advance(dt_us: int64) // unpaused: fold wall μs into step (only writes when step grows)
+      =tetherEnvironment() // sky.position ← camera.position
+      !keyboardPauseKey(~system::Window) // rising edge on bound window toggles paused

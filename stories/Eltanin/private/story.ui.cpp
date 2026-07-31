@@ -19,7 +19,7 @@
 #include <rmmr/semantics.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
-namespace kubes {
+namespace eltanin {
 
     using namespace fqsm::api;
     using namespace rmmr;
@@ -92,19 +92,28 @@ namespace kubes {
 
     } // namespace
 
-    void KubeOfKubes::contributeViewMenu() {
+    void Game::contributeViewMenu() {
         ImGui::MenuItem("Camera", nullptr, &ui.camera);
         ImGui::MenuItem("Lighting", nullptr, &ui.lighting);
         ImGui::MenuItem("Materials", nullptr, &ui.materials);
+        ImGui::MenuItem("Physics", nullptr, &ui.physics);
     }
 
-    void KubeOfKubes::drawUi(Writing world) {
+    void Game::drawUi(Writing world) {
         drawCameraWindow(world);
         drawLightingWindow(world);
         drawMaterialsWindow(world);
+        if (ui.physics) {
+            bool open = ui.physics;
+            if (ImGui::Begin("Physics", &open)) {
+                physics.drawUi();
+            }
+            ImGui::End();
+            ui.physics = open;
+        }
     }
 
-    void KubeOfKubes::drawCameraWindow(Writing world) {
+    void Game::drawCameraWindow(Writing world) {
         if (not ui.camera or views.empty())
             return;
 
@@ -138,7 +147,7 @@ namespace kubes {
         ui.camera = open;
     }
 
-    void KubeOfKubes::drawLightingWindow(Writing world) {
+    void Game::drawLightingWindow(Writing world) {
         if (not ui.lighting or views.empty())
             return;
 
@@ -173,7 +182,7 @@ namespace kubes {
         ui.lighting = open;
     }
 
-    void KubeOfKubes::drawMaterialInspector(Writing world, resource::material::Asset::Id material_id) {
+    void Game::drawMaterialInspector(Writing world, resource::material::Asset::Id material_id) {
         auto material = with<resource::material::Asset>::modify(world, material_id);
         auto editable_unit = with<resource::Unit>::modify(world, material_id);
         auto& name_state = ui.material_name_edits[material_id.raw()];
@@ -243,7 +252,7 @@ namespace kubes {
         }
     }
 
-    void KubeOfKubes::drawMaterialsWindow(Writing world) {
+    void Game::drawMaterialsWindow(Writing world) {
         if (not ui.materials)
             return;
 
