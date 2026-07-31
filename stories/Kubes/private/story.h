@@ -7,6 +7,7 @@
 #include <base/maybe.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/physical.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/wrapper/product.h>
 
@@ -27,6 +28,7 @@ namespace kubes {
             base::maybe<rmmr::resource::sprite::Pack::Id> skySphere;
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
             base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
+            base::maybe<rmmr::resource::physical::Asset::Id> unitCube;
         };
 
         struct Ui {

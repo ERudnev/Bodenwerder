@@ -8,6 +8,7 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/physical.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/sprites.q1.h>
@@ -60,6 +61,11 @@ namespace kubes {
                 .image = "sprites/skySphere.png",
                 .descriptor = "sprites/skySphere.xml",
             });
+
+        assets.unitCube = with<::rmmr::resource::Assets>::add_physical_loader(
+            context,
+            item<Unit>{.name = "unit_cube", .library = "rmmr"},
+            item<physical::Loader>{.file = "physical/1kube.redfrag"});
 
         const auto sky_sphere_shader = with<::rmmr::resource::Assets>::add_shader_loader(
             context,

@@ -7,6 +7,7 @@
 
 #include <rmmr/controller/camera2d.q1.h>
 #include <rmmr/controller/camera3d.q1.h>
+#include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/physical.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shadows.q1.h>
