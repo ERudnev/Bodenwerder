@@ -76,7 +76,7 @@ namespace rmmr::system {
 
         {
             ImGuiStyle& style = ImGui::GetStyle();
-            const float dpi_scale = ImGui_ImplGlfw_GetContentScaleForWindow(device.handle);
+            const float dpi_scale = ImGui_ImplGlfw_GetContentScaleForWindow(device.handle) * 1.5f;
             style.FontScaleDpi = dpi_scale;
             style.ScaleAllSizes(dpi_scale);
         }
