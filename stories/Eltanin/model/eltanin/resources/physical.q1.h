@@ -5,19 +5,19 @@
 
 #include <fQSM/api/interface.h>
 
-namespace rmmr::resource::physical {
+namespace eltanin::resource::physical {
 
     using namespace fqsm::api;
 
-    using Reference = resource::Unit::Reference;
+    using Reference = rmmr::resource::Unit::Reference;
 
-    struct Asset : Feature<Asset, resource::Unit> {
+    struct Asset : Feature<Asset, rmmr::resource::Unit> {
         struct Face {
             string name;
             vector<integer> indices;
         };
         struct Quantum {
-            vector<Pos> points;
+            vector<rmmr::Pos> points;
             vector<Face> faces;
         };
         struct Internals : DefaultInternals{};

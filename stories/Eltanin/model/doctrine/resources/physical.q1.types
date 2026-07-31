@@ -1,13 +1,13 @@
-import "math"
-import "resources/manager"
+import "rmmr/math"
+import "rmmr/resources/manager"
 
-namespace rmmr
+namespace eltanin
   namespace resource
     namespace physical
 
-    using Reference as resource::Unit::Reference
+    using Reference as rmmr::resource::Unit::Reference
 
-    feature Asset of resource::Unit
+    feature Asset of rmmr::resource::Unit
       struct Face
         name: string
         indices: vector<integer>

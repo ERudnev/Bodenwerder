@@ -170,7 +170,7 @@ namespace eltanin::resources {
         -> optional<rmmr::resource::geometry::Runtime::Id>
     {
         const auto& generator = with<SkySphereGenerator>::get(context, asset_id);
-        return rmmr::resource::geometry::Asset::Actions::install(context, asset_id, device, build_cpu(generator));
+        return with<rmmr::resource::geometry::Asset>::install(context, asset_id, device, build_cpu(generator));
     }
 
 }

@@ -8,7 +8,6 @@
 #include <rmmr/controller/camera2d.q1.h>
 #include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/resources/manager.q1.h>
-#include <rmmr/resources/physical.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -62,8 +61,6 @@ namespace rmmr {
                 ask::schema::aspect<resource::geometry::Loader>(),
                 ask::schema::aspect<resource::geometry::Generator>(),
                 ask::schema::aspect<resource::geometry::Runtime>(),
-                ask::schema::aspect<resource::physical::Asset>(),
-                ask::schema::aspect<resource::physical::Loader>(),
                 ask::schema::aspect<resource::sprite::Pack>(),
                 ask::schema::aspect<resource::sprite::LoaderKenney>(),
                 ask::schema::aspect<resource::sprite::Runtime>(),

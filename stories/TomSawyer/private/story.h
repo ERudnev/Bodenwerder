@@ -24,7 +24,7 @@ namespace tommy {
         void addAssets(Writing context) override {
             assets = Assets::init(context);
         }
-        void setup(establish::Realm&, rmmr::system::Window::Id) override;
+        void setup(Writing, rmmr::system::Window::Id) override;
         void onFrame(establish::Realm&, int64 dt_us) override;
         void contributeViewMenu() override;
         void drawUi(Writing) override;

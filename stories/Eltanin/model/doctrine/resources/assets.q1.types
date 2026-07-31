@@ -1,0 +1,12 @@
+import "rmmr/resources/runtimes"
+import "resources/physical"
+
+namespace eltanin
+  namespace resource
+
+    using Unit as rmmr::resource::Unit
+
+    component Assets of rmmr::resource::Assets
+      one
+        >add_physical_loader(Unit, physical::Loader)->#physical::Asset
+        >load()

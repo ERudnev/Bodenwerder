@@ -5,9 +5,10 @@
 #include <unordered_map>
 
 #include <base/maybe.h>
+#include <eltanin/resources/assets.q1.h>
+#include <eltanin/resources/physical.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
-#include <rmmr/resources/physical.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/wrapper/product.h>
 
@@ -19,7 +20,7 @@ namespace eltanin {
 
     class Game : public rmmr::wrapper::Product {
     public:
-        struct Assets {
+        struct Handles {
             struct {
                 base::maybe<rmmr::resource::geometry::Asset::Id> grid;
                 base::maybe<rmmr::resource::geometry::Asset::Id> sphere;
@@ -27,7 +28,7 @@ namespace eltanin {
             base::maybe<rmmr::resource::sprite::Pack::Id> skySphere;
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
             base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
-            base::maybe<rmmr::resource::physical::Asset::Id> unitCube;
+            base::maybe<resource::physical::Asset::Id> unitCube;
         };
 
         struct Ui {
@@ -46,13 +47,15 @@ namespace eltanin {
             std::unordered_map<std::uint64_t, MaterialNameEdit> material_name_edits;
         };
 
-        Assets assets;
+        Handles assets;
         Ui ui;
         phys::System physics;
 
         Schema schema() const override;
+        void createCore(Writing) override;
         void addAssets(Writing) override;
-        void setup(establish::Realm&, rmmr::system::Window::Id) override;
+        void prepareAssets(Writing) override;
+        void setup(Writing, rmmr::system::Window::Id) override;
         void onFrame(establish::Realm&, int64 dt_us) override;
         void contributeViewMenu() override;
         void drawUi(Writing) override;

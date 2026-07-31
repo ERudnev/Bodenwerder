@@ -152,8 +152,8 @@ namespace kubes {
         };
     }
 
-    void KubeOfKubes::setup(establish::Realm& world, system::Window::Id window) {
-        populateWorld(world, window);
+    void KubeOfKubes::setup(Writing context, system::Window::Id window) {
+        populateWorld(context, window);
     }
 
     void KubeOfKubes::advanceSim(Writing context, int64 dt_us) {

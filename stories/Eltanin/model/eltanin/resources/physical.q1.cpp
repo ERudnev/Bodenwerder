@@ -1,4 +1,4 @@
-#include <rmmr/resources/physical.q1.h>
+#include <eltanin/resources/physical.q1.h>
 #include <rmmr/resources/manager.q1.h>
 
 #include <base/logging.h>
@@ -8,9 +8,11 @@
 #include <fstream>
 #include <format>
 
-namespace rmmr::resource::physical {
+namespace eltanin::resource::physical {
 
     using namespace fqsm::api;
+    using rmmr::resource::Manager;
+    using rmmr::resource::Unit;
 
     namespace {
 
@@ -25,7 +27,7 @@ namespace rmmr::resource::physical {
             return manager.location / unit.library / file_path;
         }
 
-        auto read_pos(std::istream& in) -> Pos {
+        auto read_pos(std::istream& in) -> rmmr::Pos {
             base::serialization::detail::expect(in, '{');
             const auto x = base::serialization::detail::read<float>(in);
             base::serialization::detail::expect(in, ',');
@@ -33,7 +35,7 @@ namespace rmmr::resource::physical {
             base::serialization::detail::expect(in, ',');
             const auto z = base::serialization::detail::read<float>(in);
             base::serialization::detail::expect(in, '}');
-            return Pos{x, y, z};
+            return rmmr::Pos{x, y, z};
         }
 
         struct FilePayload {
@@ -64,27 +66,27 @@ namespace rmmr::resource::physical {
         const auto& loader = with<Loader>::get(context, id);
         const auto& unit = with<Unit>::get(context, id);
         const auto manager_id = with<Manager>::singleton(context);
-        if (not manager_id) return (void)context.refuse("resource::physical::Loader::load: Manager singleton missing");
+        if (not manager_id) return (void)context.refuse("eltanin::resource::physical::Loader::load: Manager singleton missing");
         const auto& manager = with<Manager>::get(context, *manager_id);
 
         const auto path = resolve_under_manager(manager, unit, loader.file);
-        base::message("rmmr: physical::Loader '{}/{}' ← {}", unit.library, unit.name, path.string());
+        base::message("eltanin: physical::Loader '{}/{}' ← {}", unit.library, unit.name, path.string());
 
         std::ifstream in{path};
         if (not in) {
-            return (void)context.refuse(std::format("resource::physical::Loader::load: failed to open '{}'", path.string()));
+            return (void)context.refuse(std::format("eltanin::resource::physical::Loader::load: failed to open '{}'", path.string()));
         }
 
         FilePayload payload;
         try {
             payload = read_payload(in);
         } catch (const std::exception& error) {
-            return (void)context.refuse(std::format("resource::physical::Loader::load: parse '{}': {}", path.string(), error.what()));
+            return (void)context.refuse(std::format("eltanin::resource::physical::Loader::load: parse '{}': {}", path.string(), error.what()));
         }
 
         if (payload.name != unit.name or payload.library != unit.library) {
             return (void)context.refuse(std::format(
-                "resource::physical::Loader::load: file identity '{}/{}' != unit '{}/{}'",
+                "eltanin::resource::physical::Loader::load: file identity '{}/{}' != unit '{}/{}'",
                 payload.library,
                 payload.name,
                 unit.library,

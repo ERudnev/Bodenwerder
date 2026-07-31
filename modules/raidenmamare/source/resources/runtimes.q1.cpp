@@ -208,10 +208,6 @@ namespace rmmr::resource {
             std::move(loader));
     }
 
-    auto Assets::Actions::add_physical_loader(Writing context, Unit::Quantum unit, physical::Loader::Quantum loader) -> physical::Asset::Id {
-        return register_unit<physical::Asset, physical::Loader>(context, std::move(unit), physical::Asset::Quantum{}, std::move(loader));
-    }
-
     void Assets::Actions::extend(Writing context, filepath path) {
         const auto manager = with<Manager>::singleton(context);
         if (not manager) return (void)context.refuse("resource::Assets::extend: Manager singleton missing");

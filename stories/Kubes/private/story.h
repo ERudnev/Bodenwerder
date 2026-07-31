@@ -46,7 +46,7 @@ namespace kubes {
 
         Schema schema() const override;
         void addAssets(Writing) override;
-        void setup(establish::Realm&, rmmr::system::Window::Id) override;
+        void setup(Writing, rmmr::system::Window::Id) override;
         void onFrame(establish::Realm&, int64 dt_us) override;
         void contributeViewMenu() override;
         void drawUi(Writing) override;

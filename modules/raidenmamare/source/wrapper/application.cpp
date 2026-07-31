@@ -80,15 +80,19 @@ namespace rmmr::wrapper {
         if (not product)
             throw std::runtime_error("app: setProduct before initDefaultWorld()");
 
-        engine->createCore(
-            state->world,
-            item<system::Core>{
-                .assets_root = settings.assets_root,
-                .version = system::Core::GLVer{
-                    .major = settings.glVersion.major,
-                    .minor = settings.glVersion.minor,
-                },
-            });
+        state->world.branch([&](Writing context) {
+            engine->createCore(
+                context,
+                item<system::Core>{
+                    .assets_root = settings.assets_root,
+                    .version = system::Core::GLVer{
+                        .major = settings.glVersion.major,
+                        .minor = settings.glVersion.minor,
+                    },
+                });
+            product->createCore(context);
+        });
+
         state->assets = assets::Manager{};
 
         const auto status = state->prepareAssets(settings.assets_root);
@@ -98,17 +102,27 @@ namespace rmmr::wrapper {
         }
 
         product->bindShared(state->assets->handles);
-        product->addAssets(state->world);
-        engine->prepareAssets(state->world);
-        engine->createWindow(
-            state->world,
-            Engine::WindowParameters{
-                .title = settings.title,
-                .requested_size = settings.window_size,
-                .presentation = settings.presentation,
-            });
-        product->setup(state->world, engine->window());
-        engine->materialize(state->world);
+
+        state->world.branch([&](Writing context) { product->addAssets(context); });
+        state->world.branch([&](Writing context) {
+            engine->prepareAssets(context);
+            product->prepareAssets(context);
+        });
+        state->world.branch([&](Writing context) {
+            engine->createWindow(
+                context,
+                Engine::WindowParameters{
+                    .title = settings.title,
+                    .requested_size = settings.window_size,
+                    .presentation = settings.presentation,
+                });
+        });
+        state->world.branch([&](Writing context) { product->setup(context, engine->window()); });
+        state->world.branch([&](Writing context) {
+            engine->materialize(context);
+            product->materialize(context);
+        });
+
         engine->setActiveViews(product->views);
 
         if (status == assets::PrepareStatus::Generated) {

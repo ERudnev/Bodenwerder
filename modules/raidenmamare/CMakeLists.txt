@@ -26,7 +26,6 @@ set(Raidenmamare_Q1
     resources/materials.q1.types
     resources/shadows.q1.types
     resources/geometry.q1.types
-    resources/physical.q1.types
     resources/sprites.q1.types
     resources/runtimes.q1.types
     controllers/camera3d.q1.types

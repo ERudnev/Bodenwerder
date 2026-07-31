@@ -1,4 +1,4 @@
-#include "story.h"
+﻿#include "story.h"
 
 #include <algorithm>
 #include <array>
@@ -73,16 +73,16 @@ namespace eltanin {
             return std::string_view(filter.data());
         }
 
-        auto collectMaterials(Reading world, std::string_view filter) -> std::vector<resource::material::Asset::Id> {
-            std::vector<resource::material::Asset::Id> materials;
-            for (const auto entry : world->aspect<resource::material::Asset>().items()) {
-                const auto& unit = with<resource::Unit>::get(world, entry.id);
+        auto collectMaterials(Reading world, std::string_view filter) -> std::vector<::rmmr::resource::material::Asset::Id> {
+            std::vector<::rmmr::resource::material::Asset::Id> materials;
+            for (const auto entry : world->aspect<::rmmr::resource::material::Asset>().items()) {
+                const auto& unit = with<::rmmr::resource::Unit>::get(world, entry.id);
                 if (containsCaseInsensitive(unit.name, filter))
                     materials.push_back(entry.id);
             }
             std::sort(materials.begin(), materials.end(), [world](auto left, auto right) {
-                const auto& left_unit = with<resource::Unit>::get(world, left);
-                const auto& right_unit = with<resource::Unit>::get(world, right);
+                const auto& left_unit = with<::rmmr::resource::Unit>::get(world, left);
+                const auto& right_unit = with<::rmmr::resource::Unit>::get(world, right);
                 if (left_unit.name != right_unit.name)
                     return left_unit.name < right_unit.name;
                 return left.raw() < right.raw();
@@ -182,9 +182,9 @@ namespace eltanin {
         ui.lighting = open;
     }
 
-    void Game::drawMaterialInspector(Writing world, resource::material::Asset::Id material_id) {
-        auto material = with<resource::material::Asset>::modify(world, material_id);
-        auto editable_unit = with<resource::Unit>::modify(world, material_id);
+    void Game::drawMaterialInspector(Writing world, ::rmmr::resource::material::Asset::Id material_id) {
+        auto material = with<::rmmr::resource::material::Asset>::modify(world, material_id);
+        auto editable_unit = with<::rmmr::resource::Unit>::modify(world, material_id);
         auto& name_state = ui.material_name_edits[material_id.raw()];
         if (not name_state.editing)
             std::snprintf(name_state.buf.data(), name_state.buf.size(), "%s", editable_unit->name.c_str());
@@ -200,8 +200,8 @@ namespace eltanin {
 
         for (auto& [pass, technique] : material->techniques) {
             if (ImGui::CollapsingHeader(passName(pass), ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (with<resource::Unit>::exists(world, technique.program.id)) {
-                    const auto& shader_unit = with<resource::Unit>::get(world, technique.program.id);
+                if (with<::rmmr::resource::Unit>::exists(world, technique.program.id)) {
+                    const auto& shader_unit = with<::rmmr::resource::Unit>::get(world, technique.program.id);
                     ImGui::Text("Shader: %s", displayName(shader_unit.name));
                 } else {
                     ImGui::TextColored(ImVec4(1.f, 0.25f, 0.25f, 1.f), "Shader: %s",
@@ -214,14 +214,14 @@ namespace eltanin {
                 }
 
                 for (auto& binding : technique.textures) {
-                    pushEntityId<resource::material::Asset>(material_id);
+                    pushEntityId<::rmmr::resource::material::Asset>(material_id);
                     ImGui::PushID(static_cast<int>(binding.uniform));
 
                     const string slot_label{material::Semantics::name_of(binding.uniform)};
                     const char* preview = "(missing)";
-                    const bool texture_ok = with<resource::Unit>::exists(world, binding.texture.id);
+                    const bool texture_ok = with<::rmmr::resource::Unit>::exists(world, binding.texture.id);
                     if (texture_ok) {
-                        const auto& texture_unit = with<resource::Unit>::get(world, binding.texture.id);
+                        const auto& texture_unit = with<::rmmr::resource::Unit>::get(world, binding.texture.id);
                         preview = displayName(texture_unit.name);
                     } else if (not binding.texture.backup.empty()) {
                         preview = displayName(binding.texture.backup);
@@ -230,12 +230,12 @@ namespace eltanin {
                     if (not texture_ok)
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.25f, 0.25f, 1.f));
                     if (ImGui::BeginCombo(slot_label.c_str(), preview)) {
-                        for (const auto entry : world->aspect<resource::texture::Asset>().items()) {
-                            pushEntityId<resource::texture::Asset>(entry.id);
-                            const auto& texture_unit = with<resource::Unit>::get(world, entry.id);
+                        for (const auto entry : world->aspect<::rmmr::resource::texture::Asset>().items()) {
+                            pushEntityId<::rmmr::resource::texture::Asset>(entry.id);
+                            const auto& texture_unit = with<::rmmr::resource::Unit>::get(world, entry.id);
                             const bool selected = entry.id == binding.texture.id;
                             if (ImGui::Selectable(displayName(texture_unit.name), selected))
-                                binding.texture = resource::Unit::Actions::remember(world, entry.id);
+                                binding.texture = with<::rmmr::resource::Unit>::remember(world, entry.id);
                             if (selected)
                                 ImGui::SetItemDefaultFocus();
                             ImGui::PopID();
@@ -276,8 +276,8 @@ namespace eltanin {
                 ImGui::TextDisabled("No materials match the filter.");
             } else {
                 for (const auto material_id : materials) {
-                    pushEntityId<resource::material::Asset>(material_id);
-                    const auto& unit = with<resource::Unit>::get(world, material_id);
+                    pushEntityId<::rmmr::resource::material::Asset>(material_id);
+                    const auto& unit = with<::rmmr::resource::Unit>::get(world, material_id);
                     const bool selected = ui.selected_material.exists() and *ui.selected_material == material_id;
                     if (ImGui::Selectable(displayName(unit.name), selected))
                         ui.selected_material = material_id;
@@ -290,7 +290,7 @@ namespace eltanin {
 
             ImGui::BeginChild("materialInspector", ImVec2{0.0f, 0.0f}, true);
             if (ui.selected_material.exists()
-                and with<resource::material::Asset>::exists(world, *ui.selected_material)) {
+                and with<::rmmr::resource::material::Asset>::exists(world, *ui.selected_material)) {
                 drawMaterialInspector(world, *ui.selected_material);
             } else {
                 ImGui::TextDisabled("Select a material to inspect it.");

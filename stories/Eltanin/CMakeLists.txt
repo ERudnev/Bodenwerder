@@ -9,6 +9,8 @@ set(Eltanin_Q1
     world.q1.types
     physics/atom.q1.types
     resources/geometry.q1.types
+    resources/physical.q1.types
+    resources/assets.q1.types
 )
 
 add_executable(${PROJECT_NAME})

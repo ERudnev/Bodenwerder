@@ -3,7 +3,6 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
-#include <rmmr/resources/physical.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/resources/sprites.q1.h>
@@ -31,7 +30,6 @@ namespace rmmr::resource {
             static auto add_geometry_loader(Writing, Unit::Quantum, geometry::Loader::Quantum) -> geometry::Asset::Id;
             static auto add_geometry_generator(Writing, Unit::Quantum, geometry::Generator::Quantum) -> geometry::Asset::Id;
             static auto add_sprites_kenney(Writing, Unit::Quantum, sprite::LoaderKenney::Quantum) -> sprite::Pack::Id;
-            static auto add_physical_loader(Writing, Unit::Quantum, physical::Loader::Quantum) -> physical::Asset::Id;
             static void extend(Writing, filepath path);
         };
         struct Internals : DefaultInternals{};

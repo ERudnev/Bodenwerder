@@ -14,7 +14,6 @@ namespace rmmr
         >add_geometry_loader(Unit, geometry::Loader)->#geometry::Asset
         >add_geometry_generator(Unit, geometry::Generator)->#geometry::Asset
         >add_sprites_kenney(Unit, sprite::LoaderKenney)->#sprite::Pack
-        >add_physical_loader(Unit, physical::Loader)->#physical::Asset
       all
         singleton: #?
         ?singleton()->#?

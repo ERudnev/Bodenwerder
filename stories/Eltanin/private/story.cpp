@@ -1,14 +1,15 @@
 #include "story.h"
 
 #include <eltanin/physics/atom.q1.h>
+#include <eltanin/resources/assets.q1.h>
 #include <eltanin/resources/geometry.q1.h>
+#include <eltanin/resources/physical.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/api/_interface.h>
 #include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
-#include <rmmr/resources/physical.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/sprites.q1.h>
@@ -30,12 +31,21 @@ namespace eltanin {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
             ask::schema::aspect<phys::Atom>(),
+            ask::schema::aspect<resource::Assets>(),
+            ask::schema::aspect<resource::physical::Asset>(),
+            ask::schema::aspect<resource::physical::Loader>(),
             ask::schema::aspect<resources::SkySphereGenerator>(),
         });
     }
 
+    void Game::createCore(Writing context) {
+        const auto host = with<::rmmr::resource::Assets>::singleton(context);
+        if (not host) return (void)context.refuse("eltanin::Game::createCore: rmmr Assets singleton missing");
+        with<::eltanin::resource::Assets>::extend(context, *host, ::eltanin::resource::Assets::Quantum{});
+    }
+
     void Game::addAssets(Writing context) {
-        using namespace resource;
+        using namespace ::rmmr::resource;
         using geometry::Generator;
 
         assets.primitive.grid = with<::rmmr::resource::Assets>::add_geometry_generator(
@@ -56,10 +66,10 @@ namespace eltanin {
                 .descriptor = "sprites/skySphere.xml",
             });
 
-        assets.unitCube = with<::rmmr::resource::Assets>::add_physical_loader(
+        assets.unitCube = with<::eltanin::resource::Assets>::add_physical_loader(
             context,
             item<Unit>{.name = "unit_cube", .library = "rmmr"},
-            item<physical::Loader>{.file = "physical/1kube.atomic"});
+            item<::eltanin::resource::physical::Loader>{.file = "physical/1kube.atomic"});
 
         const auto sky_sphere_shader = with<::rmmr::resource::Assets>::add_shader_loader(
             context,
@@ -73,9 +83,9 @@ namespace eltanin {
         assets.skySphereMaterial = with<::rmmr::resource::Assets>::add_material(
             context,
             item<Unit>{.name = "skySphere_material", .library = "Eltanin"},
-            resource::material::Asset::Quantum{
+            ::rmmr::resource::material::Asset::Quantum{
                 .techniques = {
-                    {renderer::Pass::environment, resource::material::Asset::Technique{
+                    {renderer::Pass::environment, ::rmmr::resource::material::Asset::Technique{
                         .program = with<Unit>::remember(context, sky_sphere_shader),
                         .uniforms = ::rmmr::material::Semantics::ids_of({
                             "model",
@@ -85,7 +95,7 @@ namespace eltanin {
                             "albedoMap",
                         }),
                         .textures = {
-                            resource::material::Asset::TextureBinding{
+                            ::rmmr::resource::material::Asset::TextureBinding{
                                 .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
                                 .texture = sky_sphere_pack.texture,
                             },
@@ -112,6 +122,10 @@ namespace eltanin {
         assets.skySphereGeometry = sky_geometry_id;
     }
 
+    void Game::prepareAssets(Writing context) {
+        with<::eltanin::resource::Assets>::load(context);
+    }
+
     void Game::populateWorld(Writing context, system::Window::Id window) {
         with<World>::modify_global(context)->window = window;
 
@@ -124,7 +138,7 @@ namespace eltanin {
 
         const auto root = with<scene::Interface>::createScene(context);
 
-        resources::SkySphereGenerator::Actions::materialize(context, *assets.skySphereGeometry, window);
+        with<resources::SkySphereGenerator>::materialize(context, *assets.skySphereGeometry, window);
 
         with<scene::Interface>::createGrid(context, root,
             Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
@@ -160,8 +174,8 @@ namespace eltanin {
         };
     }
 
-    void Game::setup(establish::Realm& world, system::Window::Id window) {
-        populateWorld(world, window);
+    void Game::setup(Writing context, system::Window::Id window) {
+        populateWorld(context, window);
     }
 
     void Game::advanceSim(Writing context, int64 dt_us) {

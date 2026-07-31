@@ -35,7 +35,8 @@ namespace rmmr {
         Schema schema() override;
         std::shared_ptr<establish::Module::State> install(Schema finalSchema) override;
 
-        // Order: createCore → addAssets → prepareAssets → createWindow → materialize.
+        // Bootstrap: App runs each phase in establish::Branch (engine then product when both participate).
+        // Order: createCore → addAssets → prepareAssets → createWindow → setup → materialize.
         // Window/Device only after load, so Pack is not sent to GPU while entries are still empty.
         void createCore(Writing, item<system::Core>);
         void prepareAssets(Writing);
