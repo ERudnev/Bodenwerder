@@ -1,12 +1,12 @@
 #include <eltanin/entities/block.q1.h>
 #include <eltanin/physics/particle.q1.h>
-#include <eltanin/physics/strong.q1.h>
 #include <rmmr/scene/node.q1.h>
 
 namespace eltanin {
     using namespace fqsm::api;
 
     auto Block::Actions::spawn(Writing context, rmmr::scene::Root::Id root, resource::atomic::Asset::Id shape, rmmr::Locator locator, rmmr::scene::actor::Simple::Quantum actor_quantum) -> Id {
+        // Asset points are already game meters (no normalize/scale). Pose is rigid only: R, t.
         const auto pose = rmmr::Pose::from(locator);
         const auto& asset = with<resource::atomic::Asset>::get(context, shape);
         vector<phys::Particle::Id> particles; particles.reserve(asset.points.size());
@@ -17,8 +17,6 @@ namespace eltanin {
         if (particles.empty()) {
             return context.refuse("eltanin::Block::spawn: atomic shape has no points");
         }
-        // Temporary test pin: vertex 0 stays in the constraint wave for the whole runtime.
-        (void)with<phys::strong::Nail>::pin(context, particles[0]);
         const auto body = with<phys::Atomic>::create(context, phys::Atomic::Quantum{.particles = std::move(particles), .restored = pose, .shape = shape});
         const auto actor = with<rmmr::scene::Interface>::createSimpleActor(context, root, locator, std::move(actor_quantum));
         return with<Block>::create(context, Block::Quantum{.body = body, .actor = actor});

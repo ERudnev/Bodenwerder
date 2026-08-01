@@ -15,19 +15,22 @@ namespace eltanin::phys {
 
     // Private physics subsystem (not Q1).
     // Fixed tick 10ms; wall dt accumulates as debt (sub-step remainder).
-    // Magic point-mass at origin: a = −μ r / r³ (softened). Spawn circular speed ≈ sqrt(μ/r).
-    // Entire step is Direct (Particle + Atomic + strong::Nail) inside one Dock; presentation reacts after commit.
+    // Linear gravity −Y (9.81); central μ-gravity kept in Settings but not applied.
+    // Entire step is Direct (Particle + Atomic + strong::Nail/Gluon) inside one Dock; presentation reacts after commit.
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
-    // Constraint wave: Atomic Horn soft pull, then strong::Nail pins (same stiffness).
+    // Constraint wave: Atomic Horn, then Nail pins, then Gluon COM glue (same stiffness); repeated constraintPasses times.
     struct Settings {
-        static constexpr float centralMu = 8.0f;
+        static constexpr float gravity = 9.81f; // m/s², −Y
+        static constexpr float centralMu = 8.0f; // unused while linear gravity is on
         static constexpr float constraintStiffness = 0.75f; // Hitman-style goal pull (constraints)
+        static constexpr int constraintPasses = 4; // full wave (Horn+Nail+Gluon) per tick
         static constexpr float massMin = 1.0f;
         static constexpr float massMax = 100.0f;
         static constexpr int64 fixedStepUs = 10'000;
         static constexpr float fixedDtS = static_cast<float>(fixedStepUs) / 1'000'000.0f;
         static constexpr float gravitySoften = 0.25f;
         static constexpr float gravitySoften2 = gravitySoften * gravitySoften;
+        static constexpr float clueTolerance = 0.01f;
     };
 
     struct System {
@@ -48,7 +51,8 @@ namespace eltanin::phys {
         void applyForces(fqsm::Direct<Particle>&);
         void integrate(fqsm::Direct<Particle>&);
         void restoreBases(Stewarding, fqsm::Direct<Particle>&, fqsm::Direct<Atomic>&);
-        void applyNails(fqsm::Direct<Particle>&, fqsm::Direct<strong::Nail>&);
+        void applyNails(fqsm::Direct<Particle>&, fqsm::Direct<strong::Nail>&, vector<strong::Nail::Id>& doomed);
+        void applyGluons(fqsm::Direct<Particle>&, fqsm::Direct<strong::Gluon>&, vector<strong::Gluon::Id>& doomed);
     };
 
 }

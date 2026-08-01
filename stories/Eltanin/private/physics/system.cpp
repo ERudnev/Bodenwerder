@@ -5,6 +5,7 @@
 
 #include <base/logging.h>
 
+#include <algorithm>
 #include <cmath>
 #include <format>
 
@@ -14,16 +15,14 @@
 namespace eltanin::phys {
 
     void System::applyForces(fqsm::Direct<Particle>& particles) {
-        accelerations.resize(particles.items.size());
-        std::size_t slot = 0;
-        for (auto [_, particle] : particles.items) {
-            // Sample farther of current/prev (|r|²) so a near-origin hop doesn't spike the singularity.
-            const vec3& sample = glm::dot(particle.prev, particle.prev) > glm::dot(particle.current, particle.current) ? particle.prev : particle.current;
-            // a = −μ r / r³ (softened), independent of particle mass.
-            const float r2 = std::max(glm::dot(sample, sample), Settings::gravitySoften2);
-            const float inv_r3 = 1.0f / (r2 * std::sqrt(r2));
-            accelerations[slot++] = -Settings::centralMu * sample * inv_r3;
-        }
+        // Central μ at origin (softened) — parked while the pendulum uses linear g.
+        // for (auto [_, particle] : particles.items) {
+        //     const vec3& sample = glm::dot(particle.prev, particle.prev) > glm::dot(particle.current, particle.current) ? particle.prev : particle.current;
+        //     const float r2 = std::max(glm::dot(sample, sample), Settings::gravitySoften2);
+        //     const float inv_r3 = 1.0f / (r2 * std::sqrt(r2));
+        //     accelerations[slot++] = -Settings::centralMu * sample * inv_r3;
+        // }
+        accelerations.assign(particles.items.size(), vec3{0.0f, -Settings::gravity, 0.0f});
     }
 
     void System::integrate(fqsm::Direct<Particle>& particles) {
@@ -104,7 +103,7 @@ namespace eltanin::phys {
                 particle.current += Settings::constraintStiffness * (goal - particle.current);
             }
 
-            // Mesh verts = shape.points. Origin of pose must match Horn centering: com − R·rest_com.
+            // Mesh verts = shape.points (game meters). Origin of pose must match Horn centering: com − R·rest_com.
             atomic.restored = rmmr::Pose{
                 .position = com - rotation * rest_com,
                 .rotation = rotation,
@@ -112,10 +111,11 @@ namespace eltanin::phys {
         }
     }
 
-    void System::applyNails(fqsm::Direct<Particle>& particles, fqsm::Direct<strong::Nail>& nails) {
-        for (auto [_, nail] : nails.items) {
+    void System::applyNails(fqsm::Direct<Particle>& particles, fqsm::Direct<strong::Nail>& nails, vector<strong::Nail::Id>& doomed) {
+        for (auto [id, nail] : nails.items) {
             auto* particle = particles.items.find(nail.particle);
             if (not particle) {
+                doomed.push_back(id);
                 continue;
             }
             // prev untouched: Verlet velocity shifts with current (same as Horn).
@@ -123,15 +123,61 @@ namespace eltanin::phys {
         }
     }
 
+    void System::applyGluons(fqsm::Direct<Particle>& particles, fqsm::Direct<strong::Gluon>& gluons, vector<strong::Gluon::Id>& doomed) {
+        for (auto [id, gluon] : gluons.items) {
+            std::erase_if(gluon.particles, [&](const Affected<Particle>& particle_id) {
+                return particles.items.find(particle_id) == nullptr;
+            });
+            if (gluon.particles.size() < 2) {
+                doomed.push_back(id);
+                continue;
+            }
+
+            vec3 com{0.0f, 0.0f, 0.0f};
+            float mass_sum = 0.0f;
+            for (const auto particle_id : gluon.particles) {
+                const auto& particle = particles.items.at(particle_id);
+                com += particle.current * particle.mass;
+                mass_sum += particle.mass;
+            }
+            if (mass_sum <= 0.0f) {
+                doomed.push_back(id);
+                continue;
+            }
+            com /= mass_sum;
+            for (const auto particle_id : gluon.particles) {
+                auto& particle = particles.items.at(particle_id);
+                particle.current += Settings::constraintStiffness * (com - particle.current);
+            }
+        }
+    }
+
     void System::tick(Stewarding context) {
-        // Jakobsen: AccumulateForces → Verlet → constraints (Horn + Nail) — all Direct, no Writing.
-        fqsm::Direct<Particle> particles = context;
-        fqsm::Direct<Atomic> atomics = context;
-        fqsm::Direct<strong::Nail> nails = context;
-        applyForces(particles);
-        integrate(particles);
-        restoreBases(context, particles, atomics);
-        applyNails(particles, nails);
+        // Jakobsen: AccumulateForces → Verlet → constraint wave × N — Direct; seppuku after Breach closes.
+        vector<strong::Nail::Id> deadNails;
+        vector<strong::Gluon::Id> deadGluons;
+        {
+            fqsm::Direct<Particle> particles = context;
+            fqsm::Direct<Atomic> atomics = context;
+            fqsm::Direct<strong::Nail> nails = context;
+            fqsm::Direct<strong::Gluon> gluons = context;
+            applyForces(particles);
+            integrate(particles);
+            for (int pass = 0; pass < Settings::constraintPasses; ++pass) {
+                deadNails.clear();
+                deadGluons.clear();
+                restoreBases(context, particles, atomics);
+                applyNails(particles, nails, deadNails);
+                applyGluons(particles, gluons, deadGluons);
+            }
+        }
+        Writing writing = context;
+        for (const auto id : deadNails) {
+            with<strong::Nail>::remove(writing, id);
+        }
+        for (const auto id : deadGluons) {
+            with<strong::Gluon>::remove(writing, id);
+        }
     }
 
     void System::step(establish::Realm& world, int64 dt_us) {

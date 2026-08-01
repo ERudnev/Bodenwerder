@@ -21,4 +21,15 @@ namespace eltanin::phys::strong {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    struct Gluon : Entity<Gluon> {
+        struct Quantum {
+            vector<Affected<Particle>> particles;
+        };
+        struct Actions : BaseActions {
+            static auto clue(Writing, Particle::Id) -> Id;
+        };
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
 }

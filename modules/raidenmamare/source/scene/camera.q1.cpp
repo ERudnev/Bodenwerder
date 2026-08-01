@@ -13,8 +13,8 @@ namespace rmmr::scene {
 
     namespace {
 
-        constexpr float k_z_near = 0.1f;
-        constexpr float k_z_far = 100.0f;
+        constexpr float k_z_near = 1.0f;
+        constexpr float k_z_far = 1000.0f;
 
         auto projection_matrix(const Camera::Quantum& quantum, float aspect_ratio) -> mat4 {
             if (quantum.mode == Camera::Mode::perspective) {

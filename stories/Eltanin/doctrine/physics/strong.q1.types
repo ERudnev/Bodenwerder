@@ -5,12 +5,21 @@ namespace eltanin
   namespace phys
     namespace strong
 
-      // Soft pin constraint: holds one Particle at a fixed world `point`.
+      // Soft pin: holds one Particle at a fixed world `point`.
       // Born where the particle is (`>pin` snapshots current → point).
-      // Enforced in the same constraint wave as Atomic (Horn soft pull) — coexists, no exclusive owner of the particle.
+      // Enforced in the constraint wave with Atomic / Gluon. Missing particle → seppuku.
       entity Nail
         one
-          particle: affects<phys::Particle> // pin target; Atomic still owns the Particle
-          point: vec3                       // world lock (immutable after pin)
+          particle: affects<phys::Particle>
+          point: vec3
         all
-          >pin(#phys::Particle)-># // point ← particle.current at birth
+          >pin(#phys::Particle)->#
+
+      // Soft glue: pulls 2+ Particles toward their shared COM (bodies may differ).
+      // `>clue` takes one seed Particle, gathers every Particle within clueTolerance into `particles`.
+      // Dead links dropped each tick; size < 2 → seppuku.
+      entity Gluon
+        one
+          particles: vector<affects<phys::Particle>>
+        all
+          >clue(#phys::Particle)->#

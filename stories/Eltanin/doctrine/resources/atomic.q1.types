@@ -13,6 +13,7 @@ namespace eltanin
         name: string
         indices: vector<integer>
       one
+        // Game meters in body space (no unit-normalize). kube4m: diameter 4 → corners ±2.
         points: vector<Pos>
         faces: vector<Face>
         visualizer: #rmmr::resource::geometry::Asset

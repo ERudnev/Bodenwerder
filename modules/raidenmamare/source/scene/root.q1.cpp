@@ -8,8 +8,8 @@ namespace rmmr::scene {
 
     namespace {
 
-        constexpr float k_camera_z_near = 0.1f;
-        constexpr float k_camera_z_far = 100.0f;
+        constexpr float k_camera_z_near = 1.0f;
+        constexpr float k_camera_z_far = 1000.0f;
 
         auto node_quantum_from_locator(Locator locator) -> Node::Quantum {
             return Node::Quantum{.pose = Pose::from(locator)};

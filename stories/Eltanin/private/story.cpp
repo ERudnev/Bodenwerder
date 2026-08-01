@@ -40,6 +40,7 @@ namespace eltanin {
             ask::schema::aspect<phys::Particle>(),
             ask::schema::aspect<phys::Atomic>(),
             ask::schema::aspect<phys::strong::Nail>(),
+            ask::schema::aspect<phys::strong::Gluon>(),
             ask::schema::aspect<Block>(),
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<resource::atomic::Asset>(),
@@ -86,10 +87,10 @@ namespace eltanin {
                 .descriptor = "sprites/skySphere.xml",
             });
 
-        assets.unitCube = with<::eltanin::resource::Assets>::add_atomic(
+        assets.kube4m = with<::eltanin::resource::Assets>::add_atomic(
             context,
-            item<Unit>{.name = "unit_cube", .library = "Eltanin"},
-            "atomic/1kube.atomic");
+            item<Unit>{.name = "kube4m", .library = "Eltanin"},
+            "atomic/kube4m.atomic");
 
         const auto sky_sphere_shader = with<::rmmr::resource::Assets>::add_shader_loader(
             context,
@@ -175,37 +176,39 @@ namespace eltanin {
         const Pos cameraTarget{0.0f, 5.0f, 0.0f};
         const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
         const auto camera = with<scene::Interface>::createCamera(context, root, Locator{.pos = cameraPos, .euler = cameraPose.hpb()}, 100.0f * std::numbers::pi_v<float> / 180.0f);
-        // R=100 sphere + offset camera: default z_far=100 would clip the far hemisphere.
-        with<scene::Camera>::modify(context, camera)->z_far = 250.0f;
         with<controller::Camera3d>::create(context, camera);
         with<scene::Interface>::createLight(context, root,
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
         {
-            constexpr Pos k_line_start{4.0f, 0.0f, 0.0f};
-            constexpr float k_step = 4.0f;
-            for (int i = 0; i < 3; ++i) {
-                const Pos pos{k_line_start.x + static_cast<float>(i) * k_step, k_line_start.y, k_line_start.z};
+            // kube4m diameter 4 (±2 m). Step (4,4,4) → +++ of cube i coincides with --- of cube i+1.
+            // Lifted off the origin attractor so the near end is not sitting in the soften core.
+            // Indices: 0 = (−2,−2,−2), 6 = (+2,+2,+2). Display kube ±0.5 stays a mesh placeholder.
+            constexpr Pos origin{0.0f, 10.0f, 0.0f};
+            constexpr Pos step{4.0f, 4.0f, 4.0f};
+            constexpr int cubeCount = 50;
+            constexpr std::size_t cornerPos = 6;
+            vector<vector<phys::Particle::Id>> cubeParticles;
+            cubeParticles.reserve(cubeCount);
+            for (int i = 0; i < cubeCount; ++i) {
+                const Pos pos = origin + step * static_cast<float>(i);
                 const auto block = with<Block>::spawn(
                     context,
                     root,
-                    *assets.unitCube,
+                    *assets.kube4m,
                     Locator{.pos = pos, .euler = HPB{0.0f, 0.0f, 0.0f}},
                     item<scene::actor::Simple>{
                         .geometry = *assets.primitive.kube,
-                        .material = shared->material.debugLitTextured.front(),
+                        .material = shared->material.debugLitTextured[1], // debug02; mesh ±0.5 × scale 4 → 4 m
                         .albedo = RGB{1.0f, 1.0f, 1.0f},
+                        .scale = vec3{4.0f, 4.0f, 4.0f},
                     });
-                const auto body = with<Block>::get(context, block).body;
-                float total_mass = 0.0f;
-                for (const auto particle_id : with<phys::Atomic>::get(context, body).particles) {
-                    total_mass += with<phys::Particle>::get(context, particle_id).mass;
-                }
-                const float orbit_r = std::max(glm::length(pos), 0.25f);
-                const float speed = std::sqrt(phys::Settings::centralMu / orbit_r);
-                const vec3 tangential = glm::normalize(glm::cross(vec3{0.0f, 1.0f, 0.0f}, pos));
-                with<phys::Atomic>::debugAddImpulse(context, body, tangential * speed * total_mass);
+                cubeParticles.push_back(with<phys::Atomic>::get(context, with<Block>::get(context, block).body).particles);
+            }
+            (void)with<phys::strong::Nail>::pin(context, cubeParticles.back()[cornerPos]);
+            for (int i = 0; i + 1 < cubeCount; ++i) {
+                (void)with<phys::strong::Gluon>::clue(context, cubeParticles[i][cornerPos]);
             }
         }
 
@@ -213,7 +216,7 @@ namespace eltanin {
         physics_ui.particleGeometry = assets.primitive.diamond;
         physics_ui.particleMaterial = shared->material.gizmo.vertexColor;
         {
-            const auto& atomic = with<resource::atomic::Asset>::get(context, *assets.unitCube);
+            const auto& atomic = with<resource::atomic::Asset>::get(context, *assets.kube4m);
             with<resources::AtomicVisualizer>::materialize(context, atomic.visualizer, window);
         }
 

@@ -31,7 +31,7 @@ namespace eltanin {
             base::maybe<rmmr::resource::sprite::Pack::Id> skySphere;
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
             base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
-            base::maybe<resource::atomic::Asset::Id> unitCube;
+            base::maybe<resource::atomic::Asset::Id> kube4m;
         };
 
         struct Ui {
