@@ -25,6 +25,7 @@
 
 #include <cmath>
 #include <numbers>
+#include <unordered_set>
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -182,34 +183,77 @@ namespace eltanin {
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
         {
-            // kube4m diameter 4 (±2 m). Step (4,4,4) → +++ of cube i coincides with --- of cube i+1.
-            // Lifted off the origin attractor so the near end is not sitting in the soften core.
-            // Indices: 0 = (−2,−2,−2), 6 = (+2,+2,+2). Display kube ±0.5 stays a mesh placeholder.
-            constexpr Pos origin{0.0f, 10.0f, 0.0f};
-            constexpr Pos step{4.0f, 4.0f, 4.0f};
-            constexpr int cubeCount = 50;
-            constexpr std::size_t cornerPos = 6;
-            vector<vector<phys::Particle::Id>> cubeParticles;
-            cubeParticles.reserve(cubeCount);
-            for (int i = 0; i < cubeCount; ++i) {
-                const Pos pos = origin + step * static_cast<float>(i);
-                const auto block = with<Block>::spawn(
-                    context,
-                    root,
-                    *assets.kube4m,
-                    Locator{.pos = pos, .euler = HPB{0.0f, 0.0f, 0.0f}},
-                    item<scene::actor::Simple>{
-                        .geometry = *assets.primitive.kube,
-                        .material = shared->material.debugLitTextured[1], // debug02; mesh ±0.5 × scale 4 → 4 m
-                        .albedo = RGB{1.0f, 1.0f, 1.0f},
-                        .scale = vec3{4.0f, 4.0f, 4.0f},
-                    });
-                cubeParticles.push_back(with<phys::Atomic>::get(context, with<Block>::get(context, block).body).particles);
+            // Stress: 10×10×10 kube4m (diameter 4 m), centers on a 4 m lattice centered at origin.
+            // Gluon every colocated vertex cluster; one Nail on a top outer corner (swing like a blob).
+            constexpr int grid = 10;
+            constexpr float pitch = 4.0f;
+            constexpr float halfExtent = 0.5f * pitch * static_cast<float>(grid - 1);
+            const float tol2 = phys::Settings::clueTolerance * phys::Settings::clueTolerance;
+
+            vector<phys::Particle::Id> allParticles;
+            allParticles.reserve(static_cast<std::size_t>(grid * grid * grid * 8));
+            for (int iz = 0; iz < grid; ++iz) {
+                for (int iy = 0; iy < grid; ++iy) {
+                    for (int ix = 0; ix < grid; ++ix) {
+                        const Pos pos{
+                            static_cast<float>(ix) * pitch - halfExtent,
+                            static_cast<float>(iy) * pitch - halfExtent,
+                            static_cast<float>(iz) * pitch - halfExtent,
+                        };
+                        const auto block = with<Block>::spawn(
+                            context,
+                            root,
+                            *assets.kube4m,
+                            Locator{.pos = pos, .euler = HPB{0.0f, 0.0f, 0.0f}},
+                            item<scene::actor::Simple>{
+                                .geometry = *assets.primitive.kube,
+                                .material = shared->material.debugLitTextured[1],
+                                .albedo = RGB{1.0f, 1.0f, 1.0f},
+                                .scale = vec3{4.0f, 4.0f, 4.0f},
+                            });
+                        const auto& parts = with<phys::Atomic>::get(context, with<Block>::get(context, block).body).particles;
+                        allParticles.insert(allParticles.end(), parts.begin(), parts.end());
+                    }
+                }
             }
-            (void)with<phys::strong::Nail>::pin(context, cubeParticles.back()[cornerPos]);
-            for (int i = 0; i + 1 < cubeCount; ++i) {
-                (void)with<phys::strong::Gluon>::clue(context, cubeParticles[i][cornerPos]);
+
+            std::unordered_set<phys::Particle::Id::Raw> glued;
+            for (const auto seed_id : allParticles) {
+                if (glued.contains(seed_id.raw())) {
+                    continue;
+                }
+                const auto seed_pos = with<phys::Particle>::get(context, seed_id).current;
+                vector<phys::Particle::Id> cluster;
+                for (const auto id : allParticles) {
+                    const vec3 delta = with<phys::Particle>::get(context, id).current - seed_pos;
+                    if (glm::dot(delta, delta) <= tol2) {
+                        cluster.push_back(id);
+                    }
+                }
+                for (const auto id : cluster) {
+                    glued.insert(id.raw());
+                }
+                if (cluster.size() >= 2) {
+                    (void)with<phys::strong::Gluon>::clue(context, seed_id);
+                }
             }
+
+            phys::Particle::Id nail_id = allParticles.front();
+            {
+                const auto& first = with<phys::Particle>::get(context, nail_id).current;
+                float nail_y = first.y;
+                float nail_corner = std::abs(first.x) + std::abs(first.z);
+                for (const auto id : allParticles) {
+                    const auto& p = with<phys::Particle>::get(context, id).current;
+                    const float corner = std::abs(p.x) + std::abs(p.z);
+                    if (p.y > nail_y or (p.y == nail_y and corner > nail_corner)) {
+                        nail_id = id;
+                        nail_y = p.y;
+                        nail_corner = corner;
+                    }
+                }
+            }
+            (void)with<phys::strong::Nail>::pin(context, nail_id);
         }
 
         physics_ui.shapeMaterial = shared->material.gizmo.textured;
@@ -218,6 +262,7 @@ namespace eltanin {
         {
             const auto& atomic = with<resource::atomic::Asset>::get(context, *assets.kube4m);
             with<resources::AtomicVisualizer>::materialize(context, atomic.visualizer, window);
+            physics_ui.shapeGeometry = atomic.visualizer;
         }
 
         {

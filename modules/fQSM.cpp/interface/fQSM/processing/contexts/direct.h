@@ -96,6 +96,8 @@ namespace fqsm::processing {
 
         template<meta::category::Any Meta>
         operator Breach<Meta>() const { return Breach<Meta>(context); }
+        template<meta::category::Any Meta>
+        auto direct() const -> Breach<Meta> { return Breach<Meta>(context); }
 
         // same surface as Gate for refuse / workers_interface
         model::complex::WorkersInterface& workers_interface() { return context->subcontext->future; }

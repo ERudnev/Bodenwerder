@@ -1,20 +1,17 @@
 #include "physics/system.h"
 #include "physics/horn.h"
 
-#include <eltanin/resources/atomic.q1.h>
-
 #include <base/logging.h>
 
 #include <algorithm>
 #include <cmath>
-#include <format>
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 namespace eltanin::phys {
 
-    void System::applyForces(fqsm::Direct<Particle>& particles) {
+    void System::applyForces(fqsm::Direct<Particle> particles) {
         // Central μ at origin (softened) — parked while the pendulum uses linear g.
         // for (auto [_, particle] : particles.items) {
         //     const vec3& sample = glm::dot(particle.prev, particle.prev) > glm::dot(particle.current, particle.current) ? particle.prev : particle.current;
@@ -25,7 +22,7 @@ namespace eltanin::phys {
         accelerations.assign(particles.items.size(), vec3{0.0f, -Settings::gravity, 0.0f});
     }
 
-    void System::integrate(fqsm::Direct<Particle>& particles) {
+    void System::integrate(fqsm::Direct<Particle> particles) {
         const float dt2 = Settings::fixedDtS * Settings::fixedDtS;
         std::size_t slot = 0;
         for (auto [_, particle] : particles.items) {
@@ -35,87 +32,62 @@ namespace eltanin::phys {
         }
     }
 
-    void System::restoreBases(Stewarding context, fqsm::Direct<Particle>& particles, fqsm::Direct<Atomic>& atomics) {
+    void System::restoreBases(fqsm::Direct<Particle> particles, fqsm::Direct<Atomic> atomics) {
         for (auto [_, atomic] : atomics.items) {
-            const auto& shape = with<resource::atomic::Asset>::get(context, atomic.shape);
+            const auto& rest = atomic.rest;
             const auto count = atomic.particles.size();
-            if (count == 0) {
+            if (count == 0 or rest.centered.size() != count) {
                 continue;
             }
-            if (shape.points.size() != count) {
-                (void)context.refuse(std::format(
-                    "eltanin::phys::System::restoreBases: Atomic particle/shape size mismatch ({} vs {})",
-                    count,
-                    shape.points.size()));
-                continue;
-            }
-
-            vector<vec3> world;
-            vector<vec3> rest;
-            vector<float> masses;
-            world.reserve(count);
-            rest.reserve(count);
-            masses.reserve(count);
 
             vec3 com{0.0f, 0.0f, 0.0f};
-            vec3 rest_com{0.0f, 0.0f, 0.0f};
             float mass_sum = 0.0f;
             bool missing = false;
+            scratchWorldCentered.resize(count);
+            scratchMasses.resize(count);
             for (std::size_t i = 0; i < count; ++i) {
                 auto* particle = particles.items.find(atomic.particles[i]);
                 if (not particle) {
                     missing = true;
                     break;
                 }
-                world.push_back(particle->current);
-                rest.push_back(shape.points[i]);
-                masses.push_back(particle->mass);
+                scratchWorldCentered[i] = particle->current;
+                scratchMasses[i] = particle->mass;
                 com += particle->current * particle->mass;
-                rest_com += shape.points[i] * particle->mass;
                 mass_sum += particle->mass;
             }
-            if (missing) {
-                (void)context.refuse("eltanin::phys::System::restoreBases: Atomic references missing Particle");
-                continue;
-            }
-            if (mass_sum <= 0.0f) {
-                (void)context.refuse("eltanin::phys::System::restoreBases: Atomic total mass is non-positive");
+            if (missing or mass_sum <= 0.0f) {
                 continue;
             }
             com /= mass_sum;
-            rest_com /= mass_sum;
-
-            vector<vec3> world_centered;
-            vector<vec3> rest_centered;
-            world_centered.reserve(count);
-            rest_centered.reserve(count);
             for (std::size_t i = 0; i < count; ++i) {
-                world_centered.push_back(world[i] - com);
-                rest_centered.push_back(rest[i] - rest_com);
+                scratchWorldCentered[i] -= com;
             }
 
-            const quat rotation = horn::orientation(rest_centered, world_centered, masses);
+            const quat rotation = horn::orientation(rest.centered, scratchWorldCentered, scratchMasses);
 
             for (std::size_t i = 0; i < count; ++i) {
-                const vec3 goal = com + rotation * rest_centered[i];
+                const vec3 goal = com + rotation * rest.centered[i];
                 auto& particle = particles.items.at(atomic.particles[i]);
                 // prev untouched: Verlet velocity shifts with current.
                 particle.current += Settings::constraintStiffness * (goal - particle.current);
             }
 
-            // Mesh verts = shape.points (game meters). Origin of pose must match Horn centering: com − R·rest_com.
+            // Origin of pose: com − R·rest.com.
             atomic.restored = rmmr::Pose{
-                .position = com - rotation * rest_com,
+                .position = com - rotation * rest.com,
                 .rotation = rotation,
             };
         }
     }
 
-    void System::applyNails(fqsm::Direct<Particle>& particles, fqsm::Direct<strong::Nail>& nails, vector<strong::Nail::Id>& doomed) {
+    void System::applyNails(Stewarding context) {
+        auto particles = context.direct<Particle>();
+        auto nails = context.direct<strong::Nail>();
         for (auto [id, nail] : nails.items) {
             auto* particle = particles.items.find(nail.particle);
             if (not particle) {
-                doomed.push_back(id);
+                with<strong::Nail>::remove(context, id);
                 continue;
             }
             // prev untouched: Verlet velocity shifts with current (same as Horn).
@@ -123,13 +95,15 @@ namespace eltanin::phys {
         }
     }
 
-    void System::applyGluons(fqsm::Direct<Particle>& particles, fqsm::Direct<strong::Gluon>& gluons, vector<strong::Gluon::Id>& doomed) {
+    void System::applyGluons(Stewarding context) {
+        auto particles = context.direct<Particle>();
+        auto gluons = context.direct<strong::Gluon>();
         for (auto [id, gluon] : gluons.items) {
             std::erase_if(gluon.particles, [&](const Affected<Particle>& particle_id) {
                 return particles.items.find(particle_id) == nullptr;
             });
             if (gluon.particles.size() < 2) {
-                doomed.push_back(id);
+                with<strong::Gluon>::remove(context, id);
                 continue;
             }
 
@@ -141,7 +115,7 @@ namespace eltanin::phys {
                 mass_sum += particle.mass;
             }
             if (mass_sum <= 0.0f) {
-                doomed.push_back(id);
+                with<strong::Gluon>::remove(context, id);
                 continue;
             }
             com /= mass_sum;
@@ -153,30 +127,13 @@ namespace eltanin::phys {
     }
 
     void System::tick(Stewarding context) {
-        // Jakobsen: AccumulateForces → Verlet → constraint wave × N — Direct; seppuku after Breach closes.
-        vector<strong::Nail::Id> deadNails;
-        vector<strong::Gluon::Id> deadGluons;
-        {
-            fqsm::Direct<Particle> particles = context;
-            fqsm::Direct<Atomic> atomics = context;
-            fqsm::Direct<strong::Nail> nails = context;
-            fqsm::Direct<strong::Gluon> gluons = context;
-            applyForces(particles);
-            integrate(particles);
-            for (int pass = 0; pass < Settings::constraintPasses; ++pass) {
-                deadNails.clear();
-                deadGluons.clear();
-                restoreBases(context, particles, atomics);
-                applyNails(particles, nails, deadNails);
-                applyGluons(particles, gluons, deadGluons);
-            }
-        }
-        Writing writing = context;
-        for (const auto id : deadNails) {
-            with<strong::Nail>::remove(writing, id);
-        }
-        for (const auto id : deadGluons) {
-            with<strong::Gluon>::remove(writing, id);
+        // Jakobsen: AccumulateForces → Verlet → constraint wave × N; Nail/Gluon seppuku via Writing under Stewarding.
+        applyForces(context.direct<Particle>());
+        integrate(context.direct<Particle>());
+        for (int pass = 0; pass < Settings::constraintPasses; ++pass) {
+            restoreBases(context.direct<Particle>(), context.direct<Atomic>());
+            applyNails(context);
+            applyGluons(context);
         }
     }
 
@@ -185,6 +142,7 @@ namespace eltanin::phys {
         if (debt_us < Settings::fixedStepUs) {
             return;
         }
+        // One Stewarding for the whole catch-up loop (commit after last tick).
         Stewarding session = world;
         while (debt_us >= Settings::fixedStepUs) {
             tick(session);

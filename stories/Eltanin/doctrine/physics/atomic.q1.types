@@ -1,13 +1,15 @@
 import "rmmr/math"
 import "physics/particle"
-import "resources/atomic"
 
 namespace eltanin
   namespace phys
 
     entity Atomic
+      struct Rest
+        centered: vector<vec3>
+        com: vec3
       one
         particles: vector<#phys::Particle>
+        rest: Rest
         restored: rmmr::Pose
-        shape: #resource::atomic::Asset
         =debugAddImpulse(imp: vec3)

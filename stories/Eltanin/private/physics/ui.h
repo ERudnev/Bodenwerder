@@ -22,19 +22,27 @@ namespace eltanin::phys {
         };
         State state;
         base::maybe<rmmr::resource::material::Asset::Id> shapeMaterial;
+        base::maybe<rmmr::resource::geometry::Asset::Id> shapeGeometry;
         base::maybe<rmmr::resource::geometry::Asset::Id> particleGeometry;
         base::maybe<rmmr::resource::material::Asset::Id> particleMaterial;
 
         void draw(Writing, bool& open, System&);
 
     private:
-        bool prevOpen = false;
+        bool showColliders = false;
+        bool showParticles = false;
+        bool prevShowColliders = false;
+        bool prevShowParticles = false;
+
         vector<Atomic::Id> bodies;
         vector<Particle::Id> particleIds;
 
-        void onDrawEnabled(Writing);
-        void onDrawDisabled(Writing);
-        void onDraw(Writing);
+        void enableColliders(Writing);
+        void disableColliders(Writing);
+        void enableParticles(Writing);
+        void disableParticles(Writing);
+        void syncColliders(Writing);
+        void syncParticles(Writing);
     };
 
 }

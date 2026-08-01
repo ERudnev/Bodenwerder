@@ -16,7 +16,7 @@ namespace eltanin::phys {
     // Private physics subsystem (not Q1).
     // Fixed tick 10ms; wall dt accumulates as debt (sub-step remainder).
     // Linear gravity −Y (9.81); central μ-gravity kept in Settings but not applied.
-    // Entire step is Direct (Particle + Atomic + strong::Nail/Gluon) inside one Dock; presentation reacts after commit.
+    // One Dock per tick; hot mutation via Stewarding::direct<T>(); Nail/Gluon seppuku via Writing::remove under Stewarding.
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
     // Constraint wave: Atomic Horn, then Nail pins, then Gluon COM glue (same stiffness); repeated constraintPasses times.
     struct Settings {
@@ -45,14 +45,16 @@ namespace eltanin::phys {
 
     private:
         std::vector<vec3> accelerations;
+        std::vector<vec3> scratchWorldCentered;
+        std::vector<float> scratchMasses;
         int64 debt_us = 0;
 
         void tick(Stewarding);
-        void applyForces(fqsm::Direct<Particle>&);
-        void integrate(fqsm::Direct<Particle>&);
-        void restoreBases(Stewarding, fqsm::Direct<Particle>&, fqsm::Direct<Atomic>&);
-        void applyNails(fqsm::Direct<Particle>&, fqsm::Direct<strong::Nail>&, vector<strong::Nail::Id>& doomed);
-        void applyGluons(fqsm::Direct<Particle>&, fqsm::Direct<strong::Gluon>&, vector<strong::Gluon::Id>& doomed);
+        void applyForces(fqsm::Direct<Particle>);
+        void integrate(fqsm::Direct<Particle>);
+        void restoreBases(fqsm::Direct<Particle>, fqsm::Direct<Atomic>);
+        void applyNails(Stewarding);
+        void applyGluons(Stewarding);
     };
 
 }

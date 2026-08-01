@@ -12,8 +12,8 @@ namespace eltanin::phys {
             return (void)context.refuse("eltanin::phys::Atomic::debugAddImpulse: no particles");
         }
         const auto share = imp / static_cast<float>(atomic.particles.size());
-        for (const auto particle_id : atomic.particles) {
-            auto particle = with<Particle>::modify(context, particle_id);
+        for (std::size_t i = 0; i < atomic.particles.size(); ++i) {
+            auto particle = with<Particle>::modify(context, atomic.particles[i]);
             // Δv = j / m; Verlet v ≈ (current − prev) / dt  ⇒  prev ← prev − Δv·dt
             particle->prev -= (share / particle->mass) * Settings::fixedDtS;
         }
