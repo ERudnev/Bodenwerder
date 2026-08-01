@@ -1,0 +1,15 @@
+import "rmmr/math"
+import "rmmr/scene/root"
+import "rmmr/scene/actors/simple"
+import "physics/atomic"
+import "resources/atomic"
+
+namespace eltanin
+
+  entity Block
+    one
+      body: custody<phys::Atomic>
+      actor: custody<rmmr::scene::actor::Simple>
+    all
+      >spawn(#rmmr::scene::Root, #resource::atomic::Asset, Locator, one<rmmr::scene::actor::Simple>)->#
+      !followBody(~phys::Atomic)->>linearPass(>all)

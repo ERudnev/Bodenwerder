@@ -42,8 +42,8 @@ namespace kubes {
         if (not with<rmmr::scene::Node>::exists(context, *global.camera)) {
             return;
         }
-        with<rmmr::scene::Node>::modify(context, *global.sky)->position =
-            with<rmmr::scene::Node>::get(context, *global.camera).position;
+        with<rmmr::scene::Node>::modify(context, *global.sky)->pose.position =
+            with<rmmr::scene::Node>::get(context, *global.camera).pose.position;
     }
 
     struct World::Internals : World::DefaultInternals {

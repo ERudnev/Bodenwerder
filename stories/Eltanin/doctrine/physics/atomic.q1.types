@@ -1,0 +1,12 @@
+import "rmmr/math"
+import "physics/particle"
+import "resources/atomic"
+
+namespace eltanin
+  namespace phys
+
+    entity Atomic
+      one
+        particles: vector<#phys::Particle>
+        restored: rmmr::Pose
+        shape: #resource::atomic::Asset

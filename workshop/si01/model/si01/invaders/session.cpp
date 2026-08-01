@@ -79,8 +79,8 @@ namespace si01::invaders {
         }
         // Lock play view to origin after menu pan.
         auto node = with<rmmr::scene::Node>::modify(context, camera);
-        node->position.x = 0.0f;
-        node->position.y = 0.0f;
+        node->pose.position.x = 0.0f;
+        node->pose.position.y = 0.0f;
     }
 
     void noteFleetCleared(Writing context, Session::Id session_id) {

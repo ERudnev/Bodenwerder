@@ -8,7 +8,7 @@ namespace eltanin::phys {
 
     using namespace fqsm::api;
 
-    struct Atom : Entity<Atom> {
+    struct Particle : Entity<Particle> {
         struct Quantum {
             vec3 current{};
             vec3 prev{};

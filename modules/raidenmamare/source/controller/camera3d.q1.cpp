@@ -81,21 +81,21 @@ namespace rmmr::controller {
                 return;
             }
 
-            node.position.x += delta.x;
-            node.position.y += delta.y;
-            node.position.z += delta.z;
+            node.pose.position.x += delta.x;
+            node.pose.position.y += delta.y;
+            node.pose.position.z += delta.z;
         }
 
         void drive(Writing context, Camera3d::Id self, system::Window::Id window, GLFWwindow* handle, seconds delta_sec) {
             const auto& input = with<system::Window>::get(context, window);
             auto node = with<scene::Node>::modify(context, self);
-            glm::quat rotation = glm::normalize(node->rotation);
+            glm::quat rotation = glm::normalize(node->pose.rotation);
 
             apply_arrow_move(*node, rotation, input.current.keys, delta_sec);
 
             if (glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
                 apply_mouse_look(rotation, with<system::Window>::mouseShift(context, window));
-                node->rotation = rotation;
+                node->pose.rotation = rotation;
             }
         }
 

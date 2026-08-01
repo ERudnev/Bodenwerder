@@ -13,7 +13,7 @@ set(Kubes_Q1
 add_executable(${PROJECT_NAME})
 
 add_q1_schema(${PROJECT_NAME}
-    ROOT ${CMAKE_CURRENT_SOURCE_DIR}/model/doctrine
+    ROOT ${CMAKE_CURRENT_SOURCE_DIR}/doctrine
     FILES ${Kubes_Q1}
 )
 

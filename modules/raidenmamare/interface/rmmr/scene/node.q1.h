@@ -10,13 +10,10 @@ namespace rmmr::scene {
 
     struct Node : Entity<Node> {
         struct Quantum {
-            Pos position;
-            quat rotation;
+            Pose pose;
         };
         struct Actions : BaseActions {
             static auto transform(Reading, Id) -> mat4;
-            static auto hpb(Reading, Id) -> HPB;
-            static void hpb(Writing, Id, HPB);
             static auto create(Writing, Locator) -> Id;
         };
         struct Internals : DefaultInternals{};

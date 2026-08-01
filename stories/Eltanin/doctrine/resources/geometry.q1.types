@@ -1,4 +1,5 @@
 import "rmmr/resources/geometry"
+import "resources/atomic"
 
 namespace eltanin
   namespace resources
@@ -10,4 +11,11 @@ namespace eltanin
         count: integer // stars to sample into the Galaxy disk
         seed: integer
         angular_diameter_deg: float // star billboard angular size
+        >materialize(#system::Device) -> #rmmr::resource::geometry::Runtime?
+
+    // Visual hull from atomic::Asset: one named Part per Face (Face.name → index range).
+    // Placeholder fan triangulation; non-convex faces undefined. Empty/duplicate/invalid → refuse.
+    feature AtomicVisualizer of rmmr::resource::geometry::Asset
+      one
+        source: #resource::atomic::Asset
         >materialize(#system::Device) -> #rmmr::resource::geometry::Runtime?

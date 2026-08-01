@@ -95,8 +95,8 @@ namespace si02 {
                     continue;
                 }
                 const auto& target_node = with<rmmr::scene::Node>::get(context, target.node);
-                const float dx = target_node.position.x - shot_node.position.x;
-                const float dy = target_node.position.y - shot_node.position.y;
+                const float dx = target_node.pose.position.x - shot_node.pose.position.x;
+                const float dy = target_node.pose.position.y - shot_node.pose.position.y;
                 const float min_dist = shot_radius + target.radius;
                 if (min_dist <= 0.0f) {
                     continue;

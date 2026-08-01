@@ -6,13 +6,14 @@
 
 #include <base/maybe.h>
 #include <eltanin/resources/assets.q1.h>
-#include <eltanin/resources/physical.q1.h>
+#include <eltanin/resources/atomic.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/wrapper/product.h>
 
-#include "physics.h"
+#include "physics/system.h"
+#include "physics/ui.h"
 
 namespace eltanin {
 
@@ -24,11 +25,12 @@ namespace eltanin {
             struct {
                 base::maybe<rmmr::resource::geometry::Asset::Id> grid;
                 base::maybe<rmmr::resource::geometry::Asset::Id> sphere;
+                base::maybe<rmmr::resource::geometry::Asset::Id> kube;
             } primitive;
             base::maybe<rmmr::resource::sprite::Pack::Id> skySphere;
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
             base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
-            base::maybe<resource::physical::Asset::Id> unitCube;
+            base::maybe<resource::atomic::Asset::Id> unitCube;
         };
 
         struct Ui {
@@ -50,6 +52,7 @@ namespace eltanin {
         Handles assets;
         Ui ui;
         phys::System physics;
+        phys::Ui physics_ui;
 
         Schema schema() const override;
         void createCore(Writing) override;

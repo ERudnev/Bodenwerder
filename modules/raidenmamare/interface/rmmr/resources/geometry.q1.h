@@ -30,8 +30,13 @@ namespace rmmr::resource::geometry {
     };
 
     struct Asset : Feature<Asset, resource::Unit> {
+        struct Part {
+            renderer::Count startIndex;
+            renderer::Count countIndex;
+        };
         struct Quantum {
             vector<Pos> slots;
+            umap<string, Part> parts;
         };
         struct Actions : BaseActions {
             // Bake CPU mesh into a Runtime and bind it in DeviceRuntimes mapping.

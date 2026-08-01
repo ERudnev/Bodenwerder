@@ -1,5 +1,5 @@
 import "rmmr/resources/runtimes"
-import "resources/physical"
+import "resources/atomic"
 
 namespace eltanin
   namespace resource
@@ -8,5 +8,4 @@ namespace eltanin
 
     component Assets of rmmr::resource::Assets
       one
-        >add_physical_loader(Unit, physical::Loader)->#physical::Asset
-        >load()
+        >add_atomic(Unit, filename)->#atomic::Asset

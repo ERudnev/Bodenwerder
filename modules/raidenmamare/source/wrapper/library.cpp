@@ -42,6 +42,14 @@ namespace rmmr::wrapper::assets {
             context,
             item<Unit>{.name = "debug04", .library = "rmmr"},
             item<texture::Loader>{.file = "textures/debug04.jpg", .mipmaps = true}));
+        handles.texture.debug.push_back(with<Assets>::add_texture_loader(
+            context,
+            item<Unit>{.name = "debug05", .library = "rmmr"},
+            item<texture::Loader>{.file = "textures/debug05.jpg", .mipmaps = true}));
+        handles.texture.debug.push_back(with<Assets>::add_texture_loader(
+            context,
+            item<Unit>{.name = "debug06", .library = "rmmr"},
+            item<texture::Loader>{.file = "textures/debug06.jpg", .mipmaps = true}));
         handles.texture.whiteCircle = with<Assets>::add_texture_generator(
             context,
             item<Unit>{.name = "white_circle", .library = "rmmr"},
@@ -65,6 +73,8 @@ namespace rmmr::wrapper::assets {
         handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, item<Unit>{.name = "lit_textured_debug02", .library = "rmmr"}, builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured_shader), with<Unit>::remember(context, handles.texture.debug[1]), with<Unit>::remember(context, shadow_depth_shader))));
         handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, item<Unit>{.name = "lit_textured_debug03", .library = "rmmr"}, builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured_shader), with<Unit>::remember(context, handles.texture.debug[2]), with<Unit>::remember(context, shadow_depth_shader))));
         handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, item<Unit>{.name = "lit_textured_debug04", .library = "rmmr"}, builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured_shader), with<Unit>::remember(context, handles.texture.debug[3]), with<Unit>::remember(context, shadow_depth_shader))));
+        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, item<Unit>{.name = "lit_textured_debug05", .library = "rmmr"}, builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured_shader), with<Unit>::remember(context, handles.texture.debug[4]), with<Unit>::remember(context, shadow_depth_shader))));
+        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, item<Unit>{.name = "lit_textured_debug06", .library = "rmmr"}, builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured_shader), with<Unit>::remember(context, handles.texture.debug[5]), with<Unit>::remember(context, shadow_depth_shader))));
         handles.material.litTexturedAlpha = with<Assets>::add_material(context, item<Unit>{.name = "lit_textured_alpha_ring", .library = "rmmr"}, builders::material::Presets::litTexturedTransparent(with<Unit>::remember(context, lit_textured_alpha_shader), with<Unit>::remember(context, *handles.texture.whiteRing)));
         handles.material.grid = with<Assets>::add_material(context, item<Unit>{.name = "grid_material", .library = "rmmr"}, builders::material::Presets::grid(with<Unit>::remember(context, grid_shader)));
         handles.material.sprite = with<Assets>::add_material(context, item<Unit>{.name = "sprite_material", .library = "rmmr"}, builders::material::Presets::sprite(with<Unit>::remember(context, sprite_shader)));

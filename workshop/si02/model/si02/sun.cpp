@@ -44,8 +44,8 @@ namespace si02 {
                     continue;
                 }
                 const auto& node = with<rmmr::scene::Node>::get(context, *object.sprite);
-                const float dx = sun_node.position.x - node.position.x;
-                const float dy = sun_node.position.y - node.position.y;
+                const float dx = sun_node.pose.position.x - node.pose.position.x;
+                const float dy = sun_node.pose.position.y - node.pose.position.y;
                 const float dist_sq = dx * dx + dy * dy;
                 if (dist_sq < 1.0f) {
                     continue;

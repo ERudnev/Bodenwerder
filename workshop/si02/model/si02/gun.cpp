@@ -77,12 +77,12 @@ namespace si02 {
 
             const auto& ship_node = with<rmmr::scene::Node>::get(context, *object.sprite);
             const auto& ship_sprite = with<rmmr::scene::actor::Sprite>::get(context, *object.sprite);
-            const float bank = with<rmmr::scene::Node>::hpb(context, *object.sprite).z;
+            const float bank = ship_node.pose.hpb().z;
             const auto nose = nose_xy(bank);
             const rmmr::Pos muzzle{
-                ship_node.position.x + nose.x * Gun::muzzle_lift,
-                ship_node.position.y + nose.y * Gun::muzzle_lift,
-                ship_node.position.z,
+                ship_node.pose.position.x + nose.x * Gun::muzzle_lift,
+                ship_node.pose.position.y + nose.y * Gun::muzzle_lift,
+                ship_node.pose.position.z,
             };
             const float scale = Shot::sprite_scale * Shot::hull_size;
             const auto bolt_sprite = with<rmmr::scene::Flat2d>::createSpriteActor(

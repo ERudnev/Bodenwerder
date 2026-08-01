@@ -7,16 +7,18 @@ project("Eltanin"
 
 set(Eltanin_Q1
     world.q1.types
-    physics/atom.q1.types
+    physics/particle.q1.types
+    physics/atomic.q1.types
+    entities/block.q1.types
     resources/geometry.q1.types
-    resources/physical.q1.types
+    resources/atomic.q1.types
     resources/assets.q1.types
 )
 
 add_executable(${PROJECT_NAME})
 
 add_q1_schema(${PROJECT_NAME}
-    ROOT ${CMAKE_CURRENT_SOURCE_DIR}/model/doctrine
+    ROOT ${CMAKE_CURRENT_SOURCE_DIR}/doctrine
     FILES ${Eltanin_Q1}
 )
 

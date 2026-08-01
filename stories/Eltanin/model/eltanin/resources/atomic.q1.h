@@ -1,11 +1,12 @@
 #pragma once
 
 #include <rmmr/math.q1.h>
+#include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::resource::physical {
+namespace eltanin::resource::atomic {
 
     using namespace fqsm::api;
 
@@ -19,18 +20,9 @@ namespace eltanin::resource::physical {
         struct Quantum {
             vector<rmmr::Pos> points;
             vector<Face> faces;
+            rmmr::resource::geometry::Asset::Id visualizer;
         };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
-    struct Loader : Feature<Loader, Asset> {
-        struct Quantum {
-            filename file;
-        };
-        struct Actions : BaseActions {
-            static void load(Writing, Id);
-        };
+        struct Actions : BaseActions {};
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };

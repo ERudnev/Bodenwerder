@@ -74,8 +74,8 @@ namespace si01::invaders {
             return;
         }
         auto node = with<rmmr::scene::Node>::modify(context, *object.sprite);
-        node->position.x = static_cast<float>(pos.x);
-        node->position.y = static_cast<float>(pos.y);
+        node->pose.position.x = static_cast<float>(pos.x);
+        node->pose.position.y = static_cast<float>(pos.y);
     }
 
     inline void destroyGameObjectSprite(Writing context, GameObject::Id body) {

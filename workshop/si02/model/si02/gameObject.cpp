@@ -200,7 +200,7 @@ namespace si02 {
             }
             auto inertia = with<Inertia>::modify(context, id);
             auto node = with<rmmr::scene::Node>::modify(context, *object.sprite);
-            node->position += inertia->vel * dt;
+            node->pose.position += inertia->vel * dt;
             inertia->vel *= (1.0f - inertia->saturation);
         }
     }

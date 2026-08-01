@@ -71,14 +71,15 @@ namespace si02 {
             }
             const auto sprite = *object.sprite;
             if (turn != 0.0f) {
-                auto hpb = with<rmmr::scene::Node>::hpb(context, sprite);
+                auto node = with<rmmr::scene::Node>::modify(context, sprite);
+                auto hpb = node->pose.hpb();
                 hpb.z += turn * Player::turn_degrees_per_step;
-                with<rmmr::scene::Node>::hpb(context, sprite, hpb);
+                node->pose.hpb(hpb);
             }
             if (throttle == 0.0f or not with<Inertia>::exists(context, id)) {
                 continue;
             }
-            const auto bank = with<rmmr::scene::Node>::hpb(context, sprite).z;
+            const auto bank = with<rmmr::scene::Node>::get(context, sprite).pose.hpb().z;
             const auto nose = nose_xy(bank);
             auto inertia = with<Inertia>::modify(context, id);
             inertia->vel.x += nose.x * throttle * Player::thrust_per_step;
@@ -123,8 +124,8 @@ namespace si02 {
             }
             const auto& ship = with<rmmr::scene::Node>::get(context, *object.sprite);
             auto cam = with<rmmr::scene::Node>::modify(context, camera);
-            cam->position.x = ship.position.x;
-            cam->position.y = ship.position.y;
+            cam->pose.position.x = ship.pose.position.x;
+            cam->pose.position.y = ship.pose.position.y;
         }
     }
 

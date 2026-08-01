@@ -116,11 +116,11 @@ namespace kubes {
                 ImGui::TextDisabled("No camera selected.");
             } else {
                 const auto& node = with<scene::Node>::get(world, camera);
-                ImGui::Text("Pos: %.2f, %.2f, %.2f", node.position.x, node.position.y, node.position.z);
+                ImGui::Text("Pos: %.2f, %.2f, %.2f", node.pose.position.x, node.pose.position.y, node.pose.position.z);
 
-                HPB hpb = with<scene::Node>::hpb(world, camera);
+                HPB hpb = node.pose.hpb();
                 if (ImGui::DragFloat3("HPB", &hpb.x, 0.1f, -180.0f, 180.0f, "%.1f°"))
-                    with<scene::Node>::hpb(world, camera, hpb);
+                    with<scene::Node>::modify(world, camera)->pose.hpb(hpb);
 
                 auto quantum = with<scene::Camera>::modify(world, camera);
                 if (quantum->mode == scene::Camera::Mode::perspective) {

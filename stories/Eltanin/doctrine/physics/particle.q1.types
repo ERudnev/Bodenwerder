@@ -1,7 +1,7 @@
 namespace eltanin
   namespace phys
 
-    entity Atom
+    entity Particle
       one
         current: vec3
         prev: vec3 // Verlet planned

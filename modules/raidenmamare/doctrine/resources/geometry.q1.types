@@ -19,8 +19,12 @@ namespace rmmr
 
     // Persistent mesh recipe. Scene may hold #geometry::Asset — never Runtime.
     feature Asset of resource::Unit
+      struct Part
+        startIndex: renderer::Count
+        countIndex: renderer::Count
       one
         slots: vector<Pos> // i insist on exactly this kind of slots
+        parts: umap<string, Part>
 
     feature Loader of Asset
       one

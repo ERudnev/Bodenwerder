@@ -1,9 +1,10 @@
 import "rmmr/math"
 import "rmmr/resources/manager"
+import "rmmr/resources/geometry"
 
 namespace eltanin
   namespace resource
-    namespace physical
+    namespace atomic
 
     using Reference as rmmr::resource::Unit::Reference
 
@@ -14,8 +15,4 @@ namespace eltanin
       one
         points: vector<Pos>
         faces: vector<Face>
-
-    feature Loader of Asset
-      one
-        file: filename
-        >load()
+        visualizer: #rmmr::resource::geometry::Asset

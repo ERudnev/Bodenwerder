@@ -6,10 +6,7 @@ namespace rmmr
     // Basic transformable scene node.
     entity Node
       one
-        position: Pos
-        rotation: quat
+        pose: Pose
         ?transform() -> mat4
-        ?hpb() -> HPB // heading/pitch/bank (degrees)
-        =hpb(HPB)
       all
         >create(Locator) -> # // convenience c-tor

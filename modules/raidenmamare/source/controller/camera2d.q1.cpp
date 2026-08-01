@@ -38,16 +38,16 @@ namespace rmmr::controller {
                 return;
             }
 
-            node.position.x += delta.x;
-            node.position.y += delta.y;
+            node.pose.position.x += delta.x;
+            node.pose.position.y += delta.y;
         }
 
         void apply_mouse_drag(scene::Node::Quantum& node, index2 delta_mouse) {
             if (delta_mouse.x == 0 && delta_mouse.y == 0) {
                 return;
             }
-            node.position.x -= static_cast<float>(delta_mouse.x) * k_pan_pixels_to_world;
-            node.position.y += static_cast<float>(delta_mouse.y) * k_pan_pixels_to_world;
+            node.pose.position.x -= static_cast<float>(delta_mouse.x) * k_pan_pixels_to_world;
+            node.pose.position.y += static_cast<float>(delta_mouse.y) * k_pan_pixels_to_world;
         }
 
         void drive(Writing context, Camera2d::Id self, system::Window::Id window, GLFWwindow* handle, seconds delta_sec) {

@@ -8,3 +8,11 @@ namespace rmmr
   struct Locator
     pos: Pos
     euler: HPB
+
+  struct Pose
+    position: Pos
+    rotation: quat
+    ?hpb() -> HPB // heading/pitch/bank (degrees)
+    =hpb(HPB)
+    ?near(Pose) -> bool
+    >from(Locator) -> Pose

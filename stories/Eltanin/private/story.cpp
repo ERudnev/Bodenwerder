@@ -1,9 +1,11 @@
 #include "story.h"
 
-#include <eltanin/physics/atom.q1.h>
+#include <eltanin/entities/block.q1.h>
+#include <eltanin/physics/atomic.q1.h>
+#include <eltanin/physics/particle.q1.h>
 #include <eltanin/resources/assets.q1.h>
 #include <eltanin/resources/geometry.q1.h>
-#include <eltanin/resources/physical.q1.h>
+#include <eltanin/resources/atomic.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/api/_interface.h>
 #include <rmmr/controller/camera3d.q1.h>
@@ -30,11 +32,13 @@ namespace eltanin {
     Schema Game::schema() const {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
-            ask::schema::aspect<phys::Atom>(),
+            ask::schema::aspect<phys::Particle>(),
+            ask::schema::aspect<phys::Atomic>(),
+            ask::schema::aspect<Block>(),
             ask::schema::aspect<resource::Assets>(),
-            ask::schema::aspect<resource::physical::Asset>(),
-            ask::schema::aspect<resource::physical::Loader>(),
+            ask::schema::aspect<resource::atomic::Asset>(),
             ask::schema::aspect<resources::SkySphereGenerator>(),
+            ask::schema::aspect<resources::AtomicVisualizer>(),
         });
     }
 
@@ -58,6 +62,11 @@ namespace eltanin {
             item<Unit>{.name = "sphere", .library = "rmmr"},
             item<Generator>{.type = Generator::Type::sphere});
 
+        assets.primitive.kube = with<::rmmr::resource::Assets>::add_geometry_generator(
+            context,
+            item<Unit>{.name = "kube", .library = "rmmr"},
+            item<Generator>{.type = Generator::Type::kube});
+
         assets.skySphere = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context,
             item<Unit>{.name = "skySphere", .library = "Eltanin"},
@@ -66,10 +75,10 @@ namespace eltanin {
                 .descriptor = "sprites/skySphere.xml",
             });
 
-        assets.unitCube = with<::eltanin::resource::Assets>::add_physical_loader(
+        assets.unitCube = with<::eltanin::resource::Assets>::add_atomic(
             context,
-            item<Unit>{.name = "unit_cube", .library = "rmmr"},
-            item<::eltanin::resource::physical::Loader>{.file = "physical/1kube.atomic"});
+            item<Unit>{.name = "unit_cube", .library = "Eltanin"},
+            "atomic/1kube.atomic");
 
         const auto sky_sphere_shader = with<::rmmr::resource::Assets>::add_shader_loader(
             context,
@@ -122,8 +131,7 @@ namespace eltanin {
         assets.skySphereGeometry = sky_geometry_id;
     }
 
-    void Game::prepareAssets(Writing context) {
-        with<::eltanin::resource::Assets>::load(context);
+    void Game::prepareAssets(Writing) {
     }
 
     void Game::populateWorld(Writing context, system::Window::Id window) {
@@ -161,6 +169,23 @@ namespace eltanin {
         with<scene::Interface>::createLight(context, root,
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
+
+        with<Block>::spawn(
+            context,
+            root,
+            *assets.unitCube,
+            Locator{.pos = Pos{6.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
+            item<scene::actor::Simple>{
+                .geometry = *assets.primitive.kube,
+                .material = shared->material.debugLitTextured.front(),
+                .albedo = RGB{1.0f, 1.0f, 1.0f},
+            });
+
+        physics_ui.shapeMaterial = shared->material.debugLitTextured.back();
+        {
+            const auto& atomic = with<resource::atomic::Asset>::get(context, *assets.unitCube);
+            with<resources::AtomicVisualizer>::materialize(context, atomic.visualizer, window);
+        }
 
         {
             auto world = with<World>::modify_global(context);

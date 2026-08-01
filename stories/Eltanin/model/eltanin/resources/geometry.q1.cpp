@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <numbers>
 #include <vector>
 
@@ -171,6 +172,83 @@ namespace eltanin::resources {
     {
         const auto& generator = with<SkySphereGenerator>::get(context, asset_id);
         return with<rmmr::resource::geometry::Asset>::install(context, asset_id, device, build_cpu(generator));
+    }
+
+    auto AtomicVisualizer::Actions::materialize(Writing context, Id asset_id, rmmr::system::Device::Id device)
+        -> optional<rmmr::resource::geometry::Runtime::Id>
+    {
+        using AtomicAsset = ::eltanin::resource::atomic::Asset;
+        const auto& generator = with<AtomicVisualizer>::get(context, asset_id);
+        if (not with<AtomicAsset>::exists(context, generator.source)) {
+            return context.refuse("eltanin::AtomicVisualizer: source atomic::Asset missing");
+        }
+        const auto& atomic = with<AtomicAsset>::get(context, generator.source);
+        if (atomic.points.empty()) {
+            return context.refuse("eltanin::AtomicVisualizer: atomic points are empty");
+        }
+        if (atomic.faces.empty()) {
+            return context.refuse("eltanin::AtomicVisualizer: atomic faces are empty");
+        }
+
+        CpuPresentation cpu{
+            .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"}),
+            .positions = {},
+            .normals = {},
+            .uv0 = {},
+            .color0 = {},
+            .indices = {},
+        };
+        umap<string, rmmr::resource::geometry::Asset::Part> parts;
+
+        for (const auto& face : atomic.faces) {
+            if (face.name.empty()) return context.refuse("eltanin::AtomicVisualizer: face name is empty");
+            if (parts.contains(face.name)) return context.refuse(std::format("eltanin::AtomicVisualizer: duplicate face name '{}'", face.name));
+            if (face.indices.size() < 3) return context.refuse(std::format("eltanin::AtomicVisualizer: face '{}' needs at least 3 indices", face.name));
+
+            for (const auto index : face.indices) {
+                if (index < integer{0} || static_cast<std::size_t>(index) >= atomic.points.size()) {
+                    return context.refuse(std::format("eltanin::AtomicVisualizer: face '{}' index {} out of range", face.name, index));
+                }
+            }
+
+            const glm::vec3 p0{atomic.points[static_cast<std::size_t>(face.indices[0])]};
+            const glm::vec3 p1{atomic.points[static_cast<std::size_t>(face.indices[1])]};
+            const glm::vec3 p2{atomic.points[static_cast<std::size_t>(face.indices[2])]};
+            const glm::vec3 crossed = glm::cross(p1 - p0, p2 - p0);
+            if (glm::length(crossed) <= 0.0f) {
+                return context.refuse(std::format("eltanin::AtomicVisualizer: face '{}' has degenerate normal", face.name));
+            }
+            const glm::vec3 n = glm::normalize(crossed);
+            const glm::vec3 edge = p1 - p0;
+            if (glm::length(edge) <= 0.0f) {
+                return context.refuse(std::format("eltanin::AtomicVisualizer: face '{}' has degenerate U axis", face.name));
+            }
+            const glm::vec3 u_axis = glm::normalize(edge);
+            const glm::vec3 v_axis = glm::normalize(glm::cross(n, u_axis));
+            const Pos face_normal{n};
+
+            const auto vertex_base = integer(cpu.positions.size());
+            const auto start_index = rmmr::renderer::Count(cpu.indices.size());
+            for (const auto index : face.indices) {
+                const glm::vec3 position{atomic.points[static_cast<std::size_t>(index)]};
+                const glm::vec3 relative = position - p0;
+                cpu.positions.push_back(Pos{position});
+                cpu.normals.push_back(face_normal);
+                cpu.uv0.push_back(UV{glm::dot(relative, u_axis), glm::dot(relative, v_axis)});
+            }
+            for (std::size_t corner = 1; corner + 1 < face.indices.size(); ++corner) {
+                cpu.indices.push_back(vertex_base);
+                cpu.indices.push_back(vertex_base + integer(corner));
+                cpu.indices.push_back(vertex_base + integer(corner + 1));
+            }
+            parts.emplace(face.name, rmmr::resource::geometry::Asset::Part{
+                .startIndex = start_index,
+                .countIndex = rmmr::renderer::Count(cpu.indices.size()) - start_index,
+            });
+        }
+
+        with<rmmr::resource::geometry::Asset>::modify(context, asset_id)->parts = std::move(parts);
+        return with<rmmr::resource::geometry::Asset>::install(context, asset_id, device, cpu);
     }
 
 }

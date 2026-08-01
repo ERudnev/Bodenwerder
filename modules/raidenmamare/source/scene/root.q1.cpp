@@ -2,8 +2,6 @@
 
 #include <base/logging.h>
 
-#include <glm/gtc/quaternion.hpp>
-
 namespace rmmr::scene {
 
     using namespace fqsm::api;
@@ -14,14 +12,7 @@ namespace rmmr::scene {
         constexpr float k_camera_z_far = 100.0f;
 
         auto node_quantum_from_locator(Locator locator) -> Node::Quantum {
-            const vec3 radians = glm::radians(locator.euler);
-            const quat heading = glm::angleAxis(radians.x, vec3{0.0f, 1.0f, 0.0f});
-            const quat pitch = glm::angleAxis(radians.y, vec3{1.0f, 0.0f, 0.0f});
-            const quat bank = glm::angleAxis(radians.z, vec3{0.0f, 0.0f, 1.0f});
-            return Node::Quantum{
-                .position = locator.pos,
-                .rotation = glm::normalize(heading * pitch * bank),
-            };
+            return Node::Quantum{.pose = Pose::from(locator)};
         }
 
         auto attach_camera(Writing context, Root::Id root, Locator locator, Camera::Quantum camera) -> Camera::Id {

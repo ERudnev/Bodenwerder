@@ -16,4 +16,14 @@ namespace rmmr {
         HPB euler;
     };
 
+    struct Pose {
+        Pos position;
+        quat rotation;
+
+        auto hpb() const -> HPB;
+        void hpb(HPB);
+        auto near(const Pose&) const -> bool;
+        static auto from(Locator) -> Pose;
+    };
+
 }
