@@ -16,6 +16,10 @@ namespace eltanin::phys {
             rmmr::Pose restored;
             resource::atomic::Asset::Id shape;
         };
+        struct Actions : BaseActions {
+            // Total impulse `imp` split evenly across particles (Verlet: kick via prev).
+            static void debugAddImpulse(Writing, Id, vec3 imp);
+        };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
     };

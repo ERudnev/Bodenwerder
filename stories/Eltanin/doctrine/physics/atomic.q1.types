@@ -10,3 +10,4 @@ namespace eltanin
         particles: vector<#phys::Particle>
         restored: rmmr::Pose
         shape: #resource::atomic::Asset
+        =debugAddImpulse(imp: vec3)

@@ -1,4 +1,5 @@
-file (GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "*.cpp")
+file(GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "*.cpp")
+list(FILTER MODULE_SOURCES EXCLUDE REGEX "[/\\\\]test[/\\\\]")
 
 project("Eltanin"
     DESCRIPTION "Game project. Space"
@@ -50,4 +51,18 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC glfw
     #PRIVATE assimp
     ${OPENGL_LIBRARIES}
+)
+
+add_executable(Eltanin_horn_tests
+    test/horn_orientation.cpp
+    private/physics/horn.cpp
+)
+target_include_directories(Eltanin_horn_tests
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/private
+)
+target_link_libraries(Eltanin_horn_tests
+    PRIVATE
+        glm
+        base
 )

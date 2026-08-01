@@ -166,7 +166,7 @@ namespace eltanin::phys {
                 ImVec2{viewport->WorkPos.x + viewport->WorkSize.x - 16.0f, viewport->WorkPos.y + 48.0f},
                 ImGuiCond_FirstUseEver,
                 ImVec2{1.0f, 0.0f});
-            ImGui::SetNextWindowSize(ImVec2{280.0f, 0.0f}, ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2{420.0f, 0.0f}, ImGuiCond_FirstUseEver);
 
             if (ImGui::Begin("Physics", &open)) {
                 ImGui::TextUnformatted("Time scale");
@@ -180,11 +180,17 @@ namespace eltanin::phys {
                     "1",
                     "x2", "x4", "x8", "x16",
                 };
+                int selected = 4;
+                for (int i = 0; i < 9; ++i) {
+                    if (system.state.time_scale == k_scales[i]) {
+                        selected = i;
+                    }
+                }
                 for (int i = 0; i < 9; ++i) {
                     if (i > 0) {
                         ImGui::SameLine();
                     }
-                    if (ImGui::RadioButton(k_labels[i], system.state.time_scale == k_scales[i])) {
+                    if (ImGui::RadioButton(k_labels[i], selected == i)) {
                         system.state.time_scale = k_scales[i];
                     }
                 }

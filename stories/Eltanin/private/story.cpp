@@ -22,7 +22,10 @@
 #include <rmmr/semantics/uniform.h>
 #include <rmmr/system/viewport.q1.h>
 
+#include <cmath>
 #include <numbers>
+
+#include <glm/geometric.hpp>
 
 namespace eltanin {
 
@@ -175,16 +178,32 @@ namespace eltanin {
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
-        with<Block>::spawn(
-            context,
-            root,
-            *assets.unitCube,
-            Locator{.pos = Pos{6.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
-            item<scene::actor::Simple>{
-                .geometry = *assets.primitive.kube,
-                .material = shared->material.debugLitTextured.front(),
-                .albedo = RGB{1.0f, 1.0f, 1.0f},
-            });
+        {
+            constexpr Pos k_line_start{4.0f, 0.0f, 0.0f};
+            constexpr float k_step = 4.0f;
+            for (int i = 0; i < 3; ++i) {
+                const Pos pos{k_line_start.x + static_cast<float>(i) * k_step, k_line_start.y, k_line_start.z};
+                const auto block = with<Block>::spawn(
+                    context,
+                    root,
+                    *assets.unitCube,
+                    Locator{.pos = pos, .euler = HPB{0.0f, 0.0f, 0.0f}},
+                    item<scene::actor::Simple>{
+                        .geometry = *assets.primitive.kube,
+                        .material = shared->material.debugLitTextured.front(),
+                        .albedo = RGB{1.0f, 1.0f, 1.0f},
+                    });
+                const auto body = with<Block>::get(context, block).body;
+                float total_mass = 0.0f;
+                for (const auto particle_id : with<phys::Atomic>::get(context, body).particles) {
+                    total_mass += with<phys::Particle>::get(context, particle_id).mass;
+                }
+                const float orbit_r = std::max(glm::length(pos), 0.25f);
+                const float speed = std::sqrt(phys::k_central_mu / orbit_r);
+                const vec3 tangential = glm::normalize(glm::cross(vec3{0.0f, 1.0f, 0.0f}, pos));
+                with<phys::Atomic>::debugAddImpulse(context, body, tangential * speed * total_mass);
+            }
+        }
 
         physics_ui.shapeMaterial = shared->material.gizmo.textured;
         physics_ui.particleGeometry = assets.primitive.diamond;
