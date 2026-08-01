@@ -1,5 +1,6 @@
 #include <eltanin/entities/block.q1.h>
 #include <eltanin/physics/particle.q1.h>
+#include <eltanin/physics/strong.q1.h>
 #include <rmmr/scene/node.q1.h>
 
 namespace eltanin {
@@ -13,6 +14,11 @@ namespace eltanin {
             const vec3 world = pose.position + pose.rotation * local;
             particles.push_back(with<phys::Particle>::create(context, phys::Particle::Quantum{.current = world, .prev = world, .mass = 1.0f}));
         }
+        if (particles.empty()) {
+            return context.refuse("eltanin::Block::spawn: atomic shape has no points");
+        }
+        // Temporary test pin: vertex 0 stays in the constraint wave for the whole runtime.
+        (void)with<phys::strong::Nail>::pin(context, particles[0]);
         const auto body = with<phys::Atomic>::create(context, phys::Atomic::Quantum{.particles = std::move(particles), .restored = pose, .shape = shape});
         const auto actor = with<rmmr::scene::Interface>::createSimpleActor(context, root, locator, std::move(actor_quantum));
         return with<Block>::create(context, Block::Quantum{.body = body, .actor = actor});

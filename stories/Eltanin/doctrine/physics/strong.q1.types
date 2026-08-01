@@ -1,0 +1,16 @@
+import "rmmr/math"
+import "physics/particle"
+
+namespace eltanin
+  namespace phys
+    namespace strong
+
+      // Soft pin constraint: holds one Particle at a fixed world `point`.
+      // Born where the particle is (`>pin` snapshots current → point).
+      // Enforced in the same constraint wave as Atomic (Horn soft pull) — coexists, no exclusive owner of the particle.
+      entity Nail
+        one
+          particle: affects<phys::Particle> // pin target; Atomic still owns the Particle
+          point: vec3                       // world lock (immutable after pin)
+        all
+          >pin(#phys::Particle)-># // point ← particle.current at birth

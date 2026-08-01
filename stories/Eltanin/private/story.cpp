@@ -3,6 +3,7 @@
 #include <eltanin/entities/block.q1.h>
 #include <eltanin/physics/atomic.q1.h>
 #include <eltanin/physics/particle.q1.h>
+#include <eltanin/physics/strong.q1.h>
 #include <eltanin/resources/assets.q1.h>
 #include <eltanin/resources/geometry.q1.h>
 #include <eltanin/resources/atomic.q1.h>
@@ -26,6 +27,7 @@
 #include <numbers>
 
 #include <glm/geometric.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace eltanin {
 
@@ -37,6 +39,7 @@ namespace eltanin {
             ask::schema::aspect<World>(),
             ask::schema::aspect<phys::Particle>(),
             ask::schema::aspect<phys::Atomic>(),
+            ask::schema::aspect<phys::strong::Nail>(),
             ask::schema::aspect<Block>(),
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<resource::atomic::Asset>(),
@@ -168,9 +171,10 @@ namespace eltanin {
                 .albedo = RGB{1.0f, 1.0f, 1.0f},
             });
 
-        const auto camera = with<scene::Interface>::createCamera(context, root,
-            Locator{.pos = Pos{10.5f, 10.0f, 14.0f}, .euler = HPB{36.87f, -29.74f, 0.0f}},
-            100.0f * std::numbers::pi_v<float> / 180.0f);
+        const Pos cameraPos{30.0f, 30.0f, 40.0f};
+        const Pos cameraTarget{0.0f, 5.0f, 0.0f};
+        const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
+        const auto camera = with<scene::Interface>::createCamera(context, root, Locator{.pos = cameraPos, .euler = cameraPose.hpb()}, 100.0f * std::numbers::pi_v<float> / 180.0f);
         // R=100 sphere + offset camera: default z_far=100 would clip the far hemisphere.
         with<scene::Camera>::modify(context, camera)->z_far = 250.0f;
         with<controller::Camera3d>::create(context, camera);
@@ -199,7 +203,7 @@ namespace eltanin {
                     total_mass += with<phys::Particle>::get(context, particle_id).mass;
                 }
                 const float orbit_r = std::max(glm::length(pos), 0.25f);
-                const float speed = std::sqrt(phys::k_central_mu / orbit_r);
+                const float speed = std::sqrt(phys::Settings::centralMu / orbit_r);
                 const vec3 tangential = glm::normalize(glm::cross(vec3{0.0f, 1.0f, 0.0f}, pos));
                 with<phys::Atomic>::debugAddImpulse(context, body, tangential * speed * total_mass);
             }

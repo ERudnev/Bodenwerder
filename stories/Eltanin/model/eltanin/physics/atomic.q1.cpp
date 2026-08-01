@@ -15,7 +15,7 @@ namespace eltanin::phys {
         for (const auto particle_id : atomic.particles) {
             auto particle = with<Particle>::modify(context, particle_id);
             // Δv = j / m; Verlet v ≈ (current − prev) / dt  ⇒  prev ← prev − Δv·dt
-            particle->prev -= (share / particle->mass) * k_fixed_dt_s;
+            particle->prev -= (share / particle->mass) * Settings::fixedDtS;
         }
     }
 

@@ -13,28 +13,21 @@
 
 namespace eltanin::phys {
 
-    namespace {
-
-        constexpr int64 k_fixed_step_us = 10'000; // 10 ms
-        // Softened magic point-mass at origin.
-        constexpr float k_gravity_soften = 0.25f;
-        constexpr float k_soften2 = k_gravity_soften * k_gravity_soften;
-
-    } // namespace
-
     void System::applyForces(fqsm::Direct<Particle>& particles) {
         accelerations.resize(particles.items.size());
         std::size_t slot = 0;
         for (auto [_, particle] : particles.items) {
+            // Sample farther of current/prev (|r|²) so a near-origin hop doesn't spike the singularity.
+            const vec3& sample = glm::dot(particle.prev, particle.prev) > glm::dot(particle.current, particle.current) ? particle.prev : particle.current;
             // a = −μ r / r³ (softened), independent of particle mass.
-            const float r2 = std::max(glm::dot(particle.current, particle.current), k_soften2);
+            const float r2 = std::max(glm::dot(sample, sample), Settings::gravitySoften2);
             const float inv_r3 = 1.0f / (r2 * std::sqrt(r2));
-            accelerations[slot++] = -k_central_mu * particle.current * inv_r3;
+            accelerations[slot++] = -Settings::centralMu * sample * inv_r3;
         }
     }
 
     void System::integrate(fqsm::Direct<Particle>& particles) {
-        const float dt2 = k_fixed_dt_s * k_fixed_dt_s;
+        const float dt2 = Settings::fixedDtS * Settings::fixedDtS;
         std::size_t slot = 0;
         for (auto [_, particle] : particles.items) {
             const vec3 previous = particle.current;
@@ -108,7 +101,7 @@ namespace eltanin::phys {
                 const vec3 goal = com + rotation * rest_centered[i];
                 auto& particle = particles.items.at(atomic.particles[i]);
                 // prev untouched: Verlet velocity shifts with current.
-                particle.current += k_constraint_stiffness * (goal - particle.current);
+                particle.current += Settings::constraintStiffness * (goal - particle.current);
             }
 
             // Mesh verts = shape.points. Origin of pose must match Horn centering: com − R·rest_com.
@@ -119,24 +112,37 @@ namespace eltanin::phys {
         }
     }
 
+    void System::applyNails(fqsm::Direct<Particle>& particles, fqsm::Direct<strong::Nail>& nails) {
+        for (auto [_, nail] : nails.items) {
+            auto* particle = particles.items.find(nail.particle);
+            if (not particle) {
+                continue;
+            }
+            // prev untouched: Verlet velocity shifts with current (same as Horn).
+            particle->current += Settings::constraintStiffness * (nail.point - particle->current);
+        }
+    }
+
     void System::tick(Stewarding context) {
-        // Jakobsen: AccumulateForces → Verlet → Horn rigid — all Direct, no Writing.
+        // Jakobsen: AccumulateForces → Verlet → constraints (Horn + Nail) — all Direct, no Writing.
         fqsm::Direct<Particle> particles = context;
         fqsm::Direct<Atomic> atomics = context;
+        fqsm::Direct<strong::Nail> nails = context;
         applyForces(particles);
         integrate(particles);
         restoreBases(context, particles, atomics);
+        applyNails(particles, nails);
     }
 
     void System::step(establish::Realm& world, int64 dt_us) {
         debt_us += static_cast<int64>(static_cast<double>(dt_us) * static_cast<double>(state.time_scale));
-        if (debt_us < k_fixed_step_us) {
+        if (debt_us < Settings::fixedStepUs) {
             return;
         }
         Stewarding session = world;
-        while (debt_us >= k_fixed_step_us) {
+        while (debt_us >= Settings::fixedStepUs) {
             tick(session);
-            debt_us -= k_fixed_step_us;
+            debt_us -= Settings::fixedStepUs;
         }
     }
 
@@ -144,7 +150,7 @@ namespace eltanin::phys {
         // Verlet: v ≈ (current − prev) / dt  ⇒  prev = current − v·dt
         return with<Particle>::create(context, Particle::Quantum{
             .current = pos,
-            .prev = pos - velocity * k_fixed_dt_s,
+            .prev = pos - velocity * Settings::fixedDtS,
             .mass = mass,
         });
     }

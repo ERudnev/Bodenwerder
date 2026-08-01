@@ -10,6 +10,7 @@ set(Eltanin_Q1
     world.q1.types
     physics/particle.q1.types
     physics/atomic.q1.types
+    physics/strong.q1.types
     entities/block.q1.types
     resources/geometry.q1.types
     resources/atomic.q1.types
