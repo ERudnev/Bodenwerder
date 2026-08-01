@@ -23,7 +23,7 @@ namespace rmmr::controller {
         constexpr float k_mouse_yaw_scale_x = -1.0f;
         constexpr float k_pitch_min_deg = -89.0f;
         constexpr float k_pitch_max_deg = 89.0f;
-        constexpr float k_move_units_per_sec = 3.0f;
+        constexpr float k_move_units_per_sec = 30.0f;
 
         const glm::vec3 k_world_up{0.0f, 1.0f, 0.0f};
 

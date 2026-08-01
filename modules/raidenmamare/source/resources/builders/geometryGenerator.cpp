@@ -312,4 +312,54 @@ namespace rmmr::resource::builders::geometry {
         };
     }
 
+    // Regular octahedron: poles ±e_i. Split verts (per-face color0). No normals/UV.
+    // Face color: R if x>0, G if y>0, B if z>0 → 8 combinatorial face colors.
+    auto GeometryGenerator::diamond() -> CpuPresentation {
+        vector<Pos> positions;
+        vector<vec4> color0;
+        vector<integer> indices;
+        positions.reserve(24);
+        color0.reserve(24);
+        indices.reserve(24);
+
+        for (const int sx : {1, -1}) {
+            for (const int sy : {1, -1}) {
+                for (const int sz : {1, -1}) {
+                    Pos a{static_cast<float>(sx), 0.0f, 0.0f};
+                    Pos b{0.0f, static_cast<float>(sy), 0.0f};
+                    Pos c{0.0f, 0.0f, static_cast<float>(sz)};
+                    // Order A,B,C is outward iff sx*sy*sz > 0; otherwise swap B/C.
+                    if (sx * sy * sz < 0) {
+                        std::swap(b, c);
+                    }
+                    const vec4 face_color{
+                        sx > 0 ? 1.0f : 0.0f,
+                        sy > 0 ? 1.0f : 0.0f,
+                        sz > 0 ? 1.0f : 0.0f,
+                        1.0f,
+                    };
+                    const auto base = static_cast<integer>(positions.size());
+                    positions.push_back(a);
+                    positions.push_back(b);
+                    positions.push_back(c);
+                    color0.push_back(face_color);
+                    color0.push_back(face_color);
+                    color0.push_back(face_color);
+                    indices.push_back(base);
+                    indices.push_back(base + 1);
+                    indices.push_back(base + 2);
+                }
+            }
+        }
+
+        return CpuPresentation{
+            .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "color0"}),
+            .positions = std::move(positions),
+            .normals = {},
+            .uv0 = {},
+            .color0 = std::move(color0),
+            .indices = std::move(indices),
+        };
+    }
+
 }

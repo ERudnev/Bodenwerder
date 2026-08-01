@@ -65,6 +65,7 @@ namespace rmmr::resource::geometry {
             gridPlane,
             unitQuad,
             sphere, // regular icosahedron (20 faces); smooth sphere normals + spherical UV
+            diamond, // regular octahedron; split verts; position+color0 (no UV/normals)
         };
         struct Quantum {
             Type type;

@@ -127,6 +127,50 @@ namespace rmmr::resource::builders::material {
         };
     }
 
+    auto Presets::gizmoTextured(resource::shader::Reference program, resource::texture::Reference albedo_map) -> Asset::Quantum {
+        return Asset::Quantum{
+            .techniques = {
+                {renderer::Pass::gizmo, Asset::Technique{
+                    .program = program,
+                    .uniforms = ::rmmr::material::Semantics::ids_of({
+                        "model",
+                        "view",
+                        "projection",
+                        "albedo",
+                        "albedoMap",
+                        "opacity",
+                    }),
+                    .textures = {
+                        Asset::TextureBinding{
+                            .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
+                            .texture = albedo_map,
+                        },
+                    },
+                }},
+            },
+            .blend = renderer::BlendMode::alpha,
+        };
+    }
+
+    auto Presets::gizmoVertexColor(resource::shader::Reference program) -> Asset::Quantum {
+        return Asset::Quantum{
+            .techniques = {
+                {renderer::Pass::gizmo, Asset::Technique{
+                    .program = program,
+                    .uniforms = ::rmmr::material::Semantics::ids_of({
+                        "model",
+                        "view",
+                        "projection",
+                        "albedo",
+                        "opacity",
+                    }),
+                    .textures = {},
+                }},
+            },
+            .blend = renderer::BlendMode::alpha,
+        };
+    }
+
     auto Presets::grid(resource::shader::Reference program) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {

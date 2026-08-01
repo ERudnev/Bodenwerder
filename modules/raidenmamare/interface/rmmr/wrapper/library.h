@@ -20,6 +20,10 @@ namespace rmmr::wrapper::assets {
             base::maybe<rmmr::resource::texture::Asset::Id> whiteRing;
         } texture;
         struct {
+            struct {
+                base::maybe<rmmr::resource::material::Asset::Id> textured;
+                base::maybe<rmmr::resource::material::Asset::Id> vertexColor;
+            } gizmo;
             base::maybe<rmmr::resource::material::Asset::Id> ambient;
             base::maybe<rmmr::resource::material::Asset::Id> lit;
             std::vector<rmmr::resource::material::Asset::Id> debugLitTextured;

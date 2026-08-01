@@ -13,6 +13,8 @@ namespace rmmr::resource::builders::material {
         static Configured lit(resource::shader::Reference program, resource::shader::Reference shadow_depth);
         static Configured litTextured(resource::shader::Reference program, resource::texture::Reference albedo_map, resource::shader::Reference shadow_depth);
         static Configured litTexturedTransparent(resource::shader::Reference program, resource::texture::Reference albedo_map);
+        static Configured gizmoTextured(resource::shader::Reference program, resource::texture::Reference albedo_map);
+        static Configured gizmoVertexColor(resource::shader::Reference program);
         static Configured grid(resource::shader::Reference program);
         static Configured sprite(resource::shader::Reference program);
     };

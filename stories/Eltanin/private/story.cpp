@@ -67,6 +67,11 @@ namespace eltanin {
             item<Unit>{.name = "kube", .library = "rmmr"},
             item<Generator>{.type = Generator::Type::kube});
 
+        assets.primitive.diamond = with<::rmmr::resource::Assets>::add_geometry_generator(
+            context,
+            item<Unit>{.name = "diamond", .library = "rmmr"},
+            item<Generator>{.type = Generator::Type::diamond});
+
         assets.skySphere = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context,
             item<Unit>{.name = "skySphere", .library = "Eltanin"},
@@ -181,7 +186,9 @@ namespace eltanin {
                 .albedo = RGB{1.0f, 1.0f, 1.0f},
             });
 
-        physics_ui.shapeMaterial = shared->material.debugLitTextured.back();
+        physics_ui.shapeMaterial = shared->material.gizmo.textured;
+        physics_ui.particleGeometry = assets.primitive.diamond;
+        physics_ui.particleMaterial = shared->material.gizmo.vertexColor;
         {
             const auto& atomic = with<resource::atomic::Asset>::get(context, *assets.unitCube);
             with<resources::AtomicVisualizer>::materialize(context, atomic.visualizer, window);

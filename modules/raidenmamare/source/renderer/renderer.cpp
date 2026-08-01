@@ -182,10 +182,13 @@ namespace rmmr {
             }
 
             if (pass == renderer::Pass::gizmo) {
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                 glDepthMask(GL_FALSE);
-            } else {
-                glDepthMask(GL_TRUE);
+                return;
             }
+
+            glDepthMask(GL_TRUE);
         }
 
         void end_pass(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
@@ -195,7 +198,7 @@ namespace rmmr {
                 return;
             }
 
-            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::environment) {
+            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::environment || pass == renderer::Pass::gizmo) {
                 glDisable(GL_BLEND);
                 glDepthMask(GL_TRUE);
             }
@@ -213,7 +216,7 @@ namespace rmmr {
 
         void apply_blend(renderer::Pass pass, renderer::BlendMode blend) {
             if (blend == renderer::BlendMode::inherit) {
-                if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite) {
+                if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo) {
                     blend = renderer::BlendMode::alpha;
                 } else {
                     return;
@@ -502,7 +505,7 @@ namespace rmmr {
             PassDrawState pass_state{};
 
             auto& batch = commands[pass];
-            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite) {
+            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo) {
                 sort_back_to_front(view, batch);
             } else {
                 sort_by_pipeline_state(pass, batch);

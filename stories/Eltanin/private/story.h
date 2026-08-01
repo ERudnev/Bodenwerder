@@ -26,6 +26,7 @@ namespace eltanin {
                 base::maybe<rmmr::resource::geometry::Asset::Id> grid;
                 base::maybe<rmmr::resource::geometry::Asset::Id> sphere;
                 base::maybe<rmmr::resource::geometry::Asset::Id> kube;
+                base::maybe<rmmr::resource::geometry::Asset::Id> diamond;
             } primitive;
             base::maybe<rmmr::resource::sprite::Pack::Id> skySphere;
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;

@@ -31,6 +31,7 @@ namespace rmmr::resource::builders::geometry {
         static CpuPresentation gridPlane();
         static CpuPresentation unitQuad();
         static CpuPresentation sphere();
+        static CpuPresentation diamond();
     };
 
 }
