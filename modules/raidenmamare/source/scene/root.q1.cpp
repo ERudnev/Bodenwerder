@@ -58,6 +58,12 @@ namespace rmmr::scene {
         return node;
     }
 
+    auto Interface::createMeshActor(Writing context, Root::Id root, Locator locator, actor::Mesh::Quantum actorQuantum) -> actor::Mesh::Id {
+        const auto node = with<Node_group>::addElement(context, root, node_quantum_from_locator(locator));
+        with<actor::Mesh>::extend(context, node, std::move(actorQuantum));
+        return node;
+    }
+
     auto Interface::createGrid(Writing context, Root::Id root, Locator locator, Grid::Quantum gridQuantum) -> Grid::Id {
         const auto node = with<Node_group>::addElement(context, root, node_quantum_from_locator(locator));
         with<Grid>::extend(context, node, std::move(gridQuantum));
@@ -69,6 +75,10 @@ namespace rmmr::scene {
         for (const auto node : node_group) {
             if (with<actor::Simple>::exists(context, node)) {
                 actor::Simple::Actions::submit(context, node, device, where);
+                continue;
+            }
+            if (with<actor::Mesh>::exists(context, node)) {
+                actor::Mesh::Actions::submit(context, node, device, where);
                 continue;
             }
             if (with<actor::Sprite>::exists(context, node)) {

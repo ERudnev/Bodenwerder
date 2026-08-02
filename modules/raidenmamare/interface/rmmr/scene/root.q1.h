@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rmmr/renderer/types.q1.h>
+#include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/actors/simple.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
@@ -43,6 +44,7 @@ namespace rmmr::scene {
         static auto createCamera(Writing, Root::Id, Locator, float fov_x) -> Camera::Id;
         static auto createLight(Writing, Root::Id, Locator, Light::Quantum) -> Light::Id;
         static auto createSimpleActor(Writing, Root::Id, Locator, actor::Simple::Quantum) -> actor::Simple::Id;
+        static auto createMeshActor(Writing, Root::Id, Locator, actor::Mesh::Quantum) -> actor::Mesh::Id;
         static auto createGrid(Writing, Root::Id, Locator, Grid::Quantum) -> Grid::Id;
         static void render(Reading, Root::Id, system::Device::Id, renderer::CommandBuffer& where);
     };

@@ -101,7 +101,7 @@ namespace rmmr::resource::builders::geometry {
         };
     }
 
-    // Cube with centered half-size window per face. Index order: all outer tris, then all window tris.
+    // Cube with centered half-size window per face. Index order: all outer tris (6×24), then all window tris (6×6). Asset.parts: "outer", "window".
     auto GeometryGenerator::windowedKube() -> CpuPresentation {
         const auto face_at = [](int face, float u, float v) -> Pos {
             switch (face) {

@@ -1,10 +1,10 @@
-import "../../resources/geometry"
-import "../../resources/materials"
-import "../../resources/sprites"
-import "../../renderer/types"
-import "../../system/core"
-import "../../math"
-import "../node"
+import "resources/geometry"
+import "resources/materials"
+import "resources/sprites"
+import "renderer/types"
+import "system/core"
+import "math"
+import "scene/node"
 
 namespace rmmr
   namespace scene

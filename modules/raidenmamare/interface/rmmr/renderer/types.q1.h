@@ -26,6 +26,11 @@ namespace rmmr::renderer {
     };
 
     struct Command {
+        struct IndexRange {
+            Count start;
+            Count count;
+        };
+
         mat4 model;
         resource::geometry::Runtime::Id geometry;
         resource::material::Runtime::Id material;
@@ -37,6 +42,7 @@ namespace rmmr::renderer {
         InstanceSource instance_data;
         Count instance_count;
         RenderState render_state;
+        base::maybe<IndexRange> indices;
     };
 
     using CommandBuffer = SeparateBuffers<Command>;

@@ -17,6 +17,7 @@ set(Raidenmamare_Q1
     scene/camera.q1.types
     scene/light.q1.types
     scene/actors/simple.q1.types
+    scene/actors/mesh.q1.types
     scene/actors/sprite.q1.types
     scene/gizmos.q1.types
     resources/manager.q1.types

@@ -125,14 +125,6 @@ namespace rmmr::wrapper {
 
         engine->setActiveViews(product->views);
 
-        if (status == assets::PrepareStatus::Generated) {
-            try {
-                state->assets->save(state->world, assets::Manager::statePath(settings.assets_root));
-            } catch (const std::exception& error) {
-                base::message("app: initial assets save failed: {}", error.what());
-            }
-        }
-
         if (not state->world.result().good())
             throw std::runtime_error("app: initDefaultWorld failed");
     }
@@ -162,14 +154,6 @@ namespace rmmr::wrapper {
             state->ui.draw(state->world, *product);
             engine->render(state->world);
             engine->endFrame(state->world);
-        }
-
-        if (state->assets.exists()) {
-            try {
-                state->assets->save(state->world, assets::Manager::statePath(settings.assets_root));
-            } catch (const std::exception& error) {
-                base::message("app: assets save failed: {}", error.what());
-            }
         }
 
         if (engine)

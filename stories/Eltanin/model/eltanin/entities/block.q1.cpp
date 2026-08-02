@@ -5,7 +5,7 @@
 namespace eltanin {
     using namespace fqsm::api;
 
-    auto Block::Actions::spawn(Writing context, rmmr::scene::Root::Id root, resource::atomic::Asset::Id shape, rmmr::Locator locator, rmmr::scene::actor::Simple::Quantum actor_quantum) -> Id {
+    auto Block::Actions::spawn(Writing context, rmmr::scene::Root::Id root, resource::atomic::Asset::Id shape, rmmr::Locator locator, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
         // Asset points are already game meters (no normalize/scale). Pose is rigid only: R, t.
         const auto pose = rmmr::Pose::from(locator);
         const auto& asset = with<resource::atomic::Asset>::get(context, shape);
@@ -41,7 +41,7 @@ namespace eltanin {
             },
             .restored = pose,
         });
-        const auto actor = with<rmmr::scene::Interface>::createSimpleActor(context, root, locator, std::move(actor_quantum));
+        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, locator, std::move(actor_quantum));
         return with<Block>::create(context, Block::Quantum{.body = body, .actor = actor});
     }
 
@@ -62,7 +62,7 @@ namespace eltanin {
     auto Block::customAspectReactions() -> const Behavior {
         return {
             reaction::structural::custody<Block, phys::Atomic, &Block::Quantum::body>{},
-            reaction::structural::custody<Block, rmmr::scene::actor::Simple, &Block::Quantum::actor>{},
+            reaction::structural::custody<Block, rmmr::scene::actor::Mesh, &Block::Quantum::actor>{},
             reaction::aspect_wide<Block, phys::Atomic>(&Block::Internals::followBody),
         };
     }

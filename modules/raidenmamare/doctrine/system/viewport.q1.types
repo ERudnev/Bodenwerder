@@ -1,4 +1,4 @@
-import "window"
+import "system/window"
 
 namespace rmmr
   namespace system

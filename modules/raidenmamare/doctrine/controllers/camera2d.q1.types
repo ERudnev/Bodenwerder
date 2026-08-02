@@ -1,6 +1,6 @@
-import "../system/core"
-import "../system/window"
-import "../scene/camera"
+import "system/core"
+import "system/window"
+import "scene/camera"
 
 namespace rmmr
   namespace controller

@@ -71,6 +71,11 @@ namespace rmmr::wrapper::assets {
         const auto shadow_depth_shader = with<Assets>::add_shader_loader(context, item<Unit>{.name = "shadow_depth_shader", .library = "rmmr"}, item<shader::Loader>{.vertex = "shaders/shadowDepth.vert.glsl", .fragment = "shaders/shadowDepth.frag.glsl"});
 
         handles.geometry.windowedKube = with<Assets>::add_geometry_generator(context, item<Unit>{.name = "windowed_kube", .library = "rmmr"}, item<geometry::Generator>{.type = geometry::Generator::Type::windowedKube});
+        // Matches GeometryGenerator::windowedKube index layout: all outer tris, then all window tris.
+        with<geometry::Asset>::modify(context, handles.geometry.windowedKube)->parts = {
+            {"outer", {.startIndex = 0, .countIndex = 6 * 24}},
+            {"window", {.startIndex = 6 * 24, .countIndex = 6 * 6}},
+        };
 
         handles.material.gizmo.textured = with<Assets>::add_material(context, item<Unit>{.name = "gizmo_textured_debug06", .library = "rmmr"}, builders::material::Presets::gizmoTextured(with<Unit>::remember(context, gizmo_textured_shader), with<Unit>::remember(context, handles.texture.debug[5])));
         handles.material.gizmo.vertexColor = with<Assets>::add_material(context, item<Unit>{.name = "gizmo_vertex_color", .library = "rmmr"}, builders::material::Presets::gizmoVertexColor(with<Unit>::remember(context, vertex_color_shader)));
@@ -93,10 +98,6 @@ namespace rmmr::wrapper::assets {
     bool Manager::loadFrom(Stewarding, Location) {
         base::message("toy: assets catalogue load archived (Retrospection offline)");
         return false;
-    }
-
-    void Manager::save(Writing, Location) {
-        // Catalogue persistency archived with Retrospection forms.
     }
 
 }

@@ -28,6 +28,10 @@ namespace rmmr::scene {
         const auto& material = with<resource::material::Runtime>::get(context, material_it->second);
 
         for (const auto& [pass, technique] : material.techniques) {
+            base::maybe<renderer::Command::IndexRange> indices{};
+            if (draw.indices) {
+                indices = renderer::Command::IndexRange{.start = draw.indices->start, .count = draw.indices->count};
+            }
             where[pass].push_back(renderer::Command{
                 .model = draw.model,
                 .geometry = geometry_it->second,
@@ -40,6 +44,7 @@ namespace rmmr::scene {
                 .instance_data = {},
                 .instance_count = renderer::Count{1},
                 .render_state = renderer::RenderState{.blend = material.blend},
+                .indices = indices,
             });
         }
     }

@@ -19,6 +19,10 @@ namespace rmmr::scene {
             resource::sprite::Pack::Id pack;
             integer index;
         };
+        struct IndexRange {
+            renderer::Count start;
+            renderer::Count count;
+        };
 
         mat4 model;
         resource::geometry::Asset::Id geometry;
@@ -26,6 +30,7 @@ namespace rmmr::scene {
         base::maybe<SpriteSource> sprite;
         RGB albedo;
         float opacity;
+        base::maybe<IndexRange> indices;
     };
 
     void submit_material_passes(Reading, system::Device::Id, const DrawInstance&, renderer::CommandBuffer& where);

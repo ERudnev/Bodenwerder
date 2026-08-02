@@ -42,4 +42,3 @@ namespace rmmr
         >install(#Device) // cache is zero by default
         >materialize() // one-shot: family Assets → find Kind by id → materialize+bind
         !maintain_all_mappings(~Assets)
-        !align_from_assets(~texture::Asset, ~shader::Asset, ~material::Asset, ~shadow::Asset, ~geometry::Asset, ~sprite::Pack) // events → find Kind by id

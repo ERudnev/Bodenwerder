@@ -32,17 +32,6 @@ namespace rmmr::resource {
             mapping.insert_or_assign(asset_id, *runtime_id);
         }
 
-        template<typename Fn>
-        void for_devices_of_assets(Writing context, Fn&& fn) {
-            const auto assets = with<Assets>::singleton(context);
-            if (not assets) return;
-            for (const auto [device, host] : context->aspect<DeviceRuntimes>().items()) {
-                if (host.assets != *assets) continue;
-                if (not with<Runtimes>::exists(context, device)) continue;
-                fn(device);
-            }
-        }
-
         template<typename Asset, typename Runtime>
         void scrub_mapping(Reacting context, Runtimes::Id runtimes_id, const umap<typename Asset::Id, typename Runtime::Id>& mapping, umap<typename Asset::Id, typename Runtime::Id> Runtimes::Quantum::* field) {
             auto& runtime_patch = context.adjustments<Runtime>();
@@ -110,43 +99,6 @@ namespace rmmr::resource {
                 with<Runtimes>::modify(context, device)->sprites_id_mapping,
                 pack_id,
                 sprite::Pack::Actions::materialize(context, pack_id, device));
-        }
-
-        void rematerialize_materials_using_texture(Writing context, texture::Asset::Id texture_id, system::Device::Id device) {
-            const auto mapping = with<Runtimes>::get(context, device).materials_id_mapping;
-            for (const auto& [material_id, _] : mapping) {
-                if (not with<material::Asset>::exists(context, material_id)) continue;
-                bool uses_texture = false;
-                for (const auto& [_, technique] : with<material::Asset>::get(context, material_id).techniques) {
-                    for (const auto& binding : technique.textures) {
-                        if (binding.texture.id == texture_id) {
-                            uses_texture = true;
-                            break;
-                        }
-                    }
-                    if (uses_texture) break;
-                }
-                if (uses_texture) {
-                    rematerialize_material(context, material_id, device);
-                }
-            }
-        }
-
-        void rematerialize_materials_using_shader(Writing context, shader::Asset::Id shader_id, system::Device::Id device) {
-            const auto mapping = with<Runtimes>::get(context, device).materials_id_mapping;
-            for (const auto& [material_id, _] : mapping) {
-                if (not with<material::Asset>::exists(context, material_id)) continue;
-                bool uses_shader = false;
-                for (const auto& [_, technique] : with<material::Asset>::get(context, material_id).techniques) {
-                    if (technique.program.id == shader_id) {
-                        uses_shader = true;
-                        break;
-                    }
-                }
-                if (uses_shader) {
-                    rematerialize_material(context, material_id, device);
-                }
-            }
         }
 
     } // namespace
@@ -269,58 +221,11 @@ namespace rmmr::resource {
                 scrub_mapping<sprite::Pack, sprite::Runtime>(context, runtimes_id, quantum.sprites_id_mapping, &Quantum::sprites_id_mapping);
             }
         }
-
-        static void align_from_assets(Reacting context) {
-            for (const auto change : context.changes<texture::Asset>().addedOrUpdated()) {
-                if (not with<Unit>::exists(context, change.id)) continue;
-                for_devices_of_assets(context, [&](system::Device::Id device) {
-                    rematerialize_texture(context, change.id, device);
-                    rematerialize_materials_using_texture(context, change.id, device);
-                });
-            }
-
-            for (const auto change : context.changes<shader::Asset>().addedOrUpdated()) {
-                if (not with<Unit>::exists(context, change.id)) continue;
-                for_devices_of_assets(context, [&](system::Device::Id device) {
-                    rematerialize_shader(context, change.id, device);
-                    rematerialize_materials_using_shader(context, change.id, device);
-                });
-            }
-
-            for (const auto change : context.changes<material::Asset>().addedOrUpdated()) {
-                if (not with<Unit>::exists(context, change.id)) continue;
-                for_devices_of_assets(context, [&](system::Device::Id device) {
-                    rematerialize_material(context, change.id, device);
-                });
-            }
-
-            for (const auto change : context.changes<shadow::Asset>().addedOrUpdated()) {
-                if (not with<Unit>::exists(context, change.id)) continue;
-                for_devices_of_assets(context, [&](system::Device::Id device) {
-                    rematerialize_shadow(context, change.id, device);
-                });
-            }
-
-            for (const auto change : context.changes<geometry::Asset>().addedOrUpdated()) {
-                if (not with<Unit>::exists(context, change.id)) continue;
-                for_devices_of_assets(context, [&](system::Device::Id device) {
-                    rematerialize_geometry(context, change.id, device);
-                });
-            }
-
-            for (const auto change : context.changes<sprite::Pack>().addedOrUpdated()) {
-                if (not with<Unit>::exists(context, change.id)) continue;
-                for_devices_of_assets(context, [&](system::Device::Id device) {
-                    rematerialize_sprites(context, change.id, device);
-                });
-            }
-        }
     };
 
     auto Runtimes::customAspectReactions() -> const Behavior {
         return {
             reaction::aspect_wide<Runtimes, Assets>(&Runtimes::Internals::maintain_all_mappings),
-            reaction::aspect_wide<Runtimes, texture::Asset, shader::Asset, material::Asset, shadow::Asset, geometry::Asset, sprite::Pack>(&Runtimes::Internals::align_from_assets),
         };
     }
 

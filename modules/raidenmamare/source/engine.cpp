@@ -74,6 +74,7 @@ namespace rmmr {
                 ask::schema::aspect<scene::Light>(),
                 ask::schema::aspect<scene::Light_group>(),
                 ask::schema::aspect<scene::actor::Simple>(),
+                ask::schema::aspect<scene::actor::Mesh>(),
                 ask::schema::aspect<scene::actor::Sprite>(),
                 ask::schema::aspect<scene::Flat2d>(),
                 ask::schema::aspect<scene::Grid>(),

@@ -44,7 +44,7 @@ namespace rmmr::wrapper::assets {
         Failed,
     };
 
-    // Toy assets: addHardcoded / loadFrom / save. Disk catalogue archived; live path is addHardcoded.
+    // Toy assets: addHardcoded / loadFrom. Disk catalogue archived; live path is addHardcoded.
     struct Manager {
         using Location = std::filesystem::path;
 
@@ -55,7 +55,6 @@ namespace rmmr::wrapper::assets {
         auto prepare(Writing, Location) -> PrepareStatus;
         void addHardcoded(Writing);
         bool loadFrom(Stewarding, Location);
-        void save(Writing, Location);
     };
 
 }

@@ -9,12 +9,13 @@ namespace rmmr
   namespace scene
     namespace actor
 
-      feature Simple of Node
+      // One geometry Asset; materials keyed by geometry::Asset.parts names.
+      feature Mesh of Node
         one
           geometry: #resource::geometry::Asset
-          material: #resource::material::Asset
+          materials: umap<string, #resource::material::Asset>
           albedo: RGB
           scale: vec3 // local; Node has no scale
           ?submit(#system::Device, >where: renderer::CommandBuffer)
         all
-          >create(Pos, HPB, geometry: #resource::geometry::Asset, material: #resource::material::Asset, albedo: RGB) -> #
+          >create(Pos, HPB, geometry: #resource::geometry::Asset, materials: umap<string, #resource::material::Asset>, albedo: RGB) -> #

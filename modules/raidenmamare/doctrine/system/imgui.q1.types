@@ -1,4 +1,4 @@
-import "core"
+import "system/core"
 
 namespace rmmr
   namespace system

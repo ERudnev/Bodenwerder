@@ -1,5 +1,5 @@
 import "math"
-import "gl"
+import "renderer/gl"
 import "semantics"
 import "resources/geometry"
 import "resources/materials"
@@ -16,6 +16,10 @@ namespace rmmr
       buffer: VertexBuffer
       byte_offset: IntPtr
 
+    struct IndexRange
+      start: Count
+      count: Count
+
     struct Command
       model: mat4
       geometry: #resource::geometry::Runtime
@@ -28,5 +32,6 @@ namespace rmmr
       instance_data: InstanceSource
       instance_count: Count
       render_state: RenderState
+      indices: IndexRange? // empty = whole mesh; else glDrawElements range (index units)
 
     using CommandBuffer as @external(rmmr::renderer::CommandBuffer)

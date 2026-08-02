@@ -1,12 +1,13 @@
-import "../math"
-import "../renderer/types"
-import "../system/core"
-import "actors/simple"
-import "actors/sprite"
-import "camera"
-import "gizmos"
-import "light"
-import "node"
+import "math"
+import "renderer/types"
+import "system/core"
+import "scene/actors/simple"
+import "scene/actors/mesh"
+import "scene/actors/sprite"
+import "scene/camera"
+import "scene/gizmos"
+import "scene/light"
+import "scene/node"
 
 namespace rmmr
   namespace scene
@@ -25,6 +26,7 @@ namespace rmmr
       >createCamera(#, Locator, fov_x: float)->#Camera
       >createLight(#, Locator, one<Light>)->#Light
       >createSimpleActor(#, Locator, one<actor::Simple>)->#actor::Simple
+      >createMeshActor(#, Locator, one<actor::Mesh>)->#actor::Mesh
       >createGrid(#, Locator, one<Grid>)->#Grid
       ?render(#, #system::Device, >where: renderer::CommandBuffer)
 

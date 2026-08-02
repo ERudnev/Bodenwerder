@@ -537,7 +537,15 @@ namespace rmmr {
                 draw_instance(args, pass, command, command.material);
 
                 if (geometry.index_count > renderer::Count{0}) {
-                    glDrawElements(GL_TRIANGLES, geometry.index_count, GL_UNSIGNED_INT, nullptr);
+                    if (command.indices) {
+                        const auto& range = *command.indices;
+                        if (range.count > renderer::Count{0}) {
+                            const auto byte_offset = static_cast<renderer::IntPtr>(range.start) * static_cast<renderer::IntPtr>(sizeof(GLuint));
+                            glDrawElements(GL_TRIANGLES, range.count, GL_UNSIGNED_INT, reinterpret_cast<const void*>(byte_offset));
+                        }
+                    } else {
+                        glDrawElements(GL_TRIANGLES, geometry.index_count, GL_UNSIGNED_INT, nullptr);
+                    }
                 } else {
                     glDrawArrays(GL_TRIANGLES, 0, geometry.vertex_count);
                 }
