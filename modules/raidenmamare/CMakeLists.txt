@@ -62,5 +62,6 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC glfw
     PUBLIC stb_image
     PRIVATE imgui
+    PRIVATE assimp
     ${OPENGL_LIBRARIES}
 )

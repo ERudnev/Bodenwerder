@@ -123,7 +123,7 @@ namespace rmmr::resource::sprite {
         if (not manager_id) return (void)context.refuse("resource::sprite::LoaderKenney::load: Manager singleton missing");
         const auto& manager = with<Manager>::get(context, *manager_id);
         const auto descriptor_path = resolve_under_manager(manager, unit, loader.descriptor);
-        base::message("rmmr: sprite::LoaderKenney '{}/{}' ← {}", unit.library, unit.name, descriptor_path.string());
+        base::whisper("rmmr: sprite::LoaderKenney '{}/{}' ← {}", unit.library, unit.name, descriptor_path.string());
         const auto entries = parse_kenney_entries(descriptor_path);
         if (not entries) {
             context.refuse(std::format(

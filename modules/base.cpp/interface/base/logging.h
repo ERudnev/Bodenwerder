@@ -51,6 +51,25 @@ namespace base {
         std::cout << std::format(fmt, std::forward<Args>(args)...) << std::endl;
     }
 
+    // Dim / secondary chatter (ANSI bright-black). Same surface as message.
+    inline void whisper(std::string_view msg) {
+        std::cout << "\033[90m" << msg << "\033[0m" << std::endl;
+    }
+
+    inline void whisper(const char* msg) {
+        whisper(std::string_view{msg});
+    }
+
+    inline void whisper(const std::string& msg) {
+        whisper(std::string_view{msg});
+    }
+
+    template <typename... Args>
+    requires (sizeof...(Args) > 0)
+    inline void whisper(std::format_string<Args...> fmt, Args&&... args) {
+        whisper(std::format(fmt, std::forward<Args>(args)...));
+    }
+
     // --- Report helpers (handy for diagnostics)
     template<typename T>
     concept has_ostream_operator = requires(std::ostream& s, T value) {

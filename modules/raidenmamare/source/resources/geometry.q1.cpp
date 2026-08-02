@@ -5,9 +5,17 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include <assimp/Importer.hpp>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+
 #include <base/logging.h>
 
+#include <glm/gtc/matrix_inverse.hpp>
+
 #include <cstddef>
+#include <filesystem>
+#include <format>
 #include <vector>
 
 namespace rmmr::resource::geometry {
@@ -17,6 +25,120 @@ namespace rmmr::resource::geometry {
     using builders::geometry::GeometryGenerator;
 
     namespace {
+
+        auto resolve_under_manager(const Manager::Quantum& manager, const Unit::Quantum& unit, const filename& relative) -> filepath {
+            const std::filesystem::path file_path(relative);
+            if (file_path.is_absolute()) {
+                return file_path;
+            }
+            if (unit.library.empty()) {
+                return manager.location / file_path;
+            }
+            return manager.location / unit.library / file_path;
+        }
+
+        struct LoadedMesh {
+            CpuPresentation cpu;
+            umap<string, Asset::Part> parts;
+        };
+
+        auto ai_mat4(const aiMatrix4x4& m) -> glm::mat4 {
+            return glm::mat4{
+                m.a1, m.b1, m.c1, m.d1,
+                m.a2, m.b2, m.c2, m.d2,
+                m.a3, m.b3, m.c3, m.d3,
+                m.a4, m.b4, m.c4, m.d4,
+            };
+        }
+
+        void append_mesh(LoadedMesh& out, const aiMesh& mesh, const glm::mat4& transform, const string& part_name) {
+            const auto base = static_cast<integer>(out.cpu.positions.size());
+            const auto normal_matrix = glm::transpose(glm::inverse(glm::mat3(transform)));
+            out.cpu.positions.reserve(out.cpu.positions.size() + mesh.mNumVertices);
+            out.cpu.normals.reserve(out.cpu.normals.size() + mesh.mNumVertices);
+            out.cpu.uv0.reserve(out.cpu.uv0.size() + mesh.mNumVertices);
+            for (unsigned i = 0; i < mesh.mNumVertices; ++i) {
+                const auto& p = mesh.mVertices[i];
+                const auto world = transform * glm::vec4{p.x, p.y, p.z, 1.0f};
+                out.cpu.positions.push_back(Pos{world.x, world.y, world.z});
+                if (mesh.HasNormals()) {
+                    const auto& n = mesh.mNormals[i];
+                    const auto nw = normal_matrix * glm::vec3{n.x, n.y, n.z};
+                    out.cpu.normals.push_back(Pos{nw.x, nw.y, nw.z});
+                } else {
+                    out.cpu.normals.push_back(Pos{0.0f, 0.0f, 1.0f});
+                }
+                if (mesh.HasTextureCoords(0)) {
+                    const auto& uv = mesh.mTextureCoords[0][i];
+                    out.cpu.uv0.push_back(UV{uv.x, uv.y});
+                } else {
+                    out.cpu.uv0.push_back(UV{0.0f, 0.0f});
+                }
+            }
+
+            const auto index_start = static_cast<renderer::Count>(out.cpu.indices.size());
+            out.cpu.indices.reserve(out.cpu.indices.size() + mesh.mNumFaces * 3);
+            for (unsigned f = 0; f < mesh.mNumFaces; ++f) {
+                const auto& face = mesh.mFaces[f];
+                if (face.mNumIndices != 3) {
+                    continue;
+                }
+                out.cpu.indices.push_back(base + static_cast<integer>(face.mIndices[0]));
+                out.cpu.indices.push_back(base + static_cast<integer>(face.mIndices[1]));
+                out.cpu.indices.push_back(base + static_cast<integer>(face.mIndices[2]));
+            }
+            const auto index_count = static_cast<renderer::Count>(out.cpu.indices.size()) - index_start;
+            out.parts.insert_or_assign(part_name, Asset::Part{.startIndex = index_start, .countIndex = index_count});
+        }
+
+        void gather_node(LoadedMesh& out, const aiScene& scene, const aiNode& node, const glm::mat4& parent, bool single_mesh) {
+            const auto transform = parent * ai_mat4(node.mTransformation);
+            for (unsigned i = 0; i < node.mNumMeshes; ++i) {
+                const auto* mesh = scene.mMeshes[node.mMeshes[i]];
+                if (not mesh or mesh->mNumVertices == 0) {
+                    continue;
+                }
+                string part_name;
+                if (single_mesh) {
+                    part_name = "mesh";
+                } else if (mesh->mName.length > 0) {
+                    part_name = mesh->mName.C_Str();
+                } else if (node.mName.length > 0) {
+                    part_name = node.mName.C_Str();
+                } else {
+                    part_name = std::format("part_{}", out.parts.size());
+                }
+                if (out.parts.find(part_name) != out.parts.end()) {
+                    part_name = std::format("{}_{}", part_name, out.parts.size());
+                }
+                append_mesh(out, *mesh, transform, part_name);
+            }
+            for (unsigned i = 0; i < node.mNumChildren; ++i) {
+                gather_node(out, scene, *node.mChildren[i], transform, single_mesh);
+            }
+        }
+
+        auto load_assimp(const filepath& path) -> optional<LoadedMesh> {
+            Assimp::Importer importer;
+            const auto* scene = importer.ReadFile(
+                path.string(),
+                aiProcess_Triangulate
+                    | aiProcess_GenSmoothNormals
+                    | aiProcess_JoinIdenticalVertices
+                    | aiProcess_SortByPType
+                    | aiProcess_FlipUVs);
+            if (not scene or not scene->mRootNode or (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) or scene->mNumMeshes == 0) {
+                return {};
+            }
+            LoadedMesh out{};
+            out.cpu.layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"});
+            const bool single_mesh = scene->mNumMeshes == 1;
+            gather_node(out, *scene, *scene->mRootNode, glm::mat4{1.0f}, single_mesh);
+            if (out.cpu.positions.empty() or out.cpu.indices.empty()) {
+                return {};
+            }
+            return out;
+        }
 
         auto bake(Writing context, system::Device::Id device, const CpuPresentation& cpu) -> Runtime::Quantum {
             if (cpu.positions.empty()) {
@@ -354,8 +476,23 @@ namespace rmmr::resource::geometry {
         return runtime_id;
     }
 
-    auto Loader::Actions::materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id> {
-        _INCOMPLETE_;
+    auto Loader::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {
+        const auto& loader = with<Loader>::get(context, asset_id);
+        const auto& unit = with<Unit>::get(context, asset_id);
+        const auto manager_id = with<Manager>::singleton(context);
+        if (not manager_id) {
+            return context.refuse("resource::geometry::Loader::materialize: Manager singleton missing");
+        }
+        const auto path = resolve_under_manager(with<Manager>::get(context, *manager_id), unit, loader.file);
+        base::whisper("rmmr: geometry::Loader '{}/{}' ← {}", unit.library, unit.name, path.string());
+
+        const auto loaded = load_assimp(path);
+        if (not loaded) {
+            return context.refuse(std::format("resource::geometry::Loader::materialize: Assimp failed '{}'", path.string()));
+        }
+
+        with<Asset>::modify(context, asset_id)->parts = loaded->parts;
+        return Asset::Actions::install(context, asset_id, device, loaded->cpu);
     }
 
     auto Generator::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {

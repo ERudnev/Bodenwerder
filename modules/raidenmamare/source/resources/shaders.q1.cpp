@@ -91,7 +91,7 @@ namespace rmmr::resource::shader {
 
         const auto vertex_path = resolve_under_manager(manager, unit, loader.vertex);
         const auto fragment_path = resolve_under_manager(manager, unit, loader.fragment);
-        base::message("rmmr: shader::Loader '{}/{}' ← {} + {}", unit.library, unit.name, vertex_path.string(), fragment_path.string());
+        base::whisper("rmmr: shader::Loader '{}/{}' ← {} + {}", unit.library, unit.name, vertex_path.string(), fragment_path.string());
 
         const auto vertex_source = read_text_file(vertex_path);
         if (not vertex_source or vertex_source->empty())

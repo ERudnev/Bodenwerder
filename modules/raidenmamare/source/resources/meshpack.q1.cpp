@@ -103,7 +103,7 @@ namespace rmmr::resource::meshpack {
         }
         const auto& manager = with<Manager>::get(context, *manager_id);
         const auto path = resolve_under_manager(manager, unit, loader.file);
-        base::message("rmmr: meshpack::Loader '{}/{}' ← {}", unit.library, unit.name, path.string());
+        base::whisper("rmmr: meshpack::Loader '{}/{}' ← {}", unit.library, unit.name, path.string());
 
         std::ifstream in{path};
         if (not in) {

@@ -2,7 +2,13 @@ add_subdirectory(glew-cmake)
 add_subdirectory(glfw)
 add_subdirectory(glm)
 add_subdirectory(sqlite_amalgamation)
-#add_subdirectory(assimp)
+
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
+add_subdirectory(assimp)
 
 # Standalone Boost.PFR (vendored as submodule in 3party/pfr).
 # Do not modify or build the submodule itself; just expose headers.

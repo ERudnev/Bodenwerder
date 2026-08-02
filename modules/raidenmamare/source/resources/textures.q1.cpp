@@ -63,7 +63,7 @@ namespace rmmr::resource::texture {
         glfwMakeContextCurrent(device_quantum.handle);
 
         const auto path = resolve_under_manager(manager, unit, loader.file);
-        base::message("rmmr: texture::Loader '{}/{}' ← {}", unit.library, unit.name, path.string());
+        base::whisper("rmmr: texture::Loader '{}/{}' ← {}", unit.library, unit.name, path.string());
 
         int width = 0;
         int height = 0;
