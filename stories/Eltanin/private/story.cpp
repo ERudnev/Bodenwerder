@@ -183,9 +183,9 @@ namespace eltanin {
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
         {
-            // Stress: 10×10×10 kube4m (diameter 4 m), centers on a 4 m lattice centered at origin.
+            // Stress: 4×4×4 kube4m (diameter 4 m), centers on a 4 m lattice centered at origin.
             // Gluon every colocated vertex cluster; one Nail on a top outer corner (swing like a blob).
-            constexpr int grid = 10;
+            constexpr int grid = 4;
             constexpr float pitch = 4.0f;
             constexpr float halfExtent = 0.5f * pitch * static_cast<float>(grid - 1);
             const float tol2 = phys::Settings::clueTolerance * phys::Settings::clueTolerance;
