@@ -14,6 +14,7 @@ namespace eltanin
           point: vec3
         all
           >pin(#phys::Particle)->#
+          *satisfy(~phys::Particle) // soft pin toward `point`; missing particle → seppuku
 
       // Soft glue: pulls 2+ Particles toward their shared COM (bodies may differ).
       // `>clue` takes one seed Particle, gathers every Particle within clueTolerance into `particles`.
@@ -23,3 +24,4 @@ namespace eltanin
           particles: vector<affects<phys::Particle>>
         all
           >clue(#phys::Particle)->#
+          *satisfy(~phys::Particle) // soft COM glue; size < 2 → seppuku

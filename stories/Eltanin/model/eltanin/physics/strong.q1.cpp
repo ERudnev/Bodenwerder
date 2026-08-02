@@ -19,6 +19,20 @@ namespace eltanin::phys::strong {
         });
     }
 
+    void Nail::Actions::satisfy(Stewarding context) {
+        auto particles = context.direct<Particle>();
+        auto nails = context.direct<Nail>();
+        for (auto [id, nail] : nails.items) {
+            auto* particle = particles.items.find(nail.particle);
+            if (not particle) {
+                with<Nail>::remove(context, id);
+                continue;
+            }
+            // prev untouched: Verlet velocity shifts with current (same as Horn).
+            particle->current += Settings::constraintStiffness * (nail.point - particle->current);
+        }
+    }
+
     auto Gluon::Actions::clue(Writing context, Particle::Id seed_id) -> Id {
         if (not with<Particle>::exists(context, seed_id)) {
             return context.refuse("eltanin::phys::strong::Gluon::clue: Particle missing");
@@ -32,6 +46,37 @@ namespace eltanin::phys::strong {
             }
         }
         return create(context, Quantum{.particles = std::move(found)});
+    }
+
+    void Gluon::Actions::satisfy(Stewarding context) {
+        auto particles = context.direct<Particle>();
+        auto gluons = context.direct<Gluon>();
+        for (auto [id, gluon] : gluons.items) {
+            std::erase_if(gluon.particles, [&](const Affected<Particle>& particle_id) {
+                return particles.items.find(particle_id) == nullptr;
+            });
+            if (gluon.particles.size() < 2) {
+                with<Gluon>::remove(context, id);
+                continue;
+            }
+
+            vec3 com{0.0f, 0.0f, 0.0f};
+            float mass_sum = 0.0f;
+            for (const auto particle_id : gluon.particles) {
+                const auto& particle = particles.items.at(particle_id);
+                com += particle.current * particle.mass;
+                mass_sum += particle.mass;
+            }
+            if (mass_sum <= 0.0f) {
+                with<Gluon>::remove(context, id);
+                continue;
+            }
+            com /= mass_sum;
+            for (const auto particle_id : gluon.particles) {
+                auto& particle = particles.items.at(particle_id);
+                particle.current += Settings::constraintStiffness * (com - particle.current);
+            }
+        }
     }
 
 }

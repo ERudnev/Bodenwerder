@@ -26,6 +26,8 @@ namespace eltanin::phys {
         struct Actions : BaseActions {
             // Total impulse `imp` split evenly across particles (Verlet: kick via prev).
             static void debugAddImpulse(Writing, Id, vec3 imp);
+            //@ *satisfy(~Particle) — Horn shape-matching pass (Direct Atomic + Particle)
+            static void satisfy(Stewarding);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }

@@ -13,3 +13,5 @@ namespace eltanin
         rest: Rest
         restored: rmmr::Pose
         =debugAddImpulse(imp: vec3)
+      all
+        *satisfy(~Particle) // Horn shape-matching: pull particles to restored base pose

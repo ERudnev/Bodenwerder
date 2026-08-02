@@ -16,6 +16,8 @@ namespace eltanin::phys::strong {
         };
         struct Actions : BaseActions {
             static auto pin(Writing, Particle::Id) -> Id;
+            //@ *satisfy(~phys::Particle) — soft pin pass (Direct Nail + Particle)
+            static void satisfy(Stewarding);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
@@ -27,6 +29,8 @@ namespace eltanin::phys::strong {
         };
         struct Actions : BaseActions {
             static auto clue(Writing, Particle::Id) -> Id;
+            //@ *satisfy(~phys::Particle) — soft COM glue pass (Direct Gluon + Particle)
+            static void satisfy(Stewarding);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }

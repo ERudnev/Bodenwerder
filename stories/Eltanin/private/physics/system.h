@@ -16,9 +16,9 @@ namespace eltanin::phys {
     // Private physics subsystem (not Q1).
     // Fixed tick 10ms; wall dt accumulates as debt (sub-step remainder).
     // Linear gravity −Y (9.81); central μ-gravity kept in Settings but not applied.
-    // One Dock per tick; hot mutation via Stewarding::direct<T>(); Nail/Gluon seppuku via Writing::remove under Stewarding.
+    // One Dock per tick; hot mutation via Stewarding::direct<T>(); Nail/Gluon seppuku via Writing under Stewarding.
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
-    // Constraint wave: Atomic Horn, then Nail pins, then Gluon COM glue (same stiffness); repeated constraintPasses times.
+    // Constraint wave: Atomic / Nail / Gluon `*satisfy(~Particle)` × constraintPasses.
     struct Settings {
         static constexpr float gravity = 9.81f; // m/s², −Y
         static constexpr float centralMu = 8.0f; // unused while linear gravity is on
@@ -45,16 +45,12 @@ namespace eltanin::phys {
 
     private:
         std::vector<vec3> accelerations;
-        std::vector<vec3> scratchWorldCentered;
-        std::vector<float> scratchMasses;
         int64 debt_us = 0;
 
         void tick(Stewarding);
+        void constraintPass(Stewarding);
         void applyForces(fqsm::Direct<Particle>);
         void integrate(fqsm::Direct<Particle>);
-        void restoreBases(Stewarding);
-        void applyNails(Stewarding);
-        void applyGluons(Stewarding);
     };
 
 }
