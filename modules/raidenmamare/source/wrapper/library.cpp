@@ -91,6 +91,7 @@ namespace rmmr::wrapper::assets {
         handles.material.oneSidedGlass = with<Assets>::add_material(context, item<Unit>{.name = "one_sided_glass_debug06", .library = "rmmr"}, builders::material::Presets::oneSidedGlass(with<Unit>::remember(context, glass_shader), with<Unit>::remember(context, handles.texture.debug[5])));
         handles.material.grid = with<Assets>::add_material(context, item<Unit>{.name = "grid_material", .library = "rmmr"}, builders::material::Presets::grid(with<Unit>::remember(context, grid_shader)));
         handles.material.sprite = with<Assets>::add_material(context, item<Unit>{.name = "sprite_material", .library = "rmmr"}, builders::material::Presets::sprite(with<Unit>::remember(context, sprite_shader)));
+        handles.meshpack = with<Assets>::add_meshpack_loader(context, item<Unit>{.name = "default", .library = "rmmr"}, item<meshpack::Loader>{.file = "meshes/etalon/default.meshpack"});
 
         base::message("toy: hardcoded assets added");
     }

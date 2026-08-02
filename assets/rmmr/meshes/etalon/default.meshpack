@@ -1,0 +1,26 @@
+{
+    "default",
+    "rmmr",
+    [
+        {"metal", "lit_material"},
+        {"glass", "one_sided_glass_debug06"},
+        {"rubber", "lit_textured_debug03"},
+        {"paint", "lit_textured_debug02"},
+        {"accent", "lit_textured_debug01"}
+    ],
+    [
+        {"tri_a", {"meshes/etalon/tri_a.obj", [
+            {"mesh", {"metal", ""}}
+        ]}},
+        {"tri_b", {"meshes/etalon/tri_b.obj", [
+            {"mesh", {"paint", "etalon.ghost.tri_b_livery"}}
+        ]}},
+        {"tri_c", {"meshes/etalon/tri_c.obj", [
+            {"part_a", {"metal", ""}},
+            {"part_b", {"glass", ""}},
+            {"part_c", {"accent", "etalon.ghost.tri_c_accent"}},
+            {"part_d", {"rubber", ""}},
+            {"part_e", {"glass", ""}}
+        ]}}
+    ]
+}

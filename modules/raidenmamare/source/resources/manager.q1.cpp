@@ -1,4 +1,5 @@
 #include <rmmr/resources/manager.q1.h>
+#include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 
 namespace rmmr::resource {
@@ -13,6 +14,9 @@ namespace rmmr::resource {
         if (not singleton(context)) return;
         for (const auto [id, _] : context->aspect<sprite::LoaderKenney>().items()) {
             sprite::LoaderKenney::Actions::load(context, id);
+        }
+        for (const auto [id, _] : context->aspect<meshpack::Loader>().items()) {
+            meshpack::Loader::Actions::load(context, id);
         }
     }
 

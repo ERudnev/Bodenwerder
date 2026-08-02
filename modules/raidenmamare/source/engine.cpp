@@ -8,6 +8,7 @@
 #include <rmmr/controller/camera2d.q1.h>
 #include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/resources/manager.q1.h>
+#include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -64,6 +65,8 @@ namespace rmmr {
                 ask::schema::aspect<resource::sprite::Pack>(),
                 ask::schema::aspect<resource::sprite::LoaderKenney>(),
                 ask::schema::aspect<resource::sprite::Runtime>(),
+                ask::schema::aspect<resource::meshpack::Asset>(),
+                ask::schema::aspect<resource::meshpack::Loader>(),
                 ask::schema::aspect<controller::Camera3d>(),
                 ask::schema::aspect<controller::Camera2d>(),
                 ask::schema::aspect<scene::Root>(),

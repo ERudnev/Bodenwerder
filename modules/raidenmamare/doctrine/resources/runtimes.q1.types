@@ -1,4 +1,5 @@
 import "resources/manager"
+import "resources/meshpack"
 
 namespace rmmr
   namespace resource
@@ -14,6 +15,7 @@ namespace rmmr
         >add_geometry_loader(Unit, geometry::Loader)->#geometry::Asset
         >add_geometry_generator(Unit, geometry::Generator)->#geometry::Asset
         >add_sprites_kenney(Unit, sprite::LoaderKenney)->#sprite::Pack
+        >add_meshpack_loader(Unit, meshpack::Loader)->#meshpack::Asset
       all
         singleton: #?
         ?singleton()->#?
