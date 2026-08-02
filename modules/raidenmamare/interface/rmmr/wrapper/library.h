@@ -5,7 +5,6 @@
 
 #include <base/maybe.h>
 #include <fQSM/api/interface.h>
-#include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/textures.q1.h>
@@ -21,10 +20,7 @@ namespace rmmr::wrapper::assets {
             base::maybe<rmmr::resource::texture::Asset::Id> whiteCircle;
             base::maybe<rmmr::resource::texture::Asset::Id> whiteRing;
         } texture;
-        struct {
-            base::maybe<rmmr::resource::geometry::Asset::Id> windowedKube;
-        } geometry;
-        base::maybe<rmmr::resource::meshpack::Asset::Id> meshpack;
+        base::maybe<rmmr::resource::meshpack::Asset::Id> primitives;
         struct {
             struct {
                 base::maybe<rmmr::resource::material::Asset::Id> textured;

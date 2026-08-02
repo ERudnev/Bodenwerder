@@ -70,13 +70,6 @@ namespace rmmr::wrapper::assets {
         const auto sprite_shader = with<Assets>::add_shader_loader(context, item<Unit>{.name = "sprite_shader", .library = "rmmr"}, item<shader::Loader>{.vertex = "shaders/sprite.vert.glsl", .fragment = "shaders/sprite.frag.glsl"});
         const auto shadow_depth_shader = with<Assets>::add_shader_loader(context, item<Unit>{.name = "shadow_depth_shader", .library = "rmmr"}, item<shader::Loader>{.vertex = "shaders/shadowDepth.vert.glsl", .fragment = "shaders/shadowDepth.frag.glsl"});
 
-        handles.geometry.windowedKube = with<Assets>::add_geometry_generator(context, item<Unit>{.name = "windowed_kube", .library = "rmmr"}, item<geometry::Generator>{.type = geometry::Generator::Type::windowedKube});
-        // Matches GeometryGenerator::windowedKube index layout: all outer tris, then all window tris.
-        with<geometry::Asset>::modify(context, handles.geometry.windowedKube)->parts = {
-            {"outer", {.startIndex = 0, .countIndex = 6 * 24}},
-            {"window", {.startIndex = 6 * 24, .countIndex = 6 * 6}},
-        };
-
         handles.material.gizmo.textured = with<Assets>::add_material(context, item<Unit>{.name = "gizmo_textured_debug06", .library = "rmmr"}, builders::material::Presets::gizmoTextured(with<Unit>::remember(context, gizmo_textured_shader), with<Unit>::remember(context, handles.texture.debug[5])));
         handles.material.gizmo.vertexColor = with<Assets>::add_material(context, item<Unit>{.name = "gizmo_vertex_color", .library = "rmmr"}, builders::material::Presets::gizmoVertexColor(with<Unit>::remember(context, vertex_color_shader)));
         handles.material.ambient = with<Assets>::add_material(context, item<Unit>{.name = "ambient_material", .library = "rmmr"}, builders::material::Presets::ambient(with<Unit>::remember(context, ambient_shader), with<Unit>::remember(context, shadow_depth_shader)));
@@ -91,7 +84,7 @@ namespace rmmr::wrapper::assets {
         handles.material.oneSidedGlass = with<Assets>::add_material(context, item<Unit>{.name = "one_sided_glass_debug06", .library = "rmmr"}, builders::material::Presets::oneSidedGlass(with<Unit>::remember(context, glass_shader), with<Unit>::remember(context, handles.texture.debug[5])));
         handles.material.grid = with<Assets>::add_material(context, item<Unit>{.name = "grid_material", .library = "rmmr"}, builders::material::Presets::grid(with<Unit>::remember(context, grid_shader)));
         handles.material.sprite = with<Assets>::add_material(context, item<Unit>{.name = "sprite_material", .library = "rmmr"}, builders::material::Presets::sprite(with<Unit>::remember(context, sprite_shader)));
-        handles.meshpack = with<Assets>::add_meshpack_loader(context, item<Unit>{.name = "default", .library = "rmmr"}, item<meshpack::Loader>{.file = "meshes/etalon/default.meshpack"});
+        handles.primitives = with<Assets>::add_meshpack_loader(context, item<Unit>{.name = "primitives", .library = "rmmr"}, item<meshpack::Loader>{.file = "meshes/primitives/primitives.meshpack"});
 
         base::message("toy: hardcoded assets added");
     }

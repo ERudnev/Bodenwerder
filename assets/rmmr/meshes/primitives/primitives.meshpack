@@ -1,0 +1,18 @@
+{
+    "primitives",
+    "rmmr",
+    [
+        {"metal", "lit_material"},
+        {"glass", "one_sided_glass_debug06"},
+        {"paint", "lit_textured_debug02"}
+    ],
+    [
+        {"kube", {"meshes/primitives/kube.obj", [
+            {"mesh", {"metal", ""}}
+        ]}},
+        {"windowed_kube", {"meshes/primitives/windowed_kube.obj", [
+            {"outer", {"paint", "some_future_unique_texture.imagefile"}},
+            {"window", {"glass", ""}}
+        ]}}
+    ]
+}

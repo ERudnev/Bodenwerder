@@ -13,6 +13,8 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/meshpack.q1.h>
+#include <rmmr/resources/necessary.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/sprites.q1.h>
@@ -180,21 +182,20 @@ namespace eltanin {
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
-        // Temporary minimal spawn: one free kube4m (visual: windowed kube).
-        (void)with<Block>::spawn(
-            context,
-            root,
-            *assets.kube4m,
-            Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
-            item<scene::actor::Mesh>{
-                .geometry = *shared->geometry.windowedKube,
-                .materials = {
-                    {"outer", shared->material.debugLitTextured[1]},
-                    {"window", *shared->material.oneSidedGlass},
-                },
-                .albedo = RGB{1.0f, 1.0f, 1.0f},
-                .scale = vec3{4.0f, 4.0f, 4.0f},
-            });
+        // Temporary minimal spawn: one free kube4m (visual: pack windowed_kube).
+        (void)rmmr::necessary<::rmmr::resource::meshpack::Asset>(context, shared->primitives, "windowed_kube", [&](const auto& look) {
+            return with<Block>::spawn(
+                context,
+                root,
+                *assets.kube4m,
+                Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
+                item<scene::actor::Mesh>{
+                    .geometry = look.geometry,
+                    .materials = look.materials,
+                    .albedo = RGB{1.0f, 1.0f, 1.0f},
+                    .scale = vec3{4.0f, 4.0f, 4.0f},
+                });
+        });
 
         physics_ui.shapeMaterial = shared->material.gizmo.textured;
         physics_ui.particleGeometry = assets.primitive.diamond;
