@@ -19,7 +19,7 @@ Minimal local language extension to get `*.q1.types` highlighted and recognized 
 
 After install, `*.q1.types` should open in Language Mode **Q1** automatically.
 
-Operation line prefixes (`?`, `=`, `>`, `!`) use the TextMate scope **`keyword.other.q1.operation-prefix`**. The extension contributes a default **yellow** foreground (`#e2c943`) via `contributes.configurationDefaults` → `editor.tokenColorCustomizations.textMateRules` (global rules object: the scope string only appears in Q1 grammar, so other languages are unaffected).
+Operation line prefixes (`?`, `=`, `>`, `*`, `!`) use the TextMate scope **`keyword.other.q1.operation-prefix`**. The extension contributes a default **yellow** foreground (`#e2c943`) via `contributes.configurationDefaults` → `editor.tokenColorCustomizations.textMateRules` (global rules object: the scope string only appears in Q1 grammar, so other languages are unaffected).
 
 If the color does not appear: run **Developer: Reload Window**, and confirm the file language mode is **Q1** (not Plain Text). If your user `settings.json` sets `editor.tokenColorCustomizations.textMateRules` to a **full array replacement**, merge this extension’s rule into your array or drop the conflicting key so defaults can apply.
 

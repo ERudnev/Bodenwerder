@@ -42,7 +42,14 @@
     '?' : declares read-only operation (query) signature
     '=' : declares modifier limited with scope of local item (for "one") this Type item set (for "all")
     '>' : declares effector / action: may change object state or not, but changes world state. Factories are effectors (returning '#' or '#T'). Public when written explicitly in the aspect body.
+    '*' : declares Stewarding / Direct hot-pass operation. First item in `(...)` is analysis scope (same family as reaction watch: `~` / `~Type`); remaining items are ordinary named parameters. Scope is not a C++ argument (projects to `Stewarding` context + `direct<>` targets).
     '!' : declares reaction (watch / normalizer). Scope in `(...)` is not a parameter list (see reaction forms below).
+
+  stewarding forms:
+    `*name(~)` — Direct on owning aspect only
+    `*name(~Type, arg: T, ...)` — Direct on owner and Type; named params after scope become real arguments
+    Prefer `all` for field-wide passes; `one` is allowed when the op is still Direct-scoped the same way.
+    Not allowed inside value `struct` bodies (no Stewarding context).
 
   reaction forms:
     A reaction is always a watch (wakeup + condition). It may be:
@@ -62,11 +69,11 @@
     'all' : reaction of a set as a set (rare): cardinality, Global invariants, cross-set limits.
             Prefer object reactions in `one`; do not use `all` merely to write loops over items.
 
-  function scope symbols (inside reaction `(...)`):
-    '-' : "T::!foo(-one)" reacts on one T element deletion
-    '=' : "T::!foo(=one)" reacts on one T element value changed (strictly local quantum / cache corrector)
-    '>' : "T::!foo(>one)" world-aware per-item corrector (historical / experimental worker shape)
-    '~' / '~Type' : analyze changes of owning aspect and optionally Type (stimulus for watch)
+  function scope symbols (inside reaction `(...)` and stewarding `*(...)` first position):
+    '-' : "T::!foo(-one)" reacts on one T element deletion (reactions only)
+    '=' : "T::!foo(=one)" reacts on one T element value changed (strictly local quantum / cache corrector; reactions only)
+    '>' : "T::!foo(>one)" world-aware per-item corrector (historical / experimental worker shape; reactions only)
+    '~' / '~Type' : owning aspect and optionally Type — reaction watch stimulus, or stewarding Direct targets
 
   reserved:
     'composite' - subjective and scope-dependent "soft" type for building composites of entities/attributes/features/components
@@ -109,7 +116,7 @@
     'quat' : glm-compatible 4-floats quaternion
 
   struct bodies (inside `struct`, alongside fields):
-    Operation signatures use the same markers as in aspect `element`, but `!` (validator/invariant) is not allowed.
+    Operation signatures use the same markers as in aspect `element`, but `!` (validator/invariant) and `*` (Stewarding) are not allowed.
     `?` query, `=` command, `>` factory with explicit return type (for a value-struct factory, typically `-> StructName`)
 
   particle blocks:

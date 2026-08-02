@@ -125,7 +125,7 @@ namespace rmmr::resource::geometry {
             if (indexed) {
                 index_data.reserve(cpu.indices.size());
                 for (const auto index : cpu.indices) {
-                    if (index < integer{0} || static_cast<std::size_t>(index) >= vertex_count) {
+                    if (index < 0 || static_cast<std::size_t>(index) >= vertex_count) {
                         glDeleteVertexArrays(1, &vao);
                         glDeleteBuffers(1, &vbo);
                         return context.refuse("resource::geometry::bake: index out of positions range");

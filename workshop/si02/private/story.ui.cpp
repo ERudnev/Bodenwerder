@@ -45,8 +45,8 @@ namespace si02 {
                 return;
             }
             quantum->ortho_size = index2{
-                std::max(integer{1}, static_cast<integer>(std::lround(k_base_ortho_w * zoom))),
-                std::max(integer{1}, static_cast<integer>(std::lround(k_base_ortho_h * zoom))),
+                std::max(1, static_cast<integer>(std::lround(k_base_ortho_w * zoom))),
+                std::max(1, static_cast<integer>(std::lround(k_base_ortho_h * zoom))),
             };
         }
 
@@ -190,7 +190,7 @@ namespace si02 {
                 ? with<World>::get(world, gun.world).step
                 : 0;
 
-            const integer mech_left = std::max(integer{0}, gun.mech_ready_at - now);
+            const integer mech_left = std::max(0, gun.mech_ready_at - now);
             const float mech_ready = clamp01(
                 1.0f - static_cast<float>(mech_left) / static_cast<float>(Gun::mech_cooldown_steps));
             const float heat = clamp01(

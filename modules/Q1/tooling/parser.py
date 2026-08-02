@@ -381,6 +381,61 @@ def _parse_operation(line: Line) -> dict[str, Any]:
     )
 
 
+def _parse_steward_scope(text: str, line: int) -> dict[str, Any]:
+    if text == "~":
+        return {"kind": "AllScope", "raw": text, "extra_source": None, "implicit_owner": True}
+    if text.startswith("~"):
+        extra = text[1:].strip()
+        if not QUALIFIED_RE.match(extra):
+            raise ParseError(f"Invalid stewarding scope: {text!r}", line)
+        return {"kind": "AllScope", "raw": text, "extra_source": extra, "implicit_owner": True}
+    raise ParseError(f"Stewarding scope must be ~ or ~Type, got {text!r}", line)
+
+
+def _parse_steward_operation(line: Line) -> dict[str, Any]:
+    rest = line.content[1:].strip()
+    name_end = rest.find("(")
+    if name_end == -1:
+        raise ParseError("Malformed stewarding operation", line.number)
+    name = rest[:name_end].strip()
+    if not IDENT_RE.match(name):
+        raise ParseError(f"Invalid stewarding operation name: {name!r}", line.number)
+    depth = 0
+    close_index = None
+    for index, ch in enumerate(rest[name_end:], start=name_end):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                close_index = index
+                break
+    if close_index is None:
+        raise ParseError("Unclosed stewarding operation parameter list", line.number)
+    params_text = rest[name_end + 1 : close_index]
+    tail = rest[close_index + 1 :].strip()
+    return_type = None
+    if tail:
+        if not tail.startswith("->"):
+            raise ParseError("Unexpected tokens after stewarding operation parameter list", line.number)
+        return_type = parse_type_expr(tail[2:].strip())
+    parts = [part.strip() for part in _split_top_level(params_text, ",")] if params_text.strip() else []
+    if not parts:
+        raise ParseError("Stewarding operation requires a scope (~ or ~Type)", line.number)
+    scope = _parse_steward_scope(parts[0], line.number)
+    remaining = ", ".join(parts[1:])
+    params = _parse_params(remaining, line.number) if remaining else []
+    return _node(
+        "StewardOp",
+        line.number,
+        name=name,
+        scope=scope,
+        params=params,
+        return_type=return_type,
+        comment=line.comment,
+    )
+
+
 def _parse_reaction_scope(text: str, line: int) -> dict[str, Any]:
     if text in {"-one", "=one", ">one"}:
         meaning = {"-one": "delete", "=one": "change", ">one": "world_change"}[text]
@@ -557,6 +612,8 @@ def _parse_generic_members(cursor: Cursor, indent: int, allow_const: bool) -> li
             members.append(_parse_struct(cursor, line))
         elif line.content[:1] in "?=>":
             members.append(_parse_operation(line))
+        elif line.content.startswith("*"):
+            members.append(_parse_steward_operation(line))
         elif line.content.startswith("!"):
             members.append(_parse_reaction(line))
         elif ":" in line.content:

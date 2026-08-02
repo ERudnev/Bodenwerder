@@ -16,9 +16,9 @@ namespace Q1_fQSM::Etalon {
     struct SampleEntity : Entity<SampleEntity> {
         //@ always: treat constants as static constexpr in Always; pure functions likewise
         struct Always {
-            static constexpr integer max_elements = integer{2000};
-            static constexpr integer absolute_min = integer{-1000};
-            static constexpr integer absolute_max = integer{1000};
+            static constexpr integer max_elements = 2000;
+            static constexpr integer absolute_min = -1000;
+            static constexpr integer absolute_max = 1000;
             //@ always-level functions have no additional parameters
             static auto from_float(float value_approximate) -> integer;
         };
@@ -50,7 +50,7 @@ namespace Q1_fQSM::Etalon {
     struct Tag : Attribute<Tag, SampleEntity> {
         struct Quantum {};
         struct Global {
-            integer modulus = integer{2};
+            integer modulus = 2;
         };
         //@ all-reaction !modulus_clamped(~) — set-as-set (Global)
         struct Internals;
@@ -60,6 +60,25 @@ namespace Q1_fQSM::Etalon {
     struct Clock : Entity<Clock> {
         struct Quantum {
             timepoint current{};
+        };
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    //@ all *name(~Scope, args...) — Stewarding / Direct hot pass (not Writing).
+    //@ Scope `~` / `~Type` declares which aspects are opened via direct<>; it is not a C++ parameter.
+    struct SpeedUpdate : Attribute<SpeedUpdate, SampleEntity> {
+        struct Always {
+            static constexpr integer max_speed = 3;
+        };
+        struct Quantum {
+            integer speed; // increase of parent data_field per tick
+        };
+        struct Actions : BaseActions {
+            //@ *active_maintenance_call(~) — fast linear pass to clamp own values
+            static void active_maintenance_call(Stewarding);
+            //@ *active_working_call(~SampleEntity, tick_count: integer) — apply speed to parent data_field
+            static void active_working_call(Stewarding, integer tick_count);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }

@@ -130,7 +130,7 @@ namespace si01 {
                 ? with<World>::get(world, gun.world).step
                 : 0;
 
-            const integer mech_left = std::max(integer{0}, gun.mech_ready_at - now);
+            const integer mech_left = std::max(0, gun.mech_ready_at - now);
             const float mech_ready = clamp01(
                 1.0f - static_cast<float>(mech_left) / static_cast<float>(invaders::Gun::mech_cooldown_steps));
             const float heat = clamp01(

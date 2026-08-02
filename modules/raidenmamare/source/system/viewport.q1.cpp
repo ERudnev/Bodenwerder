@@ -31,8 +31,8 @@ namespace rmmr::system {
         const auto framebuffer = Window::Actions::framebufferSize(context, device);
         auto quantum = with<Viewport>::modify(context, viewportId);
         quantum->size = index2{
-            std::max(framebuffer.x - quantum->origin.x, integer{1}),
-            std::max(framebuffer.y - quantum->origin.y, integer{1}),
+            std::max(framebuffer.x - quantum->origin.x, 1),
+            std::max(framebuffer.y - quantum->origin.y, 1),
         };
     }
 

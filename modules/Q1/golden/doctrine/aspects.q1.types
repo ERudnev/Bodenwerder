@@ -37,6 +37,15 @@ namespace Q1_fQSM
       one
         current: time
 
+    attribute SpeedUpdate of SampleEntity
+      always
+        max_speed: integer = 3
+      one
+        speed: integer // increase of parent data_field per tick
+      all
+        *active_maintenance_call(~) // fast linear pass to clamp own values (alternative of local constraints)
+        *active_working_call(~SampleEntity, tick_count: integer) // iterate own components and apply speed to paremt' data_field
+
     entity ReactionSketch
       one
         value: string

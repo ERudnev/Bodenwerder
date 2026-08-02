@@ -101,6 +101,7 @@ Public Q1 operations become declarations in `Actions : BaseActions`, except for 
 - `all ?name(...) -> T` -> `static auto name(Reading, ...) -> T` inside `Actions`
 - `all =name(...)` -> `static void name(Writing, ...)` inside `Actions`
 - `all >name(...) -> #` -> `static auto name(Writing, ...) -> Id` inside `Actions`
+- `all *name(~Scope...)` -> `static void name(Stewarding, ...named params)` inside `Actions` — Direct/Stewarding hot pass; `~` / `~Type` are analysis scope (which aspects to `direct<>`), not C++ arguments
 
 ### Parameter name binding qualifiers
 

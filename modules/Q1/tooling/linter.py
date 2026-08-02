@@ -268,7 +268,7 @@ def lint_members(
 ) -> None:
     seen: dict[str, dict[str, Any]] = {}
     for member in members:
-        if member["kind"] in {"FieldDecl", "ConstField", "TypeAliasDecl", "QueryOp", "CommandOp", "FactoryOp", "ReactionDecl"}:
+        if member["kind"] in {"FieldDecl", "ConstField", "TypeAliasDecl", "QueryOp", "CommandOp", "FactoryOp", "StewardOp", "ReactionDecl"}:
             name = member.get("name")
             if name:
                 key = f"{member['kind']}::{name}"
@@ -300,6 +300,20 @@ def lint_members(
                 lint_type_expr(param["type"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
             if member["return_type"] is not None:
                 lint_type_expr(member["return_type"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
+        elif member["kind"] == "StewardOp":
+            scope = member["scope"]
+            if scope["kind"] != "AllScope":
+                warn(diags, member["line"], "steward-scope-mismatch", "Stewarding op needs watch scope (~ / ~Type)")
+            if block_role == "always":
+                warn(diags, member["line"], "steward-in-always", "Stewarding ops are not expected inside `always` blocks")
+            if scope.get("extra_source"):
+                source_parts = scope["extra_source"].split("::")
+                if not resolve_name(source_parts, namespace, symbols):
+                    warn(diags, member["line"], "unknown-steward-source", f"Unknown stewarding Direct source: {scope['extra_source']}")
+            for param in member["params"]:
+                lint_type_expr(param["type"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
+            if member["return_type"] is not None:
+                lint_type_expr(member["return_type"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
         elif member["kind"] == "ReactionDecl":
             scope = member["scope"]
             # one: object reactions — item scopes or watch scopes (~ / ~Type)
@@ -311,7 +325,8 @@ def lint_members(
             if block_role == "always":
                 warn(diags, member["line"], "reaction-in-always", "Reactions are not expected inside `always` blocks")
             if scope["kind"] == "AllScope" and scope.get("extra_source"):
-                if not resolve_name([scope["extra_source"]], namespace, symbols):
+                source_parts = scope["extra_source"].split("::")
+                if not resolve_name(source_parts, namespace, symbols):
                     warn(diags, member["line"], "unknown-reaction-source", f"Unknown reaction watch source: {scope['extra_source']}")
             effect = member.get("effect")
             if effect is not None:
@@ -351,6 +366,8 @@ def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagn
                 for member in decl["members"]:
                     if member["kind"] == "ReactionDecl":
                         warn(diags, member["line"], "reaction-in-struct", "Struct body should not contain `!` reactions")
+                    if member["kind"] == "StewardOp":
+                        warn(diags, member["line"], "steward-in-struct", "Struct body should not contain `*` Stewarding ops")
                 continue
 
             if kind == "TypeAliasDecl":
@@ -436,11 +453,11 @@ def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagn
                                 warn(diags, member["line"], "unexpected-member-in-always", f"{member['kind']} is not part of the current `always` subset")
                     if role == "one":
                         for member in block["members"]:
-                            if member["kind"] not in {"FieldDecl", "QueryOp", "CommandOp", "ReactionDecl"}:
+                            if member["kind"] not in {"FieldDecl", "QueryOp", "CommandOp", "StewardOp", "ReactionDecl"}:
                                 warn(diags, member["line"], "unexpected-member-in-one", f"{member['kind']} is not part of the current `one` subset")
                     if role == "all":
                         for member in block["members"]:
-                            if member["kind"] not in {"FieldDecl", "QueryOp", "CommandOp", "FactoryOp", "ReactionDecl"}:
+                            if member["kind"] not in {"FieldDecl", "QueryOp", "CommandOp", "FactoryOp", "StewardOp", "ReactionDecl"}:
                                 warn(diags, member["line"], "unexpected-member-in-all", f"{member['kind']} is not part of the current `all` subset")
 
     visit_decls(ast["declarations"], ())

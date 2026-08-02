@@ -105,7 +105,7 @@ namespace si02 {
                     continue;
                 }
                 auto physical = with<Physical>::modify(context, target.id);
-                physical->hitpoints = std::max(integer{0}, physical->hitpoints - Shot::damage);
+                physical->hitpoints = std::max(0, physical->hitpoints - Shot::damage);
                 spent_bolts.push_back(shot_id);
                 break;
             }

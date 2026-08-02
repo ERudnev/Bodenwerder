@@ -40,8 +40,9 @@ namespace Q1-fQSM {
 
   declaration_forms: @Rule {
     1: `struct S` → `struct S { ... };` с полями, локальными `using`, операциями `?`/`=`/`>`
-       (`!` внутри value-struct недопустим).
+       (`!` и `*` внутри value-struct недопустимы).
       1: `?` → обычно `T name(...) const;`; `=` → `void name(...);`; `>` → `static S name(...);`.
+      2: `*` → только в aspect `one`/`all` → `Stewarding` (см. blocks_and_operations).
     2: `using A as B` → `using A = B;` (B без ведущего `~`).
     3: `using A as ~Expr` → `using A = decltype(<Expr>);`.
     4: категории аспектов (см. golden README):
@@ -54,8 +55,9 @@ namespace Q1-fQSM {
   blocks_and_operations: @Rule {
     Блоки аспекта: `one` → `Quantum`, `all` → `Global` (пустой `Global` не эмитить),
     `always` → `Always` (constexpr / чистые функции без Reading/Writing/Id).
-    Публичные `?`/`=`/`>` из `one`/`all` → `struct Actions : BaseActions` с implicit:
-    `Reading`/`Writing` первым аргументом; для `one` ещё `Id`; `>` из `all` возвращает `Id`.
+    Публичные `?`/`=`/`>`/`*` из `one`/`all` → `struct Actions : BaseActions` с implicit:
+    `Reading`/`Writing`/`Stewarding` первым аргументом; для `one` ещё `Id`; `>` из `all` возвращает `Id`.
+    `*name(~Scope[, named...])` → `Stewarding` + named params only (`~`/`~Type` — Direct-скоуп, не аргументы).
     Параметры: тяжёлые типы (`string`, контейнеры, не-trivially-copyable struct) — `const&`;
     скаляры/`Id` — по значению. Имя параметра с `?`/`>` в DSL → `const&` / `&` (см. README).
     `!` и поля `anchor<>`/`custody<>` — не публичные методы; в header: `struct Internals;` +

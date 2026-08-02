@@ -33,7 +33,7 @@ It understands:
 - indentation-scoped namespaces
 - `using`, `struct`, `entity`, `attribute`, `feature`, `component`, `group`, `archetype`, `manipulation`
 - aspect blocks `always`, `one`, `all`
-- operations `?`, `=`, `>`
+- operations `?`, `=`, `>`, and Stewarding `*name(~Scope[, params...])`
 - reactions `!name(scope)` with optional effect tail `->>op(...)` / `->=op(...)`
 - the currently used type forms such as `#`, `#Type`, `T?`, `anchor<T>`, `custody<T>`, `affects<T>`, `~Type::member`
 - a limited amount of `//@` metadata

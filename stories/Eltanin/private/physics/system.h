@@ -52,7 +52,7 @@ namespace eltanin::phys {
         void tick(Stewarding);
         void applyForces(fqsm::Direct<Particle>);
         void integrate(fqsm::Direct<Particle>);
-        void restoreBases(fqsm::Direct<Particle>, fqsm::Direct<Atomic>);
+        void restoreBases(Stewarding);
         void applyNails(Stewarding);
         void applyGluons(Stewarding);
     };

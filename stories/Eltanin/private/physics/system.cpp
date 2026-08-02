@@ -32,7 +32,9 @@ namespace eltanin::phys {
         }
     }
 
-    void System::restoreBases(fqsm::Direct<Particle> particles, fqsm::Direct<Atomic> atomics) {
+    void System::restoreBases(Stewarding context) {
+        auto particles = context.direct<Particle>();
+        auto atomics = context.direct<Atomic>();
         for (auto [_, atomic] : atomics.items) {
             const auto& rest = atomic.rest;
             const auto count = atomic.particles.size();
@@ -131,7 +133,7 @@ namespace eltanin::phys {
         applyForces(context.direct<Particle>());
         integrate(context.direct<Particle>());
         for (int pass = 0; pass < Settings::constraintPasses; ++pass) {
-            restoreBases(context.direct<Particle>(), context.direct<Atomic>());
+            restoreBases(context);
             applyNails(context);
             applyGluons(context);
         }

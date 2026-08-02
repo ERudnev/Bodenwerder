@@ -118,6 +118,58 @@ namespace Demo
     assert all(r.get("effect") is None for r in one_reactions + all_reactions)
 
 
+def test_parse_steward_operations() -> None:
+    text = """
+namespace Demo
+  entity SampleEntity
+    one
+      data_field: integer
+  attribute SpeedUpdate of SampleEntity
+    all
+      *active_maintenance_call(~)
+      *active_working_call(~SampleEntity, tick_count: integer)
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    speed = ast["declarations"][0]["declarations"][1]
+    ops = [m for m in speed["blocks"][0]["members"] if m["kind"] == "StewardOp"]
+    assert [op["name"] for op in ops] == ["active_maintenance_call", "active_working_call"]
+    assert ops[0]["scope"]["raw"] == "~"
+    assert ops[0]["params"] == []
+    assert ops[0]["return_type"] is None
+    assert ops[1]["scope"]["raw"] == "~SampleEntity"
+    assert ops[1]["scope"]["extra_source"] == "SampleEntity"
+    assert len(ops[1]["params"]) == 1
+    assert ops[1]["params"][0]["kind"] == "NamedParam"
+    assert ops[1]["params"][0]["name"] == "tick_count"
+    assert ops[1]["params"][0]["type"]["name"] == "integer"
+
+
+def test_parse_steward_rejects_missing_scope() -> None:
+    text = """
+namespace Demo
+  entity A
+    all
+      *no_scope()
+"""
+    try:
+        q1_parser.parse_text(text, source="<snippet>")
+        raise AssertionError("expected ParseError")
+    except q1_parser.ParseError as exc:
+        assert "scope" in str(exc).lower()
+
+
+def test_golden_aspects_parses_speed_update_steward_ops() -> None:
+    ast = q1_parser.parse_file(ASPECTS)
+    decls = ast["declarations"][0]["declarations"][0]["declarations"]
+    speed = next(d for d in decls if d.get("name") == "SpeedUpdate")
+    all_block = next(b for b in speed["blocks"] if b["role"] == "all")
+    stewards = [m for m in all_block["members"] if m["kind"] == "StewardOp"]
+    assert [s["name"] for s in stewards] == ["active_maintenance_call", "active_working_call"]
+    assert stewards[0]["scope"]["raw"] == "~"
+    assert stewards[1]["scope"]["extra_source"] == "SampleEntity"
+    assert stewards[1]["params"][0]["name"] == "tick_count"
+
+
 def test_parse_reaction_effect_tails() -> None:
     text = """
 namespace Demo

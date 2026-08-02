@@ -115,7 +115,7 @@ namespace kubes::resources {
         }
 
         auto build_cpu(const SkySphereGenerator::Quantum& quantum) -> CpuPresentation {
-            const std::size_t star_count = quantum.count > integer{0} ? static_cast<std::size_t>(quantum.count) : std::size_t{0};
+            const std::size_t star_count = quantum.count > 0 ? static_cast<std::size_t>(quantum.count) : std::size_t{0};
             const Galaxy galaxy = generate_spiral_galaxy(star_count, static_cast<std::uint32_t>(quantum.seed));
 
             const BillboardUv star_uv{0.0f, 0.0f, k_star_texels / k_atlas_size, k_star_texels / k_atlas_size};

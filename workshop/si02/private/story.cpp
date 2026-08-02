@@ -71,7 +71,7 @@ namespace si02 {
                 .size = size,
                 .mass = size,
                 .hitpoints = std::max(
-                    integer{1},
+                    1,
                     static_cast<integer>(std::lround(
                         size * static_cast<float>(Player::max_hitpoints) / Player::hull_size))),
             });

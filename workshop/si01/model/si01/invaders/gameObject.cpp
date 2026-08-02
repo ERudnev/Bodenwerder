@@ -13,7 +13,7 @@ namespace si01::invaders {
                 : 0;
         }
         auto object = with<GameObject>::modify(context, id);
-        object->hitpoints = std::max(integer{0}, object->hitpoints - amount);
+        object->hitpoints = std::max(0, object->hitpoints - amount);
         return object->hitpoints;
     }
 

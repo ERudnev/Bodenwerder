@@ -57,7 +57,7 @@ namespace Q1_fQSM::Etalon {
     }
 
     void SampleEntity::Actions::nonconst_element_method(Writing context, Id id) {
-        modify(context, id)->data_field += integer{1};
+        modify(context, id)->data_field += 1;
     }
 
     auto SampleEntity::Actions::from_float(Writing context, float value_approximate) -> Id {
@@ -75,7 +75,7 @@ namespace Q1_fQSM::Etalon {
     }
 
     auto SampleEntity::Actions::const_fieldwide_method(Reading context) -> integer {
-        integer sum = integer{0};
+        integer sum = 0;
         for (const auto entry : context->aspect<SampleEntity>().items())
             sum += entry.value.data_field;
         return sum;
@@ -109,13 +109,36 @@ namespace Q1_fQSM::Etalon {
         };
     }
 
+    void SpeedUpdate::Actions::active_maintenance_call(Stewarding context) {
+        //@ *active_maintenance_call(~) — Direct over own aspect; clamp speed (alternative of local constraints)
+        auto updates = context.direct<SpeedUpdate>();
+        for (auto [_, update] : updates.items) {
+            if (update.speed > Always::max_speed)
+                update.speed = Always::max_speed;
+            else if (update.speed < -Always::max_speed)
+                update.speed = -Always::max_speed;
+        }
+    }
+
+    void SpeedUpdate::Actions::active_working_call(Stewarding context, integer tick_count) {
+        //@ *active_working_call(~SampleEntity, tick_count) — own Direct + SampleEntity Direct; Attribute Id == host Id
+        auto updates = context.direct<SpeedUpdate>();
+        auto samples = context.direct<SampleEntity>();
+        for (auto [id, update] : updates.items) {
+            auto* sample = samples.items.find(id);
+            if (not sample)
+                continue;
+            sample->data_field += update.speed * tick_count;
+        }
+    }
+
     struct Tag::Internals : Tag::DefaultInternals {
         static void modulus_clamped(Reacting context) {
             auto fixed = context.proposal.aspect<Tag>().global();
-            if (fixed.modulus > integer{0})
+            if (fixed.modulus > 0)
                 return;
 
-            fixed.modulus = integer{1};
+            fixed.modulus = 1;
             context.adjustments<Tag>().put_global(fixed);
         }
     };
@@ -186,7 +209,7 @@ namespace Q1_fQSM::Etalon {
         // one-level evaluator (Reading, Id, Quantum) — fits constraint::element_wide shape
         static auto evaluate_sync(Reading context, Id id, const Quantum& last_value) -> PossibleChange {
             const auto modulus = with<Tag>::get_global(context).modulus;
-            if (modulus <= integer{0})
+            if (modulus <= 0)
                 return {};
 
             const auto expected_power = with<SampleEntity>::get(context, id).data_field / modulus;
@@ -245,7 +268,7 @@ namespace Q1_fQSM::Etalon {
     }
 
     auto SampleComponent::Actions::example_op_div_with_remainder(Writing context, Id id, integer divisor) -> integer {
-        const auto safe_divisor = divisor > integer{0} ? divisor : integer{1};
+        const auto safe_divisor = divisor > 0 ? divisor : 1;
         auto target = with<SampleEntity>::modify(context, id);
         const auto remainder = target->data_field % safe_divisor;
         target->data_field /= safe_divisor;
@@ -294,7 +317,7 @@ namespace Q1_fQSM::Etalon {
 
     auto Notebook::notes_count(Reading context, SampleEntity::Id id) -> integer {
         if (not with<Note_group>::exists(context, id))
-            return integer{0};
+            return 0;
 
         return static_cast<integer>(with<Note_group>::get(context, id).size());
     }

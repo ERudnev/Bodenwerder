@@ -35,6 +35,40 @@ namespace Demo
     assert "reaction-in-struct" in codes
 
 
+def test_struct_steward_is_warning_not_crash() -> None:
+    text = """
+namespace Demo
+  struct Bad
+    field: integer
+    *oops(~)
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    codes = {diag.code for diag in diagnostics}
+    assert "steward-in-struct" in codes
+
+
+def test_steward_ops_in_all_are_clean() -> None:
+    text = """
+namespace Demo
+  entity SampleEntity
+    one
+      data_field: integer
+  attribute SpeedUpdate of SampleEntity
+    all
+      *active_maintenance_call(~)
+      *active_working_call(~SampleEntity, tick_count: integer)
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    codes = {diag.code for diag in diagnostics}
+    assert "unexpected-member-in-all" not in codes
+    assert "unknown-steward-source" not in codes
+    assert "steward-scope-mismatch" not in codes
+
+
 def test_feature_unknown_owner_is_warning() -> None:
     text = """
 namespace Demo

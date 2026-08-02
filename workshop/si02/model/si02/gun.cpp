@@ -35,7 +35,7 @@ namespace si02 {
             const integer drop = gun->cool_step_carry / k_steps_per_sec;
             gun->cool_step_carry %= k_steps_per_sec;
             if (drop > 0) {
-                gun->temperature_celsius = std::max(integer{0}, gun->temperature_celsius - drop);
+                gun->temperature_celsius = std::max(0, gun->temperature_celsius - drop);
             }
         }
 

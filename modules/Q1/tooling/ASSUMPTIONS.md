@@ -209,6 +209,14 @@ Type references `Outer::Inner` resolve when `Inner` is a nested struct or local 
 `~` and `~Tag` are valid anonymous parameter markers in query/command/factory signatures (same scope family as reaction `!foo(~)`).
 Linter warns with `all-scope-outside-all-block` when `~` appears in a non-`all` block.
 
+### Stewarding operations (`*`)
+
+Prefix `*` declares a Stewarding/Direct hot-pass operation (AST kind `StewardOp`).
+The first comma-separated item in `(...)` is a watch-style scope (`~` or `~Type`, AST `AllScope`); it is not a parameter.
+Any further items are ordinary params (named in the golden etalon).
+Optional `-> type` is allowed by the grammar for symmetry with other ops; golden examples omit return type (void / Stewarding-only).
+Preferred placement is `all`; `one` is allowed with the same `~` / `~Type` scope shape. Not part of `always` or value-`struct` subsets.
+
 ## Conservative behavior policy
 
 When the tooling cannot prove something from the current golden inputs and rules:

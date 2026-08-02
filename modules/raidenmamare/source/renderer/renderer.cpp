@@ -65,8 +65,8 @@ namespace rmmr {
 
         auto viewport_aspect_ratio(Reading context, system::Viewport::Id viewport) -> float {
             const auto& quantum = with<system::Viewport>::get(context, viewport);
-            const float width = quantum.size.x > integer{0} ? static_cast<float>(quantum.size.x) : 1.0f;
-            const float height = quantum.size.y > integer{0} ? static_cast<float>(quantum.size.y) : 1.0f;
+            const float width = quantum.size.x > 0 ? static_cast<float>(quantum.size.x) : 1.0f;
+            const float height = quantum.size.y > 0 ? static_cast<float>(quantum.size.y) : 1.0f;
             return width / height;
         }
 
@@ -459,8 +459,8 @@ namespace rmmr {
                     throw std::runtime_error("Renderer: inverseAtlasSize requested on non-sprite draw");
                 }
                 const auto& texture = with<resource::texture::Runtime>::get(args.world, sprite->texture);
-                const float inverse_width = texture.size.x > integer{0} ? 1.0f / static_cast<float>(texture.size.x) : 0.0f;
-                const float inverse_height = texture.size.y > integer{0} ? 1.0f / static_cast<float>(texture.size.y) : 0.0f;
+                const float inverse_width = texture.size.x > 0 ? 1.0f / static_cast<float>(texture.size.x) : 0.0f;
+                const float inverse_height = texture.size.y > 0 ? 1.0f / static_cast<float>(texture.size.y) : 0.0f;
                 set_uniform(binding, vec2{inverse_width, inverse_height});
             }
         }
