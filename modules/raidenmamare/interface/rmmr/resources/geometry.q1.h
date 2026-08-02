@@ -61,6 +61,7 @@ namespace rmmr::resource::geometry {
         enum class Type : std::uint8_t {
             triangle,
             kube,
+            windowedKube,
             bagel,
             gridPlane,
             unitQuad,

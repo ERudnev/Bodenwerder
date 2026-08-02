@@ -127,6 +127,35 @@ namespace rmmr::resource::builders::material {
         };
     }
 
+    auto Presets::oneSidedGlass(resource::shader::Reference program, resource::texture::Reference opacity_map) -> Asset::Quantum {
+        return Asset::Quantum{
+            .techniques = {
+                {renderer::Pass::transparent, Asset::Technique{
+                    .program = program,
+                    .uniforms = ::rmmr::material::Semantics::ids_of({
+                        "model",
+                        "view",
+                        "projection",
+                        "albedo",
+                        "albedoMap",
+                        "ambientColor",
+                        "ambientIntensity",
+                        "light0Pos",
+                        "light0Color",
+                        "light0Intensity",
+                    }),
+                    .textures = {
+                        Asset::TextureBinding{
+                            .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
+                            .texture = opacity_map,
+                        },
+                    },
+                }},
+            },
+            .blend = renderer::BlendMode::alpha,
+        };
+    }
+
     auto Presets::gizmoTextured(resource::shader::Reference program, resource::texture::Reference albedo_map) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {

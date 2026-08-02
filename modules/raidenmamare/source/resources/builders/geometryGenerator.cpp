@@ -101,6 +101,78 @@ namespace rmmr::resource::builders::geometry {
         };
     }
 
+    // Cube with centered half-size window per face. Index order: all outer tris, then all window tris.
+    auto GeometryGenerator::windowedKube() -> CpuPresentation {
+        const auto face_at = [](int face, float u, float v) -> Pos {
+            switch (face) {
+                case 0: return Pos{-0.5f + u, -0.5f + v, 0.5f};
+                case 1: return Pos{0.5f - u, -0.5f + v, -0.5f};
+                case 2: return Pos{0.5f, -0.5f + v, 0.5f - u};
+                case 3: return Pos{-0.5f, -0.5f + v, -0.5f + u};
+                case 4: return Pos{-0.5f + u, 0.5f, 0.5f - v};
+                default: return Pos{-0.5f + u, -0.5f, -0.5f + v};
+            }
+        };
+        const Pos face_normal[6] = {
+            Pos{0.0f, 0.0f, 1.0f},
+            Pos{0.0f, 0.0f, -1.0f},
+            Pos{1.0f, 0.0f, 0.0f},
+            Pos{-1.0f, 0.0f, 0.0f},
+            Pos{0.0f, 1.0f, 0.0f},
+            Pos{0.0f, -1.0f, 0.0f},
+        };
+
+        constexpr float lo = 0.25f;
+        constexpr float hi = 0.75f;
+        constexpr std::array<std::pair<float, float>, 8> uv_corners{{
+            {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f},
+            {lo, lo}, {hi, lo}, {hi, hi}, {lo, hi},
+        }};
+
+        vector<Pos> positions;
+        vector<Pos> normals;
+        vector<UV> uv0;
+        vector<integer> outer_indices;
+        vector<integer> window_indices;
+        positions.reserve(48);
+        normals.reserve(48);
+        uv0.reserve(48);
+        outer_indices.reserve(144);
+        window_indices.reserve(36);
+
+        for (int face = 0; face < 6; ++face) {
+            const auto base = static_cast<integer>(positions.size());
+            for (const auto& [u, v] : uv_corners) {
+                positions.push_back(face_at(face, u, v));
+                normals.push_back(face_normal[face]);
+                uv0.push_back(UV{u, v});
+            }
+            outer_indices.insert(outer_indices.end(), {
+                base + 0, base + 1, base + 5, base + 0, base + 5, base + 4,
+                base + 1, base + 2, base + 6, base + 1, base + 6, base + 5,
+                base + 2, base + 3, base + 7, base + 2, base + 7, base + 6,
+                base + 3, base + 0, base + 4, base + 3, base + 4, base + 7,
+            });
+            window_indices.insert(window_indices.end(), {
+                base + 4, base + 5, base + 6, base + 4, base + 6, base + 7,
+            });
+        }
+
+        vector<integer> indices;
+        indices.reserve(outer_indices.size() + window_indices.size());
+        indices.insert(indices.end(), outer_indices.begin(), outer_indices.end());
+        indices.insert(indices.end(), window_indices.begin(), window_indices.end());
+
+        return CpuPresentation{
+            .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"}),
+            .positions = std::move(positions),
+            .normals = std::move(normals),
+            .uv0 = std::move(uv0),
+            .color0 = {},
+            .indices = std::move(indices),
+        };
+    }
+
     auto GeometryGenerator::bagel() -> CpuPresentation {
         constexpr integer major_segments = 32;
         constexpr integer minor_segments = 16;

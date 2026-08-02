@@ -301,6 +301,7 @@ namespace rmmr::resource::geometry {
             switch (type) {
                 case Generator::Type::triangle: return GeometryGenerator::triangle();
                 case Generator::Type::kube: return GeometryGenerator::kube();
+                case Generator::Type::windowedKube: return GeometryGenerator::windowedKube();
                 case Generator::Type::bagel: return GeometryGenerator::bagel();
                 case Generator::Type::gridPlane: return GeometryGenerator::gridPlane();
                 case Generator::Type::unitQuad: return GeometryGenerator::unitQuad();

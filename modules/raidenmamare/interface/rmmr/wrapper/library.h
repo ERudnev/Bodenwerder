@@ -5,6 +5,7 @@
 
 #include <base/maybe.h>
 #include <fQSM/api/interface.h>
+#include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/textures.q1.h>
 
@@ -20,6 +21,9 @@ namespace rmmr::wrapper::assets {
             base::maybe<rmmr::resource::texture::Asset::Id> whiteRing;
         } texture;
         struct {
+            base::maybe<rmmr::resource::geometry::Asset::Id> windowedKube;
+        } geometry;
+        struct {
             struct {
                 base::maybe<rmmr::resource::material::Asset::Id> textured;
                 base::maybe<rmmr::resource::material::Asset::Id> vertexColor;
@@ -28,6 +32,7 @@ namespace rmmr::wrapper::assets {
             base::maybe<rmmr::resource::material::Asset::Id> lit;
             std::vector<rmmr::resource::material::Asset::Id> debugLitTextured;
             base::maybe<rmmr::resource::material::Asset::Id> litTexturedAlpha;
+            base::maybe<rmmr::resource::material::Asset::Id> oneSidedGlass;
             base::maybe<rmmr::resource::material::Asset::Id> grid;
             base::maybe<rmmr::resource::material::Asset::Id> sprite;
         } material;
