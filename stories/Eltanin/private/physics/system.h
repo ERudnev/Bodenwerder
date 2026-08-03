@@ -20,7 +20,7 @@ namespace eltanin::phys {
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
     // Constraint wave: Atomic / Nail / Gluon `*satisfy(~Particle)` × constraintPasses.
     struct Settings {
-        static constexpr float gravity = 0.0f; // temporary: off while startup is a single free cube
+        static constexpr float gravity = 0.0f; // temporary: off for single-plate sandbox
         static constexpr float centralMu = 8.0f; // unused while linear gravity is on
         static constexpr float constraintStiffness = 0.75f; // Hitman-style goal pull (constraints)
         static constexpr int constraintPasses = 4; // full wave (Horn+Nail+Gluon) per tick

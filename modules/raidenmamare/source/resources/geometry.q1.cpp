@@ -190,14 +190,29 @@ namespace rmmr::resource::geometry {
         auto load_assimp(const filepath& path) -> optional<LoadedMesh> {
             Assimp::Importer importer;
             // RH OpenGL: do not MakeLeftHanded / FlipWindingOrder.
+            // Keep file normals (LW OBJ hard/smooth). GenSmoothNormals only if a mesh has none — and before Join (Assimp needs verbose verts).
             const auto* scene = importer.ReadFile(
                 path.string(),
-                aiProcess_Triangulate
-                    | aiProcess_GenSmoothNormals
-                    | aiProcess_JoinIdenticalVertices
-                    | aiProcess_SortByPType
-                    | aiProcess_FlipUVs);
+                aiProcess_Triangulate | aiProcess_SortByPType | aiProcess_FlipUVs);
             if (not scene or not scene->mRootNode or (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) or scene->mNumMeshes == 0) {
+                return {};
+            }
+            bool missing_normals = false;
+            for (unsigned mesh_index = 0; mesh_index < scene->mNumMeshes; ++mesh_index) {
+                const auto* mesh = scene->mMeshes[mesh_index];
+                if (mesh and mesh->mNumVertices > 0 and not mesh->HasNormals()) {
+                    missing_normals = true;
+                    break;
+                }
+            }
+            if (missing_normals) {
+                scene = importer.ApplyPostProcessing(aiProcess_GenSmoothNormals);
+                if (not scene) {
+                    return {};
+                }
+            }
+            scene = importer.ApplyPostProcessing(aiProcess_JoinIdenticalVertices);
+            if (not scene) {
                 return {};
             }
             LoadedMesh out{};

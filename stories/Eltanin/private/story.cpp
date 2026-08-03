@@ -204,8 +204,8 @@ namespace eltanin {
                 .albedo = RGB{1.0f, 1.0f, 1.0f},
             });
 
-        const Pos cameraPos{30.0f, 30.0f, 40.0f};
-        const Pos cameraTarget{0.0f, 5.0f, 0.0f};
+        const Pos cameraPos{8.0f, 6.0f, 16.0f};
+        const Pos cameraTarget{0.0f, 0.0f, -2.0f};
         const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
         const auto camera = with<scene::Interface>::createCamera(context, root, Locator{.pos = cameraPos, .euler = cameraPose.hpb()}, 100.0f * std::numbers::pi_v<float> / 180.0f);
         with<controller::Camera3d>::create(context, camera);
@@ -213,19 +213,19 @@ namespace eltanin {
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
-        // Temporary: inner::full + slots::multi (visual: pack windowed_kube).
-        (void)rmmr::necessary<::rmmr::resource::meshpack::Asset>(context, shared->primitives, "windowed_kube", [&](const auto& look) {
-            return with<Block>::spawnInner(
+        // Temporary: single p1111 plate (sandbox while LW content lands).
+        (void)rmmr::necessary<::rmmr::resource::meshpack::Asset>(context, assets.levelOne, "p1111", [&](const auto& look) {
+            return with<Block>::spawnHull(
                 context,
                 root,
                 Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
-                mech::inner::shape::full,
-                mech::slots::inner::multi,
+                mech::hull::shape::p1111,
+                mech::slots::hull::armor,
                 item<scene::actor::Mesh>{
                     .geometry = look.geometry,
                     .materials = look.materials,
                     .albedo = RGB{1.0f, 1.0f, 1.0f},
-                    .scale = vec3{4.0f, 4.0f, 4.0f},
+                    .scale = vec3{1.0f, 1.0f, 1.0f},
                 });
         });
 
