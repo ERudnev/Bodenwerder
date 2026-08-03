@@ -1,6 +1,8 @@
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/resources/builders/materialPresets.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/sprites.q1.h>
+#include <rmmr/semantics/rendering.h>
 
 #include <base/logging.h>
 
@@ -148,7 +150,7 @@ namespace rmmr::resource {
     auto Assets::Actions::add_sprites_kenney(Writing context, Unit::Quantum unit, sprite::LoaderKenney::Quantum loader) -> sprite::Pack::Id {
         const auto texture_id = add_texture_loader(
             context,
-            Unit::Quantum{.name = unit.name + "_atlas", .library = unit.library},
+            Unit::Quantum{.name = unit.name},
             texture::Loader::Quantum{.file = loader.image, .mipmaps = false});
 
         return register_unit<sprite::Pack, sprite::LoaderKenney>(
@@ -167,6 +169,26 @@ namespace rmmr::resource {
             std::move(unit),
             meshpack::Asset::Quantum{.materials = {}, .entries = {}},
             std::move(loader));
+    }
+
+    auto Assets::Actions::compose_material(Writing context, Unit::Name name, filename file, material::Asset::Id base) -> material::Asset::Id {
+        if (not with<material::Asset>::exists(context, base) or not with<Unit>::exists(context, base)) {
+            return context.refuse("resource::Assets::compose_material: base material missing");
+        }
+        const auto& techniques = with<material::Asset>::get(context, base).techniques;
+        const auto opaque = techniques.find(renderer::Pass::opaque);
+        const auto shadow = techniques.find(renderer::Pass::shadow);
+        if (opaque == techniques.end() or shadow == techniques.end()) {
+            return context.refuse("resource::Assets::compose_material: base missing opaque/shadow");
+        }
+        const auto texture_id = add_texture_loader(
+            context,
+            Unit::Quantum{.name = name},
+            texture::Loader::Quantum{.file = std::move(file), .mipmaps = false});
+        return add_material(
+            context,
+            Unit::Quantum{.name = std::move(name)},
+            builders::material::Presets::litTextured(opaque->second.program, with<Unit>::remember(context, texture_id), shadow->second.program));
     }
 
     void Assets::Actions::extend(Writing context, filepath path) {

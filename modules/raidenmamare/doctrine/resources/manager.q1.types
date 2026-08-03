@@ -13,13 +13,17 @@ namespace rmmr
 
     // persistent thing
     entity Unit
-      using Name as string
+      struct Name
+        library: string
+        own: string
+        ?text()->string
       struct Reference
         id: #
         backup: Name
+      always
+        ?name(string, string)->Name
       one
         name: Name
-        library: string
         ?remember()->Reference
 
     group<Unit> of Manager

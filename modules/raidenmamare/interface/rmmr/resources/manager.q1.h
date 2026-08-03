@@ -21,7 +21,14 @@ namespace rmmr::resource {
     };
 
     struct Unit : Entity<Unit> {
-        using Name = string;
+        struct Name {
+            string library;
+            string own;
+
+            auto empty() const -> bool { return library.empty() and own.empty(); }
+            auto text() const -> string { return library.empty() ? own : (library + "::" + own); }
+            friend auto operator<=>(const Name&, const Name&) = default;
+        };
 
         struct Reference {
             Id id;
@@ -30,9 +37,17 @@ namespace rmmr::resource {
 
         struct Quantum {
             Name name;
-            string library;
         };
+
+        // Quantum for add_* / group: Unit::name("Eltanin", "skySphere").
+        static auto name(string library, string own) -> Quantum {
+            return Quantum{.name = Name{.library = std::move(library), .own = std::move(own)}};
+        }
+
         struct Actions : BaseActions {
+            static auto name(string library, string own) -> Name {
+                return Name{.library = std::move(library), .own = std::move(own)};
+            }
             static auto remember(Reading, Id) -> Reference;
         };
         struct Internals : DefaultInternals{};

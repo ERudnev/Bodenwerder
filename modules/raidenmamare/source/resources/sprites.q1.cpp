@@ -23,10 +23,10 @@ namespace rmmr::resource::sprite {
             if (file_path.is_absolute()) {
                 return file_path;
             }
-            if (unit.library.empty()) {
+            if (unit.name.library.empty()) {
                 return manager.location / file_path;
             }
-            return manager.location / unit.library / file_path;
+            return manager.location / unit.name.library / file_path;
         }
 
         auto read_attr_int(std::string_view tag, std::string_view key) -> maybe<integer> {
@@ -123,7 +123,7 @@ namespace rmmr::resource::sprite {
         if (not manager_id) return (void)context.refuse("resource::sprite::LoaderKenney::load: Manager singleton missing");
         const auto& manager = with<Manager>::get(context, *manager_id);
         const auto descriptor_path = resolve_under_manager(manager, unit, loader.descriptor);
-        base::whisper("rmmr: sprite::LoaderKenney '{}/{}' ← {}", unit.library, unit.name, descriptor_path.string());
+        base::whisper("rmmr: sprite::LoaderKenney '{}' ← {}", unit.name.text(), descriptor_path.string());
         const auto entries = parse_kenney_entries(descriptor_path);
         if (not entries) {
             context.refuse(std::format(

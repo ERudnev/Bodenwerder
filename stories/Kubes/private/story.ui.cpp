@@ -52,8 +52,12 @@ namespace kubes {
             return "Unknown";
         }
 
-        auto displayName(const string& name) -> const char* {
-            return name.empty() ? "(unnamed)" : name.c_str();
+        auto displayName(const resource::Unit::Name& name) -> const char* {
+            thread_local string buffer;
+            if (name.empty())
+                return "(unnamed)";
+            buffer = name.text();
+            return buffer.c_str();
         }
 
         auto containsCaseInsensitive(std::string_view text, std::string_view needle) -> bool {
@@ -77,7 +81,7 @@ namespace kubes {
             std::vector<resource::material::Asset::Id> materials;
             for (const auto entry : world->aspect<resource::material::Asset>().items()) {
                 const auto& unit = with<resource::Unit>::get(world, entry.id);
-                if (containsCaseInsensitive(unit.name, filter))
+                if (containsCaseInsensitive(unit.name.text(), filter))
                     materials.push_back(entry.id);
             }
             std::sort(materials.begin(), materials.end(), [world](auto left, auto right) {
@@ -178,12 +182,13 @@ namespace kubes {
         auto editable_unit = with<resource::Unit>::modify(world, material_id);
         auto& name_state = ui.material_name_edits[material_id.raw()];
         if (not name_state.editing)
-            std::snprintf(name_state.buf.data(), name_state.buf.size(), "%s", editable_unit->name.c_str());
+            std::snprintf(name_state.buf.data(), name_state.buf.size(), "%s", editable_unit->name.own.c_str());
 
         ImGui::Text("Material #%llu", static_cast<unsigned long long>(material_id.raw()));
+        ImGui::Text("Library: %s", editable_unit->name.library.empty() ? "(none)" : editable_unit->name.library.c_str());
         ImGui::SetNextItemWidth(-1.0f);
         if (ImGui::InputText("Name", name_state.buf.data(), name_state.buf.size()))
-            editable_unit->name = string{name_state.buf.data()};
+            editable_unit->name.own = string{name_state.buf.data()};
         name_state.editing = ImGui::IsItemActive();
 
         ImGui::Separator();

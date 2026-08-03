@@ -23,10 +23,10 @@ namespace rmmr::resource::shader {
             if (file_path.is_absolute()) {
                 return file_path;
             }
-            if (unit.library.empty()) {
+            if (unit.name.library.empty()) {
                 return manager.location / file_path;
             }
-            return manager.location / unit.library / file_path;
+            return manager.location / unit.name.library / file_path;
         }
 
         auto read_text_file(const std::filesystem::path& path) -> maybe<std::string> {
@@ -91,7 +91,7 @@ namespace rmmr::resource::shader {
 
         const auto vertex_path = resolve_under_manager(manager, unit, loader.vertex);
         const auto fragment_path = resolve_under_manager(manager, unit, loader.fragment);
-        base::whisper("rmmr: shader::Loader '{}/{}' ← {} + {}", unit.library, unit.name, vertex_path.string(), fragment_path.string());
+        base::whisper("rmmr: shader::Loader '{}' ← {} + {}", unit.name.text(), vertex_path.string(), fragment_path.string());
 
         const auto vertex_source = read_text_file(vertex_path);
         if (not vertex_source or vertex_source->empty())

@@ -2,7 +2,7 @@
     "primitives",
     "rmmr",
     [
-        {"metal", "lit_material"},
+        {"metal", "lit"},
         {"glass", "one_sided_glass_debug06"},
         {"paint", "lit_textured_debug02"}
     ],

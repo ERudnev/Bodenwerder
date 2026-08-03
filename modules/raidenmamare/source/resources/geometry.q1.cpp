@@ -32,10 +32,10 @@ namespace rmmr::resource::geometry {
             if (file_path.is_absolute()) {
                 return file_path;
             }
-            if (unit.library.empty()) {
+            if (unit.name.library.empty()) {
                 return manager.location / file_path;
             }
-            return manager.location / unit.library / file_path;
+            return manager.location / unit.name.library / file_path;
         }
 
         struct LoadedMesh {
@@ -570,7 +570,7 @@ namespace rmmr::resource::geometry {
             return context.refuse("resource::geometry::Loader::materialize: Manager singleton missing");
         }
         const auto path = resolve_under_manager(with<Manager>::get(context, *manager_id), unit, loader.file);
-        base::whisper("rmmr: geometry::Loader '{}/{}' ← {}", unit.library, unit.name, path.string());
+        base::whisper("rmmr: geometry::Loader '{}' ← {}", unit.name.text(), path.string());
 
         const auto loaded = load_assimp(path);
         if (not loaded) {

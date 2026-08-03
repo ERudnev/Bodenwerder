@@ -2,7 +2,7 @@
     "levelOne",
     "Eltanin",
     [
-        {"mount", "system_inner"},
+        {"mount", "system_stripes"},
         {"outer", "system_outer"}
     ],
     [

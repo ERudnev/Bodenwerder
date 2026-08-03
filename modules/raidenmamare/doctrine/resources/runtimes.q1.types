@@ -16,6 +16,7 @@ namespace rmmr
         >add_geometry_generator(Unit, geometry::Generator)->#geometry::Asset
         >add_sprites_kenney(Unit, sprite::LoaderKenney)->#sprite::Pack
         >add_meshpack_loader(Unit, meshpack::Loader)->#meshpack::Asset
+        >compose_material(Unit::Name, filename, base: #material::Asset)->#material::Asset
       all
         singleton: #?
         ?singleton()->#?

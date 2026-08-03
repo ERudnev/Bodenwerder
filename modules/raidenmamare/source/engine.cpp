@@ -121,14 +121,14 @@ namespace rmmr {
             using resource::Assets;
             using resource::Unit;
             for (const auto entry : context->aspect<Unit>().items()) {
-                if (entry.value.name == "main_shadow") {
+                if (entry.value.name.own == "main_shadow") {
                     handles.default_shadow = entry.id;
                     return;
                 }
             }
             handles.default_shadow = with<Assets>::add_shadow_allocator(
                 context,
-                Unit::Quantum{.name = "main_shadow", .library = "rmmr"},
+                Unit::name("rmmr", "main_shadow"),
                 resource::shadow::Allocator::Quantum{.size = index2{1024, 1024}});
         }
 

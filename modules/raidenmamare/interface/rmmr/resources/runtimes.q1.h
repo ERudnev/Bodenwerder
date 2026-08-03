@@ -32,6 +32,7 @@ namespace rmmr::resource {
             static auto add_geometry_generator(Writing, Unit::Quantum, geometry::Generator::Quantum) -> geometry::Asset::Id;
             static auto add_sprites_kenney(Writing, Unit::Quantum, sprite::LoaderKenney::Quantum) -> sprite::Pack::Id;
             static auto add_meshpack_loader(Writing, Unit::Quantum, meshpack::Loader::Quantum) -> meshpack::Asset::Id;
+            static auto compose_material(Writing, Unit::Name, filename, material::Asset::Id base) -> material::Asset::Id;
             static void extend(Writing, filepath path);
         };
         struct Internals : DefaultInternals{};

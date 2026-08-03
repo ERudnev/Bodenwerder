@@ -9,7 +9,6 @@
 #include <eltanin/world.q1.h>
 #include <rmmr/api/_interface.h>
 #include <rmmr/controller/camera3d.q1.h>
-#include <rmmr/resources/builders/materialPresets.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -59,29 +58,14 @@ namespace eltanin {
         using namespace ::rmmr::resource;
         using geometry::Generator;
 
-        assets.primitive.grid = with<::rmmr::resource::Assets>::add_geometry_generator(
-            context,
-            item<Unit>{.name = "grid", .library = "rmmr"},
-            item<Generator>{.type = Generator::Type::gridPlane});
-
-        assets.primitive.sphere = with<::rmmr::resource::Assets>::add_geometry_generator(
-            context,
-            item<Unit>{.name = "sphere", .library = "rmmr"},
-            item<Generator>{.type = Generator::Type::sphere});
-
-        assets.primitive.kube = with<::rmmr::resource::Assets>::add_geometry_generator(
-            context,
-            item<Unit>{.name = "kube", .library = "rmmr"},
-            item<Generator>{.type = Generator::Type::kube});
-
-        assets.primitive.diamond = with<::rmmr::resource::Assets>::add_geometry_generator(
-            context,
-            item<Unit>{.name = "diamond", .library = "rmmr"},
-            item<Generator>{.type = Generator::Type::diamond});
+        assets.primitive.grid = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::name("rmmr", "grid"), item<Generator>{.type = Generator::Type::gridPlane});
+        assets.primitive.sphere = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::name("rmmr", "sphere"), item<Generator>{.type = Generator::Type::sphere});
+        assets.primitive.kube = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::name("rmmr", "kube"), item<Generator>{.type = Generator::Type::kube});
+        assets.primitive.diamond = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::name("rmmr", "diamond"), item<Generator>{.type = Generator::Type::diamond});
 
         assets.skySphere = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context,
-            item<Unit>{.name = "skySphere", .library = "Eltanin"},
+            Unit::name("Eltanin", "skySphere"),
             item<sprite::LoaderKenney>{
                 .image = "sprites/skySphere.png",
                 .descriptor = "sprites/skySphere.xml",
@@ -89,7 +73,7 @@ namespace eltanin {
 
         const auto sky_sphere_shader = with<::rmmr::resource::Assets>::add_shader_loader(
             context,
-            item<Unit>{.name = "skySphere_shader", .library = "Eltanin"},
+            Unit::name("Eltanin", "skySphere"),
             item<shader::Loader>{
                 .vertex = "shaders/skySphere.vert.glsl",
                 .fragment = "shaders/skySphere.frag.glsl",
@@ -98,7 +82,7 @@ namespace eltanin {
         const auto& sky_sphere_pack = with<sprite::Pack>::get(context, *assets.skySphere);
         assets.skySphereMaterial = with<::rmmr::resource::Assets>::add_material(
             context,
-            item<Unit>{.name = "skySphere_material", .library = "Eltanin"},
+            Unit::name("Eltanin", "skySphere"),
             ::rmmr::resource::material::Asset::Quantum{
                 .techniques = {
                     {renderer::Pass::environment, ::rmmr::resource::material::Asset::Technique{
@@ -126,46 +110,17 @@ namespace eltanin {
         if (not shared or shared->material.debugLitTextured.empty()) {
             return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_textured etalon missing");
         }
-        const auto& lit_textured = with<::rmmr::resource::material::Asset>::get(context, shared->material.debugLitTextured[0]);
-        const auto& lit_opaque = lit_textured.techniques.at(renderer::Pass::opaque);
-        const auto& lit_shadow = lit_textured.techniques.at(renderer::Pass::shadow);
+        const auto etalon = shared->material.debugLitTextured[0];
+        assets.system_stripes = with<::rmmr::resource::Assets>::compose_material(context, with<Unit>::name("Eltanin", "system_stripes"), "textures/system/mech_stripes.png", etalon);
+        assets.system_outer = with<::rmmr::resource::Assets>::compose_material(context, with<Unit>::name("Eltanin", "system_outer"), "textures/system/mech_outer.png", etalon);
 
-        const auto system_inner_map = with<::rmmr::resource::Assets>::add_texture_loader(
-            context,
-            item<Unit>{.name = "system_inner_map", .library = "Eltanin"},
-            item<texture::Loader>{.file = "textures/system/mech_inner.png", .mipmaps = false});
-        const auto system_outer_map = with<::rmmr::resource::Assets>::add_texture_loader(
-            context,
-            item<Unit>{.name = "system_outer_map", .library = "Eltanin"},
-            item<texture::Loader>{.file = "textures/system/mech_outer.png", .mipmaps = false});
-
-        assets.system_inner = with<::rmmr::resource::Assets>::add_material(
-            context,
-            item<Unit>{.name = "system_inner", .library = "Eltanin"},
-            ::rmmr::resource::builders::material::Presets::litTextured(
-                lit_opaque.program,
-                with<Unit>::remember(context, system_inner_map),
-                lit_shadow.program));
-        assets.system_outer = with<::rmmr::resource::Assets>::add_material(
-            context,
-            item<Unit>{.name = "system_outer", .library = "Eltanin"},
-            ::rmmr::resource::builders::material::Presets::litTextured(
-                lit_opaque.program,
-                with<Unit>::remember(context, system_outer_map),
-                lit_shadow.program));
-
-        assets.levelOne = with<::rmmr::resource::Assets>::add_meshpack_loader(
-            context,
-            item<Unit>{.name = "levelOne", .library = "Eltanin"},
-            item<meshpack::Loader>{.file = "meshes/system/levelOne/levelOne.meshpack"});
+        assets.levelOne = with<::rmmr::resource::Assets>::add_meshpack_loader(context, Unit::name("Eltanin", "levelOne"), item<meshpack::Loader>{.file = "meshes/system/levelOne/levelOne.meshpack"});
 
         const auto manager = *with<Manager>::singleton(context);
         if (not with<Unit_group>::exists(context, manager)) {
             with<Unit_group>::extend(context, manager);
         }
-        const auto sky_geometry_id = with<Unit_group>::addElement(
-            context, manager,
-            item<Unit>{.name = "skySphere_geometry", .library = "Eltanin"});
+        const auto sky_geometry_id = with<Unit_group>::addElement(context, manager, Unit::name("Eltanin", "skySphere"));
         with<geometry::Asset>::extend(context, sky_geometry_id, geometry::Asset::Quantum{});
         with<resources::SkySphereGenerator>::extend(context, sky_geometry_id, resources::SkySphereGenerator::Quantum{
             .count = 48800, // 20k×2, then halo ×2 again (~31k disk + ~18k halo)

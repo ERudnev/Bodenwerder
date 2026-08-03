@@ -22,10 +22,10 @@ namespace rmmr::resource::texture {
             if (file_path.is_absolute()) {
                 return file_path;
             }
-            if (unit.library.empty()) {
+            if (unit.name.library.empty()) {
                 return manager.location / file_path;
             }
-            return manager.location / unit.library / file_path;
+            return manager.location / unit.name.library / file_path;
         }
 
         void release_gl(Writing context, const Runtime::Quantum& last) {
@@ -63,7 +63,7 @@ namespace rmmr::resource::texture {
         glfwMakeContextCurrent(device_quantum.handle);
 
         const auto path = resolve_under_manager(manager, unit, loader.file);
-        base::whisper("rmmr: texture::Loader '{}/{}' ← {}", unit.library, unit.name, path.string());
+        base::whisper("rmmr: texture::Loader '{}' ← {}", unit.name.text(), path.string());
 
         int width = 0;
         int height = 0;
