@@ -9,6 +9,7 @@
 #include <eltanin/world.q1.h>
 #include <rmmr/api/_interface.h>
 #include <rmmr/controller/camera3d.q1.h>
+#include <rmmr/resources/builders/materialPresets.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -17,6 +18,7 @@
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/sprites.q1.h>
+#include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/actors/simple.q1.h>
 #include <rmmr/scene/camera.q1.h>
@@ -120,6 +122,43 @@ namespace eltanin {
                 .blend = renderer::BlendMode::additive,
             });
 
+        // System lit colors live in solid albedo maps: Mesh submit shares one actor albedo across parts.
+        if (not shared or shared->material.debugLitTextured.empty()) {
+            return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_textured etalon missing");
+        }
+        const auto& lit_textured = with<::rmmr::resource::material::Asset>::get(context, shared->material.debugLitTextured[0]);
+        const auto& lit_opaque = lit_textured.techniques.at(renderer::Pass::opaque);
+        const auto& lit_shadow = lit_textured.techniques.at(renderer::Pass::shadow);
+
+        const auto system_inner_map = with<::rmmr::resource::Assets>::add_texture_loader(
+            context,
+            item<Unit>{.name = "system_inner_map", .library = "Eltanin"},
+            item<texture::Loader>{.file = "textures/system/mech_inner.png", .mipmaps = false});
+        const auto system_outer_map = with<::rmmr::resource::Assets>::add_texture_loader(
+            context,
+            item<Unit>{.name = "system_outer_map", .library = "Eltanin"},
+            item<texture::Loader>{.file = "textures/system/mech_outer.png", .mipmaps = false});
+
+        assets.system_inner = with<::rmmr::resource::Assets>::add_material(
+            context,
+            item<Unit>{.name = "system_inner", .library = "Eltanin"},
+            ::rmmr::resource::builders::material::Presets::litTextured(
+                lit_opaque.program,
+                with<Unit>::remember(context, system_inner_map),
+                lit_shadow.program));
+        assets.system_outer = with<::rmmr::resource::Assets>::add_material(
+            context,
+            item<Unit>{.name = "system_outer", .library = "Eltanin"},
+            ::rmmr::resource::builders::material::Presets::litTextured(
+                lit_opaque.program,
+                with<Unit>::remember(context, system_outer_map),
+                lit_shadow.program));
+
+        assets.levelOne = with<::rmmr::resource::Assets>::add_meshpack_loader(
+            context,
+            item<Unit>{.name = "levelOne", .library = "Eltanin"},
+            item<meshpack::Loader>{.file = "meshes/system/levelOne/levelOne.meshpack"});
+
         const auto manager = *with<Manager>::singleton(context);
         if (not with<Unit_group>::exists(context, manager)) {
             with<Unit_group>::extend(context, manager);
@@ -174,12 +213,14 @@ namespace eltanin {
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
-        // Temporary minimal spawn: mech k8 cell (visual: pack windowed_kube).
+        // Temporary: inner::full + slots::multi (visual: pack windowed_kube).
         (void)rmmr::necessary<::rmmr::resource::meshpack::Asset>(context, shared->primitives, "windowed_kube", [&](const auto& look) {
-            return with<Block>::spawn(
+            return with<Block>::spawnInner(
                 context,
                 root,
                 Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
+                mech::inner::shape::full,
+                mech::slots::inner::multi,
                 item<scene::actor::Mesh>{
                     .geometry = look.geometry,
                     .materials = look.materials,

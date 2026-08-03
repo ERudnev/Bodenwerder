@@ -14,6 +14,7 @@ set(Eltanin_Q1
     entities/block.q1.types
     resources/geometry.q1.types
     resources/assets.q1.types
+    mech/semantics.q1.types
 )
 
 add_executable(${PROJECT_NAME})

@@ -1,0 +1,22 @@
+namespace eltanin
+  namespace mech
+
+    using layer as @external(eltanin::mech::layer)
+
+    struct frame
+      using shape as @external(eltanin::mech::frame::shape)
+
+    struct hull
+      using shape as @external(eltanin::mech::hull::shape)
+
+    struct wing
+      using shape as @external(eltanin::mech::wing::shape)
+
+    struct inner
+      using shape as @external(eltanin::mech::inner::shape)
+
+    namespace slots
+      using inner as @external(eltanin::mech::slots::inner)
+      using hull as @external(eltanin::mech::slots::hull)
+      using wing as @external(eltanin::mech::slots::wing)
+      using frame as @external(eltanin::mech::slots::frame)

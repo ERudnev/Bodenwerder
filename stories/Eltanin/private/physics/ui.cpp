@@ -1,5 +1,5 @@
 #include "physics/ui.h"
-#include "mech/semantics.h"
+#include "mech/semantics/together.include.h"
 
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/scene/node.q1.h>

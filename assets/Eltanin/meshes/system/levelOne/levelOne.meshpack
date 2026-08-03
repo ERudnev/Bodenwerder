@@ -1,0 +1,14 @@
+{
+    "levelOne",
+    "Eltanin",
+    [
+        {"mount", "system_inner"},
+        {"outer", "system_outer"}
+    ],
+    [
+        {"p1111", {"meshes/system/levelOne/p1111.obj", [
+            {"mount", {"mount", ""}},
+            {"outer", {"outer", ""}}
+        ]}}
+    ]
+}

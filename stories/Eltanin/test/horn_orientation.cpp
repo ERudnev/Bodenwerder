@@ -1,5 +1,5 @@
 #include "physics/horn.h"
-#include "mech/semantics.h"
+#include "mech/semantics/together.include.h"
 
 #include <base/logging.h>
 #include <base/testing/macros.h>
