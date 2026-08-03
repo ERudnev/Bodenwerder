@@ -6,7 +6,6 @@
 #include <eltanin/physics/strong.q1.h>
 #include <eltanin/resources/assets.q1.h>
 #include <eltanin/resources/geometry.q1.h>
-#include <eltanin/resources/atomic.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/api/_interface.h>
 #include <rmmr/controller/camera3d.q1.h>
@@ -44,9 +43,7 @@ namespace eltanin {
             ask::schema::aspect<phys::strong::Gluon>(),
             ask::schema::aspect<Block>(),
             ask::schema::aspect<resource::Assets>(),
-            ask::schema::aspect<resource::atomic::Asset>(),
             ask::schema::aspect<resources::SkySphereGenerator>(),
-            ask::schema::aspect<resources::AtomicVisualizer>(),
         });
     }
 
@@ -87,11 +84,6 @@ namespace eltanin {
                 .image = "sprites/skySphere.png",
                 .descriptor = "sprites/skySphere.xml",
             });
-
-        assets.kube4m = with<::eltanin::resource::Assets>::add_atomic(
-            context,
-            item<Unit>{.name = "kube4m", .library = "Eltanin"},
-            "atomic/kube4m.atomic");
 
         const auto sky_sphere_shader = with<::rmmr::resource::Assets>::add_shader_loader(
             context,
@@ -182,12 +174,11 @@ namespace eltanin {
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
-        // Temporary minimal spawn: one free kube4m (visual: pack windowed_kube).
+        // Temporary minimal spawn: mech k8 cell (visual: pack windowed_kube).
         (void)rmmr::necessary<::rmmr::resource::meshpack::Asset>(context, shared->primitives, "windowed_kube", [&](const auto& look) {
             return with<Block>::spawn(
                 context,
                 root,
-                *assets.kube4m,
                 Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
                 item<scene::actor::Mesh>{
                     .geometry = look.geometry,
@@ -200,11 +191,7 @@ namespace eltanin {
         physics_ui.shapeMaterial = shared->material.gizmo.textured;
         physics_ui.particleGeometry = assets.primitive.diamond;
         physics_ui.particleMaterial = shared->material.gizmo.vertexColor;
-        {
-            const auto& atomic = with<resource::atomic::Asset>::get(context, *assets.kube4m);
-            with<resources::AtomicVisualizer>::materialize(context, atomic.visualizer, window);
-            physics_ui.shapeGeometry = atomic.visualizer;
-        }
+        physics_ui.shapeGeometry = assets.primitive.kube;
 
         {
             auto world = with<World>::modify_global(context);

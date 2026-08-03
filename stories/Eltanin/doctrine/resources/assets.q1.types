@@ -1,11 +1,11 @@
 import "rmmr/resources/runtimes"
-import "resources/atomic"
 
 namespace eltanin
   namespace resource
 
     using Unit as rmmr::resource::Unit
 
+    // Story-owned asset entry points (hull packs, frames, …) — not rmmr primitives.
+    // Extend with >add_* as concrete asset kinds appear.
     component Assets of rmmr::resource::Assets
       one
-        >add_atomic(Unit, filename)->#atomic::Asset

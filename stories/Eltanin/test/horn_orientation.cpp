@@ -1,4 +1,5 @@
 #include "physics/horn.h"
+#include "mech/semantics.h"
 
 #include <base/logging.h>
 #include <base/testing/macros.h>
@@ -18,18 +19,14 @@ namespace {
 
     constexpr float k_err_eps = 1.0e-8f;
 
-    // Same order as assets/Eltanin/atomic/kube4m.atomic (game meters, diameter 4 → ±2).
+    // Mech k8 cell rest (body-local meters, centered).
     auto kube_rest() -> vector<vec3> {
-        return vector<vec3>{
-            {-2.0f, -2.0f, -2.0f},
-            {2.0f, -2.0f, -2.0f},
-            {2.0f, 2.0f, -2.0f},
-            {-2.0f, 2.0f, -2.0f},
-            {-2.0f, -2.0f, 2.0f},
-            {2.0f, -2.0f, 2.0f},
-            {2.0f, 2.0f, 2.0f},
-            {-2.0f, 2.0f, 2.0f},
-        };
+        vector<vec3> out;
+        out.reserve(eltanin::mech::cube::corners.size());
+        for (const auto& lattice : eltanin::mech::cube::corners) {
+            out.push_back(eltanin::mech::cube::toLocal(lattice));
+        }
+        return out;
     }
 
     auto uniform_masses(std::size_t n, float mass = 1.0f) -> vector<float> {
@@ -231,7 +228,7 @@ namespace tests {
         const auto masses = uniform_masses(rest.size());
         constexpr int k_random = 5000;
         constexpr int k_smooth = 5000;
-        base::message(std::format("horn sweep: {} random + {} smooth (~1°/step) on kube4m rest", k_random, k_smooth));
+        base::message(std::format("horn sweep: {} random + {} smooth (~1°/step) on mech k8 rest", k_random, k_smooth));
         if (const auto fail = run_sweep(rest, masses, k_random, k_smooth)) {
             report_fail("horn_sweep", *fail);
         }

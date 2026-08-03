@@ -1,4 +1,5 @@
 #include "physics/ui.h"
+#include "mech/semantics.h"
 
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/scene/node.q1.h>
@@ -55,6 +56,7 @@ namespace eltanin::phys {
                 .geometry = *shapeGeometry,
                 .material = *shapeMaterial,
                 .albedo = rmmr::RGB{1.0f, 1.0f, 1.0f},
+                .scale = vec3{mech::cube::edgeMeters, mech::cube::edgeMeters, mech::cube::edgeMeters},
             });
             state.actors.push_back(actor);
             bodies.push_back(atomic_id);

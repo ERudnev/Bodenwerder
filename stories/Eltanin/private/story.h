@@ -5,8 +5,6 @@
 #include <unordered_map>
 
 #include <base/maybe.h>
-#include <eltanin/resources/assets.q1.h>
-#include <eltanin/resources/atomic.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/sprites.q1.h>
@@ -31,7 +29,6 @@ namespace eltanin {
             base::maybe<rmmr::resource::sprite::Pack::Id> skySphere;
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
             base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
-            base::maybe<resource::atomic::Asset::Id> kube4m;
         };
 
         struct Ui {

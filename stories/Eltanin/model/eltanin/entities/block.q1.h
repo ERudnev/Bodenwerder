@@ -1,7 +1,6 @@
 #pragma once
 
 #include <eltanin/physics/atomic.q1.h>
-#include <eltanin/resources/atomic.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -18,7 +17,7 @@ namespace eltanin {
             Custody<rmmr::scene::actor::Mesh> actor;
         };
         struct Actions : BaseActions {
-            static auto spawn(Writing, rmmr::scene::Root::Id, resource::atomic::Asset::Id, rmmr::Locator, rmmr::scene::actor::Mesh::Quantum) -> Id;
+            static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::Locator, rmmr::scene::actor::Mesh::Quantum) -> Id;
         };
         struct Internals;
         static const Behavior customAspectReactions();
