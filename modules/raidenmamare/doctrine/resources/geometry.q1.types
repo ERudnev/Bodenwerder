@@ -18,12 +18,18 @@ namespace rmmr
         index_count: renderer::Count
 
     // Persistent mesh recipe. Scene may hold #geometry::Asset — never Runtime.
+    // Import: home (LCA of mesh nodes) baked into CPU verts at materialize — not stored.
+    // slots = leaf empties (Assimp/FBX nulls), transform relative to that home (= vertex space).
+    // OBJ authored in canonical space → home≡E, slots usually empty.
     feature Asset of resource::Unit
+      struct Mount
+        name: string
+        transform: mat4
       struct Part
         startIndex: renderer::Count
         countIndex: renderer::Count
       one
-        slots: vector<Pos> // i insist on exactly this kind of slots
+        slots: vector<Mount>
         parts: umap<string, Part>
 
     feature Loader of Asset

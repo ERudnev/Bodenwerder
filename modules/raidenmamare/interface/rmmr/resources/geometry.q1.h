@@ -30,12 +30,17 @@ namespace rmmr::resource::geometry {
     };
 
     struct Asset : Feature<Asset, resource::Unit> {
+        // Empty Assimp/FBX node (no mesh), transform in home space (post-bake local = vertex space).
+        struct Mount {
+            string name;
+            mat4 transform;
+        };
         struct Part {
             renderer::Count startIndex;
             renderer::Count countIndex;
         };
         struct Quantum {
-            vector<Pos> slots;
+            vector<Mount> slots;
             umap<string, Part> parts;
         };
         struct Actions : BaseActions {

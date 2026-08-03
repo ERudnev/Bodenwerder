@@ -7,7 +7,6 @@ namespace rmmr
     namespace meshpack
 
     using Reference as resource::Unit::Reference
-    10|
     // Catalog of ready looks. No Runtime: geometry/materials bake on their own;
     // consumers ?resolve an entry into geometry + part→#material for actor::Mesh.
     // Policy: shelf materials shared; Pack aliases are the human edit surface
@@ -17,7 +16,7 @@ namespace rmmr
         struct Binding
           alias: string // key in Asset.materials
           materialInstancePlaceholder: string // ignored until material×texture instances; empty = none
-    20|        geometry: #geometry::Asset
+        geometry: #geometry::Asset
         materials: umap<string, Binding> // keys = geometry::Asset.parts names
       struct Resolved
         geometry: #geometry::Asset
@@ -27,9 +26,9 @@ namespace rmmr
         entries: umap<string, Entry>
         ?resolve(name: string) -> Resolved? // missing entry / bad alias → empty
 
-    30|    // Text catalog (json-like). File materials table is local→Unit name; load resolves to #.
+    // Text catalog (json-like). File materials table is local→Unit name; load resolves to #.
     // Early: parse → register/link geometry → fill aliases+entries.
-    // Must leave geometry::Asset.slots/parts complete before any materialize.
+    // Geometry loaders registered here; parts/slots filled when geometry materializes (Assimp).
     feature Loader of Asset
       one
         file: filename

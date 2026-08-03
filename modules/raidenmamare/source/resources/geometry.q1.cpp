@@ -13,6 +13,7 @@
 
 #include <glm/gtc/matrix_inverse.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <filesystem>
 #include <format>
@@ -40,10 +41,12 @@ namespace rmmr::resource::geometry {
         struct LoadedMesh {
             CpuPresentation cpu;
             umap<string, Asset::Part> parts;
+            vector<Asset::Mount> slots;
         };
 
-        auto ai_mat4(const aiMatrix4x4& m) -> glm::mat4 {
-            return glm::mat4{
+        // Assimp aiMatrix4x4 is row-major; glm::mat4 is column-major (RH).
+        auto ai_mat4(const aiMatrix4x4& m) -> mat4 {
+            return mat4{
                 m.a1, m.b1, m.c1, m.d1,
                 m.a2, m.b2, m.c2, m.d2,
                 m.a3, m.b3, m.c3, m.d3,
@@ -51,7 +54,58 @@ namespace rmmr::resource::geometry {
             };
         }
 
-        void append_mesh(LoadedMesh& out, const aiMesh& mesh, const glm::mat4& transform, const string& part_name) {
+        void collect_mesh_paths(
+            const aiNode& node,
+            vector<const aiNode*>& path,
+            vector<vector<const aiNode*>>& mesh_paths)
+        {
+            path.push_back(&node);
+            if (node.mNumMeshes > 0) {
+                mesh_paths.push_back(path);
+            }
+            for (unsigned i = 0; i < node.mNumChildren; ++i) {
+                collect_mesh_paths(*node.mChildren[i], path, mesh_paths);
+            }
+            path.pop_back();
+        }
+
+        // Home = LCA of all mesh-bearing nodes (single mesh node → that node; else common ancestor, often root).
+        auto home_world(const aiScene& scene) -> mat4 {
+            vector<const aiNode*> scratch;
+            vector<vector<const aiNode*>> mesh_paths;
+            collect_mesh_paths(*scene.mRootNode, scratch, mesh_paths);
+            if (mesh_paths.empty()) {
+                return mat4{1.0f};
+            }
+            std::size_t depth = mesh_paths[0].size();
+            for (std::size_t i = 1; i < mesh_paths.size(); ++i) {
+                depth = std::min(depth, mesh_paths[i].size());
+            }
+            std::size_t lca_index = 0;
+            for (; lca_index < depth; ++lca_index) {
+                const aiNode* at = mesh_paths[0][lca_index];
+                bool same = true;
+                for (std::size_t p = 1; p < mesh_paths.size(); ++p) {
+                    if (mesh_paths[p][lca_index] != at) {
+                        same = false;
+                        break;
+                    }
+                }
+                if (not same) {
+                    break;
+                }
+            }
+            if (lca_index == 0) {
+                return mat4{1.0f};
+            }
+            mat4 world{1.0f};
+            for (std::size_t i = 0; i < lca_index; ++i) {
+                world = world * ai_mat4(mesh_paths[0][i]->mTransformation);
+            }
+            return world;
+        }
+
+        void append_mesh(LoadedMesh& out, const aiMesh& mesh, const mat4& transform, const string& part_name) {
             const auto base = static_cast<integer>(out.cpu.positions.size());
             const auto normal_matrix = glm::transpose(glm::inverse(glm::mat3(transform)));
             out.cpu.positions.reserve(out.cpu.positions.size() + mesh.mNumVertices);
@@ -59,11 +113,11 @@ namespace rmmr::resource::geometry {
             out.cpu.uv0.reserve(out.cpu.uv0.size() + mesh.mNumVertices);
             for (unsigned i = 0; i < mesh.mNumVertices; ++i) {
                 const auto& p = mesh.mVertices[i];
-                const auto world = transform * glm::vec4{p.x, p.y, p.z, 1.0f};
-                out.cpu.positions.push_back(Pos{world.x, world.y, world.z});
+                const auto baked = transform * vec4{p.x, p.y, p.z, 1.0f};
+                out.cpu.positions.push_back(Pos{baked.x, baked.y, baked.z});
                 if (mesh.HasNormals()) {
                     const auto& n = mesh.mNormals[i];
-                    const auto nw = normal_matrix * glm::vec3{n.x, n.y, n.z};
+                    const auto nw = normal_matrix * vec3{n.x, n.y, n.z};
                     out.cpu.normals.push_back(Pos{nw.x, nw.y, nw.z});
                 } else {
                     out.cpu.normals.push_back(Pos{0.0f, 0.0f, 1.0f});
@@ -83,6 +137,7 @@ namespace rmmr::resource::geometry {
                 if (face.mNumIndices != 3) {
                     continue;
                 }
+                // Assimp faces are CCW in RH after import without MakeLeftHanded — keep for classic GL.
                 out.cpu.indices.push_back(base + static_cast<integer>(face.mIndices[0]));
                 out.cpu.indices.push_back(base + static_cast<integer>(face.mIndices[1]));
                 out.cpu.indices.push_back(base + static_cast<integer>(face.mIndices[2]));
@@ -91,8 +146,22 @@ namespace rmmr::resource::geometry {
             out.parts.insert_or_assign(part_name, Asset::Part{.startIndex = index_start, .countIndex = index_count});
         }
 
-        void gather_node(LoadedMesh& out, const aiScene& scene, const aiNode& node, const glm::mat4& parent, bool single_mesh) {
-            const auto transform = parent * ai_mat4(node.mTransformation);
+        // Meshes: bake into home space (inverse(home) * node_world). Leaf empties → slots in home space.
+        void gather_node(
+            LoadedMesh& out,
+            const aiScene& scene,
+            const aiNode& node,
+            const mat4& parent_world,
+            const mat4& home_inverse,
+            bool single_mesh)
+        {
+            const auto world = parent_world * ai_mat4(node.mTransformation);
+            const auto in_home = home_inverse * world;
+
+            if (node.mNumMeshes == 0 and node.mNumChildren == 0 and node.mName.length > 0) {
+                out.slots.push_back(Asset::Mount{.name = node.mName.C_Str(), .transform = in_home});
+            }
+
             for (unsigned i = 0; i < node.mNumMeshes; ++i) {
                 const auto* mesh = scene.mMeshes[node.mMeshes[i]];
                 if (not mesh or mesh->mNumVertices == 0) {
@@ -111,15 +180,16 @@ namespace rmmr::resource::geometry {
                 if (out.parts.find(part_name) != out.parts.end()) {
                     part_name = std::format("{}_{}", part_name, out.parts.size());
                 }
-                append_mesh(out, *mesh, transform, part_name);
+                append_mesh(out, *mesh, in_home, part_name);
             }
             for (unsigned i = 0; i < node.mNumChildren; ++i) {
-                gather_node(out, scene, *node.mChildren[i], transform, single_mesh);
+                gather_node(out, scene, *node.mChildren[i], world, home_inverse, single_mesh);
             }
         }
 
         auto load_assimp(const filepath& path) -> optional<LoadedMesh> {
             Assimp::Importer importer;
+            // RH OpenGL: do not MakeLeftHanded / FlipWindingOrder.
             const auto* scene = importer.ReadFile(
                 path.string(),
                 aiProcess_Triangulate
@@ -132,8 +202,10 @@ namespace rmmr::resource::geometry {
             }
             LoadedMesh out{};
             out.cpu.layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"});
+            const mat4 home = home_world(*scene);
+            const mat4 home_inverse = glm::inverse(home);
             const bool single_mesh = scene->mNumMeshes == 1;
-            gather_node(out, *scene, *scene->mRootNode, glm::mat4{1.0f}, single_mesh);
+            gather_node(out, *scene, *scene->mRootNode, mat4{1.0f}, home_inverse, single_mesh);
             if (out.cpu.positions.empty() or out.cpu.indices.empty()) {
                 return {};
             }
@@ -490,7 +562,11 @@ namespace rmmr::resource::geometry {
             return context.refuse(std::format("resource::geometry::Loader::materialize: Assimp failed '{}'", path.string()));
         }
 
-        with<Asset>::modify(context, asset_id)->parts = loaded->parts;
+        {
+            auto asset = with<Asset>::modify(context, asset_id);
+            asset->parts = loaded->parts;
+            asset->slots = loaded->slots;
+        }
         return Asset::Actions::install(context, asset_id, device, loaded->cpu);
     }
 
