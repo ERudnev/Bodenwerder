@@ -9,7 +9,7 @@ namespace rmmr
     using Reference as resource::Unit::Reference
     // Catalog of ready looks. No Runtime: geometry/materials bake on their own;
     // consumers ?resolve an entry into geometry + part→#material for actor::Mesh.
-    // File binding: geometry part name → material Unit.own (same library as the pack).
+    // Runtime binding: geometry part name → #material. File formats differ per loader.
     feature Asset of resource::Unit
       struct Entry
         geometry: #geometry::Asset
@@ -27,7 +27,8 @@ namespace rmmr
         file: filename
         >load()
 
-    // Single LWO kit (+ optional sidecar materials table). load TBD.
+    // *.lwo.meshpack — one LWO + table file material name → Unit::Name::text ("lib::own").
+    // meshes → entries; missing table entry or shelf material → refuse.
     feature LoaderLwo of Asset
       one
         file: filename

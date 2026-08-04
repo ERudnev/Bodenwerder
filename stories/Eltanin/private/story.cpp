@@ -13,7 +13,6 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
-#include <rmmr/resources/necessary.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/sprites.q1.h>
@@ -115,6 +114,10 @@ namespace eltanin {
         assets.system_outer = with<::rmmr::resource::Assets>::compose_material(context, with<Unit>::name("Eltanin", "system_outer"), "textures/system/mech_outer.png", etalon);
 
         assets.levelOne = with<::rmmr::resource::Assets>::add_meshpack_objs_loader(context, Unit::name("Eltanin", "levelOne"), item<meshpack::LoaderObjs>{.file = "meshes/system/levelOne/levelOne.obj.meshpack"});
+        assets.levelTwo = with<::rmmr::resource::Assets>::add_meshpack_lwo_loader(
+            context,
+            Unit::name("Eltanin", "levelTwo"),
+            item<meshpack::LoaderLwo>{.file = "meshes/system/levelTwo/levelTwo.lwo.meshpack"});
 
         const auto manager = *with<Manager>::singleton(context);
         if (not with<Unit_group>::exists(context, manager)) {
@@ -168,21 +171,26 @@ namespace eltanin {
             Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
-        // Temporary: single p1111 plate (sandbox while LW content lands).
-        (void)rmmr::necessary<::rmmr::resource::meshpack::Asset>(context, assets.levelOne, "p1111", [&](const auto& look) {
-            return with<Block>::spawnHull(
-                context,
-                root,
-                Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
-                mech::hull::shape::p1111,
-                mech::slots::hull::armor,
-                item<scene::actor::Mesh>{
-                    .geometry = look.geometry,
-                    .materials = look.materials,
-                    .albedo = RGB{1.0f, 1.0f, 1.0f},
-                    .scale = vec3{1.0f, 1.0f, 1.0f},
-                });
-        });
+        if (not assets.levelTwo) {
+            return (void)context.refuse("eltanin::Game::populateWorld: levelTwo meshpack missing");
+        }
+        {
+            Pos cursor{0.0f, 0.0f, 0.0f};
+            const auto& pack = with<::rmmr::resource::meshpack::Asset>::get(context, *assets.levelTwo);
+            for (const auto& [_, entry] : pack.entries) {
+                with<scene::Interface>::createMeshActor(
+                    context,
+                    root,
+                    Locator{.pos = cursor, .euler = HPB{0.0f, 0.0f, 0.0f}},
+                    item<scene::actor::Mesh>{
+                        .geometry = entry.geometry,
+                        .materials = entry.materials,
+                        .albedo = RGB{1.0f, 1.0f, 1.0f},
+                        .scale = vec3{1.0f, 1.0f, 1.0f},
+                    });
+                cursor = Pos{cursor.x + 4.0f, cursor.y, cursor.z - 4.0f};
+            }
+        }
 
         physics_ui.shapeMaterial = shared->material.gizmo.textured;
         physics_ui.particleGeometry = assets.primitive.diamond;

@@ -44,7 +44,7 @@ namespace rmmr::resource::meshpack {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    // Single LWO kit.
+    // *.lwo.meshpack — one LWO + file material name → Unit::Name::text; missing mapping/shelf → refuse.
     struct LoaderLwo : Feature<LoaderLwo, Asset> {
         struct Quantum {
             filename file;

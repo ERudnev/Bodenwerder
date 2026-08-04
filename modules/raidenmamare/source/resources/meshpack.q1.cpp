@@ -1,5 +1,7 @@
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/system/content/loader_lwo.h>
+#include <rmmr/system/content/unit_name.h>
 
 #include <base/logging.h>
 #include <base/serialization.h>
@@ -48,9 +50,30 @@ namespace rmmr::resource::meshpack {
             return out;
         }
 
-        auto find_material(Reading context, const string& library, const string& name) -> optional<material::Asset::Id> {
+        struct LwoPackPayload {
+            string name;
+            string library;
+            string lwo_file;
+            umap<string, string> materials; // file material name → Unit::Name::text
+        };
+
+        auto read_lwo_pack_payload(std::istream& in) -> LwoPackPayload {
+            LwoPackPayload out{};
+            base::serialization::detail::expect(in, '{');
+            out.name = base::serialization::detail::read<string>(in);
+            base::serialization::detail::expect(in, ',');
+            out.library = base::serialization::detail::read<string>(in);
+            base::serialization::detail::expect(in, ',');
+            out.lwo_file = base::serialization::detail::read<string>(in);
+            base::serialization::detail::expect(in, ',');
+            out.materials = base::serialization::detail::read<umap<string, string>>(in);
+            base::serialization::detail::expect(in, '}');
+            return out;
+        }
+
+        auto find_material(Reading context, const Unit::Name& name) -> optional<material::Asset::Id> {
             for (const auto [id, unit] : context->aspect<Unit>().items()) {
-                if (unit.name.library != library or unit.name.own != name) {
+                if (unit.name != name) {
                     continue;
                 }
                 if (not with<material::Asset>::exists(context, id)) {
@@ -59,6 +82,10 @@ namespace rmmr::resource::meshpack {
                 return id;
             }
             return {};
+        }
+
+        auto find_material(Reading context, const string& library, const string& own) -> optional<material::Asset::Id> {
+            return find_material(context, Unit::Name{.library = library, .own = own});
         }
 
     } // namespace
@@ -111,7 +138,7 @@ namespace rmmr::resource::meshpack {
             const auto geometry_id = with<Assets>::add_geometry_loader(
                 context,
                 Unit::name(unit.name.library, entry_name),
-                geometry::Loader::Quantum{.file = body.geometry_file});
+                geometry::Loader::Quantum{.file = body.geometry_file, .layer = string{}});
             umap<string, material::Asset::Id> part_materials;
             for (const auto& [part, material_own] : body.materials) {
                 const auto material_id = find_material(context, unit.name.library, material_own);
@@ -132,8 +159,83 @@ namespace rmmr::resource::meshpack {
         base::message("rmmr: meshpack '{}' loaded ({} entries)", unit.name.text(), entry_count);
     }
 
-    void LoaderLwo::Actions::load(Writing, Id) {
-        _INCOMPLETE_;
+    void LoaderLwo::Actions::load(Writing context, Id pack_id) {
+        const auto& loader = with<LoaderLwo>::get(context, pack_id);
+        const auto& unit = with<Unit>::get(context, pack_id);
+        const auto manager_id = with<Manager>::singleton(context);
+        if (not manager_id) {
+            return (void)context.refuse("resource::meshpack::LoaderLwo::load: Manager singleton missing");
+        }
+
+        const auto& manager = with<Manager>::get(context, *manager_id);
+        const auto pack_path = resolve_under_manager(manager, unit, loader.file);
+        base::whisper("rmmr: meshpack::LoaderLwo '{}' ← {}", unit.name.text(), pack_path.string());
+
+        std::ifstream in{pack_path};
+        if (not in) {
+            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: failed to open '{}'", pack_path.string()));
+        }
+
+        LwoPackPayload payload;
+        try {
+            payload = read_lwo_pack_payload(in);
+        } catch (const std::exception& error) {
+            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: parse '{}': {}", pack_path.string(), error.what()));
+        }
+
+        const auto file_name = Unit::Name{.library = payload.library, .own = payload.name};
+        if (file_name != unit.name) {
+            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: file identity '{}' != unit '{}'", file_name.text(), unit.name.text()));
+        }
+
+        const auto lwo_path = resolve_under_manager(manager, unit, payload.lwo_file);
+        auto opened = system::content::LwoDocument::open(lwo_path);
+        if (not opened.document) {
+            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: {}", opened.error));
+        }
+        const auto& lwo = *opened.document;
+        if (lwo.meshes().empty()) {
+            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: no meshes in '{}'", lwo_path.string()));
+        }
+
+        umap<string, Asset::Entry> entries;
+        for (const auto& mesh : lwo.meshes()) {
+            const auto geometry_id = with<Assets>::add_geometry_loader(
+                context,
+                Unit::name(unit.name.library, mesh.name),
+                geometry::Loader::Quantum{.file = payload.lwo_file, .layer = mesh.name});
+
+            umap<string, material::Asset::Id> part_materials;
+            for (const auto& sub : mesh.submeshes) {
+                const auto map_it = payload.materials.find(sub.name);
+                if (map_it == payload.materials.end()) {
+                    return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: mesh '{}' submesh '{}' not in pack table", mesh.name, sub.name));
+                }
+                const auto parsed = system::content::UnitName::parse(map_it->second);
+                if (not parsed) {
+                    return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: material '{}' → bad Unit::Name '{}'", sub.name, map_it->second));
+                }
+                const auto material_id = find_material(context, Unit::Name{.library = parsed->library, .own = parsed->own});
+                if (not material_id) {
+                    return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: material '{}' → '{}' not on shelf", sub.name, parsed->text()));
+                }
+                part_materials.emplace(sub.name, *material_id);
+            }
+            if (part_materials.empty()) {
+                return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: mesh '{}' has no submeshes", mesh.name));
+            }
+
+            const auto part_count = part_materials.size();
+            entries.emplace(mesh.name, Asset::Entry{
+                .geometry = geometry_id,
+                .materials = std::move(part_materials),
+            });
+            base::message("rmmr: meshpack '{}' entry '{}' ← LWO mesh ({} submeshes)", unit.name.text(), mesh.name, part_count);
+        }
+
+        const auto entry_count = entries.size();
+        with<Asset>::modify(context, pack_id)->entries = std::move(entries);
+        base::message("rmmr: meshpack '{}' loaded ({} LWO entries)", unit.name.text(), entry_count);
     }
 
 }

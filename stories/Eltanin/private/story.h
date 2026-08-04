@@ -33,6 +33,7 @@ namespace eltanin {
             base::maybe<rmmr::resource::material::Asset::Id> system_stripes;
             base::maybe<rmmr::resource::material::Asset::Id> system_outer;
             base::maybe<rmmr::resource::meshpack::Asset::Id> levelOne;
+            base::maybe<rmmr::resource::meshpack::Asset::Id> levelTwo;
         };
 
         struct Ui {

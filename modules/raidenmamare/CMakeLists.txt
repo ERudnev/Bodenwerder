@@ -65,3 +65,23 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE assimp
     ${OPENGL_LIBRARIES}
 )
+
+# Console inspector for mesh sources (LWO now; more formats later).
+# Compiles content/loader_lwo directly — no fQSM / GPU stack.
+add_executable(meshpack_inspector)
+target_sources(meshpack_inspector
+    PRIVATE
+        tools/meshpack_inspector/main.cpp
+        source/system/content/loader_lwo.cpp
+)
+target_include_directories(meshpack_inspector
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/interface
+)
+target_link_libraries(meshpack_inspector
+    PRIVATE
+        assimp
+)
+if(WIN32)
+    target_link_libraries(meshpack_inspector PRIVATE zlibstatic)
+endif()

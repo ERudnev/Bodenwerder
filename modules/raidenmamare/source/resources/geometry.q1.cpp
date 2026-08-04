@@ -6,6 +6,7 @@
 #include <GLFW/glfw3.h>
 
 #include <assimp/Importer.hpp>
+#include <assimp/material.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
@@ -17,6 +18,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <format>
+#include <string_view>
 #include <vector>
 
 namespace rmmr::resource::geometry {
@@ -146,14 +148,31 @@ namespace rmmr::resource::geometry {
             out.parts.insert_or_assign(part_name, Asset::Part{.startIndex = index_start, .countIndex = index_count});
         }
 
+        auto material_name(const aiScene& scene, const aiMesh& mesh) -> string {
+            if (mesh.mMaterialIndex >= scene.mNumMaterials) {
+                return {};
+            }
+            aiString name;
+            if (scene.mMaterials[mesh.mMaterialIndex]->Get(AI_MATKEY_NAME, name) != AI_SUCCESS or name.length == 0) {
+                return {};
+            }
+            return name.C_Str();
+        }
+
+        auto part_name_for(const aiScene& scene, const aiMesh& mesh, std::size_t parts_so_far) -> string {
+            if (const auto from_material = material_name(scene, mesh); not from_material.empty()) {
+                return from_material;
+            }
+            return std::format("material_{}", parts_so_far);
+        }
+
         // Meshes: bake into home space (inverse(home) * node_world). Leaf empties → slots in home space.
         void gather_node(
             LoadedMesh& out,
             const aiScene& scene,
             const aiNode& node,
             const mat4& parent_world,
-            const mat4& home_inverse,
-            bool single_mesh)
+            const mat4& home_inverse)
         {
             const auto world = parent_world * ai_mat4(node.mTransformation);
             const auto in_home = home_inverse * world;
@@ -167,35 +186,88 @@ namespace rmmr::resource::geometry {
                 if (not mesh or mesh->mNumVertices == 0) {
                     continue;
                 }
-                string part_name;
-                if (single_mesh) {
-                    part_name = "mesh";
-                } else if (mesh->mName.length > 0) {
-                    part_name = mesh->mName.C_Str();
-                } else if (node.mName.length > 0) {
-                    part_name = node.mName.C_Str();
-                } else {
-                    part_name = std::format("part_{}", out.parts.size());
-                }
+                auto part_name = part_name_for(scene, *mesh, out.parts.size());
                 if (out.parts.find(part_name) != out.parts.end()) {
                     part_name = std::format("{}_{}", part_name, out.parts.size());
                 }
                 append_mesh(out, *mesh, in_home, part_name);
             }
             for (unsigned i = 0; i < node.mNumChildren; ++i) {
-                gather_node(out, scene, *node.mChildren[i], world, home_inverse, single_mesh);
+                gather_node(out, scene, *node.mChildren[i], world, home_inverse);
             }
         }
 
-        auto load_assimp(const filepath& path) -> optional<LoadedMesh> {
-            Assimp::Importer importer;
+        // Collect only this node's meshes (no recursion) — one LWO layer leaf.
+        void gather_node_meshes_only(
+            LoadedMesh& out,
+            const aiScene& scene,
+            const aiNode& node,
+            const mat4& world,
+            const mat4& home_inverse)
+        {
+            const auto in_home = home_inverse * world;
+            for (unsigned i = 0; i < node.mNumMeshes; ++i) {
+                const auto* mesh = scene.mMeshes[node.mMeshes[i]];
+                if (not mesh or mesh->mNumVertices == 0) {
+                    continue;
+                }
+                auto part_name = part_name_for(scene, *mesh, out.parts.size());
+                if (out.parts.find(part_name) != out.parts.end()) {
+                    part_name = std::format("{}_{}", part_name, out.parts.size());
+                }
+                append_mesh(out, *mesh, in_home, part_name);
+            }
+        }
+
+        auto layer_identity(std::string_view raw) -> string {
+            const auto eq = raw.find('=');
+            if (eq == std::string_view::npos or eq == 0) {
+                return string(raw);
+            }
+            return string(raw.substr(0, eq));
+        }
+
+        auto find_node(const aiNode& node, const string& name) -> const aiNode* {
+            if (node.mName.C_Str() == name or layer_identity(node.mName.C_Str()) == name) {
+                return &node;
+            }
+            for (unsigned i = 0; i < node.mNumChildren; ++i) {
+                if (const auto* found = find_node(*node.mChildren[i], name)) {
+                    return found;
+                }
+            }
+            return nullptr;
+        }
+
+        auto node_world(const aiNode& root, const aiNode& target) -> optional<mat4> {
+            // Path root → target by search; accumulate transforms.
+            struct Frame {
+                const aiNode* node;
+                mat4 world;
+            };
+            vector<Frame> stack{{&root, ai_mat4(root.mTransformation)}};
+            while (not stack.empty()) {
+                const auto frame = stack.back();
+                stack.pop_back();
+                if (frame.node == &target) {
+                    return frame.world;
+                }
+                for (unsigned i = 0; i < frame.node->mNumChildren; ++i) {
+                    const auto* child = frame.node->mChildren[i];
+                    stack.push_back({child, frame.world * ai_mat4(child->mTransformation)});
+                }
+            }
+            return {};
+        }
+
+        auto read_assimp_scene(Assimp::Importer& importer, const filepath& path) -> const aiScene* {
             // RH OpenGL: do not MakeLeftHanded / FlipWindingOrder.
             // Keep file normals (LW OBJ hard/smooth). GenSmoothNormals only if a mesh has none — and before Join (Assimp needs verbose verts).
             const auto* scene = importer.ReadFile(
                 path.string(),
                 aiProcess_Triangulate | aiProcess_SortByPType | aiProcess_FlipUVs);
             if (not scene or not scene->mRootNode or (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) or scene->mNumMeshes == 0) {
-                return {};
+                return nullptr;
             }
             bool missing_normals = false;
             for (unsigned mesh_index = 0; mesh_index < scene->mNumMeshes; ++mesh_index) {
@@ -208,19 +280,40 @@ namespace rmmr::resource::geometry {
             if (missing_normals) {
                 scene = importer.ApplyPostProcessing(aiProcess_GenSmoothNormals);
                 if (not scene) {
-                    return {};
+                    return nullptr;
                 }
             }
             scene = importer.ApplyPostProcessing(aiProcess_JoinIdenticalVertices);
+            return scene;
+        }
+
+        auto load_assimp(const filepath& path, const string& layer) -> optional<LoadedMesh> {
+            Assimp::Importer importer;
+            const auto* scene = read_assimp_scene(importer, path);
             if (not scene) {
                 return {};
             }
+
             LoadedMesh out{};
             out.cpu.layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"});
-            const mat4 home = home_world(*scene);
-            const mat4 home_inverse = glm::inverse(home);
-            const bool single_mesh = scene->mNumMeshes == 1;
-            gather_node(out, *scene, *scene->mRootNode, mat4{1.0f}, home_inverse, single_mesh);
+
+            if (layer.empty()) {
+                const mat4 home = home_world(*scene);
+                const mat4 home_inverse = glm::inverse(home);
+                gather_node(out, *scene, *scene->mRootNode, mat4{1.0f}, home_inverse);
+            } else {
+                const auto* target = find_node(*scene->mRootNode, layer);
+                if (not target) {
+                    return {};
+                }
+                const auto world = node_world(*scene->mRootNode, *target);
+                if (not world) {
+                    return {};
+                }
+                const mat4 home_inverse = glm::inverse(*world);
+                gather_node_meshes_only(out, *scene, *target, *world, home_inverse);
+            }
+
             if (out.cpu.positions.empty() or out.cpu.indices.empty()) {
                 return {};
             }
@@ -570,11 +663,14 @@ namespace rmmr::resource::geometry {
             return context.refuse("resource::geometry::Loader::materialize: Manager singleton missing");
         }
         const auto path = resolve_under_manager(with<Manager>::get(context, *manager_id), unit, loader.file);
-        base::whisper("rmmr: geometry::Loader '{}' ← {}", unit.name.text(), path.string());
+        base::whisper("rmmr: geometry::Loader '{}' ← {}{}", unit.name.text(), path.string(), loader.layer.empty() ? "" : std::format(" layer '{}'", loader.layer));
 
-        const auto loaded = load_assimp(path);
+        const auto loaded = load_assimp(path, loader.layer);
         if (not loaded) {
-            return context.refuse(std::format("resource::geometry::Loader::materialize: Assimp failed '{}'", path.string()));
+            return context.refuse(std::format(
+                "resource::geometry::Loader::materialize: Assimp failed '{}' layer '{}'",
+                path.string(),
+                loader.layer.empty() ? "(whole)" : loader.layer));
         }
 
         {

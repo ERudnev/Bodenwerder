@@ -54,6 +54,7 @@ namespace rmmr::resource::geometry {
     struct Loader : Feature<Loader, Asset> {
         struct Quantum {
             filename file;
+            string layer; // empty = whole scene; else Assimp node / LWO layer name
         };
         struct Actions : BaseActions {
             static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;

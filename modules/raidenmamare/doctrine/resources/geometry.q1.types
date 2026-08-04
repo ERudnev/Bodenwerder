@@ -35,6 +35,7 @@ namespace rmmr
     feature Loader of Asset
       one
         file: filename
+        layer: string // empty = whole scene; non-empty = Assimp node name (LWO layer)
         >materialize(#system::Device) -> #Runtime?
 
     feature Generator of Asset
