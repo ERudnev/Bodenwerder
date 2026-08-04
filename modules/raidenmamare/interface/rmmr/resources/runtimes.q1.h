@@ -31,7 +31,8 @@ namespace rmmr::resource {
             static auto add_geometry_loader(Writing, Unit::Quantum, geometry::Loader::Quantum) -> geometry::Asset::Id;
             static auto add_geometry_generator(Writing, Unit::Quantum, geometry::Generator::Quantum) -> geometry::Asset::Id;
             static auto add_sprites_kenney(Writing, Unit::Quantum, sprite::LoaderKenney::Quantum) -> sprite::Pack::Id;
-            static auto add_meshpack_loader(Writing, Unit::Quantum, meshpack::Loader::Quantum) -> meshpack::Asset::Id;
+            static auto add_meshpack_objs_loader(Writing, Unit::Quantum, meshpack::LoaderObjs::Quantum) -> meshpack::Asset::Id;
+            static auto add_meshpack_lwo_loader(Writing, Unit::Quantum, meshpack::LoaderLwo::Quantum) -> meshpack::Asset::Id;
             static auto compose_material(Writing, Unit::Name, filename, material::Asset::Id base) -> material::Asset::Id;
             static void extend(Writing, filepath path);
         };

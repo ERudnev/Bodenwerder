@@ -114,7 +114,7 @@ namespace eltanin {
         assets.system_stripes = with<::rmmr::resource::Assets>::compose_material(context, with<Unit>::name("Eltanin", "system_stripes"), "textures/system/mech_stripes.png", etalon);
         assets.system_outer = with<::rmmr::resource::Assets>::compose_material(context, with<Unit>::name("Eltanin", "system_outer"), "textures/system/mech_outer.png", etalon);
 
-        assets.levelOne = with<::rmmr::resource::Assets>::add_meshpack_loader(context, Unit::name("Eltanin", "levelOne"), item<meshpack::Loader>{.file = "meshes/system/levelOne/levelOne.meshpack"});
+        assets.levelOne = with<::rmmr::resource::Assets>::add_meshpack_objs_loader(context, Unit::name("Eltanin", "levelOne"), item<meshpack::LoaderObjs>{.file = "meshes/system/levelOne/levelOne.obj.meshpack"});
 
         const auto manager = *with<Manager>::singleton(context);
         if (not with<Unit_group>::exists(context, manager)) {

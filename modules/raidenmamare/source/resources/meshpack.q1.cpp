@@ -25,20 +25,14 @@ namespace rmmr::resource::meshpack {
             return manager.location / unit.name.library / file_path;
         }
 
-        struct FilePartBinding {
-            string alias;
-            string materialInstancePlaceholder;
-        };
-
         struct FileEntryBody {
             string geometry_file;
-            umap<string, FilePartBinding> materials;
+            umap<string, string> materials; // part → material Unit.own
         };
 
         struct FilePayload {
             string name;
             string library;
-            umap<string, string> materials;
             umap<string, FileEntryBody> entries;
         };
 
@@ -48,8 +42,6 @@ namespace rmmr::resource::meshpack {
             out.name = base::serialization::detail::read<string>(in);
             base::serialization::detail::expect(in, ',');
             out.library = base::serialization::detail::read<string>(in);
-            base::serialization::detail::expect(in, ',');
-            out.materials = base::serialization::detail::read<umap<string, string>>(in);
             base::serialization::detail::expect(in, ',');
             out.entries = base::serialization::detail::read<umap<string, FileEntryBody>>(in);
             base::serialization::detail::expect(in, '}');
@@ -80,55 +72,38 @@ namespace rmmr::resource::meshpack {
         if (entry_it == pack.entries.end()) {
             return {};
         }
-        umap<string, material::Asset::Id> materials;
-        for (const auto& [part, binding] : entry_it->second.materials) {
-            const auto alias_it = pack.materials.find(binding.alias);
-            if (alias_it == pack.materials.end()) {
-                return {};
-            }
-            materials.emplace(part, alias_it->second);
-        }
         return Resolved{
             .geometry = entry_it->second.geometry,
-            .materials = std::move(materials),
+            .materials = entry_it->second.materials,
         };
     }
 
-    void Loader::Actions::load(Writing context, Id pack_id) {
-        const auto& loader = with<Loader>::get(context, pack_id);
+    void LoaderObjs::Actions::load(Writing context, Id pack_id) {
+        const auto& loader = with<LoaderObjs>::get(context, pack_id);
         const auto& unit = with<Unit>::get(context, pack_id);
         const auto manager_id = with<Manager>::singleton(context);
         if (not manager_id) {
-            return (void)context.refuse("resource::meshpack::Loader::load: Manager singleton missing");
+            return (void)context.refuse("resource::meshpack::LoaderObjs::load: Manager singleton missing");
         }
         const auto& manager = with<Manager>::get(context, *manager_id);
         const auto path = resolve_under_manager(manager, unit, loader.file);
-        base::whisper("rmmr: meshpack::Loader '{}' ← {}", unit.name.text(), path.string());
+        base::whisper("rmmr: meshpack::LoaderObjs '{}' ← {}", unit.name.text(), path.string());
 
         std::ifstream in{path};
         if (not in) {
-            return (void)context.refuse(std::format("resource::meshpack::Loader::load: failed to open '{}'", path.string()));
+            return (void)context.refuse(std::format("resource::meshpack::LoaderObjs::load: failed to open '{}'", path.string()));
         }
 
         FilePayload payload;
         try {
             payload = read_payload(in);
         } catch (const std::exception& error) {
-            return (void)context.refuse(std::format("resource::meshpack::Loader::load: parse '{}': {}", path.string(), error.what()));
+            return (void)context.refuse(std::format("resource::meshpack::LoaderObjs::load: parse '{}': {}", path.string(), error.what()));
         }
 
         const auto file_name = Unit::Name{.library = payload.library, .own = payload.name};
         if (file_name != unit.name) {
-            return (void)context.refuse(std::format("resource::meshpack::Loader::load: file identity '{}' != unit '{}'", file_name.text(), unit.name.text()));
-        }
-
-        umap<string, material::Asset::Id> materials;
-        for (const auto& [alias, material_name] : payload.materials) {
-            const auto material_id = find_material(context, unit.name.library, material_name);
-            if (not material_id) {
-                return (void)context.refuse(std::format("resource::meshpack::Loader::load: material '{}' not found for alias '{}'", Unit::Name{.library = unit.name.library, .own = material_name}.text(), alias));
-            }
-            materials.emplace(alias, *material_id);
+            return (void)context.refuse(std::format("resource::meshpack::LoaderObjs::load: file identity '{}' != unit '{}'", file_name.text(), unit.name.text()));
         }
 
         umap<string, Asset::Entry> entries;
@@ -137,27 +112,28 @@ namespace rmmr::resource::meshpack {
                 context,
                 Unit::name(unit.name.library, entry_name),
                 geometry::Loader::Quantum{.file = body.geometry_file});
-            umap<string, Asset::Entry::Binding> part_bindings;
-            for (const auto& [part, binding] : body.materials) {
-                if (materials.find(binding.alias) == materials.end()) {
-                    return (void)context.refuse(std::format("resource::meshpack::Loader::load: entry '{}' part '{}' unknown alias '{}'", entry_name, part, binding.alias));
+            umap<string, material::Asset::Id> part_materials;
+            for (const auto& [part, material_own] : body.materials) {
+                const auto material_id = find_material(context, unit.name.library, material_own);
+                if (not material_id) {
+                    return (void)context.refuse(std::format("resource::meshpack::LoaderObjs::load: entry '{}' part '{}' material '{}' not found", entry_name, part, Unit::Name{.library = unit.name.library, .own = material_own}.text()));
                 }
-                part_bindings.emplace(part, Asset::Entry::Binding{
-                    .alias = binding.alias,
-                    .materialInstancePlaceholder = binding.materialInstancePlaceholder,
-                });
+                part_materials.emplace(part, *material_id);
             }
             entries.emplace(entry_name, Asset::Entry{
                 .geometry = geometry_id,
-                .materials = std::move(part_bindings),
+                .materials = std::move(part_materials),
             });
             base::message("rmmr: meshpack '{}' entry '{}' ← geometry '{}' ({})", unit.name.text(), entry_name, Unit::Name{.library = unit.name.library, .own = entry_name}.text(), body.geometry_file);
         }
 
-        auto& pack = *with<Asset>::modify(context, pack_id);
-        pack.materials = std::move(materials);
-        pack.entries = std::move(entries);
-        base::message("rmmr: meshpack '{}' loaded ({} aliases, {} entries)", unit.name.text(), pack.materials.size(), pack.entries.size());
+        const auto entry_count = entries.size();
+        with<Asset>::modify(context, pack_id)->entries = std::move(entries);
+        base::message("rmmr: meshpack '{}' loaded ({} entries)", unit.name.text(), entry_count);
+    }
+
+    void LoaderLwo::Actions::load(Writing, Id) {
+        _INCOMPLETE_;
     }
 
 }

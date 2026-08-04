@@ -163,11 +163,19 @@ namespace rmmr::resource {
             std::move(loader));
     }
 
-    auto Assets::Actions::add_meshpack_loader(Writing context, Unit::Quantum unit, meshpack::Loader::Quantum loader) -> meshpack::Asset::Id {
-        return register_unit<meshpack::Asset, meshpack::Loader>(
+    auto Assets::Actions::add_meshpack_objs_loader(Writing context, Unit::Quantum unit, meshpack::LoaderObjs::Quantum loader) -> meshpack::Asset::Id {
+        return register_unit<meshpack::Asset, meshpack::LoaderObjs>(
             context,
             std::move(unit),
-            meshpack::Asset::Quantum{.materials = {}, .entries = {}},
+            meshpack::Asset::Quantum{.entries = {}},
+            std::move(loader));
+    }
+
+    auto Assets::Actions::add_meshpack_lwo_loader(Writing context, Unit::Quantum unit, meshpack::LoaderLwo::Quantum loader) -> meshpack::Asset::Id {
+        return register_unit<meshpack::Asset, meshpack::LoaderLwo>(
+            context,
+            std::move(unit),
+            meshpack::Asset::Quantum{.entries = {}},
             std::move(loader));
     }
 

@@ -9,27 +9,26 @@ namespace rmmr
     using Reference as resource::Unit::Reference
     // Catalog of ready looks. No Runtime: geometry/materials bake on their own;
     // consumers ?resolve an entry into geometry + part→#material for actor::Mesh.
-    // Policy: shelf materials shared; Pack aliases are the human edit surface
-    // ("перекрась весь metal в этом паке" = one row in materials).
+    // File binding: geometry part name → material Unit.own (same library as the pack).
     feature Asset of resource::Unit
       struct Entry
-        struct Binding
-          alias: string // key in Asset.materials
-          materialInstancePlaceholder: string // ignored until material×texture instances; empty = none
         geometry: #geometry::Asset
-        materials: umap<string, Binding> // keys = geometry::Asset.parts names
+        materials: umap<string, #material::Asset> // keys = geometry::Asset.parts names
       struct Resolved
         geometry: #geometry::Asset
-        materials: umap<string, #material::Asset> // part → shelf; aliases resolved, placeholder ignored
+        materials: umap<string, #material::Asset> // part → shelf
       one
-        materials: umap<string, #material::Asset> // local alias → shelf
         entries: umap<string, Entry>
-        ?resolve(name: string) -> Resolved? // missing entry / bad alias → empty
+        ?resolve(name: string) -> Resolved? // missing entry → empty
 
-    // Text catalog (json-like). File materials table is local→Unit name; load resolves to #.
-    // Early: parse → register/link geometry → fill aliases+entries.
-    // Geometry loaders registered here; parts/slots filled when geometry materializes (Assimp).
-    feature Loader of Asset
+    // Text catalog (*.obj.meshpack): entries → separate OBJ files + part→Unit.own.
+    feature LoaderObjs of Asset
+      one
+        file: filename
+        >load()
+
+    // Single LWO kit (+ optional sidecar materials table). load TBD.
+    feature LoaderLwo of Asset
       one
         file: filename
         >load()

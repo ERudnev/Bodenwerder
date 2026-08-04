@@ -60,7 +60,7 @@ namespace rmmr::wrapper::assets {
         handles.material.oneSidedGlass = with<Assets>::add_material(context, Unit::name("rmmr", "one_sided_glass_debug06"), builders::material::Presets::oneSidedGlass(with<Unit>::remember(context, glass), with<Unit>::remember(context, handles.texture.debug[5])));
         handles.material.grid = with<Assets>::add_material(context, Unit::name("rmmr", "grid"), builders::material::Presets::grid(with<Unit>::remember(context, grid)));
         handles.material.sprite = with<Assets>::add_material(context, Unit::name("rmmr", "sprite"), builders::material::Presets::sprite(with<Unit>::remember(context, sprite)));
-        handles.primitives = with<Assets>::add_meshpack_loader(context, Unit::name("rmmr", "primitives"), item<meshpack::Loader>{.file = "meshes/primitives/primitives.meshpack"});
+        handles.primitives = with<Assets>::add_meshpack_objs_loader(context, Unit::name("rmmr", "primitives"), item<meshpack::LoaderObjs>{.file = "meshes/primitives/primitives.meshpack"});
 
         base::message("toy: hardcoded assets added");
     }

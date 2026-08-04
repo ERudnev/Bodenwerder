@@ -15,19 +15,14 @@ namespace rmmr::resource::meshpack {
     // Catalog of ready looks. No Runtime — geometry/materials bake on their own.
     struct Asset : Feature<Asset, resource::Unit> {
         struct Entry {
-            struct Binding {
-                string alias;
-                string materialInstancePlaceholder;
-            };
             geometry::Asset::Id geometry;
-            umap<string, Binding> materials;
+            umap<string, material::Asset::Id> materials;
         };
         struct Resolved {
             geometry::Asset::Id geometry;
             umap<string, material::Asset::Id> materials;
         };
         struct Quantum {
-            umap<string, material::Asset::Id> materials;
             umap<string, Entry> entries;
         };
         struct Actions : BaseActions {
@@ -37,7 +32,20 @@ namespace rmmr::resource::meshpack {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct Loader : Feature<Loader, Asset> {
+    // *.obj.meshpack — pack of OBJ paths.
+    struct LoaderObjs : Feature<LoaderObjs, Asset> {
+        struct Quantum {
+            filename file;
+        };
+        struct Actions : BaseActions {
+            static void load(Writing, Id);
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    // Single LWO kit.
+    struct LoaderLwo : Feature<LoaderLwo, Asset> {
         struct Quantum {
             filename file;
         };
