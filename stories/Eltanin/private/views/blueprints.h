@@ -2,6 +2,7 @@
 
 #include <array>
 #include <filesystem>
+#include <string>
 #include <vector>
 
 #include <base/maybe.h>
@@ -24,10 +25,8 @@ namespace eltanin::views {
 
     // Blueprint viewer: own scene; Game swaps product views when `open`.
     struct Blueprints {
-        // Plate has two presentations (both spawned); checkboxes are mutually exclusive (both may be off).
         struct Layers {
-            bool plateShape; // levelOne — by topology shape
-            bool plateRole;  // levelTwo — by slot role (mesh entry still shape for now)
+            bool plate;
             bool frame;
             bool inner;
             bool wing;
@@ -36,7 +35,6 @@ namespace eltanin::views {
         struct Actor {
             rmmr::scene::actor::Mesh::Id id;
             mech::layer layer;
-            bool plateRole; // meaningful when layer == plate: true = role pack (L2)
         };
 
         struct State {
@@ -46,16 +44,15 @@ namespace eltanin::views {
             std::vector<resource::blueprint::Asset::Id> loaded;
             base::maybe<resource::blueprint::Asset::Id> selected;
             Layers layers;
-            std::vector<Actor> actors;
+            std::vector<Actor> levelOne; // drawn: frame / inner / plate / wing
+            std::vector<Actor> levelTwo; // stash; unused for now
         };
 
         State state;
 
         void create(Writing, filepath directory);
         void show(Writing, resource::blueprint::Asset::Id);
-        auto spawnFrame(Writing, const mech::Element::Cell&, rmmr::resource::meshpack::Asset::Id) -> base::maybe<Actor>;
-        // Shape only (role ignored for entry name). Empty / missing → skip. rolePack = levelTwo presentation.
-        auto spawnPlate(Writing, const mech::Element::Plate&, rmmr::resource::meshpack::Asset::Id, bool rolePack) -> base::maybe<Actor>;
+        auto spawnFromPack(Writing, rmmr::resource::meshpack::Asset::Id, const std::string& entry, const mech::Pose&, mech::layer, rmmr::RGB albedo, float opacity) -> base::maybe<Actor>;
         void applyLayers(Writing);
         void draw(Writing, bool& open);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;

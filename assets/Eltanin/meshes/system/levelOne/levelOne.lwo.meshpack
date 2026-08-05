@@ -1,0 +1,10 @@
+{
+    "levelOne",
+    "Eltanin",
+    "meshes/system/levelOne/levelOne.lwo",
+    [
+        {"mount", "Eltanin::mount"},
+        {"outer", "Eltanin::outer"},
+        {"type", "Eltanin::type"}
+    ]
+}

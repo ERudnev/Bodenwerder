@@ -112,10 +112,16 @@ namespace rmmr::resource::sprite {
         base::whisper("rmmr: sprite::LoaderKenney '{}' ← {}", unit.name.text(), descriptor_path.string());
         const auto entries = parse_kenney_entries(descriptor_path);
         if (not entries) {
-            context.refuse(std::format(
-                "resource::sprite::LoaderKenney::load: failed to parse Kenney atlas '{}'",
+            return (void)context.refuse(std::format(
+                "resource::sprite::LoaderKenney::load: '{}' failed to parse Kenney atlas '{}'",
+                unit.name.text(),
                 descriptor_path.string()));
-            return;
+        }
+        if (entries->empty()) {
+            return (void)context.refuse(std::format(
+                "resource::sprite::LoaderKenney::load: '{}' atlas '{}' has no SubTexture entries",
+                unit.name.text(),
+                descriptor_path.string()));
         }
         with<Pack>::modify(context, pack_id)->entries = std::move(*entries);
     }
@@ -123,7 +129,10 @@ namespace rmmr::resource::sprite {
     auto Pack::Actions::materialize(Writing context, Id pack_id, system::Device::Id device) -> optional<Runtime::Id> {
         const auto& pack = with<Pack>::get(context, pack_id);
         if (pack.entries.empty()) {
-            return context.refuse("resource::sprite::Pack::materialize: entries are empty");
+            const auto& unit = with<Unit>::get(context, pack_id);
+            return context.refuse(std::format(
+                "resource::sprite::Pack::materialize: '{}' entries are empty (Pack never filled — LoaderKenney::load did not run or its branch was rejected)",
+                unit.name.text()));
         }
 
         const auto& runtimes = with<Runtimes>::get(context, device);

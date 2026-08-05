@@ -15,8 +15,6 @@ namespace eltanin::mech {
             Pose pose;
             frame::shape shape;
             slot::inner role;
-            inner::shape volume;
-            cube::Corner align;
         };
 
         struct Plate {

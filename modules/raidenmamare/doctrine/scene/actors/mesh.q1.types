@@ -16,6 +16,7 @@ namespace rmmr
           materials: umap<string, #resource::material::Asset>
           albedo: RGB
           scale: vec3 // local; Node has no scale
+          opacity: float // → u_opacity (lit_transparent etc.)
           visible: bool // submit skips when false
           >setVisible(bool)
           ?submit(#system::Device, >where: renderer::CommandBuffer)

@@ -11,6 +11,8 @@ namespace rmmr::resource::builders::material {
         using Configured = resource::material::Asset::Quantum;
         static Configured ambient(resource::shader::Reference program, resource::shader::Reference shadow_depth);
         static Configured lit(resource::shader::Reference program, resource::shader::Reference shadow_depth);
+        // Lit color only (no albedo map); transparent pass + alpha blend. Draw opacity → u_opacity.
+        static Configured litTransparent(resource::shader::Reference program);
         static Configured litTextured(resource::shader::Reference program, resource::texture::Reference albedo_map, resource::shader::Reference shadow_depth);
         static Configured litTexturedTransparent(resource::shader::Reference program, resource::texture::Reference albedo_map);
         // One-sided glass: albedo tint, B&W opacity map, vertex specular. Transparent pass.

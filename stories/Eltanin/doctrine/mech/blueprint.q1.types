@@ -8,8 +8,6 @@ namespace eltanin
         pose: Pose
         shape: frame::shape
         role: slot::inner
-        volume: inner::shape
-        align: cube::Corner
       struct Plate
         pose: Pose
         shape: plate::shape

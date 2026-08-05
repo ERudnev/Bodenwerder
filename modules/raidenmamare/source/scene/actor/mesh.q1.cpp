@@ -14,6 +14,7 @@ namespace rmmr::scene::actor {
             .materials = std::move(materials),
             .albedo = albedo,
             .scale = vec3{1.0f, 1.0f, 1.0f},
+            .opacity = 1.0f,
             .visible = true,
         });
         return node;
@@ -46,7 +47,7 @@ namespace rmmr::scene::actor {
                 .geometry = actor.geometry,
                 .material = material_id,
                 .albedo = actor.albedo,
-                .opacity = 1.0f,
+                .opacity = actor.opacity,
                 .pattern_scale = 1.0f,
                 .indices = DrawInstance::IndexRange{
                     .start = part_it->second.startIndex,
@@ -61,7 +62,7 @@ namespace rmmr::scene::actor {
                 .geometry = actor.geometry,
                 .material = actor.materials.begin()->second,
                 .albedo = actor.albedo,
-                .opacity = 1.0f,
+                .opacity = actor.opacity,
                 .pattern_scale = 1.0f,
             }, where);
         }

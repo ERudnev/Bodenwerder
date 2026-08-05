@@ -107,9 +107,12 @@ namespace eltanin {
                 .blend = renderer::BlendMode::additive,
             });
 
-        // Mech pack albedos: Mesh submit shares one actor albedo across parts.
+        // LevelOne surfaces: mount/outer textured; type = engine lit_transparent (no map).
         if (not shared or shared->material.debugLitTextured.empty()) {
             return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_textured etalon missing");
+        }
+        if (not shared->material.litTransparent) {
+            return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_transparent missing");
         }
         const auto etalon = shared->material.debugLitTextured[0];
         const auto mech = [&](const char* own, filename file) {
@@ -121,8 +124,14 @@ namespace eltanin {
         mech("kosmosWall", "textures/mech/CH_T_KOSMOSSCIANAA.JPG");
         mech("metal10469", "textures/mech/10469.jpg");
         mech("metal10469v3", "textures/mech/10469-v3.jpg");
+        mech("mount", "textures/mech/pewter2.bmp");
+        mech("outer", "textures/mech/mtile05.jpg");
+        (void)with<::rmmr::resource::Assets>::add_material(context, Unit::name("Eltanin", "type"), with<::rmmr::resource::material::Asset>::get(context, *shared->material.litTransparent));
 
-        assets.levelOne = with<::rmmr::resource::Assets>::add_meshpack_objs_loader(context, Unit::name("Eltanin", "levelOne"), item<meshpack::LoaderObjs>{.file = "meshes/system/levelOne/levelOne.obj.meshpack"});
+        assets.levelOne = with<::rmmr::resource::Assets>::add_meshpack_lwo_loader(
+            context,
+            Unit::name("Eltanin", "levelOne"),
+            item<meshpack::LoaderLwo>{.file = "meshes/system/levelOne/levelOne.lwo.meshpack"});
         assets.levelTwo = with<::rmmr::resource::Assets>::add_meshpack_lwo_loader(
             context,
             Unit::name("Eltanin", "levelTwo"),
@@ -196,6 +205,7 @@ namespace eltanin {
                         .materials = entry.materials,
                         .albedo = RGB{1.0f, 1.0f, 1.0f},
                         .scale = vec3{1.0f, 1.0f, 1.0f},
+                        .opacity = 1.0f,
                         .visible = true,
                     });
                 cursor = Pos{cursor.x + 4.0f, cursor.y, cursor.z - 4.0f};

@@ -18,6 +18,7 @@ namespace rmmr::scene::actor {
             umap<string, resource::material::Asset::Id> materials;
             RGB albedo;
             vec3 scale;
+            float opacity;
             bool visible;
         };
         struct Actions : BaseActions {

@@ -100,14 +100,6 @@ namespace eltanin::mech {
         };
     };
 
-    // Inner volume form only. engine / hangar / … → level 2 later.
-    struct inner {
-        enum class shape {
-            full, // full volume of k8
-            quarter,
-            octa,
-        };
-    };
     // Frame cell → default plate topology per plate index (RedStar CarcassCube::plateType).
     namespace skinning {
 

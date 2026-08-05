@@ -17,12 +17,18 @@ namespace rmmr::resource {
         if (not singleton(context)) return;
         for (const auto [id, _] : context->aspect<sprite::LoaderKenney>().items()) {
             sprite::LoaderKenney::Actions::load(context, id);
+            if (not context.workers_interface().summary().good())
+                return;
         }
         for (const auto [id, _] : context->aspect<meshpack::LoaderObjs>().items()) {
             meshpack::LoaderObjs::Actions::load(context, id);
+            if (not context.workers_interface().summary().good())
+                return;
         }
         for (const auto [id, _] : context->aspect<meshpack::LoaderLwo>().items()) {
             meshpack::LoaderLwo::Actions::load(context, id);
+            if (not context.workers_interface().summary().good())
+                return;
         }
     }
 

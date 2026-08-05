@@ -18,9 +18,6 @@ namespace eltanin
     struct wing
       using shape as @external(eltanin::mech::wing::shape)
 
-    struct inner
-      using shape as @external(eltanin::mech::inner::shape)
-
     namespace slot
       using inner as @external(eltanin::mech::slot::inner)
       using plate as @external(eltanin::mech::slot::plate)

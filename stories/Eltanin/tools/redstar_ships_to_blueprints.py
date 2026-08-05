@@ -2,7 +2,7 @@
 
 Smoke format (positional, meshpack-style):
   { name, author, cells[], stubs[], hull[] }
-  cell  = [[x,y,z], ori, frame_shape, inner_role, volume, align]
+  cell  = [[x,y,z], ori, frame_shape, inner_role]
   stub  = [[x,y,z], ori, wing_shape, wing_role]
   plate = [[x,y,z], ori, plate_shape, plate_role]
 """
@@ -50,13 +50,15 @@ def convert(data: dict, name: str, author: str) -> tuple[list, list, list]:
     for cube in data.get("cubes", []):
         pos = cube["position"]
         px, py, pz = pos["x"], pos["y"], pos["z"]
+        frame = FRAME_SHAPES[int(cube["topology"])]
+        role = INNER_ROLES[int(cube["module"]["type"])]
+        if frame != "k8":
+            role = "cargo"
         cells.append([
             [px, py, pz],
             int(cube["transform"]),
-            FRAME_SHAPES[int(cube["topology"])],
-            INNER_ROLES[int(cube["module"]["type"])],
-            "full",
-            0,
+            frame,
+            role,
         ])
         for plate in cube.get("plates", []):
             if plate.get("empty"):

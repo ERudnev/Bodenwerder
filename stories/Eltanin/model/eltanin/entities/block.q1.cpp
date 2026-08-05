@@ -73,21 +73,13 @@ namespace eltanin {
         return spawn_with_locals(context, root, pose, locals_from_corner_indices(mech::frame::corners[index]), std::move(actor_quantum));
     }
 
-    auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::inner::shape shape, mech::slot::inner role, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
+    auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::frame::shape shape, mech::slot::inner role, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
         actor_quantum.albedo = mech::slot::color(role);
-        switch (shape) {
-            case mech::inner::shape::full: {
-                vector<vec3> locals;
-                locals.reserve(mech::cube::corners.size());
-                for (const auto& lattice : mech::cube::corners) {
-                    locals.push_back(mech::physical::toLocal(lattice));
-                }
-                return spawn_with_locals(context, root, pose, std::move(locals), std::move(actor_quantum));
-            }
-            case mech::inner::shape::quarter:
-            case mech::inner::shape::octa:
-                _INCOMPLETE_;
+        const auto index = static_cast<std::size_t>(shape);
+        if (index >= mech::frame::corners.size()) {
+            return context.refuse("eltanin::Block::spawnInner: shape out of range");
         }
+        return spawn_with_locals(context, root, pose, locals_from_corner_indices(mech::frame::corners[index]), std::move(actor_quantum));
     }
 
     auto Block::Actions::spawnWing(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::wing::shape shape, mech::slot::wing, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {

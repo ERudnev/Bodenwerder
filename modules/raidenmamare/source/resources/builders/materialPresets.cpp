@@ -66,6 +66,32 @@ namespace rmmr::resource::builders::material {
         };
     }
 
+    auto Presets::litTransparent(resource::shader::Reference program) -> Asset::Quantum {
+        return Asset::Quantum{
+            .techniques = {
+                {renderer::Pass::transparent, Asset::Technique{
+                    .program = program,
+                    .uniforms = ::rmmr::material::Semantics::ids_of({
+                        "model",
+                        "view",
+                        "projection",
+                        "albedo",
+                        "opacity",
+                        "ambientColor",
+                        "ambientIntensity",
+                        "light0Pos",
+                        "light0Color",
+                        "light0Intensity",
+                        "lightSpaceMatrix",
+                        "shadowMap",
+                    }),
+                    .textures = {},
+                }},
+            },
+            .blend = renderer::BlendMode::alpha,
+        };
+    }
+
     auto Presets::litTextured(resource::shader::Reference program, resource::texture::Reference albedo_map, resource::shader::Reference shadow_depth) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {

@@ -107,8 +107,9 @@ namespace rmmr::wrapper {
         state->world.branch([&](Writing context) {
             engine->prepareAssets(context);
             product->prepareAssets(context);
-        });
-        state->world.branch([&](Writing context) {
+            if (not context.workers_interface().summary().good())
+                return;
+
             engine->createWindow(
                 context,
                 Engine::WindowParameters{
@@ -116,9 +117,7 @@ namespace rmmr::wrapper {
                     .requested_size = settings.window_size,
                     .presentation = settings.presentation,
                 });
-        });
-        state->world.branch([&](Writing context) { product->setup(context, engine->window()); });
-        state->world.branch([&](Writing context) {
+            product->setup(context, engine->window());
             engine->materialize(context);
             product->materialize(context);
         });
@@ -126,13 +125,13 @@ namespace rmmr::wrapper {
         engine->setActiveViews(product->views);
 
         if (not state->world.result().good())
-            throw std::runtime_error("app: initDefaultWorld failed");
+            state->assets_ready = false;
     }
 
     void Application::loadWorld(filepath) {
         state->loadPastState(state->world);
         if (not state->world.result().good())
-            throw std::runtime_error("app: loadWorld failed");
+            state->assets_ready = false;
     }
 
     int Application::run() {

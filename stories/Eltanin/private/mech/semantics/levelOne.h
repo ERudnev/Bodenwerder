@@ -5,8 +5,8 @@
 
 #include <string>
 
-// LevelOne meshpack entry names (layer / OBJ stem). Empty = no mesh yet — skip spawn.
-// Fill after LightWave; never fall back onto a real mesh name.
+// LevelOne meshpack entry names (LWO layer tags). Empty = no mesh yet — skip spawn.
+// Inner volume reuses frame::shape; mesh tokens are m8/m7/m6/m4.
 
 namespace eltanin::mech::levelOne {
 
@@ -16,6 +16,17 @@ namespace eltanin::mech::levelOne {
             case frame::shape::k7: return "k7";
             case frame::shape::k6: return "k6";
             case frame::shape::k4: return "k4";
+        }
+        return {};
+    }
+
+    // Same cut as frame; layer name uses m* to not collide with k*.
+    inline auto innerMesh(frame::shape shape) -> std::string {
+        switch (shape) {
+            case frame::shape::k8: return "m8";
+            case frame::shape::k7: return "m7";
+            case frame::shape::k6: return "m6";
+            case frame::shape::k4: return "m4";
         }
         return {};
     }
@@ -38,15 +49,6 @@ namespace eltanin::mech::levelOne {
             case wing::shape::w2121: return "w2121";
             case wing::shape::w321: return "w321";
             case wing::shape::w222: return "w222";
-        }
-        return {};
-    }
-
-    inline auto mesh(inner::shape shape) -> std::string {
-        switch (shape) {
-            case inner::shape::full: return {};
-            case inner::shape::quarter: return {};
-            case inner::shape::octa: return {};
         }
         return {};
     }

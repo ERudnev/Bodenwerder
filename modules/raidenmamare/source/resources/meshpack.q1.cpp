@@ -129,6 +129,12 @@ namespace rmmr::resource::meshpack {
             base::message("rmmr: meshpack '{}' entry '{}' ← geometry '{}' ({})", unit.name.text(), entry_name, Unit::Name{.library = unit.name.library, .own = entry_name}.text(), body.geometry_file);
         }
 
+        if (entries.empty()) {
+            return (void)context.refuse(std::format(
+                "resource::meshpack::LoaderObjs::load: '{}' produced no entries from '{}'",
+                unit.name.text(),
+                path.string()));
+        }
         const auto entry_count = entries.size();
         with<Asset>::modify(context, pack_id)->entries = std::move(entries);
         base::message("rmmr: meshpack '{}' loaded ({} entries)", unit.name.text(), entry_count);
@@ -203,6 +209,12 @@ namespace rmmr::resource::meshpack {
             base::message("rmmr: meshpack '{}' entry '{}' ← LWO mesh ({} submeshes)", unit.name.text(), mesh.name, part_count);
         }
 
+        if (entries.empty()) {
+            return (void)context.refuse(std::format(
+                "resource::meshpack::LoaderLwo::load: '{}' produced no entries from '{}'",
+                unit.name.text(),
+                lwo_path.string()));
+        }
         const auto entry_count = entries.size();
         with<Asset>::modify(context, pack_id)->entries = std::move(entries);
         base::message("rmmr: meshpack '{}' loaded ({} LWO entries)", unit.name.text(), entry_count);

@@ -85,11 +85,6 @@ namespace eltanin::resource::blueprint {
             {"k6", mech::frame::shape::k6},
             {"k4", mech::frame::shape::k4},
         };
-        const std::unordered_map<std::string_view, mech::inner::shape> inner_shapes{
-            {"full", mech::inner::shape::full},
-            {"quarter", mech::inner::shape::quarter},
-            {"octa", mech::inner::shape::octa},
-        };
         const std::unordered_map<std::string_view, mech::plate::shape> plate_shapes{
             {"p1111", mech::plate::shape::p1111},
             {"p121", mech::plate::shape::p121},
@@ -148,12 +143,8 @@ namespace eltanin::resource::blueprint {
             const auto shape = take_enum(cursor, frame_shapes, "frame shape");
             expect(cursor, ',');
             const auto role = take_enum(cursor, slot_inners, "inner slot");
-            expect(cursor, ',');
-            const auto volume = take_enum(cursor, inner_shapes, "inner volume");
-            expect(cursor, ',');
-            const auto align = take_int(cursor);
             expect(cursor, ']');
-            return mech::Element::Cell{.pose = mech::Pose{.pos = pos, .ori = ori}, .shape = shape, .role = role, .volume = volume, .align = align};
+            return mech::Element::Cell{.pose = mech::Pose{.pos = pos, .ori = ori}, .shape = shape, .role = role};
         }
 
         auto take_stub(Cursor& cursor) -> mech::Element::Stub {

@@ -36,9 +36,9 @@ namespace eltanin::views {
                 with<scene::Node>::remove(context, actor);
         }
 
-        auto layerVisible(const Blueprints::Layers& layers, const Blueprints::Actor& actor) -> bool {
-            switch (actor.layer) {
-                case mech::layer::plate: return actor.plateRole ? layers.plateRole : layers.plateShape;
+        auto layerVisible(const Blueprints::Layers& layers, mech::layer layer) -> bool {
+            switch (layer) {
+                case mech::layer::plate: return layers.plate;
                 case mech::layer::frame: return layers.frame;
                 case mech::layer::inner: return layers.inner;
                 case mech::layer::wing: return layers.wing;
@@ -46,7 +46,6 @@ namespace eltanin::views {
             return false;
         }
 
-        // Cell index × edge; ori → orient::matrix → quat. (toLocal is for corners inside a cell.)
         auto scenePose(const mech::Pose& pose) -> Pose {
             const float cell = mech::physical::edgeMeters;
             return Pose{
@@ -57,49 +56,6 @@ namespace eltanin::views {
                 },
                 .rotation = glm::normalize(glm::quat_cast(glm::mat3(mech::orient::matrix[static_cast<std::size_t>(pose.ori)]))),
             };
-        }
-
-        // Bootstrap stand-in: unit kube + lit (Mesh parts optional — submit falls back to whole mesh).
-        auto placeholderMesh(Reading context) -> base::maybe<scene::actor::Mesh::Quantum> {
-            const auto geometry = with<Assets>::find<geometry::Asset>(context, Unit::Actions::name("rmmr", "kube"));
-            const auto lit = with<Assets>::find<rmmr::resource::material::Asset>(context, Unit::Actions::name("rmmr", "lit"));
-            if (not geometry or not lit)
-                return {};
-            const float cell = mech::physical::edgeMeters;
-            return scene::actor::Mesh::Quantum{
-                .geometry = *geometry,
-                .materials = {{"mesh", *lit}},
-                .albedo = RGB{1.0f, 1.0f, 1.0f},
-                .scale = vec3{cell, cell, cell},
-                .visible = true,
-            };
-        }
-
-        auto spawnPlaceholder(Writing context, scene::Root::Id root, const mech::Pose& pose, mech::layer layer, const scene::actor::Mesh::Quantum& mesh, base::maybe<mech::slot::inner> inner_role) -> Blueprints::Actor {
-            auto quantum = mesh;
-            quantum.visible = true;
-            const float cell = mech::physical::edgeMeters;
-            switch (layer) {
-                case mech::layer::plate:
-                    quantum.albedo = RGB{0.75f, 0.78f, 0.82f};
-                    quantum.scale = vec3{cell * 1.05f, cell * 0.08f, cell * 1.05f};
-                    break;
-                case mech::layer::frame:
-                    // Prefer Blueprints::spawnFrame; leftover only if mis-routed.
-                    quantum.albedo = RGB{0.35f, 0.55f, 0.95f};
-                    quantum.scale = vec3{cell, cell, cell};
-                    break;
-                case mech::layer::inner:
-                    quantum.albedo = inner_role ? mech::slot::color(*inner_role) : RGB{0.95f, 0.75f, 0.25f};
-                    quantum.scale = vec3{cell * 0.55f, cell * 0.55f, cell * 0.55f};
-                    break;
-                case mech::layer::wing:
-                    quantum.albedo = RGB{0.45f, 0.85f, 0.55f};
-                    quantum.scale = vec3{cell * 0.4f, cell * 0.15f, cell * 1.2f};
-                    break;
-            }
-            const auto id = with<scene::Interface>::createMeshActor(context, root, scenePose(pose), std::move(quantum));
-            return Blueprints::Actor{.id = id, .layer = layer, .plateRole = false};
         }
 
     } // namespace
@@ -142,8 +98,9 @@ namespace eltanin::views {
         state.camera = camera;
         state.loaded.clear();
         state.selected.reset();
-        state.layers = Layers{.plateShape = true, .plateRole = false, .frame = true, .inner = true, .wing = true};
-        state.actors.clear();
+        state.layers = Layers{.plate = true, .frame = true, .inner = true, .wing = true};
+        state.levelOne.clear();
+        state.levelTwo.clear();
 
         if (not std::filesystem::is_directory(directory))
             return (void)context.refuse(std::format("eltanin::views::Blueprints::create: not a directory '{}'", directory.string()));
@@ -167,36 +124,36 @@ namespace eltanin::views {
     }
 
     void Blueprints::show(Writing context, resource::blueprint::Asset::Id asset_id) {
-        for (const auto& actor : state.actors)
+        for (const auto& actor : state.levelOne)
             destroyMeshActor(context, actor.id);
-        state.actors.clear();
+        for (const auto& actor : state.levelTwo)
+            destroyMeshActor(context, actor.id);
+        state.levelOne.clear();
+        state.levelTwo.clear();
         state.selected = asset_id;
 
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, asset_id).data;
-        const auto root = *state.scene;
-        const auto mesh = *placeholderMesh(context);
         const auto pack_one = *with<Assets>::find<meshpack::Asset>(context, Unit::Actions::name("Eltanin", "levelOne"));
-        const auto pack_two = *with<Assets>::find<meshpack::Asset>(context, Unit::Actions::name("Eltanin", "levelTwo"));
 
         for (const auto& cell : data.cells) {
-            if (auto frame = spawnFrame(context, cell, pack_two))
-                state.actors.push_back(*frame);
-            state.actors.push_back(spawnPlaceholder(context, root, cell.pose, mech::layer::inner, mesh, cell.role));
+            if (auto frame = spawnFromPack(context, pack_one, mech::levelOne::mesh(cell.shape), cell.pose, mech::layer::frame, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
+                state.levelOne.push_back(*frame);
+            if (auto inner = spawnFromPack(context, pack_one, mech::levelOne::innerMesh(cell.shape), cell.pose, mech::layer::inner, mech::slot::color(cell.role), 0.45f))
+                state.levelOne.push_back(*inner);
         }
-        for (const auto& stub : data.stubs)
-            state.actors.push_back(spawnPlaceholder(context, root, stub.pose, mech::layer::wing, mesh, {}));
+        for (const auto& stub : data.stubs) {
+            if (auto wing = spawnFromPack(context, pack_one, mech::levelOne::mesh(stub.shape), stub.pose, mech::layer::wing, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
+                state.levelOne.push_back(*wing);
+        }
         for (const auto& plate : data.hull) {
-            if (auto a = spawnPlate(context, plate, pack_one, false))
-                state.actors.push_back(*a);
-            if (auto a = spawnPlate(context, plate, pack_two, true))
-                state.actors.push_back(*a);
+            if (auto a = spawnFromPack(context, pack_one, mech::levelOne::mesh(plate.shape), plate.pose, mech::layer::plate, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
+                state.levelOne.push_back(*a);
         }
 
         applyLayers(context);
     }
 
-    auto Blueprints::spawnFrame(Writing context, const mech::Element::Cell& cell, meshpack::Asset::Id pack) -> base::maybe<Actor> {
-        const auto entry = mech::levelOne::mesh(cell.shape);
+    auto Blueprints::spawnFromPack(Writing context, meshpack::Asset::Id pack, const std::string& entry, const mech::Pose& pose, mech::layer layer, RGB albedo, float opacity) -> base::maybe<Actor> {
         if (entry.empty())
             return {};
         const auto resolved = meshpack::Asset::Actions::resolve(context, pack, entry);
@@ -205,41 +162,21 @@ namespace eltanin::views {
         const auto id = with<scene::Interface>::createMeshActor(
             context,
             *state.scene,
-            scenePose(cell.pose),
+            scenePose(pose),
             scene::actor::Mesh::Quantum{
                 .geometry = resolved->geometry,
                 .materials = resolved->materials,
-                .albedo = RGB{1.0f, 1.0f, 1.0f},
+                .albedo = albedo,
                 .scale = vec3{1.0f, 1.0f, 1.0f},
+                .opacity = opacity,
                 .visible = true,
             });
-        return Actor{.id = id, .layer = mech::layer::frame, .plateRole = false};
-    }
-
-    auto Blueprints::spawnPlate(Writing context, const mech::Element::Plate& plate, meshpack::Asset::Id pack, bool rolePack) -> base::maybe<Actor> {
-        const auto entry = mech::levelOne::mesh(plate.shape);
-        if (entry.empty())
-            return {};
-        const auto resolved = meshpack::Asset::Actions::resolve(context, pack, entry);
-        if (not resolved)
-            return {};
-        const auto id = with<scene::Interface>::createMeshActor(
-            context,
-            *state.scene,
-            scenePose(plate.pose),
-            scene::actor::Mesh::Quantum{
-                .geometry = resolved->geometry,
-                .materials = resolved->materials,
-                .albedo = RGB{1.0f, 1.0f, 1.0f},
-                .scale = vec3{1.0f, 1.0f, 1.0f},
-                .visible = true,
-            });
-        return Actor{.id = id, .layer = mech::layer::plate, .plateRole = rolePack};
+        return Actor{.id = id, .layer = layer};
     }
 
     void Blueprints::applyLayers(Writing context) {
-        for (const auto& actor : state.actors)
-            scene::actor::Mesh::Actions::setVisible(context, actor.id, layerVisible(state.layers, actor));
+        for (const auto& actor : state.levelOne)
+            scene::actor::Mesh::Actions::setVisible(context, actor.id, layerVisible(state.layers, actor.layer));
     }
 
     void Blueprints::draw(Writing context, bool& open) {
@@ -277,20 +214,12 @@ namespace eltanin::views {
                 ImGui::Text("Cells: %zu", data.cells.size());
                 ImGui::Text("Stubs: %zu", data.stubs.size());
                 ImGui::Text("Hull plates: %zu", data.hull.size());
-                ImGui::Text("Actors: %zu", state.actors.size());
+                ImGui::Text("L1 actors: %zu", state.levelOne.size());
+                ImGui::Text("L2 actors: %zu", state.levelTwo.size());
                 ImGui::Separator();
-                ImGui::TextUnformatted("Layers");
+                ImGui::TextUnformatted("Layers (levelOne)");
                 bool layers_changed = false;
-                if (ImGui::Checkbox("plateShape", &state.layers.plateShape)) {
-                    layers_changed = true;
-                    if (state.layers.plateShape)
-                        state.layers.plateRole = false;
-                }
-                if (ImGui::Checkbox("plateRole", &state.layers.plateRole)) {
-                    layers_changed = true;
-                    if (state.layers.plateRole)
-                        state.layers.plateShape = false;
-                }
+                layers_changed |= ImGui::Checkbox("plate", &state.layers.plate);
                 layers_changed |= ImGui::Checkbox("frame", &state.layers.frame);
                 layers_changed |= ImGui::Checkbox("inner", &state.layers.inner);
                 layers_changed |= ImGui::Checkbox("wing", &state.layers.wing);
