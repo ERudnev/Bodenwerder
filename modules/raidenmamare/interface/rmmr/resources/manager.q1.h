@@ -8,18 +8,6 @@ namespace rmmr::resource {
 
     using namespace fqsm::api;
 
-    struct Manager : Component<Manager, system::Core> {
-        struct Quantum {
-            filepath location;
-        };
-        struct Actions : BaseActions {
-            static auto singleton(Reading) -> optional<Id>;
-            static void load(Writing);
-        };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
     struct Unit : Entity<Unit> {
         struct Name {
             string library;
@@ -49,6 +37,20 @@ namespace rmmr::resource {
                 return Name{.library = std::move(library), .own = std::move(own)};
             }
             static auto remember(Reading, Id) -> Reference;
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct Manager : Component<Manager, system::Core> {
+        struct Quantum {
+            filepath location;
+        };
+        struct Actions : BaseActions {
+            static auto singleton(Reading) -> optional<Id>;
+            static void load(Writing);
+            // Q1: ?resolve(one<Unit>, filename)->filepath
+            static auto resolve(Reading, const Unit::Quantum&, const filename&) -> filepath;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

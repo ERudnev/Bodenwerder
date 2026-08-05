@@ -18,17 +18,6 @@ namespace rmmr::resource::shader {
 
     namespace {
 
-        auto resolve_under_manager(const Manager::Quantum& manager, const Unit::Quantum& unit, const filename& relative) -> filepath {
-            const std::filesystem::path file_path(relative);
-            if (file_path.is_absolute()) {
-                return file_path;
-            }
-            if (unit.name.library.empty()) {
-                return manager.location / file_path;
-            }
-            return manager.location / unit.name.library / file_path;
-        }
-
         auto read_text_file(const std::filesystem::path& path) -> maybe<std::string> {
             std::ifstream input(path, std::ios::binary);
             if (not input) {
@@ -82,15 +71,12 @@ namespace rmmr::resource::shader {
     auto Loader::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {
         const auto& loader = with<Loader>::get(context, asset_id);
         const auto& unit = with<Unit>::get(context, asset_id);
-        const auto manager_id = with<Manager>::singleton(context);
-        if (not manager_id) return context.refuse("resource::shader::Loader::materialize: Manager singleton missing");
-        const auto& manager = with<Manager>::get(context, *manager_id);
 
         const auto& device_quantum = with<system::Device>::get(context, device);
         glfwMakeContextCurrent(device_quantum.handle);
 
-        const auto vertex_path = resolve_under_manager(manager, unit, loader.vertex);
-        const auto fragment_path = resolve_under_manager(manager, unit, loader.fragment);
+        const auto vertex_path = with<Manager>::resolve(context, unit, loader.vertex);
+        const auto fragment_path = with<Manager>::resolve(context, unit, loader.fragment);
         base::whisper("rmmr: shader::Loader '{}' ← {} + {}", unit.name.text(), vertex_path.string(), fragment_path.string());
 
         const auto vertex_source = read_text_file(vertex_path);

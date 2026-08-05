@@ -30,6 +30,7 @@ namespace rmmr::scene {
         base::maybe<SpriteSource> sprite;
         RGB albedo;
         float opacity;
+        float pattern_scale;
         base::maybe<IndexRange> indices;
     };
 

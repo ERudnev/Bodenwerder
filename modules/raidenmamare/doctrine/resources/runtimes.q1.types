@@ -18,6 +18,7 @@ namespace rmmr
         >add_meshpack_objs_loader(Unit, meshpack::LoaderObjs)->#meshpack::Asset
         >add_meshpack_lwo_loader(Unit, meshpack::LoaderLwo)->#meshpack::Asset
         >compose_material(Unit::Name, filename, base: #material::Asset)->#material::Asset
+        ?find<R as feature of Unit>(Unit::Name)-> #R?
       all
         singleton: #?
         ?singleton()->#?

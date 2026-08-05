@@ -95,10 +95,14 @@ field_directive     ::= "@" IDENT [ "(" annotation_body ")" ] ;
 
 const_field         ::= IDENT ":" type_expr "=" literal ;
 
-query_op            ::= "?" IDENT "(" [ param_list ] ")" "->" type_expr ;
-command_op          ::= "=" IDENT "(" [ param_list ] ")" [ "->" type_expr ] ;
-factory_op          ::= ">" IDENT "(" [ param_list ] ")" "->" type_expr ;
+query_op            ::= "?" IDENT [ template_params ] "(" [ param_list ] ")" "->" type_expr ;
+command_op          ::= "=" IDENT [ template_params ] "(" [ param_list ] ")" [ "->" type_expr ] ;
+factory_op          ::= ">" IDENT [ template_params ] "(" [ param_list ] ")" "->" type_expr ;
 steward_op          ::= "*" IDENT "(" steward_scope [ "," param_list ] ")" [ "->" type_expr ] ;
+
+template_params     ::= "<" template_param ( "," template_param )* ">" ;
+template_param      ::= IDENT [ "as" constraint_phrase ] ;
+constraint_phrase   ::= TEXT ; (* recorded; not type-checked in tooling first cut — e.g. "feature of Unit" *)
 
 param_list          ::= param ( "," param )* ;
 param               ::= IDENT ":" type_expr

@@ -10,6 +10,8 @@ namespace rmmr
         >load()
       all
         ?singleton()->#?
+        // kit-relative filename → absolute under Manager.location [/ library]
+        ?resolve(one<Unit>, filename)->filepath
 
     // persistent thing
     entity Unit

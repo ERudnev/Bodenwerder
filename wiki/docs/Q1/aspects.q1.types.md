@@ -4,6 +4,8 @@ Authoritative file: `modules/Q1/golden/doctrine/aspects.q1.types`.
 
 Reaction vocabulary (watch / action / reflex, `->>` / `->=`, one=object / all=set): see [reaction_is_effector.md](reaction_is_effector.md) and `modules/Q1/syntax.txt`.
 
+Template operations (`?name<R as …>(…) -> #R?`): see [template_operations.md](template_operations.md).
+
 Snapshot of current doctrine (abbreviated):
 
 ```

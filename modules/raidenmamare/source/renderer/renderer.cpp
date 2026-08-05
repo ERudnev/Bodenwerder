@@ -436,7 +436,7 @@ namespace rmmr {
             } else if (binding.id == semantic.opacity) {
                 set_uniform(binding, command.opacity);
             } else if (binding.id == semantic.patternScale) {
-                set_uniform(binding, 1.0f);
+                set_uniform(binding, command.pattern_scale);
             } else if (binding.id == semantic.colorPrimary) {
                 set_uniform(binding, RGB{0.45f, 0.48f, 0.52f} * command.opacity);
             } else if (binding.id == semantic.colorSecondary) {

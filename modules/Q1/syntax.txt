@@ -45,6 +45,15 @@
     '*' : declares Stewarding / Direct hot-pass operation. First item in `(...)` is analysis scope (same family as reaction watch: `~` / `~Type`); remaining items are ordinary named parameters. Scope is not a C++ argument (projects to `Stewarding` context + `direct<>` targets).
     '!' : declares reaction (watch / normalizer). Scope in `(...)` is not a parameter list (see reaction forms below).
 
+  template operations:
+    Form: `?name<P as Constraint>(args) -> Ret` (also `=` / `>` with the same `<...>` slot after the name).
+    `P` is a type-parameter name; `as Constraint` is an optional DSL constraint phrase (documented intent).
+    First cut: Constraint text is recorded but not type-checked by tooling (example: `R as feature of Unit`).
+    Inside signatures, `#P` / `#P?` refer to that parameter (`#P` → id of P; C++ projection: `Meta::Id` / `optional<Meta::Id>`).
+    C++ projection (fQSM): `template<::fqsm::meta::category::Any Meta> static auto name(Reading[, Id], ...) -> optional<typename Meta::Id>`
+      (block `one`/`all` still injects Reading/Writing/Id per the usual table; `Meta` stands for each template parameter that denotes an aspect meta-type).
+    `::fqsm::meta::category::Any` is the binding concept for aspect Meta (`Id` + `Quantum`). Constraint phrases like `feature of Unit` are comments until the language gains real trait checking.
+
   stewarding forms:
     `*name(~)` — Direct on owning aspect only
     `*name(~Type, arg: T, ...)` — Direct on owner and Type; named params after scope become real arguments

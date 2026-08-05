@@ -43,6 +43,8 @@ namespace eltanin {
             ask::schema::aspect<phys::strong::Gluon>(),
             ask::schema::aspect<Block>(),
             ask::schema::aspect<resource::Assets>(),
+            ask::schema::aspect<resource::blueprint::Asset>(),
+            ask::schema::aspect<resource::blueprint::Loader>(),
             ask::schema::aspect<resource::SkySphereGenerator>(),
         });
     }
@@ -152,7 +154,7 @@ namespace eltanin {
 
         with<scene::Interface>::createGrid(context, root,
             Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
-            item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f});
+            item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .pattern_scale = 1.0f});
 
         const auto sky = with<scene::Interface>::createSimpleActor(context, root,
             Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
@@ -204,9 +206,13 @@ namespace eltanin {
         }
         with<World>::tetherEnvironment(context);
 
-        views = {
-            View{.viewport = viewport, .scene = root, .camera = camera},
-        };
+        world_view = View{.viewport = viewport, .scene = root, .camera = camera};
+        views = {*world_view};
+
+        const auto manager = with<::rmmr::resource::Manager>::singleton(context);
+        if (not manager)
+            return (void)context.refuse("eltanin::Game::populateWorld: resource Manager missing");
+        blueprints.create(context, with<::rmmr::resource::Manager>::get(context, *manager).location / "Eltanin" / "blueprints");
     }
 
     void Game::setup(Writing context, system::Window::Id window) {

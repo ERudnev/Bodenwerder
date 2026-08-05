@@ -101,6 +101,7 @@ namespace eltanin {
         ImGui::MenuItem("Lighting", nullptr, &ui.lighting);
         ImGui::MenuItem("Materials", nullptr, &ui.materials);
         ImGui::MenuItem("Physics", nullptr, &ui.physics);
+        ImGui::MenuItem("Blueprints", nullptr, &ui.blueprints);
     }
 
     void Game::drawUi(Writing world) {
@@ -108,6 +109,9 @@ namespace eltanin {
         drawLightingWindow(world);
         drawMaterialsWindow(world);
         physics_ui.draw(world, ui.physics, physics);
+        blueprints.draw(world, ui.blueprints);
+        if (world_view)
+            blueprints.bindView(views, ui.blueprints, *world_view);
     }
 
     void Game::drawCameraWindow(Writing world) {

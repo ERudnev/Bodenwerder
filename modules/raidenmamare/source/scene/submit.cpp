@@ -41,6 +41,7 @@ namespace rmmr::scene {
                 .sprite_index = sprite_index,
                 .albedo = draw.albedo,
                 .opacity = draw.opacity,
+                .pattern_scale = draw.pattern_scale,
                 .instance_data = {},
                 .instance_count = renderer::Count{1},
                 .render_state = renderer::RenderState{.blend = material.blend},

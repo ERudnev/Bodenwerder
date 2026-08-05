@@ -13,6 +13,7 @@
 
 #include "physics/system.h"
 #include "physics/ui.h"
+#include "views/blueprints.h"
 
 namespace eltanin {
 
@@ -40,7 +41,8 @@ namespace eltanin {
             bool camera = false;
             bool lighting = false;
             bool materials = false;
-            bool physics = true;
+            bool physics = false;
+            bool blueprints = true;
 
             base::maybe<rmmr::resource::material::Asset::Id> selected_material;
             std::array<char, 128> material_filter{};
@@ -54,8 +56,10 @@ namespace eltanin {
 
         Handles assets;
         Ui ui;
+        base::maybe<View> world_view;
         phys::System physics;
         phys::Ui physics_ui;
+        ::eltanin::views::Blueprints blueprints;
 
         Schema schema() const override;
         void createCore(Writing) override;

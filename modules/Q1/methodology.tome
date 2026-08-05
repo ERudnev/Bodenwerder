@@ -133,4 +133,13 @@ namespace Q1 {
     Reason:
       Эксперимент TomSawyer показал, что единственный aspect_wide без item-worker учит описывать мир множествами; язык должен подталкивать к реакциям объектов.
   }
+
+  template_operations_first_cut: @Statement(~0.85) {
+    Core:
+      Операции аспекта могут быть шаблонными: `?name<R as Constraint>(args) -> #R?` (также `=` / `>`).
+      Параметр `R` в C++ — `template<::fqsm::meta::category::Any Meta>`; `#R` → `Meta::Id`.
+      Фраза после `as` фиксирует намерение дизайнера; tooling пока только записывает её, не проверяет.
+    Reason:
+      Один параметризованный запрос к полке (`Assets::find`) вместо зоопарка `find_geometry` / `find_material` без поддержки в DSL.
+  }
 }

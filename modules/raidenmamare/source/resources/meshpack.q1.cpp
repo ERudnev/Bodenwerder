@@ -16,17 +16,6 @@ namespace rmmr::resource::meshpack {
 
     namespace {
 
-        auto resolve_under_manager(const Manager::Quantum& manager, const Unit::Quantum& unit, const filename& relative) -> filepath {
-            const std::filesystem::path file_path(relative);
-            if (file_path.is_absolute()) {
-                return file_path;
-            }
-            if (unit.name.library.empty()) {
-                return manager.location / file_path;
-            }
-            return manager.location / unit.name.library / file_path;
-        }
-
         struct FileEntryBody {
             string geometry_file;
             umap<string, string> materials; // part → material Unit.own
@@ -72,16 +61,7 @@ namespace rmmr::resource::meshpack {
         }
 
         auto find_material(Reading context, const Unit::Name& name) -> optional<material::Asset::Id> {
-            for (const auto [id, unit] : context->aspect<Unit>().items()) {
-                if (unit.name != name) {
-                    continue;
-                }
-                if (not with<material::Asset>::exists(context, id)) {
-                    continue;
-                }
-                return id;
-            }
-            return {};
+            return with<Assets>::find<material::Asset>(context, name);
         }
 
         auto find_material(Reading context, const string& library, const string& own) -> optional<material::Asset::Id> {
@@ -108,12 +88,7 @@ namespace rmmr::resource::meshpack {
     void LoaderObjs::Actions::load(Writing context, Id pack_id) {
         const auto& loader = with<LoaderObjs>::get(context, pack_id);
         const auto& unit = with<Unit>::get(context, pack_id);
-        const auto manager_id = with<Manager>::singleton(context);
-        if (not manager_id) {
-            return (void)context.refuse("resource::meshpack::LoaderObjs::load: Manager singleton missing");
-        }
-        const auto& manager = with<Manager>::get(context, *manager_id);
-        const auto path = resolve_under_manager(manager, unit, loader.file);
+        const auto path = with<Manager>::resolve(context, unit, loader.file);
         base::whisper("rmmr: meshpack::LoaderObjs '{}' ← {}", unit.name.text(), path.string());
 
         std::ifstream in{path};
@@ -162,13 +137,8 @@ namespace rmmr::resource::meshpack {
     void LoaderLwo::Actions::load(Writing context, Id pack_id) {
         const auto& loader = with<LoaderLwo>::get(context, pack_id);
         const auto& unit = with<Unit>::get(context, pack_id);
-        const auto manager_id = with<Manager>::singleton(context);
-        if (not manager_id) {
-            return (void)context.refuse("resource::meshpack::LoaderLwo::load: Manager singleton missing");
-        }
 
-        const auto& manager = with<Manager>::get(context, *manager_id);
-        const auto pack_path = resolve_under_manager(manager, unit, loader.file);
+        const auto pack_path = with<Manager>::resolve(context, unit, loader.file);
         base::whisper("rmmr: meshpack::LoaderLwo '{}' ← {}", unit.name.text(), pack_path.string());
 
         std::ifstream in{pack_path};
@@ -188,7 +158,7 @@ namespace rmmr::resource::meshpack {
             return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: file identity '{}' != unit '{}'", file_name.text(), unit.name.text()));
         }
 
-        const auto lwo_path = resolve_under_manager(manager, unit, payload.lwo_file);
+        const auto lwo_path = with<Manager>::resolve(context, unit, payload.lwo_file);
         auto opened = system::content::LwoDocument::open(lwo_path);
         if (not opened.document) {
             return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: {}", opened.error));

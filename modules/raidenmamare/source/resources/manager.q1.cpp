@@ -2,6 +2,9 @@
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 
+#include <filesystem>
+#include <stdexcept>
+
 namespace rmmr::resource {
 
     using namespace fqsm::api;
@@ -21,6 +24,19 @@ namespace rmmr::resource {
         for (const auto [id, _] : context->aspect<meshpack::LoaderLwo>().items()) {
             meshpack::LoaderLwo::Actions::load(context, id);
         }
+    }
+
+    auto Manager::Actions::resolve(Reading context, const Unit::Quantum& unit, const filename& relative) -> filepath {
+        const auto manager_id = singleton(context);
+        if (not manager_id)
+            throw std::runtime_error("resource::Manager::resolve: singleton missing");
+        const auto& manager = with<Manager>::get(context, *manager_id);
+        const std::filesystem::path file_path(relative);
+        if (file_path.is_absolute())
+            return file_path;
+        if (unit.name.library.empty())
+            return manager.location / file_path;
+        return manager.location / unit.name.library / file_path;
     }
 
     auto Unit::Actions::remember(Reading context, Id id) -> Reference {

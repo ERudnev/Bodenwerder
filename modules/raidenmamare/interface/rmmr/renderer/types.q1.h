@@ -39,6 +39,7 @@ namespace rmmr::renderer {
         integer sprite_index;
         RGB albedo;
         float opacity;
+        float pattern_scale;
         InstanceSource instance_data;
         Count instance_count;
         RenderState render_state;

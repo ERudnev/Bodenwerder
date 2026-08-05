@@ -180,10 +180,24 @@ The parser records it as `ImportDecl`. The linter resolves imported modules from
 ## Known non-goals
 
 - transitive import semantics beyond sibling `.q1.types` resolution in the linter
-- full template support
+- full template *type* declarations (`template` keyword / generic structs) beyond operation template params
 - enum parsing
 - agent aspect execution semantics
 - code generation or runtime validation
+- enforcing DSL constraint phrases after `as` (e.g. `feature of Unit`) — recorded only
+
+### Template operations
+
+Operations may carry a type-parameter list after the name:
+
+```
+?find<R as feature of Unit>(Unit::Name) -> #R?
+```
+
+AST: `QueryOp` / `CommandOp` / `FactoryOp` with optional `template_params: [{kind: TemplateParam, name, constraint}]`.
+`constraint` is the text after `as`, or `null` when omitted.
+`#R` / `#R?` in the signature are ordinary `IdType` / `OptionalType` nodes whose target is the parameter name.
+C++ projection (documented in `q1-to-fQSM.tome` / golden README): `template<::fqsm::meta::category::Any Meta>` and `#R` → `Meta::Id`.
 
 ### Builtin container type expressions
 

@@ -557,6 +557,27 @@ namespace Demo
     assert build_from["params"][0]["binding"] == "read"
 
 
+def test_parse_template_operation() -> None:
+    text = """
+namespace Demo
+  component Shelf of Host
+    one
+      ?find<R as feature of Unit>(Unit::Name)-> #R?
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    component = ast["declarations"][0]["declarations"][0]
+    op = component["blocks"][0]["members"][0]
+    assert op["kind"] == "QueryOp"
+    assert op["name"] == "find"
+    assert op["template_params"] == [
+        {"kind": "TemplateParam", "name": "R", "constraint": "feature of Unit"}
+    ]
+    assert op["params"][0]["type"]["raw"] == "Unit::Name"
+    assert op["return_type"]["kind"] == "OptionalType"
+    assert op["return_type"]["inner"]["kind"] == "IdType"
+    assert op["return_type"]["inner"]["target"] == "R"
+
+
 def test_golden_elementary_param_binding_ops() -> None:
     ast = q1_parser.parse_file(ELEMENTARY)
     typization = ast["declarations"][0]["declarations"][0]["declarations"][0]

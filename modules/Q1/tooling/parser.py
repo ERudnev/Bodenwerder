@@ -343,15 +343,73 @@ def _parse_params(text: str, line: int) -> list[dict[str, Any]]:
     return params
 
 
+def _parse_template_params(text: str, line: int) -> list[dict[str, Any]]:
+    if not text.strip():
+        raise ParseError("Empty template parameter list", line)
+    params: list[dict[str, Any]] = []
+    for item in _split_top_level(text, ","):
+        chunk = item.strip()
+        if not chunk:
+            raise ParseError("Empty template parameter", line)
+        if " as " in chunk:
+            name_raw, constraint = chunk.split(" as ", 1)
+            name = name_raw.strip()
+            constraint_text = constraint.strip()
+            if not constraint_text:
+                raise ParseError(f"Empty template constraint after 'as' in {chunk!r}", line)
+        else:
+            name = chunk
+            constraint_text = None
+        if not IDENT_RE.match(name):
+            raise ParseError(f"Invalid template parameter name: {name!r}", line)
+        params.append(
+            {
+                "kind": "TemplateParam",
+                "name": name,
+                "constraint": constraint_text,
+            }
+        )
+    return params
+
+
+def _split_operation_head(rest: str, line: int) -> tuple[str, list[dict[str, Any]] | None, int]:
+    """Return (name, template_params|None, index_of_ '(' )."""
+    name_end = 0
+    while name_end < len(rest) and (rest[name_end].isalnum() or rest[name_end] == "_"):
+        name_end += 1
+    name = rest[:name_end].strip()
+    if not name or not IDENT_RE.match(name):
+        raise ParseError(f"Invalid operation name: {name!r}", line)
+    cursor = name_end
+    while cursor < len(rest) and rest[cursor].isspace():
+        cursor += 1
+    template_params = None
+    if cursor < len(rest) and rest[cursor] == "<":
+        depth = 0
+        close_index = None
+        for index, ch in enumerate(rest[cursor:], start=cursor):
+            if ch == "<":
+                depth += 1
+            elif ch == ">":
+                depth -= 1
+                if depth == 0:
+                    close_index = index
+                    break
+        if close_index is None:
+            raise ParseError("Unclosed operation template parameter list", line)
+        template_params = _parse_template_params(rest[cursor + 1:close_index], line)
+        cursor = close_index + 1
+        while cursor < len(rest) and rest[cursor].isspace():
+            cursor += 1
+    if cursor >= len(rest) or rest[cursor] != "(":
+        raise ParseError("Malformed operation", line)
+    return name, template_params, cursor
+
+
 def _parse_operation(line: Line) -> dict[str, Any]:
     prefix = line.content[0]
     rest = line.content[1:].strip()
-    name_end = rest.find("(")
-    if name_end == -1 or not rest.endswith(")") and "->" not in rest:
-        raise ParseError("Malformed operation", line.number)
-    name = rest[:name_end].strip()
-    if not IDENT_RE.match(name):
-        raise ParseError(f"Invalid operation name: {name!r}", line.number)
+    name, template_params, name_end = _split_operation_head(rest, line.number)
     depth = 0
     close_index = None
     for index, ch in enumerate(rest[name_end:], start=name_end):
@@ -372,7 +430,7 @@ def _parse_operation(line: Line) -> dict[str, Any]:
             raise ParseError("Unexpected tokens after operation parameter list", line.number)
         return_type = parse_type_expr(tail[2:].strip())
     kind_map = {"?": "QueryOp", "=": "CommandOp", ">": "FactoryOp"}
-    return _node(
+    node = _node(
         kind_map[prefix],
         line.number,
         name=name,
@@ -380,6 +438,9 @@ def _parse_operation(line: Line) -> dict[str, Any]:
         return_type=return_type,
         comment=line.comment,
     )
+    if template_params is not None:
+        node["template_params"] = template_params
+    return node
 
 
 def _parse_steward_scope(text: str, line: int) -> dict[str, Any]:

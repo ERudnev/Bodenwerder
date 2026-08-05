@@ -29,17 +29,6 @@ namespace rmmr::resource::geometry {
 
     namespace {
 
-        auto resolve_under_manager(const Manager::Quantum& manager, const Unit::Quantum& unit, const filename& relative) -> filepath {
-            const std::filesystem::path file_path(relative);
-            if (file_path.is_absolute()) {
-                return file_path;
-            }
-            if (unit.name.library.empty()) {
-                return manager.location / file_path;
-            }
-            return manager.location / unit.name.library / file_path;
-        }
-
         struct LoadedMesh {
             CpuPresentation cpu;
             umap<string, Asset::Part> parts;
@@ -658,11 +647,7 @@ namespace rmmr::resource::geometry {
     auto Loader::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {
         const auto& loader = with<Loader>::get(context, asset_id);
         const auto& unit = with<Unit>::get(context, asset_id);
-        const auto manager_id = with<Manager>::singleton(context);
-        if (not manager_id) {
-            return context.refuse("resource::geometry::Loader::materialize: Manager singleton missing");
-        }
-        const auto path = resolve_under_manager(with<Manager>::get(context, *manager_id), unit, loader.file);
+        const auto path = with<Manager>::resolve(context, unit, loader.file);
         base::whisper("rmmr: geometry::Loader '{}' ← {}{}", unit.name.text(), path.string(), loader.layer.empty() ? "" : std::format(" layer '{}'", loader.layer));
 
         const auto loaded = load_assimp(path, loader.layer);

@@ -60,6 +60,9 @@ namespace Q1-fQSM {
     `*name(~Scope[, named...])` → `Stewarding` + named params only (`~`/`~Type` — Direct-скоуп, не аргументы).
     Параметры: тяжёлые типы (`string`, контейнеры, не-trivially-copyable struct) — `const&`;
     скаляры/`Id` — по значению. Имя параметра с `?`/`>` в DSL → `const&` / `&` (см. README).
+    Шаблонные операции `?name<R as Constraint>(...) -> #R?` (также `=`/`>`): C++ —
+    `template<::fqsm::meta::category::Any Meta> static auto name(...)` в `Actions`;
+    `#R` / `#R?` → `Meta::Id` / `optional<Meta::Id>`. Фраза после `as` — намерение DSL, пока без enforcement.
     `!` и поля `anchor<>`/`custody<>` — не публичные методы; в header: `struct Internals;` +
     `customAspectReactions()`. Хелперы в `.cpp` — в `Aspect::Internals`, не в `*_private`/`Service`.
     Точная сборка `Behavior` и тела реакций — вне этого тома (эталон `.cpp` + README).

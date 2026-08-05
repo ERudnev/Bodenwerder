@@ -102,6 +102,11 @@ Public Q1 operations become declarations in `Actions : BaseActions`, except for 
 - `all =name(...)` -> `static void name(Writing, ...)` inside `Actions`
 - `all >name(...) -> #` -> `static auto name(Writing, ...) -> Id` inside `Actions`
 - `all *name(~Scope...)` -> `static void name(Stewarding, ...named params)` inside `Actions` — Direct/Stewarding hot pass; `~` / `~Type` are analysis scope (which aspects to `direct<>`), not C++ arguments
+- `?name<R as …>(...) -> #R?` (and `=`/`>` with `<...>`) -> C++ member template on `Actions`:
+  `template<::fqsm::meta::category::Any Meta> static auto name(Reading[, Id], ...) -> optional<typename Meta::Id>`
+  (`#R` → `Meta::Id`; `as …` is DSL intent only until trait checking exists; `Meta` is any aspect meta with `Id`+`Quantum`)
+
+Note: some shelf `component` surfaces (e.g. `resource::Assets` `one` add/find) historically omit the `Id` argument in hand-written headers — treat that as a local exception, not a change to the table above.
 
 ### Parameter name binding qualifiers
 

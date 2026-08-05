@@ -11,6 +11,7 @@
 #include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
+#include <fQSM/meta/categories.h>
 
 namespace rmmr::resource {
 
@@ -34,6 +35,9 @@ namespace rmmr::resource {
             static auto add_meshpack_objs_loader(Writing, Unit::Quantum, meshpack::LoaderObjs::Quantum) -> meshpack::Asset::Id;
             static auto add_meshpack_lwo_loader(Writing, Unit::Quantum, meshpack::LoaderLwo::Quantum) -> meshpack::Asset::Id;
             static auto compose_material(Writing, Unit::Name, filename, material::Asset::Id base) -> material::Asset::Id;
+            // Q1: ?find<R as feature of Unit>(Unit::Name)-> #R?
+            template<::fqsm::meta::category::Any Meta>
+            static auto find(Reading, Unit::Name) -> optional<typename Meta::Id>;
             static void extend(Writing, filepath path);
         };
         struct Internals : DefaultInternals{};
@@ -94,5 +98,17 @@ namespace rmmr::resource {
         struct Internals;
         static const Behavior customAspectReactions();
     };
+
+    template<::fqsm::meta::category::Any Meta>
+    auto Assets::Actions::find(Reading context, Unit::Name name) -> optional<typename Meta::Id> {
+        for (const auto [id, unit] : context->aspect<Unit>().items()) {
+            if (unit.name != name)
+                continue;
+            if (not with<Meta>::exists(context, id))
+                continue;
+            return id;
+        }
+        return {};
+    }
 
 }

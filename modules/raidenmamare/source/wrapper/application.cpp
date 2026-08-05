@@ -152,6 +152,7 @@ namespace rmmr::wrapper {
             state->last_frame_us = now_us;
             product->onFrame(state->world, dt_us);
             state->ui.draw(state->world, *product);
+            engine->setActiveViews(product->views);
             engine->render(state->world);
             engine->endFrame(state->world);
         }

@@ -18,17 +18,6 @@ namespace rmmr::resource::sprite {
 
     namespace {
 
-        auto resolve_under_manager(const Manager::Quantum& manager, const Unit::Quantum& unit, const filename& relative) -> filepath {
-            const std::filesystem::path file_path(relative);
-            if (file_path.is_absolute()) {
-                return file_path;
-            }
-            if (unit.name.library.empty()) {
-                return manager.location / file_path;
-            }
-            return manager.location / unit.name.library / file_path;
-        }
-
         auto read_attr_int(std::string_view tag, std::string_view key) -> maybe<integer> {
             const auto needle = std::string(key) + "=\"";
             const auto start = tag.find(needle);
@@ -119,10 +108,7 @@ namespace rmmr::resource::sprite {
     void LoaderKenney::Actions::load(Writing context, Id pack_id) {
         const auto& loader = with<LoaderKenney>::get(context, pack_id);
         const auto& unit = with<Unit>::get(context, pack_id);
-        const auto manager_id = with<Manager>::singleton(context);
-        if (not manager_id) return (void)context.refuse("resource::sprite::LoaderKenney::load: Manager singleton missing");
-        const auto& manager = with<Manager>::get(context, *manager_id);
-        const auto descriptor_path = resolve_under_manager(manager, unit, loader.descriptor);
+        const auto descriptor_path = with<Manager>::resolve(context, unit, loader.descriptor);
         base::whisper("rmmr: sprite::LoaderKenney '{}' ← {}", unit.name.text(), descriptor_path.string());
         const auto entries = parse_kenney_entries(descriptor_path);
         if (not entries) {

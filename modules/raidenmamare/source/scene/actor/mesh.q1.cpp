@@ -41,6 +41,7 @@ namespace rmmr::scene::actor {
                 .material = material_id,
                 .albedo = actor.albedo,
                 .opacity = 1.0f,
+                .pattern_scale = 1.0f,
                 .indices = DrawInstance::IndexRange{
                     .start = part_it->second.startIndex,
                     .count = part_it->second.countIndex,

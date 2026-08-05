@@ -31,6 +31,7 @@ namespace rmmr::scene::actor {
             .material = actor.material,
             .albedo = actor.albedo,
             .opacity = 1.0f,
+            .pattern_scale = 1.0f,
         }, where);
     }
 

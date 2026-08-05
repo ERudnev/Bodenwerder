@@ -62,10 +62,11 @@
       "patterns": [
         {
           "name": "meta.operation.signature.q1",
-          "begin": "^(\\s*)([\\?\\=>!*])\\s*([A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)\\s*\\(",
+          "begin": "^(\\s*)([\\?\\=>!*])\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*(?:<([^>]*)>)?\\s*\\(",
           "beginCaptures": {
             "2": { "name": "keyword.other.q1.operation-prefix" },
-            "3": { "name": "entity.name.function.q1" }
+            "3": { "name": "entity.name.function.q1" },
+            "4": { "name": "entity.name.type.template-parameter.q1" }
           },
           "end": "\\)",
           "patterns": [

@@ -18,6 +18,7 @@ namespace rmmr::scene {
             resource::geometry::Asset::Id geometry;
             resource::material::Asset::Id material;
             float opacity;
+            float pattern_scale;
         };
         struct Actions : BaseActions {
             static auto create(Writing, Pos, HPB, Quantum) -> Id;
