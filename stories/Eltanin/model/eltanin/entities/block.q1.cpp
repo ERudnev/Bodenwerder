@@ -9,11 +9,11 @@ namespace eltanin {
 
     namespace {
 
-        auto locals_from_corner_indices(const vector<int>& indices) -> vector<vec3> {
+        auto locals_from_corner_indices(const vector<mech::cube::Corner>& indices) -> vector<vec3> {
             vector<vec3> locals;
             locals.reserve(indices.size());
-            for (const int index : indices) {
-                locals.push_back(mech::cube::toLocal(mech::cube::corners[static_cast<std::size_t>(index)]));
+            for (const mech::cube::Corner corner : indices) {
+                locals.push_back(mech::physical::toLocal(mech::cube::corners[static_cast<std::size_t>(corner)]));
             }
             return locals;
         }
@@ -59,22 +59,15 @@ namespace eltanin {
 
     } // namespace
 
-    auto Block::Actions::spawnHull(Writing context, rmmr::scene::Root::Id root, rmmr::Locator locator, mech::hull::shape shape, mech::slots::hull slot, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
-        if (slot == mech::slots::hull::forbidden) {
-            return context.refuse("eltanin::Block::spawnHull: slot forbidden");
-        }
+    auto Block::Actions::spawnPlate(Writing context, rmmr::scene::Root::Id root, rmmr::Locator locator, mech::plate::shape shape, mech::slot::plate, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
         const auto index = static_cast<std::size_t>(shape);
-        if (index >= mech::hull::perimeter.size()) {
-            return context.refuse("eltanin::Block::spawnHull: shape out of range");
+        if (index >= mech::plate::perimeter.size()) {
+            return context.refuse("eltanin::Block::spawnPlate: shape out of range");
         }
-        return spawn_with_locals(context, root, locator, locals_from_corner_indices(mech::hull::perimeter[index]), std::move(actor_quantum));
+        return spawn_with_locals(context, root, locator, locals_from_corner_indices(mech::plate::perimeter[index]), std::move(actor_quantum));
     }
 
-    auto Block::Actions::spawnFrame(Writing context, rmmr::scene::Root::Id root, rmmr::Locator locator, mech::frame::shape shape, mech::slots::frame slot, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
-        switch (slot) {
-            case mech::slots::frame::regular:
-                break;
-        }
+    auto Block::Actions::spawnFrame(Writing context, rmmr::scene::Root::Id root, rmmr::Locator locator, mech::frame::shape shape, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
         const auto index = static_cast<std::size_t>(shape);
         if (index >= mech::frame::corners.size()) {
             return context.refuse("eltanin::Block::spawnFrame: shape out of range");
@@ -82,32 +75,23 @@ namespace eltanin {
         return spawn_with_locals(context, root, locator, locals_from_corner_indices(mech::frame::corners[index]), std::move(actor_quantum));
     }
 
-    auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Locator locator, mech::inner::shape shape, mech::slots::inner slot, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
-        if (slot == mech::slots::inner::forbidden) {
-            return context.refuse("eltanin::Block::spawnInner: slot forbidden");
-        }
+    auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Locator locator, mech::inner::shape shape, mech::slot::inner, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
         switch (shape) {
             case mech::inner::shape::full: {
                 vector<vec3> locals;
                 locals.reserve(mech::cube::corners.size());
                 for (const auto& lattice : mech::cube::corners) {
-                    locals.push_back(mech::cube::toLocal(lattice));
+                    locals.push_back(mech::physical::toLocal(lattice));
                 }
                 return spawn_with_locals(context, root, locator, std::move(locals), std::move(actor_quantum));
             }
-            case mech::inner::shape::half:
             case mech::inner::shape::quarter:
             case mech::inner::shape::octa:
                 _INCOMPLETE_;
         }
     }
 
-    auto Block::Actions::spawnWing(Writing context, rmmr::scene::Root::Id root, rmmr::Locator locator, mech::wing::shape shape, mech::slots::wing slot, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
-        switch (slot) {
-            case mech::slots::wing::radiance:
-            case mech::slots::wing::agfe:
-                break;
-        }
+    auto Block::Actions::spawnWing(Writing context, rmmr::scene::Root::Id root, rmmr::Locator locator, mech::wing::shape shape, mech::slot::wing, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
         const auto index = static_cast<std::size_t>(shape);
         if (index >= mech::wing::corners.size()) {
             return context.refuse("eltanin::Block::spawnWing: shape out of range");

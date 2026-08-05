@@ -4,3 +4,4 @@
 #include "shapes.h"
 #include "space.h"
 #include "slots.h"
+#include "../blueprint.h"

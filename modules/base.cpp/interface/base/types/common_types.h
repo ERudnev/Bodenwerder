@@ -37,6 +37,12 @@ namespace base::common_types {
         integer y;
     };
 
+    struct index3 final {
+        integer x;
+        integer y;
+        integer z;
+    };
+
     template<typename T>
     using optional = std::optional<T>; // TODO: replace with "maybe" someday...
     template<typename T>

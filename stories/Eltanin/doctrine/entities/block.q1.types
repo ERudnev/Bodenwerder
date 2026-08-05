@@ -11,8 +11,8 @@ namespace eltanin
       body: custody<phys::Atomic>
       actor: custody<rmmr::scene::actor::Mesh>
     all
-      >spawnHull(#rmmr::scene::Root, Locator, mech::hull::shape, mech::slots::hull, one<rmmr::scene::actor::Mesh>)->#
-      >spawnFrame(#rmmr::scene::Root, Locator, mech::frame::shape, mech::slots::frame, one<rmmr::scene::actor::Mesh>)->#
-      >spawnInner(#rmmr::scene::Root, Locator, mech::inner::shape, mech::slots::inner, one<rmmr::scene::actor::Mesh>)->#
-      >spawnWing(#rmmr::scene::Root, Locator, mech::wing::shape, mech::slots::wing, one<rmmr::scene::actor::Mesh>)->#
+      >spawnPlate(#rmmr::scene::Root, Locator, mech::plate::shape, mech::slot::plate, one<rmmr::scene::actor::Mesh>)->#
+      >spawnFrame(#rmmr::scene::Root, Locator, mech::frame::shape, one<rmmr::scene::actor::Mesh>)->#
+      >spawnInner(#rmmr::scene::Root, Locator, mech::inner::shape, mech::slot::inner, one<rmmr::scene::actor::Mesh>)->#
+      >spawnWing(#rmmr::scene::Root, Locator, mech::wing::shape, mech::slot::wing, one<rmmr::scene::actor::Mesh>)->#
       !followBody(~phys::Atomic)->>linearPass(>all)

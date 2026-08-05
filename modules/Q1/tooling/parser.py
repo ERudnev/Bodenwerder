@@ -83,6 +83,7 @@ BUILTINS = frozenset({
     "float",
     "string",
     "index2",
+    "index3",
     "boolean",
     "vec2",
     "vec3",

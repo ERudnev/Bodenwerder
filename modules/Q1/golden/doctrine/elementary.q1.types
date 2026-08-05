@@ -2,7 +2,8 @@
 namespace Q1_iQSM
   namespace Syntax
     namespace Typization
-      using Index2Alias as index2
+      using Index2 as index2
+      using Index3 as index3
       using Basic as integer
       using Alias as Basic
       using OptionalInt as integer?

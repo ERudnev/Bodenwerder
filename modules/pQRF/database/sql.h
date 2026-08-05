@@ -308,6 +308,38 @@ namespace fqsm::processing::persistency::database::detail::sql {
     };
 
     template<>
+    struct atom<base::common_types::index3> {
+        using index3 = base::common_types::index3;
+
+        static constexpr bool nullable = false;
+        static constexpr auto columns = std::array<ColumnDef, 3>{
+            ColumnDef{"_x", "INTEGER"},
+            ColumnDef{"_y", "INTEGER"},
+            ColumnDef{"_z", "INTEGER"},
+        };
+
+        static auto bind(sqlite3_stmt* statement, int index, const index3& value) -> int {
+            index = atom<std::int32_t>::bind(statement, index, value.x);
+            index = atom<std::int32_t>::bind(statement, index, value.y);
+            return atom<std::int32_t>::bind(statement, index, value.z);
+        }
+
+        static auto read(sqlite3_stmt* statement, int index, index3& value) -> int {
+            index = atom<std::int32_t>::read(statement, index, value.x);
+            index = atom<std::int32_t>::read(statement, index, value.y);
+            return atom<std::int32_t>::read(statement, index, value.z);
+        }
+
+        static auto decode(sqlite3_stmt* statement, int index) -> index3 {
+            index3 value{};
+            read(statement, index, value);
+            return value;
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
     struct atom<glm::vec2> {
         static constexpr bool nullable = false;
         static constexpr auto columns = std::array<ColumnDef, 2>{

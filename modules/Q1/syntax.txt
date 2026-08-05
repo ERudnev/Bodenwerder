@@ -97,6 +97,7 @@
   buildtin types:
     'integer' : fixed size (32 bit) integer
     'index2' : 2D signed integer pair (x/y)
+    'index3' : 3D signed integer triple (x/y/z)
     'float' : floating-point number
     'string' : UTF-8 string
     'filepath' : filesystem path

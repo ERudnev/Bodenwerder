@@ -56,7 +56,7 @@ namespace eltanin::phys {
                 .geometry = *shapeGeometry,
                 .material = *shapeMaterial,
                 .albedo = rmmr::RGB{1.0f, 1.0f, 1.0f},
-                .scale = vec3{mech::cube::edgeMeters, mech::cube::edgeMeters, mech::cube::edgeMeters},
+                .scale = vec3{mech::physical::edgeMeters, mech::physical::edgeMeters, mech::physical::edgeMeters},
             });
             state.actors.push_back(actor);
             bodies.push_back(atomic_id);

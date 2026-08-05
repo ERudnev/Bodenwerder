@@ -279,6 +279,35 @@ namespace fqsm::processing::persistency::json::detail::leaf {
     };
 
     template<>
+    struct codec<base::common_types::index3> {
+        using index3 = base::common_types::index3;
+
+        static auto write(const index3& value) -> Value {
+            return Value::array_value({
+                codec<base::common_types::integer>::write(value.x),
+                codec<base::common_types::integer>::write(value.y),
+                codec<base::common_types::integer>::write(value.z),
+            });
+        }
+
+        static auto decode(const Value& value) -> index3 {
+            if (!value.is_array() || value.array.size() != 3)
+                throw std::runtime_error("json leaf: expected index3 array");
+            return index3{
+                .x = codec<base::common_types::integer>::decode(value.array[0]),
+                .y = codec<base::common_types::integer>::decode(value.array[1]),
+                .z = codec<base::common_types::integer>::decode(value.array[2]),
+            };
+        }
+
+        static void read(const Value& value, index3& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
     struct codec<glm::vec2> {
         static auto write(const glm::vec2& value) -> Value {
             return Value::array_value({

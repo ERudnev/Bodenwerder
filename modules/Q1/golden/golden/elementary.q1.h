@@ -7,7 +7,8 @@ namespace Q1_iQSM {
     namespace Syntax {
         namespace Typization {
 
-          using Index2Alias = index2;
+          using Index2 = index2;
+          using Index3 = index3;
           using Basic = integer;
           using Alias = Basic;
           using OptionalInt = std::optional<integer>;

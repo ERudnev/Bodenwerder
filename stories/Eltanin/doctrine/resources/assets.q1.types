@@ -5,7 +5,7 @@ namespace eltanin
 
     using Unit as rmmr::resource::Unit
 
-    // Story-owned asset entry points (hull packs, frames, …) — not rmmr primitives.
+    // Story-owned asset entry points (plate packs, frames, …) — not rmmr primitives.
     // Extend with >add_* as concrete asset kinds appear.
     component Assets of rmmr::resource::Assets
       one

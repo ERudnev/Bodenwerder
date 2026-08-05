@@ -24,6 +24,7 @@ Codecs live in `json/leaf.h` and `database/sql.h`. A `field` / collection elemen
 | `std::optional<T>` / `base::maybe<T>` | null or T | NULL or T (same column span) |
 | enum | number (`int32`) | INTEGER |
 | `index2` | array `[x,y]` | columns `{name}_x`, `{name}_y` INTEGER |
+| `index3` | array `[x,y,z]` | columns `{name}_x`, `{name}_y`, `{name}_z` INTEGER |
 | `vec2` / `vec3` (`Pos`, …) | array of floats | columns `{name}_x/_y/_z` REAL |
 | `mat4` | *(not in json leaf yet)* | BLOB (16×float) |
 

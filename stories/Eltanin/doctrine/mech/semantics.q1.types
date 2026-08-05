@@ -3,11 +3,17 @@ namespace eltanin
 
     using layer as @external(eltanin::mech::layer)
 
+    namespace orient
+      using key as @external(eltanin::mech::orient::key)
+
+    namespace cube
+      using Corner as @external(eltanin::mech::cube::Corner)
+
     struct frame
       using shape as @external(eltanin::mech::frame::shape)
 
-    struct hull
-      using shape as @external(eltanin::mech::hull::shape)
+    struct plate
+      using shape as @external(eltanin::mech::plate::shape)
 
     struct wing
       using shape as @external(eltanin::mech::wing::shape)
@@ -15,8 +21,11 @@ namespace eltanin
     struct inner
       using shape as @external(eltanin::mech::inner::shape)
 
-    namespace slots
-      using inner as @external(eltanin::mech::slots::inner)
-      using hull as @external(eltanin::mech::slots::hull)
-      using wing as @external(eltanin::mech::slots::wing)
-      using frame as @external(eltanin::mech::slots::frame)
+    namespace slot
+      using inner as @external(eltanin::mech::slot::inner)
+      using plate as @external(eltanin::mech::slot::plate)
+      using wing as @external(eltanin::mech::slot::wing)
+
+    struct Pose
+      pos: index3
+      ori: orient::key

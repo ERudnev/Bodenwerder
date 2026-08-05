@@ -1,9 +1,8 @@
 #pragma once
 
-namespace eltanin::mech::slots {
+namespace eltanin::mech::slot {
 
     enum class inner {
-        forbidden,
         multi, // it is extension for any ajacent frame of any kind. "Free Type"
         engine, // assumes free back (or other engine slot)
         power,
@@ -17,9 +16,8 @@ namespace eltanin::mech::slots {
         living,
     };
 
-    enum class hull {
-        forbidden, // any panel is disallowed here
-        armor, // looks as default hull type
+    enum class plate {
+        armor, // looks as default plate type
         thruster, // typically it is rear panel of any engine frame
         cooling, // typically is appears as side panel of engine frame
         turret, // this is side (top) panel for hardpoints, when possible
@@ -31,14 +29,13 @@ namespace eltanin::mech::slots {
         cockpit, // allows "control" frame to have nice-looking window
         windowed, // living frame should have it aside, or crewmen will go crazy
         agfe, // anti-gravity-force-emitter panel at the bottom of ship (new against RedStar)
+        utility, // mount for any low-power stuff: barrels, small external tanks, decoration
+        logistic, // extends shupp hull out of frame to add coridirs, smal locks, service tunnels
     };
 
     enum class wing {
         radiance,
         agfe,
-    };
-
-    enum class frame {
-        regular,
+        pylon,
     };
 }

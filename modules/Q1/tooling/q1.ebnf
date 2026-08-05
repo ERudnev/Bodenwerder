@@ -143,7 +143,7 @@ member_type_of      ::= "~" qualified_name "::" IDENT ;
 external_type       ::= "@external" "(" annotation_body ")" ;
 
 qualified_name      ::= IDENT ( "::" IDENT )* ;
-builtin_type        ::= "integer" | "float" | "string" | "index2" | "boolean"
+builtin_type        ::= "integer" | "float" | "string" | "index2" | "index3" | "boolean"
                       | "vec2" | "vec3" | "vec4" | "quat" | "mat4"
                       | "seconds" | "time" | "filepath" | "filename" ;
 
