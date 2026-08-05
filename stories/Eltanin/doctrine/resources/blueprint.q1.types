@@ -1,0 +1,18 @@
+import "rmmr/resources/manager"
+import "mech/blueprint"
+
+namespace eltanin
+  namespace resource
+    namespace blueprint
+
+      // Construction schema on the Unit shelf. Payload = mech::Blueprint.
+      // Files: assets/Eltanin/blueprints/*.blueprint
+      feature Asset of rmmr::resource::Unit
+        one
+          data: mech::Blueprint
+
+      feature Loader of Asset
+        one
+          file: filename // relative to kit; expected under blueprints/, suffix .blueprint
+          >load()
+          >save()

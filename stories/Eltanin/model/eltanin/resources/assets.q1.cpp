@@ -1,7 +1,36 @@
 #include <eltanin/resources/assets.q1.h>
 
+#include <rmmr/resources/manager.q1.h>
+
 namespace eltanin::resource {
 
-    // Story Assets shell: add_* entry points land here as concrete kinds appear.
+    using namespace fqsm::api;
+
+    namespace {
+
+        template<typename Asset, typename Kind>
+        auto register_unit(Writing context, rmmr::resource::Unit::Quantum unit, typename Asset::Quantum asset, typename Kind::Quantum kind) -> typename Asset::Id {
+            const auto assets = with<rmmr::resource::Assets>::singleton(context);
+            if (not assets) {
+                return context.refuse("eltanin::resource::Assets: rmmr Assets singleton missing");
+            }
+            if (not with<rmmr::resource::Unit_group>::exists(context, *assets)) {
+                with<rmmr::resource::Unit_group>::extend(context, *assets);
+            }
+            const auto unit_id = with<rmmr::resource::Unit_group>::addElement(context, *assets, std::move(unit));
+            with<Asset>::extend(context, unit_id, std::move(asset));
+            with<Kind>::extend(context, unit_id, std::move(kind));
+            return unit_id;
+        }
+
+    } // namespace
+
+    auto Assets::Actions::add_blueprint_loader(Writing context, rmmr::resource::Unit::Quantum unit, blueprint::Loader::Quantum loader) -> blueprint::Asset::Id {
+        return register_unit<blueprint::Asset, blueprint::Loader>(
+            context,
+            std::move(unit),
+            blueprint::Asset::Quantum{.data = mech::Blueprint{.name = {}, .author = {}, .cells = {}, .stubs = {}, .hull = {}}},
+            std::move(loader));
+    }
 
 }

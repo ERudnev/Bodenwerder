@@ -43,7 +43,7 @@ namespace eltanin {
             ask::schema::aspect<phys::strong::Gluon>(),
             ask::schema::aspect<Block>(),
             ask::schema::aspect<resource::Assets>(),
-            ask::schema::aspect<resources::SkySphereGenerator>(),
+            ask::schema::aspect<resource::SkySphereGenerator>(),
         });
     }
 
@@ -125,7 +125,7 @@ namespace eltanin {
         }
         const auto sky_geometry_id = with<Unit_group>::addElement(context, manager, Unit::name("Eltanin", "skySphere"));
         with<geometry::Asset>::extend(context, sky_geometry_id, geometry::Asset::Quantum{});
-        with<resources::SkySphereGenerator>::extend(context, sky_geometry_id, resources::SkySphereGenerator::Quantum{
+        with<resource::SkySphereGenerator>::extend(context, sky_geometry_id, resource::SkySphereGenerator::Quantum{
             .count = 48800, // 20k×2, then halo ×2 again (~31k disk + ~18k halo)
             .seed = 1,
             .angular_diameter_deg = 0.41f,
@@ -148,7 +148,7 @@ namespace eltanin {
 
         const auto root = with<scene::Interface>::createScene(context);
 
-        with<resources::SkySphereGenerator>::materialize(context, *assets.skySphereGeometry, window);
+        with<resource::SkySphereGenerator>::materialize(context, *assets.skySphereGeometry, window);
 
         with<scene::Interface>::createGrid(context, root,
             Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},

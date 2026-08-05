@@ -13,8 +13,10 @@ set(Eltanin_Q1
     physics/strong.q1.types
     entities/block.q1.types
     resources/geometry.q1.types
+    resources/blueprint.q1.types
     resources/assets.q1.types
     mech/semantics.q1.types
+    mech/blueprint.q1.types
 )
 
 add_executable(${PROJECT_NAME})

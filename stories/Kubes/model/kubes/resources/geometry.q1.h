@@ -5,7 +5,7 @@
 
 #include <fQSM/api/interface.h>
 
-namespace kubes::resources {
+namespace kubes::resource {
 
     using namespace fqsm::api;
 

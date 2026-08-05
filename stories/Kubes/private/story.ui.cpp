@@ -23,6 +23,9 @@ namespace kubes {
 
     using namespace fqsm::api;
     using namespace rmmr;
+    using Unit = ::rmmr::resource::Unit;
+    using Material = ::rmmr::resource::material::Asset;
+    using Texture = ::rmmr::resource::texture::Asset;
 
     namespace {
 
@@ -52,7 +55,7 @@ namespace kubes {
             return "Unknown";
         }
 
-        auto displayName(const resource::Unit::Name& name) -> const char* {
+        auto displayName(const Unit::Name& name) -> const char* {
             thread_local string buffer;
             if (name.empty())
                 return "(unnamed)";
@@ -77,16 +80,16 @@ namespace kubes {
             return std::string_view(filter.data());
         }
 
-        auto collectMaterials(Reading world, std::string_view filter) -> std::vector<resource::material::Asset::Id> {
-            std::vector<resource::material::Asset::Id> materials;
-            for (const auto entry : world->aspect<resource::material::Asset>().items()) {
-                const auto& unit = with<resource::Unit>::get(world, entry.id);
+        auto collectMaterials(Reading world, std::string_view filter) -> std::vector<Material::Id> {
+            std::vector<Material::Id> materials;
+            for (const auto entry : world->aspect<Material>().items()) {
+                const auto& unit = with<Unit>::get(world, entry.id);
                 if (containsCaseInsensitive(unit.name.text(), filter))
                     materials.push_back(entry.id);
             }
             std::sort(materials.begin(), materials.end(), [world](auto left, auto right) {
-                const auto& left_unit = with<resource::Unit>::get(world, left);
-                const auto& right_unit = with<resource::Unit>::get(world, right);
+                const auto& left_unit = with<Unit>::get(world, left);
+                const auto& right_unit = with<Unit>::get(world, right);
                 if (left_unit.name != right_unit.name)
                     return left_unit.name < right_unit.name;
                 return left.raw() < right.raw();
@@ -177,9 +180,9 @@ namespace kubes {
         ui.lighting = open;
     }
 
-    void KubeOfKubes::drawMaterialInspector(Writing world, resource::material::Asset::Id material_id) {
-        auto material = with<resource::material::Asset>::modify(world, material_id);
-        auto editable_unit = with<resource::Unit>::modify(world, material_id);
+    void KubeOfKubes::drawMaterialInspector(Writing world, Material::Id material_id) {
+        auto edited = with<Material>::modify(world, material_id);
+        auto editable_unit = with<Unit>::modify(world, material_id);
         auto& name_state = ui.material_name_edits[material_id.raw()];
         if (not name_state.editing)
             std::snprintf(name_state.buf.data(), name_state.buf.size(), "%s", editable_unit->name.own.c_str());
@@ -192,12 +195,12 @@ namespace kubes {
         name_state.editing = ImGui::IsItemActive();
 
         ImGui::Separator();
-        ImGui::Text("Techniques: %zu", material->techniques.size());
+        ImGui::Text("Techniques: %zu", edited->techniques.size());
 
-        for (auto& [pass, technique] : material->techniques) {
+        for (auto& [pass, technique] : edited->techniques) {
             if (ImGui::CollapsingHeader(passName(pass), ImGuiTreeNodeFlags_DefaultOpen)) {
-                if (with<resource::Unit>::exists(world, technique.program.id)) {
-                    const auto& shader_unit = with<resource::Unit>::get(world, technique.program.id);
+                if (with<Unit>::exists(world, technique.program.id)) {
+                    const auto& shader_unit = with<Unit>::get(world, technique.program.id);
                     ImGui::Text("Shader: %s", displayName(shader_unit.name));
                 } else {
                     ImGui::TextColored(ImVec4(1.f, 0.25f, 0.25f, 1.f), "Shader: %s",
@@ -210,14 +213,14 @@ namespace kubes {
                 }
 
                 for (auto& binding : technique.textures) {
-                    pushEntityId<resource::material::Asset>(material_id);
+                    pushEntityId<Material>(material_id);
                     ImGui::PushID(static_cast<int>(binding.uniform));
 
                     const string slot_label{material::Semantics::name_of(binding.uniform)};
                     const char* preview = "(missing)";
-                    const bool texture_ok = with<resource::Unit>::exists(world, binding.texture.id);
+                    const bool texture_ok = with<Unit>::exists(world, binding.texture.id);
                     if (texture_ok) {
-                        const auto& texture_unit = with<resource::Unit>::get(world, binding.texture.id);
+                        const auto& texture_unit = with<Unit>::get(world, binding.texture.id);
                         preview = displayName(texture_unit.name);
                     } else if (not binding.texture.backup.empty()) {
                         preview = displayName(binding.texture.backup);
@@ -226,12 +229,12 @@ namespace kubes {
                     if (not texture_ok)
                         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.25f, 0.25f, 1.f));
                     if (ImGui::BeginCombo(slot_label.c_str(), preview)) {
-                        for (const auto entry : world->aspect<resource::texture::Asset>().items()) {
-                            pushEntityId<resource::texture::Asset>(entry.id);
-                            const auto& texture_unit = with<resource::Unit>::get(world, entry.id);
+                        for (const auto entry : world->aspect<Texture>().items()) {
+                            pushEntityId<Texture>(entry.id);
+                            const auto& texture_unit = with<Unit>::get(world, entry.id);
                             const bool selected = entry.id == binding.texture.id;
                             if (ImGui::Selectable(displayName(texture_unit.name), selected))
-                                binding.texture = resource::Unit::Actions::remember(world, entry.id);
+                                binding.texture = Unit::Actions::remember(world, entry.id);
                             if (selected)
                                 ImGui::SetItemDefaultFocus();
                             ImGui::PopID();
@@ -272,8 +275,8 @@ namespace kubes {
                 ImGui::TextDisabled("No materials match the filter.");
             } else {
                 for (const auto material_id : materials) {
-                    pushEntityId<resource::material::Asset>(material_id);
-                    const auto& unit = with<resource::Unit>::get(world, material_id);
+                    pushEntityId<Material>(material_id);
+                    const auto& unit = with<Unit>::get(world, material_id);
                     const bool selected = ui.selected_material.exists() and *ui.selected_material == material_id;
                     if (ImGui::Selectable(displayName(unit.name), selected))
                         ui.selected_material = material_id;
@@ -286,7 +289,7 @@ namespace kubes {
 
             ImGui::BeginChild("materialInspector", ImVec2{0.0f, 0.0f}, true);
             if (ui.selected_material.exists()
-                and with<resource::material::Asset>::exists(world, *ui.selected_material)) {
+                and with<Material>::exists(world, *ui.selected_material)) {
                 drawMaterialInspector(world, *ui.selected_material);
             } else {
                 ImGui::TextDisabled("Select a material to inspect it.");

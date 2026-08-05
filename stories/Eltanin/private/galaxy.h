@@ -5,7 +5,7 @@
 
 #include <glm/vec3.hpp>
 
-namespace eltanin::resources {
+namespace eltanin::resource {
 
     // Cartoon stellar particle. Units: ly, K, L☉, M☉. Origin = SMBH.
     struct Star {

@@ -27,13 +27,15 @@ namespace kubes {
     Schema KubeOfKubes::schema() const {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
-            ask::schema::aspect<resources::SkySphereGenerator>(),
+            ask::schema::aspect<resource::SkySphereGenerator>(),
         });
     }
 
     void KubeOfKubes::addAssets(Writing context) {
-        using namespace resource;
-        using geometry::Generator;
+        using namespace rmmr;
+        using namespace rmmr::resource;
+        using rmmr::resource::geometry::Generator;
+        using Material = ::rmmr::resource::material::Asset;
 
         assets.primitive.grid = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::name("rmmr", "grid"), item<Generator>{.type = Generator::Type::gridPlane});
         assets.primitive.sphere = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::name("rmmr", "sphere"), item<Generator>{.type = Generator::Type::sphere});
@@ -58,9 +60,9 @@ namespace kubes {
         assets.skySphereMaterial = with<::rmmr::resource::Assets>::add_material(
             context,
             Unit::name("Kubes", "skySphere"),
-            resource::material::Asset::Quantum{
+            Material::Quantum{
                 .techniques = {
-                    {renderer::Pass::environment, resource::material::Asset::Technique{
+                    {renderer::Pass::environment, Material::Technique{
                         .program = with<Unit>::remember(context, sky_sphere_shader),
                         .uniforms = ::rmmr::material::Semantics::ids_of({
                             "model",
@@ -70,7 +72,7 @@ namespace kubes {
                             "albedoMap",
                         }),
                         .textures = {
-                            resource::material::Asset::TextureBinding{
+                            Material::TextureBinding{
                                 .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
                                 .texture = sky_sphere_pack.texture,
                             },
@@ -87,7 +89,7 @@ namespace kubes {
         }
         const auto sky_geometry_id = with<Unit_group>::addElement(context, manager, Unit::name("Kubes", "skySphere"));
         with<geometry::Asset>::extend(context, sky_geometry_id, geometry::Asset::Quantum{});
-        with<resources::SkySphereGenerator>::extend(context, sky_geometry_id, resources::SkySphereGenerator::Quantum{
+        with<resource::SkySphereGenerator>::extend(context, sky_geometry_id, resource::SkySphereGenerator::Quantum{
             .count = 48800, // 20k×2, then halo ×2 again (~31k disk + ~18k halo)
             .seed = 1,
             .angular_diameter_deg = 0.41f,
@@ -107,7 +109,7 @@ namespace kubes {
 
         const auto root = with<scene::Interface>::createScene(context);
 
-        resources::SkySphereGenerator::Actions::materialize(context, *assets.skySphereGeometry, window);
+        resource::SkySphereGenerator::Actions::materialize(context, *assets.skySphereGeometry, window);
 
         with<scene::Interface>::createGrid(context, root,
             Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},

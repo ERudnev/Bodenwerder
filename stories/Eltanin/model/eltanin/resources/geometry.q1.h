@@ -5,7 +5,7 @@
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::resources {
+namespace eltanin::resource {
 
     using namespace fqsm::api;
 

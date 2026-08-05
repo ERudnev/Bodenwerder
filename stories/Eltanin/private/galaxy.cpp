@@ -8,7 +8,7 @@
 
 #include <glm/geometric.hpp>
 
-namespace eltanin::resources {
+namespace eltanin::resource {
 
     namespace {
 

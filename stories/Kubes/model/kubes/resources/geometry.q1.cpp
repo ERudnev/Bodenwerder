@@ -15,7 +15,7 @@
 
 #include <glm/geometric.hpp>
 
-namespace kubes::resources {
+namespace kubes::resource {
 
     using namespace fqsm::api;
     using namespace rmmr;

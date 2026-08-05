@@ -5,7 +5,7 @@
 
 #include <glm/vec3.hpp>
 
-namespace kubes::resources {
+namespace kubes::resource {
 
     // Cartoon stellar particle. Units: ly, K, L☉, M☉. Origin = SMBH.
     struct Star {

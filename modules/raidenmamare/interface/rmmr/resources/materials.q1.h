@@ -11,8 +11,8 @@
 namespace rmmr::resource::material {
 
     using namespace fqsm::api;
-
     using Reference = resource::Unit::Reference;
+    using Uniform = ::rmmr::resource::Uniform;
 
     struct Runtime : Entity<Runtime> {
         using Locations = ::rmmr::material::Semantics::RuntimeMapping;

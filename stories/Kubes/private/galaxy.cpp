@@ -8,7 +8,7 @@
 
 #include <glm/geometric.hpp>
 
-namespace kubes::resources {
+namespace kubes::resource {
 
     namespace {
 

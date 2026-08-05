@@ -16,7 +16,7 @@
 
 #include <glm/geometric.hpp>
 
-namespace eltanin::resources {
+namespace eltanin::resource {
 
     using namespace fqsm::api;
     using namespace rmmr;

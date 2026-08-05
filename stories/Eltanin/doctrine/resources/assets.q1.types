@@ -1,11 +1,12 @@
 import "rmmr/resources/runtimes"
+import "resources/blueprint"
 
 namespace eltanin
   namespace resource
 
     using Unit as rmmr::resource::Unit
 
-    // Story-owned asset entry points (plate packs, frames, …) — not rmmr primitives.
-    // Extend with >add_* as concrete asset kinds appear.
+    // Story-owned asset entry points — not rmmr primitives.
     component Assets of rmmr::resource::Assets
       one
+        >add_blueprint_loader(Unit, blueprint::Loader)->#blueprint::Asset

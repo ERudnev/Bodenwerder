@@ -1,7 +1,7 @@
 import "rmmr/resources/geometry"
 
 namespace eltanin
-  namespace resources
+  namespace resource
 
     // Story-owned static star-cloud mesh (sphere of inward billboards around origin).
     // Fail-safe: disk stars only, one atlas sprite, additive.
