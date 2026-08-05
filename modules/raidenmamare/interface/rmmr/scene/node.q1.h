@@ -14,7 +14,7 @@ namespace rmmr::scene {
         };
         struct Actions : BaseActions {
             static auto transform(Reading, Id) -> mat4;
-            static auto create(Writing, Locator) -> Id;
+            static auto create(Writing, Pose) -> Id;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

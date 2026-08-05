@@ -18,9 +18,11 @@ namespace rmmr::scene::actor {
             umap<string, resource::material::Asset::Id> materials;
             RGB albedo;
             vec3 scale;
+            bool visible;
         };
         struct Actions : BaseActions {
             static auto create(Writing, Pos, HPB, resource::geometry::Asset::Id, umap<string, resource::material::Asset::Id>, RGB albedo) -> Id;
+            static void setVisible(Writing, Id, bool);
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };
         struct Internals : DefaultInternals{};

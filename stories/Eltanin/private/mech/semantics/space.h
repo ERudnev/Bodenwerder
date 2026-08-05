@@ -7,6 +7,7 @@
 #include <base/types/common_types.h>
 #include <glm/ext/matrix_int3x3.hpp>
 #include <glm/ext/vector_int3.hpp>
+#include <glm/common.hpp>
 #include <glm/vec3.hpp>
 
 namespace eltanin::mech {
@@ -18,8 +19,14 @@ namespace eltanin::mech {
         // Project rule: cell geometry is centered on the origin — subtract ½ is fixed, not a parameter.
         inline constexpr float edgeMeters = 4.0f;
 
+        // Lattice integer coords (typically cube::corners {0,1}³) → meters, cell-centered.
         inline auto toLocal(glm::ivec3 lattice) -> glm::vec3 {
             return (glm::vec3(lattice) - glm::vec3{0.5f}) * edgeMeters;
+        }
+
+        // Inverse of toLocal on the lattice image (round for float noise).
+        inline auto fromLocal(glm::vec3 local) -> glm::ivec3 {
+            return glm::ivec3(glm::round(local / edgeMeters + glm::vec3{0.5f}));
         }
 
     } // namespace physical

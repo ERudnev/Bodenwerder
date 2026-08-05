@@ -16,6 +16,8 @@ namespace rmmr
           materials: umap<string, #resource::material::Asset>
           albedo: RGB
           scale: vec3 // local; Node has no scale
+          visible: bool // submit skips when false
+          >setVisible(bool)
           ?submit(#system::Device, >where: renderer::CommandBuffer)
         all
           >create(Pos, HPB, geometry: #resource::geometry::Asset, materials: umap<string, #resource::material::Asset>, albedo: RGB) -> #

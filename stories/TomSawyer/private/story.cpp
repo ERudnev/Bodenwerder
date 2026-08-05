@@ -33,7 +33,7 @@ namespace tommy {
         with<scene::actor::Sprite>::modify_global(context)->geometry = assets->unitQuad;
 
         const auto camera = with<scene::Flat2d>::createCamera(context, root,
-            Locator{.pos = Pos{0.0f, 0.0f, 5.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}});
+            Pose::from(Pos{0.0f, 0.0f, 5.0f}, HPB{0.0f, 0.0f, 0.0f}));
 
         views = {
             View{.viewport = viewport, .scene = root, .camera = camera},

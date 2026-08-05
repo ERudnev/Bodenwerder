@@ -9,4 +9,4 @@ namespace rmmr
         pose: Pose
         ?transform() -> mat4
       all
-        >create(Locator) -> # // convenience c-tor
+        >create(Pose) -> #

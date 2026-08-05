@@ -153,11 +153,11 @@ namespace eltanin {
         with<resource::SkySphereGenerator>::materialize(context, *assets.skySphereGeometry, window);
 
         with<scene::Interface>::createGrid(context, root,
-            Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
+            Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .pattern_scale = 1.0f});
 
         const auto sky = with<scene::Interface>::createSimpleActor(context, root,
-            Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
+            Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::actor::Simple>{
                 .geometry = *assets.skySphereGeometry,
                 .material = *assets.skySphereMaterial,
@@ -167,10 +167,10 @@ namespace eltanin {
         const Pos cameraPos{8.0f, 6.0f, 16.0f};
         const Pos cameraTarget{0.0f, 0.0f, -2.0f};
         const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
-        const auto camera = with<scene::Interface>::createCamera(context, root, Locator{.pos = cameraPos, .euler = cameraPose.hpb()}, 100.0f * std::numbers::pi_v<float> / 180.0f);
+        const auto camera = with<scene::Interface>::createCamera(context, root, cameraPose, 100.0f * std::numbers::pi_v<float> / 180.0f);
         with<controller::Camera3d>::create(context, camera);
         with<scene::Interface>::createLight(context, root,
-            Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
+            Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
         if (not assets.levelTwo) {
@@ -183,12 +183,13 @@ namespace eltanin {
                 with<scene::Interface>::createMeshActor(
                     context,
                     root,
-                    Locator{.pos = cursor, .euler = HPB{0.0f, 0.0f, 0.0f}},
+                    Pose::from(cursor, HPB{0.0f, 0.0f, 0.0f}),
                     item<scene::actor::Mesh>{
                         .geometry = entry.geometry,
                         .materials = entry.materials,
                         .albedo = RGB{1.0f, 1.0f, 1.0f},
                         .scale = vec3{1.0f, 1.0f, 1.0f},
+                        .visible = true,
                     });
                 cursor = Pos{cursor.x + 4.0f, cursor.y, cursor.z - 4.0f};
             }

@@ -22,10 +22,6 @@ namespace eltanin::phys {
             return {};
         }
 
-        auto locator_from(const rmmr::Pose& pose) -> rmmr::Locator {
-            return rmmr::Locator{.pos = pose.position, .euler = pose.hpb()};
-        }
-
         void destroy_actor(Writing context, rmmr::scene::actor::Simple::Id actor) {
             for (const auto [root, group] : context->aspect<rmmr::scene::Node_group>().items()) {
                 if (group.contains(actor)) {
@@ -52,7 +48,7 @@ namespace eltanin::phys {
             return;
         }
         for (const auto [atomic_id, atomic] : context->aspect<Atomic>().items()) {
-            const auto actor = with<rmmr::scene::Interface>::createSimpleActor(context, *root, locator_from(atomic.restored), item<rmmr::scene::actor::Simple>{
+            const auto actor = with<rmmr::scene::Interface>::createSimpleActor(context, *root, atomic.restored, item<rmmr::scene::actor::Simple>{
                 .geometry = *shapeGeometry,
                 .material = *shapeMaterial,
                 .albedo = rmmr::RGB{1.0f, 1.0f, 1.0f},
@@ -83,7 +79,7 @@ namespace eltanin::phys {
             return;
         }
         for (const auto [particle_id, particle] : context->aspect<Particle>().items()) {
-            const auto actor = with<rmmr::scene::Interface>::createSimpleActor(context, *root, rmmr::Locator{.pos = particle.current, .euler = HPB{0.0f, 0.0f, 0.0f}}, item<rmmr::scene::actor::Simple>{
+            const auto actor = with<rmmr::scene::Interface>::createSimpleActor(context, *root, rmmr::Pose::from(particle.current, HPB{0.0f, 0.0f, 0.0f}), item<rmmr::scene::actor::Simple>{
                 .geometry = *particleGeometry,
                 .material = *particleMaterial,
                 .albedo = rmmr::RGB{1.0f, 1.0f, 1.0f},

@@ -37,8 +37,8 @@ namespace rmmr::scene {
 
     } // namespace
 
-    auto Camera::Actions::create(Writing context, Locator locator, float fov_x) -> Id {
-        const auto node = Node::Actions::create(context, locator);
+    auto Camera::Actions::create(Writing context, Pose pose, float fov_x) -> Id {
+        const auto node = Node::Actions::create(context, pose);
         with<Camera>::extend(context, node, Camera::Quantum{
             .mode = Mode::perspective,
             .z_near = k_z_near,

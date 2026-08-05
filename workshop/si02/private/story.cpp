@@ -52,10 +52,7 @@ namespace si02 {
             const auto sprite = with<scene::Flat2d>::createSpriteActor(
                 context,
                 root,
-                Locator{
-                    .pos = pos,
-                    .euler = HPB{0.0f, 0.0f, bank},
-                },
+                Pose::from(pos, HPB{0.0f, 0.0f, bank}),
                 item<scene::actor::Sprite>{
                     .material = material,
                     .tint = tint,
@@ -90,10 +87,7 @@ namespace si02 {
             const auto sprite = with<scene::Flat2d>::createSpriteActor(
                 context,
                 root,
-                Locator{
-                    .pos = Pos{0.0f, 0.0f, 0.0f},
-                    .euler = HPB{0.0f, 0.0f, 0.0f},
-                },
+                Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
                 item<scene::actor::Sprite>{
                     .material = material,
                     .tint = RGB{0.55f, 0.25f, -0.35f},
@@ -128,10 +122,7 @@ namespace si02 {
             const auto sprite = with<scene::Flat2d>::createSpriteActor(
                 context,
                 root,
-                Locator{
-                    .pos = pos,
-                    .euler = HPB{0.0f, 0.0f, 0.0f},
-                },
+                Pose::from(pos, HPB{0.0f, 0.0f, 0.0f}),
                 item<scene::actor::Sprite>{
                     .material = material,
                     .tint = RGB{0.0f, 0.0f, 0.0f},
@@ -203,7 +194,7 @@ namespace si02 {
         with<scene::actor::Sprite>::modify_global(context)->geometry = assets->unitQuad;
 
         const auto camera = with<scene::Flat2d>::createCamera(context, root,
-            Locator{.pos = Pos{0.0f, 0.0f, 5.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}});
+            Pose::from(Pos{0.0f, 0.0f, 5.0f}, HPB{0.0f, 0.0f, 0.0f}));
 
         spawn_sun(context, root, assets->kenney, *shared->material.sprite);
 

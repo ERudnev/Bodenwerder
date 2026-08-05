@@ -15,8 +15,8 @@ namespace rmmr::scene {
 
     } // namespace
 
-    auto Node::Actions::create(Writing context, Locator locator) -> Id {
-        return Node::BaseActions::create(context, Node::Quantum{.pose = Pose::from(locator)});
+    auto Node::Actions::create(Writing context, Pose pose) -> Id {
+        return Node::BaseActions::create(context, Node::Quantum{.pose = pose});
     }
 
     auto Node::Actions::transform(Reading context, Id id) -> mat4 {

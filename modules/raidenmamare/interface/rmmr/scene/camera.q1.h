@@ -27,7 +27,7 @@ namespace rmmr::scene {
             static auto projection(Reading, Id, float aspect_ratio) -> mat4;
             static auto view(Reading, Id) -> mat4;
             static auto view_projection(Reading, Id, float aspect_ratio) -> mat4;
-            static auto create(Writing, Locator, float fov_x) -> Id;
+            static auto create(Writing, Pose, float fov_x) -> Id;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

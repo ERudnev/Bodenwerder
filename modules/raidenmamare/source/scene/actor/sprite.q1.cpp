@@ -17,10 +17,7 @@ namespace rmmr::scene::actor {
         resource::sprite::Pack::Id pack,
         integer index) -> Id
     {
-        const auto node = Node::Actions::create(context, Locator{
-            .pos = position,
-            .euler = hpb,
-        });
+        const auto node = Node::Actions::create(context, Pose::from(position, hpb));
         with<Sprite>::extend(context, node, Sprite::Quantum{
             .material = material,
             .tint = tint,

@@ -16,7 +16,7 @@ namespace rmmr::scene {
             float range;
         };
         struct Actions : BaseActions {
-            static auto create(Writing, Locator, RGB, float intensity, float range) -> Id;
+            static auto create(Writing, Pose, RGB, float intensity, float range) -> Id;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

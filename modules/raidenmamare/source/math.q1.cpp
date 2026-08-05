@@ -39,9 +39,9 @@ namespace rmmr {
         return glm::distance(position, other.position) <= k_pos_eps and std::abs(glm::dot(rotation, other.rotation)) >= 1.0f - k_rot_eps;
     }
 
-    auto Pose::from(Locator locator) -> Pose {
-        Pose pose{.position = locator.pos};
-        pose.hpb(locator.euler);
+    auto Pose::from(Pos position, HPB hpb) -> Pose {
+        Pose pose{.position = position};
+        pose.hpb(hpb);
         return pose;
     }
 

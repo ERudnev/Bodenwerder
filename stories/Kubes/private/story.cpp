@@ -112,11 +112,11 @@ namespace kubes {
         resource::SkySphereGenerator::Actions::materialize(context, *assets.skySphereGeometry, window);
 
         with<scene::Interface>::createGrid(context, root,
-            Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
+            Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .pattern_scale = 1.0f});
 
         const auto sky = with<scene::Interface>::createSimpleActor(context, root,
-            Locator{.pos = Pos{0.0f, 0.0f, 0.0f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
+            Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::actor::Simple>{
                 .geometry = *assets.skySphereGeometry,
                 .material = *assets.skySphereMaterial,
@@ -124,13 +124,13 @@ namespace kubes {
             });
 
         const auto camera = with<scene::Interface>::createCamera(context, root,
-            Locator{.pos = Pos{10.5f, 10.0f, 14.0f}, .euler = HPB{36.87f, -29.74f, 0.0f}},
+            Pose::from(Pos{10.5f, 10.0f, 14.0f}, HPB{36.87f, -29.74f, 0.0f}),
             100.0f * std::numbers::pi_v<float> / 180.0f);
         // R=100 sphere + offset camera: default z_far=100 would clip the far hemisphere.
         with<scene::Camera>::modify(context, camera)->z_far = 250.0f;
         with<controller::Camera3d>::create(context, camera);
         with<scene::Interface>::createLight(context, root,
-            Locator{.pos = Pos{9.5f, 19.0f, 7.5f}, .euler = HPB{0.0f, 0.0f, 0.0f}},
+            Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
         {

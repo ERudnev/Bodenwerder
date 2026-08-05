@@ -6,10 +6,7 @@ namespace rmmr::scene {
     using namespace fqsm::api;
 
     auto Grid::Actions::create(Writing context, Pos position, HPB hpb, Grid::Quantum quantum) -> Id {
-        const auto node = Node::Actions::create(context, Locator{
-            .pos = position,
-            .euler = hpb,
-        });
+        const auto node = Node::Actions::create(context, Pose::from(position, hpb));
         with<Grid>::extend(context, node, std::move(quantum));
         return node;
     }

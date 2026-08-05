@@ -8,21 +8,25 @@ namespace rmmr::scene::actor {
     using namespace fqsm::api;
 
     auto Mesh::Actions::create(Writing context, Pos position, HPB hpb, resource::geometry::Asset::Id geometry, umap<string, resource::material::Asset::Id> materials, RGB albedo) -> Id {
-        const auto node = Node::Actions::create(context, Locator{
-            .pos = position,
-            .euler = hpb,
-        });
+        const auto node = Node::Actions::create(context, Pose::from(position, hpb));
         with<Mesh>::extend(context, node, Mesh::Quantum{
             .geometry = geometry,
             .materials = std::move(materials),
             .albedo = albedo,
             .scale = vec3{1.0f, 1.0f, 1.0f},
+            .visible = true,
         });
         return node;
     }
 
+    void Mesh::Actions::setVisible(Writing context, Id node, bool visible) {
+        with<Mesh>::modify(context, node)->visible = visible;
+    }
+
     void Mesh::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {
         const auto& actor = with<Mesh>::get(context, node);
+        if (not actor.visible)
+            return;
         if (not with<resource::geometry::Asset>::exists(context, actor.geometry)) {
             return;
         }
@@ -30,11 +34,13 @@ namespace rmmr::scene::actor {
         auto model = Node::Actions::transform(context, node);
         model = glm::scale(model, actor.scale);
 
+        bool drew_part = false;
         for (const auto& [part_name, material_id] : actor.materials) {
             const auto part_it = geometry.parts.find(part_name);
             if (part_it == geometry.parts.end()) {
                 continue;
             }
+            drew_part = true;
             submit_material_passes(context, device, DrawInstance{
                 .model = model,
                 .geometry = actor.geometry,
@@ -46,6 +52,17 @@ namespace rmmr::scene::actor {
                     .start = part_it->second.startIndex,
                     .count = part_it->second.countIndex,
                 },
+            }, where);
+        }
+        // No matching parts (generator meshes, bootstrap placeholders): whole geometry, first material.
+        if (not drew_part and not actor.materials.empty()) {
+            submit_material_passes(context, device, DrawInstance{
+                .model = model,
+                .geometry = actor.geometry,
+                .material = actor.materials.begin()->second,
+                .albedo = actor.albedo,
+                .opacity = 1.0f,
+                .pattern_scale = 1.0f,
             }, where);
         }
     }

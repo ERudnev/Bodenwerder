@@ -28,14 +28,13 @@ namespace si01::invaders {
         return with<rmmr::scene::Flat2d>::createSpriteActor(
             context,
             session.scene,
-            rmmr::Locator{
-                .pos = rmmr::Pos{
+            rmmr::Pose::from(
+                rmmr::Pos{
                     static_cast<float>(pos.x),
                     static_cast<float>(pos.y),
                     static_cast<float>(zet),
                 },
-                .euler = rmmr::HPB{0.0f, 0.0f, sprite_bank},
-            },
+                rmmr::HPB{0.0f, 0.0f, sprite_bank}),
             item<rmmr::scene::actor::Sprite>{
                 .material = session.material,
                 .tint = tint,

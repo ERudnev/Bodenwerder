@@ -18,4 +18,4 @@ namespace rmmr
         ?view() -> mat4
         ?view_projection(aspect_ratio: float) -> mat4
       all
-        >create(Locator, fov_x: float) -> #
+        >create(Pose, fov_x: float) -> #

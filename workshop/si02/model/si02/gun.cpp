@@ -88,10 +88,7 @@ namespace si02 {
             const auto bolt_sprite = with<rmmr::scene::Flat2d>::createSpriteActor(
                 context,
                 *root,
-                rmmr::Locator{
-                    .pos = muzzle,
-                    .euler = rmmr::HPB{0.0f, 0.0f, bank},
-                },
+                rmmr::Pose::from(muzzle, rmmr::HPB{0.0f, 0.0f, bank}),
                 item<rmmr::scene::actor::Sprite>{
                     .material = ship_sprite.material,
                     .tint = rmmr::RGB{0.0f, 0.0f, 0.0f},

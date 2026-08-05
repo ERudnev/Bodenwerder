@@ -41,11 +41,11 @@ namespace rmmr::scene {
 
     struct Interface : Manipulation<Interface, Root> {
         static auto createScene(Writing) -> Root::Id;
-        static auto createCamera(Writing, Root::Id, Locator, float fov_x) -> Camera::Id;
-        static auto createLight(Writing, Root::Id, Locator, Light::Quantum) -> Light::Id;
-        static auto createSimpleActor(Writing, Root::Id, Locator, actor::Simple::Quantum) -> actor::Simple::Id;
-        static auto createMeshActor(Writing, Root::Id, Locator, actor::Mesh::Quantum) -> actor::Mesh::Id;
-        static auto createGrid(Writing, Root::Id, Locator, Grid::Quantum) -> Grid::Id;
+        static auto createCamera(Writing, Root::Id, Pose, float fov_x) -> Camera::Id;
+        static auto createLight(Writing, Root::Id, Pose, Light::Quantum) -> Light::Id;
+        static auto createSimpleActor(Writing, Root::Id, Pose, actor::Simple::Quantum) -> actor::Simple::Id;
+        static auto createMeshActor(Writing, Root::Id, Pose, actor::Mesh::Quantum) -> actor::Mesh::Id;
+        static auto createGrid(Writing, Root::Id, Pose, Grid::Quantum) -> Grid::Id;
         static void render(Reading, Root::Id, system::Device::Id, renderer::CommandBuffer& where);
     };
 
@@ -56,8 +56,8 @@ namespace rmmr::scene {
             index2 size;
         };
         struct Actions : BaseActions {
-            static auto createCamera(Writing, Id, Locator) -> Camera::Id;
-            static auto createSpriteActor(Writing, Id, Locator, actor::Sprite::Quantum) -> actor::Sprite::Id;
+            static auto createCamera(Writing, Id, Pose) -> Camera::Id;
+            static auto createSpriteActor(Writing, Id, Pose, actor::Sprite::Quantum) -> actor::Sprite::Id;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
