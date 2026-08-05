@@ -2,7 +2,7 @@
     "machete",
     "#unknown",
     [
-        [[0, 0, 0], 0, "k8", "gyros", "full", 0],
+        [[0, 0, 0], 0, "k8", "battery", "full", 0],
         [[0, 0, 1], 0, "k8", "multi", "full", 0],
         [[0, 0, 2], 0, "k8", "multi", "full", 0],
         [[0, 0, 3], 0, "k8", "living", "full", 0],
@@ -14,7 +14,7 @@
         [[2, 0, 0], 0, "k8", "hardpoint", "full", 0],
         [[0, 1, 0], 0, "k8", "control", "full", 0],
         [[0, -1, -1], 0, "k8", "cargo", "full", 0],
-        [[0, 0, -1], 0, "k8", "gyros", "full", 0],
+        [[0, 0, -1], 0, "k8", "battery", "full", 0],
         [[0, 1, -1], 0, "k8", "control", "full", 0],
         [[-1, 0, -1], 0, "k8", "power", "full", 0],
         [[-1, 0, -2], 0, "k8", "engine", "full", 0],

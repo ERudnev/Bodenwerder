@@ -31,8 +31,6 @@ namespace eltanin {
             base::maybe<rmmr::resource::sprite::Pack::Id> skySphere;
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
             base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
-            base::maybe<rmmr::resource::material::Asset::Id> system_stripes;
-            base::maybe<rmmr::resource::material::Asset::Id> system_outer;
             base::maybe<rmmr::resource::meshpack::Asset::Id> levelOne;
             base::maybe<rmmr::resource::meshpack::Asset::Id> levelTwo;
         };

@@ -1,12 +1,14 @@
 #pragma once
 
+#include <glm/vec3.hpp>
+
 namespace eltanin::mech::slot {
 
     enum class inner {
         multi, // it is extension for any ajacent frame of any kind. "Free Type"
         engine, // assumes free back (or other engine slot)
         power,
-        gyros,
+        battery,
         hardpoint, // assumes top or front open space
         hangar, // assumes
         cargo,
@@ -15,6 +17,24 @@ namespace eltanin::mech::slot {
         control,
         living,
     };
+
+    // Actor albedo tint for shared white inner mesh (texture × albedo).
+    inline auto color(inner role) -> glm::vec3 {
+        switch (role) {
+            case inner::multi: return {0.70f, 0.70f, 0.72f};
+            case inner::engine: return {0.95f, 0.35f, 0.15f};
+            case inner::power: return {0.95f, 0.85f, 0.20f};
+            case inner::battery: return {0.20f, 0.85f, 0.90f};
+            case inner::hardpoint: return {0.90f, 0.20f, 0.22f};
+            case inner::hangar: return {0.65f, 0.35f, 0.90f};
+            case inner::cargo: return {0.72f, 0.52f, 0.30f};
+            case inner::logistic: return {0.30f, 0.55f, 0.95f};
+            case inner::emissive: return {0.95f, 0.30f, 0.70f};
+            case inner::control: return {0.25f, 0.85f, 0.40f};
+            case inner::living: return {0.95f, 0.70f, 0.55f};
+        }
+        return {1.0f, 1.0f, 1.0f};
+    }
 
     enum class plate {
         armor, // looks as default plate type

@@ -108,7 +108,7 @@ namespace eltanin::resource::blueprint {
             {"multi", mech::slot::inner::multi},
             {"engine", mech::slot::inner::engine},
             {"power", mech::slot::inner::power},
-            {"gyros", mech::slot::inner::gyros},
+            {"battery", mech::slot::inner::battery},
             {"hardpoint", mech::slot::inner::hardpoint},
             {"hangar", mech::slot::inner::hangar},
             {"cargo", mech::slot::inner::cargo},

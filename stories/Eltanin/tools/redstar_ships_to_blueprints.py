@@ -21,14 +21,14 @@ WING_SHAPES = {0: "w1111", 1: "w121", 2: "w2121", 3: "w321", 4: "w222"}
 INNER_ROLES = {
     0: "engine",
     1: "power",
-    2: "gyros",
+    2: "battery",  # was RedStar gyros
     3: "control",
     4: "living",
     5: "cargo",
     6: "hardpoint",
     7: "hangar",
     8: "multi",
-    9: "multi",  # TANK → multi (no tank role yet)
+    9: "cargo",  # RedStar TANK → cargo
 }
 
 DEFAULT_AUTHOR = "Concordia"

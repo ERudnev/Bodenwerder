@@ -73,7 +73,8 @@ namespace eltanin {
         return spawn_with_locals(context, root, pose, locals_from_corner_indices(mech::frame::corners[index]), std::move(actor_quantum));
     }
 
-    auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::inner::shape shape, mech::slot::inner, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
+    auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::inner::shape shape, mech::slot::inner role, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
+        actor_quantum.albedo = mech::slot::color(role);
         switch (shape) {
             case mech::inner::shape::full: {
                 vector<vec3> locals;

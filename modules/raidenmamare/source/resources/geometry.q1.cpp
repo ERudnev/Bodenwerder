@@ -18,7 +18,6 @@
 #include <cstddef>
 #include <filesystem>
 #include <format>
-#include <string_view>
 #include <vector>
 
 namespace rmmr::resource::geometry {
@@ -208,16 +207,8 @@ namespace rmmr::resource::geometry {
             }
         }
 
-        auto layer_identity(std::string_view raw) -> string {
-            const auto eq = raw.find('=');
-            if (eq == std::string_view::npos or eq == 0) {
-                return string(raw);
-            }
-            return string(raw.substr(0, eq));
-        }
-
         auto find_node(const aiNode& node, const string& name) -> const aiNode* {
-            if (node.mName.C_Str() == name or layer_identity(node.mName.C_Str()) == name) {
+            if (node.mName.C_Str() == name) {
                 return &node;
             }
             for (unsigned i = 0; i < node.mNumChildren; ++i) {

@@ -56,7 +56,7 @@ namespace eltanin::mech::levelOne {
             case slot::inner::multi: return {};
             case slot::inner::engine: return {};
             case slot::inner::power: return {};
-            case slot::inner::gyros: return {};
+            case slot::inner::battery: return {};
             case slot::inner::hardpoint: return {};
             case slot::inner::hangar: return {};
             case slot::inner::cargo: return {};

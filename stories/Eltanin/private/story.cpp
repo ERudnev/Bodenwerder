@@ -107,13 +107,20 @@ namespace eltanin {
                 .blend = renderer::BlendMode::additive,
             });
 
-        // System lit colors live in solid albedo maps: Mesh submit shares one actor albedo across parts.
+        // Mech pack albedos: Mesh submit shares one actor albedo across parts.
         if (not shared or shared->material.debugLitTextured.empty()) {
             return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_textured etalon missing");
         }
         const auto etalon = shared->material.debugLitTextured[0];
-        assets.system_stripes = with<::rmmr::resource::Assets>::compose_material(context, with<Unit>::name("Eltanin", "system_stripes"), "textures/system/mech_stripes.png", etalon);
-        assets.system_outer = with<::rmmr::resource::Assets>::compose_material(context, with<Unit>::name("Eltanin", "system_outer"), "textures/system/mech_outer.png", etalon);
+        const auto mech = [&](const char* own, filename file) {
+            (void)with<::rmmr::resource::Assets>::compose_material(context, with<Unit>::name("Eltanin", own), std::move(file), etalon);
+        };
+        mech("mtile05", "textures/mech/mtile05.jpg");
+        mech("pewter2", "textures/mech/pewter2.bmp");
+        mech("panelTech", "textures/mech/panel_tech_1.bmp");
+        mech("kosmosWall", "textures/mech/CH_T_KOSMOSSCIANAA.JPG");
+        mech("metal10469", "textures/mech/10469.jpg");
+        mech("metal10469v3", "textures/mech/10469-v3.jpg");
 
         assets.levelOne = with<::rmmr::resource::Assets>::add_meshpack_objs_loader(context, Unit::name("Eltanin", "levelOne"), item<meshpack::LoaderObjs>{.file = "meshes/system/levelOne/levelOne.obj.meshpack"});
         assets.levelTwo = with<::rmmr::resource::Assets>::add_meshpack_lwo_loader(

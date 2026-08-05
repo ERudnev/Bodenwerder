@@ -28,15 +28,6 @@ namespace rmmr::system::content {
             return name.empty() or name == "<LWORoot>" or name.starts_with("Pivot-");
         }
 
-        // Drop LightWave layer suffix from first '=' (e.g. "…=default").
-        auto mesh_identity(std::string_view raw) -> std::string {
-            const auto eq = raw.find('=');
-            if (eq == std::string_view::npos or eq == 0) {
-                return std::string(raw);
-            }
-            return std::string(raw.substr(0, eq));
-        }
-
         auto uniquify(std::string base, const std::vector<std::string>& taken) -> std::string {
             auto unique = base;
             for (std::size_t n = taken.size(); std::find(taken.begin(), taken.end(), unique) != taken.end(); ++n) {
@@ -48,7 +39,7 @@ namespace rmmr::system::content {
         void collect_meshes(const aiScene& scene, const aiNode& node, std::vector<LwoDocument::Mesh>& out) {
             if (node.mNumMeshes > 0 and not is_synthetic_node(node.mName.C_Str())) {
                 LwoDocument::Mesh mesh;
-                mesh.name = mesh_identity(node.mName.C_Str());
+                mesh.name = node.mName.C_Str();
                 std::vector<std::string> taken;
                 for (unsigned i = 0; i < node.mNumMeshes; ++i) {
                     const auto* ai_mesh = scene.mMeshes[node.mMeshes[i]];
