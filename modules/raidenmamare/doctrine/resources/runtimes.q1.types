@@ -1,5 +1,6 @@
 import "resources/manager"
 import "resources/meshpack"
+import "resources/overlays"
 
 namespace rmmr
   namespace resource
@@ -11,6 +12,7 @@ namespace rmmr
         >add_texture_generator(Unit, texture::Generator)->#texture::Asset
         >add_shader_loader(Unit, shader::Loader)->#shader::Asset
         >add_material(Unit, material::Asset)->#material::Asset
+        >add_overlay(Unit, overlay::Asset)->#overlay::Asset
         >add_shadow_allocator(Unit, shadow::Allocator)->#shadow::Asset
         >add_geometry_loader(Unit, geometry::Loader)->#geometry::Asset
         >add_geometry_generator(Unit, geometry::Generator)->#geometry::Asset
@@ -32,6 +34,7 @@ namespace rmmr
     group<texture::Runtime> of resource::DeviceRuntimes
     group<shader::Runtime> of resource::DeviceRuntimes
     group<material::Runtime> of resource::DeviceRuntimes
+    group<overlay::Runtime> of resource::DeviceRuntimes
     group<shadow::Runtime> of resource::DeviceRuntimes
     group<geometry::Runtime> of resource::DeviceRuntimes
     group<sprite::Runtime> of resource::DeviceRuntimes
@@ -41,6 +44,7 @@ namespace rmmr
         textures_id_mapping: umap<#texture::Asset, #texture::Runtime> // allows finding Asset presentation of this Device
         shaders_id_mapping: umap<#shader::Asset, #shader::Runtime>
         materials_id_mapping: umap<#material::Asset, #material::Runtime>
+        overlays_id_mapping: umap<#overlay::Asset, #overlay::Runtime>
         shadows_id_mapping: umap<#shadow::Asset, #shadow::Runtime>
         geometries_id_mapping: umap<#geometry::Asset, #geometry::Runtime>
         sprites_id_mapping: umap<#sprite::Pack, #sprite::Runtime>

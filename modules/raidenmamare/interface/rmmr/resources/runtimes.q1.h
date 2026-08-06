@@ -4,6 +4,7 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
+#include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/resources/sprites.q1.h>
@@ -28,6 +29,7 @@ namespace rmmr::resource {
             static auto add_texture_generator(Writing, Unit::Quantum, texture::Generator::Quantum) -> texture::Asset::Id;
             static auto add_shader_loader(Writing, Unit::Quantum, shader::Loader::Quantum) -> shader::Asset::Id;
             static auto add_material(Writing, Unit::Quantum, material::Asset::Quantum) -> material::Asset::Id;
+            static auto add_overlay(Writing, Unit::Quantum, overlay::Asset::Quantum) -> overlay::Asset::Id;
             static auto add_shadow_allocator(Writing, Unit::Quantum, shadow::Allocator::Quantum) -> shadow::Asset::Id;
             static auto add_geometry_loader(Writing, Unit::Quantum, geometry::Loader::Quantum) -> geometry::Asset::Id;
             static auto add_geometry_generator(Writing, Unit::Quantum, geometry::Generator::Quantum) -> geometry::Asset::Id;
@@ -67,6 +69,11 @@ namespace rmmr::resource {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    struct OverlayRuntime_group : Group<OverlayRuntime_group, DeviceRuntimes, overlay::Runtime> {
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
     struct ShadowRuntime_group : Group<ShadowRuntime_group, DeviceRuntimes, shadow::Runtime> {
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
@@ -87,6 +94,7 @@ namespace rmmr::resource {
             umap<texture::Asset::Id, texture::Runtime::Id> textures_id_mapping;
             umap<shader::Asset::Id, shader::Runtime::Id> shaders_id_mapping;
             umap<material::Asset::Id, material::Runtime::Id> materials_id_mapping;
+            umap<overlay::Asset::Id, overlay::Runtime::Id> overlays_id_mapping;
             umap<shadow::Asset::Id, shadow::Runtime::Id> shadows_id_mapping;
             umap<geometry::Asset::Id, geometry::Runtime::Id> geometries_id_mapping;
             umap<sprite::Pack::Id, sprite::Runtime::Id> sprites_id_mapping;

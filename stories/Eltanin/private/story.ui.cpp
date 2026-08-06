@@ -104,6 +104,12 @@ namespace eltanin {
         ImGui::MenuItem("Blueprints", nullptr, &ui.blueprints);
     }
 
+    auto Game::activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> {
+        if (not ui.blueprints or not assets.blueprintsEditorEffect)
+            return {};
+        return assets.blueprintsEditorEffect;
+    }
+
     void Game::drawUi(Writing world) {
         drawCameraWindow(world);
         drawLightingWindow(world);

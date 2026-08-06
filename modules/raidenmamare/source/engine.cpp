@@ -9,6 +9,7 @@
 #include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
+#include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -41,6 +42,7 @@ namespace rmmr {
                 ask::schema::aspect<resource::Runtime_group>(),
                 ask::schema::aspect<resource::ShaderRuntime_group>(),
                 ask::schema::aspect<resource::MaterialRuntime_group>(),
+                ask::schema::aspect<resource::OverlayRuntime_group>(),
                 ask::schema::aspect<resource::ShadowRuntime_group>(),
                 ask::schema::aspect<resource::GeometryRuntime_group>(),
                 ask::schema::aspect<resource::SpriteRuntime_group>(),
@@ -55,6 +57,8 @@ namespace rmmr {
                 ask::schema::aspect<resource::shader::Runtime>(),
                 ask::schema::aspect<resource::material::Asset>(),
                 ask::schema::aspect<resource::material::Runtime>(),
+                ask::schema::aspect<resource::overlay::Asset>(),
+                ask::schema::aspect<resource::overlay::Runtime>(),
                 ask::schema::aspect<resource::shadow::Asset>(),
                 ask::schema::aspect<resource::shadow::Allocator>(),
                 ask::schema::aspect<resource::shadow::Runtime>(),
@@ -94,6 +98,7 @@ namespace rmmr {
             maybe<system::Device::Id> device;
             std::vector<ViewContext> activeViews;
             maybe<resource::shadow::Asset::Id> default_shadow;
+            maybe<resource::overlay::Asset::Id> activeOverlay;
         } handles;
 
         struct {
@@ -182,6 +187,10 @@ namespace rmmr {
         state->handles.activeViews = std::move(views);
     }
 
+    void Engine::setActiveOverlay(base::maybe<resource::overlay::Asset::Id> overlay) {
+        state->handles.activeOverlay = std::move(overlay);
+    }
+
     bool Engine::shouldClose(Reading context) const {
         return glfwWindowShouldClose(with<system::Device>::get(context, state->handles.device).handle);
     }
@@ -234,6 +243,7 @@ namespace rmmr {
                 .world = context,
                 .window = *state->handles.device,
                 .view = view,
+                .overlay = state->handles.activeOverlay,
             });
         }
     }

@@ -13,6 +13,7 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
+#include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/sprites.q1.h>
@@ -78,6 +79,22 @@ namespace eltanin {
             item<shader::Loader>{
                 .vertex = "shaders/skySphere.vert.glsl",
                 .fragment = "shaders/skySphere.frag.glsl",
+            });
+
+        const auto blueprints_editor_effect = with<::rmmr::resource::Assets>::add_shader_loader(
+            context,
+            Unit::name("Eltanin", "blueprintsEditorEffect"),
+            item<shader::Loader>{
+                .vertex = "shaders/blueprintsEditorEffect.vert.glsl",
+                .fragment = "shaders/blueprintsEditorEffect.frag.glsl",
+            });
+        assets.blueprintsEditorEffect = with<::rmmr::resource::Assets>::add_overlay(
+            context,
+            Unit::name("Eltanin", "blueprintsEditorEffect"),
+            overlay::Asset::Quantum{
+                .program = with<Unit>::remember(context, blueprints_editor_effect),
+                .uniforms = ::rmmr::material::Semantics::ids_of({"sceneColor", "identiffyMap", "texelSize"}),
+                .scale = overlay::Scale::quarter,
             });
 
         const auto& sky_sphere_pack = with<sprite::Pack>::get(context, *assets.skySphere);

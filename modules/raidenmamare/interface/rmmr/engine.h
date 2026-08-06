@@ -5,6 +5,8 @@
 
 #include <fQSM/api/interface.h>
 
+#include <base/maybe.h>
+#include <rmmr/resources/overlays.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -44,6 +46,7 @@ namespace rmmr {
         void materialize(Writing);
         auto window() const -> system::Window::Id;
         void setActiveViews(std::vector<ViewContext>);
+        void setActiveOverlay(base::maybe<resource::overlay::Asset::Id>);
 
         bool shouldClose(Reading) const;
         auto monotonicUs() const -> int64;

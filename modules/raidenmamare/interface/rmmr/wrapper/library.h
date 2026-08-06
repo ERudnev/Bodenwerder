@@ -7,6 +7,7 @@
 #include <fQSM/api/interface.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
+#include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/textures.q1.h>
 
 namespace rmmr::wrapper::assets {
@@ -36,6 +37,9 @@ namespace rmmr::wrapper::assets {
             base::maybe<rmmr::resource::material::Asset::Id> sprite;
             base::maybe<rmmr::resource::material::Asset::Id> identity;
         } material;
+        struct {
+            base::maybe<rmmr::resource::overlay::Asset::Id> defaultBlur;
+        } overlay;
     };
 
     enum class PrepareStatus {

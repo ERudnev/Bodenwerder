@@ -48,8 +48,9 @@ namespace rmmr::material {
         //
         // ID convention:
         // - 1..99: matrices and structural transforms
-        // - 100..: "pixel channels" (material/light parameters, scalars/vectors, etc.)
-        static constexpr auto vocabulary = std::array<Entry, 22>{{
+        // - 100..1999: world / material / light pixel channels
+        // - 2000..: screen-space overlay (and kin)
+        static constexpr auto vocabulary = std::array<Entry, 25>{{
             Entry{0, Type::i32, "_undefined"},
 
             // triangle.vert.glsl
@@ -81,6 +82,11 @@ namespace rmmr::material {
             Entry{114, Type::v2f, "inverseAtlasSize"},
             Entry{115, Type::f32, "opacity"},
             Entry{116, Type::i32, "scenicAlias"},
+
+            // Overlay / screen-space (gap after world materials — start at 2000)
+            Entry{2000, Type::sampler2d, "sceneColor"},
+            Entry{2001, Type::sampler2d, "identiffyMap"},
+            Entry{2002, Type::v2f, "texelSize"},
         }};
 
         static constexpr auto name_of(PersistentId id) -> Name {

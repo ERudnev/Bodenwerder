@@ -6,6 +6,7 @@
 #include <rmmr/engine.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/window.q1.h>
+#include <rmmr/resources/overlays.q1.h>
 #include <rmmr/wrapper/library.h>
 
 namespace rmmr::wrapper {
@@ -35,6 +36,8 @@ namespace rmmr::wrapper {
 
         virtual void contributeViewMenu() = 0;
         virtual void drawUi(Writing) = 0;
+        // Screen overlay for this frame (nullopt = off). Engine composites before ImGui.
+        virtual auto activeOverlay() const -> base::maybe<resource::overlay::Asset::Id> { return {}; }
 
     protected:
         const assets::Handles* shared = nullptr;

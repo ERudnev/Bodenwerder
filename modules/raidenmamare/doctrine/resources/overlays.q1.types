@@ -1,0 +1,26 @@
+import "resources/manager"
+import "resources/shaders"
+import "semantics"
+
+namespace rmmr
+  namespace resource
+    namespace overlay
+
+      using Reference as resource::Unit::Reference
+
+      // Relative to viewport: effect RT size = viewport / divisor.
+      enum Scale : full, half, quarter
+
+      // Screen-space effect (not a world material). Fullscreen; engine binds frame RTs.
+      entity Runtime
+        one
+          shader: #shader::Runtime
+          bindings: vector<Uniform::Binding>
+          scale: Scale
+
+      feature Asset of resource::Unit
+        one
+          program: shader::Reference
+          uniforms: Uniform::Palette
+          scale: Scale
+          >materialize(#system::Device) -> #Runtime?

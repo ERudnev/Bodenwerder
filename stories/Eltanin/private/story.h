@@ -8,6 +8,7 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
+#include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/wrapper/product.h>
 
@@ -33,6 +34,7 @@ namespace eltanin {
             base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
             base::maybe<rmmr::resource::meshpack::Asset::Id> levelOne;
             base::maybe<rmmr::resource::meshpack::Asset::Id> levelTwo;
+            base::maybe<rmmr::resource::overlay::Asset::Id> blueprintsEditorEffect;
         };
 
         struct Ui {
@@ -67,6 +69,7 @@ namespace eltanin {
         void onFrame(establish::Realm&, int64 dt_us) override;
         void contributeViewMenu() override;
         void drawUi(Writing) override;
+        auto activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> override;
 
     private:
         void populateWorld(Writing, rmmr::system::Window::Id);

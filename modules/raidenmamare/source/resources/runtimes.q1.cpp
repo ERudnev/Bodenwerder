@@ -79,6 +79,14 @@ namespace rmmr::resource {
                 material::Asset::Actions::materialize(context, asset_id, device));
         }
 
+        void rematerialize_overlay(Writing context, overlay::Asset::Id asset_id, system::Device::Id device) {
+            if (not with<overlay::Asset>::exists(context, asset_id)) return;
+            bind_runtime<overlay::Runtime>(
+                with<Runtimes>::modify(context, device)->overlays_id_mapping,
+                asset_id,
+                overlay::Asset::Actions::materialize(context, asset_id, device));
+        }
+
         void rematerialize_shadow(Writing context, shadow::Asset::Id asset_id, system::Device::Id device) {
             if (not with<shadow::Allocator>::exists(context, asset_id)) return;
             bind_runtime<shadow::Runtime>(
@@ -132,6 +140,19 @@ namespace rmmr::resource {
         }
         const auto unit_id = with<Unit_group>::addElement(context, *assets, std::move(unit));
         with<material::Asset>::extend(context, unit_id, std::move(asset));
+        return unit_id;
+    }
+
+    auto Assets::Actions::add_overlay(Writing context, Unit::Quantum unit, overlay::Asset::Quantum asset) -> overlay::Asset::Id {
+        const auto assets = singleton(context);
+        if (not assets) {
+            return context.refuse("resource::Assets: singleton missing");
+        }
+        if (not with<Unit_group>::exists(context, *assets)) {
+            with<Unit_group>::extend(context, *assets);
+        }
+        const auto unit_id = with<Unit_group>::addElement(context, *assets, std::move(unit));
+        with<overlay::Asset>::extend(context, unit_id, std::move(asset));
         return unit_id;
     }
 
@@ -218,6 +239,7 @@ namespace rmmr::resource {
         with<Runtime_group>::extend(context, device);
         with<ShaderRuntime_group>::extend(context, device);
         with<MaterialRuntime_group>::extend(context, device);
+        with<OverlayRuntime_group>::extend(context, device);
         with<ShadowRuntime_group>::extend(context, device);
         with<GeometryRuntime_group>::extend(context, device);
         with<SpriteRuntime_group>::extend(context, device);
@@ -238,6 +260,9 @@ namespace rmmr::resource {
         for (const auto [id, _] : context->aspect<material::Asset>().items()) {
             rematerialize_material(context, id, device);
         }
+        for (const auto [id, _] : context->aspect<overlay::Asset>().items()) {
+            rematerialize_overlay(context, id, device);
+        }
         for (const auto [id, _] : context->aspect<shadow::Asset>().items()) {
             rematerialize_shadow(context, id, device);
         }
@@ -255,6 +280,7 @@ namespace rmmr::resource {
                 scrub_mapping<texture::Asset, texture::Runtime>(context, runtimes_id, quantum.textures_id_mapping, &Quantum::textures_id_mapping);
                 scrub_mapping<shader::Asset, shader::Runtime>(context, runtimes_id, quantum.shaders_id_mapping, &Quantum::shaders_id_mapping);
                 scrub_mapping<material::Asset, material::Runtime>(context, runtimes_id, quantum.materials_id_mapping, &Quantum::materials_id_mapping);
+                scrub_mapping<overlay::Asset, overlay::Runtime>(context, runtimes_id, quantum.overlays_id_mapping, &Quantum::overlays_id_mapping);
                 scrub_mapping<shadow::Asset, shadow::Runtime>(context, runtimes_id, quantum.shadows_id_mapping, &Quantum::shadows_id_mapping);
                 scrub_mapping<geometry::Asset, geometry::Runtime>(context, runtimes_id, quantum.geometries_id_mapping, &Quantum::geometries_id_mapping);
                 scrub_mapping<sprite::Pack, sprite::Runtime>(context, runtimes_id, quantum.sprites_id_mapping, &Quantum::sprites_id_mapping);

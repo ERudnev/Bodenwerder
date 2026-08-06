@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <stdexcept>
+#include <string>
 #include <vector>
 #include <GL/glew.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -31,16 +32,66 @@ namespace rmmr {
     using namespace api_for_internals;
 
     Renderer::Renderer()
-        : identity_{.fbo = 0, .color = 0, .depth = 0, .size = index2{0, 0}}
+        : scene_color_{.fbo = 0, .color = 0, .size = index2{0, 0}}
+        , overlay_color_{.fbo = 0, .color = 0, .size = index2{0, 0}}
+        , identity_{.fbo = 0, .color = 0, .depth = 0, .size = index2{0, 0}}
+        , fullscreen_vao_{0}
     {}
 
     Renderer::~Renderer() {
+        if (fullscreen_vao_)
+            glDeleteVertexArrays(1, &fullscreen_vao_);
+        auto release = [](ColorTarget& target) {
+            if (target.fbo)
+                glDeleteFramebuffers(1, &target.fbo);
+            if (target.color)
+                glDeleteTextures(1, &target.color);
+        };
+        release(scene_color_);
+        release(overlay_color_);
         if (identity_.fbo)
             glDeleteFramebuffers(1, &identity_.fbo);
         if (identity_.color)
             glDeleteTextures(1, &identity_.color);
         if (identity_.depth)
             glDeleteTextures(1, &identity_.depth);
+    }
+
+    void Renderer::ensure_color_target(ColorTarget& target, index2 size, const char* label) {
+        const int width = std::max(static_cast<int>(size.x), 1);
+        const int height = std::max(static_cast<int>(size.y), 1);
+        if (target.fbo and target.size.x == size.x and target.size.y == size.y)
+            return;
+
+        if (target.fbo) {
+            glDeleteFramebuffers(1, &target.fbo);
+            target.fbo = 0;
+        }
+        if (target.color) {
+            glDeleteTextures(1, &target.color);
+            target.color = 0;
+        }
+
+        glGenTextures(1, &target.color);
+        glBindTexture(GL_TEXTURE_2D, target.color);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glGenFramebuffers(1, &target.fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, target.fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target.color, 0);
+        const GLenum draw_buffers[]{GL_COLOR_ATTACHMENT0};
+        glDrawBuffers(1, draw_buffers);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            throw std::runtime_error(std::string("Renderer: ") + label + " framebuffer incomplete");
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        target.size = size;
     }
 
     void Renderer::ensure_identity_target(index2 size) {
@@ -144,6 +195,142 @@ namespace rmmr {
         auto window = with<system::Window>::modify(args.world, args.window);
         window->identityDraws = draws;
         window->current.under = under;
+    }
+
+    void Renderer::capture_scene_color(index2 size) {
+        ensure_color_target(scene_color_, size, "sceneColor");
+        const int width = std::max(static_cast<int>(size.x), 1);
+        const int height = std::max(static_cast<int>(size.y), 1);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, scene_color_.fbo);
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    void Renderer::run_overlay(FrameContext args, index2 size) {
+        if (not args.overlay)
+            return;
+        const auto& runtimes = with<resource::Runtimes>::get(args.world, args.window);
+        const auto overlay_it = runtimes.overlays_id_mapping.find(*args.overlay);
+        if (overlay_it == runtimes.overlays_id_mapping.end())
+            return;
+
+        const auto& overlay = with<resource::overlay::Runtime>::get(args.world, overlay_it->second);
+        const auto& shader = with<resource::shader::Runtime>::get(args.world, overlay.shader);
+        const int divisor = resource::overlay::scale_divisor(overlay.scale);
+        const index2 effect_size{
+            std::max(static_cast<int>(size.x) / divisor, 1),
+            std::max(static_cast<int>(size.y) / divisor, 1),
+        };
+
+        ensure_identity_target(size);
+        ensure_color_target(overlay_color_, effect_size, "overlay");
+        const int width = std::max(static_cast<int>(effect_size.x), 1);
+        const int height = std::max(static_cast<int>(effect_size.y), 1);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, overlay_color_.fbo);
+        glViewport(0, 0, width, height);
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_BLEND);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(shader.handle);
+        if (fullscreen_vao_ == 0)
+            glGenVertexArrays(1, &fullscreen_vao_);
+        const auto id_scene = material::Semantics::id_of("sceneColor");
+        const auto id_ident = material::Semantics::id_of("identiffyMap");
+        const auto id_texel = material::Semantics::id_of("texelSize");
+        GLint unit = 0;
+        for (const auto& binding : overlay.bindings) {
+            if (binding.location < 0)
+                continue;
+            if (binding.id == id_scene) {
+                glActiveTexture(GL_TEXTURE0 + unit);
+                glBindTexture(GL_TEXTURE_2D, scene_color_.color);
+                glUniform1i(binding.location, unit);
+                ++unit;
+            } else if (binding.id == id_ident) {
+                glActiveTexture(GL_TEXTURE0 + unit);
+                glBindTexture(GL_TEXTURE_2D, identity_.color);
+                glUniform1i(binding.location, unit);
+                ++unit;
+            } else if (binding.id == id_texel) {
+                glUniform2f(binding.location, 1.0f / static_cast<float>(width), 1.0f / static_cast<float>(height));
+            }
+        }
+
+        glBindVertexArray(fullscreen_vao_);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(0);
+        glUseProgram(0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        system::Viewport::Actions::activate(args.world, args.view.viewport);
+    }
+
+    void Renderer::compose_overlay(index2 size) {
+        // Engine paste: alpha-blend overlay RGBA onto the default framebuffer.
+        static GLuint compose_program = 0;
+        if (compose_program == 0) {
+            const char* vs = R"(#version 330 core
+out vec2 vUv;
+void main() {
+    const vec2 pos[3] = vec2[](vec2(-1.0,-1.0), vec2(3.0,-1.0), vec2(-1.0,3.0));
+    vec2 p = pos[gl_VertexID];
+    vUv = p * 0.5 + 0.5;
+    gl_Position = vec4(p, 0.0, 1.0);
+})";
+            const char* fs = R"(#version 330 core
+uniform sampler2D u_overlay;
+in vec2 vUv;
+out vec4 fragColor;
+void main() { fragColor = texture(u_overlay, vUv); })";
+            const auto compile = [](GLenum type, const char* src) {
+                GLuint shader = glCreateShader(type);
+                glShaderSource(shader, 1, &src, nullptr);
+                glCompileShader(shader);
+                GLint ok = 0;
+                glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
+                if (not ok)
+                    throw std::runtime_error("Renderer: compose shader compile failed");
+                return shader;
+            };
+            const GLuint v = compile(GL_VERTEX_SHADER, vs);
+            const GLuint f = compile(GL_FRAGMENT_SHADER, fs);
+            compose_program = glCreateProgram();
+            glAttachShader(compose_program, v);
+            glAttachShader(compose_program, f);
+            glLinkProgram(compose_program);
+            glDeleteShader(v);
+            glDeleteShader(f);
+            GLint linked = 0;
+            glGetProgramiv(compose_program, GL_LINK_STATUS, &linked);
+            if (not linked)
+                throw std::runtime_error("Renderer: compose program link failed");
+        }
+
+        const int width = std::max(static_cast<int>(size.x), 1);
+        const int height = std::max(static_cast<int>(size.y), 1);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, width, height);
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glUseProgram(compose_program);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, overlay_color_.color);
+        glUniform1i(glGetUniformLocation(compose_program, "u_overlay"), 0);
+        if (fullscreen_vao_ == 0)
+            glGenVertexArrays(1, &fullscreen_vao_);
+        glBindVertexArray(fullscreen_vao_);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(0);
+        glUseProgram(0);
+        glDisable(GL_BLEND);
+        glDepthMask(GL_TRUE);
+        glEnable(GL_DEPTH_TEST);
     }
 
     namespace {
@@ -710,6 +897,21 @@ namespace rmmr {
 
         if (not identity_published)
             publish_identity(args, 0, renderer::Integer32{0});
+
+        if (args.overlay) {
+            const auto& viewport = with<system::Viewport>::get(args.world, args.view.viewport);
+            capture_scene_color(viewport.size);
+            ensure_identity_target(viewport.size);
+            if (identity_draws == 0) {
+                glBindFramebuffer(GL_FRAMEBUFFER, identity_.fbo);
+                const GLuint clear_alias[]{0u};
+                glClearBufferuiv(GL_COLOR, 0, clear_alias);
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            }
+            run_overlay(args, viewport.size);
+            compose_overlay(viewport.size);
+            system::Viewport::Actions::activate(args.world, args.view.viewport);
+        }
 
         glDepthMask(depth_write_prev);
     }

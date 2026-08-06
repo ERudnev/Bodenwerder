@@ -4,9 +4,11 @@
 #include <rmmr/api/_interface.h>
 #include <rmmr/resources/builders/materialPresets.h>
 #include <rmmr/resources/manager.q1.h>
+#include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
+#include <rmmr/semantics.q1.h>
 
 namespace rmmr::wrapper::assets {
 
@@ -66,6 +68,14 @@ namespace rmmr::wrapper::assets {
         handles.material.sprite = with<Assets>::add_material(context, Unit::name("rmmr", "sprite"), builders::material::Presets::sprite(with<Unit>::remember(context, sprite)));
         handles.material.identity = with<Assets>::add_material(context, Unit::name("rmmr", "identity"), builders::material::Presets::identity(with<Unit>::remember(context, identity)));
         with<scene::actor::Identified>::modify_global(context)->material = handles.material.identity;
+
+        const auto default_blur = with<Assets>::add_shader_loader(context, Unit::name("rmmr", "defaultBlur"), item<shader::Loader>{.vertex = "shaders/overlayDefaultBlur.vert.glsl", .fragment = "shaders/overlayDefaultBlur.frag.glsl"});
+        handles.overlay.defaultBlur = with<Assets>::add_overlay(context, Unit::name("rmmr", "defaultBlur"), overlay::Asset::Quantum{
+            .program = with<Unit>::remember(context, default_blur),
+            .uniforms = ::rmmr::material::Semantics::ids_of({"sceneColor", "identiffyMap", "texelSize"}),
+            .scale = overlay::Scale::full,
+        });
+
         handles.primitives = with<Assets>::add_meshpack_objs_loader(context, Unit::name("rmmr", "primitives"), item<meshpack::LoaderObjs>{.file = "meshes/primitives/primitives.meshpack"});
 
         base::message("toy: hardcoded assets added");
