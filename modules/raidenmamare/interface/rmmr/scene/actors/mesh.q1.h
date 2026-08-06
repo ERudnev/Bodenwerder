@@ -31,10 +31,12 @@ namespace rmmr::scene::actor {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    // Opt-in pick id on a Mesh (same Node id). GPU writes scenicAlias into Pass::identity.
+    // Opt-in pick id on a Mesh (same Node id). GPU writes scenicAlias into Pass::identity
+    // (+ Pass::identitySelected when selected).
     struct Identified : Feature<Identified, Mesh> {
         struct Quantum {
             renderer::Integer32 scenicAlias;
+            bool selected;
         };
         struct Global {
             integer lastGeneratedId;
@@ -43,6 +45,7 @@ namespace rmmr::scene::actor {
         struct Actions : BaseActions {
             static void extend(Writing, Mesh::Id);
             static auto lookup(Reading, renderer::Integer32) -> optional<Id>;
+            static void applySelection(Writing, const vector<renderer::Integer32>&);
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };
         struct Internals : DefaultInternals{};

@@ -93,8 +93,8 @@ namespace eltanin {
             Unit::name("Eltanin", "blueprintsEditorEffect"),
             overlay::Asset::Quantum{
                 .program = with<Unit>::remember(context, blueprints_editor_effect),
-                .uniforms = ::rmmr::material::Semantics::ids_of({"sceneColor", "identiffyMap", "texelSize"}),
-                .scale = overlay::Scale::quarter,
+                .uniforms = ::rmmr::material::Semantics::ids_of({"identiffyMap", "selectedMap", "under"}),
+                .scale = overlay::Scale::full,
             });
 
         const auto& sky_sphere_pack = with<sprite::Pack>::get(context, *assets.skySphere);

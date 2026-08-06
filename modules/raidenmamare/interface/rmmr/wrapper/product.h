@@ -1,9 +1,11 @@
 #pragma once
 
+#include <span>
 #include <vector>
 
 #include <fQSM/api/interface.h>
 #include <rmmr/engine.h>
+#include <rmmr/renderer/types.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/window.q1.h>
 #include <rmmr/resources/overlays.q1.h>
@@ -38,6 +40,8 @@ namespace rmmr::wrapper {
         virtual void drawUi(Writing) = 0;
         // Screen overlay for this frame (nullopt = off). Engine composites before ImGui.
         virtual auto activeOverlay() const -> base::maybe<resource::overlay::Asset::Id> { return {}; }
+        // Scenic aliases highlighted by the active overlay (may be empty).
+        virtual auto overlaySelection() const -> std::span<const renderer::Integer32> { return {}; }
 
     protected:
         const assets::Handles* shared = nullptr;

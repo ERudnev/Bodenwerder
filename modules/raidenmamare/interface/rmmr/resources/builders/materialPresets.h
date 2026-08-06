@@ -21,7 +21,7 @@ namespace rmmr::resource::builders::material {
         static Configured gizmoVertexColor(resource::shader::Reference program);
         static Configured grid(resource::shader::Reference program);
         static Configured sprite(resource::shader::Reference program);
-        // Pick buffer: positions + scenicAlias → R32UI. Pass::identity only.
+        // Pick / selection ID buffers: positions + scenicAlias → R32UI. Pass::identity (+ identitySelected).
         static Configured identity(resource::shader::Reference program);
     };
 

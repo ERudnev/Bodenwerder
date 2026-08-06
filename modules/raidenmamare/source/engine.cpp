@@ -12,6 +12,7 @@
 #include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shadows.q1.h>
+#include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/interface.q1.h>
@@ -99,6 +100,7 @@ namespace rmmr {
             std::vector<ViewContext> activeViews;
             maybe<resource::shadow::Asset::Id> default_shadow;
             maybe<resource::overlay::Asset::Id> activeOverlay;
+            std::vector<renderer::Integer32> overlaySelection;
         } handles;
 
         struct {
@@ -191,6 +193,10 @@ namespace rmmr {
         state->handles.activeOverlay = std::move(overlay);
     }
 
+    void Engine::setOverlaySelection(std::span<const renderer::Integer32> selection) {
+        state->handles.overlaySelection.assign(selection.begin(), selection.end());
+    }
+
     bool Engine::shouldClose(Reading context) const {
         return glfwWindowShouldClose(with<system::Device>::get(context, state->handles.device).handle);
     }
@@ -229,6 +235,7 @@ namespace rmmr {
     }
 
     void Engine::render(Writing context) {
+        scene::actor::Identified::Actions::applySelection(context, state->handles.overlaySelection);
         for (const auto& view : state->handles.activeViews) {
             with<system::Viewport>::syncExtent(context, view.viewport);
             with<system::Viewport>::activate(context, view.viewport);
@@ -244,6 +251,7 @@ namespace rmmr {
                 .window = *state->handles.device,
                 .view = view,
                 .overlay = state->handles.activeOverlay,
+                .selection = state->handles.overlaySelection,
             });
         }
     }

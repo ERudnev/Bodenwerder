@@ -76,7 +76,7 @@ namespace rmmr::scene::actor {
         auto global = with<Identified>::modify_global(context);
         ++global->lastGeneratedId;
         const auto alias = static_cast<renderer::Integer32>(global->lastGeneratedId);
-        Identified::BaseActions::extend(context, mesh, Identified::Quantum{.scenicAlias = alias});
+        Identified::BaseActions::extend(context, mesh, Identified::Quantum{.scenicAlias = alias, .selected = false});
     }
 
     auto Identified::Actions::lookup(Reading context, renderer::Integer32 alias) -> optional<Id> {
@@ -89,6 +89,15 @@ namespace rmmr::scene::actor {
         return {};
     }
 
+    void Identified::Actions::applySelection(Writing context, const vector<renderer::Integer32>& aliases) {
+        for (const auto [id, _] : context->aspect<Identified>().items())
+            with<Identified>::modify(context, id)->selected = false;
+        for (const auto alias : aliases) {
+            if (const auto id = lookup(context, alias))
+                with<Identified>::modify(context, *id)->selected = true;
+        }
+    }
+
     void Identified::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {
         // Same id as Mesh / Node — Feature guarantees host Mesh (and thus Node) exists.
         const auto& mesh = with<Mesh>::get(context, node);
@@ -97,13 +106,15 @@ namespace rmmr::scene::actor {
         if (not with<resource::geometry::Asset>::exists(context, mesh.geometry))
             return;
 
+        const auto& identified = with<Identified>::get(context, node);
         auto model = Node::Actions::transform(context, node);
         model = glm::scale(model, mesh.scale);
-        // One draw, full IBO — all submeshes, one scenicAlias.
+        // One draw, full IBO — all submeshes, one scenicAlias; selected also → identitySelected basket.
         submit_identity(context, device, DrawInstance::Identiffy{
             .model = model,
             .geometry = mesh.geometry,
-            .scenicAlias = with<Identified>::get(context, node).scenicAlias,
+            .scenicAlias = identified.scenicAlias,
+            .selected = identified.selected,
         }, where);
     }
 

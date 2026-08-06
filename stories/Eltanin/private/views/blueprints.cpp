@@ -17,6 +17,7 @@
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <format>
 #include <numbers>
@@ -47,6 +48,26 @@ namespace eltanin::views {
                 case mech::layer::wing: return layers.wing;
             }
             return false;
+        }
+
+        auto layerLabel(mech::layer layer) -> const char* {
+            switch (layer) {
+                case mech::layer::plate: return "plate";
+                case mech::layer::frame: return "frame";
+                case mech::layer::inner: return "inner";
+                case mech::layer::wing: return "wing";
+            }
+            return "?";
+        }
+
+        auto findActorByAlias(Reading context, const std::vector<Blueprints::Actor>& actors, renderer::Integer32 alias) -> base::maybe<Blueprints::Actor> {
+            for (const auto& actor : actors) {
+                if (not with<scene::actor::Identified>::exists(context, actor.id))
+                    continue;
+                if (with<scene::actor::Identified>::get(context, actor.id).scenicAlias == alias)
+                    return actor;
+            }
+            return {};
         }
 
         auto scenePose(const mech::Pose& pose) -> Pose {
@@ -100,7 +121,8 @@ namespace eltanin::views {
         state.scene = root;
         state.camera = camera;
         state.loaded.clear();
-        state.selected.reset();
+        state.hovered.reset();
+        state.selection.clear();
         state.layers = Layers{.plate = true, .frame = true, .inner = true, .wing = true};
         state.levelOne.clear();
         state.levelTwo.clear();
@@ -133,7 +155,8 @@ namespace eltanin::views {
             destroyMeshActor(context, actor.id);
         state.levelOne.clear();
         state.levelTwo.clear();
-        state.selected = asset_id;
+        state.selection.clear();
+        state.hovered = asset_id;
 
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, asset_id).data;
         const auto pack_one = *with<Assets>::find<meshpack::Asset>(context, Unit::Actions::name("Eltanin", "levelOne"));
@@ -187,8 +210,24 @@ namespace eltanin::views {
         if (not open)
             return;
 
+        renderer::Integer32 under = renderer::Integer32{0};
+        for (const auto [_, window] : context->aspect<system::Window>().items()) {
+            under = window.current.under;
+            break;
+        }
+
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) and not ImGui::GetIO().WantCaptureMouse and under != renderer::Integer32{0}) {
+            const bool known = findActorByAlias(context, state.levelOne, under).exists() or findActorByAlias(context, state.levelTwo, under).exists();
+            if (known and std::find(state.selection.begin(), state.selection.end(), under) == state.selection.end())
+                state.selection.push_back(under);
+        }
+
         bool shown = open;
+        ImVec2 blueprints_pos{};
+        ImVec2 blueprints_size{};
         if (ImGui::Begin("Blueprints", &shown)) {
+            blueprints_pos = ImGui::GetWindowPos();
+            blueprints_size = ImGui::GetWindowSize();
             ImGui::BeginChild("blueprintList", ImVec2{220.0f, 0.0f}, true);
             if (state.loaded.empty()) {
                 ImGui::TextDisabled("No blueprints loaded.");
@@ -196,9 +235,9 @@ namespace eltanin::views {
                 for (const auto asset_id : state.loaded) {
                     const auto& unit = with<Unit>::get(context, asset_id);
                     const auto& asset = with<::eltanin::resource::blueprint::Asset>::get(context, asset_id);
-                    const bool selected = state.selected.exists() and *state.selected == asset_id;
+                    const bool hovered = state.hovered.exists() and *state.hovered == asset_id;
                     const char* label = asset.data.name.empty() ? unit.name.own.c_str() : asset.data.name.c_str();
-                    if (ImGui::Selectable(label, selected))
+                    if (ImGui::Selectable(label, hovered))
                         show(context, asset_id);
                 }
             }
@@ -206,11 +245,11 @@ namespace eltanin::views {
 
             ImGui::SameLine();
             ImGui::BeginChild("blueprintDetails", ImVec2{0.0f, 0.0f}, true);
-            if (not state.selected.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.selected)) {
+            if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered)) {
                 ImGui::TextDisabled("Select a blueprint.");
             } else {
-                const auto& unit = with<Unit>::get(context, *state.selected);
-                const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.selected).data;
+                const auto& unit = with<Unit>::get(context, *state.hovered);
+                const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
                 ImGui::Text("Unit: %s", unit.name.text().c_str());
                 ImGui::Text("Name: %s", data.name.c_str());
                 ImGui::Text("Author: %s", data.author.c_str());
@@ -222,18 +261,11 @@ namespace eltanin::views {
                 ImGui::Text("L2 actors: %zu", state.levelTwo.size());
                 ImGui::Separator();
                 ImGui::TextUnformatted("Under cursor");
-                {
-                    renderer::Integer32 under = renderer::Integer32{0};
-                    for (const auto [_, window] : context->aspect<system::Window>().items()) {
-                        under = window.current.under;
-                        break;
-                    }
-                    if (under == renderer::Integer32{0}) {
-                        ImGui::TextDisabled("—");
-                    } else {
-                        const auto label = std::format("#{}", fqsm::internal::id::info_hash(static_cast<fqsm::internal::id::BaseType>(under)));
-                        ImGui::TextUnformatted(label.c_str());
-                    }
+                if (under == renderer::Integer32{0}) {
+                    ImGui::TextDisabled("—");
+                } else {
+                    const auto label = std::format("#{}", fqsm::internal::id::info_hash(static_cast<fqsm::internal::id::BaseType>(under)));
+                    ImGui::TextUnformatted(label.c_str());
                 }
                 ImGui::Separator();
                 ImGui::TextUnformatted("Layers (levelOne)");
@@ -249,6 +281,34 @@ namespace eltanin::views {
         }
         ImGui::End();
         open = shown;
+
+        if (not state.selection.empty()) {
+            ImGui::SetNextWindowPos(ImVec2{blueprints_pos.x + blueprints_size.x + 8.0f, blueprints_pos.y}, ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2{280.0f, 220.0f}, ImGuiCond_FirstUseEver);
+            bool selection_open = true;
+            if (ImGui::Begin("Selection", &selection_open)) {
+                for (std::size_t index = 0; index < state.selection.size();) {
+                    const auto alias = state.selection[index];
+                    auto actor = findActorByAlias(context, state.levelOne, alias);
+                    if (not actor)
+                        actor = findActorByAlias(context, state.levelTwo, alias);
+                    const auto hash = fqsm::internal::id::info_hash(static_cast<fqsm::internal::id::BaseType>(alias));
+                    const auto row = actor ? std::format("{}  #{}", layerLabel(actor->layer), hash) : std::format("?  #{}", hash);
+                    ImGui::PushID(static_cast<int>(index));
+                    ImGui::TextUnformatted(row.c_str());
+                    ImGui::SameLine();
+                    const bool remove = ImGui::SmallButton("x");
+                    ImGui::PopID();
+                    if (remove)
+                        state.selection.erase(state.selection.begin() + static_cast<std::ptrdiff_t>(index));
+                    else
+                        ++index;
+                }
+            }
+            ImGui::End();
+            if (not selection_open)
+                state.selection.clear();
+        }
     }
 
     void Blueprints::bindView(std::vector<rmmr::wrapper::Product::View>& product_views, bool open, const rmmr::wrapper::Product::View& world_view) const {

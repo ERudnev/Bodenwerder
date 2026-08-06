@@ -34,7 +34,7 @@ namespace rmmr {
     Renderer::Renderer()
         : scene_color_{.fbo = 0, .color = 0, .size = index2{0, 0}}
         , overlay_color_{.fbo = 0, .color = 0, .size = index2{0, 0}}
-        , identity_{.fbo = 0, .color = 0, .depth = 0, .size = index2{0, 0}}
+        , identity_{.all_fbo = 0, .selected_fbo = 0, .color = 0, .selected = 0, .depth = 0, .size = index2{0, 0}}
         , fullscreen_vao_{0}
     {}
 
@@ -49,10 +49,14 @@ namespace rmmr {
         };
         release(scene_color_);
         release(overlay_color_);
-        if (identity_.fbo)
-            glDeleteFramebuffers(1, &identity_.fbo);
+        if (identity_.all_fbo)
+            glDeleteFramebuffers(1, &identity_.all_fbo);
+        if (identity_.selected_fbo)
+            glDeleteFramebuffers(1, &identity_.selected_fbo);
         if (identity_.color)
             glDeleteTextures(1, &identity_.color);
+        if (identity_.selected)
+            glDeleteTextures(1, &identity_.selected);
         if (identity_.depth)
             glDeleteTextures(1, &identity_.depth);
     }
@@ -97,29 +101,41 @@ namespace rmmr {
     void Renderer::ensure_identity_target(index2 size) {
         const int width = std::max(static_cast<int>(size.x), 1);
         const int height = std::max(static_cast<int>(size.y), 1);
-        if (identity_.fbo and identity_.size.x == size.x and identity_.size.y == size.y)
+        if (identity_.all_fbo and identity_.selected_fbo and identity_.size.x == size.x and identity_.size.y == size.y)
             return;
 
-        if (identity_.fbo) {
-            glDeleteFramebuffers(1, &identity_.fbo);
-            identity_.fbo = 0;
+        if (identity_.all_fbo) {
+            glDeleteFramebuffers(1, &identity_.all_fbo);
+            identity_.all_fbo = 0;
+        }
+        if (identity_.selected_fbo) {
+            glDeleteFramebuffers(1, &identity_.selected_fbo);
+            identity_.selected_fbo = 0;
         }
         if (identity_.color) {
             glDeleteTextures(1, &identity_.color);
             identity_.color = 0;
+        }
+        if (identity_.selected) {
+            glDeleteTextures(1, &identity_.selected);
+            identity_.selected = 0;
         }
         if (identity_.depth) {
             glDeleteTextures(1, &identity_.depth);
             identity_.depth = 0;
         }
 
-        glGenTextures(1, &identity_.color);
-        glBindTexture(GL_TEXTURE_2D, identity_.color);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        auto make_id_texture = [&](renderer::Texture& texture) {
+            glGenTextures(1, &texture);
+            glBindTexture(GL_TEXTURE_2D, texture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        };
+        make_id_texture(identity_.color);
+        make_id_texture(identity_.selected);
 
         glGenTextures(1, &identity_.depth);
         glBindTexture(GL_TEXTURE_2D, identity_.depth);
@@ -127,38 +143,70 @@ namespace rmmr {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-        glGenFramebuffers(1, &identity_.fbo);
-        glBindFramebuffer(GL_FRAMEBUFFER, identity_.fbo);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, identity_.color, 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, identity_.depth, 0);
-        const GLenum draw_buffers[]{GL_COLOR_ATTACHMENT0};
-        glDrawBuffers(1, draw_buffers);
-
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            throw std::runtime_error("Renderer: identity framebuffer incomplete");
-        }
+        auto make_fbo = [&](renderer::Framebuffer& fbo, renderer::Texture color, const char* label) {
+            glGenFramebuffers(1, &fbo);
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, identity_.depth, 0);
+            const GLenum draw_buffers[]{GL_COLOR_ATTACHMENT0};
+            glDrawBuffers(1, draw_buffers);
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                throw std::runtime_error(std::string("Renderer: ") + label + " framebuffer incomplete");
+            }
+        };
+        make_fbo(identity_.all_fbo, identity_.color, "identity");
+        make_fbo(identity_.selected_fbo, identity_.selected, "identitySelected");
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glBindTexture(GL_TEXTURE_2D, 0);
         identity_.size = size;
     }
 
-    void Renderer::begin_identity_pass(index2 size) {
+    void Renderer::clear_identity_feature(index2 size) {
         ensure_identity_target(size);
-        glBindFramebuffer(GL_FRAMEBUFFER, identity_.fbo);
         const int width = std::max(static_cast<int>(size.x), 1);
         const int height = std::max(static_cast<int>(size.y), 1);
         glViewport(0, 0, width, height);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LEQUAL); // selected then all: same-Z must still write all-ID
         glDepthMask(GL_TRUE);
         const GLuint clear_alias[]{0u};
+        glBindFramebuffer(GL_FRAMEBUFFER, identity_.selected_fbo);
         glClearBufferuiv(GL_COLOR, 0, clear_alias);
         glClear(GL_DEPTH_BUFFER_BIT);
+        glBindFramebuffer(GL_FRAMEBUFFER, identity_.all_fbo);
+        glClearBufferuiv(GL_COLOR, 0, clear_alias);
+        // depth already cleared via shared attachment
+    }
+
+    void Renderer::begin_identity_selected_pass(index2 size) {
+        clear_identity_feature(size);
+        glBindFramebuffer(GL_FRAMEBUFFER, identity_.selected_fbo);
+        const int width = std::max(static_cast<int>(size.x), 1);
+        const int height = std::max(static_cast<int>(size.y), 1);
+        glViewport(0, 0, width, height);
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_TRUE);
+    }
+
+    void Renderer::begin_identity_pass(index2 size) {
+        ensure_identity_target(size);
+        glBindFramebuffer(GL_FRAMEBUFFER, identity_.all_fbo);
+        const int width = std::max(static_cast<int>(size.x), 1);
+        const int height = std::max(static_cast<int>(size.y), 1);
+        glViewport(0, 0, width, height);
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_TRUE);
     }
 
     void Renderer::end_identity_pass(FrameContext args) {
+        glDepthFunc(GL_LESS);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         system::Viewport::Actions::activate(args.world, args.view.viewport);
     }
@@ -241,7 +289,13 @@ namespace rmmr {
             glGenVertexArrays(1, &fullscreen_vao_);
         const auto id_scene = material::Semantics::id_of("sceneColor");
         const auto id_ident = material::Semantics::id_of("identiffyMap");
+        const auto id_selected_map = material::Semantics::id_of("selectedMap");
         const auto id_texel = material::Semantics::id_of("texelSize");
+        const auto id_under = material::Semantics::id_of("under");
+        const auto id_selected_count = material::Semantics::id_of("selectedCount");
+        const auto id_selected = material::Semantics::id_of("selected");
+        const auto under = with<system::Window>::get(args.world, args.window).current.under;
+        const int selected_count = std::min(static_cast<int>(args.selection.size()), resource::overlay::selection_capacity);
         GLint unit = 0;
         for (const auto& binding : overlay.bindings) {
             if (binding.location < 0)
@@ -256,8 +310,20 @@ namespace rmmr {
                 glBindTexture(GL_TEXTURE_2D, identity_.color);
                 glUniform1i(binding.location, unit);
                 ++unit;
+            } else if (binding.id == id_selected_map) {
+                glActiveTexture(GL_TEXTURE0 + unit);
+                glBindTexture(GL_TEXTURE_2D, identity_.selected);
+                glUniform1i(binding.location, unit);
+                ++unit;
             } else if (binding.id == id_texel) {
                 glUniform2f(binding.location, 1.0f / static_cast<float>(width), 1.0f / static_cast<float>(height));
+            } else if (binding.id == id_under) {
+                glUniform1ui(binding.location, under);
+            } else if (binding.id == id_selected_count) {
+                glUniform1i(binding.location, selected_count);
+            } else if (binding.id == id_selected) {
+                if (selected_count > 0)
+                    glUniform1uiv(binding.location, selected_count, args.selection.data());
             }
         }
 
@@ -445,7 +511,8 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         }
 
         auto technique_for(const resource::material::Runtime::Quantum& material, renderer::Pass pass) -> const resource::material::Runtime::Technique& {
-            const auto it = material.techniques.find(pass);
+            const auto technique_pass = pass == renderer::Pass::identitySelected ? renderer::Pass::identity : pass;
+            const auto it = material.techniques.find(technique_pass);
             if (it == material.techniques.end()) {
                 throw std::runtime_error("Renderer: material has no technique for pass");
             }
@@ -512,13 +579,14 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         }
 
         // shadow is offscreen; identity is offscreen pick; environment is first color on the main FB…
-        constexpr std::array<renderer::Pass, 7> render_queue_passes{
+        constexpr std::array<renderer::Pass, 8> render_queue_passes{
             renderer::Pass::shadow,
             renderer::Pass::environment,
             renderer::Pass::opaque,
             renderer::Pass::transparent,
             renderer::Pass::sprite,
             renderer::Pass::gizmo,
+            renderer::Pass::identitySelected,
             renderer::Pass::identity,
         };
 
@@ -584,13 +652,14 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         base::maybe<scene::Light::Id> primary_light,
         base::maybe<resource::shadow::Runtime::Id> shadow)
     {
+        const auto material_pass = pass == renderer::Pass::identitySelected ? renderer::Pass::identity : pass;
         // Depth-only shadow technique has no material-unique samplers: cache by program.
         if (pass == renderer::Pass::shadow) {
             if (state.bound_shader && *state.bound_shader == shader) {
                 return;
             }
-            with<resource::material::Runtime>::apply(args.world, material, args.window, pass);
-            bind_pass_uniforms(args, pass, material, primary_light, shadow);
+            with<resource::material::Runtime>::apply(args.world, material, args.window, material_pass);
+            bind_pass_uniforms(args, material_pass, material, primary_light, shadow);
             state.bound_shader = shader;
             state.bound_material = material;
             state.bound_geometry.reset();
@@ -604,12 +673,12 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         const bool program_changed = not state.bound_shader || *state.bound_shader != shader;
 
         if (program_changed) {
-            with<resource::material::Runtime>::apply(args.world, material, args.window, pass);
-            bind_pass_uniforms(args, pass, material, primary_light, shadow);
+            with<resource::material::Runtime>::apply(args.world, material, args.window, material_pass);
+            bind_pass_uniforms(args, material_pass, material, primary_light, shadow);
             state.bound_shader = shader;
             state.bound_geometry.reset();
         } else {
-            bind_material_samplers(args, pass, material);
+            bind_material_samplers(args, material_pass, material);
         }
 
         state.bound_material = material;
@@ -801,19 +870,30 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         integer identity_draws = 0;
         renderer::Integer32 identity_under = renderer::Integer32{0};
         bool identity_published = false;
+        bool identity_feature_cleared = false;
 
         for (const auto pass : render_queue_passes) {
             if (pass == renderer::Pass::shadow && not lighting.shadow) {
                 continue;
             }
+            if (pass == renderer::Pass::identitySelected && commands[pass].empty()) {
+                continue;
+            }
             if (pass == renderer::Pass::identity && commands[pass].empty()) {
-                publish_identity(args, 0, renderer::Integer32{0});
+                if (not identity_feature_cleared) {
+                    clear_identity_feature(with<system::Viewport>::get(args.world, args.view.viewport).size);
+                    identity_feature_cleared = true;
+                }
+                identity_under = renderer::Integer32{0};
+                publish_identity(args, 0, identity_under);
                 identity_published = true;
+                end_identity_pass(args);
                 continue;
             }
             const bool unlit_pass = pass == renderer::Pass::sprite
                 || pass == renderer::Pass::gizmo
                 || pass == renderer::Pass::environment
+                || pass == renderer::Pass::identitySelected
                 || pass == renderer::Pass::identity;
             if (lighting.lights.empty() && not unlit_pass) {
                 if (not commands[pass].empty())
@@ -822,7 +902,14 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             }
 
             const auto& viewport = with<system::Viewport>::get(args.world, args.view.viewport);
-            if (pass == renderer::Pass::identity) {
+            if (pass == renderer::Pass::identitySelected) {
+                begin_identity_selected_pass(viewport.size);
+                identity_feature_cleared = true;
+            } else if (pass == renderer::Pass::identity) {
+                if (not identity_feature_cleared) {
+                    clear_identity_feature(viewport.size);
+                    identity_feature_cleared = true;
+                }
                 begin_identity_pass(viewport.size);
             } else {
                 begin_pass(pass, args, lighting.shadow);
@@ -890,6 +977,8 @@ void main() { fragColor = texture(u_overlay, vUv); })";
                 publish_identity(args, identity_draws, identity_under);
                 identity_published = true;
                 end_identity_pass(args);
+            } else if (pass == renderer::Pass::identitySelected) {
+                // Shared depth kept; all-ID pass follows without restoring the main FB.
             } else {
                 end_pass(pass, args, lighting.shadow);
             }
@@ -902,11 +991,9 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             const auto& viewport = with<system::Viewport>::get(args.world, args.view.viewport);
             capture_scene_color(viewport.size);
             ensure_identity_target(viewport.size);
-            if (identity_draws == 0) {
-                glBindFramebuffer(GL_FRAMEBUFFER, identity_.fbo);
-                const GLuint clear_alias[]{0u};
-                glClearBufferuiv(GL_COLOR, 0, clear_alias);
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            if (not identity_feature_cleared) {
+                clear_identity_feature(viewport.size);
+                end_identity_pass(args);
             }
             run_overlay(args, viewport.size);
             compose_overlay(viewport.size);

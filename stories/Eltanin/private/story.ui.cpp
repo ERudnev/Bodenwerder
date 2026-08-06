@@ -47,6 +47,7 @@ namespace eltanin {
                 case renderer::Pass::gizmo: return "Gizmo";
                 case renderer::Pass::sprite: return "Sprite";
                 case renderer::Pass::environment: return "Environment";
+                case renderer::Pass::identitySelected: return "IdentitySelected";
                 case renderer::Pass::identity: return "Identity";
             }
             return "Unknown";
@@ -108,6 +109,12 @@ namespace eltanin {
         if (not ui.blueprints or not assets.blueprintsEditorEffect)
             return {};
         return assets.blueprintsEditorEffect;
+    }
+
+    auto Game::overlaySelection() const -> std::span<const rmmr::renderer::Integer32> {
+        if (not ui.blueprints)
+            return {};
+        return blueprints.state.selection;
     }
 
     void Game::drawUi(Writing world) {

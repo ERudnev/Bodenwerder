@@ -153,6 +153,7 @@ namespace rmmr::wrapper {
             state->ui.draw(state->world, *product);
             engine->setActiveViews(product->views);
             engine->setActiveOverlay(product->activeOverlay());
+            engine->setOverlaySelection(product->overlaySelection());
             engine->render(state->world);
             engine->endFrame(state->world);
         }

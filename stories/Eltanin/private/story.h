@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <span>
 #include <unordered_map>
 
 #include <base/maybe.h>
@@ -70,6 +71,7 @@ namespace eltanin {
         void contributeViewMenu() override;
         void drawUi(Writing) override;
         auto activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> override;
+        auto overlaySelection() const -> std::span<const rmmr::renderer::Integer32> override;
 
     private:
         void populateWorld(Writing, rmmr::system::Window::Id);

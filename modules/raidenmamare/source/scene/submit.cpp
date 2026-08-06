@@ -70,22 +70,28 @@ namespace rmmr::scene {
             return;
         }
 
-        where[renderer::Pass::identity].push_back(renderer::Command{
-            .model = draw.model,
-            .geometry = geometry_it->second,
-            .material = material_it->second,
-            .shader = technique_it->second.shader,
-            .sprite = {},
-            .sprite_index = 0,
-            .albedo = RGB{1.0f, 1.0f, 1.0f},
-            .opacity = 1.0f,
-            .pattern_scale = 1.0f,
-            .scenicAlias = draw.scenicAlias,
-            .instance_data = {},
-            .instance_count = renderer::Count{1},
-            .render_state = renderer::RenderState{.blend = renderer::BlendMode::inherit},
-            .indices = {},
-        });
+        const auto push = [&](renderer::Pass pass) {
+            where[pass].push_back(renderer::Command{
+                .model = draw.model,
+                .geometry = geometry_it->second,
+                .material = material_it->second,
+                .shader = technique_it->second.shader,
+                .sprite = {},
+                .sprite_index = 0,
+                .albedo = RGB{1.0f, 1.0f, 1.0f},
+                .opacity = 1.0f,
+                .pattern_scale = 1.0f,
+                .scenicAlias = draw.scenicAlias,
+                .instance_data = {},
+                .instance_count = renderer::Count{1},
+                .render_state = renderer::RenderState{.blend = renderer::BlendMode::inherit},
+                .indices = {},
+            });
+        };
+
+        if (draw.selected)
+            push(renderer::Pass::identitySelected);
+        push(renderer::Pass::identity);
     }
 
 }

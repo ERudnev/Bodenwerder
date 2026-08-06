@@ -10,6 +10,8 @@
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/system/window.q1.h>
 
+#include <span>
+
 #include <base/maybe.h>
 
 #include <fQSM/api/interface.h>
@@ -31,6 +33,7 @@ namespace rmmr {
             system::Window::Id window;
             Engine::ViewContext view;
             base::maybe<resource::overlay::Asset::Id> overlay;
+            std::span<const renderer::Integer32> selection;
         };
 
         Renderer();
@@ -49,8 +52,10 @@ namespace rmmr {
         };
 
         struct IdentityTarget {
-            renderer::Framebuffer fbo;
+            renderer::Framebuffer all_fbo;
+            renderer::Framebuffer selected_fbo;
             renderer::Texture color;
+            renderer::Texture selected;
             renderer::Texture depth;
             index2 size;
         };
@@ -62,6 +67,8 @@ namespace rmmr {
 
         void ensure_color_target(ColorTarget& target, index2 size, const char* label);
         void ensure_identity_target(index2 size);
+        void clear_identity_feature(index2 size);
+        void begin_identity_selected_pass(index2 size);
         void begin_identity_pass(index2 size);
         auto peek_identity_under(FrameContext args, index2 viewport_size) -> renderer::Integer32;
         void end_identity_pass(FrameContext args);

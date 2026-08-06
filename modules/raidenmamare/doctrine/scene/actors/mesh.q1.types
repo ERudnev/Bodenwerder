@@ -26,10 +26,12 @@ namespace rmmr
       feature Identified of Mesh
         one
           scenicAlias: renderer::Integer32
+          selected: bool // → Pass::identitySelected as well as Pass::identity
         all
           lastGeneratedId: integer // starts from zero on startup, first generated will be 1
           material: #resource::material::Asset? // shared identity pick material; bind once at asset bootstrap
           // do not store mapping Integer32 -> # — find() each time (worst case once per frame)
           ?lookup(renderer::Integer32)->#?
+          >applySelection(vector<renderer::Integer32>) // clear all, set selected for listed aliases
           >extend(#Mesh)
           ?submit(#system::Device, >where: renderer::CommandBuffer)

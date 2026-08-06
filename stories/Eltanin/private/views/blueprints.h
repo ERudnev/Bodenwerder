@@ -7,6 +7,7 @@
 
 #include <base/maybe.h>
 #include <eltanin/resources/blueprint.q1.h>
+#include <rmmr/renderer/types.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
@@ -42,7 +43,8 @@ namespace eltanin::views {
             base::maybe<rmmr::scene::Camera::Id> camera;
             std::array<base::maybe<rmmr::scene::Grid::Id>, 3> grids;
             std::vector<resource::blueprint::Asset::Id> loaded;
-            base::maybe<resource::blueprint::Asset::Id> selected;
+            base::maybe<resource::blueprint::Asset::Id> hovered;
+            std::vector<rmmr::renderer::Integer32> selection;
             Layers layers;
             std::vector<Actor> levelOne; // drawn: frame / inner / plate / wing
             std::vector<Actor> levelTwo; // stash; unused for now

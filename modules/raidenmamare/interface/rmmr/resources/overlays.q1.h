@@ -23,6 +23,8 @@ namespace rmmr::resource::overlay {
         quarter,
     };
 
+    inline constexpr int selection_capacity = 64;
+
     inline auto scale_divisor(Scale scale) -> int {
         switch (scale) {
             case Scale::full: return 1;

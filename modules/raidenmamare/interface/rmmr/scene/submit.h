@@ -26,10 +26,12 @@ namespace rmmr::scene {
         };
 
         // Identity pick: full geometry, one scenicAlias; material from Identified::Global.
+        // selected → also queued into Pass::identitySelected (same alias value).
         struct Identiffy {
             mat4 model;
             resource::geometry::Asset::Id geometry;
             renderer::Integer32 scenicAlias;
+            bool selected;
         };
 
         mat4 model;

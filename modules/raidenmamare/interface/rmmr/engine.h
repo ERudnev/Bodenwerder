@@ -1,11 +1,13 @@
 #pragma once
 
 #include <memory>
+#include <span>
 #include <vector>
 
 #include <fQSM/api/interface.h>
 
 #include <base/maybe.h>
+#include <rmmr/renderer/types.q1.h>
 #include <rmmr/resources/overlays.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -47,6 +49,7 @@ namespace rmmr {
         auto window() const -> system::Window::Id;
         void setActiveViews(std::vector<ViewContext>);
         void setActiveOverlay(base::maybe<resource::overlay::Asset::Id>);
+        void setOverlaySelection(std::span<const renderer::Integer32>);
 
         bool shouldClose(Reading) const;
         auto monotonicUs() const -> int64;

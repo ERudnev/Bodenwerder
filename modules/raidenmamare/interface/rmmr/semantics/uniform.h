@@ -50,7 +50,7 @@ namespace rmmr::material {
         // - 1..99: matrices and structural transforms
         // - 100..1999: world / material / light pixel channels
         // - 2000..: screen-space overlay (and kin)
-        static constexpr auto vocabulary = std::array<Entry, 25>{{
+        static constexpr auto vocabulary = std::array<Entry, 29>{{
             Entry{0, Type::i32, "_undefined"},
 
             // triangle.vert.glsl
@@ -87,6 +87,10 @@ namespace rmmr::material {
             Entry{2000, Type::sampler2d, "sceneColor"},
             Entry{2001, Type::sampler2d, "identiffyMap"},
             Entry{2002, Type::v2f, "texelSize"},
+            Entry{2003, Type::i32, "under"},
+            Entry{2004, Type::i32, "selectedCount"},
+            Entry{2005, Type::i32, "selected"}, // uniform array base; upload via glUniform1uiv
+            Entry{2006, Type::sampler2d, "selectedMap"},
         }};
 
         static constexpr auto name_of(PersistentId id) -> Name {
