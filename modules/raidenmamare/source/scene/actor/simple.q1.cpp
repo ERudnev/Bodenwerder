@@ -29,6 +29,7 @@ namespace rmmr::scene::actor {
             .albedo = actor.albedo,
             .opacity = 1.0f,
             .pattern_scale = 1.0f,
+            .scenicAlias = renderer::Integer32{0},
         }, where);
     }
 

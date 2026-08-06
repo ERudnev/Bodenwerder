@@ -1,6 +1,7 @@
 #include <rmmr/scene/submit.h>
 
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/scene/actors/mesh.q1.h>
 
 namespace rmmr::scene {
 
@@ -42,12 +43,49 @@ namespace rmmr::scene {
                 .albedo = draw.albedo,
                 .opacity = draw.opacity,
                 .pattern_scale = draw.pattern_scale,
+                .scenicAlias = draw.scenicAlias,
                 .instance_data = {},
                 .instance_count = renderer::Count{1},
                 .render_state = renderer::RenderState{.blend = material.blend},
                 .indices = indices,
             });
         }
+    }
+
+    void submit_identity(Reading context, system::Device::Id device, const DrawInstance::Identiffy& draw, renderer::CommandBuffer& where) {
+        const auto& global = with<actor::Identified>::get_global(context);
+        if (not global.material)
+            return;
+
+        const auto& runtimes = with<resource::Runtimes>::get(context, device);
+        const auto geometry_it = runtimes.geometries_id_mapping.find(draw.geometry);
+        const auto material_it = runtimes.materials_id_mapping.find(*global.material);
+        if (geometry_it == runtimes.geometries_id_mapping.end() || material_it == runtimes.materials_id_mapping.end()) {
+            return;
+        }
+
+        const auto& material = with<resource::material::Runtime>::get(context, material_it->second);
+        const auto technique_it = material.techniques.find(renderer::Pass::identity);
+        if (technique_it == material.techniques.end()) {
+            return;
+        }
+
+        where[renderer::Pass::identity].push_back(renderer::Command{
+            .model = draw.model,
+            .geometry = geometry_it->second,
+            .material = material_it->second,
+            .shader = technique_it->second.shader,
+            .sprite = {},
+            .sprite_index = 0,
+            .albedo = RGB{1.0f, 1.0f, 1.0f},
+            .opacity = 1.0f,
+            .pattern_scale = 1.0f,
+            .scenicAlias = draw.scenicAlias,
+            .instance_data = {},
+            .instance_count = renderer::Count{1},
+            .render_state = renderer::RenderState{.blend = renderer::BlendMode::inherit},
+            .indices = {},
+        });
     }
 
 }

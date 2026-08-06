@@ -22,6 +22,7 @@ namespace rmmr::system {
             return Window::InputState{
                 .keys = {},
                 .mouse = index2{0, 0},
+                .under = renderer::Integer32{0},
             };
         }
 
@@ -100,6 +101,7 @@ namespace rmmr::system {
             .title = std::move(title),
             .previous = empty_input_state(),
             .current = empty_input_state(),
+            .identityDraws = 0,
         });
         with<ImGuiHost>::extend(context, device, ImGuiHost::Quantum{
             .context = nullptr,

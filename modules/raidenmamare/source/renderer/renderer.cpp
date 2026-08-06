@@ -22,10 +22,129 @@
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
+#include <imgui.h>
+#include <GLFW/glfw3.h>
+
 namespace rmmr {
 
     using namespace fqsm::api;
     using namespace api_for_internals;
+
+    Renderer::Renderer()
+        : identity_{.fbo = 0, .color = 0, .depth = 0, .size = index2{0, 0}}
+    {}
+
+    Renderer::~Renderer() {
+        if (identity_.fbo)
+            glDeleteFramebuffers(1, &identity_.fbo);
+        if (identity_.color)
+            glDeleteTextures(1, &identity_.color);
+        if (identity_.depth)
+            glDeleteTextures(1, &identity_.depth);
+    }
+
+    void Renderer::ensure_identity_target(index2 size) {
+        const int width = std::max(static_cast<int>(size.x), 1);
+        const int height = std::max(static_cast<int>(size.y), 1);
+        if (identity_.fbo and identity_.size.x == size.x and identity_.size.y == size.y)
+            return;
+
+        if (identity_.fbo) {
+            glDeleteFramebuffers(1, &identity_.fbo);
+            identity_.fbo = 0;
+        }
+        if (identity_.color) {
+            glDeleteTextures(1, &identity_.color);
+            identity_.color = 0;
+        }
+        if (identity_.depth) {
+            glDeleteTextures(1, &identity_.depth);
+            identity_.depth = 0;
+        }
+
+        glGenTextures(1, &identity_.color);
+        glBindTexture(GL_TEXTURE_2D, identity_.color);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glGenTextures(1, &identity_.depth);
+        glBindTexture(GL_TEXTURE_2D, identity_.depth);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        glGenFramebuffers(1, &identity_.fbo);
+        glBindFramebuffer(GL_FRAMEBUFFER, identity_.fbo);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, identity_.color, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, identity_.depth, 0);
+        const GLenum draw_buffers[]{GL_COLOR_ATTACHMENT0};
+        glDrawBuffers(1, draw_buffers);
+
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            throw std::runtime_error("Renderer: identity framebuffer incomplete");
+        }
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        identity_.size = size;
+    }
+
+    void Renderer::begin_identity_pass(index2 size) {
+        ensure_identity_target(size);
+        glBindFramebuffer(GL_FRAMEBUFFER, identity_.fbo);
+        const int width = std::max(static_cast<int>(size.x), 1);
+        const int height = std::max(static_cast<int>(size.y), 1);
+        glViewport(0, 0, width, height);
+        glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+        const GLuint clear_alias[]{0u};
+        glClearBufferuiv(GL_COLOR, 0, clear_alias);
+        glClear(GL_DEPTH_BUFFER_BIT);
+    }
+
+    void Renderer::end_identity_pass(FrameContext args) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        system::Viewport::Actions::activate(args.world, args.view.viewport);
+    }
+
+    auto Renderer::peek_identity_under(FrameContext args, index2 viewport_size) -> renderer::Integer32 {
+        if (ImGui::GetIO().WantCaptureMouse)
+            return renderer::Integer32{0};
+
+        const auto& window = with<system::Window>::get(args.world, args.window);
+        const auto& viewport = with<system::Viewport>::get(args.world, args.view.viewport);
+        const auto fb = system::Window::Actions::framebufferSize(args.world, args.window);
+
+        int win_w = 1;
+        int win_h = 1;
+        glfwGetWindowSize(with<system::Device>::get(args.world, args.window).handle, &win_w, &win_h);
+        win_w = std::max(win_w, 1);
+        win_h = std::max(win_h, 1);
+
+        const auto fb_x = static_cast<integer>(std::lround(static_cast<double>(window.current.mouse.x) * static_cast<double>(fb.x) / static_cast<double>(win_w)));
+        const auto fb_y = static_cast<integer>(std::lround(static_cast<double>(window.current.mouse.y) * static_cast<double>(fb.y) / static_cast<double>(win_h)));
+        const auto local_x = fb_x - viewport.origin.x;
+        const auto local_y = fb_y - viewport.origin.y;
+        if (local_x < 0 or local_y < 0 or local_x >= viewport_size.x or local_y >= viewport_size.y)
+            return renderer::Integer32{0};
+
+        const int read_x = static_cast<int>(local_x);
+        const int read_y = static_cast<int>(viewport_size.y) - 1 - static_cast<int>(local_y);
+        GLuint alias = 0;
+        glReadPixels(read_x, read_y, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &alias);
+        return static_cast<renderer::Integer32>(alias);
+    }
+
+    void Renderer::publish_identity(FrameContext args, integer draws, renderer::Integer32 under) {
+        auto window = with<system::Window>::modify(args.world, args.window);
+        window->identityDraws = draws;
+        window->current.under = under;
+    }
 
     namespace {
 
@@ -52,6 +171,7 @@ namespace rmmr {
             Id spriteIndex = material::Semantics::id_of("spriteIndex");
             Id inverseAtlasSize = material::Semantics::id_of("inverseAtlasSize");
             Id opacity = material::Semantics::id_of("opacity");
+            Id scenicAlias = material::Semantics::id_of("scenicAlias");
         } semantic{};
 
         struct ShadowCaster {
@@ -204,14 +324,15 @@ namespace rmmr {
             }
         }
 
-        // shadow is offscreen; environment is first color on the main FB, then opaque…
-        constexpr std::array<renderer::Pass, 6> render_queue_passes{
+        // shadow is offscreen; identity is offscreen pick; environment is first color on the main FB…
+        constexpr std::array<renderer::Pass, 7> render_queue_passes{
             renderer::Pass::shadow,
             renderer::Pass::environment,
             renderer::Pass::opaque,
             renderer::Pass::transparent,
             renderer::Pass::sprite,
             renderer::Pass::gizmo,
+            renderer::Pass::identity,
         };
 
         void apply_blend(renderer::Pass pass, renderer::BlendMode blend) {
@@ -454,6 +575,8 @@ namespace rmmr {
                 set_uniform_sampler_buffer(binding, sprite->entries_texture, 1);
             } else if (binding.id == semantic.spriteIndex) {
                 set_uniform(binding, command.sprite_index);
+            } else if (binding.id == semantic.scenicAlias) {
+                set_uniform(binding, static_cast<integer>(command.scenicAlias));
             } else if (binding.id == semantic.inverseAtlasSize) {
                 if (not sprite) {
                     throw std::runtime_error("Renderer: inverseAtlasSize requested on non-sprite draw");
@@ -488,20 +611,35 @@ namespace rmmr {
         GLboolean depth_write_prev{};
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);
 
+        integer identity_draws = 0;
+        renderer::Integer32 identity_under = renderer::Integer32{0};
+        bool identity_published = false;
+
         for (const auto pass : render_queue_passes) {
             if (pass == renderer::Pass::shadow && not lighting.shadow) {
                 continue;
             }
+            if (pass == renderer::Pass::identity && commands[pass].empty()) {
+                publish_identity(args, 0, renderer::Integer32{0});
+                identity_published = true;
+                continue;
+            }
             const bool unlit_pass = pass == renderer::Pass::sprite
                 || pass == renderer::Pass::gizmo
-                || pass == renderer::Pass::environment;
+                || pass == renderer::Pass::environment
+                || pass == renderer::Pass::identity;
             if (lighting.lights.empty() && not unlit_pass) {
                 if (not commands[pass].empty())
                     base::message("Renderer: no light; skipping draws for pass");
                 continue;
             }
 
-            begin_pass(pass, args, lighting.shadow);
+            const auto& viewport = with<system::Viewport>::get(args.world, args.view.viewport);
+            if (pass == renderer::Pass::identity) {
+                begin_identity_pass(viewport.size);
+            } else {
+                begin_pass(pass, args, lighting.shadow);
+            }
             PassDrawState pass_state{};
 
             auto& batch = commands[pass];
@@ -536,23 +674,42 @@ namespace rmmr {
 
                 draw_instance(args, pass, command, command.material);
 
+                bool drew = false;
                 if (geometry.index_count > renderer::Count{0}) {
                     if (command.indices) {
                         const auto& range = *command.indices;
                         if (range.count > renderer::Count{0}) {
                             const auto byte_offset = static_cast<renderer::IntPtr>(range.start) * static_cast<renderer::IntPtr>(sizeof(GLuint));
                             glDrawElements(GL_TRIANGLES, range.count, GL_UNSIGNED_INT, reinterpret_cast<const void*>(byte_offset));
+                            drew = true;
                         }
                     } else {
                         glDrawElements(GL_TRIANGLES, geometry.index_count, GL_UNSIGNED_INT, nullptr);
+                        drew = true;
                     }
                 } else {
                     glDrawArrays(GL_TRIANGLES, 0, geometry.vertex_count);
+                    drew = true;
                 }
+                if (drew and pass == renderer::Pass::identity)
+                    ++identity_draws;
             }
 
-            end_pass(pass, args, lighting.shadow);
+            if (pass == renderer::Pass::identity) {
+                if (identity_draws == 0)
+                    identity_under = renderer::Integer32{0};
+                else
+                    identity_under = peek_identity_under(args, viewport.size);
+                publish_identity(args, identity_draws, identity_under);
+                identity_published = true;
+                end_identity_pass(args);
+            } else {
+                end_pass(pass, args, lighting.shadow);
+            }
         }
+
+        if (not identity_published)
+            publish_identity(args, 0, renderer::Integer32{0});
 
         glDepthMask(depth_write_prev);
     }

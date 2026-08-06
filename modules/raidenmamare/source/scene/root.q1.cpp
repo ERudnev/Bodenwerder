@@ -68,6 +68,8 @@ namespace rmmr::scene {
 
     void Interface::render(Reading context, Root::Id root, system::Device::Id device, renderer::CommandBuffer& where) {
         const auto& node_group = with<Node_group>::get(context, root);
+
+        // TODO: refactor this stuff: one complex loop -> many simplier (type-alligned) loops
         for (const auto node : node_group) {
             if (with<actor::Simple>::exists(context, node)) {
                 actor::Simple::Actions::submit(context, node, device, where);
@@ -75,6 +77,8 @@ namespace rmmr::scene {
             }
             if (with<actor::Mesh>::exists(context, node)) {
                 actor::Mesh::Actions::submit(context, node, device, where);
+                if (with<actor::Identified>::exists(context, node))
+                    actor::Identified::Actions::submit(context, node, device, where);
                 continue;
             }
             if (with<actor::Sprite>::exists(context, node)) {

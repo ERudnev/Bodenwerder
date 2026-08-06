@@ -4,6 +4,7 @@
 #include "mech/semantics/space.h"
 
 #include <eltanin/resources/assets.q1.h>
+#include <fQSM/identifier.h>
 #include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
@@ -12,10 +13,12 @@
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/root.q1.h>
+#include <rmmr/system/window.q1.h>
 
 #include <imgui.h>
 
 #include <filesystem>
+#include <format>
 #include <numbers>
 
 namespace eltanin::views {
@@ -171,6 +174,7 @@ namespace eltanin::views {
                 .opacity = opacity,
                 .visible = true,
             });
+        scene::actor::Identified::Actions::extend(context, id);
         return Actor{.id = id, .layer = layer};
     }
 
@@ -216,6 +220,21 @@ namespace eltanin::views {
                 ImGui::Text("Hull plates: %zu", data.hull.size());
                 ImGui::Text("L1 actors: %zu", state.levelOne.size());
                 ImGui::Text("L2 actors: %zu", state.levelTwo.size());
+                ImGui::Separator();
+                ImGui::TextUnformatted("Under cursor");
+                {
+                    renderer::Integer32 under = renderer::Integer32{0};
+                    for (const auto [_, window] : context->aspect<system::Window>().items()) {
+                        under = window.current.under;
+                        break;
+                    }
+                    if (under == renderer::Integer32{0}) {
+                        ImGui::TextDisabled("—");
+                    } else {
+                        const auto label = std::format("#{}", fqsm::internal::id::info_hash(static_cast<fqsm::internal::id::BaseType>(under)));
+                        ImGui::TextUnformatted(label.c_str());
+                    }
+                }
                 ImGui::Separator();
                 ImGui::TextUnformatted("Layers (levelOne)");
                 bool layers_changed = false;

@@ -40,6 +40,7 @@ namespace rmmr::renderer {
         RGB albedo;
         float opacity;
         float pattern_scale;
+        renderer::Integer32 scenicAlias;
         InstanceSource instance_data;
         Count instance_count;
         RenderState render_state;

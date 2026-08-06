@@ -20,6 +20,7 @@ namespace rmmr::scene {
             .albedo = RGB{0.0f, 0.0f, 0.0f},
             .opacity = grid.opacity,
             .pattern_scale = grid.pattern_scale,
+            .scenicAlias = renderer::Integer32{0},
         }, where);
     }
 

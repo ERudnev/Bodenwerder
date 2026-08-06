@@ -56,6 +56,7 @@ namespace rmmr::renderer {
         inline const Passes shadow_only{Pass::shadow};
         inline const Passes sprite_only{Pass::sprite};
         inline const Passes environment_only{Pass::environment};
+        inline const Passes identity_only{Pass::identity};
 
     }
 

@@ -5,6 +5,7 @@
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/system/core.q1.h>
+#include <rmmr/system/window.q1.h>
 
 #include <chrono>
 #include <ctime>
@@ -36,7 +37,7 @@ namespace rmmr::wrapper::ui {
         ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x + pad, viewport->WorkPos.y + viewport->WorkSize.y - pad), ImGuiCond_Always, ImVec2(0.f, 1.f));
         const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
 
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.28f);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.48f);
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8.f, 2.f));
         if (ImGui::Begin("Stats", &stats, flags)) {
             ImGui::SetWindowFontScale(0.75f);
@@ -64,6 +65,13 @@ namespace rmmr::wrapper::ui {
             } else {
                 ImGui::TextDisabled("No system clock.");
             }
+
+            integer identity_draws = 0;
+            for (const auto [_, window] : world->aspect<system::Window>().items()) {
+                identity_draws = window.identityDraws;
+                break;
+            }
+            ImGui::Text("Identity: %lld", static_cast<long long>(identity_draws));
 
             ImGui::Separator();
             ImGui::Text("Materials: %zu", with<resource::material::Asset>::count(world));

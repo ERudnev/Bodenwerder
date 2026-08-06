@@ -42,13 +42,14 @@ namespace rmmr::scene::actor {
             .model = model,
             .geometry = *global.geometry,
             .material = actor.material,
-            .sprite = DrawInstance::SpriteSource{
+            .sprite = DrawInstance::Sprite{
                 .pack = actor.pack,
                 .index = actor.index,
             },
             .albedo = RGB{1.0f, 1.0f, 1.0f} + actor.tint,
             .opacity = actor.opacity,
             .pattern_scale = 1.0f,
+            .scenicAlias = renderer::Integer32{0},
         }, where);
     }
 

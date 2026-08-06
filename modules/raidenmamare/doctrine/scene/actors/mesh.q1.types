@@ -22,3 +22,14 @@ namespace rmmr
           ?submit(#system::Device, >where: renderer::CommandBuffer)
         all
           >create(Pos, HPB, geometry: #resource::geometry::Asset, materials: umap<string, #resource::material::Asset>, albedo: RGB) -> #
+
+      feature Identified of Mesh
+        one
+          scenicAlias: renderer::Integer32
+        all
+          lastGeneratedId: integer // starts from zero on startup, first generated will be 1
+          material: #resource::material::Asset? // shared identity pick material; bind once at asset bootstrap
+          // do not store mapping Integer32 -> # — find() each time (worst case once per frame)
+          ?lookup(renderer::Integer32)->#?
+          >extend(#Mesh)
+          ?submit(#system::Device, >where: renderer::CommandBuffer)

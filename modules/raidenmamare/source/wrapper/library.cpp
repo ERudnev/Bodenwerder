@@ -6,6 +6,7 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
+#include <rmmr/scene/actors/mesh.q1.h>
 
 namespace rmmr::wrapper::assets {
 
@@ -46,6 +47,7 @@ namespace rmmr::wrapper::assets {
         const auto grid = with<Assets>::add_shader_loader(context, Unit::name("rmmr", "grid"), item<shader::Loader>{.vertex = "shaders/Grid.vert.glsl", .fragment = "shaders/Grid.frag.glsl"});
         const auto sprite = with<Assets>::add_shader_loader(context, Unit::name("rmmr", "sprite"), item<shader::Loader>{.vertex = "shaders/sprite.vert.glsl", .fragment = "shaders/sprite.frag.glsl"});
         const auto shadow_depth = with<Assets>::add_shader_loader(context, Unit::name("rmmr", "shadow_depth"), item<shader::Loader>{.vertex = "shaders/shadowDepth.vert.glsl", .fragment = "shaders/shadowDepth.frag.glsl"});
+        const auto identity = with<Assets>::add_shader_loader(context, Unit::name("rmmr", "identity"), item<shader::Loader>{.vertex = "shaders/identity.vert.glsl", .fragment = "shaders/identity.frag.glsl"});
 
         handles.material.gizmo.textured = with<Assets>::add_material(context, Unit::name("rmmr", "gizmo_textured_debug06"), builders::material::Presets::gizmoTextured(with<Unit>::remember(context, gizmo_textured), with<Unit>::remember(context, handles.texture.debug[5])));
         handles.material.gizmo.vertexColor = with<Assets>::add_material(context, Unit::name("rmmr", "gizmo_vertex_color"), builders::material::Presets::gizmoVertexColor(with<Unit>::remember(context, vertex_color)));
@@ -62,6 +64,8 @@ namespace rmmr::wrapper::assets {
         handles.material.oneSidedGlass = with<Assets>::add_material(context, Unit::name("rmmr", "one_sided_glass_debug06"), builders::material::Presets::oneSidedGlass(with<Unit>::remember(context, glass), with<Unit>::remember(context, handles.texture.debug[5])));
         handles.material.grid = with<Assets>::add_material(context, Unit::name("rmmr", "grid"), builders::material::Presets::grid(with<Unit>::remember(context, grid)));
         handles.material.sprite = with<Assets>::add_material(context, Unit::name("rmmr", "sprite"), builders::material::Presets::sprite(with<Unit>::remember(context, sprite)));
+        handles.material.identity = with<Assets>::add_material(context, Unit::name("rmmr", "identity"), builders::material::Presets::identity(with<Unit>::remember(context, identity)));
+        with<scene::actor::Identified>::modify_global(context)->material = handles.material.identity;
         handles.primitives = with<Assets>::add_meshpack_objs_loader(context, Unit::name("rmmr", "primitives"), item<meshpack::LoaderObjs>{.file = "meshes/primitives/primitives.meshpack"});
 
         base::message("toy: hardcoded assets added");

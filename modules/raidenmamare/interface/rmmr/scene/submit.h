@@ -15,25 +15,37 @@ namespace rmmr::scene {
 
     // Instance + assets; techniques keys select baskets in CommandBuffer.
     struct DrawInstance {
-        struct SpriteSource {
-            resource::sprite::Pack::Id pack;
-            integer index;
-        };
         struct IndexRange {
             renderer::Count start;
             renderer::Count count;
         };
 
+        struct Sprite {
+            resource::sprite::Pack::Id pack;
+            integer index;
+        };
+
+        // Identity pick: full geometry, one scenicAlias; material from Identified::Global.
+        struct Identiffy {
+            mat4 model;
+            resource::geometry::Asset::Id geometry;
+            renderer::Integer32 scenicAlias;
+        };
+
         mat4 model;
         resource::geometry::Asset::Id geometry;
         resource::material::Asset::Id material;
-        base::maybe<SpriteSource> sprite;
+        base::maybe<Sprite> sprite;
         RGB albedo;
         float opacity;
         float pattern_scale;
+        renderer::Integer32 scenicAlias;
         base::maybe<IndexRange> indices;
     };
 
     void submit_material_passes(Reading, system::Device::Id, const DrawInstance&, renderer::CommandBuffer& where);
+
+    // Push only Pass::identity; binds shared Identified::Global.material; full index range.
+    void submit_identity(Reading, system::Device::Id, const DrawInstance::Identiffy&, renderer::CommandBuffer& where);
 
 }

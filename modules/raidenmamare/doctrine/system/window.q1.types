@@ -1,22 +1,26 @@
 import "system/core"
+import "renderer/gl"
 
 namespace rmmr
   namespace system
 
     // Drawable surface bound to Device (GLFW window + OpenGL context).
     // Resize: poll framebuffer each frame — no GLFW resize callback.
-    // Time lives on system::Clock; Window only snapshots input.
+    // Time lives on system::Clock; Window snapshots input (+ last pick under cursor).
     component Window of Device
     enum Presentation : windowed, maximized
     struct InputState
       keys: vector<bool>
       mouse: index2
+      under: renderer::Integer32 // scenicAlias at mouse; 0 = none (filled after identity pass)
     one
       title: string
       InputState previous
       InputState current
+      identityDraws: integer // last frame: draw calls in Pass::identity
       >create(title: string, requested_size: index2, presentation: Presentation)->#
       ?framebufferSize() -> index2   // live drawable extent (glfwGetFramebufferSize)
       ?present()
       ?mouseShift() -> index2
-      =onFrameAdvanced()             // input snapshot only
+      =onFrameAdvanced()             // input snapshot only (does not clear under)
+

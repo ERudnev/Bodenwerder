@@ -34,6 +34,7 @@ namespace rmmr::wrapper::assets {
             base::maybe<rmmr::resource::material::Asset::Id> oneSidedGlass;
             base::maybe<rmmr::resource::material::Asset::Id> grid;
             base::maybe<rmmr::resource::material::Asset::Id> sprite;
+            base::maybe<rmmr::resource::material::Asset::Id> identity;
         } material;
     };
 

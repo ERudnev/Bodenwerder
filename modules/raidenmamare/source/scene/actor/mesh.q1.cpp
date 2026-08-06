@@ -1,6 +1,8 @@
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/submit.h>
 
+#include <rmmr/resources/runtimes.q1.h>
+
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace rmmr::scene::actor {
@@ -49,6 +51,7 @@ namespace rmmr::scene::actor {
                 .albedo = actor.albedo,
                 .opacity = actor.opacity,
                 .pattern_scale = 1.0f,
+                .scenicAlias = renderer::Integer32{0},
                 .indices = DrawInstance::IndexRange{
                     .start = part_it->second.startIndex,
                     .count = part_it->second.countIndex,
@@ -64,8 +67,44 @@ namespace rmmr::scene::actor {
                 .albedo = actor.albedo,
                 .opacity = actor.opacity,
                 .pattern_scale = 1.0f,
+                .scenicAlias = renderer::Integer32{0},
             }, where);
         }
+    }
+
+    void Identified::Actions::extend(Writing context, Mesh::Id mesh) {
+        auto global = with<Identified>::modify_global(context);
+        ++global->lastGeneratedId;
+        const auto alias = static_cast<renderer::Integer32>(global->lastGeneratedId);
+        Identified::BaseActions::extend(context, mesh, Identified::Quantum{.scenicAlias = alias});
+    }
+
+    auto Identified::Actions::lookup(Reading context, renderer::Integer32 alias) -> optional<Id> {
+        if (alias == renderer::Integer32{0})
+            return {};
+        for (const auto [id, quantum] : context->aspect<Identified>().items()) {
+            if (quantum.scenicAlias == alias)
+                return id;
+        }
+        return {};
+    }
+
+    void Identified::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {
+        // Same id as Mesh / Node — Feature guarantees host Mesh (and thus Node) exists.
+        const auto& mesh = with<Mesh>::get(context, node);
+        if (not mesh.visible)
+            return;
+        if (not with<resource::geometry::Asset>::exists(context, mesh.geometry))
+            return;
+
+        auto model = Node::Actions::transform(context, node);
+        model = glm::scale(model, mesh.scale);
+        // One draw, full IBO — all submeshes, one scenicAlias.
+        submit_identity(context, device, DrawInstance::Identiffy{
+            .model = model,
+            .geometry = mesh.geometry,
+            .scenicAlias = with<Identified>::get(context, node).scenicAlias,
+        }, where);
     }
 
 }

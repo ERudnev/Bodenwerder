@@ -1,5 +1,6 @@
 #pragma once
 
+#include <rmmr/renderer/gl.q1.h>
 #include <rmmr/system/core.q1.h>
 
 #include <cstdint>
@@ -18,12 +19,14 @@ namespace rmmr::system {
         struct InputState {
             vector<bool> keys;
             index2 mouse;
+            renderer::Integer32 under;
         };
 
         struct Quantum {
             string title;
             InputState previous;
             InputState current;
+            integer identityDraws;
         };
         struct Actions : BaseActions {
             static auto create(Writing, string title, index2 requested_size, Presentation presentation) -> Id;

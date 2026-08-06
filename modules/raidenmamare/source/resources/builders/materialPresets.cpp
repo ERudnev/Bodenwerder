@@ -269,4 +269,21 @@ namespace rmmr::resource::builders::material {
         };
     }
 
+    auto Presets::identity(resource::shader::Reference program) -> Asset::Quantum {
+        return Asset::Quantum{
+            .techniques = {
+                {renderer::Pass::identity, Asset::Technique{
+                    .program = program,
+                    .uniforms = ::rmmr::material::Semantics::ids_of({
+                        "model",
+                        "view",
+                        "projection",
+                        "scenicAlias",
+                    }),
+                    .textures = {},
+                }},
+            },
+        };
+    }
+
 }
