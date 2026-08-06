@@ -14,16 +14,23 @@ uniform uint u_under;
 in vec2 vUv;
 layout (location = 0) out vec4 fragColor;
 
-const int R_OUTLINE = 4;
-const int R_SEG = 3; // ~outline / 1.5
+const int R_OUTLINE = 8;
+const int R_SEG = 3;
+const int R_HOVER = 8;
 
 uint fetchId(usampler2D map, ivec2 p, ivec2 size) {
     p = clamp(p, ivec2(0), size - ivec2(1));
     return texelFetch(map, p, 0).r;
 }
 
-float edgeWeight(float ratio) {
-    return smoothstep(0.08, 0.38, ratio);
+// Selection outer rim: saturate early so larger R actually reads as a thicker band.
+float outlineEdgeWeight(float ratio) {
+    return smoothstep(0.03, 0.18, ratio);
+}
+
+// Fatter hover rim: hits 1.0 while still a bit inland from the silhouette.
+float hoverEdgeWeight(float ratio) {
+    return smoothstep(0.04, 0.20, ratio);
 }
 
 void main() {
@@ -35,12 +42,12 @@ void main() {
 
     vec4 color = vec4(0.0);
 
-    // Hover frame on the frontmost object under cursor — outline only, no fill.
+    // Hover frame — wider sample, full alpha on a thicker band, no fill.
     if (u_under != 0u && frontId == u_under) {
         int hOwn = 0;
         int hForeign = 0;
-        for (int y = -R_OUTLINE; y <= R_OUTLINE; ++y) {
-            for (int x = -R_OUTLINE; x <= R_OUTLINE; ++x) {
+        for (int y = -R_HOVER; y <= R_HOVER; ++y) {
+            for (int x = -R_HOVER; x <= R_HOVER; ++x) {
                 uint s = fetchId(u_identiffyMap, pixel + ivec2(x, y), size);
                 if (s == u_under)
                     ++hOwn;
@@ -49,8 +56,8 @@ void main() {
             }
         }
         float hoverEdge = float(hForeign) / float(max(hOwn + hForeign, 1));
-        float hoverContrib = edgeWeight(hoverEdge);
-        color += vec4(1.0, 0.25, 0.15, 0.72) * hoverContrib;
+        float hoverContrib = hoverEdgeWeight(hoverEdge);
+        color += vec4(1.0, 0.22, 0.12, 1.0) * hoverContrib;
     }
 
     if (centerSel == 0u) {
@@ -92,7 +99,7 @@ void main() {
     }
 
     float segEdge = smoothstep(0.12, 0.42, segmentation);
-    float outEdge = edgeWeight(outline);
+    float outEdge = outlineEdgeWeight(outline);
 
     float contrib = 0.0;
     contrib += segEdge * 0.95;

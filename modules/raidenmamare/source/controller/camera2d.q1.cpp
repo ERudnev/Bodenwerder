@@ -50,13 +50,17 @@ namespace rmmr::controller {
             node.pose.position.y += static_cast<float>(delta_mouse.y) * k_pan_pixels_to_world;
         }
 
-        void drive(Writing context, Camera2d::Id self, system::Window::Id window, GLFWwindow* handle, seconds delta_sec) {
+        auto button_down(const system::Window::InputState& input, int button) -> bool {
+            return static_cast<std::size_t>(button) < input.buttons.size() && input.buttons[static_cast<std::size_t>(button)];
+        }
+
+        void drive(Writing context, Camera2d::Id self, system::Window::Id window, seconds delta_sec) {
             const auto& input = with<system::Window>::get(context, window);
             auto node = with<scene::Node>::modify(context, self);
 
             apply_arrow_move(*node, input.current.keys, delta_sec);
 
-            if (glfwGetMouseButton(handle, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
+            if (button_down(input.current, GLFW_MOUSE_BUTTON_RIGHT)) {
                 apply_mouse_drag(*node, with<system::Window>::mouseShift(context, window));
             }
         }
@@ -78,12 +82,8 @@ namespace rmmr::controller {
                 const seconds delta_sec = static_cast<seconds>(dt_us) / 1'000'000.0;
 
                 for (const auto entry : context.proposal.aspect<system::Window>().items()) {
-                    const auto& device = with<system::Device>::get(context, entry.id);
-                    if (not device.handle) {
-                        continue;
-                    }
                     for (const auto [id, _] : context.proposal.aspect<Camera2d>().items()) {
-                        drive(context, id, entry.id, device.handle, delta_sec);
+                        drive(context, id, entry.id, delta_sec);
                     }
                 }
             }

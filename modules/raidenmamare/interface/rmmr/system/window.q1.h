@@ -18,6 +18,7 @@ namespace rmmr::system {
         };
         struct InputState {
             vector<bool> keys;
+            vector<bool> buttons;
             index2 mouse;
             renderer::Integer32 under;
         };
@@ -34,6 +35,8 @@ namespace rmmr::system {
             static void present(Reading, Id);
             static auto mouseShift(Reading, Id) -> index2;
             static void onFrameAdvanced(Writing, Id);
+            // Call after ImGuiHost::newFrame. Clears keys / mouse delta+buttons when UI wants them.
+            static void applyUiCapture(Writing, Id);
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

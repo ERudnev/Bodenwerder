@@ -209,8 +209,13 @@ namespace rmmr {
         const auto& device = state->handles.device;
 
         with<system::Device>::poll_events(context);
-        // Input first, then system clock — Clock reactions see fresh Window snapshots.
+        // Input snapshot, then ImGui NewFrame (WantCapture*), then sanitize Window for gameplay.
         with<system::Window>::onFrameAdvanced(context, device);
+
+        if (not state->handles.activeViews.empty()) {
+            with<system::ImGuiHost>::newFrame(context, device);
+            with<system::Window>::applyUiCapture(context, device);
+        }
 
         {
             const auto clock = with<system::Clock>::singleton(context);
@@ -227,10 +232,6 @@ namespace rmmr {
             {
                 glfwSetWindowShouldClose(with<system::Device>::get(context, device).handle, true);
             }
-        }
-
-        if (not state->handles.activeViews.empty()) {
-            with<system::ImGuiHost>::newFrame(context, device);
         }
     }
 

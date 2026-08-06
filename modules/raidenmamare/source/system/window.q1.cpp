@@ -6,6 +6,7 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <imgui.h>
 
 #include <algorithm>
 #include <cmath>
@@ -17,10 +18,12 @@ namespace rmmr::system {
     namespace {
 
         constexpr integer k_glfw_key_capacity = GLFW_KEY_LAST + 1;
+        constexpr integer k_glfw_button_capacity = GLFW_MOUSE_BUTTON_LAST + 1;
 
         auto empty_input_state() -> Window::InputState {
             return Window::InputState{
                 .keys = {},
+                .buttons = {},
                 .mouse = index2{0, 0},
                 .under = renderer::Integer32{0},
             };
@@ -69,9 +72,15 @@ namespace rmmr::system {
             if (input.keys.size() < static_cast<std::size_t>(k_glfw_key_capacity)) {
                 input.keys.assign(static_cast<std::size_t>(k_glfw_key_capacity), false);
             }
+            if (input.buttons.size() < static_cast<std::size_t>(k_glfw_button_capacity)) {
+                input.buttons.assign(static_cast<std::size_t>(k_glfw_button_capacity), false);
+            }
 
             for (int key = GLFW_KEY_SPACE; key <= GLFW_KEY_LAST; ++key) {
                 input.keys[static_cast<std::size_t>(key)] = glfwGetKey(handle, key) == GLFW_PRESS;
+            }
+            for (int button = 0; button <= GLFW_MOUSE_BUTTON_LAST; ++button) {
+                input.buttons[static_cast<std::size_t>(button)] = glfwGetMouseButton(handle, button) == GLFW_PRESS;
             }
 
             double mouse_x = 0.0;
@@ -136,6 +145,22 @@ namespace rmmr::system {
         auto quantum = with<Window>::modify(context, window);
         quantum->previous = quantum->current;
         poll_input(with<Device>::get(context, window).handle, quantum->current);
+    }
+
+    void Window::Actions::applyUiCapture(Writing context, Id window) {
+        const auto& io = ImGui::GetIO();
+        if (not io.WantCaptureKeyboard and not io.WantCaptureMouse)
+            return;
+
+        auto quantum = with<Window>::modify(context, window);
+        if (io.WantCaptureKeyboard) {
+            std::fill(quantum->current.keys.begin(), quantum->current.keys.end(), false);
+        }
+        if (io.WantCaptureMouse) {
+            // Neutral delta for look/drag; drop buttons so RMB does not stick through UI.
+            quantum->current.mouse = quantum->previous.mouse;
+            std::fill(quantum->current.buttons.begin(), quantum->current.buttons.end(), false);
+        }
     }
 
 }

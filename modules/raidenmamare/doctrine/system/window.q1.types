@@ -11,6 +11,7 @@ namespace rmmr
     enum Presentation : windowed, maximized
     struct InputState
       keys: vector<bool>
+      buttons: vector<bool> // mouse buttons (GLFW indices)
       mouse: index2
       under: renderer::Integer32 // scenicAlias at mouse; 0 = none (filled after identity pass)
     one
@@ -23,4 +24,5 @@ namespace rmmr
       ?present()
       ?mouseShift() -> index2
       =onFrameAdvanced()             // input snapshot only (does not clear under)
+      =applyUiCapture()              // after ImGui::NewFrame: neutralize channels WantCapture* claimed
 
