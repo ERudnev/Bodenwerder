@@ -25,6 +25,7 @@ namespace rmmr::system {
                 .keys = {},
                 .buttons = {},
                 .mouse = index2{0, 0},
+                .wheel = 0.0f,
                 .under = renderer::Integer32{0},
             };
         }
@@ -87,6 +88,7 @@ namespace rmmr::system {
             double mouse_y = 0.0;
             glfwGetCursorPos(handle, &mouse_x, &mouse_y);
             input.mouse = index2{static_cast<integer>(std::lround(mouse_x)), static_cast<integer>(std::lround(mouse_y))};
+            input.wheel = 0.0f; // filled after ImGui::NewFrame in applyUiCapture
         }
 
     } // namespace
@@ -149,10 +151,8 @@ namespace rmmr::system {
 
     void Window::Actions::applyUiCapture(Writing context, Id window) {
         const auto& io = ImGui::GetIO();
-        if (not io.WantCaptureKeyboard and not io.WantCaptureMouse)
-            return;
-
         auto quantum = with<Window>::modify(context, window);
+        quantum->current.wheel = io.WantCaptureMouse ? 0.0f : io.MouseWheel;
         if (io.WantCaptureKeyboard) {
             std::fill(quantum->current.keys.begin(), quantum->current.keys.end(), false);
         }

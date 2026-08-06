@@ -13,6 +13,7 @@ namespace rmmr
       keys: vector<bool>
       buttons: vector<bool> // mouse buttons (GLFW indices)
       mouse: index2
+      wheel: float // vertical scroll this frame (ImGui; 0 if UI captured mouse)
       under: renderer::Integer32 // scenicAlias at mouse; 0 = none (filled after identity pass)
     one
       title: string

@@ -33,6 +33,7 @@ set(Raidenmamare_Q1
     resources/runtimes.q1.types
     controllers/camera3d.q1.types
     controllers/camera2d.q1.types
+    controllers/cameraOrbit.q1.types
     renderer/gl.q1.types
     renderer/types.q1.types
 )

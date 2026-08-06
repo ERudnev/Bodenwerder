@@ -7,6 +7,7 @@
 
 #include <rmmr/controller/camera2d.q1.h>
 #include <rmmr/controller/camera3d.q1.h>
+#include <rmmr/controller/cameraOrbit.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/overlays.q1.h>
@@ -75,6 +76,7 @@ namespace rmmr {
                 ask::schema::aspect<resource::meshpack::LoaderLwo>(),
                 ask::schema::aspect<controller::Camera3d>(),
                 ask::schema::aspect<controller::Camera2d>(),
+                ask::schema::aspect<controller::CameraOrbit>(),
                 ask::schema::aspect<scene::Root>(),
                 ask::schema::aspect<scene::Node>(),
                 ask::schema::aspect<scene::Node_group>(),

@@ -1,0 +1,17 @@
+import "system/core"
+import "system/window"
+import "scene/camera"
+import "math"
+
+namespace rmmr
+  namespace controller
+
+    // Orbit: looks at pivot; RMB turns HPB around it; distance along view.
+    attribute CameraOrbit of scene::Camera
+      one
+        pivot: Pos
+        hpb: HPB // bank kept 0
+        distance: float
+        >create(pivot: Pos, distance: float)-> #
+      all
+        !update(~system::Clock) // RMB orbit; wheel zoom; arrows pan pivot

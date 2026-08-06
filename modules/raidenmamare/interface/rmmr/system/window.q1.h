@@ -20,6 +20,7 @@ namespace rmmr::system {
             vector<bool> keys;
             vector<bool> buttons;
             index2 mouse;
+            float wheel;
             renderer::Integer32 under;
         };
 

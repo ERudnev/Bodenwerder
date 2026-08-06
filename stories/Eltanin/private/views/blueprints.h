@@ -1,6 +1,6 @@
 #pragma once
 
-#include <array>
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -24,7 +24,8 @@ namespace eltanin::views {
 
     using namespace fqsm::api;
 
-    // Blueprint viewer: own scene; Game swaps product views when `open`.
+    // Blueprint editor view: in-memory only (never writes .blueprint files).
+    // Own scene; Game swaps product views when `open`.
     struct Blueprints {
         struct Layers {
             bool plate;
@@ -33,15 +34,23 @@ namespace eltanin::views {
             bool wing;
         };
 
+        enum class Source : std::uint8_t {
+            cell,
+            stub,
+            plate,
+        };
+
         struct Actor {
             rmmr::scene::actor::Mesh::Id id;
             mech::layer layer;
+            Source source;
+            std::size_t index; // into Asset.data.cells / stubs / hull
         };
 
         struct State {
             base::maybe<rmmr::scene::Root::Id> scene;
             base::maybe<rmmr::scene::Camera::Id> camera;
-            std::array<base::maybe<rmmr::scene::Grid::Id>, 3> grids;
+            base::maybe<rmmr::scene::Grid::Id> grid;
             std::vector<resource::blueprint::Asset::Id> loaded;
             base::maybe<resource::blueprint::Asset::Id> hovered;
             std::vector<rmmr::renderer::Integer32> selection;
@@ -54,7 +63,9 @@ namespace eltanin::views {
 
         void create(Writing, filepath directory);
         void show(Writing, resource::blueprint::Asset::Id);
-        auto spawnFromPack(Writing, rmmr::resource::meshpack::Asset::Id, const std::string& entry, const mech::Pose&, mech::layer, rmmr::RGB albedo, float opacity) -> base::maybe<Actor>;
+        void syncVisuals(Writing); // rebuild actors from hovered Asset.data
+        void deleteSelection(Writing); // mutate data + syncVisuals; never disk
+        auto spawnFromPack(Writing, rmmr::resource::meshpack::Asset::Id, const std::string& entry, const mech::Pose&, mech::layer, Source, std::size_t index, rmmr::RGB albedo, float opacity) -> base::maybe<Actor>;
         void applyLayers(Writing);
         void draw(Writing, bool& open);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;

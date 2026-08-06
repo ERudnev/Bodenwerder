@@ -5,7 +5,7 @@
 
 #include <eltanin/resources/assets.q1.h>
 #include <fQSM/identifier.h>
-#include <rmmr/controller/camera3d.q1.h>
+#include <rmmr/controller/cameraOrbit.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -21,6 +21,8 @@
 #include <filesystem>
 #include <format>
 #include <numbers>
+#include <set>
+#include <utility>
 
 namespace eltanin::views {
 
@@ -82,6 +84,13 @@ namespace eltanin::views {
             };
         }
 
+        void erase_descending(auto& vec, const std::set<std::size_t>& indices) {
+            for (auto it = indices.rbegin(); it != indices.rend(); ++it) {
+                if (*it < vec.size())
+                    vec.erase(vec.begin() + static_cast<std::ptrdiff_t>(*it));
+            }
+        }
+
     } // namespace
 
     void Blueprints::create(Writing context, filepath directory) {
@@ -95,22 +104,20 @@ namespace eltanin::views {
 
         const float cell = mech::physical::edgeMeters;
         const float pattern_scale = 1.0f / cell;
-        constexpr int levels[3]{-1, 0, 1};
-        for (std::size_t index = 0; index < state.grids.size(); ++index) {
-            state.grids[index] = with<scene::Interface>::createGrid(
-                context,
-                root,
-                Pose::from(Pos{0.0f, static_cast<float>(levels[index]) * cell, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
-                item<scene::Grid>{.geometry = *grid_geometry, .material = *grid_material, .opacity = 0.35f, .pattern_scale = pattern_scale});
-        }
+        state.grid = with<scene::Interface>::createGrid(
+            context,
+            root,
+            Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
+            item<scene::Grid>{.geometry = *grid_geometry, .material = *grid_material, .opacity = 0.55f, .pattern_scale = pattern_scale});
 
-        const Pos camera_pos{12.0f, 10.0f, 20.0f};
+        const Pos pivot{0.0f, 0.0f, 0.0f};
+        const Pos camera_pos{24.0f, 20.0f, 40.0f};
         const auto camera = with<scene::Interface>::createCamera(
             context,
             root,
             Pose::from(camera_pos, HPB{36.87f, -29.74f, 0.0f}),
-            100.0f * std::numbers::pi_v<float> / 180.0f);
-        with<controller::Camera3d>::create(context, camera);
+            60.0f * std::numbers::pi_v<float> / 180.0f);
+        with<controller::CameraOrbit>::create(context, camera, pivot, glm::length(camera_pos - pivot));
 
         with<scene::Interface>::createLight(
             context,
@@ -149,37 +156,80 @@ namespace eltanin::views {
     }
 
     void Blueprints::show(Writing context, resource::blueprint::Asset::Id asset_id) {
+        state.hovered = asset_id;
+        state.selection.clear();
+        syncVisuals(context);
+    }
+
+    void Blueprints::syncVisuals(Writing context) {
         for (const auto& actor : state.levelOne)
             destroyMeshActor(context, actor.id);
         for (const auto& actor : state.levelTwo)
             destroyMeshActor(context, actor.id);
         state.levelOne.clear();
         state.levelTwo.clear();
-        state.selection.clear();
-        state.hovered = asset_id;
 
-        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, asset_id).data;
+        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
+            return;
+
+        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
         const auto pack_one = *with<Assets>::find<meshpack::Asset>(context, Unit::Actions::name("Eltanin", "levelOne"));
 
-        for (const auto& cell : data.cells) {
-            if (auto frame = spawnFromPack(context, pack_one, mech::levelOne::mesh(cell.shape), cell.pose, mech::layer::frame, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
+        for (std::size_t i = 0; i < data.cells.size(); ++i) {
+            const auto& cell = data.cells[i];
+            if (auto frame = spawnFromPack(context, pack_one, mech::levelOne::mesh(cell.shape), cell.pose, mech::layer::frame, Source::cell, i, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
                 state.levelOne.push_back(*frame);
-            if (auto inner = spawnFromPack(context, pack_one, mech::levelOne::innerMesh(cell.shape), cell.pose, mech::layer::inner, mech::slot::color(cell.role), 0.45f))
+            if (auto inner = spawnFromPack(context, pack_one, mech::levelOne::innerMesh(cell.shape), cell.pose, mech::layer::inner, Source::cell, i, mech::slot::color(cell.role), 0.45f))
                 state.levelOne.push_back(*inner);
         }
-        for (const auto& stub : data.stubs) {
-            if (auto wing = spawnFromPack(context, pack_one, mech::levelOne::mesh(stub.shape), stub.pose, mech::layer::wing, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
+        for (std::size_t i = 0; i < data.stubs.size(); ++i) {
+            const auto& stub = data.stubs[i];
+            if (auto wing = spawnFromPack(context, pack_one, mech::levelOne::mesh(stub.shape), stub.pose, mech::layer::wing, Source::stub, i, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
                 state.levelOne.push_back(*wing);
         }
-        for (const auto& plate : data.hull) {
-            if (auto a = spawnFromPack(context, pack_one, mech::levelOne::mesh(plate.shape), plate.pose, mech::layer::plate, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
+        for (std::size_t i = 0; i < data.hull.size(); ++i) {
+            const auto& plate = data.hull[i];
+            if (auto a = spawnFromPack(context, pack_one, mech::levelOne::mesh(plate.shape), plate.pose, mech::layer::plate, Source::plate, i, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
                 state.levelOne.push_back(*a);
         }
 
         applyLayers(context);
     }
 
-    auto Blueprints::spawnFromPack(Writing context, meshpack::Asset::Id pack, const std::string& entry, const mech::Pose& pose, mech::layer layer, RGB albedo, float opacity) -> base::maybe<Actor> {
+    void Blueprints::deleteSelection(Writing context) {
+        if (state.selection.empty())
+            return;
+        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
+            return;
+
+        std::set<std::size_t> cells;
+        std::set<std::size_t> stubs;
+        std::set<std::size_t> plates;
+        for (const auto alias : state.selection) {
+            auto actor = findActorByAlias(context, state.levelOne, alias);
+            if (not actor)
+                actor = findActorByAlias(context, state.levelTwo, alias);
+            if (not actor)
+                continue;
+            switch (actor->source) {
+                case Source::cell: cells.insert(actor->index); break;
+                case Source::stub: stubs.insert(actor->index); break;
+                case Source::plate: plates.insert(actor->index); break;
+            }
+        }
+
+        state.selection.clear();
+        if (cells.empty() and stubs.empty() and plates.empty())
+            return;
+
+        auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
+        erase_descending(data->data.cells, cells);
+        erase_descending(data->data.stubs, stubs);
+        erase_descending(data->data.hull, plates);
+        syncVisuals(context);
+    }
+
+    auto Blueprints::spawnFromPack(Writing context, meshpack::Asset::Id pack, const std::string& entry, const mech::Pose& pose, mech::layer layer, Source source, std::size_t index, RGB albedo, float opacity) -> base::maybe<Actor> {
         if (entry.empty())
             return {};
         const auto resolved = meshpack::Asset::Actions::resolve(context, pack, entry);
@@ -198,7 +248,7 @@ namespace eltanin::views {
                 .visible = true,
             });
         scene::actor::Identified::Actions::extend(context, id);
-        return Actor{.id = id, .layer = layer};
+        return Actor{.id = id, .layer = layer, .source = source, .index = index};
     }
 
     void Blueprints::applyLayers(Writing context) {
@@ -222,12 +272,16 @@ namespace eltanin::views {
                 state.selection.push_back(under);
         }
 
+        if (ImGui::IsKeyPressed(ImGuiKey_Delete) and not ImGui::GetIO().WantCaptureKeyboard)
+            deleteSelection(context);
+
         bool shown = open;
         ImVec2 blueprints_pos{};
         ImVec2 blueprints_size{};
         if (ImGui::Begin("Blueprints", &shown)) {
             blueprints_pos = ImGui::GetWindowPos();
             blueprints_size = ImGui::GetWindowSize();
+            ImGui::TextDisabled("In-memory only — never writes .blueprint");
             ImGui::BeginChild("blueprintList", ImVec2{220.0f, 0.0f}, true);
             if (state.loaded.empty()) {
                 ImGui::TextDisabled("No blueprints loaded.");
@@ -287,6 +341,7 @@ namespace eltanin::views {
             ImGui::SetNextWindowSize(ImVec2{280.0f, 220.0f}, ImGuiCond_FirstUseEver);
             bool selection_open = true;
             if (ImGui::Begin("Selection", &selection_open)) {
+                ImGui::TextDisabled("Del — remove from model (no disk write)");
                 for (std::size_t index = 0; index < state.selection.size();) {
                     const auto alias = state.selection[index];
                     auto actor = findActorByAlias(context, state.levelOne, alias);
