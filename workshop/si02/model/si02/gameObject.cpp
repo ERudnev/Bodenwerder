@@ -1,6 +1,7 @@
 #include <si02/gameObject.h>
 
 #include <si02/shot.h>
+#include <si02/sun.h>
 #include <si02/world.h>
 
 #include <rmmr/resources/sprites.q1.h>
@@ -155,8 +156,8 @@ namespace si02 {
             for (std::size_t j = i + 1; j < bodies.size(); ++j) {
                 auto node_a = with<rmmr::scene::Node>::modify(context, bodies[i].node);
                 auto node_b = with<rmmr::scene::Node>::modify(context, bodies[j].node);
-                const float dx = node_b->position.x - node_a->position.x;
-                const float dy = node_b->position.y - node_a->position.y;
+                const float dx = node_b->pose.position.x - node_a->pose.position.x;
+                const float dy = node_b->pose.position.y - node_a->pose.position.y;
                 const float dist_sq = dx * dx + dy * dy;
                 const float min_dist = bodies[i].radius + bodies[j].radius;
                 if (min_dist <= 0.0f) {
@@ -169,13 +170,29 @@ namespace si02 {
                 const float nx = dist > 0.0f ? dx / dist : 1.0f;
                 const float ny = dist > 0.0f ? dy / dist : 0.0f;
                 const float overlap = min_dist - dist;
-                const float mass_sum = bodies[i].mass + bodies[j].mass;
-                const float share_a = bodies[j].mass / mass_sum;
-                const float share_b = bodies[i].mass / mass_sum;
-                node_a->position.x -= nx * overlap * share_a;
-                node_a->position.y -= ny * overlap * share_a;
-                node_b->position.x += nx * overlap * share_b;
-                node_b->position.y += ny * overlap * share_b;
+                const bool sun_a = with<Sun>::exists(context, bodies[i].id);
+                const bool sun_b = with<Sun>::exists(context, bodies[j].id);
+                if (sun_a and sun_b) {
+                    continue;
+                }
+                // Sun stays fixed; the other body takes the full separation.
+                float share_a = 0.5f;
+                float share_b = 0.5f;
+                if (sun_a) {
+                    share_a = 0.0f;
+                    share_b = 1.0f;
+                } else if (sun_b) {
+                    share_a = 1.0f;
+                    share_b = 0.0f;
+                } else {
+                    const float mass_sum = bodies[i].mass + bodies[j].mass;
+                    share_a = bodies[j].mass / mass_sum;
+                    share_b = bodies[i].mass / mass_sum;
+                }
+                node_a->pose.position.x -= nx * overlap * share_a;
+                node_a->pose.position.y -= ny * overlap * share_a;
+                node_b->pose.position.x += nx * overlap * share_b;
+                node_b->pose.position.y += ny * overlap * share_b;
             }
         }
     }

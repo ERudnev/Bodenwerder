@@ -4,8 +4,6 @@
 
 #include <rmmr/scene/node.q1.h>
 
-#include <cmath>
-
 namespace si02 {
 
     using namespace fqsm::api;
@@ -46,14 +44,10 @@ namespace si02 {
                 const auto& node = with<rmmr::scene::Node>::get(context, *object.sprite);
                 const float dx = sun_node.pose.position.x - node.pose.position.x;
                 const float dy = sun_node.pose.position.y - node.pose.position.y;
-                const float dist_sq = dx * dx + dy * dy;
-                if (dist_sq < 1.0f) {
-                    continue;
-                }
-                const float dist = std::sqrt(dist_sq);
+                // Hooke: a = k * (sun - pos). Closed ellipses centered on the sun (unlike |a|=const).
                 auto inertia = with<Inertia>::modify(context, id);
-                inertia->vel.x += Sun::pull * (dx / dist);
-                inertia->vel.y += Sun::pull * (dy / dist);
+                inertia->vel.x += Sun::pull * dx;
+                inertia->vel.y += Sun::pull * dy;
             }
         }
     }

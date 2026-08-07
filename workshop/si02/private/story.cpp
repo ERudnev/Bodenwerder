@@ -4,6 +4,7 @@
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
+#include <rmmr/system/viewport.q1.h>
 #include <si02/gameObject.h>
 #include <si02/gun.h>
 #include <si02/player.h>
@@ -28,13 +29,13 @@ namespace si02 {
         constexpr float k_field_w = 5.0f * k_screen_w;
         constexpr float k_field_h = 5.0f * k_screen_h;
 
-        // Circular-orbit speed for constant centripetal accel `pull` (dt = 1 step).
+        // Circular-orbit speed for Hooke accel a = -pull * r (dt = 1 step): |vel| = r * sqrt(pull).
         auto circular_orbit_vel(float x, float y, float pull) -> vec3 {
             const float r = std::sqrt(x * x + y * y);
             if (r < 1.0f) {
                 return vec3{0.0f, 0.0f, 0.0f};
             }
-            const float speed = std::sqrt(pull * r);
+            const float speed = r * std::sqrt(pull);
             return vec3{-(y / r) * speed, (x / r) * speed, 0.0f};
         }
 
@@ -184,8 +185,15 @@ namespace si02 {
         });
     }
 
-    void SpriteTest::setup(Writing context, system::Core::Id, system::Viewport::Id viewport) {
+    void SpriteTest::setup(Writing context, system::Window::Id window) {
         with<World>::create(context, World::Quantum{.step = 0, .paused = false});
+
+        const auto framebuffer = with<system::Window>::framebufferSize(context, window);
+        const auto viewport = with<system::Viewport_group>::addElement(context, window, system::Viewport::Quantum{
+            .origin = index2{0, 0},
+            .size = framebuffer,
+            .clear_color = vec4{0.02f, 0.02f, 0.05f, 1.0f},
+        });
 
         const auto root = with<scene::Interface>::createScene(context);
         with<scene::Flat2d>::extend(context, root, scene::Flat2d::Quantum{
@@ -257,6 +265,10 @@ namespace si02 {
         views = {
             View{.viewport = viewport, .scene = root, .camera = camera},
         };
+    }
+
+    void SpriteTest::onFrame(establish::Realm&, int64) {
+        // Sim advances via World reactions on system::Clock (beginFrame).
     }
 
 }

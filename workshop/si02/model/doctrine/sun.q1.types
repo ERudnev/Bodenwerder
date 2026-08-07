@@ -2,13 +2,13 @@ import "gameObject"
 
 namespace si02
 
-  // Fixed attractor at world origin. Pulls Inertia bodies toward itself each step.
+  // Fixed attractor at world origin. Hooke pull (a ∝ −r) so free ellipses stay centered on the sun.
   feature Sun of GameObject
     always
       sprite_index: integer = 261 // Kenney ufoYellow — round disc
       sprite_scale: float = 2.5
       hull_size: float = 3.0 // Physical.size/mass at spawn
       max_hitpoints: integer = 10000
-      pull: float = 0.0008 // per-step accel toward sun (circular: |vel| = sqrt(pull * r))
+      pull: float = 0.0008 / 700.0 // Hooke spring k; circular |vel| = r * sqrt(k)
     all
-      =attract() // World: for each Inertia (not self/Shot/decay): vel += pull * rhat
+      =attract() // World: for each Inertia (not self/Shot/decay): vel += k * (sun - pos)

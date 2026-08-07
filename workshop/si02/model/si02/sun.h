@@ -13,7 +13,7 @@ namespace si02 {
         static constexpr float sprite_scale = 2.5f;
         static constexpr float hull_size = 3.0f;
         static constexpr integer max_hitpoints = 10000;
-        static constexpr float pull = 0.0008f;
+        static constexpr float pull = 0.0008f / 700.0f; // Hooke k (a = -k·r); |a|≈0.0008 at player r=700
         struct Quantum {};
         struct Actions : BaseActions {
             static void attract(Writing);

@@ -4,6 +4,7 @@
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
+#include <rmmr/system/viewport.q1.h>
 #include <si01/invaders/actors.h>
 #include <si01/invaders/bootstrap.h>
 #include <si01/invaders/combat.h>
@@ -32,8 +33,15 @@ namespace si01 {
         });
     }
 
-    void SpriteTest::setup(Writing context, system::Core::Id, system::Viewport::Id viewport) {
+    void SpriteTest::setup(Writing context, system::Window::Id window) {
         const auto world = with<World>::create(context, World::Quantum{.step = 0, .paused = false});
+
+        const auto framebuffer = with<system::Window>::framebufferSize(context, window);
+        const auto viewport = with<system::Viewport_group>::addElement(context, window, system::Viewport::Quantum{
+            .origin = index2{0, 0},
+            .size = framebuffer,
+            .clear_color = vec4{0.05f, 0.05f, 0.12f, 1.0f},
+        });
 
         const auto root = with<scene::Interface>::createScene(context);
         with<scene::Flat2d>::extend(context, root, scene::Flat2d::Quantum{
@@ -55,6 +63,10 @@ namespace si01 {
         views = {
             View{.viewport = viewport, .scene = root, .camera = camera},
         };
+    }
+
+    void SpriteTest::onFrame(establish::Realm&, int64) {
+        // Sim advances via World reactions on system::Clock (beginFrame).
     }
 
 }
