@@ -1,0 +1,25 @@
+---
+description: C++ identifiers — camelCase only; no snake_case, no Hungarian prefixes
+alwaysApply: true
+---
+
+# Именование C++: camelCase + группировка
+
+## Запрещено
+
+- **snake_case** в новых идентификаторах: `space_menu_open`, `visibility_changed`, `erase_descending`, `shape_item`
+- **Венгерские / type-префиксы**: `k_`, `m_`, `g_`, `p_`, `s_`, `b_`, `n_`, `i_` (`k_zoom`, `m_count`, …)
+- Константы вида `kSomething` / `k_something`
+- **Россыпь связанных полей** в `State` / больших struct: `spaceMenuTarget` + `spaceMenuClose` рядом с `scene` / `floors`
+
+## Обязано
+
+- locals / params / helpers: **lowerCamelCase** — `spaceMenuOpen`, `visibilityChanged`, `eraseDescending`, `shapeItem`
+- типы / enum / публичные struct: как в соседнем коде (часто PascalCase)
+- поля struct: как в файле рядом (`floorVisible`, не `floor_visible`)
+- Связанное состояние — **вложенный** `struct { … } name;` (имя типа не обязательно) или именованный nested, как `Layers`
+
+## Исключения
+
+- Чужой API (`GLFW_*`, `ImGui_*`, STL) — не переименовывать
+- Уже существующий snake в файле не разносить «заодно», если задача не про него; **новый** код — только camelCase

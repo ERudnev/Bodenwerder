@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -29,9 +30,8 @@ namespace eltanin::views {
     struct Blueprints {
         struct Layers {
             bool plate;
-            bool frame;
+            bool frame; // also toggles wing stubs
             bool inner;
-            bool wing;
         };
 
         enum class Source : std::uint8_t {
@@ -45,6 +45,7 @@ namespace eltanin::views {
             mech::layer layer;
             Source source;
             std::size_t index; // into Asset.data.cells / stubs / hull
+            int floor; // lattice pose.pos.y
         };
 
         struct State {
@@ -55,8 +56,14 @@ namespace eltanin::views {
             base::maybe<resource::blueprint::Asset::Id> hovered;
             std::vector<rmmr::renderer::Integer32> selection;
             Layers layers;
+            std::map<int, bool> floorVisible; // UI; rebuilt keys on syncVisuals
+            std::map<int, std::vector<rmmr::scene::actor::Mesh::Id>> floors;
             std::vector<Actor> levelOne; // drawn: frame / inner / plate / wing
             std::vector<Actor> levelTwo; // stash; unused for now
+            struct {
+                base::maybe<Actor> target;
+                bool close;
+            } spaceMenu;
         };
 
         State state;

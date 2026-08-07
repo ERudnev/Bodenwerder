@@ -1,6 +1,7 @@
 #include "views/blueprints.h"
 
 #include "mech/semantics/levelOne.h"
+#include "mech/semantics/shapes.h"
 #include "mech/semantics/space.h"
 
 #include <eltanin/resources/assets.q1.h>
@@ -47,7 +48,7 @@ namespace eltanin::views {
                 case mech::layer::plate: return layers.plate;
                 case mech::layer::frame: return layers.frame;
                 case mech::layer::inner: return layers.inner;
-                case mech::layer::wing: return layers.wing;
+                case mech::layer::wing: return layers.frame;
             }
             return false;
         }
@@ -84,11 +85,21 @@ namespace eltanin::views {
             };
         }
 
-        void erase_descending(auto& vec, const std::set<std::size_t>& indices) {
+        void eraseDescending(auto& vec, const std::set<std::size_t>& indices) {
             for (auto it = indices.rbegin(); it != indices.rend(); ++it) {
                 if (*it < vec.size())
                     vec.erase(vec.begin() + static_cast<std::ptrdiff_t>(*it));
             }
+        }
+
+        template<typename Shape>
+        auto shapeItem(const char* label, Shape current, Shape value) -> bool {
+            const bool selected = current == value;
+            if (ImGui::Selectable(label, selected))
+                return not selected;
+            if (selected)
+                ImGui::SetItemDefaultFocus();
+            return false;
         }
 
     } // namespace
@@ -130,9 +141,12 @@ namespace eltanin::views {
         state.loaded.clear();
         state.hovered.reset();
         state.selection.clear();
-        state.layers = Layers{.plate = true, .frame = true, .inner = true, .wing = true};
+        state.layers = Layers{.plate = true, .frame = true, .inner = true};
+        state.floorVisible.clear();
+        state.floors.clear();
         state.levelOne.clear();
         state.levelTwo.clear();
+        state.spaceMenu = {.target = {}, .close = false};
 
         if (not std::filesystem::is_directory(directory))
             return (void)context.refuse(std::format("eltanin::views::Blueprints::create: not a directory '{}'", directory.string()));
@@ -158,6 +172,7 @@ namespace eltanin::views {
     void Blueprints::show(Writing context, resource::blueprint::Asset::Id asset_id) {
         state.hovered = asset_id;
         state.selection.clear();
+        state.floorVisible.clear();
         syncVisuals(context);
     }
 
@@ -168,9 +183,12 @@ namespace eltanin::views {
             destroyMeshActor(context, actor.id);
         state.levelOne.clear();
         state.levelTwo.clear();
+        state.floors.clear();
 
-        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
+        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered)) {
+            state.floorVisible.clear();
             return;
+        }
 
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
         const auto pack_one = *with<Assets>::find<meshpack::Asset>(context, Unit::Actions::name("Eltanin", "levelOne"));
@@ -179,7 +197,7 @@ namespace eltanin::views {
             const auto& cell = data.cells[i];
             if (auto frame = spawnFromPack(context, pack_one, mech::levelOne::mesh(cell.shape), cell.pose, mech::layer::frame, Source::cell, i, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
                 state.levelOne.push_back(*frame);
-            if (auto inner = spawnFromPack(context, pack_one, mech::levelOne::innerMesh(cell.shape), cell.pose, mech::layer::inner, Source::cell, i, mech::slot::color(cell.role), 0.45f))
+            if (auto inner = spawnFromPack(context, pack_one, mech::levelOne::innerMesh(cell.shape), cell.pose, mech::layer::inner, Source::cell, i, mech::slot::color(cell.role), cell.shape == mech::frame::shape::k8 ? 1.0f : 0.45f))
                 state.levelOne.push_back(*inner);
         }
         for (std::size_t i = 0; i < data.stubs.size(); ++i) {
@@ -191,6 +209,18 @@ namespace eltanin::views {
             const auto& plate = data.hull[i];
             if (auto a = spawnFromPack(context, pack_one, mech::levelOne::mesh(plate.shape), plate.pose, mech::layer::plate, Source::plate, i, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
                 state.levelOne.push_back(*a);
+        }
+
+        for (const auto& actor : state.levelOne)
+            state.floors[actor.floor].push_back(actor.id);
+        for (const auto& actor : state.levelTwo)
+            state.floors[actor.floor].push_back(actor.id);
+
+        const auto previous = std::move(state.floorVisible);
+        state.floorVisible.clear();
+        for (const auto& [floor, _] : state.floors) {
+            const auto it = previous.find(floor);
+            state.floorVisible[floor] = it != previous.end() ? it->second : true;
         }
 
         applyLayers(context);
@@ -223,9 +253,9 @@ namespace eltanin::views {
             return;
 
         auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
-        erase_descending(data->data.cells, cells);
-        erase_descending(data->data.stubs, stubs);
-        erase_descending(data->data.hull, plates);
+        eraseDescending(data->data.cells, cells);
+        eraseDescending(data->data.stubs, stubs);
+        eraseDescending(data->data.hull, plates);
         syncVisuals(context);
     }
 
@@ -248,12 +278,18 @@ namespace eltanin::views {
                 .visible = true,
             });
         scene::actor::Identified::Actions::extend(context, id);
-        return Actor{.id = id, .layer = layer, .source = source, .index = index};
+        return Actor{.id = id, .layer = layer, .source = source, .index = index, .floor = static_cast<int>(pose.pos.y)};
     }
 
     void Blueprints::applyLayers(Writing context) {
+        auto floorOn = [&](int floor) -> bool {
+            const auto it = state.floorVisible.find(floor);
+            return it == state.floorVisible.end() or it->second;
+        };
         for (const auto& actor : state.levelOne)
-            scene::actor::Mesh::Actions::setVisible(context, actor.id, layerVisible(state.layers, actor.layer));
+            scene::actor::Mesh::Actions::setVisible(context, actor.id, layerVisible(state.layers, actor.layer) and floorOn(actor.floor));
+        for (const auto& actor : state.levelTwo)
+            scene::actor::Mesh::Actions::setVisible(context, actor.id, layerVisible(state.layers, actor.layer) and floorOn(actor.floor));
     }
 
     void Blueprints::draw(Writing context, bool& open) {
@@ -275,12 +311,84 @@ namespace eltanin::views {
         if (ImGui::IsKeyPressed(ImGuiKey_Delete) and not ImGui::GetIO().WantCaptureKeyboard)
             deleteSelection(context);
 
+        constexpr auto spaceMenuPopup = "##blueprints.spaceMenu";
+        const bool spaceMenuOpen = ImGui::IsPopupOpen(spaceMenuPopup);
+        if (ImGui::IsKeyPressed(ImGuiKey_Space)) {
+            if (spaceMenuOpen or state.spaceMenu.target.exists()) {
+                state.spaceMenu.close = true;
+            } else if (not ImGui::GetIO().WantCaptureKeyboard and under != renderer::Integer32{0}) {
+                auto actor = findActorByAlias(context, state.levelOne, under);
+                if (not actor)
+                    actor = findActorByAlias(context, state.levelTwo, under);
+                if (actor) {
+                    state.spaceMenu = {.target = *actor, .close = false};
+                    ImGui::OpenPopup(spaceMenuPopup);
+                    ImGui::SetNextWindowPos(ImGui::GetMousePos(), ImGuiCond_Appearing);
+                }
+            }
+        }
+
+        if (state.spaceMenu.target.exists()) {
+            if (ImGui::BeginPopup(spaceMenuPopup)) {
+                if (state.spaceMenu.close) {
+                    ImGui::CloseCurrentPopup();
+                    state.spaceMenu = {.target = {}, .close = false};
+                } else {
+                    const Actor target = *state.spaceMenu.target;
+                    bool applied = false;
+                    if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered)) {
+                        ImGui::TextDisabled("No blueprint");
+                    } else {
+                        auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
+                        if (target.source == Source::cell and target.index < data->data.cells.size()) {
+                            auto& shape = data->data.cells[target.index].shape;
+                            ImGui::TextUnformatted("Frame shape");
+                            ImGui::Separator();
+                            if (shapeItem("k8", shape, mech::frame::shape::k8)) { shape = mech::frame::shape::k8; applied = true; }
+                            if (shapeItem("k7", shape, mech::frame::shape::k7)) { shape = mech::frame::shape::k7; applied = true; }
+                            if (shapeItem("k6", shape, mech::frame::shape::k6)) { shape = mech::frame::shape::k6; applied = true; }
+                            if (shapeItem("k4", shape, mech::frame::shape::k4)) { shape = mech::frame::shape::k4; applied = true; }
+                        } else if (target.source == Source::stub and target.index < data->data.stubs.size()) {
+                            auto& shape = data->data.stubs[target.index].shape;
+                            ImGui::TextUnformatted("Wing shape");
+                            ImGui::Separator();
+                            if (shapeItem("w1111", shape, mech::wing::shape::w1111)) { shape = mech::wing::shape::w1111; applied = true; }
+                            if (shapeItem("w121", shape, mech::wing::shape::w121)) { shape = mech::wing::shape::w121; applied = true; }
+                            if (shapeItem("w2121", shape, mech::wing::shape::w2121)) { shape = mech::wing::shape::w2121; applied = true; }
+                            if (shapeItem("w321", shape, mech::wing::shape::w321)) { shape = mech::wing::shape::w321; applied = true; }
+                            if (shapeItem("w222", shape, mech::wing::shape::w222)) { shape = mech::wing::shape::w222; applied = true; }
+                        } else if (target.source == Source::plate and target.index < data->data.hull.size()) {
+                            auto& shape = data->data.hull[target.index].shape;
+                            ImGui::TextUnformatted("Plate shape");
+                            ImGui::Separator();
+                            if (shapeItem("p1111", shape, mech::plate::shape::p1111)) { shape = mech::plate::shape::p1111; applied = true; }
+                            if (shapeItem("p121", shape, mech::plate::shape::p121)) { shape = mech::plate::shape::p121; applied = true; }
+                            if (shapeItem("p2121", shape, mech::plate::shape::p2121)) { shape = mech::plate::shape::p2121; applied = true; }
+                            if (shapeItem("p222A", shape, mech::plate::shape::p222A)) { shape = mech::plate::shape::p222A; applied = true; }
+                            if (shapeItem("p222V", shape, mech::plate::shape::p222V)) { shape = mech::plate::shape::p222V; applied = true; }
+                        } else {
+                            ImGui::TextDisabled("Stale target");
+                        }
+                    }
+                    if (applied) {
+                        ImGui::CloseCurrentPopup();
+                        state.spaceMenu = {.target = {}, .close = false};
+                        state.selection.clear();
+                        syncVisuals(context);
+                    }
+                }
+                ImGui::EndPopup();
+            } else {
+                state.spaceMenu = {.target = {}, .close = false};
+            }
+        }
+
         bool shown = open;
-        ImVec2 blueprints_pos{};
-        ImVec2 blueprints_size{};
+        ImVec2 blueprintsPos{};
+        ImVec2 blueprintsSize{};
         if (ImGui::Begin("Blueprints", &shown)) {
-            blueprints_pos = ImGui::GetWindowPos();
-            blueprints_size = ImGui::GetWindowSize();
+            blueprintsPos = ImGui::GetWindowPos();
+            blueprintsSize = ImGui::GetWindowSize();
             ImGui::TextDisabled("In-memory only — never writes .blueprint");
             ImGui::BeginChild("blueprintList", ImVec2{220.0f, 0.0f}, true);
             if (state.loaded.empty()) {
@@ -323,12 +431,21 @@ namespace eltanin::views {
                 }
                 ImGui::Separator();
                 ImGui::TextUnformatted("Layers (levelOne)");
-                bool layers_changed = false;
-                layers_changed |= ImGui::Checkbox("plate", &state.layers.plate);
-                layers_changed |= ImGui::Checkbox("frame", &state.layers.frame);
-                layers_changed |= ImGui::Checkbox("inner", &state.layers.inner);
-                layers_changed |= ImGui::Checkbox("wing", &state.layers.wing);
-                if (layers_changed)
+                bool visibilityChanged = false;
+                visibilityChanged |= ImGui::Checkbox("plate", &state.layers.plate);
+                visibilityChanged |= ImGui::Checkbox("frame", &state.layers.frame);
+                visibilityChanged |= ImGui::Checkbox("inner", &state.layers.inner);
+                ImGui::Separator();
+                ImGui::TextUnformatted("Floors (y)");
+                for (auto& [floor, visible] : state.floorVisible) {
+                    const auto label = std::format("y = {}", floor);
+                    ImGui::PushID(floor);
+                    visibilityChanged |= ImGui::Checkbox(label.c_str(), &visible);
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("(%zu)", state.floors[floor].size());
+                    ImGui::PopID();
+                }
+                if (visibilityChanged)
                     applyLayers(context);
             }
             ImGui::EndChild();
@@ -337,10 +454,10 @@ namespace eltanin::views {
         open = shown;
 
         if (not state.selection.empty()) {
-            ImGui::SetNextWindowPos(ImVec2{blueprints_pos.x + blueprints_size.x + 8.0f, blueprints_pos.y}, ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y}, ImGuiCond_FirstUseEver);
             ImGui::SetNextWindowSize(ImVec2{280.0f, 220.0f}, ImGuiCond_FirstUseEver);
-            bool selection_open = true;
-            if (ImGui::Begin("Selection", &selection_open)) {
+            bool selectionOpen = true;
+            if (ImGui::Begin("Selection", &selectionOpen)) {
                 ImGui::TextDisabled("Del — remove from model (no disk write)");
                 for (std::size_t index = 0; index < state.selection.size();) {
                     const auto alias = state.selection[index];
@@ -361,7 +478,7 @@ namespace eltanin::views {
                 }
             }
             ImGui::End();
-            if (not selection_open)
+            if (not selectionOpen)
                 state.selection.clear();
         }
     }
