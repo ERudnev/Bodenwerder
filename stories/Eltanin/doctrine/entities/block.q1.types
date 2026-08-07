@@ -14,5 +14,4 @@ namespace eltanin
       >spawnPlate(#rmmr::scene::Root, Pose, mech::plate::shape, mech::slot::plate, one<rmmr::scene::actor::Mesh>)->#
       >spawnFrame(#rmmr::scene::Root, Pose, mech::frame::shape, one<rmmr::scene::actor::Mesh>)->#
       >spawnInner(#rmmr::scene::Root, Pose, mech::frame::shape, mech::slot::inner, one<rmmr::scene::actor::Mesh>)->#
-      >spawnWing(#rmmr::scene::Root, Pose, mech::wing::shape, mech::slot::wing, one<rmmr::scene::actor::Mesh>)->#
       !followBody(~phys::Atomic)->>linearPass(>all)

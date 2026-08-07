@@ -10,6 +10,7 @@
 namespace eltanin::mech {
 
     // Construction blueprint (schema): independent layer lists; validity is external.
+    // Multiple Cell entries may share a lattice volume when their frame corner sets are disjoint.
     struct Element {
         struct Cell {
             Pose pose;
@@ -22,19 +23,12 @@ namespace eltanin::mech {
             plate::shape shape;
             slot::plate role;
         };
-
-        struct Stub {
-            Pose pose;
-            wing::shape shape;
-            slot::wing role;
-        };
     };
 
     struct Blueprint {
         std::string name;
         std::string author;
         std::vector<Element::Cell> cells;
-        std::vector<Element::Stub> stubs;
         std::vector<Element::Plate> hull;
     };
 

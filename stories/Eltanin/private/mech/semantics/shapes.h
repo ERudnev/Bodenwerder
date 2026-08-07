@@ -50,16 +50,36 @@ namespace eltanin::mech {
             k7, // one corner removed — 7 corners, 7 plates
             k6, // edge cut — 6 corners, 5 plates
             k4, // tetrahedral remainder — 4 corners, 4 plates
+            // Flat membrane halves (ex-wing, cut along): k{N}f{digits} = N cube corners, flat, perimeter edge codes.
+            // Two flats may share one cell volume when their corner sets are disjoint.
+            k4f1111, // ex w1111 half — 4-gon 1-1-1-1
+            k3f121,  // ex w121 half — triangle 1-2-1
+            k4f2121, // ex w2121 half — 4-gon 2-1-2-1
+            k3f222,  // ex w222 half — triangle 2-2-2 (w321 dropped: own plate alphabet)
         };
 
-        // Corners present (RedStar CarcassCube::vertexIndex).
+        // Corners present (RedStar CarcassCube::vertexIndex; flats from former Wing::vertexIndex).
         inline static const std::vector<std::vector<cube::Corner>> corners{
             {0, 1, 2, 3, 4, 5, 6, 7},
             {0, 1, 3, 4, 5, 6, 7},
             {0, 1, 4, 5, 6, 7},
             {1, 4, 5, 7},
+            {0, 1, 2, 3},
+            {0, 1, 2},
+            {0, 1, 6, 7},
+            {1, 4, 7},
         };
     };
+
+    inline auto isFlat(frame::shape s) -> bool {
+        switch (s) {
+            case frame::shape::k4f1111:
+            case frame::shape::k3f121:
+            case frame::shape::k4f2121:
+            case frame::shape::k3f222: return true;
+            default: return false;
+        }
+    }
 
     // Plate (skin tile on a frame face). Digits = edge codes around perimeter (CCW out). A/V: sharp tip up / down on √2-√2-√2 triangles.
     struct plate {
@@ -81,26 +101,7 @@ namespace eltanin::mech {
         };
     };
 
-    // Free diagonal membrane (RedStar Wing). Corner sets from Wing::vertexIndex; rebuild emission loops with CCW-out when generating mesh.
-    struct wing {
-        enum class shape {
-            w1111,
-            w121,
-            w2121,
-            w321,
-            w222,
-        };
-
-        inline static const std::vector<std::vector<cube::Corner>> corners{
-            {0, 1, 2, 3},
-            {0, 1, 2},
-            {0, 1, 6, 7},
-            {0, 1, 7},
-            {1, 4, 7},
-        };
-    };
-
-    // Frame cell → default plate topology per plate index (RedStar CarcassCube::plateType).
+    // Frame cell → default plate topology per plate index (RedStar CarcassCube::plateType). Flats: empty (no skin alphabet yet).
     namespace skinning {
 
         // [frame::shape] → plate shapes for that cell's faces (length = plate count).
@@ -109,6 +110,10 @@ namespace eltanin::mech {
             {plate::shape::p222V, plate::shape::p1111, plate::shape::p121, plate::shape::p121, plate::shape::p1111, plate::shape::p1111, plate::shape::p121},
             {plate::shape::p2121, plate::shape::p121, plate::shape::p121, plate::shape::p1111, plate::shape::p1111},
             {plate::shape::p222A, plate::shape::p121, plate::shape::p121, plate::shape::p121},
+            {},
+            {},
+            {},
+            {},
         };
 
     } // namespace skinning

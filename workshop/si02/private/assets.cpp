@@ -17,7 +17,7 @@ namespace si02 {
         base::message("workshop_si02: adding Kenney sprite pack...");
         const auto kenney = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context,
-            Unit::name("workshop/si02", "space_shooter_kenney"),
+            Unit::Name::from("workshop/si02", "space_shooter_kenney"),
             item<sprite::LoaderKenney>{
                 .image = "sprites/Spritesheet/sheet.png",
                 .descriptor = "sprites/Spritesheet/sheet.xml",
@@ -26,7 +26,7 @@ namespace si02 {
         base::message("workshop_si02: adding unit quad geometry...");
         const auto unitQuad = with<::rmmr::resource::Assets>::add_geometry_generator(
             context,
-            Unit::name("workshop/si02", "sprite_unit_quad"),
+            Unit::Name::from("workshop/si02", "sprite_unit_quad"),
             item<Generator>{.type = Generator::Type::unitQuad});
 
         return std::unique_ptr<Assets>(new Assets{

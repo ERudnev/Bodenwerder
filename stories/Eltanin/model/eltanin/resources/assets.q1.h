@@ -12,7 +12,7 @@ namespace eltanin::resource {
     struct Assets : Component<Assets, rmmr::resource::Assets> {
         struct Quantum {};
         struct Actions : BaseActions {
-            static auto add_blueprint_loader(Writing, rmmr::resource::Unit::Quantum, blueprint::Loader::Quantum) -> blueprint::Asset::Id;
+            static auto add_blueprint_loader(Writing, rmmr::resource::Unit::Name, blueprint::Loader::Quantum) -> blueprint::Asset::Id;
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }

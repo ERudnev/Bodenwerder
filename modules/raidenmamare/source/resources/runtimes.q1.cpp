@@ -15,13 +15,13 @@ namespace rmmr::resource {
     namespace {
 
         template<typename Asset, typename Kind>
-        auto register_unit(Writing context, Unit::Quantum unit, typename Asset::Quantum asset, typename Kind::Quantum kind) -> typename Asset::Id {
+        auto register_unit(Writing context, Unit::Name name, typename Asset::Quantum asset, typename Kind::Quantum kind) -> typename Asset::Id {
             const auto assets = with<Assets>::singleton(context);
             if (not assets) return context.refuse("resource::Assets: singleton missing");
             if (not with<Unit_group>::exists(context, *assets)) {
                 with<Unit_group>::extend(context, *assets);
             }
-            const auto unit_id = with<Unit_group>::addElement(context, *assets, std::move(unit));
+            const auto unit_id = with<Unit_group>::addElement(context, *assets, Unit::Quantum{.name = std::move(name)});
             with<Asset>::extend(context, unit_id, std::move(asset));
             with<Kind>::extend(context, unit_id, std::move(kind));
             return unit_id;
@@ -118,19 +118,19 @@ namespace rmmr::resource {
         return with<Assets>::get_global(context).singleton;
     }
 
-    auto Assets::Actions::add_texture_loader(Writing context, Unit::Quantum unit, texture::Loader::Quantum loader) -> texture::Asset::Id {
-        return register_unit<texture::Asset, texture::Loader>(context, std::move(unit), texture::Asset::Quantum{}, std::move(loader));
+    auto Assets::Actions::add_texture_loader(Writing context, Unit::Name name, texture::Loader::Quantum loader) -> texture::Asset::Id {
+        return register_unit<texture::Asset, texture::Loader>(context, std::move(name), texture::Asset::Quantum{}, std::move(loader));
     }
 
-    auto Assets::Actions::add_texture_generator(Writing context, Unit::Quantum unit, texture::Generator::Quantum generator) -> texture::Asset::Id {
-        return register_unit<texture::Asset, texture::Generator>(context, std::move(unit), texture::Asset::Quantum{}, std::move(generator));
+    auto Assets::Actions::add_texture_generator(Writing context, Unit::Name name, texture::Generator::Quantum generator) -> texture::Asset::Id {
+        return register_unit<texture::Asset, texture::Generator>(context, std::move(name), texture::Asset::Quantum{}, std::move(generator));
     }
 
-    auto Assets::Actions::add_shader_loader(Writing context, Unit::Quantum unit, shader::Loader::Quantum loader) -> shader::Asset::Id {
-        return register_unit<shader::Asset, shader::Loader>(context, std::move(unit), shader::Asset::Quantum{}, std::move(loader));
+    auto Assets::Actions::add_shader_loader(Writing context, Unit::Name name, shader::Loader::Quantum loader) -> shader::Asset::Id {
+        return register_unit<shader::Asset, shader::Loader>(context, std::move(name), shader::Asset::Quantum{}, std::move(loader));
     }
 
-    auto Assets::Actions::add_material(Writing context, Unit::Quantum unit, material::Asset::Quantum asset) -> material::Asset::Id {
+    auto Assets::Actions::add_material(Writing context, Unit::Name name, material::Asset::Quantum asset) -> material::Asset::Id {
         const auto assets = singleton(context);
         if (not assets) {
             return context.refuse("resource::Assets: singleton missing");
@@ -138,12 +138,12 @@ namespace rmmr::resource {
         if (not with<Unit_group>::exists(context, *assets)) {
             with<Unit_group>::extend(context, *assets);
         }
-        const auto unit_id = with<Unit_group>::addElement(context, *assets, std::move(unit));
+        const auto unit_id = with<Unit_group>::addElement(context, *assets, Unit::Quantum{.name = std::move(name)});
         with<material::Asset>::extend(context, unit_id, std::move(asset));
         return unit_id;
     }
 
-    auto Assets::Actions::add_overlay(Writing context, Unit::Quantum unit, overlay::Asset::Quantum asset) -> overlay::Asset::Id {
+    auto Assets::Actions::add_overlay(Writing context, Unit::Name name, overlay::Asset::Quantum asset) -> overlay::Asset::Id {
         const auto assets = singleton(context);
         if (not assets) {
             return context.refuse("resource::Assets: singleton missing");
@@ -151,32 +151,32 @@ namespace rmmr::resource {
         if (not with<Unit_group>::exists(context, *assets)) {
             with<Unit_group>::extend(context, *assets);
         }
-        const auto unit_id = with<Unit_group>::addElement(context, *assets, std::move(unit));
+        const auto unit_id = with<Unit_group>::addElement(context, *assets, Unit::Quantum{.name = std::move(name)});
         with<overlay::Asset>::extend(context, unit_id, std::move(asset));
         return unit_id;
     }
 
-    auto Assets::Actions::add_shadow_allocator(Writing context, Unit::Quantum unit, shadow::Allocator::Quantum allocator) -> shadow::Asset::Id {
-        return register_unit<shadow::Asset, shadow::Allocator>(context, std::move(unit), shadow::Asset::Quantum{}, std::move(allocator));
+    auto Assets::Actions::add_shadow_allocator(Writing context, Unit::Name name, shadow::Allocator::Quantum allocator) -> shadow::Asset::Id {
+        return register_unit<shadow::Asset, shadow::Allocator>(context, std::move(name), shadow::Asset::Quantum{}, std::move(allocator));
     }
 
-    auto Assets::Actions::add_geometry_loader(Writing context, Unit::Quantum unit, geometry::Loader::Quantum loader) -> geometry::Asset::Id {
-        return register_unit<geometry::Asset, geometry::Loader>(context, std::move(unit), geometry::Asset::Quantum{}, std::move(loader));
+    auto Assets::Actions::add_geometry_loader(Writing context, Unit::Name name, geometry::Loader::Quantum loader) -> geometry::Asset::Id {
+        return register_unit<geometry::Asset, geometry::Loader>(context, std::move(name), geometry::Asset::Quantum{}, std::move(loader));
     }
 
-    auto Assets::Actions::add_geometry_generator(Writing context, Unit::Quantum unit, geometry::Generator::Quantum generator) -> geometry::Asset::Id {
-        return register_unit<geometry::Asset, geometry::Generator>(context, std::move(unit), geometry::Asset::Quantum{}, std::move(generator));
+    auto Assets::Actions::add_geometry_generator(Writing context, Unit::Name name, geometry::Generator::Quantum generator) -> geometry::Asset::Id {
+        return register_unit<geometry::Asset, geometry::Generator>(context, std::move(name), geometry::Asset::Quantum{}, std::move(generator));
     }
 
-    auto Assets::Actions::add_sprites_kenney(Writing context, Unit::Quantum unit, sprite::LoaderKenney::Quantum loader) -> sprite::Pack::Id {
+    auto Assets::Actions::add_sprites_kenney(Writing context, Unit::Name name, sprite::LoaderKenney::Quantum loader) -> sprite::Pack::Id {
         const auto texture_id = add_texture_loader(
             context,
-            Unit::Quantum{.name = unit.name},
+            name,
             texture::Loader::Quantum{.file = loader.image, .mipmaps = false});
 
         return register_unit<sprite::Pack, sprite::LoaderKenney>(
             context,
-            std::move(unit),
+            std::move(name),
             sprite::Pack::Quantum{
                 .texture = with<Unit>::remember(context, texture_id),
                 .entries = {},
@@ -184,18 +184,18 @@ namespace rmmr::resource {
             std::move(loader));
     }
 
-    auto Assets::Actions::add_meshpack_objs_loader(Writing context, Unit::Quantum unit, meshpack::LoaderObjs::Quantum loader) -> meshpack::Asset::Id {
+    auto Assets::Actions::add_meshpack_objs_loader(Writing context, Unit::Name name, meshpack::LoaderObjs::Quantum loader) -> meshpack::Asset::Id {
         return register_unit<meshpack::Asset, meshpack::LoaderObjs>(
             context,
-            std::move(unit),
+            std::move(name),
             meshpack::Asset::Quantum{.entries = {}},
             std::move(loader));
     }
 
-    auto Assets::Actions::add_meshpack_lwo_loader(Writing context, Unit::Quantum unit, meshpack::LoaderLwo::Quantum loader) -> meshpack::Asset::Id {
+    auto Assets::Actions::add_meshpack_lwo_loader(Writing context, Unit::Name name, meshpack::LoaderLwo::Quantum loader) -> meshpack::Asset::Id {
         return register_unit<meshpack::Asset, meshpack::LoaderLwo>(
             context,
-            std::move(unit),
+            std::move(name),
             meshpack::Asset::Quantum{.entries = {}},
             std::move(loader));
     }
@@ -212,11 +212,11 @@ namespace rmmr::resource {
         }
         const auto texture_id = add_texture_loader(
             context,
-            Unit::Quantum{.name = name},
+            name,
             texture::Loader::Quantum{.file = std::move(file), .mipmaps = false});
         return add_material(
             context,
-            Unit::Quantum{.name = std::move(name)},
+            std::move(name),
             builders::material::Presets::litTextured(opaque->second.program, with<Unit>::remember(context, texture_id), shadow->second.program));
     }
 

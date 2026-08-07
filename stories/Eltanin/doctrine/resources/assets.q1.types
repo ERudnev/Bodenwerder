@@ -9,4 +9,4 @@ namespace eltanin
     // Story-owned asset entry points — not rmmr primitives.
     component Assets of rmmr::resource::Assets
       one
-        >add_blueprint_loader(Unit, blueprint::Loader)->#blueprint::Asset
+        >add_blueprint_loader(Unit::Name, blueprint::Loader)->#blueprint::Asset

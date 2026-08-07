@@ -15,6 +15,7 @@ namespace rmmr::resource {
 
             auto empty() const -> bool { return library.empty() and own.empty(); }
             auto text() const -> string { return library.empty() ? own : (library + "::" + own); }
+            static auto from(string library, string own) -> Name { return Name{std::move(library), std::move(own)}; }
             friend auto operator<=>(const Name&, const Name&) = default;
         };
 
@@ -27,15 +28,7 @@ namespace rmmr::resource {
             Name name;
         };
 
-        // Quantum for add_* / group: Unit::name("Eltanin", "skySphere").
-        static auto name(string library, string own) -> Quantum {
-            return Quantum{.name = Name{.library = std::move(library), .own = std::move(own)}};
-        }
-
         struct Actions : BaseActions {
-            static auto name(string library, string own) -> Name {
-                return Name{.library = std::move(library), .own = std::move(own)};
-            }
             static auto remember(Reading, Id) -> Reference;
         };
         struct Internals : DefaultInternals{};

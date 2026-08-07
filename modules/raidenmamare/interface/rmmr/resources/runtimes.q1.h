@@ -25,17 +25,17 @@ namespace rmmr::resource {
         };
         struct Actions : BaseActions {
             static auto singleton(Reading) -> optional<Id>;
-            static auto add_texture_loader(Writing, Unit::Quantum, texture::Loader::Quantum) -> texture::Asset::Id;
-            static auto add_texture_generator(Writing, Unit::Quantum, texture::Generator::Quantum) -> texture::Asset::Id;
-            static auto add_shader_loader(Writing, Unit::Quantum, shader::Loader::Quantum) -> shader::Asset::Id;
-            static auto add_material(Writing, Unit::Quantum, material::Asset::Quantum) -> material::Asset::Id;
-            static auto add_overlay(Writing, Unit::Quantum, overlay::Asset::Quantum) -> overlay::Asset::Id;
-            static auto add_shadow_allocator(Writing, Unit::Quantum, shadow::Allocator::Quantum) -> shadow::Asset::Id;
-            static auto add_geometry_loader(Writing, Unit::Quantum, geometry::Loader::Quantum) -> geometry::Asset::Id;
-            static auto add_geometry_generator(Writing, Unit::Quantum, geometry::Generator::Quantum) -> geometry::Asset::Id;
-            static auto add_sprites_kenney(Writing, Unit::Quantum, sprite::LoaderKenney::Quantum) -> sprite::Pack::Id;
-            static auto add_meshpack_objs_loader(Writing, Unit::Quantum, meshpack::LoaderObjs::Quantum) -> meshpack::Asset::Id;
-            static auto add_meshpack_lwo_loader(Writing, Unit::Quantum, meshpack::LoaderLwo::Quantum) -> meshpack::Asset::Id;
+            static auto add_texture_loader(Writing, Unit::Name, texture::Loader::Quantum) -> texture::Asset::Id;
+            static auto add_texture_generator(Writing, Unit::Name, texture::Generator::Quantum) -> texture::Asset::Id;
+            static auto add_shader_loader(Writing, Unit::Name, shader::Loader::Quantum) -> shader::Asset::Id;
+            static auto add_material(Writing, Unit::Name, material::Asset::Quantum) -> material::Asset::Id;
+            static auto add_overlay(Writing, Unit::Name, overlay::Asset::Quantum) -> overlay::Asset::Id;
+            static auto add_shadow_allocator(Writing, Unit::Name, shadow::Allocator::Quantum) -> shadow::Asset::Id;
+            static auto add_geometry_loader(Writing, Unit::Name, geometry::Loader::Quantum) -> geometry::Asset::Id;
+            static auto add_geometry_generator(Writing, Unit::Name, geometry::Generator::Quantum) -> geometry::Asset::Id;
+            static auto add_sprites_kenney(Writing, Unit::Name, sprite::LoaderKenney::Quantum) -> sprite::Pack::Id;
+            static auto add_meshpack_objs_loader(Writing, Unit::Name, meshpack::LoaderObjs::Quantum) -> meshpack::Asset::Id;
+            static auto add_meshpack_lwo_loader(Writing, Unit::Name, meshpack::LoaderLwo::Quantum) -> meshpack::Asset::Id;
             static auto compose_material(Writing, Unit::Name, filename, material::Asset::Id base) -> material::Asset::Id;
             // Q1: ?find<R as feature of Unit>(Unit::Name)-> #R?
             template<::fqsm::meta::category::Any Meta>

@@ -53,9 +53,4 @@ namespace eltanin::mech::slot {
         logistic, // extends shupp hull out of frame to add coridirs, smal locks, service tunnels
     };
 
-    enum class wing {
-        radiance,
-        agfe,
-        pylon,
-    };
 }

@@ -6,7 +6,8 @@
 #include <string>
 
 // LevelOne meshpack entry names (LWO layer tags). Empty = no mesh yet — skip spawn.
-// Inner volume reuses frame::shape; mesh tokens are m8/m7/m6/m4.
+// Inner volume reuses volumetric frame::shape; mesh tokens are m8/m7/m6/m4.
+// Flat frames (k*f*) temporarily borrow plate mesh tags — dedicated flat meshes TBD.
 
 namespace eltanin::mech::levelOne {
 
@@ -16,17 +17,25 @@ namespace eltanin::mech::levelOne {
             case frame::shape::k7: return "k7";
             case frame::shape::k6: return "k6";
             case frame::shape::k4: return "k4";
+            case frame::shape::k4f1111: return "p1111";
+            case frame::shape::k3f121: return "p121";
+            case frame::shape::k4f2121: return "p2121";
+            case frame::shape::k3f222: return "p222A";
         }
         return {};
     }
 
-    // Same cut as frame; layer name uses m* to not collide with k*.
+    // Same cut as volumetric frame; layer name uses m* to not collide with k*. Flats: no inner.
     inline auto innerMesh(frame::shape shape) -> std::string {
         switch (shape) {
             case frame::shape::k8: return "m8";
             case frame::shape::k7: return "m7";
             case frame::shape::k6: return "m6";
             case frame::shape::k4: return "m4";
+            case frame::shape::k4f1111:
+            case frame::shape::k3f121:
+            case frame::shape::k4f2121:
+            case frame::shape::k3f222: return {};
         }
         return {};
     }
@@ -38,17 +47,6 @@ namespace eltanin::mech::levelOne {
             case plate::shape::p2121: return "p2121";
             case plate::shape::p222A: return "p222A";
             case plate::shape::p222V: return "p222V";
-        }
-        return {};
-    }
-
-    inline auto mesh(wing::shape shape) -> std::string {
-        switch (shape) {
-            case wing::shape::w1111: return "w1111";
-            case wing::shape::w121: return "w121";
-            case wing::shape::w2121: return "w2121";
-            case wing::shape::w321: return "w321";
-            case wing::shape::w222: return "w222";
         }
         return {};
     }
@@ -86,15 +84,6 @@ namespace eltanin::mech::levelOne {
             case slot::plate::agfe: return {};
             case slot::plate::utility: return {};
             case slot::plate::logistic: return {};
-        }
-        return {};
-    }
-
-    inline auto mesh(slot::wing role) -> std::string {
-        switch (role) {
-            case slot::wing::radiance: return {};
-            case slot::wing::agfe: return {};
-            case slot::wing::pylon: return {};
         }
         return {};
     }

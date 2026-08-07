@@ -19,11 +19,10 @@ namespace rmmr
         library: string
         own: string
         ?text()->string
+        >from(string, string) -> Name
       struct Reference
         id: #
         backup: Name
-      always
-        ?name(string, string)->Name
       one
         name: Name
         ?remember()->Reference

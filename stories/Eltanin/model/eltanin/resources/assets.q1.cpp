@@ -9,7 +9,7 @@ namespace eltanin::resource {
     namespace {
 
         template<typename Asset, typename Kind>
-        auto register_unit(Writing context, rmmr::resource::Unit::Quantum unit, typename Asset::Quantum asset, typename Kind::Quantum kind) -> typename Asset::Id {
+        auto register_unit(Writing context, rmmr::resource::Unit::Name name, typename Asset::Quantum asset, typename Kind::Quantum kind) -> typename Asset::Id {
             const auto assets = with<rmmr::resource::Assets>::singleton(context);
             if (not assets) {
                 return context.refuse("eltanin::resource::Assets: rmmr Assets singleton missing");
@@ -17,7 +17,7 @@ namespace eltanin::resource {
             if (not with<rmmr::resource::Unit_group>::exists(context, *assets)) {
                 with<rmmr::resource::Unit_group>::extend(context, *assets);
             }
-            const auto unit_id = with<rmmr::resource::Unit_group>::addElement(context, *assets, std::move(unit));
+            const auto unit_id = with<rmmr::resource::Unit_group>::addElement(context, *assets, rmmr::resource::Unit::Quantum{.name = std::move(name)});
             with<Asset>::extend(context, unit_id, std::move(asset));
             with<Kind>::extend(context, unit_id, std::move(kind));
             return unit_id;
@@ -25,11 +25,11 @@ namespace eltanin::resource {
 
     } // namespace
 
-    auto Assets::Actions::add_blueprint_loader(Writing context, rmmr::resource::Unit::Quantum unit, blueprint::Loader::Quantum loader) -> blueprint::Asset::Id {
+    auto Assets::Actions::add_blueprint_loader(Writing context, rmmr::resource::Unit::Name name, blueprint::Loader::Quantum loader) -> blueprint::Asset::Id {
         return register_unit<blueprint::Asset, blueprint::Loader>(
             context,
-            std::move(unit),
-            blueprint::Asset::Quantum{.data = mech::Blueprint{.name = {}, .author = {}, .cells = {}, .stubs = {}, .hull = {}}},
+            std::move(name),
+            blueprint::Asset::Quantum{.data = mech::Blueprint{.name = {}, .author = {}, .cells = {}, .hull = {}}},
             std::move(loader));
     }
 

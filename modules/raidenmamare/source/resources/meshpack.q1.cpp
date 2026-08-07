@@ -112,7 +112,7 @@ namespace rmmr::resource::meshpack {
         for (const auto& [entry_name, body] : payload.entries) {
             const auto geometry_id = with<Assets>::add_geometry_loader(
                 context,
-                Unit::name(unit.name.library, entry_name),
+                Unit::Name::from(unit.name.library, entry_name),
                 geometry::Loader::Quantum{.file = body.geometry_file, .layer = string{}});
             umap<string, material::Asset::Id> part_materials;
             for (const auto& [part, material_own] : body.materials) {
@@ -178,7 +178,7 @@ namespace rmmr::resource::meshpack {
         for (const auto& mesh : lwo.meshes()) {
             const auto geometry_id = with<Assets>::add_geometry_loader(
                 context,
-                Unit::name(unit.name.library, mesh.name),
+                Unit::Name::from(unit.name.library, mesh.name),
                 geometry::Loader::Quantum{.file = payload.lwo_file, .layer = mesh.name});
 
             umap<string, material::Asset::Id> part_materials;

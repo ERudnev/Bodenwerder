@@ -139,7 +139,7 @@ namespace rmmr {
             }
             handles.default_shadow = with<Assets>::add_shadow_allocator(
                 context,
-                Unit::name("rmmr", "main_shadow"),
+                Unit::Name::from("rmmr", "main_shadow"),
                 resource::shadow::Allocator::Quantum{.size = index2{1024, 1024}});
         }
 

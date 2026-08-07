@@ -82,8 +82,6 @@ namespace rmmr::controller {
                 if (key_down(input.current.keys, GLFW_KEY_DOWN)) pivot_delta -= forward_xz * pan;
                 if (key_down(input.current.keys, GLFW_KEY_LEFT)) pivot_delta -= right_xz * pan;
                 if (key_down(input.current.keys, GLFW_KEY_RIGHT)) pivot_delta += right_xz * pan;
-                if (key_down(input.current.keys, GLFW_KEY_E)) pivot_delta += k_world_up * pan;
-                if (key_down(input.current.keys, GLFW_KEY_Q)) pivot_delta -= k_world_up * pan;
                 orbit->pivot += pivot_delta;
             }
 

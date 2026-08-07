@@ -17,7 +17,7 @@ namespace tommy {
         base::message("TomSawyer: adding Kenney sprite pack...");
         const auto kenney = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context,
-            Unit::name("TomSawyer", "space_shooter_kenney"),
+            Unit::Name::from("TomSawyer", "space_shooter_kenney"),
             item<sprite::LoaderKenney>{
                 .image = "sprites/Spritesheet/sheet.png",
                 .descriptor = "sprites/Spritesheet/sheet.xml",
@@ -26,7 +26,7 @@ namespace tommy {
         base::message("TomSawyer: adding unit quad geometry...");
         const auto unitQuad = with<::rmmr::resource::Assets>::add_geometry_generator(
             context,
-            Unit::name("TomSawyer", "sprite_unit_quad"),
+            Unit::Name::from("TomSawyer", "sprite_unit_quad"),
             item<Generator>{.type = Generator::Type::unitQuad});
 
         return std::unique_ptr<Assets>(new Assets{

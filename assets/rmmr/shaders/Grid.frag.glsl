@@ -1,5 +1,5 @@
 #version 450 core
-in vec3 vWorldPos;
+in vec3 vLocalPos;
 out vec4 FragColor;
 
 uniform float u_patternScale;
@@ -8,7 +8,8 @@ uniform vec3 u_colorSecondary;
 uniform float u_opacity;
 
 void main() {
-    vec2 coord = vWorldPos.xz * u_patternScale;
+    // Pattern in object space so Node pose (e.g. half-cell -2) shifts the lattice with the plane.
+    vec2 coord = vLocalPos.xz * u_patternScale;
     vec2 fw = max(fwidth(coord), vec2(1e-6));
     vec2 cell = abs(fract(coord - 0.5) - 0.5);
     float line_x = 1.0 - clamp(cell.x / fw.x, 0.0, 1.0);
@@ -16,11 +17,11 @@ void main() {
     float intensity = max(line_x, line_z);
     vec3 color = mix(u_colorSecondary, u_colorPrimary, intensity);
 
-    // Axis accents on XZ ground: RGB ~ XYZ (Y not drawn on this plane).
-    if (abs(vWorldPos.z) < 0.02) {
+    // Axis accents on the plane: RGB ~ XYZ (Y not drawn). Local zero = node origin.
+    if (abs(vLocalPos.z) < 0.02) {
         color = vec3(1.0, 0.0, 0.0); // +X
     }
-    if (abs(vWorldPos.x) < 0.02) {
+    if (abs(vLocalPos.x) < 0.02) {
         color = vec3(0.0, 0.0, 1.0); // +Z
     }
 

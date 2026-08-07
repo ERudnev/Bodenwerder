@@ -37,12 +37,12 @@ namespace kubes {
         using rmmr::resource::geometry::Generator;
         using Material = ::rmmr::resource::material::Asset;
 
-        assets.primitive.grid = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::name("rmmr", "grid"), item<Generator>{.type = Generator::Type::gridPlane});
-        assets.primitive.sphere = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::name("rmmr", "sphere"), item<Generator>{.type = Generator::Type::sphere});
+        assets.primitive.grid = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::Name::from("rmmr", "grid"), item<Generator>{.type = Generator::Type::gridPlane});
+        assets.primitive.sphere = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::Name::from("rmmr", "sphere"), item<Generator>{.type = Generator::Type::sphere});
 
         assets.skySphere = with<::rmmr::resource::Assets>::add_sprites_kenney(
             context,
-            Unit::name("Kubes", "skySphere"),
+            Unit::Name::from("Kubes", "skySphere"),
             item<sprite::LoaderKenney>{
                 .image = "sprites/skySphere.png",
                 .descriptor = "sprites/skySphere.xml",
@@ -50,7 +50,7 @@ namespace kubes {
 
         const auto sky_sphere_shader = with<::rmmr::resource::Assets>::add_shader_loader(
             context,
-            Unit::name("Kubes", "skySphere"),
+            Unit::Name::from("Kubes", "skySphere"),
             item<shader::Loader>{
                 .vertex = "shaders/skySphere.vert.glsl",
                 .fragment = "shaders/skySphere.frag.glsl",
@@ -59,7 +59,7 @@ namespace kubes {
         const auto& sky_sphere_pack = with<sprite::Pack>::get(context, *assets.skySphere);
         assets.skySphereMaterial = with<::rmmr::resource::Assets>::add_material(
             context,
-            Unit::name("Kubes", "skySphere"),
+            Unit::Name::from("Kubes", "skySphere"),
             Material::Quantum{
                 .techniques = {
                     {renderer::Pass::environment, Material::Technique{
@@ -87,7 +87,7 @@ namespace kubes {
         if (not with<Unit_group>::exists(context, manager)) {
             with<Unit_group>::extend(context, manager);
         }
-        const auto sky_geometry_id = with<Unit_group>::addElement(context, manager, Unit::name("Kubes", "skySphere"));
+        const auto sky_geometry_id = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Unit::Name::from("Kubes", "skySphere")});
         with<geometry::Asset>::extend(context, sky_geometry_id, geometry::Asset::Quantum{});
         with<resource::SkySphereGenerator>::extend(context, sky_geometry_id, resource::SkySphereGenerator::Quantum{
             .count = 48800, // 20k×2, then halo ×2 again (~31k disk + ~18k halo)

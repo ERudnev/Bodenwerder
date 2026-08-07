@@ -15,7 +15,7 @@
 
 #include "physics/system.h"
 #include "physics/ui.h"
-#include "views/blueprints.h"
+#include "views/blueprints/editor.h"
 
 namespace eltanin {
 

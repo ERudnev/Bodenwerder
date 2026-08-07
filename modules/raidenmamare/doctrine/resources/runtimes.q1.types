@@ -8,17 +8,17 @@ namespace rmmr
     // Core-level interface:
     component Assets of Manager
       one
-        >add_texture_loader(Unit, texture::Loader)->#texture::Asset
-        >add_texture_generator(Unit, texture::Generator)->#texture::Asset
-        >add_shader_loader(Unit, shader::Loader)->#shader::Asset
-        >add_material(Unit, material::Asset)->#material::Asset
-        >add_overlay(Unit, overlay::Asset)->#overlay::Asset
-        >add_shadow_allocator(Unit, shadow::Allocator)->#shadow::Asset
-        >add_geometry_loader(Unit, geometry::Loader)->#geometry::Asset
-        >add_geometry_generator(Unit, geometry::Generator)->#geometry::Asset
-        >add_sprites_kenney(Unit, sprite::LoaderKenney)->#sprite::Pack
-        >add_meshpack_objs_loader(Unit, meshpack::LoaderObjs)->#meshpack::Asset
-        >add_meshpack_lwo_loader(Unit, meshpack::LoaderLwo)->#meshpack::Asset
+        >add_texture_loader(Unit::Name, texture::Loader)->#texture::Asset
+        >add_texture_generator(Unit::Name, texture::Generator)->#texture::Asset
+        >add_shader_loader(Unit::Name, shader::Loader)->#shader::Asset
+        >add_material(Unit::Name, material::Asset)->#material::Asset
+        >add_overlay(Unit::Name, overlay::Asset)->#overlay::Asset
+        >add_shadow_allocator(Unit::Name, shadow::Allocator)->#shadow::Asset
+        >add_geometry_loader(Unit::Name, geometry::Loader)->#geometry::Asset
+        >add_geometry_generator(Unit::Name, geometry::Generator)->#geometry::Asset
+        >add_sprites_kenney(Unit::Name, sprite::LoaderKenney)->#sprite::Pack
+        >add_meshpack_objs_loader(Unit::Name, meshpack::LoaderObjs)->#meshpack::Asset
+        >add_meshpack_lwo_loader(Unit::Name, meshpack::LoaderLwo)->#meshpack::Asset
         >compose_material(Unit::Name, filename, base: #material::Asset)->#material::Asset
         ?find<R as feature of Unit>(Unit::Name)-> #R?
       all

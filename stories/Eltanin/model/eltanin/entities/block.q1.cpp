@@ -82,14 +82,6 @@ namespace eltanin {
         return spawn_with_locals(context, root, pose, locals_from_corner_indices(mech::frame::corners[index]), std::move(actor_quantum));
     }
 
-    auto Block::Actions::spawnWing(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::wing::shape shape, mech::slot::wing, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
-        const auto index = static_cast<std::size_t>(shape);
-        if (index >= mech::wing::corners.size()) {
-            return context.refuse("eltanin::Block::spawnWing: shape out of range");
-        }
-        return spawn_with_locals(context, root, pose, locals_from_corner_indices(mech::wing::corners[index]), std::move(actor_quantum));
-    }
-
     struct Block::Internals : Block::DefaultInternals {
         static void followBody(Reacting context) {
             using namespace api_for_internals;

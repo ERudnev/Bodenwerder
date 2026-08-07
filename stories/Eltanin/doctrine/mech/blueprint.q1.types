@@ -12,15 +12,10 @@ namespace eltanin
         pose: Pose
         shape: plate::shape
         role: slot::plate
-      struct Stub
-        pose: Pose
-        shape: wing::shape
-        role: slot::wing
 
     struct Blueprint
       name: string
       author: string
 
       cells: vector<Element::Cell>
-      stubs: vector<Element::Stub>
       hull: vector<Element::Plate>
