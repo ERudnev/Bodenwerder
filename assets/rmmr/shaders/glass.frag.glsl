@@ -1,4 +1,4 @@
-#version 330 core
+#version 450 core
 
 in vec2 v_uv0;
 in float v_diffuse;
@@ -7,7 +7,7 @@ in float v_specular;
 out vec4 FragColor;
 
 uniform vec3 u_albedo;
-uniform sampler2D u_albedoMap;
+layout(binding = 0) uniform sampler2D u_albedoMap;
 
 uniform vec3 u_ambientColor;
 uniform float u_ambientIntensity;

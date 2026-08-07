@@ -412,8 +412,8 @@ namespace rmmr::resource::geometry {
             renderer::VertexArray vao{};
             renderer::VertexBuffer vbo{};
             renderer::ElementBuffer ebo{};
-            glGenVertexArrays(1, &vao);
-            glGenBuffers(1, &vbo);
+            glCreateVertexArrays(1, &vao);
+            glCreateBuffers(1, &vbo);
 
             if (not vao || not vbo) {
                 if (vao) glDeleteVertexArrays(1, &vao);
@@ -433,13 +433,19 @@ namespace rmmr::resource::geometry {
                     index_data.push_back(static_cast<GLuint>(index));
                 }
 
-                glGenBuffers(1, &ebo);
+                glCreateBuffers(1, &ebo);
                 if (not ebo) {
                     glDeleteVertexArrays(1, &vao);
                     glDeleteBuffers(1, &vbo);
                     return context.refuse("resource::geometry::bake: failed to allocate EBO");
                 }
             }
+
+            auto setupAttrib = [&](GLuint index, GLint components, GLuint relativeOffset) {
+                glEnableVertexArrayAttrib(vao, index);
+                glVertexArrayAttribFormat(vao, index, components, GL_FLOAT, GL_FALSE, relativeOffset);
+                glVertexArrayAttribBinding(vao, index, 0);
+            };
 
             std::vector<float> interleaved;
 
@@ -453,11 +459,9 @@ namespace rmmr::resource::geometry {
                 }
 
                 constexpr renderer::Count stride = renderer::Count(3 * sizeof(float));
-                glBindVertexArray(vao);
-                glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
-                glEnableVertexAttribArray(0);
+                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
+                setupAttrib(0, 3, 0);
             } else if (position_uv0) {
                 interleaved.reserve(vertex_count * 5);
                 for (std::size_t i = 0; i < vertex_count; ++i) {
@@ -471,13 +475,10 @@ namespace rmmr::resource::geometry {
                 }
 
                 constexpr renderer::Count stride = renderer::Count(5 * sizeof(float));
-                glBindVertexArray(vao);
-                glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
-                glEnableVertexAttribArray(0);
-                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(3 * sizeof(float))));
-                glEnableVertexAttribArray(1);
+                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
+                setupAttrib(0, 3, 0);
+                setupAttrib(1, 2, renderer::Count(3 * sizeof(float)));
             } else if (position_color0) {
                 interleaved.reserve(vertex_count * 7);
                 for (std::size_t i = 0; i < vertex_count; ++i) {
@@ -493,13 +494,10 @@ namespace rmmr::resource::geometry {
                 }
 
                 constexpr renderer::Count stride = renderer::Count(7 * sizeof(float));
-                glBindVertexArray(vao);
-                glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
-                glEnableVertexAttribArray(0);
-                glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(3 * sizeof(float))));
-                glEnableVertexAttribArray(1);
+                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
+                setupAttrib(0, 3, 0);
+                setupAttrib(1, 4, renderer::Count(3 * sizeof(float)));
             } else if (position_uv0_color0) {
                 interleaved.reserve(vertex_count * 9);
                 for (std::size_t i = 0; i < vertex_count; ++i) {
@@ -518,15 +516,11 @@ namespace rmmr::resource::geometry {
                 }
 
                 constexpr renderer::Count stride = renderer::Count(9 * sizeof(float));
-                glBindVertexArray(vao);
-                glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
-                glEnableVertexAttribArray(0);
-                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(3 * sizeof(float))));
-                glEnableVertexAttribArray(1);
-                glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(5 * sizeof(float))));
-                glEnableVertexAttribArray(2);
+                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
+                setupAttrib(0, 3, 0);
+                setupAttrib(1, 2, renderer::Count(3 * sizeof(float)));
+                setupAttrib(2, 4, renderer::Count(5 * sizeof(float)));
             } else if (position_normal) {
                 interleaved.reserve(vertex_count * 6);
                 for (std::size_t i = 0; i < vertex_count; ++i) {
@@ -541,13 +535,10 @@ namespace rmmr::resource::geometry {
                 }
 
                 constexpr renderer::Count stride = renderer::Count(6 * sizeof(float));
-                glBindVertexArray(vao);
-                glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
-                glEnableVertexAttribArray(0);
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(3 * sizeof(float))));
-                glEnableVertexAttribArray(1);
+                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
+                setupAttrib(0, 3, 0);
+                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
             } else {
                 interleaved.reserve(vertex_count * 8);
                 for (std::size_t i = 0; i < vertex_count; ++i) {
@@ -565,26 +556,16 @@ namespace rmmr::resource::geometry {
                 }
 
                 constexpr renderer::Count stride = renderer::Count(8 * sizeof(float));
-                glBindVertexArray(vao);
-                glBindBuffer(GL_ARRAY_BUFFER, vbo);
-                glBufferData(GL_ARRAY_BUFFER, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr{0}));
-                glEnableVertexAttribArray(0);
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(3 * sizeof(float))));
-                glEnableVertexAttribArray(1);
-                glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, reinterpret_cast<void*>(renderer::IntPtr(6 * sizeof(float))));
-                glEnableVertexAttribArray(2);
+                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
+                setupAttrib(0, 3, 0);
+                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
+                setupAttrib(2, 2, renderer::Count(6 * sizeof(float)));
             }
 
             if (indexed) {
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-                glBufferData(GL_ELEMENT_ARRAY_BUFFER, renderer::SizePtr(index_data.size() * sizeof(GLuint)), index_data.data(), GL_STATIC_DRAW);
-            }
-
-            glBindVertexArray(0);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-            if (indexed) {
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+                glNamedBufferData(ebo, renderer::SizePtr(index_data.size() * sizeof(GLuint)), index_data.data(), GL_STATIC_DRAW);
+                glVertexArrayElementBuffer(vao, ebo);
             }
 
             return Runtime::Quantum{

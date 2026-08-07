@@ -51,41 +51,35 @@ namespace rmmr::resource::shadow {
         const int height = std::max(static_cast<int>(allocator.size.y), 1);
 
         renderer::Texture depth{};
-        glGenTextures(1, &depth);
+        glCreateTextures(GL_TEXTURE_2D, 1, &depth);
         if (not depth) {
-            return context.refuse("resource::shadow::Allocator::materialize: glGenTextures failed");
+            return context.refuse("resource::shadow::Allocator::materialize: glCreateTextures failed");
         }
 
-        glBindTexture(GL_TEXTURE_2D, depth);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTextureStorage2D(depth, 1, GL_DEPTH_COMPONENT24, width, height);
+        glTextureParameteri(depth, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTextureParameteri(depth, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTextureParameteri(depth, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTextureParameteri(depth, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
         const GLfloat border_color[]{1.0f, 1.0f, 1.0f, 1.0f};
-        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color);
+        glTextureParameterfv(depth, GL_TEXTURE_BORDER_COLOR, border_color);
 
         renderer::Framebuffer fbo{};
-        glGenFramebuffers(1, &fbo);
+        glCreateFramebuffers(1, &fbo);
         if (not fbo) {
             glDeleteTextures(1, &depth);
-            return context.refuse("resource::shadow::Allocator::materialize: glGenFramebuffers failed");
+            return context.refuse("resource::shadow::Allocator::materialize: glCreateFramebuffers failed");
         }
 
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth, 0);
-        glDrawBuffer(GL_NONE);
-        glReadBuffer(GL_NONE);
+        glNamedFramebufferTexture(fbo, GL_DEPTH_ATTACHMENT, depth, 0);
+        glNamedFramebufferDrawBuffer(fbo, GL_NONE);
+        glNamedFramebufferReadBuffer(fbo, GL_NONE);
 
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        if (glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
             glDeleteFramebuffers(1, &fbo);
             glDeleteTextures(1, &depth);
             return context.refuse("resource::shadow::Allocator::materialize: framebuffer incomplete");
         }
-
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindTexture(GL_TEXTURE_2D, 0);
 
         return install_runtime(context, device, asset_id, Runtime::Quantum{
             .device = device,

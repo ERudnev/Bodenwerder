@@ -19,7 +19,7 @@ int main() {
             .title = "Kubes",
             .window_size = {.x = 1600, .y = 900},
             .presentation = rmmr::system::Window::Presentation::maximized,
-            .glVersion = {.major = 3, .minor = 3},
+            .glVersion = {.major = 4, .minor = 5},
         });
 
         application->setProduct(std::make_unique<kubes::KubeOfKubes>());

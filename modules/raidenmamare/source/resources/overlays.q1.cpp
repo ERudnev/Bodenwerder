@@ -24,16 +24,18 @@ namespace rmmr::resource::overlay {
         vector<Uniform::Binding> bindings{};
         bindings.reserve(asset.uniforms.size());
         for (const auto persistent_id : asset.uniforms) {
+            const auto type = ::rmmr::material::Semantics::type_of(persistent_id);
             const auto semantic_name = ::rmmr::material::Semantics::name_of(persistent_id);
-            if (semantic_name == ::rmmr::material::Semantics::Name{"_undefined"}) {
-                bindings.push_back(Uniform::Binding{.id = persistent_id, .type = ::rmmr::material::Semantics::type_of(persistent_id), .location = GLint{-1}});
+            if (semantic_name == ::rmmr::material::Semantics::Name{"_undefined"}
+                or ::rmmr::material::Semantics::isBoundResource(type)) {
+                bindings.push_back(Uniform::Binding{.id = persistent_id, .type = type, .location = GLint{-1}});
                 continue;
             }
             const auto uniform_name = ::rmmr::material::Semantics::uniform_name(semantic_name);
             const auto location = glGetUniformLocation(shader_quantum.handle, uniform_name.c_str());
             bindings.push_back(Uniform::Binding{
                 .id = persistent_id,
-                .type = ::rmmr::material::Semantics::type_of(persistent_id),
+                .type = type,
                 .location = location,
             });
         }

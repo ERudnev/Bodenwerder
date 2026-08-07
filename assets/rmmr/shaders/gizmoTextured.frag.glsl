@@ -1,11 +1,11 @@
-#version 330 core
+#version 450 core
 
 in vec2 v_uv0;
 
 out vec4 FragColor;
 
 uniform vec3 u_albedo;
-uniform sampler2D u_albedoMap;
+layout(binding = 0) uniform sampler2D u_albedoMap;
 uniform float u_opacity;
 
 void main() {

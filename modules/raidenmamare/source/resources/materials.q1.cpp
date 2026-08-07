@@ -35,12 +35,14 @@ namespace rmmr::resource::material {
             textures.reserve(asset_technique.textures.size());
 
             for (const auto persistent_id : asset_technique.uniforms) {
+                const auto type = ::rmmr::material::Semantics::type_of(persistent_id);
                 const auto semantic_name = ::rmmr::material::Semantics::name_of(persistent_id);
-                if (semantic_name == ::rmmr::material::Semantics::Name{"_undefined"}) {
+                if (semantic_name == ::rmmr::material::Semantics::Name{"_undefined"}
+                    or ::rmmr::material::Semantics::isBoundResource(type)) {
                     locations.emplace(persistent_id, GLint{-1});
                     bindings.push_back(Uniform::Binding{
                         .id = persistent_id,
-                        .type = ::rmmr::material::Semantics::type_of(persistent_id),
+                        .type = type,
                         .location = GLint{-1},
                     });
                     continue;
@@ -51,7 +53,7 @@ namespace rmmr::resource::material {
                 locations.emplace(persistent_id, location);
                 bindings.push_back(Uniform::Binding{
                     .id = persistent_id,
-                    .type = ::rmmr::material::Semantics::type_of(persistent_id),
+                    .type = type,
                     .location = location,
                 });
             }

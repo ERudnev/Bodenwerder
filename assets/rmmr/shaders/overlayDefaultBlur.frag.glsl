@@ -1,8 +1,8 @@
-#version 330 core
+#version 450 core
 
 // Engine defaultBlur: box-blur scene color using only samples whose identiffy != 0.
-uniform sampler2D u_sceneColor;
-uniform usampler2D u_identiffyMap;
+layout(binding = 0) uniform sampler2D u_sceneColor;
+layout(binding = 1) uniform usampler2D u_identiffyMap;
 uniform vec2 u_texelSize;
 
 in vec2 vUv;

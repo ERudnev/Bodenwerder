@@ -1,11 +1,11 @@
-#version 330 core
+#version 450 core
 
 in vec2 v_uv0;
 in vec4 v_color0;
 out vec4 FragColor;
 
 uniform vec3 u_albedo;
-uniform sampler2D u_albedoMap;
+layout(binding = 0) uniform sampler2D u_albedoMap;
 
 void main() {
     vec4 texel = texture(u_albedoMap, v_uv0);

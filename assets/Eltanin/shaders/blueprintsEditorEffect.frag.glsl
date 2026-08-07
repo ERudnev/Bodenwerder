@@ -1,4 +1,4 @@
-#version 330 core
+#version 450 core
 
 // Blueprints selection overlay (Tesla-style):
 // (1) segmentation — foreign/own in selectedMap (smaller radius)
@@ -7,8 +7,8 @@
 // (4) visible selected fill — absent
 // Hover: same outline idea on identiffyMap, no fill
 
-uniform usampler2D u_identiffyMap;
-uniform usampler2D u_selectedMap;
+layout(binding = 1) uniform usampler2D u_identiffyMap;
+layout(binding = 2) uniform usampler2D u_selectedMap;
 uniform uint u_under;
 
 in vec2 vUv;

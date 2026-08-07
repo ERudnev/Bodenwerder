@@ -76,25 +76,20 @@ namespace rmmr {
             target.color = 0;
         }
 
-        glGenTextures(1, &target.color);
-        glBindTexture(GL_TEXTURE_2D, target.color);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glCreateTextures(GL_TEXTURE_2D, 1, &target.color);
+        glTextureStorage2D(target.color, 1, GL_RGBA8, width, height);
+        glTextureParameteri(target.color, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(target.color, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(target.color, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(target.color, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-        glGenFramebuffers(1, &target.fbo);
-        glBindFramebuffer(GL_FRAMEBUFFER, target.fbo);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target.color, 0);
+        glCreateFramebuffers(1, &target.fbo);
+        glNamedFramebufferTexture(target.fbo, GL_COLOR_ATTACHMENT0, target.color, 0);
         const GLenum draw_buffers[]{GL_COLOR_ATTACHMENT0};
-        glDrawBuffers(1, draw_buffers);
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glNamedFramebufferDrawBuffers(target.fbo, 1, draw_buffers);
+        if (glCheckNamedFramebufferStatus(target.fbo, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
             throw std::runtime_error(std::string("Renderer: ") + label + " framebuffer incomplete");
         }
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindTexture(GL_TEXTURE_2D, 0);
         target.size = size;
     }
 
@@ -126,40 +121,34 @@ namespace rmmr {
         }
 
         auto make_id_texture = [&](renderer::Texture& texture) {
-            glGenTextures(1, &texture);
-            glBindTexture(GL_TEXTURE_2D, texture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, nullptr);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glCreateTextures(GL_TEXTURE_2D, 1, &texture);
+            glTextureStorage2D(texture, 1, GL_R32UI, width, height);
+            glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         };
         make_id_texture(identity_.color);
         make_id_texture(identity_.selected);
 
-        glGenTextures(1, &identity_.depth);
-        glBindTexture(GL_TEXTURE_2D, identity_.depth);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glCreateTextures(GL_TEXTURE_2D, 1, &identity_.depth);
+        glTextureStorage2D(identity_.depth, 1, GL_DEPTH_COMPONENT24, width, height);
+        glTextureParameteri(identity_.depth, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTextureParameteri(identity_.depth, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
         auto make_fbo = [&](renderer::Framebuffer& fbo, renderer::Texture color, const char* label) {
-            glGenFramebuffers(1, &fbo);
-            glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, identity_.depth, 0);
+            glCreateFramebuffers(1, &fbo);
+            glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, color, 0);
+            glNamedFramebufferTexture(fbo, GL_DEPTH_ATTACHMENT, identity_.depth, 0);
             const GLenum draw_buffers[]{GL_COLOR_ATTACHMENT0};
-            glDrawBuffers(1, draw_buffers);
-            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glNamedFramebufferDrawBuffers(fbo, 1, draw_buffers);
+            if (glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
                 throw std::runtime_error(std::string("Renderer: ") + label + " framebuffer incomplete");
             }
         };
         make_fbo(identity_.all_fbo, identity_.color, "identity");
         make_fbo(identity_.selected_fbo, identity_.selected, "identitySelected");
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glBindTexture(GL_TEXTURE_2D, 0);
         identity_.size = size;
     }
 
@@ -286,7 +275,7 @@ namespace rmmr {
 
         glUseProgram(shader.handle);
         if (fullscreen_vao_ == 0)
-            glGenVertexArrays(1, &fullscreen_vao_);
+            glCreateVertexArrays(1, &fullscreen_vao_);
         const auto id_scene = material::Semantics::id_of("sceneColor");
         const auto id_ident = material::Semantics::id_of("identiffyMap");
         const auto id_selected_map = material::Semantics::id_of("selectedMap");
@@ -296,25 +285,15 @@ namespace rmmr {
         const auto id_selected = material::Semantics::id_of("selected");
         const auto under = with<system::Window>::get(args.world, args.window).current.under;
         const int selected_count = std::min(static_cast<int>(args.selection.size()), resource::overlay::selection_capacity);
-        GLint unit = 0;
         for (const auto& binding : overlay.bindings) {
-            if (binding.location < 0)
-                continue;
             if (binding.id == id_scene) {
-                glActiveTexture(GL_TEXTURE0 + unit);
-                glBindTexture(GL_TEXTURE_2D, scene_color_.color);
-                glUniform1i(binding.location, unit);
-                ++unit;
+                glBindTextureUnit(material::Semantics::binding_of(binding.id), scene_color_.color);
             } else if (binding.id == id_ident) {
-                glActiveTexture(GL_TEXTURE0 + unit);
-                glBindTexture(GL_TEXTURE_2D, identity_.color);
-                glUniform1i(binding.location, unit);
-                ++unit;
+                glBindTextureUnit(material::Semantics::binding_of(binding.id), identity_.color);
             } else if (binding.id == id_selected_map) {
-                glActiveTexture(GL_TEXTURE0 + unit);
-                glBindTexture(GL_TEXTURE_2D, identity_.selected);
-                glUniform1i(binding.location, unit);
-                ++unit;
+                glBindTextureUnit(material::Semantics::binding_of(binding.id), identity_.selected);
+            } else if (binding.location < 0) {
+                continue;
             } else if (binding.id == id_texel) {
                 glUniform2f(binding.location, 1.0f / static_cast<float>(width), 1.0f / static_cast<float>(height));
             } else if (binding.id == id_under) {
@@ -339,7 +318,7 @@ namespace rmmr {
         // Engine paste: alpha-blend overlay RGBA onto the default framebuffer.
         static GLuint compose_program = 0;
         if (compose_program == 0) {
-            const char* vs = R"(#version 330 core
+            const char* vs = R"(#version 450 core
 out vec2 vUv;
 void main() {
     const vec2 pos[3] = vec2[](vec2(-1.0,-1.0), vec2(3.0,-1.0), vec2(-1.0,3.0));
@@ -347,8 +326,8 @@ void main() {
     vUv = p * 0.5 + 0.5;
     gl_Position = vec4(p, 0.0, 1.0);
 })";
-            const char* fs = R"(#version 330 core
-uniform sampler2D u_overlay;
+            const char* fs = R"(#version 450 core
+layout(binding = 0) uniform sampler2D u_overlay;
 in vec2 vUv;
 out vec4 fragColor;
 void main() { fragColor = texture(u_overlay, vUv); })";
@@ -385,11 +364,9 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glUseProgram(compose_program);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, overlay_color_.color);
-        glUniform1i(glGetUniformLocation(compose_program, "u_overlay"), 0);
+        glBindTextureUnit(0, overlay_color_.color);
         if (fullscreen_vao_ == 0)
-            glGenVertexArrays(1, &fullscreen_vao_);
+            glCreateVertexArrays(1, &fullscreen_vao_);
         glBindVertexArray(fullscreen_vao_);
         glDrawArrays(GL_TRIANGLES, 0, 3);
         glBindVertexArray(0);
@@ -485,20 +462,21 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             glUniform2f(binding.location, value.x, value.y);
         }
 
-        void set_uniform_sampler(const resource::Uniform::Binding& binding, GLuint texture, GLint unit, bool nearest = false) {
-            glActiveTexture(GL_TEXTURE0 + unit);
-            glBindTexture(GL_TEXTURE_2D, texture);
+        void set_uniform_sampler(const resource::Uniform::Binding& binding, GLuint texture, bool nearest = false) {
+            const auto unit = material::Semantics::binding_of(binding.id);
             if (nearest) {
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             }
-            glUniform1i(binding.location, unit);
+            glBindTextureUnit(unit, texture);
         }
 
-        void set_uniform_sampler_buffer(const resource::Uniform::Binding& binding, GLuint texture, GLint unit) {
-            glActiveTexture(GL_TEXTURE0 + unit);
-            glBindTexture(GL_TEXTURE_BUFFER, texture);
-            glUniform1i(binding.location, unit);
+        void set_uniform_ssbo(const resource::Uniform::Binding& binding, GLuint buffer) {
+            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, material::Semantics::binding_of(binding.id), buffer);
+        }
+
+        auto bindingActive(const resource::Uniform::Binding& binding) -> bool {
+            return material::Semantics::isBoundResource(binding.type) or binding.location >= 0;
         }
 
         auto material_texture_for_semantic(const resource::material::Runtime::Technique& technique, resource::Uniform::Id semantic) -> base::maybe<resource::texture::Runtime::Id> {
@@ -688,7 +666,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
         const auto& technique = technique_for(material_quantum, pass);
         for (const auto& binding : technique.bindings) {
-            if (binding.location < 0) {
+            if (not bindingActive(binding)) {
                 continue;
             }
             if (binding.id != semantic.albedoMap) {
@@ -698,7 +676,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             if (not texture || not with<resource::texture::Runtime>::exists(args.world, *texture)) {
                 throw std::runtime_error("Renderer: material is missing albedoMap texture");
             }
-            set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, 0, material_quantum.nearest);
+            set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, material_quantum.nearest);
         }
     }
 
@@ -718,7 +696,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             }
             const mat4 light_space = light_space_matrix(args.world, *primary_light);
             for (const auto& binding : technique.bindings) {
-                if (binding.location < 0) {
+                if (not bindingActive(binding)) {
                     continue;
                 }
                 if (binding.id == semantic.lightSpaceMatrix) {
@@ -748,7 +726,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         }
 
         for (const auto& binding : technique.bindings) {
-            if (binding.location < 0) {
+            if (not bindingActive(binding)) {
                 continue;
             }
             if (binding.id == semantic.ambientColor) {
@@ -768,13 +746,13 @@ void main() { fragColor = texture(u_overlay, vUv); })";
                 if (not shadow) {
                     throw std::runtime_error("Renderer: material expects shadowMap but no shadow-casting light");
                 }
-                set_uniform_sampler(binding, with<resource::shadow::Runtime>::get(args.world, *shadow).depth, 1);
+                set_uniform_sampler(binding, with<resource::shadow::Runtime>::get(args.world, *shadow).depth);
             } else if (binding.id == semantic.albedoMap) {
                 const auto texture = material_texture_for_semantic(technique, binding.id);
                 if (not texture || not with<resource::texture::Runtime>::exists(args.world, *texture)) {
                     throw std::runtime_error("Renderer: material is missing albedoMap texture");
                 }
-                set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, 0, material_quantum.nearest);
+                set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, material_quantum.nearest);
             } else if (binding.id == semantic.light0Pos) {
                 if (not light_world_pos) {
                     throw std::runtime_error("Renderer: material expects light0Pos but no light");
@@ -803,7 +781,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         }
 
         for (const auto& binding : technique.bindings) {
-            if (binding.location < 0) {
+            if (not bindingActive(binding)) {
                 continue;
             }
             if (binding.id == semantic.model) {
@@ -823,12 +801,12 @@ void main() { fragColor = texture(u_overlay, vUv); })";
                     throw std::runtime_error("Renderer: atlasTexture requested on non-sprite draw");
                 }
                 const auto& texture = with<resource::texture::Runtime>::get(args.world, sprite->texture);
-                set_uniform_sampler(binding, texture.handle, 0, material_quantum.nearest);
+                set_uniform_sampler(binding, texture.handle, material_quantum.nearest);
             } else if (binding.id == semantic.atlasEntries) {
                 if (not sprite) {
                     throw std::runtime_error("Renderer: atlasEntries requested on non-sprite draw");
                 }
-                set_uniform_sampler_buffer(binding, sprite->entries_texture, 1);
+                set_uniform_ssbo(binding, sprite->entries_buffer);
             } else if (binding.id == semantic.spriteIndex) {
                 set_uniform(binding, command.sprite_index);
             } else if (binding.id == semantic.scenicAlias) {

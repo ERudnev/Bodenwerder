@@ -1,4 +1,4 @@
-#version 330 core
+#version 450 core
 
 // GPU pick id (scenicAlias). Uniform for single-instance draws; geometry only needs positions.
 uniform int u_scenicAlias;

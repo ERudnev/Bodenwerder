@@ -12,13 +12,12 @@ namespace rmmr::resource::sprite {
 
     using Reference = resource::Unit::Reference;
 
-    // GPU face for sprite atlases: texture + atlas entry table as TBO.
+    // GPU face for sprite atlases: texture + atlas entry table as SSBO.
     struct Runtime : Entity<Runtime> {
         struct Quantum {
             system::Device::Id device;
             texture::Runtime::Id texture;
             renderer::VertexBuffer entries_buffer;
-            renderer::Texture entries_texture;
             integer count;
         };
         struct Internals;

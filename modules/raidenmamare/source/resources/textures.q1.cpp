@@ -8,6 +8,7 @@
 #include <base/logging.h>
 
 #include <cmath>
+#include <algorithm>
 #include <filesystem>
 #include <vector>
 
@@ -60,25 +61,24 @@ namespace rmmr::resource::texture {
         }
 
         renderer::Texture handle{};
-        glGenTextures(1, &handle);
+        glCreateTextures(GL_TEXTURE_2D, 1, &handle);
         if (not handle) {
             stbi_image_free(pixels);
-            return context.refuse("resource::texture::Loader::materialize: glGenTextures failed");
+            return context.refuse("resource::texture::Loader::materialize: glCreateTextures failed");
         }
 
-        glBindTexture(GL_TEXTURE_2D, handle);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(
-            GL_TEXTURE_2D,
-            GL_TEXTURE_MIN_FILTER,
-            loader.mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        const int levels = loader.mipmaps
+            ? 1 + static_cast<int>(std::floor(std::log2(std::max(width, height))))
+            : 1;
+        glTextureStorage2D(handle, levels, GL_RGBA8, width, height);
+        glTextureSubImage2D(handle, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        glTextureParameteri(handle, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTextureParameteri(handle, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTextureParameteri(handle, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(handle, GL_TEXTURE_MIN_FILTER, loader.mipmaps ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
         if (loader.mipmaps) {
-            glGenerateMipmap(GL_TEXTURE_2D);
+            glGenerateTextureMipmap(handle);
         }
-        glBindTexture(GL_TEXTURE_2D, 0);
 
         stbi_image_free(pixels);
 
@@ -129,19 +129,19 @@ namespace rmmr::resource::texture {
         }
 
         renderer::Texture handle{};
-        glGenTextures(1, &handle);
+        glCreateTextures(GL_TEXTURE_2D, 1, &handle);
         if (not handle) {
-            return context.refuse("resource::texture::Generator::materialize: glGenTextures failed");
+            return context.refuse("resource::texture::Generator::materialize: glCreateTextures failed");
         }
 
-        glBindTexture(GL_TEXTURE_2D, handle);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
-        glGenerateMipmap(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        const int levels = 1 + static_cast<int>(std::floor(std::log2(std::max(width, height))));
+        glTextureStorage2D(handle, levels, GL_RGBA8, width, height);
+        glTextureSubImage2D(handle, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        glTextureParameteri(handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTextureParameteri(handle, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glGenerateTextureMipmap(handle);
 
         return install_runtime(context, device, asset_id, Runtime::Quantum{
             .device = device,

@@ -1,4 +1,4 @@
-#version 330 core
+#version 450 core
 
 in vec3 v_worldPos;
 in vec3 v_worldNormal;
@@ -15,7 +15,7 @@ uniform vec3 u_light0Color;
 uniform float u_light0Intensity;
 
 uniform mat4 u_lightSpaceMatrix;
-uniform sampler2D u_shadowMap;
+layout(binding = 1) uniform sampler2D u_shadowMap;
 
 uniform float u_opacity;
 

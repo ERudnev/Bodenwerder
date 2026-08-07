@@ -1,4 +1,4 @@
-#version 330 core
+#version 450 core
 in vec3 vWorldPos;
 out vec4 FragColor;
 

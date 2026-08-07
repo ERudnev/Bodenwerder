@@ -1,4 +1,4 @@
-#version 330 core
+#version 450 core
 
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec2 aUv0;
@@ -7,15 +7,18 @@ uniform mat4 u_model;
 uniform mat4 u_view;
 uniform mat4 u_projection;
 
-uniform isamplerBuffer u_atlasEntries;
+layout(std430, binding = 0) readonly buffer AtlasEntries {
+    ivec4 data[];
+};
+
 uniform int u_spriteIndex;
 uniform vec2 u_inverseAtlasSize;
 
 out vec2 v_uv0;
 
 void main() {
-    ivec4 rect = texelFetch(u_atlasEntries, u_spriteIndex * 2);
-    ivec4 extra = texelFetch(u_atlasEntries, u_spriteIndex * 2 + 1);
+    ivec4 rect = data[u_spriteIndex * 2];
+    ivec4 extra = data[u_spriteIndex * 2 + 1];
 
     vec2 spriteMin = vec2(rect.xy);
     vec2 spriteSize = vec2(rect.zw);

@@ -78,16 +78,13 @@ namespace rmmr::resource::sprite {
         }
 
         void release_gl(Writing context, const Runtime::Quantum& last) {
+            if (not last.entries_buffer) {
+                return;
+            }
             const auto& device_quantum = with<system::Device>::get(context, last.device);
             glfwMakeContextCurrent(device_quantum.handle);
-            if (last.entries_texture) {
-                auto entries_texture = last.entries_texture;
-                glDeleteTextures(1, &entries_texture);
-            }
-            if (last.entries_buffer) {
-                auto entries_buffer = last.entries_buffer;
-                glDeleteBuffers(1, &entries_buffer);
-            }
+            auto entries_buffer = last.entries_buffer;
+            glDeleteBuffers(1, &entries_buffer);
         }
 
         auto install_runtime(Writing context, system::Device::Id device, Pack::Id pack_id, Runtime::Quantum quantum) -> Runtime::Id {
@@ -158,35 +155,21 @@ namespace rmmr::resource::sprite {
         }
 
         renderer::VertexBuffer entries_buffer{};
-        glGenBuffers(1, &entries_buffer);
+        glCreateBuffers(1, &entries_buffer);
         if (not entries_buffer) {
-            return context.refuse("resource::sprite::Pack::materialize: glGenBuffers failed");
+            return context.refuse("resource::sprite::Pack::materialize: glCreateBuffers failed");
         }
 
-        glBindBuffer(GL_TEXTURE_BUFFER, entries_buffer);
-        glBufferData(
-            GL_TEXTURE_BUFFER,
+        glNamedBufferData(
+            entries_buffer,
             static_cast<renderer::SizePtr>(payload.size() * sizeof(GLint)),
             payload.data(),
             GL_STATIC_DRAW);
-        glBindBuffer(GL_TEXTURE_BUFFER, 0);
-
-        renderer::Texture entries_texture{};
-        glGenTextures(1, &entries_texture);
-        if (not entries_texture) {
-            glDeleteBuffers(1, &entries_buffer);
-            return context.refuse("resource::sprite::Pack::materialize: glGenTextures failed");
-        }
-
-        glBindTexture(GL_TEXTURE_BUFFER, entries_texture);
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32I, entries_buffer);
-        glBindTexture(GL_TEXTURE_BUFFER, 0);
 
         return install_runtime(context, device, pack_id, Runtime::Quantum{
             .device = device,
             .texture = texture_it->second,
             .entries_buffer = entries_buffer,
-            .entries_texture = entries_texture,
             .count = static_cast<integer>(pack.entries.size()),
         });
     }

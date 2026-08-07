@@ -1,4 +1,4 @@
-#version 330 core
+#version 450 core
 
 in vec3 v_worldPos;
 in vec3 v_worldNormal;
@@ -7,7 +7,7 @@ in vec2 v_uv0;
 out vec4 FragColor;
 
 uniform vec3 u_albedo;
-uniform sampler2D u_albedoMap;
+layout(binding = 0) uniform sampler2D u_albedoMap;
 
 uniform vec3 u_ambientColor;
 uniform float u_ambientIntensity;
@@ -17,7 +17,7 @@ uniform vec3 u_light0Color;
 uniform float u_light0Intensity;
 
 uniform mat4 u_lightSpaceMatrix;
-uniform sampler2D u_shadowMap;
+layout(binding = 1) uniform sampler2D u_shadowMap;
 
 const float k_shadow_bias = 0.005;
 
