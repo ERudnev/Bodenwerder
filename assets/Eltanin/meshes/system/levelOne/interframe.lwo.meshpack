@@ -1,0 +1,8 @@
+{
+    "interframe",
+    "Eltanin",
+    "meshes/system/levelOne/interframe.lwo",
+    [
+        {"outer", "Eltanin::outer"}
+    ]
+}

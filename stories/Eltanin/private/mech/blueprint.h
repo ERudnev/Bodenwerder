@@ -3,6 +3,7 @@
 #include "semantics/shapes.h"
 #include "semantics/space.h"
 #include "semantics/slots.h"
+#include "semantics/subframe.h"
 
 #include <string>
 #include <vector>
@@ -14,8 +15,12 @@ namespace eltanin::mech {
     struct Element {
         struct Cell {
             Pose pose;
-            frame::shape shape;
+            frame::shape shape; // construction pattern (k*); drives subframe fill
             slot::inner role;
+            // Local to pose: cube lattice of this cell (same space as subframe::recipes).
+            std::vector<subframe::Recipe::Corner> corners;
+            std::vector<subframe::Recipe::Edge> edges;
+            bool subframeBare; // true: keep empty subframe (no recipe re-fill on sync)
         };
 
         struct Plate {

@@ -1,5 +1,7 @@
 #include "views/blueprints/editor.h"
 
+#include "views/blueprints/patterns.h"
+
 #include "mech/semantics/levelOne.h"
 #include "mech/semantics/shapes.h"
 #include "mech/semantics/space.h"
@@ -25,6 +27,7 @@
 #include <cmath>
 #include <filesystem>
 #include <format>
+#include <map>
 #include <numbers>
 #include <set>
 #include <utility>
@@ -42,6 +45,30 @@ namespace eltanin::views {
         constexpr float cursorOpacity = 0.18f;
         constexpr float cursorClampMeters = 40.0f;
         constexpr float gridOpacity = 0.88f;
+        inline constexpr bool contentAutoSave = true;
+
+        void applyOrbitPose(Writing context, scene::Camera::Id camera) {
+            if (not with<controller::CameraOrbit>::exists(context, camera))
+                return;
+            const auto& orbit = with<controller::CameraOrbit>::get(context, camera);
+            HPB hpb = orbit.hpb;
+            hpb.z = 0.0f;
+            const quat rotation = Pose::from(Pos{0.0f, 0.0f, 0.0f}, hpb).rotation;
+            const vec3 forward = glm::normalize(rotation * vec3{0.0f, 0.0f, -1.0f});
+            auto node = with<scene::Node>::modify(context, camera);
+            node->pose.rotation = rotation;
+            node->pose.position = orbit.pivot - forward * orbit.distance;
+        }
+
+        void syncCameraPivotToFloor(Writing context, Blueprints::State& state) {
+            if (not state.camera.exists())
+                return;
+            const float cell = mech::physical::edgeMeters;
+            const float floorY = static_cast<float>(state.currentFloor) * cell;
+            auto orbit = with<controller::CameraOrbit>::modify(context, *state.camera);
+            orbit->pivot.y = floorY;
+            applyOrbitPose(context, *state.camera);
+        }
 
         void destroyMeshActor(Writing context, scene::actor::Mesh::Id actor) {
             for (const auto [root, group] : context->aspect<scene::Node_group>().items()) {
@@ -103,6 +130,20 @@ namespace eltanin::views {
             };
         }
 
+        // cell.pose ⊕ local piece orient (both about cell center).
+        auto pieceScenePose(const mech::Pose& cell, mech::orient::key local) -> Pose {
+            const auto R = glm::mat3(mech::orient::matrix[static_cast<std::size_t>(cell.ori)]) * glm::mat3(mech::orient::matrix[static_cast<std::size_t>(local)]);
+            const float edge = mech::physical::edgeMeters;
+            return Pose{
+                .position = Pos{
+                    static_cast<float>(cell.pos.x) * edge,
+                    static_cast<float>(cell.pos.y) * edge,
+                    static_cast<float>(cell.pos.z) * edge,
+                },
+                .rotation = glm::normalize(glm::quat_cast(R)),
+            };
+        }
+
         auto latticeWorldPos(const base::common_types::index3& lattice) -> Pos {
             const float cell = mech::physical::edgeMeters;
             return Pos{
@@ -117,7 +158,9 @@ namespace eltanin::views {
                 return {};
             const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
             switch (actor.source) {
-                case Blueprints::Source::cell:
+                case Blueprints::Source::inner:
+                case Blueprints::Source::corner:
+                case Blueprints::Source::halfEdge:
                     if (actor.index < data.cells.size())
                         return data.cells[actor.index].pose.pos;
                     break;
@@ -127,6 +170,20 @@ namespace eltanin::views {
                     break;
             }
             return {};
+        }
+
+        auto sourceLabel(Blueprints::Source source) -> const char* {
+            switch (source) {
+                case Blueprints::Source::plate: return "plate";
+                case Blueprints::Source::inner: return "inner";
+                case Blueprints::Source::corner: return "corner";
+                case Blueprints::Source::halfEdge: return "halfEdge";
+            }
+            return "?";
+        }
+
+        auto isCellSource(Blueprints::Source source) -> bool {
+            return source == Blueprints::Source::inner or source == Blueprints::Source::corner or source == Blueprints::Source::halfEdge;
         }
 
         void eraseDescending(auto& vec, const std::set<std::size_t>& indices) {
@@ -260,6 +317,8 @@ namespace eltanin::views {
             60.0f * std::numbers::pi_v<float> / 180.0f);
         with<controller::CameraOrbit>::create(context, camera, pivot, glm::length(camera_pos - pivot));
 
+        syncCameraPivotToFloor(context, state);
+
         with<scene::Interface>::createLight(
             context,
             root,
@@ -316,19 +375,46 @@ namespace eltanin::views {
         if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
             return;
 
+        // Fill from k* when legacy .blueprint has no subframe lists — not after user cleared (subframeBare).
+        {
+            auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
+            for (auto& cell : data->data.cells) {
+                if (cell.corners.empty() and cell.edges.empty() and not cell.subframeBare)
+                    blueprints::patterns::apply(cell);
+            }
+        }
+
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
         const auto pack_one = *with<Assets>::find<meshpack::Asset>(context, Unit::Name::from("Eltanin", "levelOne"));
+        const auto pack_frame = with<Assets>::find<meshpack::Asset>(context, Unit::Name::from("Eltanin", "interframe"));
 
         for (std::size_t i = 0; i < data.cells.size(); ++i) {
             const auto& cell = data.cells[i];
-            if (auto frame = spawnFromPack(context, pack_one, mech::levelOne::mesh(cell.shape), cell.pose, mech::layer::frame, Source::cell, i, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
-                state.levelOne.push_back(*frame);
-            if (auto inner = spawnFromPack(context, pack_one, mech::levelOne::innerMesh(cell.shape), cell.pose, mech::layer::inner, Source::cell, i, mech::slot::color(cell.role), cell.shape == mech::frame::shape::k8 ? 1.0f : 0.45f))
+            const int floor = static_cast<int>(cell.pose.pos.y);
+            if (pack_frame) {
+                for (std::size_t c = 0; c < cell.corners.size(); ++c) {
+                    const auto& piece = cell.corners[c];
+                    const auto entry = std::string{blueprints::patterns::cornerMesh(piece.kind)};
+                    if (auto actor = spawnFromPack(context, *pack_frame, entry, pieceScenePose(cell.pose, piece.orient), mech::layer::frame, Source::corner, i, c, mech::subframe::halfEdge::Pole::s, floor, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
+                        state.levelOne.push_back(*actor);
+                }
+                for (std::size_t e = 0; e < cell.edges.size(); ++e) {
+                    const auto& edge = cell.edges[e];
+                    const auto pose = pieceScenePose(cell.pose, edge.orient);
+                    const auto poleAtMesh0 = edge.poleAtMesh0;
+                    const auto poleAtMeshRay = mech::subframe::halfEdge::opposite(edge.poleAtMesh0);
+                    if (auto mesh0 = spawnFromPack(context, *pack_frame, blueprints::patterns::halfEdgeMesh(edge.kind, poleAtMesh0), pose, mech::layer::frame, Source::halfEdge, i, e, poleAtMesh0, floor, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
+                        state.levelOne.push_back(*mesh0);
+                    if (auto meshRay = spawnFromPack(context, *pack_frame, blueprints::patterns::halfEdgeMesh(edge.kind, poleAtMeshRay), pose, mech::layer::frame, Source::halfEdge, i, e, poleAtMeshRay, floor, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
+                        state.levelOne.push_back(*meshRay);
+                }
+            }
+            if (auto inner = spawnFromPack(context, pack_one, mech::levelOne::innerMesh(cell.shape), scenePose(cell.pose), mech::layer::inner, Source::inner, i, 0, mech::subframe::halfEdge::Pole::s, floor, mech::slot::color(cell.role), cell.shape == mech::frame::shape::k8 ? 1.0f : 0.45f))
                 state.levelOne.push_back(*inner);
         }
         for (std::size_t i = 0; i < data.hull.size(); ++i) {
             const auto& plate = data.hull[i];
-            if (auto a = spawnFromPack(context, pack_one, mech::levelOne::mesh(plate.shape), plate.pose, mech::layer::plate, Source::plate, i, RGB{1.0f, 1.0f, 1.0f}, 1.0f))
+            if (auto a = spawnFromPack(context, pack_one, mech::levelOne::mesh(plate.shape), scenePose(plate.pose), mech::layer::plate, Source::plate, i, 0, mech::subframe::halfEdge::Pole::s, static_cast<int>(plate.pose.pos.y), RGB{1.0f, 1.0f, 1.0f}, 1.0f))
                 state.levelOne.push_back(*a);
         }
 
@@ -346,8 +432,10 @@ namespace eltanin::views {
         if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
             return;
 
-        std::set<std::size_t> cells;
-        std::set<std::size_t> plates;
+        std::set<std::size_t> killCells;
+        std::set<std::size_t> killPlates;
+        std::map<std::size_t, std::set<std::size_t>> killCorners;
+        std::map<std::size_t, std::set<std::size_t>> killEdges;
         for (const auto alias : state.selection) {
             auto actor = findActorByAlias(context, state.levelOne, alias);
             if (not actor)
@@ -355,19 +443,35 @@ namespace eltanin::views {
             if (not actor)
                 continue;
             switch (actor->source) {
-                case Source::cell: cells.insert(actor->index); break;
-                case Source::plate: plates.insert(actor->index); break;
+                case Source::inner: killCells.insert(actor->index); break;
+                case Source::plate: killPlates.insert(actor->index); break;
+                case Source::corner: killCorners[actor->index].insert(actor->sub); break;
+                case Source::halfEdge: killEdges[actor->index].insert(actor->sub); break;
             }
         }
 
         state.selection.clear();
-        if (cells.empty() and plates.empty())
+        if (killCells.empty() and killPlates.empty() and killCorners.empty() and killEdges.empty())
             return;
 
         {
             auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
-            eraseDescending(data->data.cells, cells);
-            eraseDescending(data->data.hull, plates);
+            for (const auto& [cellIndex, subs] : killCorners) {
+                if (cellIndex >= data->data.cells.size())
+                    continue;
+                auto& cell = data->data.cells[cellIndex];
+                eraseDescending(cell.corners, subs);
+                cell.subframeBare = true;
+            }
+            for (const auto& [cellIndex, subs] : killEdges) {
+                if (cellIndex >= data->data.cells.size())
+                    continue;
+                auto& cell = data->data.cells[cellIndex];
+                eraseDescending(cell.edges, subs);
+                cell.subframeBare = true;
+            }
+            eraseDescending(data->data.cells, killCells);
+            eraseDescending(data->data.hull, killPlates);
         }
         persistHovered(context);
         syncVisuals(context);
@@ -388,7 +492,9 @@ namespace eltanin::views {
             if (not actor)
                 continue;
             switch (actor->source) {
-                case Source::cell: cells.insert(actor->index); break;
+                case Source::inner:
+                case Source::corner:
+                case Source::halfEdge: cells.insert(actor->index); break;
                 case Source::plate: plates.insert(actor->index); break;
             }
         }
@@ -413,19 +519,32 @@ namespace eltanin::views {
 
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
         const auto refresh = [&](const Actor& actor) {
-            const mech::Pose* pose = nullptr;
+            if (not with<scene::Node>::exists(context, actor.id))
+                return;
             switch (actor.source) {
-                case Source::cell:
-                    if (cells.contains(actor.index) and actor.index < data.cells.size())
-                        pose = &data.cells[actor.index].pose;
-                    break;
                 case Source::plate:
                     if (plates.contains(actor.index) and actor.index < data.hull.size())
-                        pose = &data.hull[actor.index].pose;
+                        with<scene::Node>::modify(context, actor.id)->pose = scenePose(data.hull[actor.index].pose);
+                    break;
+                case Source::inner:
+                    if (cells.contains(actor.index) and actor.index < data.cells.size())
+                        with<scene::Node>::modify(context, actor.id)->pose = scenePose(data.cells[actor.index].pose);
+                    break;
+                case Source::corner:
+                    if (cells.contains(actor.index) and actor.index < data.cells.size()) {
+                        const auto& cell = data.cells[actor.index];
+                        if (actor.sub < cell.corners.size())
+                            with<scene::Node>::modify(context, actor.id)->pose = pieceScenePose(cell.pose, cell.corners[actor.sub].orient);
+                    }
+                    break;
+                case Source::halfEdge:
+                    if (cells.contains(actor.index) and actor.index < data.cells.size()) {
+                        const auto& cell = data.cells[actor.index];
+                        if (actor.sub < cell.edges.size())
+                            with<scene::Node>::modify(context, actor.id)->pose = pieceScenePose(cell.pose, cell.edges[actor.sub].orient);
+                    }
                     break;
             }
-            if (pose and with<scene::Node>::exists(context, actor.id))
-                with<scene::Node>::modify(context, actor.id)->pose = scenePose(*pose);
         };
         for (const auto& actor : state.levelOne)
             refresh(actor);
@@ -436,6 +555,8 @@ namespace eltanin::views {
     }
 
     void Blueprints::persistHovered(Writing context) {
+        if (not contentAutoSave)
+            return;
         if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
             return;
         if (not with<::eltanin::resource::blueprint::Loader>::exists(context, *state.hovered))
@@ -443,7 +564,7 @@ namespace eltanin::views {
         ::eltanin::resource::blueprint::Loader::Actions::save(context, *state.hovered);
     }
 
-    auto Blueprints::spawnFromPack(Writing context, meshpack::Asset::Id pack, const std::string& entry, const mech::Pose& pose, mech::layer layer, Source source, std::size_t index, RGB albedo, float opacity) -> base::maybe<Actor> {
+    auto Blueprints::spawnFromPack(Writing context, meshpack::Asset::Id pack, const std::string& entry, const Pose& pose, mech::layer layer, Source source, std::size_t index, std::size_t sub, mech::subframe::halfEdge::Pole pole, int floor, RGB albedo, float opacity) -> base::maybe<Actor> {
         if (entry.empty())
             return {};
         const auto resolved = meshpack::Asset::Actions::resolve(context, pack, entry);
@@ -452,7 +573,7 @@ namespace eltanin::views {
         const auto id = with<scene::Interface>::createMeshActor(
             context,
             *state.scene,
-            scenePose(pose),
+            pose,
             scene::actor::Mesh::Quantum{
                 .geometry = resolved->geometry,
                 .materials = resolved->materials,
@@ -462,7 +583,7 @@ namespace eltanin::views {
                 .visible = true,
             });
         scene::actor::Identified::Actions::extend(context, id);
-        return Actor{.id = id, .layer = layer, .source = source, .index = index, .floor = static_cast<int>(pose.pos.y)};
+        return Actor{.id = id, .layer = layer, .source = source, .index = index, .sub = sub, .pole = pole, .floor = floor};
     }
 
     void Blueprints::applyLayers(Writing context) {
@@ -478,6 +599,7 @@ namespace eltanin::views {
         const float cell = mech::physical::edgeMeters;
         const float y = static_cast<float>(state.currentFloor) * cell - 2.0f;
         with<scene::Node>::modify(context, *state.grid)->pose = Pose::from(Pos{-2.0f, y, -2.0f}, HPB{0.0f, 0.0f, 0.0f});
+        syncCameraPivotToFloor(context, state);
     }
 
     void Blueprints::updateWorldCursor(Writing context, renderer::Integer32 under) {
@@ -605,18 +727,27 @@ namespace eltanin::views {
                     } else if (state.spaceMenu.place) {
                         auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
                         applied = frameShapePicks({}, [&](mech::frame::shape shape) {
-                            data->data.cells.push_back(mech::Element::Cell{
+                            mech::Element::Cell cell{
                                 .pose = mech::Pose{.pos = state.cursorLattice, .ori = 0},
                                 .shape = shape,
                                 .role = mech::slot::inner::multi,
-                            });
+                                .corners = {},
+                                .edges = {},
+                                .subframeBare = false,
+                            };
+                            blueprints::patterns::apply(cell);
+                            data->data.cells.push_back(std::move(cell));
                         });
                     } else {
                         const Actor target = *state.spaceMenu.target;
                         auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
-                        if (target.source == Source::cell and target.index < data->data.cells.size()) {
-                            auto& shape = data->data.cells[target.index].shape;
-                            applied = frameShapePicks(shape, [&](mech::frame::shape next) { shape = next; });
+                        if (isCellSource(target.source) and target.index < data->data.cells.size()) {
+                            auto& cell = data->data.cells[target.index];
+                            applied = frameShapePicks(cell.shape, [&](mech::frame::shape next) {
+                                cell.shape = next;
+                                cell.subframeBare = false;
+                                blueprints::patterns::apply(cell);
+                            });
                         } else if (target.source == Source::plate and target.index < data->data.hull.size()) {
                             auto& shape = data->data.hull[target.index].shape;
                             ImGui::TextUnformatted("Plate shape");
@@ -650,7 +781,7 @@ namespace eltanin::views {
         if (ImGui::Begin("Blueprints", &shown)) {
             blueprintsPos = ImGui::GetWindowPos();
             blueprintsSize = ImGui::GetWindowSize();
-            ImGui::TextDisabled("Content edits save .blueprint immediately");
+            ImGui::TextDisabled(contentAutoSave ? "Content edits save .blueprint immediately" : "Content edits in memory only (auto-save off)");
             ImGui::BeginChild("blueprintList", ImVec2{220.0f, 0.0f}, true);
             if (state.loaded.empty()) {
                 ImGui::TextDisabled("No blueprints loaded.");
@@ -720,14 +851,20 @@ namespace eltanin::views {
             ImGui::SetNextWindowSize(ImVec2{280.0f, 220.0f}, ImGuiCond_FirstUseEver);
             bool selectionOpen = true;
             if (ImGui::Begin("Selection", &selectionOpen)) {
-                ImGui::TextDisabled("Del — remove from model and save");
+                ImGui::TextDisabled(contentAutoSave ? "Del — remove from model and save" : "Del — remove from model (memory only)");
                 for (std::size_t index = 0; index < state.selection.size();) {
                     const auto alias = state.selection[index];
                     auto actor = findActorByAlias(context, state.levelOne, alias);
                     if (not actor)
                         actor = findActorByAlias(context, state.levelTwo, alias);
                     const auto hash = fqsm::internal::id::info_hash(static_cast<fqsm::internal::id::BaseType>(alias));
-                    const auto row = actor ? std::format("{}  #{}", layerLabel(actor->layer), hash) : std::format("?  #{}", hash);
+                    const auto row = actor
+                        ? (actor->source == Source::halfEdge
+                            ? std::format("{} {}[{}].edge{}:{}  #{}", layerLabel(actor->layer), sourceLabel(actor->source), actor->index, actor->sub, actor->pole == mech::subframe::halfEdge::Pole::s ? 's' : 'e', hash)
+                            : actor->source == Source::corner
+                                ? std::format("{} {}[{}].corner{}  #{}", layerLabel(actor->layer), sourceLabel(actor->source), actor->index, actor->sub, hash)
+                                : std::format("{} {}[{}]  #{}", layerLabel(actor->layer), sourceLabel(actor->source), actor->index, hash))
+                        : std::format("?  #{}", hash);
                     ImGui::PushID(static_cast<int>(index));
                     ImGui::TextUnformatted(row.c_str());
                     ImGui::SameLine();

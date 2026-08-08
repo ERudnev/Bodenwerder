@@ -1,5 +1,7 @@
 #include "story.h"
 
+#include "mech/semantics/together.include.h"
+
 #include <eltanin/entities/block.q1.h>
 #include <eltanin/physics/atomic.q1.h>
 #include <eltanin/physics/particle.q1.h>
@@ -26,7 +28,10 @@
 #include <rmmr/semantics/uniform.h>
 #include <rmmr/system/viewport.q1.h>
 
+#include <format>
 #include <numbers>
+#include <string>
+#include <string_view>
 
 #include <glm/gtc/quaternion.hpp>
 
@@ -156,6 +161,10 @@ namespace eltanin {
             context,
             Name::from("Eltanin", "levelTwo"),
             item<meshpack::LoaderLwo>{.file = "meshes/system/levelTwo/levelTwo.lwo.meshpack"});
+        assets.interframe = with<Assets>::add_meshpack_lwo_loader(
+            context,
+            Name::from("Eltanin", "interframe"),
+            item<meshpack::LoaderLwo>{.file = "meshes/system/levelOne/interframe.lwo.meshpack"});
 
         const auto manager = *with<Manager>::singleton(context);
         if (not with<Unit_group>::exists(context, manager)) {
@@ -209,26 +218,74 @@ namespace eltanin {
             Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
-        if (not assets.levelTwo) {
-            return (void)context.refuse("eltanin::Game::populateWorld: levelTwo meshpack missing");
+        if (not assets.interframe) {
+            return (void)context.refuse("eltanin::Game::populateWorld: interframe meshpack missing");
         }
         {
-            Pos cursor{0.0f, 0.0f, 0.0f};
-            const auto& pack = with<::rmmr::resource::meshpack::Asset>::get(context, *assets.levelTwo);
-            for (const auto& [_, entry] : pack.entries) {
+            using namespace mech::subframe;
+            const auto pack = *assets.interframe;
+
+            const auto scenePose = [](mech::orient::key ori) -> Pose {
+                return Pose{
+                    .position = Pos{0.0f, 0.0f, 0.0f},
+                    .rotation = glm::normalize(glm::quat_cast(glm::mat3(mech::orient::matrix[static_cast<std::size_t>(ori)]))),
+                };
+            };
+
+            const auto spawnEntry = [&](std::string_view entry, mech::orient::key ori) {
+                const auto resolved = ::rmmr::resource::meshpack::Asset::Actions::resolve(context, pack, std::string{entry});
+                if (not resolved) {
+                    return (void)context.refuse(std::format("eltanin::Game::populateWorld: interframe entry '{}' missing", entry));
+                }
                 with<scene::Interface>::createMeshActor(
                     context,
                     root,
-                    Pose::from(cursor, HPB{0.0f, 0.0f, 0.0f}),
+                    scenePose(ori),
                     item<scene::actor::Mesh>{
-                        .geometry = entry.geometry,
-                        .materials = entry.materials,
+                        .geometry = resolved->geometry,
+                        .materials = resolved->materials,
                         .albedo = RGB{1.0f, 1.0f, 1.0f},
                         .scale = vec3{1.0f, 1.0f, 1.0f},
                         .opacity = 1.0f,
                         .visible = true,
                     });
-                cursor = Pos{cursor.x + 4.0f, cursor.y, cursor.z - 4.0f};
+            };
+
+            const auto cornerEntry = [](corner::kind kind) -> std::string_view {
+                switch (kind) {
+                    case corner::kind::c124: return "c124";
+                    case corner::kind::c1364: return "c1364";
+                    case corner::kind::c164: return "c164";
+                    case corner::kind::c134: return "c134";
+                    case corner::kind::c135: return "c135";
+                    case corner::kind::c12: return "c12";
+                    case corner::kind::c13: return "c13";
+                    case corner::kind::c15: return "c15";
+                    case corner::kind::c16: return "c16";
+                    case corner::kind::c34: return "c34";
+                    case corner::kind::c35: return "c35";
+                }
+                return {};
+            };
+
+            // LWO layer typo: he1ged90s (not he1deg90s).
+            const auto halfEdgeEntry = [](halfEdge::kind kind, halfEdge::Pole pole) -> std::string {
+                const auto& spec = halfEdge::specs.at(kind);
+                const char poleTag = pole == halfEdge::Pole::s ? 's' : 'e';
+                if (kind == halfEdge::kind::he1deg90 and pole == halfEdge::Pole::s)
+                    return std::format("he1ged90{}", poleTag);
+                return std::format("{}{}", spec.code, poleTag);
+            };
+
+            const auto& recipe = recipes.at(mech::frame::shape::k7);
+            for (const auto& piece : recipe.corners)
+                spawnEntry(cornerEntry(piece.kind), piece.orient);
+
+            for (const auto& edge : recipe.edges) {
+                const auto poleAtMesh0 = edge.poleAtMesh0;
+                const auto poleAtMeshRay = halfEdge::opposite(edge.poleAtMesh0);
+                spawnEntry(halfEdgeEntry(edge.kind, poleAtMesh0), edge.orient);
+                spawnEntry(halfEdgeEntry(edge.kind, poleAtMeshRay), edge.orient);
             }
         }
 

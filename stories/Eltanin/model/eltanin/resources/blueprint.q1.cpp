@@ -135,8 +135,14 @@ namespace eltanin::resource::blueprint {
             const auto shape = take_enum(cursor, frame_shapes, "frame shape");
             expect(cursor, ',');
             const auto role = take_enum(cursor, slot_inners, "inner slot");
+            bool subframeBare = false;
+            skip_ws(cursor);
+            if (cursor.at < cursor.text.size() and cursor.text[cursor.at] == ',') {
+                ++cursor.at;
+                subframeBare = take_int(cursor) != 0;
+            }
             expect(cursor, ']');
-            return mech::Element::Cell{.pose = mech::Pose{.pos = pos, .ori = ori}, .shape = shape, .role = role};
+            return mech::Element::Cell{.pose = mech::Pose{.pos = pos, .ori = ori}, .shape = shape, .role = role, .corners = {}, .edges = {}, .subframeBare = subframeBare};
         }
 
         auto take_plate(Cursor& cursor) -> mech::Element::Plate {
@@ -206,6 +212,8 @@ namespace eltanin::resource::blueprint {
         }
 
         auto format_cell(const mech::Element::Cell& cell) -> std::string {
+            if (cell.subframeBare)
+                return std::format("[{}, {}, \"{}\", \"{}\", 1]", format_index3(cell.pose.pos), cell.pose.ori, enum_name(frame_shapes, cell.shape, "frame shape"), enum_name(slot_inners, cell.role, "inner slot"));
             return std::format("[{}, {}, \"{}\", \"{}\"]", format_index3(cell.pose.pos), cell.pose.ori, enum_name(frame_shapes, cell.shape, "frame shape"), enum_name(slot_inners, cell.role, "inner slot"));
         }
 
