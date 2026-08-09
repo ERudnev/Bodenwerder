@@ -24,9 +24,10 @@
 
 #include <imgui.h>
 
+#include <base/logging.h>
+
 #include <algorithm>
 #include <cmath>
-#include <filesystem>
 #include <format>
 #include <map>
 #include <numbers>
@@ -270,7 +271,7 @@ namespace eltanin::views {
 
     } // namespace
 
-    void Blueprints::create(Writing context, filepath directory) {
+    void Blueprints::create(Writing context) {
         const auto grid_name = Unit::Name::from("rmmr", "grid");
         const auto grid_geometry = with<Assets>::find<geometry::Asset>(context, grid_name);
         const auto grid_material = with<Assets>::find<rmmr::resource::material::Asset>(context, grid_name);
@@ -314,7 +315,6 @@ namespace eltanin::views {
 
         state.scene = root;
         state.camera = camera;
-        state.loaded.clear();
         state.hovered.reset();
         state.selection.clear();
         state.layers = Layers{.plate = false, .frame = true, .inner = false};
@@ -322,26 +322,6 @@ namespace eltanin::views {
         state.levelOne.clear();
         state.levelTwo.clear();
         state.spaceMenu = {.target = {}, .place = false, .close = false};
-
-        if (not std::filesystem::is_directory(directory))
-            return (void)context.refuse(std::format("eltanin::views::Blueprints::create: not a directory '{}'", directory.string()));
-
-        for (const auto& entry : std::filesystem::directory_iterator(directory)) {
-            if (not entry.is_regular_file() or entry.path().extension() != ".blueprint")
-                continue;
-
-            const auto stem = entry.path().stem().string();
-            const auto relative = filename{(std::filesystem::path{"blueprints"} / entry.path().filename()).generic_string()};
-            const auto asset_id = with<::eltanin::resource::Assets>::add_blueprint_loader(
-                context,
-                Unit::Name::from("Eltanin", stem),
-                item<::eltanin::resource::blueprint::Loader>{.file = relative});
-            ::eltanin::resource::blueprint::Loader::Actions::load(context, asset_id);
-            state.loaded.push_back(asset_id);
-        }
-
-        if (not state.loaded.empty())
-            show(context, state.loaded.front());
     }
 
     void Blueprints::show(Writing context, resource::blueprint::Asset::Id asset_id) {
@@ -557,17 +537,30 @@ namespace eltanin::views {
     }
 
     auto Blueprints::spawnFromPack(Writing context, meshpack::Asset::Id pack, const std::string& entry, const Pose& pose, mech::layer layer, Source source, std::size_t index, std::size_t sub, mech::subframe::halfEdge::Pole pole, int floor, RGB albedo, float opacity) -> base::maybe<Actor> {
-        const auto id = with<scene::Interface>::createMeshActor(context, *state.scene, pose, pack, entry, with<scene::actor::MeshState>::defaults(albedo, opacity));
-        if (not with<scene::actor::Mesh>::exists(context, id)) return {};
+        // Empty / unknown meshpack entries are normal (e.g. flat cells have no inner). Never refuse the editor transaction.
+        if (entry.empty())
+            return {};
+        const auto resolved = with<meshpack::Asset>::resolve(context, pack, entry);
+        if (not resolved)
+            return {};
+        const auto id = with<scene::Interface>::createMeshActor(context, *state.scene, pose, *resolved, with<scene::actor::MeshState>::defaults(albedo, opacity));
+        if (not with<scene::actor::Mesh>::exists(context, id))
+            return {};
         with<scene::actor::Identified>::extend(context, id);
         return Actor{.id = id, .layer = layer, .source = source, .index = index, .sub = sub, .pole = pole, .floor = floor};
     }
 
     void Blueprints::applyLayers(Writing context) {
-        for (const auto& actor : state.levelOne)
+        for (const auto& actor : state.levelOne) {
+            if (not with<scene::actor::MeshState>::exists(context, actor.id))
+                continue;
             with<scene::actor::MeshState>::setVisible(context, actor.id, layerVisible(state.layers, actor.layer) and floorPasses(state.floorFilter, actor.floor, state.currentFloor));
-        for (const auto& actor : state.levelTwo)
+        }
+        for (const auto& actor : state.levelTwo) {
+            if (not with<scene::actor::MeshState>::exists(context, actor.id))
+                continue;
             with<scene::actor::MeshState>::setVisible(context, actor.id, layerVisible(state.layers, actor.layer) and floorPasses(state.floorFilter, actor.floor, state.currentFloor));
+        }
     }
 
     void Blueprints::syncGridToFloor(Writing context) {
@@ -622,7 +615,7 @@ namespace eltanin::views {
         with<scene::Node>::modify(context, *state.worldCursor)->pose = Pose::from(latticeWorldPos(state.cursorLattice), HPB{0.0f, 0.0f, 0.0f});
     }
 
-    void Blueprints::draw(Writing context, bool& open) {
+    void Blueprints::draw(Writing context, bool& open, BlueprintCatalog& catalog) {
         if (not open) {
             if (not state.levelOne.empty() or not state.levelTwo.empty())
                 clearVisuals(context);
@@ -766,10 +759,19 @@ namespace eltanin::views {
             blueprintsSize = ImGui::GetWindowSize();
             ImGui::TextDisabled(contentAutoSave ? "Content edits save .blueprint immediately" : "Content edits in memory only (auto-save off)");
             ImGui::BeginChild("blueprintList", ImVec2{220.0f, 0.0f}, true);
-            if (state.loaded.empty()) {
+            ImGui::SetNextItemWidth(-1.0f);
+            ImGui::InputTextWithHint("##newBlueprint", "New name...", catalog.newName.data(), catalog.newName.size());
+            if (ImGui::Button("Create new", ImVec2{-1.0f, 0.0f})) {
+                if (const auto id = catalog.createNew(context, catalog.newName.data())) {
+                    catalog.newName = {};
+                    show(context, *id);
+                }
+            }
+            ImGui::Separator();
+            if (catalog.items.empty()) {
                 ImGui::TextDisabled("No blueprints loaded.");
             } else {
-                for (const auto asset_id : state.loaded) {
+                for (const auto asset_id : catalog.items) {
                     const auto& unit = with<Unit>::get(context, asset_id);
                     const auto& asset = with<::eltanin::resource::blueprint::Asset>::get(context, asset_id);
                     const bool hovered = state.hovered.exists() and *state.hovered == asset_id;

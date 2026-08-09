@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <filesystem>
 #include <map>
 #include <string>
 #include <vector>
@@ -17,6 +16,7 @@
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/wrapper/product.h>
 
+#include "blueprints/catalog.h"
 #include "mech/blueprint.h"
 #include "mech/semantics/layers.h"
 #include "mech/semantics/space.h"
@@ -29,7 +29,7 @@ namespace eltanin::views {
     using namespace fqsm::api;
 
     // Blueprint editor view. Optional persist via blueprint::Loader::save (contentAutoSave in editor.cpp).
-    // Own scene; Game swaps product views when `open`.
+    // Own scene + actors as a view onto BlueprintCatalog — does not own the pack.
     struct Blueprints {
         struct Layers {
             bool plate;
@@ -66,7 +66,6 @@ namespace eltanin::views {
             base::maybe<rmmr::scene::Camera::Id> camera;
             base::maybe<rmmr::scene::Grid::Id> grid;
             base::maybe<rmmr::scene::actor::Mesh::Id> worldCursor;
-            std::vector<resource::blueprint::Asset::Id> loaded;
             base::maybe<resource::blueprint::Asset::Id> hovered;
             std::vector<rmmr::renderer::Integer32> selection;
             Layers layers;
@@ -85,7 +84,7 @@ namespace eltanin::views {
 
         State state;
 
-        void create(Writing, filepath directory);
+        void create(Writing); // editor scene only
         void show(Writing, resource::blueprint::Asset::Id);
         void syncVisuals(Writing); // rebuild actors from hovered Asset.data
         void clearVisuals(Writing); // drop spawned meshes (editor closed / before resync)
@@ -96,7 +95,7 @@ namespace eltanin::views {
         void applyLayers(Writing);
         void syncGridToFloor(Writing);
         void updateWorldCursor(Writing, rmmr::renderer::Integer32 under);
-        void draw(Writing, bool& open);
+        void draw(Writing, bool& open, BlueprintCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;
     };
 

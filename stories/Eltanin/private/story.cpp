@@ -220,7 +220,8 @@ namespace eltanin {
         const auto manager = with<::rmmr::resource::Manager>::singleton(context);
         if (not manager)
             return (void)context.refuse("eltanin::Game::populateWorld: resource Manager missing");
-        blueprints.create(context, with<::rmmr::resource::Manager>::get(context, *manager).location / "Eltanin" / "blueprints");
+        blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, *manager).location / "Eltanin" / "blueprints");
+        blueprints.create(context);
     }
 
     void Game::setup(Writing context, system::Window::Id window) {
@@ -232,6 +233,11 @@ namespace eltanin {
     }
 
     void Game::onFrame(establish::Realm& world, int64 dt_us) {
+        if (not blueprintPack.ready) {
+            blueprintPack.loadFromDisk(world);
+            if (not blueprintPack.items.empty())
+                world.branch([&](Writing context) { blueprints.show(context, blueprintPack.items.front()); });
+        }
         with<World>::tetherEnvironment(world);
         physics.step(world, dt_us);
         advanceSim(world, dt_us);

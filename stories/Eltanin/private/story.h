@@ -15,6 +15,7 @@
 
 #include "physics/system.h"
 #include "physics/ui.h"
+#include "blueprints/catalog.h"
 #include "views/blueprints/editor.h"
 
 namespace eltanin {
@@ -62,6 +63,7 @@ namespace eltanin {
         base::maybe<View> world_view;
         phys::System physics;
         phys::Ui physics_ui;
+        BlueprintCatalog blueprintPack;
         ::eltanin::views::Blueprints blueprints;
 
         Schema schema() const override;

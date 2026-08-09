@@ -125,7 +125,7 @@ namespace eltanin {
         drawMaterialsWindow(world);
         drawShipsWindow(world);
         physics_ui.draw(world, ui.physics, physics);
-        blueprints.draw(world, ui.blueprints);
+        blueprints.draw(world, ui.blueprints, blueprintPack);
         if (world_view)
             blueprints.bindView(views, ui.blueprints, *world_view);
     }
@@ -135,10 +135,10 @@ namespace eltanin {
             ImGui::End();
             return;
         }
-        if (blueprints.state.loaded.empty()) {
+        if (blueprintPack.items.empty()) {
             ImGui::TextDisabled("No blueprints loaded.");
         } else {
-            for (const auto id : blueprints.state.loaded) {
+            for (const auto id : blueprintPack.items) {
                 if (not with<::eltanin::resource::blueprint::Asset>::exists(world, id))
                     continue;
                 const auto& asset = with<::eltanin::resource::blueprint::Asset>::get(world, id);
