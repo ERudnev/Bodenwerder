@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
 
 #include <base/maybe.h>
@@ -19,6 +20,14 @@ namespace eltanin::views::blueprints::geometry {
 
     using namespace fqsm::api;
 
+    struct QuarkActor {
+        enum class Kind : std::uint8_t { knot, halfChord };
+
+        rmmr::scene::actor::Mesh::Id id;
+        Kind kind;
+        std::size_t index; // into Blueprint::knots / halfChords
+    };
+
     // Home-cube pivot (±2 m) → cube corner index in the mesh's local frame.
     auto localSeatFromOrigin(rmmr::Pos origin) -> mech::cube::Corner;
 
@@ -28,9 +37,9 @@ namespace eltanin::views::blueprints::geometry {
     auto resolveKnot(Reading, rmmr::resource::meshpack::Asset::Id pack, mech::quarks::Knot::Kind kind) -> base::maybe<rmmr::resource::meshpack::Asset::Resolved>;
     auto resolveHalfChord(Reading, rmmr::resource::meshpack::Asset::Id pack, mech::quarks::HalfChord::Kind kind, mech::subframe::halfEdge::Pole pole) -> base::maybe<rmmr::resource::meshpack::Asset::Resolved>;
 
-    void clearActors(Writing, rmmr::scene::Root::Id root, std::vector<rmmr::scene::actor::Mesh::Id>& actors);
+    void clearActors(Writing, rmmr::scene::Root::Id root, std::vector<QuarkActor>& actors);
 
-    // Rebuild quark mesh actors for a blueprint (interframe pack).
-    void syncActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, const mech::Blueprint& blueprint, std::vector<rmmr::scene::actor::Mesh::Id>& actors);
+    // Rebuild quark mesh actors for a blueprint (interframe pack). Each actor is Identified for pick/selection.
+    void syncActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, const mech::Blueprint& blueprint, std::vector<QuarkActor>& actors);
 
 } // namespace eltanin::views::blueprints::geometry
