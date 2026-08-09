@@ -23,6 +23,8 @@ layout(std430, binding = 8) readonly buffer PoseBuffer {
     ivec4 poses[];
 };
 
+flat out uint v_scenicAlias;
+
 const ivec3 orientationRow0[24] = ivec3[24](
     ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0),
     ivec3(0, 0, -1), ivec3(0, 0, -1), ivec3(0, 0, -1), ivec3(0, 0, -1),
@@ -52,4 +54,5 @@ void main() {
     ivec4 pose = poses[gl_BaseInstance];
     vec3 localPosition = orientationMatrix(pose.w) * aPos + vec3(pose.xyz) * actorLatticePattern.x;
     gl_Position = passProjection * passView * actorModel * vec4(localPosition, 1.0);
+    v_scenicAlias = actorScenicAlias;
 }
