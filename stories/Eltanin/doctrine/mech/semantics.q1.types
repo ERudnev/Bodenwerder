@@ -3,8 +3,9 @@ namespace eltanin
 
     using layer as @external(eltanin::mech::layer)
 
-    namespace orient
-      using key as @external(eltanin::mech::orient::key)
+    namespace space
+      namespace orient
+        using key as @external(eltanin::mech::space::orient::key)
 
     namespace cube
       using Corner as @external(eltanin::mech::cube::Corner)
@@ -21,4 +22,4 @@ namespace eltanin
 
     struct Pose
       pos: index3
-      ori: orient::key
+      ori: space::orient::key

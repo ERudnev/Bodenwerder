@@ -24,7 +24,7 @@ namespace {
         vector<vec3> out;
         out.reserve(eltanin::mech::cube::corners.size());
         for (const auto& lattice : eltanin::mech::cube::corners) {
-            out.push_back(eltanin::mech::physical::toLocal(lattice));
+            out.push_back(eltanin::mech::space::cell::cell2local(lattice));
         }
         return out;
     }

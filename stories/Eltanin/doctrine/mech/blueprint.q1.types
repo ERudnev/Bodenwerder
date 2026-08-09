@@ -5,26 +5,8 @@ namespace eltanin
 
     namespace subframe
       struct Recipe
-        using Corner as @external(eltanin::mech::subframe::Recipe::Corner)
-        using Edge as @external(eltanin::mech::subframe::Recipe::Edge)
-
-    struct Element
-      struct Cell
-        pose: Pose
-        shape: frame::shape
-        role: slot::inner
-        // Local to pose — subframe pieces from k* pattern (views/blueprints/patterns).
-        corners: vector<subframe::Recipe::Corner>
-        edges: vector<subframe::Recipe::Edge>
-        subframeBare: bool
-      struct Plate
-        pose: Pose
-        shape: plate::shape
-        role: slot::plate
+        using Dummy as integer
 
     struct Blueprint
       name: string
       author: string
-
-      cells: vector<Element::Cell>
-      hull: vector<Element::Plate>

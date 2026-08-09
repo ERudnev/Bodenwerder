@@ -1,8 +1,10 @@
 #pragma once
 
-#include <glm/vec3.hpp>
+#include <base/types/common_types.h>
 
 namespace eltanin::mech::slot {
+
+    using base::common_types::vec3;
 
     enum class inner {
         multi, // it is extension for any ajacent frame of any kind. "Free Type"
@@ -19,7 +21,7 @@ namespace eltanin::mech::slot {
     };
 
     // Actor albedo tint for shared white inner mesh (texture × albedo).
-    inline auto color(inner role) -> glm::vec3 {
+    inline auto color(inner role) -> vec3 {
         switch (role) {
             case inner::multi: return {0.70f, 0.70f, 0.72f};
             case inner::engine: return {0.95f, 0.35f, 0.15f};

@@ -2,15 +2,17 @@
 
 #include <vector>
 
-#include <glm/ext/vector_int3.hpp>
+#include <base/types/common_types.h>
 
 // Level 1 form alphabet + shared unit-cube lattice topology. Topology from RedStar Carcass*. Winding: face/plate perimeters CCW from outside (RH outward); RedStar/D3D K8 mixed, restated CCW. Digit strings keep RedStar spelling (p2121 = walk from corner 0 on that plate's loop).
 // Tables are inline const (not constexpr): MSVC STL rejects non-transient constexpr std::vector.
 
 namespace eltanin::mech {
 
+    using base::common_types::ivec3;
+
     // Unit cube lattice — shared address space for corners / edges / faces. Cell size = 1; frame cuts keep a subset of these 8 corner indices.
-    // Metric embedding (edgeMeters / toLocal) → mech::physical in space.h.
+    // Metric embedding (edge2meters / cell2local) → mech::space in space.h.
     namespace cube {
 
         // 0..7 — index into corners[] / unit-cube vertex (RedStar coord_index3).
@@ -19,7 +21,7 @@ namespace eltanin::mech {
         using Loop = std::vector<Corner>;
 
         // Corner → (x,y,z) in {0,1}³
-        inline const std::vector<glm::ivec3> corners{
+        inline const std::vector<ivec3> corners{
             {0, 0, 0}, // 0
             {1, 0, 0}, // 1
             {0, 1, 0}, // 2

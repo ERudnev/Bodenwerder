@@ -1,13 +1,11 @@
 #pragma once
 
+// DEPRECATED — LevelOne mesh entry names (k*/m*/p*). Frame is quarks + interframe now; do not include.
+
 #include "shapes.h"
 #include "slots.h"
 
 #include <string>
-
-// LevelOne meshpack entry names (LWO layer tags). Empty = no mesh yet — skip spawn.
-// Inner volume reuses volumetric frame::shape; mesh tokens are m8/m7/m6/m4.
-// Flat frames (k*f*) temporarily borrow plate mesh tags — dedicated flat meshes TBD.
 
 namespace eltanin::mech::levelOne {
 
@@ -25,7 +23,6 @@ namespace eltanin::mech::levelOne {
         return {};
     }
 
-    // Same cut as volumetric frame; layer name uses m* to not collide with k*. Flats: no inner.
     inline auto innerMesh(frame::shape shape) -> std::string {
         switch (shape) {
             case frame::shape::k8: return "m8";

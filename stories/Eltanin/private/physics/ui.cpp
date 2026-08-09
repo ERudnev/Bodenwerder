@@ -50,7 +50,7 @@ namespace eltanin::phys {
             base::message("eltanin::phys::Ui: shapeMaterial/Texpack/Layer/Geometry unset; skip collider actors");
             return;
         }
-        const auto edge = mech::physical::edgeMeters;
+        const auto edge = mech::space::local::edge2meters;
         const auto resolved = rmmr::resource::meshpack::Asset::Resolved{
             .geometry = *shapeGeometry,
             .entry = rmmr::resource::geometry::EntryId{0},

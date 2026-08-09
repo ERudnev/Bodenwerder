@@ -4,17 +4,6 @@
 
 namespace eltanin::views::blueprints::patterns {
 
-    void apply(mech::Element::Cell& cell) {
-        const auto found = mech::subframe::recipes.find(cell.shape);
-        if (found == mech::subframe::recipes.end()) {
-            cell.corners = {};
-            cell.edges = {};
-            return;
-        }
-        cell.corners = found->second.corners;
-        cell.edges = found->second.edges;
-    }
-
     auto cornerMesh(mech::subframe::corner::kind kind) -> std::string_view {
         using K = mech::subframe::corner::kind;
         switch (kind) {

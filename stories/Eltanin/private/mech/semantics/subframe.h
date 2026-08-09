@@ -104,13 +104,13 @@ namespace eltanin::mech::subframe {
         struct Corner {
             corner::kind kind;
             cube::Corner cellVertex;
-            orient::key orient;
+            space::orient::key orient;
         };
         struct Edge {
             halfEdge::kind kind;
             cube::Corner cellAt0;
             cube::Corner cellAtRay;
-            orient::key orient;
+            space::orient::key orient;
             halfEdge::Pole poleAtMesh0;
         };
         std::vector<Corner> corners;

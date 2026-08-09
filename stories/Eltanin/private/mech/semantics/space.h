@@ -6,105 +6,82 @@
 
 #include <base/types/common_types.h>
 #include <rmmr/renderer/types.q1.h>
-#include <glm/ext/matrix_int3x3.hpp>
-#include <glm/ext/vector_int3.hpp>
+
 #include <glm/common.hpp>
-#include <glm/vec3.hpp>
 
-namespace eltanin::mech {
+namespace eltanin::mech::space {
 
-    // Lattice → body-local meters (identity orientation). Topology tables stay in shapes.h / cube.
-    namespace physical {
+    using base::common_types::ivec3;
+    using base::common_types::imat3;
+    using base::common_types::mat3;
+    using base::common_types::vec3;
 
-        // Cell edge in game meters. Lattice {0,1} → body-local meters.
-        // Project rule: cell geometry is centered on the origin — subtract ½ is fixed, not a parameter.
-        inline constexpr float edgeMeters = 4.0f;
+    // Floating-point body / world meters for any object.
+    namespace local {
+        // Cell edge length in meters (scale between discrete lattices and local).
+        inline constexpr float edge2meters = 4.0f;
+        using point = vec3;
+    }
+
+    // Discrete cell lattice ({0,1}³ inside a cell; cell indices in the construction grid).
+    // Higher-order attachables (plates, devices, …) author here.
+    // Project rule: cell geometry is centered on the origin — subtract ½ is fixed, not a parameter.
+    namespace cell {
+        using index = ivec3;
+        // remove?
+        using Pose = rmmr::renderer::DiscretePose;
+
+        // Cell-space address of a vertex: which cell, which kube corner (recipe cellVertex).
+        // Not unique for a grid node (up to 8 cells share a vertex) — see Knot::evaluateCellPlacement.
+        struct Placement {
+            index cell;
+            cube::Corner corner; // 0..7 in the cell's kube frame (before cell.ori maps to AABB)
+        };
 
         // Lattice integer coords (typically cube::corners {0,1}³) → meters, cell-centered.
-        inline auto toLocal(glm::ivec3 lattice) -> glm::vec3 {
-            return (glm::vec3(lattice) - glm::vec3{0.5f}) * edgeMeters;
-        }
+        inline auto cell2local(cell::index lattice) -> local::point { return (local::point(lattice) - local::point{0.5f}) * local::edge2meters; }
 
-        // Inverse of toLocal on the lattice image (round for float noise).
-        inline auto fromLocal(glm::vec3 local) -> glm::ivec3 {
-            return glm::ivec3(glm::round(local / edgeMeters + glm::vec3{0.5f}));
-        }
+        // Inverse of cell2local on the lattice image (round for float noise).
+        inline auto local2cell(local::point meters) -> index { return index(glm::round(meters / local::edge2meters + local::point{0.5f})); }
 
-    } // namespace physical
+        // World meters of a cell's center when continuous 0 = grid::0 (cell i spans grid [i, i+1]).
+        inline auto center2local(index cell) -> local::point { return (local::point(cell) + local::point{0.5f}) * local::edge2meters; }
+
+    } // namespace cell
+
+    // Discrete grid-node lattice (vertices / edges / walls). Ship frame (corners, sticks) authors here.
+    // World meters are tied to nodes — no half-cell shift (unlike cell::cell2local).
+    namespace grid {
+        using point = ivec3;
+        using Pose = rmmr::renderer::DiscretePose;
+
+        inline auto grid2local(point node) -> local::point { return local::point(node) * local::edge2meters; }
+
+        inline auto local2grid(local::point meters) -> point { return point(glm::round(meters / local::edge2meters)); }
+    }
 
     // Cube orientation alphabet (RedStar CubicRotation). Key 0..23; 0 = identity.
-    // matrix[i] — 3×3 in {-1,0,1}; listed by rows (see rows()). Body-local meters: rotate about center, then × edgeMeters (no +½ — centering is the project rule).
-    // turn* — after ±90° about local axis: new key = turnXp[old] (etc.).
+    // matrix[i] — 3×3 in {-1,0,1}; listed by rows (see space.cpp).
+    // turn(Semiaxis) — after ±90° about local axis: new key = turn(axis)[old].
     namespace orient {
 
-        // 0..23 — discrete cube orientation (algebra via invert / turn* tables, not enum).
         using key = int;
 
-        // GLM ctor takes columns; build columns from three row vectors so the table stays row-readable.
-        inline auto rows(glm::ivec3 r0, glm::ivec3 r1, glm::ivec3 r2) -> glm::imat3 {
-            return glm::imat3{
-                glm::ivec3{r0.x, r1.x, r2.x},
-                glm::ivec3{r0.y, r1.y, r2.y},
-                glm::ivec3{r0.z, r1.z, r2.z},
-            };
-        }
+        enum class Semiaxis { Xp, Xn, Yp, Yn, Zp, Zn, };
 
-        inline const std::vector<glm::imat3> matrix{
-            rows({ 1,  0,  0}, { 0,  1,  0}, { 0,  0,  1}),
-            rows({ 1,  0,  0}, { 0,  0,  1}, { 0, -1,  0}),
-            rows({ 1,  0,  0}, { 0, -1,  0}, { 0,  0, -1}),
-            rows({ 1,  0,  0}, { 0,  0, -1}, { 0,  1,  0}),
-            rows({ 0,  0, -1}, { 0,  1,  0}, { 1,  0,  0}),
-            rows({ 0,  0, -1}, { 1,  0,  0}, { 0, -1,  0}),
-            rows({ 0,  0, -1}, { 0, -1,  0}, {-1,  0,  0}),
-            rows({ 0,  0, -1}, {-1,  0,  0}, { 0,  1,  0}),
-            rows({-1,  0,  0}, { 0,  1,  0}, { 0,  0, -1}),
-            rows({-1,  0,  0}, { 0,  0, -1}, { 0, -1,  0}),
-            rows({-1,  0,  0}, { 0, -1,  0}, { 0,  0,  1}),
-            rows({-1,  0,  0}, { 0,  0,  1}, { 0,  1,  0}),
-            rows({ 0,  0,  1}, { 0,  1,  0}, {-1,  0,  0}),
-            rows({ 0,  0,  1}, {-1,  0,  0}, { 0, -1,  0}),
-            rows({ 0,  0,  1}, { 0, -1,  0}, { 1,  0,  0}),
-            rows({ 0,  0,  1}, { 1,  0,  0}, { 0,  1,  0}),
-            rows({ 0,  1,  0}, { 0,  0,  1}, { 1,  0,  0}),
-            rows({ 0,  1,  0}, { 1,  0,  0}, { 0,  0, -1}),
-            rows({ 0,  1,  0}, { 0,  0, -1}, {-1,  0,  0}),
-            rows({ 0,  1,  0}, {-1,  0,  0}, { 0,  0,  1}),
-            rows({ 0, -1,  0}, { 0,  0, -1}, { 1,  0,  0}),
-            rows({ 0, -1,  0}, { 1,  0,  0}, { 0,  0,  1}),
-            rows({ 0, -1,  0}, { 0,  0,  1}, {-1,  0,  0}),
-            rows({ 0, -1,  0}, {-1,  0,  0}, { 0,  0, -1}),
-        };
+        extern const std::vector<imat3> matrix;
+        extern const std::vector<key> invert;
+        // compose[outer][inner] — world = outer · inner (column vectors).
+        extern const std::vector<std::vector<key>> compose;
 
-        inline const std::vector<key> invert{
-            0, 3, 2, 1, 12, 18, 6, 22, 8, 9, 10, 11, 4, 20, 14, 16, 15, 17, 5, 21, 13, 19, 7, 23,
-        };
+        auto turn(Semiaxis) -> const std::vector<key>&;
 
-        inline const std::vector<key> turnXp{1, 2, 3, 0, 16, 17, 18, 19, 11, 8, 9, 10, 22, 23, 20, 21, 14, 15, 12, 13, 4, 5, 6, 7};
-        inline const std::vector<key> turnXn{3, 0, 1, 2, 20, 21, 22, 23, 9, 10, 11, 8, 18, 19, 16, 17, 4, 5, 6, 7, 14, 15, 12, 13};
-        inline const std::vector<key> turnYp{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 17, 18, 19, 16, 23, 20, 21, 22};
-        inline const std::vector<key> turnYn{12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 19, 16, 17, 18, 21, 22, 23, 20};
-        inline const std::vector<key> turnZp{19, 16, 17, 18, 7, 4, 5, 6, 23, 20, 21, 22, 13, 14, 15, 12, 11, 8, 9, 10, 3, 0, 1, 2};
-        inline const std::vector<key> turnZn{21, 22, 23, 20, 5, 6, 7, 4, 17, 18, 19, 16, 15, 12, 13, 14, 1, 2, 3, 0, 9, 10, 11, 8};
-
-        // Body-local meters: R · physical::toLocal(lattice).
-        inline auto toLocal(key orientation, glm::ivec3 lattice) -> glm::vec3 {
-            return glm::mat3(matrix[static_cast<std::size_t>(orientation)]) * physical::toLocal(lattice);
-        }
+        // Body-local meters: R · cell::cell2local(lattice).
+        auto cell2local(key orientation, cell::index lattice) -> vec3;
 
         // Lattice Corner 0..7 after orientation ({0,1} ↔ {−1,+1} round-trip, exact on the group).
-        inline auto cornerIndex(key orientation, cube::Corner corner) -> cube::Corner {
-            const glm::ivec3 signedIn = cube::corners[static_cast<std::size_t>(corner)] * 2 - 1;
-            const glm::ivec3 want = (matrix[static_cast<std::size_t>(orientation)] * signedIn + 1) / 2;
-            for (std::size_t i = 0; i < cube::corners.size(); ++i) {
-                if (cube::corners[i] == want) return static_cast<cube::Corner>(i);
-            }
-            return corner;
-        }
+        auto cornerIndex(key orientation, cube::Corner corner) -> cube::Corner;
 
     } // namespace orient
 
-    // Discrete cell pose on the construction lattice and the GPU Mesh SSBO wire format.
-    using Pose = rmmr::renderer::DiscretePose;
-
-}
+} // namespace eltanin::mech::space

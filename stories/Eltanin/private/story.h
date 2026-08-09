@@ -35,7 +35,6 @@ namespace eltanin {
             base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
             base::maybe<rmmr::resource::texpack::Pack::Id> sprites;
             base::maybe<rmmr::resource::texpack::Pack::Id> mech;
-            base::maybe<rmmr::resource::meshpack::Asset::Id> levelOne;
             base::maybe<rmmr::resource::meshpack::Asset::Id> levelTwo;
             base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;
             base::maybe<rmmr::resource::overlay::Asset::Id> blueprintsEditorEffect;

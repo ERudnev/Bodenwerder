@@ -148,15 +148,8 @@ namespace eltanin {
                 ImGui::AlignTextToFramePadding();
                 ImGui::TextUnformatted(label);
                 ImGui::SameLine();
-                if (ImGui::Button("Spawn")) {
-                    std::size_t corners = 0;
-                    std::size_t sticks = 0;
-                    for (const auto& cell : asset.data.cells) {
-                        corners += cell.corners.size();
-                        sticks += cell.edges.size();
-                    }
-                    base::message("eltanin: spawn '{}': corners={}, sticks={}", label, corners, sticks);
-                }
+                if (ImGui::Button("Spawn"))
+                    base::message("eltanin: spawn '{}': geometry TBD", label);
                 ImGui::PopID();
             }
         }

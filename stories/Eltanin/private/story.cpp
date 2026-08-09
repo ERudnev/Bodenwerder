@@ -114,7 +114,7 @@ namespace eltanin {
                 .blend = renderer::BlendMode::additive,
             });
 
-        // Mech albedo catalog for levelOne / levelTwo / interframe meshpacks.
+        // Mech albedo catalog; frame meshes via interframe (levelOne pack retired).
         if (not shared or not shared->material.litTextured) {
             return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_textured missing");
         }
@@ -129,10 +129,6 @@ namespace eltanin {
             32);
         (void)with<Assets>::add_material(context, Name::from("Eltanin", "type"), with<Material>::get(context, *shared->material.litTransparent));
 
-        assets.levelOne = with<Assets>::add_meshpack_lwo_loader(
-            context,
-            Name::from("Eltanin", "levelOne"),
-            item<meshpack::LoaderLwo>{.file = "meshes/system/levelOne/levelOne.lwo.meshpack", .geometry = {}, .pending = {}});
         assets.levelTwo = with<Assets>::add_meshpack_lwo_loader(
             context,
             Name::from("Eltanin", "levelTwo"),

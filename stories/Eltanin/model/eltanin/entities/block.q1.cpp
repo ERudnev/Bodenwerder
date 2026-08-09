@@ -13,7 +13,7 @@ namespace eltanin {
             vector<vec3> locals;
             locals.reserve(indices.size());
             for (const mech::cube::Corner corner : indices) {
-                locals.push_back(mech::physical::toLocal(mech::cube::corners[static_cast<std::size_t>(corner)]));
+                locals.push_back(mech::space::cell::cell2local(mech::cube::corners[static_cast<std::size_t>(corner)]));
             }
             return locals;
         }
