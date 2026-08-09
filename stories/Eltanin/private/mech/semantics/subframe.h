@@ -50,17 +50,17 @@ namespace eltanin::mech::subframe {
         };
 
         inline const std::map<kind, Spec> specs{
-            {kind::c124, {.code = "qC124", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 2, .bend = Bend::deg90}, {.target = 4, .bend = Bend::deg90}}}},
-            {kind::c1364, {.code = "qC1364", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 3, .bend = Bend::deg125}, {.target = 6, .bend = Bend::deg125}, {.target = 4, .bend = Bend::deg90}}}},
-            {kind::c164, {.code = "qC164", .rays = {{.target = 1, .bend = Bend::deg45}, {.target = 6, .bend = Bend::deg90}, {.target = 4, .bend = Bend::deg90}}}},
-            {kind::c134, {.code = "qC134", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 3, .bend = Bend::deg90}, {.target = 4, .bend = Bend::deg45}}}},
-            {kind::c135, {.code = "qC135", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 3, .bend = Bend::deg71}, {.target = 5, .bend = Bend::deg71}}}},
-            {kind::c12, {.code = "qC12", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 2, .bend = Bend::deg90}}}},
-            {kind::c13, {.code = "qC13", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 3, .bend = Bend::deg90}}}},
-            {kind::c15, {.code = "qC15", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 5, .bend = Bend::deg90}}}},
-            {kind::c16, {.code = "qC16", .rays = {{.target = 1, .bend = Bend::deg45}, {.target = 6, .bend = Bend::deg90}}}},
-            {kind::c34, {.code = "qC34", .rays = {{.target = 3, .bend = Bend::deg90}, {.target = 4, .bend = Bend::deg45}}}},
-            {kind::c35, {.code = "qC35", .rays = {{.target = 3, .bend = Bend::deg71}, {.target = 5, .bend = Bend::deg71}}}},
+            {kind::c124, {.code = "c124", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 2, .bend = Bend::deg90}, {.target = 4, .bend = Bend::deg90}}}},
+            {kind::c1364, {.code = "c1364", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 3, .bend = Bend::deg125}, {.target = 6, .bend = Bend::deg125}, {.target = 4, .bend = Bend::deg90}}}},
+            {kind::c164, {.code = "c164", .rays = {{.target = 1, .bend = Bend::deg45}, {.target = 6, .bend = Bend::deg90}, {.target = 4, .bend = Bend::deg90}}}},
+            {kind::c134, {.code = "c134", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 3, .bend = Bend::deg90}, {.target = 4, .bend = Bend::deg45}}}},
+            {kind::c135, {.code = "c135", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 3, .bend = Bend::deg71}, {.target = 5, .bend = Bend::deg71}}}},
+            {kind::c12, {.code = "c12", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 2, .bend = Bend::deg90}}}},
+            {kind::c13, {.code = "c13", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 3, .bend = Bend::deg90}}}},
+            {kind::c15, {.code = "c15", .rays = {{.target = 1, .bend = Bend::deg90}, {.target = 5, .bend = Bend::deg90}}}},
+            {kind::c16, {.code = "c16", .rays = {{.target = 1, .bend = Bend::deg45}, {.target = 6, .bend = Bend::deg90}}}},
+            {kind::c34, {.code = "c34", .rays = {{.target = 3, .bend = Bend::deg90}, {.target = 4, .bend = Bend::deg45}}}},
+            {kind::c35, {.code = "c35", .rays = {{.target = 3, .bend = Bend::deg71}, {.target = 5, .bend = Bend::deg71}}}},
         };
 
     } // namespace corner

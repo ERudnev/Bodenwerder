@@ -5,6 +5,7 @@
 #include <base/maybe.h>
 #include <base/types/common_types.h>
 #include <eltanin/resources/blueprint.q1.h>
+#include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
@@ -19,14 +20,16 @@ namespace eltanin::views {
 
     using namespace fqsm::api;
 
-    // Blueprint editor: catalog + lattice cursor. Space seeds k* → knots/chords in the asset (no mesh actors yet).
+    // Blueprint editor: catalog + lattice cursor. Space seeds k* into the asset and syncs quark actors.
     struct Blueprints {
         struct State {
             base::maybe<rmmr::scene::Root::Id> scene;
             base::maybe<rmmr::scene::Camera::Id> camera;
             base::maybe<rmmr::scene::Grid::Id> grid;
             base::maybe<rmmr::scene::actor::Mesh::Id> worldCursor;
+            base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;
             base::maybe<resource::blueprint::Asset::Id> hovered;
+            std::vector<rmmr::scene::actor::Mesh::Id> quarkActors;
             base::common_types::index3 cursorLattice;
             int currentFloor;
             struct {
@@ -41,6 +44,7 @@ namespace eltanin::views {
         void show(Writing, resource::blueprint::Asset::Id);
         void syncGridToFloor(Writing);
         void updateWorldCursor(Writing);
+        void syncVisuals(Writing);
         void persistHovered(Writing);
         void draw(Writing, bool& open, BlueprintCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;

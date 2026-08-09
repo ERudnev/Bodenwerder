@@ -23,20 +23,12 @@ namespace eltanin::mech::space {
         using point = vec3;
     }
 
-    // Discrete cell lattice ({0,1}³ inside a cell; cell indices in the construction grid).
-    // Higher-order attachables (plates, devices, …) author here.
+    // Discrete cell lattice ({0,1}³ inside a cell; cell indices in the construction lattice).
+    // Frame quarks and higher-order attachables author here.
     // Project rule: cell geometry is centered on the origin — subtract ½ is fixed, not a parameter.
     namespace cell {
         using index = ivec3;
-        // remove?
         using Pose = rmmr::renderer::DiscretePose;
-
-        // Cell-space address of a vertex: which cell, which kube corner (recipe cellVertex).
-        // Not unique for a grid node (up to 8 cells share a vertex).
-        struct Placement {
-            index cell;
-            cube::Corner corner; // 0..7 in the cell's kube frame (before cell.ori maps to AABB)
-        };
 
         // Lattice integer coords (typically cube::corners {0,1}³) → meters, cell-centered.
         inline auto cell2local(cell::index lattice) -> local::point { return (local::point(lattice) - local::point{0.5f}) * local::edge2meters; }
@@ -44,21 +36,10 @@ namespace eltanin::mech::space {
         // Inverse of cell2local on the lattice image (round for float noise).
         inline auto local2cell(local::point meters) -> index { return index(glm::round(meters / local::edge2meters + local::point{0.5f})); }
 
-        // World meters of a cell's center when continuous 0 = grid::0 (cell i spans grid [i, i+1]).
+        // World meters of a cell's center (cell i spans continuous [i, i+1] on each axis).
         inline auto center2local(index cell) -> local::point { return (local::point(cell) + local::point{0.5f}) * local::edge2meters; }
 
     } // namespace cell
-
-    // Discrete grid-node lattice (vertices / edges / walls). Ship frame (corners, sticks) authors here.
-    // World meters are tied to nodes — no half-cell shift (unlike cell::cell2local).
-    namespace grid {
-        using point = ivec3;
-        using Pose = rmmr::renderer::DiscretePose;
-
-        inline auto grid2local(point node) -> local::point { return local::point(node) * local::edge2meters; }
-
-        inline auto local2grid(local::point meters) -> point { return point(glm::round(meters / local::edge2meters)); }
-    }
 
     // Cube orientation alphabet (RedStar CubicRotation). Key 0..23; 0 = identity.
     // matrix[i] — 3×3 in {-1,0,1}; listed by rows (see space.cpp).

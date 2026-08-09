@@ -5,12 +5,12 @@ namespace eltanin
 
     namespace quarks
       using Knot as @external(eltanin::mech::quarks::Knot)
-      using Chord as @external(eltanin::mech::quarks::Chord)
+      using HalfChord as @external(eltanin::mech::quarks::HalfChord)
 
-    // Ship schema: metadata + grid-frame quarks (knots, chords; attachments later).
+    // Ship schema: metadata + cell-frame quarks (knots, half-chords; attachments later).
     // C++: private/mech/blueprint.h
     struct Blueprint
       name: string
       author: string // manufacturer
       knots: vector<quarks::Knot>
-      chords: vector<quarks::Chord>
+      halfChords: vector<quarks::HalfChord>

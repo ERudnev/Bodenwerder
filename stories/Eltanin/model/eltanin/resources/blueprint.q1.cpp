@@ -84,7 +84,7 @@ namespace eltanin::resource::blueprint {
             {"c35", mech::subframe::corner::kind::c35},
         };
 
-        const std::unordered_map<std::string_view, mech::subframe::halfEdge::kind> chordKinds{
+        const std::unordered_map<std::string_view, mech::subframe::halfEdge::kind> halfChordKinds{
             {"he1deg90", mech::subframe::halfEdge::kind::he1deg90},
             {"he1deg45", mech::subframe::halfEdge::kind::he1deg45},
             {"he3deg71", mech::subframe::halfEdge::kind::he3deg71},
@@ -100,12 +100,12 @@ namespace eltanin::resource::blueprint {
             throw std::runtime_error("blueprint: unknown knot kind");
         }
 
-        auto chordKindName(mech::subframe::halfEdge::kind kind) -> std::string_view {
-            for (const auto& [name, value] : chordKinds) {
+        auto halfChordKindName(mech::subframe::halfEdge::kind kind) -> std::string_view {
+            for (const auto& [name, value] : halfChordKinds) {
                 if (value == kind)
                     return name;
             }
-            throw std::runtime_error("blueprint: unknown chord kind");
+            throw std::runtime_error("blueprint: unknown half-chord kind");
         }
 
         auto take_knot(Cursor& cursor) -> mech::quarks::Knot {
@@ -121,16 +121,16 @@ namespace eltanin::resource::blueprint {
             expect(cursor, ']');
             return mech::quarks::Knot{
                 .kind = kindIt->second,
-                .pose = mech::space::grid::Pose{.pos = pos, .ori = static_cast<rmmr::renderer::Signed32>(ori)},
+                .pose = mech::space::cell::Pose{.pos = pos, .ori = static_cast<rmmr::renderer::Signed32>(ori)},
             };
         }
 
-        auto take_chord(Cursor& cursor) -> mech::quarks::Chord {
+        auto take_half_chord(Cursor& cursor) -> mech::quarks::HalfChord {
             expect(cursor, '[');
             const auto kindName = take_string(cursor);
-            const auto kindIt = chordKinds.find(kindName);
-            if (kindIt == chordKinds.end())
-                throw std::runtime_error(std::format("blueprint: unknown chord kind '{}'", kindName));
+            const auto kindIt = halfChordKinds.find(kindName);
+            if (kindIt == halfChordKinds.end())
+                throw std::runtime_error(std::format("blueprint: unknown half-chord kind '{}'", kindName));
             expect(cursor, ',');
             const auto poleName = take_string(cursor);
             mech::subframe::halfEdge::Pole pole = mech::subframe::halfEdge::Pole::s;
@@ -139,16 +139,16 @@ namespace eltanin::resource::blueprint {
             else if (poleName == "e")
                 pole = mech::subframe::halfEdge::Pole::e;
             else
-                throw std::runtime_error(std::format("blueprint: unknown chord pole '{}'", poleName));
+                throw std::runtime_error(std::format("blueprint: unknown half-chord pole '{}'", poleName));
             expect(cursor, ',');
             const auto pos = take_index3(cursor);
             expect(cursor, ',');
             const auto ori = take_int(cursor);
             expect(cursor, ']');
-            return mech::quarks::Chord{
+            return mech::quarks::HalfChord{
                 .kind = kindIt->second,
                 .pole = pole,
-                .pose = mech::space::grid::Pose{.pos = pos, .ori = static_cast<rmmr::renderer::Signed32>(ori)},
+                .pose = mech::space::cell::Pose{.pos = pos, .ori = static_cast<rmmr::renderer::Signed32>(ori)},
             };
         }
 
@@ -181,27 +181,27 @@ namespace eltanin::resource::blueprint {
             auto author = take_string(cursor);
             skip_ws(cursor);
             std::vector<mech::quarks::Knot> knots;
-            std::vector<mech::quarks::Chord> chords;
+            std::vector<mech::quarks::HalfChord> halfChords;
             if (cursor.at < cursor.text.size() and cursor.text[cursor.at] == ',') {
                 ++cursor.at;
                 knots = take_list<mech::quarks::Knot>(cursor, take_knot);
                 skip_ws(cursor);
                 if (cursor.at < cursor.text.size() and cursor.text[cursor.at] == ',') {
                     ++cursor.at;
-                    chords = take_list<mech::quarks::Chord>(cursor, take_chord);
+                    halfChords = take_list<mech::quarks::HalfChord>(cursor, take_half_chord);
                 }
             }
             expect(cursor, '}');
-            return mech::Blueprint{.name = std::move(name), .author = std::move(author), .knots = std::move(knots), .chords = std::move(chords)};
+            return mech::Blueprint{.name = std::move(name), .author = std::move(author), .knots = std::move(knots), .halfChords = std::move(halfChords)};
         }
 
         auto format_knot(const mech::quarks::Knot& knot) -> std::string {
             return std::format("[\"{}\", [{}, {}, {}], {}]", knotKindName(knot.kind), knot.pose.pos.x, knot.pose.pos.y, knot.pose.pos.z, knot.pose.ori);
         }
 
-        auto format_chord(const mech::quarks::Chord& chord) -> std::string {
-            const char* pole = chord.pole == mech::subframe::halfEdge::Pole::s ? "s" : "e";
-            return std::format("[\"{}\", \"{}\", [{}, {}, {}], {}]", chordKindName(chord.kind), pole, chord.pose.pos.x, chord.pose.pos.y, chord.pose.pos.z, chord.pose.ori);
+        auto format_half_chord(const mech::quarks::HalfChord& halfChord) -> std::string {
+            const char* pole = halfChord.pole == mech::subframe::halfEdge::Pole::s ? "s" : "e";
+            return std::format("[\"{}\", \"{}\", [{}, {}, {}], {}]", halfChordKindName(halfChord.kind), pole, halfChord.pose.pos.x, halfChord.pose.pos.y, halfChord.pose.pos.z, halfChord.pose.ori);
         }
 
         template <typename Item, typename Format>
@@ -225,7 +225,7 @@ namespace eltanin::resource::blueprint {
             out << "    \"" << data.author << "\",\n";
             format_list(out, data.knots, format_knot);
             out << ",\n";
-            format_list(out, data.chords, format_chord);
+            format_list(out, data.halfChords, format_half_chord);
             out << "\n}\n";
             return out.str();
         }
@@ -245,7 +245,7 @@ namespace eltanin::resource::blueprint {
         buffer << input.rdbuf();
         try {
             auto parsed = parse_blueprint(buffer.str());
-            base::message("eltanin: blueprint '{}' ← {} (name='{}', knots={}, chords={})", unit.name.text(), path.string(), parsed.name, parsed.knots.size(), parsed.chords.size());
+            base::message("eltanin: blueprint '{}' ← {} (name='{}', knots={}, halfChords={})", unit.name.text(), path.string(), parsed.name, parsed.knots.size(), parsed.halfChords.size());
             with<Asset>::modify(context, id)->data = std::move(parsed);
         } catch (const std::exception& error) {
             return (void)context.refuse(std::format("resource::blueprint::Loader::load: '{}': {}", path.string(), error.what()));
@@ -266,7 +266,7 @@ namespace eltanin::resource::blueprint {
             output << format_blueprint(asset.data);
             if (not output)
                 return (void)context.refuse(std::format("resource::blueprint::Loader::save: write failed '{}'", path.string()));
-            base::message("eltanin: blueprint '{}' → {} (name='{}', knots={}, chords={})", unit.name.text(), path.string(), asset.data.name, asset.data.knots.size(), asset.data.chords.size());
+            base::message("eltanin: blueprint '{}' → {} (name='{}', knots={}, halfChords={})", unit.name.text(), path.string(), asset.data.name, asset.data.knots.size(), asset.data.halfChords.size());
         } catch (const std::exception& error) {
             return (void)context.refuse(std::format("resource::blueprint::Loader::save: '{}': {}", path.string(), error.what()));
         }

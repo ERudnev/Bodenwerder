@@ -7,12 +7,12 @@
 
 namespace eltanin::mech {
 
-    // Ship schema: metadata + grid-frame quarks (knots, chords; attachments later).
+    // Ship schema: metadata + cell-frame quarks (knots, half-chords; attachments later).
     struct Blueprint {
         std::string name;
         std::string author; // manufacturer
         std::vector<quarks::Knot> knots;
-        std::vector<quarks::Chord> chords;
+        std::vector<quarks::HalfChord> halfChords;
     };
 
 }
