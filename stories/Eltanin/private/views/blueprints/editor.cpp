@@ -292,12 +292,7 @@ namespace eltanin::views {
         state.currentFloor = 0;
         state.floorFilter = FloorFilter::all;
         state.cursorLattice = base::common_types::index3{.x = 0, .y = 0, .z = 0};
-        state.grid = with<scene::Interface>::createGrid(
-            context,
-            root,
-            *device,
-            Pose::from(Pos{-2.0f, -2.0f, -2.0f}, HPB{0.0f, 0.0f, 0.0f}),
-            item<scene::Grid>{.geometry = *grid_geometry, .material = *grid_material, .opacity = gridOpacity, .patternScale = patternScale});
+        state.grid = with<scene::Interface>::createGrid(context, root, *device, Pose::from(Pos{-2.0f, -2.0f, -2.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *grid_geometry, .material = *grid_material, .opacity = gridOpacity, .patternScale = patternScale});
 
         const float edge = mech::physical::edgeMeters;
         const auto cursorResolved = meshpack::Asset::Resolved{
@@ -306,35 +301,16 @@ namespace eltanin::views {
             .surfaces = {{geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = *cursor_material, .textures = {}}}},
             .texpack = {},
         };
-        const auto identityPose = renderer::DiscretePose{.pos = index3{0, 0, 0}, .ori = renderer::Signed32{0}};
-        const auto cursorMesh = scene::actor::Mesh::Actions::compose(context, *device, {scene::actor::Mesh::Occurrence{.entry = cursorResolved, .pose = identityPose}});
-        if (not cursorMesh)
-            return (void)context.refuse("eltanin::views::Blueprints::create: cursor mesh composition failed");
-        state.worldCursor = with<scene::Interface>::createMeshActor(context, root, Pose::from(latticeWorldPos(state.cursorLattice), HPB{0.0f, 0.0f, 0.0f}), std::move(*cursorMesh), scene::actor::MeshState::Quantum{
-            .albedo = RGB{0.35f, 0.95f, 1.0f},
-            .scale = vec3{edge, edge, edge},
-            .latticeStep = 1.0f,
-            .patternScale = 1.0f,
-            .opacity = cursorOpacity,
-            .visible = true,
-        });
+        state.worldCursor = with<scene::Interface>::createMeshActor(context, root, Pose::from(latticeWorldPos(state.cursorLattice), HPB{0.0f, 0.0f, 0.0f}), cursorResolved, with<scene::actor::MeshState>::defaults(RGB{0.35f, 0.95f, 1.0f}, cursorOpacity, vec3{edge, edge, edge}));
 
         const Pos pivot{0.0f, 0.0f, 0.0f};
         const Pos camera_pos{24.0f, 20.0f, 40.0f};
-        const auto camera = with<scene::Interface>::createCamera(
-            context,
-            root,
-            Pose::from(camera_pos, HPB{36.87f, -29.74f, 0.0f}),
-            60.0f * std::numbers::pi_v<float> / 180.0f);
+        const auto camera = with<scene::Interface>::createCamera(context, root, Pose::from(camera_pos, HPB{36.87f, -29.74f, 0.0f}), 60.0f * std::numbers::pi_v<float> / 180.0f);
         with<controller::CameraOrbit>::create(context, camera, pivot, glm::length(camera_pos - pivot));
 
         syncCameraPivotToFloor(context, state);
 
-        with<scene::Interface>::createLight(
-            context,
-            root,
-            Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}),
-            item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 60.0f});
+        with<scene::Interface>::createLight(context, root, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 60.0f});
 
         state.scene = root;
         state.camera = camera;
@@ -581,35 +557,17 @@ namespace eltanin::views {
     }
 
     auto Blueprints::spawnFromPack(Writing context, meshpack::Asset::Id pack, const std::string& entry, const Pose& pose, mech::layer layer, Source source, std::size_t index, std::size_t sub, mech::subframe::halfEdge::Pole pole, int floor, RGB albedo, float opacity) -> base::maybe<Actor> {
-        if (entry.empty())
-            return {};
-        const auto resolved = meshpack::Asset::Actions::resolve(context, pack, entry);
-        if (not resolved)
-            return {};
-        const auto device = with<World>::get_global(context).window;
-        if (not device)
-            return {};
-        const auto identityPose = renderer::DiscretePose{.pos = index3{0, 0, 0}, .ori = renderer::Signed32{0}};
-        const auto mesh = scene::actor::Mesh::Actions::compose(context, *device, {scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = identityPose}});
-        if (not mesh)
-            return {};
-        const auto id = with<scene::Interface>::createMeshActor(context, *state.scene, pose, std::move(*mesh), scene::actor::MeshState::Quantum{
-            .albedo = albedo,
-            .scale = vec3{1.0f, 1.0f, 1.0f},
-            .latticeStep = 1.0f,
-            .patternScale = 1.0f,
-            .opacity = opacity,
-            .visible = true,
-        });
-        scene::actor::Identified::Actions::extend(context, id);
+        const auto id = with<scene::Interface>::createMeshActor(context, *state.scene, pose, pack, entry, with<scene::actor::MeshState>::defaults(albedo, opacity));
+        if (not with<scene::actor::Mesh>::exists(context, id)) return {};
+        with<scene::actor::Identified>::extend(context, id);
         return Actor{.id = id, .layer = layer, .source = source, .index = index, .sub = sub, .pole = pole, .floor = floor};
     }
 
     void Blueprints::applyLayers(Writing context) {
         for (const auto& actor : state.levelOne)
-            scene::actor::MeshState::Actions::setVisible(context, actor.id, layerVisible(state.layers, actor.layer) and floorPasses(state.floorFilter, actor.floor, state.currentFloor));
+            with<scene::actor::MeshState>::setVisible(context, actor.id, layerVisible(state.layers, actor.layer) and floorPasses(state.floorFilter, actor.floor, state.currentFloor));
         for (const auto& actor : state.levelTwo)
-            scene::actor::MeshState::Actions::setVisible(context, actor.id, layerVisible(state.layers, actor.layer) and floorPasses(state.floorFilter, actor.floor, state.currentFloor));
+            with<scene::actor::MeshState>::setVisible(context, actor.id, layerVisible(state.layers, actor.layer) and floorPasses(state.floorFilter, actor.floor, state.currentFloor));
     }
 
     void Blueprints::syncGridToFloor(Writing context) {

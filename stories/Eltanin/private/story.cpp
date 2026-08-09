@@ -1,7 +1,5 @@
 #include "story.h"
 
-#include "mech/semantics/together.include.h"
-
 #include <eltanin/entities/block.q1.h>
 #include <eltanin/physics/atomic.q1.h>
 #include <eltanin/physics/particle.q1.h>
@@ -27,10 +25,7 @@
 #include <rmmr/semantics/uniform.h>
 #include <rmmr/system/viewport.q1.h>
 
-#include <format>
 #include <numbers>
-#include <string>
-#include <string_view>
 #include <utility>
 
 #include <glm/gtc/quaternion.hpp>
@@ -187,101 +182,20 @@ namespace eltanin {
         if (not assets.sprites) {
             return (void)context.refuse("eltanin::Game::populateWorld: sprites texpack missing");
         }
-        const auto identityPose = renderer::DiscretePose{.pos = index3{0, 0, 0}, .ori = renderer::Signed32{0}};
         const auto skyResolved = ::rmmr::resource::meshpack::Asset::Resolved{
             .geometry = *assets.skySphereGeometry,
             .entry = ::rmmr::resource::geometry::EntryId{0},
             .surfaces = {{::rmmr::resource::geometry::SurfaceId{0}, ::rmmr::resource::material::Instance{.material = *assets.skySphereMaterial, .textures = {{"albedoMap", "skySphere.png"}}}}},
             .texpack = assets.sprites,
         };
-        const auto skyMesh = scene::actor::Mesh::Actions::compose(context, window, {scene::actor::Mesh::Occurrence{.entry = skyResolved, .pose = identityPose}});
-        if (not skyMesh) return (void)context.refuse("eltanin::Game::populateWorld: sky mesh composition failed");
-        const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), std::move(*skyMesh), scene::actor::MeshState::Quantum{
-            .albedo = RGB{1.0f, 1.0f, 1.0f},
-            .scale = vec3{1.0f, 1.0f, 1.0f},
-            .latticeStep = 1.0f,
-            .patternScale = 1.0f,
-            .opacity = 1.0f,
-            .visible = true,
-        });
+        const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved);
 
         const Pos cameraPos{8.0f, 6.0f, 16.0f};
         const Pos cameraTarget{0.0f, 0.0f, -2.0f};
         const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
         const auto camera = with<scene::Interface>::createCamera(context, root, cameraPose, 100.0f * std::numbers::pi_v<float> / 180.0f);
         with<controller::Camera3d>::create(context, camera);
-        with<scene::Interface>::createLight(context, root,
-            Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}),
-            item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
-
-        if (not assets.interframe) {
-            return (void)context.refuse("eltanin::Game::populateWorld: interframe meshpack missing");
-        }
-        {
-            using namespace mech::subframe;
-            const auto pack = *assets.interframe;
-
-            const auto scenePose = [](mech::orient::key ori) -> Pose {
-                return Pose{
-                    .position = Pos{0.0f, 0.0f, 0.0f},
-                    .rotation = glm::normalize(glm::quat_cast(glm::mat3(mech::orient::matrix[static_cast<std::size_t>(ori)]))),
-                };
-            };
-
-            const auto spawnEntry = [&](std::string_view entry, mech::orient::key ori) {
-                const auto resolved = ::rmmr::resource::meshpack::Asset::Actions::resolve(context, pack, std::string{entry});
-                if (not resolved) {
-                    return (void)context.refuse(std::format("eltanin::Game::populateWorld: interframe entry '{}' missing", entry));
-                }
-                const auto mesh = scene::actor::Mesh::Actions::compose(context, window, {scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = identityPose}});
-                if (not mesh) return (void)context.refuse(std::format("eltanin::Game::populateWorld: interframe entry '{}' composition failed", entry));
-                with<scene::Interface>::createMeshActor(context, root, scenePose(ori), std::move(*mesh), scene::actor::MeshState::Quantum{
-                    .albedo = RGB{1.0f, 1.0f, 1.0f},
-                    .scale = vec3{1.0f, 1.0f, 1.0f},
-                    .latticeStep = 1.0f,
-                    .patternScale = 1.0f,
-                    .opacity = 1.0f,
-                    .visible = true,
-                });
-            };
-
-            const auto cornerEntry = [](corner::kind kind) -> std::string_view {
-                switch (kind) {
-                    case corner::kind::c124: return "c124";
-                    case corner::kind::c1364: return "c1364";
-                    case corner::kind::c164: return "c164";
-                    case corner::kind::c134: return "c134";
-                    case corner::kind::c135: return "c135";
-                    case corner::kind::c12: return "c12";
-                    case corner::kind::c13: return "c13";
-                    case corner::kind::c15: return "c15";
-                    case corner::kind::c16: return "c16";
-                    case corner::kind::c34: return "c34";
-                    case corner::kind::c35: return "c35";
-                }
-                return {};
-            };
-
-            // LWO layer typo: he1ged90s (not he1deg90s).
-            const auto halfEdgeEntry = [](halfEdge::kind kind, halfEdge::Pole pole) -> std::string {
-                const auto& spec = halfEdge::specs.at(kind);
-                const char poleTag = pole == halfEdge::Pole::s ? 's' : 'e';
-                if (kind == halfEdge::kind::he1deg90 and pole == halfEdge::Pole::s)
-                    return std::format("he1ged90{}", poleTag);
-                return std::format("{}{}", spec.code, poleTag);
-            };
-
-            const auto& recipe = recipes.at(mech::frame::shape::k7);
-            for (const auto& piece : recipe.corners)
-                spawnEntry(cornerEntry(piece.kind), piece.orient);
-
-            for (const auto& edge : recipe.edges) {
-                const auto poleAtMesh0 = edge.poleAtMesh0;
-                const auto poleAtMeshRay = halfEdge::opposite(edge.poleAtMesh0);
-                spawnEntry(halfEdgeEntry(edge.kind, poleAtMesh0), edge.orient);
-                spawnEntry(halfEdgeEntry(edge.kind, poleAtMeshRay), edge.orient);
-            }
-        }
+        with<scene::Interface>::createLight(context, root, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
         physics_ui.shapeMaterial = shared->material.gizmo.textured;
         if (not shared->texture.debug) {

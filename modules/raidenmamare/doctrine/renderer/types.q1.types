@@ -17,6 +17,7 @@ namespace rmmr
     struct DiscretePose
       pos: index3
       ori: Signed32
+      >identity() -> DiscretePose
 
     // Binary-compatible with OpenGL DrawElementsIndirectCommand.
     struct DrawElementsIndirect

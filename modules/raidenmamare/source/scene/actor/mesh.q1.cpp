@@ -107,11 +107,17 @@ namespace rmmr::scene::actor {
             };
         }
 
+        auto primaryDevice(Reading context) -> optional<system::Device::Id> {
+            for (const auto entry : context->aspect<system::Device>().items()) return entry.id;
+            return {};
+        }
+
     } // namespace
 
-    auto Mesh::Actions::compose(Reading context, system::Device::Id device, const vector<Occurrence>& occurrences) -> optional<Quantum> {
-        if (occurrences.empty() or not with<system::Device>::exists(context, device) or not with<resource::Runtimes>::exists(context, device)) return {};
-        const auto& runtimes = with<resource::Runtimes>::get(context, device);
+    auto Mesh::Actions::compose(Reading context, const vector<Occurrence>& occurrences) -> optional<Quantum> {
+        const auto device = primaryDevice(context);
+        if (occurrences.empty() or not device or not with<resource::Runtimes>::exists(context, *device)) return {};
+        const auto& runtimes = with<resource::Runtimes>::get(context, *device);
         vector<renderer::DiscretePose> poses;
         vector<renderer::Integer32> palette;
         vector<CpuBucket> cpuBuckets;
@@ -160,7 +166,7 @@ namespace rmmr::scene::actor {
         }
 
         if (cpuBuckets.empty()) return {};
-        glfwMakeContextCurrent(with<system::Device>::get(context, device).handle);
+        glfwMakeContextCurrent(with<system::Device>::get(context, *device).handle);
         GLint metadataAlignment = 1;
         glGetIntegerv(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT, &metadataAlignment);
         const auto metadataStride = sizeof(renderer::DrawMetadata);
@@ -221,10 +227,14 @@ namespace rmmr::scene::actor {
                 .metadataByteSize = static_cast<renderer::SizePtr>(source.metadata.size() * sizeof(renderer::DrawMetadata)),
             });
         }
-        return Quantum{.device = device, .actorState = actorStateBuffer, .poses = poseBuffer, .drawMetadata = metadataBuffer, .surfacePalette = paletteBuffer, .sprite = {}, .spriteIndex = 0, .buckets = std::move(buckets)};
+        return Quantum{.device = *device, .actorState = actorStateBuffer, .poses = poseBuffer, .drawMetadata = metadataBuffer, .surfacePalette = paletteBuffer, .sprite = {}, .spriteIndex = 0, .buckets = std::move(buckets)};
     }
 
-    auto Mesh::Actions::composeOne(Reading context, system::Device::Id device, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id material) -> optional<Quantum> {
+    auto Mesh::Actions::compose(Reading context, resource::meshpack::Asset::Resolved resolved) -> optional<Quantum> {
+        return compose(context, {Occurrence{.entry = std::move(resolved), .pose = renderer::DiscretePose::identity()}});
+    }
+
+    auto Mesh::Actions::composeOne(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id material) -> optional<Quantum> {
         if (not with<resource::geometry::Asset>::exists(context, geometryId)) return {};
         const auto& geometry = with<resource::geometry::Asset>::get(context, geometryId);
         if (geometry.entries.empty()) return {};
@@ -234,9 +244,19 @@ namespace rmmr::scene::actor {
             const auto surface = static_cast<resource::geometry::SurfaceId>(entry.surfaces.first + offset);
             surfaces.emplace(surface, resource::material::Instance{.material = material, .textures = {}});
         }
-        const auto resolved = resource::meshpack::Asset::Resolved{.geometry = geometryId, .entry = resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = {}};
-        const auto pose = renderer::DiscretePose{.pos = index3{0, 0, 0}, .ori = renderer::Signed32{0}};
-        return compose(context, device, {Occurrence{.entry = resolved, .pose = pose}});
+        return compose(context, resource::meshpack::Asset::Resolved{.geometry = geometryId, .entry = resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = {}});
+    }
+
+    auto MeshState::Actions::defaults() -> Quantum {
+        return Quantum{.albedo = RGB{1.0f, 1.0f, 1.0f}, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = 1.0f, .visible = true};
+    }
+
+    auto MeshState::Actions::defaults(RGB albedo, float opacity) -> Quantum {
+        return Quantum{.albedo = albedo, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = opacity, .visible = true};
+    }
+
+    auto MeshState::Actions::defaults(RGB albedo, float opacity, vec3 scale) -> Quantum {
+        return Quantum{.albedo = albedo, .scale = scale, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = opacity, .visible = true};
     }
 
     void Mesh::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {

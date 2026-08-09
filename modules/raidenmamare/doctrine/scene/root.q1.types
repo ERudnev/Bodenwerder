@@ -1,6 +1,7 @@
 import "math"
 import "renderer/types"
 import "system/core"
+import "resources/meshpack"
 import "scene/actors/mesh"
 import "scene/actors/sprite"
 import "scene/camera"
@@ -21,10 +22,15 @@ namespace rmmr
     group<Light> of Root
 
     manipulation Interface of Root
+      using Meshes as resource::meshpack::Asset
       >createScene()->#
       >createCamera(#, Pose, fov_x: float)->#Camera
       >createLight(#, Pose, one<Light>)->#Light
       >createMeshActor(#, Pose, one<actor::Mesh>, one<actor::MeshState>)->#actor::Mesh
+      >createMeshActor(#, Pose, Meshes::Resolved)->#actor::Mesh
+      >createMeshActor(#, Pose, Meshes::Resolved, one<actor::MeshState>)->#actor::Mesh
+      >createMeshActor(#, Pose, #Meshes, entry: string)->#actor::Mesh
+      >createMeshActor(#, Pose, #Meshes, entry: string, one<actor::MeshState>)->#actor::Mesh
       >createGrid(#, #system::Device, Pose, one<Grid>)->#Grid
       ?render(#, #system::Device, >where: renderer::CommandBuffer)
 

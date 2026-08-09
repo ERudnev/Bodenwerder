@@ -9,6 +9,8 @@
 #include <string_view>
 #include <vector>
 
+#include <base/logging.h>
+#include <eltanin/resources/blueprint.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/textures.q1.h>
@@ -121,10 +123,44 @@ namespace eltanin {
         drawCameraWindow(world);
         drawLightingWindow(world);
         drawMaterialsWindow(world);
+        drawShipsWindow(world);
         physics_ui.draw(world, ui.physics, physics);
         blueprints.draw(world, ui.blueprints);
         if (world_view)
             blueprints.bindView(views, ui.blueprints, *world_view);
+    }
+
+    void Game::drawShipsWindow(Writing world) {
+        if (not ImGui::Begin("Ships")) {
+            ImGui::End();
+            return;
+        }
+        if (blueprints.state.loaded.empty()) {
+            ImGui::TextDisabled("No blueprints loaded.");
+        } else {
+            for (const auto id : blueprints.state.loaded) {
+                if (not with<::eltanin::resource::blueprint::Asset>::exists(world, id))
+                    continue;
+                const auto& asset = with<::eltanin::resource::blueprint::Asset>::get(world, id);
+                const auto& unit = with<::rmmr::resource::Unit>::get(world, id);
+                const char* label = asset.data.name.empty() ? unit.name.own.c_str() : asset.data.name.c_str();
+                pushEntityId<::eltanin::resource::blueprint::Asset>(id);
+                ImGui::AlignTextToFramePadding();
+                ImGui::TextUnformatted(label);
+                ImGui::SameLine();
+                if (ImGui::Button("Spawn")) {
+                    std::size_t corners = 0;
+                    std::size_t sticks = 0;
+                    for (const auto& cell : asset.data.cells) {
+                        corners += cell.corners.size();
+                        sticks += cell.edges.size();
+                    }
+                    base::message("eltanin: spawn '{}': corners={}, sticks={}", label, corners, sticks);
+                }
+                ImGui::PopID();
+            }
+        }
+        ImGui::End();
     }
 
     void Game::drawCameraWindow(Writing world) {

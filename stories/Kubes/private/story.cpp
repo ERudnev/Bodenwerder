@@ -107,23 +107,13 @@ namespace kubes {
         if (not assets.sprites) {
             return (void)context.refuse("kubes::KubeOfKubes::populateWorld: sprites texpack missing");
         }
-        const auto identityPose = renderer::DiscretePose{.pos = index3{0, 0, 0}, .ori = renderer::Signed32{0}};
         const auto skyResolved = ::rmmr::resource::meshpack::Asset::Resolved{
             .geometry = *assets.skySphereGeometry,
             .entry = ::rmmr::resource::geometry::EntryId{0},
             .surfaces = {{::rmmr::resource::geometry::SurfaceId{0}, ::rmmr::resource::material::Instance{.material = *assets.skySphereMaterial, .textures = {{"albedoMap", "skySphere.png"}}}}},
             .texpack = assets.sprites,
         };
-        const auto skyMesh = scene::actor::Mesh::Actions::compose(context, window, {scene::actor::Mesh::Occurrence{.entry = skyResolved, .pose = identityPose}});
-        if (not skyMesh) return (void)context.refuse("kubes::KubeOfKubes::populateWorld: sky mesh composition failed");
-        const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), std::move(*skyMesh), scene::actor::MeshState::Quantum{
-            .albedo = RGB{1.0f, 1.0f, 1.0f},
-            .scale = vec3{1.0f, 1.0f, 1.0f},
-            .latticeStep = 1.0f,
-            .patternScale = 1.0f,
-            .opacity = 1.0f,
-            .visible = true,
-        });
+        const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved);
 
         const auto camera = with<scene::Interface>::createCamera(context, root,
             Pose::from(Pos{10.5f, 10.0f, 14.0f}, HPB{36.87f, -29.74f, 0.0f}),

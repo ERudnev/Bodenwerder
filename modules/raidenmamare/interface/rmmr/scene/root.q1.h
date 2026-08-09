@@ -39,10 +39,16 @@ namespace rmmr::scene {
     };
 
     struct Interface : Manipulation<Interface, Root> {
+        using Meshes = resource::meshpack::Asset;
+
         static auto createScene(Writing) -> Root::Id;
         static auto createCamera(Writing, Root::Id, Pose, float fov_x) -> Camera::Id;
         static auto createLight(Writing, Root::Id, Pose, Light::Quantum) -> Light::Id;
         static auto createMeshActor(Writing, Root::Id, Pose, actor::Mesh::Quantum, actor::MeshState::Quantum) -> actor::Mesh::Id;
+        static auto createMeshActor(Writing, Root::Id, Pose, Meshes::Resolved) -> actor::Mesh::Id;
+        static auto createMeshActor(Writing, Root::Id, Pose, Meshes::Resolved, actor::MeshState::Quantum) -> actor::Mesh::Id;
+        static auto createMeshActor(Writing, Root::Id, Pose, Meshes::Id, string entry) -> actor::Mesh::Id;
+        static auto createMeshActor(Writing, Root::Id, Pose, Meshes::Id, string entry, actor::MeshState::Quantum) -> actor::Mesh::Id;
         static auto createGrid(Writing, Root::Id, system::Device::Id, Pose, Grid::Quantum) -> Grid::Id;
         static void render(Reading, Root::Id, system::Device::Id, renderer::CommandBuffer& where);
     };

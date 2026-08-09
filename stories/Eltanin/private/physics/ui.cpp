@@ -50,33 +50,16 @@ namespace eltanin::phys {
             base::message("eltanin::phys::Ui: shapeMaterial/Texpack/Layer/Geometry unset; skip collider actors");
             return;
         }
-        const auto device = with<World>::get_global(context).window;
-        if (not device) {
-            base::message("eltanin::phys::Ui: World window unset; skip collider actors");
-            return;
-        }
+        const auto edge = mech::physical::edgeMeters;
         const auto resolved = rmmr::resource::meshpack::Asset::Resolved{
             .geometry = *shapeGeometry,
             .entry = rmmr::resource::geometry::EntryId{0},
             .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = *shapeMaterial, .textures = {{"albedoMap", *shapeAlbedoLayer}}}}},
             .texpack = *shapeTexpack,
         };
-        const auto identityPose = rmmr::renderer::DiscretePose{.pos = index3{0, 0, 0}, .ori = rmmr::renderer::Signed32{0}};
+        const auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{edge, edge, edge});
         for (const auto [atomic_id, atomic] : context->aspect<Atomic>().items()) {
-            const auto mesh = rmmr::scene::actor::Mesh::Actions::compose(context, *device, {rmmr::scene::actor::Mesh::Occurrence{.entry = resolved, .pose = identityPose}});
-            if (not mesh) {
-                base::message("eltanin::phys::Ui: collider mesh composition failed");
-                continue;
-            }
-            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, *root, atomic.restored, std::move(*mesh), rmmr::scene::actor::MeshState::Quantum{
-                .albedo = rmmr::RGB{1.0f, 1.0f, 1.0f},
-                .scale = vec3{mech::physical::edgeMeters, mech::physical::edgeMeters, mech::physical::edgeMeters},
-                .latticeStep = 1.0f,
-                .patternScale = 1.0f,
-                .opacity = 1.0f,
-                .visible = true,
-            });
-            state.actors.push_back(actor);
+            state.actors.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, atomic.restored, resolved, appearance));
             bodies.push_back(atomic_id);
         }
     }
@@ -100,33 +83,15 @@ namespace eltanin::phys {
             base::message("eltanin::phys::Ui: particleGeometry/Material unset; skip particle actors");
             return;
         }
-        const auto device = with<World>::get_global(context).window;
-        if (not device) {
-            base::message("eltanin::phys::Ui: World window unset; skip particle actors");
-            return;
-        }
         const auto resolved = rmmr::resource::meshpack::Asset::Resolved{
             .geometry = *particleGeometry,
             .entry = rmmr::resource::geometry::EntryId{0},
             .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = *particleMaterial, .textures = {}}}},
             .texpack = {},
         };
-        const auto identityPose = rmmr::renderer::DiscretePose{.pos = index3{0, 0, 0}, .ori = rmmr::renderer::Signed32{0}};
+        const auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{particleWorldScale, particleWorldScale, particleWorldScale});
         for (const auto [particle_id, particle] : context->aspect<Particle>().items()) {
-            const auto mesh = rmmr::scene::actor::Mesh::Actions::compose(context, *device, {rmmr::scene::actor::Mesh::Occurrence{.entry = resolved, .pose = identityPose}});
-            if (not mesh) {
-                base::message("eltanin::phys::Ui: particle mesh composition failed");
-                continue;
-            }
-            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, *root, rmmr::Pose::from(particle.current, HPB{0.0f, 0.0f, 0.0f}), std::move(*mesh), rmmr::scene::actor::MeshState::Quantum{
-                .albedo = rmmr::RGB{1.0f, 1.0f, 1.0f},
-                .scale = vec3{particleWorldScale, particleWorldScale, particleWorldScale},
-                .latticeStep = 1.0f,
-                .patternScale = 1.0f,
-                .opacity = 1.0f,
-                .visible = true,
-            });
-            state.particles.push_back(actor);
+            state.particles.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, rmmr::Pose::from(particle.current, HPB{0.0f, 0.0f, 0.0f}), resolved, appearance));
             particleIds.push_back(particle_id);
         }
     }

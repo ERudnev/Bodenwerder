@@ -39,8 +39,9 @@ namespace rmmr::scene::actor {
             vector<Bucket> buckets;
         };
         struct Actions : BaseActions {
-            static auto compose(Reading, system::Device::Id, const vector<Occurrence>&) -> optional<Quantum>;
-            static auto composeOne(Reading, system::Device::Id, resource::geometry::Asset::Id, resource::material::Asset::Id) -> optional<Quantum>;
+            static auto compose(Reading, const vector<Occurrence>&) -> optional<Quantum>;
+            static auto compose(Reading, resource::meshpack::Asset::Resolved) -> optional<Quantum>;
+            static auto composeOne(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id) -> optional<Quantum>;
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };
         struct Internals;
@@ -58,6 +59,9 @@ namespace rmmr::scene::actor {
         };
         struct Actions : BaseActions {
             static void setVisible(Writing, Id, bool);
+            static auto defaults() -> Quantum;
+            static auto defaults(RGB albedo, float opacity) -> Quantum;
+            static auto defaults(RGB albedo, float opacity, vec3 scale) -> Quantum;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

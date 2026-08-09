@@ -56,8 +56,28 @@ namespace rmmr::scene {
         return node;
     }
 
-    auto Interface::createGrid(Writing context, Root::Id root, system::Device::Id device, Pose pose, Grid::Quantum gridQuantum) -> Grid::Id {
-        auto mesh = actor::Mesh::Actions::composeOne(context, device, gridQuantum.geometry, gridQuantum.material);
+    auto Interface::createMeshActor(Writing context, Root::Id root, Pose pose, Meshes::Resolved resolved, actor::MeshState::Quantum stateQuantum) -> actor::Mesh::Id {
+        auto mesh = with<actor::Mesh>::compose(context, std::move(resolved));
+        if (not mesh) return context.refuse("scene::Interface::createMeshActor: mesh composition failed");
+        return createMeshActor(context, root, pose, std::move(*mesh), std::move(stateQuantum));
+    }
+
+    auto Interface::createMeshActor(Writing context, Root::Id root, Pose pose, Meshes::Resolved resolved) -> actor::Mesh::Id {
+        return createMeshActor(context, root, pose, std::move(resolved), with<actor::MeshState>::defaults());
+    }
+
+    auto Interface::createMeshActor(Writing context, Root::Id root, Pose pose, Meshes::Id pack, string entry, actor::MeshState::Quantum stateQuantum) -> actor::Mesh::Id {
+        auto resolved = with<Meshes>::resolve(context, pack, std::move(entry));
+        if (not resolved) return context.refuse("scene::Interface::createMeshActor: meshpack entry resolve failed");
+        return createMeshActor(context, root, pose, std::move(*resolved), std::move(stateQuantum));
+    }
+
+    auto Interface::createMeshActor(Writing context, Root::Id root, Pose pose, Meshes::Id pack, string entry) -> actor::Mesh::Id {
+        return createMeshActor(context, root, pose, pack, std::move(entry), with<actor::MeshState>::defaults());
+    }
+
+    auto Interface::createGrid(Writing context, Root::Id root, system::Device::Id, Pose pose, Grid::Quantum gridQuantum) -> Grid::Id {
+        auto mesh = with<actor::Mesh>::composeOne(context, gridQuantum.geometry, gridQuantum.material);
         if (not mesh) return context.refuse("scene::Interface::createGrid: mesh composition failed");
         const auto node = with<Node_group>::addElement(context, root, Node::Quantum{.pose = pose});
         with<actor::Mesh>::extend(context, node, std::move(*mesh));
@@ -72,9 +92,9 @@ namespace rmmr::scene {
         // TODO: refactor this stuff: one complex loop -> many simplier (type-alligned) loops
         for (const auto node : node_group) {
             if (with<actor::Mesh>::exists(context, node)) {
-                actor::Mesh::Actions::submit(context, node, device, where);
+                with<actor::Mesh>::submit(context, node, device, where);
                 if (with<actor::Identified>::exists(context, node))
-                    actor::Identified::Actions::submit(context, node, device, where);
+                    with<actor::Identified>::submit(context, node, device, where);
                 continue;
             }
         }
@@ -102,13 +122,13 @@ namespace rmmr::scene {
         const auto& runtimes = with<resource::Runtimes>::get(context, flat.device);
         const auto runtime = runtimes.sprites_id_mapping.find(sprite.pack);
         if (runtime == runtimes.sprites_id_mapping.end() or not with<resource::sprite::Runtime>::exists(context, runtime->second)) return context.refuse("scene::Flat2d::createSpriteActor: sprite runtime missing");
-        auto mesh = actor::Mesh::Actions::composeOne(context, flat.device, *global.geometry, sprite.material);
+        auto mesh = with<actor::Mesh>::composeOne(context, *global.geometry, sprite.material);
         if (not mesh) return context.refuse("scene::Flat2d::createSpriteActor: mesh composition failed");
         mesh->sprite = runtime->second;
         mesh->spriteIndex = sprite.index;
         const auto node = with<Node_group>::addElement(context, root, Node::Quantum{.pose = pose});
         with<actor::Mesh>::extend(context, node, std::move(*mesh));
-        with<actor::MeshState>::extend(context, node, actor::MeshState::Quantum{.albedo = RGB{1.0f, 1.0f, 1.0f} + sprite.tint, .scale = sprite.scale, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = sprite.opacity, .visible = true});
+        with<actor::MeshState>::extend(context, node, with<actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f} + sprite.tint, sprite.opacity, sprite.scale));
         with<actor::Sprite>::extend(context, node, std::move(sprite));
         return node;
     }

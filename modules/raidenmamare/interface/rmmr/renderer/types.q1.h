@@ -27,6 +27,8 @@ namespace rmmr::renderer {
     struct DiscretePose {
         index3 pos;
         Signed32 ori;
+
+        static auto identity() -> DiscretePose { return DiscretePose{.pos = index3{0, 0, 0}, .ori = Signed32{0}}; }
     };
 
     struct DrawElementsIndirect {

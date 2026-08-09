@@ -33,8 +33,9 @@ namespace rmmr
           buckets: vector<Bucket>
           ?submit(#system::Device, >where: renderer::CommandBuffer)
         all
-          ?compose(#system::Device, vector<Occurrence>)->one?
-          ?composeOne(#system::Device, #resource::geometry::Asset, #resource::material::Asset)->one?
+          ?compose(vector<Occurrence>)->one?
+          ?compose(resource::meshpack::Asset::Resolved)->one?
+          ?composeOne(#resource::geometry::Asset, #resource::material::Asset)->one?
 
       feature MeshState of Mesh
         one
@@ -45,6 +46,10 @@ namespace rmmr
           opacity: float
           visible: bool
           >setVisible(bool)
+        all
+          ?defaults()->one
+          ?defaults(RGB, opacity: float)->one
+          ?defaults(RGB, opacity: float, scale: vec3)->one
 
       feature Identified of Mesh
         one

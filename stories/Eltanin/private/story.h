@@ -82,6 +82,7 @@ namespace eltanin {
         void drawLightingWindow(Writing);
         void drawMaterialsWindow(Writing);
         void drawMaterialInspector(Writing, rmmr::resource::material::Asset::Id);
+        void drawShipsWindow(Writing);
     };
 
 }
