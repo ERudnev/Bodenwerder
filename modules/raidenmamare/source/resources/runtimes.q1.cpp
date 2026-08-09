@@ -1,7 +1,7 @@
 #include <rmmr/resources/runtimes.q1.h>
-#include <rmmr/resources/builders/materialPresets.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/sprites.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/semantics/rendering.h>
 
 #include <base/logging.h>
@@ -61,6 +61,16 @@ namespace rmmr::resource {
             } else if (with<texture::Generator>::exists(context, asset_id)) {
                 bind_runtime<texture::Runtime>(mapping, asset_id, texture::Generator::Actions::materialize(context, asset_id, device));
             }
+        }
+
+        void rematerialize_texpack(Writing context, texpack::Pack::Id pack_id, system::Device::Id device) {
+            if (not with<texpack::Pack>::exists(context, pack_id)) {
+                return;
+            }
+            bind_runtime<texpack::Runtime>(
+                with<Runtimes>::modify(context, device)->texpacks_id_mapping,
+                pack_id,
+                texpack::Pack::Actions::materialize(context, pack_id, device));
         }
 
         void rematerialize_shader(Writing context, shader::Asset::Id asset_id, system::Device::Id device) {
@@ -126,6 +136,18 @@ namespace rmmr::resource {
         return register_unit<texture::Asset, texture::Generator>(context, std::move(name), texture::Asset::Quantum{}, std::move(generator));
     }
 
+    auto Assets::Actions::add_texpack_catalog(Writing context, Unit::Name name, texpack::LoaderCatalog::Quantum loader, index2 layerSize, integer capacity) -> texpack::Pack::Id {
+        return register_unit<texpack::Pack, texpack::LoaderCatalog>(
+            context,
+            std::move(name),
+            texpack::Pack::Quantum{
+                .layerSize = layerSize,
+                .capacity = capacity,
+                .layers = {},
+            },
+            std::move(loader));
+    }
+
     auto Assets::Actions::add_shader_loader(Writing context, Unit::Name name, shader::Loader::Quantum loader) -> shader::Asset::Id {
         return register_unit<shader::Asset, shader::Loader>(context, std::move(name), shader::Asset::Quantum{}, std::move(loader));
     }
@@ -188,7 +210,7 @@ namespace rmmr::resource {
         return register_unit<meshpack::Asset, meshpack::LoaderObjs>(
             context,
             std::move(name),
-            meshpack::Asset::Quantum{.entries = {}},
+            meshpack::Asset::Quantum{.texpack = {}, .entries = {}},
             std::move(loader));
     }
 
@@ -196,28 +218,8 @@ namespace rmmr::resource {
         return register_unit<meshpack::Asset, meshpack::LoaderLwo>(
             context,
             std::move(name),
-            meshpack::Asset::Quantum{.entries = {}},
+            meshpack::Asset::Quantum{.texpack = {}, .entries = {}},
             std::move(loader));
-    }
-
-    auto Assets::Actions::compose_material(Writing context, Unit::Name name, filename file, material::Asset::Id base) -> material::Asset::Id {
-        if (not with<material::Asset>::exists(context, base) or not with<Unit>::exists(context, base)) {
-            return context.refuse("resource::Assets::compose_material: base material missing");
-        }
-        const auto& techniques = with<material::Asset>::get(context, base).techniques;
-        const auto opaque = techniques.find(renderer::Pass::opaque);
-        const auto shadow = techniques.find(renderer::Pass::shadow);
-        if (opaque == techniques.end() or shadow == techniques.end()) {
-            return context.refuse("resource::Assets::compose_material: base missing opaque/shadow");
-        }
-        const auto texture_id = add_texture_loader(
-            context,
-            name,
-            texture::Loader::Quantum{.file = std::move(file), .mipmaps = false});
-        return add_material(
-            context,
-            std::move(name),
-            builders::material::Presets::litTextured(opaque->second.program, with<Unit>::remember(context, texture_id), shadow->second.program));
     }
 
     void Assets::Actions::extend(Writing context, filepath path) {
@@ -237,6 +239,7 @@ namespace rmmr::resource {
         if (not assets) return (void)context.refuse("resource::Runtimes::install: Assets singleton missing");
         with<DeviceRuntimes>::extend(context, device, DeviceRuntimes::Quantum{.assets = *assets});
         with<Runtime_group>::extend(context, device);
+        with<TexpackRuntime_group>::extend(context, device);
         with<ShaderRuntime_group>::extend(context, device);
         with<MaterialRuntime_group>::extend(context, device);
         with<OverlayRuntime_group>::extend(context, device);
@@ -253,6 +256,9 @@ namespace rmmr::resource {
 
         for (const auto [id, _] : context->aspect<texture::Asset>().items()) {
             rematerialize_texture(context, id, device);
+        }
+        for (const auto [id, _] : context->aspect<texpack::Pack>().items()) {
+            rematerialize_texpack(context, id, device);
         }
         for (const auto [id, _] : context->aspect<shader::Asset>().items()) {
             rematerialize_shader(context, id, device);
@@ -278,6 +284,7 @@ namespace rmmr::resource {
         static void maintain_all_mappings(Reacting context) {
             for (const auto [runtimes_id, quantum] : context.proposal.aspect<Runtimes>().items()) {
                 scrub_mapping<texture::Asset, texture::Runtime>(context, runtimes_id, quantum.textures_id_mapping, &Quantum::textures_id_mapping);
+                scrub_mapping<texpack::Pack, texpack::Runtime>(context, runtimes_id, quantum.texpacks_id_mapping, &Quantum::texpacks_id_mapping);
                 scrub_mapping<shader::Asset, shader::Runtime>(context, runtimes_id, quantum.shaders_id_mapping, &Quantum::shaders_id_mapping);
                 scrub_mapping<material::Asset, material::Runtime>(context, runtimes_id, quantum.materials_id_mapping, &Quantum::materials_id_mapping);
                 scrub_mapping<overlay::Asset, overlay::Runtime>(context, runtimes_id, quantum.overlays_id_mapping, &Quantum::overlays_id_mapping);

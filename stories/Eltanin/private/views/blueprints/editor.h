@@ -88,6 +88,7 @@ namespace eltanin::views {
         void create(Writing, filepath directory);
         void show(Writing, resource::blueprint::Asset::Id);
         void syncVisuals(Writing); // rebuild actors from hovered Asset.data
+        void clearVisuals(Writing); // drop spawned meshes (editor closed / before resync)
         void deleteSelection(Writing); // mutate data + save + syncVisuals
         void rotateSelection(Writing, const std::vector<mech::orient::key>& turn); // ±90° via orient::turn*; keep selection
         void persistHovered(Writing); // Loader::save for hovered asset

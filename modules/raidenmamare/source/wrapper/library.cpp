@@ -29,12 +29,13 @@ namespace rmmr::wrapper::assets {
 
         base::message("toy: adding hardcoded assets...");
 
-        handles.texture.debug.push_back(with<Assets>::add_texture_loader(context, Unit::Name::from("rmmr", "debug01"), item<texture::Loader>{.file = "textures/debug01.jpg", .mipmaps = true}));
-        handles.texture.debug.push_back(with<Assets>::add_texture_loader(context, Unit::Name::from("rmmr", "debug02"), item<texture::Loader>{.file = "textures/debug02.jpg", .mipmaps = true}));
-        handles.texture.debug.push_back(with<Assets>::add_texture_loader(context, Unit::Name::from("rmmr", "debug03"), item<texture::Loader>{.file = "textures/debug03.jpg", .mipmaps = true}));
-        handles.texture.debug.push_back(with<Assets>::add_texture_loader(context, Unit::Name::from("rmmr", "debug04"), item<texture::Loader>{.file = "textures/debug04.jpg", .mipmaps = true}));
-        handles.texture.debug.push_back(with<Assets>::add_texture_loader(context, Unit::Name::from("rmmr", "debug05"), item<texture::Loader>{.file = "textures/debug05.jpg", .mipmaps = true}));
-        handles.texture.debug.push_back(with<Assets>::add_texture_loader(context, Unit::Name::from("rmmr", "debug06"), item<texture::Loader>{.file = "textures/debug06.jpg", .mipmaps = true}));
+        // Catalog dir name = pack own name; layer names = filenames (debug02.jpg, …).
+        handles.texture.debug = with<Assets>::add_texpack_catalog(
+            context,
+            Unit::Name::from("rmmr", "debug"),
+            item<texpack::LoaderCatalog>{.directory = "textures/debug"},
+            index2{1024, 1024},
+            32);
         handles.texture.whiteCircle = with<Assets>::add_texture_generator(context, Unit::Name::from("rmmr", "white_circle"), item<texture::Generator>{.size = index2{256, 256}, .pattern = texture::Generator::Pattern::whiteCircle});
         handles.texture.whiteRing = with<Assets>::add_texture_generator(context, Unit::Name::from("rmmr", "white_ring"), item<texture::Generator>{.size = index2{256, 256}, .pattern = texture::Generator::Pattern::whiteRing});
 
@@ -51,19 +52,14 @@ namespace rmmr::wrapper::assets {
         const auto shadow_depth = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "shadow_depth"), item<shader::Loader>{.vertex = "shaders/shadowDepth.vert.glsl", .fragment = "shaders/shadowDepth.frag.glsl"});
         const auto identity = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "identity"), item<shader::Loader>{.vertex = "shaders/identity.vert.glsl", .fragment = "shaders/identity.frag.glsl"});
 
-        handles.material.gizmo.textured = with<Assets>::add_material(context, Unit::Name::from("rmmr", "gizmo_textured_debug06"), builders::material::Presets::gizmoTextured(with<Unit>::remember(context, gizmo_textured), with<Unit>::remember(context, handles.texture.debug[5])));
+        handles.material.gizmo.textured = with<Assets>::add_material(context, Unit::Name::from("rmmr", "gizmo_textured"), builders::material::Presets::gizmoTextured(with<Unit>::remember(context, gizmo_textured)));
         handles.material.gizmo.vertexColor = with<Assets>::add_material(context, Unit::Name::from("rmmr", "gizmo_vertex_color"), builders::material::Presets::gizmoVertexColor(with<Unit>::remember(context, vertex_color)));
         handles.material.ambient = with<Assets>::add_material(context, Unit::Name::from("rmmr", "ambient"), builders::material::Presets::ambient(with<Unit>::remember(context, ambient), with<Unit>::remember(context, shadow_depth)));
         handles.material.lit = with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit"), builders::material::Presets::lit(with<Unit>::remember(context, lit), with<Unit>::remember(context, shadow_depth)));
         handles.material.litTransparent = with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_transparent"), builders::material::Presets::litTransparent(with<Unit>::remember(context, lit_transparent)));
-        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_textured_debug01"), builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured), with<Unit>::remember(context, handles.texture.debug[0]), with<Unit>::remember(context, shadow_depth))));
-        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_textured_debug02"), builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured), with<Unit>::remember(context, handles.texture.debug[1]), with<Unit>::remember(context, shadow_depth))));
-        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_textured_debug03"), builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured), with<Unit>::remember(context, handles.texture.debug[2]), with<Unit>::remember(context, shadow_depth))));
-        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_textured_debug04"), builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured), with<Unit>::remember(context, handles.texture.debug[3]), with<Unit>::remember(context, shadow_depth))));
-        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_textured_debug05"), builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured), with<Unit>::remember(context, handles.texture.debug[4]), with<Unit>::remember(context, shadow_depth))));
-        handles.material.debugLitTextured.push_back(with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_textured_debug06"), builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured), with<Unit>::remember(context, handles.texture.debug[5]), with<Unit>::remember(context, shadow_depth))));
-        handles.material.litTexturedAlpha = with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_textured_alpha_ring"), builders::material::Presets::litTexturedTransparent(with<Unit>::remember(context, lit_textured_alpha), with<Unit>::remember(context, *handles.texture.whiteRing)));
-        handles.material.oneSidedGlass = with<Assets>::add_material(context, Unit::Name::from("rmmr", "one_sided_glass_debug06"), builders::material::Presets::oneSidedGlass(with<Unit>::remember(context, glass), with<Unit>::remember(context, handles.texture.debug[5])));
+        handles.material.litTextured = with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_textured"), builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured), with<Unit>::remember(context, shadow_depth)));
+        handles.material.litTexturedAlpha = with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_textured_alpha"), builders::material::Presets::litTexturedTransparent(with<Unit>::remember(context, lit_textured_alpha)));
+        handles.material.oneSidedGlass = with<Assets>::add_material(context, Unit::Name::from("rmmr", "one_sided_glass"), builders::material::Presets::oneSidedGlass(with<Unit>::remember(context, glass)));
         handles.material.grid = with<Assets>::add_material(context, Unit::Name::from("rmmr", "grid"), builders::material::Presets::grid(with<Unit>::remember(context, grid)));
         handles.material.sprite = with<Assets>::add_material(context, Unit::Name::from("rmmr", "sprite"), builders::material::Presets::sprite(with<Unit>::remember(context, sprite)));
         handles.material.identity = with<Assets>::add_material(context, Unit::Name::from("rmmr", "identity"), builders::material::Presets::identity(with<Unit>::remember(context, identity)));

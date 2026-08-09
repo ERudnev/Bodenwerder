@@ -7,7 +7,8 @@ in float v_specular;
 out vec4 FragColor;
 
 uniform vec3 u_albedo;
-layout(binding = 0) uniform sampler2D u_albedoMap;
+layout(binding = 0) uniform sampler2DArray u_albedoMap;
+uniform int u_albedoLayer;
 
 uniform vec3 u_ambientColor;
 uniform float u_ambientIntensity;
@@ -17,7 +18,7 @@ uniform float u_light0Intensity;
 
 void main() {
     // debug06-style B&W opacity: luminance → alpha (white = denser glass).
-    vec3 mask = texture(u_albedoMap, v_uv0).rgb;
+    vec3 mask = texture(u_albedoMap, vec3(v_uv0, float(u_albedoLayer))).rgb;
     float alpha = dot(mask, vec3(1.0 / 3.0));
     if (alpha < 0.01) {
         discard;

@@ -18,7 +18,7 @@
 #include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
-#include <rmmr/resources/sprites.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/actors/simple.q1.h>
@@ -73,13 +73,13 @@ namespace eltanin {
         assets.primitive.kube = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "kube"), item<Generator>{.type = Generator::Type::kube});
         assets.primitive.diamond = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "diamond"), item<Generator>{.type = Generator::Type::diamond});
 
-        assets.skySphere = with<Assets>::add_sprites_kenney(
+        // Pack own name = directory basename; layers = image filenames (skySphere.png).
+        assets.sprites = with<Assets>::add_texpack_catalog(
             context,
-            Name::from("Eltanin", "skySphere"),
-            item<sprite::LoaderKenney>{
-                .image = "sprites/skySphere.png",
-                .descriptor = "sprites/skySphere.xml",
-            });
+            Name::from("Eltanin", "sprites"),
+            item<texpack::LoaderCatalog>{.directory = "sprites"},
+            index2{1024, 1024},
+            8);
 
         const auto sky_sphere_shader = with<Assets>::add_shader_loader(
             context,
@@ -105,7 +105,6 @@ namespace eltanin {
                 .scale = overlay::Scale::full,
             });
 
-        const auto& sky_sphere_pack = with<sprite::Pack>::get(context, *assets.skySphere);
         assets.skySphereMaterial = with<Assets>::add_material(
             context,
             Name::from("Eltanin", "skySphere"),
@@ -119,38 +118,27 @@ namespace eltanin {
                             "projection",
                             "albedo",
                             "albedoMap",
+                            "albedoLayer",
                         }),
-                        .textures = {
-                            Material::TextureBinding{
-                                .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
-                                .texture = sky_sphere_pack.texture,
-                            },
-                        },
                     }},
                 },
                 .nearest = false,
                 .blend = renderer::BlendMode::additive,
             });
 
-        // LevelOne surfaces: mount/outer textured; type = engine lit_transparent (no map).
-        if (not shared or shared->material.debugLitTextured.empty()) {
-            return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_textured etalon missing");
+        // Mech albedo catalog for levelOne / levelTwo / interframe meshpacks.
+        if (not shared or not shared->material.litTextured) {
+            return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_textured missing");
         }
         if (not shared->material.litTransparent) {
             return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_transparent missing");
         }
-        const auto etalon = shared->material.debugLitTextured[0];
-        const auto mech = [&](const char* own, filename file) {
-            (void)with<Assets>::compose_material(context, Name::from("Eltanin", own), std::move(file), etalon);
-        };
-        mech("mtile05", "textures/mech/mtile05.jpg");
-        mech("pewter2", "textures/mech/pewter2.bmp");
-        mech("panelTech", "textures/mech/panel_tech_1.bmp");
-        mech("kosmosWall", "textures/mech/CH_T_KOSMOSSCIANAA.JPG");
-        mech("metal10469", "textures/mech/10469.jpg");
-        mech("metal10469v3", "textures/mech/10469-v3.jpg");
-        mech("mount", "textures/mech/pewter2.bmp");
-        mech("outer", "textures/mech/mtile05.jpg");
+        assets.mech = with<Assets>::add_texpack_catalog(
+            context,
+            Name::from("Eltanin", "mech"),
+            item<texpack::LoaderCatalog>{.directory = "textures/mech"},
+            index2{1024, 1024},
+            32);
         (void)with<Assets>::add_material(context, Name::from("Eltanin", "type"), with<Material>::get(context, *shared->material.litTransparent));
 
         assets.levelOne = with<Assets>::add_meshpack_lwo_loader(
@@ -201,12 +189,18 @@ namespace eltanin {
             Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .pattern_scale = 1.0f});
 
+        if (not assets.sprites) {
+            return (void)context.refuse("eltanin::Game::populateWorld: sprites texpack missing");
+        }
         const auto sky = with<scene::Interface>::createSimpleActor(context, root,
             Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::actor::Simple>{
                 .geometry = *assets.skySphereGeometry,
                 .material = *assets.skySphereMaterial,
+                .texpack = assets.sprites,
+                .albedoLayer = string{"skySphere.png"},
                 .albedo = RGB{1.0f, 1.0f, 1.0f},
+                .scale = vec3{1.0f, 1.0f, 1.0f},
             });
 
         const Pos cameraPos{8.0f, 6.0f, 16.0f};
@@ -243,7 +237,8 @@ namespace eltanin {
                     scenePose(ori),
                     item<scene::actor::Mesh>{
                         .geometry = resolved->geometry,
-                        .materials = resolved->materials,
+                        .parts = resolved->parts,
+                        .texpack = resolved->texpack,
                         .albedo = RGB{1.0f, 1.0f, 1.0f},
                         .scale = vec3{1.0f, 1.0f, 1.0f},
                         .opacity = 1.0f,
@@ -290,6 +285,11 @@ namespace eltanin {
         }
 
         physics_ui.shapeMaterial = shared->material.gizmo.textured;
+        if (not shared->texture.debug) {
+            return (void)context.refuse("eltanin::Game::populateWorld: rmmr debug texpack missing for gizmo");
+        }
+        physics_ui.shapeTexpack = shared->texture.debug;
+        physics_ui.shapeAlbedoLayer = string{"debug02.jpg"};
         physics_ui.particleGeometry = assets.primitive.diamond;
         physics_ui.particleMaterial = shared->material.gizmo.vertexColor;
         physics_ui.shapeGeometry = assets.primitive.kube;

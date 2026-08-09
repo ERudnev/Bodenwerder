@@ -23,6 +23,7 @@ set(Raidenmamare_Q1
     resources/manager.q1.types
     semantics.q1.types
     resources/textures.q1.types
+    resources/texpack.q1.types
     resources/shaders.q1.types
     resources/materials.q1.types
     resources/overlays.q1.types

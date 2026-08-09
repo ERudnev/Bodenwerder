@@ -1,0 +1,31 @@
+import "renderer/gl"
+import "resources/manager"
+
+namespace rmmr
+  namespace resource
+    namespace texpack
+
+    using Reference as resource::Unit::Reference
+
+    // GPU face: one GL_TEXTURE_2D_ARRAY; layer names = source filenames in the catalog directory.
+    entity Runtime
+      one
+        device: #system::Device
+        handle: renderer::Texture
+        layerSize: index2
+        capacity: integer
+        layers: umap<string, integer>
+
+    // Pack name (Unit::own) = catalog directory basename. Layer names = filenames inside.
+    feature Pack of resource::Unit
+      one
+        layerSize: index2
+        capacity: integer
+        layers: vector<string>
+        >materialize(#system::Device) -> #Runtime?
+
+    // Scan a directory under the library root; every image file becomes a layer.
+    feature LoaderCatalog of Pack
+      one
+        directory: filename
+        >load()

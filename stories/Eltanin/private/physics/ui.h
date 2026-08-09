@@ -6,15 +6,16 @@
 #include <eltanin/physics/particle.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/simple.q1.h>
 
 #include <base/maybe.h>
 
+#include <string>
 #include <vector>
 
 namespace eltanin::phys {
 
-    // ImGui panel for the physics subsystem (not Q1).
     struct Ui {
         struct State {
             vector<rmmr::scene::actor::Simple::Id> actors;
@@ -22,6 +23,8 @@ namespace eltanin::phys {
         };
         State state;
         base::maybe<rmmr::resource::material::Asset::Id> shapeMaterial;
+        base::maybe<rmmr::resource::texpack::Pack::Id> shapeTexpack;
+        base::maybe<std::string> shapeAlbedoLayer;
         base::maybe<rmmr::resource::geometry::Asset::Id> shapeGeometry;
         base::maybe<rmmr::resource::geometry::Asset::Id> particleGeometry;
         base::maybe<rmmr::resource::material::Asset::Id> particleMaterial;

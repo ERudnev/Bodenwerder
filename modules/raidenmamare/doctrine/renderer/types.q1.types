@@ -5,6 +5,7 @@ import "resources/geometry"
 import "resources/materials"
 import "resources/shaders"
 import "resources/sprites"
+import "resources/texpack"
 
 namespace rmmr
   namespace renderer
@@ -25,13 +26,17 @@ namespace rmmr
       geometry: #resource::geometry::Runtime
       material: #resource::material::Runtime
       shader: #resource::shader::Runtime
+      texpack: #resource::texpack::Runtime?
+      albedoLayer: integer?
       sprite: #resource::sprite::Runtime?
       sprite_index: integer
       albedo: RGB
       opacity: float
+      pattern_scale: float
+      scenicAlias: Integer32
       instance_data: InstanceSource
       instance_count: Count
       render_state: RenderState
-      indices: IndexRange? // empty = whole mesh; else glDrawElements range (index units)
+      indices: IndexRange?
 
     using CommandBuffer as @external(rmmr::renderer::CommandBuffer)

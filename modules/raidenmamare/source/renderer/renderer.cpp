@@ -396,6 +396,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             Id colorSecondary = material::Semantics::id_of("colorSecondary");
             Id shadowMap = material::Semantics::id_of("shadowMap");
             Id albedoMap = material::Semantics::id_of("albedoMap");
+            Id albedoLayer = material::Semantics::id_of("albedoLayer");
             Id atlasTexture = material::Semantics::id_of("atlasTexture");
             Id atlasEntries = material::Semantics::id_of("atlasEntries");
             Id spriteIndex = material::Semantics::id_of("spriteIndex");
@@ -477,15 +478,6 @@ void main() { fragColor = texture(u_overlay, vUv); })";
 
         auto bindingActive(const resource::Uniform::Binding& binding) -> bool {
             return material::Semantics::isBoundResource(binding.type) or binding.location >= 0;
-        }
-
-        auto material_texture_for_semantic(const resource::material::Runtime::Technique& technique, resource::Uniform::Id semantic) -> base::maybe<resource::texture::Runtime::Id> {
-            for (const auto& texture_binding : technique.textures) {
-                if (texture_binding.uniform == semantic) {
-                    return texture_binding.texture;
-                }
-            }
-            return {};
         }
 
         auto technique_for(const resource::material::Runtime::Quantum& material, renderer::Pass pass) -> const resource::material::Runtime::Technique& {
@@ -655,29 +647,12 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             bind_pass_uniforms(args, material_pass, material, primary_light, shadow);
             state.bound_shader = shader;
             state.bound_geometry.reset();
-        } else {
-            bind_material_samplers(args, material_pass, material);
         }
 
         state.bound_material = material;
     }
 
-    void Renderer::bind_material_samplers(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material) {
-        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
-        const auto& technique = technique_for(material_quantum, pass);
-        for (const auto& binding : technique.bindings) {
-            if (not bindingActive(binding)) {
-                continue;
-            }
-            if (binding.id != semantic.albedoMap) {
-                continue;
-            }
-            const auto texture = material_texture_for_semantic(technique, binding.id);
-            if (not texture || not with<resource::texture::Runtime>::exists(args.world, *texture)) {
-                throw std::runtime_error("Renderer: material is missing albedoMap texture");
-            }
-            set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, material_quantum.nearest);
-        }
+    void Renderer::bind_material_samplers(FrameContext, renderer::Pass, resource::material::Runtime::Id) {
     }
 
     void Renderer::bind_pass_uniforms(
@@ -747,12 +722,8 @@ void main() { fragColor = texture(u_overlay, vUv); })";
                     throw std::runtime_error("Renderer: material expects shadowMap but no shadow-casting light");
                 }
                 set_uniform_sampler(binding, with<resource::shadow::Runtime>::get(args.world, *shadow).depth);
-            } else if (binding.id == semantic.albedoMap) {
-                const auto texture = material_texture_for_semantic(technique, binding.id);
-                if (not texture || not with<resource::texture::Runtime>::exists(args.world, *texture)) {
-                    throw std::runtime_error("Renderer: material is missing albedoMap texture");
-                }
-                set_uniform_sampler(binding, with<resource::texture::Runtime>::get(args.world, *texture).handle, material_quantum.nearest);
+            } else if (binding.id == semantic.albedoMap or binding.id == semantic.albedoLayer) {
+                // Per-draw in draw_instance.
             } else if (binding.id == semantic.light0Pos) {
                 if (not light_world_pos) {
                     throw std::runtime_error("Renderer: material expects light0Pos but no light");
@@ -796,6 +767,16 @@ void main() { fragColor = texture(u_overlay, vUv); })";
                 set_uniform(binding, RGB{0.45f, 0.48f, 0.52f} * command.opacity);
             } else if (binding.id == semantic.colorSecondary) {
                 set_uniform(binding, RGB{0.1f, 0.12f, 0.14f} * command.opacity);
+            } else if (binding.id == semantic.albedoMap) {
+                if (not command.texpack or not with<resource::texpack::Runtime>::exists(args.world, *command.texpack)) {
+                    throw std::runtime_error("Renderer: draw missing texpack");
+                }
+                set_uniform_sampler(binding, with<resource::texpack::Runtime>::get(args.world, *command.texpack).handle, material_quantum.nearest);
+            } else if (binding.id == semantic.albedoLayer) {
+                if (not command.albedoLayer) {
+                    throw std::runtime_error("Renderer: draw missing albedoLayer");
+                }
+                set_uniform(binding, *command.albedoLayer);
             } else if (binding.id == semantic.atlasTexture) {
                 if (not sprite) {
                     throw std::runtime_error("Renderer: atlasTexture requested on non-sprite draw");

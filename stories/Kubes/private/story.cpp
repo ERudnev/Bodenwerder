@@ -9,7 +9,7 @@
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
-#include <rmmr/resources/sprites.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/simple.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -40,13 +40,12 @@ namespace kubes {
         assets.primitive.grid = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::Name::from("rmmr", "grid"), item<Generator>{.type = Generator::Type::gridPlane});
         assets.primitive.sphere = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::Name::from("rmmr", "sphere"), item<Generator>{.type = Generator::Type::sphere});
 
-        assets.skySphere = with<::rmmr::resource::Assets>::add_sprites_kenney(
+        assets.sprites = with<::rmmr::resource::Assets>::add_texpack_catalog(
             context,
-            Unit::Name::from("Kubes", "skySphere"),
-            item<sprite::LoaderKenney>{
-                .image = "sprites/skySphere.png",
-                .descriptor = "sprites/skySphere.xml",
-            });
+            Unit::Name::from("Kubes", "sprites"),
+            item<texpack::LoaderCatalog>{.directory = "sprites"},
+            index2{1024, 1024},
+            8);
 
         const auto sky_sphere_shader = with<::rmmr::resource::Assets>::add_shader_loader(
             context,
@@ -56,7 +55,6 @@ namespace kubes {
                 .fragment = "shaders/skySphere.frag.glsl",
             });
 
-        const auto& sky_sphere_pack = with<sprite::Pack>::get(context, *assets.skySphere);
         assets.skySphereMaterial = with<::rmmr::resource::Assets>::add_material(
             context,
             Unit::Name::from("Kubes", "skySphere"),
@@ -70,13 +68,8 @@ namespace kubes {
                             "projection",
                             "albedo",
                             "albedoMap",
+                            "albedoLayer",
                         }),
-                        .textures = {
-                            Material::TextureBinding{
-                                .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
-                                .texture = sky_sphere_pack.texture,
-                            },
-                        },
                     }},
                 },
                 .nearest = false,
@@ -115,12 +108,18 @@ namespace kubes {
             Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .pattern_scale = 1.0f});
 
+        if (not assets.sprites) {
+            return (void)context.refuse("kubes::KubeOfKubes::populateWorld: sprites texpack missing");
+        }
         const auto sky = with<scene::Interface>::createSimpleActor(context, root,
             Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::actor::Simple>{
                 .geometry = *assets.skySphereGeometry,
                 .material = *assets.skySphereMaterial,
+                .texpack = assets.sprites,
+                .albedoLayer = string{"skySphere.png"},
                 .albedo = RGB{1.0f, 1.0f, 1.0f},
+                .scale = vec3{1.0f, 1.0f, 1.0f},
             });
 
         const auto camera = with<scene::Interface>::createCamera(context, root,

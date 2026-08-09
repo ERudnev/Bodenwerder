@@ -5,6 +5,7 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/sprites.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -13,7 +14,6 @@ namespace rmmr::scene {
 
     using namespace fqsm::api;
 
-    // Instance + assets; techniques keys select baskets in CommandBuffer.
     struct DrawInstance {
         struct IndexRange {
             renderer::Count start;
@@ -25,8 +25,6 @@ namespace rmmr::scene {
             integer index;
         };
 
-        // Identity pick: full geometry, one scenicAlias; material from Identified::Global.
-        // selected → also queued into Pass::identitySelected (same alias value).
         struct Identiffy {
             mat4 model;
             resource::geometry::Asset::Id geometry;
@@ -37,6 +35,8 @@ namespace rmmr::scene {
         mat4 model;
         resource::geometry::Asset::Id geometry;
         resource::material::Asset::Id material;
+        base::maybe<resource::texpack::Pack::Id> texpack;
+        base::maybe<string> albedoLayer;
         base::maybe<Sprite> sprite;
         RGB albedo;
         float opacity;
@@ -46,8 +46,6 @@ namespace rmmr::scene {
     };
 
     void submit_material_passes(Reading, system::Device::Id, const DrawInstance&, renderer::CommandBuffer& where);
-
-    // Push only Pass::identity; binds shared Identified::Global.material; full index range.
     void submit_identity(Reading, system::Device::Id, const DrawInstance::Identiffy&, renderer::CommandBuffer& where);
 
 }

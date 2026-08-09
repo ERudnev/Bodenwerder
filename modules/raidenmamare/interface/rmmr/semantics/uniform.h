@@ -35,6 +35,7 @@ namespace rmmr::material {
             v3f,
             m4f,
             sampler2d,
+            sampler2dArray,
             ssbo,
         };
 
@@ -61,7 +62,7 @@ namespace rmmr::material {
         // - 2: selectedMap
         // SSBO binding points:
         // - 0: atlasEntries
-        static constexpr auto vocabulary = std::array<Entry, 29>{{
+        static constexpr auto vocabulary = std::array<Entry, 30>{{
             Entry{0, Type::i32, "_undefined", -1},
 
             // triangle.vert.glsl
@@ -86,13 +87,14 @@ namespace rmmr::material {
             Entry{108, Type::v3f, "colorSecondary", -1},
 
             Entry{109, Type::sampler2d, "shadowMap", 1},
-            Entry{110, Type::sampler2d, "albedoMap", 0},
+            Entry{110, Type::sampler2dArray, "albedoMap", 0},
             Entry{111, Type::sampler2d, "atlasTexture", 0},
             Entry{112, Type::ssbo, "atlasEntries", 0},
             Entry{113, Type::i32, "spriteIndex", -1},
             Entry{114, Type::v2f, "inverseAtlasSize", -1},
             Entry{115, Type::f32, "opacity", -1},
             Entry{116, Type::i32, "scenicAlias", -1},
+            Entry{117, Type::i32, "albedoLayer", -1},
 
             // Overlay / screen-space (gap after world materials — start at 2000)
             Entry{2000, Type::sampler2d, "sceneColor", 0},
@@ -105,7 +107,7 @@ namespace rmmr::material {
         }};
 
         static constexpr auto isBoundResource(Type type) -> bool {
-            return type == Type::sampler2d or type == Type::ssbo;
+            return type == Type::sampler2d or type == Type::sampler2dArray or type == Type::ssbo;
         }
 
         static constexpr auto name_of(PersistentId id) -> Name {

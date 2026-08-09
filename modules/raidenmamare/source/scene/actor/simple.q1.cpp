@@ -7,11 +7,13 @@ namespace rmmr::scene::actor {
 
     using namespace fqsm::api;
 
-    auto Simple::Actions::create(Writing context, Pos position, HPB hpb, resource::geometry::Asset::Id geometry, resource::material::Asset::Id material, RGB albedo) -> Id {
+    auto Simple::Actions::create(Writing context, Pos position, HPB hpb, resource::geometry::Asset::Id geometry, resource::material::Asset::Id material, base::maybe<resource::texpack::Pack::Id> texpack, base::maybe<string> albedoLayer, RGB albedo) -> Id {
         const auto node = Node::Actions::create(context, Pose::from(position, hpb));
         with<Simple>::extend(context, node, Simple::Quantum{
             .geometry = geometry,
             .material = material,
+            .texpack = texpack,
+            .albedoLayer = std::move(albedoLayer),
             .albedo = albedo,
             .scale = vec3{1.0f, 1.0f, 1.0f},
         });
@@ -26,6 +28,8 @@ namespace rmmr::scene::actor {
             .model = model,
             .geometry = actor.geometry,
             .material = actor.material,
+            .texpack = actor.texpack,
+            .albedoLayer = actor.albedoLayer,
             .albedo = actor.albedo,
             .opacity = 1.0f,
             .pattern_scale = 1.0f,

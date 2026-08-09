@@ -1,8 +1,10 @@
 #pragma once
 
+#include <base/maybe.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -12,17 +14,18 @@ namespace rmmr::resource::meshpack {
 
     using Reference = resource::Unit::Reference;
 
-    // Catalog of ready looks. No Runtime — geometry/materials bake on their own.
     struct Asset : Feature<Asset, resource::Unit> {
         struct Entry {
             geometry::Asset::Id geometry;
-            umap<string, material::Asset::Id> materials;
+            umap<string, material::Instance> parts;
         };
         struct Resolved {
             geometry::Asset::Id geometry;
-            umap<string, material::Asset::Id> materials;
+            umap<string, material::Instance> parts;
+            base::maybe<texpack::Pack::Id> texpack;
         };
         struct Quantum {
+            base::maybe<texpack::Pack::Id> texpack;
             umap<string, Entry> entries;
         };
         struct Actions : BaseActions {
@@ -32,7 +35,6 @@ namespace rmmr::resource::meshpack {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    // *.obj.meshpack — pack of OBJ paths.
     struct LoaderObjs : Feature<LoaderObjs, Asset> {
         struct Quantum {
             filename file;
@@ -44,7 +46,6 @@ namespace rmmr::resource::meshpack {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    // *.lwo.meshpack — one LWO + file material name → Unit::Name::text; missing mapping/shelf → refuse.
     struct LoaderLwo : Feature<LoaderLwo, Asset> {
         struct Quantum {
             filename file;

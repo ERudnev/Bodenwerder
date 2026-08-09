@@ -31,8 +31,6 @@ namespace rmmr::resource::material {
             locations.reserve(asset_technique.uniforms.size());
             vector<Uniform::Binding> bindings{};
             bindings.reserve(asset_technique.uniforms.size());
-            vector<Runtime::TextureBinding> textures{};
-            textures.reserve(asset_technique.textures.size());
 
             for (const auto persistent_id : asset_technique.uniforms) {
                 const auto type = ::rmmr::material::Semantics::type_of(persistent_id);
@@ -58,22 +56,10 @@ namespace rmmr::resource::material {
                 });
             }
 
-            for (const auto& texture_binding : asset_technique.textures) {
-                const auto texture_it = runtimes.textures_id_mapping.find(texture_binding.texture.id);
-                if (texture_it == runtimes.textures_id_mapping.end()) {
-                    return context.refuse("resource::material::Asset::materialize: texture runtime missing for technique");
-                }
-                textures.push_back(Runtime::TextureBinding{
-                    .uniform = texture_binding.uniform,
-                    .texture = texture_it->second,
-                });
-            }
-
             return Runtime::Technique{
                 .shader = shader_it->second,
                 .locations = std::move(locations),
                 .bindings = std::move(bindings),
-                .textures = std::move(textures),
             };
         }
 

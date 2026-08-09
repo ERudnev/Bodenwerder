@@ -15,7 +15,6 @@ namespace rmmr::resource::builders::material {
                     "model",
                     "lightSpaceMatrix",
                 }),
-                .textures = {},
             };
         }
 
@@ -34,10 +33,11 @@ namespace rmmr::resource::builders::material {
                         "ambientColor",
                         "ambientIntensity",
                     }),
-                    .textures = {},
                 }},
                 {renderer::Pass::shadow, shadow_depth_technique(shadow_depth)},
             },
+            .nearest = false,
+            .blend = renderer::BlendMode::inherit,
         };
     }
 
@@ -59,10 +59,11 @@ namespace rmmr::resource::builders::material {
                         "lightSpaceMatrix",
                         "shadowMap",
                     }),
-                    .textures = {},
                 }},
                 {renderer::Pass::shadow, shadow_depth_technique(shadow_depth)},
             },
+            .nearest = false,
+            .blend = renderer::BlendMode::inherit,
         };
     }
 
@@ -85,14 +86,14 @@ namespace rmmr::resource::builders::material {
                         "lightSpaceMatrix",
                         "shadowMap",
                     }),
-                    .textures = {},
                 }},
             },
+            .nearest = false,
             .blend = renderer::BlendMode::alpha,
         };
     }
 
-    auto Presets::litTextured(resource::shader::Reference program, resource::texture::Reference albedo_map, resource::shader::Reference shadow_depth) -> Asset::Quantum {
+    auto Presets::litTextured(resource::shader::Reference program, resource::shader::Reference shadow_depth) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {
                 {renderer::Pass::opaque, Asset::Technique{
@@ -103,6 +104,7 @@ namespace rmmr::resource::builders::material {
                         "projection",
                         "albedo",
                         "albedoMap",
+                        "albedoLayer",
                         "ambientColor",
                         "ambientIntensity",
                         "light0Pos",
@@ -111,19 +113,15 @@ namespace rmmr::resource::builders::material {
                         "lightSpaceMatrix",
                         "shadowMap",
                     }),
-                    .textures = {
-                        Asset::TextureBinding{
-                            .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
-                            .texture = albedo_map,
-                        },
-                    },
                 }},
                 {renderer::Pass::shadow, shadow_depth_technique(shadow_depth)},
             },
+            .nearest = false,
+            .blend = renderer::BlendMode::inherit,
         };
     }
 
-    auto Presets::litTexturedTransparent(resource::shader::Reference program, resource::texture::Reference albedo_map) -> Asset::Quantum {
+    auto Presets::litTexturedTransparent(resource::shader::Reference program) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {
                 {renderer::Pass::transparent, Asset::Technique{
@@ -134,6 +132,7 @@ namespace rmmr::resource::builders::material {
                         "projection",
                         "albedo",
                         "albedoMap",
+                        "albedoLayer",
                         "ambientColor",
                         "ambientIntensity",
                         "light0Pos",
@@ -142,18 +141,14 @@ namespace rmmr::resource::builders::material {
                         "lightSpaceMatrix",
                         "shadowMap",
                     }),
-                    .textures = {
-                        Asset::TextureBinding{
-                            .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
-                            .texture = albedo_map,
-                        },
-                    },
                 }},
             },
+            .nearest = false,
+            .blend = renderer::BlendMode::inherit,
         };
     }
 
-    auto Presets::oneSidedGlass(resource::shader::Reference program, resource::texture::Reference opacity_map) -> Asset::Quantum {
+    auto Presets::oneSidedGlass(resource::shader::Reference program) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {
                 {renderer::Pass::transparent, Asset::Technique{
@@ -164,25 +159,21 @@ namespace rmmr::resource::builders::material {
                         "projection",
                         "albedo",
                         "albedoMap",
+                        "albedoLayer",
                         "ambientColor",
                         "ambientIntensity",
                         "light0Pos",
                         "light0Color",
                         "light0Intensity",
                     }),
-                    .textures = {
-                        Asset::TextureBinding{
-                            .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
-                            .texture = opacity_map,
-                        },
-                    },
                 }},
             },
+            .nearest = false,
             .blend = renderer::BlendMode::alpha,
         };
     }
 
-    auto Presets::gizmoTextured(resource::shader::Reference program, resource::texture::Reference albedo_map) -> Asset::Quantum {
+    auto Presets::gizmoTextured(resource::shader::Reference program) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {
                 {renderer::Pass::gizmo, Asset::Technique{
@@ -193,16 +184,12 @@ namespace rmmr::resource::builders::material {
                         "projection",
                         "albedo",
                         "albedoMap",
+                        "albedoLayer",
                         "opacity",
                     }),
-                    .textures = {
-                        Asset::TextureBinding{
-                            .uniform = ::rmmr::material::Semantics::id_of("albedoMap"),
-                            .texture = albedo_map,
-                        },
-                    },
                 }},
             },
+            .nearest = false,
             .blend = renderer::BlendMode::alpha,
         };
     }
@@ -219,9 +206,9 @@ namespace rmmr::resource::builders::material {
                         "albedo",
                         "opacity",
                     }),
-                    .textures = {},
                 }},
             },
+            .nearest = false,
             .blend = renderer::BlendMode::alpha,
         };
     }
@@ -240,9 +227,10 @@ namespace rmmr::resource::builders::material {
                         "colorSecondary",
                         "opacity",
                     }),
-                    .textures = {},
                 }},
             },
+            .nearest = false,
+            .blend = renderer::BlendMode::inherit,
         };
     }
 
@@ -262,10 +250,10 @@ namespace rmmr::resource::builders::material {
                         "spriteIndex",
                         "inverseAtlasSize",
                     }),
-                    .textures = {},
                 }},
             },
             .nearest = true,
+            .blend = renderer::BlendMode::inherit,
         };
     }
 
@@ -280,9 +268,10 @@ namespace rmmr::resource::builders::material {
                         "projection",
                         "scenicAlias",
                     }),
-                    .textures = {},
                 }},
             },
+            .nearest = false,
+            .blend = renderer::BlendMode::inherit,
         };
     }
 

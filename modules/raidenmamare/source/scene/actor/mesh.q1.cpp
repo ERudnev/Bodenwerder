@@ -9,11 +9,24 @@ namespace rmmr::scene::actor {
 
     using namespace fqsm::api;
 
-    auto Mesh::Actions::create(Writing context, Pos position, HPB hpb, resource::geometry::Asset::Id geometry, umap<string, resource::material::Asset::Id> materials, RGB albedo) -> Id {
+    namespace {
+
+        auto albedo_layer_of(const resource::material::Instance& instance) -> base::maybe<string> {
+            const auto it = instance.textures.find("albedoMap");
+            if (it == instance.textures.end()) {
+                return {};
+            }
+            return it->second;
+        }
+
+    } // namespace
+
+    auto Mesh::Actions::create(Writing context, Pos position, HPB hpb, resource::geometry::Asset::Id geometry, umap<string, resource::material::Instance> parts, base::maybe<resource::texpack::Pack::Id> texpack, RGB albedo) -> Id {
         const auto node = Node::Actions::create(context, Pose::from(position, hpb));
         with<Mesh>::extend(context, node, Mesh::Quantum{
             .geometry = geometry,
-            .materials = std::move(materials),
+            .parts = std::move(parts),
+            .texpack = texpack,
             .albedo = albedo,
             .scale = vec3{1.0f, 1.0f, 1.0f},
             .opacity = 1.0f,
@@ -38,7 +51,7 @@ namespace rmmr::scene::actor {
         model = glm::scale(model, actor.scale);
 
         bool drew_part = false;
-        for (const auto& [part_name, material_id] : actor.materials) {
+        for (const auto& [part_name, instance] : actor.parts) {
             const auto part_it = geometry.parts.find(part_name);
             if (part_it == geometry.parts.end()) {
                 continue;
@@ -47,7 +60,9 @@ namespace rmmr::scene::actor {
             submit_material_passes(context, device, DrawInstance{
                 .model = model,
                 .geometry = actor.geometry,
-                .material = material_id,
+                .material = instance.material,
+                .texpack = actor.texpack,
+                .albedoLayer = albedo_layer_of(instance),
                 .albedo = actor.albedo,
                 .opacity = actor.opacity,
                 .pattern_scale = 1.0f,
@@ -58,12 +73,14 @@ namespace rmmr::scene::actor {
                 },
             }, where);
         }
-        // No matching parts (generator meshes, bootstrap placeholders): whole geometry, first material.
-        if (not drew_part and not actor.materials.empty()) {
+        if (not drew_part and not actor.parts.empty()) {
+            const auto& instance = actor.parts.begin()->second;
             submit_material_passes(context, device, DrawInstance{
                 .model = model,
                 .geometry = actor.geometry,
-                .material = actor.materials.begin()->second,
+                .material = instance.material,
+                .texpack = actor.texpack,
+                .albedoLayer = albedo_layer_of(instance),
                 .albedo = actor.albedo,
                 .opacity = actor.opacity,
                 .pattern_scale = 1.0f,
@@ -99,7 +116,6 @@ namespace rmmr::scene::actor {
     }
 
     void Identified::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {
-        // Same id as Mesh / Node — Feature guarantees host Mesh (and thus Node) exists.
         const auto& mesh = with<Mesh>::get(context, node);
         if (not mesh.visible)
             return;
@@ -109,7 +125,6 @@ namespace rmmr::scene::actor {
         const auto& identified = with<Identified>::get(context, node);
         auto model = Node::Actions::transform(context, node);
         model = glm::scale(model, mesh.scale);
-        // One draw, full IBO — all submeshes, one scenicAlias; selected also → identitySelected basket.
         submit_identity(context, device, DrawInstance::Identiffy{
             .model = model,
             .geometry = mesh.geometry,

@@ -43,14 +43,16 @@ namespace eltanin::phys {
             base::message("eltanin::phys::Ui: no scene Root; skip collider actors");
             return;
         }
-        if (not shapeMaterial or not shapeGeometry) {
-            base::message("eltanin::phys::Ui: shapeMaterial/Geometry unset; skip collider actors");
+        if (not shapeMaterial or not shapeTexpack or not shapeAlbedoLayer or not shapeGeometry) {
+            base::message("eltanin::phys::Ui: shapeMaterial/Texpack/Layer/Geometry unset; skip collider actors");
             return;
         }
         for (const auto [atomic_id, atomic] : context->aspect<Atomic>().items()) {
             const auto actor = with<rmmr::scene::Interface>::createSimpleActor(context, *root, atomic.restored, item<rmmr::scene::actor::Simple>{
                 .geometry = *shapeGeometry,
                 .material = *shapeMaterial,
+                .texpack = *shapeTexpack,
+                .albedoLayer = *shapeAlbedoLayer,
                 .albedo = rmmr::RGB{1.0f, 1.0f, 1.0f},
                 .scale = vec3{mech::physical::edgeMeters, mech::physical::edgeMeters, mech::physical::edgeMeters},
             });
@@ -82,6 +84,8 @@ namespace eltanin::phys {
             const auto actor = with<rmmr::scene::Interface>::createSimpleActor(context, *root, rmmr::Pose::from(particle.current, HPB{0.0f, 0.0f, 0.0f}), item<rmmr::scene::actor::Simple>{
                 .geometry = *particleGeometry,
                 .material = *particleMaterial,
+                .texpack = {},
+                .albedoLayer = {},
                 .albedo = rmmr::RGB{1.0f, 1.0f, 1.0f},
                 .scale = vec3{particleWorldScale, particleWorldScale, particleWorldScale},
             });

@@ -8,6 +8,7 @@
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/resources/sprites.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/system/core.q1.h>
 
@@ -27,6 +28,7 @@ namespace rmmr::resource {
             static auto singleton(Reading) -> optional<Id>;
             static auto add_texture_loader(Writing, Unit::Name, texture::Loader::Quantum) -> texture::Asset::Id;
             static auto add_texture_generator(Writing, Unit::Name, texture::Generator::Quantum) -> texture::Asset::Id;
+            static auto add_texpack_catalog(Writing, Unit::Name, texpack::LoaderCatalog::Quantum, index2 layerSize, integer capacity) -> texpack::Pack::Id;
             static auto add_shader_loader(Writing, Unit::Name, shader::Loader::Quantum) -> shader::Asset::Id;
             static auto add_material(Writing, Unit::Name, material::Asset::Quantum) -> material::Asset::Id;
             static auto add_overlay(Writing, Unit::Name, overlay::Asset::Quantum) -> overlay::Asset::Id;
@@ -36,8 +38,6 @@ namespace rmmr::resource {
             static auto add_sprites_kenney(Writing, Unit::Name, sprite::LoaderKenney::Quantum) -> sprite::Pack::Id;
             static auto add_meshpack_objs_loader(Writing, Unit::Name, meshpack::LoaderObjs::Quantum) -> meshpack::Asset::Id;
             static auto add_meshpack_lwo_loader(Writing, Unit::Name, meshpack::LoaderLwo::Quantum) -> meshpack::Asset::Id;
-            static auto compose_material(Writing, Unit::Name, filename, material::Asset::Id base) -> material::Asset::Id;
-            // Q1: ?find<R as feature of Unit>(Unit::Name)-> #R?
             template<::fqsm::meta::category::Any Meta>
             static auto find(Reading, Unit::Name) -> optional<typename Meta::Id>;
             static void extend(Writing, filepath path);
@@ -55,6 +55,11 @@ namespace rmmr::resource {
     };
 
     struct Runtime_group : Group<Runtime_group, DeviceRuntimes, texture::Runtime> {
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct TexpackRuntime_group : Group<TexpackRuntime_group, DeviceRuntimes, texpack::Runtime> {
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };
@@ -92,6 +97,7 @@ namespace rmmr::resource {
     struct Runtimes : Component<Runtimes, system::Device> {
         struct Quantum {
             umap<texture::Asset::Id, texture::Runtime::Id> textures_id_mapping;
+            umap<texpack::Pack::Id, texpack::Runtime::Id> texpacks_id_mapping;
             umap<shader::Asset::Id, shader::Runtime::Id> shaders_id_mapping;
             umap<material::Asset::Id, material::Runtime::Id> materials_id_mapping;
             umap<overlay::Asset::Id, overlay::Runtime::Id> overlays_id_mapping;

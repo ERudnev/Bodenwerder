@@ -4,6 +4,7 @@
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/system/core.q1.h>
 
@@ -16,14 +17,15 @@ namespace rmmr::scene::actor {
     struct Mesh : Feature<Mesh, Node> {
         struct Quantum {
             resource::geometry::Asset::Id geometry;
-            umap<string, resource::material::Asset::Id> materials;
+            umap<string, resource::material::Instance> parts;
+            base::maybe<resource::texpack::Pack::Id> texpack;
             RGB albedo;
             vec3 scale;
             float opacity;
             bool visible;
         };
         struct Actions : BaseActions {
-            static auto create(Writing, Pos, HPB, resource::geometry::Asset::Id, umap<string, resource::material::Asset::Id>, RGB albedo) -> Id;
+            static auto create(Writing, Pos, HPB, resource::geometry::Asset::Id, umap<string, resource::material::Instance>, base::maybe<resource::texpack::Pack::Id>, RGB albedo) -> Id;
             static void setVisible(Writing, Id, bool);
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };
@@ -31,8 +33,6 @@ namespace rmmr::scene::actor {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    // Opt-in pick id on a Mesh (same Node id). GPU writes scenicAlias into Pass::identity
-    // (+ Pass::identitySelected when selected).
     struct Identified : Feature<Identified, Mesh> {
         struct Quantum {
             renderer::Integer32 scenicAlias;

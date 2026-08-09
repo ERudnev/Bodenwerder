@@ -1,13 +1,14 @@
 {
     "primitives",
     "rmmr",
+    "rmmr::debug",
     [
         {"kube", {"meshes/primitives/kube.obj", [
-            {"mesh", "lit"}
+            {"mesh", {"rmmr::lit", []}}
         ]}},
         {"windowed_kube", {"meshes/primitives/windowed_kube.obj", [
-            {"outer", "lit_textured_debug02"},
-            {"window", "one_sided_glass_debug06"}
+            {"outer", {"rmmr::lit_textured", [{"albedoMap", "debug02.jpg"}]}},
+            {"window", {"rmmr::one_sided_glass", [{"albedoMap", "debug06.jpg"}]}}
         ]}}
     ]
 }

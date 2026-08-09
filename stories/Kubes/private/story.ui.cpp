@@ -208,46 +208,7 @@ namespace kubes {
                         technique.program.backup.empty() ? "(missing)" : displayName(technique.program.backup));
                 }
 
-                if (technique.textures.empty()) {
-                    ImGui::TextDisabled("No texture slots.");
-                    continue;
-                }
-
-                for (auto& binding : technique.textures) {
-                    pushEntityId<Material>(material_id);
-                    ImGui::PushID(static_cast<int>(binding.uniform));
-
-                    const string slot_label{material::Semantics::name_of(binding.uniform)};
-                    const char* preview = "(missing)";
-                    const bool texture_ok = with<Unit>::exists(world, binding.texture.id);
-                    if (texture_ok) {
-                        const auto& texture_unit = with<Unit>::get(world, binding.texture.id);
-                        preview = displayName(texture_unit.name);
-                    } else if (not binding.texture.backup.empty()) {
-                        preview = displayName(binding.texture.backup);
-                    }
-
-                    if (not texture_ok)
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.f, 0.25f, 0.25f, 1.f));
-                    if (ImGui::BeginCombo(slot_label.c_str(), preview)) {
-                        for (const auto entry : world->aspect<Texture>().items()) {
-                            pushEntityId<Texture>(entry.id);
-                            const auto& texture_unit = with<Unit>::get(world, entry.id);
-                            const bool selected = entry.id == binding.texture.id;
-                            if (ImGui::Selectable(displayName(texture_unit.name), selected))
-                                binding.texture = Unit::Actions::remember(world, entry.id);
-                            if (selected)
-                                ImGui::SetItemDefaultFocus();
-                            ImGui::PopID();
-                        }
-                        ImGui::EndCombo();
-                    }
-                    if (not texture_ok)
-                        ImGui::PopStyleColor();
-
-                    ImGui::PopID();
-                    ImGui::PopID();
-                }
+                ImGui::TextDisabled("Sampler values are on the draw, not on the material.");
             }
         }
     }

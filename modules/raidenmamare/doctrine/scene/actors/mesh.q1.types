@@ -1,5 +1,6 @@
 import "resources/geometry"
 import "resources/materials"
+import "resources/texpack"
 import "renderer/types"
 import "system/core"
 import "math"
@@ -9,29 +10,28 @@ namespace rmmr
   namespace scene
     namespace actor
 
-      // One geometry Asset; materials keyed by geometry::Asset.parts names.
       feature Mesh of Node
         one
           geometry: #resource::geometry::Asset
-          materials: umap<string, #resource::material::Asset>
+          parts: umap<string, resource::material::Instance>
+          texpack: #resource::texpack::Pack?
           albedo: RGB
-          scale: vec3 // local; Node has no scale
-          opacity: float // → u_opacity (lit_transparent etc.)
-          visible: bool // submit skips when false
+          scale: vec3
+          opacity: float
+          visible: bool
           >setVisible(bool)
           ?submit(#system::Device, >where: renderer::CommandBuffer)
         all
-          >create(Pos, HPB, geometry: #resource::geometry::Asset, materials: umap<string, #resource::material::Asset>, albedo: RGB) -> #
+          >create(Pos, HPB, geometry: #resource::geometry::Asset, parts: umap<string, resource::material::Instance>, texpack: #resource::texpack::Pack?, albedo: RGB) -> #
 
       feature Identified of Mesh
         one
           scenicAlias: renderer::Integer32
-          selected: bool // → Pass::identitySelected as well as Pass::identity
+          selected: bool
         all
-          lastGeneratedId: integer // starts from zero on startup, first generated will be 1
-          material: #resource::material::Asset? // shared identity pick material; bind once at asset bootstrap
-          // do not store mapping Integer32 -> # — find() each time (worst case once per frame)
+          lastGeneratedId: integer
+          material: #resource::material::Asset?
           ?lookup(renderer::Integer32)->#?
-          >applySelection(vector<renderer::Integer32>) // clear all, set selected for listed aliases
+          >applySelection(vector<renderer::Integer32>)
           >extend(#Mesh)
           ?submit(#system::Device, >where: renderer::CommandBuffer)

@@ -1,7 +1,6 @@
 import "semantics"
 import "resources/manager"
 import "resources/shaders"
-import "resources/textures"
 
 namespace rmmr
   namespace resource
@@ -9,16 +8,18 @@ namespace rmmr
 
     using Reference as resource::Unit::Reference
 
+    // Material = pass techniques (shader + uniform slots + blend). Sampler values are on the draw.
+    // Instance = material + sampler params; albedoMap value = texpack layer filename.
+    struct Instance
+      material: #Asset
+      textures: umap<string, string>
+
     entity Runtime
-      struct TextureBinding
-        uniform: Uniform::Id
-        texture: #texture::Runtime
       using Locations as @external(rmmr::material::Semantics::RuntimeMapping)
       struct Technique
         shader: #shader::Runtime
         locations: Locations
         bindings: vector<Uniform::Binding>
-        textures: vector<TextureBinding>
       one
         techniques: umap<renderer::Pass, Technique>
         nearest: bool
@@ -26,13 +27,9 @@ namespace rmmr
         ?apply(#system::Device, renderer::Pass)
 
     feature Asset of resource::Unit
-      struct TextureBinding
-        uniform: Uniform::Id
-        texture: texture::Reference
       struct Technique
         program: shader::Reference
         uniforms: Uniform::Palette
-        textures: vector<TextureBinding>
       one
         techniques: umap<renderer::Pass, Technique>
         nearest: bool

@@ -7,7 +7,8 @@ in vec2 v_uv0;
 out vec4 FragColor;
 
 uniform vec3 u_albedo;
-layout(binding = 0) uniform sampler2D u_albedoMap;
+layout(binding = 0) uniform sampler2DArray u_albedoMap;
+uniform int u_albedoLayer;
 
 uniform vec3 u_ambientColor;
 uniform float u_ambientIntensity;
@@ -49,7 +50,7 @@ float fetch_shadow(vec4 light_space_pos) {
 }
 
 void main() {
-    vec4 texel = texture(u_albedoMap, v_uv0);
+    vec4 texel = texture(u_albedoMap, vec3(v_uv0, float(u_albedoLayer)));
     if (texel.a < 0.01) {
         discard;
     }

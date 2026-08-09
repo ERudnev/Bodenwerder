@@ -1,6 +1,7 @@
 import "resources/manager"
 import "resources/meshpack"
 import "resources/overlays"
+import "resources/texpack"
 
 namespace rmmr
   namespace resource
@@ -10,6 +11,7 @@ namespace rmmr
       one
         >add_texture_loader(Unit::Name, texture::Loader)->#texture::Asset
         >add_texture_generator(Unit::Name, texture::Generator)->#texture::Asset
+        >add_texpack_catalog(Unit::Name, texpack::LoaderCatalog, layerSize: index2, capacity: integer)->#texpack::Pack
         >add_shader_loader(Unit::Name, shader::Loader)->#shader::Asset
         >add_material(Unit::Name, material::Asset)->#material::Asset
         >add_overlay(Unit::Name, overlay::Asset)->#overlay::Asset
@@ -19,7 +21,6 @@ namespace rmmr
         >add_sprites_kenney(Unit::Name, sprite::LoaderKenney)->#sprite::Pack
         >add_meshpack_objs_loader(Unit::Name, meshpack::LoaderObjs)->#meshpack::Asset
         >add_meshpack_lwo_loader(Unit::Name, meshpack::LoaderLwo)->#meshpack::Asset
-        >compose_material(Unit::Name, filename, base: #material::Asset)->#material::Asset
         ?find<R as feature of Unit>(Unit::Name)-> #R?
       all
         singleton: #?
@@ -32,6 +33,7 @@ namespace rmmr
         assets: #Assets
 
     group<texture::Runtime> of resource::DeviceRuntimes
+    group<texpack::Runtime> of resource::DeviceRuntimes
     group<shader::Runtime> of resource::DeviceRuntimes
     group<material::Runtime> of resource::DeviceRuntimes
     group<overlay::Runtime> of resource::DeviceRuntimes
@@ -42,6 +44,7 @@ namespace rmmr
     component Runtimes of Device
       one
         textures_id_mapping: umap<#texture::Asset, #texture::Runtime> // allows finding Asset presentation of this Device
+        texpacks_id_mapping: umap<#texpack::Pack, #texpack::Runtime>
         shaders_id_mapping: umap<#shader::Asset, #shader::Runtime>
         materials_id_mapping: umap<#material::Asset, #material::Runtime>
         overlays_id_mapping: umap<#overlay::Asset, #overlay::Runtime>

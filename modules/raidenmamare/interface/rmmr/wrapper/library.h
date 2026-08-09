@@ -8,16 +8,16 @@
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/overlays.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/resources/textures.q1.h>
 
 namespace rmmr::wrapper::assets {
 
     using namespace fqsm::api;
 
-    // Toy's curated asset set (ids for now; References later).
     struct Handles {
         struct {
-            std::vector<rmmr::resource::texture::Asset::Id> debug;
+            base::maybe<rmmr::resource::texpack::Pack::Id> debug;
             base::maybe<rmmr::resource::texture::Asset::Id> whiteCircle;
             base::maybe<rmmr::resource::texture::Asset::Id> whiteRing;
         } texture;
@@ -30,7 +30,7 @@ namespace rmmr::wrapper::assets {
             base::maybe<rmmr::resource::material::Asset::Id> ambient;
             base::maybe<rmmr::resource::material::Asset::Id> lit;
             base::maybe<rmmr::resource::material::Asset::Id> litTransparent;
-            std::vector<rmmr::resource::material::Asset::Id> debugLitTextured;
+            base::maybe<rmmr::resource::material::Asset::Id> litTextured;
             base::maybe<rmmr::resource::material::Asset::Id> litTexturedAlpha;
             base::maybe<rmmr::resource::material::Asset::Id> oneSidedGlass;
             base::maybe<rmmr::resource::material::Asset::Id> grid;
@@ -48,7 +48,6 @@ namespace rmmr::wrapper::assets {
         Failed,
     };
 
-    // Toy assets: addHardcoded / loadFrom. Disk catalogue archived; live path is addHardcoded.
     struct Manager {
         using Location = std::filesystem::path;
 

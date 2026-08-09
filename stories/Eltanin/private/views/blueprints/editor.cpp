@@ -301,7 +301,8 @@ namespace eltanin::views {
             Pose::from(latticeWorldPos(state.cursorLattice), HPB{0.0f, 0.0f, 0.0f}),
             scene::actor::Mesh::Quantum{
                 .geometry = *kube_geometry,
-                .materials = {{"outer", *cursor_material}},
+                .parts = {{"outer", rmmr::resource::material::Instance{.material = *cursor_material, .textures = {}}}},
+                .texpack = {},
                 .albedo = RGB{0.35f, 0.95f, 1.0f},
                 .scale = vec3{edge, edge, edge},
                 .opacity = cursorOpacity,
@@ -363,7 +364,7 @@ namespace eltanin::views {
         syncVisuals(context);
     }
 
-    void Blueprints::syncVisuals(Writing context) {
+    void Blueprints::clearVisuals(Writing context) {
         for (const auto& actor : state.levelOne)
             destroyMeshActor(context, actor.id);
         for (const auto& actor : state.levelTwo)
@@ -371,6 +372,11 @@ namespace eltanin::views {
         state.levelOne.clear();
         state.levelTwo.clear();
         state.floors.clear();
+        state.selection.clear();
+    }
+
+    void Blueprints::syncVisuals(Writing context) {
+        clearVisuals(context);
 
         if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
             return;
@@ -576,7 +582,8 @@ namespace eltanin::views {
             pose,
             scene::actor::Mesh::Quantum{
                 .geometry = resolved->geometry,
-                .materials = resolved->materials,
+                .parts = resolved->parts,
+                .texpack = resolved->texpack,
                 .albedo = albedo,
                 .scale = vec3{1.0f, 1.0f, 1.0f},
                 .opacity = opacity,
@@ -646,8 +653,14 @@ namespace eltanin::views {
     }
 
     void Blueprints::draw(Writing context, bool& open) {
-        if (not open)
+        if (not open) {
+            if (not state.levelOne.empty() or not state.levelTwo.empty())
+                clearVisuals(context);
             return;
+        }
+
+        if (state.levelOne.empty() and state.levelTwo.empty() and state.hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
+            syncVisuals(context);
 
         renderer::Integer32 under = renderer::Integer32{0};
         for (const auto [_, window] : context->aspect<system::Window>().items()) {

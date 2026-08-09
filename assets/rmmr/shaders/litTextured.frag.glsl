@@ -7,7 +7,8 @@ in vec2 v_uv0;
 out vec4 FragColor;
 
 uniform vec3 u_albedo;
-layout(binding = 0) uniform sampler2D u_albedoMap;
+layout(binding = 0) uniform sampler2DArray u_albedoMap;
+uniform int u_albedoLayer;
 
 uniform vec3 u_ambientColor;
 uniform float u_ambientIntensity;
@@ -51,7 +52,7 @@ float fetch_shadow(vec4 light_space_pos) {
 void main() {
     vec3 N = normalize(v_worldNormal);
     vec3 L = normalize(u_light0Pos - v_worldPos);
-    vec3 baseColor = texture(u_albedoMap, v_uv0).rgb * u_albedo;
+    vec3 baseColor = texture(u_albedoMap, vec3(v_uv0, float(u_albedoLayer))).rgb * u_albedo;
 
     float ndotl = max(dot(N, L), 0.0);
     float shadow = fetch_shadow(u_lightSpaceMatrix * vec4(v_worldPos, 1.0));
