@@ -46,6 +46,8 @@ namespace rmmr::resource::geometry {
             Range indices;
             Range surfaces;
             Range mounts;
+            // LW layer pivot (etc.): verts baked relative to this; pose attaches here.
+            vec3 origin;
         };
         struct Surface {
             Range indices;

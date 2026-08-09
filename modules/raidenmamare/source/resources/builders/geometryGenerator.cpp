@@ -157,7 +157,8 @@ namespace rmmr::resource::builders::geometry {
     }
 
     auto GeometryGenerator::gridPlane() -> CpuPresentation {
-        constexpr float half = 80.0f;
+        // Half-extent in local meters. With patternScale = 1/cell (cell=4m) → lattice lines −50…+50.
+        constexpr float half = 200.0f;
 
         // CCW when viewed from +Y (front faces the sky); required for GL_CULL_FACE.
         return CpuPresentation{

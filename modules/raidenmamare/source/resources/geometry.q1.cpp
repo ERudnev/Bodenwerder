@@ -103,6 +103,28 @@ namespace rmmr::resource::geometry {
             for (unsigned i = 0; i < node.mNumChildren; ++i) collectEntryNodes(*node.mChildren[i], nodes);
         }
 
+        auto aiTranslation(const aiMatrix4x4& m) -> vec3 {
+            return vec3{m.a4, m.b4, m.c4};
+        }
+
+        // Assimp LWO: Pivot-* parent holds +pivot; mesh node holds -pivot. Same space as mesh verts (post MakeLeftHanded).
+        auto extractOrigin(const aiNode& node) -> vec3 {
+            if (node.mParent) {
+                const string parentName{node.mParent->mName.C_Str()};
+                if (parentName.starts_with("Pivot-"))
+                    return aiTranslation(node.mParent->mTransformation);
+            }
+            return -aiTranslation(node.mTransformation);
+        }
+
+        void bakeOriginIntoVertices(LoadedMesh& out, renderer::Count firstVertex, const vec3& origin) {
+            for (auto i = static_cast<std::size_t>(firstVertex); i < out.cpu.positions.size(); ++i) {
+                out.cpu.positions[i].x -= origin.x;
+                out.cpu.positions[i].y -= origin.y;
+                out.cpu.positions[i].z -= origin.z;
+            }
+        }
+
         void appendEntry(LoadedMesh& out, const aiScene& scene, const aiNode& node) {
             const auto firstVertex = static_cast<renderer::Count>(out.cpu.positions.size());
             const auto firstIndex = static_cast<renderer::Count>(out.cpu.indices.size());
@@ -116,6 +138,8 @@ namespace rmmr::resource::geometry {
             std::ranges::sort(meshes, [&](const aiMesh* left, const aiMesh* right) { return material_name(scene, *left) < material_name(scene, *right); });
             for (const auto* mesh : meshes) append_mesh(out, *mesh, mat4{1.0f}, catalog, scene);
             if (static_cast<renderer::Count>(out.cpu.indices.size()) == firstIndex) return;
+            const auto origin = extractOrigin(node);
+            bakeOriginIntoVertices(out, firstVertex, origin);
             const auto entry = static_cast<EntryId>(out.entries.size());
             auto name = string{node.mName.C_Str()};
             if (name.empty()) name = std::format("entry_{}", entry);
@@ -126,6 +150,7 @@ namespace rmmr::resource::geometry {
                 .indices = Asset::Range{.first = firstIndex, .count = static_cast<renderer::Count>(out.cpu.indices.size()) - firstIndex},
                 .surfaces = Asset::Range{.first = firstSurface, .count = static_cast<renderer::Count>(out.surfaces.size()) - firstSurface},
                 .mounts = Asset::Range{.first = static_cast<renderer::Count>(out.mounts.size()), .count = 0},
+                .origin = origin,
             });
             out.surfaceCatalogs.push_back(std::move(catalog));
         }
@@ -147,6 +172,7 @@ namespace rmmr::resource::geometry {
                 .indices = Asset::Range{.first = firstIndex, .count = static_cast<renderer::Count>(out.cpu.indices.size()) - firstIndex},
                 .surfaces = Asset::Range{.first = renderer::Count{0}, .count = static_cast<renderer::Count>(out.surfaces.size())},
                 .mounts = Asset::Range{.first = renderer::Count{0}, .count = renderer::Count{0}},
+                .origin = vec3{0.0f, 0.0f, 0.0f},
             });
             out.surfaceCatalogs.push_back(std::move(catalog));
         }
@@ -186,6 +212,8 @@ namespace rmmr::resource::geometry {
                 p.z = -p.z;
             for (auto& n : mesh.cpu.normals)
                 n.z = -n.z;
+            for (auto& entry : mesh.entries)
+                entry.origin.z = -entry.origin.z;
             auto& indices = mesh.cpu.indices;
             for (std::size_t i = 0; i + 2 < indices.size(); i += 3)
                 std::swap(indices[i + 1], indices[i + 2]);
@@ -558,6 +586,7 @@ namespace rmmr::resource::geometry {
                 .indices = Asset::Range{.first = renderer::Count{0}, .count = indexCount},
                 .surfaces = Asset::Range{.first = renderer::Count{0}, .count = renderer::Count{1}},
                 .mounts = Asset::Range{.first = renderer::Count{0}, .count = renderer::Count{0}},
+                .origin = vec3{0.0f, 0.0f, 0.0f},
             }};
             asset->surfaces = {Asset::Surface{.indices = Asset::Range{.first = renderer::Count{0}, .count = indexCount}}};
             asset->mounts = {};

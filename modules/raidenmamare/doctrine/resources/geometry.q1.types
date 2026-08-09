@@ -34,6 +34,7 @@ namespace rmmr
         indices: Range
         surfaces: Range
         mounts: Range
+        origin: vec3
       struct Surface
         indices: Range
       one

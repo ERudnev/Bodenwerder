@@ -14,12 +14,20 @@ namespace eltanin::mech::quarks {
 
         Kind kind;
         space::grid::Pose pose;
-
-        // Recover cell-space seat for collision / merge. See quarks.cpp — not a pure inverse of grid.
-        auto evaluateCellPlacement() const -> space::cell::Placement;
     };
 
-    // Expand frame::shape at a cell pose → knots on grid nodes (reads subframe::recipes).
+    // Half-stick quark on the grid (one pole of an edge). Same spirit as Knot: kind + pose.
+    // pole selects interframe …s / …e mesh; glue later may merge up to 8 Chords into one rod.
+    struct Chord {
+        using Kind = subframe::halfEdge::kind;
+
+        Kind kind;
+        subframe::halfEdge::Pole pole;
+        space::grid::Pose pose;
+    };
+
+    // Expand frame::shape at a cell pose → knots / chords on grid (reads subframe::recipes).
     auto seedCorners(frame::shape, space::cell::Pose) -> std::vector<Knot>;
+    auto seedChords(frame::shape, space::cell::Pose) -> std::vector<Chord>;
 
 }

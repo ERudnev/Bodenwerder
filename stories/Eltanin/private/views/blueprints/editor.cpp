@@ -1,7 +1,5 @@
 #include "views/blueprints/editor.h"
 
-#include "views/blueprints/patterns.h"
-
 #include "mech/semantics/quarks.h"
 #include "mech/semantics/shapes.h"
 #include "mech/semantics/space.h"
@@ -9,7 +7,6 @@
 #include <eltanin/resources/assets.q1.h>
 #include <eltanin/resources/blueprint.q1.h>
 #include <eltanin/world.q1.h>
-#include <fQSM/identifier.h>
 #include <rmmr/controller/cameraOrbit.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -22,16 +19,17 @@
 #include <rmmr/system/viewport.q1.h>
 #include <rmmr/system/window.q1.h>
 
+#include <base/logging.h>
+
 #include <imgui.h>
 
 #include <algorithm>
 #include <cmath>
-#include <format>
 #include <numbers>
+#include <vector>
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
-#include <glm/gtc/quaternion.hpp>
 
 namespace eltanin::views {
 
@@ -41,7 +39,9 @@ namespace eltanin::views {
     namespace {
 
         constexpr float cursorOpacity = 0.18f;
-        constexpr float cursorClampMeters = 40.0f;
+        // Cell indices: inclusive pen. +49 (not +50) so the last cell stays inside grid lines −50…+50.
+        constexpr base::common_types::integer cursorLatticeMin = -50;
+        constexpr base::common_types::integer cursorLatticeMax = 49;
         constexpr float gridOpacity = 0.88f;
 
         void applyOrbitPose(Writing context, scene::Camera::Id camera) {
@@ -60,13 +60,6 @@ namespace eltanin::views {
         auto cellWorldPos(const base::common_types::index3& lattice) -> Pos {
             const auto meters = mech::space::cell::center2local(mech::space::cell::index{lattice.x, lattice.y, lattice.z});
             return Pos{meters.x, meters.y, meters.z};
-        }
-
-        auto knotScenePose(const mech::quarks::Knot& knot) -> Pose {
-            // interframe mesh is physical cell-local (origin = cell center). Pivot must be cell center, not grid node.
-            const auto meters = mech::space::cell::center2local(knot.evaluateCellPlacement().cell);
-            const auto R = glm::mat3(mech::space::orient::matrix[static_cast<std::size_t>(knot.pose.ori)]);
-            return Pose{.position = Pos{meters.x, meters.y, meters.z}, .rotation = glm::normalize(glm::quat_cast(R))};
         }
 
         auto cellIndexFromMeters(float meters, float cell) -> base::common_types::integer {
@@ -108,29 +101,12 @@ namespace eltanin::views {
             return origin + dir * t;
         }
 
-        void destroyMeshActor(Writing context, scene::actor::Mesh::Id actor) {
-            for (const auto [root, group] : context->aspect<scene::Node_group>().items()) {
-                if (group.contains(actor)) {
-                    with<scene::Node_group>::deleteElement(context, root, actor);
-                    return;
-                }
-            }
-            if (with<scene::Node>::exists(context, actor))
-                with<scene::Node>::remove(context, actor);
-        }
-
         auto sameIndex3(const base::common_types::index3& a, const base::common_types::index3& b) -> bool {
             return a.x == b.x and a.y == b.y and a.z == b.z;
         }
 
-        auto findActorByAlias(Reading context, const std::vector<Blueprints::KnotActor>& actors, renderer::Integer32 alias) -> base::maybe<Blueprints::KnotActor> {
-            for (const auto& actor : actors) {
-                if (not with<scene::actor::Identified>::exists(context, actor.id))
-                    continue;
-                if (with<scene::actor::Identified>::get(context, actor.id).scenicAlias == alias)
-                    return actor;
-            }
-            return {};
+        auto sameGridPose(const mech::space::grid::Pose& a, const mech::space::grid::Pose& b) -> bool {
+            return sameIndex3(a.pos, b.pos) and a.ori == b.ori;
         }
 
         auto frameShapePicks(auto&& onPick) -> bool {
@@ -189,20 +165,39 @@ namespace eltanin::views {
         with<controller::CameraOrbit>::create(context, camera, pivot, glm::length(camera_pos - pivot));
         applyOrbitPose(context, camera);
 
-        with<scene::Interface>::createLight(context, root, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 60.0f});
+        with<scene::Interface>::createLight(context, root, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 120.0f});
+
+        // TEMP: dump interframe entries on a 4×0×4 m lattice to inspect origin bake.
+        if (const auto interframe = with<Assets>::find<meshpack::Asset>(context, Unit::Name::from("Eltanin", "interframe"))) {
+            const auto& pack = with<meshpack::Asset>::get(context, *interframe);
+            vector<string> names;
+            names.reserve(pack.entries.size());
+            for (const auto& [name, _] : pack.entries)
+                names.push_back(name);
+            std::ranges::sort(names);
+            const auto cols = static_cast<int>(std::ceil(std::sqrt(static_cast<double>(names.size()))));
+            for (int i = 0; i < static_cast<int>(names.size()); ++i) {
+                const auto resolved = with<meshpack::Asset>::resolve(context, *interframe, names[static_cast<std::size_t>(i)]);
+                if (not resolved)
+                    continue;
+                const auto& geometry = with<geometry::Asset>::get(context, resolved->geometry);
+                const auto& origin = geometry.entries[resolved->entry].origin;
+                const int col = cols > 0 ? i % cols : 0;
+                const int row = cols > 0 ? i / cols : 0;
+                const Pos at{static_cast<float>(col) * 4.0f, 0.0f, static_cast<float>(row) * 4.0f};
+                base::message("eltanin TEMP interframe '{}' origin=[{:.3f},{:.3f},{:.3f}] @ [{:.0f},{:.0f},{:.0f}]", names[static_cast<std::size_t>(i)], origin.x, origin.y, origin.z, at.x, at.y, at.z);
+                (void)with<scene::Interface>::createMeshActor(context, root, Pose::from(at, HPB{0.0f, 0.0f, 0.0f}), *resolved);
+            }
+        }
 
         state.scene = root;
         state.camera = camera;
         state.hovered.reset();
-        state.knotActors.clear();
-        state.selection.clear();
         state.spaceMenu = {.place = false, .close = false};
     }
 
-    void Blueprints::show(Writing context, resource::blueprint::Asset::Id asset_id) {
+    void Blueprints::show(Writing, resource::blueprint::Asset::Id asset_id) {
         state.hovered = asset_id;
-        state.selection.clear();
-        syncVisuals(context);
     }
 
     void Blueprints::syncGridToFloor(Writing context) {
@@ -231,12 +226,10 @@ namespace eltanin::views {
                 if (const auto viewport = firstViewport(context)) {
                     const auto mouse = with<system::Window>::get(context, *window).current.mouse;
                     if (const auto hit = rayHitFloor(context, *state.camera, *viewport, mouse, planeY)) {
-                        const float x = std::clamp(hit->x, -cursorClampMeters, cursorClampMeters);
-                        const float z = std::clamp(hit->z, -cursorClampMeters, cursorClampMeters);
                         lattice = base::common_types::index3{
-                            .x = cellIndexFromMeters(x, cell),
+                            .x = cellIndexFromMeters(hit->x, cell),
                             .y = state.currentFloor,
-                            .z = cellIndexFromMeters(z, cell),
+                            .z = cellIndexFromMeters(hit->z, cell),
                         };
                     }
                 }
@@ -244,18 +237,11 @@ namespace eltanin::views {
         }
 
         lattice.y = state.currentFloor;
-        lattice.x = std::clamp(lattice.x, static_cast<base::common_types::integer>(std::lround(-cursorClampMeters / cell)), static_cast<base::common_types::integer>(std::lround(cursorClampMeters / cell)));
-        lattice.z = std::clamp(lattice.z, static_cast<base::common_types::integer>(std::lround(-cursorClampMeters / cell)), static_cast<base::common_types::integer>(std::lround(cursorClampMeters / cell)));
+        lattice.x = std::clamp(lattice.x, cursorLatticeMin, cursorLatticeMax);
+        lattice.z = std::clamp(lattice.z, cursorLatticeMin, cursorLatticeMax);
 
         state.cursorLattice = lattice;
         with<scene::Node>::modify(context, *state.worldCursor)->pose = Pose::from(cellWorldPos(state.cursorLattice), HPB{0.0f, 0.0f, 0.0f});
-    }
-
-    void Blueprints::clearVisuals(Writing context) {
-        for (const auto& actor : state.knotActors)
-            destroyMeshActor(context, actor.id);
-        state.knotActors.clear();
-        state.selection.clear();
     }
 
     void Blueprints::persistHovered(Writing context) {
@@ -266,49 +252,9 @@ namespace eltanin::views {
         ::eltanin::resource::blueprint::Loader::Actions::save(context, *state.hovered);
     }
 
-    void Blueprints::syncVisuals(Writing context) {
-        clearVisuals(context);
-        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
-            return;
-        if (not state.scene)
-            return;
-
-        const auto pack = with<Assets>::find<meshpack::Asset>(context, Unit::Name::from("Eltanin", "interframe"));
-        if (not pack)
-            return;
-
-        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
-        for (std::size_t i = 0; i < data.knots.size(); ++i) {
-            const auto& knot = data.knots[i];
-            const auto entry = std::string{blueprints::patterns::cornerMesh(knot.kind)};
-            if (entry.empty())
-                continue;
-            const auto resolved = with<meshpack::Asset>::resolve(context, *pack, entry);
-            if (not resolved)
-                continue;
-            const auto id = with<scene::Interface>::createMeshActor(context, *state.scene, knotScenePose(knot), *resolved, with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f));
-            if (not with<scene::actor::Mesh>::exists(context, id))
-                continue;
-            with<scene::actor::Identified>::extend(context, id);
-            state.knotActors.push_back(KnotActor{.id = id, .index = i});
-        }
-    }
-
     void Blueprints::draw(Writing context, bool& open, BlueprintCatalog& catalog) {
-        if (not open) {
-            if (not state.knotActors.empty())
-                clearVisuals(context);
+        if (not open)
             return;
-        }
-
-        if (state.knotActors.empty() and state.hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
-            syncVisuals(context);
-
-        renderer::Integer32 under = renderer::Integer32{0};
-        for (const auto [_, window] : context->aspect<system::Window>().items()) {
-            under = window.current.under;
-            break;
-        }
 
         if (not ImGui::GetIO().WantCaptureKeyboard) {
             if (ImGui::IsKeyPressed(ImGuiKey_PageUp)) {
@@ -322,11 +268,6 @@ namespace eltanin::views {
         }
 
         updateWorldCursor(context);
-
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) and not ImGui::GetIO().WantCaptureMouse and under != renderer::Integer32{0}) {
-            if (findActorByAlias(context, state.knotActors, under).exists() and std::find(state.selection.begin(), state.selection.end(), under) == state.selection.end())
-                state.selection.push_back(under);
-        }
 
         constexpr auto spaceMenuPopup = "##blueprints.spaceMenu";
         const bool spaceMenuOpen = ImGui::IsPopupOpen(spaceMenuPopup);
@@ -367,13 +308,22 @@ namespace eltanin::views {
                             if (not occupied)
                                 data->data.knots.push_back(knot);
                         }
+                        for (const auto& chord : mech::quarks::seedChords(shape, cell)) {
+                            bool occupied = false;
+                            for (const auto& existing : data->data.chords) {
+                                if (sameGridPose(existing.pose, chord.pose)) {
+                                    occupied = true;
+                                    break;
+                                }
+                            }
+                            if (not occupied)
+                                data->data.chords.push_back(chord);
+                        }
                     });
                     if (applied) {
                         ImGui::CloseCurrentPopup();
                         state.spaceMenu = {.place = false, .close = false};
-                        state.selection.clear();
                         persistHovered(context);
-                        syncVisuals(context);
                     }
                 }
                 ImGui::EndPopup();
@@ -422,16 +372,10 @@ namespace eltanin::views {
                 ImGui::Text("Manufacturer: %s", data.author.c_str());
                 ImGui::Separator();
                 ImGui::Text("Knots: %zu", data.knots.size());
-                ImGui::Text("Actors: %zu", state.knotActors.size());
+                ImGui::Text("Chords: %zu", data.chords.size());
                 ImGui::Text("Cursor [%d, %d, %d]", state.cursorLattice.x, state.cursorLattice.y, state.cursorLattice.z);
                 ImGui::Text("Floor: %d", state.currentFloor);
-                ImGui::TextDisabled("PgUp / PgDn · Space — spawn k*");
-                if (under == renderer::Integer32{0}) {
-                    ImGui::TextDisabled("Under: —");
-                } else {
-                    const auto underLabel = std::format("#{}", fqsm::internal::id::info_hash(static_cast<fqsm::internal::id::BaseType>(under)));
-                    ImGui::Text("Under: %s", underLabel.c_str());
-                }
+                ImGui::TextDisabled("PgUp / PgDn · Space — seed k* into blueprint (no mesh actors)");
             }
             ImGui::EndChild();
         }

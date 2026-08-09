@@ -32,7 +32,7 @@ namespace eltanin::mech::space {
         using Pose = rmmr::renderer::DiscretePose;
 
         // Cell-space address of a vertex: which cell, which kube corner (recipe cellVertex).
-        // Not unique for a grid node (up to 8 cells share a vertex) — see Knot::evaluateCellPlacement.
+        // Not unique for a grid node (up to 8 cells share a vertex).
         struct Placement {
             index cell;
             cube::Corner corner; // 0..7 in the cell's kube frame (before cell.ori maps to AABB)

@@ -3,10 +3,14 @@ import "semantics"
 namespace eltanin
   namespace mech
 
-    namespace subframe
-      struct Recipe
-        using Dummy as integer
+    namespace quarks
+      using Knot as @external(eltanin::mech::quarks::Knot)
+      using Chord as @external(eltanin::mech::quarks::Chord)
 
+    // Ship schema: metadata + grid-frame quarks (knots, chords; attachments later).
+    // C++: private/mech/blueprint.h
     struct Blueprint
       name: string
-      author: string
+      author: string // manufacturer
+      knots: vector<quarks::Knot>
+      chords: vector<quarks::Chord>

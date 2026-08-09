@@ -85,7 +85,7 @@ namespace eltanin {
             constexpr std::string_view manufacturer = "#undefined";
             const auto relative = filename{(std::filesystem::path{"blueprints"} / (string{stem} + ".blueprint")).generic_string()};
             const auto assetId = with<::eltanin::resource::Assets>::add_blueprint_loader(context, Unit::Name::from("Eltanin", string{stem}), item<::eltanin::resource::blueprint::Loader>{.file = relative});
-            with<::eltanin::resource::blueprint::Asset>::modify(context, assetId)->data = mech::Blueprint{.name = string{shipName}, .author = string{manufacturer}, .knots = {}};
+            with<::eltanin::resource::blueprint::Asset>::modify(context, assetId)->data = mech::Blueprint{.name = string{shipName}, .author = string{manufacturer}, .knots = {}, .chords = {}};
             with<::eltanin::resource::blueprint::Loader>::save(context, assetId);
             if (not context.workers_interface().summary().good())
                 return;
@@ -126,7 +126,7 @@ namespace eltanin {
         }
         const auto relative = filename{(std::filesystem::path{"blueprints"} / (stem + ".blueprint")).generic_string()};
         const auto assetId = with<::eltanin::resource::Assets>::add_blueprint_loader(context, Unit::Name::from("Eltanin", stem), item<::eltanin::resource::blueprint::Loader>{.file = relative});
-        with<::eltanin::resource::blueprint::Asset>::modify(context, assetId)->data = mech::Blueprint{.name = name, .author = "#unknown", .knots = {}};
+        with<::eltanin::resource::blueprint::Asset>::modify(context, assetId)->data = mech::Blueprint{.name = name, .author = "#unknown", .knots = {}, .chords = {}};
         with<::eltanin::resource::blueprint::Loader>::save(context, assetId);
         if (not context.workers_interface().summary().good())
             return {};
