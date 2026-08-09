@@ -183,11 +183,23 @@ namespace rmmr::resource {
     }
 
     auto Assets::Actions::add_geometry_loader(Writing context, Unit::Name name, geometry::Loader::Quantum loader) -> geometry::Asset::Id {
-        return register_unit<geometry::Asset, geometry::Loader>(context, std::move(name), geometry::Asset::Quantum{}, std::move(loader));
+        return register_unit<geometry::Asset, geometry::Loader>(context, std::move(name), geometry::Asset::Quantum{
+            .entries = {},
+            .surfaces = {},
+            .mounts = {},
+            .entryCatalog = {},
+            .surfaceCatalogs = {},
+        }, std::move(loader));
     }
 
     auto Assets::Actions::add_geometry_generator(Writing context, Unit::Name name, geometry::Generator::Quantum generator) -> geometry::Asset::Id {
-        return register_unit<geometry::Asset, geometry::Generator>(context, std::move(name), geometry::Asset::Quantum{}, std::move(generator));
+        return register_unit<geometry::Asset, geometry::Generator>(context, std::move(name), geometry::Asset::Quantum{
+            .entries = {},
+            .surfaces = {},
+            .mounts = {},
+            .entryCatalog = {},
+            .surfaceCatalogs = {},
+        }, std::move(generator));
     }
 
     auto Assets::Actions::add_sprites_kenney(Writing context, Unit::Name name, sprite::LoaderKenney::Quantum loader) -> sprite::Pack::Id {
@@ -274,6 +286,12 @@ namespace rmmr::resource {
         }
         for (const auto [id, _] : context->aspect<geometry::Asset>().items()) {
             rematerialize_geometry(context, id, device);
+        }
+        for (const auto [id, _] : context->aspect<meshpack::LoaderObjs>().items()) {
+            meshpack::LoaderObjs::Actions::finalize(context, id);
+        }
+        for (const auto [id, _] : context->aspect<meshpack::LoaderLwo>().items()) {
+            meshpack::LoaderLwo::Actions::finalize(context, id);
         }
         for (const auto [id, _] : context->aspect<sprite::Pack>().items()) {
             rematerialize_sprites(context, id, device);

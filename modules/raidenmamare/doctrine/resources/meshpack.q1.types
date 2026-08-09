@@ -8,26 +8,37 @@ namespace rmmr
     namespace meshpack
 
     using Reference as resource::Unit::Reference
-    // Surface/part → material::Instance; optional shared texpack for albedo layer names.
+    // Palette entries select a numeric geometry entry and bind its numeric surfaces.
     feature Asset of resource::Unit
       struct Entry
         geometry: #geometry::Asset
-        parts: umap<string, material::Instance>
+        entry: geometry::EntryId
+        surfaces: umap<geometry::SurfaceId, material::Instance>
       struct Resolved
         geometry: #geometry::Asset
-        parts: umap<string, material::Instance>
+        entry: geometry::EntryId
+        surfaces: umap<geometry::SurfaceId, material::Instance>
         texpack: #texpack::Pack?
       one
         texpack: #texpack::Pack?
         entries: umap<string, Entry>
         ?resolve(name: string) -> Resolved?
 
+    // Name bindings stay on loaders until geometry catalogs exist; Asset remains numeric.
     feature LoaderObjs of Asset
+      struct PendingEntry
+        geometry: #geometry::Asset
+        surfaces: umap<string, material::Instance>
       one
         file: filename
+        pending: umap<string, PendingEntry>
         >load()
+        >finalize()
 
     feature LoaderLwo of Asset
       one
         file: filename
+        geometry: #geometry::Asset?
+        pending: umap<string, material::Instance>
         >load()
+        >finalize()

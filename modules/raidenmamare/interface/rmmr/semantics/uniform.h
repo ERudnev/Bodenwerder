@@ -49,52 +49,22 @@ namespace rmmr::material {
             BindingPoint binding;
         };
 
-        // Persistent uniform semantics vocabulary.
-        //
-        // ID convention:
-        // - 1..99: matrices and structural transforms
-        // - 100..1999: world / material / light pixel channels
-        // - 2000..: screen-space overlay (and kin)
-        //
+        // Static resource and screen-space uniform vocabulary. Frame, actor, draw and
+        // surface values live in the fixed UBO/SSBO contract, not this palette.
         // Texture units (contexts mutually exclusive per draw):
         // - 0: albedoMap / atlasTexture / sceneColor / compose overlay
         // - 1: shadowMap / identiffyMap
         // - 2: selectedMap
         // SSBO binding points:
         // - 0: atlasEntries
-        static constexpr auto vocabulary = std::array<Entry, 30>{{
+        static constexpr auto vocabulary = std::array<Entry, 13>{{
             Entry{0, Type::i32, "_undefined", -1},
-
-            // triangle.vert.glsl
-            Entry{1, Type::m4f, "model", -1},
-            Entry{2, Type::m4f, "view", -1},
-            Entry{3, Type::m4f, "projection", -1},
-            Entry{4, Type::m4f, "lightSpaceMatrix", -1},
-
-            // triangle.frag.glsl (pixel channels start at 100)
-            Entry{100, Type::v3f, "albedo", -1},
-            Entry{101, Type::v3f, "ambientColor", -1},
-            Entry{102, Type::f32, "ambientIntensity", -1},
-
-            // first real lamp (OpenGL culture: light0)
-            Entry{103, Type::v3f, "light0Color", -1},
-            Entry{104, Type::f32, "light0Intensity", -1},
-            Entry{105, Type::v3f, "light0Pos", -1},
-
-            // Grid.frag.glsl (shader-based ground grid; GLSL: u_patternScale, u_colorPrimary, u_colorSecondary)
-            Entry{106, Type::f32, "patternScale", -1},
-            Entry{107, Type::v3f, "colorPrimary", -1},
-            Entry{108, Type::v3f, "colorSecondary", -1},
 
             Entry{109, Type::sampler2d, "shadowMap", 1},
             Entry{110, Type::sampler2dArray, "albedoMap", 0},
             Entry{111, Type::sampler2d, "atlasTexture", 0},
             Entry{112, Type::ssbo, "atlasEntries", 0},
-            Entry{113, Type::i32, "spriteIndex", -1},
             Entry{114, Type::v2f, "inverseAtlasSize", -1},
-            Entry{115, Type::f32, "opacity", -1},
-            Entry{116, Type::i32, "scenicAlias", -1},
-            Entry{117, Type::i32, "albedoLayer", -1},
 
             // Overlay / screen-space (gap after world materials — start at 2000)
             Entry{2000, Type::sampler2d, "sceneColor", 0},

@@ -38,6 +38,7 @@ namespace si01::invaders {
             item<rmmr::scene::actor::Sprite>{
                 .material = session.material,
                 .tint = tint,
+                .opacity = 1.0f,
                 .scale = vec3{sprite_scale, sprite_scale, sprite_scale},
                 .pack = session.pack,
                 .index = sprite_index,

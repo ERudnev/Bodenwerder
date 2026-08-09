@@ -1,4 +1,4 @@
-#version 450 core
+#version 460 core
 
 // Fullscreen triangle via gl_VertexID (no VBO).
 out vec2 vUv;

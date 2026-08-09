@@ -19,7 +19,7 @@ int main() {
             .title = "Eltanin",
             .window_size = {.x = 1600, .y = 900},
             .presentation = rmmr::system::Window::Presentation::maximized,
-            .glVersion = {.major = 4, .minor = 5},
+            .glVersion = {.major = 4, .minor = 6},
         });
 
         application->setProduct(std::make_unique<eltanin::Game>());

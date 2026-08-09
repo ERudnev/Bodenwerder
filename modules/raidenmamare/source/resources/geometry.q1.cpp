@@ -30,72 +30,17 @@ namespace rmmr::resource::geometry {
 
         struct LoadedMesh {
             CpuPresentation cpu;
-            umap<string, Asset::Part> parts;
-            vector<Asset::Mount> slots;
+            vector<Asset::Entry> entries;
+            vector<Asset::Surface> surfaces;
+            vector<Asset::Mount> mounts;
+            umap<string, EntryId> entryCatalog;
+            vector<umap<string, SurfaceId>> surfaceCatalogs;
+            vector<SurfaceId> primitiveSurfaces;
         };
 
-        // Assimp aiMatrix4x4 is row-major; glm::mat4 is column-major (RH).
-        auto ai_mat4(const aiMatrix4x4& m) -> mat4 {
-            return mat4{
-                m.a1, m.b1, m.c1, m.d1,
-                m.a2, m.b2, m.c2, m.d2,
-                m.a3, m.b3, m.c3, m.d3,
-                m.a4, m.b4, m.c4, m.d4,
-            };
-        }
+        auto material_name(const aiScene& scene, const aiMesh& mesh) -> string;
 
-        void collect_mesh_paths(
-            const aiNode& node,
-            vector<const aiNode*>& path,
-            vector<vector<const aiNode*>>& mesh_paths)
-        {
-            path.push_back(&node);
-            if (node.mNumMeshes > 0) {
-                mesh_paths.push_back(path);
-            }
-            for (unsigned i = 0; i < node.mNumChildren; ++i) {
-                collect_mesh_paths(*node.mChildren[i], path, mesh_paths);
-            }
-            path.pop_back();
-        }
-
-        // Home = LCA of all mesh-bearing nodes (single mesh node → that node; else common ancestor, often root).
-        auto home_world(const aiScene& scene) -> mat4 {
-            vector<const aiNode*> scratch;
-            vector<vector<const aiNode*>> mesh_paths;
-            collect_mesh_paths(*scene.mRootNode, scratch, mesh_paths);
-            if (mesh_paths.empty()) {
-                return mat4{1.0f};
-            }
-            std::size_t depth = mesh_paths[0].size();
-            for (std::size_t i = 1; i < mesh_paths.size(); ++i) {
-                depth = std::min(depth, mesh_paths[i].size());
-            }
-            std::size_t lca_index = 0;
-            for (; lca_index < depth; ++lca_index) {
-                const aiNode* at = mesh_paths[0][lca_index];
-                bool same = true;
-                for (std::size_t p = 1; p < mesh_paths.size(); ++p) {
-                    if (mesh_paths[p][lca_index] != at) {
-                        same = false;
-                        break;
-                    }
-                }
-                if (not same) {
-                    break;
-                }
-            }
-            if (lca_index == 0) {
-                return mat4{1.0f};
-            }
-            mat4 world{1.0f};
-            for (std::size_t i = 0; i < lca_index; ++i) {
-                world = world * ai_mat4(mesh_paths[0][i]->mTransformation);
-            }
-            return world;
-        }
-
-        void append_mesh(LoadedMesh& out, const aiMesh& mesh, const mat4& transform, const string& part_name) {
+        void append_mesh(LoadedMesh& out, const aiMesh& mesh, const mat4& transform, umap<string, SurfaceId>& catalog, const aiScene& scene) {
             const auto base = static_cast<integer>(out.cpu.positions.size());
             const auto normal_matrix = glm::transpose(glm::inverse(glm::mat3(transform)));
             out.cpu.positions.reserve(out.cpu.positions.size() + mesh.mNumVertices);
@@ -120,7 +65,8 @@ namespace rmmr::resource::geometry {
                 }
             }
 
-            const auto index_start = static_cast<renderer::Count>(out.cpu.indices.size());
+            const auto indexStart = static_cast<renderer::Count>(out.cpu.indices.size());
+            const auto surface = static_cast<SurfaceId>(out.surfaces.size());
             out.cpu.indices.reserve(out.cpu.indices.size() + mesh.mNumFaces * 3);
             for (unsigned f = 0; f < mesh.mNumFaces; ++f) {
                 const auto& face = mesh.mFaces[f];
@@ -131,9 +77,14 @@ namespace rmmr::resource::geometry {
                 out.cpu.indices.push_back(base + static_cast<integer>(face.mIndices[0]));
                 out.cpu.indices.push_back(base + static_cast<integer>(face.mIndices[1]));
                 out.cpu.indices.push_back(base + static_cast<integer>(face.mIndices[2]));
+                out.primitiveSurfaces.push_back(surface);
             }
-            const auto index_count = static_cast<renderer::Count>(out.cpu.indices.size()) - index_start;
-            out.parts.insert_or_assign(part_name, Asset::Part{.startIndex = index_start, .countIndex = index_count});
+            const auto indexCount = static_cast<renderer::Count>(out.cpu.indices.size()) - indexStart;
+            out.surfaces.push_back(Asset::Surface{.indices = Asset::Range{.first = indexStart, .count = indexCount}});
+            auto surfaceName = material_name(scene, mesh);
+            if (surfaceName.empty()) surfaceName = std::format("surface_{}", catalog.size());
+            if (catalog.contains(surfaceName)) surfaceName = std::format("{}_{}", surfaceName, catalog.size());
+            catalog.emplace(std::move(surfaceName), surface);
         }
 
         auto material_name(const aiScene& scene, const aiMesh& mesh) -> string {
@@ -147,97 +98,57 @@ namespace rmmr::resource::geometry {
             return name.C_Str();
         }
 
-        auto part_name_for(const aiScene& scene, const aiMesh& mesh, std::size_t parts_so_far) -> string {
-            if (const auto from_material = material_name(scene, mesh); not from_material.empty()) {
-                return from_material;
-            }
-            return std::format("material_{}", parts_so_far);
+        void collectEntryNodes(const aiNode& node, vector<const aiNode*>& nodes) {
+            if (node.mNumMeshes > 0) nodes.push_back(&node);
+            for (unsigned i = 0; i < node.mNumChildren; ++i) collectEntryNodes(*node.mChildren[i], nodes);
         }
 
-        // Meshes: bake into home space (inverse(home) * node_world). Leaf empties → slots in home space.
-        void gather_node(
-            LoadedMesh& out,
-            const aiScene& scene,
-            const aiNode& node,
-            const mat4& parent_world,
-            const mat4& home_inverse)
-        {
-            const auto world = parent_world * ai_mat4(node.mTransformation);
-            const auto in_home = home_inverse * world;
-
-            if (node.mNumMeshes == 0 and node.mNumChildren == 0 and node.mName.length > 0) {
-                out.slots.push_back(Asset::Mount{.name = node.mName.C_Str(), .transform = in_home});
-            }
-
+        void appendEntry(LoadedMesh& out, const aiScene& scene, const aiNode& node) {
+            const auto firstVertex = static_cast<renderer::Count>(out.cpu.positions.size());
+            const auto firstIndex = static_cast<renderer::Count>(out.cpu.indices.size());
+            const auto firstSurface = static_cast<renderer::Count>(out.surfaces.size());
+            umap<string, SurfaceId> catalog;
+            vector<const aiMesh*> meshes;
             for (unsigned i = 0; i < node.mNumMeshes; ++i) {
                 const auto* mesh = scene.mMeshes[node.mMeshes[i]];
-                if (not mesh or mesh->mNumVertices == 0) {
-                    continue;
-                }
-                auto part_name = part_name_for(scene, *mesh, out.parts.size());
-                if (out.parts.find(part_name) != out.parts.end()) {
-                    part_name = std::format("{}_{}", part_name, out.parts.size());
-                }
-                append_mesh(out, *mesh, in_home, part_name);
+                if (mesh and mesh->mNumVertices > 0) meshes.push_back(mesh);
             }
-            for (unsigned i = 0; i < node.mNumChildren; ++i) {
-                gather_node(out, scene, *node.mChildren[i], world, home_inverse);
-            }
+            std::ranges::sort(meshes, [&](const aiMesh* left, const aiMesh* right) { return material_name(scene, *left) < material_name(scene, *right); });
+            for (const auto* mesh : meshes) append_mesh(out, *mesh, mat4{1.0f}, catalog, scene);
+            if (static_cast<renderer::Count>(out.cpu.indices.size()) == firstIndex) return;
+            const auto entry = static_cast<EntryId>(out.entries.size());
+            auto name = string{node.mName.C_Str()};
+            if (name.empty()) name = std::format("entry_{}", entry);
+            if (out.entryCatalog.contains(name)) name = std::format("{}_{}", name, entry);
+            out.entryCatalog.emplace(std::move(name), entry);
+            out.entries.push_back(Asset::Entry{
+                .vertices = Asset::Range{.first = firstVertex, .count = static_cast<renderer::Count>(out.cpu.positions.size()) - firstVertex},
+                .indices = Asset::Range{.first = firstIndex, .count = static_cast<renderer::Count>(out.cpu.indices.size()) - firstIndex},
+                .surfaces = Asset::Range{.first = firstSurface, .count = static_cast<renderer::Count>(out.surfaces.size()) - firstSurface},
+                .mounts = Asset::Range{.first = static_cast<renderer::Count>(out.mounts.size()), .count = 0},
+            });
+            out.surfaceCatalogs.push_back(std::move(catalog));
         }
 
-        // Collect only this node's meshes (no recursion) — one LWO layer leaf.
-        void gather_node_meshes_only(
-            LoadedMesh& out,
-            const aiScene& scene,
-            const aiNode& node,
-            const mat4& world,
-            const mat4& home_inverse)
-        {
-            const auto in_home = home_inverse * world;
-            for (unsigned i = 0; i < node.mNumMeshes; ++i) {
-                const auto* mesh = scene.mMeshes[node.mMeshes[i]];
-                if (not mesh or mesh->mNumVertices == 0) {
-                    continue;
-                }
-                auto part_name = part_name_for(scene, *mesh, out.parts.size());
-                if (out.parts.find(part_name) != out.parts.end()) {
-                    part_name = std::format("{}_{}", part_name, out.parts.size());
-                }
-                append_mesh(out, *mesh, in_home, part_name);
+        void appendWhole(LoadedMesh& out, const aiScene& scene, string name) {
+            const auto firstIndex = static_cast<renderer::Count>(out.cpu.indices.size());
+            umap<string, SurfaceId> catalog;
+            vector<const aiMesh*> meshes;
+            for (unsigned index = 0; index < scene.mNumMeshes; ++index) {
+                const auto* mesh = scene.mMeshes[index];
+                if (mesh and mesh->mNumVertices > 0) meshes.push_back(mesh);
             }
-        }
-
-        auto find_node(const aiNode& node, const string& name) -> const aiNode* {
-            if (node.mName.C_Str() == name) {
-                return &node;
-            }
-            for (unsigned i = 0; i < node.mNumChildren; ++i) {
-                if (const auto* found = find_node(*node.mChildren[i], name)) {
-                    return found;
-                }
-            }
-            return nullptr;
-        }
-
-        auto node_world(const aiNode& root, const aiNode& target) -> optional<mat4> {
-            // Path root → target by search; accumulate transforms.
-            struct Frame {
-                const aiNode* node;
-                mat4 world;
-            };
-            vector<Frame> stack{{&root, ai_mat4(root.mTransformation)}};
-            while (not stack.empty()) {
-                const auto frame = stack.back();
-                stack.pop_back();
-                if (frame.node == &target) {
-                    return frame.world;
-                }
-                for (unsigned i = 0; i < frame.node->mNumChildren; ++i) {
-                    const auto* child = frame.node->mChildren[i];
-                    stack.push_back({child, frame.world * ai_mat4(child->mTransformation)});
-                }
-            }
-            return {};
+            std::ranges::sort(meshes, [&](const aiMesh* left, const aiMesh* right) { return material_name(scene, *left) < material_name(scene, *right); });
+            for (const auto* mesh : meshes) append_mesh(out, *mesh, mat4{1.0f}, catalog, scene);
+            const auto entry = static_cast<EntryId>(out.entries.size());
+            out.entryCatalog.emplace(std::move(name), entry);
+            out.entries.push_back(Asset::Entry{
+                .vertices = Asset::Range{.first = renderer::Count{0}, .count = static_cast<renderer::Count>(out.cpu.positions.size())},
+                .indices = Asset::Range{.first = firstIndex, .count = static_cast<renderer::Count>(out.cpu.indices.size()) - firstIndex},
+                .surfaces = Asset::Range{.first = renderer::Count{0}, .count = static_cast<renderer::Count>(out.surfaces.size())},
+                .mounts = Asset::Range{.first = renderer::Count{0}, .count = renderer::Count{0}},
+            });
+            out.surfaceCatalogs.push_back(std::move(catalog));
         }
 
         auto read_assimp_scene(Assimp::Importer& importer, const filepath& path) -> const aiScene* {
@@ -280,7 +191,7 @@ namespace rmmr::resource::geometry {
                 std::swap(indices[i + 1], indices[i + 2]);
         }
 
-        auto load_assimp(const filepath& path, const string& layer) -> optional<LoadedMesh> {
+        auto load_assimp(const filepath& path) -> optional<LoadedMesh> {
             Assimp::Importer importer;
             const auto* scene = read_assimp_scene(importer, path);
             if (not scene) {
@@ -290,35 +201,27 @@ namespace rmmr::resource::geometry {
             LoadedMesh out{};
             out.cpu.layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"});
 
-            if (layer.empty()) {
-                const mat4 home = home_world(*scene);
-                const mat4 home_inverse = glm::inverse(home);
-                gather_node(out, *scene, *scene->mRootNode, mat4{1.0f}, home_inverse);
+            const auto extension = path.extension().string();
+            const bool lwo = extension == ".lwo" or extension == ".LWO";
+            if (lwo) {
+                vector<const aiNode*> nodes;
+                collectEntryNodes(*scene->mRootNode, nodes);
+                std::ranges::sort(nodes, [](const aiNode* left, const aiNode* right) { return string{left->mName.C_Str()} < string{right->mName.C_Str()}; });
+                for (const auto* node : nodes) appendEntry(out, *scene, *node);
             } else {
-                const auto* target = find_node(*scene->mRootNode, layer);
-                if (not target) {
-                    return {};
-                }
-                const auto world = node_world(*scene->mRootNode, *target);
-                if (not world) {
-                    return {};
-                }
-                const mat4 home_inverse = glm::inverse(*world);
-                gather_node_meshes_only(out, *scene, *target, *world, home_inverse);
+                appendWhole(out, *scene, path.stem().string());
             }
 
             if (out.cpu.positions.empty() or out.cpu.indices.empty()) {
                 return {};
             }
 
-            const auto ext = path.extension().string();
-            if (ext == ".lwo" or ext == ".LWO")
-                restore_lwo_file_space(out);
+            if (lwo) restore_lwo_file_space(out);
 
             return out;
         }
 
-        auto bake(Writing context, system::Device::Id device, const CpuPresentation& cpu) -> Runtime::Quantum {
+        auto bake(Writing context, system::Device::Id device, const CpuPresentation& cpu, const vector<SurfaceId>& sourcePrimitiveSurfaces) -> Runtime::Quantum {
             if (cpu.positions.empty()) {
                 return context.refuse("resource::geometry::bake: positions are empty");
             }
@@ -407,38 +310,47 @@ namespace rmmr::resource::geometry {
             glfwMakeContextCurrent(device_quantum.handle);
 
             const std::size_t vertex_count = cpu.positions.size();
-            const bool indexed = not cpu.indices.empty();
+            const bool sourceIndexed = not cpu.indices.empty();
+            const bool indexed = true;
 
             renderer::VertexArray vao{};
             renderer::VertexBuffer vbo{};
             renderer::ElementBuffer ebo{};
+            renderer::StorageBuffer primitiveSurfaces{};
             glCreateVertexArrays(1, &vao);
             glCreateBuffers(1, &vbo);
+            glCreateBuffers(1, &primitiveSurfaces);
 
-            if (not vao || not vbo) {
+            if (not vao || not vbo || not primitiveSurfaces) {
                 if (vao) glDeleteVertexArrays(1, &vao);
                 if (vbo) glDeleteBuffers(1, &vbo);
-                return context.refuse("resource::geometry::bake: failed to allocate VAO/VBO");
+                if (primitiveSurfaces) glDeleteBuffers(1, &primitiveSurfaces);
+                return context.refuse("resource::geometry::bake: failed to allocate VAO/VBO/primitive-surface SSBO");
             }
 
             std::vector<GLuint> index_data;
-            if (indexed) {
+            if (sourceIndexed) {
                 index_data.reserve(cpu.indices.size());
                 for (const auto index : cpu.indices) {
                     if (index < 0 || static_cast<std::size_t>(index) >= vertex_count) {
                         glDeleteVertexArrays(1, &vao);
                         glDeleteBuffers(1, &vbo);
+                        glDeleteBuffers(1, &primitiveSurfaces);
                         return context.refuse("resource::geometry::bake: index out of positions range");
                     }
                     index_data.push_back(static_cast<GLuint>(index));
                 }
 
-                glCreateBuffers(1, &ebo);
-                if (not ebo) {
-                    glDeleteVertexArrays(1, &vao);
-                    glDeleteBuffers(1, &vbo);
-                    return context.refuse("resource::geometry::bake: failed to allocate EBO");
-                }
+            } else {
+                index_data.reserve(vertex_count);
+                for (std::size_t index = 0; index < vertex_count; ++index) index_data.push_back(static_cast<GLuint>(index));
+            }
+            glCreateBuffers(1, &ebo);
+            if (not ebo) {
+                glDeleteVertexArrays(1, &vao);
+                glDeleteBuffers(1, &vbo);
+                glDeleteBuffers(1, &primitiveSurfaces);
+                return context.refuse("resource::geometry::bake: failed to allocate EBO");
             }
 
             auto setupAttrib = [&](GLuint index, GLint components, GLuint relativeOffset) {
@@ -567,12 +479,24 @@ namespace rmmr::resource::geometry {
                 glNamedBufferData(ebo, renderer::SizePtr(index_data.size() * sizeof(GLuint)), index_data.data(), GL_STATIC_DRAW);
                 glVertexArrayElementBuffer(vao, ebo);
             }
+            const auto primitiveCount = index_data.size() / 3;
+            vector<SurfaceId> primitiveSurfaceData = sourcePrimitiveSurfaces;
+            if (primitiveSurfaceData.empty()) primitiveSurfaceData.resize(primitiveCount, SurfaceId{0});
+            if (primitiveSurfaceData.size() != primitiveCount) {
+                glDeleteVertexArrays(1, &vao);
+                glDeleteBuffers(1, &vbo);
+                if (ebo) glDeleteBuffers(1, &ebo);
+                glDeleteBuffers(1, &primitiveSurfaces);
+                return context.refuse("resource::geometry::bake: primitive surface count does not match triangle count");
+            }
+            glNamedBufferData(primitiveSurfaces, renderer::SizePtr(primitiveSurfaceData.size() * sizeof(SurfaceId)), primitiveSurfaceData.data(), GL_STATIC_DRAW);
 
             return Runtime::Quantum{
                 .device = device,
                 .vao = vao,
                 .vbo = vbo,
                 .ebo = ebo,
+                .primitiveSurfaces = primitiveSurfaces,
                 .vertex_count = renderer::Count(vertex_count),
                 .index_count = renderer::Count(index_data.size()),
             };
@@ -591,7 +515,7 @@ namespace rmmr::resource::geometry {
         }
 
         void release_gl(Writing context, const Runtime::Quantum& last) {
-            if (not last.vao && not last.vbo && not last.ebo) {
+            if (not last.vao && not last.vbo && not last.ebo && not last.primitiveSurfaces) {
                 return;
             }
             glfwMakeContextCurrent(with<system::Device>::get(context, last.device).handle);
@@ -606,6 +530,10 @@ namespace rmmr::resource::geometry {
             if (last.ebo) {
                 auto ebo = last.ebo;
                 glDeleteBuffers(1, &ebo);
+            }
+            if (last.primitiveSurfaces) {
+                auto primitiveSurfaces = last.primitiveSurfaces;
+                glDeleteBuffers(1, &primitiveSurfaces);
             }
         }
 
@@ -622,10 +550,26 @@ namespace rmmr::resource::geometry {
             return with<GeometryRuntime_group>::addElement(context, device, std::move(quantum));
         }
 
+        void setSingleEntry(Writing context, Asset::Id assetId, const CpuPresentation& cpu) {
+            const auto indexCount = static_cast<renderer::Count>(cpu.indices.empty() ? cpu.positions.size() : cpu.indices.size());
+            auto asset = with<Asset>::modify(context, assetId);
+            asset->entries = {Asset::Entry{
+                .vertices = Asset::Range{.first = renderer::Count{0}, .count = static_cast<renderer::Count>(cpu.positions.size())},
+                .indices = Asset::Range{.first = renderer::Count{0}, .count = indexCount},
+                .surfaces = Asset::Range{.first = renderer::Count{0}, .count = renderer::Count{1}},
+                .mounts = Asset::Range{.first = renderer::Count{0}, .count = renderer::Count{0}},
+            }};
+            asset->surfaces = {Asset::Surface{.indices = Asset::Range{.first = renderer::Count{0}, .count = indexCount}}};
+            asset->mounts = {};
+            asset->entryCatalog = {{"mesh", EntryId{0}}};
+            asset->surfaceCatalogs = {{{"surface", SurfaceId{0}}}};
+        }
+
     } // namespace
 
     auto Asset::Actions::install(Writing context, Id asset_id, system::Device::Id device, const CpuPresentation& cpu) -> optional<Runtime::Id> {
-        auto quantum = bake(context, device, cpu);
+        setSingleEntry(context, asset_id, cpu);
+        auto quantum = bake(context, device, cpu, {});
         if (not quantum.vao) {
             return {};
         }
@@ -638,27 +582,33 @@ namespace rmmr::resource::geometry {
         const auto& loader = with<Loader>::get(context, asset_id);
         const auto& unit = with<Unit>::get(context, asset_id);
         const auto path = with<Manager>::resolve(context, unit, loader.file);
-        base::whisper("rmmr: geometry::Loader '{}' ← {}{}", unit.name.text(), path.string(), loader.layer.empty() ? "" : std::format(" layer '{}'", loader.layer));
+        base::whisper("rmmr: geometry::Loader '{}' ← {}", unit.name.text(), path.string());
 
-        const auto loaded = load_assimp(path, loader.layer);
+        const auto loaded = load_assimp(path);
         if (not loaded) {
-            return context.refuse(std::format(
-                "resource::geometry::Loader::materialize: Assimp failed '{}' layer '{}'",
-                path.string(),
-                loader.layer.empty() ? "(whole)" : loader.layer));
+            return context.refuse(std::format("resource::geometry::Loader::materialize: Assimp failed '{}'", path.string()));
         }
 
         {
             auto asset = with<Asset>::modify(context, asset_id);
-            asset->parts = loaded->parts;
-            asset->slots = loaded->slots;
+            asset->entries = loaded->entries;
+            asset->surfaces = loaded->surfaces;
+            asset->mounts = loaded->mounts;
+            asset->entryCatalog = loaded->entryCatalog;
+            asset->surfaceCatalogs = loaded->surfaceCatalogs;
         }
-        return Asset::Actions::install(context, asset_id, device, loaded->cpu);
+        auto quantum = bake(context, device, loaded->cpu, loaded->primitiveSurfaces);
+        if (not quantum.vao) return {};
+        const auto runtimeId = install_runtime(context, device, asset_id, std::move(quantum));
+        with<Runtimes>::modify(context, device)->geometries_id_mapping.insert_or_assign(asset_id, runtimeId);
+        return runtimeId;
     }
 
     auto Generator::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {
         const auto& generator = with<Generator>::get(context, asset_id);
-        auto quantum = bake(context, device, cpu_for(generator.type));
+        const auto cpu = cpu_for(generator.type);
+        setSingleEntry(context, asset_id, cpu);
+        auto quantum = bake(context, device, cpu, {});
         if (not quantum.vao) {
             return {};
         }

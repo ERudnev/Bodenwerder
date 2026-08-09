@@ -1,4 +1,4 @@
-#version 450 core
+#version 460 core
 
 // Engine defaultBlur: box-blur scene color using only samples whose identiffy != 0.
 layout(binding = 0) uniform sampler2D u_sceneColor;

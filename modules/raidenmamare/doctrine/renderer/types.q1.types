@@ -13,30 +13,60 @@ namespace rmmr
     struct RenderState
       blend: BlendMode
 
-    struct InstanceSource
-      buffer: VertexBuffer
-      byte_offset: IntPtr
+    // Immutable actor-local lattice transform. The world transform remains on the actor.
+    struct DiscretePose
+      pos: index3
+      ori: Signed32
 
-    struct IndexRange
-      start: Count
-      count: Count
+    // Binary-compatible with OpenGL DrawElementsIndirectCommand.
+    struct DrawElementsIndirect
+      count: Integer32
+      instanceCount: Integer32
+      firstIndex: Integer32
+      baseVertex: Signed32
+      baseInstance: Integer32
 
-    struct Command
+    // gl_DrawID selects metadata; gl_BaseInstance selects DiscretePose.
+    // Surface layer = surfacePalette[surfaceBase + primitiveSurfaces[primitiveBase + gl_PrimitiveID]].
+    struct DrawMetadata
+      primitiveBase: Integer32
+      surfaceBase: Integer32
+
+    // Mesh shader SSBO bindings:
+    // 7 ActorState, 8 DiscretePose[], 9 DrawMetadata[], 10 uint surfacePalette[], 11 uint primitiveSurfaces[].
+
+    // std430-compatible actor data. albedoOpacity.w is opacity;
+    // latticePattern is latticeStep/patternScale.
+    struct ActorState
       model: mat4
+      albedoOpacity: vec4
+      latticePattern: vec2
+      scenicAlias: Integer32
+      spriteIndex: Integer32
+
+    // std140-compatible frame/pass data. Vec4 tails carry meaningful values.
+    struct PassState
+      view: mat4
+      projection: mat4
+      lightSpace: mat4
+      ambientColorIntensity: vec4
+      primaryLightPositionIntensity: vec4
+      primaryLightColorRange: vec4
+
+    struct GpuBatch
       geometry: #resource::geometry::Runtime
       material: #resource::material::Runtime
       shader: #resource::shader::Runtime
       texpack: #resource::texpack::Runtime?
-      albedoLayer: integer?
       sprite: #resource::sprite::Runtime?
-      sprite_index: integer
-      albedo: RGB
-      opacity: float
-      pattern_scale: float
-      scenicAlias: Integer32
-      instance_data: InstanceSource
-      instance_count: Count
-      render_state: RenderState
-      indices: IndexRange?
+      actorState: StorageBuffer
+      poses: StorageBuffer
+      drawMetadata: StorageBuffer
+      surfacePalette: StorageBuffer
+      metadataByteOffset: IntPtr
+      metadataByteSize: SizePtr
+      indirect: IndirectBuffer
+      drawCount: Count
+      renderState: RenderState
 
     using CommandBuffer as @external(rmmr::renderer::CommandBuffer)

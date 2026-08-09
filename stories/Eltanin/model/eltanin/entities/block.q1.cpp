@@ -18,7 +18,7 @@ namespace eltanin {
             return locals;
         }
 
-        auto spawn_with_locals(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, vector<vec3> locals, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Block::Id {
+        auto spawnWithLocals(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, vector<vec3> locals, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Block::Id {
             if (locals.empty()) {
                 return context.refuse("eltanin::Block::spawn: rest locals empty");
             }
@@ -51,35 +51,35 @@ namespace eltanin {
                 },
                 .restored = pose,
             });
-            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(actor_quantum));
+            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(actorQuantum), std::move(stateQuantum));
             return with<Block>::create(context, Block::Quantum{.body = body, .actor = actor});
         }
 
     } // namespace
 
-    auto Block::Actions::spawnPlate(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::plate::shape shape, mech::slot::plate, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
+    auto Block::Actions::spawnPlate(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::plate::shape shape, mech::slot::plate, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Id {
         const auto index = static_cast<std::size_t>(shape);
         if (index >= mech::plate::perimeter.size()) {
             return context.refuse("eltanin::Block::spawnPlate: shape out of range");
         }
-        return spawn_with_locals(context, root, pose, locals_from_corner_indices(mech::plate::perimeter[index]), std::move(actor_quantum));
+        return spawnWithLocals(context, root, pose, locals_from_corner_indices(mech::plate::perimeter[index]), std::move(actorQuantum), std::move(stateQuantum));
     }
 
-    auto Block::Actions::spawnFrame(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::frame::shape shape, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
+    auto Block::Actions::spawnFrame(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::frame::shape shape, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Id {
         const auto index = static_cast<std::size_t>(shape);
         if (index >= mech::frame::corners.size()) {
             return context.refuse("eltanin::Block::spawnFrame: shape out of range");
         }
-        return spawn_with_locals(context, root, pose, locals_from_corner_indices(mech::frame::corners[index]), std::move(actor_quantum));
+        return spawnWithLocals(context, root, pose, locals_from_corner_indices(mech::frame::corners[index]), std::move(actorQuantum), std::move(stateQuantum));
     }
 
-    auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::frame::shape shape, mech::slot::inner role, rmmr::scene::actor::Mesh::Quantum actor_quantum) -> Id {
-        actor_quantum.albedo = mech::slot::color(role);
+    auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::frame::shape shape, mech::slot::inner role, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Id {
+        stateQuantum.albedo = mech::slot::color(role);
         const auto index = static_cast<std::size_t>(shape);
         if (index >= mech::frame::corners.size()) {
             return context.refuse("eltanin::Block::spawnInner: shape out of range");
         }
-        return spawn_with_locals(context, root, pose, locals_from_corner_indices(mech::frame::corners[index]), std::move(actor_quantum));
+        return spawnWithLocals(context, root, pose, locals_from_corner_indices(mech::frame::corners[index]), std::move(actorQuantum), std::move(stateQuantum));
     }
 
     struct Block::Internals : Block::DefaultInternals {

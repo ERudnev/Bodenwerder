@@ -1,13 +1,17 @@
 #include <rmmr/system/content/loader_lwo.h>
 
+#include <algorithm>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <vector>
 
 namespace {
 
     using rmmr::system::content::LwoDocument;
 
+    // Diagnostic structure only; runtime entry/surface IDs come from geometry::Asset catalogs.
     void log_document(const LwoDocument& doc) {
         std::cout << "file: " << doc.path().string() << '\n';
 
@@ -17,10 +21,20 @@ namespace {
         }
 
         std::cout << "meshes (" << doc.meshes().size() << "):\n";
-        for (const auto& mesh : doc.meshes()) {
-            std::cout << "  mesh '" << mesh.name << "' submeshes=" << mesh.submeshes.size() << '\n';
-            for (const auto& sub : mesh.submeshes) {
-                std::cout << "    submesh '" << sub.name << "'\n";
+        std::uint32_t entryId = 0;
+        std::uint32_t surfaceId = 0;
+        std::vector<const LwoDocument::Mesh*> meshes;
+        for (const auto& mesh : doc.meshes()) meshes.push_back(&mesh);
+        std::ranges::sort(meshes, {}, &LwoDocument::Mesh::name);
+        for (const auto* meshPointer : meshes) {
+            const auto& mesh = *meshPointer;
+            std::cout << "  entry " << entryId++ << " '" << mesh.name << "' surfaces=[" << surfaceId << ", " << surfaceId + mesh.submeshes.size() << ")\n";
+            std::vector<const LwoDocument::Submesh*> surfaces;
+            for (const auto& sub : mesh.submeshes) surfaces.push_back(&sub);
+            std::ranges::sort(surfaces, {}, &LwoDocument::Submesh::name);
+            for (const auto* subPointer : surfaces) {
+                const auto& sub = *subPointer;
+                std::cout << "    surface " << surfaceId++ << " '" << sub.name << "'\n";
             }
         }
     }

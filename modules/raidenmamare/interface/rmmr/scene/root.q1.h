@@ -2,7 +2,6 @@
 
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
-#include <rmmr/scene/actors/simple.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
@@ -43,9 +42,8 @@ namespace rmmr::scene {
         static auto createScene(Writing) -> Root::Id;
         static auto createCamera(Writing, Root::Id, Pose, float fov_x) -> Camera::Id;
         static auto createLight(Writing, Root::Id, Pose, Light::Quantum) -> Light::Id;
-        static auto createSimpleActor(Writing, Root::Id, Pose, actor::Simple::Quantum) -> actor::Simple::Id;
-        static auto createMeshActor(Writing, Root::Id, Pose, actor::Mesh::Quantum) -> actor::Mesh::Id;
-        static auto createGrid(Writing, Root::Id, Pose, Grid::Quantum) -> Grid::Id;
+        static auto createMeshActor(Writing, Root::Id, Pose, actor::Mesh::Quantum, actor::MeshState::Quantum) -> actor::Mesh::Id;
+        static auto createGrid(Writing, Root::Id, system::Device::Id, Pose, Grid::Quantum) -> Grid::Id;
         static void render(Reading, Root::Id, system::Device::Id, renderer::CommandBuffer& where);
     };
 
@@ -54,6 +52,7 @@ namespace rmmr::scene {
     struct Flat2d : Feature<Flat2d, Root> {
         struct Quantum {
             index2 size;
+            system::Device::Id device;
         };
         struct Actions : BaseActions {
             static auto createCamera(Writing, Id, Pose) -> Camera::Id;

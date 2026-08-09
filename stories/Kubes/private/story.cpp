@@ -10,7 +10,7 @@
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/texpack.q1.h>
-#include <rmmr/scene/actors/simple.q1.h>
+#include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/semantics/rendering.h>
@@ -18,6 +18,7 @@
 #include <rmmr/system/viewport.q1.h>
 
 #include <numbers>
+#include <utility>
 
 namespace kubes {
 
@@ -62,14 +63,7 @@ namespace kubes {
                 .techniques = {
                     {renderer::Pass::environment, Material::Technique{
                         .program = with<Unit>::remember(context, sky_sphere_shader),
-                        .uniforms = ::rmmr::material::Semantics::ids_of({
-                            "model",
-                            "view",
-                            "projection",
-                            "albedo",
-                            "albedoMap",
-                            "albedoLayer",
-                        }),
+                        .uniforms = ::rmmr::material::Semantics::ids_of({"albedoMap"}),
                     }},
                 },
                 .nearest = false,
@@ -102,25 +96,34 @@ namespace kubes {
 
         const auto root = with<scene::Interface>::createScene(context);
 
-        resource::SkySphereGenerator::Actions::materialize(context, *assets.skySphereGeometry, window);
+        if (not resource::SkySphereGenerator::Actions::materialize(context, *assets.skySphereGeometry, window)) {
+            return (void)context.refuse("kubes::KubeOfKubes::populateWorld: sky geometry materialization failed");
+        }
 
-        with<scene::Interface>::createGrid(context, root,
+        with<scene::Interface>::createGrid(context, root, window,
             Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
-            item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .pattern_scale = 1.0f});
+            item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .patternScale = 1.0f});
 
         if (not assets.sprites) {
             return (void)context.refuse("kubes::KubeOfKubes::populateWorld: sprites texpack missing");
         }
-        const auto sky = with<scene::Interface>::createSimpleActor(context, root,
-            Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
-            item<scene::actor::Simple>{
-                .geometry = *assets.skySphereGeometry,
-                .material = *assets.skySphereMaterial,
-                .texpack = assets.sprites,
-                .albedoLayer = string{"skySphere.png"},
-                .albedo = RGB{1.0f, 1.0f, 1.0f},
-                .scale = vec3{1.0f, 1.0f, 1.0f},
-            });
+        const auto identityPose = renderer::DiscretePose{.pos = index3{0, 0, 0}, .ori = renderer::Signed32{0}};
+        const auto skyResolved = ::rmmr::resource::meshpack::Asset::Resolved{
+            .geometry = *assets.skySphereGeometry,
+            .entry = ::rmmr::resource::geometry::EntryId{0},
+            .surfaces = {{::rmmr::resource::geometry::SurfaceId{0}, ::rmmr::resource::material::Instance{.material = *assets.skySphereMaterial, .textures = {{"albedoMap", "skySphere.png"}}}}},
+            .texpack = assets.sprites,
+        };
+        const auto skyMesh = scene::actor::Mesh::Actions::compose(context, window, {scene::actor::Mesh::Occurrence{.entry = skyResolved, .pose = identityPose}});
+        if (not skyMesh) return (void)context.refuse("kubes::KubeOfKubes::populateWorld: sky mesh composition failed");
+        const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), std::move(*skyMesh), scene::actor::MeshState::Quantum{
+            .albedo = RGB{1.0f, 1.0f, 1.0f},
+            .scale = vec3{1.0f, 1.0f, 1.0f},
+            .latticeStep = 1.0f,
+            .patternScale = 1.0f,
+            .opacity = 1.0f,
+            .visible = true,
+        });
 
         const auto camera = with<scene::Interface>::createCamera(context, root,
             Pose::from(Pos{10.5f, 10.0f, 14.0f}, HPB{36.87f, -29.74f, 0.0f}),

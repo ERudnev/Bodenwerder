@@ -3,16 +3,14 @@ import "resources/materials"
 import "renderer/types"
 import "system/core"
 import "math"
-import "scene/node"
+import "scene/actors/mesh"
 
 namespace rmmr
   namespace scene
 
-    feature Grid of Node
+    feature Grid of actor::Mesh
       one
         geometry: #resource::geometry::Asset
         material: #resource::material::Asset
         opacity: float
-        ?submit(#system::Device, >where: renderer::CommandBuffer)
-      all
-        >create(Pos, HPB, one) -> #
+        patternScale: float

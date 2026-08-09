@@ -1,6 +1,7 @@
 #include "physics/ui.h"
 #include "mech/semantics/together.include.h"
 
+#include <eltanin/world.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -8,6 +9,8 @@
 #include <base/logging.h>
 
 #include <imgui.h>
+
+#include <utility>
 
 namespace eltanin::phys {
 
@@ -22,7 +25,7 @@ namespace eltanin::phys {
             return {};
         }
 
-        void destroy_actor(Writing context, rmmr::scene::actor::Simple::Id actor) {
+        void destroy_actor(Writing context, rmmr::scene::actor::Mesh::Id actor) {
             for (const auto [root, group] : context->aspect<rmmr::scene::Node_group>().items()) {
                 if (group.contains(actor)) {
                     with<rmmr::scene::Node_group>::deleteElement(context, root, actor);
@@ -47,14 +50,31 @@ namespace eltanin::phys {
             base::message("eltanin::phys::Ui: shapeMaterial/Texpack/Layer/Geometry unset; skip collider actors");
             return;
         }
+        const auto device = with<World>::get_global(context).window;
+        if (not device) {
+            base::message("eltanin::phys::Ui: World window unset; skip collider actors");
+            return;
+        }
+        const auto resolved = rmmr::resource::meshpack::Asset::Resolved{
+            .geometry = *shapeGeometry,
+            .entry = rmmr::resource::geometry::EntryId{0},
+            .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = *shapeMaterial, .textures = {{"albedoMap", *shapeAlbedoLayer}}}}},
+            .texpack = *shapeTexpack,
+        };
+        const auto identityPose = rmmr::renderer::DiscretePose{.pos = index3{0, 0, 0}, .ori = rmmr::renderer::Signed32{0}};
         for (const auto [atomic_id, atomic] : context->aspect<Atomic>().items()) {
-            const auto actor = with<rmmr::scene::Interface>::createSimpleActor(context, *root, atomic.restored, item<rmmr::scene::actor::Simple>{
-                .geometry = *shapeGeometry,
-                .material = *shapeMaterial,
-                .texpack = *shapeTexpack,
-                .albedoLayer = *shapeAlbedoLayer,
+            const auto mesh = rmmr::scene::actor::Mesh::Actions::compose(context, *device, {rmmr::scene::actor::Mesh::Occurrence{.entry = resolved, .pose = identityPose}});
+            if (not mesh) {
+                base::message("eltanin::phys::Ui: collider mesh composition failed");
+                continue;
+            }
+            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, *root, atomic.restored, std::move(*mesh), rmmr::scene::actor::MeshState::Quantum{
                 .albedo = rmmr::RGB{1.0f, 1.0f, 1.0f},
                 .scale = vec3{mech::physical::edgeMeters, mech::physical::edgeMeters, mech::physical::edgeMeters},
+                .latticeStep = 1.0f,
+                .patternScale = 1.0f,
+                .opacity = 1.0f,
+                .visible = true,
             });
             state.actors.push_back(actor);
             bodies.push_back(atomic_id);
@@ -80,14 +100,31 @@ namespace eltanin::phys {
             base::message("eltanin::phys::Ui: particleGeometry/Material unset; skip particle actors");
             return;
         }
+        const auto device = with<World>::get_global(context).window;
+        if (not device) {
+            base::message("eltanin::phys::Ui: World window unset; skip particle actors");
+            return;
+        }
+        const auto resolved = rmmr::resource::meshpack::Asset::Resolved{
+            .geometry = *particleGeometry,
+            .entry = rmmr::resource::geometry::EntryId{0},
+            .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = *particleMaterial, .textures = {}}}},
+            .texpack = {},
+        };
+        const auto identityPose = rmmr::renderer::DiscretePose{.pos = index3{0, 0, 0}, .ori = rmmr::renderer::Signed32{0}};
         for (const auto [particle_id, particle] : context->aspect<Particle>().items()) {
-            const auto actor = with<rmmr::scene::Interface>::createSimpleActor(context, *root, rmmr::Pose::from(particle.current, HPB{0.0f, 0.0f, 0.0f}), item<rmmr::scene::actor::Simple>{
-                .geometry = *particleGeometry,
-                .material = *particleMaterial,
-                .texpack = {},
-                .albedoLayer = {},
+            const auto mesh = rmmr::scene::actor::Mesh::Actions::compose(context, *device, {rmmr::scene::actor::Mesh::Occurrence{.entry = resolved, .pose = identityPose}});
+            if (not mesh) {
+                base::message("eltanin::phys::Ui: particle mesh composition failed");
+                continue;
+            }
+            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, *root, rmmr::Pose::from(particle.current, HPB{0.0f, 0.0f, 0.0f}), std::move(*mesh), rmmr::scene::actor::MeshState::Quantum{
                 .albedo = rmmr::RGB{1.0f, 1.0f, 1.0f},
                 .scale = vec3{particleWorldScale, particleWorldScale, particleWorldScale},
+                .latticeStep = 1.0f,
+                .patternScale = 1.0f,
+                .opacity = 1.0f,
+                .visible = true,
             });
             state.particles.push_back(actor);
             particleIds.push_back(particle_id);
@@ -107,8 +144,8 @@ namespace eltanin::phys {
         while (slot < state.actors.size()) {
             const auto actor = state.actors[slot];
             const auto body = bodies[slot];
-            if (not with<Atomic>::exists(context, body) or not with<rmmr::scene::actor::Simple>::exists(context, actor)) {
-                if (with<rmmr::scene::actor::Simple>::exists(context, actor)) {
+            if (not with<Atomic>::exists(context, body) or not with<rmmr::scene::actor::Mesh>::exists(context, actor)) {
+                if (with<rmmr::scene::actor::Mesh>::exists(context, actor)) {
                     destroy_actor(context, actor);
                 }
                 state.actors.erase(state.actors.begin() + static_cast<std::ptrdiff_t>(slot));
@@ -125,8 +162,8 @@ namespace eltanin::phys {
         while (slot < state.particles.size()) {
             const auto actor = state.particles[slot];
             const auto particle_id = particleIds[slot];
-            if (not with<Particle>::exists(context, particle_id) or not with<rmmr::scene::actor::Simple>::exists(context, actor)) {
-                if (with<rmmr::scene::actor::Simple>::exists(context, actor)) {
+            if (not with<Particle>::exists(context, particle_id) or not with<rmmr::scene::actor::Mesh>::exists(context, actor)) {
+                if (with<rmmr::scene::actor::Mesh>::exists(context, actor)) {
                     destroy_actor(context, actor);
                 }
                 state.particles.erase(state.particles.begin() + static_cast<std::ptrdiff_t>(slot));

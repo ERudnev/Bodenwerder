@@ -7,7 +7,7 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/texpack.q1.h>
-#include <rmmr/scene/actors/simple.q1.h>
+#include <rmmr/scene/actors/mesh.q1.h>
 
 #include <base/maybe.h>
 
@@ -18,8 +18,8 @@ namespace eltanin::phys {
 
     struct Ui {
         struct State {
-            vector<rmmr::scene::actor::Simple::Id> actors;
-            vector<rmmr::scene::actor::Simple::Id> particles;
+            vector<rmmr::scene::actor::Mesh::Id> actors;
+            vector<rmmr::scene::actor::Mesh::Id> particles;
         };
         State state;
         base::maybe<rmmr::resource::material::Asset::Id> shapeMaterial;

@@ -4,6 +4,8 @@
 #include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
+#include <base/logging.h>
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -19,6 +21,12 @@ namespace rmmr::system {
 
         constexpr integer k_glfw_key_capacity = GLFW_KEY_LAST + 1;
         constexpr integer k_glfw_button_capacity = GLFW_MOUSE_BUTTON_LAST + 1;
+
+        void APIENTRY debugMessage(GLenum, GLenum, GLuint, GLenum severity, GLsizei, const GLchar* message, const void*) {
+            if (severity == GL_DEBUG_SEVERITY_HIGH or severity == GL_DEBUG_SEVERITY_MEDIUM) {
+                base::message("OpenGL: {}", message);
+            }
+        }
 
         auto empty_input_state() -> Window::InputState {
             return Window::InputState{
@@ -36,6 +44,9 @@ namespace rmmr::system {
         }
 
         auto create_glfw_handle(const Core::GLVer& version, const string& title, const index2& requested_size, Window::Presentation presentation) -> GLFWwindow* {
+            if (version.major != 4 or version.minor != 6) {
+                throw std::runtime_error("system::Window::create: Raidenmamare requires OpenGL 4.6 core");
+            }
             const int width = std::max(static_cast<int>(requested_size.x), 1);
             const int height = std::max(static_cast<int>(requested_size.y), 1);
             const int context_major = std::max(static_cast<int>(version.major), 1);
@@ -62,9 +73,19 @@ namespace rmmr::system {
                 glfwDestroyWindow(window);
                 throw std::runtime_error("system::Window::create: glewInit() failed");
             }
+            GLint actualMajor = 0;
+            GLint actualMinor = 0;
+            glGetIntegerv(GL_MAJOR_VERSION, &actualMajor);
+            glGetIntegerv(GL_MINOR_VERSION, &actualMinor);
+            if (actualMajor < 4 or (actualMajor == 4 and actualMinor < 6)) {
+                glfwDestroyWindow(window);
+                throw std::runtime_error("system::Window::create: OpenGL 4.6 core context unavailable");
+            }
 
             glEnable(GL_DEPTH_TEST);
             glEnable(GL_CULL_FACE);
+            glEnable(GL_DEBUG_OUTPUT);
+            glDebugMessageCallback(debugMessage, nullptr);
 
             return window;
         }

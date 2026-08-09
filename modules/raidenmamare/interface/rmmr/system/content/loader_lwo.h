@@ -7,8 +7,8 @@
 
 namespace rmmr::system::content {
 
-    // Content parse of an LWO file — structure only (no fQSM / GPU / logging).
-    // Consumers: meshpack::LoaderLwo (+ name table → Asset), meshpack_inspector (log).
+    // Inspector-only structural LWO parser (no fQSM / GPU / logging).
+    // Runtime meshpack loading uses geometry::Loader's single Assimp import and its catalogs.
     class LwoDocument {
     public:
         // Submesh local name = material name from the file (plain string, not "lib::own").

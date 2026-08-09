@@ -1,6 +1,6 @@
-import "resources/geometry"
+import "resources/meshpack"
 import "resources/materials"
-import "resources/texpack"
+import "resources/sprites"
 import "renderer/types"
 import "system/core"
 import "math"
@@ -11,18 +11,40 @@ namespace rmmr
     namespace actor
 
       feature Mesh of Node
+        struct Occurrence
+          entry: resource::meshpack::Asset::Resolved
+          pose: renderer::DiscretePose
+        struct Bucket
+          geometry: #resource::geometry::Runtime
+          material: #resource::material::Runtime
+          texpack: #resource::texpack::Runtime?
+          indirect: renderer::IndirectBuffer
+          drawCount: renderer::Count
+          metadataByteOffset: renderer::IntPtr
+          metadataByteSize: renderer::SizePtr
         one
-          geometry: #resource::geometry::Asset
-          parts: umap<string, resource::material::Instance>
-          texpack: #resource::texpack::Pack?
+          device: #system::Device
+          actorState: renderer::StorageBuffer
+          poses: renderer::StorageBuffer
+          drawMetadata: renderer::StorageBuffer
+          surfacePalette: renderer::StorageBuffer
+          sprite: #resource::sprite::Runtime?
+          spriteIndex: integer
+          buckets: vector<Bucket>
+          ?submit(#system::Device, >where: renderer::CommandBuffer)
+        all
+          ?compose(#system::Device, vector<Occurrence>)->one?
+          ?composeOne(#system::Device, #resource::geometry::Asset, #resource::material::Asset)->one?
+
+      feature MeshState of Mesh
+        one
           albedo: RGB
           scale: vec3
+          latticeStep: float
+          patternScale: float
           opacity: float
           visible: bool
           >setVisible(bool)
-          ?submit(#system::Device, >where: renderer::CommandBuffer)
-        all
-          >create(Pos, HPB, geometry: #resource::geometry::Asset, parts: umap<string, resource::material::Instance>, texpack: #resource::texpack::Pack?, albedo: RGB) -> #
 
       feature Identified of Mesh
         one

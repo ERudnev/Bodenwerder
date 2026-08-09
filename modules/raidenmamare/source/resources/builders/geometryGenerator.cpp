@@ -101,7 +101,7 @@ namespace rmmr::resource::builders::geometry {
         };
     }
 
-    // Cube with centered half-size window per face. Index order: all outer tris (6×24), then all window tris (6×6). Asset.parts: "outer", "window".
+    // Cube with centered half-size window per face. Index order: all outer tris (6×24), then all window tris (6×6).
     auto GeometryGenerator::bagel() -> CpuPresentation {
         constexpr integer major_segments = 32;
         constexpr integer minor_segments = 16;
@@ -164,28 +164,24 @@ namespace rmmr::resource::builders::geometry {
             .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position"}),
             .positions = vector<Pos>{
                 Pos{-half, 0.0f, -half},
-                Pos{half, 0.0f, half},
                 Pos{half, 0.0f, -half},
-                Pos{-half, 0.0f, -half},
-                Pos{-half, 0.0f, half},
                 Pos{half, 0.0f, half},
+                Pos{-half, 0.0f, half},
             },
             .normals = {},
             .uv0 = {},
-            .indices = {},
+            .indices = {0, 2, 1, 0, 3, 2},
         };
     }
 
     // Unit square in XY, origin at center. Normalized UV; atlas remaps in shader later.
-    // Two triangles, no IB. CCW from +Z.
+    // Two indexed triangles, CCW from +Z.
     auto GeometryGenerator::unitQuad() -> CpuPresentation {
         return CpuPresentation{
             .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "uv0"}),
             .positions = vector<Pos>{
                 Pos{-0.5f, -0.5f, 0.0f},
                 Pos{0.5f, -0.5f, 0.0f},
-                Pos{0.5f, 0.5f, 0.0f},
-                Pos{-0.5f, -0.5f, 0.0f},
                 Pos{0.5f, 0.5f, 0.0f},
                 Pos{-0.5f, 0.5f, 0.0f},
             },
@@ -194,12 +190,10 @@ namespace rmmr::resource::builders::geometry {
                 UV{0.0f, 0.0f},
                 UV{1.0f, 0.0f},
                 UV{1.0f, 1.0f},
-                UV{0.0f, 0.0f},
-                UV{1.0f, 1.0f},
                 UV{0.0f, 1.0f},
             },
             .color0 = {},
-            .indices = {},
+            .indices = {0, 1, 2, 0, 2, 3},
         };
     }
 

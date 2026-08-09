@@ -29,6 +29,7 @@ namespace tommy {
         const auto root = with<scene::Interface>::createScene(context);
         with<scene::Flat2d>::extend(context, root, scene::Flat2d::Quantum{
             .size = index2{1600, 900},
+            .device = window,
         });
         with<scene::actor::Sprite>::modify_global(context)->geometry = assets->unitQuad;
 

@@ -1,11 +1,17 @@
-#version 450 core
+#version 460 core
 
 in vec2 v_uv0;
 
 out vec4 FragColor;
 
-uniform vec3 u_albedo;
-uniform float u_opacity;
+layout(std430, binding = 7) readonly buffer ActorStateBuffer {
+    mat4 actorModel;
+    vec4 actorAlbedoOpacity;
+    vec2 actorLatticePattern;
+    uint actorScenicAlias;
+    uint actorSpriteIndex;
+};
+
 layout(binding = 0) uniform sampler2D u_atlasTexture;
 
 void main() {
@@ -14,5 +20,5 @@ void main() {
         discard;
     }
 
-    FragColor = vec4(texel.rgb * u_albedo, texel.a * u_opacity);
+    FragColor = vec4(texel.rgb * actorAlbedoOpacity.rgb, texel.a * actorAlbedoOpacity.a);
 }

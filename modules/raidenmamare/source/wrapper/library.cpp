@@ -72,7 +72,7 @@ namespace rmmr::wrapper::assets {
             .scale = overlay::Scale::full,
         });
 
-        handles.primitives = with<Assets>::add_meshpack_objs_loader(context, Unit::Name::from("rmmr", "primitives"), item<meshpack::LoaderObjs>{.file = "meshes/primitives/primitives.meshpack"});
+        handles.primitives = with<Assets>::add_meshpack_objs_loader(context, Unit::Name::from("rmmr", "primitives"), item<meshpack::LoaderObjs>{.file = "meshes/primitives/primitives.meshpack", .pending = {}});
 
         base::message("toy: hardcoded assets added");
     }

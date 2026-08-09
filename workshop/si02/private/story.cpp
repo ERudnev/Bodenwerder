@@ -198,6 +198,7 @@ namespace si02 {
         const auto root = with<scene::Interface>::createScene(context);
         with<scene::Flat2d>::extend(context, root, scene::Flat2d::Quantum{
             .size = index2{static_cast<integer>(k_screen_w), static_cast<integer>(k_screen_h)},
+            .device = window,
         });
         with<scene::actor::Sprite>::modify_global(context)->geometry = assets->unitQuad;
 

@@ -15,6 +15,8 @@ namespace rmmr::resource::geometry {
     using namespace fqsm::api;
 
     using Reference = resource::Unit::Reference;
+    using EntryId = renderer::Integer32;
+    using SurfaceId = renderer::Integer32;
 
     struct Runtime : Entity<Runtime> {
         struct Quantum {
@@ -22,6 +24,7 @@ namespace rmmr::resource::geometry {
             renderer::VertexArray vao;
             renderer::VertexBuffer vbo;
             renderer::ElementBuffer ebo;
+            renderer::StorageBuffer primitiveSurfaces;
             renderer::Count vertex_count;
             renderer::Count index_count;
         };
@@ -30,18 +33,29 @@ namespace rmmr::resource::geometry {
     };
 
     struct Asset : Feature<Asset, resource::Unit> {
-        // Empty Assimp/FBX node (no mesh), transform in home space (post-bake local = vertex space).
+        struct Range {
+            renderer::Count first;
+            renderer::Count count;
+        };
         struct Mount {
             string name;
             mat4 transform;
         };
-        struct Part {
-            renderer::Count startIndex;
-            renderer::Count countIndex;
+        struct Entry {
+            Range vertices;
+            Range indices;
+            Range surfaces;
+            Range mounts;
+        };
+        struct Surface {
+            Range indices;
         };
         struct Quantum {
-            vector<Mount> slots;
-            umap<string, Part> parts;
+            vector<Entry> entries;
+            vector<Surface> surfaces;
+            vector<Mount> mounts;
+            umap<string, EntryId> entryCatalog;
+            vector<umap<string, SurfaceId>> surfaceCatalogs;
         };
         struct Actions : BaseActions {
             // Bake CPU mesh into a Runtime and bind it in DeviceRuntimes mapping.
@@ -54,7 +68,6 @@ namespace rmmr::resource::geometry {
     struct Loader : Feature<Loader, Asset> {
         struct Quantum {
             filename file;
-            string layer; // empty = whole scene; else Assimp node / LWO layer name
         };
         struct Actions : BaseActions {
             static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;

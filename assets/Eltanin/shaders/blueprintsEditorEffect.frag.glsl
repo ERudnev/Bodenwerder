@@ -1,4 +1,4 @@
-#version 450 core
+#version 460 core
 
 // Blueprints selection overlay (Tesla-style):
 // (1) segmentation — foreign/own in selectedMap (smaller radius)

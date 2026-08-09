@@ -7,6 +7,8 @@ namespace rmmr
     namespace geometry
 
     using Reference as resource::Unit::Reference
+    using EntryId as renderer::Integer32
+    using SurfaceId as renderer::Integer32
 
     entity Runtime
       one
@@ -14,28 +16,36 @@ namespace rmmr
         vao: renderer::VertexArray
         vbo: renderer::VertexBuffer
         ebo: renderer::ElementBuffer
+        primitiveSurfaces: renderer::StorageBuffer
         vertex_count: renderer::Count
         index_count: renderer::Count
 
-    // Persistent mesh recipe. Scene may hold #geometry::Asset — never Runtime.
-    // Import: home (LCA of mesh nodes) baked into CPU verts at materialize — not stored.
-    // slots = leaf empties (Assimp/FBX nulls), transform relative to that home (= vertex space).
-    // OBJ authored in canonical space → home≡E, slots usually empty.
+    // One Asset/Runtime pool owns one source file and its common VAO/VBO/EBO/surface SSBO.
+    // Names are catalog-only; scene/render data carries numeric EntryId/SurfaceId.
     feature Asset of resource::Unit
+      struct Range
+        first: renderer::Count
+        count: renderer::Count
       struct Mount
         name: string
         transform: mat4
-      struct Part
-        startIndex: renderer::Count
-        countIndex: renderer::Count
+      struct Entry
+        vertices: Range
+        indices: Range
+        surfaces: Range
+        mounts: Range
+      struct Surface
+        indices: Range
       one
-        slots: vector<Mount>
-        parts: umap<string, Part>
+        entries: vector<Entry>
+        surfaces: vector<Surface>
+        mounts: vector<Mount>
+        entryCatalog: umap<string, EntryId>
+        surfaceCatalogs: vector<umap<string, SurfaceId>>
 
     feature Loader of Asset
       one
         file: filename
-        layer: string // empty = whole scene; non-empty = Assimp node name (LWO layer)
         >materialize(#system::Device) -> #Runtime?
 
     feature Generator of Asset

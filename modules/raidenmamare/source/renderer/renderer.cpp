@@ -36,9 +36,13 @@ namespace rmmr {
         , overlay_color_{.fbo = 0, .color = 0, .size = index2{0, 0}}
         , identity_{.all_fbo = 0, .selected_fbo = 0, .color = 0, .selected = 0, .depth = 0, .size = index2{0, 0}}
         , fullscreen_vao_{0}
+        , passStateBuffer{0}
+        , lastStats{.mdiCalls = 0, .indirectDraws = 0}
     {}
 
     Renderer::~Renderer() {
+        if (passStateBuffer)
+            glDeleteBuffers(1, &passStateBuffer);
         if (fullscreen_vao_)
             glDeleteVertexArrays(1, &fullscreen_vao_);
         auto release = [](ColorTarget& target) {
@@ -381,28 +385,11 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         // Authoring names resolved once; draw/bind path compares PersistentId only.
         const struct {
             using Id = material::Semantics::PersistentId;
-            Id model = material::Semantics::id_of("model");
-            Id view = material::Semantics::id_of("view");
-            Id projection = material::Semantics::id_of("projection");
-            Id lightSpaceMatrix = material::Semantics::id_of("lightSpaceMatrix");
-            Id albedo = material::Semantics::id_of("albedo");
-            Id ambientColor = material::Semantics::id_of("ambientColor");
-            Id ambientIntensity = material::Semantics::id_of("ambientIntensity");
-            Id light0Color = material::Semantics::id_of("light0Color");
-            Id light0Intensity = material::Semantics::id_of("light0Intensity");
-            Id light0Pos = material::Semantics::id_of("light0Pos");
-            Id patternScale = material::Semantics::id_of("patternScale");
-            Id colorPrimary = material::Semantics::id_of("colorPrimary");
-            Id colorSecondary = material::Semantics::id_of("colorSecondary");
             Id shadowMap = material::Semantics::id_of("shadowMap");
             Id albedoMap = material::Semantics::id_of("albedoMap");
-            Id albedoLayer = material::Semantics::id_of("albedoLayer");
             Id atlasTexture = material::Semantics::id_of("atlasTexture");
             Id atlasEntries = material::Semantics::id_of("atlasEntries");
-            Id spriteIndex = material::Semantics::id_of("spriteIndex");
             Id inverseAtlasSize = material::Semantics::id_of("inverseAtlasSize");
-            Id opacity = material::Semantics::id_of("opacity");
-            Id scenicAlias = material::Semantics::id_of("scenicAlias");
         } semantic{};
 
         struct ShadowCaster {
@@ -443,27 +430,11 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             return lighting;
         }
 
-        void set_uniform(const resource::Uniform::Binding& binding, const mat4& value) {
-            glUniformMatrix4fv(binding.location, 1, GL_FALSE, glm::value_ptr(value));
-        }
-
-        void set_uniform(const resource::Uniform::Binding& binding, const vec3& value) {
-            glUniform3f(binding.location, value.x, value.y, value.z);
-        }
-
-        void set_uniform(const resource::Uniform::Binding& binding, float value) {
-            glUniform1f(binding.location, value);
-        }
-
-        void set_uniform(const resource::Uniform::Binding& binding, integer value) {
-            glUniform1i(binding.location, value);
-        }
-
-        void set_uniform(const resource::Uniform::Binding& binding, const vec2& value) {
+        void setUniform(const resource::Uniform::Binding& binding, const vec2& value) {
             glUniform2f(binding.location, value.x, value.y);
         }
 
-        void set_uniform_sampler(const resource::Uniform::Binding& binding, GLuint texture, bool nearest = false) {
+        void setUniformSampler(const resource::Uniform::Binding& binding, GLuint texture, bool nearest = false) {
             const auto unit = material::Semantics::binding_of(binding.id);
             if (nearest) {
                 glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -472,7 +443,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             glBindTextureUnit(unit, texture);
         }
 
-        void set_uniform_ssbo(const resource::Uniform::Binding& binding, GLuint buffer) {
+        void setUniformSsbo(const resource::Uniform::Binding& binding, GLuint buffer) {
             glBindBufferBase(GL_SHADER_STORAGE_BUFFER, material::Semantics::binding_of(binding.id), buffer);
         }
 
@@ -487,13 +458,6 @@ void main() { fragColor = texture(u_overlay, vUv); })";
                 throw std::runtime_error("Renderer: material has no technique for pass");
             }
             return it->second;
-        }
-
-        auto sprite_runtime_for(Reading context, const renderer::Command& command) -> const resource::sprite::Runtime::Quantum& {
-            if (not command.sprite || not with<resource::sprite::Runtime>::exists(context, *command.sprite)) {
-                throw std::runtime_error("Renderer: sprite draw is missing sprite runtime");
-            }
-            return with<resource::sprite::Runtime>::get(context, *command.sprite);
         }
 
         auto light_space_matrix(Reading context, scene::Light::Id light_node) -> mat4 {
@@ -587,27 +551,11 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             }
         }
 
-        void sort_by_pipeline_state(renderer::Pass pass, renderer::CommandBuffer::Buffer& batch) {
-            std::sort(batch.begin(), batch.end(), [pass](const renderer::Command& left, const renderer::Command& right) {
-                if (left.shader != right.shader) {
-                    return left.shader < right.shader;
-                }
-                // Shadow techniques are shared across surface materials: batch by mesh, not material.
-                if (pass == renderer::Pass::shadow) {
-                    return left.geometry < right.geometry;
-                }
-                if (left.material != right.material) {
-                    return left.material < right.material;
-                }
+        void sortGpuByPipeline(renderer::Pass pass, renderer::SeparateBuffers<renderer::GpuBatch>::Buffer& batches) {
+            std::sort(batches.begin(), batches.end(), [pass](const renderer::GpuBatch& left, const renderer::GpuBatch& right) {
+                if (left.shader != right.shader) return left.shader < right.shader;
+                if (pass != renderer::Pass::shadow and left.material != right.material) return left.material < right.material;
                 return left.geometry < right.geometry;
-            });
-        }
-
-        void sort_back_to_front(const mat4& view, renderer::CommandBuffer::Buffer& batch) {
-            std::sort(batch.begin(), batch.end(), [&view](const renderer::Command& left, const renderer::Command& right) {
-                const float left_depth = (view * left.model[3]).z;
-                const float right_depth = (view * right.model[3]).z;
-                return left_depth < right_depth;
             });
         }
 
@@ -619,7 +567,6 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         resource::material::Runtime::Id material,
         resource::shader::Runtime::Id shader,
         PassDrawState& state,
-        base::maybe<scene::Light::Id> primary_light,
         base::maybe<resource::shadow::Runtime::Id> shadow)
     {
         const auto material_pass = pass == renderer::Pass::identitySelected ? renderer::Pass::identity : pass;
@@ -629,10 +576,9 @@ void main() { fragColor = texture(u_overlay, vUv); })";
                 return;
             }
             with<resource::material::Runtime>::apply(args.world, material, args.window, material_pass);
-            bind_pass_uniforms(args, material_pass, material, primary_light, shadow);
+            bindPassResources(args, material_pass, material, shadow);
             state.bound_shader = shader;
             state.bound_material = material;
-            state.bound_geometry.reset();
             return;
         }
 
@@ -644,167 +590,98 @@ void main() { fragColor = texture(u_overlay, vUv); })";
 
         if (program_changed) {
             with<resource::material::Runtime>::apply(args.world, material, args.window, material_pass);
-            bind_pass_uniforms(args, material_pass, material, primary_light, shadow);
+            bindPassResources(args, material_pass, material, shadow);
             state.bound_shader = shader;
-            state.bound_geometry.reset();
         }
 
         state.bound_material = material;
     }
 
-    void Renderer::bind_material_samplers(FrameContext, renderer::Pass, resource::material::Runtime::Id) {
+    void Renderer::uploadPassState(FrameContext args, base::maybe<scene::Light::Id> primaryLight) {
+        const auto& root = with<scene::Root>::get(args.world, args.view.scene);
+        const auto aspectRatio = viewport_aspect_ratio(args.world, args.view.viewport);
+        auto lightSpace = mat4{1.0f};
+        auto lightPositionIntensity = vec4{0.0f};
+        auto lightColorRange = vec4{0.0f};
+        if (primaryLight) {
+            const auto& light = with<scene::Light>::get(args.world, *primaryLight);
+            lightSpace = light_space_matrix(args.world, *primaryLight);
+            const auto lightTransform = scene::Node::Actions::transform(args.world, *primaryLight);
+            lightPositionIntensity = vec4{Pos{lightTransform[3]}, light.intensity};
+            lightColorRange = vec4{light.color, light.range};
+        }
+        const auto state = renderer::PassState{
+            .view = scene::Camera::Actions::view(args.world, args.view.camera),
+            .projection = scene::Camera::Actions::projection(args.world, args.view.camera, aspectRatio),
+            .lightSpace = lightSpace,
+            .ambientColorIntensity = vec4{root.ambient, root.ambient_intensity},
+            .primaryLightPositionIntensity = lightPositionIntensity,
+            .primaryLightColorRange = lightColorRange,
+        };
+        if (not passStateBuffer) {
+            glCreateBuffers(1, &passStateBuffer);
+            if (not passStateBuffer) throw std::runtime_error("Renderer: failed to create pass state buffer");
+            glNamedBufferStorage(passStateBuffer, sizeof(renderer::PassState), &state, GL_DYNAMIC_STORAGE_BIT);
+        } else {
+            glNamedBufferSubData(passStateBuffer, 0, sizeof(renderer::PassState), &state);
+        }
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, passStateBuffer);
     }
 
-    void Renderer::bind_pass_uniforms(
-        FrameContext args,
-        renderer::Pass pass,
-        resource::material::Runtime::Id material,
-        base::maybe<scene::Light::Id> primary_light,
-        base::maybe<resource::shadow::Runtime::Id> shadow)
-    {
-        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
-        const auto& technique = technique_for(material_quantum, pass);
-
-        if (pass == renderer::Pass::shadow) {
-            if (not primary_light) {
-                throw std::runtime_error("Renderer: shadow pass requires a light");
-            }
-            const mat4 light_space = light_space_matrix(args.world, *primary_light);
-            for (const auto& binding : technique.bindings) {
-                if (not bindingActive(binding)) {
-                    continue;
-                }
-                if (binding.id == semantic.lightSpaceMatrix) {
-                    set_uniform(binding, light_space);
-                }
-            }
-            return;
-        }
-
-        if (not with<scene::Camera>::exists(args.world, args.view.camera)) {
-            return;
-        }
-
-        const auto& root_quantum = with<scene::Root>::get(args.world, args.view.scene);
-        const float aspect_ratio = viewport_aspect_ratio(args.world, args.view.viewport);
-        const mat4 view = scene::Camera::Actions::view(args.world, args.view.camera);
-        const mat4 projection = scene::Camera::Actions::projection(args.world, args.view.camera, aspect_ratio);
-
-        base::maybe<mat4> light_space{};
-        base::maybe<Pos> light_world_pos{};
-        base::maybe<scene::Light::Quantum> light{};
-        if (primary_light) {
-            light_space = light_space_matrix(args.world, *primary_light);
-            light = with<scene::Light>::get(args.world, *primary_light);
-            const mat4 light_transform = scene::Node::Actions::transform(args.world, *primary_light);
-            light_world_pos = Pos{light_transform[3]};
-        }
-
+    void Renderer::bindPassResources(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, base::maybe<resource::shadow::Runtime::Id> shadow) {
+        const auto& materialQuantum = with<resource::material::Runtime>::get(args.world, material);
+        const auto& technique = technique_for(materialQuantum, pass);
         for (const auto& binding : technique.bindings) {
-            if (not bindingActive(binding)) {
-                continue;
-            }
-            if (binding.id == semantic.ambientColor) {
-                set_uniform(binding, root_quantum.ambient);
-            } else if (binding.id == semantic.ambientIntensity) {
-                set_uniform(binding, root_quantum.ambient_intensity);
-            } else if (binding.id == semantic.view) {
-                set_uniform(binding, view);
-            } else if (binding.id == semantic.projection) {
-                set_uniform(binding, projection);
-            } else if (binding.id == semantic.lightSpaceMatrix) {
-                if (not light_space) {
-                    throw std::runtime_error("Renderer: material expects lightSpaceMatrix but no light");
-                }
-                set_uniform(binding, *light_space);
-            } else if (binding.id == semantic.shadowMap) {
-                if (not shadow) {
-                    throw std::runtime_error("Renderer: material expects shadowMap but no shadow-casting light");
-                }
-                set_uniform_sampler(binding, with<resource::shadow::Runtime>::get(args.world, *shadow).depth);
-            } else if (binding.id == semantic.albedoMap or binding.id == semantic.albedoLayer) {
-                // Per-draw in draw_instance.
-            } else if (binding.id == semantic.light0Pos) {
-                if (not light_world_pos) {
-                    throw std::runtime_error("Renderer: material expects light0Pos but no light");
-                }
-                set_uniform(binding, *light_world_pos);
-            } else if (binding.id == semantic.light0Color) {
-                if (not light) {
-                    throw std::runtime_error("Renderer: material expects light0Color but no light");
-                }
-                set_uniform(binding, light->color);
-            } else if (binding.id == semantic.light0Intensity) {
-                if (not light) {
-                    throw std::runtime_error("Renderer: material expects light0Intensity but no light");
-                }
-                set_uniform(binding, light->intensity);
-            }
+            if (binding.id != semantic.shadowMap) continue;
+            if (not shadow) throw std::runtime_error("Renderer: material expects shadowMap but no shadow-casting light");
+            setUniformSampler(binding, with<resource::shadow::Runtime>::get(args.world, *shadow).depth);
         }
     }
 
-    void Renderer::draw_instance(FrameContext args, renderer::Pass pass, const renderer::Command& command, resource::material::Runtime::Id material) {
-        const auto& material_quantum = with<resource::material::Runtime>::get(args.world, material);
-        const auto& technique = technique_for(material_quantum, pass);
+    void Renderer::drawGpuBatch(FrameContext args, renderer::Pass pass, const renderer::GpuBatch& batch) {
+        const auto& material = with<resource::material::Runtime>::get(args.world, batch.material);
+        const auto& technique = technique_for(material, pass);
         const resource::sprite::Runtime::Quantum* sprite = nullptr;
-        if (command.sprite) {
-            sprite = &sprite_runtime_for(args.world, command);
+        if (batch.sprite) {
+            if (not with<resource::sprite::Runtime>::exists(args.world, *batch.sprite)) throw std::runtime_error("Renderer: GPU batch sprite runtime missing");
+            sprite = &with<resource::sprite::Runtime>::get(args.world, *batch.sprite);
+        }
+        for (const auto& binding : technique.bindings) {
+            if (not bindingActive(binding)) continue;
+            if (binding.id == semantic.albedoMap) {
+                if (not batch.texpack or not with<resource::texpack::Runtime>::exists(args.world, *batch.texpack)) throw std::runtime_error("Renderer: GPU batch missing texpack");
+                setUniformSampler(binding, with<resource::texpack::Runtime>::get(args.world, *batch.texpack).handle, material.nearest);
+            } else if (binding.id == semantic.atlasTexture) {
+                if (not sprite) throw std::runtime_error("Renderer: atlasTexture requested on non-sprite GPU batch");
+                const auto& texture = with<resource::texture::Runtime>::get(args.world, sprite->texture);
+                setUniformSampler(binding, texture.handle, material.nearest);
+            } else if (binding.id == semantic.atlasEntries) {
+                if (not sprite) throw std::runtime_error("Renderer: atlasEntries requested on non-sprite GPU batch");
+                setUniformSsbo(binding, sprite->entries_buffer);
+            } else if (binding.id == semantic.inverseAtlasSize) {
+                if (not sprite) throw std::runtime_error("Renderer: inverseAtlasSize requested on non-sprite GPU batch");
+                const auto& texture = with<resource::texture::Runtime>::get(args.world, sprite->texture);
+                const float inverseWidth = texture.size.x > 0 ? 1.0f / static_cast<float>(texture.size.x) : 0.0f;
+                const float inverseHeight = texture.size.y > 0 ? 1.0f / static_cast<float>(texture.size.y) : 0.0f;
+                setUniform(binding, vec2{inverseWidth, inverseHeight});
+            }
         }
 
-        for (const auto& binding : technique.bindings) {
-            if (not bindingActive(binding)) {
-                continue;
-            }
-            if (binding.id == semantic.model) {
-                set_uniform(binding, command.model);
-            } else if (binding.id == semantic.albedo) {
-                set_uniform(binding, command.albedo);
-            } else if (binding.id == semantic.opacity) {
-                set_uniform(binding, command.opacity);
-            } else if (binding.id == semantic.patternScale) {
-                set_uniform(binding, command.pattern_scale);
-            } else if (binding.id == semantic.colorPrimary) {
-                set_uniform(binding, RGB{0.45f, 0.48f, 0.52f} * command.opacity);
-            } else if (binding.id == semantic.colorSecondary) {
-                set_uniform(binding, RGB{0.1f, 0.12f, 0.14f} * command.opacity);
-            } else if (binding.id == semantic.albedoMap) {
-                if (not command.texpack or not with<resource::texpack::Runtime>::exists(args.world, *command.texpack)) {
-                    throw std::runtime_error("Renderer: draw missing texpack");
-                }
-                set_uniform_sampler(binding, with<resource::texpack::Runtime>::get(args.world, *command.texpack).handle, material_quantum.nearest);
-            } else if (binding.id == semantic.albedoLayer) {
-                if (not command.albedoLayer) {
-                    throw std::runtime_error("Renderer: draw missing albedoLayer");
-                }
-                set_uniform(binding, *command.albedoLayer);
-            } else if (binding.id == semantic.atlasTexture) {
-                if (not sprite) {
-                    throw std::runtime_error("Renderer: atlasTexture requested on non-sprite draw");
-                }
-                const auto& texture = with<resource::texture::Runtime>::get(args.world, sprite->texture);
-                set_uniform_sampler(binding, texture.handle, material_quantum.nearest);
-            } else if (binding.id == semantic.atlasEntries) {
-                if (not sprite) {
-                    throw std::runtime_error("Renderer: atlasEntries requested on non-sprite draw");
-                }
-                set_uniform_ssbo(binding, sprite->entries_buffer);
-            } else if (binding.id == semantic.spriteIndex) {
-                set_uniform(binding, command.sprite_index);
-            } else if (binding.id == semantic.scenicAlias) {
-                set_uniform(binding, static_cast<integer>(command.scenicAlias));
-            } else if (binding.id == semantic.inverseAtlasSize) {
-                if (not sprite) {
-                    throw std::runtime_error("Renderer: inverseAtlasSize requested on non-sprite draw");
-                }
-                const auto& texture = with<resource::texture::Runtime>::get(args.world, sprite->texture);
-                const float inverse_width = texture.size.x > 0 ? 1.0f / static_cast<float>(texture.size.x) : 0.0f;
-                const float inverse_height = texture.size.y > 0 ? 1.0f / static_cast<float>(texture.size.y) : 0.0f;
-                set_uniform(binding, vec2{inverse_width, inverse_height});
-            }
-        }
+        const auto& geometry = with<resource::geometry::Runtime>::get(args.world, batch.geometry);
+        glBindVertexArray(geometry.vao);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::actorState, batch.actorState);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::poses, batch.poses);
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::drawMetadata, batch.drawMetadata, batch.metadataByteOffset, batch.metadataByteSize);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::surfacePalette, batch.surfacePalette);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::primitiveSurfaces, geometry.primitiveSurfaces);
+        glBindBuffer(GL_DRAW_INDIRECT_BUFFER, batch.indirect);
+        glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, batch.drawCount, sizeof(renderer::DrawElementsIndirect));
+        ++lastStats.mdiCalls;
+        lastStats.indirectDraws += batch.drawCount;
     }
 
     void Renderer::render(FrameContext args) {
+        lastStats = Stats{.mdiCalls = 0, .indirectDraws = 0};
         if (not with<scene::Camera>::exists(args.world, args.view.camera)) {
             base::message("Renderer: scene has no camera");
             return;
@@ -817,11 +694,12 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         if (lighting.shadow) {
             shadow = lighting.shadow->runtime;
         }
+        base::maybe<scene::Light::Id> primaryLight{};
+        if (not lighting.lights.empty()) primaryLight = lighting.lights.front();
+        uploadPassState(args, primaryLight);
 
-        renderer::CommandBuffer commands;
+        renderer::CommandBuffer commands{};
         scene::Interface::render(args.world, args.view.scene, args.window, commands);
-
-        const mat4 view = scene::Camera::Actions::view(args.world, args.view.camera);
 
         GLboolean depth_write_prev{};
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_write_prev);
@@ -832,13 +710,14 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         bool identity_feature_cleared = false;
 
         for (const auto pass : render_queue_passes) {
+            const auto passEmpty = commands.gpu[pass].empty();
             if (pass == renderer::Pass::shadow && not lighting.shadow) {
                 continue;
             }
-            if (pass == renderer::Pass::identitySelected && commands[pass].empty()) {
+            if (pass == renderer::Pass::identitySelected && passEmpty) {
                 continue;
             }
-            if (pass == renderer::Pass::identity && commands[pass].empty()) {
+            if (pass == renderer::Pass::identity && passEmpty) {
                 if (not identity_feature_cleared) {
                     clear_identity_feature(with<system::Viewport>::get(args.world, args.view.viewport).size);
                     identity_feature_cleared = true;
@@ -855,8 +734,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
                 || pass == renderer::Pass::identitySelected
                 || pass == renderer::Pass::identity;
             if (lighting.lights.empty() && not unlit_pass) {
-                if (not commands[pass].empty())
-                    base::message("Renderer: no light; skipping draws for pass");
+                if (not passEmpty) base::message("Renderer: no light; skipping draws for pass");
                 continue;
             }
 
@@ -875,57 +753,15 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             }
             PassDrawState pass_state{};
 
-            auto& batch = commands[pass];
-            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo) {
-                sort_back_to_front(view, batch);
-            } else {
-                sort_by_pipeline_state(pass, batch);
-            }
+            auto& gpuBatches = commands.gpu[pass];
+            sortGpuByPipeline(pass, gpuBatches);
 
-            base::maybe<scene::Light::Id> primary_light{};
-            if (not lighting.lights.empty()) {
-                primary_light = lighting.lights.front();
-            }
-
-            for (const auto& command : batch) {
-                if (command.instance_count <= renderer::Count{0}) {
-                    continue;
-                }
-                if (not with<resource::geometry::Runtime>::exists(args.world, command.geometry)) {
-                    continue;
-                }
-
-                apply_blend(pass, command.render_state.blend);
-
-                ensure_material(args, pass, command.material, command.shader, pass_state, primary_light, shadow);
-
-                const auto& geometry = with<resource::geometry::Runtime>::get(args.world, command.geometry);
-                if (not pass_state.bound_geometry || *pass_state.bound_geometry != command.geometry) {
-                    glBindVertexArray(geometry.vao);
-                    pass_state.bound_geometry = command.geometry;
-                }
-
-                draw_instance(args, pass, command, command.material);
-
-                bool drew = false;
-                if (geometry.index_count > renderer::Count{0}) {
-                    if (command.indices) {
-                        const auto& range = *command.indices;
-                        if (range.count > renderer::Count{0}) {
-                            const auto byte_offset = static_cast<renderer::IntPtr>(range.start) * static_cast<renderer::IntPtr>(sizeof(GLuint));
-                            glDrawElements(GL_TRIANGLES, range.count, GL_UNSIGNED_INT, reinterpret_cast<const void*>(byte_offset));
-                            drew = true;
-                        }
-                    } else {
-                        glDrawElements(GL_TRIANGLES, geometry.index_count, GL_UNSIGNED_INT, nullptr);
-                        drew = true;
-                    }
-                } else {
-                    glDrawArrays(GL_TRIANGLES, 0, geometry.vertex_count);
-                    drew = true;
-                }
-                if (drew and pass == renderer::Pass::identity)
-                    ++identity_draws;
+            for (const auto& batch : gpuBatches) {
+                if (batch.drawCount <= renderer::Count{0} or not with<resource::geometry::Runtime>::exists(args.world, batch.geometry)) continue;
+                apply_blend(pass, batch.renderState.blend);
+                ensure_material(args, pass, batch.material, batch.shader, pass_state, shadow);
+                drawGpuBatch(args, pass, batch);
+                if (pass == renderer::Pass::identity) identity_draws += batch.drawCount;
             }
 
             if (pass == renderer::Pass::identity) {
@@ -960,6 +796,10 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         }
 
         glDepthMask(depth_write_prev);
+    }
+
+    auto Renderer::stats() const -> Stats {
+        return lastStats;
     }
 
 }

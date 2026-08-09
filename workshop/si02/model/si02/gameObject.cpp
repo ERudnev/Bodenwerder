@@ -110,7 +110,7 @@ namespace si02 {
             const float opacity = decay.initial_opacity * (1.0f - t);
             const auto& object = with<GameObject>::get(context, id);
             if (object.sprite and with<rmmr::scene::actor::Sprite>::exists(context, *object.sprite)) {
-                with<rmmr::scene::actor::Sprite>::modify(context, *object.sprite)->opacity = opacity;
+                with<rmmr::scene::actor::Sprite>::setOpacity(context, *object.sprite, opacity);
             }
             if (age >= AnimatedDecay::duration_steps) {
                 expired.push_back(id);

@@ -19,7 +19,7 @@ int main() {
             .title = "workshop_si01",
             .window_size = {.x = 1600, .y = 900},
             .presentation = rmmr::system::Window::Presentation::windowed,
-            .glVersion = {.major = 4, .minor = 5},
+            .glVersion = {.major = 4, .minor = 6},
         });
 
         application->setProduct(std::make_unique<si01::SpriteTest>());

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <base/types/common_types.h>
+#include <rmmr/renderer/types.q1.h>
 #include <glm/ext/matrix_int3x3.hpp>
 #include <glm/ext/vector_int3.hpp>
 #include <glm/common.hpp>
@@ -103,10 +104,7 @@ namespace eltanin::mech {
 
     } // namespace orient
 
-    // Discrete cell pose on the construction lattice (editor / blueprint space).
-    struct Pose {
-        base::common_types::index3 pos;
-        orient::key ori;
-    };
+    // Discrete cell pose on the construction lattice and the GPU Mesh SSBO wire format.
+    using Pose = rmmr::renderer::DiscretePose;
 
 }

@@ -4,11 +4,11 @@
     "rmmr::debug",
     [
         {"kube", {"meshes/primitives/kube.obj", [
-            {"mesh", {"rmmr::lit", []}}
+            {"metal", {"rmmr::lit", []}}
         ]}},
         {"windowed_kube", {"meshes/primitives/windowed_kube.obj", [
             {"outer", {"rmmr::lit_textured", [{"albedoMap", "debug02.jpg"}]}},
-            {"window", {"rmmr::one_sided_glass", [{"albedoMap", "debug06.jpg"}]}}
+            {"glass", {"rmmr::one_sided_glass", [{"albedoMap", "debug06.jpg"}]}}
         ]}}
     ]
 }

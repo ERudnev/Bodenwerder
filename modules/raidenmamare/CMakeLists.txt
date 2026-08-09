@@ -1,4 +1,5 @@
 file(GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "source/*.cpp")
+list(REMOVE_ITEM MODULE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/source/system/content/loader_lwo.cpp")
 
 project("Raidenmamare"
     DESCRIPTION "Raidenmamare - utilitarian rendering toolkit (graphics engine seed)"
@@ -16,7 +17,6 @@ set(Raidenmamare_Q1
     scene/node.q1.types
     scene/camera.q1.types
     scene/light.q1.types
-    scene/actors/simple.q1.types
     scene/actors/mesh.q1.types
     scene/actors/sprite.q1.types
     scene/gizmos.q1.types
@@ -70,7 +70,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # Console inspector for mesh sources (LWO now; more formats later).
-# Compiles content/loader_lwo directly — no fQSM / GPU stack.
+# Inspector-only structural LWO parser — runtime meshpacks use geometry::Loader.
 add_executable(meshpack_inspector)
 target_sources(meshpack_inspector
     PRIVATE

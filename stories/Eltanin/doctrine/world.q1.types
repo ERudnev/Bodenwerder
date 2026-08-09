@@ -12,7 +12,7 @@ namespace eltanin
       step: integer // discrete ticks; 1 step = 1000 μs of wall dt
       paused: bool
       window: #system::Window? // pause-key source; unset = ignore
-      sky: #scene::Node? // skybox Simple node
+      sky: #scene::Node? // sky Mesh node
       camera: #scene::Camera? // view camera node
       =advance(dt_us: int64) // unpaused: fold wall μs into step (only writes when step grows)
       =tetherEnvironment() // sky.position ← camera.position

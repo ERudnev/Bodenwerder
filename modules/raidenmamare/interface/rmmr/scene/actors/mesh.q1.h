@@ -1,9 +1,9 @@
 #pragma once
 
-#include <base/maybe.h>
 #include <rmmr/renderer/types.q1.h>
-#include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/meshpack.q1.h>
+#include <rmmr/resources/sprites.q1.h>
 #include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -15,19 +15,49 @@ namespace rmmr::scene::actor {
     using namespace fqsm::api;
 
     struct Mesh : Feature<Mesh, Node> {
+        struct Occurrence {
+            resource::meshpack::Asset::Resolved entry;
+            renderer::DiscretePose pose;
+        };
+        struct Bucket {
+            resource::geometry::Runtime::Id geometry;
+            resource::material::Runtime::Id material;
+            base::maybe<resource::texpack::Runtime::Id> texpack;
+            renderer::IndirectBuffer indirect;
+            renderer::Count drawCount;
+            renderer::IntPtr metadataByteOffset;
+            renderer::SizePtr metadataByteSize;
+        };
         struct Quantum {
-            resource::geometry::Asset::Id geometry;
-            umap<string, resource::material::Instance> parts;
-            base::maybe<resource::texpack::Pack::Id> texpack;
+            system::Device::Id device;
+            renderer::StorageBuffer actorState;
+            renderer::StorageBuffer poses;
+            renderer::StorageBuffer drawMetadata;
+            renderer::StorageBuffer surfacePalette;
+            base::maybe<resource::sprite::Runtime::Id> sprite;
+            integer spriteIndex;
+            vector<Bucket> buckets;
+        };
+        struct Actions : BaseActions {
+            static auto compose(Reading, system::Device::Id, const vector<Occurrence>&) -> optional<Quantum>;
+            static auto composeOne(Reading, system::Device::Id, resource::geometry::Asset::Id, resource::material::Asset::Id) -> optional<Quantum>;
+            static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
+        };
+        struct Internals;
+        static const Behavior customAspectReactions();
+    };
+
+    struct MeshState : Feature<MeshState, Mesh> {
+        struct Quantum {
             RGB albedo;
             vec3 scale;
+            float latticeStep;
+            float patternScale;
             float opacity;
             bool visible;
         };
         struct Actions : BaseActions {
-            static auto create(Writing, Pos, HPB, resource::geometry::Asset::Id, umap<string, resource::material::Instance>, base::maybe<resource::texpack::Pack::Id>, RGB albedo) -> Id;
             static void setVisible(Writing, Id, bool);
-            static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

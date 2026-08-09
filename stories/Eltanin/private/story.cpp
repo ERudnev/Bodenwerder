@@ -21,7 +21,6 @@
 #include <rmmr/resources/texpack.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
-#include <rmmr/scene/actors/simple.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/semantics/rendering.h>
@@ -32,6 +31,7 @@
 #include <numbers>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include <glm/gtc/quaternion.hpp>
 
@@ -112,14 +112,7 @@ namespace eltanin {
                 .techniques = {
                     {renderer::Pass::environment, Material::Technique{
                         .program = with<Unit>::remember(context, sky_sphere_shader),
-                        .uniforms = ::rmmr::material::Semantics::ids_of({
-                            "model",
-                            "view",
-                            "projection",
-                            "albedo",
-                            "albedoMap",
-                            "albedoLayer",
-                        }),
+                        .uniforms = ::rmmr::material::Semantics::ids_of({"albedoMap"}),
                     }},
                 },
                 .nearest = false,
@@ -144,15 +137,15 @@ namespace eltanin {
         assets.levelOne = with<Assets>::add_meshpack_lwo_loader(
             context,
             Name::from("Eltanin", "levelOne"),
-            item<meshpack::LoaderLwo>{.file = "meshes/system/levelOne/levelOne.lwo.meshpack"});
+            item<meshpack::LoaderLwo>{.file = "meshes/system/levelOne/levelOne.lwo.meshpack", .geometry = {}, .pending = {}});
         assets.levelTwo = with<Assets>::add_meshpack_lwo_loader(
             context,
             Name::from("Eltanin", "levelTwo"),
-            item<meshpack::LoaderLwo>{.file = "meshes/system/levelTwo/levelTwo.lwo.meshpack"});
+            item<meshpack::LoaderLwo>{.file = "meshes/system/levelTwo/levelTwo.lwo.meshpack", .geometry = {}, .pending = {}});
         assets.interframe = with<Assets>::add_meshpack_lwo_loader(
             context,
             Name::from("Eltanin", "interframe"),
-            item<meshpack::LoaderLwo>{.file = "meshes/system/levelOne/interframe.lwo.meshpack"});
+            item<meshpack::LoaderLwo>{.file = "meshes/system/levelOne/interframe.lwo.meshpack", .geometry = {}, .pending = {}});
 
         const auto manager = *with<Manager>::singleton(context);
         if (not with<Unit_group>::exists(context, manager)) {
@@ -183,25 +176,34 @@ namespace eltanin {
 
         const auto root = with<scene::Interface>::createScene(context);
 
-        with<resource::SkySphereGenerator>::materialize(context, *assets.skySphereGeometry, window);
+        if (not with<resource::SkySphereGenerator>::materialize(context, *assets.skySphereGeometry, window)) {
+            return (void)context.refuse("eltanin::Game::populateWorld: sky geometry materialization failed");
+        }
 
-        with<scene::Interface>::createGrid(context, root,
+        with<scene::Interface>::createGrid(context, root, window,
             Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
-            item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .pattern_scale = 1.0f});
+            item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .patternScale = 1.0f});
 
         if (not assets.sprites) {
             return (void)context.refuse("eltanin::Game::populateWorld: sprites texpack missing");
         }
-        const auto sky = with<scene::Interface>::createSimpleActor(context, root,
-            Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
-            item<scene::actor::Simple>{
-                .geometry = *assets.skySphereGeometry,
-                .material = *assets.skySphereMaterial,
-                .texpack = assets.sprites,
-                .albedoLayer = string{"skySphere.png"},
-                .albedo = RGB{1.0f, 1.0f, 1.0f},
-                .scale = vec3{1.0f, 1.0f, 1.0f},
-            });
+        const auto identityPose = renderer::DiscretePose{.pos = index3{0, 0, 0}, .ori = renderer::Signed32{0}};
+        const auto skyResolved = ::rmmr::resource::meshpack::Asset::Resolved{
+            .geometry = *assets.skySphereGeometry,
+            .entry = ::rmmr::resource::geometry::EntryId{0},
+            .surfaces = {{::rmmr::resource::geometry::SurfaceId{0}, ::rmmr::resource::material::Instance{.material = *assets.skySphereMaterial, .textures = {{"albedoMap", "skySphere.png"}}}}},
+            .texpack = assets.sprites,
+        };
+        const auto skyMesh = scene::actor::Mesh::Actions::compose(context, window, {scene::actor::Mesh::Occurrence{.entry = skyResolved, .pose = identityPose}});
+        if (not skyMesh) return (void)context.refuse("eltanin::Game::populateWorld: sky mesh composition failed");
+        const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), std::move(*skyMesh), scene::actor::MeshState::Quantum{
+            .albedo = RGB{1.0f, 1.0f, 1.0f},
+            .scale = vec3{1.0f, 1.0f, 1.0f},
+            .latticeStep = 1.0f,
+            .patternScale = 1.0f,
+            .opacity = 1.0f,
+            .visible = true,
+        });
 
         const Pos cameraPos{8.0f, 6.0f, 16.0f};
         const Pos cameraTarget{0.0f, 0.0f, -2.0f};
@@ -231,19 +233,16 @@ namespace eltanin {
                 if (not resolved) {
                     return (void)context.refuse(std::format("eltanin::Game::populateWorld: interframe entry '{}' missing", entry));
                 }
-                with<scene::Interface>::createMeshActor(
-                    context,
-                    root,
-                    scenePose(ori),
-                    item<scene::actor::Mesh>{
-                        .geometry = resolved->geometry,
-                        .parts = resolved->parts,
-                        .texpack = resolved->texpack,
-                        .albedo = RGB{1.0f, 1.0f, 1.0f},
-                        .scale = vec3{1.0f, 1.0f, 1.0f},
-                        .opacity = 1.0f,
-                        .visible = true,
-                    });
+                const auto mesh = scene::actor::Mesh::Actions::compose(context, window, {scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = identityPose}});
+                if (not mesh) return (void)context.refuse(std::format("eltanin::Game::populateWorld: interframe entry '{}' composition failed", entry));
+                with<scene::Interface>::createMeshActor(context, root, scenePose(ori), std::move(*mesh), scene::actor::MeshState::Quantum{
+                    .albedo = RGB{1.0f, 1.0f, 1.0f},
+                    .scale = vec3{1.0f, 1.0f, 1.0f},
+                    .latticeStep = 1.0f,
+                    .patternScale = 1.0f,
+                    .opacity = 1.0f,
+                    .visible = true,
+                });
             };
 
             const auto cornerEntry = [](corner::kind kind) -> std::string_view {

@@ -1,7 +1,6 @@
 import "math"
 import "renderer/types"
 import "system/core"
-import "scene/actors/simple"
 import "scene/actors/mesh"
 import "scene/actors/sprite"
 import "scene/camera"
@@ -25,9 +24,8 @@ namespace rmmr
       >createScene()->#
       >createCamera(#, Pose, fov_x: float)->#Camera
       >createLight(#, Pose, one<Light>)->#Light
-      >createSimpleActor(#, Pose, one<actor::Simple>)->#actor::Simple
-      >createMeshActor(#, Pose, one<actor::Mesh>)->#actor::Mesh
-      >createGrid(#, Pose, one<Grid>)->#Grid
+      >createMeshActor(#, Pose, one<actor::Mesh>, one<actor::MeshState>)->#actor::Mesh
+      >createGrid(#, #system::Device, Pose, one<Grid>)->#Grid
       ?render(#, #system::Device, >where: renderer::CommandBuffer)
 
     // Ortho/2D layer on a scene root — sprite actors created here.
@@ -35,5 +33,6 @@ namespace rmmr
     feature Flat2d of Root
       one
         size: index2
+        device: #system::Device
         >createCamera(Pose)->#Camera
         >createSpriteActor(Pose, one<actor::Sprite>)->#actor::Sprite

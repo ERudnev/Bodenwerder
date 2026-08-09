@@ -11,10 +11,7 @@ namespace rmmr::resource::builders::material {
         auto shadow_depth_technique(resource::shader::Reference program) -> Asset::Technique {
             return Asset::Technique{
                 .program = program,
-                .uniforms = ::rmmr::material::Semantics::ids_of({
-                    "model",
-                    "lightSpaceMatrix",
-                }),
+                .uniforms = {},
             };
         }
 
@@ -25,14 +22,7 @@ namespace rmmr::resource::builders::material {
             .techniques = {
                 {renderer::Pass::opaque, Asset::Technique{
                     .program = program,
-                    .uniforms = ::rmmr::material::Semantics::ids_of({
-                        "model",
-                        "view",
-                        "projection",
-                        "albedo",
-                        "ambientColor",
-                        "ambientIntensity",
-                    }),
+                    .uniforms = {},
                 }},
                 {renderer::Pass::shadow, shadow_depth_technique(shadow_depth)},
             },
@@ -47,16 +37,6 @@ namespace rmmr::resource::builders::material {
                 {renderer::Pass::opaque, Asset::Technique{
                     .program = program,
                     .uniforms = ::rmmr::material::Semantics::ids_of({
-                        "model",
-                        "view",
-                        "projection",
-                        "albedo",
-                        "ambientColor",
-                        "ambientIntensity",
-                        "light0Pos",
-                        "light0Color",
-                        "light0Intensity",
-                        "lightSpaceMatrix",
                         "shadowMap",
                     }),
                 }},
@@ -73,17 +53,6 @@ namespace rmmr::resource::builders::material {
                 {renderer::Pass::transparent, Asset::Technique{
                     .program = program,
                     .uniforms = ::rmmr::material::Semantics::ids_of({
-                        "model",
-                        "view",
-                        "projection",
-                        "albedo",
-                        "opacity",
-                        "ambientColor",
-                        "ambientIntensity",
-                        "light0Pos",
-                        "light0Color",
-                        "light0Intensity",
-                        "lightSpaceMatrix",
                         "shadowMap",
                     }),
                 }},
@@ -99,18 +68,7 @@ namespace rmmr::resource::builders::material {
                 {renderer::Pass::opaque, Asset::Technique{
                     .program = program,
                     .uniforms = ::rmmr::material::Semantics::ids_of({
-                        "model",
-                        "view",
-                        "projection",
-                        "albedo",
                         "albedoMap",
-                        "albedoLayer",
-                        "ambientColor",
-                        "ambientIntensity",
-                        "light0Pos",
-                        "light0Color",
-                        "light0Intensity",
-                        "lightSpaceMatrix",
                         "shadowMap",
                     }),
                 }},
@@ -127,18 +85,7 @@ namespace rmmr::resource::builders::material {
                 {renderer::Pass::transparent, Asset::Technique{
                     .program = program,
                     .uniforms = ::rmmr::material::Semantics::ids_of({
-                        "model",
-                        "view",
-                        "projection",
-                        "albedo",
                         "albedoMap",
-                        "albedoLayer",
-                        "ambientColor",
-                        "ambientIntensity",
-                        "light0Pos",
-                        "light0Color",
-                        "light0Intensity",
-                        "lightSpaceMatrix",
                         "shadowMap",
                     }),
                 }},
@@ -154,17 +101,7 @@ namespace rmmr::resource::builders::material {
                 {renderer::Pass::transparent, Asset::Technique{
                     .program = program,
                     .uniforms = ::rmmr::material::Semantics::ids_of({
-                        "model",
-                        "view",
-                        "projection",
-                        "albedo",
                         "albedoMap",
-                        "albedoLayer",
-                        "ambientColor",
-                        "ambientIntensity",
-                        "light0Pos",
-                        "light0Color",
-                        "light0Intensity",
                     }),
                 }},
             },
@@ -179,13 +116,7 @@ namespace rmmr::resource::builders::material {
                 {renderer::Pass::gizmo, Asset::Technique{
                     .program = program,
                     .uniforms = ::rmmr::material::Semantics::ids_of({
-                        "model",
-                        "view",
-                        "projection",
-                        "albedo",
                         "albedoMap",
-                        "albedoLayer",
-                        "opacity",
                     }),
                 }},
             },
@@ -199,13 +130,7 @@ namespace rmmr::resource::builders::material {
             .techniques = {
                 {renderer::Pass::gizmo, Asset::Technique{
                     .program = program,
-                    .uniforms = ::rmmr::material::Semantics::ids_of({
-                        "model",
-                        "view",
-                        "projection",
-                        "albedo",
-                        "opacity",
-                    }),
+                    .uniforms = {},
                 }},
             },
             .nearest = false,
@@ -218,15 +143,7 @@ namespace rmmr::resource::builders::material {
             .techniques = {
                 {renderer::Pass::transparent, Asset::Technique{
                     .program = program,
-                    .uniforms = ::rmmr::material::Semantics::ids_of({
-                        "model",
-                        "view",
-                        "projection",
-                        "patternScale",
-                        "colorPrimary",
-                        "colorSecondary",
-                        "opacity",
-                    }),
+                    .uniforms = {},
                 }},
             },
             .nearest = false,
@@ -240,14 +157,8 @@ namespace rmmr::resource::builders::material {
                 {renderer::Pass::sprite, Asset::Technique{
                     .program = program,
                     .uniforms = ::rmmr::material::Semantics::ids_of({
-                        "model",
-                        "view",
-                        "projection",
-                        "albedo",
-                        "opacity",
                         "atlasTexture",
                         "atlasEntries",
-                        "spriteIndex",
                         "inverseAtlasSize",
                     }),
                 }},
@@ -262,12 +173,7 @@ namespace rmmr::resource::builders::material {
             .techniques = {
                 {renderer::Pass::identity, Asset::Technique{
                     .program = program,
-                    .uniforms = ::rmmr::material::Semantics::ids_of({
-                        "model",
-                        "view",
-                        "projection",
-                        "scenicAlias",
-                    }),
+                    .uniforms = {},
                 }},
             },
             .nearest = false,

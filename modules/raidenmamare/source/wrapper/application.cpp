@@ -117,9 +117,9 @@ namespace rmmr::wrapper {
                     .requested_size = settings.window_size,
                     .presentation = settings.presentation,
                 });
-            product->setup(context, engine->window());
             engine->materialize(context);
             product->materialize(context);
+            product->setup(context, engine->window());
         });
 
         engine->setActiveViews(product->views);

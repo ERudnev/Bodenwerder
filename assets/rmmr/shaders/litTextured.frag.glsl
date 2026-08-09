@@ -1,23 +1,41 @@
-#version 450 core
+#version 460 core
 
 in vec3 v_worldPos;
 in vec3 v_worldNormal;
 in vec2 v_uv0;
+flat in uint v_drawId;
 
 out vec4 FragColor;
 
-uniform vec3 u_albedo;
+layout(std430, binding = 7) readonly buffer ActorStateBuffer {
+    mat4 actorModel;
+    vec4 actorAlbedoOpacity;
+    vec2 actorLatticePattern;
+    uint actorScenicAlias;
+    uint actorSpriteIndex;
+};
+
+layout(std140, binding = 0) uniform PassStateBuffer {
+    mat4 passView;
+    mat4 passProjection;
+    mat4 passLightSpace;
+    vec4 passAmbientColorIntensity;
+    vec4 passPrimaryLightPositionIntensity;
+    vec4 passPrimaryLightColorRange;
+};
+
 layout(binding = 0) uniform sampler2DArray u_albedoMap;
-uniform int u_albedoLayer;
 
-uniform vec3 u_ambientColor;
-uniform float u_ambientIntensity;
+layout(std430, binding = 9) readonly buffer DrawMetadataBuffer {
+    uvec2 metadata[];
+};
+layout(std430, binding = 10) readonly buffer SurfacePaletteBuffer {
+    uint surfacePalette[];
+};
+layout(std430, binding = 11) readonly buffer PrimitiveSurfacesBuffer {
+    uint primitiveSurfaces[];
+};
 
-uniform vec3 u_light0Pos;
-uniform vec3 u_light0Color;
-uniform float u_light0Intensity;
-
-uniform mat4 u_lightSpaceMatrix;
 layout(binding = 1) uniform sampler2D u_shadowMap;
 
 const float k_shadow_bias = 0.005;
@@ -51,17 +69,20 @@ float fetch_shadow(vec4 light_space_pos) {
 
 void main() {
     vec3 N = normalize(v_worldNormal);
-    vec3 L = normalize(u_light0Pos - v_worldPos);
-    vec3 baseColor = texture(u_albedoMap, vec3(v_uv0, float(u_albedoLayer))).rgb * u_albedo;
+    vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos);
+    uvec2 drawMetadata = metadata[v_drawId];
+    uint surface = primitiveSurfaces[drawMetadata.x + uint(gl_PrimitiveID)];
+    uint layer = surfacePalette[drawMetadata.y + surface];
+    vec3 baseColor = texture(u_albedoMap, vec3(v_uv0, float(layer))).rgb * actorAlbedoOpacity.rgb;
 
     float ndotl = max(dot(N, L), 0.0);
-    float shadow = fetch_shadow(u_lightSpaceMatrix * vec4(v_worldPos, 1.0));
+    float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos, 1.0));
 
-    float ambientGain = max(u_ambientIntensity, 0.0);
-    float lightGain = max(u_light0Intensity, 0.0);
+    float ambientGain = max(passAmbientColorIntensity.w, 0.0);
+    float lightGain = max(passPrimaryLightPositionIntensity.w, 0.0);
 
-    vec3 ambient = baseColor * u_ambientColor * (ambientGain / (1.0 + ambientGain));
-    vec3 direct = baseColor * u_light0Color * ndotl * shadow * (lightGain / (1.0 + lightGain));
+    vec3 ambient = baseColor * passAmbientColorIntensity.rgb * (ambientGain / (1.0 + ambientGain));
+    vec3 direct = baseColor * passPrimaryLightColorRange.rgb * ndotl * shadow * (lightGain / (1.0 + lightGain));
 
     FragColor = vec4(ambient + direct, 1.0);
 }

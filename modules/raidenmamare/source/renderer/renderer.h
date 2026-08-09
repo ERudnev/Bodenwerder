@@ -23,11 +23,15 @@ namespace rmmr {
     struct PassDrawState {
         base::maybe<resource::shader::Runtime::Id> bound_shader;
         base::maybe<resource::material::Runtime::Id> bound_material;
-        base::maybe<resource::geometry::Runtime::Id> bound_geometry;
     };
 
     class Renderer final {
     public:
+        struct Stats {
+            integer mdiCalls;
+            integer indirectDraws;
+        };
+
         struct FrameContext {
             fqsm::Writing world;
             system::Window::Id window;
@@ -43,6 +47,7 @@ namespace rmmr {
         Renderer& operator=(const Renderer&) = delete;
 
         void render(FrameContext args);
+        auto stats() const -> Stats;
 
     private:
         struct ColorTarget {
@@ -64,6 +69,8 @@ namespace rmmr {
         ColorTarget overlay_color_;
         IdentityTarget identity_;
         renderer::VertexArray fullscreen_vao_;
+        renderer::UniformBuffer passStateBuffer;
+        Stats lastStats;
 
         void ensure_color_target(ColorTarget& target, index2 size, const char* label);
         void ensure_identity_target(index2 size);
@@ -77,10 +84,10 @@ namespace rmmr {
         void run_overlay(FrameContext args, index2 size);
         void compose_overlay(index2 size);
 
-        void ensure_material(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, PassDrawState& state, maybe<scene::Light::Id> primary_light, maybe<resource::shadow::Runtime::Id> shadow);
-        void bind_pass_uniforms(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, maybe<scene::Light::Id> primary_light, maybe<resource::shadow::Runtime::Id> shadow);
-        void bind_material_samplers(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material);
-        void draw_instance(FrameContext args, renderer::Pass pass, const renderer::Command& command, resource::material::Runtime::Id material);
+        void uploadPassState(FrameContext args, maybe<scene::Light::Id> primaryLight);
+        void ensure_material(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, PassDrawState& state, maybe<resource::shadow::Runtime::Id> shadow);
+        void bindPassResources(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, maybe<resource::shadow::Runtime::Id> shadow);
+        void drawGpuBatch(FrameContext args, renderer::Pass pass, const renderer::GpuBatch& batch);
     };
 
 }
