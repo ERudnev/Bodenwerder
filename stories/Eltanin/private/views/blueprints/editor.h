@@ -32,6 +32,7 @@ namespace eltanin::views {
             base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;
             base::maybe<resource::blueprint::Asset::Id> hovered;
             std::vector<blueprints::geometry::QuarkActor> quarkActors;
+            std::vector<blueprints::geometry::QuarkActor> clipboardActors;
             blueprints::selection::Store selection;
             index3 cursorLattice;
             int currentFloor;
@@ -48,6 +49,7 @@ namespace eltanin::views {
         void syncGridToFloor(Writing);
         void updateWorldCursor(Writing);
         void syncVisuals(Writing);
+        void syncClipboardGhost(Writing);
         void persistHovered(Writing);
         void draw(Writing, bool& open, BlueprintCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;

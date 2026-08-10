@@ -3,7 +3,6 @@
 #include "mech/semantics/quarks.h"
 #include "mech/semantics/subframe.h"
 
-#include <base/logging.h>
 #include <eltanin/resources/blueprint.q1.h>
 #include <fQSM/identifier.h>
 #include <rmmr/scene/actors/mesh.q1.h>
@@ -29,6 +28,36 @@ namespace eltanin::views::blueprints::selection {
 
         auto addIndex3(const index3& a, const index3& b) -> index3 {
             return index3{.x = a.x + b.x, .y = a.y + b.y, .z = a.z + b.z};
+        }
+
+        auto cellsPivot(const std::set<index3, CellPosLess>& cells) -> index3 {
+            auto min = *cells.begin();
+            auto max = min;
+            for (const auto& cell : cells) {
+                min.x = std::min(min.x, cell.x);
+                min.y = std::min(min.y, cell.y);
+                min.z = std::min(min.z, cell.z);
+                max.x = std::max(max.x, cell.x);
+                max.y = std::max(max.y, cell.y);
+                max.z = std::max(max.z, cell.z);
+            }
+            return index3{.x = (min.x + max.x) / 2, .y = (min.y + max.y) / 2, .z = (min.z + max.z) / 2};
+        }
+
+        // World ±90° of a lattice point about pivot; R = orient::matrix[turn(axis)[0]] (same δ as family ori compose).
+        auto rotateCellPos(const index3& pos, const index3& pivot, mech::space::orient::Semiaxis axis) -> index3 {
+            const auto delta = mech::space::orient::turn(axis)[0];
+            const auto& rotation = mech::space::orient::matrix[static_cast<std::size_t>(delta)];
+            const auto rel = rotation * mech::space::ivec3{pos.x - pivot.x, pos.y - pivot.y, pos.z - pivot.z};
+            return index3{.x = rel.x + pivot.x, .y = rel.y + pivot.y, .z = rel.z + pivot.z};
+        }
+
+        auto remapCells(const std::set<index3, CellPosLess>& cells, mech::space::orient::Semiaxis axis) -> std::map<index3, index3, CellPosLess> {
+            std::map<index3, index3, CellPosLess> remap;
+            const auto pivot = cellsPivot(cells);
+            for (const auto& from : cells)
+                remap.emplace(from, rotateCellPos(from, pivot, axis));
+            return remap;
         }
 
         auto findActorByAlias(Reading context, const std::vector<QuarkActor>& actors, renderer::Integer32 alias) -> base::maybe<QuarkActor> {
@@ -186,7 +215,44 @@ namespace eltanin::views::blueprints::selection {
     }
 
     void resetClipboard(Store& store) {
-        store.clipboard = mech::Blueprint{.name = "буфер", .author = {}, .knots = {}, .halfChords = {}};
+        store.clipboard = mech::Blueprint{.name = "clipboard", .author = {}, .knots = {}, .halfChords = {}};
+        store.focus = Focus::selection;
+    }
+
+    void toggleFocus(Store& store) {
+        if (clipboardEmpty(store)) {
+            store.focus = Focus::selection;
+            return;
+        }
+        store.focus = store.focus == Focus::clipboard ? Focus::selection : Focus::clipboard;
+    }
+
+    auto clipboardEmpty(const Store& store) -> bool {
+        return store.clipboard.knots.empty() and store.clipboard.halfChords.empty();
+    }
+
+    auto canPaste(const mech::Blueprint& target, const mech::Blueprint& clipboard) -> bool {
+        if (clipboard.knots.empty() and clipboard.halfChords.empty())
+            return false;
+        std::set<index3, CellPosLess> cells;
+        for (const auto& knot : clipboard.knots)
+            cells.insert(knot.pose.pos);
+        for (const auto& halfChord : clipboard.halfChords)
+            cells.insert(halfChord.pose.pos);
+        for (const auto& pos : cells) {
+            if (cellOccupied(target, pos))
+                return false;
+        }
+        return true;
+    }
+
+    auto clipboardCells(const mech::Blueprint& clipboard) -> std::set<index3, CellPosLess> {
+        std::set<index3, CellPosLess> cells;
+        for (const auto& knot : clipboard.knots)
+            cells.insert(knot.pose.pos);
+        for (const auto& halfChord : clipboard.halfChords)
+            cells.insert(halfChord.pose.pos);
+        return cells;
     }
 
     void rematchAfterSync(Reading context, Store& store, const std::vector<QuarkActor>& actors) {
@@ -270,16 +336,27 @@ namespace eltanin::views::blueprints::selection {
         const auto cells = selectedCells(context, store, data, actors);
         if (cells.empty())
             return false;
+        const auto remap = remapCells(cells, axis);
+        for (const auto& [from, to] : remap) {
+            if (cells.contains(to))
+                continue;
+            if (cellOccupied(data, to))
+                return false;
+        }
         store.pendingRestore = selectionRefs(context, actors, store.aliases);
         {
             auto writable = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
             for (auto& knot : writable->data.knots) {
-                if (cells.contains(knot.pose.pos))
-                    knot.pose.ori = composeRow[static_cast<std::size_t>(knot.pose.ori)];
+                if (not cells.contains(knot.pose.pos))
+                    continue;
+                knot.pose.pos = remap.at(knot.pose.pos);
+                knot.pose.ori = composeRow[static_cast<std::size_t>(knot.pose.ori)];
             }
             for (auto& halfChord : writable->data.halfChords) {
-                if (cells.contains(halfChord.pose.pos))
-                    halfChord.pose.ori = composeRow[static_cast<std::size_t>(halfChord.pose.ori)];
+                if (not cells.contains(halfChord.pose.pos))
+                    continue;
+                halfChord.pose.pos = remap.at(halfChord.pose.pos);
+                halfChord.pose.ori = composeRow[static_cast<std::size_t>(halfChord.pose.ori)];
             }
         }
         return true;
@@ -318,6 +395,52 @@ namespace eltanin::views::blueprints::selection {
         return true;
     }
 
+    auto rotateClipboard(Store& store, mech::space::orient::Semiaxis axis) -> bool {
+        if (clipboardEmpty(store))
+            return false;
+        const auto delta = mech::space::orient::turn(axis)[0];
+        const auto& composeRow = mech::space::orient::compose[static_cast<std::size_t>(delta)];
+        const auto cells = clipboardCells(store.clipboard);
+        if (cells.empty())
+            return false;
+        const auto remap = remapCells(cells, axis);
+        for (auto& knot : store.clipboard.knots) {
+            knot.pose.pos = remap.at(knot.pose.pos);
+            knot.pose.ori = composeRow[static_cast<std::size_t>(knot.pose.ori)];
+        }
+        for (auto& halfChord : store.clipboard.halfChords) {
+            halfChord.pose.pos = remap.at(halfChord.pose.pos);
+            halfChord.pose.ori = composeRow[static_cast<std::size_t>(halfChord.pose.ori)];
+        }
+        return true;
+    }
+
+    auto moveClipboard(Store& store, index3 step) -> bool {
+        if (clipboardEmpty(store) or (step.x == 0 and step.y == 0 and step.z == 0))
+            return false;
+        for (auto& knot : store.clipboard.knots)
+            knot.pose.pos = addIndex3(knot.pose.pos, step);
+        for (auto& halfChord : store.clipboard.halfChords)
+            halfChord.pose.pos = addIndex3(halfChord.pose.pos, step);
+        return true;
+    }
+
+    auto pasteClipboard(Writing context, Store& store, resource::blueprint::Asset::Id hovered) -> bool {
+        if (clipboardEmpty(store) or not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
+            return false;
+        {
+            const auto& target = with<::eltanin::resource::blueprint::Asset>::get(context, hovered).data;
+            if (not canPaste(target, store.clipboard))
+                return false;
+        }
+        auto writable = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
+        for (const auto& knot : store.clipboard.knots)
+            writable->data.knots.push_back(knot);
+        for (const auto& halfChord : store.clipboard.halfChords)
+            writable->data.halfChords.push_back(halfChord);
+        return true;
+    }
+
     void handlePointer(Reading context, Store& store, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors, renderer::Integer32 under) {
         if (not ImGui::GetIO().WantCaptureMouse and under != renderer::Integer32{0}) {
             const auto hit = findActorByAlias(context, actors, under);
@@ -346,6 +469,8 @@ namespace eltanin::views::blueprints::selection {
     }
 
     auto handleHotkeys(Writing context, Store& store, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) -> bool {
+        if (store.focus != Focus::selection)
+            return false;
         if (not hovered.exists())
             return false;
         if (ImGui::IsKeyPressed(ImGuiKey_Delete) and not ImGui::GetIO().WantCaptureKeyboard)
@@ -353,8 +478,8 @@ namespace eltanin::views::blueprints::selection {
         if (store.aliases.empty() or ImGui::GetIO().WantCaptureKeyboard)
             return false;
         using Semiaxis = mech::space::orient::Semiaxis;
-        const bool ctrl = ImGui::GetIO().KeyCtrl;
-        if (ctrl) {
+        const bool shift = ImGui::GetIO().KeyShift;
+        if (not shift) {
             base::maybe<index3> step;
             if (ImGui::IsKeyPressed(ImGuiKey_A)) step = index3{.x = 0, .y = 0, .z = -1};
             else if (ImGui::IsKeyPressed(ImGuiKey_D)) step = index3{.x = 0, .y = 0, .z = 1};
@@ -378,6 +503,41 @@ namespace eltanin::views::blueprints::selection {
         return false;
     }
 
+    auto handleClipboardHotkeys(Store& store) -> bool {
+        if (store.focus != Focus::clipboard)
+            return false;
+        if (clipboardEmpty(store)) {
+            store.focus = Focus::selection;
+            return false;
+        }
+        if (ImGui::GetIO().WantCaptureKeyboard)
+            return false;
+        using Semiaxis = mech::space::orient::Semiaxis;
+        const bool shift = ImGui::GetIO().KeyShift;
+        if (not shift) {
+            base::maybe<index3> step;
+            if (ImGui::IsKeyPressed(ImGuiKey_A)) step = index3{.x = 0, .y = 0, .z = -1};
+            else if (ImGui::IsKeyPressed(ImGuiKey_D)) step = index3{.x = 0, .y = 0, .z = 1};
+            else if (ImGui::IsKeyPressed(ImGuiKey_W)) step = index3{.x = 1, .y = 0, .z = 0};
+            else if (ImGui::IsKeyPressed(ImGuiKey_S)) step = index3{.x = -1, .y = 0, .z = 0};
+            else if (ImGui::IsKeyPressed(ImGuiKey_Q)) step = index3{.x = 0, .y = -1, .z = 0};
+            else if (ImGui::IsKeyPressed(ImGuiKey_E)) step = index3{.x = 0, .y = 1, .z = 0};
+            if (step)
+                return moveClipboard(store, *step);
+            return false;
+        }
+        base::maybe<Semiaxis> axis;
+        if (ImGui::IsKeyPressed(ImGuiKey_A)) axis = Semiaxis::Yn;
+        else if (ImGui::IsKeyPressed(ImGuiKey_D)) axis = Semiaxis::Yp;
+        else if (ImGui::IsKeyPressed(ImGuiKey_W)) axis = Semiaxis::Xp;
+        else if (ImGui::IsKeyPressed(ImGuiKey_S)) axis = Semiaxis::Xn;
+        else if (ImGui::IsKeyPressed(ImGuiKey_Q)) axis = Semiaxis::Zn;
+        else if (ImGui::IsKeyPressed(ImGuiKey_E)) axis = Semiaxis::Zp;
+        if (axis)
+            return rotateClipboard(store, *axis);
+        return false;
+    }
+
     void drawPanel(Reading context, Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) {
         ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y}, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2{360.0f, 220.0f}, ImGuiCond_FirstUseEver);
@@ -395,7 +555,7 @@ namespace eltanin::views::blueprints::selection {
                 if (ImGui::Button("deselect"))
                     clear(store);
                 ImGui::Separator();
-                ImGui::TextDisabled("Del — remove · x/RMB deselect · Shift family · Ctrl+WASD/QE move");
+                ImGui::TextDisabled("Del — remove · x/RMB deselect · Shift+LMB family · WASD/QE move · Shift+WASD/QE rotate");
                 const auto* blueprintData = (hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
                     ? &with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data
                     : nullptr;
@@ -454,18 +614,34 @@ namespace eltanin::views::blueprints::selection {
         ImGui::End();
     }
 
-    void drawClipboardPanel(Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize) {
+    auto drawClipboardPanel(Writing context, Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered) -> bool {
         ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y + 228.0f}, ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2{360.0f, 96.0f}, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2{360.0f, 140.0f}, ImGuiCond_FirstUseEver);
+        bool pasted = false;
         if (ImGui::Begin("Clipboard")) {
             ImGui::TextDisabled("%zu knots, %zu half-chords", store.clipboard.knots.size(), store.clipboard.halfChords.size());
-            if (ImGui::Button("paste"))
-                base::message("eltanin: clipboard paste — work in progress");
+            const bool empty = clipboardEmpty(store);
+            bool allowed = false;
+            if (not empty and hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
+                allowed = canPaste(with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data, store.clipboard);
+            if (empty)
+                ImGui::TextDisabled("empty");
+            else if (allowed)
+                ImGui::TextUnformatted("can paste");
+            else
+                ImGui::TextUnformatted("blocked");
+            const char* focusLabel = store.focus == Focus::clipboard ? "focus: buffer (B)" : "focus: selection (B)";
+            if (ImGui::Button(focusLabel) and not empty)
+                toggleFocus(store);
+            if (ImGui::Button("paste") and allowed and hovered.exists())
+                pasted = pasteClipboard(context, store, *hovered);
             ImGui::SameLine();
             if (ImGui::Button("clear"))
                 resetClipboard(store);
+            ImGui::TextDisabled("B focus · WASD/QE move · Shift+WASD/QE rotate");
         }
         ImGui::End();
+        return pasted;
     }
 
 } // namespace eltanin::views::blueprints::selection
