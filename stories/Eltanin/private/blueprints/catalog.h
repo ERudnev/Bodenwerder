@@ -14,20 +14,33 @@ namespace eltanin {
 
     using namespace fqsm::api;
 
-    // Game-owned blueprint pack on disk. Editor / Ships are consumers — not owners.
+    // Linear pack of blueprint asset ids (ships, prefabs, spawn menu, …).
+    using BlueprintIds = std::vector<resource::blueprint::Asset::Id>;
+
+    enum class BlueprintShelf {
+        ships,
+        prefabs,
+    };
+
+    // Disk layout under assets/Eltanin/blueprints/:
+    //   _unnamed.blueprint     — editor fallback (not a product)
+    //   ships/*.blueprint      — products (spawn menu + editor ships list)
+    //   prefabs/*.blueprint    — editor building blocks
     struct BlueprintCatalog {
-        filepath directory;
-        std::vector<resource::blueprint::Asset::Id> items;
+        filepath root;
+        BlueprintIds ships;
+        BlueprintIds prefabs;
+        base::maybe<resource::blueprint::Asset::Id> unnamed;
         std::array<char, 128> newName;
         bool ready;
 
-        void bind(filepath); // directory + clear items / UI buf; marks not ready
-        // One branch per file; skips broken. Idempotent after ready.
+        void bind(filepath); // root + clear packs / UI buf; marks not ready
+        // One branch per file; skips broken. Ensures _unnamed. Idempotent after ready.
         void loadFromDisk(establish::Realm&);
-        // One file in the current Writing; refuse on parse/IO → loadFromDisk isolates via branch.
-        auto loadOne(Writing, string stem) -> base::maybe<resource::blueprint::Asset::Id>;
-        // Empty ship + save; appends to items on success.
-        auto createNew(Writing, std::string_view name) -> base::maybe<resource::blueprint::Asset::Id>;
+        auto loadOne(Writing, BlueprintShelf, string stem) -> base::maybe<resource::blueprint::Asset::Id>;
+        auto ensureUnnamed(Writing) -> base::maybe<resource::blueprint::Asset::Id>;
+        // Empty blueprint + save into ships/ or prefabs/; appends to the matching pack.
+        auto createNew(Writing, BlueprintShelf, std::string_view name) -> base::maybe<resource::blueprint::Asset::Id>;
     };
 
 }

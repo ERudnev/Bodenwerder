@@ -6,13 +6,13 @@ namespace eltanin
     namespace blueprint
 
       // Construction schema on the Unit shelf. Payload = mech::Blueprint.
-      // Files: assets/Eltanin/blueprints/*.blueprint
+      // Disk: blueprints/_unnamed.blueprint | ships/*.blueprint | prefabs/*.blueprint
       feature Asset of rmmr::resource::Unit
         one
           data: mech::Blueprint
 
       feature Loader of Asset
         one
-          file: filename // relative to kit; expected under blueprints/, suffix .blueprint
+          file: filename // relative to kit; under blueprints/ (+ ships/ or prefabs/), suffix .blueprint
           >load()
           >save()

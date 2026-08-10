@@ -341,27 +341,54 @@ namespace eltanin::views {
             blueprintsPos = ImGui::GetWindowPos();
             blueprintsSize = ImGui::GetWindowSize();
             ImGui::BeginChild("blueprintList", ImVec2{220.0f, 0.0f}, true);
+            const auto pickBlueprint = [&](resource::blueprint::Asset::Id assetId) {
+                const auto& unit = with<Unit>::get(context, assetId);
+                const auto& asset = with<::eltanin::resource::blueprint::Asset>::get(context, assetId);
+                const bool hovered = state.hovered.exists() and *state.hovered == assetId;
+                const char* label = asset.data.name.empty() ? unit.name.own.c_str() : asset.data.name.c_str();
+                ImGui::PushID(reinterpret_cast<const void*>(assetId.raw()));
+                if (ImGui::Selectable(label, hovered))
+                    show(context, assetId);
+                ImGui::PopID();
+            };
+
             ImGui::SetNextItemWidth(-1.0f);
             ImGui::InputTextWithHint("##newBlueprint", "New name...", catalog.newName.data(), catalog.newName.size());
-            if (ImGui::Button("Create new", ImVec2{-1.0f, 0.0f})) {
-                if (const auto id = catalog.createNew(context, catalog.newName.data())) {
+            if (ImGui::Button("Create ship", ImVec2{-1.0f, 0.0f})) {
+                if (const auto id = catalog.createNew(context, BlueprintShelf::ships, catalog.newName.data())) {
                     catalog.newName = {};
                     show(context, *id);
                 }
             }
+            if (ImGui::Button("Create prefab", ImVec2{-1.0f, 0.0f})) {
+                if (const auto id = catalog.createNew(context, BlueprintShelf::prefabs, catalog.newName.data())) {
+                    catalog.newName = {};
+                    show(context, *id);
+                }
+            }
+
             ImGui::Separator();
-            if (catalog.items.empty()) {
-                ImGui::TextDisabled("No blueprints loaded.");
-            } else {
-                for (const auto asset_id : catalog.items) {
-                    const auto& unit = with<Unit>::get(context, asset_id);
-                    const auto& asset = with<::eltanin::resource::blueprint::Asset>::get(context, asset_id);
-                    const bool hovered = state.hovered.exists() and *state.hovered == asset_id;
-                    const char* label = asset.data.name.empty() ? unit.name.own.c_str() : asset.data.name.c_str();
-                    ImGui::PushID(reinterpret_cast<const void*>(asset_id.raw()));
-                    if (ImGui::Selectable(label, hovered))
-                        show(context, asset_id);
-                    ImGui::PopID();
+            ImGui::TextDisabled("Editor");
+            if (catalog.unnamed and with<::eltanin::resource::blueprint::Asset>::exists(context, *catalog.unnamed))
+                pickBlueprint(*catalog.unnamed);
+            else
+                ImGui::TextDisabled("_unnamed missing");
+
+            if (ImGui::CollapsingHeader("Ships")) {
+                if (catalog.ships.empty()) {
+                    ImGui::TextDisabled("No ships.");
+                } else {
+                    for (const auto assetId : catalog.ships)
+                        pickBlueprint(assetId);
+                }
+            }
+
+            if (ImGui::CollapsingHeader("Prefabs")) {
+                if (catalog.prefabs.empty()) {
+                    ImGui::TextDisabled("No prefabs.");
+                } else {
+                    for (const auto assetId : catalog.prefabs)
+                        pickBlueprint(assetId);
                 }
             }
             ImGui::EndChild();

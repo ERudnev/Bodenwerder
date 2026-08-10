@@ -31,6 +31,7 @@ namespace eltanin::views::blueprints::selection {
     auto cellOccupied(const mech::Blueprint& data, const index3& pos) -> bool;
 
     void clear(Store&);
+    void selectAll(Reading, Store&, const std::vector<QuarkActor>& actors);
     void resetClipboard(Store&);
     void rematchAfterSync(Reading, Store&, const std::vector<QuarkActor>& actors);
 
@@ -48,7 +49,7 @@ namespace eltanin::views::blueprints::selection {
     // Del / WASD+QE / Ctrl+WASD+QE. Returns true if blueprint content changed.
     auto handleHotkeys(Writing, Store&, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
 
-    // Selection ImGui window anchored next to Blueprints (only when aliases non-empty).
+    // Selection ImGui window next to Blueprints: no close, collapsible; empty → select all; list grouped by cell.
     void drawPanel(Reading, Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors);
 
 } // namespace eltanin::views::blueprints::selection

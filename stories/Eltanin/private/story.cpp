@@ -231,8 +231,8 @@ namespace eltanin {
     void Game::onFrame(establish::Realm& world, int64 dt_us) {
         if (not blueprintPack.ready) {
             blueprintPack.loadFromDisk(world);
-            if (not blueprintPack.items.empty())
-                world.branch([&](Writing context) { blueprints.show(context, blueprintPack.items.front()); });
+            if (blueprintPack.unnamed)
+                world.branch([&](Writing context) { blueprints.show(context, *blueprintPack.unnamed); });
         }
         with<World>::tetherEnvironment(world);
         physics.step(world, dt_us);

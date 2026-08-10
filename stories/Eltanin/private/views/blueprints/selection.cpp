@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <format>
+#include <map>
 #include <set>
 #include <tuple>
 #include <utility>
@@ -172,6 +173,15 @@ namespace eltanin::views::blueprints::selection {
     void clear(Store& store) {
         store.aliases.clear();
         store.pendingRestore.clear();
+    }
+
+    void selectAll(Reading context, Store& store, const std::vector<QuarkActor>& actors) {
+        store.aliases.clear();
+        store.pendingRestore.clear();
+        for (const auto& actor : actors) {
+            if (const auto alias = actorAlias(context, actor))
+                addAlias(store.aliases, *alias);
+        }
     }
 
     void resetClipboard(Store& store) {
@@ -368,45 +378,82 @@ namespace eltanin::views::blueprints::selection {
     }
 
     void drawPanel(Reading context, Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) {
-        if (store.aliases.empty())
-            return;
         ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y}, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2{360.0f, 220.0f}, ImGuiCond_FirstUseEver);
-        bool selectionOpen = true;
-        if (ImGui::Begin("Selection", &selectionOpen)) {
-            if (ImGui::Button("expand") and hovered.exists())
-                expand(context, store, *hovered, actors);
-            ImGui::SameLine();
-            if (ImGui::Button("copy") and hovered.exists())
-                copyToClipboard(context, store, *hovered, actors);
-            ImGui::SameLine();
-            if (ImGui::Button("deselect"))
-                clear(store);
-            ImGui::Separator();
-            ImGui::TextDisabled("Del — remove · x/RMB deselect · Shift family · Ctrl+WASD/QE move");
-            const auto* blueprintData = (hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
-                ? &with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data
-                : nullptr;
-            for (std::size_t index = 0; index < store.aliases.size();) {
-                const auto alias = store.aliases[index];
-                const auto actor = findActorByAlias(context, actors, alias);
-                const auto row = selectionRowLabel(blueprintData, actor, alias);
-                ImGui::PushID(static_cast<int>(index));
-                ImGui::TextUnformatted(row.c_str());
+        if (ImGui::Begin("Selection")) {
+            if (store.aliases.empty()) {
+                if (ImGui::Button("select all") and not actors.empty())
+                    selectAll(context, store, actors);
+            } else {
+                if (ImGui::Button("expand") and hovered.exists())
+                    expand(context, store, *hovered, actors);
                 ImGui::SameLine();
-                const bool remove = ImGui::SmallButton("x");
-                ImGui::PopID();
-                if (remove)
-                    store.aliases.erase(store.aliases.begin() + static_cast<std::ptrdiff_t>(index));
-                else
-                    ++index;
+                if (ImGui::Button("copy") and hovered.exists())
+                    copyToClipboard(context, store, *hovered, actors);
+                ImGui::SameLine();
+                if (ImGui::Button("deselect"))
+                    clear(store);
+                ImGui::Separator();
+                ImGui::TextDisabled("Del — remove · x/RMB deselect · Shift family · Ctrl+WASD/QE move");
+                const auto* blueprintData = (hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
+                    ? &with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data
+                    : nullptr;
+
+                std::map<index3, std::vector<renderer::Integer32>, CellPosLess> byCell;
+                std::vector<renderer::Integer32> orphans;
+                for (const auto alias : store.aliases) {
+                    const auto actor = findActorByAlias(context, actors, alias);
+                    if (blueprintData and actor) {
+                        if (const auto pose = quarkPose(*blueprintData, *actor)) {
+                            byCell[pose->pos].push_back(alias);
+                            continue;
+                        }
+                    }
+                    orphans.push_back(alias);
+                }
+
+                const auto drawLeaf = [&](renderer::Integer32 alias) {
+                    const auto actor = findActorByAlias(context, actors, alias);
+                    const auto row = selectionRowLabel(blueprintData, actor, alias);
+                    ImGui::PushID(static_cast<int>(static_cast<fqsm::internal::id::BaseType>(alias)));
+                    ImGui::TextUnformatted(row.c_str());
+                    ImGui::SameLine();
+                    const bool remove = ImGui::SmallButton("x");
+                    ImGui::PopID();
+                    if (remove)
+                        removeAlias(store.aliases, alias);
+                };
+
+                for (const auto& [pos, group] : byCell) {
+                    ImGui::PushID(pos.x);
+                    ImGui::PushID(pos.y);
+                    ImGui::PushID(pos.z);
+                    const bool open = ImGui::TreeNode("cell", "Cell(%d,%d,%d) (%zu)", pos.x, pos.y, pos.z, group.size());
+                    ImGui::SameLine();
+                    const bool dropFamily = ImGui::SmallButton("x");
+                    if (dropFamily) {
+                        for (const auto alias : group)
+                            removeAlias(store.aliases, alias);
+                    }
+                    if (open) {
+                        if (not dropFamily) {
+                            for (const auto alias : group)
+                                drawLeaf(alias);
+                        }
+                        ImGui::TreePop();
+                    }
+                    ImGui::PopID();
+                    ImGui::PopID();
+                    ImGui::PopID();
+                }
+                for (const auto alias : orphans)
+                    drawLeaf(alias);
+
+                if (not store.clipboard.knots.empty() or not store.clipboard.halfChords.empty())
+                    ImGui::TextDisabled("clipboard: %zu knots, %zu half-chords", store.clipboard.knots.size(), store.clipboard.halfChords.size());
             }
-            if (not store.clipboard.knots.empty() or not store.clipboard.halfChords.empty())
-                ImGui::TextDisabled("буфер: %zu knots, %zu half-chords", store.clipboard.knots.size(), store.clipboard.halfChords.size());
         }
         ImGui::End();
-        if (not selectionOpen)
-            clear(store);
     }
 
 } // namespace eltanin::views::blueprints::selection

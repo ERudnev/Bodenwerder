@@ -135,10 +135,10 @@ namespace eltanin {
             ImGui::End();
             return;
         }
-        if (blueprintPack.items.empty()) {
-            ImGui::TextDisabled("No blueprints loaded.");
+        if (blueprintPack.ships.empty()) {
+            ImGui::TextDisabled("No ships loaded.");
         } else {
-            for (const auto id : blueprintPack.items) {
+            for (const auto id : blueprintPack.ships) {
                 if (not with<::eltanin::resource::blueprint::Asset>::exists(world, id))
                     continue;
                 const auto& asset = with<::eltanin::resource::blueprint::Asset>::get(world, id);
