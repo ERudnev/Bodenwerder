@@ -114,7 +114,7 @@ namespace eltanin {
                 .blend = renderer::BlendMode::additive,
             });
 
-        // Mech albedo catalog; frame meshes via interframe (levelOne pack retired).
+        // Mech albedo catalog; editor meshpacks under meshes/editor.
         if (not shared or not shared->material.litTextured) {
             return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_textured missing");
         }
@@ -134,14 +134,14 @@ namespace eltanin {
             (void)with<Assets>::add_material(context, Name::from("Eltanin", "clipboardGhost"), std::move(ghost));
         }
 
-        assets.levelTwo = with<Assets>::add_meshpack_lwo_loader(
-            context,
-            Name::from("Eltanin", "levelTwo"),
-            item<meshpack::LoaderLwo>{.file = "meshes/system/levelTwo/levelTwo.lwo.meshpack", .geometry = {}, .pending = {}});
         assets.interframe = with<Assets>::add_meshpack_lwo_loader(
             context,
             Name::from("Eltanin", "interframe"),
-            item<meshpack::LoaderLwo>{.file = "meshes/system/levelOne/interframe.lwo.meshpack", .geometry = {}, .pending = {}});
+            item<meshpack::LoaderLwo>{.file = "meshes/editor/interframe.lwo.meshpack", .geometry = {}, .pending = {}});
+        assets.attachments = with<Assets>::add_meshpack_lwo_loader(
+            context,
+            Name::from("Eltanin", "attachments"),
+            item<meshpack::LoaderLwo>{.file = "meshes/editor/attachments.lwo.meshpack", .geometry = {}, .pending = {}});
 
         const auto manager = *with<Manager>::singleton(context);
         if (not with<Unit_group>::exists(context, manager)) {

@@ -245,7 +245,6 @@ namespace eltanin::resource::blueprint {
         buffer << input.rdbuf();
         try {
             auto parsed = parse_blueprint(buffer.str());
-            base::message("eltanin: blueprint '{}' ← {} (name='{}', knots={}, halfChords={})", unit.name.text(), path.string(), parsed.name, parsed.knots.size(), parsed.halfChords.size());
             with<Asset>::modify(context, id)->data = std::move(parsed);
         } catch (const std::exception& error) {
             return (void)context.refuse(std::format("resource::blueprint::Loader::load: '{}': {}", path.string(), error.what()));
@@ -266,7 +265,6 @@ namespace eltanin::resource::blueprint {
             output << format_blueprint(asset.data);
             if (not output)
                 return (void)context.refuse(std::format("resource::blueprint::Loader::save: write failed '{}'", path.string()));
-            base::message("eltanin: blueprint '{}' → {} (name='{}', knots={}, halfChords={})", unit.name.text(), path.string(), asset.data.name, asset.data.knots.size(), asset.data.halfChords.size());
         } catch (const std::exception& error) {
             return (void)context.refuse(std::format("resource::blueprint::Loader::save: '{}': {}", path.string(), error.what()));
         }

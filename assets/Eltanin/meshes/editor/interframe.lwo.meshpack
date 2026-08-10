@@ -1,7 +1,7 @@
 {
     "interframe",
     "Eltanin",
-    "meshes/system/levelOne/interframe.lwo",
+    "meshes/editor/interframe.lwo",
     "Eltanin::mech",
     [
         {"outer", {"rmmr::lit_textured", [{"albedoMap", "mtile05.jpg"}]}},

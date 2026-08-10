@@ -1,0 +1,4 @@
+
+namespace eltanin
+
+  entity Thing // placeholder aka "game object" :)
