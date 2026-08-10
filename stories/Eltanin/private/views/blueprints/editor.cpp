@@ -423,6 +423,7 @@ namespace eltanin::views {
         open = shown;
 
         blueprints::selection::drawPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered, state.quarkActors);
+        blueprints::selection::drawClipboardPanel(state.selection, blueprintsPos, blueprintsSize);
     }
 
     void Blueprints::bindView(std::vector<rmmr::wrapper::Product::View>& product_views, bool open, const rmmr::wrapper::Product::View& world_view) const {

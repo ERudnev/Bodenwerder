@@ -3,6 +3,7 @@
 #include "mech/semantics/quarks.h"
 #include "mech/semantics/subframe.h"
 
+#include <base/logging.h>
 #include <eltanin/resources/blueprint.q1.h>
 #include <fQSM/identifier.h>
 #include <rmmr/scene/actors/mesh.q1.h>
@@ -448,10 +449,21 @@ namespace eltanin::views::blueprints::selection {
                 }
                 for (const auto alias : orphans)
                     drawLeaf(alias);
-
-                if (not store.clipboard.knots.empty() or not store.clipboard.halfChords.empty())
-                    ImGui::TextDisabled("clipboard: %zu knots, %zu half-chords", store.clipboard.knots.size(), store.clipboard.halfChords.size());
             }
+        }
+        ImGui::End();
+    }
+
+    void drawClipboardPanel(Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize) {
+        ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y + 228.0f}, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2{360.0f, 96.0f}, ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Clipboard")) {
+            ImGui::TextDisabled("%zu knots, %zu half-chords", store.clipboard.knots.size(), store.clipboard.halfChords.size());
+            if (ImGui::Button("paste"))
+                base::message("eltanin: clipboard paste — work in progress");
+            ImGui::SameLine();
+            if (ImGui::Button("clear"))
+                resetClipboard(store);
         }
         ImGui::End();
     }

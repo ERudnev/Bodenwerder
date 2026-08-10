@@ -52,4 +52,7 @@ namespace eltanin::views::blueprints::selection {
     // Selection ImGui window next to Blueprints: no close, collapsible; empty → select all; list grouped by cell.
     void drawPanel(Reading, Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors);
 
+    // Minimal clipboard window: counts + paste (stub) + clear.
+    void drawClipboardPanel(Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize);
+
 } // namespace eltanin::views::blueprints::selection
