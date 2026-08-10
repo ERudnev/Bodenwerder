@@ -178,7 +178,7 @@ namespace rmmr::system {
             std::fill(quantum->current.keys.begin(), quantum->current.keys.end(), false);
         }
         if (io.WantCaptureMouse) {
-            // Neutral delta for look/drag; drop buttons so RMB does not stick through UI.
+            // Neutral delta for look/drag; drop buttons so orbit MMB does not stick through UI.
             quantum->current.mouse = quantum->previous.mouse;
             std::fill(quantum->current.buttons.begin(), quantum->current.buttons.end(), false);
         }

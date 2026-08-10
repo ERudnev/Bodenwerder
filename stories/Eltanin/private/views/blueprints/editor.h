@@ -5,7 +5,6 @@
 #include <base/maybe.h>
 #include <base/types/common_types.h>
 #include <eltanin/resources/blueprint.q1.h>
-#include <rmmr/renderer/types.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
@@ -15,8 +14,7 @@
 
 #include "blueprints/catalog.h"
 #include "views/blueprints/geometry.h"
-
-#include "mech/semantics/space.h"
+#include "views/blueprints/selection.h"
 
 #include <fQSM/api/interface.h>
 
@@ -24,7 +22,7 @@ namespace eltanin::views {
 
     using namespace fqsm::api;
 
-    // Blueprint editor: catalog + lattice cursor + pick/selection over quark actors.
+    // Blueprint editor: catalog + lattice cursor; pick/selection live in blueprints::selection.
     struct Blueprints {
         struct State {
             base::maybe<rmmr::scene::Root::Id> scene;
@@ -34,8 +32,8 @@ namespace eltanin::views {
             base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;
             base::maybe<resource::blueprint::Asset::Id> hovered;
             std::vector<blueprints::geometry::QuarkActor> quarkActors;
-            std::vector<rmmr::renderer::Integer32> selection;
-            base::common_types::index3 cursorLattice;
+            blueprints::selection::Store selection;
+            index3 cursorLattice;
             int currentFloor;
             struct {
                 bool place;
@@ -50,9 +48,6 @@ namespace eltanin::views {
         void syncGridToFloor(Writing);
         void updateWorldCursor(Writing);
         void syncVisuals(Writing);
-        void deleteSelection(Writing);
-        // World ±90° about axis for all quarks sharing a selected cell (compose[delta][ori], not local turn).
-        void rotateSelection(Writing, mech::space::orient::Semiaxis);
         void persistHovered(Writing);
         void draw(Writing, bool& open, BlueprintCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;

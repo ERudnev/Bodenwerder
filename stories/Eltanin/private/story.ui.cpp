@@ -116,7 +116,7 @@ namespace eltanin {
     auto Game::overlaySelection() const -> std::span<const rmmr::renderer::Integer32> {
         if (not ui.blueprints)
             return {};
-        return blueprints.state.selection;
+        return blueprints.state.selection.aliases;
     }
 
     void Game::drawUi(Writing world) {

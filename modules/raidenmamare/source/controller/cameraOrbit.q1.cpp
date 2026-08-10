@@ -54,7 +54,7 @@ namespace rmmr::controller {
             const auto& input = with<system::Window>::get(context, window);
             auto orbit = with<CameraOrbit>::modify(context, self);
 
-            if (button_down(input.current, GLFW_MOUSE_BUTTON_RIGHT)) {
+            if (button_down(input.current, GLFW_MOUSE_BUTTON_MIDDLE)) {
                 const auto shift = with<system::Window>::mouseShift(context, window);
                 orbit->hpb.x += k_heading_scale_x * static_cast<float>(shift.x) * k_mouse_sens_deg_per_pixel;
                 orbit->hpb.y += -static_cast<float>(shift.y) * k_mouse_sens_deg_per_pixel;
