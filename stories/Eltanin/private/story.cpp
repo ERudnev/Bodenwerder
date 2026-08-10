@@ -128,6 +128,11 @@ namespace eltanin {
             index2{1024, 1024},
             32);
         (void)with<Assets>::add_material(context, Name::from("Eltanin", "type"), with<Material>::get(context, *shared->material.litTransparent));
+        {
+            auto ghost = with<Material>::get(context, *shared->material.litTransparent);
+            ghost.blend = renderer::BlendMode::additive;
+            (void)with<Assets>::add_material(context, Name::from("Eltanin", "clipboardGhost"), std::move(ghost));
+        }
 
         assets.levelTwo = with<Assets>::add_meshpack_lwo_loader(
             context,

@@ -509,6 +509,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::environment || pass == renderer::Pass::gizmo) {
                 glDisable(GL_BLEND);
                 glDepthMask(GL_TRUE);
+                glDepthFunc(GL_LESS);
             }
         }
 
@@ -529,19 +530,24 @@ void main() { fragColor = texture(u_overlay, vUv); })";
                 if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo) {
                     blend = renderer::BlendMode::alpha;
                 } else {
+                    glDepthFunc(GL_LESS);
                     return;
                 }
-            }
-
-            if (blend == renderer::BlendMode::alpha) {
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                return;
             }
 
             if (blend == renderer::BlendMode::additive) {
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_ONE, GL_ONE);
+                // Additive overlays (e.g. clipboard ghosts): pass same-Z so highlight sits on existing opaque.
+                glDepthFunc(GL_LEQUAL);
+                return;
+            }
+
+            glDepthFunc(GL_LESS);
+
+            if (blend == renderer::BlendMode::alpha) {
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                 return;
             }
 

@@ -163,6 +163,9 @@ namespace eltanin::views {
         state.scene = root;
         state.camera = camera;
         state.interframe = with<Assets>::find<meshpack::Asset>(context, Unit::Name::from("Eltanin", "interframe"));
+        state.ghostMaterial = with<Assets>::find<::rmmr::resource::material::Asset>(context, Unit::Name::from("Eltanin", "clipboardGhost"));
+        if (not state.ghostMaterial)
+            return (void)context.refuse("eltanin::views::Blueprints::create: clipboardGhost material missing");
         state.quarkActors = {};
         state.clipboardActors = {};
         blueprints::selection::clear(state.selection);
@@ -193,15 +196,15 @@ namespace eltanin::views {
     }
 
     void Blueprints::syncClipboardGhost(Writing context) {
-        if (not state.scene.exists() or not state.interframe.exists())
+        if (not state.scene.exists() or not state.interframe.exists() or not state.ghostMaterial.exists())
             return;
         if (blueprints::selection::clipboardEmpty(state.selection)) {
             blueprints::geometry::clearActors(context, *state.scene, state.clipboardActors);
             return;
         }
-        constexpr float ghostOpacity = 0.32f;
-        const RGB okTint{0.35f, 0.95f, 1.0f};
-        const RGB blockedTint{1.0f, 0.35f, 0.3f};
+        constexpr float ghostOpacity = 0.45f;
+        const RGB okTint{0.22f, 0.55f, 0.62f};
+        const RGB blockedTint{0.62f, 0.22f, 0.18f};
         bool allowed = false;
         if (state.hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
             allowed = blueprints::selection::canPaste(with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data, state.selection.clipboard);
@@ -209,7 +212,7 @@ namespace eltanin::views {
         // Prefer in-place pose/tint update — full destroy+create every frame trips fQSM (Mesh on a Node that is not new in the patch).
         if (blueprints::geometry::refreshGhostActors(context, *state.interframe, state.selection.clipboard, state.clipboardActors, tint, ghostOpacity))
             return;
-        blueprints::geometry::syncGhostActors(context, *state.scene, *state.interframe, state.selection.clipboard, state.clipboardActors, tint, ghostOpacity);
+        blueprints::geometry::syncGhostActors(context, *state.scene, *state.interframe, *state.ghostMaterial, state.selection.clipboard, state.clipboardActors, tint, ghostOpacity);
     }
 
     void Blueprints::syncGridToFloor(Writing context) {
@@ -298,6 +301,10 @@ namespace eltanin::views {
             syncVisuals(context);
         }
         blueprints::selection::handleClipboardHotkeys(state.selection);
+        if (blueprints::selection::handleClipboardChords(context, state.selection, state.hovered, state.quarkActors)) {
+            persistHovered(context);
+            syncVisuals(context);
+        }
 
         constexpr auto spaceMenuPopup = "##blueprints.spaceMenu";
         const bool spaceMenuOpen = ImGui::IsPopupOpen(spaceMenuPopup);
@@ -439,7 +446,7 @@ namespace eltanin::views {
                 ImGui::Text("Selection: %zu", state.selection.aliases.size());
                 ImGui::Text("Cursor [%d, %d, %d]", state.cursorLattice.x, state.cursorLattice.y, state.cursorLattice.z);
                 ImGui::Text("Floor: %d", state.currentFloor);
-                ImGui::TextDisabled("MMB orbit · PgUp/PgDn · Space · LMB/RMB±Shift · Del · WASD/QE move · Shift rotate · B clipboard");
+                ImGui::TextDisabled("MMB orbit · PgUp/PgDn · Space · LMB/RMB±Shift · Del · WASD/QE · Shift rotate · Ctrl+C/V · B");
                 if (under == renderer::Integer32{0}) {
                     ImGui::TextDisabled("Under: —");
                 } else {
@@ -451,7 +458,10 @@ namespace eltanin::views {
         ImGui::End();
         open = shown;
 
-        blueprints::selection::drawPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered, state.quarkActors);
+        if (blueprints::selection::drawPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered, state.quarkActors)) {
+            persistHovered(context);
+            syncVisuals(context);
+        }
         if (blueprints::selection::drawClipboardPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered)) {
             persistHovered(context);
             syncVisuals(context);

@@ -479,6 +479,9 @@ namespace eltanin::views::blueprints::selection {
             return false;
         using Semiaxis = mech::space::orient::Semiaxis;
         const bool shift = ImGui::GetIO().KeyShift;
+        const bool ctrl = ImGui::GetIO().KeyCtrl;
+        if (ctrl)
+            return false;
         if (not shift) {
             base::maybe<index3> step;
             if (ImGui::IsKeyPressed(ImGuiKey_A)) step = index3{.x = 0, .y = 0, .z = -1};
@@ -514,6 +517,9 @@ namespace eltanin::views::blueprints::selection {
             return false;
         using Semiaxis = mech::space::orient::Semiaxis;
         const bool shift = ImGui::GetIO().KeyShift;
+        const bool ctrl = ImGui::GetIO().KeyCtrl;
+        if (ctrl)
+            return false;
         if (not shift) {
             base::maybe<index3> step;
             if (ImGui::IsKeyPressed(ImGuiKey_A)) step = index3{.x = 0, .y = 0, .z = -1};
@@ -538,9 +544,23 @@ namespace eltanin::views::blueprints::selection {
         return false;
     }
 
-    void drawPanel(Reading context, Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) {
+    auto handleClipboardChords(Writing context, Store& store, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) -> bool {
+        if (ImGui::GetIO().WantCaptureKeyboard or not ImGui::GetIO().KeyCtrl)
+            return false;
+        if (ImGui::IsKeyPressed(ImGuiKey_C)) {
+            if (hovered.exists() and not store.aliases.empty())
+                copyToClipboard(context, store, *hovered, actors);
+            return false;
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_V) and hovered.exists())
+            return pasteClipboard(context, store, *hovered);
+        return false;
+    }
+
+    auto drawPanel(Writing context, Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) -> bool {
         ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y}, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2{360.0f, 220.0f}, ImGuiCond_FirstUseEver);
+        bool erased = false;
         if (ImGui::Begin("Selection")) {
             if (store.aliases.empty()) {
                 if (ImGui::Button("select all") and not actors.empty())
@@ -554,8 +574,11 @@ namespace eltanin::views::blueprints::selection {
                 ImGui::SameLine();
                 if (ImGui::Button("deselect"))
                     clear(store);
+                ImGui::SameLine();
+                if (ImGui::Button("delete") and hovered.exists())
+                    erased = eraseSelected(context, store, *hovered, actors);
                 ImGui::Separator();
-                ImGui::TextDisabled("Del — remove · x/RMB deselect · Shift+LMB family · WASD/QE move · Shift+WASD/QE rotate");
+                ImGui::TextDisabled("Del — remove · x/RMB deselect · Shift+LMB family · WASD/QE move · Shift rotate · Ctrl+C/V");
                 const auto* blueprintData = (hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
                     ? &with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data
                     : nullptr;
@@ -612,6 +635,7 @@ namespace eltanin::views::blueprints::selection {
             }
         }
         ImGui::End();
+        return erased;
     }
 
     auto drawClipboardPanel(Writing context, Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered) -> bool {
@@ -624,21 +648,24 @@ namespace eltanin::views::blueprints::selection {
             bool allowed = false;
             if (not empty and hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
                 allowed = canPaste(with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data, store.clipboard);
-            if (empty)
+            if (empty) {
                 ImGui::TextDisabled("empty");
-            else if (allowed)
-                ImGui::TextUnformatted("can paste");
-            else
-                ImGui::TextUnformatted("blocked");
-            const char* focusLabel = store.focus == Focus::clipboard ? "focus: buffer (B)" : "focus: selection (B)";
-            if (ImGui::Button(focusLabel) and not empty)
-                toggleFocus(store);
-            if (ImGui::Button("paste") and allowed and hovered.exists())
-                pasted = pasteClipboard(context, store, *hovered);
-            ImGui::SameLine();
-            if (ImGui::Button("clear"))
-                resetClipboard(store);
-            ImGui::TextDisabled("B focus · WASD/QE move · Shift+WASD/QE rotate");
+                ImGui::TextDisabled("Ctrl+C copy selection");
+            } else {
+                if (allowed)
+                    ImGui::TextUnformatted("can paste");
+                else
+                    ImGui::TextUnformatted("blocked");
+                const char* focusLabel = store.focus == Focus::clipboard ? "focus: buffer (B)" : "focus: selection (B)";
+                if (ImGui::Button(focusLabel))
+                    toggleFocus(store);
+                if (ImGui::Button("paste") and allowed and hovered.exists())
+                    pasted = pasteClipboard(context, store, *hovered);
+                ImGui::SameLine();
+                if (ImGui::Button("clear"))
+                    resetClipboard(store);
+                ImGui::TextDisabled("B focus · WASD/QE move · Shift rotate · Ctrl+C/V");
+            }
         }
         ImGui::End();
         return pasted;

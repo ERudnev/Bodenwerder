@@ -64,9 +64,12 @@ namespace eltanin::views::blueprints::selection {
     auto handleHotkeys(Writing, Store&, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
     // WASD+QE move / Shift+WASD+QE rotate for clipboard focus. Returns true if clipboard poses changed.
     auto handleClipboardHotkeys(Store&) -> bool;
+    // Ctrl+C copy selection → clipboard; Ctrl+V paste when allowed. No Ctrl+X. Returns true if paste mutated the asset.
+    auto handleClipboardChords(Writing, Store&, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
 
     // Selection ImGui window next to Blueprints: no close, collapsible; empty → select all; list grouped by cell.
-    void drawPanel(Reading, Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors);
+    // Returns true if delete mutated the hovered asset.
+    auto drawPanel(Writing, Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
 
     // Minimal clipboard window: counts, can/blocked, focus toggle, paste, clear. Returns true if paste mutated the asset.
     auto drawClipboardPanel(Writing, Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered) -> bool;

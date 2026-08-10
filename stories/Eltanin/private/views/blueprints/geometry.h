@@ -6,6 +6,7 @@
 #include <base/maybe.h>
 #include <eltanin/resources/blueprint.q1.h>
 #include <rmmr/math.q1.h>
+#include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -42,9 +43,9 @@ namespace eltanin::views::blueprints::geometry {
     // Rebuild quark mesh actors for a blueprint (interframe pack). Each actor is Identified for pick/selection.
     void syncActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, const mech::Blueprint& blueprint, std::vector<QuarkActor>& actors);
 
-    // Preview actors for clipboard paste: no Identified; MeshState albedo/opacity for ghost tint.
+    // Preview actors for clipboard paste: no Identified; additive ghost material + MeshState tint.
     // Full respawn (destroy+create). Prefer refreshGhostActors when structure is unchanged.
-    void syncGhostActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, const mech::Blueprint& blueprint, std::vector<QuarkActor>& actors, rmmr::RGB albedo, float opacity);
+    void syncGhostActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, ::rmmr::resource::material::Asset::Id ghostMaterial, const mech::Blueprint& blueprint, std::vector<QuarkActor>& actors, rmmr::RGB albedo, float opacity);
 
     // In-place pose + MeshState update. False → caller must syncGhostActors (structure mismatch or dead ids).
     auto refreshGhostActors(Writing, rmmr::resource::meshpack::Asset::Id interframe, const mech::Blueprint& blueprint, std::vector<QuarkActor>& actors, rmmr::RGB albedo, float opacity) -> bool;

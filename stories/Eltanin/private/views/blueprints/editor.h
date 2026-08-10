@@ -5,6 +5,7 @@
 #include <base/maybe.h>
 #include <base/types/common_types.h>
 #include <eltanin/resources/blueprint.q1.h>
+#include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
@@ -30,6 +31,7 @@ namespace eltanin::views {
             base::maybe<rmmr::scene::Grid::Id> grid;
             base::maybe<rmmr::scene::actor::Mesh::Id> worldCursor;
             base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;
+            base::maybe<::rmmr::resource::material::Asset::Id> ghostMaterial;
             base::maybe<resource::blueprint::Asset::Id> hovered;
             std::vector<blueprints::geometry::QuarkActor> quarkActors;
             std::vector<blueprints::geometry::QuarkActor> clipboardActors;
