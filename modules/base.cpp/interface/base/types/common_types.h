@@ -79,3 +79,10 @@ namespace base::common_types {
     using ivec3 = glm::ivec3;
     using quat = glm::quat;
 }
+
+// sweet sugar:
+namespace base::common_types {
+    inline auto rgb(int r, int g, int b) -> vec3 {
+        return {r / 255.f, g / 255.f, b / 255.f};
+    }
+}

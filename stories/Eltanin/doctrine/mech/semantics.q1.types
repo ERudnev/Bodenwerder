@@ -17,7 +17,7 @@ namespace eltanin
       using shape as @external(eltanin::mech::plate::shape)
 
     namespace slot
-      using inner as @external(eltanin::mech::slot::inner)
+      using role as @external(eltanin::mech::slot::role)
       using plate as @external(eltanin::mech::slot::plate)
 
     struct Pose

@@ -28,6 +28,13 @@ namespace eltanin::mech::quarks {
         space::cell::Pose pose;
     };
 
+    struct Wall {
+        using Kind = subframe::membrane::kind;
+
+        Kind kind;
+        space::cell::Pose pose;
+    };
+
     // Expand frame::shape at a cell pose → knots / half-chords in that cell (subframe::recipes).
     auto seedCorners(frame::shape, space::cell::Pose) -> std::vector<Knot>;
     auto seedHalfChords(frame::shape, space::cell::Pose) -> std::vector<HalfChord>;

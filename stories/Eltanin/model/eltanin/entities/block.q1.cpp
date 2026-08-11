@@ -73,8 +73,8 @@ namespace eltanin {
         return spawnWithLocals(context, root, pose, locals_from_corner_indices(mech::frame::corners[index]), std::move(actorQuantum), std::move(stateQuantum));
     }
 
-    auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::frame::shape shape, mech::slot::inner role, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Id {
-        stateQuantum.albedo = mech::slot::color(role);
+    auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::frame::shape shape, mech::slot::role role, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Id {
+        stateQuantum.albedo = mech::slot::colorCode(role);
         const auto index = static_cast<std::size_t>(shape);
         if (index >= mech::frame::corners.size()) {
             return context.refuse("eltanin::Block::spawnInner: shape out of range");

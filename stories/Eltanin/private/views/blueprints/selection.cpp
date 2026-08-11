@@ -80,12 +80,16 @@ namespace eltanin::views::blueprints::selection {
         auto quarkPose(const mech::Blueprint& data, const QuarkActor& actor) -> base::maybe<mech::space::cell::Pose> {
             switch (actor.kind) {
                 case QuarkActor::Kind::knot:
-                    if (actor.index < data.knots.size())
-                        return data.knots[actor.index].pose;
+                    if (actor.index < data.frame.knots.size())
+                        return data.frame.knots[actor.index].pose;
                     break;
                 case QuarkActor::Kind::halfChord:
-                    if (actor.index < data.halfChords.size())
-                        return data.halfChords[actor.index].pose;
+                    if (actor.index < data.frame.halfChords.size())
+                        return data.frame.halfChords[actor.index].pose;
+                    break;
+                case QuarkActor::Kind::wall:
+                    if (actor.index < data.hull.walls.size())
+                        return data.hull.walls[actor.index].pose;
                     break;
             }
             return {};
@@ -97,19 +101,26 @@ namespace eltanin::views::blueprints::selection {
                 return std::format("?  #{}", hash);
             switch (actor->kind) {
                 case QuarkActor::Kind::knot: {
-                    if (actor->index >= data->knots.size())
+                    if (actor->index >= data->frame.knots.size())
                         return std::format("knot[{}]  #{}", actor->index, hash);
-                    const auto& knot = data->knots[actor->index];
+                    const auto& knot = data->frame.knots[actor->index];
                     const auto& pos = knot.pose.pos;
                     return std::format("knot[{}] {}  cell[{},{},{}] ori={}  #{}", actor->index, mech::subframe::corner::specs.at(knot.kind).code, pos.x, pos.y, pos.z, knot.pose.ori, hash);
                 }
                 case QuarkActor::Kind::halfChord: {
-                    if (actor->index >= data->halfChords.size())
+                    if (actor->index >= data->frame.halfChords.size())
                         return std::format("halfChord[{}]  #{}", actor->index, hash);
-                    const auto& halfChord = data->halfChords[actor->index];
+                    const auto& halfChord = data->frame.halfChords[actor->index];
                     const auto& pos = halfChord.pose.pos;
                     const char pole = halfChord.pole == mech::subframe::halfEdge::Pole::s ? 's' : 'e';
                     return std::format("halfChord[{}] {}:{}  cell[{},{},{}] ori={}  #{}", actor->index, mech::subframe::halfEdge::specs.at(halfChord.kind).code, pole, pos.x, pos.y, pos.z, halfChord.pose.ori, hash);
+                }
+                case QuarkActor::Kind::wall: {
+                    if (actor->index >= data->hull.walls.size())
+                        return std::format("wall[{}]  #{}", actor->index, hash);
+                    const auto& wall = data->hull.walls[actor->index];
+                    const auto& pos = wall.pose.pos;
+                    return std::format("wall[{}] {}  cell[{},{},{}] ori={}  #{}", actor->index, mech::subframe::membrane::specs.at(wall.kind).code, pos.x, pos.y, pos.z, wall.pose.ori, hash);
                 }
             }
             return std::format("?  #{}", hash);
@@ -189,12 +200,16 @@ namespace eltanin::views::blueprints::selection {
     }
 
     auto cellOccupied(const mech::Blueprint& data, const index3& pos) -> bool {
-        for (const auto& knot : data.knots) {
+        for (const auto& knot : data.frame.knots) {
             if (sameIndex3(knot.pose.pos, pos))
                 return true;
         }
-        for (const auto& halfChord : data.halfChords) {
+        for (const auto& halfChord : data.frame.halfChords) {
             if (sameIndex3(halfChord.pose.pos, pos))
+                return true;
+        }
+        for (const auto& wall : data.hull.walls) {
+            if (sameIndex3(wall.pose.pos, pos))
                 return true;
         }
         return false;
@@ -215,7 +230,7 @@ namespace eltanin::views::blueprints::selection {
     }
 
     void resetClipboard(Store& store) {
-        store.clipboard = mech::Blueprint{.name = "clipboard", .author = {}, .knots = {}, .halfChords = {}};
+        store.clipboard = mech::Blueprint{.name = "clipboard", .author = {}, .frame = {.knots = {}, .halfChords = {}}, .hull = {.walls = {}}};
         store.focus = Focus::selection;
     }
 
@@ -228,17 +243,19 @@ namespace eltanin::views::blueprints::selection {
     }
 
     auto clipboardEmpty(const Store& store) -> bool {
-        return store.clipboard.knots.empty() and store.clipboard.halfChords.empty();
+        return store.clipboard.frame.knots.empty() and store.clipboard.frame.halfChords.empty() and store.clipboard.hull.walls.empty();
     }
 
     auto canPaste(const mech::Blueprint& target, const mech::Blueprint& clipboard) -> bool {
-        if (clipboard.knots.empty() and clipboard.halfChords.empty())
+        if (clipboard.frame.knots.empty() and clipboard.frame.halfChords.empty() and clipboard.hull.walls.empty())
             return false;
         std::set<index3, CellPosLess> cells;
-        for (const auto& knot : clipboard.knots)
+        for (const auto& knot : clipboard.frame.knots)
             cells.insert(knot.pose.pos);
-        for (const auto& halfChord : clipboard.halfChords)
+        for (const auto& halfChord : clipboard.frame.halfChords)
             cells.insert(halfChord.pose.pos);
+        for (const auto& wall : clipboard.hull.walls)
+            cells.insert(wall.pose.pos);
         for (const auto& pos : cells) {
             if (cellOccupied(target, pos))
                 return false;
@@ -248,10 +265,12 @@ namespace eltanin::views::blueprints::selection {
 
     auto clipboardCells(const mech::Blueprint& clipboard) -> std::set<index3, CellPosLess> {
         std::set<index3, CellPosLess> cells;
-        for (const auto& knot : clipboard.knots)
+        for (const auto& knot : clipboard.frame.knots)
             cells.insert(knot.pose.pos);
-        for (const auto& halfChord : clipboard.halfChords)
+        for (const auto& halfChord : clipboard.frame.halfChords)
             cells.insert(halfChord.pose.pos);
+        for (const auto& wall : clipboard.hull.walls)
+            cells.insert(wall.pose.pos);
         return cells;
     }
 
@@ -285,6 +304,7 @@ namespace eltanin::views::blueprints::selection {
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, hovered).data;
         std::set<std::size_t> knots;
         std::set<std::size_t> halfChords;
+        std::set<std::size_t> walls;
         for (const auto alias : store.aliases) {
             const auto actor = findActorByAlias(context, actors, alias);
             if (not actor)
@@ -292,15 +312,20 @@ namespace eltanin::views::blueprints::selection {
             switch (actor->kind) {
                 case QuarkActor::Kind::knot: knots.insert(actor->index); break;
                 case QuarkActor::Kind::halfChord: halfChords.insert(actor->index); break;
+                case QuarkActor::Kind::wall: walls.insert(actor->index); break;
             }
         }
         for (const auto index : knots) {
-            if (index < data.knots.size())
-                store.clipboard.knots.push_back(data.knots[index]);
+            if (index < data.frame.knots.size())
+                store.clipboard.frame.knots.push_back(data.frame.knots[index]);
         }
         for (const auto index : halfChords) {
-            if (index < data.halfChords.size())
-                store.clipboard.halfChords.push_back(data.halfChords[index]);
+            if (index < data.frame.halfChords.size())
+                store.clipboard.frame.halfChords.push_back(data.frame.halfChords[index]);
+        }
+        for (const auto index : walls) {
+            if (index < data.hull.walls.size())
+                store.clipboard.hull.walls.push_back(data.hull.walls[index]);
         }
     }
 
@@ -309,6 +334,7 @@ namespace eltanin::views::blueprints::selection {
             return false;
         std::set<std::size_t> knots;
         std::set<std::size_t> halfChords;
+        std::set<std::size_t> walls;
         for (const auto alias : store.aliases) {
             const auto actor = findActorByAlias(context, actors, alias);
             if (not actor)
@@ -316,14 +342,16 @@ namespace eltanin::views::blueprints::selection {
             switch (actor->kind) {
                 case QuarkActor::Kind::knot: knots.insert(actor->index); break;
                 case QuarkActor::Kind::halfChord: halfChords.insert(actor->index); break;
+                case QuarkActor::Kind::wall: walls.insert(actor->index); break;
             }
         }
         clear(store);
-        if (knots.empty() and halfChords.empty())
+        if (knots.empty() and halfChords.empty() and walls.empty())
             return false;
         auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
-        eraseDescending(data->data.knots, knots);
-        eraseDescending(data->data.halfChords, halfChords);
+        eraseDescending(data->data.frame.knots, knots);
+        eraseDescending(data->data.frame.halfChords, halfChords);
+        eraseDescending(data->data.hull.walls, walls);
         return true;
     }
 
@@ -346,17 +374,23 @@ namespace eltanin::views::blueprints::selection {
         store.pendingRestore = selectionRefs(context, actors, store.aliases);
         {
             auto writable = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
-            for (auto& knot : writable->data.knots) {
+            for (auto& knot : writable->data.frame.knots) {
                 if (not cells.contains(knot.pose.pos))
                     continue;
                 knot.pose.pos = remap.at(knot.pose.pos);
                 knot.pose.ori = composeRow[static_cast<std::size_t>(knot.pose.ori)];
             }
-            for (auto& halfChord : writable->data.halfChords) {
+            for (auto& halfChord : writable->data.frame.halfChords) {
                 if (not cells.contains(halfChord.pose.pos))
                     continue;
                 halfChord.pose.pos = remap.at(halfChord.pose.pos);
                 halfChord.pose.ori = composeRow[static_cast<std::size_t>(halfChord.pose.ori)];
+            }
+            for (auto& wall : writable->data.hull.walls) {
+                if (not cells.contains(wall.pose.pos))
+                    continue;
+                wall.pose.pos = remap.at(wall.pose.pos);
+                wall.pose.ori = composeRow[static_cast<std::size_t>(wall.pose.ori)];
             }
         }
         return true;
@@ -381,15 +415,20 @@ namespace eltanin::views::blueprints::selection {
         store.pendingRestore = selectionRefs(context, actors, store.aliases);
         {
             auto writable = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
-            for (auto& knot : writable->data.knots) {
+            for (auto& knot : writable->data.frame.knots) {
                 if (not cells.contains(knot.pose.pos))
                     continue;
                 knot.pose.pos = addIndex3(knot.pose.pos, step);
             }
-            for (auto& halfChord : writable->data.halfChords) {
+            for (auto& halfChord : writable->data.frame.halfChords) {
                 if (not cells.contains(halfChord.pose.pos))
                     continue;
                 halfChord.pose.pos = addIndex3(halfChord.pose.pos, step);
+            }
+            for (auto& wall : writable->data.hull.walls) {
+                if (not cells.contains(wall.pose.pos))
+                    continue;
+                wall.pose.pos = addIndex3(wall.pose.pos, step);
             }
         }
         return true;
@@ -404,13 +443,17 @@ namespace eltanin::views::blueprints::selection {
         if (cells.empty())
             return false;
         const auto remap = remapCells(cells, axis);
-        for (auto& knot : store.clipboard.knots) {
+        for (auto& knot : store.clipboard.frame.knots) {
             knot.pose.pos = remap.at(knot.pose.pos);
             knot.pose.ori = composeRow[static_cast<std::size_t>(knot.pose.ori)];
         }
-        for (auto& halfChord : store.clipboard.halfChords) {
+        for (auto& halfChord : store.clipboard.frame.halfChords) {
             halfChord.pose.pos = remap.at(halfChord.pose.pos);
             halfChord.pose.ori = composeRow[static_cast<std::size_t>(halfChord.pose.ori)];
+        }
+        for (auto& wall : store.clipboard.hull.walls) {
+            wall.pose.pos = remap.at(wall.pose.pos);
+            wall.pose.ori = composeRow[static_cast<std::size_t>(wall.pose.ori)];
         }
         return true;
     }
@@ -418,10 +461,12 @@ namespace eltanin::views::blueprints::selection {
     auto moveClipboard(Store& store, index3 step) -> bool {
         if (clipboardEmpty(store) or (step.x == 0 and step.y == 0 and step.z == 0))
             return false;
-        for (auto& knot : store.clipboard.knots)
+        for (auto& knot : store.clipboard.frame.knots)
             knot.pose.pos = addIndex3(knot.pose.pos, step);
-        for (auto& halfChord : store.clipboard.halfChords)
+        for (auto& halfChord : store.clipboard.frame.halfChords)
             halfChord.pose.pos = addIndex3(halfChord.pose.pos, step);
+        for (auto& wall : store.clipboard.hull.walls)
+            wall.pose.pos = addIndex3(wall.pose.pos, step);
         return true;
     }
 
@@ -434,37 +479,37 @@ namespace eltanin::views::blueprints::selection {
                 return false;
         }
         auto writable = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
-        for (const auto& knot : store.clipboard.knots)
-            writable->data.knots.push_back(knot);
-        for (const auto& halfChord : store.clipboard.halfChords)
-            writable->data.halfChords.push_back(halfChord);
+        for (const auto& knot : store.clipboard.frame.knots)
+            writable->data.frame.knots.push_back(knot);
+        for (const auto& halfChord : store.clipboard.frame.halfChords)
+            writable->data.frame.halfChords.push_back(halfChord);
+        for (const auto& wall : store.clipboard.hull.walls)
+            writable->data.hull.walls.push_back(wall);
         return true;
     }
 
     void handlePointer(Reading context, Store& store, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors, renderer::Integer32 under) {
-        if (not ImGui::GetIO().WantCaptureMouse and under != renderer::Integer32{0}) {
-            const auto hit = findActorByAlias(context, actors, under);
-            const bool shift = ImGui::GetIO().KeyShift;
-            const mech::Blueprint* blueprintData = (hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
-                ? &with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data
-                : nullptr;
-            if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) and hit) {
-                if (shift and blueprintData) {
-                    for (const auto alias : familyAliases(context, actors, *blueprintData, *hit))
-                        addAlias(store.aliases, alias);
-                } else {
-                    addAlias(store.aliases, under);
-                }
-            } else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) and hit) {
-                if (shift and blueprintData) {
-                    for (const auto alias : familyAliases(context, actors, *blueprintData, *hit))
-                        removeAlias(store.aliases, alias);
-                } else {
-                    removeAlias(store.aliases, under);
-                }
+        if (ImGui::GetIO().WantCaptureMouse or under == renderer::Integer32{0})
+            return;
+        const auto hit = findActorByAlias(context, actors, under);
+        const bool shift = ImGui::GetIO().KeyShift;
+        const mech::Blueprint* blueprintData = (hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
+            ? &with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data
+            : nullptr;
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) and hit) {
+            if (shift and blueprintData) {
+                for (const auto alias : familyAliases(context, actors, *blueprintData, *hit))
+                    addAlias(store.aliases, alias);
+            } else {
+                addAlias(store.aliases, under);
             }
-        } else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) and not ImGui::GetIO().WantCaptureMouse and under == renderer::Integer32{0}) {
-            clear(store);
+        } else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) and hit) {
+            if (shift and blueprintData) {
+                for (const auto alias : familyAliases(context, actors, *blueprintData, *hit))
+                    removeAlias(store.aliases, alias);
+            } else {
+                removeAlias(store.aliases, under);
+            }
         }
     }
 
@@ -643,7 +688,7 @@ namespace eltanin::views::blueprints::selection {
         ImGui::SetNextWindowSize(ImVec2{360.0f, 140.0f}, ImGuiCond_FirstUseEver);
         bool pasted = false;
         if (ImGui::Begin("Clipboard")) {
-            ImGui::TextDisabled("%zu knots, %zu half-chords", store.clipboard.knots.size(), store.clipboard.halfChords.size());
+            ImGui::TextDisabled("%zu knots, %zu half-chords, %zu walls", store.clipboard.frame.knots.size(), store.clipboard.frame.halfChords.size(), store.clipboard.hull.walls.size());
             const bool empty = clipboardEmpty(store);
             bool allowed = false;
             if (not empty and hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))

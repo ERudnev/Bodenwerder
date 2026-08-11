@@ -526,11 +526,15 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         };
 
         void apply_blend(renderer::Pass pass, renderer::BlendMode blend) {
+            // identity / identitySelected share depth: selected writes first, all-ID must LEQUAL same-Z
+            // (begin_identity_* sets LEQUAL; do not stomp it back to LESS for inherit/opaque).
+            const bool identityPass = pass == renderer::Pass::identitySelected or pass == renderer::Pass::identity;
             if (blend == renderer::BlendMode::inherit) {
                 if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo) {
                     blend = renderer::BlendMode::alpha;
                 } else {
-                    glDepthFunc(GL_LESS);
+                    if (not identityPass)
+                        glDepthFunc(GL_LESS);
                     return;
                 }
             }
@@ -543,7 +547,8 @@ void main() { fragColor = texture(u_overlay, vUv); })";
                 return;
             }
 
-            glDepthFunc(GL_LESS);
+            if (not identityPass)
+                glDepthFunc(GL_LESS);
 
             if (blend == renderer::BlendMode::alpha) {
                 glEnable(GL_BLEND);

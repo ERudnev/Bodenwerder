@@ -8,7 +8,7 @@
 #include <vector>
 
 // Subframe data (no duplicated meaning):
-// 1) corner::specs / halfEdge::specs — interframe mesh inventory (asset tag, ray slot, bend). No per-cell placement.
+// 1) corner::specs / halfEdge::specs / membrane::specs — interframe mesh inventory (asset tag, …). No per-cell placement.
 // 2) shapes.h frame::corners — which cell vertices exist on each k* (topology). Not repeated here.
 // 3) recipes[shape] — smoke assembly only: which mesh kind at which cell vertex/edge + orient roll.
 // Edge row: cellAt0/cellAtRay = cell lattice after orient (cornerIndex(orient, mesh slot 0 / ray)); cellAt0 < cellAtRay.
@@ -99,6 +99,39 @@ namespace eltanin::mech::subframe {
         };
 
     } // namespace halfEdge
+
+    namespace membrane {
+        enum class kind {
+            u1111,
+            u121,
+            u2121,
+            u222A,
+            u222V,
+        };
+
+        struct Spec {
+            std::string_view code;
+        };
+
+        inline const std::map<kind, Spec> specs{
+            {kind::u1111, {.code = "u1111"}},
+            {kind::u121, {.code = "u121"}},
+            {kind::u2121, {.code = "u2121"}},
+            {kind::u222A, {.code = "u222A"}},
+            {kind::u222V, {.code = "u222V"}},
+        };
+
+        inline auto kindOf(plate::shape shape) -> kind {
+            switch (shape) {
+                case plate::shape::p1111: return kind::u1111;
+                case plate::shape::p121: return kind::u121;
+                case plate::shape::p2121: return kind::u2121;
+                case plate::shape::p222A: return kind::u222A;
+                case plate::shape::p222V: return kind::u222V;
+            }
+            return kind::u1111;
+        }
+    }
 
     struct Recipe {
         struct Corner {

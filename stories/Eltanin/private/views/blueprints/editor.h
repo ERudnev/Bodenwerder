@@ -35,6 +35,7 @@ namespace eltanin::views {
             base::maybe<resource::blueprint::Asset::Id> hovered;
             std::vector<blueprints::geometry::QuarkActor> quarkActors;
             std::vector<blueprints::geometry::QuarkActor> clipboardActors;
+            blueprints::geometry::Display display;
             blueprints::selection::Store selection;
             index3 cursorLattice;
             int currentFloor;

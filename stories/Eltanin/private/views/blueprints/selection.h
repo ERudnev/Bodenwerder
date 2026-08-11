@@ -57,7 +57,7 @@ namespace eltanin::views::blueprints::selection {
     auto moveClipboard(Store&, index3 step) -> bool;
     auto pasteClipboard(Writing, Store&, resource::blueprint::Asset::Id hovered) -> bool;
 
-    // LMB/RMB ± Shift pick/deselect. under == 0 + LMB clears.
+    // LMB/RMB ± Shift pick/deselect. Empty under does not clear.
     void handlePointer(Reading, Store&, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors, rmmr::renderer::Integer32 under);
 
     // Del / WASD+QE move / Shift+WASD+QE rotate for selection focus. Returns true if blueprint content changed.

@@ -168,6 +168,7 @@ namespace eltanin::views {
             return (void)context.refuse("eltanin::views::Blueprints::create: clipboardGhost material missing");
         state.quarkActors = {};
         state.clipboardActors = {};
+        state.display = {.skeleton = true, .hull = true};
         blueprints::selection::clear(state.selection);
         blueprints::selection::resetClipboard(state.selection);
         state.hovered.reset();
@@ -191,7 +192,7 @@ namespace eltanin::views {
             return;
         }
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
-        blueprints::geometry::syncActors(context, *state.scene, *state.interframe, data, state.quarkActors);
+        blueprints::geometry::syncActors(context, *state.scene, *state.interframe, data, state.display, state.quarkActors);
         blueprints::selection::rematchAfterSync(context, state.selection, state.quarkActors);
     }
 
@@ -210,9 +211,9 @@ namespace eltanin::views {
             allowed = blueprints::selection::canPaste(with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data, state.selection.clipboard);
         const auto tint = allowed ? okTint : blockedTint;
         // Prefer in-place pose/tint update — full destroy+create every frame trips fQSM (Mesh on a Node that is not new in the patch).
-        if (blueprints::geometry::refreshGhostActors(context, *state.interframe, state.selection.clipboard, state.clipboardActors, tint, ghostOpacity))
+        if (blueprints::geometry::refreshGhostActors(context, *state.interframe, state.selection.clipboard, state.display, state.clipboardActors, tint, ghostOpacity))
             return;
-        blueprints::geometry::syncGhostActors(context, *state.scene, *state.interframe, *state.ghostMaterial, state.selection.clipboard, state.clipboardActors, tint, ghostOpacity);
+        blueprints::geometry::syncGhostActors(context, *state.scene, *state.interframe, *state.ghostMaterial, state.selection.clipboard, state.display, state.clipboardActors, tint, ghostOpacity);
     }
 
     void Blueprints::syncGridToFloor(Writing context) {
@@ -333,8 +334,9 @@ namespace eltanin::views {
                         if (ImGui::Selectable("erase")) {
                             {
                                 auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
-                                data->data.knots.erase(std::remove_if(data->data.knots.begin(), data->data.knots.end(), [&](const mech::quarks::Knot& knot) { return blueprints::selection::sameIndex3(knot.pose.pos, state.cursorLattice); }), data->data.knots.end());
-                                data->data.halfChords.erase(std::remove_if(data->data.halfChords.begin(), data->data.halfChords.end(), [&](const mech::quarks::HalfChord& halfChord) { return blueprints::selection::sameIndex3(halfChord.pose.pos, state.cursorLattice); }), data->data.halfChords.end());
+                                data->data.frame.knots.erase(std::remove_if(data->data.frame.knots.begin(), data->data.frame.knots.end(), [&](const mech::quarks::Knot& knot) { return blueprints::selection::sameIndex3(knot.pose.pos, state.cursorLattice); }), data->data.frame.knots.end());
+                                data->data.frame.halfChords.erase(std::remove_if(data->data.frame.halfChords.begin(), data->data.frame.halfChords.end(), [&](const mech::quarks::HalfChord& halfChord) { return blueprints::selection::sameIndex3(halfChord.pose.pos, state.cursorLattice); }), data->data.frame.halfChords.end());
+                                data->data.hull.walls.erase(std::remove_if(data->data.hull.walls.begin(), data->data.hull.walls.end(), [&](const mech::quarks::Wall& wall) { return blueprints::selection::sameIndex3(wall.pose.pos, state.cursorLattice); }), data->data.hull.walls.end());
                             }
                             ImGui::CloseCurrentPopup();
                             state.spaceMenu = {.place = false, .close = false};
@@ -351,9 +353,9 @@ namespace eltanin::views {
                                 .ori = 0,
                             };
                             for (const auto& knot : mech::quarks::seedCorners(shape, cell))
-                                data->data.knots.push_back(knot);
+                                data->data.frame.knots.push_back(knot);
                             for (const auto& halfChord : mech::quarks::seedHalfChords(shape, cell))
-                                data->data.halfChords.push_back(halfChord);
+                                data->data.frame.halfChords.push_back(halfChord);
                         });
                         if (applied) {
                             ImGui::CloseCurrentPopup();
@@ -440,8 +442,19 @@ namespace eltanin::views {
                 ImGui::Text("Name: %s", data.name.c_str());
                 ImGui::Text("Manufacturer: %s", data.author.c_str());
                 ImGui::Separator();
-                ImGui::Text("Knots: %zu", data.knots.size());
-                ImGui::Text("Half-chords: %zu", data.halfChords.size());
+                bool displayChanged = false;
+                displayChanged |= ImGui::Checkbox("Skeleton", &state.display.skeleton);
+                ImGui::SameLine();
+                displayChanged |= ImGui::Checkbox("Hull", &state.display.hull);
+                if (displayChanged) {
+                    blueprints::selection::clear(state.selection);
+                    syncVisuals(context);
+                    syncClipboardGhost(context);
+                }
+                ImGui::Separator();
+                ImGui::Text("Knots: %zu", data.frame.knots.size());
+                ImGui::Text("Half-chords: %zu", data.frame.halfChords.size());
+                ImGui::Text("Walls: %zu", data.hull.walls.size());
                 ImGui::Text("Actors: %zu", state.quarkActors.size());
                 ImGui::Text("Selection: %zu", state.selection.aliases.size());
                 ImGui::Text("Cursor [%d, %d, %d]", state.cursorLattice.x, state.cursorLattice.y, state.cursorLattice.z);

@@ -4,7 +4,10 @@
     "meshes/editor/interframe.lwo",
     "Eltanin::mech",
     [
-        {"outer", {"rmmr::lit_textured", [{"albedoMap", "mtile05.jpg"}]}},
-        {"inner", {"rmmr::lit_textured", [{"albedoMap", "STEEL4.JPG"}]}}
+        {"metal_cut", {"rmmr::lit_textured", [{"albedoMap", "pewter2.bmp"}]}},
+        {"metal_exterior", {"rmmr::lit_textured", [{"albedoMap", "STEEL4.JPG"}]}},
+        {"plastic_cut", {"rmmr::lit_textured", [{"albedoMap", "STEEL4.JPG"}]}},
+        {"plastic_exterior", {"rmmr::lit_textured", [{"albedoMap", "ceramic_panel.jpg"}]}},
+        {"plastic_indoor", {"rmmr::lit_textured", [{"albedoMap", "CH_T_SCIANA5.JPG"}]}}
     ]
 }

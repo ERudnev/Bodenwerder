@@ -6,11 +6,20 @@ namespace eltanin
     namespace quarks
       using Knot as @external(eltanin::mech::quarks::Knot)
       using HalfChord as @external(eltanin::mech::quarks::HalfChord)
+      using Wall as @external(eltanin::mech::quarks::Wall)
 
-    // Ship schema: metadata + cell-frame quarks (knots, half-chords; attachments later).
+    // Ship schema: frame quarks + hull membranes (outfit-side; not auto-seeded from frame).
     // C++: private/mech/blueprint.h
     struct Blueprint
+      struct Frame
+        knots: vector<quarks::Knot>
+        halfChords: vector<quarks::HalfChord>
+      struct Hull
+        walls: vector<quarks::Wall>
+      struct Attachments
+        sockets:
+        slots:
       name: string
       author: string // manufacturer
-      knots: vector<quarks::Knot>
-      halfChords: vector<quarks::HalfChord>
+      frame: Frame
+      hull: Hull

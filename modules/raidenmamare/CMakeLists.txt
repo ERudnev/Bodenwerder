@@ -1,5 +1,4 @@
 file(GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "source/*.cpp")
-list(REMOVE_ITEM MODULE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/source/system/content/loader_lwo.cpp")
 
 project("Raidenmamare"
     DESCRIPTION "Raidenmamare - utilitarian rendering toolkit (graphics engine seed)"
@@ -68,23 +67,3 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE assimp
     ${OPENGL_LIBRARIES}
 )
-
-# Console inspector for mesh sources (LWO now; more formats later).
-# Inspector-only structural LWO parser — runtime meshpacks use geometry::Loader.
-add_executable(meshpack_inspector)
-target_sources(meshpack_inspector
-    PRIVATE
-        tools/meshpack_inspector/main.cpp
-        source/system/content/loader_lwo.cpp
-)
-target_include_directories(meshpack_inspector
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/interface
-)
-target_link_libraries(meshpack_inspector
-    PRIVATE
-        assimp
-)
-if(WIN32)
-    target_link_libraries(meshpack_inspector PRIVATE zlibstatic)
-endif()

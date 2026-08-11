@@ -7,12 +7,21 @@
 
 namespace eltanin::mech {
 
-    // Ship schema: metadata + cell-frame quarks (knots, half-chords; attachments later).
+    // Ship schema: frame quarks + hull membranes (outfit-side, not load-bearing; not auto-seeded from frame).
+    // C++: private/mech/blueprint.h — doctrine/mech/blueprint.q1.types
     struct Blueprint {
+        struct Frame {
+            std::vector<quarks::Knot> knots;
+            std::vector<quarks::HalfChord> halfChords;
+        };
+        struct Hull {
+            std::vector<quarks::Wall> walls;
+        };
+
         std::string name;
         std::string author; // manufacturer
-        std::vector<quarks::Knot> knots;
-        std::vector<quarks::HalfChord> halfChords;
+        Frame frame;
+        Hull hull;
     };
 
 }

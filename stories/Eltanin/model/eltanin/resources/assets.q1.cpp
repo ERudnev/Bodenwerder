@@ -29,7 +29,7 @@ namespace eltanin::resource {
         return register_unit<blueprint::Asset, blueprint::Loader>(
             context,
             std::move(name),
-            blueprint::Asset::Quantum{.data = mech::Blueprint{.name = {}, .author = {}, .knots = {}, .halfChords = {}}},
+            blueprint::Asset::Quantum{.data = mech::Blueprint{.name = {}, .author = {}, .frame = {.knots = {}, .halfChords = {}}, .hull = {.walls = {}}}},
             std::move(loader));
     }
 
