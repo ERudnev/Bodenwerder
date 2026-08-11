@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <vector>
 
 #include <base/maybe.h>
@@ -14,6 +15,7 @@
 #include <rmmr/wrapper/product.h>
 
 #include "blueprints/catalog.h"
+#include "mech/walls.h"
 #include "views/blueprints/geometry.h"
 #include "views/blueprints/selection.h"
 
@@ -39,6 +41,13 @@ namespace eltanin::views {
             blueprints::selection::Store selection;
             index3 cursorLattice;
             int currentFloor;
+            // Modest wall edit: candidates from possibleWalls; cycle face; no ghost actor pool.
+            struct {
+                bool enabled;
+                base::maybe<std::size_t> cell;
+                std::vector<mech::WallSlot> slots;
+                std::size_t face; // into slots
+            } walls;
             struct {
                 bool place;
                 bool close;
@@ -53,6 +62,9 @@ namespace eltanin::views {
         void updateWorldCursor(Writing);
         void syncVisuals(Writing);
         void syncClipboardGhost(Writing);
+        void refreshWallCandidates(Reading);
+        // LMB place current slot · RMB remove placed wall under cursor. False → selection::handlePointer.
+        auto handleWallMode(Writing, rmmr::renderer::Integer32 under) -> bool;
         void persistHovered(Writing);
         void draw(Writing, bool& open, BlueprintCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;

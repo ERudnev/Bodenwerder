@@ -6,6 +6,8 @@
 #include "mech/semantics/quarks.h"
 #include "mech/semantics/shapes.h"
 #include "mech/semantics/space.h"
+#include "mech/semantics/subframe.h"
+#include "mech/walls.h"
 
 #include <eltanin/resources/assets.q1.h>
 #include <eltanin/resources/blueprint.q1.h>
@@ -169,6 +171,7 @@ namespace eltanin::views {
         state.quarkActors = {};
         state.clipboardActors = {};
         state.display = {.skeleton = true, .hull = true};
+        state.walls = {.enabled = false, .cell = {}, .slots = {}, .face = 0};
         blueprints::selection::clear(state.selection);
         blueprints::selection::resetClipboard(state.selection);
         state.hovered.reset();
@@ -180,6 +183,7 @@ namespace eltanin::views {
         blueprints::selection::clear(state.selection);
         syncVisuals(context);
         syncClipboardGhost(context);
+        refreshWallCandidates(context);
     }
 
     void Blueprints::syncVisuals(Writing context) {
@@ -214,6 +218,87 @@ namespace eltanin::views {
         if (blueprints::geometry::refreshGhostActors(context, *state.interframe, state.selection.clipboard, state.display, state.clipboardActors, tint, ghostOpacity))
             return;
         blueprints::geometry::syncGhostActors(context, *state.scene, *state.interframe, *state.ghostMaterial, state.selection.clipboard, state.display, state.clipboardActors, tint, ghostOpacity);
+    }
+
+    void Blueprints::refreshWallCandidates(Reading context) {
+        if (not state.walls.enabled or not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered)) {
+            state.walls.cell = {};
+            state.walls.slots = {};
+            state.walls.face = 0;
+            return;
+        }
+        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
+        base::maybe<std::size_t> cellIndex;
+        for (std::size_t i = 0; i < data.cells.size(); ++i) {
+            if (blueprints::selection::sameIndex3(data.cells[i].pose.pos, state.cursorLattice)) {
+                cellIndex = i;
+                break;
+            }
+        }
+        // maybe<size_t>: never if(cellIndex)/if(not cellIndex) — integral T + operator T&() breaks empty/zero.
+        if (not cellIndex.exists()) {
+            state.walls.cell = {};
+            state.walls.slots = {};
+            state.walls.face = 0;
+            return;
+        }
+        const bool cellChanged = not state.walls.cell.exists() or *state.walls.cell != *cellIndex;
+        state.walls.cell = *cellIndex;
+        state.walls.slots = mech::possibleWalls(data.cells[*cellIndex]);
+        if (cellChanged)
+            state.walls.face = 0;
+        else if (state.walls.slots.empty())
+            state.walls.face = 0;
+        else if (state.walls.face >= state.walls.slots.size())
+            state.walls.face = state.walls.slots.size() - 1;
+    }
+
+    auto Blueprints::handleWallMode(Writing context, renderer::Integer32 under) -> bool {
+        if (not state.walls.enabled or ImGui::GetIO().WantCaptureMouse)
+            return false;
+        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
+            return false;
+
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            if (not state.walls.cell.exists() or state.walls.slots.empty() or state.walls.face >= state.walls.slots.size())
+                return false;
+            const auto cell = *state.walls.cell;
+            const auto wall = state.walls.slots[state.walls.face].wall;
+            auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
+            if (cell >= data->data.cells.size())
+                return false;
+            data->data.cells[cell].hull.walls.push_back(wall);
+            persistHovered(context);
+            syncVisuals(context);
+            refreshWallCandidates(context);
+            return true;
+        }
+
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            if (under == renderer::Integer32{0})
+                return false;
+            for (const auto& actor : state.quarkActors) {
+                if (actor.kind != blueprints::geometry::QuarkActor::Kind::wall)
+                    continue;
+                if (not with<scene::actor::Identified>::exists(context, actor.id))
+                    continue;
+                if (with<scene::actor::Identified>::get(context, actor.id).scenicAlias != under)
+                    continue;
+                auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
+                if (actor.cell >= data->data.cells.size())
+                    return true;
+                auto& walls = data->data.cells[actor.cell].hull.walls;
+                if (actor.index < walls.size()) {
+                    walls.erase(walls.begin() + static_cast<std::ptrdiff_t>(actor.index));
+                    persistHovered(context);
+                    syncVisuals(context);
+                    refreshWallCandidates(context);
+                }
+                return true;
+            }
+            return false;
+        }
+        return false;
     }
 
     void Blueprints::syncGridToFloor(Writing context) {
@@ -295,16 +380,28 @@ namespace eltanin::views {
         }
 
         updateWorldCursor(context);
+        refreshWallCandidates(context);
 
-        blueprints::selection::handlePointer(context, state.selection, state.hovered, state.quarkActors, under);
+        if (state.walls.enabled and not state.walls.slots.empty() and not ImGui::GetIO().WantCaptureKeyboard) {
+            const auto n = state.walls.slots.size();
+            if (ImGui::IsKeyPressed(ImGuiKey_LeftBracket))
+                state.walls.face = (state.walls.face + n - 1) % n;
+            if (ImGui::IsKeyPressed(ImGuiKey_RightBracket))
+                state.walls.face = (state.walls.face + 1) % n;
+        }
+
+        if (not state.walls.enabled or not handleWallMode(context, under))
+            blueprints::selection::handlePointer(context, state.selection, state.hovered, state.quarkActors, under);
         if (blueprints::selection::handleHotkeys(context, state.selection, state.hovered, state.quarkActors)) {
             persistHovered(context);
             syncVisuals(context);
+            refreshWallCandidates(context);
         }
         blueprints::selection::handleClipboardHotkeys(state.selection);
         if (blueprints::selection::handleClipboardChords(context, state.selection, state.hovered, state.quarkActors)) {
             persistHovered(context);
             syncVisuals(context);
+            refreshWallCandidates(context);
         }
 
         constexpr auto spaceMenuPopup = "##blueprints.spaceMenu";
@@ -448,6 +545,26 @@ namespace eltanin::views {
                     syncVisuals(context);
                     syncClipboardGhost(context);
                 }
+                if (ImGui::Checkbox("Wall place/remove", &state.walls.enabled)) {
+                    if (state.walls.enabled and not state.display.hull) {
+                        state.display.hull = true;
+                        syncVisuals(context);
+                    }
+                    refreshWallCandidates(context);
+                }
+                if (state.walls.enabled) {
+                    ImGui::TextDisabled("[ ] cycle face · LMB place · RMB remove wall · select + Del");
+                    if (not state.walls.cell.exists()) {
+                        ImGui::TextDisabled("Wall: no cell under cursor");
+                    } else if (state.walls.slots.empty()) {
+                        ImGui::TextDisabled("Wall: no free faces");
+                    } else {
+                        const auto& slot = state.walls.slots[state.walls.face];
+                        const auto codeIt = mech::subframe::membrane::specs.find(slot.wall.kind);
+                        const auto code = codeIt != mech::subframe::membrane::specs.end() ? codeIt->second.code : "?";
+                        ImGui::Text("Wall: face %zu/%zu · %.*s · ori %d", state.walls.face + 1, state.walls.slots.size(), static_cast<int>(code.size()), code.data(), static_cast<int>(slot.wall.ori));
+                    }
+                }
                 ImGui::Separator();
                 std::size_t knots = 0;
                 std::size_t halfChords = 0;
@@ -480,10 +597,12 @@ namespace eltanin::views {
         if (blueprints::selection::drawPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered, state.quarkActors)) {
             persistHovered(context);
             syncVisuals(context);
+            refreshWallCandidates(context);
         }
         if (blueprints::selection::drawClipboardPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered)) {
             persistHovered(context);
             syncVisuals(context);
+            refreshWallCandidates(context);
         }
         syncClipboardGhost(context);
     }

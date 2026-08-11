@@ -156,13 +156,13 @@ namespace eltanin::mech {
             p222V,
         };
 
-        // Canonical perimeter in unit-cube corner indices, CCW from outside. Exemplars from RedStar geometry*tuple; p222A reversed vs RedStar for CCW-out.
+        // Canonical perimeter in unit-cube corner indices, CCW from outside. Must match interframe membrane authorship (entry pivot + spanned corners); p222A reversed vs RedStar for CCW-out.
         inline static const std::vector<frame::Loop> perimeter{
-            {0, 2, 3, 1}, // p1111 — Zn
-            {4, 0, 6},    // p121  — walk spells 1-2-1; CCW out (Xn side)
-            {0, 6, 7, 1}, // p2121 — K6 diagonal; spells 2-1-2-1 from corner 0
-            {4, 1, 7},    // p222A — K4 apex (RedStar was 4,7,1)
-            {0, 6, 3},    // p222V — K7 valley
+            {0, 2, 3, 1}, // p1111 — Zn (u1111)
+            {1, 3, 0},    // p121  — Zn triangle; spells 1-2-1; CCW out (u121 at corners 0,1,3 — not Xn {4,0,6})
+            {0, 6, 7, 1}, // p2121 — K6 diagonal; spells 2-1-2-1 from corner 0 (u2121)
+            {4, 1, 7},    // p222A — K4 apex (u222A; RedStar was 4,7,1)
+            {0, 6, 3},    // p222V — K7 valley (u222V)
         };
     };
 
