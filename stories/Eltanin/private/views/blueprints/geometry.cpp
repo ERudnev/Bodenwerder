@@ -77,10 +77,61 @@ namespace eltanin::views::blueprints::geometry {
             return id;
         }
 
+        void spawnBlueprintActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, const mech::Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors, auto&& spawnOne) {
+            for (std::size_t cellIndex = 0; cellIndex < blueprint.cells.size(); ++cellIndex) {
+                const auto& cell = blueprint.cells[cellIndex];
+                if (display.skeleton) {
+                    for (std::size_t i = 0; i < cell.frame.knots.size(); ++i) {
+                        const auto& knot = cell.frame.knots[i];
+                        const auto resolved = resolveKnot(context, interframe, knot.kind);
+                        if (not resolved) {
+                            base::message("eltanin blueprints geometry: knot mesh missing for kind");
+                            continue;
+                        }
+                        const auto origin = entryOrigin(context, *resolved);
+                        if (not origin)
+                            continue;
+                        const auto world = mech::quarks::worldPose(cell.pose, knot.ori);
+                        if (const auto id = spawnOne(actorPose(world, *origin), *resolved))
+                            actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::knot, .cell = cellIndex, .index = i});
+                    }
+                    for (std::size_t i = 0; i < cell.frame.halfChords.size(); ++i) {
+                        const auto& halfChord = cell.frame.halfChords[i];
+                        const auto resolved = resolveHalfChord(context, interframe, halfChord.kind, halfChord.pole);
+                        if (not resolved) {
+                            base::message("eltanin blueprints geometry: half-chord mesh missing");
+                            continue;
+                        }
+                        const auto origin = entryOrigin(context, *resolved);
+                        if (not origin)
+                            continue;
+                        const auto world = mech::quarks::worldPose(cell.pose, halfChord.ori);
+                        if (const auto id = spawnOne(actorPose(world, *origin), *resolved))
+                            actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::halfChord, .cell = cellIndex, .index = i});
+                    }
+                }
+                if (display.hull) {
+                    for (std::size_t i = 0; i < cell.hull.walls.size(); ++i) {
+                        const auto& wall = cell.hull.walls[i];
+                        const auto resolved = resolveWall(context, interframe, wall.kind);
+                        if (not resolved) {
+                            base::message("eltanin blueprints geometry: wall mesh missing");
+                            continue;
+                        }
+                        const auto origin = entryOrigin(context, *resolved);
+                        if (not origin)
+                            continue;
+                        const auto world = mech::quarks::worldPose(cell.pose, wall.ori);
+                        if (const auto id = spawnOne(actorPose(world, *origin), *resolved))
+                            actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::wall, .cell = cellIndex, .index = i});
+                    }
+                }
+            }
+        }
+
     } // namespace
 
     auto localSeatFromOrigin(Pos origin) -> mech::cube::Corner {
-        // ±2 m home cube: negative → 0, non-negative → 1
         const auto bit = mech::space::ivec3{
             origin.x >= 0.0f ? 1 : 0,
             origin.y >= 0.0f ? 1 : 0,
@@ -126,56 +177,6 @@ namespace eltanin::views::blueprints::geometry {
         actors.clear();
     }
 
-    namespace {
-
-        void spawnBlueprintActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, const mech::Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors, auto&& spawnOne) {
-            if (display.skeleton) {
-                for (std::size_t i = 0; i < blueprint.frame.knots.size(); ++i) {
-                    const auto& knot = blueprint.frame.knots[i];
-                    const auto resolved = resolveKnot(context, interframe, knot.kind);
-                    if (not resolved) {
-                        base::message("eltanin blueprints geometry: knot mesh missing for kind");
-                        continue;
-                    }
-                    const auto origin = entryOrigin(context, *resolved);
-                    if (not origin)
-                        continue;
-                    if (const auto id = spawnOne(actorPose(knot.pose, *origin), *resolved))
-                        actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::knot, .index = i});
-                }
-                for (std::size_t i = 0; i < blueprint.frame.halfChords.size(); ++i) {
-                    const auto& halfChord = blueprint.frame.halfChords[i];
-                    const auto resolved = resolveHalfChord(context, interframe, halfChord.kind, halfChord.pole);
-                    if (not resolved) {
-                        base::message("eltanin blueprints geometry: half-chord mesh missing");
-                        continue;
-                    }
-                    const auto origin = entryOrigin(context, *resolved);
-                    if (not origin)
-                        continue;
-                    if (const auto id = spawnOne(actorPose(halfChord.pose, *origin), *resolved))
-                        actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::halfChord, .index = i});
-                }
-            }
-            if (display.hull) {
-                for (std::size_t i = 0; i < blueprint.hull.walls.size(); ++i) {
-                    const auto& wall = blueprint.hull.walls[i];
-                    const auto resolved = resolveWall(context, interframe, wall.kind);
-                    if (not resolved) {
-                        base::message("eltanin blueprints geometry: wall mesh missing");
-                        continue;
-                    }
-                    const auto origin = entryOrigin(context, *resolved);
-                    if (not origin)
-                        continue;
-                    if (const auto id = spawnOne(actorPose(wall.pose, *origin), *resolved))
-                        actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::wall, .index = i});
-                }
-            }
-        }
-
-    } // namespace
-
     void syncActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, const mech::Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors) {
         clearActors(context, root, actors);
         spawnBlueprintActors(context, root, interframe, blueprint, display, actors, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved); });
@@ -188,18 +189,18 @@ namespace eltanin::views::blueprints::geometry {
 
     auto refreshGhostActors(Writing context, meshpack::Asset::Id interframe, const mech::Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors, RGB albedo, float opacity) -> bool {
         std::size_t at = 0;
-        const auto touch = [&](QuarkActor::Kind kind, std::size_t index, const mech::space::cell::Pose& cellPose, const meshpack::Asset::Resolved& resolved) -> bool {
+        const auto touch = [&](QuarkActor::Kind kind, std::size_t cell, std::size_t index, const mech::space::cell::Pose& world, const meshpack::Asset::Resolved& resolved) -> bool {
             const auto origin = entryOrigin(context, resolved);
             if (not origin)
                 return false;
             if (at >= actors.size())
                 return false;
             auto& slot = actors[at];
-            if (slot.kind != kind or slot.index != index)
+            if (slot.kind != kind or slot.cell != cell or slot.index != index)
                 return false;
             if (not with<scene::Node>::exists(context, slot.id) or not with<scene::actor::Mesh>::exists(context, slot.id) or not with<scene::actor::MeshState>::exists(context, slot.id))
                 return false;
-            with<scene::Node>::modify(context, slot.id)->pose = actorPose(cellPose, *origin);
+            with<scene::Node>::modify(context, slot.id)->pose = actorPose(world, *origin);
             auto state = with<scene::actor::MeshState>::modify(context, slot.id);
             state->albedo = albedo;
             state->opacity = opacity;
@@ -207,32 +208,35 @@ namespace eltanin::views::blueprints::geometry {
             ++at;
             return true;
         };
-        if (display.skeleton) {
-            for (std::size_t i = 0; i < blueprint.frame.knots.size(); ++i) {
-                const auto& knot = blueprint.frame.knots[i];
-                const auto resolved = resolveKnot(context, interframe, knot.kind);
-                if (not resolved)
-                    continue;
-                if (not touch(QuarkActor::Kind::knot, i, knot.pose, *resolved))
-                    return false;
+        for (std::size_t cellIndex = 0; cellIndex < blueprint.cells.size(); ++cellIndex) {
+            const auto& cell = blueprint.cells[cellIndex];
+            if (display.skeleton) {
+                for (std::size_t i = 0; i < cell.frame.knots.size(); ++i) {
+                    const auto& knot = cell.frame.knots[i];
+                    const auto resolved = resolveKnot(context, interframe, knot.kind);
+                    if (not resolved)
+                        continue;
+                    if (not touch(QuarkActor::Kind::knot, cellIndex, i, mech::quarks::worldPose(cell.pose, knot.ori), *resolved))
+                        return false;
+                }
+                for (std::size_t i = 0; i < cell.frame.halfChords.size(); ++i) {
+                    const auto& halfChord = cell.frame.halfChords[i];
+                    const auto resolved = resolveHalfChord(context, interframe, halfChord.kind, halfChord.pole);
+                    if (not resolved)
+                        continue;
+                    if (not touch(QuarkActor::Kind::halfChord, cellIndex, i, mech::quarks::worldPose(cell.pose, halfChord.ori), *resolved))
+                        return false;
+                }
             }
-            for (std::size_t i = 0; i < blueprint.frame.halfChords.size(); ++i) {
-                const auto& halfChord = blueprint.frame.halfChords[i];
-                const auto resolved = resolveHalfChord(context, interframe, halfChord.kind, halfChord.pole);
-                if (not resolved)
-                    continue;
-                if (not touch(QuarkActor::Kind::halfChord, i, halfChord.pose, *resolved))
-                    return false;
-            }
-        }
-        if (display.hull) {
-            for (std::size_t i = 0; i < blueprint.hull.walls.size(); ++i) {
-                const auto& wall = blueprint.hull.walls[i];
-                const auto resolved = resolveWall(context, interframe, wall.kind);
-                if (not resolved)
-                    continue;
-                if (not touch(QuarkActor::Kind::wall, i, wall.pose, *resolved))
-                    return false;
+            if (display.hull) {
+                for (std::size_t i = 0; i < cell.hull.walls.size(); ++i) {
+                    const auto& wall = cell.hull.walls[i];
+                    const auto resolved = resolveWall(context, interframe, wall.kind);
+                    if (not resolved)
+                        continue;
+                    if (not touch(QuarkActor::Kind::wall, cellIndex, i, mech::quarks::worldPose(cell.pose, wall.ori), *resolved))
+                        return false;
+                }
             }
         }
         return at == actors.size();

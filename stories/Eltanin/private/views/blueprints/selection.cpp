@@ -44,7 +44,6 @@ namespace eltanin::views::blueprints::selection {
             return index3{.x = (min.x + max.x) / 2, .y = (min.y + max.y) / 2, .z = (min.z + max.z) / 2};
         }
 
-        // World ±90° of a lattice point about pivot; R = orient::matrix[turn(axis)[0]] (same δ as family ori compose).
         auto rotateCellPos(const index3& pos, const index3& pivot, mech::space::orient::Semiaxis axis) -> index3 {
             const auto delta = mech::space::orient::turn(axis)[0];
             const auto& rotation = mech::space::orient::matrix[static_cast<std::size_t>(delta)];
@@ -77,69 +76,50 @@ namespace eltanin::views::blueprints::selection {
             }
         }
 
-        auto quarkPose(const mech::Blueprint& data, const QuarkActor& actor) -> base::maybe<mech::space::cell::Pose> {
-            switch (actor.kind) {
-                case QuarkActor::Kind::knot:
-                    if (actor.index < data.frame.knots.size())
-                        return data.frame.knots[actor.index].pose;
-                    break;
-                case QuarkActor::Kind::halfChord:
-                    if (actor.index < data.frame.halfChords.size())
-                        return data.frame.halfChords[actor.index].pose;
-                    break;
-                case QuarkActor::Kind::wall:
-                    if (actor.index < data.hull.walls.size())
-                        return data.hull.walls[actor.index].pose;
-                    break;
-            }
-            return {};
-        }
-
         auto selectionRowLabel(const mech::Blueprint* data, const base::maybe<QuarkActor>& actor, renderer::Integer32 alias) -> std::string {
             const auto hash = fqsm::internal::id::info_hash(static_cast<fqsm::internal::id::BaseType>(alias));
-            if (not actor or not data)
+            if (not actor or not data or actor->cell >= data->cells.size())
                 return std::format("?  #{}", hash);
+            const auto& cell = data->cells[actor->cell];
+            const auto& pos = cell.pose.pos;
             switch (actor->kind) {
                 case QuarkActor::Kind::knot: {
-                    if (actor->index >= data->frame.knots.size())
-                        return std::format("knot[{}]  #{}", actor->index, hash);
-                    const auto& knot = data->frame.knots[actor->index];
-                    const auto& pos = knot.pose.pos;
-                    return std::format("knot[{}] {}  cell[{},{},{}] ori={}  #{}", actor->index, mech::subframe::corner::specs.at(knot.kind).code, pos.x, pos.y, pos.z, knot.pose.ori, hash);
+                    if (actor->index >= cell.frame.knots.size())
+                        return std::format("knot[{}:{}]  #{}", actor->cell, actor->index, hash);
+                    const auto& knot = cell.frame.knots[actor->index];
+                    return std::format("knot[{}:{}] {}  cell[{},{},{}] localOri={}  #{}", actor->cell, actor->index, mech::subframe::corner::specs.at(knot.kind).code, pos.x, pos.y, pos.z, knot.ori, hash);
                 }
                 case QuarkActor::Kind::halfChord: {
-                    if (actor->index >= data->frame.halfChords.size())
-                        return std::format("halfChord[{}]  #{}", actor->index, hash);
-                    const auto& halfChord = data->frame.halfChords[actor->index];
-                    const auto& pos = halfChord.pose.pos;
+                    if (actor->index >= cell.frame.halfChords.size())
+                        return std::format("halfChord[{}:{}]  #{}", actor->cell, actor->index, hash);
+                    const auto& halfChord = cell.frame.halfChords[actor->index];
                     const char pole = halfChord.pole == mech::subframe::halfEdge::Pole::s ? 's' : 'e';
-                    return std::format("halfChord[{}] {}:{}  cell[{},{},{}] ori={}  #{}", actor->index, mech::subframe::halfEdge::specs.at(halfChord.kind).code, pole, pos.x, pos.y, pos.z, halfChord.pose.ori, hash);
+                    return std::format("halfChord[{}:{}] {}:{}  cell[{},{},{}] localOri={}  #{}", actor->cell, actor->index, mech::subframe::halfEdge::specs.at(halfChord.kind).code, pole, pos.x, pos.y, pos.z, halfChord.ori, hash);
                 }
                 case QuarkActor::Kind::wall: {
-                    if (actor->index >= data->hull.walls.size())
-                        return std::format("wall[{}]  #{}", actor->index, hash);
-                    const auto& wall = data->hull.walls[actor->index];
-                    const auto& pos = wall.pose.pos;
-                    return std::format("wall[{}] {}  cell[{},{},{}] ori={}  #{}", actor->index, mech::subframe::membrane::specs.at(wall.kind).code, pos.x, pos.y, pos.z, wall.pose.ori, hash);
+                    if (actor->index >= cell.hull.walls.size())
+                        return std::format("wall[{}:{}]  #{}", actor->cell, actor->index, hash);
+                    const auto& wall = cell.hull.walls[actor->index];
+                    return std::format("wall[{}:{}] {}  cell[{},{},{}] localOri={}  #{}", actor->cell, actor->index, mech::subframe::membrane::specs.at(wall.kind).code, pos.x, pos.y, pos.z, wall.ori, hash);
                 }
             }
             return std::format("?  #{}", hash);
         }
 
-        auto selectionRefs(Reading context, const std::vector<QuarkActor>& actors, const std::vector<renderer::Integer32>& aliases) -> std::vector<std::pair<QuarkActor::Kind, std::size_t>> {
-            std::vector<std::pair<QuarkActor::Kind, std::size_t>> refs;
+        auto selectionRefs(Reading context, const std::vector<QuarkActor>& actors, const std::vector<renderer::Integer32>& aliases) -> std::vector<QuarkRef> {
+            std::vector<QuarkRef> refs;
             for (const auto alias : aliases) {
                 if (const auto actor = findActorByAlias(context, actors, alias))
-                    refs.emplace_back(actor->kind, actor->index);
+                    refs.push_back(QuarkRef{.kind = actor->kind, .cell = actor->cell, .index = actor->index});
             }
             return refs;
         }
 
-        void restoreAliases(Reading context, const std::vector<QuarkActor>& actors, const std::vector<std::pair<QuarkActor::Kind, std::size_t>>& refs, std::vector<renderer::Integer32>& aliases) {
+        void restoreAliases(Reading context, const std::vector<QuarkActor>& actors, const std::vector<QuarkRef>& refs, std::vector<renderer::Integer32>& aliases) {
             aliases.clear();
-            for (const auto& [kind, index] : refs) {
+            for (const auto& ref : refs) {
                 for (const auto& actor : actors) {
-                    if (actor.kind != kind or actor.index != index)
+                    if (actor.kind != ref.kind or actor.cell != ref.cell or actor.index != ref.index)
                         continue;
                     if (not with<scene::actor::Identified>::exists(context, actor.id))
                         break;
@@ -166,14 +146,10 @@ namespace eltanin::views::blueprints::selection {
             aliases.erase(std::remove(aliases.begin(), aliases.end(), alias), aliases.end());
         }
 
-        auto familyAliases(Reading context, const std::vector<QuarkActor>& actors, const mech::Blueprint& data, const QuarkActor& hit) -> std::vector<renderer::Integer32> {
-            const auto hitPose = quarkPose(data, hit);
-            if (not hitPose)
-                return {};
+        auto familyAliases(Reading context, const std::vector<QuarkActor>& actors, const QuarkActor& hit) -> std::vector<renderer::Integer32> {
             std::vector<renderer::Integer32> out;
             for (const auto& actor : actors) {
-                const auto pose = quarkPose(data, actor);
-                if (not pose or not sameIndex3(pose->pos, hitPose->pos))
+                if (actor.cell != hit.cell)
                     continue;
                 if (const auto alias = actorAlias(context, actor))
                     out.push_back(*alias);
@@ -181,16 +157,24 @@ namespace eltanin::views::blueprints::selection {
             return out;
         }
 
-        auto selectedCells(Reading context, const Store& store, const mech::Blueprint& data, const std::vector<QuarkActor>& actors) -> std::set<index3, CellPosLess> {
-            std::set<index3, CellPosLess> cells;
+        auto selectedCellIndices(Reading context, const Store& store, const std::vector<QuarkActor>& actors) -> std::set<std::size_t> {
+            std::set<std::size_t> cells;
             for (const auto alias : store.aliases) {
-                const auto actor = findActorByAlias(context, actors, alias);
-                if (not actor)
-                    continue;
-                if (const auto pose = quarkPose(data, *actor))
-                    cells.insert(pose->pos);
+                if (const auto actor = findActorByAlias(context, actors, alias))
+                    cells.insert(actor->cell);
             }
             return cells;
+        }
+
+        auto cellEmpty(const mech::Blueprint::Cell& cell) -> bool {
+            return cell.frame.knots.empty() and cell.frame.halfChords.empty() and cell.hull.walls.empty();
+        }
+
+        auto rotateCellPose(mech::space::cell::Pose& pose, mech::space::orient::Semiaxis axis, const std::map<index3, index3, CellPosLess>& remap) -> void {
+            const auto delta = mech::space::orient::turn(axis)[0];
+            const auto& composeRow = mech::space::orient::compose[static_cast<std::size_t>(delta)];
+            pose.pos = remap.at(pose.pos);
+            pose.ori = composeRow[static_cast<std::size_t>(pose.ori)];
         }
 
     } // namespace
@@ -200,16 +184,8 @@ namespace eltanin::views::blueprints::selection {
     }
 
     auto cellOccupied(const mech::Blueprint& data, const index3& pos) -> bool {
-        for (const auto& knot : data.frame.knots) {
-            if (sameIndex3(knot.pose.pos, pos))
-                return true;
-        }
-        for (const auto& halfChord : data.frame.halfChords) {
-            if (sameIndex3(halfChord.pose.pos, pos))
-                return true;
-        }
-        for (const auto& wall : data.hull.walls) {
-            if (sameIndex3(wall.pose.pos, pos))
+        for (const auto& cell : data.cells) {
+            if (sameIndex3(cell.pose.pos, pos))
                 return true;
         }
         return false;
@@ -230,7 +206,7 @@ namespace eltanin::views::blueprints::selection {
     }
 
     void resetClipboard(Store& store) {
-        store.clipboard = mech::Blueprint{.name = "clipboard", .author = {}, .frame = {.knots = {}, .halfChords = {}}, .hull = {.walls = {}}};
+        store.clipboard = mech::Blueprint{.name = "clipboard", .author = {}, .cells = {}};
         store.focus = Focus::selection;
     }
 
@@ -243,35 +219,17 @@ namespace eltanin::views::blueprints::selection {
     }
 
     auto clipboardEmpty(const Store& store) -> bool {
-        return store.clipboard.frame.knots.empty() and store.clipboard.frame.halfChords.empty() and store.clipboard.hull.walls.empty();
+        return store.clipboard.cells.empty();
     }
 
     auto canPaste(const mech::Blueprint& target, const mech::Blueprint& clipboard) -> bool {
-        if (clipboard.frame.knots.empty() and clipboard.frame.halfChords.empty() and clipboard.hull.walls.empty())
+        if (clipboard.cells.empty())
             return false;
-        std::set<index3, CellPosLess> cells;
-        for (const auto& knot : clipboard.frame.knots)
-            cells.insert(knot.pose.pos);
-        for (const auto& halfChord : clipboard.frame.halfChords)
-            cells.insert(halfChord.pose.pos);
-        for (const auto& wall : clipboard.hull.walls)
-            cells.insert(wall.pose.pos);
-        for (const auto& pos : cells) {
-            if (cellOccupied(target, pos))
+        for (const auto& cell : clipboard.cells) {
+            if (cellOccupied(target, cell.pose.pos))
                 return false;
         }
         return true;
-    }
-
-    auto clipboardCells(const mech::Blueprint& clipboard) -> std::set<index3, CellPosLess> {
-        std::set<index3, CellPosLess> cells;
-        for (const auto& knot : clipboard.frame.knots)
-            cells.insert(knot.pose.pos);
-        for (const auto& halfChord : clipboard.frame.halfChords)
-            cells.insert(halfChord.pose.pos);
-        for (const auto& wall : clipboard.hull.walls)
-            cells.insert(wall.pose.pos);
-        return cells;
     }
 
     void rematchAfterSync(Reading context, Store& store, const std::vector<QuarkActor>& actors) {
@@ -284,13 +242,11 @@ namespace eltanin::views::blueprints::selection {
     void expand(Reading context, Store& store, resource::blueprint::Asset::Id hovered, const std::vector<QuarkActor>& actors) {
         if (store.aliases.empty() or not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
             return;
-        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, hovered).data;
-        const auto cells = selectedCells(context, store, data, actors);
+        const auto cells = selectedCellIndices(context, store, actors);
         if (cells.empty())
             return;
         for (const auto& actor : actors) {
-            const auto pose = quarkPose(data, actor);
-            if (not pose or not cells.contains(pose->pos))
+            if (not cells.contains(actor.cell))
                 continue;
             if (const auto alias = actorAlias(context, actor))
                 addAlias(store.aliases, *alias);
@@ -302,95 +258,84 @@ namespace eltanin::views::blueprints::selection {
         if (store.aliases.empty() or not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
             return;
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, hovered).data;
-        std::set<std::size_t> knots;
-        std::set<std::size_t> halfChords;
-        std::set<std::size_t> walls;
-        for (const auto alias : store.aliases) {
-            const auto actor = findActorByAlias(context, actors, alias);
-            if (not actor)
-                continue;
-            switch (actor->kind) {
-                case QuarkActor::Kind::knot: knots.insert(actor->index); break;
-                case QuarkActor::Kind::halfChord: halfChords.insert(actor->index); break;
-                case QuarkActor::Kind::wall: walls.insert(actor->index); break;
-            }
-        }
-        for (const auto index : knots) {
-            if (index < data.frame.knots.size())
-                store.clipboard.frame.knots.push_back(data.frame.knots[index]);
-        }
-        for (const auto index : halfChords) {
-            if (index < data.frame.halfChords.size())
-                store.clipboard.frame.halfChords.push_back(data.frame.halfChords[index]);
-        }
-        for (const auto index : walls) {
-            if (index < data.hull.walls.size())
-                store.clipboard.hull.walls.push_back(data.hull.walls[index]);
+        const auto cells = selectedCellIndices(context, store, actors);
+        for (const auto cellIndex : cells) {
+            if (cellIndex < data.cells.size())
+                store.clipboard.cells.push_back(data.cells[cellIndex]);
         }
     }
 
     auto eraseSelected(Writing context, Store& store, resource::blueprint::Asset::Id hovered, const std::vector<QuarkActor>& actors) -> bool {
         if (store.aliases.empty() or not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
             return false;
-        std::set<std::size_t> knots;
-        std::set<std::size_t> halfChords;
-        std::set<std::size_t> walls;
+
+        std::map<std::size_t, std::set<std::size_t>> knots;
+        std::map<std::size_t, std::set<std::size_t>> halfChords;
+        std::map<std::size_t, std::set<std::size_t>> walls;
         for (const auto alias : store.aliases) {
             const auto actor = findActorByAlias(context, actors, alias);
             if (not actor)
                 continue;
             switch (actor->kind) {
-                case QuarkActor::Kind::knot: knots.insert(actor->index); break;
-                case QuarkActor::Kind::halfChord: halfChords.insert(actor->index); break;
-                case QuarkActor::Kind::wall: walls.insert(actor->index); break;
+                case QuarkActor::Kind::knot: knots[actor->cell].insert(actor->index); break;
+                case QuarkActor::Kind::halfChord: halfChords[actor->cell].insert(actor->index); break;
+                case QuarkActor::Kind::wall: walls[actor->cell].insert(actor->index); break;
             }
         }
         clear(store);
         if (knots.empty() and halfChords.empty() and walls.empty())
             return false;
+
         auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
-        eraseDescending(data->data.frame.knots, knots);
-        eraseDescending(data->data.frame.halfChords, halfChords);
-        eraseDescending(data->data.hull.walls, walls);
+        std::set<std::size_t> dropCells;
+        for (const auto& [cellIndex, indices] : knots) {
+            if (cellIndex < data->data.cells.size())
+                eraseDescending(data->data.cells[cellIndex].frame.knots, indices);
+        }
+        for (const auto& [cellIndex, indices] : halfChords) {
+            if (cellIndex < data->data.cells.size())
+                eraseDescending(data->data.cells[cellIndex].frame.halfChords, indices);
+        }
+        for (const auto& [cellIndex, indices] : walls) {
+            if (cellIndex < data->data.cells.size())
+                eraseDescending(data->data.cells[cellIndex].hull.walls, indices);
+        }
+        for (std::size_t i = 0; i < data->data.cells.size(); ++i) {
+            if (cellEmpty(data->data.cells[i]))
+                dropCells.insert(i);
+        }
+        eraseDescending(data->data.cells, dropCells);
         return true;
     }
 
     auto rotateSelected(Writing context, Store& store, resource::blueprint::Asset::Id hovered, const std::vector<QuarkActor>& actors, mech::space::orient::Semiaxis axis) -> bool {
         if (store.aliases.empty() or not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
             return false;
-        const auto delta = mech::space::orient::turn(axis)[0];
-        const auto& composeRow = mech::space::orient::compose[static_cast<std::size_t>(delta)];
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, hovered).data;
-        const auto cells = selectedCells(context, store, data, actors);
-        if (cells.empty())
+        const auto cellIndices = selectedCellIndices(context, store, actors);
+        if (cellIndices.empty())
             return false;
-        const auto remap = remapCells(cells, axis);
+
+        std::set<index3, CellPosLess> positions;
+        for (const auto cellIndex : cellIndices) {
+            if (cellIndex < data.cells.size())
+                positions.insert(data.cells[cellIndex].pose.pos);
+        }
+        const auto remap = remapCells(positions, axis);
         for (const auto& [from, to] : remap) {
-            if (cells.contains(to))
+            if (positions.contains(to))
                 continue;
             if (cellOccupied(data, to))
                 return false;
         }
+
         store.pendingRestore = selectionRefs(context, actors, store.aliases);
         {
             auto writable = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
-            for (auto& knot : writable->data.frame.knots) {
-                if (not cells.contains(knot.pose.pos))
+            for (const auto cellIndex : cellIndices) {
+                if (cellIndex >= writable->data.cells.size())
                     continue;
-                knot.pose.pos = remap.at(knot.pose.pos);
-                knot.pose.ori = composeRow[static_cast<std::size_t>(knot.pose.ori)];
-            }
-            for (auto& halfChord : writable->data.frame.halfChords) {
-                if (not cells.contains(halfChord.pose.pos))
-                    continue;
-                halfChord.pose.pos = remap.at(halfChord.pose.pos);
-                halfChord.pose.ori = composeRow[static_cast<std::size_t>(halfChord.pose.ori)];
-            }
-            for (auto& wall : writable->data.hull.walls) {
-                if (not cells.contains(wall.pose.pos))
-                    continue;
-                wall.pose.pos = remap.at(wall.pose.pos);
-                wall.pose.ori = composeRow[static_cast<std::size_t>(wall.pose.ori)];
+                rotateCellPose(writable->data.cells[cellIndex].pose, axis, remap);
             }
         }
         return true;
@@ -402,33 +347,30 @@ namespace eltanin::views::blueprints::selection {
         if (not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
             return false;
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, hovered).data;
-        const auto cells = selectedCells(context, store, data, actors);
-        if (cells.empty())
+        const auto cellIndices = selectedCellIndices(context, store, actors);
+        if (cellIndices.empty())
             return false;
-        for (const auto& from : cells) {
+
+        std::set<index3, CellPosLess> positions;
+        for (const auto cellIndex : cellIndices) {
+            if (cellIndex < data.cells.size())
+                positions.insert(data.cells[cellIndex].pose.pos);
+        }
+        for (const auto& from : positions) {
             const auto to = addIndex3(from, step);
-            if (cells.contains(to))
+            if (positions.contains(to))
                 continue;
             if (cellOccupied(data, to))
                 return false;
         }
+
         store.pendingRestore = selectionRefs(context, actors, store.aliases);
         {
             auto writable = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
-            for (auto& knot : writable->data.frame.knots) {
-                if (not cells.contains(knot.pose.pos))
+            for (const auto cellIndex : cellIndices) {
+                if (cellIndex >= writable->data.cells.size())
                     continue;
-                knot.pose.pos = addIndex3(knot.pose.pos, step);
-            }
-            for (auto& halfChord : writable->data.frame.halfChords) {
-                if (not cells.contains(halfChord.pose.pos))
-                    continue;
-                halfChord.pose.pos = addIndex3(halfChord.pose.pos, step);
-            }
-            for (auto& wall : writable->data.hull.walls) {
-                if (not cells.contains(wall.pose.pos))
-                    continue;
-                wall.pose.pos = addIndex3(wall.pose.pos, step);
+                writable->data.cells[cellIndex].pose.pos = addIndex3(writable->data.cells[cellIndex].pose.pos, step);
             }
         }
         return true;
@@ -437,36 +379,22 @@ namespace eltanin::views::blueprints::selection {
     auto rotateClipboard(Store& store, mech::space::orient::Semiaxis axis) -> bool {
         if (clipboardEmpty(store))
             return false;
-        const auto delta = mech::space::orient::turn(axis)[0];
-        const auto& composeRow = mech::space::orient::compose[static_cast<std::size_t>(delta)];
-        const auto cells = clipboardCells(store.clipboard);
-        if (cells.empty())
+        std::set<index3, CellPosLess> positions;
+        for (const auto& cell : store.clipboard.cells)
+            positions.insert(cell.pose.pos);
+        if (positions.empty())
             return false;
-        const auto remap = remapCells(cells, axis);
-        for (auto& knot : store.clipboard.frame.knots) {
-            knot.pose.pos = remap.at(knot.pose.pos);
-            knot.pose.ori = composeRow[static_cast<std::size_t>(knot.pose.ori)];
-        }
-        for (auto& halfChord : store.clipboard.frame.halfChords) {
-            halfChord.pose.pos = remap.at(halfChord.pose.pos);
-            halfChord.pose.ori = composeRow[static_cast<std::size_t>(halfChord.pose.ori)];
-        }
-        for (auto& wall : store.clipboard.hull.walls) {
-            wall.pose.pos = remap.at(wall.pose.pos);
-            wall.pose.ori = composeRow[static_cast<std::size_t>(wall.pose.ori)];
-        }
+        const auto remap = remapCells(positions, axis);
+        for (auto& cell : store.clipboard.cells)
+            rotateCellPose(cell.pose, axis, remap);
         return true;
     }
 
     auto moveClipboard(Store& store, index3 step) -> bool {
         if (clipboardEmpty(store) or (step.x == 0 and step.y == 0 and step.z == 0))
             return false;
-        for (auto& knot : store.clipboard.frame.knots)
-            knot.pose.pos = addIndex3(knot.pose.pos, step);
-        for (auto& halfChord : store.clipboard.frame.halfChords)
-            halfChord.pose.pos = addIndex3(halfChord.pose.pos, step);
-        for (auto& wall : store.clipboard.hull.walls)
-            wall.pose.pos = addIndex3(wall.pose.pos, step);
+        for (auto& cell : store.clipboard.cells)
+            cell.pose.pos = addIndex3(cell.pose.pos, step);
         return true;
     }
 
@@ -479,12 +407,8 @@ namespace eltanin::views::blueprints::selection {
                 return false;
         }
         auto writable = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
-        for (const auto& knot : store.clipboard.frame.knots)
-            writable->data.frame.knots.push_back(knot);
-        for (const auto& halfChord : store.clipboard.frame.halfChords)
-            writable->data.frame.halfChords.push_back(halfChord);
-        for (const auto& wall : store.clipboard.hull.walls)
-            writable->data.hull.walls.push_back(wall);
+        for (const auto& cell : store.clipboard.cells)
+            writable->data.cells.push_back(cell);
         return true;
     }
 
@@ -493,19 +417,16 @@ namespace eltanin::views::blueprints::selection {
             return;
         const auto hit = findActorByAlias(context, actors, under);
         const bool shift = ImGui::GetIO().KeyShift;
-        const mech::Blueprint* blueprintData = (hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
-            ? &with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data
-            : nullptr;
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) and hit) {
-            if (shift and blueprintData) {
-                for (const auto alias : familyAliases(context, actors, *blueprintData, *hit))
+            if (shift) {
+                for (const auto alias : familyAliases(context, actors, *hit))
                     addAlias(store.aliases, alias);
             } else {
                 addAlias(store.aliases, under);
             }
         } else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) and hit) {
-            if (shift and blueprintData) {
-                for (const auto alias : familyAliases(context, actors, *blueprintData, *hit))
+            if (shift) {
+                for (const auto alias : familyAliases(context, actors, *hit))
                     removeAlias(store.aliases, alias);
             } else {
                 removeAlias(store.aliases, under);
@@ -632,11 +553,9 @@ namespace eltanin::views::blueprints::selection {
                 std::vector<renderer::Integer32> orphans;
                 for (const auto alias : store.aliases) {
                     const auto actor = findActorByAlias(context, actors, alias);
-                    if (blueprintData and actor) {
-                        if (const auto pose = quarkPose(*blueprintData, *actor)) {
-                            byCell[pose->pos].push_back(alias);
-                            continue;
-                        }
+                    if (blueprintData and actor and actor->cell < blueprintData->cells.size()) {
+                        byCell[blueprintData->cells[actor->cell].pose.pos].push_back(alias);
+                        continue;
                     }
                     orphans.push_back(alias);
                 }
@@ -688,7 +607,15 @@ namespace eltanin::views::blueprints::selection {
         ImGui::SetNextWindowSize(ImVec2{360.0f, 140.0f}, ImGuiCond_FirstUseEver);
         bool pasted = false;
         if (ImGui::Begin("Clipboard")) {
-            ImGui::TextDisabled("%zu knots, %zu half-chords, %zu walls", store.clipboard.frame.knots.size(), store.clipboard.frame.halfChords.size(), store.clipboard.hull.walls.size());
+            std::size_t knots = 0;
+            std::size_t halfChords = 0;
+            std::size_t walls = 0;
+            for (const auto& cell : store.clipboard.cells) {
+                knots += cell.frame.knots.size();
+                halfChords += cell.frame.halfChords.size();
+                walls += cell.hull.walls.size();
+            }
+            ImGui::TextDisabled("%zu cells · %zu knots · %zu half-chords · %zu walls", store.clipboard.cells.size(), knots, halfChords, walls);
             const bool empty = clipboardEmpty(store);
             bool allowed = false;
             if (not empty and hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
@@ -702,14 +629,12 @@ namespace eltanin::views::blueprints::selection {
                 else
                     ImGui::TextUnformatted("blocked");
                 const char* focusLabel = store.focus == Focus::clipboard ? "focus: buffer (B)" : "focus: selection (B)";
-                if (ImGui::Button(focusLabel))
-                    toggleFocus(store);
+                ImGui::TextDisabled("%s", focusLabel);
                 if (ImGui::Button("paste") and allowed and hovered.exists())
                     pasted = pasteClipboard(context, store, *hovered);
                 ImGui::SameLine();
                 if (ImGui::Button("clear"))
                     resetClipboard(store);
-                ImGui::TextDisabled("B focus · WASD/QE move · Shift rotate · Ctrl+C/V");
             }
         }
         ImGui::End();

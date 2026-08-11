@@ -55,7 +55,7 @@ namespace eltanin::mech {
             k6, // edge cut — 6 corners, 5 plates
             k4, // tetrahedral remainder — 4 corners, 4 plates
             // Flat membrane halves (ex-wing, cut along): k{N}f{digits} = N cube corners, flat, perimeter edge codes.
-            // Two flats may share one cell volume when their corner sets are disjoint.
+            // One cell per lattice volume (no dual flats sharing a volume).
             k4f1111, // ex w1111 half — 4-gon 1-1-1-1
             k3f121,  // ex w121 half — triangle 1-2-1
             k4f2121, // ex w2121 half — 4-gon 2-1-2-1

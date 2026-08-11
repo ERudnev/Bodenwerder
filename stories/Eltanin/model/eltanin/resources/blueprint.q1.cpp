@@ -100,6 +100,17 @@ namespace eltanin::resource::blueprint {
             {"u222V", mech::subframe::membrane::kind::u222V},
         };
 
+        const std::unordered_map<std::string_view, mech::frame::shape> frameShapes{
+            {"k8", mech::frame::shape::k8},
+            {"k7", mech::frame::shape::k7},
+            {"k6", mech::frame::shape::k6},
+            {"k4", mech::frame::shape::k4},
+            {"k4f1111", mech::frame::shape::k4f1111},
+            {"k3f121", mech::frame::shape::k3f121},
+            {"k4f2121", mech::frame::shape::k4f2121},
+            {"k3f222", mech::frame::shape::k3f222},
+        };
+
         auto knotKindName(mech::subframe::corner::kind kind) -> std::string_view {
             for (const auto& [name, value] : knotKinds) {
                 if (value == kind)
@@ -124,6 +135,14 @@ namespace eltanin::resource::blueprint {
             throw std::runtime_error("blueprint: unknown wall kind");
         }
 
+        auto frameShapeName(mech::frame::shape shape) -> std::string_view {
+            for (const auto& [name, value] : frameShapes) {
+                if (value == shape)
+                    return name;
+            }
+            throw std::runtime_error("blueprint: unknown frame shape");
+        }
+
         auto take_knot(Cursor& cursor) -> mech::quarks::Knot {
             expect(cursor, '[');
             const auto kindName = take_string(cursor);
@@ -131,14 +150,9 @@ namespace eltanin::resource::blueprint {
             if (kindIt == knotKinds.end())
                 throw std::runtime_error(std::format("blueprint: unknown knot kind '{}'", kindName));
             expect(cursor, ',');
-            const auto pos = take_index3(cursor);
-            expect(cursor, ',');
             const auto ori = take_int(cursor);
             expect(cursor, ']');
-            return mech::quarks::Knot{
-                .kind = kindIt->second,
-                .pose = mech::space::cell::Pose{.pos = pos, .ori = static_cast<rmmr::renderer::Signed32>(ori)},
-            };
+            return mech::quarks::Knot{.kind = kindIt->second, .ori = static_cast<mech::quarks::LocalOri>(ori)};
         }
 
         auto take_half_chord(Cursor& cursor) -> mech::quarks::HalfChord {
@@ -157,15 +171,9 @@ namespace eltanin::resource::blueprint {
             else
                 throw std::runtime_error(std::format("blueprint: unknown half-chord pole '{}'", poleName));
             expect(cursor, ',');
-            const auto pos = take_index3(cursor);
-            expect(cursor, ',');
             const auto ori = take_int(cursor);
             expect(cursor, ']');
-            return mech::quarks::HalfChord{
-                .kind = kindIt->second,
-                .pole = pole,
-                .pose = mech::space::cell::Pose{.pos = pos, .ori = static_cast<rmmr::renderer::Signed32>(ori)},
-            };
+            return mech::quarks::HalfChord{.kind = kindIt->second, .pole = pole, .ori = static_cast<mech::quarks::LocalOri>(ori)};
         }
 
         auto take_wall(Cursor& cursor) -> mech::quarks::Wall {
@@ -175,14 +183,9 @@ namespace eltanin::resource::blueprint {
             if (kindIt == wallKinds.end())
                 throw std::runtime_error(std::format("blueprint: unknown wall kind '{}'", kindName));
             expect(cursor, ',');
-            const auto pos = take_index3(cursor);
-            expect(cursor, ',');
             const auto ori = take_int(cursor);
             expect(cursor, ']');
-            return mech::quarks::Wall{
-                .kind = kindIt->second,
-                .pose = mech::space::cell::Pose{.pos = pos, .ori = static_cast<rmmr::renderer::Signed32>(ori)},
-            };
+            return mech::quarks::Wall{.kind = kindIt->second, .ori = static_cast<mech::quarks::LocalOri>(ori)};
         }
 
         template <typename Item, typename Take>
@@ -206,6 +209,31 @@ namespace eltanin::resource::blueprint {
             return out;
         }
 
+        auto take_cell(Cursor& cursor) -> mech::Blueprint::Cell {
+            expect(cursor, '[');
+            const auto pos = take_index3(cursor);
+            expect(cursor, ',');
+            const auto ori = take_int(cursor);
+            expect(cursor, ',');
+            const auto shapeName = take_string(cursor);
+            const auto shapeIt = frameShapes.find(shapeName);
+            if (shapeIt == frameShapes.end())
+                throw std::runtime_error(std::format("blueprint: unknown frame shape '{}'", shapeName));
+            expect(cursor, ',');
+            auto knots = take_list<mech::quarks::Knot>(cursor, take_knot);
+            expect(cursor, ',');
+            auto halfChords = take_list<mech::quarks::HalfChord>(cursor, take_half_chord);
+            expect(cursor, ',');
+            auto walls = take_list<mech::quarks::Wall>(cursor, take_wall);
+            expect(cursor, ']');
+            return mech::Blueprint::Cell{
+                .pose = mech::space::cell::Pose{.pos = pos, .ori = static_cast<rmmr::renderer::Signed32>(ori)},
+                .shape = shapeIt->second,
+                .frame = {.knots = std::move(knots), .halfChords = std::move(halfChords)},
+                .hull = {.walls = std::move(walls)},
+            };
+        }
+
         auto parse_blueprint(std::string_view text) -> mech::Blueprint {
             Cursor cursor{.text = text, .at = 0};
             expect(cursor, '{');
@@ -213,52 +241,40 @@ namespace eltanin::resource::blueprint {
             expect(cursor, ',');
             auto author = take_string(cursor);
             skip_ws(cursor);
-            std::vector<mech::quarks::Knot> knots;
-            std::vector<mech::quarks::HalfChord> halfChords;
-            std::vector<mech::quarks::Wall> walls;
+            std::vector<mech::Blueprint::Cell> cells;
             if (cursor.at < cursor.text.size() and cursor.text[cursor.at] == ',') {
                 ++cursor.at;
-                knots = take_list<mech::quarks::Knot>(cursor, take_knot);
-                skip_ws(cursor);
-                if (cursor.at < cursor.text.size() and cursor.text[cursor.at] == ',') {
-                    ++cursor.at;
-                    halfChords = take_list<mech::quarks::HalfChord>(cursor, take_half_chord);
-                    skip_ws(cursor);
-                    if (cursor.at < cursor.text.size() and cursor.text[cursor.at] == ',') {
-                        ++cursor.at;
-                        walls = take_list<mech::quarks::Wall>(cursor, take_wall);
-                    }
-                }
+                cells = take_list<mech::Blueprint::Cell>(cursor, take_cell);
             }
             expect(cursor, '}');
-            return mech::Blueprint{.name = std::move(name), .author = std::move(author), .frame = {.knots = std::move(knots), .halfChords = std::move(halfChords)}, .hull = {.walls = std::move(walls)}};
+            return mech::Blueprint{.name = std::move(name), .author = std::move(author), .cells = std::move(cells)};
         }
 
         auto format_knot(const mech::quarks::Knot& knot) -> std::string {
-            return std::format("[\"{}\", [{}, {}, {}], {}]", knotKindName(knot.kind), knot.pose.pos.x, knot.pose.pos.y, knot.pose.pos.z, knot.pose.ori);
+            return std::format("[\"{}\", {}]", knotKindName(knot.kind), knot.ori);
         }
 
         auto format_half_chord(const mech::quarks::HalfChord& halfChord) -> std::string {
             const char* pole = halfChord.pole == mech::subframe::halfEdge::Pole::s ? "s" : "e";
-            return std::format("[\"{}\", \"{}\", [{}, {}, {}], {}]", halfChordKindName(halfChord.kind), pole, halfChord.pose.pos.x, halfChord.pose.pos.y, halfChord.pose.pos.z, halfChord.pose.ori);
+            return std::format("[\"{}\", \"{}\", {}]", halfChordKindName(halfChord.kind), pole, halfChord.ori);
         }
 
         auto format_wall(const mech::quarks::Wall& wall) -> std::string {
-            return std::format("[\"{}\", [{}, {}, {}], {}]", wallKindName(wall.kind), wall.pose.pos.x, wall.pose.pos.y, wall.pose.pos.z, wall.pose.ori);
+            return std::format("[\"{}\", {}]", wallKindName(wall.kind), wall.ori);
         }
 
         template <typename Item, typename Format>
-        void format_list(std::ostringstream& out, const std::vector<Item>& items, Format format) {
+        void format_list_inline(std::ostringstream& out, const std::vector<Item>& items, Format format, std::string_view indent) {
             if (items.empty()) {
-                out << "    []";
+                out << "[]";
                 return;
             }
-            out << "    [\n";
+            out << "[\n";
             for (std::size_t i = 0; i < items.size(); ++i) {
-                out << "        " << format(items[i]);
+                out << indent << "    " << format(items[i]);
                 out << (i + 1 < items.size() ? ",\n" : "\n");
             }
-            out << "    ]";
+            out << indent << "]";
         }
 
         auto format_blueprint(const mech::Blueprint& data) -> std::string {
@@ -266,12 +282,28 @@ namespace eltanin::resource::blueprint {
             out << "{\n";
             out << "    \"" << data.name << "\",\n";
             out << "    \"" << data.author << "\",\n";
-            format_list(out, data.frame.knots, format_knot);
-            out << ",\n";
-            format_list(out, data.frame.halfChords, format_half_chord);
-            out << ",\n";
-            format_list(out, data.hull.walls, format_wall);
-            out << "\n}\n";
+            if (data.cells.empty()) {
+                out << "    []\n";
+            } else {
+                out << "    [\n";
+                for (std::size_t c = 0; c < data.cells.size(); ++c) {
+                    const auto& cell = data.cells[c];
+                    out << "        [\n";
+                    out << "            [" << cell.pose.pos.x << ", " << cell.pose.pos.y << ", " << cell.pose.pos.z << "],\n";
+                    out << "            " << cell.pose.ori << ",\n";
+                    out << "            \"" << frameShapeName(cell.shape) << "\",\n";
+                    out << "            ";
+                    format_list_inline(out, cell.frame.knots, format_knot, "            ");
+                    out << ",\n            ";
+                    format_list_inline(out, cell.frame.halfChords, format_half_chord, "            ");
+                    out << ",\n            ";
+                    format_list_inline(out, cell.hull.walls, format_wall, "            ");
+                    out << "\n        ]";
+                    out << (c + 1 < data.cells.size() ? ",\n" : "\n");
+                }
+                out << "    ]\n";
+            }
+            out << "}\n";
             return out.str();
         }
 

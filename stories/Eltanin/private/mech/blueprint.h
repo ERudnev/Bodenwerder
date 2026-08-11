@@ -4,24 +4,33 @@
 #include <vector>
 
 #include "semantics/quarks.h"
+#include "semantics/shapes.h"
+#include "semantics/space.h"
 
 namespace eltanin::mech {
 
-    // Ship schema: frame quarks + hull membranes (outfit-side, not load-bearing; not auto-seeded from frame).
+    // Ship schema: cells (frame hosts) + per-cell hull membranes.
+    // One cell per lattice volume. Quarks are local to the cell (no orphans; only thinning).
     // C++: private/mech/blueprint.h — doctrine/mech/blueprint.q1.types
     struct Blueprint {
-        struct Frame {
-            std::vector<quarks::Knot> knots;
-            std::vector<quarks::HalfChord> halfChords;
-        };
-        struct Hull {
-            std::vector<quarks::Wall> walls;
+        struct Cell {
+            struct Frame {
+                std::vector<quarks::Knot> knots;
+                std::vector<quarks::HalfChord> halfChords;
+            };
+            struct Hull {
+                std::vector<quarks::Wall> walls;
+            };
+
+            space::cell::Pose pose;
+            frame::shape shape; // declared intent; population may be thinned
+            Frame frame;
+            Hull hull;
         };
 
         std::string name;
         std::string author; // manufacturer
-        Frame frame;
-        Hull hull;
+        std::vector<Cell> cells;
     };
 
 }

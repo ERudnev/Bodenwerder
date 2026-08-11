@@ -8,35 +8,39 @@
 
 namespace eltanin::mech::quarks {
 
-    // Atomic frame piece in a cell. Not placed by hand as a lone editor stroke —
-    // cell recipes (e.g. "k7 in this cell") expand into several Knots in that cell.
-    // Mesh sits at cube corner 0 in its local frame; pose.ori places it in the cell.
+    // Local roll inside a Cell (recipe-space; cell.ori = 0). World ori = compose(cell.ori, local).
+    using LocalOri = rmmr::renderer::Signed32;
+
+    // Atomic frame piece. Seeded with a cell; not spawned as a lone editor stroke.
+    // Mesh sits at cube corner 0 in its local frame; ori places it in the cell.
     struct Knot {
         using Kind = subframe::corner::kind;
 
         Kind kind;
-        space::cell::Pose pose;
+        LocalOri ori;
     };
 
-    // Half-stick quark in a cell (one pole of an edge). Seat in the cell cube comes from
-    // interframe Entry.origin (s → 0, e → ray end); pole selects …s / …e mesh.
+    // Half-stick quark (one pole of an edge). Seat from interframe Entry.origin; pole selects …s / …e.
     struct HalfChord {
         using Kind = subframe::halfEdge::kind;
 
         Kind kind;
         subframe::halfEdge::Pole pole;
-        space::cell::Pose pose;
+        LocalOri ori;
     };
 
     struct Wall {
         using Kind = subframe::membrane::kind;
 
         Kind kind;
-        space::cell::Pose pose;
+        LocalOri ori;
     };
 
-    // Expand frame::shape at a cell pose → knots / half-chords in that cell (subframe::recipes).
-    auto seedCorners(frame::shape, space::cell::Pose) -> std::vector<Knot>;
-    auto seedHalfChords(frame::shape, space::cell::Pose) -> std::vector<HalfChord>;
+    // World discrete pose for a quark: cell lattice pos + compose(cell.ori, local).
+    auto worldPose(const space::cell::Pose& cell, LocalOri local) -> space::cell::Pose;
+
+    // Expand frame::shape → local knots / half-chords (subframe::recipes, cell ori 0).
+    auto seedCorners(frame::shape) -> std::vector<Knot>;
+    auto seedHalfChords(frame::shape) -> std::vector<HalfChord>;
 
 }

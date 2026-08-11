@@ -334,9 +334,7 @@ namespace eltanin::views {
                         if (ImGui::Selectable("erase")) {
                             {
                                 auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
-                                data->data.frame.knots.erase(std::remove_if(data->data.frame.knots.begin(), data->data.frame.knots.end(), [&](const mech::quarks::Knot& knot) { return blueprints::selection::sameIndex3(knot.pose.pos, state.cursorLattice); }), data->data.frame.knots.end());
-                                data->data.frame.halfChords.erase(std::remove_if(data->data.frame.halfChords.begin(), data->data.frame.halfChords.end(), [&](const mech::quarks::HalfChord& halfChord) { return blueprints::selection::sameIndex3(halfChord.pose.pos, state.cursorLattice); }), data->data.frame.halfChords.end());
-                                data->data.hull.walls.erase(std::remove_if(data->data.hull.walls.begin(), data->data.hull.walls.end(), [&](const mech::quarks::Wall& wall) { return blueprints::selection::sameIndex3(wall.pose.pos, state.cursorLattice); }), data->data.hull.walls.end());
+                                data->data.cells.erase(std::remove_if(data->data.cells.begin(), data->data.cells.end(), [&](const mech::Blueprint::Cell& cell) { return blueprints::selection::sameIndex3(cell.pose.pos, state.cursorLattice); }), data->data.cells.end());
                             }
                             ImGui::CloseCurrentPopup();
                             state.spaceMenu = {.place = false, .close = false};
@@ -348,14 +346,13 @@ namespace eltanin::views {
                         bool applied = false;
                         auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
                         applied = frameShapePicks([&](mech::frame::shape shape) {
-                            const auto cell = mech::space::cell::Pose{
-                                .pos = state.cursorLattice,
-                                .ori = 0,
-                            };
-                            for (const auto& knot : mech::quarks::seedCorners(shape, cell))
-                                data->data.frame.knots.push_back(knot);
-                            for (const auto& halfChord : mech::quarks::seedHalfChords(shape, cell))
-                                data->data.frame.halfChords.push_back(halfChord);
+                            const auto pose = mech::space::cell::Pose{.pos = state.cursorLattice, .ori = 0};
+                            data->data.cells.push_back(mech::Blueprint::Cell{
+                                .pose = pose,
+                                .shape = shape,
+                                .frame = {.knots = mech::quarks::seedCorners(shape), .halfChords = mech::quarks::seedHalfChords(shape)},
+                                .hull = {.walls = {}},
+                            });
                         });
                         if (applied) {
                             ImGui::CloseCurrentPopup();
@@ -452,9 +449,18 @@ namespace eltanin::views {
                     syncClipboardGhost(context);
                 }
                 ImGui::Separator();
-                ImGui::Text("Knots: %zu", data.frame.knots.size());
-                ImGui::Text("Half-chords: %zu", data.frame.halfChords.size());
-                ImGui::Text("Walls: %zu", data.hull.walls.size());
+                std::size_t knots = 0;
+                std::size_t halfChords = 0;
+                std::size_t walls = 0;
+                for (const auto& cell : data.cells) {
+                    knots += cell.frame.knots.size();
+                    halfChords += cell.frame.halfChords.size();
+                    walls += cell.hull.walls.size();
+                }
+                ImGui::Text("Cells: %zu", data.cells.size());
+                ImGui::Text("Knots: %zu", knots);
+                ImGui::Text("Half-chords: %zu", halfChords);
+                ImGui::Text("Walls: %zu", walls);
                 ImGui::Text("Actors: %zu", state.quarkActors.size());
                 ImGui::Text("Selection: %zu", state.selection.aliases.size());
                 ImGui::Text("Cursor [%d, %d, %d]", state.cursorLattice.x, state.cursorLattice.y, state.cursorLattice.z);

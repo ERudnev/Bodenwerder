@@ -136,7 +136,7 @@ namespace eltanin {
                 return {};
             return assetId;
         }
-        with<::eltanin::resource::blueprint::Asset>::modify(context, assetId)->data = mech::Blueprint{.name = string{stem}, .author = "#undefined", .frame = {.knots = {}, .halfChords = {}}, .hull = {.walls = {}}};
+        with<::eltanin::resource::blueprint::Asset>::modify(context, assetId)->data = mech::Blueprint{.name = string{stem}, .author = "#undefined", .cells = {}};
         with<::eltanin::resource::blueprint::Loader>::save(context, assetId);
         if (not context.workers_interface().summary().good())
             return {};
@@ -182,7 +182,7 @@ namespace eltanin {
             context,
             Unit::Name::from("Eltanin", own),
             item<::eltanin::resource::blueprint::Loader>{.file = relativeFile(shelf, stem)});
-        with<::eltanin::resource::blueprint::Asset>::modify(context, assetId)->data = mech::Blueprint{.name = name, .author = "#unknown", .frame = {.knots = {}, .halfChords = {}}, .hull = {.walls = {}}};
+        with<::eltanin::resource::blueprint::Asset>::modify(context, assetId)->data = mech::Blueprint{.name = name, .author = "#unknown", .cells = {}};
         with<::eltanin::resource::blueprint::Loader>::save(context, assetId);
         if (not context.workers_interface().summary().good())
             return {};

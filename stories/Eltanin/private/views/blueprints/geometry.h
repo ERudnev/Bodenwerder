@@ -26,7 +26,8 @@ namespace eltanin::views::blueprints::geometry {
 
         rmmr::scene::actor::Mesh::Id id;
         Kind kind;
-        std::size_t index; // into Blueprint frame.knots / frame.halfChords / hull.walls
+        std::size_t cell;  // into Blueprint::cells
+        std::size_t index; // into cell.frame.knots / halfChords / hull.walls
     };
 
     // Editor visibility filter for quark actors (skeleton = frame knots/half-chords).
@@ -51,10 +52,9 @@ namespace eltanin::views::blueprints::geometry {
     void syncActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, const mech::Blueprint& blueprint, Display, std::vector<QuarkActor>& actors);
 
     // Preview actors for clipboard paste: no Identified; additive ghost material + MeshState tint.
-    // Full respawn (destroy+create). Prefer refreshGhostActors when structure is unchanged.
     void syncGhostActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, ::rmmr::resource::material::Asset::Id ghostMaterial, const mech::Blueprint& blueprint, Display, std::vector<QuarkActor>& actors, rmmr::RGB albedo, float opacity);
 
-    // In-place pose + MeshState update. False → caller must syncGhostActors (structure mismatch or dead ids).
+    // In-place pose + MeshState update. False → caller must syncGhostActors.
     auto refreshGhostActors(Writing, rmmr::resource::meshpack::Asset::Id interframe, const mech::Blueprint& blueprint, Display, std::vector<QuarkActor>& actors, rmmr::RGB albedo, float opacity) -> bool;
 
 } // namespace eltanin::views::blueprints::geometry
