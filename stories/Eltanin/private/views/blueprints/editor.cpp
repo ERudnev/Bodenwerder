@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <vector>
 
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
@@ -81,7 +82,12 @@ namespace eltanin::views {
             return {};
         }
 
-        auto rayHitFloor(Reading context, scene::Camera::Id camera, system::Viewport::Id viewport, index2 mouse, float planeY) -> base::maybe<Pos> {
+        struct MouseRay {
+            Pos origin;
+            vec3 dir;
+        };
+
+        auto mouseRay(Reading context, scene::Camera::Id camera, system::Viewport::Id viewport, index2 mouse) -> base::maybe<MouseRay> {
             const auto& vp = with<system::Viewport>::get(context, viewport);
             if (vp.size.x <= 0 or vp.size.y <= 0)
                 return {};
@@ -96,12 +102,99 @@ namespace eltanin::views {
             const Pos origin{nearH.x / nearH.w, nearH.y / nearH.w, nearH.z / nearH.w};
             const Pos farP{farH.x / farH.w, farH.y / farH.w, farH.z / farH.w};
             const vec3 dir = farP - origin;
-            if (std::abs(dir.y) < 1e-8f)
+            if (glm::length(dir) < 1e-8f)
                 return {};
-            const float t = (planeY - origin.y) / dir.y;
+            return MouseRay{.origin = origin, .dir = dir};
+        }
+
+        auto rayHitFloor(Reading context, scene::Camera::Id camera, system::Viewport::Id viewport, index2 mouse, float planeY) -> base::maybe<Pos> {
+            const auto ray = mouseRay(context, camera, viewport, mouse);
+            if (not ray.exists() or std::abs(ray->dir.y) < 1e-8f)
+                return {};
+            const float t = (planeY - ray->origin.y) / ray->dir.y;
             if (t < 0.0f)
                 return {};
-            return origin + dir * t;
+            return ray->origin + ray->dir * t;
+        }
+
+        auto cornerWorld(const mech::space::cell::Pose& pose, mech::cube::Corner corner) -> Pos {
+            const auto center = mech::space::cell::center2local(mech::space::cell::index{pose.pos.x, pose.pos.y, pose.pos.z});
+            const auto local = mech::space::orient::cell2local(static_cast<mech::space::orient::key>(pose.ori), mech::cube::corners[static_cast<std::size_t>(corner)]);
+            return Pos{center.x + local.x, center.y + local.y, center.z + local.z};
+        }
+
+        auto faceWorldLoop(const mech::Blueprint::Cell& cell, mech::frame::FaceIndex face) -> std::vector<Pos> {
+            const auto shapeIndex = static_cast<std::size_t>(cell.shape);
+            const auto faceIndex = static_cast<std::size_t>(face);
+            if (shapeIndex >= mech::frame::faces.size() or faceIndex >= mech::frame::faces[shapeIndex].size())
+                return {};
+            const auto& loop = mech::frame::faces[shapeIndex][faceIndex];
+            std::vector<Pos> out;
+            out.reserve(loop.size());
+            for (const auto corner : loop)
+                out.push_back(cornerWorld(cell.pose, corner));
+            return out;
+        }
+
+        // Möller–Trumbore; t along ray.dir (not required unit).
+        auto rayHitTriangle(const Pos& origin, const vec3& dir, const Pos& a, const Pos& b, const Pos& c, float& tOut) -> bool {
+            constexpr float eps = 1e-6f;
+            const vec3 ab = b - a;
+            const vec3 ac = c - a;
+            const vec3 pvec = glm::cross(dir, ac);
+            const float det = glm::dot(ab, pvec);
+            if (std::abs(det) < eps)
+                return false;
+            const float invDet = 1.0f / det;
+            const vec3 tvec = origin - a;
+            const float u = glm::dot(tvec, pvec) * invDet;
+            if (u < 0.0f or u > 1.0f)
+                return false;
+            const vec3 qvec = glm::cross(tvec, ab);
+            const float v = glm::dot(dir, qvec) * invDet;
+            if (v < 0.0f or u + v > 1.0f)
+                return false;
+            const float t = glm::dot(ac, qvec) * invDet;
+            if (t < eps)
+                return false;
+            tOut = t;
+            return true;
+        }
+
+        auto rayHitPolygon(const Pos& origin, const vec3& dir, const std::vector<Pos>& loop, float& tOut) -> bool {
+            if (loop.size() < 3)
+                return false;
+            bool hit = false;
+            float best = tOut;
+            for (std::size_t i = 1; i + 1 < loop.size(); ++i) {
+                float t = 0.0f;
+                if (rayHitTriangle(origin, dir, loop[0], loop[i], loop[i + 1], t) and (not hit or t < best)) {
+                    best = t;
+                    hit = true;
+                }
+            }
+            if (hit)
+                tOut = best;
+            return hit;
+        }
+
+        auto projectWorld(Reading context, scene::Camera::Id camera, system::Viewport::Id viewport, const Pos& world) -> base::maybe<ImVec2> {
+            const auto& vp = with<system::Viewport>::get(context, viewport);
+            if (vp.size.x <= 0 or vp.size.y <= 0)
+                return {};
+            const float aspect = static_cast<float>(vp.size.x) / static_cast<float>(vp.size.y);
+            const vec4 clip = with<scene::Camera>::view_projection(context, camera, aspect) * vec4{world.x, world.y, world.z, 1.0f};
+            if (std::abs(clip.w) < 1e-8f)
+                return {};
+            const float ndcX = clip.x / clip.w;
+            const float ndcY = clip.y / clip.w;
+            const float ndcZ = clip.z / clip.w;
+            if (ndcZ < -1.0f or ndcZ > 1.0f)
+                return {};
+            return ImVec2{
+                static_cast<float>(vp.origin.x) + (ndcX + 1.0f) * 0.5f * static_cast<float>(vp.size.x),
+                static_cast<float>(vp.origin.y) + (1.0f - ndcY) * 0.5f * static_cast<float>(vp.size.y),
+            };
         }
 
         auto frameShapePicks(auto&& onPick) -> bool {
@@ -171,7 +264,7 @@ namespace eltanin::views {
         state.quarkActors = {};
         state.clipboardActors = {};
         state.display = {.skeleton = true, .hull = true};
-        state.walls = {.enabled = false, .cell = {}, .slots = {}, .face = 0};
+        state.walls = {.enabled = false, .cell = {}, .slots = {}, .face = {}};
         blueprints::selection::clear(state.selection);
         blueprints::selection::resetClipboard(state.selection);
         state.hovered.reset();
@@ -221,10 +314,10 @@ namespace eltanin::views {
     }
 
     void Blueprints::refreshWallCandidates(Reading context) {
+        state.walls.face = {};
         if (not state.walls.enabled or not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered)) {
             state.walls.cell = {};
             state.walls.slots = {};
-            state.walls.face = 0;
             return;
         }
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
@@ -239,18 +332,76 @@ namespace eltanin::views {
         if (not cellIndex.exists()) {
             state.walls.cell = {};
             state.walls.slots = {};
-            state.walls.face = 0;
             return;
         }
-        const bool cellChanged = not state.walls.cell.exists() or *state.walls.cell != *cellIndex;
         state.walls.cell = *cellIndex;
         state.walls.slots = mech::possibleWalls(data.cells[*cellIndex]);
-        if (cellChanged)
-            state.walls.face = 0;
-        else if (state.walls.slots.empty())
-            state.walls.face = 0;
-        else if (state.walls.face >= state.walls.slots.size())
-            state.walls.face = state.walls.slots.size() - 1;
+    }
+
+    void Blueprints::aimWallFace(Reading context) {
+        state.walls.face = {};
+        if (not state.walls.enabled or ImGui::GetIO().WantCaptureMouse)
+            return;
+        if (not state.walls.cell.exists() or state.walls.slots.empty())
+            return;
+        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
+            return;
+        if (not state.camera.exists())
+            return;
+        const auto window = firstWindow(context);
+        const auto viewport = firstViewport(context);
+        if (not window.exists() or not viewport.exists())
+            return;
+        const auto mouse = with<system::Window>::get(context, *window).current.mouse;
+        const auto ray = mouseRay(context, *state.camera, *viewport, mouse);
+        if (not ray.exists())
+            return;
+        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
+        if (*state.walls.cell >= data.cells.size())
+            return;
+        const auto& cell = data.cells[*state.walls.cell];
+        base::maybe<std::size_t> bestSlot;
+        float bestT = 0.0f;
+        for (std::size_t i = 0; i < state.walls.slots.size(); ++i) {
+            const auto loop = faceWorldLoop(cell, state.walls.slots[i].face);
+            float t = 0.0f;
+            if (rayHitPolygon(ray->origin, ray->dir, loop, t) and (not bestSlot.exists() or t < bestT)) {
+                bestT = t;
+                bestSlot = i;
+            }
+        }
+        state.walls.face = bestSlot;
+    }
+
+    void Blueprints::drawWallFaceHighlight(Reading context) const {
+        if (not state.walls.enabled or not state.walls.cell.exists() or not state.walls.face.exists())
+            return;
+        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
+            return;
+        if (not state.camera.exists())
+            return;
+        const auto viewport = firstViewport(context);
+        if (not viewport.exists())
+            return;
+        if (*state.walls.face >= state.walls.slots.size())
+            return;
+        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
+        if (*state.walls.cell >= data.cells.size())
+            return;
+        const auto loop = faceWorldLoop(data.cells[*state.walls.cell], state.walls.slots[*state.walls.face].face);
+        if (loop.size() < 2)
+            return;
+        std::vector<ImVec2> pts;
+        pts.reserve(loop.size() + 1);
+        for (const auto& world : loop) {
+            const auto screen = projectWorld(context, *state.camera, *viewport, world);
+            if (not screen.exists())
+                return;
+            pts.push_back(*screen);
+        }
+        pts.push_back(pts.front());
+        auto* draw = ImGui::GetForegroundDrawList();
+        draw->AddPolyline(pts.data(), static_cast<int>(pts.size()), IM_COL32(255, 180, 64, 220), ImDrawFlags_None, 2.5f);
     }
 
     auto Blueprints::handleWallMode(Writing context, renderer::Integer32 under) -> bool {
@@ -260,10 +411,12 @@ namespace eltanin::views {
             return false;
 
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            if (not state.walls.cell.exists() or state.walls.slots.empty() or state.walls.face >= state.walls.slots.size())
+            if (not state.walls.cell.exists() or not state.walls.face.exists() or state.walls.slots.empty())
+                return false;
+            if (*state.walls.face >= state.walls.slots.size())
                 return false;
             const auto cell = *state.walls.cell;
-            const auto wall = state.walls.slots[state.walls.face].wall;
+            const auto wall = state.walls.slots[*state.walls.face].wall;
             auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
             if (cell >= data->data.cells.size())
                 return false;
@@ -271,6 +424,7 @@ namespace eltanin::views {
             persistHovered(context);
             syncVisuals(context);
             refreshWallCandidates(context);
+            aimWallFace(context);
             return true;
         }
 
@@ -293,6 +447,7 @@ namespace eltanin::views {
                     persistHovered(context);
                     syncVisuals(context);
                     refreshWallCandidates(context);
+                    aimWallFace(context);
                 }
                 return true;
             }
@@ -375,33 +530,29 @@ namespace eltanin::views {
                 --state.currentFloor;
                 syncGridToFloor(context);
             }
-            if (ImGui::IsKeyPressed(ImGuiKey_B))
+            if (ImGui::IsKeyPressed(ImGuiKey_B) and not state.walls.enabled)
                 blueprints::selection::toggleFocus(state.selection);
         }
 
         updateWorldCursor(context);
         refreshWallCandidates(context);
+        aimWallFace(context);
 
-        if (state.walls.enabled and not state.walls.slots.empty() and not ImGui::GetIO().WantCaptureKeyboard) {
-            const auto n = state.walls.slots.size();
-            if (ImGui::IsKeyPressed(ImGuiKey_LeftBracket))
-                state.walls.face = (state.walls.face + n - 1) % n;
-            if (ImGui::IsKeyPressed(ImGuiKey_RightBracket))
-                state.walls.face = (state.walls.face + 1) % n;
-        }
-
-        if (not state.walls.enabled or not handleWallMode(context, under))
+        if (state.walls.enabled) {
+            handleWallMode(context, under);
+        } else {
             blueprints::selection::handlePointer(context, state.selection, state.hovered, state.quarkActors, under);
-        if (blueprints::selection::handleHotkeys(context, state.selection, state.hovered, state.quarkActors)) {
-            persistHovered(context);
-            syncVisuals(context);
-            refreshWallCandidates(context);
-        }
-        blueprints::selection::handleClipboardHotkeys(state.selection);
-        if (blueprints::selection::handleClipboardChords(context, state.selection, state.hovered, state.quarkActors)) {
-            persistHovered(context);
-            syncVisuals(context);
-            refreshWallCandidates(context);
+            if (blueprints::selection::handleHotkeys(context, state.selection, state.hovered, state.quarkActors)) {
+                persistHovered(context);
+                syncVisuals(context);
+                refreshWallCandidates(context);
+            }
+            blueprints::selection::handleClipboardHotkeys(state.selection);
+            if (blueprints::selection::handleClipboardChords(context, state.selection, state.hovered, state.quarkActors)) {
+                persistHovered(context);
+                syncVisuals(context);
+                refreshWallCandidates(context);
+            }
         }
 
         constexpr auto spaceMenuPopup = "##blueprints.spaceMenu";
@@ -546,23 +697,29 @@ namespace eltanin::views {
                     syncClipboardGhost(context);
                 }
                 if (ImGui::Checkbox("Wall place/remove", &state.walls.enabled)) {
-                    if (state.walls.enabled and not state.display.hull) {
-                        state.display.hull = true;
-                        syncVisuals(context);
+                    if (state.walls.enabled) {
+                        blueprints::selection::clear(state.selection);
+                        if (not state.display.hull) {
+                            state.display.hull = true;
+                            syncVisuals(context);
+                        }
                     }
                     refreshWallCandidates(context);
+                    aimWallFace(context);
                 }
                 if (state.walls.enabled) {
-                    ImGui::TextDisabled("[ ] cycle face · LMB place · RMB remove wall · select + Del");
+                    ImGui::TextDisabled("aim free face · LMB place · RMB remove · selection off");
                     if (not state.walls.cell.exists()) {
                         ImGui::TextDisabled("Wall: no cell under cursor");
                     } else if (state.walls.slots.empty()) {
                         ImGui::TextDisabled("Wall: no free faces");
+                    } else if (not state.walls.face.exists()) {
+                        ImGui::TextDisabled("Wall: %zu free · aim a face", state.walls.slots.size());
                     } else {
-                        const auto& slot = state.walls.slots[state.walls.face];
+                        const auto& slot = state.walls.slots[*state.walls.face];
                         const auto codeIt = mech::subframe::membrane::specs.find(slot.wall.kind);
                         const auto code = codeIt != mech::subframe::membrane::specs.end() ? codeIt->second.code : "?";
-                        ImGui::Text("Wall: face %zu/%zu · %.*s · ori %d", state.walls.face + 1, state.walls.slots.size(), static_cast<int>(code.size()), code.data(), static_cast<int>(slot.wall.ori));
+                        ImGui::Text("Wall: %.*s · ori %d · %zu free", static_cast<int>(code.size()), code.data(), static_cast<int>(slot.wall.ori), state.walls.slots.size());
                     }
                 }
                 ImGui::Separator();
@@ -594,17 +751,22 @@ namespace eltanin::views {
         ImGui::End();
         open = shown;
 
-        if (blueprints::selection::drawPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered, state.quarkActors)) {
-            persistHovered(context);
-            syncVisuals(context);
-            refreshWallCandidates(context);
+        if (not state.walls.enabled) {
+            if (blueprints::selection::drawPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered, state.quarkActors)) {
+                persistHovered(context);
+                syncVisuals(context);
+                refreshWallCandidates(context);
+            }
+            if (blueprints::selection::drawClipboardPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered)) {
+                persistHovered(context);
+                syncVisuals(context);
+                refreshWallCandidates(context);
+            }
+            syncClipboardGhost(context);
+        } else if (state.scene.exists()) {
+            blueprints::geometry::clearActors(context, *state.scene, state.clipboardActors);
         }
-        if (blueprints::selection::drawClipboardPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered)) {
-            persistHovered(context);
-            syncVisuals(context);
-            refreshWallCandidates(context);
-        }
-        syncClipboardGhost(context);
+        drawWallFaceHighlight(context);
     }
 
     void Blueprints::bindView(std::vector<rmmr::wrapper::Product::View>& product_views, bool open, const rmmr::wrapper::Product::View& world_view) const {

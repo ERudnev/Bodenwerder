@@ -41,12 +41,12 @@ namespace eltanin::views {
             blueprints::selection::Store selection;
             index3 cursorLattice;
             int currentFloor;
-            // Modest wall edit: candidates from possibleWalls; cycle face; no ghost actor pool.
+            // Modest wall edit: candidates from possibleWalls; aim face by mouse ray (no cycle).
             struct {
                 bool enabled;
                 base::maybe<std::size_t> cell;
                 std::vector<mech::WallSlot> slots;
-                std::size_t face; // into slots
+                base::maybe<std::size_t> face; // into slots when ray hits a free face
             } walls;
             struct {
                 bool place;
@@ -63,8 +63,10 @@ namespace eltanin::views {
         void syncVisuals(Writing);
         void syncClipboardGhost(Writing);
         void refreshWallCandidates(Reading);
-        // LMB place current slot · RMB remove placed wall under cursor. False → selection::handlePointer.
+        // Wall tile mode owns LMB/RMB; does not fall through to selection.
         auto handleWallMode(Writing, rmmr::renderer::Integer32 under) -> bool;
+        void aimWallFace(Reading);
+        void drawWallFaceHighlight(Reading) const;
         void persistHovered(Writing);
         void draw(Writing, bool& open, BlueprintCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;

@@ -110,11 +110,14 @@ namespace eltanin {
     auto Game::activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> {
         if (not ui.blueprints or not assets.blueprintsEditorEffect)
             return {};
+        // Tile place mode: suppress hover/selection chrome; face aim uses ImGui outline.
+        if (blueprints.state.walls.enabled)
+            return {};
         return assets.blueprintsEditorEffect;
     }
 
     auto Game::overlaySelection() const -> std::span<const rmmr::renderer::Integer32> {
-        if (not ui.blueprints)
+        if (not ui.blueprints or blueprints.state.walls.enabled)
             return {};
         return blueprints.state.selection.aliases;
     }
