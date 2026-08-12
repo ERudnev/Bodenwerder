@@ -29,6 +29,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <numbers>
 #include <vector>
 
@@ -315,34 +316,18 @@ namespace eltanin::views {
 
     void Blueprints::refreshWallCandidates(Reading context) {
         state.walls.face = {};
-        if (not state.walls.enabled or not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered)) {
-            state.walls.cell = {};
-            state.walls.slots = {};
+        state.walls.cell = {};
+        state.walls.slots = {};
+        if (not state.walls.enabled)
             return;
-        }
-        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
-        base::maybe<std::size_t> cellIndex;
-        for (std::size_t i = 0; i < data.cells.size(); ++i) {
-            if (blueprints::selection::sameIndex3(data.cells[i].pose.pos, state.cursorLattice)) {
-                cellIndex = i;
-                break;
-            }
-        }
-        // maybe<size_t>: never if(cellIndex)/if(not cellIndex) — integral T + operator T&() breaks empty/zero.
-        if (not cellIndex.exists()) {
-            state.walls.cell = {};
-            state.walls.slots = {};
-            return;
-        }
-        state.walls.cell = *cellIndex;
-        state.walls.slots = mech::possibleWalls(data.cells[*cellIndex]);
+        aimWallTarget(context);
     }
 
-    void Blueprints::aimWallFace(Reading context) {
+    void Blueprints::aimWallTarget(Reading context) {
         state.walls.face = {};
+        state.walls.cell = {};
+        state.walls.slots = {};
         if (not state.walls.enabled or ImGui::GetIO().WantCaptureMouse)
-            return;
-        if (not state.walls.cell.exists() or state.walls.slots.empty())
             return;
         if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
             return;
@@ -357,20 +342,37 @@ namespace eltanin::views {
         if (not ray.exists())
             return;
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
-        if (*state.walls.cell >= data.cells.size())
-            return;
-        const auto& cell = data.cells[*state.walls.cell];
+        base::maybe<std::size_t> bestCell;
         base::maybe<std::size_t> bestSlot;
-        float bestT = 0.0f;
-        for (std::size_t i = 0; i < state.walls.slots.size(); ++i) {
-            const auto loop = faceWorldLoop(cell, state.walls.slots[i].face);
-            float t = 0.0f;
-            if (rayHitPolygon(ray->origin, ray->dir, loop, t) and (not bestSlot.exists() or t < bestT)) {
-                bestT = t;
-                bestSlot = i;
+        float bestFreeT = std::numeric_limits<float>::infinity();
+        float bestPlacedT = std::numeric_limits<float>::infinity();
+        for (std::size_t cellIndex = 0; cellIndex < data.cells.size(); ++cellIndex) {
+            const auto& cell = data.cells[cellIndex];
+            for (const auto& placed : cell.hull.walls) {
+                if (const auto face = mech::faceForWall(cell, placed)) {
+                    const auto loop = faceWorldLoop(cell, *face);
+                    float t = 0.0f;
+                    if (rayHitPolygon(ray->origin, ray->dir, loop, t) and t < bestPlacedT)
+                        bestPlacedT = t;
+                }
+            }
+            const auto slots = mech::possibleWalls(cell);
+            for (std::size_t slot = 0; slot < slots.size(); ++slot) {
+                const auto loop = faceWorldLoop(cell, slots[slot].face);
+                float t = 0.0f;
+                if (rayHitPolygon(ray->origin, ray->dir, loop, t) and t < bestFreeT) {
+                    bestFreeT = t;
+                    bestCell = cellIndex;
+                    bestSlot = slot;
+                }
             }
         }
-        state.walls.face = bestSlot;
+        if (not bestCell.exists() or not bestSlot.exists() or bestPlacedT <= bestFreeT)
+            return;
+        state.walls.cell = *bestCell;
+        state.walls.slots = mech::possibleWalls(data.cells[*bestCell]);
+        if (*bestSlot < state.walls.slots.size())
+            state.walls.face = *bestSlot;
     }
 
     void Blueprints::drawWallFaceHighlight(Reading context) const {
@@ -424,7 +426,6 @@ namespace eltanin::views {
             persistHovered(context);
             syncVisuals(context);
             refreshWallCandidates(context);
-            aimWallFace(context);
             return true;
         }
 
@@ -447,7 +448,6 @@ namespace eltanin::views {
                     persistHovered(context);
                     syncVisuals(context);
                     refreshWallCandidates(context);
-                    aimWallFace(context);
                 }
                 return true;
             }
@@ -471,6 +471,12 @@ namespace eltanin::views {
 
     void Blueprints::updateWorldCursor(Writing context) {
         if (not state.worldCursor.exists() or not with<scene::Node>::exists(context, *state.worldCursor))
+            return;
+
+        if (with<scene::actor::MeshState>::exists(context, *state.worldCursor))
+            scene::actor::MeshState::Actions::setVisible(context, *state.worldCursor, not state.walls.enabled);
+
+        if (state.walls.enabled)
             return;
 
         const float cell = mech::space::local::edge2meters;
@@ -535,8 +541,8 @@ namespace eltanin::views {
         }
 
         updateWorldCursor(context);
-        refreshWallCandidates(context);
-        aimWallFace(context);
+        if (state.walls.enabled)
+            aimWallTarget(context);
 
         if (state.walls.enabled) {
             handleWallMode(context, under);
@@ -705,21 +711,21 @@ namespace eltanin::views {
                         }
                     }
                     refreshWallCandidates(context);
-                    aimWallFace(context);
                 }
                 if (state.walls.enabled) {
-                    ImGui::TextDisabled("aim free face · LMB place · RMB remove · selection off");
+                    ImGui::TextDisabled("ray aim · LMB place · RMB remove · selection off");
                     if (not state.walls.cell.exists()) {
-                        ImGui::TextDisabled("Wall: no cell under cursor");
+                        ImGui::TextDisabled("Wall: aim a free face");
                     } else if (state.walls.slots.empty()) {
-                        ImGui::TextDisabled("Wall: no free faces");
+                        ImGui::TextDisabled("Wall: no free faces on hit cell");
                     } else if (not state.walls.face.exists()) {
-                        ImGui::TextDisabled("Wall: %zu free · aim a face", state.walls.slots.size());
+                        ImGui::TextDisabled("Wall: %zu free on cell", state.walls.slots.size());
                     } else {
                         const auto& slot = state.walls.slots[*state.walls.face];
                         const auto codeIt = mech::subframe::membrane::specs.find(slot.wall.kind);
                         const auto code = codeIt != mech::subframe::membrane::specs.end() ? codeIt->second.code : "?";
-                        ImGui::Text("Wall: %.*s · ori %d · %zu free", static_cast<int>(code.size()), code.data(), static_cast<int>(slot.wall.ori), state.walls.slots.size());
+                        const auto& pos = data.cells[*state.walls.cell].pose.pos;
+                        ImGui::Text("Wall [%d,%d,%d]: %.*s · ori %d", pos.x, pos.y, pos.z, static_cast<int>(code.size()), code.data(), static_cast<int>(slot.wall.ori));
                     }
                 }
                 ImGui::Separator();
@@ -737,8 +743,17 @@ namespace eltanin::views {
                 ImGui::Text("Walls: %zu", walls);
                 ImGui::Text("Actors: %zu", state.quarkActors.size());
                 ImGui::Text("Selection: %zu", state.selection.aliases.size());
-                ImGui::Text("Cursor [%d, %d, %d]", state.cursorLattice.x, state.cursorLattice.y, state.cursorLattice.z);
-                ImGui::Text("Floor: %d", state.currentFloor);
+                if (state.walls.enabled) {
+                    if (state.walls.cell.exists() and *state.walls.cell < data.cells.size()) {
+                        const auto& pos = data.cells[*state.walls.cell].pose.pos;
+                        ImGui::Text("Target [%d, %d, %d]", pos.x, pos.y, pos.z);
+                    } else {
+                        ImGui::TextDisabled("Target: —");
+                    }
+                } else {
+                    ImGui::Text("Cursor [%d, %d, %d]", state.cursorLattice.x, state.cursorLattice.y, state.cursorLattice.z);
+                    ImGui::Text("Floor: %d", state.currentFloor);
+                }
                 ImGui::TextDisabled("MMB orbit · PgUp/PgDn · Space · LMB/RMB±Shift · Del · WASD/QE · Shift rotate · Ctrl+C/V · B");
                 if (under == renderer::Integer32{0}) {
                     ImGui::TextDisabled("Under: —");

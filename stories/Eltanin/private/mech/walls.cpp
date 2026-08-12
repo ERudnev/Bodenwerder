@@ -125,4 +125,33 @@ namespace eltanin::mech {
         return out;
     }
 
+    auto faceForWall(const Blueprint::Cell& cell, quarks::Wall wall) -> base::maybe<frame::FaceIndex> {
+        const auto index = shapeIndex(cell.shape);
+        if (index >= frame::faces.size() or index >= skinning::default_plate.size())
+            return {};
+        const auto occupied = occupiedCorners(cell);
+        const auto& faces = frame::faces[index];
+        const auto& plates = skinning::default_plate[index];
+        for (std::size_t face = 0; face < faces.size() and face < plates.size(); ++face) {
+            const auto& loop = faces[face];
+            bool full = true;
+            for (const auto corner : loop) {
+                if (corner < 0 or corner >= 8 or not occupied[static_cast<std::size_t>(corner)]) {
+                    full = false;
+                    break;
+                }
+            }
+            if (not full)
+                continue;
+            const auto plate = plates[face];
+            const auto ori = localOriForFace(plate, loop);
+            if (not ori.exists())
+                continue;
+            const auto kind = subframe::membrane::kindOf(plate);
+            if (kind == wall.kind and *ori == wall.ori)
+                return static_cast<frame::FaceIndex>(face);
+        }
+        return {};
+    }
+
 } // namespace eltanin::mech

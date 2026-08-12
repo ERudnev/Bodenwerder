@@ -63,10 +63,10 @@ namespace eltanin::views {
         void syncVisuals(Writing);
         void syncClipboardGhost(Writing);
         void refreshWallCandidates(Reading);
+        void aimWallTarget(Reading);
+        void drawWallFaceHighlight(Reading) const;
         // Wall tile mode owns LMB/RMB; does not fall through to selection.
         auto handleWallMode(Writing, rmmr::renderer::Integer32 under) -> bool;
-        void aimWallFace(Reading);
-        void drawWallFaceHighlight(Reading) const;
         void persistHovered(Writing);
         void draw(Writing, bool& open, BlueprintCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;

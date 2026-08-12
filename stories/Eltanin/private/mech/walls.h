@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include <base/maybe.h>
+
 #include "blueprint.h"
 #include "semantics/quarks.h"
 #include "semantics/shapes.h"
@@ -19,5 +21,8 @@ namespace eltanin::mech {
 
     // Faces of cell.shape whose loops are fully occupied; skips walls already in cell.hull.
     auto possibleWalls(const Blueprint::Cell&) -> std::vector<WallSlot>;
+
+    // Face index for a placed hull wall (kind + local ori). Empty if not on this cell topology.
+    auto faceForWall(const Blueprint::Cell&, quarks::Wall) -> base::maybe<frame::FaceIndex>;
 
 }
