@@ -12,6 +12,7 @@
 #include <map>
 #include <set>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 
 namespace eltanin::views::blueprints::selection {
@@ -67,6 +68,17 @@ namespace eltanin::views::blueprints::selection {
                     return actor;
             }
             return {};
+        }
+
+        auto actorByAliasIndex(Reading context, const std::vector<QuarkActor>& actors) -> std::unordered_map<renderer::Integer32, const QuarkActor*> {
+            std::unordered_map<renderer::Integer32, const QuarkActor*> out;
+            out.reserve(actors.size());
+            for (const auto& actor : actors) {
+                if (not with<scene::actor::Identified>::exists(context, actor.id))
+                    continue;
+                out.emplace(with<scene::actor::Identified>::get(context, actor.id).scenicAlias, &actor);
+            }
+            return out;
         }
 
         void eraseDescending(auto& vec, const std::set<std::size_t>& indices) {
@@ -549,19 +561,22 @@ namespace eltanin::views::blueprints::selection {
                     ? &with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data
                     : nullptr;
 
+                const auto byAlias = actorByAliasIndex(context, actors);
                 std::map<index3, std::vector<renderer::Integer32>, CellPosLess> byCell;
                 std::vector<renderer::Integer32> orphans;
                 for (const auto alias : store.aliases) {
-                    const auto actor = findActorByAlias(context, actors, alias);
-                    if (blueprintData and actor and actor->cell < blueprintData->cells.size()) {
-                        byCell[blueprintData->cells[actor->cell].pose.pos].push_back(alias);
+                    const auto found = byAlias.find(alias);
+                    if (blueprintData and found != byAlias.end() and found->second->cell < blueprintData->cells.size()) {
+                        byCell[blueprintData->cells[found->second->cell].pose.pos].push_back(alias);
                         continue;
                     }
                     orphans.push_back(alias);
                 }
 
                 const auto drawLeaf = [&](renderer::Integer32 alias) {
-                    const auto actor = findActorByAlias(context, actors, alias);
+                    base::maybe<QuarkActor> actor;
+                    if (const auto found = byAlias.find(alias); found != byAlias.end())
+                        actor = *found->second;
                     const auto row = selectionRowLabel(blueprintData, actor, alias);
                     ImGui::PushID(static_cast<int>(static_cast<fqsm::internal::id::BaseType>(alias)));
                     ImGui::TextUnformatted(row.c_str());

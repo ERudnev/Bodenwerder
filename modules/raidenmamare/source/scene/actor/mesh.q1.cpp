@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
+#include <unordered_set>
+#include <vector>
 
 namespace rmmr::scene::actor {
 
@@ -293,10 +295,21 @@ namespace rmmr::scene::actor {
     }
 
     void Identified::Actions::applySelection(Writing context, const vector<renderer::Integer32>& aliases) {
-        for (const auto [id, _] : context->aspect<Identified>().items()) with<Identified>::modify(context, id)->selected = false;
+        // Diff only: stable selection → zero Writing. Old path cleared every Identified every frame.
+        std::unordered_set<renderer::Integer32> wanted;
+        wanted.reserve(aliases.size());
         for (const auto alias : aliases) {
-            if (const auto id = lookup(context, alias)) with<Identified>::modify(context, *id)->selected = true;
+            if (alias != renderer::Integer32{0})
+                wanted.insert(alias);
         }
+        vector<std::pair<Id, bool>> flips;
+        for (const auto [id, quantum] : context->aspect<Identified>().items()) {
+            const bool on = wanted.contains(quantum.scenicAlias);
+            if (quantum.selected != on)
+                flips.emplace_back(id, on);
+        }
+        for (const auto& [id, on] : flips)
+            with<Identified>::modify(context, id)->selected = on;
     }
 
     void Identified::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {
