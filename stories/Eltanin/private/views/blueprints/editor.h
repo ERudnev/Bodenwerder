@@ -15,8 +15,8 @@
 #include <rmmr/wrapper/product.h>
 
 #include "blueprints/catalog.h"
-#include "mech/walls.h"
 #include "views/blueprints/geometry.h"
+#include "views/blueprints/membraneSlots.h"
 #include "views/blueprints/selection.h"
 
 #include <fQSM/api/interface.h>
@@ -41,13 +41,13 @@ namespace eltanin::views {
             blueprints::selection::Store selection;
             index3 cursorLattice;
             int currentFloor;
-            // Modest wall edit: candidates from possibleWalls; aim face by mouse ray (no cycle).
+            // Membrane place/remove: candidates from membraneSlots::possible; aim face by mouse ray.
             struct {
                 bool enabled;
                 base::maybe<std::size_t> cell;
-                std::vector<mech::WallSlot> slots;
+                std::vector<blueprints::membraneSlots::Slot> slots;
                 base::maybe<std::size_t> face; // into slots when ray hits a free face
-            } walls;
+            } membranes;
             struct {
                 bool place;
                 bool close;
@@ -62,11 +62,11 @@ namespace eltanin::views {
         void updateWorldCursor(Writing);
         void syncVisuals(Writing);
         void syncClipboardGhost(Writing);
-        void refreshWallCandidates(Reading);
-        void aimWallTarget(Reading);
-        void drawWallFaceHighlight(Reading) const;
-        // Wall tile mode owns LMB/RMB; does not fall through to selection.
-        auto handleWallMode(Writing, rmmr::renderer::Integer32 under) -> bool;
+        void refreshMembraneCandidates(Reading);
+        void aimMembraneTarget(Reading);
+        void drawMembraneFaceHighlight(Reading) const;
+        // Membrane tile mode owns LMB/RMB; does not fall through to selection.
+        auto handleMembraneMode(Writing, rmmr::renderer::Integer32 under) -> bool;
         void persistHovered(Writing);
         void draw(Writing, bool& open, BlueprintCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;

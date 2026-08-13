@@ -3,20 +3,16 @@ import "semantics"
 namespace eltanin
   namespace mech
 
-    // Ship schema: cells (frame hosts) + per-cell hull membranes.
-    // One cell per lattice volume. Skeleton pieces local to the cell (thinning only, no orphans).
-    // C++: private/mech/blueprint.h — types from semantics.q1 / model.
+    // Ship schema: cells with skeleton pieces + membranes.
+    // One cell per lattice volume. Pieces local to the cell (thinning only, no orphans).
+    // C++: model/eltanin/mech/blueprint.q1.h
     struct Blueprint
       struct Cell
-        struct Frame
-          corners: vector<skeleton::Corner>
-          halfribs: vector<skeleton::Halfrib>
-        struct Hull
-          membranes: vector<skeleton::Membrane>
         pose: Pose
         shape: frame::shape
-        frame: Frame
-        hull: Hull
+        corners: vector<skeleton::Corner>
+        halfribs: vector<skeleton::Halfrib>
+        membranes: vector<skeleton::Membrane>
       name: string
       author: string // manufacturer
       cells: vector<Cell>

@@ -227,10 +227,11 @@ namespace eltanin::resource::blueprint {
             auto membranes = take_list<mech::skeleton::Membrane>(cursor, take_wall);
             expect(cursor, ']');
             return mech::Blueprint::Cell{
-                .pose = mech::space::cell::Pose{.pos = pos, .ori = static_cast<rmmr::renderer::Signed32>(ori)},
+                .pose = mech::Pose{.pos = pos, .ori = static_cast<mech::space::orient::key>(ori)},
                 .shape = shapeIt->second,
-                .frame = {.corners = std::move(corners), .halfribs = std::move(halfribs)},
-                .hull = {.membranes = std::move(membranes)},
+                .corners = std::move(corners),
+                .halfribs = std::move(halfribs),
+                .membranes = std::move(membranes),
             };
         }
 
@@ -293,11 +294,11 @@ namespace eltanin::resource::blueprint {
                     out << "            " << cell.pose.ori << ",\n";
                     out << "            \"" << frameShapeName(cell.shape) << "\",\n";
                     out << "            ";
-                    format_list_inline(out, cell.frame.corners, format_knot, "            ");
+                    format_list_inline(out, cell.corners, format_knot, "            ");
                     out << ",\n            ";
-                    format_list_inline(out, cell.frame.halfribs, format_half_chord, "            ");
+                    format_list_inline(out, cell.halfribs, format_half_chord, "            ");
                     out << ",\n            ";
-                    format_list_inline(out, cell.hull.membranes, format_wall, "            ");
+                    format_list_inline(out, cell.membranes, format_wall, "            ");
                     out << "\n        ]";
                     out << (c + 1 < data.cells.size() ? ",\n" : "\n");
                 }

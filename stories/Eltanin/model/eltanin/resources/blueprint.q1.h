@@ -4,7 +4,7 @@
 
 #include <fQSM/api/interface.h>
 
-#include "mech/blueprint.h"
+#include <eltanin/mech/blueprint.q1.h>
 
 namespace eltanin::resource::blueprint {
 

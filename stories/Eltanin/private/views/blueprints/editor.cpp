@@ -7,7 +7,7 @@
 #include "mech/semantics/shapes.h"
 #include "mech/semantics/space.h"
 #include "mech/semantics/subframe.h"
-#include "mech/walls.h"
+#include "views/blueprints/membraneSlots.h"
 
 #include <eltanin/resources/assets.q1.h>
 #include <eltanin/resources/blueprint.q1.h>
@@ -265,7 +265,7 @@ namespace eltanin::views {
         state.quarkActors = {};
         state.clipboardActors = {};
         state.display = {.skeleton = true, .hull = true};
-        state.walls = {.enabled = false, .cell = {}, .slots = {}, .face = {}};
+        state.membranes = {.enabled = false, .cell = {}, .slots = {}, .face = {}};
         blueprints::selection::clear(state.selection);
         blueprints::selection::resetClipboard(state.selection);
         state.hovered.reset();
@@ -277,7 +277,7 @@ namespace eltanin::views {
         blueprints::selection::clear(state.selection);
         syncVisuals(context);
         syncClipboardGhost(context);
-        refreshWallCandidates(context);
+        refreshMembraneCandidates(context);
     }
 
     void Blueprints::syncVisuals(Writing context) {
@@ -314,20 +314,20 @@ namespace eltanin::views {
         blueprints::geometry::syncGhostActors(context, *state.scene, *state.interframe, *state.ghostMaterial, state.selection.clipboard, state.display, state.clipboardActors, tint, ghostOpacity);
     }
 
-    void Blueprints::refreshWallCandidates(Reading context) {
-        state.walls.face = {};
-        state.walls.cell = {};
-        state.walls.slots = {};
-        if (not state.walls.enabled)
+    void Blueprints::refreshMembraneCandidates(Reading context) {
+        state.membranes.face = {};
+        state.membranes.cell = {};
+        state.membranes.slots = {};
+        if (not state.membranes.enabled)
             return;
-        aimWallTarget(context);
+        aimMembraneTarget(context);
     }
 
-    void Blueprints::aimWallTarget(Reading context) {
-        state.walls.face = {};
-        state.walls.cell = {};
-        state.walls.slots = {};
-        if (not state.walls.enabled or ImGui::GetIO().WantCaptureMouse)
+    void Blueprints::aimMembraneTarget(Reading context) {
+        state.membranes.face = {};
+        state.membranes.cell = {};
+        state.membranes.slots = {};
+        if (not state.membranes.enabled or ImGui::GetIO().WantCaptureMouse)
             return;
         if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
             return;
@@ -348,15 +348,15 @@ namespace eltanin::views {
         float bestPlacedT = std::numeric_limits<float>::infinity();
         for (std::size_t cellIndex = 0; cellIndex < data.cells.size(); ++cellIndex) {
             const auto& cell = data.cells[cellIndex];
-            for (const auto& placed : cell.hull.membranes) {
-                if (const auto face = mech::faceForWall(cell, placed)) {
+            for (const auto& placed : cell.membranes) {
+                if (const auto face = blueprints::membraneSlots::faceFor(cell, placed)) {
                     const auto loop = faceWorldLoop(cell, *face);
                     float t = 0.0f;
                     if (rayHitPolygon(ray->origin, ray->dir, loop, t) and t < bestPlacedT)
                         bestPlacedT = t;
                 }
             }
-            const auto slots = mech::possibleWalls(cell);
+            const auto slots = blueprints::membraneSlots::possible(cell);
             for (std::size_t slot = 0; slot < slots.size(); ++slot) {
                 const auto loop = faceWorldLoop(cell, slots[slot].face);
                 float t = 0.0f;
@@ -369,14 +369,14 @@ namespace eltanin::views {
         }
         if (not bestCell.exists() or not bestSlot.exists() or bestPlacedT <= bestFreeT)
             return;
-        state.walls.cell = *bestCell;
-        state.walls.slots = mech::possibleWalls(data.cells[*bestCell]);
-        if (*bestSlot < state.walls.slots.size())
-            state.walls.face = *bestSlot;
+        state.membranes.cell = *bestCell;
+        state.membranes.slots = blueprints::membraneSlots::possible(data.cells[*bestCell]);
+        if (*bestSlot < state.membranes.slots.size())
+            state.membranes.face = *bestSlot;
     }
 
-    void Blueprints::drawWallFaceHighlight(Reading context) const {
-        if (not state.walls.enabled or not state.walls.cell.exists() or not state.walls.face.exists())
+    void Blueprints::drawMembraneFaceHighlight(Reading context) const {
+        if (not state.membranes.enabled or not state.membranes.cell.exists() or not state.membranes.face.exists())
             return;
         if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
             return;
@@ -385,12 +385,12 @@ namespace eltanin::views {
         const auto viewport = firstViewport(context);
         if (not viewport.exists())
             return;
-        if (*state.walls.face >= state.walls.slots.size())
+        if (*state.membranes.face >= state.membranes.slots.size())
             return;
         const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
-        if (*state.walls.cell >= data.cells.size())
+        if (*state.membranes.cell >= data.cells.size())
             return;
-        const auto loop = faceWorldLoop(data.cells[*state.walls.cell], state.walls.slots[*state.walls.face].face);
+        const auto loop = faceWorldLoop(data.cells[*state.membranes.cell], state.membranes.slots[*state.membranes.face].face);
         if (loop.size() < 2)
             return;
         std::vector<ImVec2> pts;
@@ -406,26 +406,26 @@ namespace eltanin::views {
         draw->AddPolyline(pts.data(), static_cast<int>(pts.size()), IM_COL32(255, 180, 64, 220), ImDrawFlags_None, 2.5f);
     }
 
-    auto Blueprints::handleWallMode(Writing context, renderer::Integer32 under) -> bool {
-        if (not state.walls.enabled or ImGui::GetIO().WantCaptureMouse)
+    auto Blueprints::handleMembraneMode(Writing context, renderer::Integer32 under) -> bool {
+        if (not state.membranes.enabled or ImGui::GetIO().WantCaptureMouse)
             return false;
         if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
             return false;
 
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            if (not state.walls.cell.exists() or not state.walls.face.exists() or state.walls.slots.empty())
+            if (not state.membranes.cell.exists() or not state.membranes.face.exists() or state.membranes.slots.empty())
                 return false;
-            if (*state.walls.face >= state.walls.slots.size())
+            if (*state.membranes.face >= state.membranes.slots.size())
                 return false;
-            const auto cell = *state.walls.cell;
-            const auto membrane = state.walls.slots[*state.walls.face].membrane;
+            const auto cell = *state.membranes.cell;
+            const auto membrane = state.membranes.slots[*state.membranes.face].membrane;
             auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
             if (cell >= data->data.cells.size())
                 return false;
-            data->data.cells[cell].hull.membranes.push_back(membrane);
+            data->data.cells[cell].membranes.push_back(membrane);
             persistHovered(context);
             syncVisuals(context);
-            refreshWallCandidates(context);
+            refreshMembraneCandidates(context);
             return true;
         }
 
@@ -442,12 +442,12 @@ namespace eltanin::views {
                 auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
                 if (actor.cell >= data->data.cells.size())
                     return true;
-                auto& membranes = data->data.cells[actor.cell].hull.membranes;
+                auto& membranes = data->data.cells[actor.cell].membranes;
                 if (actor.index < membranes.size()) {
                     membranes.erase(membranes.begin() + static_cast<std::ptrdiff_t>(actor.index));
                     persistHovered(context);
                     syncVisuals(context);
-                    refreshWallCandidates(context);
+                    refreshMembraneCandidates(context);
                 }
                 return true;
             }
@@ -474,9 +474,9 @@ namespace eltanin::views {
             return;
 
         if (with<scene::actor::MeshState>::exists(context, *state.worldCursor))
-            scene::actor::MeshState::Actions::setVisible(context, *state.worldCursor, not state.walls.enabled);
+            scene::actor::MeshState::Actions::setVisible(context, *state.worldCursor, not state.membranes.enabled);
 
-        if (state.walls.enabled)
+        if (state.membranes.enabled)
             return;
 
         const float cell = mech::space::local::edge2meters;
@@ -536,28 +536,28 @@ namespace eltanin::views {
                 --state.currentFloor;
                 syncGridToFloor(context);
             }
-            if (ImGui::IsKeyPressed(ImGuiKey_B) and not state.walls.enabled)
+            if (ImGui::IsKeyPressed(ImGuiKey_B) and not state.membranes.enabled)
                 blueprints::selection::toggleFocus(state.selection);
         }
 
         updateWorldCursor(context);
-        if (state.walls.enabled)
-            aimWallTarget(context);
+        if (state.membranes.enabled)
+            aimMembraneTarget(context);
 
-        if (state.walls.enabled) {
-            handleWallMode(context, under);
+        if (state.membranes.enabled) {
+            handleMembraneMode(context, under);
         } else {
             blueprints::selection::handlePointer(context, state.selection, state.hovered, state.quarkActors, under);
             if (blueprints::selection::handleHotkeys(context, state.selection, state.hovered, state.quarkActors)) {
                 persistHovered(context);
                 syncVisuals(context);
-                refreshWallCandidates(context);
+                refreshMembraneCandidates(context);
             }
             blueprints::selection::handleClipboardHotkeys(state.selection);
             if (blueprints::selection::handleClipboardChords(context, state.selection, state.hovered, state.quarkActors)) {
                 persistHovered(context);
                 syncVisuals(context);
-                refreshWallCandidates(context);
+                refreshMembraneCandidates(context);
             }
         }
 
@@ -604,8 +604,9 @@ namespace eltanin::views {
                             data->data.cells.push_back(mech::Blueprint::Cell{
                                 .pose = pose,
                                 .shape = shape,
-                                .frame = {.corners = mech::skeleton::seedCorners(shape), .halfribs = mech::skeleton::seedHalfribs(shape)},
-                                .hull = {.membranes = {}},
+                                .corners = mech::skeleton::seedCorners(shape),
+                                .halfribs = mech::skeleton::seedHalfribs(shape),
+                                .membranes = {},
                             });
                         });
                         if (applied) {
@@ -702,50 +703,50 @@ namespace eltanin::views {
                     syncVisuals(context);
                     syncClipboardGhost(context);
                 }
-                if (ImGui::Checkbox("Wall place/remove", &state.walls.enabled)) {
-                    if (state.walls.enabled) {
+                if (ImGui::Checkbox("Membrane place/remove", &state.membranes.enabled)) {
+                    if (state.membranes.enabled) {
                         blueprints::selection::clear(state.selection);
                         if (not state.display.hull) {
                             state.display.hull = true;
                             syncVisuals(context);
                         }
                     }
-                    refreshWallCandidates(context);
+                    refreshMembraneCandidates(context);
                 }
-                if (state.walls.enabled) {
+                if (state.membranes.enabled) {
                     ImGui::TextDisabled("ray aim · LMB place · RMB remove · selection off");
-                    if (not state.walls.cell.exists()) {
-                        ImGui::TextDisabled("Wall: aim a free face");
-                    } else if (state.walls.slots.empty()) {
-                        ImGui::TextDisabled("Wall: no free faces on hit cell");
-                    } else if (not state.walls.face.exists()) {
-                        ImGui::TextDisabled("Wall: %zu free on cell", state.walls.slots.size());
+                    if (not state.membranes.cell.exists()) {
+                        ImGui::TextDisabled("Membrane: aim a free face");
+                    } else if (state.membranes.slots.empty()) {
+                        ImGui::TextDisabled("Membrane: no free faces on hit cell");
+                    } else if (not state.membranes.face.exists()) {
+                        ImGui::TextDisabled("Membrane: %zu free on cell", state.membranes.slots.size());
                     } else {
-                        const auto& slot = state.walls.slots[*state.walls.face];
+                        const auto& slot = state.membranes.slots[*state.membranes.face];
                         const auto codeIt = mech::skeleton::membraneSpecs.find(slot.membrane.kind);
                         const auto code = codeIt != mech::skeleton::membraneSpecs.end() ? codeIt->second.code : "?";
-                        const auto& pos = data.cells[*state.walls.cell].pose.pos;
-                        ImGui::Text("Wall [%d,%d,%d]: %.*s · ori %d", pos.x, pos.y, pos.z, static_cast<int>(code.size()), code.data(), static_cast<int>(slot.membrane.ori));
+                        const auto& pos = data.cells[*state.membranes.cell].pose.pos;
+                        ImGui::Text("Membrane [%d,%d,%d]: %.*s · ori %d", pos.x, pos.y, pos.z, static_cast<int>(code.size()), code.data(), static_cast<int>(slot.membrane.ori));
                     }
                 }
                 ImGui::Separator();
                 std::size_t knots = 0;
                 std::size_t halfChords = 0;
-                std::size_t walls = 0;
+                std::size_t membranes = 0;
                 for (const auto& cell : data.cells) {
-                    knots += cell.frame.corners.size();
-                    halfChords += cell.frame.halfribs.size();
-                    walls += cell.hull.membranes.size();
+                    knots += cell.corners.size();
+                    halfChords += cell.halfribs.size();
+                    membranes += cell.membranes.size();
                 }
                 ImGui::Text("Cells: %zu", data.cells.size());
                 ImGui::Text("Knots: %zu", knots);
                 ImGui::Text("Half-chords: %zu", halfChords);
-                ImGui::Text("Walls: %zu", walls);
+                ImGui::Text("Membranes: %zu", membranes);
                 ImGui::Text("Actors: %zu", state.quarkActors.size());
                 ImGui::Text("Selection: %zu", state.selection.aliases.size());
-                if (state.walls.enabled) {
-                    if (state.walls.cell.exists() and *state.walls.cell < data.cells.size()) {
-                        const auto& pos = data.cells[*state.walls.cell].pose.pos;
+                if (state.membranes.enabled) {
+                    if (state.membranes.cell.exists() and *state.membranes.cell < data.cells.size()) {
+                        const auto& pos = data.cells[*state.membranes.cell].pose.pos;
                         ImGui::Text("Target [%d, %d, %d]", pos.x, pos.y, pos.z);
                     } else {
                         ImGui::TextDisabled("Target: —");
@@ -766,22 +767,22 @@ namespace eltanin::views {
         ImGui::End();
         open = shown;
 
-        if (not state.walls.enabled) {
+        if (not state.membranes.enabled) {
             if (blueprints::selection::drawPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered, state.quarkActors)) {
                 persistHovered(context);
                 syncVisuals(context);
-                refreshWallCandidates(context);
+                refreshMembraneCandidates(context);
             }
             if (blueprints::selection::drawClipboardPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered)) {
                 persistHovered(context);
                 syncVisuals(context);
-                refreshWallCandidates(context);
+                refreshMembraneCandidates(context);
             }
             syncClipboardGhost(context);
         } else if (state.scene.exists()) {
             blueprints::geometry::clearActors(context, *state.scene, state.clipboardActors);
         }
-        drawWallFaceHighlight(context);
+        drawMembraneFaceHighlight(context);
     }
 
     void Blueprints::bindView(std::vector<rmmr::wrapper::Product::View>& product_views, bool open, const rmmr::wrapper::Product::View& world_view) const {

@@ -81,8 +81,8 @@ namespace eltanin::views::blueprints::geometry {
             for (std::size_t cellIndex = 0; cellIndex < blueprint.cells.size(); ++cellIndex) {
                 const auto& cell = blueprint.cells[cellIndex];
                 if (display.skeleton) {
-                    for (std::size_t i = 0; i < cell.frame.corners.size(); ++i) {
-                        const auto& knot = cell.frame.corners[i];
+                    for (std::size_t i = 0; i < cell.corners.size(); ++i) {
+                        const auto& knot = cell.corners[i];
                         const auto resolved = resolveKnot(context, interframe, knot.kind);
                         if (not resolved) {
                             base::message("eltanin blueprints geometry: knot mesh missing for kind");
@@ -95,8 +95,8 @@ namespace eltanin::views::blueprints::geometry {
                         if (const auto id = spawnOne(actorPose(world, *origin), *resolved))
                             actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::knot, .cell = cellIndex, .index = i});
                     }
-                    for (std::size_t i = 0; i < cell.frame.halfribs.size(); ++i) {
-                        const auto& halfChord = cell.frame.halfribs[i];
+                    for (std::size_t i = 0; i < cell.halfribs.size(); ++i) {
+                        const auto& halfChord = cell.halfribs[i];
                         const auto resolved = resolveHalfChord(context, interframe, halfChord.kind, halfChord.pole);
                         if (not resolved) {
                             base::message("eltanin blueprints geometry: half-chord mesh missing");
@@ -111,8 +111,8 @@ namespace eltanin::views::blueprints::geometry {
                     }
                 }
                 if (display.hull) {
-                    for (std::size_t i = 0; i < cell.hull.membranes.size(); ++i) {
-                        const auto& wall = cell.hull.membranes[i];
+                    for (std::size_t i = 0; i < cell.membranes.size(); ++i) {
+                        const auto& wall = cell.membranes[i];
                         const auto resolved = resolveWall(context, interframe, wall.kind);
                         if (not resolved) {
                             base::message("eltanin blueprints geometry: wall mesh missing");
@@ -211,16 +211,16 @@ namespace eltanin::views::blueprints::geometry {
         for (std::size_t cellIndex = 0; cellIndex < blueprint.cells.size(); ++cellIndex) {
             const auto& cell = blueprint.cells[cellIndex];
             if (display.skeleton) {
-                for (std::size_t i = 0; i < cell.frame.corners.size(); ++i) {
-                    const auto& knot = cell.frame.corners[i];
+                for (std::size_t i = 0; i < cell.corners.size(); ++i) {
+                    const auto& knot = cell.corners[i];
                     const auto resolved = resolveKnot(context, interframe, knot.kind);
                     if (not resolved)
                         continue;
                     if (not touch(QuarkActor::Kind::knot, cellIndex, i, mech::skeleton::worldPose(cell.pose, knot.ori), *resolved))
                         return false;
                 }
-                for (std::size_t i = 0; i < cell.frame.halfribs.size(); ++i) {
-                    const auto& halfChord = cell.frame.halfribs[i];
+                for (std::size_t i = 0; i < cell.halfribs.size(); ++i) {
+                    const auto& halfChord = cell.halfribs[i];
                     const auto resolved = resolveHalfChord(context, interframe, halfChord.kind, halfChord.pole);
                     if (not resolved)
                         continue;
@@ -229,8 +229,8 @@ namespace eltanin::views::blueprints::geometry {
                 }
             }
             if (display.hull) {
-                for (std::size_t i = 0; i < cell.hull.membranes.size(); ++i) {
-                    const auto& wall = cell.hull.membranes[i];
+                for (std::size_t i = 0; i < cell.membranes.size(); ++i) {
+                    const auto& wall = cell.membranes[i];
                     const auto resolved = resolveWall(context, interframe, wall.kind);
                     if (not resolved)
                         continue;

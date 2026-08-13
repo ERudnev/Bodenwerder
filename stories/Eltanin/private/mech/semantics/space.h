@@ -29,7 +29,7 @@ namespace eltanin::mech::space {
     // Project rule: cell geometry is centered on the origin — subtract ½ is fixed, not a parameter.
     namespace cell {
         using index = ivec3;
-        using Pose = rmmr::renderer::DiscretePose;
+        using Pose = ::eltanin::mech::Pose;
 
         // Lattice integer coords (typically cube::corners {0,1}³) → meters, cell-centered.
         inline auto cell2local(cell::index lattice) -> local::point { return (local::point(lattice) - local::point{0.5f}) * local::edge2meters; }

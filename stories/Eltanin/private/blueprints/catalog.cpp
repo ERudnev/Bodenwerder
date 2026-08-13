@@ -2,7 +2,7 @@
 
 #include <eltanin/resources/assets.q1.h>
 
-#include "mech/blueprint.h"
+#include <eltanin/mech/blueprint.q1.h>
 
 #include <base/logging.h>
 

@@ -9,7 +9,7 @@
 
 #include "views/blueprints/geometry.h"
 
-#include "mech/blueprint.h"
+#include <eltanin/mech/blueprint.q1.h>
 #include "mech/semantics/space.h"
 
 #include <fQSM/api/interface.h>

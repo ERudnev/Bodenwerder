@@ -11,7 +11,7 @@
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/root.q1.h>
 
-#include "mech/blueprint.h"
+#include <eltanin/mech/blueprint.q1.h>
 #include "mech/semantics/quarks.h"
 #include "mech/semantics/space.h"
 
@@ -27,7 +27,7 @@ namespace eltanin::views::blueprints::geometry {
         rmmr::scene::actor::Mesh::Id id;
         Kind kind;
         std::size_t cell;  // into Blueprint::cells
-        std::size_t index; // into cell.frame.corners / halfribs / hull.membranes
+        std::size_t index; // into cell.corners / halfribs / membranes
     };
 
     // Editor visibility filter for quark actors (skeleton = frame knots/half-chords).
