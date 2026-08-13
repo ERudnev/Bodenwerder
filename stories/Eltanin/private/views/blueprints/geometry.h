@@ -5,6 +5,7 @@
 
 #include <base/maybe.h>
 #include <eltanin/mech/blueprint.q1.h>
+#include <eltanin/mech/mount.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
@@ -46,6 +47,12 @@ namespace eltanin::views::blueprints {
         std::size_t index; // into Blueprint::mounts
     };
 
+    // Floor layout of library mounts (palette scene).
+    struct PaletteMountActor {
+        rmmr::scene::actor::Mesh::Id id;
+        mech::Mount::Id mount;
+    };
+
     // Home-cube pivot (±2 m) → cube corner index in the mesh's local frame.
     auto localSeatFromOrigin(rmmr::Pos origin) -> mech::cube::Corner;
 
@@ -61,12 +68,16 @@ namespace eltanin::views::blueprints {
 
     void clearActors(Writing, rmmr::scene::Root::Id root, std::vector<QuarkActor>& actors);
     void clearMountActors(Writing, rmmr::scene::Root::Id root, std::vector<MountActor>& actors);
+    void clearPaletteActors(Writing, rmmr::scene::Root::Id root, std::vector<PaletteMountActor>& actors);
 
     // Rebuild quark mesh actors for a blueprint (interframe pack). Each actor is Identified for pick/selection.
     void syncActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, const Blueprint& blueprint, Display, std::vector<QuarkActor>& actors);
 
     // Rebuild mount mesh actors from blueprint.mounts (soft meshpack links on Mount library units).
     void syncMountActors(Writing, rmmr::scene::Root::Id root, const Blueprint& blueprint, Display, std::vector<MountActor>& actors);
+
+    // Floor grid of all catalog mounts (identity rotation; spacing in lattice cells).
+    void syncPaletteActors(Writing, rmmr::scene::Root::Id root, const std::vector<mech::Mount::Id>& mounts, std::vector<PaletteMountActor>& actors);
 
     // Preview actors for clipboard paste: no Identified; additive ghost material + MeshState tint.
     void syncGhostActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, ::rmmr::resource::material::Asset::Id ghostMaterial, const Blueprint& blueprint, Display, std::vector<QuarkActor>& actors, rmmr::RGB albedo, float opacity);

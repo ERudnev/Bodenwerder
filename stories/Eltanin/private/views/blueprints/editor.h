@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <cstddef>
 #include <vector>
 
@@ -15,8 +16,10 @@
 #include <rmmr/wrapper/product.h>
 
 #include "blueprints/catalog.h"
+#include "fittings/mounts/catalog.h"
 #include "views/blueprints/geometry.h"
 #include "views/blueprints/membraneSlots.h"
+#include "views/blueprints/mountPlacement.h"
 #include "views/blueprints/selection.h"
 
 #include <fQSM/api/interface.h>
@@ -27,17 +30,31 @@ namespace eltanin::views {
 
     // Blueprint editor: catalog + lattice cursor; pick/selection live in blueprints::selection.
     struct Blueprints {
+        enum class EditMode : std::uint8_t { skeleton, membranes, mounts };
+
         struct State {
-            base::maybe<rmmr::scene::Root::Id> scene;
-            base::maybe<rmmr::scene::Camera::Id> camera;
-            base::maybe<rmmr::scene::Grid::Id> grid;
-            base::maybe<rmmr::scene::actor::Mesh::Id> worldCursor;
+            struct MainScene {
+                base::maybe<rmmr::scene::Root::Id> root;
+                base::maybe<rmmr::scene::Camera::Id> camera;
+                base::maybe<rmmr::scene::Grid::Id> grid;
+                base::maybe<rmmr::scene::actor::Mesh::Id> worldCursor;
+                std::vector<blueprints::geometry::QuarkActor> quarkActors;
+                std::vector<blueprints::geometry::QuarkActor> clipboardActors;
+                std::vector<blueprints::geometry::MountActor> mountActors;
+            } mainScene;
+
+            struct PaletteScene {
+                base::maybe<rmmr::scene::Root::Id> root;
+                base::maybe<rmmr::scene::Camera::Id> camera;
+                base::maybe<rmmr::scene::Grid::Id> grid;
+                std::vector<blueprints::geometry::PaletteMountActor> actors;
+            } paletteScene;
+
+            bool paletteMode;
+            EditMode editMode;
             base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;
             base::maybe<::rmmr::resource::material::Asset::Id> ghostMaterial;
             base::maybe<mech::Blueprint::Id> hovered;
-            std::vector<blueprints::geometry::QuarkActor> quarkActors;
-            std::vector<blueprints::geometry::QuarkActor> clipboardActors;
-            std::vector<blueprints::geometry::MountActor> mountActors;
             blueprints::geometry::Display display;
             blueprints::selection::Store selection;
             index3 cursorLattice;
@@ -49,6 +66,7 @@ namespace eltanin::views {
                 std::vector<blueprints::membraneSlots::Slot> slots;
                 base::maybe<std::size_t> face; // into slots when ray hits a free face
             } membranes;
+            blueprints::mountPlacement::Cursor mounts;
             struct {
                 bool place;
                 bool close;
@@ -59,17 +77,21 @@ namespace eltanin::views {
 
         void create(Writing);
         void show(Writing, mech::Blueprint::Id);
+        void setEditMode(Writing, EditMode);
         void syncGridToFloor(Writing);
         void updateWorldCursor(Writing);
         void syncVisuals(Writing);
         void syncClipboardGhost(Writing);
+        void syncPalette(Writing, MountCatalog&);
         void refreshMembraneCandidates(Reading);
         void aimMembraneTarget(Reading);
         void drawMembraneFaceHighlight(Reading) const;
         // Membrane tile mode owns LMB/RMB; does not fall through to selection.
         auto handleMembraneMode(Writing, rmmr::renderer::Integer32 under) -> bool;
+        void aimMountCursor(Reading);
+        void syncMountCursor(Writing);
         void persistHovered(Writing);
-        void draw(Writing, bool& open, BlueprintCatalog&);
+        void draw(Writing, bool& open, BlueprintCatalog&, MountCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;
     };
 

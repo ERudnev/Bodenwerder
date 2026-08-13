@@ -1,0 +1,11 @@
+{
+    "devices",
+    "Eltanin",
+    "meshes/fittings/devices/cannon_temp_solid.lwo",
+    "Eltanin::mech",
+    [
+        {"armor_light", {"rmmr::lit_textured", [{"albedoMap", "10469-v3.jpg"}]}},
+        {"steel", {"rmmr::lit_textured", [{"albedoMap", "STEEL1.JPG"}]}},
+        {"steel_hard", {"rmmr::lit_textured", [{"albedoMap", "CH_T_KOSMOSSCIANAA.JPG"}]}}
+    ]
+}

@@ -148,6 +148,10 @@ namespace eltanin {
             context,
             Name::from("Eltanin", "armour"),
             item<meshpack::LoaderLwo>{.file = "meshes/fittings/mounts/armour.lwo.meshpack", .geometry = {}, .pending = {}});
+        assets.devices = with<Assets>::add_meshpack_lwo_loader(
+            context,
+            Name::from("Eltanin", "devices"),
+            item<meshpack::LoaderLwo>{.file = "meshes/fittings/devices/cannon_temp_solid.lwo.meshpack", .geometry = {}, .pending = {}});
 
         const auto manager = *with<Manager>::singleton(context);
         if (not with<Unit_group>::exists(context, manager)) {

@@ -193,6 +193,12 @@ namespace eltanin::views::blueprints::geometry {
         actors.clear();
     }
 
+    void clearPaletteActors(Writing context, scene::Root::Id root, std::vector<PaletteMountActor>& actors) {
+        for (const auto& actor : actors)
+            destroyActor(context, root, actor.id);
+        actors.clear();
+    }
+
     void syncActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, const Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors) {
         clearActors(context, root, actors);
         spawnBlueprintActors(context, root, interframe, blueprint, display, actors, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved); });
@@ -222,6 +228,33 @@ namespace eltanin::views::blueprints::geometry {
             }
             if (const auto id = spawnIdentified(context, root, gridActorPose(placed.transform), *resolved))
                 actors.push_back(MountActor{.id = *id, .index = index});
+        }
+    }
+
+    void syncPaletteActors(Writing context, scene::Root::Id root, const std::vector<mech::Mount::Id>& mounts, std::vector<PaletteMountActor>& actors) {
+        clearPaletteActors(context, root, actors);
+        constexpr int columns = 4;
+        constexpr int cellStep = 2;
+        for (std::size_t index = 0; index < mounts.size(); ++index) {
+            const auto mountId = mounts[index];
+            if (not with<::eltanin::mech::Mount>::exists(context, mountId))
+                continue;
+            const auto& mount = with<::eltanin::mech::Mount>::get(context, mountId);
+            const auto packId = with<::rmmr::resource::Assets>::find<meshpack::Asset>(context, mount.tempMesh.pack);
+            if (not packId) {
+                base::message("eltanin blueprints geometry: palette pack '{}' missing", mount.tempMesh.pack.text());
+                continue;
+            }
+            const auto resolved = with<meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
+            if (not resolved) {
+                base::message("eltanin blueprints geometry: palette entry '{}' missing", mount.tempMesh.entry);
+                continue;
+            }
+            const auto col = static_cast<int>(index % static_cast<std::size_t>(columns));
+            const auto row = static_cast<int>(index / static_cast<std::size_t>(columns));
+            const auto transform = mech::space::Transform{.grid = base::common_types::index3{.x = col * cellStep, .y = 0, .z = row * cellStep}, .rotation = 0};
+            if (const auto id = spawnIdentified(context, root, gridActorPose(transform), *resolved))
+                actors.push_back(PaletteMountActor{.id = *id, .mount = mountId});
         }
     }
 
