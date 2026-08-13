@@ -27,7 +27,7 @@ namespace eltanin::views::blueprints::geometry {
         rmmr::scene::actor::Mesh::Id id;
         Kind kind;
         std::size_t cell;  // into Blueprint::cells
-        std::size_t index; // into cell.frame.knots / halfChords / hull.walls
+        std::size_t index; // into cell.frame.corners / halfribs / hull.membranes
     };
 
     // Editor visibility filter for quark actors (skeleton = frame knots/half-chords).
@@ -42,9 +42,9 @@ namespace eltanin::views::blueprints::geometry {
     // Continuous actor pose: mesh local 0 at the cell corner selected by ori + Entry.origin.
     auto actorPose(const mech::space::cell::Pose& quarkPose, rmmr::Pos entryOrigin) -> rmmr::Pose;
 
-    auto resolveKnot(Reading, rmmr::resource::meshpack::Asset::Id pack, mech::quarks::Knot::Kind kind) -> base::maybe<rmmr::resource::meshpack::Asset::Resolved>;
-    auto resolveHalfChord(Reading, rmmr::resource::meshpack::Asset::Id pack, mech::quarks::HalfChord::Kind kind, mech::subframe::halfEdge::Pole pole) -> base::maybe<rmmr::resource::meshpack::Asset::Resolved>;
-    auto resolveWall(Reading, rmmr::resource::meshpack::Asset::Id pack, mech::quarks::Wall::Kind kind) -> base::maybe<rmmr::resource::meshpack::Asset::Resolved>;
+    auto resolveKnot(Reading, rmmr::resource::meshpack::Asset::Id pack, mech::skeleton::Corner::Kind) -> base::maybe<rmmr::resource::meshpack::Asset::Resolved>;
+    auto resolveHalfChord(Reading, rmmr::resource::meshpack::Asset::Id pack, mech::skeleton::Halfrib::Kind, mech::skeleton::Halfrib::Pole) -> base::maybe<rmmr::resource::meshpack::Asset::Resolved>;
+    auto resolveWall(Reading, rmmr::resource::meshpack::Asset::Id pack, mech::skeleton::Membrane::Kind) -> base::maybe<rmmr::resource::meshpack::Asset::Resolved>;
 
     void clearActors(Writing, rmmr::scene::Root::Id root, std::vector<QuarkActor>& actors);
 

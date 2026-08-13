@@ -3,8 +3,9 @@
 #include <vector>
 
 #include <base/types/common_types.h>
+#include <eltanin/mech/semantics.q1.h>
 
-// Level 1 form alphabet + shared unit-cube lattice topology. Topology from RedStar Carcass*. Winding: face/plate perimeters CCW from outside (RH outward); RedStar/D3D K8 mixed, restated CCW. Digit strings keep RedStar spelling (p2121 = walk from corner 0 on that plate's loop).
+// Topology tables only. Enums/types: model/eltanin/mech/semantics.q1.h (doctrine/mech/semantics.q1.types).
 // Tables are inline const (not constexpr): MSVC STL rejects non-transient constexpr std::vector.
 
 namespace eltanin::mech {
@@ -15,8 +16,6 @@ namespace eltanin::mech {
     // Metric embedding (edge2meters / cell2local) → mech::space in space.h.
     namespace cube {
 
-        // 0..7 — index into corners[] / unit-cube vertex (RedStar coord_index3).
-        using Corner = int;
         // Ordered closed walk of corners (CCW from outside when it is a face perimeter).
         using Loop = std::vector<Corner>;
 
@@ -32,8 +31,6 @@ namespace eltanin::mech {
             {1, 1, 1}, // 7
         };
 
-        enum class Face { Xp, Xn, Yp, Yn, Zp, Zn, };
-
         // CCW from outside; index matches Face enumerator order.
         inline const std::vector<Loop> faces{
             {1, 3, 7, 5}, // Xp
@@ -46,21 +43,8 @@ namespace eltanin::mech {
 
     } // namespace cube
 
-    // Level 1 — form alphabet (topology only; device roles are level 2).
-
-    struct frame {
-        enum class shape {
-            k8, // full cube — 8 corners, 6 plates
-            k7, // one corner removed — 7 corners, 7 plates
-            k6, // edge cut — 6 corners, 5 plates
-            k4, // tetrahedral remainder — 4 corners, 4 plates
-            // Flat membrane halves (ex-wing, cut along): k{N}f{digits} = N cube corners, flat, perimeter edge codes.
-            // One cell per lattice volume (no dual flats sharing a volume).
-            k4f1111, // ex w1111 half — 4-gon 1-1-1-1
-            k3f121,  // ex w121 half — triangle 1-2-1
-            k4f2121, // ex w2121 half — 4-gon 2-1-2-1
-            k3f222,  // ex w222 half — triangle 2-2-2 (w321 dropped: own plate alphabet)
-        };
+    // Level 1 — form alphabet tables (enums in model).
+    namespace frame {
 
         using Corners = std::vector<cube::Corner>;
         using Loop = cube::Loop;
@@ -68,7 +52,7 @@ namespace eltanin::mech {
         using FaceIndex = int;
 
         // Corners present (RedStar CarcassCube::vertexIndex; flats from former Wing::vertexIndex).
-        inline static const std::vector<Corners> corners{
+        inline const std::vector<Corners> corners{
             {0, 1, 2, 3, 4, 5, 6, 7},
             {0, 1, 3, 4, 5, 6, 7},
             {0, 1, 4, 5, 6, 7},
@@ -82,7 +66,7 @@ namespace eltanin::mech {
         // Face loops per shape; index aligns with skinning::default_plate.
         // Volumetric: cut/special face first (when present), then cube::Face order with missing corners dropped (destroyed axis faces omitted).
         // Flats: one outer membrane face (ex-wing).
-        inline static const std::vector<std::vector<Loop>> faces{
+        inline const std::vector<std::vector<Loop>> faces{
             // k8
             {
                 {1, 3, 7, 5},
@@ -134,7 +118,8 @@ namespace eltanin::mech {
                 {4, 1, 7},
             },
         };
-    };
+
+    } // namespace frame
 
     inline auto isFlat(frame::shape s) -> bool {
         switch (s) {
@@ -146,25 +131,19 @@ namespace eltanin::mech {
         }
     }
 
-    // Plate (skin tile on a frame face). Digits = edge codes around perimeter (CCW out). A/V: sharp tip up / down on √2-√2-√2 triangles.
-    struct plate {
-        enum class shape {
-            p1111,
-            p121,
-            p2121,
-            p222A,
-            p222V,
-        };
+    // Plate perimeter tables (enum in model). Digits = edge codes around perimeter (CCW out).
+    namespace plate {
 
         // Canonical perimeter in unit-cube corner indices, CCW from outside. Must match interframe membrane authorship (entry pivot + spanned corners); p222A reversed vs RedStar for CCW-out.
-        inline static const std::vector<frame::Loop> perimeter{
+        inline const std::vector<frame::Loop> perimeter{
             {0, 2, 3, 1}, // p1111 — Zn (u1111)
             {1, 3, 0},    // p121  — Zn triangle; spells 1-2-1; CCW out (u121 at corners 0,1,3 — not Xn {4,0,6})
             {0, 6, 7, 1}, // p2121 — K6 diagonal; spells 2-1-2-1 from corner 0 (u2121)
             {4, 1, 7},    // p222A — K4 apex (u222A; RedStar was 4,7,1)
             {0, 6, 3},    // p222V — K7 valley (u222V)
         };
-    };
+
+    } // namespace plate
 
     // Frame cell → default plate topology per plate index (RedStar CarcassCube::plateType).
     namespace skinning {

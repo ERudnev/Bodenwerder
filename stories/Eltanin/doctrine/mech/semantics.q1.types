@@ -1,25 +1,51 @@
+import "rmmr/renderer/gl"
+
 namespace eltanin
   namespace mech
 
-    using layer as @external(eltanin::mech::layer)
+    // Primary type/enum surface for mech. Tables and functions stay in private/ C++.
+    // Hand-projected C++: model/eltanin/mech/semantics.q1.h
+
+    enum role : custom, propulsion, power, gyros, weaponry, cargo, logistic, emissive, control, living
+    enum layer : skeleton, membranes, internals, externals
 
     namespace space
       namespace orient
-        using key as @external(eltanin::mech::space::orient::key)
-
-    namespace cube
-      using Corner as @external(eltanin::mech::cube::Corner)
-
-    struct frame
-      using shape as @external(eltanin::mech::frame::shape)
-
-    struct plate
-      using shape as @external(eltanin::mech::plate::shape)
-
-    namespace slot
-      using role as @external(eltanin::mech::slot::role)
-      using plate as @external(eltanin::mech::slot::plate)
+        // Cube orientation alphabet index 0..23. Same storage as DiscretePose.ori.
+        using key as rmmr::renderer::Signed32
 
     struct Pose
       pos: index3
       ori: space::orient::key
+
+    namespace cube
+      // 0..7 — unit-cube vertex index.
+      using Corner as integer
+      enum Face : Xp, Xn, Yp, Yn, Zp, Zn
+
+    namespace frame
+      enum shape : k8, k7, k6, k4, k4f1111, k3f121, k4f2121, k3f222
+
+    namespace plate
+      enum shape : p1111, p121, p2121, p222A, p222V
+
+    // Ship skeleton pieces (local ori = space::orient::key; recipe-space cell.ori = 0).
+    namespace skeleton
+      enum Bend : deg45, deg71, deg90, deg125
+
+      struct Corner
+        enum Kind : c124, c1364, c164, c134, c135, c12, c13, c15, c16, c34, c35
+        kind: Kind
+        ori: space::orient::key
+
+      struct Halfrib
+        enum Kind : he1deg90, he1deg45, he3deg71, he3deg90, he3deg125
+        enum Pole : starts, ends
+        kind: Kind
+        pole: Pole
+        ori: space::orient::key
+
+      struct Membrane
+        enum Kind : u1111, u121, u2121, u222A, u222V
+        kind: Kind
+        ori: space::orient::key

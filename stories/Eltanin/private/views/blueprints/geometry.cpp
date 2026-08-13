@@ -23,17 +23,17 @@ namespace eltanin::views::blueprints::geometry {
 
     namespace {
 
-        auto cornerMesh(mech::subframe::corner::kind kind) -> std::string {
-            return std::string{mech::subframe::corner::specs.at(kind).code};
+        auto cornerMesh(mech::skeleton::Corner::Kind kind) -> std::string {
+            return std::string{mech::skeleton::cornerSpecs.at(kind).code};
         }
 
-        auto halfEdgeMesh(mech::subframe::halfEdge::kind kind, mech::subframe::halfEdge::Pole pole) -> std::string {
-            const char poleTag = pole == mech::subframe::halfEdge::Pole::s ? 's' : 'e';
-            return std::format("{}{}", mech::subframe::halfEdge::specs.at(kind).code, poleTag);
+        auto halfEdgeMesh(mech::skeleton::Halfrib::Kind kind, mech::skeleton::Halfrib::Pole pole) -> std::string {
+            const char poleTag = pole == mech::skeleton::Halfrib::Pole::starts ? 's' : 'e';
+            return std::format("{}{}", mech::skeleton::halfribSpecs.at(kind).code, poleTag);
         }
 
-        auto membraneMesh(mech::subframe::membrane::kind kind) -> std::string {
-            return std::string{mech::subframe::membrane::specs.at(kind).code};
+        auto membraneMesh(mech::skeleton::Membrane::Kind kind) -> std::string {
+            return std::string{mech::skeleton::membraneSpecs.at(kind).code};
         }
 
         auto destroyActor(Writing context, scene::Root::Id root, scene::actor::Mesh::Id actor) -> void {
@@ -81,8 +81,8 @@ namespace eltanin::views::blueprints::geometry {
             for (std::size_t cellIndex = 0; cellIndex < blueprint.cells.size(); ++cellIndex) {
                 const auto& cell = blueprint.cells[cellIndex];
                 if (display.skeleton) {
-                    for (std::size_t i = 0; i < cell.frame.knots.size(); ++i) {
-                        const auto& knot = cell.frame.knots[i];
+                    for (std::size_t i = 0; i < cell.frame.corners.size(); ++i) {
+                        const auto& knot = cell.frame.corners[i];
                         const auto resolved = resolveKnot(context, interframe, knot.kind);
                         if (not resolved) {
                             base::message("eltanin blueprints geometry: knot mesh missing for kind");
@@ -91,12 +91,12 @@ namespace eltanin::views::blueprints::geometry {
                         const auto origin = entryOrigin(context, *resolved);
                         if (not origin)
                             continue;
-                        const auto world = mech::quarks::worldPose(cell.pose, knot.ori);
+                        const auto world = mech::skeleton::worldPose(cell.pose, knot.ori);
                         if (const auto id = spawnOne(actorPose(world, *origin), *resolved))
                             actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::knot, .cell = cellIndex, .index = i});
                     }
-                    for (std::size_t i = 0; i < cell.frame.halfChords.size(); ++i) {
-                        const auto& halfChord = cell.frame.halfChords[i];
+                    for (std::size_t i = 0; i < cell.frame.halfribs.size(); ++i) {
+                        const auto& halfChord = cell.frame.halfribs[i];
                         const auto resolved = resolveHalfChord(context, interframe, halfChord.kind, halfChord.pole);
                         if (not resolved) {
                             base::message("eltanin blueprints geometry: half-chord mesh missing");
@@ -105,14 +105,14 @@ namespace eltanin::views::blueprints::geometry {
                         const auto origin = entryOrigin(context, *resolved);
                         if (not origin)
                             continue;
-                        const auto world = mech::quarks::worldPose(cell.pose, halfChord.ori);
+                        const auto world = mech::skeleton::worldPose(cell.pose, halfChord.ori);
                         if (const auto id = spawnOne(actorPose(world, *origin), *resolved))
                             actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::halfChord, .cell = cellIndex, .index = i});
                     }
                 }
                 if (display.hull) {
-                    for (std::size_t i = 0; i < cell.hull.walls.size(); ++i) {
-                        const auto& wall = cell.hull.walls[i];
+                    for (std::size_t i = 0; i < cell.hull.membranes.size(); ++i) {
+                        const auto& wall = cell.hull.membranes[i];
                         const auto resolved = resolveWall(context, interframe, wall.kind);
                         if (not resolved) {
                             base::message("eltanin blueprints geometry: wall mesh missing");
@@ -121,7 +121,7 @@ namespace eltanin::views::blueprints::geometry {
                         const auto origin = entryOrigin(context, *resolved);
                         if (not origin)
                             continue;
-                        const auto world = mech::quarks::worldPose(cell.pose, wall.ori);
+                        const auto world = mech::skeleton::worldPose(cell.pose, wall.ori);
                         if (const auto id = spawnOne(actorPose(world, *origin), *resolved))
                             actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::wall, .cell = cellIndex, .index = i});
                     }
@@ -159,15 +159,15 @@ namespace eltanin::views::blueprints::geometry {
         return Pose{.position = position, .rotation = glm::normalize(glm::quat_cast(rotation))};
     }
 
-    auto resolveKnot(Reading context, meshpack::Asset::Id pack, mech::quarks::Knot::Kind kind) -> base::maybe<meshpack::Asset::Resolved> {
+    auto resolveKnot(Reading context, meshpack::Asset::Id pack, mech::skeleton::Corner::Kind kind) -> base::maybe<meshpack::Asset::Resolved> {
         return with<meshpack::Asset>::resolve(context, pack, cornerMesh(kind));
     }
 
-    auto resolveHalfChord(Reading context, meshpack::Asset::Id pack, mech::quarks::HalfChord::Kind kind, mech::subframe::halfEdge::Pole pole) -> base::maybe<meshpack::Asset::Resolved> {
+    auto resolveHalfChord(Reading context, meshpack::Asset::Id pack, mech::skeleton::Halfrib::Kind kind, mech::skeleton::Halfrib::Pole pole) -> base::maybe<meshpack::Asset::Resolved> {
         return with<meshpack::Asset>::resolve(context, pack, halfEdgeMesh(kind, pole));
     }
 
-    auto resolveWall(Reading context, meshpack::Asset::Id pack, mech::quarks::Wall::Kind kind) -> base::maybe<meshpack::Asset::Resolved> {
+    auto resolveWall(Reading context, meshpack::Asset::Id pack, mech::skeleton::Membrane::Kind kind) -> base::maybe<meshpack::Asset::Resolved> {
         return with<meshpack::Asset>::resolve(context, pack, membraneMesh(kind));
     }
 
@@ -211,30 +211,30 @@ namespace eltanin::views::blueprints::geometry {
         for (std::size_t cellIndex = 0; cellIndex < blueprint.cells.size(); ++cellIndex) {
             const auto& cell = blueprint.cells[cellIndex];
             if (display.skeleton) {
-                for (std::size_t i = 0; i < cell.frame.knots.size(); ++i) {
-                    const auto& knot = cell.frame.knots[i];
+                for (std::size_t i = 0; i < cell.frame.corners.size(); ++i) {
+                    const auto& knot = cell.frame.corners[i];
                     const auto resolved = resolveKnot(context, interframe, knot.kind);
                     if (not resolved)
                         continue;
-                    if (not touch(QuarkActor::Kind::knot, cellIndex, i, mech::quarks::worldPose(cell.pose, knot.ori), *resolved))
+                    if (not touch(QuarkActor::Kind::knot, cellIndex, i, mech::skeleton::worldPose(cell.pose, knot.ori), *resolved))
                         return false;
                 }
-                for (std::size_t i = 0; i < cell.frame.halfChords.size(); ++i) {
-                    const auto& halfChord = cell.frame.halfChords[i];
+                for (std::size_t i = 0; i < cell.frame.halfribs.size(); ++i) {
+                    const auto& halfChord = cell.frame.halfribs[i];
                     const auto resolved = resolveHalfChord(context, interframe, halfChord.kind, halfChord.pole);
                     if (not resolved)
                         continue;
-                    if (not touch(QuarkActor::Kind::halfChord, cellIndex, i, mech::quarks::worldPose(cell.pose, halfChord.ori), *resolved))
+                    if (not touch(QuarkActor::Kind::halfChord, cellIndex, i, mech::skeleton::worldPose(cell.pose, halfChord.ori), *resolved))
                         return false;
                 }
             }
             if (display.hull) {
-                for (std::size_t i = 0; i < cell.hull.walls.size(); ++i) {
-                    const auto& wall = cell.hull.walls[i];
+                for (std::size_t i = 0; i < cell.hull.membranes.size(); ++i) {
+                    const auto& wall = cell.hull.membranes[i];
                     const auto resolved = resolveWall(context, interframe, wall.kind);
                     if (not resolved)
                         continue;
-                    if (not touch(QuarkActor::Kind::wall, cellIndex, i, mech::quarks::worldPose(cell.pose, wall.ori), *resolved))
+                    if (not touch(QuarkActor::Kind::wall, cellIndex, i, mech::skeleton::worldPose(cell.pose, wall.ori), *resolved))
                         return false;
                 }
             }

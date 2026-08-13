@@ -348,7 +348,7 @@ namespace eltanin::views {
         float bestPlacedT = std::numeric_limits<float>::infinity();
         for (std::size_t cellIndex = 0; cellIndex < data.cells.size(); ++cellIndex) {
             const auto& cell = data.cells[cellIndex];
-            for (const auto& placed : cell.hull.walls) {
+            for (const auto& placed : cell.hull.membranes) {
                 if (const auto face = mech::faceForWall(cell, placed)) {
                     const auto loop = faceWorldLoop(cell, *face);
                     float t = 0.0f;
@@ -418,11 +418,11 @@ namespace eltanin::views {
             if (*state.walls.face >= state.walls.slots.size())
                 return false;
             const auto cell = *state.walls.cell;
-            const auto wall = state.walls.slots[*state.walls.face].wall;
+            const auto membrane = state.walls.slots[*state.walls.face].membrane;
             auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
             if (cell >= data->data.cells.size())
                 return false;
-            data->data.cells[cell].hull.walls.push_back(wall);
+            data->data.cells[cell].hull.membranes.push_back(membrane);
             persistHovered(context);
             syncVisuals(context);
             refreshWallCandidates(context);
@@ -442,9 +442,9 @@ namespace eltanin::views {
                 auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
                 if (actor.cell >= data->data.cells.size())
                     return true;
-                auto& walls = data->data.cells[actor.cell].hull.walls;
-                if (actor.index < walls.size()) {
-                    walls.erase(walls.begin() + static_cast<std::ptrdiff_t>(actor.index));
+                auto& membranes = data->data.cells[actor.cell].hull.membranes;
+                if (actor.index < membranes.size()) {
+                    membranes.erase(membranes.begin() + static_cast<std::ptrdiff_t>(actor.index));
                     persistHovered(context);
                     syncVisuals(context);
                     refreshWallCandidates(context);
@@ -604,8 +604,8 @@ namespace eltanin::views {
                             data->data.cells.push_back(mech::Blueprint::Cell{
                                 .pose = pose,
                                 .shape = shape,
-                                .frame = {.knots = mech::quarks::seedCorners(shape), .halfChords = mech::quarks::seedHalfChords(shape)},
-                                .hull = {.walls = {}},
+                                .frame = {.corners = mech::skeleton::seedCorners(shape), .halfribs = mech::skeleton::seedHalfribs(shape)},
+                                .hull = {.membranes = {}},
                             });
                         });
                         if (applied) {
@@ -722,10 +722,10 @@ namespace eltanin::views {
                         ImGui::TextDisabled("Wall: %zu free on cell", state.walls.slots.size());
                     } else {
                         const auto& slot = state.walls.slots[*state.walls.face];
-                        const auto codeIt = mech::subframe::membrane::specs.find(slot.wall.kind);
-                        const auto code = codeIt != mech::subframe::membrane::specs.end() ? codeIt->second.code : "?";
+                        const auto codeIt = mech::skeleton::membraneSpecs.find(slot.membrane.kind);
+                        const auto code = codeIt != mech::skeleton::membraneSpecs.end() ? codeIt->second.code : "?";
                         const auto& pos = data.cells[*state.walls.cell].pose.pos;
-                        ImGui::Text("Wall [%d,%d,%d]: %.*s · ori %d", pos.x, pos.y, pos.z, static_cast<int>(code.size()), code.data(), static_cast<int>(slot.wall.ori));
+                        ImGui::Text("Wall [%d,%d,%d]: %.*s · ori %d", pos.x, pos.y, pos.z, static_cast<int>(code.size()), code.data(), static_cast<int>(slot.membrane.ori));
                     }
                 }
                 ImGui::Separator();
@@ -733,9 +733,9 @@ namespace eltanin::views {
                 std::size_t halfChords = 0;
                 std::size_t walls = 0;
                 for (const auto& cell : data.cells) {
-                    knots += cell.frame.knots.size();
-                    halfChords += cell.frame.halfChords.size();
-                    walls += cell.hull.walls.size();
+                    knots += cell.frame.corners.size();
+                    halfChords += cell.frame.halfribs.size();
+                    walls += cell.hull.membranes.size();
                 }
                 ImGui::Text("Cells: %zu", data.cells.size());
                 ImGui::Text("Knots: %zu", knots);

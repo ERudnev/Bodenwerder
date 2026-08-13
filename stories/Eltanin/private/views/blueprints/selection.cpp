@@ -96,23 +96,23 @@ namespace eltanin::views::blueprints::selection {
             const auto& pos = cell.pose.pos;
             switch (actor->kind) {
                 case QuarkActor::Kind::knot: {
-                    if (actor->index >= cell.frame.knots.size())
+                    if (actor->index >= cell.frame.corners.size())
                         return std::format("knot[{}:{}]  #{}", actor->cell, actor->index, hash);
-                    const auto& knot = cell.frame.knots[actor->index];
-                    return std::format("knot[{}:{}] {}  cell[{},{},{}] localOri={}  #{}", actor->cell, actor->index, mech::subframe::corner::specs.at(knot.kind).code, pos.x, pos.y, pos.z, knot.ori, hash);
+                    const auto& knot = cell.frame.corners[actor->index];
+                    return std::format("knot[{}:{}] {}  cell[{},{},{}] localOri={}  #{}", actor->cell, actor->index, mech::skeleton::cornerSpecs.at(knot.kind).code, pos.x, pos.y, pos.z, knot.ori, hash);
                 }
                 case QuarkActor::Kind::halfChord: {
-                    if (actor->index >= cell.frame.halfChords.size())
+                    if (actor->index >= cell.frame.halfribs.size())
                         return std::format("halfChord[{}:{}]  #{}", actor->cell, actor->index, hash);
-                    const auto& halfChord = cell.frame.halfChords[actor->index];
-                    const char pole = halfChord.pole == mech::subframe::halfEdge::Pole::s ? 's' : 'e';
-                    return std::format("halfChord[{}:{}] {}:{}  cell[{},{},{}] localOri={}  #{}", actor->cell, actor->index, mech::subframe::halfEdge::specs.at(halfChord.kind).code, pole, pos.x, pos.y, pos.z, halfChord.ori, hash);
+                    const auto& halfChord = cell.frame.halfribs[actor->index];
+                    const char pole = halfChord.pole == mech::skeleton::Halfrib::Pole::starts ? 's' : 'e';
+                    return std::format("halfChord[{}:{}] {}:{}  cell[{},{},{}] localOri={}  #{}", actor->cell, actor->index, mech::skeleton::halfribSpecs.at(halfChord.kind).code, pole, pos.x, pos.y, pos.z, halfChord.ori, hash);
                 }
                 case QuarkActor::Kind::wall: {
-                    if (actor->index >= cell.hull.walls.size())
+                    if (actor->index >= cell.hull.membranes.size())
                         return std::format("wall[{}:{}]  #{}", actor->cell, actor->index, hash);
-                    const auto& wall = cell.hull.walls[actor->index];
-                    return std::format("wall[{}:{}] {}  cell[{},{},{}] localOri={}  #{}", actor->cell, actor->index, mech::subframe::membrane::specs.at(wall.kind).code, pos.x, pos.y, pos.z, wall.ori, hash);
+                    const auto& wall = cell.hull.membranes[actor->index];
+                    return std::format("wall[{}:{}] {}  cell[{},{},{}] localOri={}  #{}", actor->cell, actor->index, mech::skeleton::membraneSpecs.at(wall.kind).code, pos.x, pos.y, pos.z, wall.ori, hash);
                 }
             }
             return std::format("?  #{}", hash);
@@ -179,7 +179,7 @@ namespace eltanin::views::blueprints::selection {
         }
 
         auto cellEmpty(const mech::Blueprint::Cell& cell) -> bool {
-            return cell.frame.knots.empty() and cell.frame.halfChords.empty() and cell.hull.walls.empty();
+            return cell.frame.corners.empty() and cell.frame.halfribs.empty() and cell.hull.membranes.empty();
         }
 
         auto rotateCellPose(mech::space::cell::Pose& pose, mech::space::orient::Semiaxis axis, const std::map<index3, index3, CellPosLess>& remap) -> void {
@@ -302,15 +302,15 @@ namespace eltanin::views::blueprints::selection {
         std::set<std::size_t> dropCells;
         for (const auto& [cellIndex, indices] : knots) {
             if (cellIndex < data->data.cells.size())
-                eraseDescending(data->data.cells[cellIndex].frame.knots, indices);
+                eraseDescending(data->data.cells[cellIndex].frame.corners, indices);
         }
         for (const auto& [cellIndex, indices] : halfChords) {
             if (cellIndex < data->data.cells.size())
-                eraseDescending(data->data.cells[cellIndex].frame.halfChords, indices);
+                eraseDescending(data->data.cells[cellIndex].frame.halfribs, indices);
         }
         for (const auto& [cellIndex, indices] : walls) {
             if (cellIndex < data->data.cells.size())
-                eraseDescending(data->data.cells[cellIndex].hull.walls, indices);
+                eraseDescending(data->data.cells[cellIndex].hull.membranes, indices);
         }
         for (std::size_t i = 0; i < data->data.cells.size(); ++i) {
             if (cellEmpty(data->data.cells[i]))
@@ -626,9 +626,9 @@ namespace eltanin::views::blueprints::selection {
             std::size_t halfChords = 0;
             std::size_t walls = 0;
             for (const auto& cell : store.clipboard.cells) {
-                knots += cell.frame.knots.size();
-                halfChords += cell.frame.halfChords.size();
-                walls += cell.hull.walls.size();
+                knots += cell.frame.corners.size();
+                halfChords += cell.frame.halfribs.size();
+                walls += cell.hull.membranes.size();
             }
             ImGui::TextDisabled("%zu cells · %zu knots · %zu half-chords · %zu walls", store.clipboard.cells.size(), knots, halfChords, walls);
             const bool empty = clipboardEmpty(store);

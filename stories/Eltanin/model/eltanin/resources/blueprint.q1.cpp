@@ -70,34 +70,34 @@ namespace eltanin::resource::blueprint {
             return base::common_types::index3{.x = x, .y = y, .z = z};
         }
 
-        const std::unordered_map<std::string_view, mech::subframe::corner::kind> knotKinds{
-            {"c124", mech::subframe::corner::kind::c124},
-            {"c1364", mech::subframe::corner::kind::c1364},
-            {"c164", mech::subframe::corner::kind::c164},
-            {"c134", mech::subframe::corner::kind::c134},
-            {"c135", mech::subframe::corner::kind::c135},
-            {"c12", mech::subframe::corner::kind::c12},
-            {"c13", mech::subframe::corner::kind::c13},
-            {"c15", mech::subframe::corner::kind::c15},
-            {"c16", mech::subframe::corner::kind::c16},
-            {"c34", mech::subframe::corner::kind::c34},
-            {"c35", mech::subframe::corner::kind::c35},
+        const std::unordered_map<std::string_view, mech::skeleton::Corner::Kind> knotKinds{
+            {"c124", mech::skeleton::Corner::Kind::c124},
+            {"c1364", mech::skeleton::Corner::Kind::c1364},
+            {"c164", mech::skeleton::Corner::Kind::c164},
+            {"c134", mech::skeleton::Corner::Kind::c134},
+            {"c135", mech::skeleton::Corner::Kind::c135},
+            {"c12", mech::skeleton::Corner::Kind::c12},
+            {"c13", mech::skeleton::Corner::Kind::c13},
+            {"c15", mech::skeleton::Corner::Kind::c15},
+            {"c16", mech::skeleton::Corner::Kind::c16},
+            {"c34", mech::skeleton::Corner::Kind::c34},
+            {"c35", mech::skeleton::Corner::Kind::c35},
         };
 
-        const std::unordered_map<std::string_view, mech::subframe::halfEdge::kind> halfChordKinds{
-            {"he1deg90", mech::subframe::halfEdge::kind::he1deg90},
-            {"he1deg45", mech::subframe::halfEdge::kind::he1deg45},
-            {"he3deg71", mech::subframe::halfEdge::kind::he3deg71},
-            {"he3deg90", mech::subframe::halfEdge::kind::he3deg90},
-            {"he3deg125", mech::subframe::halfEdge::kind::he3deg125},
+        const std::unordered_map<std::string_view, mech::skeleton::Halfrib::Kind> halfChordKinds{
+            {"he1deg90", mech::skeleton::Halfrib::Kind::he1deg90},
+            {"he1deg45", mech::skeleton::Halfrib::Kind::he1deg45},
+            {"he3deg71", mech::skeleton::Halfrib::Kind::he3deg71},
+            {"he3deg90", mech::skeleton::Halfrib::Kind::he3deg90},
+            {"he3deg125", mech::skeleton::Halfrib::Kind::he3deg125},
         };
 
-        const std::unordered_map<std::string_view, mech::subframe::membrane::kind> wallKinds{
-            {"u1111", mech::subframe::membrane::kind::u1111},
-            {"u121", mech::subframe::membrane::kind::u121},
-            {"u2121", mech::subframe::membrane::kind::u2121},
-            {"u222A", mech::subframe::membrane::kind::u222A},
-            {"u222V", mech::subframe::membrane::kind::u222V},
+        const std::unordered_map<std::string_view, mech::skeleton::Membrane::Kind> wallKinds{
+            {"u1111", mech::skeleton::Membrane::Kind::u1111},
+            {"u121", mech::skeleton::Membrane::Kind::u121},
+            {"u2121", mech::skeleton::Membrane::Kind::u2121},
+            {"u222A", mech::skeleton::Membrane::Kind::u222A},
+            {"u222V", mech::skeleton::Membrane::Kind::u222V},
         };
 
         const std::unordered_map<std::string_view, mech::frame::shape> frameShapes{
@@ -111,7 +111,7 @@ namespace eltanin::resource::blueprint {
             {"k3f222", mech::frame::shape::k3f222},
         };
 
-        auto knotKindName(mech::subframe::corner::kind kind) -> std::string_view {
+        auto knotKindName(mech::skeleton::Corner::Kind kind) -> std::string_view {
             for (const auto& [name, value] : knotKinds) {
                 if (value == kind)
                     return name;
@@ -119,7 +119,7 @@ namespace eltanin::resource::blueprint {
             throw std::runtime_error("blueprint: unknown knot kind");
         }
 
-        auto halfChordKindName(mech::subframe::halfEdge::kind kind) -> std::string_view {
+        auto halfChordKindName(mech::skeleton::Halfrib::Kind kind) -> std::string_view {
             for (const auto& [name, value] : halfChordKinds) {
                 if (value == kind)
                     return name;
@@ -127,7 +127,7 @@ namespace eltanin::resource::blueprint {
             throw std::runtime_error("blueprint: unknown half-chord kind");
         }
 
-        auto wallKindName(mech::subframe::membrane::kind kind) -> std::string_view {
+        auto wallKindName(mech::skeleton::Membrane::Kind kind) -> std::string_view {
             for (const auto& [name, value] : wallKinds) {
                 if (value == kind)
                     return name;
@@ -143,7 +143,7 @@ namespace eltanin::resource::blueprint {
             throw std::runtime_error("blueprint: unknown frame shape");
         }
 
-        auto take_knot(Cursor& cursor) -> mech::quarks::Knot {
+        auto take_knot(Cursor& cursor) -> mech::skeleton::Corner {
             expect(cursor, '[');
             const auto kindName = take_string(cursor);
             const auto kindIt = knotKinds.find(kindName);
@@ -152,10 +152,10 @@ namespace eltanin::resource::blueprint {
             expect(cursor, ',');
             const auto ori = take_int(cursor);
             expect(cursor, ']');
-            return mech::quarks::Knot{.kind = kindIt->second, .ori = static_cast<mech::quarks::LocalOri>(ori)};
+            return mech::skeleton::Corner{.kind = kindIt->second, .ori = static_cast<mech::space::orient::key>(ori)};
         }
 
-        auto take_half_chord(Cursor& cursor) -> mech::quarks::HalfChord {
+        auto take_half_chord(Cursor& cursor) -> mech::skeleton::Halfrib {
             expect(cursor, '[');
             const auto kindName = take_string(cursor);
             const auto kindIt = halfChordKinds.find(kindName);
@@ -163,20 +163,20 @@ namespace eltanin::resource::blueprint {
                 throw std::runtime_error(std::format("blueprint: unknown half-chord kind '{}'", kindName));
             expect(cursor, ',');
             const auto poleName = take_string(cursor);
-            mech::subframe::halfEdge::Pole pole = mech::subframe::halfEdge::Pole::s;
-            if (poleName == "s")
-                pole = mech::subframe::halfEdge::Pole::s;
-            else if (poleName == "e")
-                pole = mech::subframe::halfEdge::Pole::e;
+            mech::skeleton::Halfrib::Pole pole = mech::skeleton::Halfrib::Pole::starts;
+            if (poleName == "starts")
+                pole = mech::skeleton::Halfrib::Pole::starts;
+            else if (poleName == "ends")
+                pole = mech::skeleton::Halfrib::Pole::ends;
             else
                 throw std::runtime_error(std::format("blueprint: unknown half-chord pole '{}'", poleName));
             expect(cursor, ',');
             const auto ori = take_int(cursor);
             expect(cursor, ']');
-            return mech::quarks::HalfChord{.kind = kindIt->second, .pole = pole, .ori = static_cast<mech::quarks::LocalOri>(ori)};
+            return mech::skeleton::Halfrib{.kind = kindIt->second, .pole = pole, .ori = static_cast<mech::space::orient::key>(ori)};
         }
 
-        auto take_wall(Cursor& cursor) -> mech::quarks::Wall {
+        auto take_wall(Cursor& cursor) -> mech::skeleton::Membrane {
             expect(cursor, '[');
             const auto kindName = take_string(cursor);
             const auto kindIt = wallKinds.find(kindName);
@@ -185,7 +185,7 @@ namespace eltanin::resource::blueprint {
             expect(cursor, ',');
             const auto ori = take_int(cursor);
             expect(cursor, ']');
-            return mech::quarks::Wall{.kind = kindIt->second, .ori = static_cast<mech::quarks::LocalOri>(ori)};
+            return mech::skeleton::Membrane{.kind = kindIt->second, .ori = static_cast<mech::space::orient::key>(ori)};
         }
 
         template <typename Item, typename Take>
@@ -220,17 +220,17 @@ namespace eltanin::resource::blueprint {
             if (shapeIt == frameShapes.end())
                 throw std::runtime_error(std::format("blueprint: unknown frame shape '{}'", shapeName));
             expect(cursor, ',');
-            auto knots = take_list<mech::quarks::Knot>(cursor, take_knot);
+            auto corners = take_list<mech::skeleton::Corner>(cursor, take_knot);
             expect(cursor, ',');
-            auto halfChords = take_list<mech::quarks::HalfChord>(cursor, take_half_chord);
+            auto halfribs = take_list<mech::skeleton::Halfrib>(cursor, take_half_chord);
             expect(cursor, ',');
-            auto walls = take_list<mech::quarks::Wall>(cursor, take_wall);
+            auto membranes = take_list<mech::skeleton::Membrane>(cursor, take_wall);
             expect(cursor, ']');
             return mech::Blueprint::Cell{
                 .pose = mech::space::cell::Pose{.pos = pos, .ori = static_cast<rmmr::renderer::Signed32>(ori)},
                 .shape = shapeIt->second,
-                .frame = {.knots = std::move(knots), .halfChords = std::move(halfChords)},
-                .hull = {.walls = std::move(walls)},
+                .frame = {.corners = std::move(corners), .halfribs = std::move(halfribs)},
+                .hull = {.membranes = std::move(membranes)},
             };
         }
 
@@ -250,16 +250,16 @@ namespace eltanin::resource::blueprint {
             return mech::Blueprint{.name = std::move(name), .author = std::move(author), .cells = std::move(cells)};
         }
 
-        auto format_knot(const mech::quarks::Knot& knot) -> std::string {
+        auto format_knot(const mech::skeleton::Corner& knot) -> std::string {
             return std::format("[\"{}\", {}]", knotKindName(knot.kind), knot.ori);
         }
 
-        auto format_half_chord(const mech::quarks::HalfChord& halfChord) -> std::string {
-            const char* pole = halfChord.pole == mech::subframe::halfEdge::Pole::s ? "s" : "e";
+        auto format_half_chord(const mech::skeleton::Halfrib& halfChord) -> std::string {
+            const char* pole = halfChord.pole == mech::skeleton::Halfrib::Pole::starts ? "starts" : "ends";
             return std::format("[\"{}\", \"{}\", {}]", halfChordKindName(halfChord.kind), pole, halfChord.ori);
         }
 
-        auto format_wall(const mech::quarks::Wall& wall) -> std::string {
+        auto format_wall(const mech::skeleton::Membrane& wall) -> std::string {
             return std::format("[\"{}\", {}]", wallKindName(wall.kind), wall.ori);
         }
 
@@ -293,11 +293,11 @@ namespace eltanin::resource::blueprint {
                     out << "            " << cell.pose.ori << ",\n";
                     out << "            \"" << frameShapeName(cell.shape) << "\",\n";
                     out << "            ";
-                    format_list_inline(out, cell.frame.knots, format_knot, "            ");
+                    format_list_inline(out, cell.frame.corners, format_knot, "            ");
                     out << ",\n            ";
-                    format_list_inline(out, cell.frame.halfChords, format_half_chord, "            ");
+                    format_list_inline(out, cell.frame.halfribs, format_half_chord, "            ");
                     out << ",\n            ";
-                    format_list_inline(out, cell.hull.walls, format_wall, "            ");
+                    format_list_inline(out, cell.hull.membranes, format_wall, "            ");
                     out << "\n        ]";
                     out << (c + 1 < data.cells.size() ? ",\n" : "\n");
                 }

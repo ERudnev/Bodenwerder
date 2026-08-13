@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <base/types/common_types.h>
+#include <eltanin/mech/semantics.q1.h>
 #include <rmmr/renderer/types.q1.h>
 
 #include <glm/common.hpp>
@@ -44,9 +45,8 @@ namespace eltanin::mech::space {
     // Cube orientation alphabet (RedStar CubicRotation). Key 0..23; 0 = identity.
     // matrix[i] — 3×3 in {-1,0,1}; listed by rows (see space.cpp).
     // turn(Semiaxis) — after ±90° about local axis: new key = turn(axis)[old].
+    // key — primary alias in doctrine/model (semantics.q1); not redefined here.
     namespace orient {
-
-        using key = int;
 
         enum class Semiaxis { Xp, Xn, Yp, Yn, Zp, Zn, };
 

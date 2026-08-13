@@ -7,7 +7,7 @@
 
 namespace eltanin::views::blueprints::patterns {
 
-    auto cornerMesh(mech::subframe::corner::kind kind) -> std::string_view;
-    auto halfEdgeMesh(mech::subframe::halfEdge::kind kind, mech::subframe::halfEdge::Pole pole) -> std::string;
+    auto cornerMesh(mech::skeleton::Corner::Kind kind) -> std::string_view;
+    auto halfEdgeMesh(mech::skeleton::Halfrib::Kind kind, mech::skeleton::Halfrib::Pole pole) -> std::string;
 
 } // namespace eltanin::views::blueprints::patterns

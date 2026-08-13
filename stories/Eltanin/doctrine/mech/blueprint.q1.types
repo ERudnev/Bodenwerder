@@ -3,27 +3,20 @@ import "semantics"
 namespace eltanin
   namespace mech
 
-    namespace quarks
-      using Knot as @external(eltanin::mech::quarks::Knot)
-      using HalfChord as @external(eltanin::mech::quarks::HalfChord)
-      using Wall as @external(eltanin::mech::quarks::Wall)
-
-    // Ship schema: cells as frame hosts; quarks local to cell (thinning only, no orphans).
-    // C++: private/mech/blueprint.h
+    // Ship schema: cells (frame hosts) + per-cell hull membranes.
+    // One cell per lattice volume. Skeleton pieces local to the cell (thinning only, no orphans).
+    // C++: private/mech/blueprint.h — types from semantics.q1 / model.
     struct Blueprint
       struct Cell
         struct Frame
-          knots: vector<quarks::Knot>
-          halfChords: vector<quarks::HalfChord>
+          corners: vector<skeleton::Corner>
+          halfribs: vector<skeleton::Halfrib>
         struct Hull
-          walls: vector<quarks::Wall>
-        pose: // space::cell::Pose
-        shape: // frame::shape
+          membranes: vector<skeleton::Membrane>
+        pose: Pose
+        shape: frame::shape
         frame: Frame
         hull: Hull
-      struct Attachments
-        sockets:
-        slots:
       name: string
       author: string // manufacturer
       cells: vector<Cell>

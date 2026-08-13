@@ -1,6 +1,7 @@
 #pragma once
 
-#include "layers.h"
+#include <eltanin/mech/semantics.q1.h>
+
 #include "shapes.h"
 #include "space.h"
 #include "role.h"

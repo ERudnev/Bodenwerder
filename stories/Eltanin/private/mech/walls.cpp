@@ -52,22 +52,22 @@ namespace eltanin::mech {
         }
 
         // Membrane authored on plate::perimeter[plate]; find local ori that lands that loop on targetFace.
-        // Use .exists() — maybe<LocalOri> must not use if(ori)/if(not ori): LocalOri is integral, MSVC takes operator T&().
-        auto localOriForFace(plate::shape plate, const cube::Loop& targetFace) -> base::maybe<quarks::LocalOri> {
+        // Use .exists() — maybe<space::orient::key> must not use if(ori)/if(not ori): key is integral, MSVC takes operator T&().
+        auto localOriForFace(plate::shape plate, const cube::Loop& targetFace) -> base::maybe<space::orient::key> {
             const auto plateIndex = static_cast<std::size_t>(plate);
             if (plateIndex >= plate::perimeter.size())
                 return {};
             const auto& canonical = plate::perimeter[plateIndex];
             for (space::orient::key ori = 0; ori < 24; ++ori) {
                 if (cyclicEqualOrReversed(mapLoop(canonical, ori), targetFace))
-                    return static_cast<quarks::LocalOri>(ori);
+                    return ori;
             }
             return {};
         }
 
-        auto wallExists(const Blueprint::Cell& cell, quarks::Wall::Kind kind, quarks::LocalOri ori) -> bool {
-            for (const auto& wall : cell.hull.walls) {
-                if (wall.kind == kind and wall.ori == ori)
+        auto membraneExists(const Blueprint::Cell& cell, skeleton::Membrane::Kind kind, space::orient::key ori) -> bool {
+            for (const auto& membrane : cell.hull.membranes) {
+                if (membrane.kind == kind and membrane.ori == ori)
                     return true;
             }
             return false;
@@ -77,10 +77,10 @@ namespace eltanin::mech {
 
     auto occupiedCorners(const Blueprint::Cell& cell) -> std::vector<bool> {
         std::vector<bool> occupied(8, false);
-        for (const auto& knot : cell.frame.knots) {
-            const auto corner = space::orient::cornerIndex(static_cast<space::orient::key>(knot.ori), 0);
-            if (corner >= 0 and corner < 8)
-                occupied[static_cast<std::size_t>(corner)] = true;
+        for (const auto& corner : cell.frame.corners) {
+            const auto vertex = space::orient::cornerIndex(static_cast<space::orient::key>(corner.ori), 0);
+            if (vertex >= 0 and vertex < 8)
+                occupied[static_cast<std::size_t>(vertex)] = true;
         }
         return occupied;
     }
@@ -113,19 +113,19 @@ namespace eltanin::mech {
             if (not ori.exists())
                 continue;
 
-            const auto kind = subframe::membrane::kindOf(plate);
-            if (wallExists(cell, kind, *ori))
+            const auto kind = skeleton::membraneKindOf(plate);
+            if (membraneExists(cell, kind, *ori))
                 continue;
 
             out.push_back(WallSlot{
-                .wall = quarks::Wall{.kind = kind, .ori = *ori},
+                .membrane = skeleton::Membrane{.kind = kind, .ori = *ori},
                 .face = static_cast<frame::FaceIndex>(face),
             });
         }
         return out;
     }
 
-    auto faceForWall(const Blueprint::Cell& cell, quarks::Wall wall) -> base::maybe<frame::FaceIndex> {
+    auto faceForWall(const Blueprint::Cell& cell, skeleton::Membrane membrane) -> base::maybe<frame::FaceIndex> {
         const auto index = shapeIndex(cell.shape);
         if (index >= frame::faces.size() or index >= skinning::default_plate.size())
             return {};
@@ -147,8 +147,8 @@ namespace eltanin::mech {
             const auto ori = localOriForFace(plate, loop);
             if (not ori.exists())
                 continue;
-            const auto kind = subframe::membrane::kindOf(plate);
-            if (kind == wall.kind and *ori == wall.ori)
+            const auto kind = skeleton::membraneKindOf(plate);
+            if (kind == membrane.kind and *ori == membrane.ori)
                 return static_cast<frame::FaceIndex>(face);
         }
         return {};

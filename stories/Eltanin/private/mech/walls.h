@@ -10,19 +10,19 @@
 
 namespace eltanin::mech {
 
-    // Candidate membrane on a cell face (local ori in cell space). Corners must be intact; half-chords may be thinned.
+    // Candidate membrane on a cell face (local ori in cell space). Corners must be intact; halfribs may be thinned.
     struct WallSlot {
-        quarks::Wall wall;
+        skeleton::Membrane membrane;
         frame::FaceIndex face;
     };
 
-    // Corners present in the cell from live knots (pivot → cornerIndex(localOri, 0)).
+    // Cube vertices present from live skeleton::Corner (pivot → cornerIndex(localOri, 0)).
     auto occupiedCorners(const Blueprint::Cell&) -> std::vector<bool>; // size 8
 
-    // Faces of cell.shape whose loops are fully occupied; skips walls already in cell.hull.
+    // Faces of cell.shape whose loops are fully occupied; skips membranes already in cell.hull.
     auto possibleWalls(const Blueprint::Cell&) -> std::vector<WallSlot>;
 
-    // Face index for a placed hull wall (kind + local ori). Empty if not on this cell topology.
-    auto faceForWall(const Blueprint::Cell&, quarks::Wall) -> base::maybe<frame::FaceIndex>;
+    // Face index for a placed hull membrane (kind + local ori). Empty if not on this cell topology.
+    auto faceForWall(const Blueprint::Cell&, skeleton::Membrane) -> base::maybe<frame::FaceIndex>;
 
 }

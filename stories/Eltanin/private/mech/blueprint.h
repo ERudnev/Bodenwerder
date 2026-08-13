@@ -10,16 +10,16 @@
 namespace eltanin::mech {
 
     // Ship schema: cells (frame hosts) + per-cell hull membranes.
-    // One cell per lattice volume. Quarks are local to the cell (no orphans; only thinning).
+    // One cell per lattice volume. Skeleton pieces are local to the cell (no orphans; only thinning).
     // C++: private/mech/blueprint.h — doctrine/mech/blueprint.q1.types
     struct Blueprint {
         struct Cell {
             struct Frame {
-                std::vector<quarks::Knot> knots;
-                std::vector<quarks::HalfChord> halfChords;
+                std::vector<skeleton::Corner> corners;
+                std::vector<skeleton::Halfrib> halfribs;
             };
             struct Hull {
-                std::vector<quarks::Wall> walls;
+                std::vector<skeleton::Membrane> membranes;
             };
 
             space::cell::Pose pose;
