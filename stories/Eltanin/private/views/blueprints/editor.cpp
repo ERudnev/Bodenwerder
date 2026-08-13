@@ -269,8 +269,10 @@ namespace eltanin::views {
         state.mainScene.quarkActors = {};
         state.mainScene.clipboardActors = {};
         state.mainScene.mountActors = {};
-        state.display = {.skeleton = true, .membranes = true, .internals = true, .externals = true, .cellYMin = {}};
+        state.mainScene.clipboardMountActors = {};
+        state.display = {.skeleton = true, .membranes = true, .internals = true, .externals = true, .floorMode = blueprints::geometry::Display::FloorMode::all};
         state.mountLayers = {};
+        state.cellBox.reset();
         state.editMode = EditMode::skeleton;
         state.membranes = {.enabled = false, .cell = {}, .slots = {}, .face = {}};
         state.mounts = {.enabled = false, .cell = {}, .face = {}, .points = {}, .balls = {}, .sphere = *sphere_geometry, .material = *cursor_material};
@@ -334,17 +336,54 @@ namespace eltanin::views {
             blueprints::geometry::clearActors(context, *state.mainScene.root, state.mainScene.quarkActors);
             blueprints::geometry::clearActors(context, *state.mainScene.root, state.mainScene.clipboardActors);
             blueprints::geometry::clearMountActors(context, *state.mainScene.root, state.mainScene.mountActors);
+            blueprints::geometry::clearMountActors(context, *state.mainScene.root, state.mainScene.clipboardMountActors);
             blueprints::selection::clear(state.selection);
+            state.cellBox.reset();
             return;
         }
         const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
-        blueprints::geometry::syncActors(context, *state.mainScene.root, *state.interframe, data, state.display, state.mainScene.quarkActors);
-        blueprints::geometry::syncMountActors(context, *state.mainScene.root, data, state.display, state.mountLayers, state.mainScene.mountActors);
-        blueprints::selection::rematchAfterSync(context, state.selection, state.mainScene.quarkActors);
+        rebuildCellBox(context);
+        blueprints::geometry::syncActors(context, *state.mainScene.root, *state.interframe, data, state.display, state.currentFloor, state.mainScene.quarkActors);
+        blueprints::geometry::syncMountActors(context, *state.mainScene.root, data, state.display, state.currentFloor, state.mountLayers, state.mainScene.mountActors);
+        blueprints::selection::rematchAfterSync(context, state.selection, state.mainScene.quarkActors, state.mainScene.mountActors);
     }
 
     void Blueprints::applyDisplay(Writing context) {
-        blueprints::geometry::applyDisplay(context, state.display, state.mainScene.quarkActors, state.mainScene.mountActors);
+        blueprints::geometry::applyDisplay(context, state.display, state.currentFloor, state.mainScene.quarkActors, state.mainScene.mountActors);
+    }
+
+    void Blueprints::rebuildCellBox(Reading context) {
+        state.cellBox.reset();
+        if (not state.hovered.exists() or not with<::eltanin::mech::Blueprint>::exists(context, *state.hovered))
+            return;
+        const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
+        blueprints::mountBounds::CellBox box{};
+        bool any = false;
+        for (const auto& cell : data.cells) {
+            if (not any) {
+                box = {.min = cell.placement.cell, .max = cell.placement.cell};
+                any = true;
+            } else {
+                blueprints::mountBounds::include(box, cell.placement.cell);
+            }
+        }
+        for (const auto& placed : data.mounts) {
+            const auto mountId = with<::rmmr::resource::Assets>::find<::eltanin::mech::Mount>(context, placed.mount);
+            if (not mountId)
+                continue;
+            const auto& mount = with<::eltanin::mech::Mount>::get(context, *mountId);
+            const auto mountBox = blueprints::mountBounds::cellBox(mount.attachment, placed.transform);
+            if (not mountBox)
+                continue;
+            if (not any) {
+                box = *mountBox;
+                any = true;
+            } else {
+                blueprints::mountBounds::include(box, *mountBox);
+            }
+        }
+        if (any)
+            state.cellBox = box;
     }
 
     void Blueprints::syncClipboardGhost(Writing context) {
@@ -352,6 +391,7 @@ namespace eltanin::views {
             return;
         if (blueprints::selection::clipboardEmpty(state.selection)) {
             blueprints::geometry::clearActors(context, *state.mainScene.root, state.mainScene.clipboardActors);
+            blueprints::geometry::clearMountActors(context, *state.mainScene.root, state.mainScene.clipboardMountActors);
             return;
         }
         constexpr float ghostOpacity = 0.45f;
@@ -361,10 +401,17 @@ namespace eltanin::views {
         if (state.hovered.exists() and with<::eltanin::mech::Blueprint>::exists(context, *state.hovered))
             allowed = blueprints::selection::canPaste(with<::eltanin::mech::Blueprint>::get(context, *state.hovered), state.selection.clipboard);
         const auto tint = allowed ? okTint : blockedTint;
-        // Prefer in-place pose/tint update — full destroy+create every frame trips fQSM (Mesh on a Node that is not new in the patch).
-        if (blueprints::geometry::refreshGhostActors(context, *state.interframe, state.selection.clipboard, state.display, state.mainScene.clipboardActors, tint, ghostOpacity))
-            return;
-        blueprints::geometry::syncGhostActors(context, *state.mainScene.root, *state.interframe, *state.ghostMaterial, state.selection.clipboard, state.display, state.mainScene.clipboardActors, tint, ghostOpacity);
+        const auto& clipboard = state.selection.clipboard;
+        if (clipboard.cells.empty()) {
+            blueprints::geometry::clearActors(context, *state.mainScene.root, state.mainScene.clipboardActors);
+        } else if (not blueprints::geometry::refreshGhostActors(context, *state.interframe, clipboard, state.display, state.mainScene.clipboardActors, tint, ghostOpacity)) {
+            blueprints::geometry::syncGhostActors(context, *state.mainScene.root, *state.interframe, *state.ghostMaterial, clipboard, state.display, state.mainScene.clipboardActors, tint, ghostOpacity);
+        }
+        if (clipboard.mounts.empty()) {
+            blueprints::geometry::clearMountActors(context, *state.mainScene.root, state.mainScene.clipboardMountActors);
+        } else if (not blueprints::geometry::refreshGhostMountActors(context, clipboard, state.display, state.mainScene.clipboardMountActors, tint, ghostOpacity)) {
+            blueprints::geometry::syncGhostMountActors(context, *state.mainScene.root, *state.ghostMaterial, clipboard, state.display, state.mainScene.clipboardMountActors, tint, ghostOpacity);
+        }
     }
 
     void Blueprints::rebuildMountLayers(Reading context, MountCatalog& mounts) {
@@ -421,6 +468,8 @@ namespace eltanin::views {
         float bestPlacedT = std::numeric_limits<float>::infinity();
         for (std::size_t cellIndex = 0; cellIndex < data.cells.size(); ++cellIndex) {
             const auto& cell = data.cells[cellIndex];
+            if (not state.display.spatialOk(cell.placement.cell.y, cell.placement.cell.y, state.currentFloor))
+                continue;
             for (const auto& placed : cell.membranes) {
                 if (const auto face = blueprints::membraneSlots::faceFor(cell, placed)) {
                     const auto loop = faceWorldLoop(cell, *face);
@@ -534,7 +583,7 @@ namespace eltanin::views {
             const auto placement = data->cells[cell].placement;
             persistHovered(context);
             if (state.mainScene.root.exists() and state.interframe.exists())
-                blueprints::geometry::appendWallActor(context, *state.mainScene.root, *state.interframe, cell, membraneIndex, placement, membrane, state.display, state.mainScene.quarkActors);
+                blueprints::geometry::appendWallActor(context, *state.mainScene.root, *state.interframe, cell, membraneIndex, placement, membrane, state.display, state.currentFloor, state.mainScene.quarkActors);
             refreshMembraneCandidates(context);
             return true;
         }
@@ -646,8 +695,10 @@ namespace eltanin::views {
 
     void Blueprints::draw(Writing context, bool& open, BlueprintCatalog& catalog, MountCatalog& mounts) {
         if (not open) {
-            if (state.mainScene.root.exists())
+            if (state.mainScene.root.exists()) {
                 blueprints::geometry::clearActors(context, *state.mainScene.root, state.mainScene.clipboardActors);
+                blueprints::geometry::clearMountActors(context, *state.mainScene.root, state.mainScene.clipboardMountActors);
+            }
             return;
         }
 
@@ -676,10 +727,12 @@ namespace eltanin::views {
             if (ImGui::IsKeyPressed(ImGuiKey_PageUp)) {
                 ++state.currentFloor;
                 syncGridToFloor(context);
+                applyDisplay(context);
             }
             if (ImGui::IsKeyPressed(ImGuiKey_PageDown)) {
                 --state.currentFloor;
                 syncGridToFloor(context);
+                applyDisplay(context);
             }
             if (ImGui::IsKeyPressed(ImGuiKey_B) and not state.membranes.enabled and not state.mounts.enabled)
                 blueprints::selection::toggleFocus(state.selection);
@@ -706,14 +759,14 @@ namespace eltanin::views {
         } else if (state.membranes.enabled) {
             handleMembraneMode(context, under);
         } else {
-            blueprints::selection::handlePointer(context, state.selection, state.hovered, state.mainScene.quarkActors, under);
-            if (blueprints::selection::handleHotkeys(context, state.selection, state.history, state.hovered, state.mainScene.quarkActors)) {
+            blueprints::selection::handlePointer(context, state.selection, state.hovered, state.mainScene.quarkActors, state.mainScene.mountActors, under);
+            if (blueprints::selection::handleHotkeys(context, state.selection, state.history, state.hovered, state.mainScene.quarkActors, state.mainScene.mountActors)) {
                 persistHovered(context);
                 syncVisuals(context);
                 refreshMembraneCandidates(context);
             }
             blueprints::selection::handleClipboardHotkeys(state.selection);
-            if (blueprints::selection::handleClipboardChords(context, state.selection, state.history, state.hovered, state.mainScene.quarkActors)) {
+            if (blueprints::selection::handleClipboardChords(context, state.selection, state.history, state.hovered, state.mainScene.quarkActors, state.mainScene.mountActors)) {
                 persistHovered(context);
                 syncVisuals(context);
                 refreshMembraneCandidates(context);
@@ -874,6 +927,14 @@ namespace eltanin::views {
                 displayChanged |= ImGui::Checkbox("Internals", &state.display.internals);
                 ImGui::SameLine();
                 displayChanged |= ImGui::Checkbox("Externals", &state.display.externals);
+                {
+                    const char* floorLabels[] = {"All floors", "Not above current", "Only current"};
+                    auto floorMode = static_cast<int>(state.display.floorMode);
+                    if (ImGui::Combo("Floors", &floorMode, floorLabels, 3)) {
+                        state.display.floorMode = static_cast<blueprints::geometry::Display::FloorMode>(floorMode);
+                        displayChanged = true;
+                    }
+                }
                 if (displayChanged) {
                     applyDisplay(context);
                     syncClipboardGhost(context);
@@ -943,6 +1004,12 @@ namespace eltanin::views {
                     ImGui::Text("Cursor [%d, %d, %d]", state.cursorLattice.x, state.cursorLattice.y, state.cursorLattice.z);
                     ImGui::Text("Floor: %d", state.currentFloor);
                 }
+                if (state.cellBox.exists()) {
+                    const auto& box = *state.cellBox;
+                    ImGui::Text("Cell box Y: [%d, %d]  (%d floors)", box.min.y, box.max.y, box.max.y - box.min.y + 1);
+                } else {
+                    ImGui::TextDisabled("Cell box: —");
+                }
                 ImGui::TextDisabled("F1/F2/F3 mode · MMB orbit · PgUp/PgDn · Space · LMB/RMB±Shift · Del · WASD/QE · Shift rotate · Ctrl+C/V · Ctrl+Z/Y · B");
                 if (under == renderer::Integer32{0}) {
                     ImGui::TextDisabled("Under: —");
@@ -956,7 +1023,7 @@ namespace eltanin::views {
         open = shown;
 
         if (not state.paletteMode and not state.membranes.enabled and not state.mounts.enabled) {
-            if (blueprints::selection::drawPanel(context, state.selection, state.history, blueprintsPos, blueprintsSize, state.hovered, state.mainScene.quarkActors)) {
+            if (blueprints::selection::drawPanel(context, state.selection, state.history, blueprintsPos, blueprintsSize, state.hovered, state.mainScene.quarkActors, state.mainScene.mountActors)) {
                 persistHovered(context);
                 syncVisuals(context);
                 refreshMembraneCandidates(context);
@@ -969,6 +1036,7 @@ namespace eltanin::views {
             syncClipboardGhost(context);
         } else if (not state.paletteMode and not state.mounts.enabled and state.mainScene.root.exists()) {
             blueprints::geometry::clearActors(context, *state.mainScene.root, state.mainScene.clipboardActors);
+            blueprints::geometry::clearMountActors(context, *state.mainScene.root, state.mainScene.clipboardMountActors);
         }
         if (not state.paletteMode)
             applyHistory(context, blueprints::history::drawWindow(state.history));

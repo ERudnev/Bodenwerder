@@ -123,13 +123,18 @@ namespace eltanin {
         if (not shared->material.litTransparent) {
             return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_transparent missing");
         }
+        if (not shared->material.lit) {
+            return (void)context.refuse("eltanin::Game::addAssets: rmmr lit missing");
+        }
         assets.mech = with<Assets>::add_texpack_catalog(
             context,
             Name::from("Eltanin", "mech"),
             item<texpack::LoaderCatalog>{.directory = "textures/mech"},
             index2{1024, 1024},
             32);
+        // Transparent: world cursor. Opaque: role-colored placeholder boxes (attachments).
         (void)with<Assets>::add_material(context, Name::from("Eltanin", "type"), with<Material>::get(context, *shared->material.litTransparent));
+        (void)with<Assets>::add_material(context, Name::from("Eltanin", "typeSolid"), with<Material>::get(context, *shared->material.lit));
         {
             auto ghost = with<Material>::get(context, *shared->material.litTransparent);
             ghost.blend = renderer::BlendMode::additive;

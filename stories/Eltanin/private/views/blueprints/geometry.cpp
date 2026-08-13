@@ -1,7 +1,9 @@
 #include "views/blueprints/geometry.h"
 
+#include "mech/semantics/role.h"
 #include "mech/semantics/shapes.h"
 #include "mech/semantics/subframe.h"
+#include "views/blueprints/mountBounds.h"
 
 #include <eltanin/mech/mount.q1.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -68,6 +70,20 @@ namespace eltanin::views::blueprints::geometry {
                 return {};
             with<scene::actor::Identified>::extend(context, id);
             return id;
+        }
+
+        auto spawnIdentified(Writing context, scene::Root::Id root, Pose pose, const meshpack::Asset::Resolved& resolved, RGB albedo) -> base::maybe<scene::actor::Mesh::Id> {
+            const auto id = with<scene::Interface>::createMeshActor(context, root, pose, resolved, with<scene::actor::MeshState>::defaults(albedo, 1.0f));
+            if (not with<scene::actor::Mesh>::exists(context, id))
+                return {};
+            with<scene::actor::Identified>::extend(context, id);
+            return id;
+        }
+
+        auto mountAlbedo(const mech::Mount::Quantum& mount) -> RGB {
+            if (mount.role.exists())
+                return mech::settings::colorCode(*mount.role);
+            return RGB{1.0f, 1.0f, 1.0f};
         }
 
         auto spawnGhost(Writing context, scene::Root::Id root, Pose pose, meshpack::Asset::Resolved resolved, ::rmmr::resource::material::Asset::Id ghostMaterial, RGB albedo, float opacity) -> base::maybe<scene::actor::Mesh::Id> {
@@ -200,26 +216,26 @@ namespace eltanin::views::blueprints::geometry {
         actors.clear();
     }
 
-    void applyDisplay(Writing context, Display display, const std::vector<QuarkActor>& quarks, const std::vector<MountActor>& mounts) {
+    void applyDisplay(Writing context, Display display, int currentFloor, const std::vector<QuarkActor>& quarks, const std::vector<MountActor>& mounts) {
         for (const auto& actor : quarks) {
             if (not with<scene::actor::MeshState>::exists(context, actor.id))
                 continue;
-            scene::actor::MeshState::Actions::setVisible(context, actor.id, display.showsQuark(actor.kind, actor.cellY));
+            scene::actor::MeshState::Actions::setVisible(context, actor.id, display.showsQuark(actor.kind, actor.cellY, currentFloor));
         }
         for (const auto& actor : mounts) {
             if (not with<scene::actor::MeshState>::exists(context, actor.id))
                 continue;
-            scene::actor::MeshState::Actions::setVisible(context, actor.id, display.showsMount(actor.layer, actor.cellY));
+            scene::actor::MeshState::Actions::setVisible(context, actor.id, display.showsMount(actor.layer, actor.cellYMin, actor.cellYMax, currentFloor));
         }
     }
 
-    void syncActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, const Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors) {
+    void syncActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, const Blueprint& blueprint, Display display, int currentFloor, std::vector<QuarkActor>& actors) {
         clearActors(context, root, actors);
         spawnBlueprintActors(context, root, interframe, blueprint, display, actors, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved); }, false);
-        applyDisplay(context, display, actors, {});
+        applyDisplay(context, display, currentFloor, actors, {});
     }
 
-    void syncMountActors(Writing context, scene::Root::Id root, const Blueprint& blueprint, Display display, const std::unordered_map<mech::Mount::Id, mech::Layer>& mountLayers, std::vector<MountActor>& actors) {
+    void syncMountActors(Writing context, scene::Root::Id root, const Blueprint& blueprint, Display display, int currentFloor, const std::unordered_map<mech::Mount::Id, mech::Layer>& mountLayers, std::vector<MountActor>& actors) {
         clearMountActors(context, root, actors);
         for (std::size_t index = 0; index < blueprint.mounts.size(); ++index) {
             const auto& placed = blueprint.mounts[index];
@@ -242,13 +258,19 @@ namespace eltanin::views::blueprints::geometry {
                 base::message("eltanin blueprints geometry: mount '{}' entry '{}' missing", placed.mount.text(), mount.tempMesh.entry);
                 continue;
             }
-            if (const auto id = spawnIdentified(context, root, gridActorPose(placed.transform), *resolved))
-                actors.push_back(MountActor{.id = *id, .index = index, .layer = layer, .cellY = placed.transform.grid.y});
+            int cellYMin = placed.transform.grid.y;
+            int cellYMax = cellYMin;
+            if (const auto box = mountBounds::cellBox(mount.attachment, placed.transform)) {
+                cellYMin = box->min.y;
+                cellYMax = box->max.y;
+            }
+            if (const auto id = spawnIdentified(context, root, gridActorPose(placed.transform), *resolved, mountAlbedo(mount)))
+                actors.push_back(MountActor{.id = *id, .index = index, .layer = layer, .cellYMin = cellYMin, .cellYMax = cellYMax});
         }
-        applyDisplay(context, display, {}, actors);
+        applyDisplay(context, display, currentFloor, {}, actors);
     }
 
-    auto appendWallActor(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, std::size_t cellIndex, std::size_t membraneIndex, const mech::space::cell::Placement& placement, const mech::skeleton::Membrane& wall, Display display, std::vector<QuarkActor>& actors) -> bool {
+    auto appendWallActor(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, std::size_t cellIndex, std::size_t membraneIndex, const mech::space::cell::Placement& placement, const mech::skeleton::Membrane& wall, Display display, int currentFloor, std::vector<QuarkActor>& actors) -> bool {
         const auto resolved = resolveWall(context, interframe, wall.kind);
         if (not resolved) {
             base::message("eltanin blueprints geometry: wall mesh missing");
@@ -263,7 +285,7 @@ namespace eltanin::views::blueprints::geometry {
             return false;
         const auto cellY = placement.cell.y;
         actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::wall, .cell = cellIndex, .index = membraneIndex, .cellY = cellY});
-        scene::actor::MeshState::Actions::setVisible(context, *id, display.showsQuark(QuarkActor::Kind::wall, cellY));
+        scene::actor::MeshState::Actions::setVisible(context, *id, display.showsQuark(QuarkActor::Kind::wall, cellY, currentFloor));
         return true;
     }
 
@@ -303,7 +325,7 @@ namespace eltanin::views::blueprints::geometry {
             const auto col = static_cast<int>(index % static_cast<std::size_t>(columns));
             const auto row = static_cast<int>(index / static_cast<std::size_t>(columns));
             const auto transform = mech::space::Transform{.grid = base::common_types::index3{.x = col * cellStep, .y = 0, .z = row * cellStep}, .rotation = 0};
-            if (const auto id = spawnIdentified(context, root, gridActorPose(transform), *resolved))
+            if (const auto id = spawnIdentified(context, root, gridActorPose(transform), *resolved, mountAlbedo(mount)))
                 actors.push_back(PaletteMountActor{.id = *id, .mount = mountId});
         }
     }
@@ -364,6 +386,62 @@ namespace eltanin::views::blueprints::geometry {
                         return false;
                 }
             }
+        }
+        return at == actors.size();
+    }
+
+    void syncGhostMountActors(Writing context, scene::Root::Id root, ::rmmr::resource::material::Asset::Id ghostMaterial, const Blueprint& blueprint, Display display, std::vector<MountActor>& actors, RGB albedo, float opacity) {
+        clearMountActors(context, root, actors);
+        for (std::size_t index = 0; index < blueprint.mounts.size(); ++index) {
+            const auto& placed = blueprint.mounts[index];
+            const auto mountId = with<::rmmr::resource::Assets>::find<::eltanin::mech::Mount>(context, placed.mount);
+            if (not mountId)
+                continue;
+            const auto& mount = with<::eltanin::mech::Mount>::get(context, *mountId);
+            const auto layer = mount.attachment.flatMounted() ? mech::Layer::externals : mech::Layer::internals;
+            if (not display.shows(layer))
+                continue;
+            const auto packId = with<::rmmr::resource::Assets>::find<meshpack::Asset>(context, mount.tempMesh.pack);
+            if (not packId)
+                continue;
+            const auto resolved = with<meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
+            if (not resolved)
+                continue;
+            int cellYMin = placed.transform.grid.y;
+            int cellYMax = cellYMin;
+            if (const auto box = mountBounds::cellBox(mount.attachment, placed.transform)) {
+                cellYMin = box->min.y;
+                cellYMax = box->max.y;
+            }
+            if (const auto id = spawnGhost(context, root, gridActorPose(placed.transform), *resolved, ghostMaterial, albedo, opacity))
+                actors.push_back(MountActor{.id = *id, .index = index, .layer = layer, .cellYMin = cellYMin, .cellYMax = cellYMax});
+        }
+    }
+
+    auto refreshGhostMountActors(Writing context, const Blueprint& blueprint, Display display, std::vector<MountActor>& actors, RGB albedo, float opacity) -> bool {
+        std::size_t at = 0;
+        for (std::size_t index = 0; index < blueprint.mounts.size(); ++index) {
+            const auto& placed = blueprint.mounts[index];
+            const auto mountId = with<::rmmr::resource::Assets>::find<::eltanin::mech::Mount>(context, placed.mount);
+            if (not mountId)
+                continue;
+            const auto& mount = with<::eltanin::mech::Mount>::get(context, *mountId);
+            const auto layer = mount.attachment.flatMounted() ? mech::Layer::externals : mech::Layer::internals;
+            if (not display.shows(layer))
+                continue;
+            if (at >= actors.size())
+                return false;
+            auto& slot = actors[at];
+            if (slot.index != index or slot.layer != layer)
+                return false;
+            if (not with<scene::Node>::exists(context, slot.id) or not with<scene::actor::MeshState>::exists(context, slot.id))
+                return false;
+            with<scene::Node>::modify(context, slot.id)->pose = gridActorPose(placed.transform);
+            auto state = with<scene::actor::MeshState>::modify(context, slot.id);
+            state->albedo = albedo;
+            state->opacity = opacity;
+            state->visible = true;
+            ++at;
         }
         return at == actors.size();
     }

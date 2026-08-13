@@ -21,6 +21,7 @@
 #include "views/blueprints/geometry.h"
 #include "views/blueprints/history.h"
 #include "views/blueprints/membraneSlots.h"
+#include "views/blueprints/mountBounds.h"
 #include "views/blueprints/mountPlacement.h"
 #include "views/blueprints/selection.h"
 
@@ -43,6 +44,7 @@ namespace eltanin::views {
                 std::vector<blueprints::geometry::QuarkActor> quarkActors;
                 std::vector<blueprints::geometry::QuarkActor> clipboardActors;
                 std::vector<blueprints::geometry::MountActor> mountActors;
+                std::vector<blueprints::geometry::MountActor> clipboardMountActors;
             } mainScene;
 
             struct PaletteScene {
@@ -60,6 +62,8 @@ namespace eltanin::views {
             blueprints::geometry::Display display;
             // Catalog mount → Layer from attachment coplanarity (immutable for this run).
             std::unordered_map<mech::Mount::Id, mech::Layer> mountLayers;
+            // Inclusive construction AABB in cell-space (cells + mountBounds).
+            base::maybe<blueprints::mountBounds::CellBox> cellBox;
             blueprints::selection::Store selection;
             blueprints::history::Store history;
             index3 cursorLattice;
@@ -86,8 +90,9 @@ namespace eltanin::views {
         void syncGridToFloor(Writing);
         void updateWorldCursor(Writing);
         void syncVisuals(Writing);
-        // Layer / spatial filter only — setVisible on resident actors.
+        // Layer / floor filter only — setVisible on resident actors.
         void applyDisplay(Writing);
+        void rebuildCellBox(Reading);
         void syncClipboardGhost(Writing);
         void syncPalette(Writing, MountCatalog&);
         void rebuildMountLayers(Reading, MountCatalog&);

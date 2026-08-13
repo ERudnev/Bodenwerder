@@ -717,6 +717,40 @@
             []
         ],
         [
+            [1, 0, 0],
+            4,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
             [1, 0, 1],
             0,
             "k8",
@@ -797,6 +831,108 @@
                 ["he1deg90", "ends", 5],
                 ["he1deg90", "starts", 2],
                 ["he1deg90", "ends", 2]
+            ],
+            []
+        ],
+        [
+            [-2, 0, 2],
+            12,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
+            [-2, 0, 1],
+            12,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
+            [-2, 0, 0],
+            12,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
             ],
             []
         ],
@@ -927,6 +1063,108 @@
             []
         ],
         [
+            [0, 0, -7],
+            4,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
+            [0, 0, -8],
+            4,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
+            [0, 0, -6],
+            4,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
             [0, -1, -8],
             0,
             "k8",
@@ -1049,6 +1287,541 @@
                 ["he1deg90", "ends", 5],
                 ["he1deg90", "starts", 2],
                 ["he1deg90", "ends", 2]
+            ],
+            []
+        ],
+        [
+            [-1, -1, -8],
+            14,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
+            [-1, -1, -7],
+            22,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
+            [-1, -1, -6],
+            14,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
+            [-1, -1, 2],
+            6,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
+            [-1, -1, 1],
+            6,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
+            [-1, -1, 0],
+            6,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
+            [2, 0, 0],
+            1,
+            "k4f1111",
+            [
+                ["c12", 0],
+                ["c12", 21],
+                ["c12", 19],
+                ["c12", 10]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he1deg90", "starts", 21],
+                ["he1deg90", "ends", 21],
+                ["he1deg90", "starts", 3],
+                ["he1deg90", "ends", 3]
+            ],
+            []
+        ],
+        [
+            [2, 0, 1],
+            1,
+            "k4f1111",
+            [
+                ["c12", 0],
+                ["c12", 21],
+                ["c12", 19],
+                ["c12", 10]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he1deg90", "starts", 21],
+                ["he1deg90", "ends", 21],
+                ["he1deg90", "starts", 3],
+                ["he1deg90", "ends", 3]
+            ],
+            []
+        ],
+        [
+            [2, 0, 2],
+            16,
+            "k3f121",
+            [
+                ["c12", 0],
+                ["c15", 11],
+                ["c13", 19]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he3deg90", "ends", 19],
+                ["he3deg90", "starts", 19]
+            ],
+            []
+        ],
+        [
+            [1, -2, -8],
+            4,
+            "k4f2121",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he3deg90", "ends", 13],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            []
+        ],
+        [
+            [1, -2, -7],
+            18,
+            "k3f222",
+            [
+                ["c135", 4],
+                ["c135", 1],
+                ["c135", 23]
+            ],
+            [
+                ["he3deg71", "ends", 1],
+                ["he3deg71", "starts", 1],
+                ["he3deg71", "starts", 4],
+                ["he3deg71", "ends", 4],
+                ["he3deg71", "ends", 23],
+                ["he3deg71", "starts", 23]
+            ],
+            []
+        ],
+        [
+            [0, 1, -7],
+            12,
+            "k4f1111",
+            [
+                ["c12", 0],
+                ["c12", 21],
+                ["c12", 19],
+                ["c12", 10]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he1deg90", "starts", 21],
+                ["he1deg90", "ends", 21],
+                ["he1deg90", "starts", 3],
+                ["he1deg90", "ends", 3]
+            ],
+            []
+        ],
+        [
+            [0, 1, -6],
+            15,
+            "k3f121",
+            [
+                ["c12", 0],
+                ["c15", 11],
+                ["c13", 19]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he3deg90", "ends", 19],
+                ["he3deg90", "starts", 19]
+            ],
+            []
+        ],
+        [
+            [-2, 0, -8],
+            1,
+            "k4f1111",
+            [
+                ["c12", 0],
+                ["c12", 21],
+                ["c12", 19],
+                ["c12", 10]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he1deg90", "starts", 21],
+                ["he1deg90", "ends", 21],
+                ["he1deg90", "starts", 3],
+                ["he1deg90", "ends", 3]
+            ],
+            []
+        ],
+        [
+            [-2, 0, -7],
+            1,
+            "k4f1111",
+            [
+                ["c12", 0],
+                ["c12", 21],
+                ["c12", 19],
+                ["c12", 10]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he1deg90", "starts", 21],
+                ["he1deg90", "ends", 21],
+                ["he1deg90", "starts", 3],
+                ["he1deg90", "ends", 3]
+            ],
+            []
+        ],
+        [
+            [-2, 0, -6],
+            11,
+            "k3f121",
+            [
+                ["c12", 0],
+                ["c15", 11],
+                ["c13", 19]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he3deg90", "ends", 19],
+                ["he3deg90", "starts", 19]
+            ],
+            []
+        ],
+        [
+            [-3, 0, 2],
+            11,
+            "k3f121",
+            [
+                ["c12", 0],
+                ["c15", 11],
+                ["c13", 19]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he3deg90", "ends", 19],
+                ["he3deg90", "starts", 19]
+            ],
+            []
+        ],
+        [
+            [-4, 0, 1],
+            11,
+            "k3f121",
+            [
+                ["c12", 0],
+                ["c15", 11],
+                ["c13", 19]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he3deg90", "ends", 19],
+                ["he3deg90", "starts", 19]
+            ],
+            []
+        ],
+        [
+            [-4, 0, 0],
+            1,
+            "k4f1111",
+            [
+                ["c12", 0],
+                ["c12", 21],
+                ["c12", 19],
+                ["c12", 10]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he1deg90", "starts", 21],
+                ["he1deg90", "ends", 21],
+                ["he1deg90", "starts", 3],
+                ["he1deg90", "ends", 3]
+            ],
+            []
+        ],
+        [
+            [-3, 0, 0],
+            1,
+            "k4f1111",
+            [
+                ["c12", 0],
+                ["c12", 21],
+                ["c12", 19],
+                ["c12", 10]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he1deg90", "starts", 21],
+                ["he1deg90", "ends", 21],
+                ["he1deg90", "starts", 3],
+                ["he1deg90", "ends", 3]
+            ],
+            []
+        ],
+        [
+            [-3, 0, 1],
+            1,
+            "k4f1111",
+            [
+                ["c12", 0],
+                ["c12", 21],
+                ["c12", 19],
+                ["c12", 10]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he1deg90", "starts", 21],
+                ["he1deg90", "ends", 21],
+                ["he1deg90", "starts", 3],
+                ["he1deg90", "ends", 3]
+            ],
+            []
+        ],
+        [
+            [1, 0, 3],
+            16,
+            "k3f121",
+            [
+                ["c12", 0],
+                ["c15", 11],
+                ["c13", 19]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he3deg90", "ends", 19],
+                ["he3deg90", "starts", 19]
             ],
             []
         ]

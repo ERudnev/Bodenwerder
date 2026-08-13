@@ -20,6 +20,7 @@ namespace eltanin::views::blueprints::selection {
 
     using namespace fqsm::api;
     using geometry::QuarkActor;
+    using geometry::MountActor;
 
     enum class Focus {
         selection,
@@ -32,10 +33,15 @@ namespace eltanin::views::blueprints::selection {
         std::size_t index;
     };
 
+    struct MountRef {
+        std::size_t index; // into Blueprint::mounts
+    };
+
     struct Store {
         std::vector<rmmr::renderer::Integer32> aliases;
-        Blueprint clipboard; // cells = paste buffer; cell.placement = preview placement
+        Blueprint clipboard; // cells + mounts = paste buffer
         std::vector<QuarkRef> pendingRestore;
+        std::vector<MountRef> pendingMountRestore;
         Focus focus;
     };
 
@@ -45,29 +51,29 @@ namespace eltanin::views::blueprints::selection {
     auto canPaste(const Blueprint& target, const Blueprint& clipboard) -> bool;
 
     void clear(Store&);
-    void selectAll(Reading, Store&, const std::vector<QuarkActor>& actors);
+    void selectAll(Reading, Store&, const std::vector<QuarkActor>&, const std::vector<MountActor>&);
     void resetClipboard(Store&);
     void toggleFocus(Store&);
-    void rematchAfterSync(Reading, Store&, const std::vector<QuarkActor>& actors);
+    void rematchAfterSync(Reading, Store&, const std::vector<QuarkActor>&, const std::vector<MountActor>&);
 
-    void expand(Reading, Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors);
-    void copyToClipboard(Reading, Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors);
+    void expand(Reading, Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&);
+    void copyToClipboard(Reading, Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&);
 
-    auto eraseSelected(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors) -> bool;
-    auto rotateSelected(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors, mech::space::orient::Semiaxis) -> bool;
-    auto moveSelected(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors, index3 step) -> bool;
+    auto eraseSelected(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&) -> bool;
+    auto rotateSelected(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&, mech::space::orient::Semiaxis) -> bool;
+    auto moveSelected(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&, index3 step) -> bool;
 
     auto rotateClipboard(Store&, mech::space::orient::Semiaxis) -> bool;
     auto moveClipboard(Store&, index3 step) -> bool;
     auto pasteClipboard(Writing, Store&, history::Store&, mech::Blueprint::Id hovered) -> bool;
 
-    void handlePointer(Reading, Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors, rmmr::renderer::Integer32 under);
+    void handlePointer(Reading, Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&, rmmr::renderer::Integer32 under);
 
-    auto handleHotkeys(Writing, Store&, history::Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
+    auto handleHotkeys(Writing, Store&, history::Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&) -> bool;
     auto handleClipboardHotkeys(Store&) -> bool;
-    auto handleClipboardChords(Writing, Store&, history::Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
+    auto handleClipboardChords(Writing, Store&, history::Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&) -> bool;
 
-    auto drawPanel(Writing, Store&, history::Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
+    auto drawPanel(Writing, Store&, history::Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&) -> bool;
     auto drawClipboardPanel(Writing, Store&, history::Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered) -> bool;
 
 } // namespace eltanin::views::blueprints::selection

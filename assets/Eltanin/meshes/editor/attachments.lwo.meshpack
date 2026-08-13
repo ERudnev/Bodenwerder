@@ -4,6 +4,6 @@
     "meshes/editor/attachments.lwo",
     "-",
     [
-        {"color", {"Eltanin::type", []}}
+        {"color", {"Eltanin::typeSolid", []}}
     ]
 }
