@@ -5,7 +5,7 @@
 
 #include <base/maybe.h>
 #include <base/types/common_types.h>
-#include <eltanin/resources/blueprint.q1.h>
+#include <eltanin/mech/blueprint.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
@@ -34,7 +34,7 @@ namespace eltanin::views {
             base::maybe<rmmr::scene::actor::Mesh::Id> worldCursor;
             base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;
             base::maybe<::rmmr::resource::material::Asset::Id> ghostMaterial;
-            base::maybe<resource::blueprint::Asset::Id> hovered;
+            base::maybe<mech::Blueprint::Id> hovered;
             std::vector<blueprints::geometry::QuarkActor> quarkActors;
             std::vector<blueprints::geometry::QuarkActor> clipboardActors;
             blueprints::geometry::Display display;
@@ -57,7 +57,7 @@ namespace eltanin::views {
         State state;
 
         void create(Writing);
-        void show(Writing, resource::blueprint::Asset::Id);
+        void show(Writing, mech::Blueprint::Id);
         void syncGridToFloor(Writing);
         void updateWorldCursor(Writing);
         void syncVisuals(Writing);

@@ -2,8 +2,6 @@
 
 #include <eltanin/resources/assets.q1.h>
 
-#include <eltanin/mech/blueprint.q1.h>
-
 #include <base/logging.h>
 
 #include <cctype>
@@ -72,7 +70,7 @@ namespace eltanin {
                 if (not entry.is_regular_file() or entry.path().extension() != ".blueprint")
                     continue;
                 const auto stem = entry.path().stem().string();
-                base::maybe<resource::blueprint::Asset::Id> loadedId;
+                base::maybe<mech::Blueprint::Id> loadedId;
                 world.branch([&](Writing context) {
                     loadedId = catalog.loadOne(context, shelf, stem);
                 });
@@ -121,40 +119,39 @@ namespace eltanin {
         loadShelf(*this, world, BlueprintShelf::prefabs);
     }
 
-    auto BlueprintCatalog::ensureUnnamed(Writing context) -> base::maybe<resource::blueprint::Asset::Id> {
+    auto BlueprintCatalog::ensureUnnamed(Writing context) -> base::maybe<mech::Blueprint::Id> {
         constexpr std::string_view stem = "_unnamed";
         const auto unitName = Unit::Name::from("Eltanin", string{stem});
-        if (const auto existing = with<Assets>::find<::eltanin::resource::blueprint::Asset>(context, unitName))
+        if (const auto existing = with<Assets>::find<::eltanin::mech::Blueprint>(context, unitName))
             return *existing;
 
         const auto relative = filename{(std::filesystem::path{"blueprints"} / (string{stem} + ".blueprint")).generic_string()};
         const auto filePath = root / (string{stem} + ".blueprint");
-        const auto assetId = with<::eltanin::resource::Assets>::add_blueprint_loader(context, unitName, item<::eltanin::resource::blueprint::Loader>{.file = relative});
-        if (std::filesystem::exists(filePath)) {
-            with<::eltanin::resource::blueprint::Loader>::load(context, assetId);
+        const auto assetId = with<::eltanin::resource::Assets>::add_blueprint(context, unitName, relative);
+        if (not context.workers_interface().summary().good())
+            return {};
+        if (not std::filesystem::exists(filePath)) {
+            auto writable = with<::eltanin::mech::Blueprint>::modify(context, assetId);
+            writable->name = string{stem};
+            writable->author = "#undefined";
+            with<::eltanin::mech::Blueprint>::save(context, assetId);
             if (not context.workers_interface().summary().good())
                 return {};
-            return assetId;
         }
-        with<::eltanin::resource::blueprint::Asset>::modify(context, assetId)->data = mech::Blueprint{.name = string{stem}, .author = "#undefined", .cells = {}};
-        with<::eltanin::resource::blueprint::Loader>::save(context, assetId);
-        if (not context.workers_interface().summary().good())
-            return {};
         return assetId;
     }
 
-    auto BlueprintCatalog::loadOne(Writing context, BlueprintShelf shelf, string stem) -> base::maybe<resource::blueprint::Asset::Id> {
-        const auto assetId = with<::eltanin::resource::Assets>::add_blueprint_loader(
+    auto BlueprintCatalog::loadOne(Writing context, BlueprintShelf shelf, string stem) -> base::maybe<mech::Blueprint::Id> {
+        const auto assetId = with<::eltanin::resource::Assets>::add_blueprint(
             context,
             Unit::Name::from("Eltanin", unitOwn(shelf, stem)),
-            item<::eltanin::resource::blueprint::Loader>{.file = relativeFile(shelf, stem)});
-        with<::eltanin::resource::blueprint::Loader>::load(context, assetId);
+            relativeFile(shelf, stem));
         if (not context.workers_interface().summary().good())
             return {};
         return assetId;
     }
 
-    auto BlueprintCatalog::createNew(Writing context, BlueprintShelf shelf, std::string_view rawName) -> base::maybe<resource::blueprint::Asset::Id> {
+    auto BlueprintCatalog::createNew(Writing context, BlueprintShelf shelf, std::string_view rawName) -> base::maybe<mech::Blueprint::Id> {
         const auto name = string{trimAscii(rawName)};
         const auto stem = fileStemFromName(name);
         if (stem.empty()) {
@@ -166,7 +163,7 @@ namespace eltanin {
             return {};
         }
         const auto own = unitOwn(shelf, stem);
-        if (with<Assets>::find<::eltanin::resource::blueprint::Asset>(context, Unit::Name::from("Eltanin", own))) {
+        if (with<Assets>::find<::eltanin::mech::Blueprint>(context, Unit::Name::from("Eltanin", own))) {
             base::message("eltanin::BlueprintCatalog::createNew: unit 'Eltanin::{}' already exists", own);
             return {};
         }
@@ -178,12 +175,17 @@ namespace eltanin {
             base::message("eltanin::BlueprintCatalog::createNew: file already exists '{}'", filePath.string());
             return {};
         }
-        const auto assetId = with<::eltanin::resource::Assets>::add_blueprint_loader(
-            context,
-            Unit::Name::from("Eltanin", own),
-            item<::eltanin::resource::blueprint::Loader>{.file = relativeFile(shelf, stem)});
-        with<::eltanin::resource::blueprint::Asset>::modify(context, assetId)->data = mech::Blueprint{.name = name, .author = "#unknown", .cells = {}};
-        with<::eltanin::resource::blueprint::Loader>::save(context, assetId);
+        const auto relative = relativeFile(shelf, stem);
+        const auto assetId = with<::eltanin::resource::Assets>::add_blueprint(context, Unit::Name::from("Eltanin", own), relative);
+        if (not context.workers_interface().summary().good())
+            return {};
+        {
+            auto writable = with<::eltanin::mech::Blueprint>::modify(context, assetId);
+            writable->name = name;
+            writable->author = "#unknown";
+            writable->cells = {};
+        }
+        with<::eltanin::mech::Blueprint>::save(context, assetId);
         if (not context.workers_interface().summary().good())
             return {};
         packFor(*this, shelf).push_back(assetId);

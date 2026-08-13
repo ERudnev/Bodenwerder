@@ -10,7 +10,7 @@
 #include "views/blueprints/membraneSlots.h"
 
 #include <eltanin/resources/assets.q1.h>
-#include <eltanin/resources/blueprint.q1.h>
+#include <eltanin/mech/blueprint.q1.h>
 #include <eltanin/world.q1.h>
 #include <fQSM/identifier.h>
 #include <rmmr/controller/cameraOrbit.q1.h>
@@ -40,6 +40,7 @@ namespace eltanin::views {
 
     using namespace rmmr;
     using namespace rmmr::resource;
+    using blueprints::Cell;
 
     namespace {
 
@@ -124,7 +125,7 @@ namespace eltanin::views {
             return Pos{center.x + local.x, center.y + local.y, center.z + local.z};
         }
 
-        auto faceWorldLoop(const mech::Blueprint::Cell& cell, mech::frame::FaceIndex face) -> std::vector<Pos> {
+        auto faceWorldLoop(const Cell& cell, mech::frame::FaceIndex face) -> std::vector<Pos> {
             const auto shapeIndex = static_cast<std::size_t>(cell.shape);
             const auto faceIndex = static_cast<std::size_t>(face);
             if (shapeIndex >= mech::frame::faces.size() or faceIndex >= mech::frame::faces[shapeIndex].size())
@@ -272,7 +273,7 @@ namespace eltanin::views {
         state.spaceMenu = {.place = false, .close = false};
     }
 
-    void Blueprints::show(Writing context, resource::blueprint::Asset::Id asset_id) {
+    void Blueprints::show(Writing context, mech::Blueprint::Id asset_id) {
         state.hovered = asset_id;
         blueprints::selection::clear(state.selection);
         syncVisuals(context);
@@ -283,13 +284,13 @@ namespace eltanin::views {
     void Blueprints::syncVisuals(Writing context) {
         if (not state.scene.exists() or not state.interframe.exists())
             return;
-        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered)) {
+        if (not state.hovered.exists() or not with<::eltanin::mech::Blueprint>::exists(context, *state.hovered)) {
             blueprints::geometry::clearActors(context, *state.scene, state.quarkActors);
             blueprints::geometry::clearActors(context, *state.scene, state.clipboardActors);
             blueprints::selection::clear(state.selection);
             return;
         }
-        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
+        const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
         blueprints::geometry::syncActors(context, *state.scene, *state.interframe, data, state.display, state.quarkActors);
         blueprints::selection::rematchAfterSync(context, state.selection, state.quarkActors);
     }
@@ -305,8 +306,8 @@ namespace eltanin::views {
         const RGB okTint{0.22f, 0.55f, 0.62f};
         const RGB blockedTint{0.62f, 0.22f, 0.18f};
         bool allowed = false;
-        if (state.hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
-            allowed = blueprints::selection::canPaste(with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data, state.selection.clipboard);
+        if (state.hovered.exists() and with<::eltanin::mech::Blueprint>::exists(context, *state.hovered))
+            allowed = blueprints::selection::canPaste(with<::eltanin::mech::Blueprint>::get(context, *state.hovered), state.selection.clipboard);
         const auto tint = allowed ? okTint : blockedTint;
         // Prefer in-place pose/tint update — full destroy+create every frame trips fQSM (Mesh on a Node that is not new in the patch).
         if (blueprints::geometry::refreshGhostActors(context, *state.interframe, state.selection.clipboard, state.display, state.clipboardActors, tint, ghostOpacity))
@@ -329,7 +330,7 @@ namespace eltanin::views {
         state.membranes.slots = {};
         if (not state.membranes.enabled or ImGui::GetIO().WantCaptureMouse)
             return;
-        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
+        if (not state.hovered.exists() or not with<::eltanin::mech::Blueprint>::exists(context, *state.hovered))
             return;
         if (not state.camera.exists())
             return;
@@ -341,7 +342,7 @@ namespace eltanin::views {
         const auto ray = mouseRay(context, *state.camera, *viewport, mouse);
         if (not ray.exists())
             return;
-        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
+        const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
         base::maybe<std::size_t> bestCell;
         base::maybe<std::size_t> bestSlot;
         float bestFreeT = std::numeric_limits<float>::infinity();
@@ -378,7 +379,7 @@ namespace eltanin::views {
     void Blueprints::drawMembraneFaceHighlight(Reading context) const {
         if (not state.membranes.enabled or not state.membranes.cell.exists() or not state.membranes.face.exists())
             return;
-        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
+        if (not state.hovered.exists() or not with<::eltanin::mech::Blueprint>::exists(context, *state.hovered))
             return;
         if (not state.camera.exists())
             return;
@@ -387,7 +388,7 @@ namespace eltanin::views {
             return;
         if (*state.membranes.face >= state.membranes.slots.size())
             return;
-        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
+        const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
         if (*state.membranes.cell >= data.cells.size())
             return;
         const auto loop = faceWorldLoop(data.cells[*state.membranes.cell], state.membranes.slots[*state.membranes.face].face);
@@ -409,7 +410,7 @@ namespace eltanin::views {
     auto Blueprints::handleMembraneMode(Writing context, renderer::Integer32 under) -> bool {
         if (not state.membranes.enabled or ImGui::GetIO().WantCaptureMouse)
             return false;
-        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
+        if (not state.hovered.exists() or not with<::eltanin::mech::Blueprint>::exists(context, *state.hovered))
             return false;
 
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
@@ -419,10 +420,10 @@ namespace eltanin::views {
                 return false;
             const auto cell = *state.membranes.cell;
             const auto membrane = state.membranes.slots[*state.membranes.face].membrane;
-            auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
-            if (cell >= data->data.cells.size())
+            auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
+            if (cell >= data->cells.size())
                 return false;
-            data->data.cells[cell].membranes.push_back(membrane);
+            data->cells[cell].membranes.push_back(membrane);
             persistHovered(context);
             syncVisuals(context);
             refreshMembraneCandidates(context);
@@ -439,10 +440,10 @@ namespace eltanin::views {
                     continue;
                 if (with<scene::actor::Identified>::get(context, actor.id).scenicAlias != under)
                     continue;
-                auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
-                if (actor.cell >= data->data.cells.size())
+                auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
+                if (actor.cell >= data->cells.size())
                     return true;
-                auto& membranes = data->data.cells[actor.cell].membranes;
+                auto& membranes = data->cells[actor.cell].membranes;
                 if (actor.index < membranes.size()) {
                     membranes.erase(membranes.begin() + static_cast<std::ptrdiff_t>(actor.index));
                     persistHovered(context);
@@ -507,11 +508,9 @@ namespace eltanin::views {
     }
 
     void Blueprints::persistHovered(Writing context) {
-        if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered))
+        if (not state.hovered.exists() or not with<::eltanin::mech::Blueprint>::exists(context, *state.hovered))
             return;
-        if (not with<::eltanin::resource::blueprint::Loader>::exists(context, *state.hovered))
-            return;
-        ::eltanin::resource::blueprint::Loader::Actions::save(context, *state.hovered);
+        with<::eltanin::mech::Blueprint>::save(context, *state.hovered);
     }
 
     void Blueprints::draw(Writing context, bool& open, BlueprintCatalog& catalog) {
@@ -579,16 +578,16 @@ namespace eltanin::views {
                 if (state.spaceMenu.close) {
                     ImGui::CloseCurrentPopup();
                     state.spaceMenu = {.place = false, .close = false};
-                } else if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered)) {
+                } else if (not state.hovered.exists() or not with<::eltanin::mech::Blueprint>::exists(context, *state.hovered)) {
                     ImGui::TextDisabled("No blueprint");
                 } else {
-                    const auto& dataView = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
+                    const auto& dataView = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
                     const bool occupied = blueprints::selection::cellOccupied(dataView, state.cursorLattice);
                     if (occupied) {
                         if (ImGui::Selectable("erase")) {
                             {
-                                auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
-                                data->data.cells.erase(std::remove_if(data->data.cells.begin(), data->data.cells.end(), [&](const mech::Blueprint::Cell& cell) { return blueprints::selection::sameIndex3(cell.pose.pos, state.cursorLattice); }), data->data.cells.end());
+                                auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
+                                data->cells.erase(std::remove_if(data->cells.begin(), data->cells.end(), [&](const Cell& cell) { return blueprints::selection::sameIndex3(cell.pose.pos, state.cursorLattice); }), data->cells.end());
                             }
                             ImGui::CloseCurrentPopup();
                             state.spaceMenu = {.place = false, .close = false};
@@ -598,10 +597,10 @@ namespace eltanin::views {
                         }
                     } else {
                         bool applied = false;
-                        auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, *state.hovered);
+                        auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
                         applied = frameShapePicks([&](mech::frame::shape shape) {
                             const auto pose = mech::space::cell::Pose{.pos = state.cursorLattice, .ori = 0};
-                            data->data.cells.push_back(mech::Blueprint::Cell{
+                            data->cells.push_back(Cell{
                                 .pose = pose,
                                 .shape = shape,
                                 .corners = mech::skeleton::seedCorners(shape),
@@ -631,11 +630,11 @@ namespace eltanin::views {
             blueprintsPos = ImGui::GetWindowPos();
             blueprintsSize = ImGui::GetWindowSize();
             ImGui::BeginChild("blueprintList", ImVec2{220.0f, 0.0f}, true);
-            const auto pickBlueprint = [&](resource::blueprint::Asset::Id assetId) {
+            const auto pickBlueprint = [&](mech::Blueprint::Id assetId) {
                 const auto& unit = with<Unit>::get(context, assetId);
-                const auto& asset = with<::eltanin::resource::blueprint::Asset>::get(context, assetId);
+                const auto& asset = with<::eltanin::mech::Blueprint>::get(context, assetId);
                 const bool hovered = state.hovered.exists() and *state.hovered == assetId;
-                const char* label = asset.data.name.empty() ? unit.name.own.c_str() : asset.data.name.c_str();
+                const char* label = asset.name.empty() ? unit.name.own.c_str() : asset.name.c_str();
                 ImGui::PushID(reinterpret_cast<const void*>(assetId.raw()));
                 if (ImGui::Selectable(label, hovered))
                     show(context, assetId);
@@ -659,7 +658,7 @@ namespace eltanin::views {
 
             ImGui::Separator();
             ImGui::TextDisabled("Editor");
-            if (catalog.unnamed and with<::eltanin::resource::blueprint::Asset>::exists(context, *catalog.unnamed))
+            if (catalog.unnamed and with<::eltanin::mech::Blueprint>::exists(context, *catalog.unnamed))
                 pickBlueprint(*catalog.unnamed);
             else
                 ImGui::TextDisabled("_unnamed missing");
@@ -685,11 +684,11 @@ namespace eltanin::views {
 
             ImGui::SameLine();
             ImGui::BeginChild("blueprintDetails", ImVec2{0.0f, 0.0f}, true);
-            if (not state.hovered.exists() or not with<::eltanin::resource::blueprint::Asset>::exists(context, *state.hovered)) {
+            if (not state.hovered.exists() or not with<::eltanin::mech::Blueprint>::exists(context, *state.hovered)) {
                 ImGui::TextDisabled("Select a blueprint.");
             } else {
                 const auto& unit = with<Unit>::get(context, *state.hovered);
-                const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, *state.hovered).data;
+                const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
                 ImGui::Text("File: %s", unit.name.own.c_str());
                 ImGui::Text("Name: %s", data.name.c_str());
                 ImGui::Text("Manufacturer: %s", data.author.c_str());

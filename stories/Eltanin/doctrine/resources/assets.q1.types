@@ -1,5 +1,6 @@
 import "rmmr/resources/runtimes"
-import "resources/blueprint"
+import "rmmr/resources/manager"
+import "mech/blueprint"
 
 namespace eltanin
   namespace resource
@@ -9,4 +10,5 @@ namespace eltanin
     // Story-owned asset entry points — not rmmr primitives.
     component Assets of rmmr::resource::Assets
       one
-        >add_blueprint_loader(Unit::Name, blueprint::Loader)->#blueprint::Asset
+        // Registers Unit+Blueprint; loads from disk when the resolved file exists.
+        >add_blueprint(Unit::Name, filename)->#mech::Blueprint

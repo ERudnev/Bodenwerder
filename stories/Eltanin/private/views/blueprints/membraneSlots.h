@@ -10,6 +10,8 @@
 
 namespace eltanin::views::blueprints::membraneSlots {
 
+    using Cell = mech::Blueprint::Cell;
+
     // Editor query: free cell face + Membrane to place there (kind+ori). Not blueprint schema.
     struct Slot {
         mech::skeleton::Membrane membrane;
@@ -17,9 +19,9 @@ namespace eltanin::views::blueprints::membraneSlots {
     };
 
     // Faces of cell.shape with intact corners and no membrane yet.
-    auto possible(const mech::Blueprint::Cell&) -> std::vector<Slot>;
+    auto possible(const Cell&) -> std::vector<Slot>;
 
     // Face index for a placed hull membrane. Empty if not on this cell topology.
-    auto faceFor(const mech::Blueprint::Cell&, mech::skeleton::Membrane) -> base::maybe<mech::frame::FaceIndex>;
+    auto faceFor(const Cell&, mech::skeleton::Membrane) -> base::maybe<mech::frame::FaceIndex>;
 
 }

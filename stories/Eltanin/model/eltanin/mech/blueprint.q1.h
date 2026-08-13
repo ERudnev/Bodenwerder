@@ -1,17 +1,17 @@
 #pragma once
 
-#include <string>
-#include <vector>
-
 #include <eltanin/mech/semantics.q1.h>
+#include <rmmr/resources/manager.q1.h>
 
-// Hand projection of doctrine/mech/blueprint.q1.types.
+#include <fQSM/api/interface.h>
 
 namespace eltanin::mech {
 
-    // Ship schema: cells with skeleton pieces + membranes.
-    // One cell per lattice volume. Pieces are local to the cell (no orphans; only thinning).
-    struct Blueprint {
+    using namespace fqsm::api;
+
+    // Construction schema on the Unit shelf.
+    // Files: assets/Eltanin/blueprints/*.blueprint
+    struct Blueprint : Feature<Blueprint, rmmr::resource::Unit> {
         struct Cell {
             Pose pose;
             frame::shape shape; // declared intent; population may be thinned
@@ -19,10 +19,18 @@ namespace eltanin::mech {
             std::vector<skeleton::Halfrib> halfribs;
             std::vector<skeleton::Membrane> membranes;
         };
-
-        std::string name;
-        std::string author; // manufacturer
-        std::vector<Cell> cells;
+        struct Quantum {
+            std::string name;
+            std::string author; // manufacturer
+            std::vector<Cell> cells;
+            filename file; // kit-relative; under blueprints/
+        };
+        struct Actions : BaseActions {
+            static void load(Writing, Id);
+            static void save(Writing, Id);
+        };
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
 }

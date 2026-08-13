@@ -3,7 +3,7 @@
 #include "mech/semantics/quarks.h"
 #include "mech/semantics/subframe.h"
 
-#include <eltanin/resources/blueprint.q1.h>
+#include <eltanin/mech/blueprint.q1.h>
 #include <fQSM/identifier.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 
@@ -88,7 +88,7 @@ namespace eltanin::views::blueprints::selection {
             }
         }
 
-        auto selectionRowLabel(const mech::Blueprint* data, const base::maybe<QuarkActor>& actor, renderer::Integer32 alias) -> std::string {
+        auto selectionRowLabel(const Blueprint* data, const base::maybe<QuarkActor>& actor, renderer::Integer32 alias) -> std::string {
             const auto hash = fqsm::internal::id::info_hash(static_cast<fqsm::internal::id::BaseType>(alias));
             if (not actor or not data or actor->cell >= data->cells.size())
                 return std::format("?  #{}", hash);
@@ -178,7 +178,7 @@ namespace eltanin::views::blueprints::selection {
             return cells;
         }
 
-        auto cellEmpty(const mech::Blueprint::Cell& cell) -> bool {
+        auto cellEmpty(const Cell& cell) -> bool {
             return cell.corners.empty() and cell.halfribs.empty() and cell.membranes.empty();
         }
 
@@ -195,7 +195,7 @@ namespace eltanin::views::blueprints::selection {
         return a.x == b.x and a.y == b.y and a.z == b.z;
     }
 
-    auto cellOccupied(const mech::Blueprint& data, const index3& pos) -> bool {
+    auto cellOccupied(const Blueprint& data, const index3& pos) -> bool {
         for (const auto& cell : data.cells) {
             if (sameIndex3(cell.pose.pos, pos))
                 return true;
@@ -218,7 +218,7 @@ namespace eltanin::views::blueprints::selection {
     }
 
     void resetClipboard(Store& store) {
-        store.clipboard = mech::Blueprint{.name = "clipboard", .author = {}, .cells = {}};
+        store.clipboard = Blueprint{.name = "clipboard", .author = {}, .cells = {}, .file = {}};
         store.focus = Focus::selection;
     }
 
@@ -234,7 +234,7 @@ namespace eltanin::views::blueprints::selection {
         return store.clipboard.cells.empty();
     }
 
-    auto canPaste(const mech::Blueprint& target, const mech::Blueprint& clipboard) -> bool {
+    auto canPaste(const Blueprint& target, const Blueprint& clipboard) -> bool {
         if (clipboard.cells.empty())
             return false;
         for (const auto& cell : clipboard.cells) {
@@ -251,8 +251,8 @@ namespace eltanin::views::blueprints::selection {
         store.pendingRestore.clear();
     }
 
-    void expand(Reading context, Store& store, resource::blueprint::Asset::Id hovered, const std::vector<QuarkActor>& actors) {
-        if (store.aliases.empty() or not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
+    void expand(Reading context, Store& store, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors) {
+        if (store.aliases.empty() or not with<::eltanin::mech::Blueprint>::exists(context, hovered))
             return;
         const auto cells = selectedCellIndices(context, store, actors);
         if (cells.empty())
@@ -265,11 +265,11 @@ namespace eltanin::views::blueprints::selection {
         }
     }
 
-    void copyToClipboard(Reading context, Store& store, resource::blueprint::Asset::Id hovered, const std::vector<QuarkActor>& actors) {
+    void copyToClipboard(Reading context, Store& store, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors) {
         resetClipboard(store);
-        if (store.aliases.empty() or not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
+        if (store.aliases.empty() or not with<::eltanin::mech::Blueprint>::exists(context, hovered))
             return;
-        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, hovered).data;
+        const auto& data = with<::eltanin::mech::Blueprint>::get(context, hovered);
         const auto cells = selectedCellIndices(context, store, actors);
         for (const auto cellIndex : cells) {
             if (cellIndex < data.cells.size())
@@ -277,8 +277,8 @@ namespace eltanin::views::blueprints::selection {
         }
     }
 
-    auto eraseSelected(Writing context, Store& store, resource::blueprint::Asset::Id hovered, const std::vector<QuarkActor>& actors) -> bool {
-        if (store.aliases.empty() or not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
+    auto eraseSelected(Writing context, Store& store, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors) -> bool {
+        if (store.aliases.empty() or not with<::eltanin::mech::Blueprint>::exists(context, hovered))
             return false;
 
         std::map<std::size_t, std::set<std::size_t>> knots;
@@ -298,32 +298,32 @@ namespace eltanin::views::blueprints::selection {
         if (knots.empty() and halfChords.empty() and walls.empty())
             return false;
 
-        auto data = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
+        auto data = with<::eltanin::mech::Blueprint>::modify(context, hovered);
         std::set<std::size_t> dropCells;
         for (const auto& [cellIndex, indices] : knots) {
-            if (cellIndex < data->data.cells.size())
-                eraseDescending(data->data.cells[cellIndex].corners, indices);
+            if (cellIndex < data->cells.size())
+                eraseDescending(data->cells[cellIndex].corners, indices);
         }
         for (const auto& [cellIndex, indices] : halfChords) {
-            if (cellIndex < data->data.cells.size())
-                eraseDescending(data->data.cells[cellIndex].halfribs, indices);
+            if (cellIndex < data->cells.size())
+                eraseDescending(data->cells[cellIndex].halfribs, indices);
         }
         for (const auto& [cellIndex, indices] : walls) {
-            if (cellIndex < data->data.cells.size())
-                eraseDescending(data->data.cells[cellIndex].membranes, indices);
+            if (cellIndex < data->cells.size())
+                eraseDescending(data->cells[cellIndex].membranes, indices);
         }
-        for (std::size_t i = 0; i < data->data.cells.size(); ++i) {
-            if (cellEmpty(data->data.cells[i]))
+        for (std::size_t i = 0; i < data->cells.size(); ++i) {
+            if (cellEmpty(data->cells[i]))
                 dropCells.insert(i);
         }
-        eraseDescending(data->data.cells, dropCells);
+        eraseDescending(data->cells, dropCells);
         return true;
     }
 
-    auto rotateSelected(Writing context, Store& store, resource::blueprint::Asset::Id hovered, const std::vector<QuarkActor>& actors, mech::space::orient::Semiaxis axis) -> bool {
-        if (store.aliases.empty() or not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
+    auto rotateSelected(Writing context, Store& store, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors, mech::space::orient::Semiaxis axis) -> bool {
+        if (store.aliases.empty() or not with<::eltanin::mech::Blueprint>::exists(context, hovered))
             return false;
-        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, hovered).data;
+        const auto& data = with<::eltanin::mech::Blueprint>::get(context, hovered);
         const auto cellIndices = selectedCellIndices(context, store, actors);
         if (cellIndices.empty())
             return false;
@@ -343,22 +343,22 @@ namespace eltanin::views::blueprints::selection {
 
         store.pendingRestore = selectionRefs(context, actors, store.aliases);
         {
-            auto writable = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
+            auto writable = with<::eltanin::mech::Blueprint>::modify(context, hovered);
             for (const auto cellIndex : cellIndices) {
-                if (cellIndex >= writable->data.cells.size())
+                if (cellIndex >= writable->cells.size())
                     continue;
-                rotateCellPose(writable->data.cells[cellIndex].pose, axis, remap);
+                rotateCellPose(writable->cells[cellIndex].pose, axis, remap);
             }
         }
         return true;
     }
 
-    auto moveSelected(Writing context, Store& store, resource::blueprint::Asset::Id hovered, const std::vector<QuarkActor>& actors, index3 step) -> bool {
+    auto moveSelected(Writing context, Store& store, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors, index3 step) -> bool {
         if (store.aliases.empty() or (step.x == 0 and step.y == 0 and step.z == 0))
             return false;
-        if (not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
+        if (not with<::eltanin::mech::Blueprint>::exists(context, hovered))
             return false;
-        const auto& data = with<::eltanin::resource::blueprint::Asset>::get(context, hovered).data;
+        const auto& data = with<::eltanin::mech::Blueprint>::get(context, hovered);
         const auto cellIndices = selectedCellIndices(context, store, actors);
         if (cellIndices.empty())
             return false;
@@ -378,11 +378,11 @@ namespace eltanin::views::blueprints::selection {
 
         store.pendingRestore = selectionRefs(context, actors, store.aliases);
         {
-            auto writable = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
+            auto writable = with<::eltanin::mech::Blueprint>::modify(context, hovered);
             for (const auto cellIndex : cellIndices) {
-                if (cellIndex >= writable->data.cells.size())
+                if (cellIndex >= writable->cells.size())
                     continue;
-                writable->data.cells[cellIndex].pose.pos = addIndex3(writable->data.cells[cellIndex].pose.pos, step);
+                writable->cells[cellIndex].pose.pos = addIndex3(writable->cells[cellIndex].pose.pos, step);
             }
         }
         return true;
@@ -410,21 +410,21 @@ namespace eltanin::views::blueprints::selection {
         return true;
     }
 
-    auto pasteClipboard(Writing context, Store& store, resource::blueprint::Asset::Id hovered) -> bool {
-        if (clipboardEmpty(store) or not with<::eltanin::resource::blueprint::Asset>::exists(context, hovered))
+    auto pasteClipboard(Writing context, Store& store, mech::Blueprint::Id hovered) -> bool {
+        if (clipboardEmpty(store) or not with<::eltanin::mech::Blueprint>::exists(context, hovered))
             return false;
         {
-            const auto& target = with<::eltanin::resource::blueprint::Asset>::get(context, hovered).data;
+            const auto& target = with<::eltanin::mech::Blueprint>::get(context, hovered);
             if (not canPaste(target, store.clipboard))
                 return false;
         }
-        auto writable = with<::eltanin::resource::blueprint::Asset>::modify(context, hovered);
+        auto writable = with<::eltanin::mech::Blueprint>::modify(context, hovered);
         for (const auto& cell : store.clipboard.cells)
-            writable->data.cells.push_back(cell);
+            writable->cells.push_back(cell);
         return true;
     }
 
-    void handlePointer(Reading context, Store& store, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors, renderer::Integer32 under) {
+    void handlePointer(Reading context, Store& store, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors, renderer::Integer32 under) {
         if (ImGui::GetIO().WantCaptureMouse or under == renderer::Integer32{0})
             return;
         const auto hit = findActorByAlias(context, actors, under);
@@ -446,7 +446,7 @@ namespace eltanin::views::blueprints::selection {
         }
     }
 
-    auto handleHotkeys(Writing context, Store& store, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) -> bool {
+    auto handleHotkeys(Writing context, Store& store, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool {
         if (store.focus != Focus::selection)
             return false;
         if (not hovered.exists())
@@ -522,7 +522,7 @@ namespace eltanin::views::blueprints::selection {
         return false;
     }
 
-    auto handleClipboardChords(Writing context, Store& store, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) -> bool {
+    auto handleClipboardChords(Writing context, Store& store, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool {
         if (ImGui::GetIO().WantCaptureKeyboard or not ImGui::GetIO().KeyCtrl)
             return false;
         if (ImGui::IsKeyPressed(ImGuiKey_C)) {
@@ -535,7 +535,7 @@ namespace eltanin::views::blueprints::selection {
         return false;
     }
 
-    auto drawPanel(Writing context, Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered, const std::vector<QuarkActor>& actors) -> bool {
+    auto drawPanel(Writing context, Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool {
         ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y}, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2{360.0f, 220.0f}, ImGuiCond_FirstUseEver);
         bool erased = false;
@@ -557,8 +557,8 @@ namespace eltanin::views::blueprints::selection {
                     erased = eraseSelected(context, store, *hovered, actors);
                 ImGui::Separator();
                 ImGui::TextDisabled("Del — remove · x/RMB deselect · Shift+LMB family · WASD/QE move · Shift rotate · Ctrl+C/V");
-                const auto* blueprintData = (hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
-                    ? &with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data
+                const auto* blueprintData = (hovered.exists() and with<::eltanin::mech::Blueprint>::exists(context, *hovered))
+                    ? &with<::eltanin::mech::Blueprint>::get(context, *hovered)
                     : nullptr;
 
                 const auto byAlias = actorByAliasIndex(context, actors);
@@ -617,7 +617,7 @@ namespace eltanin::views::blueprints::selection {
         return erased;
     }
 
-    auto drawClipboardPanel(Writing context, Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<resource::blueprint::Asset::Id> hovered) -> bool {
+    auto drawClipboardPanel(Writing context, Store& store, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered) -> bool {
         ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y + 228.0f}, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2{360.0f, 140.0f}, ImGuiCond_FirstUseEver);
         bool pasted = false;
@@ -633,8 +633,8 @@ namespace eltanin::views::blueprints::selection {
             ImGui::TextDisabled("%zu cells · %zu knots · %zu half-chords · %zu walls", store.clipboard.cells.size(), knots, halfChords, walls);
             const bool empty = clipboardEmpty(store);
             bool allowed = false;
-            if (not empty and hovered.exists() and with<::eltanin::resource::blueprint::Asset>::exists(context, *hovered))
-                allowed = canPaste(with<::eltanin::resource::blueprint::Asset>::get(context, *hovered).data, store.clipboard);
+            if (not empty and hovered.exists() and with<::eltanin::mech::Blueprint>::exists(context, *hovered))
+                allowed = canPaste(with<::eltanin::mech::Blueprint>::get(context, *hovered), store.clipboard);
             if (empty) {
                 ImGui::TextDisabled("empty");
                 ImGui::TextDisabled("Ctrl+C copy selection");

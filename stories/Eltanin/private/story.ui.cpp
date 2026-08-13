@@ -1,4 +1,4 @@
-﻿#include "story.h"
+#include "story.h"
 
 #include <algorithm>
 #include <array>
@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <eltanin/resources/blueprint.q1.h>
+#include <eltanin/mech/blueprint.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/textures.q1.h>
@@ -142,12 +142,12 @@ namespace eltanin {
             ImGui::TextDisabled("No ships loaded.");
         } else {
             for (const auto id : blueprintPack.ships) {
-                if (not with<::eltanin::resource::blueprint::Asset>::exists(world, id))
+                if (not with<::eltanin::mech::Blueprint>::exists(world, id))
                     continue;
-                const auto& asset = with<::eltanin::resource::blueprint::Asset>::get(world, id);
+                const auto& asset = with<::eltanin::mech::Blueprint>::get(world, id);
                 const auto& unit = with<::rmmr::resource::Unit>::get(world, id);
-                const char* label = asset.data.name.empty() ? unit.name.own.c_str() : asset.data.name.c_str();
-                pushEntityId<::eltanin::resource::blueprint::Asset>(id);
+                const char* label = asset.name.empty() ? unit.name.own.c_str() : asset.name.c_str();
+                pushEntityId<::eltanin::mech::Blueprint>(id);
                 ImGui::AlignTextToFramePadding();
                 ImGui::TextUnformatted(label);
                 ImGui::SameLine();

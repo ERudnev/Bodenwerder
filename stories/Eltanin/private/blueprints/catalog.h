@@ -7,7 +7,7 @@
 #include <vector>
 
 #include <base/maybe.h>
-#include <eltanin/resources/blueprint.q1.h>
+#include <eltanin/resources/assets.q1.h>
 #include <fQSM/api/interface.h>
 
 namespace eltanin {
@@ -15,7 +15,7 @@ namespace eltanin {
     using namespace fqsm::api;
 
     // Linear pack of blueprint asset ids (ships, prefabs, spawn menu, …).
-    using BlueprintIds = std::vector<resource::blueprint::Asset::Id>;
+    using BlueprintIds = std::vector<mech::Blueprint::Id>;
 
     enum class BlueprintShelf {
         ships,
@@ -30,17 +30,17 @@ namespace eltanin {
         filepath root;
         BlueprintIds ships;
         BlueprintIds prefabs;
-        base::maybe<resource::blueprint::Asset::Id> unnamed;
+        base::maybe<mech::Blueprint::Id> unnamed;
         std::array<char, 128> newName;
         bool ready;
 
         void bind(filepath); // root + clear packs / UI buf; marks not ready
         // One branch per file; skips broken. Ensures _unnamed. Idempotent after ready.
         void loadFromDisk(establish::Realm&);
-        auto loadOne(Writing, BlueprintShelf, string stem) -> base::maybe<resource::blueprint::Asset::Id>;
-        auto ensureUnnamed(Writing) -> base::maybe<resource::blueprint::Asset::Id>;
+        auto loadOne(Writing, BlueprintShelf, string stem) -> base::maybe<mech::Blueprint::Id>;
+        auto ensureUnnamed(Writing) -> base::maybe<mech::Blueprint::Id>;
         // Empty blueprint + save into ships/ or prefabs/; appends to the matching pack.
-        auto createNew(Writing, BlueprintShelf, std::string_view name) -> base::maybe<resource::blueprint::Asset::Id>;
+        auto createNew(Writing, BlueprintShelf, std::string_view name) -> base::maybe<mech::Blueprint::Id>;
     };
 
 }

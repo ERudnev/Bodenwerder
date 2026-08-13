@@ -67,7 +67,7 @@ namespace eltanin::views::blueprints::membraneSlots {
             return {};
         }
 
-        auto membraneExists(const Blueprint::Cell& cell, skeleton::Membrane::Kind kind, space::orient::key ori) -> bool {
+        auto membraneExists(const Cell& cell, skeleton::Membrane::Kind kind, space::orient::key ori) -> bool {
             for (const auto& membrane : cell.membranes) {
                 if (membrane.kind == kind and membrane.ori == ori)
                     return true;
@@ -75,7 +75,7 @@ namespace eltanin::views::blueprints::membraneSlots {
             return false;
         }
 
-        auto occupiedCorners(const Blueprint::Cell& cell) -> std::vector<bool> {
+        auto occupiedCorners(const Cell& cell) -> std::vector<bool> {
             std::vector<bool> occupied(8, false);
             for (const auto& corner : cell.corners) {
                 const auto vertex = space::orient::cornerIndex(static_cast<space::orient::key>(corner.ori), 0);
@@ -87,7 +87,7 @@ namespace eltanin::views::blueprints::membraneSlots {
 
     } // namespace
 
-    auto possible(const mech::Blueprint::Cell& cell) -> std::vector<Slot> {
+    auto possible(const Cell& cell) -> std::vector<Slot> {
         const auto index = shapeIndex(cell.shape);
         if (index >= frame::faces.size() or index >= skinning::default_plate.size())
             return {};
@@ -127,7 +127,7 @@ namespace eltanin::views::blueprints::membraneSlots {
         return out;
     }
 
-    auto faceFor(const mech::Blueprint::Cell& cell, mech::skeleton::Membrane membrane) -> base::maybe<mech::frame::FaceIndex> {
+    auto faceFor(const Cell& cell, mech::skeleton::Membrane membrane) -> base::maybe<mech::frame::FaceIndex> {
         const auto index = shapeIndex(cell.shape);
         if (index >= frame::faces.size() or index >= skinning::default_plate.size())
             return {};

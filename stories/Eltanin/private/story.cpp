@@ -44,8 +44,7 @@ namespace eltanin {
             ask::schema::aspect<phys::strong::Gluon>(),
             ask::schema::aspect<Block>(),
             ask::schema::aspect<resource::Assets>(),
-            ask::schema::aspect<resource::blueprint::Asset>(),
-            ask::schema::aspect<resource::blueprint::Loader>(),
+            ask::schema::aspect<mech::Blueprint>(),
             ask::schema::aspect<resource::SkySphereGenerator>(),
         });
     }

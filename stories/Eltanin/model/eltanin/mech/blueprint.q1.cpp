@@ -1,4 +1,4 @@
-#include <eltanin/resources/blueprint.q1.h>
+#include <eltanin/mech/blueprint.q1.h>
 
 #include <rmmr/resources/manager.q1.h>
 
@@ -12,7 +12,7 @@
 #include <string_view>
 #include <unordered_map>
 
-namespace eltanin::resource::blueprint {
+namespace eltanin::mech {
 
     using namespace fqsm::api;
 
@@ -235,7 +235,7 @@ namespace eltanin::resource::blueprint {
             };
         }
 
-        auto parse_blueprint(std::string_view text) -> mech::Blueprint {
+        auto parse_blueprint(std::string_view text) -> mech::Blueprint::Quantum {
             Cursor cursor{.text = text, .at = 0};
             expect(cursor, '{');
             auto name = take_string(cursor);
@@ -248,7 +248,7 @@ namespace eltanin::resource::blueprint {
                 cells = take_list<mech::Blueprint::Cell>(cursor, take_cell);
             }
             expect(cursor, '}');
-            return mech::Blueprint{.name = std::move(name), .author = std::move(author), .cells = std::move(cells)};
+            return Blueprint::Quantum{.name = std::move(name), .author = std::move(author), .cells = std::move(cells), .file = {}};
         }
 
         auto format_knot(const mech::skeleton::Corner& knot) -> std::string {
@@ -278,7 +278,7 @@ namespace eltanin::resource::blueprint {
             out << indent << "]";
         }
 
-        auto format_blueprint(const mech::Blueprint& data) -> std::string {
+        auto format_blueprint(const Blueprint::Quantum& data) -> std::string {
             std::ostringstream out;
             out << "{\n";
             out << "    \"" << data.name << "\",\n";
@@ -310,41 +310,43 @@ namespace eltanin::resource::blueprint {
 
     } // namespace
 
-    void Loader::Actions::load(Writing context, Id id) {
+    void Blueprint::Actions::load(Writing context, Id id) {
         const auto& unit = with<rmmr::resource::Unit>::get(context, id);
-        const auto& loader = with<Loader>::get(context, id);
-        const auto path = with<rmmr::resource::Manager>::resolve(context, unit, loader.file);
+        const auto& blueprint = with<Blueprint>::get(context, id);
+        const auto path = with<rmmr::resource::Manager>::resolve(context, unit, blueprint.file);
 
         std::ifstream input{path};
         if (not input)
-            return (void)context.refuse(std::format("resource::blueprint::Loader::load: cannot open '{}'", path.string()));
+            return (void)context.refuse(std::format("mech::Blueprint::load: cannot open '{}'", path.string()));
 
         std::ostringstream buffer;
         buffer << input.rdbuf();
         try {
             auto parsed = parse_blueprint(buffer.str());
-            with<Asset>::modify(context, id)->data = std::move(parsed);
+            auto writable = with<Blueprint>::modify(context, id);
+            const auto file = writable->file;
+            *writable = std::move(parsed);
+            writable->file = file;
         } catch (const std::exception& error) {
-            return (void)context.refuse(std::format("resource::blueprint::Loader::load: '{}': {}", path.string(), error.what()));
+            return (void)context.refuse(std::format("mech::Blueprint::load: '{}': {}", path.string(), error.what()));
         }
     }
 
-    void Loader::Actions::save(Writing context, Id id) {
+    void Blueprint::Actions::save(Writing context, Id id) {
         const auto& unit = with<rmmr::resource::Unit>::get(context, id);
-        const auto& loader = with<Loader>::get(context, id);
-        const auto& asset = with<Asset>::get(context, id);
-        const auto path = with<rmmr::resource::Manager>::resolve(context, unit, loader.file);
+        const auto& blueprint = with<Blueprint>::get(context, id);
+        const auto path = with<rmmr::resource::Manager>::resolve(context, unit, blueprint.file);
 
         std::ofstream output{path, std::ios::binary | std::ios::trunc};
         if (not output)
-            return (void)context.refuse(std::format("resource::blueprint::Loader::save: cannot open '{}'", path.string()));
+            return (void)context.refuse(std::format("mech::Blueprint::save: cannot open '{}'", path.string()));
 
         try {
-            output << format_blueprint(asset.data);
+            output << format_blueprint(blueprint);
             if (not output)
-                return (void)context.refuse(std::format("resource::blueprint::Loader::save: write failed '{}'", path.string()));
+                return (void)context.refuse(std::format("mech::Blueprint::save: write failed '{}'", path.string()));
         } catch (const std::exception& error) {
-            return (void)context.refuse(std::format("resource::blueprint::Loader::save: '{}': {}", path.string(), error.what()));
+            return (void)context.refuse(std::format("mech::Blueprint::save: '{}': {}", path.string(), error.what()));
         }
     }
 

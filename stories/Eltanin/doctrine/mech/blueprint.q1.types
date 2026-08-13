@@ -1,18 +1,22 @@
+import "rmmr/resources/manager"
 import "semantics"
 
 namespace eltanin
   namespace mech
 
-    // Ship schema: cells with skeleton pieces + membranes.
-    // One cell per lattice volume. Pieces local to the cell (thinning only, no orphans).
-    // C++: model/eltanin/mech/blueprint.q1.h
-    struct Blueprint
+    // Construction schema on the Unit shelf.
+    // Disk: blueprints/_unnamed.blueprint | ships/*.blueprint | prefabs/*.blueprint
+    feature Blueprint of rmmr::resource::Unit
       struct Cell
         pose: Pose
         shape: frame::shape
         corners: vector<skeleton::Corner>
         halfribs: vector<skeleton::Halfrib>
         membranes: vector<skeleton::Membrane>
-      name: string
-      author: string // manufacturer
-      cells: vector<Cell>
+      one
+        name: string
+        author: string // manufacturer
+        cells: vector<Cell>
+        file: filename // kit-relative; under blueprints/
+        >load()
+        >save()
