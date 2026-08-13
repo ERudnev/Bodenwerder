@@ -6,6 +6,7 @@ namespace eltanin
 
     struct Attachment
       points: vector<index3> // just points in discrete local space
+      ?flatMounted()->bool // true → one lattice plane (externals); false → volume (internals)
 
     // Library entry: placeable external equipment. Visual = soft meshpack link (placeholder).
     // Disk: fittings/mounts/*.json (classic JSON).

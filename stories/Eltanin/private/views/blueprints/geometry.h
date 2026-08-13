@@ -1,11 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 #include <base/maybe.h>
 #include <eltanin/mech/blueprint.q1.h>
 #include <eltanin/mech/mount.q1.h>
+#include <eltanin/mech/semantics.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
@@ -33,18 +35,53 @@ namespace eltanin::views::blueprints {
         Kind kind;
         std::size_t cell;  // into Blueprint::cells
         std::size_t index; // into cell.corners / halfribs / membranes
+        int cellY;         // placement.cell.y at spawn — spatial filters
     };
 
-    // Editor visibility filter for quark actors (skeleton = frame knots/half-chords).
+    // Editor visibility filter — Layer flags + optional spatial floor.
     struct Display {
         bool skeleton;
-        bool hull;
-        bool mounts;
+        bool membranes;
+        bool internals;
+        bool externals;
+        // When set: keep actors with cellY >= *cellYMin (groundwork for floor clip).
+        base::maybe<int> cellYMin;
+
+        auto shows(mech::Layer layer) const -> bool {
+            switch (layer) {
+                case mech::Layer::skeleton: return skeleton;
+                case mech::Layer::membranes: return membranes;
+                case mech::Layer::internals: return internals;
+                case mech::Layer::externals: return externals;
+            }
+            return false;
+        }
+
+        auto spatialOk(int cellY) const -> bool {
+            return not cellYMin.exists() or cellY >= *cellYMin;
+        }
+
+        auto showsQuark(QuarkActor::Kind kind, int cellY) const -> bool {
+            if (not spatialOk(cellY))
+                return false;
+            switch (kind) {
+                case QuarkActor::Kind::knot:
+                case QuarkActor::Kind::halfChord: return skeleton;
+                case QuarkActor::Kind::wall: return membranes;
+            }
+            return false;
+        }
+
+        auto showsMount(mech::Layer layer, int cellY) const -> bool {
+            return spatialOk(cellY) and shows(layer);
+        }
     };
 
     struct MountActor {
         rmmr::scene::actor::Mesh::Id id;
         std::size_t index; // into Blueprint::mounts
+        mech::Layer layer;
+        int cellY; // transform.grid.y at spawn
     };
 
     // Floor layout of library mounts (palette scene).
@@ -70,11 +107,17 @@ namespace eltanin::views::blueprints {
     void clearMountActors(Writing, rmmr::scene::Root::Id root, std::vector<MountActor>& actors);
     void clearPaletteActors(Writing, rmmr::scene::Root::Id root, std::vector<PaletteMountActor>& actors);
 
-    // Rebuild quark mesh actors for a blueprint (interframe pack). Each actor is Identified for pick/selection.
-    void syncActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, const Blueprint& blueprint, Display, std::vector<QuarkActor>& actors);
+    // Filter pass only — setVisible; actors stay resident (Layer + spatial).
+    void applyDisplay(Writing, Display, const std::vector<QuarkActor>& quarks, const std::vector<MountActor>& mounts);
 
-    // Rebuild mount mesh actors from blueprint.mounts (soft meshpack links on Mount library units).
-    void syncMountActors(Writing, rmmr::scene::Root::Id root, const Blueprint& blueprint, Display, std::vector<MountActor>& actors);
+    // Structural rebuild: spawn every quark/mount, then applyDisplay. Use on load / paste / undo / heavy edits.
+    void syncActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, const Blueprint& blueprint, Display, std::vector<QuarkActor>& actors);
+    void syncMountActors(Writing, rmmr::scene::Root::Id root, const Blueprint& blueprint, Display, const std::unordered_map<mech::Mount::Id, mech::Layer>& mountLayers, std::vector<MountActor>& actors);
+
+    // Incremental membrane: one Identified wall actor; visibility from Display.
+    auto appendWallActor(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, std::size_t cellIndex, std::size_t membraneIndex, const mech::space::cell::Placement& placement, const mech::skeleton::Membrane& wall, Display, std::vector<QuarkActor>& actors) -> bool;
+    // Destroy wall actor at slot; fix membrane indices in the same cell.
+    void eraseWallActor(Writing, rmmr::scene::Root::Id root, std::size_t actorSlot, std::vector<QuarkActor>& actors);
 
     // Floor grid of all catalog mounts (identity rotation; spacing in lattice cells).
     void syncPaletteActors(Writing, rmmr::scene::Root::Id root, const std::vector<mech::Mount::Id>& mounts, std::vector<PaletteMountActor>& actors);

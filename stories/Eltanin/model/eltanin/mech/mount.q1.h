@@ -13,6 +13,9 @@ namespace eltanin::mech {
     // Footprint in discrete local space (LW-authored lattice points). No plate-shape composition.
     struct Attachment {
         std::vector<base::common_types::index3> points;
+
+        // All attachment points on one lattice plane (incl. ≤2 / collinear).
+        auto flatMounted() const -> bool;
     };
 
     // Library entry: placeable external equipment. Visual = soft meshpack link (placeholder).

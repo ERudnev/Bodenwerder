@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <unordered_map>
 #include <vector>
 
 #include <base/maybe.h>
@@ -57,6 +58,8 @@ namespace eltanin::views {
             base::maybe<::rmmr::resource::material::Asset::Id> ghostMaterial;
             base::maybe<mech::Blueprint::Id> hovered;
             blueprints::geometry::Display display;
+            // Catalog mount → Layer from attachment coplanarity (immutable for this run).
+            std::unordered_map<mech::Mount::Id, mech::Layer> mountLayers;
             blueprints::selection::Store selection;
             blueprints::history::Store history;
             index3 cursorLattice;
@@ -83,8 +86,11 @@ namespace eltanin::views {
         void syncGridToFloor(Writing);
         void updateWorldCursor(Writing);
         void syncVisuals(Writing);
+        // Layer / spatial filter only — setVisible on resident actors.
+        void applyDisplay(Writing);
         void syncClipboardGhost(Writing);
         void syncPalette(Writing, MountCatalog&);
+        void rebuildMountLayers(Reading, MountCatalog&);
         void refreshMembraneCandidates(Reading);
         void aimMembraneTarget(Reading);
         void drawMembraneFaceHighlight(Reading) const;

@@ -3,7 +3,9 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/system/content/unit_name.h>
 
+#include <array>
 #include <cctype>
+#include <cstdint>
 #include <format>
 #include <fstream>
 #include <sstream>
@@ -13,6 +15,56 @@
 namespace eltanin::mech {
 
     using namespace fqsm::api;
+
+    auto Attachment::flatMounted() const -> bool {
+        if (points.size() <= 2)
+            return true;
+
+        using i64 = std::int64_t;
+        const auto sub = [](const base::common_types::index3& a, const base::common_types::index3& b) -> std::array<i64, 3> {
+            return {static_cast<i64>(a.x) - b.x, static_cast<i64>(a.y) - b.y, static_cast<i64>(a.z) - b.z};
+        };
+        const auto cross = [](const std::array<i64, 3>& a, const std::array<i64, 3>& b) -> std::array<i64, 3> {
+            return {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
+        };
+        const auto dot = [](const std::array<i64, 3>& a, const std::array<i64, 3>& b) -> i64 {
+            return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+        };
+        const auto nonzero = [](const std::array<i64, 3>& v) -> bool {
+            return v[0] != 0 or v[1] != 0 or v[2] != 0;
+        };
+
+        const auto& origin = points[0];
+        std::array<i64, 3> edge1{};
+        bool haveEdge = false;
+        for (std::size_t i = 1; i < points.size(); ++i) {
+            edge1 = sub(points[i], origin);
+            if (nonzero(edge1)) {
+                haveEdge = true;
+                break;
+            }
+        }
+        if (not haveEdge)
+            return true;
+
+        std::array<i64, 3> normal{};
+        bool haveNormal = false;
+        for (std::size_t i = 1; i < points.size(); ++i) {
+            normal = cross(edge1, sub(points[i], origin));
+            if (nonzero(normal)) {
+                haveNormal = true;
+                break;
+            }
+        }
+        if (not haveNormal)
+            return true;
+
+        for (const auto& point : points) {
+            if (dot(sub(point, origin), normal) != 0)
+                return false;
+        }
+        return true;
+    }
 
     namespace {
 

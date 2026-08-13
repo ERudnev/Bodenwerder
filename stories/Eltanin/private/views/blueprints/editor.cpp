@@ -269,7 +269,8 @@ namespace eltanin::views {
         state.mainScene.quarkActors = {};
         state.mainScene.clipboardActors = {};
         state.mainScene.mountActors = {};
-        state.display = {.skeleton = true, .hull = true, .mounts = true};
+        state.display = {.skeleton = true, .membranes = true, .internals = true, .externals = true, .cellYMin = {}};
+        state.mountLayers = {};
         state.editMode = EditMode::skeleton;
         state.membranes = {.enabled = false, .cell = {}, .slots = {}, .face = {}};
         state.mounts = {.enabled = false, .cell = {}, .face = {}, .points = {}, .balls = {}, .sphere = *sphere_geometry, .material = *cursor_material};
@@ -314,13 +315,14 @@ namespace eltanin::views {
             blueprints::mountPlacement::clearBalls(context, *state.mainScene.root, state.mounts);
             blueprints::mountPlacement::resetAim(state.mounts);
         }
-        if (mode == EditMode::membranes and not state.display.hull) {
-            state.display.hull = true;
-            syncVisuals(context);
+        if (mode == EditMode::membranes and not state.display.membranes) {
+            state.display.membranes = true;
+            applyDisplay(context);
         }
-        if (mode == EditMode::mounts and not state.display.mounts) {
-            state.display.mounts = true;
-            syncVisuals(context);
+        if (mode == EditMode::mounts and not state.display.internals and not state.display.externals) {
+            state.display.internals = true;
+            state.display.externals = true;
+            applyDisplay(context);
         }
         refreshMembraneCandidates(context);
     }
@@ -337,8 +339,12 @@ namespace eltanin::views {
         }
         const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
         blueprints::geometry::syncActors(context, *state.mainScene.root, *state.interframe, data, state.display, state.mainScene.quarkActors);
-        blueprints::geometry::syncMountActors(context, *state.mainScene.root, data, state.display, state.mainScene.mountActors);
+        blueprints::geometry::syncMountActors(context, *state.mainScene.root, data, state.display, state.mountLayers, state.mainScene.mountActors);
         blueprints::selection::rematchAfterSync(context, state.selection, state.mainScene.quarkActors);
+    }
+
+    void Blueprints::applyDisplay(Writing context) {
+        blueprints::geometry::applyDisplay(context, state.display, state.mainScene.quarkActors, state.mainScene.mountActors);
     }
 
     void Blueprints::syncClipboardGhost(Writing context) {
@@ -361,9 +367,23 @@ namespace eltanin::views {
         blueprints::geometry::syncGhostActors(context, *state.mainScene.root, *state.interframe, *state.ghostMaterial, state.selection.clipboard, state.display, state.mainScene.clipboardActors, tint, ghostOpacity);
     }
 
+    void Blueprints::rebuildMountLayers(Reading context, MountCatalog& mounts) {
+        state.mountLayers.clear();
+        state.mountLayers.reserve(mounts.ids.size());
+        for (const auto id : mounts.ids) {
+            if (not with<::eltanin::mech::Mount>::exists(context, id))
+                continue;
+            const auto& mount = with<::eltanin::mech::Mount>::get(context, id);
+            const auto layer = mount.attachment.flatMounted() ? mech::Layer::externals : mech::Layer::internals;
+            state.mountLayers.emplace(id, layer);
+        }
+    }
+
     void Blueprints::syncPalette(Writing context, MountCatalog& mounts) {
         if (not state.paletteScene.root.exists())
             return;
+        if (state.mountLayers.empty() and not mounts.ids.empty())
+            rebuildMountLayers(context, mounts);
         blueprints::geometry::syncPaletteActors(context, *state.paletteScene.root, mounts.ids, state.paletteScene.actors);
     }
 
@@ -508,9 +528,13 @@ namespace eltanin::views {
                 return false;
             blueprints::history::record(state.history, *state.hovered, "place membrane", with<::eltanin::mech::Blueprint>::get(context, *state.hovered));
             auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
-            data->cells[cell].membranes.push_back(membrane);
+            auto& membranes = data->cells[cell].membranes;
+            membranes.push_back(membrane);
+            const auto membraneIndex = membranes.size() - 1;
+            const auto placement = data->cells[cell].placement;
             persistHovered(context);
-            syncVisuals(context);
+            if (state.mainScene.root.exists() and state.interframe.exists())
+                blueprints::geometry::appendWallActor(context, *state.mainScene.root, *state.interframe, cell, membraneIndex, placement, membrane, state.display, state.mainScene.quarkActors);
             refreshMembraneCandidates(context);
             return true;
         }
@@ -518,7 +542,8 @@ namespace eltanin::views {
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
             if (under == renderer::Integer32{0})
                 return false;
-            for (const auto& actor : state.mainScene.quarkActors) {
+            for (std::size_t slot = 0; slot < state.mainScene.quarkActors.size(); ++slot) {
+                const auto& actor = state.mainScene.quarkActors[slot];
                 if (actor.kind != blueprints::geometry::QuarkActor::Kind::wall)
                     continue;
                 if (not with<scene::actor::Identified>::exists(context, actor.id))
@@ -537,7 +562,8 @@ namespace eltanin::views {
                 auto& membranes = data->cells[actor.cell].membranes;
                 membranes.erase(membranes.begin() + static_cast<std::ptrdiff_t>(actor.index));
                 persistHovered(context);
-                syncVisuals(context);
+                if (state.mainScene.root.exists())
+                    blueprints::geometry::eraseWallActor(context, *state.mainScene.root, slot, state.mainScene.quarkActors);
                 refreshMembraneCandidates(context);
                 return true;
             }
@@ -624,6 +650,9 @@ namespace eltanin::views {
                 blueprints::geometry::clearActors(context, *state.mainScene.root, state.mainScene.clipboardActors);
             return;
         }
+
+        if (mounts.ready and state.mountLayers.empty() and not mounts.ids.empty())
+            rebuildMountLayers(context, mounts);
 
         if (mounts.ready and state.paletteMode and state.paletteScene.actors.empty() and not mounts.ids.empty())
             syncPalette(context, mounts);
@@ -840,12 +869,13 @@ namespace eltanin::views {
                 bool displayChanged = false;
                 displayChanged |= ImGui::Checkbox("Skeleton", &state.display.skeleton);
                 ImGui::SameLine();
-                displayChanged |= ImGui::Checkbox("Hull", &state.display.hull);
+                displayChanged |= ImGui::Checkbox("Membranes", &state.display.membranes);
                 ImGui::SameLine();
-                displayChanged |= ImGui::Checkbox("Mounts", &state.display.mounts);
+                displayChanged |= ImGui::Checkbox("Internals", &state.display.internals);
+                ImGui::SameLine();
+                displayChanged |= ImGui::Checkbox("Externals", &state.display.externals);
                 if (displayChanged) {
-                    blueprints::selection::clear(state.selection);
-                    syncVisuals(context);
+                    applyDisplay(context);
                     syncClipboardGhost(context);
                 }
                 {
