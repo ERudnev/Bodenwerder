@@ -37,6 +37,7 @@ namespace eltanin::views {
             base::maybe<mech::Blueprint::Id> hovered;
             std::vector<blueprints::geometry::QuarkActor> quarkActors;
             std::vector<blueprints::geometry::QuarkActor> clipboardActors;
+            std::vector<blueprints::geometry::MountActor> mountActors;
             blueprints::geometry::Display display;
             blueprints::selection::Store selection;
             index3 cursorLattice;

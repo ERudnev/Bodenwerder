@@ -1,6 +1,7 @@
 #include <eltanin/mech/blueprint.q1.h>
 
 #include <rmmr/resources/manager.q1.h>
+#include <rmmr/system/content/unit_name.h>
 
 #include <base/logging.h>
 
@@ -227,7 +228,7 @@ namespace eltanin::mech {
             auto membranes = take_list<mech::skeleton::Membrane>(cursor, take_wall);
             expect(cursor, ']');
             return mech::Blueprint::Cell{
-                .pose = mech::Pose{.pos = pos, .ori = static_cast<mech::space::orient::key>(ori)},
+                .placement = skeleton::Placement{.cell = pos, .ori = static_cast<space::orient::key>(ori)},
                 .shape = shapeIt->second,
                 .corners = std::move(corners),
                 .halfribs = std::move(halfribs),
@@ -235,20 +236,45 @@ namespace eltanin::mech {
             };
         }
 
-        auto parse_blueprint(std::string_view text) -> mech::Blueprint::Quantum {
+        auto take_unit_name(Cursor& cursor) -> rmmr::resource::Unit::Name {
+            const auto text = take_string(cursor);
+            const auto parsed = rmmr::system::content::UnitName::parse(text);
+            if (not parsed)
+                throw std::runtime_error(std::format("blueprint: bad Unit::Name '{}'", text));
+            return rmmr::resource::Unit::Name::from(parsed->library, parsed->own);
+        }
+
+        auto take_mounted(Cursor& cursor) -> Blueprint::Mounted {
+            expect(cursor, '[');
+            auto mount = take_unit_name(cursor);
+            expect(cursor, ',');
+            const auto pos = take_index3(cursor);
+            expect(cursor, ',');
+            const auto ori = take_int(cursor);
+            expect(cursor, ']');
+            return Blueprint::Mounted{.mount = std::move(mount), .transform = space::Transform{.grid = pos, .rotation = static_cast<space::orient::key>(ori)}};
+        }
+
+        auto parse_blueprint(std::string_view text) -> Blueprint::Quantum {
             Cursor cursor{.text = text, .at = 0};
             expect(cursor, '{');
             auto name = take_string(cursor);
             expect(cursor, ',');
             auto author = take_string(cursor);
             skip_ws(cursor);
-            std::vector<mech::Blueprint::Cell> cells;
+            std::vector<Blueprint::Cell> cells;
+            std::vector<Blueprint::Mounted> mounts;
             if (cursor.at < cursor.text.size() and cursor.text[cursor.at] == ',') {
                 ++cursor.at;
-                cells = take_list<mech::Blueprint::Cell>(cursor, take_cell);
+                cells = take_list<Blueprint::Cell>(cursor, take_cell);
+                skip_ws(cursor);
+                if (cursor.at < cursor.text.size() and cursor.text[cursor.at] == ',') {
+                    ++cursor.at;
+                    mounts = take_list<Blueprint::Mounted>(cursor, take_mounted);
+                }
             }
             expect(cursor, '}');
-            return Blueprint::Quantum{.name = std::move(name), .author = std::move(author), .cells = std::move(cells), .file = {}};
+            return Blueprint::Quantum{.name = std::move(name), .author = std::move(author), .cells = std::move(cells), .mounts = std::move(mounts), .file = {}};
         }
 
         auto format_knot(const mech::skeleton::Corner& knot) -> std::string {
@@ -278,20 +304,24 @@ namespace eltanin::mech {
             out << indent << "]";
         }
 
+        auto format_mounted(const Blueprint::Mounted& mounted) -> std::string {
+            return std::format("[\"{}\", [{}, {}, {}], {}]", mounted.mount.text(), mounted.transform.grid.x, mounted.transform.grid.y, mounted.transform.grid.z, mounted.transform.rotation);
+        }
+
         auto format_blueprint(const Blueprint::Quantum& data) -> std::string {
             std::ostringstream out;
             out << "{\n";
             out << "    \"" << data.name << "\",\n";
             out << "    \"" << data.author << "\",\n";
             if (data.cells.empty()) {
-                out << "    []\n";
+                out << "    [],\n";
             } else {
                 out << "    [\n";
                 for (std::size_t c = 0; c < data.cells.size(); ++c) {
                     const auto& cell = data.cells[c];
                     out << "        [\n";
-                    out << "            [" << cell.pose.pos.x << ", " << cell.pose.pos.y << ", " << cell.pose.pos.z << "],\n";
-                    out << "            " << cell.pose.ori << ",\n";
+                    out << "            [" << cell.placement.cell.x << ", " << cell.placement.cell.y << ", " << cell.placement.cell.z << "],\n";
+                    out << "            " << cell.placement.ori << ",\n";
                     out << "            \"" << frameShapeName(cell.shape) << "\",\n";
                     out << "            ";
                     format_list_inline(out, cell.corners, format_knot, "            ");
@@ -301,6 +331,16 @@ namespace eltanin::mech {
                     format_list_inline(out, cell.membranes, format_wall, "            ");
                     out << "\n        ]";
                     out << (c + 1 < data.cells.size() ? ",\n" : "\n");
+                }
+                out << "    ],\n";
+            }
+            if (data.mounts.empty()) {
+                out << "    []\n";
+            } else {
+                out << "    [\n";
+                for (std::size_t i = 0; i < data.mounts.size(); ++i) {
+                    out << "        " << format_mounted(data.mounts[i]);
+                    out << (i + 1 < data.mounts.size() ? ",\n" : "\n");
                 }
                 out << "    ]\n";
             }

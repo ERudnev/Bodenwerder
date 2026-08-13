@@ -1,0 +1,15 @@
+{
+  "name": "Armour p222A",
+  "author": "Eltanin",
+  "attachment": {
+    "points": [
+      [0, 0, 1],
+      [1, 0, 0],
+      [1, 1, 1]
+    ]
+  },
+  "tempMesh": {
+    "pack": "Eltanin::armour",
+    "entry": "p222A_default"
+  }
+}

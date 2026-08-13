@@ -119,8 +119,8 @@ namespace eltanin::views {
             return ray->origin + ray->dir * t;
         }
 
-        auto cornerWorld(const mech::space::cell::Pose& pose, mech::cube::Corner corner) -> Pos {
-            const auto center = mech::space::cell::center2local(mech::space::cell::index{pose.pos.x, pose.pos.y, pose.pos.z});
+        auto cornerWorld(const mech::space::cell::Placement& pose, mech::cube::Corner corner) -> Pos {
+            const auto center = mech::space::cell::center2local(mech::space::cell::index{pose.cell.x, pose.cell.y, pose.cell.z});
             const auto local = mech::space::orient::cell2local(static_cast<mech::space::orient::key>(pose.ori), mech::cube::corners[static_cast<std::size_t>(corner)]);
             return Pos{center.x + local.x, center.y + local.y, center.z + local.z};
         }
@@ -134,7 +134,7 @@ namespace eltanin::views {
             std::vector<Pos> out;
             out.reserve(loop.size());
             for (const auto corner : loop)
-                out.push_back(cornerWorld(cell.pose, corner));
+                out.push_back(cornerWorld(cell.placement, corner));
             return out;
         }
 
@@ -265,7 +265,8 @@ namespace eltanin::views {
             return (void)context.refuse("eltanin::views::Blueprints::create: clipboardGhost material missing");
         state.quarkActors = {};
         state.clipboardActors = {};
-        state.display = {.skeleton = true, .hull = true};
+        state.mountActors = {};
+        state.display = {.skeleton = true, .hull = true, .mounts = true};
         state.membranes = {.enabled = false, .cell = {}, .slots = {}, .face = {}};
         blueprints::selection::clear(state.selection);
         blueprints::selection::resetClipboard(state.selection);
@@ -287,11 +288,13 @@ namespace eltanin::views {
         if (not state.hovered.exists() or not with<::eltanin::mech::Blueprint>::exists(context, *state.hovered)) {
             blueprints::geometry::clearActors(context, *state.scene, state.quarkActors);
             blueprints::geometry::clearActors(context, *state.scene, state.clipboardActors);
+            blueprints::geometry::clearMountActors(context, *state.scene, state.mountActors);
             blueprints::selection::clear(state.selection);
             return;
         }
         const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
         blueprints::geometry::syncActors(context, *state.scene, *state.interframe, data, state.display, state.quarkActors);
+        blueprints::geometry::syncMountActors(context, *state.scene, data, state.display, state.mountActors);
         blueprints::selection::rematchAfterSync(context, state.selection, state.quarkActors);
     }
 
@@ -587,7 +590,7 @@ namespace eltanin::views {
                         if (ImGui::Selectable("erase")) {
                             {
                                 auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
-                                data->cells.erase(std::remove_if(data->cells.begin(), data->cells.end(), [&](const Cell& cell) { return blueprints::selection::sameIndex3(cell.pose.pos, state.cursorLattice); }), data->cells.end());
+                                data->cells.erase(std::remove_if(data->cells.begin(), data->cells.end(), [&](const Cell& cell) { return blueprints::selection::sameIndex3(cell.placement.cell, state.cursorLattice); }), data->cells.end());
                             }
                             ImGui::CloseCurrentPopup();
                             state.spaceMenu = {.place = false, .close = false};
@@ -599,9 +602,9 @@ namespace eltanin::views {
                         bool applied = false;
                         auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
                         applied = frameShapePicks([&](mech::frame::shape shape) {
-                            const auto pose = mech::space::cell::Pose{.pos = state.cursorLattice, .ori = 0};
+                            const auto pose = mech::space::cell::Placement{.cell = state.cursorLattice, .ori = 0};
                             data->cells.push_back(Cell{
-                                .pose = pose,
+                                .placement = pose,
                                 .shape = shape,
                                 .corners = mech::skeleton::seedCorners(shape),
                                 .halfribs = mech::skeleton::seedHalfribs(shape),
@@ -697,6 +700,8 @@ namespace eltanin::views {
                 displayChanged |= ImGui::Checkbox("Skeleton", &state.display.skeleton);
                 ImGui::SameLine();
                 displayChanged |= ImGui::Checkbox("Hull", &state.display.hull);
+                ImGui::SameLine();
+                displayChanged |= ImGui::Checkbox("Mounts", &state.display.mounts);
                 if (displayChanged) {
                     blueprints::selection::clear(state.selection);
                     syncVisuals(context);
@@ -724,7 +729,7 @@ namespace eltanin::views {
                         const auto& slot = state.membranes.slots[*state.membranes.face];
                         const auto codeIt = mech::skeleton::membraneSpecs.find(slot.membrane.kind);
                         const auto code = codeIt != mech::skeleton::membraneSpecs.end() ? codeIt->second.code : "?";
-                        const auto& pos = data.cells[*state.membranes.cell].pose.pos;
+                        const auto& pos = data.cells[*state.membranes.cell].placement.cell;
                         ImGui::Text("Membrane [%d,%d,%d]: %.*s · ori %d", pos.x, pos.y, pos.z, static_cast<int>(code.size()), code.data(), static_cast<int>(slot.membrane.ori));
                     }
                 }
@@ -741,11 +746,12 @@ namespace eltanin::views {
                 ImGui::Text("Knots: %zu", knots);
                 ImGui::Text("Half-chords: %zu", halfChords);
                 ImGui::Text("Membranes: %zu", membranes);
-                ImGui::Text("Actors: %zu", state.quarkActors.size());
+                ImGui::Text("Mounts: %zu", data.mounts.size());
+                ImGui::Text("Actors: %zu", state.quarkActors.size() + state.mountActors.size());
                 ImGui::Text("Selection: %zu", state.selection.aliases.size());
                 if (state.membranes.enabled) {
                     if (state.membranes.cell.exists() and *state.membranes.cell < data.cells.size()) {
-                        const auto& pos = data.cells[*state.membranes.cell].pose.pos;
+                        const auto& pos = data.cells[*state.membranes.cell].placement.cell;
                         ImGui::Text("Target [%d, %d, %d]", pos.x, pos.y, pos.z);
                     } else {
                         ImGui::TextDisabled("Target: —");

@@ -29,17 +29,22 @@ namespace eltanin::mech {
         externals,
     };
 
-    namespace space::orient {
+    namespace space {
 
-        // Cube orientation alphabet index 0..23. Same storage as DiscretePose.ori.
-        using key = rmmr::renderer::Signed32;
+        namespace orient {
+
+            // Cube orientation alphabet index 0..23. Same storage as DiscretePose.ori.
+            using key = rmmr::renderer::Signed32;
+
+        }
+
+        // Discrete grid transform (not cell/quark seating). Mounts and other non-skeleton attachables.
+        struct Transform {
+            base::common_types::index3 grid;
+            orient::key rotation;
+        };
 
     }
-
-    struct Pose {
-        base::common_types::index3 pos;
-        space::orient::key ori;
-    };
 
     namespace cube {
 
@@ -79,6 +84,12 @@ namespace eltanin::mech {
     }
 
     namespace skeleton {
+
+        // Discrete cell lattice placement (cube language). Not a general transform.
+        struct Placement {
+            base::common_types::index3 cell;
+            space::orient::key ori;
+        };
 
         enum class Bend {
             deg45,

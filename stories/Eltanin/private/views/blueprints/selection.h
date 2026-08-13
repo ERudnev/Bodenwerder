@@ -33,7 +33,7 @@ namespace eltanin::views::blueprints::selection {
 
     struct Store {
         std::vector<rmmr::renderer::Integer32> aliases;
-        Blueprint clipboard; // cells = paste buffer; cell.pose = preview placement
+        Blueprint clipboard; // cells = paste buffer; cell.placement = preview placement
         std::vector<QuarkRef> pendingRestore;
         Focus focus;
     };

@@ -4,6 +4,8 @@
 #include <eltanin/physics/atomic.q1.h>
 #include <eltanin/physics/particle.q1.h>
 #include <eltanin/physics/strong.q1.h>
+#include <eltanin/mech/blueprint.q1.h>
+#include <eltanin/mech/mount.q1.h>
 #include <eltanin/resources/assets.q1.h>
 #include <eltanin/resources/geometry.q1.h>
 #include <eltanin/world.q1.h>
@@ -45,6 +47,7 @@ namespace eltanin {
             ask::schema::aspect<Block>(),
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<mech::Blueprint>(),
+            ask::schema::aspect<mech::Mount>(),
             ask::schema::aspect<resource::SkySphereGenerator>(),
         });
     }
@@ -141,6 +144,10 @@ namespace eltanin {
             context,
             Name::from("Eltanin", "attachments"),
             item<meshpack::LoaderLwo>{.file = "meshes/editor/attachments.lwo.meshpack", .geometry = {}, .pending = {}});
+        assets.armour = with<Assets>::add_meshpack_lwo_loader(
+            context,
+            Name::from("Eltanin", "armour"),
+            item<meshpack::LoaderLwo>{.file = "meshes/fittings/mounts/armour.lwo.meshpack", .geometry = {}, .pending = {}});
 
         const auto manager = *with<Manager>::singleton(context);
         if (not with<Unit_group>::exists(context, manager)) {
@@ -221,6 +228,7 @@ namespace eltanin {
         if (not manager)
             return (void)context.refuse("eltanin::Game::populateWorld: resource Manager missing");
         blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, *manager).location / "Eltanin" / "blueprints");
+        mountPack.bind(with<::rmmr::resource::Manager>::get(context, *manager).location / "Eltanin" / "fittings" / "mounts");
         blueprints.create(context);
     }
 
@@ -233,6 +241,8 @@ namespace eltanin {
     }
 
     void Game::onFrame(establish::Realm& world, int64 dt_us) {
+        if (not mountPack.ready)
+            mountPack.loadFromDisk(world);
         if (not blueprintPack.ready) {
             blueprintPack.loadFromDisk(world);
             if (blueprintPack.unnamed)

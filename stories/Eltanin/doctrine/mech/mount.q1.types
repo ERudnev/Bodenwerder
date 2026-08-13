@@ -1,25 +1,23 @@
 import "rmmr/resources/manager"
-import "rmmr/resources/meshpack"
 import "semantics"
 
 namespace eltanin
   namespace mech
 
-    // External mount footprint on plate sockets (armor / hardpoints).
-    struct Socket
-      struct Element
-        shape: plate::shape
-        pose: Pose
-      profile: vector<Element>
+    struct Attachment
+      points: vector<index3> // just points in discrete local space
 
     // Library entry: placeable external equipment. Visual = soft meshpack link (placeholder).
+    // Disk: fittings/mounts/*.json (classic JSON).
     feature Mount of rmmr::resource::Unit
-      // Soft link: pack Unit::Reference (id + Name backup) + entry key in meshpack::Asset.entries.
       struct TempMesh
-        pack: rmmr::resource::meshpack::Reference
+        pack: rmmr::resource::Unit::Name
         entry: string
       one
         name: string
         author: string
-        socket: Socket
+        attachment: Attachment
         tempMesh: TempMesh
+        file: filename // kit-relative; under fittings/mounts/
+        >load()
+        >save()

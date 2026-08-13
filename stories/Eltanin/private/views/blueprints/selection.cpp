@@ -93,7 +93,7 @@ namespace eltanin::views::blueprints::selection {
             if (not actor or not data or actor->cell >= data->cells.size())
                 return std::format("?  #{}", hash);
             const auto& cell = data->cells[actor->cell];
-            const auto& pos = cell.pose.pos;
+            const auto& pos = cell.placement.cell;
             switch (actor->kind) {
                 case QuarkActor::Kind::knot: {
                     if (actor->index >= cell.corners.size())
@@ -182,10 +182,10 @@ namespace eltanin::views::blueprints::selection {
             return cell.corners.empty() and cell.halfribs.empty() and cell.membranes.empty();
         }
 
-        auto rotateCellPose(mech::space::cell::Pose& pose, mech::space::orient::Semiaxis axis, const std::map<index3, index3, CellPosLess>& remap) -> void {
+        auto rotateCellPose(mech::space::cell::Placement& pose, mech::space::orient::Semiaxis axis, const std::map<index3, index3, CellPosLess>& remap) -> void {
             const auto delta = mech::space::orient::turn(axis)[0];
             const auto& composeRow = mech::space::orient::compose[static_cast<std::size_t>(delta)];
-            pose.pos = remap.at(pose.pos);
+            pose.cell = remap.at(pose.cell);
             pose.ori = composeRow[static_cast<std::size_t>(pose.ori)];
         }
 
@@ -197,7 +197,7 @@ namespace eltanin::views::blueprints::selection {
 
     auto cellOccupied(const Blueprint& data, const index3& pos) -> bool {
         for (const auto& cell : data.cells) {
-            if (sameIndex3(cell.pose.pos, pos))
+            if (sameIndex3(cell.placement.cell, pos))
                 return true;
         }
         return false;
@@ -218,7 +218,7 @@ namespace eltanin::views::blueprints::selection {
     }
 
     void resetClipboard(Store& store) {
-        store.clipboard = Blueprint{.name = "clipboard", .author = {}, .cells = {}, .file = {}};
+        store.clipboard = Blueprint{.name = "clipboard", .author = {}, .cells = {}, .mounts = {}, .file = {}};
         store.focus = Focus::selection;
     }
 
@@ -238,7 +238,7 @@ namespace eltanin::views::blueprints::selection {
         if (clipboard.cells.empty())
             return false;
         for (const auto& cell : clipboard.cells) {
-            if (cellOccupied(target, cell.pose.pos))
+            if (cellOccupied(target, cell.placement.cell))
                 return false;
         }
         return true;
@@ -331,7 +331,7 @@ namespace eltanin::views::blueprints::selection {
         std::set<index3, CellPosLess> positions;
         for (const auto cellIndex : cellIndices) {
             if (cellIndex < data.cells.size())
-                positions.insert(data.cells[cellIndex].pose.pos);
+                positions.insert(data.cells[cellIndex].placement.cell);
         }
         const auto remap = remapCells(positions, axis);
         for (const auto& [from, to] : remap) {
@@ -347,7 +347,7 @@ namespace eltanin::views::blueprints::selection {
             for (const auto cellIndex : cellIndices) {
                 if (cellIndex >= writable->cells.size())
                     continue;
-                rotateCellPose(writable->cells[cellIndex].pose, axis, remap);
+                rotateCellPose(writable->cells[cellIndex].placement, axis, remap);
             }
         }
         return true;
@@ -366,7 +366,7 @@ namespace eltanin::views::blueprints::selection {
         std::set<index3, CellPosLess> positions;
         for (const auto cellIndex : cellIndices) {
             if (cellIndex < data.cells.size())
-                positions.insert(data.cells[cellIndex].pose.pos);
+                positions.insert(data.cells[cellIndex].placement.cell);
         }
         for (const auto& from : positions) {
             const auto to = addIndex3(from, step);
@@ -382,7 +382,7 @@ namespace eltanin::views::blueprints::selection {
             for (const auto cellIndex : cellIndices) {
                 if (cellIndex >= writable->cells.size())
                     continue;
-                writable->cells[cellIndex].pose.pos = addIndex3(writable->cells[cellIndex].pose.pos, step);
+                writable->cells[cellIndex].placement.cell = addIndex3(writable->cells[cellIndex].placement.cell, step);
             }
         }
         return true;
@@ -393,12 +393,12 @@ namespace eltanin::views::blueprints::selection {
             return false;
         std::set<index3, CellPosLess> positions;
         for (const auto& cell : store.clipboard.cells)
-            positions.insert(cell.pose.pos);
+            positions.insert(cell.placement.cell);
         if (positions.empty())
             return false;
         const auto remap = remapCells(positions, axis);
         for (auto& cell : store.clipboard.cells)
-            rotateCellPose(cell.pose, axis, remap);
+            rotateCellPose(cell.placement, axis, remap);
         return true;
     }
 
@@ -406,7 +406,7 @@ namespace eltanin::views::blueprints::selection {
         if (clipboardEmpty(store) or (step.x == 0 and step.y == 0 and step.z == 0))
             return false;
         for (auto& cell : store.clipboard.cells)
-            cell.pose.pos = addIndex3(cell.pose.pos, step);
+            cell.placement.cell = addIndex3(cell.placement.cell, step);
         return true;
     }
 
@@ -567,7 +567,7 @@ namespace eltanin::views::blueprints::selection {
                 for (const auto alias : store.aliases) {
                     const auto found = byAlias.find(alias);
                     if (blueprintData and found != byAlias.end() and found->second->cell < blueprintData->cells.size()) {
-                        byCell[blueprintData->cells[found->second->cell].pose.pos].push_back(alias);
+                        byCell[blueprintData->cells[found->second->cell].placement.cell].push_back(alias);
                         continue;
                     }
                     orphans.push_back(alias);

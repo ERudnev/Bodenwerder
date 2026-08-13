@@ -13,16 +13,21 @@ namespace eltanin::mech {
     // Files: assets/Eltanin/blueprints/*.blueprint
     struct Blueprint : Feature<Blueprint, rmmr::resource::Unit> {
         struct Cell {
-            Pose pose;
+            skeleton::Placement placement;
             frame::shape shape; // declared intent; population may be thinned
             std::vector<skeleton::Corner> corners;
             std::vector<skeleton::Halfrib> halfribs;
             std::vector<skeleton::Membrane> membranes;
         };
+        struct Mounted {
+            rmmr::resource::Unit::Name mount;
+            space::Transform transform;
+        };
         struct Quantum {
             std::string name;
             std::string author; // manufacturer
             std::vector<Cell> cells;
+            std::vector<Mounted> mounts;
             filename file; // kit-relative; under blueprints/
         };
         struct Actions : BaseActions {

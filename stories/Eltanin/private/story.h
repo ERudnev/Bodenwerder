@@ -16,6 +16,7 @@
 #include "physics/system.h"
 #include "physics/ui.h"
 #include "blueprints/catalog.h"
+#include "fittings/mounts/catalog.h"
 #include "views/blueprints/editor.h"
 
 namespace eltanin {
@@ -37,6 +38,7 @@ namespace eltanin {
             base::maybe<rmmr::resource::texpack::Pack::Id> mech;
             base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;
             base::maybe<rmmr::resource::meshpack::Asset::Id> attachments;
+            base::maybe<rmmr::resource::meshpack::Asset::Id> armour;
             base::maybe<rmmr::resource::overlay::Asset::Id> blueprintsEditorEffect;
         };
 
@@ -63,6 +65,7 @@ namespace eltanin {
         phys::System physics;
         phys::Ui physics_ui;
         BlueprintCatalog blueprintPack;
+        MountCatalog mountPack;
         ::eltanin::views::Blueprints blueprints;
 
         Schema schema() const override;

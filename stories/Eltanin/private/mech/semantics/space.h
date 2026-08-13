@@ -25,11 +25,10 @@ namespace eltanin::mech::space {
     }
 
     // Discrete cell lattice ({0,1}³ inside a cell; cell indices in the construction lattice).
-    // Frame quarks and higher-order attachables author here.
-    // Project rule: cell geometry is centered on the origin — subtract ½ is fixed, not a parameter.
+    // Frame quarks author here (skeleton::Placement). Mounts use space::Transform (grid space) instead.
     namespace cell {
         using index = ivec3;
-        using Pose = ::eltanin::mech::Pose;
+        using Placement = ::eltanin::mech::skeleton::Placement;
 
         // Lattice integer coords (typically cube::corners {0,1}³) → meters, cell-centered.
         inline auto cell2local(cell::index lattice) -> local::point { return (local::point(lattice) - local::point{0.5f}) * local::edge2meters; }

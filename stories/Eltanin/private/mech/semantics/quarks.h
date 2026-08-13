@@ -11,7 +11,7 @@
 namespace eltanin::mech::skeleton {
 
     // World discrete pose: cell lattice pos + compose(cell.ori, local).
-    auto worldPose(const space::cell::Pose& cell, space::orient::key local) -> space::cell::Pose;
+    auto worldPose(const space::cell::Placement& cell, space::orient::key local) -> space::cell::Placement;
 
     // Expand frame::shape → local corners / halfribs (recipes, cell ori 0).
     auto seedCorners(frame::shape) -> std::vector<Corner>;

@@ -8,15 +8,20 @@ namespace eltanin
     // Disk: blueprints/_unnamed.blueprint | ships/*.blueprint | prefabs/*.blueprint
     feature Blueprint of rmmr::resource::Unit
       struct Cell
-        pose: Pose
+        placement: skeleton::Placement
         shape: frame::shape
         corners: vector<skeleton::Corner>
         halfribs: vector<skeleton::Halfrib>
         membranes: vector<skeleton::Membrane>
+      // Soft link to a Mount library unit + placement on the ship grid (not cell/quark space).
+      struct Mounted
+        mount: rmmr::resource::Unit::Name
+        transform: space::Transform
       one
         name: string
         author: string // manufacturer
         cells: vector<Cell>
+        mounts: vector<Mounted>
         file: filename // kit-relative; under blueprints/
         >load()
         >save()

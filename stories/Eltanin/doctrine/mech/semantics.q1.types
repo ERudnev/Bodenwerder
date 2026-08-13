@@ -14,9 +14,9 @@ namespace eltanin
         // Cube orientation alphabet index 0..23. Same storage as DiscretePose.ori.
         using key as rmmr::renderer::Signed32
 
-    struct Pose
-      pos: index3
-      ori: space::orient::key
+      struct Transform
+        grid: index3
+        rotation: orient::key
 
     namespace cube
       // 0..7 — unit-cube vertex index.
@@ -31,6 +31,11 @@ namespace eltanin
 
     // Ship skeleton pieces (local ori = space::orient::key; recipe-space cell.ori = 0).
     namespace skeleton
+      // Discrete cell lattice placement (cube language). Not a general transform.
+      struct Placement
+        cell: index3
+        ori: space::orient::key
+
       enum Bend : deg45, deg71, deg90, deg125
 
       struct Corner

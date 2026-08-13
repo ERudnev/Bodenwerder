@@ -1,0 +1,10 @@
+{
+    "armour",
+    "Eltanin",
+    "meshes/fittings/mounts/armour.lwo",
+    "Eltanin::mech",
+    [
+        {"mount", {"rmmr::lit_textured", [{"albedoMap", "pewter2.bmp"}]}},
+        {"outer", {"rmmr::lit_textured", [{"albedoMap", "10469-v3.jpg"}]}}
+    ]
+}

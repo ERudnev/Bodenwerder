@@ -2,7 +2,6 @@
 
 #include <eltanin/mech/semantics.q1.h>
 #include <rmmr/resources/manager.q1.h>
-#include <rmmr/resources/meshpack.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -10,29 +9,29 @@ namespace eltanin::mech {
 
     using namespace fqsm::api;
 
-    // External mount footprint on plate sockets (armor / hardpoints).
-    struct Socket {
-        struct Element {
-            plate::shape shape;
-            Pose pose;
-        };
-        std::vector<Element> profile;
+    // Footprint in discrete local space (LW-authored lattice points). No plate-shape composition.
+    struct Attachment {
+        std::vector<base::common_types::index3> points;
     };
 
     // Library entry: placeable external equipment. Visual = soft meshpack link (placeholder).
+    // Files: assets/Eltanin/fittings/mounts/*.json
     struct Mount : Feature<Mount, rmmr::resource::Unit> {
-        // Soft link: pack Unit::Reference (id + Name backup) + entry key in meshpack::Asset.entries.
         struct TempMesh {
-            rmmr::resource::meshpack::Reference pack;
+            rmmr::resource::Unit::Name pack;
             std::string entry;
         };
         struct Quantum {
             std::string name;
             std::string author;
-            Socket socket;
+            Attachment attachment;
             TempMesh tempMesh;
+            filename file; // kit-relative; under fittings/mounts/
         };
-        struct Actions : BaseActions {};
+        struct Actions : BaseActions {
+            static void load(Writing, Id);
+            static void save(Writing, Id);
+        };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
     };

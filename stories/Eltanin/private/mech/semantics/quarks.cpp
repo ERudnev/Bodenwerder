@@ -4,10 +4,10 @@
 
 namespace eltanin::mech::skeleton {
 
-    auto worldPose(const space::cell::Pose& cell, space::orient::key local) -> space::cell::Pose {
+    auto worldPose(const space::cell::Placement& cell, space::orient::key local) -> space::cell::Placement {
         const auto cellOri = static_cast<space::orient::key>(cell.ori);
-        return space::cell::Pose{
-            .pos = cell.pos,
+        return space::cell::Placement{
+            .cell = cell.cell,
             .ori = space::orient::compose[static_cast<std::size_t>(cellOri)][static_cast<std::size_t>(local)],
         };
     }

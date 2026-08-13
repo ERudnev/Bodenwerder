@@ -1,6 +1,7 @@
 import "rmmr/resources/runtimes"
 import "rmmr/resources/manager"
 import "mech/blueprint"
+import "mech/mount"
 
 namespace eltanin
   namespace resource
@@ -12,3 +13,5 @@ namespace eltanin
       one
         // Registers Unit+Blueprint; loads from disk when the resolved file exists.
         >add_blueprint(Unit::Name, filename)->#mech::Blueprint
+        // Registers Unit+Mount; loads from disk when the resolved file exists.
+        >add_mount(Unit::Name, filename)->#mech::Mount

@@ -3,7 +3,9 @@
 #include "mech/semantics/shapes.h"
 #include "mech/semantics/subframe.h"
 
+#include <eltanin/mech/mount.q1.h>
 #include <rmmr/resources/geometry.q1.h>
+#include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
 
@@ -91,7 +93,7 @@ namespace eltanin::views::blueprints::geometry {
                         const auto origin = entryOrigin(context, *resolved);
                         if (not origin)
                             continue;
-                        const auto world = mech::skeleton::worldPose(cell.pose, knot.ori);
+                        const auto world = mech::skeleton::worldPose(cell.placement, knot.ori);
                         if (const auto id = spawnOne(actorPose(world, *origin), *resolved))
                             actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::knot, .cell = cellIndex, .index = i});
                     }
@@ -105,7 +107,7 @@ namespace eltanin::views::blueprints::geometry {
                         const auto origin = entryOrigin(context, *resolved);
                         if (not origin)
                             continue;
-                        const auto world = mech::skeleton::worldPose(cell.pose, halfChord.ori);
+                        const auto world = mech::skeleton::worldPose(cell.placement, halfChord.ori);
                         if (const auto id = spawnOne(actorPose(world, *origin), *resolved))
                             actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::halfChord, .cell = cellIndex, .index = i});
                     }
@@ -121,7 +123,7 @@ namespace eltanin::views::blueprints::geometry {
                         const auto origin = entryOrigin(context, *resolved);
                         if (not origin)
                             continue;
-                        const auto world = mech::skeleton::worldPose(cell.pose, wall.ori);
+                        const auto world = mech::skeleton::worldPose(cell.placement, wall.ori);
                         if (const auto id = spawnOne(actorPose(world, *origin), *resolved))
                             actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::wall, .cell = cellIndex, .index = i});
                     }
@@ -144,18 +146,26 @@ namespace eltanin::views::blueprints::geometry {
         return 0;
     }
 
-    auto actorPose(const mech::space::cell::Pose& quarkPose, Pos entryOrigin) -> Pose {
+    auto actorPose(const mech::space::cell::Placement& quarkPose, Pos entryOrigin) -> Pose {
         const auto ori = static_cast<mech::space::orient::key>(quarkPose.ori);
         const auto localSeat = localSeatFromOrigin(entryOrigin);
         const auto seat = mech::space::orient::cornerIndex(ori, localSeat);
         const auto& corner = mech::cube::corners[static_cast<std::size_t>(seat)];
         const float edge = mech::space::local::edge2meters;
         const Pos position{
-            (static_cast<float>(quarkPose.pos.x) + static_cast<float>(corner.x)) * edge,
-            (static_cast<float>(quarkPose.pos.y) + static_cast<float>(corner.y)) * edge,
-            (static_cast<float>(quarkPose.pos.z) + static_cast<float>(corner.z)) * edge,
+            (static_cast<float>(quarkPose.cell.x) + static_cast<float>(corner.x)) * edge,
+            (static_cast<float>(quarkPose.cell.y) + static_cast<float>(corner.y)) * edge,
+            (static_cast<float>(quarkPose.cell.z) + static_cast<float>(corner.z)) * edge,
         };
         const mat3 rotation = mat3(mech::space::orient::matrix[static_cast<std::size_t>(ori)]);
+        return Pose{.position = position, .rotation = glm::normalize(glm::quat_cast(rotation))};
+    }
+
+    auto gridActorPose(const mech::space::Transform& transform) -> Pose {
+        const auto rotationKey = static_cast<mech::space::orient::key>(transform.rotation);
+        const mat3 rotation = mat3(mech::space::orient::matrix[static_cast<std::size_t>(rotationKey)]);
+        const float edge = mech::space::local::edge2meters;
+        const Pos position{static_cast<float>(transform.grid.x) * edge, static_cast<float>(transform.grid.y) * edge, static_cast<float>(transform.grid.z) * edge};
         return Pose{.position = position, .rotation = glm::normalize(glm::quat_cast(rotation))};
     }
 
@@ -177,9 +187,42 @@ namespace eltanin::views::blueprints::geometry {
         actors.clear();
     }
 
+    void clearMountActors(Writing context, scene::Root::Id root, std::vector<MountActor>& actors) {
+        for (const auto& actor : actors)
+            destroyActor(context, root, actor.id);
+        actors.clear();
+    }
+
     void syncActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, const Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors) {
         clearActors(context, root, actors);
         spawnBlueprintActors(context, root, interframe, blueprint, display, actors, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved); });
+    }
+
+    void syncMountActors(Writing context, scene::Root::Id root, const Blueprint& blueprint, Display display, std::vector<MountActor>& actors) {
+        clearMountActors(context, root, actors);
+        if (not display.mounts)
+            return;
+        for (std::size_t index = 0; index < blueprint.mounts.size(); ++index) {
+            const auto& placed = blueprint.mounts[index];
+            const auto mountId = with<::rmmr::resource::Assets>::find<::eltanin::mech::Mount>(context, placed.mount);
+            if (not mountId) {
+                base::message("eltanin blueprints geometry: mount '{}' missing", placed.mount.text());
+                continue;
+            }
+            const auto& mount = with<::eltanin::mech::Mount>::get(context, *mountId);
+            const auto packId = with<::rmmr::resource::Assets>::find<meshpack::Asset>(context, mount.tempMesh.pack);
+            if (not packId) {
+                base::message("eltanin blueprints geometry: mount '{}' pack '{}' missing", placed.mount.text(), mount.tempMesh.pack.text());
+                continue;
+            }
+            const auto resolved = with<meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
+            if (not resolved) {
+                base::message("eltanin blueprints geometry: mount '{}' entry '{}' missing", placed.mount.text(), mount.tempMesh.entry);
+                continue;
+            }
+            if (const auto id = spawnIdentified(context, root, gridActorPose(placed.transform), *resolved))
+                actors.push_back(MountActor{.id = *id, .index = index});
+        }
     }
 
     void syncGhostActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, ::rmmr::resource::material::Asset::Id ghostMaterial, const Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors, RGB albedo, float opacity) {
@@ -189,7 +232,7 @@ namespace eltanin::views::blueprints::geometry {
 
     auto refreshGhostActors(Writing context, meshpack::Asset::Id interframe, const Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors, RGB albedo, float opacity) -> bool {
         std::size_t at = 0;
-        const auto touch = [&](QuarkActor::Kind kind, std::size_t cell, std::size_t index, const mech::space::cell::Pose& world, const meshpack::Asset::Resolved& resolved) -> bool {
+        const auto touch = [&](QuarkActor::Kind kind, std::size_t cell, std::size_t index, const mech::space::cell::Placement& world, const meshpack::Asset::Resolved& resolved) -> bool {
             const auto origin = entryOrigin(context, resolved);
             if (not origin)
                 return false;
@@ -216,7 +259,7 @@ namespace eltanin::views::blueprints::geometry {
                     const auto resolved = resolveKnot(context, interframe, knot.kind);
                     if (not resolved)
                         continue;
-                    if (not touch(QuarkActor::Kind::knot, cellIndex, i, mech::skeleton::worldPose(cell.pose, knot.ori), *resolved))
+                    if (not touch(QuarkActor::Kind::knot, cellIndex, i, mech::skeleton::worldPose(cell.placement, knot.ori), *resolved))
                         return false;
                 }
                 for (std::size_t i = 0; i < cell.halfribs.size(); ++i) {
@@ -224,7 +267,7 @@ namespace eltanin::views::blueprints::geometry {
                     const auto resolved = resolveHalfChord(context, interframe, halfChord.kind, halfChord.pole);
                     if (not resolved)
                         continue;
-                    if (not touch(QuarkActor::Kind::halfChord, cellIndex, i, mech::skeleton::worldPose(cell.pose, halfChord.ori), *resolved))
+                    if (not touch(QuarkActor::Kind::halfChord, cellIndex, i, mech::skeleton::worldPose(cell.placement, halfChord.ori), *resolved))
                         return false;
                 }
             }
@@ -234,7 +277,7 @@ namespace eltanin::views::blueprints::geometry {
                     const auto resolved = resolveWall(context, interframe, wall.kind);
                     if (not resolved)
                         continue;
-                    if (not touch(QuarkActor::Kind::wall, cellIndex, i, mech::skeleton::worldPose(cell.pose, wall.ori), *resolved))
+                    if (not touch(QuarkActor::Kind::wall, cellIndex, i, mech::skeleton::worldPose(cell.placement, wall.ori), *resolved))
                         return false;
                 }
             }
