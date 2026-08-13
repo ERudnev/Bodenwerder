@@ -19,9 +19,9 @@ namespace eltanin {
             Custody<rmmr::scene::actor::Mesh> actor;
         };
         struct Actions : BaseActions {
-            static auto spawnPlate(Writing, rmmr::scene::Root::Id, rmmr::Pose, mech::plate::shape, mech::slot::plate, rmmr::scene::actor::Mesh::Quantum, rmmr::scene::actor::MeshState::Quantum) -> Id;
+            static auto spawnPlate(Writing, rmmr::scene::Root::Id, rmmr::Pose, mech::plate::shape, mech::role, rmmr::scene::actor::Mesh::Quantum, rmmr::scene::actor::MeshState::Quantum) -> Id;
             static auto spawnFrame(Writing, rmmr::scene::Root::Id, rmmr::Pose, mech::frame::shape, rmmr::scene::actor::Mesh::Quantum, rmmr::scene::actor::MeshState::Quantum) -> Id;
-            static auto spawnInner(Writing, rmmr::scene::Root::Id, rmmr::Pose, mech::frame::shape, mech::slot::role, rmmr::scene::actor::Mesh::Quantum, rmmr::scene::actor::MeshState::Quantum) -> Id;
+            static auto spawnInner(Writing, rmmr::scene::Root::Id, rmmr::Pose, mech::frame::shape, mech::role, rmmr::scene::actor::Mesh::Quantum, rmmr::scene::actor::MeshState::Quantum) -> Id;
         };
         struct Internals;
         static const Behavior customAspectReactions();

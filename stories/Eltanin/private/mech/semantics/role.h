@@ -2,7 +2,7 @@
 
 #include <base/types/common_types.h>
 
-namespace eltanin::mech::slot {
+namespace eltanin::mech {
 
     using namespace base::common_types;
 
@@ -18,9 +18,13 @@ namespace eltanin::mech::slot {
         control,
         living,
     };
+}
+
+namespace eltanin::mech::settings {
 
     // Actor albedo tint for shared white inner mesh (texture × albedo).
     inline auto colorCode(role val) -> vec3 {
+        using role = eltanin::mech::role;
         switch (val) {
             case role::custom: return rgb(130, 130, 130);
             case role::propulsion: return rgb(255, 170, 0);
@@ -35,26 +39,4 @@ namespace eltanin::mech::slot {
         }
         return {1.0f, 1.0f, 1.0f};
     }
-
-    enum class plate {
-        cooling, // typically is appears as side panel of engine frame
-        turret, // this is side (top) panel for hardpoints, when possible
-        hatch, // this is "door for hangar" but may vary
-        bay, // a "door for cargo", opens from a side of logistic blocks
-        antenna, // any "emissive" volume shold hawe as many as possible panels of this kind
-        cockpit, // allows "control" frame to have nice-looking window
-        windowed, // living frame should have it aside, or crewmen will go crazy
-        agfe, // anti-gravity-force-emitter panel at the bottom of ship (new against RedStar)
-        utility, // mount for any low-power stuff: barrels, small external tanks, decoration
-        logistic, // extends shupp hull out of frame to add coridirs, smal locks, service tunnels
-    };
-
-    // slots and sockets as logic elements
-    struct Socket {
-
-    };
-
-    struct Slot {
-    };
-
 }
