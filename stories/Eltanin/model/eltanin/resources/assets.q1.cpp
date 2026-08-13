@@ -44,6 +44,7 @@ namespace eltanin::resource {
                 .author = {},
                 .attachment = mech::Attachment{.points = {}},
                 .tempMesh = mech::Mount::TempMesh{.pack = {}, .entry = {}},
+                .role = {},
                 .file = {},
             });
     }

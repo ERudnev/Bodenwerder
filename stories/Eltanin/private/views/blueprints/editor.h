@@ -18,6 +18,7 @@
 #include "blueprints/catalog.h"
 #include "fittings/mounts/catalog.h"
 #include "views/blueprints/geometry.h"
+#include "views/blueprints/history.h"
 #include "views/blueprints/membraneSlots.h"
 #include "views/blueprints/mountPlacement.h"
 #include "views/blueprints/selection.h"
@@ -57,6 +58,7 @@ namespace eltanin::views {
             base::maybe<mech::Blueprint::Id> hovered;
             blueprints::geometry::Display display;
             blueprints::selection::Store selection;
+            blueprints::history::Store history;
             index3 cursorLattice;
             int currentFloor;
             // Membrane place/remove: candidates from membraneSlots::possible; aim face by mouse ray.
@@ -91,6 +93,7 @@ namespace eltanin::views {
         void aimMountCursor(Reading);
         void syncMountCursor(Writing);
         void persistHovered(Writing);
+        void applyHistory(Writing, blueprints::history::UiAction);
         void draw(Writing, bool& open, BlueprintCatalog&, MountCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;
     };

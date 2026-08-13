@@ -8,6 +8,7 @@
 #include <rmmr/renderer/types.q1.h>
 
 #include "views/blueprints/geometry.h"
+#include "views/blueprints/history.h"
 
 #include "mech/semantics/space.h"
 
@@ -52,21 +53,21 @@ namespace eltanin::views::blueprints::selection {
     void expand(Reading, Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors);
     void copyToClipboard(Reading, Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors);
 
-    auto eraseSelected(Writing, Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors) -> bool;
-    auto rotateSelected(Writing, Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors, mech::space::orient::Semiaxis) -> bool;
-    auto moveSelected(Writing, Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors, index3 step) -> bool;
+    auto eraseSelected(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors) -> bool;
+    auto rotateSelected(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors, mech::space::orient::Semiaxis) -> bool;
+    auto moveSelected(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<QuarkActor>& actors, index3 step) -> bool;
 
     auto rotateClipboard(Store&, mech::space::orient::Semiaxis) -> bool;
     auto moveClipboard(Store&, index3 step) -> bool;
-    auto pasteClipboard(Writing, Store&, mech::Blueprint::Id hovered) -> bool;
+    auto pasteClipboard(Writing, Store&, history::Store&, mech::Blueprint::Id hovered) -> bool;
 
     void handlePointer(Reading, Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors, rmmr::renderer::Integer32 under);
 
-    auto handleHotkeys(Writing, Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
+    auto handleHotkeys(Writing, Store&, history::Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
     auto handleClipboardHotkeys(Store&) -> bool;
-    auto handleClipboardChords(Writing, Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
+    auto handleClipboardChords(Writing, Store&, history::Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
 
-    auto drawPanel(Writing, Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
-    auto drawClipboardPanel(Writing, Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered) -> bool;
+    auto drawPanel(Writing, Store&, history::Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& actors) -> bool;
+    auto drawClipboardPanel(Writing, Store&, history::Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered) -> bool;
 
 } // namespace eltanin::views::blueprints::selection

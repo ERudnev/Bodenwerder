@@ -18,6 +18,7 @@ namespace eltanin
         author: string
         attachment: Attachment
         tempMesh: TempMesh
+        role: Role?
         file: filename // kit-relative; under fittings/mounts/
         >load()
         >save()

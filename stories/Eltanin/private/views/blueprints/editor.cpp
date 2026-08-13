@@ -1,6 +1,7 @@
 #include "views/blueprints/editor.h"
 
 #include "views/blueprints/geometry.h"
+#include "views/blueprints/history.h"
 #include "views/blueprints/selection.h"
 
 #include "mech/semantics/quarks.h"
@@ -274,6 +275,7 @@ namespace eltanin::views {
         state.mounts = {.enabled = false, .cell = {}, .face = {}, .points = {}, .balls = {}, .sphere = *sphere_geometry, .material = *cursor_material};
         blueprints::selection::clear(state.selection);
         blueprints::selection::resetClipboard(state.selection);
+        blueprints::history::clear(state.history);
         state.hovered.reset();
         state.spaceMenu = {.place = false, .close = false};
 
@@ -293,6 +295,7 @@ namespace eltanin::views {
 
     void Blueprints::show(Writing context, mech::Blueprint::Id asset_id) {
         state.hovered = asset_id;
+        blueprints::history::bind(state.history, asset_id);
         blueprints::selection::clear(state.selection);
         syncVisuals(context);
         syncClipboardGhost(context);
@@ -501,9 +504,10 @@ namespace eltanin::views {
                 return false;
             const auto cell = *state.membranes.cell;
             const auto membrane = state.membranes.slots[*state.membranes.face].membrane;
-            auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
-            if (cell >= data->cells.size())
+            if (cell >= with<::eltanin::mech::Blueprint>::get(context, *state.hovered).cells.size())
                 return false;
+            blueprints::history::record(state.history, *state.hovered, "place membrane", with<::eltanin::mech::Blueprint>::get(context, *state.hovered));
+            auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
             data->cells[cell].membranes.push_back(membrane);
             persistHovered(context);
             syncVisuals(context);
@@ -521,16 +525,20 @@ namespace eltanin::views {
                     continue;
                 if (with<scene::actor::Identified>::get(context, actor.id).scenicAlias != under)
                     continue;
-                auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
-                if (actor.cell >= data->cells.size())
+                if (actor.cell >= with<::eltanin::mech::Blueprint>::get(context, *state.hovered).cells.size())
                     return true;
-                auto& membranes = data->cells[actor.cell].membranes;
-                if (actor.index < membranes.size()) {
-                    membranes.erase(membranes.begin() + static_cast<std::ptrdiff_t>(actor.index));
-                    persistHovered(context);
-                    syncVisuals(context);
-                    refreshMembraneCandidates(context);
+                {
+                    const auto& view = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
+                    if (actor.index >= view.cells[actor.cell].membranes.size())
+                        return true;
                 }
+                blueprints::history::record(state.history, *state.hovered, "remove membrane", with<::eltanin::mech::Blueprint>::get(context, *state.hovered));
+                auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
+                auto& membranes = data->cells[actor.cell].membranes;
+                membranes.erase(membranes.begin() + static_cast<std::ptrdiff_t>(actor.index));
+                persistHovered(context);
+                syncVisuals(context);
+                refreshMembraneCandidates(context);
                 return true;
             }
             return false;
@@ -594,6 +602,22 @@ namespace eltanin::views {
         with<::eltanin::mech::Blueprint>::save(context, *state.hovered);
     }
 
+    void Blueprints::applyHistory(Writing context, blueprints::history::UiAction action) {
+        if (action == blueprints::history::UiAction::none or not state.hovered.exists())
+            return;
+        const bool ok = action == blueprints::history::UiAction::undo
+            ? blueprints::history::undo(context, state.history, *state.hovered)
+            : blueprints::history::redo(context, state.history, *state.hovered);
+        if (not ok)
+            return;
+        blueprints::selection::clear(state.selection);
+        syncVisuals(context);
+        syncClipboardGhost(context);
+        refreshMembraneCandidates(context);
+        if (state.mounts.enabled)
+            syncMountCursor(context);
+    }
+
     void Blueprints::draw(Writing context, bool& open, BlueprintCatalog& catalog, MountCatalog& mounts) {
         if (not open) {
             if (state.mainScene.root.exists())
@@ -630,6 +654,12 @@ namespace eltanin::views {
             }
             if (ImGui::IsKeyPressed(ImGuiKey_B) and not state.membranes.enabled and not state.mounts.enabled)
                 blueprints::selection::toggleFocus(state.selection);
+            if (ImGui::GetIO().KeyCtrl) {
+                if (ImGui::IsKeyPressed(ImGuiKey_Z))
+                    applyHistory(context, blueprints::history::UiAction::undo);
+                if (ImGui::IsKeyPressed(ImGuiKey_Y))
+                    applyHistory(context, blueprints::history::UiAction::redo);
+            }
         }
 
         if (not state.paletteMode) {
@@ -648,13 +678,13 @@ namespace eltanin::views {
             handleMembraneMode(context, under);
         } else {
             blueprints::selection::handlePointer(context, state.selection, state.hovered, state.mainScene.quarkActors, under);
-            if (blueprints::selection::handleHotkeys(context, state.selection, state.hovered, state.mainScene.quarkActors)) {
+            if (blueprints::selection::handleHotkeys(context, state.selection, state.history, state.hovered, state.mainScene.quarkActors)) {
                 persistHovered(context);
                 syncVisuals(context);
                 refreshMembraneCandidates(context);
             }
             blueprints::selection::handleClipboardHotkeys(state.selection);
-            if (blueprints::selection::handleClipboardChords(context, state.selection, state.hovered, state.mainScene.quarkActors)) {
+            if (blueprints::selection::handleClipboardChords(context, state.selection, state.history, state.hovered, state.mainScene.quarkActors)) {
                 persistHovered(context);
                 syncVisuals(context);
                 refreshMembraneCandidates(context);
@@ -689,6 +719,7 @@ namespace eltanin::views {
                     const bool occupied = blueprints::selection::cellOccupied(dataView, state.cursorLattice);
                     if (occupied) {
                         if (ImGui::Selectable("erase")) {
+                            blueprints::history::record(state.history, *state.hovered, "erase cell", dataView);
                             {
                                 auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
                                 data->cells.erase(std::remove_if(data->cells.begin(), data->cells.end(), [&](const Cell& cell) { return blueprints::selection::sameIndex3(cell.placement.cell, state.cursorLattice); }), data->cells.end());
@@ -701,8 +732,9 @@ namespace eltanin::views {
                         }
                     } else {
                         bool applied = false;
-                        auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
                         applied = frameShapePicks([&](mech::frame::shape shape) {
+                            blueprints::history::record(state.history, *state.hovered, "spawn cell", with<::eltanin::mech::Blueprint>::get(context, *state.hovered));
+                            auto data = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
                             const auto pose = mech::space::cell::Placement{.cell = state.cursorLattice, .ori = 0};
                             data->cells.push_back(Cell{
                                 .placement = pose,
@@ -881,7 +913,7 @@ namespace eltanin::views {
                     ImGui::Text("Cursor [%d, %d, %d]", state.cursorLattice.x, state.cursorLattice.y, state.cursorLattice.z);
                     ImGui::Text("Floor: %d", state.currentFloor);
                 }
-                ImGui::TextDisabled("F1/F2/F3 mode · MMB orbit · PgUp/PgDn · Space · LMB/RMB±Shift · Del · WASD/QE · Shift rotate · Ctrl+C/V · B");
+                ImGui::TextDisabled("F1/F2/F3 mode · MMB orbit · PgUp/PgDn · Space · LMB/RMB±Shift · Del · WASD/QE · Shift rotate · Ctrl+C/V · Ctrl+Z/Y · B");
                 if (under == renderer::Integer32{0}) {
                     ImGui::TextDisabled("Under: —");
                 } else {
@@ -894,12 +926,12 @@ namespace eltanin::views {
         open = shown;
 
         if (not state.paletteMode and not state.membranes.enabled and not state.mounts.enabled) {
-            if (blueprints::selection::drawPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered, state.mainScene.quarkActors)) {
+            if (blueprints::selection::drawPanel(context, state.selection, state.history, blueprintsPos, blueprintsSize, state.hovered, state.mainScene.quarkActors)) {
                 persistHovered(context);
                 syncVisuals(context);
                 refreshMembraneCandidates(context);
             }
-            if (blueprints::selection::drawClipboardPanel(context, state.selection, blueprintsPos, blueprintsSize, state.hovered)) {
+            if (blueprints::selection::drawClipboardPanel(context, state.selection, state.history, blueprintsPos, blueprintsSize, state.hovered)) {
                 persistHovered(context);
                 syncVisuals(context);
                 refreshMembraneCandidates(context);
@@ -908,6 +940,8 @@ namespace eltanin::views {
         } else if (not state.paletteMode and not state.mounts.enabled and state.mainScene.root.exists()) {
             blueprints::geometry::clearActors(context, *state.mainScene.root, state.mainScene.clipboardActors);
         }
+        if (not state.paletteMode)
+            applyHistory(context, blueprints::history::drawWindow(state.history));
         if (not state.paletteMode and not state.mounts.enabled)
             drawMembraneFaceHighlight(context);
     }

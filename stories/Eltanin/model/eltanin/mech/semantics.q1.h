@@ -8,7 +8,7 @@
 
 namespace eltanin::mech {
 
-    enum class role {
+    enum class Role {
         custom,     // has no defined role
         propulsion, // free back for slots; any ori for maneuver sockets
         power,
@@ -22,7 +22,7 @@ namespace eltanin::mech {
     };
 
     // Level 0 — how a piece lives on the ship (not form, not function).
-    enum class layer {
+    enum class Layer {
         skeleton,
         membranes,
         internals,

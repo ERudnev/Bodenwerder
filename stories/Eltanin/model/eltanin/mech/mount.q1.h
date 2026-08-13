@@ -1,5 +1,6 @@
 #pragma once
 
+#include <base/maybe.h>
 #include <eltanin/mech/semantics.q1.h>
 #include <rmmr/resources/manager.q1.h>
 
@@ -26,6 +27,7 @@ namespace eltanin::mech {
             std::string author;
             Attachment attachment;
             TempMesh tempMesh;
+            base::maybe<Role> role;
             filename file; // kit-relative; under fittings/mounts/
         };
         struct Actions : BaseActions {

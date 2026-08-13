@@ -1,0 +1,21 @@
+{
+  "name": "Dummy propulsion",
+  "author": "Eltanin",
+  "attachment": {
+    "points": [
+      [0, 0, 0],
+      [1, 0, 0],
+      [0, 1, 0],
+      [1, 1, 0],
+      [0, 0, 1],
+      [1, 0, 1],
+      [0, 1, 1],
+      [1, 1, 1]
+    ]
+  },
+  "tempMesh": {
+    "pack": "Eltanin::attachments",
+    "entry": "box"
+  },
+  "role": "propulsion"
+}

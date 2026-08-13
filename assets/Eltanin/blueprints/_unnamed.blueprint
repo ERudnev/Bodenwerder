@@ -79,6 +79,73 @@
             [
                 ["u1111", 12]
             ]
+        ],
+        [
+            [-1, 0, 1],
+            0,
+            "k7",
+            [
+                ["c1364", 0],
+                ["c124", 4],
+                ["c1364", 20],
+                ["c124", 1],
+                ["c124", 5],
+                ["c1364", 13],
+                ["c124", 6]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he3deg125", "starts", 0],
+                ["he3deg125", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg125", "ends", 13],
+                ["he3deg125", "starts", 13],
+                ["he1deg90", "starts", 21],
+                ["he1deg90", "ends", 21],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg125", "starts", 20],
+                ["he3deg125", "ends", 20],
+                ["he1deg90", "starts", 20],
+                ["he1deg90", "ends", 20],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg90", "starts", 2],
+                ["he1deg90", "ends", 2]
+            ],
+            []
+        ],
+        [
+            [-2, 0, 1],
+            0,
+            "k4",
+            [
+                ["c135", 4],
+                ["c135", 1],
+                ["c124", 5],
+                ["c135", 23]
+            ],
+            [
+                ["he3deg71", "ends", 1],
+                ["he3deg71", "starts", 1],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg71", "starts", 4],
+                ["he3deg71", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he3deg71", "ends", 23],
+                ["he3deg71", "starts", 23],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5]
+            ],
+            []
         ]
     ],
     [

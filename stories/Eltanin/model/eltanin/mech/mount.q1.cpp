@@ -138,6 +138,37 @@ namespace eltanin::mech {
             };
         }
 
+        auto take_role(Cursor& cursor) -> Role {
+            const auto text = take_string(cursor);
+            if (text == "custom") return Role::custom;
+            if (text == "propulsion") return Role::propulsion;
+            if (text == "power") return Role::power;
+            if (text == "gyros") return Role::gyros;
+            if (text == "weaponry") return Role::weaponry;
+            if (text == "cargo") return Role::cargo;
+            if (text == "logistic") return Role::logistic;
+            if (text == "emissive") return Role::emissive;
+            if (text == "control") return Role::control;
+            if (text == "living") return Role::living;
+            throw std::runtime_error(std::format("mount: unknown role '{}'", text));
+        }
+
+        auto role_text(Role role) -> std::string_view {
+            switch (role) {
+                case Role::custom: return "custom";
+                case Role::propulsion: return "propulsion";
+                case Role::power: return "power";
+                case Role::gyros: return "gyros";
+                case Role::weaponry: return "weaponry";
+                case Role::cargo: return "cargo";
+                case Role::logistic: return "logistic";
+                case Role::emissive: return "emissive";
+                case Role::control: return "control";
+                case Role::living: return "living";
+            }
+            throw std::runtime_error("mount: bad role");
+        }
+
         auto parse_mount(std::string_view text) -> Mount::Quantum {
             Cursor cursor{.text = text, .at = 0};
             expect(cursor, '{');
@@ -152,12 +183,19 @@ namespace eltanin::mech {
             expect(cursor, ',');
             expect_key(cursor, "tempMesh");
             auto tempMesh = take_temp_mesh(cursor);
+            base::maybe<Role> role;
+            if (peek(cursor) == ',') {
+                expect(cursor, ',');
+                expect_key(cursor, "role");
+                role = take_role(cursor);
+            }
             expect(cursor, '}');
             return Mount::Quantum{
                 .name = std::move(name),
                 .author = std::move(author),
                 .attachment = std::move(attachment),
                 .tempMesh = std::move(tempMesh),
+                .role = role,
                 .file = {},
             };
         }
@@ -178,7 +216,11 @@ namespace eltanin::mech {
             out << "  \"tempMesh\": {\n";
             out << "    \"pack\": \"" << data.tempMesh.pack.text() << "\",\n";
             out << "    \"entry\": \"" << data.tempMesh.entry << "\"\n";
-            out << "  }\n";
+            out << "  }";
+            if (data.role.exists())
+                out << ",\n  \"role\": \"" << role_text(*data.role) << "\"\n";
+            else
+                out << "\n";
             out << "}\n";
             return out.str();
         }

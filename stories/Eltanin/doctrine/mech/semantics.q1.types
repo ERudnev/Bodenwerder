@@ -6,8 +6,8 @@ namespace eltanin
     // Primary type/enum surface for mech. Tables and functions stay in private/ C++.
     // Hand-projected C++: model/eltanin/mech/semantics.q1.h
 
-    enum role : custom, propulsion, power, gyros, weaponry, cargo, logistic, emissive, control, living
-    enum layer : skeleton, membranes, internals, externals
+    enum Role : custom, propulsion, power, gyros, weaponry, cargo, logistic, emissive, control, living
+    enum Layer : skeleton, membranes, internals, externals
 
     namespace space
       namespace orient
