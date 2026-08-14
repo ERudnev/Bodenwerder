@@ -28,7 +28,7 @@ namespace eltanin::views::blueprints::mountPlacement {
         rmmr::vec3 dir;
     };
 
-    // Hang-mounts mode: ray → cell face → absolute grid points; balls visualize the set.
+    // Hang-mounts mode: ray → cell face (or whole Kn under Ctrl) → absolute grid points; balls visualize the set.
     struct Cursor {
         bool enabled;
         base::maybe<std::size_t> cell;
@@ -45,8 +45,11 @@ namespace eltanin::views::blueprints::mountPlacement {
     // Absolute lattice corners of a cell face (cell index + oriented unit-cube corner).
     auto faceGridPoints(const Cell&, mech::frame::FaceIndex) -> std::vector<base::common_types::index3>;
 
-    // Closest face under ray → Cursor.points (absolute grid). Empty aim if miss.
-    void aim(Cursor&, const Blueprint&, const MouseRay&);
+    // All n corners of the cell's frame::shape (Kn), oriented — k7 → 7, k4 → 4, …
+    auto shapeGridPoints(const Cell&) -> std::vector<base::common_types::index3>;
+
+    // Closest face under ray → cell; points = face (default) or whole Kn when wholeCell.
+    void aim(Cursor&, const Blueprint&, const MouseRay&, bool wholeCell);
 
     // Spawn / move sphere actors at points * edge2meters.
     void syncBalls(Writing, rmmr::scene::Root::Id root, Cursor&);

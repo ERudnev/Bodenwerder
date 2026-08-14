@@ -583,7 +583,6 @@
         ["Eltanin::mounts.p1111_default", [-1, 1, 5], 13],
         ["Eltanin::mounts.p1111_default", [-1, 1, 5], 18],
         ["Eltanin::mounts.p1111_default", [-1, 0, 5], 1],
-        ["Eltanin::mounts.p1111_default", [0, 0, 5], 8],
         ["Eltanin::mounts.p1111_default", [0, 0, -1], 4],
         ["Eltanin::mounts.p1111_default", [-1, 0, 0], 12],
         ["Eltanin::mounts.p1111_default", [0, 0, -2], 4],
@@ -612,6 +611,7 @@
         ["Eltanin::mounts.p1111_default", [0, -1, -2], 4],
         ["Eltanin::mounts.p1111_default", [-1, -1, -1], 12],
         ["Eltanin::mounts.p1111_default", [-1, -1, -1], 1],
-        ["Eltanin::mounts.p1111_default", [-1, -1, -2], 0]
+        ["Eltanin::mounts.p1111_default", [-1, -1, -2], 0],
+        ["Eltanin::mounts.p1111_decorated_test", [0, 0, 5], 8]
     ]
 }

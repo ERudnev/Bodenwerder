@@ -565,7 +565,7 @@ namespace eltanin::views {
         if (not ray.exists())
             return;
         const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
-        blueprints::mountPlacement::aim(state.mounts, data, blueprints::mountPlacement::MouseRay{.origin = ray->origin, .dir = ray->dir});
+        blueprints::mountPlacement::aim(state.mounts, data, blueprints::mountPlacement::MouseRay{.origin = ray->origin, .dir = ray->dir}, ImGui::GetIO().KeyCtrl);
     }
 
     void Blueprints::syncMountCursor(Writing context, renderer::Integer32 under) {

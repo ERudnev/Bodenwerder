@@ -140,7 +140,24 @@ namespace eltanin::views::blueprints::mountPlacement {
         return out;
     }
 
-    void aim(Cursor& cursor, const Blueprint& blueprint, const MouseRay& ray) {
+    auto shapeGridPoints(const Cell& cell) -> std::vector<base::common_types::index3> {
+        const auto shapeIndex = static_cast<std::size_t>(cell.shape);
+        if (shapeIndex >= mech::frame::corners.size())
+            return {};
+        const auto ori = static_cast<mech::space::orient::key>(cell.placement.ori);
+        const auto& cellPos = cell.placement.cell;
+        const auto& corners = mech::frame::corners[shapeIndex];
+        std::vector<base::common_types::index3> out;
+        out.reserve(corners.size());
+        for (const auto corner : corners) {
+            const auto mapped = mech::space::orient::cornerIndex(ori, corner);
+            const auto& lattice = mech::cube::corners[static_cast<std::size_t>(mapped)];
+            out.push_back(base::common_types::index3{.x = cellPos.x + lattice.x, .y = cellPos.y + lattice.y, .z = cellPos.z + lattice.z});
+        }
+        return out;
+    }
+
+    void aim(Cursor& cursor, const Blueprint& blueprint, const MouseRay& ray, bool wholeCell) {
         resetAim(cursor);
         if (not cursor.enabled)
             return;
@@ -167,8 +184,13 @@ namespace eltanin::views::blueprints::mountPlacement {
         if (not bestCell.exists() or not bestFace.exists())
             return;
         cursor.cell = *bestCell;
+        const auto& cell = blueprint.cells[*bestCell];
+        if (wholeCell) {
+            cursor.points = shapeGridPoints(cell);
+            return;
+        }
         cursor.face = *bestFace;
-        cursor.points = faceGridPoints(blueprint.cells[*bestCell], *bestFace);
+        cursor.points = faceGridPoints(cell, *bestFace);
     }
 
     void syncBalls(Writing context, scene::Root::Id root, Cursor& cursor) {
