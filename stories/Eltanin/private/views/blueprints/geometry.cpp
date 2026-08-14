@@ -211,8 +211,11 @@ namespace eltanin::views::blueprints::geometry {
     }
 
     void clearPaletteActors(Writing context, scene::Root::Id root, std::vector<PaletteMountActor>& actors) {
-        for (const auto& actor : actors)
+        for (const auto& actor : actors) {
             destroyActor(context, root, actor.id);
+            for (const auto ball : actor.balls)
+                destroyActor(context, root, ball);
+        }
         actors.clear();
     }
 
@@ -303,10 +306,21 @@ namespace eltanin::views::blueprints::geometry {
         }
     }
 
-    void syncPaletteActors(Writing context, scene::Root::Id root, const std::vector<mech::Mount::Id>& mounts, std::vector<PaletteMountActor>& actors) {
+    void syncPaletteActors(Writing context, scene::Root::Id root, const std::vector<mech::Mount::Id>& mounts, std::vector<PaletteMountActor>& actors, ::rmmr::resource::geometry::Asset::Id sphere, ::rmmr::resource::material::Asset::Id ballMaterial) {
         clearPaletteActors(context, root, actors);
         constexpr int columns = 4;
         constexpr int cellStep = 2;
+        constexpr float ballOpacity = 0.55f;
+        constexpr float ballScale = 0.35f;
+        const RGB firstBallAlbedo{0.15f, 0.95f, 0.35f};
+        const RGB otherBallAlbedo{1.0f, 0.72f, 0.22f};
+        const float edge = mech::space::local::edge2meters;
+        const auto ballResolved = meshpack::Asset::Resolved{
+            .geometry = sphere,
+            .entry = ::rmmr::resource::geometry::EntryId{0},
+            .surfaces = {{::rmmr::resource::geometry::SurfaceId{0}, ::rmmr::resource::material::Instance{.material = ballMaterial, .textures = {}}}},
+            .texpack = {},
+        };
         for (std::size_t index = 0; index < mounts.size(); ++index) {
             const auto mountId = mounts[index];
             if (not with<::eltanin::mech::Mount>::exists(context, mountId))
@@ -325,8 +339,23 @@ namespace eltanin::views::blueprints::geometry {
             const auto col = static_cast<int>(index % static_cast<std::size_t>(columns));
             const auto row = static_cast<int>(index / static_cast<std::size_t>(columns));
             const auto transform = mech::space::Transform{.grid = base::common_types::index3{.x = col * cellStep, .y = 0, .z = row * cellStep}, .rotation = 0};
-            if (const auto id = spawnIdentified(context, root, gridActorPose(transform), *resolved, mountAlbedo(mount)))
-                actors.push_back(PaletteMountActor{.id = *id, .mount = mountId});
+            if (const auto id = spawnIdentified(context, root, gridActorPose(transform), *resolved, mountAlbedo(mount))) {
+                std::vector<scene::actor::Mesh::Id> balls;
+                balls.reserve(mount.attachment.points.size());
+                for (std::size_t pointIndex = 0; pointIndex < mount.attachment.points.size(); ++pointIndex) {
+                    const auto& point = mount.attachment.points[pointIndex];
+                    const Pos world{
+                        static_cast<float>(transform.grid.x + point.x) * edge,
+                        static_cast<float>(transform.grid.y + point.y) * edge,
+                        static_cast<float>(transform.grid.z + point.z) * edge,
+                    };
+                    const auto albedo = pointIndex == 0 ? firstBallAlbedo : otherBallAlbedo;
+                    const auto ballId = with<scene::Interface>::createMeshActor(context, root, Pose::from(world, HPB{0.0f, 0.0f, 0.0f}), ballResolved, with<scene::actor::MeshState>::defaults(albedo, ballOpacity, vec3{ballScale, ballScale, ballScale}));
+                    if (with<scene::actor::Mesh>::exists(context, ballId))
+                        balls.push_back(ballId);
+                }
+                actors.push_back(PaletteMountActor{.id = *id, .mount = mountId, .balls = std::move(balls)});
+            }
         }
     }
 

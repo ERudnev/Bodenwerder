@@ -110,14 +110,14 @@ namespace eltanin {
     auto Game::activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> {
         if (not ui.blueprints or not assets.blueprintsEditorEffect)
             return {};
-        // Tile place / hang mounts / mount palette: suppress hover/selection chrome.
-        if (blueprints.state.membranes.enabled or blueprints.state.mounts.enabled or blueprints.state.paletteMode)
+        // Membrane tile place / mount palette: suppress hover/selection chrome. F3 keeps it for mounts.
+        if (blueprints.state.membranes.enabled or blueprints.state.paletteMode)
             return {};
         return assets.blueprintsEditorEffect;
     }
 
     auto Game::overlaySelection() const -> std::span<const rmmr::renderer::Integer32> {
-        if (not ui.blueprints or blueprints.state.membranes.enabled or blueprints.state.mounts.enabled or blueprints.state.paletteMode)
+        if (not ui.blueprints or blueprints.state.membranes.enabled or blueprints.state.paletteMode)
             return {};
         return blueprints.state.selection.aliases;
     }

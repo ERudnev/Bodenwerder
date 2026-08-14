@@ -9,6 +9,7 @@
 #include <eltanin/mech/mount.q1.h>
 #include <eltanin/mech/semantics.q1.h>
 #include <rmmr/math.q1.h>
+#include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
@@ -95,6 +96,7 @@ namespace eltanin::views::blueprints {
     struct PaletteMountActor {
         rmmr::scene::actor::Mesh::Id id;
         mech::Mount::Id mount;
+        std::vector<rmmr::scene::actor::Mesh::Id> balls; // attachment points; [0] tinted green
     };
 
     // Home-cube pivot (±2 m) → cube corner index in the mesh's local frame.
@@ -126,8 +128,8 @@ namespace eltanin::views::blueprints {
     // Destroy wall actor at slot; fix membrane indices in the same cell.
     void eraseWallActor(Writing, rmmr::scene::Root::Id root, std::size_t actorSlot, std::vector<QuarkActor>& actors);
 
-    // Floor grid of all catalog mounts (identity rotation; spacing in lattice cells).
-    void syncPaletteActors(Writing, rmmr::scene::Root::Id root, const std::vector<mech::Mount::Id>& mounts, std::vector<PaletteMountActor>& actors);
+    // Floor grid of all catalog mounts (identity rotation; spacing in lattice cells). Attachment balls: index0 green, rest yellow.
+    void syncPaletteActors(Writing, rmmr::scene::Root::Id root, const std::vector<mech::Mount::Id>& mounts, std::vector<PaletteMountActor>& actors, rmmr::resource::geometry::Asset::Id sphere, ::rmmr::resource::material::Asset::Id ballMaterial);
 
     // Preview actors for clipboard paste: no Identified; additive ghost material + MeshState tint.
     void syncGhostActors(Writing, rmmr::scene::Root::Id root, rmmr::resource::meshpack::Asset::Id interframe, ::rmmr::resource::material::Asset::Id ghostMaterial, const Blueprint& blueprint, Display, std::vector<QuarkActor>& actors, rmmr::RGB albedo, float opacity);

@@ -429,9 +429,11 @@ namespace eltanin::views {
     void Blueprints::syncPalette(Writing context, MountCatalog& mounts) {
         if (not state.paletteScene.root.exists())
             return;
+        if (not state.mounts.sphere.exists() or not state.mounts.material.exists())
+            return;
         if (state.mountLayers.empty() and not mounts.ids.empty())
             rebuildMountLayers(context, mounts);
-        blueprints::geometry::syncPaletteActors(context, *state.paletteScene.root, mounts.ids, state.paletteScene.actors);
+        blueprints::geometry::syncPaletteActors(context, *state.paletteScene.root, mounts.ids, state.paletteScene.actors, *state.mounts.sphere, *state.mounts.material);
     }
 
     void Blueprints::refreshMembraneCandidates(Reading context) {
@@ -528,10 +530,20 @@ namespace eltanin::views {
         draw->AddPolyline(pts.data(), static_cast<int>(pts.size()), IM_COL32(255, 180, 64, 220), ImDrawFlags_None, 2.5f);
     }
 
-    void Blueprints::aimMountCursor(Reading context) {
-        blueprints::mountPlacement::resetAim(state.mounts);
-        if (not state.mounts.enabled or state.paletteMode or ImGui::GetIO().WantCaptureMouse)
+    void Blueprints::aimMountCursor(Reading context, renderer::Integer32 under) {
+        if (not state.mounts.enabled or state.paletteMode) {
+            blueprints::mountPlacement::resetAim(state.mounts);
             return;
+        }
+        // Keep last aim while ImGui owns the mouse (selection panel / etc.).
+        if (ImGui::GetIO().WantCaptureMouse)
+            return;
+        // Pointer over a placed mount → hover/select owns the cursor; no face aim this frame.
+        if (blueprints::selection::hitMount(context, state.mainScene.mountActors, under)) {
+            blueprints::mountPlacement::resetAim(state.mounts);
+            return;
+        }
+        blueprints::mountPlacement::resetAim(state.mounts);
         if (not state.hovered.exists() or not with<::eltanin::mech::Blueprint>::exists(context, *state.hovered))
             return;
         if (not state.mainScene.camera.exists())
@@ -548,7 +560,7 @@ namespace eltanin::views {
         blueprints::mountPlacement::aim(state.mounts, data, blueprints::mountPlacement::MouseRay{.origin = ray->origin, .dir = ray->dir});
     }
 
-    void Blueprints::syncMountCursor(Writing context) {
+    void Blueprints::syncMountCursor(Writing context, renderer::Integer32 under) {
         if (not state.mainScene.root.exists())
             return;
         if (not state.mounts.enabled) {
@@ -556,7 +568,7 @@ namespace eltanin::views {
             blueprints::mountPlacement::resetAim(state.mounts);
             return;
         }
-        aimMountCursor(context);
+        aimMountCursor(context, under);
         blueprints::mountPlacement::syncBalls(context, *state.mainScene.root, state.mounts);
     }
 
@@ -690,7 +702,7 @@ namespace eltanin::views {
         syncClipboardGhost(context);
         refreshMembraneCandidates(context);
         if (state.mounts.enabled)
-            syncMountCursor(context);
+            syncMountCursor(context, renderer::Integer32{0});
     }
 
     void Blueprints::draw(Writing context, bool& open, BlueprintCatalog& catalog, MountCatalog& mounts) {
@@ -734,7 +746,7 @@ namespace eltanin::views {
                 syncGridToFloor(context);
                 applyDisplay(context);
             }
-            if (ImGui::IsKeyPressed(ImGuiKey_B) and not state.membranes.enabled and not state.mounts.enabled)
+            if (ImGui::IsKeyPressed(ImGuiKey_B) and not state.membranes.enabled)
                 blueprints::selection::toggleFocus(state.selection);
             if (ImGui::GetIO().KeyCtrl) {
                 if (ImGui::IsKeyPressed(ImGuiKey_Z))
@@ -747,7 +759,7 @@ namespace eltanin::views {
         if (not state.paletteMode) {
         updateWorldCursor(context);
         if (state.mounts.enabled) {
-            syncMountCursor(context);
+            syncMountCursor(context, under);
         } else if (state.mainScene.root.exists()) {
             blueprints::mountPlacement::clearBalls(context, *state.mainScene.root, state.mounts);
         }
@@ -755,7 +767,20 @@ namespace eltanin::views {
             aimMembraneTarget(context);
 
         if (state.mounts.enabled) {
-            // Place/remove later — cursor aim only for now.
+            // Mount-only pick: quarks ignored (empty quark list). Face aim balls stay separate.
+            blueprints::selection::handlePointer(context, state.selection, state.hovered, {}, state.mainScene.mountActors, under);
+            if (blueprints::selection::handleHotkeys(context, state.selection, state.history, state.hovered, {}, state.mainScene.mountActors)) {
+                persistHovered(context);
+                syncVisuals(context);
+                syncMountCursor(context, under);
+            }
+            blueprints::selection::handleClipboardHotkeys(state.selection);
+            if (blueprints::selection::handleClipboardChords(context, state.selection, state.history, state.hovered, {}, state.mainScene.mountActors)) {
+                persistHovered(context);
+                syncVisuals(context);
+                syncClipboardGhost(context);
+                syncMountCursor(context, under);
+            }
         } else if (state.membranes.enabled) {
             handleMembraneMode(context, under);
         } else {
@@ -946,9 +971,9 @@ namespace eltanin::views {
                         setEditMode(context, static_cast<EditMode>(mode));
                 }
                 if (state.mounts.enabled) {
-                    ImGui::TextDisabled("ray aim · face → grid points · balls");
+                    ImGui::TextDisabled("ray aim · balls · LMB/RMB mount select");
                     if (state.mounts.points.empty()) {
-                        ImGui::TextDisabled("Mount cursor: aim a cell face");
+                        ImGui::TextDisabled("Mount cursor: aim a free face (or hover a mount)");
                     } else {
                         ImGui::Text("Mount cursor: %zu grid pts", state.mounts.points.size());
                         for (const auto& point : state.mounts.points)
@@ -1022,8 +1047,10 @@ namespace eltanin::views {
         ImGui::End();
         open = shown;
 
-        if (not state.paletteMode and not state.membranes.enabled and not state.mounts.enabled) {
-            if (blueprints::selection::drawPanel(context, state.selection, state.history, blueprintsPos, blueprintsSize, state.hovered, state.mainScene.quarkActors, state.mainScene.mountActors)) {
+        if (not state.paletteMode and not state.membranes.enabled) {
+            static const std::vector<blueprints::geometry::QuarkActor> noQuarks;
+            const auto& quarksForSelect = state.mounts.enabled ? noQuarks : state.mainScene.quarkActors;
+            if (blueprints::selection::drawPanel(context, state.selection, state.history, blueprintsPos, blueprintsSize, state.hovered, quarksForSelect, state.mainScene.mountActors)) {
                 persistHovered(context);
                 syncVisuals(context);
                 refreshMembraneCandidates(context);
@@ -1034,7 +1061,7 @@ namespace eltanin::views {
                 refreshMembraneCandidates(context);
             }
             syncClipboardGhost(context);
-        } else if (not state.paletteMode and not state.mounts.enabled and state.mainScene.root.exists()) {
+        } else if (not state.paletteMode and state.mainScene.root.exists()) {
             blueprints::geometry::clearActors(context, *state.mainScene.root, state.mainScene.clipboardActors);
             blueprints::geometry::clearMountActors(context, *state.mainScene.root, state.mainScene.clipboardMountActors);
         }

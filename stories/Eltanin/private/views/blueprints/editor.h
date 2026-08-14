@@ -101,8 +101,8 @@ namespace eltanin::views {
         void drawMembraneFaceHighlight(Reading) const;
         // Membrane tile mode owns LMB/RMB; does not fall through to selection.
         auto handleMembraneMode(Writing, rmmr::renderer::Integer32 under) -> bool;
-        void aimMountCursor(Reading);
-        void syncMountCursor(Writing);
+        void aimMountCursor(Reading, rmmr::renderer::Integer32 under);
+        void syncMountCursor(Writing, rmmr::renderer::Integer32 under);
         void persistHovered(Writing);
         void applyHistory(Writing, blueprints::history::UiAction);
         void draw(Writing, bool& open, BlueprintCatalog&, MountCatalog&);

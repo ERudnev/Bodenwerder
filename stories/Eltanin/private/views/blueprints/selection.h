@@ -67,6 +67,9 @@ namespace eltanin::views::blueprints::selection {
     auto moveClipboard(Store&, index3 step) -> bool;
     auto pasteClipboard(Writing, Store&, history::Store&, mech::Blueprint::Id hovered) -> bool;
 
+    // Empty if under is not a placed-mount actor alias.
+    auto hitMount(Reading, const std::vector<MountActor>&, rmmr::renderer::Integer32 under) -> base::maybe<MountActor>;
+
     void handlePointer(Reading, Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&, rmmr::renderer::Integer32 under);
 
     auto handleHotkeys(Writing, Store&, history::Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&) -> bool;

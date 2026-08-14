@@ -29,11 +29,16 @@ namespace eltanin::views::blueprints::mountPlacement {
         const RGB ballAlbedo{1.0f, 0.72f, 0.22f};
 
         auto destroyBall(Writing context, scene::Root::Id root, scene::actor::Mesh::Id actor) -> void {
-            if (with<scene::Node_group>::exists(context, root) and with<scene::Node_group>::get(context, root).contains(actor))
+            // Group delete already removes the node; a second Node::remove is modify-after-delete → bad_optional_access.
+            if (with<scene::Node_group>::exists(context, root) and with<scene::Node_group>::get(context, root).contains(actor)) {
                 with<scene::Node_group>::deleteElement(context, root, actor);
+                return;
+            }
             for (const auto [otherRoot, group] : context->aspect<scene::Node_group>().items()) {
-                if (group.contains(actor))
+                if (group.contains(actor)) {
                     with<scene::Node_group>::deleteElement(context, otherRoot, actor);
+                    return;
+                }
             }
             if (with<scene::Node>::exists(context, actor))
                 with<scene::Node>::remove(context, actor);

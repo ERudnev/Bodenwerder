@@ -547,6 +547,12 @@ namespace eltanin::views::blueprints::selection {
         return true;
     }
 
+    auto hitMount(Reading context, const std::vector<MountActor>& mounts, renderer::Integer32 under) -> base::maybe<MountActor> {
+        if (under == renderer::Integer32{0})
+            return {};
+        return findMountByAlias(context, mounts, under);
+    }
+
     void handlePointer(Reading context, Store& store, base::maybe<mech::Blueprint::Id>, const std::vector<QuarkActor>& quarks, const std::vector<MountActor>& mounts, renderer::Integer32 under) {
         if (ImGui::GetIO().WantCaptureMouse or under == renderer::Integer32{0})
             return;
