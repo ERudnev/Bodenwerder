@@ -553,6 +553,32 @@ namespace eltanin::views::blueprints::selection {
         return findMountByAlias(context, mounts, under);
     }
 
+    auto soleSelectedMountIndex(Reading context, const Store& store, const std::vector<MountActor>& mounts) -> base::maybe<std::size_t> {
+        const auto mountIndices = selectedMountIndices(context, store, mounts);
+        if (mountIndices.size() != 1)
+            return {};
+        return *mountIndices.begin();
+    }
+
+    auto setSoleMountTransform(Writing context, Store& store, history::Store& history, mech::Blueprint::Id hovered, const std::vector<MountActor>& mounts, const mech::space::Transform& transform) -> bool {
+        if (not with<::eltanin::mech::Blueprint>::exists(context, hovered))
+            return false;
+        const auto mountIndex = soleSelectedMountIndex(context, store, mounts);
+        if (not mountIndex)
+            return false;
+        const auto& data = with<::eltanin::mech::Blueprint>::get(context, hovered);
+        if (*mountIndex >= data.mounts.size())
+            return false;
+        const auto& current = data.mounts[*mountIndex].transform;
+        if (current.grid.x == transform.grid.x and current.grid.y == transform.grid.y and current.grid.z == transform.grid.z and current.rotation == transform.rotation)
+            return false;
+        store.pendingRestore.clear();
+        store.pendingMountRestore = selectionMountRefs(context, mounts, store.aliases);
+        history::record(history, hovered, "orient mount", data);
+        with<::eltanin::mech::Blueprint>::modify(context, hovered)->mounts[*mountIndex].transform = transform;
+        return true;
+    }
+
     void handlePointer(Reading context, Store& store, base::maybe<mech::Blueprint::Id>, const std::vector<QuarkActor>& quarks, const std::vector<MountActor>& mounts, renderer::Integer32 under) {
         if (ImGui::GetIO().WantCaptureMouse or under == renderer::Integer32{0})
             return;

@@ -69,6 +69,9 @@ namespace eltanin::views::blueprints::selection {
 
     // Empty if under is not a placed-mount actor alias.
     auto hitMount(Reading, const std::vector<MountActor>&, rmmr::renderer::Integer32 under) -> base::maybe<MountActor>;
+    // Exactly one selected mount actor → its Blueprint::mounts index.
+    auto soleSelectedMountIndex(Reading, const Store&, const std::vector<MountActor>&) -> base::maybe<std::size_t>;
+    auto setSoleMountTransform(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<MountActor>&, const mech::space::Transform&) -> bool;
 
     void handlePointer(Reading, Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&, rmmr::renderer::Integer32 under);
 

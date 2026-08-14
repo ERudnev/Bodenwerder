@@ -272,6 +272,8 @@ namespace eltanin::views {
         state.mainScene.clipboardMountActors = {};
         state.display = {.skeleton = true, .membranes = true, .internals = true, .externals = true, .floorMode = blueprints::geometry::Display::FloorMode::all};
         state.mountLayers = {};
+        state.mountSpins = {};
+        state.mountFits = {};
         state.cellBox.reset();
         state.editMode = EditMode::skeleton;
         state.membranes = {.enabled = false, .cell = {}, .slots = {}, .face = {}};
@@ -416,13 +418,19 @@ namespace eltanin::views {
 
     void Blueprints::rebuildMountLayers(Reading context, MountCatalog& mounts) {
         state.mountLayers.clear();
+        state.mountSpins.clear();
+        state.mountFits.clear();
         state.mountLayers.reserve(mounts.ids.size());
+        state.mountSpins.reserve(mounts.ids.size());
+        state.mountFits.reserve(mounts.ids.size());
         for (const auto id : mounts.ids) {
             if (not with<::eltanin::mech::Mount>::exists(context, id))
                 continue;
             const auto& mount = with<::eltanin::mech::Mount>::get(context, id);
             const auto layer = mount.attachment.flatMounted() ? mech::Layer::externals : mech::Layer::internals;
             state.mountLayers.emplace(id, layer);
+            state.mountSpins.emplace(id, blueprints::mountEditor::buildSpins(mount.attachment));
+            state.mountFits.emplace(id, blueprints::mountEditor::buildFits(mount.attachment));
         }
     }
 
@@ -781,6 +789,27 @@ namespace eltanin::views {
                 syncClipboardGhost(context);
                 syncMountCursor(context, under);
             }
+            if (state.hovered.exists() and with<::eltanin::mech::Blueprint>::exists(context, *state.hovered)) {
+                if (const auto mountIndex = blueprints::selection::soleSelectedMountIndex(context, state.selection, state.mainScene.mountActors)) {
+                    const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
+                    if (*mountIndex < data.mounts.size()) {
+                        const auto& placed = data.mounts[*mountIndex];
+                        const auto mountId = with<Assets>::find<::eltanin::mech::Mount>(context, placed.mount);
+                        if (mountId) {
+                            if (const auto found = state.mountSpins.find(*mountId); found != state.mountSpins.end()) {
+                                if (const auto chosen = blueprints::mountEditor::drawOriMenu(placed.transform.rotation, found->second)) {
+                                    if (const auto next = blueprints::mountEditor::applyOri(placed.transform, found->second, *chosen)) {
+                                        if (blueprints::selection::setSoleMountTransform(context, state.selection, state.history, *state.hovered, state.mainScene.mountActors, *next)) {
+                                            persistHovered(context);
+                                            syncVisuals(context);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         } else if (state.membranes.enabled) {
             handleMembraneMode(context, under);
         } else {
@@ -801,7 +830,9 @@ namespace eltanin::views {
         constexpr auto spaceMenuPopup = "##blueprints.spaceMenu";
         const bool spaceMenuOpen = ImGui::IsPopupOpen(spaceMenuPopup);
         const bool spaceMenuActive = state.spaceMenu.place;
-        if (state.editMode != EditMode::skeleton) {
+        const bool f3Place = state.editMode == EditMode::mounts and state.selection.aliases.empty();
+        const bool spaceOk = state.editMode == EditMode::skeleton or f3Place;
+        if (not spaceOk) {
             if (spaceMenuOpen or spaceMenuActive)
                 state.spaceMenu = {.place = false, .close = false};
         } else if (ImGui::IsKeyPressed(ImGuiKey_Space)) {
@@ -859,6 +890,52 @@ namespace eltanin::views {
                             syncVisuals(context);
                         }
                     }
+                }
+                ImGui::EndPopup();
+            } else {
+                state.spaceMenu = {.place = false, .close = false};
+            }
+        }
+
+        if (f3Place and spaceMenuActive) {
+            if (ImGui::BeginPopup(spaceMenuPopup)) {
+                if (state.spaceMenu.close) {
+                    ImGui::CloseCurrentPopup();
+                    state.spaceMenu = {.place = false, .close = false};
+                } else if (not state.hovered.exists() or not with<::eltanin::mech::Blueprint>::exists(context, *state.hovered)) {
+                    ImGui::TextDisabled("No blueprint");
+                } else if (state.mounts.points.empty()) {
+                    ImGui::TextDisabled("Aim a cell face");
+                } else {
+                    ImGui::TextDisabled("%zu pts · matching mounts", state.mounts.points.size());
+                    ImGui::Separator();
+                    bool any = false;
+                    for (const auto id : mounts.ids) {
+                        const auto found = state.mountFits.find(id);
+                        if (found == state.mountFits.end() or not blueprints::mountEditor::matchesCursor(found->second, state.mounts.points))
+                            continue;
+                        if (not with<::eltanin::mech::Mount>::exists(context, id))
+                            continue;
+                        const auto& mount = with<::eltanin::mech::Mount>::get(context, id);
+                        const auto& unit = with<Unit>::get(context, id);
+                        const char* label = mount.name.empty() ? unit.name.own.c_str() : mount.name.c_str();
+                        any = true;
+                        ImGui::PushID(reinterpret_cast<const void*>(id.raw()));
+                        if (ImGui::Selectable(label)) {
+                            if (const auto seating = blueprints::mountEditor::seatingOn(mount.attachment, found->second, state.mounts.points)) {
+                                blueprints::history::record(state.history, *state.hovered, "place mount", with<::eltanin::mech::Blueprint>::get(context, *state.hovered));
+                                auto writable = with<::eltanin::mech::Blueprint>::modify(context, *state.hovered);
+                                writable->mounts.push_back(mech::Blueprint::Mounted{.mount = unit.name, .transform = *seating});
+                                ImGui::CloseCurrentPopup();
+                                state.spaceMenu = {.place = false, .close = false};
+                                persistHovered(context);
+                                syncVisuals(context);
+                            }
+                        }
+                        ImGui::PopID();
+                    }
+                    if (not any)
+                        ImGui::TextDisabled("no catalog mount for this footprint");
                 }
                 ImGui::EndPopup();
             } else {
@@ -971,9 +1048,9 @@ namespace eltanin::views {
                         setEditMode(context, static_cast<EditMode>(mode));
                 }
                 if (state.mounts.enabled) {
-                    ImGui::TextDisabled("ray aim · balls · LMB/RMB mount select");
+                    ImGui::TextDisabled("ray aim · balls · LMB/RMB select · Space place · ori menu");
                     if (state.mounts.points.empty()) {
-                        ImGui::TextDisabled("Mount cursor: aim a free face (or hover a mount)");
+                        ImGui::TextDisabled("Mount cursor: aim a free face (or select one mount)");
                     } else {
                         ImGui::Text("Mount cursor: %zu grid pts", state.mounts.points.size());
                         for (const auto& point : state.mounts.points)

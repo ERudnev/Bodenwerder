@@ -22,6 +22,7 @@
 #include "views/blueprints/history.h"
 #include "views/blueprints/membraneSlots.h"
 #include "views/blueprints/mountBounds.h"
+#include "views/blueprints/mountEditor.h"
 #include "views/blueprints/mountPlacement.h"
 #include "views/blueprints/selection.h"
 
@@ -62,6 +63,10 @@ namespace eltanin::views {
             blueprints::geometry::Display display;
             // Catalog mount → Layer from attachment coplanarity (immutable for this run).
             std::unordered_map<mech::Mount::Id, mech::Layer> mountLayers;
+            // Catalog mount → admissible oris about attachment BBox center (filled with layers).
+            std::unordered_map<mech::Mount::Id, blueprints::mountEditor::Spins> mountSpins;
+            // Catalog mount → ordered shapes of all 24 rotations (F3 Space place).
+            std::unordered_map<mech::Mount::Id, blueprints::mountEditor::Fits> mountFits;
             // Inclusive construction AABB in cell-space (cells + mountBounds).
             base::maybe<blueprints::mountBounds::CellBox> cellBox;
             blueprints::selection::Store selection;
