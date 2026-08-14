@@ -15,9 +15,10 @@ namespace eltanin::views::blueprints::mountEditor {
     struct Spin {
         base::common_types::ivec3 shift;
         std::vector<base::common_types::index3> points; // native points after R about BBox center
+        bool flip; // true → reverses plane normal; at most one such entry (escape hatch in ori menu)
     };
 
-    // Only oris that permute the attachment set onto itself (points ↔ points).
+    // Oris that permute the attachment set onto itself. Flat: same-normal autos + one labeled flip.
     using Spins = std::map<mech::space::orient::key, Spin>;
 
     // Translation-invariant ordered point set (lex-min origin, then sort by xyz).

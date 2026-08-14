@@ -87,6 +87,49 @@ namespace eltanin::views::blueprints::mountEditor {
             return rel;
         }
 
+        // Any lattice normal of a flat point set (sign arbitrary). Empty if not a unique plane.
+        auto planeNormal(const std::vector<base::common_types::index3>& points) -> base::maybe<mech::space::ivec3> {
+            if (points.size() < 3)
+                return {};
+            const auto& origin = points.front();
+            mech::space::ivec3 edge1{};
+            bool haveEdge = false;
+            for (std::size_t i = 1; i < points.size(); ++i) {
+                edge1 = mech::space::ivec3{points[i].x - origin.x, points[i].y - origin.y, points[i].z - origin.z};
+                if (edge1.x != 0 or edge1.y != 0 or edge1.z != 0) {
+                    haveEdge = true;
+                    break;
+                }
+            }
+            if (not haveEdge)
+                return {};
+            for (std::size_t i = 1; i < points.size(); ++i) {
+                const mech::space::ivec3 edge2{points[i].x - origin.x, points[i].y - origin.y, points[i].z - origin.z};
+                const mech::space::ivec3 normal{
+                    edge1.y * edge2.z - edge1.z * edge2.y,
+                    edge1.z * edge2.x - edge1.x * edge2.z,
+                    edge1.x * edge2.y - edge1.y * edge2.x,
+                };
+                if (normal.x == 0 and normal.y == 0 and normal.z == 0)
+                    continue;
+                for (const auto& point : points) {
+                    const mech::space::ivec3 delta{point.x - origin.x, point.y - origin.y, point.z - origin.z};
+                    if (delta.x * normal.x + delta.y * normal.y + delta.z * normal.z != 0)
+                        return {};
+                }
+                return normal;
+            }
+            return {};
+        }
+
+        auto mapDir(mech::space::orient::key rotation, mech::space::ivec3 dir) -> mech::space::ivec3 {
+            return mech::space::orient::matrix[static_cast<std::size_t>(rotation)] * dir;
+        }
+
+        auto sameDir(mech::space::ivec3 a, mech::space::ivec3 b) -> bool {
+            return a.x == b.x and a.y == b.y and a.z == b.z;
+        }
+
     } // namespace
 
     auto OrderedLess::operator()(const Ordered& a, const Ordered& b) const -> bool {
@@ -117,6 +160,8 @@ namespace eltanin::views::blueprints::mountEditor {
             max.z = std::max(max.z, point.z);
         }
         const base::common_types::ivec3 doubledCenter{min.x + max.x, min.y + max.y, min.z + max.z};
+        const auto normal = planeNormal(attachment.points);
+        base::maybe<std::pair<mech::space::orient::key, Spin>> flipKeep;
 
         for (mech::space::orient::key rotation = 0; rotation < 24; ++rotation) {
             std::vector<base::common_types::index3> rotated;
@@ -140,8 +185,15 @@ namespace eltanin::views::blueprints::mountEditor {
                 continue;
             if (not samePointSet(attachment.points, rotated))
                 continue;
-            out.emplace(rotation, Spin{.shift = shift, .points = std::move(rotated)});
+            if (normal and not sameDir(mapDir(rotation, *normal), *normal)) {
+                if (not flipKeep)
+                    flipKeep = std::pair{rotation, Spin{.shift = shift, .points = std::move(rotated), .flip = true}};
+                continue;
+            }
+            out.emplace(rotation, Spin{.shift = shift, .points = std::move(rotated), .flip = false});
         }
+        if (flipKeep)
+            out.emplace(flipKeep->first, std::move(flipKeep->second));
         return out;
     }
 
@@ -209,6 +261,7 @@ namespace eltanin::views::blueprints::mountEditor {
             mech::space::orient::key bodyAuto;
             mech::space::orient::key absOri;
             base::common_types::ivec3 worldShift;
+            bool flip;
         };
         std::vector<Row> rows;
         rows.reserve(spins.size());
@@ -217,14 +270,22 @@ namespace eltanin::views::blueprints::mountEditor {
                 .bodyAuto = bodyAuto,
                 .absOri = composeRow[static_cast<std::size_t>(bodyAuto)],
                 .worldShift = mech::space::orient::matrix[static_cast<std::size_t>(currentAbs)] * spin.shift,
+                .flip = spin.flip,
             });
         }
-        std::sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) { return a.absOri < b.absOri; });
+        std::sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) {
+            if (a.flip != b.flip)
+                return not a.flip;
+            return a.absOri < b.absOri;
+        });
         base::maybe<mech::space::orient::key> picked;
         for (const auto& row : rows) {
             const bool selected = row.bodyAuto == 0;
             ImGui::PushID(static_cast<int>(row.bodyAuto));
-            if (ImGui::Selectable(std::format("{} abs {} · auto {} · Δ[{},{},{}]", selected ? ">" : " ", static_cast<int>(row.absOri), static_cast<int>(row.bodyAuto), row.worldShift.x, row.worldShift.y, row.worldShift.z).c_str(), selected) and not selected)
+            const auto label = row.flip
+                ? std::format("{} flip · abs {} · auto {} · Δ[{},{},{}]", selected ? ">" : " ", static_cast<int>(row.absOri), static_cast<int>(row.bodyAuto), row.worldShift.x, row.worldShift.y, row.worldShift.z)
+                : std::format("{} abs {} · auto {} · Δ[{},{},{}]", selected ? ">" : " ", static_cast<int>(row.absOri), static_cast<int>(row.bodyAuto), row.worldShift.x, row.worldShift.y, row.worldShift.z);
+            if (ImGui::Selectable(label.c_str(), selected) and not selected)
                 picked = row.bodyAuto;
             ImGui::PopID();
         }
