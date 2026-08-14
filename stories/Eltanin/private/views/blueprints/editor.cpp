@@ -780,6 +780,7 @@ namespace eltanin::views {
             if (blueprints::selection::handleHotkeys(context, state.selection, state.history, state.hovered, {}, state.mainScene.mountActors)) {
                 persistHovered(context);
                 syncVisuals(context);
+                syncClipboardGhost(context);
                 syncMountCursor(context, under);
             }
             blueprints::selection::handleClipboardHotkeys(state.selection);
@@ -791,24 +792,61 @@ namespace eltanin::views {
             }
             if (state.hovered.exists() and with<::eltanin::mech::Blueprint>::exists(context, *state.hovered)) {
                 if (const auto mountIndex = blueprints::selection::soleSelectedMountIndex(context, state.selection, state.mainScene.mountActors)) {
-                    const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
-                    if (*mountIndex < data.mounts.size()) {
-                        const auto& placed = data.mounts[*mountIndex];
+                    if (*mountIndex < with<::eltanin::mech::Blueprint>::get(context, *state.hovered).mounts.size()) {
+                        const auto placed = with<::eltanin::mech::Blueprint>::get(context, *state.hovered).mounts[*mountIndex];
                         const auto mountId = with<Assets>::find<::eltanin::mech::Mount>(context, placed.mount);
                         if (mountId) {
+                            if (not state.mountReplace.mountIndex.exists() or *state.mountReplace.mountIndex != *mountIndex) {
+                                state.mountReplace.mountIndex = *mountIndex;
+                                state.mountReplace.alternatives.clear();
+                                const auto& currentMount = with<::eltanin::mech::Mount>::get(context, *mountId);
+                                const auto& unit = with<Unit>::get(context, *mountId);
+                                state.mountReplace.original = blueprints::mountEditor::ReplaceOption{
+                                    .name = placed.mount,
+                                    .label = currentMount.name.empty() ? unit.name.own : currentMount.name,
+                                };
+                                const auto footprint = blueprints::mountEditor::worldPoints(currentMount.attachment, placed.transform);
+                                for (const auto id : mounts.ids) {
+                                    if (id == *mountId)
+                                        continue;
+                                    const auto found = state.mountFits.find(id);
+                                    if (found == state.mountFits.end() or not blueprints::mountEditor::matchesCursor(found->second, footprint))
+                                        continue;
+                                    if (not with<::eltanin::mech::Mount>::exists(context, id))
+                                        continue;
+                                    const auto& alt = with<::eltanin::mech::Mount>::get(context, id);
+                                    const auto& altUnit = with<Unit>::get(context, id);
+                                    state.mountReplace.alternatives.push_back(blueprints::mountEditor::ReplaceOption{
+                                        .name = altUnit.name,
+                                        .label = alt.name.empty() ? altUnit.name.own : alt.name,
+                                    });
+                                }
+                            }
+                            bool visualsDirty = false;
                             if (const auto found = state.mountSpins.find(*mountId); found != state.mountSpins.end()) {
                                 if (const auto chosen = blueprints::mountEditor::drawOriMenu(placed.transform.rotation, found->second)) {
                                     if (const auto next = blueprints::mountEditor::applyOri(placed.transform, found->second, *chosen)) {
-                                        if (blueprints::selection::setSoleMountTransform(context, state.selection, state.history, *state.hovered, state.mainScene.mountActors, *next)) {
-                                            persistHovered(context);
-                                            syncVisuals(context);
-                                        }
+                                        if (blueprints::selection::setSoleMountTransform(context, state.selection, state.history, *state.hovered, state.mainScene.mountActors, *next))
+                                            visualsDirty = true;
                                     }
                                 }
                             }
+                            // Swap catalog unit only — keep current grid/rotation (seatingOn re-picked a "default" ori and undid flips).
+                            if (const auto picked = blueprints::mountEditor::drawReplaceMenu(placed.mount, state.mountReplace.original, state.mountReplace.alternatives)) {
+                                if (blueprints::selection::setSoleMountUnit(context, state.selection, state.history, *state.hovered, state.mainScene.mountActors, *picked, {}))
+                                    visualsDirty = true;
+                            }
+                            if (visualsDirty) {
+                                persistHovered(context);
+                                syncVisuals(context);
+                            }
                         }
                     }
+                } else {
+                    state.mountReplace = {};
                 }
+            } else {
+                state.mountReplace = {};
             }
         } else if (state.membranes.enabled) {
             handleMembraneMode(context, under);
@@ -817,6 +855,7 @@ namespace eltanin::views {
             if (blueprints::selection::handleHotkeys(context, state.selection, state.history, state.hovered, state.mainScene.quarkActors, state.mainScene.mountActors)) {
                 persistHovered(context);
                 syncVisuals(context);
+                syncClipboardGhost(context);
                 refreshMembraneCandidates(context);
             }
             blueprints::selection::handleClipboardHotkeys(state.selection);

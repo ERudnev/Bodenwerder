@@ -72,6 +72,8 @@ namespace eltanin::views::blueprints::selection {
     // Exactly one selected mount actor → its Blueprint::mounts index.
     auto soleSelectedMountIndex(Reading, const Store&, const std::vector<MountActor>&) -> base::maybe<std::size_t>;
     auto setSoleMountTransform(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<MountActor>&, const mech::space::Transform&) -> bool;
+    // Hot-swap catalog unit on the sole selected mount; optional new seating (else keep transform).
+    auto setSoleMountUnit(Writing, Store&, history::Store&, mech::Blueprint::Id hovered, const std::vector<MountActor>&, rmmr::resource::Unit::Name, base::maybe<mech::space::Transform>) -> bool;
 
     void handlePointer(Reading, Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&, rmmr::renderer::Integer32 under);
 

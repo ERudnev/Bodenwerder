@@ -67,6 +67,12 @@ namespace eltanin::views {
             std::unordered_map<mech::Mount::Id, blueprints::mountEditor::Spins> mountSpins;
             // Catalog mount → ordered shapes of all 24 rotations (F3 Space place).
             std::unordered_map<mech::Mount::Id, blueprints::mountEditor::Fits> mountFits;
+            // Sole-selected mount: hot-swap list frozen while this index stays selected.
+            struct {
+                base::maybe<std::size_t> mountIndex;
+                blueprints::mountEditor::ReplaceOption original;
+                std::vector<blueprints::mountEditor::ReplaceOption> alternatives;
+            } mountReplace;
             // Inclusive construction AABB in cell-space (cells + mountBounds).
             base::maybe<blueprints::mountBounds::CellBox> cellBox;
             blueprints::selection::Store selection;

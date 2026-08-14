@@ -1,12 +1,14 @@
 #pragma once
 
 #include <map>
+#include <string>
 #include <vector>
 
 #include <base/maybe.h>
 #include <base/types/common_types.h>
 #include <eltanin/mech/mount.q1.h>
 #include <eltanin/mech/semantics.q1.h>
+#include <rmmr/resources/manager.q1.h>
 
 namespace eltanin::views::blueprints::mountEditor {
 
@@ -36,10 +38,20 @@ namespace eltanin::views::blueprints::mountEditor {
     auto matchesCursor(const Fits&, const std::vector<base::common_types::index3>& cursor) -> bool;
     auto seatingOn(const mech::Attachment&, const Fits&, const std::vector<base::common_types::index3>& cursor) -> base::maybe<mech::space::Transform>;
 
+    // Attachment points in absolute grid after Transform.
+    auto worldPoints(const mech::Attachment&, const mech::space::Transform&) -> std::vector<base::common_types::index3>;
+
     // Body-local spin: R_new = compose(current, auto); grid += currentR · shift(auto). Empty if auto is identity.
     auto applyOri(const mech::space::Transform& current, const Spins&, mech::space::orient::key bodyAuto) -> base::maybe<mech::space::Transform>;
 
     // Near-cursor list: spins as body-local autos (identity = current). Full cube (24) → 6 turn/bank/tilt ±90°.
     auto drawOriMenu(mech::space::orient::key currentAbs, const Spins&) -> base::maybe<mech::space::orient::key>;
+
+    // Hot-swap list (right of ori): first row = original (open-time) mount; then alternatives. Click → Unit::Name; caller keeps transform.
+    struct ReplaceOption {
+        rmmr::resource::Unit::Name name;
+        std::string label;
+    };
+    auto drawReplaceMenu(const rmmr::resource::Unit::Name& installed, const ReplaceOption& original, const std::vector<ReplaceOption>& alternatives) -> base::maybe<rmmr::resource::Unit::Name>;
 
 } // namespace eltanin::views::blueprints::mountEditor

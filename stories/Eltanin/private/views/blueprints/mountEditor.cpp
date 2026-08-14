@@ -227,6 +227,17 @@ namespace eltanin::views::blueprints::mountEditor {
         };
     }
 
+    auto worldPoints(const mech::Attachment& attachment, const mech::space::Transform& transform) -> std::vector<base::common_types::index3> {
+        const auto& matrix = mech::space::orient::matrix[static_cast<std::size_t>(transform.rotation)];
+        std::vector<base::common_types::index3> out;
+        out.reserve(attachment.points.size());
+        for (const auto& point : attachment.points) {
+            const auto rotated = matrix * mech::space::ivec3{point.x, point.y, point.z};
+            out.push_back(base::common_types::index3{.x = transform.grid.x + rotated.x, .y = transform.grid.y + rotated.y, .z = transform.grid.z + rotated.z});
+        }
+        return out;
+    }
+
     auto applyOri(const mech::space::Transform& current, const Spins& spins, mech::space::orient::key bodyAuto) -> base::maybe<mech::space::Transform> {
         const auto found = spins.find(bodyAuto);
         if (found == spins.end())
@@ -242,13 +253,32 @@ namespace eltanin::views::blueprints::mountEditor {
         };
     }
 
+    namespace {
+        ImVec2 lastOriMenuPos{0.0f, 0.0f};
+        ImVec2 lastOriMenuSize{0.0f, 0.0f};
+        bool lastOriMenuShown = false;
+
+        auto clampToViewport(ImVec2 pos, ImVec2 size) -> ImVec2 {
+            if (const ImGuiViewport* viewport = ImGui::GetMainViewport()) {
+                const float maxX = viewport->WorkPos.x + viewport->WorkSize.x - std::max(size.x, 120.0f);
+                const float maxY = viewport->WorkPos.y + viewport->WorkSize.y - std::max(size.y, 80.0f);
+                pos.x = std::min(pos.x, maxX);
+                pos.y = std::min(pos.y, maxY);
+                pos.x = std::max(pos.x, viewport->WorkPos.x);
+                pos.y = std::max(pos.y, viewport->WorkPos.y);
+            }
+            return pos;
+        }
+    } // namespace
+
     auto drawOriMenu(mech::space::orient::key currentAbs, const Spins& spins) -> base::maybe<mech::space::orient::key> {
+        lastOriMenuShown = false;
         if (spins.empty())
             return {};
         const auto mouse = ImGui::GetMousePos();
-        ImGui::SetNextWindowPos(ImVec2{mouse.x + 18.0f, mouse.y + 18.0f}, ImGuiCond_Appearing, ImVec2{0.0f, 0.0f});
+        ImGui::SetNextWindowPos(clampToViewport(ImVec2{mouse.x + 18.0f, mouse.y + 18.0f}, ImVec2{160.0f, 120.0f}), ImGuiCond_Appearing, ImVec2{0.0f, 0.0f});
         ImGui::SetNextWindowBgAlpha(0.92f);
-        constexpr auto popup = "##mountEditor.oriMenu";
+        constexpr auto popup = "ori##mountEditor.oriMenu";
         ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings;
         if (not ImGui::Begin(popup, nullptr, flags)) {
             ImGui::End();
@@ -315,6 +345,49 @@ namespace eltanin::views::blueprints::mountEditor {
                     picked = row.bodyAuto;
                 ImGui::PopID();
             }
+        }
+        lastOriMenuPos = ImGui::GetWindowPos();
+        lastOriMenuSize = ImGui::GetWindowSize();
+        lastOriMenuShown = true;
+        ImGui::End();
+        return picked;
+    }
+
+    auto drawReplaceMenu(const rmmr::resource::Unit::Name& installed, const ReplaceOption& original, const std::vector<ReplaceOption>& alternatives) -> base::maybe<rmmr::resource::Unit::Name> {
+        const auto mouse = ImGui::GetMousePos();
+        // Glue to ori's right edge each frame (Appearing+clamp parked it off-screen / elsewhere).
+        ImVec2 pos = lastOriMenuShown
+            ? ImVec2{lastOriMenuPos.x + lastOriMenuSize.x + 8.0f, lastOriMenuPos.y}
+            : ImVec2{mouse.x + 18.0f + 168.0f, mouse.y + 18.0f};
+        ImGui::SetNextWindowPos(pos, ImGuiCond_Always, ImVec2{0.0f, 0.0f});
+        ImGui::SetNextWindowBgAlpha(0.92f);
+        constexpr auto popup = "replace##mountEditor.replaceMenu";
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings;
+        if (not ImGui::Begin(popup, nullptr, flags)) {
+            ImGui::End();
+            return {};
+        }
+        ImGui::TextDisabled("replace · %zu compatible", alternatives.size());
+        ImGui::Separator();
+        base::maybe<rmmr::resource::Unit::Name> picked;
+        const bool originalInstalled = installed == original.name;
+        const auto originalText = original.label.empty() ? original.name.own : original.label;
+        ImGui::PushID("original");
+        if (ImGui::Selectable(std::format("{} {}", originalInstalled ? ">" : " ", originalText).c_str(), originalInstalled) and not originalInstalled)
+            picked = original.name;
+        ImGui::PopID();
+        if (not alternatives.empty()) {
+            ImGui::Separator();
+            for (std::size_t i = 0; i < alternatives.size(); ++i) {
+                const auto& option = alternatives[i];
+                const bool selected = installed == option.name;
+                ImGui::PushID(static_cast<int>(i));
+                if (ImGui::Selectable(std::format("{} {}", selected ? ">" : " ", option.label).c_str(), selected) and not selected)
+                    picked = option.name;
+                ImGui::PopID();
+            }
+        } else {
+            ImGui::TextDisabled("(no other footprint matches)");
         }
         ImGui::End();
         return picked;

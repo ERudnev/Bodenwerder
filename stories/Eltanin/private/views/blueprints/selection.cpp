@@ -579,15 +579,43 @@ namespace eltanin::views::blueprints::selection {
         return true;
     }
 
+    auto setSoleMountUnit(Writing context, Store& store, history::Store& history, mech::Blueprint::Id hovered, const std::vector<MountActor>& mounts, rmmr::resource::Unit::Name name, base::maybe<mech::space::Transform> transform) -> bool {
+        if (not with<::eltanin::mech::Blueprint>::exists(context, hovered))
+            return false;
+        const auto mountIndex = soleSelectedMountIndex(context, store, mounts);
+        if (not mountIndex)
+            return false;
+        const auto& data = with<::eltanin::mech::Blueprint>::get(context, hovered);
+        if (*mountIndex >= data.mounts.size())
+            return false;
+        const auto& current = data.mounts[*mountIndex];
+        const bool sameName = current.mount == name;
+        const bool sameTransform = not transform.exists() or (current.transform.grid.x == transform->grid.x and current.transform.grid.y == transform->grid.y and current.transform.grid.z == transform->grid.z and current.transform.rotation == transform->rotation);
+        if (sameName and sameTransform)
+            return false;
+        store.pendingRestore.clear();
+        store.pendingMountRestore = selectionMountRefs(context, mounts, store.aliases);
+        history::record(history, hovered, "replace mount", data);
+        auto writable = with<::eltanin::mech::Blueprint>::modify(context, hovered);
+        writable->mounts[*mountIndex].mount = std::move(name);
+        if (transform.exists())
+            writable->mounts[*mountIndex].transform = *transform;
+        return true;
+    }
+
     void handlePointer(Reading context, Store& store, base::maybe<mech::Blueprint::Id>, const std::vector<QuarkActor>& quarks, const std::vector<MountActor>& mounts, renderer::Integer32 under) {
-        if (ImGui::GetIO().WantCaptureMouse or under == renderer::Integer32{0})
+        if (ImGui::GetIO().WantCaptureMouse)
             return;
-        const auto quarkHit = findQuarkByAlias(context, quarks, under);
-        const auto mountHit = findMountByAlias(context, mounts, under);
-        if (not quarkHit and not mountHit)
-            return;
+        base::maybe<QuarkActor> quarkHit;
+        base::maybe<MountActor> mountHit;
+        if (under != renderer::Integer32{0}) {
+            quarkHit = findQuarkByAlias(context, quarks, under);
+            mountHit = findMountByAlias(context, mounts, under);
+        }
         const bool shift = ImGui::GetIO().KeyShift;
         if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            if (not quarkHit and not mountHit)
+                return;
             if (quarkHit and shift) {
                 for (const auto alias : familyAliases(context, quarks, *quarkHit))
                     addAlias(store.aliases, alias);
@@ -595,6 +623,10 @@ namespace eltanin::views::blueprints::selection {
                 addAlias(store.aliases, under);
             }
         } else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            if (not quarkHit and not mountHit) {
+                clear(store);
+                return;
+            }
             if (quarkHit and shift) {
                 for (const auto alias : familyAliases(context, quarks, *quarkHit))
                     removeAlias(store.aliases, alias);
@@ -605,13 +637,27 @@ namespace eltanin::views::blueprints::selection {
     }
 
     auto handleHotkeys(Writing context, Store& store, history::Store& history, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& quarks, const std::vector<MountActor>& mounts) -> bool {
+        if (ImGui::GetIO().WantCaptureKeyboard)
+            return false;
+        // / — deselect all; if selection already empty — clear clipboard.
+        if (ImGui::IsKeyPressed(ImGuiKey_Slash)) {
+            if (not store.aliases.empty()) {
+                clear(store);
+                return false;
+            }
+            if (not clipboardEmpty(store)) {
+                resetClipboard(store);
+                return true;
+            }
+            return false;
+        }
         if (store.focus != Focus::selection)
             return false;
         if (not hovered.exists())
             return false;
-        if (ImGui::IsKeyPressed(ImGuiKey_Delete) and not ImGui::GetIO().WantCaptureKeyboard)
+        if (ImGui::IsKeyPressed(ImGuiKey_Delete))
             return eraseSelected(context, store, history, *hovered, quarks, mounts);
-        if (store.aliases.empty() or ImGui::GetIO().WantCaptureKeyboard)
+        if (store.aliases.empty())
             return false;
         using Semiaxis = mech::space::orient::Semiaxis;
         const bool shift = ImGui::GetIO().KeyShift;
@@ -714,7 +760,7 @@ namespace eltanin::views::blueprints::selection {
                 if (ImGui::Button("delete") and hovered.exists())
                     erased = eraseSelected(context, store, history, *hovered, quarks, mounts);
                 ImGui::Separator();
-                ImGui::TextDisabled("Del — remove · x/RMB deselect · Shift+LMB family · WASD/QE move · Shift rotate · Ctrl+C/V");
+                ImGui::TextDisabled("Del — remove · / or empty RMB deselect · empty / clears clipboard · Shift+LMB family · WASD/QE move · Shift rotate · Ctrl+C/V");
                 const auto* blueprintData = (hovered.exists() and with<::eltanin::mech::Blueprint>::exists(context, *hovered))
                     ? &with<::eltanin::mech::Blueprint>::get(context, *hovered)
                     : nullptr;
