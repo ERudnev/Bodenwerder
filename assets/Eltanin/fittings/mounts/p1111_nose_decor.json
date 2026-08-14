@@ -1,0 +1,16 @@
+{
+  "name": "Armour p1111 nose decor",
+  "author": "Eltanin",
+  "attachment": {
+    "points": [
+      [0, 0, 0],
+      [1, 0, 0],
+      [1, 1, 0],
+      [0, 1, 0]
+    ]
+  },
+  "tempMesh": {
+    "pack": "Eltanin::armourDecor",
+    "entry": "p1111_nose_decor"
+  }
+}

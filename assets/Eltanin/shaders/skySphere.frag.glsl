@@ -5,7 +5,14 @@ in vec4 v_color0;
 flat in uint v_drawId;
 out vec4 FragColor;
 
-uniform vec3 u_albedo;
+layout(std430, binding = 7) readonly buffer ActorStateBuffer {
+    mat4 actorModel;
+    vec4 actorAlbedoOpacity;
+    vec2 actorLatticePattern;
+    uint actorScenicAlias;
+    uint actorSpriteIndex;
+};
+
 layout(binding = 0) uniform sampler2DArray u_albedoMap;
 
 layout(std430, binding = 9) readonly buffer DrawMetadataBuffer {
@@ -23,7 +30,7 @@ void main() {
     uint surface = primitiveSurfaces[drawMetadata.x + uint(gl_PrimitiveID)];
     uint layer = surfacePalette[drawMetadata.y + surface];
     vec4 texel = texture(u_albedoMap, vec3(v_uv0, float(layer)));
-    vec3 rgb = texel.rgb * u_albedo * v_color0.rgb * texel.a;
+    vec3 rgb = texel.rgb * actorAlbedoOpacity.rgb * v_color0.rgb * texel.a;
     if (dot(rgb, rgb) < 1e-8) {
         discard;
     }

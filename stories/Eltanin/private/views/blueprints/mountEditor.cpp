@@ -254,40 +254,67 @@ namespace eltanin::views::blueprints::mountEditor {
             ImGui::End();
             return {};
         }
-        ImGui::TextDisabled("%zu body spins · from ori %d", spins.size(), static_cast<int>(currentAbs));
-        ImGui::Separator();
-        const auto& composeRow = mech::space::orient::compose[static_cast<std::size_t>(currentAbs)];
-        struct Row {
-            mech::space::orient::key bodyAuto;
-            mech::space::orient::key absOri;
-            base::common_types::ivec3 worldShift;
-            bool flip;
-        };
-        std::vector<Row> rows;
-        rows.reserve(spins.size());
-        for (const auto& [bodyAuto, spin] : spins) {
-            rows.push_back(Row{
-                .bodyAuto = bodyAuto,
-                .absOri = composeRow[static_cast<std::size_t>(bodyAuto)],
-                .worldShift = mech::space::orient::matrix[static_cast<std::size_t>(currentAbs)] * spin.shift,
-                .flip = spin.flip,
-            });
-        }
-        std::sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) {
-            if (a.flip != b.flip)
-                return not a.flip;
-            return a.absOri < b.absOri;
-        });
         base::maybe<mech::space::orient::key> picked;
-        for (const auto& row : rows) {
-            const bool selected = row.bodyAuto == 0;
-            ImGui::PushID(static_cast<int>(row.bodyAuto));
-            const auto label = row.flip
-                ? std::format("{} flip · abs {} · auto {} · Δ[{},{},{}]", selected ? ">" : " ", static_cast<int>(row.absOri), static_cast<int>(row.bodyAuto), row.worldShift.x, row.worldShift.y, row.worldShift.z)
-                : std::format("{} abs {} · auto {} · Δ[{},{},{}]", selected ? ">" : " ", static_cast<int>(row.absOri), static_cast<int>(row.bodyAuto), row.worldShift.x, row.worldShift.y, row.worldShift.z);
-            if (ImGui::Selectable(label.c_str(), selected) and not selected)
-                picked = row.bodyAuto;
-            ImGui::PopID();
+        if (spins.size() == 24) {
+            ImGui::TextDisabled("full cube · ±90° · ori %d", static_cast<int>(currentAbs));
+            ImGui::Separator();
+            using Semiaxis = mech::space::orient::Semiaxis;
+            struct Option {
+                Semiaxis axis;
+                const char* label;
+            };
+            const Option options[] = {
+                Option{.axis = Semiaxis::Yn, .label = "turn left"},
+                Option{.axis = Semiaxis::Yp, .label = "turn right"},
+                Option{.axis = Semiaxis::Zp, .label = "bank up"},
+                Option{.axis = Semiaxis::Zn, .label = "bank down"},
+                Option{.axis = Semiaxis::Xn, .label = "tilt left"},
+                Option{.axis = Semiaxis::Xp, .label = "tilt right"},
+            };
+            for (const auto& option : options) {
+                const auto bodyAuto = mech::space::orient::turn(option.axis)[0];
+                if (not spins.contains(bodyAuto))
+                    continue;
+                ImGui::PushID(static_cast<int>(option.axis));
+                if (ImGui::Selectable(option.label))
+                    picked = bodyAuto;
+                ImGui::PopID();
+            }
+        } else {
+            ImGui::TextDisabled("%zu body spins · from ori %d", spins.size(), static_cast<int>(currentAbs));
+            ImGui::Separator();
+            const auto& composeRow = mech::space::orient::compose[static_cast<std::size_t>(currentAbs)];
+            struct Row {
+                mech::space::orient::key bodyAuto;
+                mech::space::orient::key absOri;
+                base::common_types::ivec3 worldShift;
+                bool flip;
+            };
+            std::vector<Row> rows;
+            rows.reserve(spins.size());
+            for (const auto& [bodyAuto, spin] : spins) {
+                rows.push_back(Row{
+                    .bodyAuto = bodyAuto,
+                    .absOri = composeRow[static_cast<std::size_t>(bodyAuto)],
+                    .worldShift = mech::space::orient::matrix[static_cast<std::size_t>(currentAbs)] * spin.shift,
+                    .flip = spin.flip,
+                });
+            }
+            std::sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) {
+                if (a.flip != b.flip)
+                    return not a.flip;
+                return a.absOri < b.absOri;
+            });
+            for (const auto& row : rows) {
+                const bool selected = row.bodyAuto == 0;
+                ImGui::PushID(static_cast<int>(row.bodyAuto));
+                const auto label = row.flip
+                    ? std::format("{} flip · abs {} · auto {} · Δ[{},{},{}]", selected ? ">" : " ", static_cast<int>(row.absOri), static_cast<int>(row.bodyAuto), row.worldShift.x, row.worldShift.y, row.worldShift.z)
+                    : std::format("{} abs {} · auto {} · Δ[{},{},{}]", selected ? ">" : " ", static_cast<int>(row.absOri), static_cast<int>(row.bodyAuto), row.worldShift.x, row.worldShift.y, row.worldShift.z);
+                if (ImGui::Selectable(label.c_str(), selected) and not selected)
+                    picked = row.bodyAuto;
+                ImGui::PopID();
+            }
         }
         ImGui::End();
         return picked;

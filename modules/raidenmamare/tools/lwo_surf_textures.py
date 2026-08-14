@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """LWO3 meshpack helper (LightWave 2018+/2020).
 
-Agent workflow after LW edits: run this, then rewrite *.lwo.meshpack parts from surfaces.
+Agent workflow after LW edits — see lwo_meshpack_pipeline.md next to this file.
 Assimp skips SURF.BLOK Image Maps — this script reads CLIP/STIL + IMAP/IMAG and LAYR names/pivots.
 
 Usage:
   python lwo_surf_textures.py <path.lwo>
   python lwo_surf_textures.py <path.lwo> --meshpack-snippet
+  python lwo_surf_textures.py <path.lwo> --write-meshpack
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import struct
 import sys
 from pathlib import Path
@@ -147,20 +149,110 @@ def parse_layers(data: bytes) -> list[dict]:
     return layers
 
 
-def meshpack_parts(surfaces: list[dict], material: str = "rmmr::lit_textured") -> list[list]:
+def meshpack_parts(surfaces: list[dict], material: str = "rmmr::lit_textured", albedo_fallback: str | None = None) -> list[list]:
     parts: list[list] = []
     for surface in surfaces:
         textures = surface["textures"]
-        albedo = textures[0] if textures else "MISSING_TEXTURE"
+        if textures:
+            albedo = textures[0]
+        elif albedo_fallback:
+            albedo = albedo_fallback
+        else:
+            albedo = "MISSING_TEXTURE"
         parts.append([surface["name"], [material, [["albedoMap", albedo]]]])
     return parts
+
+
+def _quote(text: str) -> str:
+    escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def format_meshpack(name: str, library: str, lwo_file: str, texpack: str, parts: list[list]) -> str:
+    lines = ["{", f"    {_quote(name)},", f"    {_quote(library)},", f"    {_quote(lwo_file)},", f"    {_quote(texpack)},", "    ["]
+    for index, part in enumerate(parts):
+        surf, body = part[0], part[1]
+        material, textures = body[0], body[1]
+        tex_bits = ", ".join(f"{{{_quote(sem)}, {_quote(layer)}}}" for sem, layer in textures)
+        comma = "," if index + 1 < len(parts) else ""
+        lines.append(f"        {{{_quote(surf)}, {{{_quote(material)}, [{tex_bits}]}}}}{comma}")
+    lines.append("    ]")
+    lines.append("}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def read_existing_header(meshpack: Path) -> dict[str, str] | None:
+    if not meshpack.is_file():
+        return None
+    text = meshpack.read_text(encoding="utf-8")
+    strings = re.findall(r'"((?:\\.|[^"\\])*)"', text)
+    if len(strings) < 4:
+        return None
+    return {
+        "name": strings[0].encode("utf-8").decode("unicode_escape"),
+        "library": strings[1].encode("utf-8").decode("unicode_escape"),
+        "lwo_file": strings[2].encode("utf-8").decode("unicode_escape"),
+        "texpack": strings[3].encode("utf-8").decode("unicode_escape"),
+    }
+
+
+def default_identity(lwo: Path) -> tuple[str, str, str]:
+    """name, library, kit-relative lwo path (best-effort from .../assets/<lib>/...)."""
+    parts = list(lwo.resolve().parts)
+    library = "Eltanin"
+    rel = lwo.name
+    if "assets" in parts:
+        i = parts.index("assets")
+        if i + 1 < len(parts):
+            library = parts[i + 1]
+        if i + 2 < len(parts):
+            rel = "/".join(parts[i + 2 :])
+    name = lwo.stem
+    return name, library, rel.replace("\\", "/")
+
+
+def write_meshpack(
+    lwo: Path,
+    surfaces: list[dict],
+    *,
+    material: str,
+    texpack: str | None,
+    albedo_fallback: str | None,
+    allow_missing: bool,
+    meshpack_path: Path | None,
+) -> Path:
+    missing = [s["name"] for s in surfaces if not s["textures"] and not albedo_fallback]
+    if missing and not allow_missing:
+        raise SystemExit(
+            "error: surfaces without Image Map albedo: "
+            + ", ".join(missing)
+            + " (fix in LW, or pass --albedo-fallback / --allow-missing)"
+        )
+    out = meshpack_path if meshpack_path is not None else Path(str(lwo) + ".meshpack")
+    header = read_existing_header(out)
+    if header:
+        name, library, lwo_file = header["name"], header["library"], header["lwo_file"]
+        pack = header["texpack"] if texpack is None else texpack
+    else:
+        name, library, lwo_file = default_identity(lwo)
+        pack = "Eltanin::mech" if texpack is None else texpack
+    parts = meshpack_parts(surfaces, material, albedo_fallback)
+    out.write_text(format_meshpack(name, library, lwo_file, pack, parts), encoding="utf-8", newline="\n")
+    return out
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Inspect LWO3 surfaces, Color Image Map textures, and LAYR pivots.")
     parser.add_argument("lwo", type=Path, help="path to .lwo")
     parser.add_argument("--meshpack-snippet", action="store_true", help="print only the meshpack parts array JSON")
-    parser.add_argument("--material", default="rmmr::lit_textured", help="engine material Unit::Name for snippet")
+    parser.add_argument("--write-meshpack", action="store_true", help="write/update <lwo>.meshpack parts from surfaces")
+    parser.add_argument("--meshpack", type=Path, default=None, help="explicit .meshpack path (default: <lwo>.meshpack)")
+    parser.add_argument("--material", default="rmmr::lit_textured", help="engine material Unit::Name for parts")
+    parser.add_argument("--texpack", default=None, help="texpack Unit::Name (default: keep existing or Eltanin::mech)")
+    parser.add_argument("--no-texpack", action="store_true", help="set texpack field to '-'")
+    parser.add_argument("--albedo-fallback", default=None, help="albedo layer if a SURF has no Image Map")
+    parser.add_argument("--allow-missing", action="store_true", help="allow MISSING_TEXTURE in written parts")
     args = parser.parse_args()
 
     path: Path = args.lwo
@@ -176,8 +268,25 @@ def main() -> int:
     surfaces = parse_surfaces(data, clips)
     layers = parse_layers(data)
 
+    if args.write_meshpack:
+        texpack = "-" if args.no_texpack else args.texpack
+        out = write_meshpack(
+            path,
+            surfaces,
+            material=args.material,
+            texpack=texpack,
+            albedo_fallback=args.albedo_fallback,
+            allow_missing=args.allow_missing,
+            meshpack_path=args.meshpack,
+        )
+        print(f"wrote {out} ({len(surfaces)} surfaces, {len(layers)} layers)")
+        for surface in surfaces:
+            albedo = surface["textures"][0] if surface["textures"] else (args.albedo_fallback or "MISSING_TEXTURE")
+            print(f"  {surface['name']} → {albedo}")
+        return 0
+
     if args.meshpack_snippet:
-        print(json.dumps(meshpack_parts(surfaces, args.material), indent=4, ensure_ascii=False))
+        print(json.dumps(meshpack_parts(surfaces, args.material, args.albedo_fallback), indent=4, ensure_ascii=False))
         return 0
 
     print(f"file: {path}")
