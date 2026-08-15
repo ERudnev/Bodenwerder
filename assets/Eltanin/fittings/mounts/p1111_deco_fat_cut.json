@@ -1,5 +1,5 @@
 {
-  "name": "Armour p1111 nose decor",
+  "name": "Armour p1111 deco fat cut",
   "author": "Eltanin",
   "attachment": {
     "points": [
@@ -10,7 +10,7 @@
     ]
   },
   "tempMesh": {
-    "pack": "Eltanin::armourDecor",
-    "entry": "p1111_nose_decor"
+    "pack": "Eltanin::armour",
+    "entry": "p1111_deco_fat_cut"
   }
 }

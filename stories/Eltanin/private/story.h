@@ -39,7 +39,6 @@ namespace eltanin {
             base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;
             base::maybe<rmmr::resource::meshpack::Asset::Id> attachments;
             base::maybe<rmmr::resource::meshpack::Asset::Id> armour;
-            base::maybe<rmmr::resource::meshpack::Asset::Id> armourDecor;
             base::maybe<rmmr::resource::meshpack::Asset::Id> devices;
             base::maybe<rmmr::resource::overlay::Asset::Id> blueprintsEditorEffect;
         };

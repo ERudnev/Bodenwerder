@@ -1,0 +1,16 @@
+{
+  "name": "Armour p2121 to rounded",
+  "author": "Eltanin",
+  "attachment": {
+    "points": [
+      [0, 0, 0],
+      [0, 1, 1],
+      [1, 1, 1],
+      [1, 0, 0]
+    ]
+  },
+  "tempMesh": {
+    "pack": "Eltanin::armour",
+    "entry": "p2121_to_rounded"
+  }
+}

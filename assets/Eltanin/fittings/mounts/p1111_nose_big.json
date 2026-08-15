@@ -1,5 +1,5 @@
 {
-  "name": "Armour p1111 side decor",
+  "name": "Armour p1111 nose big",
   "author": "Eltanin",
   "attachment": {
     "points": [
@@ -10,7 +10,7 @@
     ]
   },
   "tempMesh": {
-    "pack": "Eltanin::armourDecor",
-    "entry": "p1111_side_decor"
+    "pack": "Eltanin::armour",
+    "entry": "p1111_nose_big"
   }
 }

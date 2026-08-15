@@ -1,0 +1,15 @@
+{
+  "name": "Armour p121 deco steepline R",
+  "author": "Eltanin",
+  "attachment": {
+    "points": [
+      [0, 0, 0],
+      [1, 0, 0],
+      [0, 1, 0]
+    ]
+  },
+  "tempMesh": {
+    "pack": "Eltanin::armour",
+    "entry": "p121_deco_steepline_R"
+  }
+}

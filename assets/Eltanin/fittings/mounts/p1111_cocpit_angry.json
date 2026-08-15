@@ -1,0 +1,16 @@
+{
+  "name": "Armour p1111 cockpit angry",
+  "author": "Eltanin",
+  "attachment": {
+    "points": [
+      [0, 0, 0],
+      [1, 0, 0],
+      [1, 1, 0],
+      [0, 1, 0]
+    ]
+  },
+  "tempMesh": {
+    "pack": "Eltanin::armour",
+    "entry": "p1111_cocpit_angry"
+  }
+}

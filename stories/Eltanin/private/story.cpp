@@ -153,10 +153,6 @@ namespace eltanin {
             context,
             Name::from("Eltanin", "armour"),
             item<meshpack::LoaderLwo>{.file = "meshes/fittings/mounts/armour.lwo.meshpack", .geometry = {}, .pending = {}});
-        assets.armourDecor = with<Assets>::add_meshpack_lwo_loader(
-            context,
-            Name::from("Eltanin", "armourDecor"),
-            item<meshpack::LoaderLwo>{.file = "meshes/fittings/mounts/armour_decor.lwo.meshpack", .geometry = {}, .pending = {}});
         assets.devices = with<Assets>::add_meshpack_lwo_loader(
             context,
             Name::from("Eltanin", "devices"),
