@@ -18,6 +18,7 @@
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/semantics.q1.h>
 #include <rmmr/system/viewport.q1.h>
+#include <rmmr/wrapper/ui.h>
 
 namespace kubes {
 
@@ -101,9 +102,9 @@ namespace kubes {
     } // namespace
 
     void KubeOfKubes::contributeViewMenu() {
-        ImGui::MenuItem("Camera", nullptr, &ui.camera);
-        ImGui::MenuItem("Lighting", nullptr, &ui.lighting);
-        ImGui::MenuItem("Materials", nullptr, &ui.materials);
+        rmmr::wrapper::ui::viewToggle("Camera", &ui.camera);
+        rmmr::wrapper::ui::viewToggle("Lighting", &ui.lighting);
+        rmmr::wrapper::ui::viewToggle("Materials", &ui.materials);
     }
 
     void KubeOfKubes::drawUi(Writing world) {

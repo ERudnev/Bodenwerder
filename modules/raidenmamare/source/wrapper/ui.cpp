@@ -15,17 +15,28 @@ namespace rmmr::wrapper::ui {
     using namespace fqsm::api;
     using namespace rmmr;
 
-    void State::drawMainMenuBar(Product& product) {
-        if (not ImGui::BeginMainMenuBar())
-            return;
+    void State::drawViewToolbar(Product& product) {
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(ImVec2{viewport->WorkPos.x + 8.f, viewport->WorkPos.y + 8.f}, ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.55f);
+        constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
 
-        if (ImGui::BeginMenu("View")) {
-            ImGui::MenuItem("Stats", nullptr, &stats);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{6.f, 4.f});
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{4.f, 4.f});
+        if (ImGui::Begin("##viewToolbar", nullptr, flags)) {
+            const bool pressed = stats;
+            if (pressed) {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+            }
+            if (ImGui::Button("Stats"))
+                stats = not stats;
+            if (pressed)
+                ImGui::PopStyleColor(2);
             product.contributeViewMenu();
-            ImGui::EndMenu();
         }
-
-        ImGui::EndMainMenuBar();
+        ImGui::End();
+        ImGui::PopStyleVar(2);
     }
 
     void State::drawStatsWindow(Writing world) {
@@ -87,7 +98,7 @@ namespace rmmr::wrapper::ui {
     }
 
     void State::draw(Writing world, Product& product) {
-        drawMainMenuBar(product);
+        drawViewToolbar(product);
         drawStatsWindow(world);
         product.drawUi(world);
     }

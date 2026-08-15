@@ -29,6 +29,7 @@ namespace rmmr::wrapper {
 
     Application::State::State(Schema schema)
         : establish::Module::State(std::move(schema))
+        , ui{true, 0}
         , world(fullSchema)
     {}
 

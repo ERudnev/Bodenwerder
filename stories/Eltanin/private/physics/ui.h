@@ -9,8 +9,6 @@
 #include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 
-#include <base/maybe.h>
-
 #include <string>
 #include <vector>
 
@@ -22,20 +20,27 @@ namespace eltanin::phys {
             vector<rmmr::scene::actor::Mesh::Id> particles;
         };
         State state;
-        base::maybe<rmmr::resource::material::Asset::Id> shapeMaterial;
-        base::maybe<rmmr::resource::texpack::Pack::Id> shapeTexpack;
-        base::maybe<std::string> shapeAlbedoLayer;
-        base::maybe<rmmr::resource::geometry::Asset::Id> shapeGeometry;
-        base::maybe<rmmr::resource::geometry::Asset::Id> particleGeometry;
-        base::maybe<rmmr::resource::material::Asset::Id> particleMaterial;
+        rmmr::resource::material::Asset::Id shapeMaterial;
+        rmmr::resource::texpack::Pack::Id shapeTexpack;
+        std::string shapeAlbedoLayer;
+        rmmr::resource::geometry::Asset::Id shapeGeometry;
+        rmmr::resource::geometry::Asset::Id particleGeometry;
+        rmmr::resource::material::Asset::Id particleMaterial;
+
+        Ui(rmmr::resource::material::Asset::Id shapeMaterial,
+           rmmr::resource::texpack::Pack::Id shapeTexpack,
+           std::string shapeAlbedoLayer,
+           rmmr::resource::geometry::Asset::Id shapeGeometry,
+           rmmr::resource::geometry::Asset::Id particleGeometry,
+           rmmr::resource::material::Asset::Id particleMaterial);
 
         void draw(Writing, bool& open, System&);
 
     private:
-        bool showColliders = false;
-        bool showParticles = false;
-        bool prevShowColliders = false;
-        bool prevShowParticles = false;
+        bool showColliders;
+        bool showParticles;
+        bool prevShowColliders;
+        bool prevShowParticles;
 
         vector<Atomic::Id> bodies;
         vector<Particle::Id> particleIds;

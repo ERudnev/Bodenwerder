@@ -7,6 +7,7 @@
 #include <cstdio>
 
 #include <rmmr/scene/camera.q1.h>
+#include <rmmr/wrapper/ui.h>
 #include <si02/gameObject.h>
 #include <si02/gun.h>
 #include <si02/player.h>
@@ -53,9 +54,9 @@ namespace si02 {
     } // namespace
 
     void SpriteTest::contributeViewMenu() {
-        ImGui::MenuItem("Camera", nullptr, &ui.camera);
-        ImGui::MenuItem("HUD", nullptr, &ui.hud);
-        ImGui::MenuItem("Ship", nullptr, &ui.ship);
+        rmmr::wrapper::ui::viewToggle("Camera", &ui.camera);
+        rmmr::wrapper::ui::viewToggle("HUD", &ui.hud);
+        rmmr::wrapper::ui::viewToggle("Ship", &ui.ship);
     }
 
     void SpriteTest::drawUi(Writing world) {

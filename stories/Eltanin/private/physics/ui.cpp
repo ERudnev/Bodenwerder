@@ -14,6 +14,24 @@
 
 namespace eltanin::phys {
 
+    Ui::Ui(rmmr::resource::material::Asset::Id shapeMaterial,
+           rmmr::resource::texpack::Pack::Id shapeTexpack,
+           std::string shapeAlbedoLayer,
+           rmmr::resource::geometry::Asset::Id shapeGeometry,
+           rmmr::resource::geometry::Asset::Id particleGeometry,
+           rmmr::resource::material::Asset::Id particleMaterial)
+        : shapeMaterial(shapeMaterial)
+        , shapeTexpack(shapeTexpack)
+        , shapeAlbedoLayer(std::move(shapeAlbedoLayer))
+        , shapeGeometry(shapeGeometry)
+        , particleGeometry(particleGeometry)
+        , particleMaterial(particleMaterial)
+        , showColliders(false)
+        , showParticles(false)
+        , prevShowColliders(false)
+        , prevShowParticles(false) {
+    }
+
     namespace {
 
         constexpr float particleWorldScale = 0.1f; // fixed debug diamond size (meters)
@@ -46,16 +64,12 @@ namespace eltanin::phys {
             base::message("eltanin::phys::Ui: no scene Root; skip collider actors");
             return;
         }
-        if (not shapeMaterial or not shapeTexpack or not shapeAlbedoLayer or not shapeGeometry) {
-            base::message("eltanin::phys::Ui: shapeMaterial/Texpack/Layer/Geometry unset; skip collider actors");
-            return;
-        }
         const auto edge = mech::space::local::edge2meters;
         const auto resolved = rmmr::resource::meshpack::Asset::Resolved{
-            .geometry = *shapeGeometry,
+            .geometry = shapeGeometry,
             .entry = rmmr::resource::geometry::EntryId{0},
-            .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = *shapeMaterial, .textures = {{"albedoMap", *shapeAlbedoLayer}}}}},
-            .texpack = *shapeTexpack,
+            .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = shapeMaterial, .textures = {{"albedoMap", shapeAlbedoLayer}}}}},
+            .texpack = shapeTexpack,
         };
         const auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{edge, edge, edge});
         for (const auto [atomic_id, atomic] : context->aspect<Atomic>().items()) {
@@ -79,14 +93,10 @@ namespace eltanin::phys {
             base::message("eltanin::phys::Ui: no scene Root; skip particle actors");
             return;
         }
-        if (not particleGeometry or not particleMaterial) {
-            base::message("eltanin::phys::Ui: particleGeometry/Material unset; skip particle actors");
-            return;
-        }
         const auto resolved = rmmr::resource::meshpack::Asset::Resolved{
-            .geometry = *particleGeometry,
+            .geometry = particleGeometry,
             .entry = rmmr::resource::geometry::EntryId{0},
-            .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = *particleMaterial, .textures = {}}}},
+            .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = particleMaterial, .textures = {}}}},
             .texpack = {},
         };
         const auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{particleWorldScale, particleWorldScale, particleWorldScale});

@@ -6,6 +6,7 @@
 #include <imgui.h>
 
 #include <rmmr/scene/camera.q1.h>
+#include <rmmr/wrapper/ui.h>
 #include <si01/invaders/actors.h>
 #include <si01/invaders/gun.h>
 #include <si01/invaders/session.h>
@@ -36,9 +37,9 @@ namespace si01 {
     } // namespace
 
     void SpriteTest::contributeViewMenu() {
-        ImGui::MenuItem("Camera", nullptr, &ui.camera);
-        ImGui::MenuItem("HUD", nullptr, &ui.hud);
-        ImGui::MenuItem("Gun", nullptr, &ui.gun);
+        rmmr::wrapper::ui::viewToggle("Camera", &ui.camera);
+        rmmr::wrapper::ui::viewToggle("HUD", &ui.hud);
+        rmmr::wrapper::ui::viewToggle("Gun", &ui.gun);
     }
 
     void SpriteTest::drawUi(Writing world) {

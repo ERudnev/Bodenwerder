@@ -1,9 +1,6 @@
 #pragma once
 
-#include <array>
-#include <cstdint>
 #include <span>
-#include <unordered_map>
 
 #include <base/maybe.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -13,10 +10,10 @@
 #include <rmmr/resources/texpack.q1.h>
 #include <rmmr/wrapper/product.h>
 
-#include "physics/system.h"
-#include "physics/ui.h"
 #include "blueprints/catalog.h"
 #include "fittings/mounts/catalog.h"
+#include "physics/system.h"
+#include "story.ui.h"
 #include "views/blueprints/editor.h"
 
 namespace eltanin {
@@ -43,28 +40,10 @@ namespace eltanin {
             base::maybe<rmmr::resource::overlay::Asset::Id> blueprintsEditorEffect;
         };
 
-        struct Ui {
-            bool camera = false;
-            bool lighting = false;
-            bool materials = false;
-            bool physics = false;
-            bool blueprints = true;
-
-            base::maybe<rmmr::resource::material::Asset::Id> selected_material;
-            std::array<char, 128> material_filter{};
-
-            struct MaterialNameEdit {
-                std::array<char, 256> buf{};
-                bool editing = false;
-            };
-            std::unordered_map<std::uint64_t, MaterialNameEdit> material_name_edits;
-        };
-
         Handles assets;
         Ui ui;
         base::maybe<View> world_view;
         phys::System physics;
-        phys::Ui physics_ui;
         BlueprintCatalog blueprintPack;
         MountCatalog mountPack;
         ::eltanin::views::Blueprints blueprints;
@@ -87,7 +66,7 @@ namespace eltanin {
         void drawLightingWindow(Writing);
         void drawMaterialsWindow(Writing);
         void drawMaterialInspector(Writing, rmmr::resource::material::Asset::Id);
-        void drawShipsWindow(Writing);
+        void drawAssemblerWindow(Writing);
     };
 
 }

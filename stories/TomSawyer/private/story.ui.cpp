@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include <rmmr/scene/camera.q1.h>
+#include <rmmr/wrapper/ui.h>
 #include <tommy/world.q1.h>
 
 namespace tommy {
@@ -11,8 +12,8 @@ namespace tommy {
     using namespace rmmr;
 
     void SpriteTest::contributeViewMenu() {
-        ImGui::MenuItem("Camera", nullptr, &ui.camera);
-        ImGui::MenuItem("HUD", nullptr, &ui.hud);
+        rmmr::wrapper::ui::viewToggle("Camera", &ui.camera);
+        rmmr::wrapper::ui::viewToggle("HUD", &ui.hud);
     }
 
     void SpriteTest::drawUi(Writing world) {

@@ -1,5 +1,7 @@
 #include "story.h"
 
+#include "assembler.h"
+
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -11,6 +13,7 @@
 
 #include <base/logging.h>
 #include <eltanin/mech/blueprint.q1.h>
+#include <rmmr/math.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/textures.q1.h>
@@ -20,6 +23,7 @@
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/semantics.q1.h>
 #include <rmmr/system/viewport.q1.h>
+#include <rmmr/wrapper/ui.h>
 
 namespace eltanin {
 
@@ -39,6 +43,18 @@ namespace eltanin {
         template<typename Meta>
         void pushEntityId(const typename Meta::Id& id) {
             ImGui::PushID(compressedRaw(id.raw()));
+        }
+
+        template<typename Panel>
+        void togglePanel(const char* label, base::maybe<Panel>& panel) {
+            bool open = panel.has_value();
+            rmmr::wrapper::ui::viewToggle(label, &open);
+            if (open == panel.has_value())
+                return;
+            if (open)
+                panel = Panel{};
+            else
+                panel.reset();
         }
 
         auto passName(renderer::Pass pass) -> const char* {
@@ -100,15 +116,36 @@ namespace eltanin {
     } // namespace
 
     void Game::contributeViewMenu() {
-        ImGui::MenuItem("Camera", nullptr, &ui.camera);
-        ImGui::MenuItem("Lighting", nullptr, &ui.lighting);
-        ImGui::MenuItem("Materials", nullptr, &ui.materials);
-        ImGui::MenuItem("Physics", nullptr, &ui.physics);
-        ImGui::MenuItem("Blueprints", nullptr, &ui.blueprints);
+        togglePanel("Camera", ui.camera);
+        togglePanel("Lighting", ui.lighting);
+        togglePanel("Materials", ui.materials);
+        {
+            bool open = ui.physics.has_value();
+            rmmr::wrapper::ui::viewToggle("Physics", &open);
+            if (open != ui.physics.has_value()) {
+                if (open) {
+                    if (not shared->material.gizmo.textured or not shared->texture.debug or not shared->material.gizmo.vertexColor
+                        or not assets.primitive.kube or not assets.primitive.diamond) {
+                        base::message("eltanin::Game: Physics UI needs gizmo materials, debug texpack, kube/diamond primitives");
+                    } else {
+                        ui.physics.emplace(
+                            *shared->material.gizmo.textured,
+                            *shared->texture.debug,
+                            string{"debug02.jpg"},
+                            *assets.primitive.kube,
+                            *assets.primitive.diamond,
+                            *shared->material.gizmo.vertexColor);
+                    }
+                } else {
+                    ui.physics.reset();
+                }
+            }
+        }
+        togglePanel("Blueprints", ui.blueprints);
     }
 
     auto Game::activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> {
-        if (not ui.blueprints or not assets.blueprintsEditorEffect)
+        if (not ui.blueprints.has_value() or not assets.blueprintsEditorEffect)
             return {};
         // Membrane tile place / mount palette: suppress hover/selection chrome. F3 keeps it for mounts.
         if (blueprints.state.membranes.enabled or blueprints.state.paletteMode)
@@ -117,7 +154,7 @@ namespace eltanin {
     }
 
     auto Game::overlaySelection() const -> std::span<const rmmr::renderer::Integer32> {
-        if (not ui.blueprints or blueprints.state.membranes.enabled or blueprints.state.paletteMode)
+        if (not ui.blueprints.has_value() or blueprints.state.membranes.enabled or blueprints.state.paletteMode)
             return {};
         return blueprints.state.selection.aliases;
     }
@@ -126,44 +163,71 @@ namespace eltanin {
         drawCameraWindow(world);
         drawLightingWindow(world);
         drawMaterialsWindow(world);
-        drawShipsWindow(world);
-        physics_ui.draw(world, ui.physics, physics);
-        blueprints.draw(world, ui.blueprints, blueprintPack, mountPack);
+        drawAssemblerWindow(world);
+        if (ui.physics.has_value()) {
+            bool open = true;
+            ui.physics->draw(world, open, physics);
+            if (not open)
+                ui.physics.reset();
+        }
+        if (ui.blueprints.has_value()) {
+            bool open = true;
+            blueprints.draw(world, open, blueprintPack, mountPack);
+            if (not open)
+                ui.blueprints.reset();
+        }
         if (world_view)
-            blueprints.bindView(views, ui.blueprints, *world_view);
+            blueprints.bindView(views, ui.blueprints.has_value(), *world_view);
     }
 
-    void Game::drawShipsWindow(Writing world) {
-        if (not ImGui::Begin("Ships")) {
+    void Game::drawAssemblerWindow(Writing world) {
+        if (not ImGui::Begin("Assembler")) {
             ImGui::End();
             return;
         }
-        if (blueprintPack.ships.empty()) {
-            ImGui::TextDisabled("No ships loaded.");
-        } else {
+        auto& panel = ui.assembler;
+        ImGui::DragFloat3("Spawn pos", &panel.spawnPos.x, 0.1f, 0.0f, 0.0f, "%.2f");
+        ImGui::DragFloat3("Spawn HPB", &panel.spawnHpb.x, 0.1f, -180.0f, 180.0f, "%.1f°");
+        if (panel.ship.has_value() and not with<::eltanin::mech::Blueprint>::exists(world, *panel.ship))
+            panel.ship = {};
+        const char* preview = "(none)";
+        if (panel.ship.has_value()) {
+            const auto& asset = with<::eltanin::mech::Blueprint>::get(world, *panel.ship);
+            const auto& unit = with<::rmmr::resource::Unit>::get(world, *panel.ship);
+            preview = asset.name.empty() ? unit.name.own.c_str() : asset.name.c_str();
+        }
+        if (ImGui::BeginCombo("Ship", preview)) {
             for (const auto id : blueprintPack.ships) {
                 if (not with<::eltanin::mech::Blueprint>::exists(world, id))
                     continue;
                 const auto& asset = with<::eltanin::mech::Blueprint>::get(world, id);
                 const auto& unit = with<::rmmr::resource::Unit>::get(world, id);
                 const char* label = asset.name.empty() ? unit.name.own.c_str() : asset.name.c_str();
+                const bool selected = panel.ship.has_value() and *panel.ship == id;
                 pushEntityId<::eltanin::mech::Blueprint>(id);
-                ImGui::AlignTextToFramePadding();
-                ImGui::TextUnformatted(label);
-                ImGui::SameLine();
-                if (ImGui::Button("Spawn"))
-                    base::message("eltanin: spawn '{}': geometry TBD", label);
+                if (ImGui::Selectable(label, selected))
+                    panel.ship = id;
+                if (selected)
+                    ImGui::SetItemDefaultFocus();
                 ImGui::PopID();
             }
+            ImGui::EndCombo();
         }
+        const bool canCreate = panel.ship.has_value();
+        if (not canCreate)
+            ImGui::BeginDisabled();
+        if (ImGui::Button("Create", ImVec2{-1.0f, 0.0f}) and canCreate)
+            Assembler::immediateSpawn(world, *panel.ship, Pose::from(panel.spawnPos, panel.spawnHpb));
+        if (not canCreate)
+            ImGui::EndDisabled();
         ImGui::End();
     }
 
     void Game::drawCameraWindow(Writing world) {
-        if (not ui.camera or views.empty())
+        if (not ui.camera.has_value() or views.empty())
             return;
 
-        bool open = ui.camera;
+        bool open = true;
         if (ImGui::Begin("Camera", &open)) {
             const auto& view = views.front();
             const auto camera = view.camera;
@@ -190,14 +254,15 @@ namespace eltanin {
             }
         }
         ImGui::End();
-        ui.camera = open;
+        if (not open)
+            ui.camera.reset();
     }
 
     void Game::drawLightingWindow(Writing world) {
-        if (not ui.lighting or views.empty())
+        if (not ui.lighting.has_value() or views.empty())
             return;
 
-        bool open = ui.lighting;
+        bool open = true;
         if (ImGui::Begin("Lighting", &open)) {
             const auto scene = views.front().scene;
             if (not with<scene::Root>::exists(world, scene)) {
@@ -227,13 +292,18 @@ namespace eltanin {
             }
         }
         ImGui::End();
-        ui.lighting = open;
+        if (not open)
+            ui.lighting.reset();
     }
 
     void Game::drawMaterialInspector(Writing world, ::rmmr::resource::material::Asset::Id material_id) {
         auto material = with<::rmmr::resource::material::Asset>::modify(world, material_id);
         auto editable_unit = with<::rmmr::resource::Unit>::modify(world, material_id);
-        auto& name_state = ui.material_name_edits[material_id.raw()];
+        auto& nameEdits = ui.materials->nameEdits;
+        auto found = nameEdits.find(material_id);
+        if (found == nameEdits.end())
+            found = nameEdits.emplace(material_id, Ui::Materials::NameEdit{.buf = {}, .editing = false}).first;
+        auto& name_state = found->second;
         if (not name_state.editing)
             std::snprintf(name_state.buf.data(), name_state.buf.size(), "%s", editable_unit->name.own.c_str());
 
@@ -263,22 +333,23 @@ namespace eltanin {
     }
 
     void Game::drawMaterialsWindow(Writing world) {
-        if (not ui.materials)
+        if (not ui.materials.has_value())
             return;
 
-        bool open = ui.materials;
+        bool open = true;
+        auto& panel = *ui.materials;
         if (ImGui::Begin("Materials", &open)) {
-            const auto materials = collectMaterials(world, filterText(ui.material_filter));
+            const auto materials = collectMaterials(world, filterText(panel.filter));
             if (materials.empty()) {
-                ui.selected_material.reset();
-            } else if (not ui.selected_material.has_value()
-                or std::find(materials.begin(), materials.end(), *ui.selected_material) == materials.end()) {
-                ui.selected_material = materials.front();
+                panel.selected.reset();
+            } else if (not panel.selected.has_value()
+                or std::find(materials.begin(), materials.end(), *panel.selected) == materials.end()) {
+                panel.selected = materials.front();
             }
 
             ImGui::SetNextItemWidth(-1.0f);
             ImGui::InputTextWithHint("##materialFilter", "Filter materials...",
-                ui.material_filter.data(), ui.material_filter.size());
+                panel.filter.data(), panel.filter.size());
             ImGui::Separator();
 
             ImGui::BeginChild("materialList", ImVec2{260.0f, 0.0f}, true);
@@ -288,9 +359,9 @@ namespace eltanin {
                 for (const auto material_id : materials) {
                     pushEntityId<::rmmr::resource::material::Asset>(material_id);
                     const auto& unit = with<::rmmr::resource::Unit>::get(world, material_id);
-                    const bool selected = ui.selected_material.has_value() and *ui.selected_material == material_id;
+                    const bool selected = panel.selected.has_value() and *panel.selected == material_id;
                     if (ImGui::Selectable(displayName(unit.name), selected))
-                        ui.selected_material = material_id;
+                        panel.selected = material_id;
                     ImGui::PopID();
                 }
             }
@@ -299,16 +370,17 @@ namespace eltanin {
             ImGui::SameLine();
 
             ImGui::BeginChild("materialInspector", ImVec2{0.0f, 0.0f}, true);
-            if (ui.selected_material.has_value()
-                and with<::rmmr::resource::material::Asset>::exists(world, *ui.selected_material)) {
-                drawMaterialInspector(world, *ui.selected_material);
+            if (panel.selected.has_value()
+                and with<::rmmr::resource::material::Asset>::exists(world, *panel.selected)) {
+                drawMaterialInspector(world, *panel.selected);
             } else {
                 ImGui::TextDisabled("Select a material to inspect it.");
             }
             ImGui::EndChild();
         }
         ImGui::End();
-        ui.materials = open;
+        if (not open)
+            ui.materials.reset();
     }
 
 }

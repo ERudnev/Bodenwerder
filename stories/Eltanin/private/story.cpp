@@ -213,16 +213,6 @@ namespace eltanin {
         with<controller::Camera3d>::create(context, camera);
         with<scene::Interface>::createLight(context, root, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
 
-        physics_ui.shapeMaterial = shared->material.gizmo.textured;
-        if (not shared->texture.debug) {
-            return (void)context.refuse("eltanin::Game::populateWorld: rmmr debug texpack missing for gizmo");
-        }
-        physics_ui.shapeTexpack = shared->texture.debug;
-        physics_ui.shapeAlbedoLayer = string{"debug02.jpg"};
-        physics_ui.particleGeometry = assets.primitive.diamond;
-        physics_ui.particleMaterial = shared->material.gizmo.vertexColor;
-        physics_ui.shapeGeometry = assets.primitive.kube;
-
         {
             auto world = with<World>::modify_global(context);
             world->sky = sky;
