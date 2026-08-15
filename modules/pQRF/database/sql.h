@@ -460,40 +460,6 @@ namespace fqsm::processing::persistency::database::detail::sql {
     };
 
     template<typename T>
-    struct atom<base::maybe<T>> {
-        static constexpr bool nullable = true;
-        static constexpr auto columns = atom<T>::columns;
-
-        static auto bind(sqlite3_stmt* statement, int index, const base::maybe<T>& value) -> int {
-            if (!value.exists()) {
-                for (std::size_t i = 0; i < columns.size(); ++i)
-                    sqlite3_bind_null(statement, index + static_cast<int>(i));
-                return index + static_cast<int>(columns.size());
-            }
-            return atom<T>::bind(statement, index, *value);
-        }
-
-        static auto read(sqlite3_stmt* statement, int index, base::maybe<T>& value) -> int {
-            if (sqlite3_column_type(statement, index) == SQLITE_NULL) {
-                value = std::nullopt;
-                return index + static_cast<int>(columns.size());
-            }
-            value = atom<T>::decode(statement, index);
-            return index + static_cast<int>(columns.size());
-        }
-
-        static auto decode(sqlite3_stmt* statement, int index) -> base::maybe<T> {
-            base::maybe<T> value;
-            read(statement, index, value);
-            return value;
-        }
-
-        static consteval void require() {
-            atom<T>::require();
-        }
-    };
-
-    template<typename T>
     auto bind(sqlite3_stmt* statement, int index, const T& value) -> int {
         atom<T>::require();
         return atom<T>::bind(statement, index, value);

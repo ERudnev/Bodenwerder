@@ -226,7 +226,7 @@ namespace eltanin::views::blueprints::mountPlacement {
                 }
             }
         }
-        if (not bestCell.exists() or not bestFace.exists())
+        if (not bestCell.has_value() or not bestFace.has_value())
             return;
         cursor.cell = *bestCell;
         const auto& cell = blueprint.cells[*bestCell];
@@ -238,13 +238,13 @@ namespace eltanin::views::blueprints::mountPlacement {
         cursor.points = faceGridPoints(cell, *bestFace);
         if (altSquareTri and cursor.points.size() == 4) {
             const auto plate = facePlate(cell, *bestFace);
-            if (plate.exists() and *plate == mech::plate::shape::p1111)
+            if (plate.has_value() and *plate == mech::plate::shape::p1111)
                 cursor.points = nearestSquareTriPoints(cursor.points, faceWorldLoop(cell, *bestFace), ray);
         }
     }
 
     void syncBalls(Writing context, scene::Root::Id root, Cursor& cursor) {
-        if (not cursor.enabled or not cursor.sphere.exists() or not cursor.material.exists()) {
+        if (not cursor.enabled or not cursor.sphere.has_value() or not cursor.material.has_value()) {
             clearBalls(context, root, cursor);
             return;
         }

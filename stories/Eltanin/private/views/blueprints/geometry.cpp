@@ -81,7 +81,7 @@ namespace eltanin::views::blueprints::geometry {
         }
 
         auto mountAlbedo(const mech::Mount::Quantum& mount) -> RGB {
-            if (mount.role.exists())
+            if (mount.role.has_value())
                 return mech::settings::colorCode(*mount.role);
             return RGB{1.0f, 1.0f, 1.0f};
         }

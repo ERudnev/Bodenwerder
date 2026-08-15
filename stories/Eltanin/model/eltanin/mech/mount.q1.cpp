@@ -269,7 +269,7 @@ namespace eltanin::mech {
             out << "    \"pack\": \"" << data.tempMesh.pack.text() << "\",\n";
             out << "    \"entry\": \"" << data.tempMesh.entry << "\"\n";
             out << "  }";
-            if (data.role.exists())
+            if (data.role.has_value())
                 out << ",\n  \"role\": \"" << role_text(*data.role) << "\"\n";
             else
                 out << "\n";

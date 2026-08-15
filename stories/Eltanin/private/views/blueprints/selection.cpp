@@ -590,7 +590,7 @@ namespace eltanin::views::blueprints::selection {
             return false;
         const auto& current = data.mounts[*mountIndex];
         const bool sameName = current.mount == name;
-        const bool sameTransform = not transform.exists() or (current.transform.grid.x == transform->grid.x and current.transform.grid.y == transform->grid.y and current.transform.grid.z == transform->grid.z and current.transform.rotation == transform->rotation);
+        const bool sameTransform = not transform.has_value() or (current.transform.grid.x == transform->grid.x and current.transform.grid.y == transform->grid.y and current.transform.grid.z == transform->grid.z and current.transform.rotation == transform->rotation);
         if (sameName and sameTransform)
             return false;
         store.pendingRestore.clear();
@@ -598,7 +598,7 @@ namespace eltanin::views::blueprints::selection {
         history::record(history, hovered, "replace mount", data);
         auto writable = with<::eltanin::mech::Blueprint>::modify(context, hovered);
         writable->mounts[*mountIndex].mount = std::move(name);
-        if (transform.exists())
+        if (transform.has_value())
             writable->mounts[*mountIndex].transform = *transform;
         return true;
     }
@@ -653,7 +653,7 @@ namespace eltanin::views::blueprints::selection {
         }
         if (store.focus != Focus::selection)
             return false;
-        if (not hovered.exists())
+        if (not hovered.has_value())
             return false;
         if (ImGui::IsKeyPressed(ImGuiKey_Delete))
             return eraseSelected(context, store, history, *hovered, quarks, mounts);
@@ -730,11 +730,11 @@ namespace eltanin::views::blueprints::selection {
         if (ImGui::GetIO().WantCaptureKeyboard or not ImGui::GetIO().KeyCtrl)
             return false;
         if (ImGui::IsKeyPressed(ImGuiKey_C)) {
-            if (hovered.exists() and not store.aliases.empty())
+            if (hovered.has_value() and not store.aliases.empty())
                 copyToClipboard(context, store, *hovered, quarks, mounts);
             return false;
         }
-        if (ImGui::IsKeyPressed(ImGuiKey_V) and hovered.exists())
+        if (ImGui::IsKeyPressed(ImGuiKey_V) and hovered.has_value())
             return pasteClipboard(context, store, history, *hovered);
         return false;
     }
@@ -748,20 +748,20 @@ namespace eltanin::views::blueprints::selection {
                 if (ImGui::Button("select all") and (not quarks.empty() or not mounts.empty()))
                     selectAll(context, store, quarks, mounts);
             } else {
-                if (ImGui::Button("expand") and hovered.exists())
+                if (ImGui::Button("expand") and hovered.has_value())
                     expand(context, store, *hovered, quarks, mounts);
                 ImGui::SameLine();
-                if (ImGui::Button("copy") and hovered.exists())
+                if (ImGui::Button("copy") and hovered.has_value())
                     copyToClipboard(context, store, *hovered, quarks, mounts);
                 ImGui::SameLine();
                 if (ImGui::Button("deselect"))
                     clear(store);
                 ImGui::SameLine();
-                if (ImGui::Button("delete") and hovered.exists())
+                if (ImGui::Button("delete") and hovered.has_value())
                     erased = eraseSelected(context, store, history, *hovered, quarks, mounts);
                 ImGui::Separator();
                 ImGui::TextDisabled("Del — remove · / or empty RMB deselect · empty / clears clipboard · Shift+LMB family · WASD/QE move · Shift rotate · Ctrl+C/V");
-                const auto* blueprintData = (hovered.exists() and with<::eltanin::mech::Blueprint>::exists(context, *hovered))
+                const auto* blueprintData = (hovered.has_value() and with<::eltanin::mech::Blueprint>::exists(context, *hovered))
                     ? &with<::eltanin::mech::Blueprint>::get(context, *hovered)
                     : nullptr;
 
@@ -862,7 +862,7 @@ namespace eltanin::views::blueprints::selection {
             ImGui::TextDisabled("%zu cells · %zu knots · %zu half-chords · %zu walls · %zu mounts", store.clipboard.cells.size(), knots, halfChords, walls, store.clipboard.mounts.size());
             const bool empty = clipboardEmpty(store);
             bool allowed = false;
-            if (not empty and hovered.exists() and with<::eltanin::mech::Blueprint>::exists(context, *hovered))
+            if (not empty and hovered.has_value() and with<::eltanin::mech::Blueprint>::exists(context, *hovered))
                 allowed = canPaste(with<::eltanin::mech::Blueprint>::get(context, *hovered), store.clipboard);
             if (empty) {
                 ImGui::TextDisabled("empty");
@@ -874,7 +874,7 @@ namespace eltanin::views::blueprints::selection {
                     ImGui::TextUnformatted("blocked");
                 const char* focusLabel = store.focus == Focus::clipboard ? "focus: buffer (B)" : "focus: selection (B)";
                 ImGui::TextDisabled("%s", focusLabel);
-                if (ImGui::Button("paste") and allowed and hovered.exists())
+                if (ImGui::Button("paste") and allowed and hovered.has_value())
                     pasted = pasteClipboard(context, store, history, *hovered);
                 ImGui::SameLine();
                 if (ImGui::Button("clear"))

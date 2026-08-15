@@ -66,9 +66,9 @@ namespace fqsm::processing::orchestrator {
 
     template<meta::category::Any Meta>
     base::maybe<Identifier<Meta>> Module::RootId::secretGet() const {
-        if (not actualTypeId.exists())
+        if (not actualTypeId.has_value())
             return {};
-        if (static_cast<const meta::Rtid&>(actualTypeId) != meta::Rtid::of<Meta>())
+        if (*actualTypeId != meta::Rtid::of<Meta>())
             return {};
         return Identifier<Meta>{raw};
     }

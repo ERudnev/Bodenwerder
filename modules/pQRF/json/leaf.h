@@ -228,29 +228,6 @@ namespace fqsm::processing::persistency::json::detail::leaf {
         }
     };
 
-    template<typename T>
-    struct codec<base::maybe<T>> {
-        static auto write(const base::maybe<T>& value) -> Value {
-            if (!value.exists())
-                return Value::null();
-            return codec<T>::write(*value);
-        }
-
-        static auto decode(const Value& value) -> base::maybe<T> {
-            if (value.kind == Value::Kind::null)
-                return std::nullopt;
-            return codec<T>::decode(value);
-        }
-
-        static void read(const Value& value, base::maybe<T>& target) {
-            target = decode(value);
-        }
-
-        static consteval void require() {
-            codec<T>::require();
-        }
-    };
-
     template<>
     struct codec<base::common_types::index2> {
         using index2 = base::common_types::index2;

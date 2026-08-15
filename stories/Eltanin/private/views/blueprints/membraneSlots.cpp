@@ -54,7 +54,7 @@ namespace eltanin::views::blueprints::membraneSlots {
         }
 
         // Membrane authored on plate::perimeter[plate]; find local ori that lands that loop on targetFace.
-        // Use .exists() — maybe<space::orient::key> must not use if(ori)/if(not ori): key is integral, MSVC takes operator T&().
+        // Use .has_value() — maybe<space::orient::key> must not use if(ori)/if(not ori): key is integral, MSVC takes operator T&().
         auto localOriForFace(plate::shape plate, const cube::Loop& targetFace) -> base::maybe<space::orient::key> {
             const auto plateIndex = static_cast<std::size_t>(plate);
             if (plateIndex >= plate::perimeter.size())
@@ -112,7 +112,7 @@ namespace eltanin::views::blueprints::membraneSlots {
 
             const auto plate = plates[face];
             const auto ori = localOriForFace(plate, loop);
-            if (not ori.exists())
+            if (not ori.has_value())
                 continue;
 
             const auto kind = skeleton::membraneKindOf(plate);
@@ -147,7 +147,7 @@ namespace eltanin::views::blueprints::membraneSlots {
                 continue;
             const auto plate = plates[face];
             const auto ori = localOriForFace(plate, loop);
-            if (not ori.exists())
+            if (not ori.has_value())
                 continue;
             const auto kind = skeleton::membraneKindOf(plate);
             if (kind == membrane.kind and *ori == membrane.ori)

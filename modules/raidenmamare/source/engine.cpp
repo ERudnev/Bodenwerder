@@ -131,7 +131,7 @@ namespace rmmr {
         }
 
         void setupDefaultShadow(Writing context) {
-            if (handles.default_shadow.exists())
+            if (handles.default_shadow.has_value())
                 return;
             using resource::Assets;
             using resource::Unit;
@@ -204,7 +204,7 @@ namespace rmmr {
     }
 
     bool Engine::shouldClose(Reading context) const {
-        return glfwWindowShouldClose(with<system::Device>::get(context, state->handles.device).handle);
+        return glfwWindowShouldClose(with<system::Device>::get(context, *state->handles.device).handle);
     }
 
     auto Engine::monotonicUs() const -> int64 {
@@ -212,7 +212,7 @@ namespace rmmr {
     }
 
     void Engine::beginFrame(Writing context) {
-        const auto& device = state->handles.device;
+        const auto device = *state->handles.device;
 
         with<system::Device>::poll_events(context);
         // Input snapshot, then ImGui NewFrame (WantCapture*), then sanitize Window for gameplay.
@@ -264,7 +264,7 @@ namespace rmmr {
     }
 
     void Engine::endFrame(Writing context) {
-        const auto& device = state->handles.device;
+        const auto device = *state->handles.device;
         if (not state->handles.activeViews.empty()) {
             with<system::ImGuiHost>::render(context, device);
         }

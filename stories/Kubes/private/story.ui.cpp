@@ -222,7 +222,7 @@ namespace kubes {
             const auto materials = collectMaterials(world, filterText(ui.material_filter));
             if (materials.empty()) {
                 ui.selected_material.reset();
-            } else if (not ui.selected_material.exists()
+            } else if (not ui.selected_material.has_value()
                 or std::find(materials.begin(), materials.end(), *ui.selected_material) == materials.end()) {
                 ui.selected_material = materials.front();
             }
@@ -239,7 +239,7 @@ namespace kubes {
                 for (const auto material_id : materials) {
                     pushEntityId<Material>(material_id);
                     const auto& unit = with<Unit>::get(world, material_id);
-                    const bool selected = ui.selected_material.exists() and *ui.selected_material == material_id;
+                    const bool selected = ui.selected_material.has_value() and *ui.selected_material == material_id;
                     if (ImGui::Selectable(displayName(unit.name), selected))
                         ui.selected_material = material_id;
                     ImGui::PopID();
@@ -250,7 +250,7 @@ namespace kubes {
             ImGui::SameLine();
 
             ImGui::BeginChild("materialInspector", ImVec2{0.0f, 0.0f}, true);
-            if (ui.selected_material.exists()
+            if (ui.selected_material.has_value()
                 and with<Material>::exists(world, *ui.selected_material)) {
                 drawMaterialInspector(world, *ui.selected_material);
             } else {

@@ -27,14 +27,14 @@ namespace eltanin::views::blueprints::history {
     }
 
     void bind(Store& store, base::maybe<mech::Blueprint::Id> id) {
-        if (store.bound.exists() and id.exists() and *store.bound == *id)
+        if (store.bound.has_value() and id.has_value() and *store.bound == *id)
             return;
         clear(store);
         store.bound = id;
     }
 
     void record(Store& store, mech::Blueprint::Id id, std::string label, const Blueprint& before) {
-        if (not store.bound.exists() or *store.bound != id)
+        if (not store.bound.has_value() or *store.bound != id)
             bind(store, id);
         store.redo.clear();
         store.undo.push_back(Step{.label = std::move(label), .document = before});
@@ -53,7 +53,7 @@ namespace eltanin::views::blueprints::history {
     auto undo(Writing context, Store& store, mech::Blueprint::Id id) -> bool {
         if (store.undo.empty() or not with<::eltanin::mech::Blueprint>::exists(context, id))
             return false;
-        if (not store.bound.exists() or *store.bound != id)
+        if (not store.bound.has_value() or *store.bound != id)
             return false;
         auto step = std::move(store.undo.back());
         store.undo.pop_back();
@@ -67,7 +67,7 @@ namespace eltanin::views::blueprints::history {
     auto redo(Writing context, Store& store, mech::Blueprint::Id id) -> bool {
         if (store.redo.empty() or not with<::eltanin::mech::Blueprint>::exists(context, id))
             return false;
-        if (not store.bound.exists() or *store.bound != id)
+        if (not store.bound.has_value() or *store.bound != id)
             return false;
         auto step = std::move(store.redo.back());
         store.redo.pop_back();
