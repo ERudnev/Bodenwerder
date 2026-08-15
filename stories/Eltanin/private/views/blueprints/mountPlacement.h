@@ -29,6 +29,7 @@ namespace eltanin::views::blueprints::mountPlacement {
     };
 
     // Hang-mounts mode: ray → cell face (or whole Kn under Ctrl) → absolute grid points; balls visualize the set.
+    // Alt (face mode only): on p1111 squares, points = nearest virtual p121 (3 of 4 corners).
     struct Cursor {
         bool enabled;
         base::maybe<std::size_t> cell;
@@ -48,8 +49,8 @@ namespace eltanin::views::blueprints::mountPlacement {
     // All n corners of the cell's frame::shape (Kn), oriented — k7 → 7, k4 → 4, …
     auto shapeGridPoints(const Cell&) -> std::vector<base::common_types::index3>;
 
-    // Closest face under ray → cell; points = face (default) or whole Kn when wholeCell.
-    void aim(Cursor&, const Blueprint&, const MouseRay&, bool wholeCell);
+    // Closest face under ray → cell; points = face (default), whole Kn when wholeCell, or Alt p121 on p1111.
+    void aim(Cursor&, const Blueprint&, const MouseRay&, bool wholeCell, bool altSquareTri);
 
     // Spawn / move sphere actors at points * edge2meters.
     void syncBalls(Writing, rmmr::scene::Root::Id root, Cursor&);

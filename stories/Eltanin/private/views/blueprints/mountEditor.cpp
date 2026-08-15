@@ -317,7 +317,6 @@ namespace eltanin::views::blueprints::mountEditor {
             struct Row {
                 mech::space::orient::key bodyAuto;
                 mech::space::orient::key absOri;
-                base::common_types::ivec3 worldShift;
                 bool flip;
             };
             std::vector<Row> rows;
@@ -326,7 +325,6 @@ namespace eltanin::views::blueprints::mountEditor {
                 rows.push_back(Row{
                     .bodyAuto = bodyAuto,
                     .absOri = composeRow[static_cast<std::size_t>(bodyAuto)],
-                    .worldShift = mech::space::orient::matrix[static_cast<std::size_t>(currentAbs)] * spin.shift,
                     .flip = spin.flip,
                 });
             }
@@ -339,8 +337,8 @@ namespace eltanin::views::blueprints::mountEditor {
                 const bool selected = row.bodyAuto == 0;
                 ImGui::PushID(static_cast<int>(row.bodyAuto));
                 const auto label = row.flip
-                    ? std::format("{} flip · abs {} · auto {} · Δ[{},{},{}]", selected ? ">" : " ", static_cast<int>(row.absOri), static_cast<int>(row.bodyAuto), row.worldShift.x, row.worldShift.y, row.worldShift.z)
-                    : std::format("{} abs {} · auto {} · Δ[{},{},{}]", selected ? ">" : " ", static_cast<int>(row.absOri), static_cast<int>(row.bodyAuto), row.worldShift.x, row.worldShift.y, row.worldShift.z);
+                    ? std::format("{} flip · abs {} · auto {}", selected ? ">" : " ", static_cast<int>(row.absOri), static_cast<int>(row.bodyAuto))
+                    : std::format("{} abs {} · auto {}", selected ? ">" : " ", static_cast<int>(row.absOri), static_cast<int>(row.bodyAuto));
                 if (ImGui::Selectable(label.c_str(), selected) and not selected)
                     picked = row.bodyAuto;
                 ImGui::PopID();

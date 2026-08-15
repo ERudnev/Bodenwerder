@@ -216,6 +216,8 @@ namespace eltanin {
                     if (with<scene::Light>::exists(world, light_id)) {
                         ImGui::Separator();
                         ImGui::TextUnformatted("Primary light");
+                        auto node = with<scene::Node>::modify(world, light_id);
+                        ImGui::DragFloat3("Position", &node->pose.position.x, 0.1f, 0.0f, 0.0f, "%.2f");
                         auto light = with<scene::Light>::modify(world, light_id);
                         ImGui::ColorEdit3("Color", &light->color.x);
                         ImGui::DragFloat("Intensity", &light->intensity, 0.05f, 0.0f, 100.0f, "%.2f");

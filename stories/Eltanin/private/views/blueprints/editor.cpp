@@ -565,7 +565,7 @@ namespace eltanin::views {
         if (not ray.exists())
             return;
         const auto& data = with<::eltanin::mech::Blueprint>::get(context, *state.hovered);
-        blueprints::mountPlacement::aim(state.mounts, data, blueprints::mountPlacement::MouseRay{.origin = ray->origin, .dir = ray->dir}, ImGui::GetIO().KeyCtrl);
+        blueprints::mountPlacement::aim(state.mounts, data, blueprints::mountPlacement::MouseRay{.origin = ray->origin, .dir = ray->dir}, ImGui::GetIO().KeyCtrl, ImGui::GetIO().KeyAlt);
     }
 
     void Blueprints::syncMountCursor(Writing context, renderer::Integer32 under) {
@@ -1151,7 +1151,7 @@ namespace eltanin::views {
                 } else {
                     ImGui::TextDisabled("Cell box: —");
                 }
-                ImGui::TextDisabled("F1/F2/F3 mode · MMB orbit · PgUp/PgDn · Space · LMB/RMB±Shift · Del · WASD/QE · Shift rotate · Ctrl+C/V · Ctrl+Z/Y · B");
+                ImGui::TextDisabled("F1/F2/F3 mode · MMB orbit · PgUp/PgDn · Space · LMB/RMB±Shift · Del · WASD/QE · Shift rotate · Ctrl+C/V · Ctrl+Z/Y · B · F3: Ctrl=Kn · Alt=p121 on square");
                 if (under == renderer::Integer32{0}) {
                     ImGui::TextDisabled("Under: —");
                 } else {

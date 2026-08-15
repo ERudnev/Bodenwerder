@@ -109,6 +109,51 @@ namespace eltanin::views::blueprints::mountPlacement {
             return Pos{static_cast<float>(grid.x) * edge, static_cast<float>(grid.y) * edge, static_cast<float>(grid.z) * edge};
         }
 
+        auto length2(const vec3& v) -> float {
+            return glm::dot(v, v);
+        }
+
+        // Four virtual p121 on a square loop (omit one corner each); pick nearest ray hit (centroid tiebreak).
+        auto nearestSquareTriPoints(const std::vector<base::common_types::index3>& quad, const std::vector<Pos>& worldLoop, const MouseRay& ray) -> std::vector<base::common_types::index3> {
+            if (quad.size() != 4 or worldLoop.size() != 4)
+                return quad;
+            float bestT = std::numeric_limits<float>::infinity();
+            float bestCentroidDist2 = std::numeric_limits<float>::infinity();
+            int best = -1;
+            for (int i = 0; i < 4; ++i) {
+                const Pos& a = worldLoop[static_cast<std::size_t>(i)];
+                const Pos& b = worldLoop[static_cast<std::size_t>((i + 1) % 4)];
+                const Pos& c = worldLoop[static_cast<std::size_t>((i + 2) % 4)];
+                float t = 0.0f;
+                if (not rayHitTriangle(ray.origin, ray.dir, a, b, c, t))
+                    continue;
+                const Pos hit = ray.origin + ray.dir * t;
+                const Pos centroid{(a.x + b.x + c.x) / 3.0f, (a.y + b.y + c.y) / 3.0f, (a.z + b.z + c.z) / 3.0f};
+                const float d2 = length2(hit - centroid);
+                constexpr float epsT = 1e-5f;
+                if (t < bestT - epsT or (std::abs(t - bestT) <= epsT and d2 < bestCentroidDist2)) {
+                    bestT = t;
+                    bestCentroidDist2 = d2;
+                    best = i;
+                }
+            }
+            if (best < 0)
+                return quad;
+            return {
+                quad[static_cast<std::size_t>(best)],
+                quad[static_cast<std::size_t>((best + 1) % 4)],
+                quad[static_cast<std::size_t>((best + 2) % 4)],
+            };
+        }
+
+        auto facePlate(const Cell& cell, mech::frame::FaceIndex face) -> base::maybe<mech::plate::shape> {
+            const auto shapeIndex = static_cast<std::size_t>(cell.shape);
+            const auto faceIndex = static_cast<std::size_t>(face);
+            if (shapeIndex >= mech::skinning::default_plate.size() or faceIndex >= mech::skinning::default_plate[shapeIndex].size())
+                return {};
+            return mech::skinning::default_plate[shapeIndex][faceIndex];
+        }
+
     } // namespace
 
     void resetAim(Cursor& cursor) {
@@ -157,7 +202,7 @@ namespace eltanin::views::blueprints::mountPlacement {
         return out;
     }
 
-    void aim(Cursor& cursor, const Blueprint& blueprint, const MouseRay& ray, bool wholeCell) {
+    void aim(Cursor& cursor, const Blueprint& blueprint, const MouseRay& ray, bool wholeCell, bool altSquareTri) {
         resetAim(cursor);
         if (not cursor.enabled)
             return;
@@ -191,6 +236,11 @@ namespace eltanin::views::blueprints::mountPlacement {
         }
         cursor.face = *bestFace;
         cursor.points = faceGridPoints(cell, *bestFace);
+        if (altSquareTri and cursor.points.size() == 4) {
+            const auto plate = facePlate(cell, *bestFace);
+            if (plate.exists() and *plate == mech::plate::shape::p1111)
+                cursor.points = nearestSquareTriPoints(cursor.points, faceWorldLoop(cell, *bestFace), ray);
+        }
     }
 
     void syncBalls(Writing context, scene::Root::Id root, Cursor& cursor) {
