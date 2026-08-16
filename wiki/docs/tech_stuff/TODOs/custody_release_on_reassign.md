@@ -8,4 +8,4 @@
 
 - [ ] Расширить `reaction::structural::custody` в `anchoring.h` (слушать изменение `link`, не только removal клиента)
 - [ ] Тест на переназначение custody при живом `Client`
-- [ ] `device.q1.types` + `window.q1.types` → проекция по Etalon
+- [ ] `device.q1` + `window.q1` → проекция по Etalon

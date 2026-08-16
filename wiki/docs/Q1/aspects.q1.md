@@ -1,6 +1,6 @@
-# Q1 Etalon (aspects.q1.types)
+# Q1 Etalon (aspects.q1)
 
-Authoritative file: `modules/Q1/golden/doctrine/aspects.q1.types`.
+Authoritative file: `modules/Q1/golden/doctrine/aspects.q1`.
 
 Reaction vocabulary (watch / action / reflex, `->>` / `->=`, one=object / all=set): see [reaction_is_effector.md](reaction_is_effector.md) and `modules/Q1/syntax.txt`.
 

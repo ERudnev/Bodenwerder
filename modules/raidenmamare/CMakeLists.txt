@@ -6,36 +6,36 @@ project("Raidenmamare"
 )
 
 set(Raidenmamare_Q1
-    math.q1.types
-    system/core.q1.types
-    system/interface.q1.types
-    system/imgui.q1.types
-    system/window.q1.types
-    system/viewport.q1.types
-    scene/root.q1.types
-    scene/node.q1.types
-    scene/camera.q1.types
-    scene/light.q1.types
-    scene/actors/mesh.q1.types
-    scene/actors/sprite.q1.types
-    scene/gizmos.q1.types
-    resources/manager.q1.types
-    semantics.q1.types
-    resources/textures.q1.types
-    resources/texpack.q1.types
-    resources/shaders.q1.types
-    resources/materials.q1.types
-    resources/overlays.q1.types
-    resources/shadows.q1.types
-    resources/geometry.q1.types
-    resources/meshpack.q1.types
-    resources/sprites.q1.types
-    resources/runtimes.q1.types
-    controllers/camera3d.q1.types
-    controllers/camera2d.q1.types
-    controllers/cameraOrbit.q1.types
-    renderer/gl.q1.types
-    renderer/types.q1.types
+    math.q1
+    system/core.q1
+    system/interface.q1
+    system/imgui.q1
+    system/window.q1
+    system/viewport.q1
+    scene/root.q1
+    scene/node.q1
+    scene/camera.q1
+    scene/light.q1
+    scene/actors/mesh.q1
+    scene/actors/sprite.q1
+    scene/gizmos.q1
+    resources/manager.q1
+    semantics.q1
+    resources/textures.q1
+    resources/texpack.q1
+    resources/shaders.q1
+    resources/materials.q1
+    resources/overlays.q1
+    resources/shadows.q1
+    resources/geometry.q1
+    resources/meshpack.q1
+    resources/sprites.q1
+    resources/runtimes.q1
+    controllers/camera3d.q1
+    controllers/camera2d.q1
+    controllers/cameraOrbit.q1
+    renderer/gl.q1
+    renderer/types.q1
 )
 
 add_library(${PROJECT_NAME} STATIC)

@@ -7,16 +7,16 @@ project("Eltanin"
 )
 
 set(Eltanin_Q1
-    world.q1.types
-    physics/particle.q1.types
-    physics/atomic.q1.types
-    physics/strong.q1.types
-    entities/block.q1.types
-    resources/geometry.q1.types
-    resources/assets.q1.types
-    mech/semantics.q1.types
-    mech/blueprint.q1.types
-    mech/mount.q1.types
+    world.q1
+    physics/particle.q1
+    physics/atomic.q1
+    physics/strong.q1
+    entities/block.q1
+    resources/geometry.q1
+    resources/assets.q1
+    mech/semantics.q1
+    mech/blueprint.q1
+    mech/mount.q1
 )
 
 add_executable(${PROJECT_NAME})

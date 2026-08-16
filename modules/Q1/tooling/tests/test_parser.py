@@ -12,8 +12,8 @@ import parser as q1_parser
 
 
 ROOT = TOOLING_DIR.parents[2]
-ASPECTS = ROOT / "modules" / "Q1" / "golden" / "doctrine" / "aspects.q1.types"
-ELEMENTARY = ROOT / "modules" / "Q1" / "golden" / "doctrine" / "elementary.q1.types"
+ASPECTS = ROOT / "modules" / "Q1" / "golden" / "doctrine" / "aspects.q1"
+ELEMENTARY = ROOT / "modules" / "Q1" / "golden" / "doctrine" / "elementary.q1"
 
 
 def test_golden_aspects_parses() -> None:

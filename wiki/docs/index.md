@@ -18,7 +18,7 @@ An experimental workspace for describing, executing, and exploring quantized wor
 
 - **Blog** — [blog/](blog/)
 - **Ideas and debt** — [tech_stuff/](tech_stuff/)
-- **Q1** — language for model definitions: [aspects etalon](Q1/aspects.q1.types.md)
+- **Q1** — language for model definitions: [aspects etalon](Q1/aspects.q1.md)
 - **Aeris** — proof-of-concept game for this codebase: [reading](Aeris/reading/fragments/aeris.md), [engineering](Aeris/engineering/design_tech.md)
 
 ## Status

@@ -37,7 +37,7 @@
 (накопленное) Масштаб/ориентация/цвет как решение актора; переименование Something → GameObject.
 
 ### Действие
-- `gameObject.q1.types` + `gameObject.h/.cpp`
+- `gameObject.q1` + `gameObject.h/.cpp`
 - Player/Alien/Shot — `feature of GameObject`; Session.player — `#GameObject?`
 - Alien `?sprite_tint(cell)`; spawn прокидывает additive RGB
 
@@ -53,14 +53,14 @@
 Выделить пушку из Player отдельным entity; `custody` в кванте корабля (агрегат); стрельба — Action пушки.
 
 ### Действие
-- Doctrine: `gun.q1.types` (`entity Gun`, `>fire(#Session, muzzle)->#?`); Player — `gun: custody<Gun>`, `!tryFire` только детект края → Gun.
+- Doctrine: `gun.q1` (`entity Gun`, `>fire(#Session, muzzle)->#?`); Player — `gun: custody<Gun>`, `!tryFire` только детект края → Gun.
 - C++: `gun.h` / `gun.cpp` (`Gun::Actions::fire`); `Player::Quantum::gun`; `structural::custody`; bootstrap создаёт Gun до extend Player.
 - Лог эксперимента: `EXPERIMENT_LOG.md` в этой папке.
 
 ### Выводы / наблюдения
 - Агрегат через `custody<>` читается в Q1 лучше, чем «cooldown в Player»: корабль двигается, пушка стреляет.
 - Watch `tryFire` остаётся на Player (он слышит Window/World); эффектор стрельбы — публичный `>` на Gun (не Internals reflex).
-- Снова важна **пара файлов** doctrine↔C++ (`gun.q1.types` ↔ `gun.h/.cpp`), иначе сущность снова «потеряется» в чужих translation units.
+- Снова важна **пара файлов** doctrine↔C++ (`gun.q1` ↔ `gun.h/.cpp`), иначе сущность снова «потеряется» в чужих translation units.
 - `>fire(...)->#?` в C++ удобно вернуть как `maybe<GameObject::Id>` (Shot — feature of GameObject), без циклического include combat в gun.h.
 
 ---

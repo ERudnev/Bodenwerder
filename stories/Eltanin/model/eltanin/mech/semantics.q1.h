@@ -3,7 +3,7 @@
 #include <base/types/common_types.h>
 #include <rmmr/renderer/gl.q1.h>
 
-// Hand projection of doctrine/mech/semantics.q1.types (types/enums only).
+// Hand projection of doctrine/mech/semantics.q1 (types/enums only).
 // Tables and helpers live in private/mech/semantics/.
 
 namespace eltanin::mech {

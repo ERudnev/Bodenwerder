@@ -2,7 +2,7 @@
 
   Q1 language specification
   keywords:
-    'import' : line at top of file; pulls in another `.q1.types` module (see directives below)
+    'import' : line at top of file; pulls in another `.q1` module (see directives below)
     'namespace' : opens named namespace
     'declare' : declares existing external type
     'using' : defines new type or alias
@@ -93,7 +93,7 @@
     @builtin : this type definition is internal to the Q1 language
 
     line-oriented import (processed before Q1 parse):
-      `import "..."` : bring another `.q1.types` module into scope. The string is a logical path within the module (commonly rooted at that module's `aspects/` tree). Do not repeat the `.q1.types` suffix in the string.
+      `import "..."` : bring another `.q1` module into scope. The string is a logical path within the module (commonly rooted at that module's `aspects/` tree). Do not repeat the `.q1` suffix in the string.
 
 
   agent declarations:

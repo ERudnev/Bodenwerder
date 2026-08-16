@@ -6,13 +6,13 @@ project("workshop_si02"
 )
 
 set(workshop_si02_Q1
-    world.q1.types
-    gameObject.q1.types
-    stone.q1.types
-    sun.q1.types
-    gun.q1.types
-    shot.q1.types
-    player.q1.types
+    world.q1
+    gameObject.q1
+    stone.q1
+    sun.q1
+    gun.q1
+    shot.q1
+    player.q1
 )
 
 add_executable(${PROJECT_NAME})

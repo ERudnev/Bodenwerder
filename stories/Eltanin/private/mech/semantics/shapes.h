@@ -5,7 +5,7 @@
 #include <base/types/common_types.h>
 #include <eltanin/mech/semantics.q1.h>
 
-// Topology tables only. Enums/types: model/eltanin/mech/semantics.q1.h (doctrine/mech/semantics.q1.types).
+// Topology tables only. Enums/types: model/eltanin/mech/semantics.q1.h (doctrine/mech/semantics.q1).
 // Tables are inline const (not constexpr): MSVC STL rejects non-transient constexpr std::vector.
 
 namespace eltanin::mech {

@@ -8,8 +8,8 @@ The goal is not to hide uncertainty. The goal is to keep uncertainty explicit.
 
 The tooling assumes authority only from:
 
-- `modules/Q1/golden/doctrine/aspects.q1.types`
-- `modules/Q1/golden/doctrine/elementary.q1.types`
+- `modules/Q1/golden/doctrine/aspects.q1`
+- `modules/Q1/golden/doctrine/elementary.q1`
 - `modules/Q1/syntax.txt`
 - `modules/Q1/methodology.tome`
 - `modules/Q1/golden/golden/README.md`
@@ -122,7 +122,7 @@ Used in named operation parameters:
 - `>name: Type` → mutable/out reference (`binding: "mut"`, C++ `Type& name`)
 - `name: Type` → unqualified (`binding: null`)
 
-Examples in `golden/doctrine/elementary.q1.types`:
+Examples in `golden/doctrine/elementary.q1`:
 
 - `?add_to(>target: StructWithMethods)`
 - `=add_from(?source: StructWithMethods)`
@@ -173,13 +173,13 @@ Used in module aspect files such as:
 - `import "window"`
 - `import "device"`
 
-The string is a logical path relative to the current file's directory, without the `.q1.types` suffix.
+The string is a logical path relative to the current file's directory, without the `.q1` suffix.
 
-The parser records it as `ImportDecl`. The linter resolves imported modules from sibling `.q1.types` files and merges their symbols for name checking.
+The parser records it as `ImportDecl`. The linter resolves imported modules from sibling `.q1` files and merges their symbols for name checking.
 
 ## Known non-goals
 
-- transitive import semantics beyond sibling `.q1.types` resolution in the linter
+- transitive import semantics beyond sibling `.q1` resolution in the linter
 - full template *type* declarations (`template` keyword / generic structs) beyond operation template params
 - enum parsing
 - agent aspect execution semantics

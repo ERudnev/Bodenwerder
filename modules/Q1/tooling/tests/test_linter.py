@@ -11,7 +11,7 @@ import linter as q1_linter
 
 
 ROOT = TOOLING_DIR.parents[2]
-ASPECTS = ROOT / "modules" / "Q1" / "golden" / "doctrine" / "aspects.q1.types"
+ASPECTS = ROOT / "modules" / "Q1" / "golden" / "doctrine" / "aspects.q1"
 
 
 def test_linter_runs_on_golden_aspects_without_crash() -> None:

@@ -1,8 +1,8 @@
 (* Draft grammar for the currently used golden subset of Q1.
    This is intentionally narrow.
    It describes only constructs found in:
-   - modules/Q1/golden/doctrine/aspects.q1.types
-   - modules/Q1/golden/doctrine/elementary.q1.types
+   - modules/Q1/golden/doctrine/aspects.q1
+   - modules/Q1/golden/doctrine/elementary.q1
 
    Indentation is semantic. The real parser treats INDENT/DEDENT as structural tokens.
    Reaction scopes are not normal function parameters. *)

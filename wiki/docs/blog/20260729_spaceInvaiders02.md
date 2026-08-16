@@ -14,7 +14,7 @@
 ### Действие
 - Doctrine: `GameObject.sprite`; `feature Stone of GameObject` (`sprite_index=163` meteorGrey_big1, `sprite_scale=0.5`)
 - C++: `gameObject.h` (sprite), `stone.h`; assets library → `workshop/si02`; `setup` спавнит 10×10 Stone
-- CMake: `stone.q1.types`
+- CMake: `stone.q1`
 
 ### Выводы / наблюдения
 Уверенно и легко. Ожидаемо.

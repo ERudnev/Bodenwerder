@@ -26,7 +26,7 @@ namespace Q1_iQSM {
           };
 
           // Struct body: local types, fields, and three of four operation kinds (`?` `=` `>`).
-          // Invariant validators `!` are not allowed here (see DSL elementary.q1.types).
+          // Invariant validators `!` are not allowed here (see DSL elementary.q1).
           struct StructWithMethods {
               using Scalar = float;
               Scalar x;

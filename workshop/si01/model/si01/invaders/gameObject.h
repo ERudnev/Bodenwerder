@@ -9,7 +9,7 @@ namespace si01::invaders {
 
     using namespace fqsm::api;
 
-    // Doctrine: invaders/gameObject.q1.types — scene presence + HP; role features share this Id.
+    // Doctrine: invaders/gameObject.q1 — scene presence + HP; role features share this Id.
     struct GameObject : Entity<GameObject> {
         struct Quantum {
             base::maybe<rmmr::scene::actor::Sprite::Id> sprite;

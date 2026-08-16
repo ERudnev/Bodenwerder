@@ -1,6 +1,6 @@
 // Механические правила проекции Q1 → C++ на рельсах fQSM.
 // Детальный header-эталон: `modules/Q1/golden/golden/README.md`
-// (вход: `golden/doctrine/*.q1.types`, выход: `golden/golden/*`).
+// (вход: `golden/doctrine/*.q1`, выход: `golden/golden/*`).
 
 #using namespace FAL(file: "core/FAL.tome")
 #using namespace KQM(file: "core/KQM.tome")

@@ -23,7 +23,7 @@ namespace backlog {
 
   resolve_resources_via_updated_controllerConcept: @Statement(~0.75) {
     Core:
-      Решить старый вопрос о "Ресурсах" на материале `raidenmamare.cpp/aspects/materials/core.q1.types`.
+      Решить старый вопрос о "Ресурсах" на материале `raidenmamare.cpp/aspects/materials/core.q1`.
       Использовать и довести до ума обновлённую концепцию аспектов-контроллеров из `fQSM/api/aspects.h`, где `Controller` связывает meta-описание с отдельным worker-aspect.
       Зафиксировать на этом примере, какой именно архитектурный статус имеют ресурсы в fQSM и как он выражается в Q1 и C++.
     Reason:

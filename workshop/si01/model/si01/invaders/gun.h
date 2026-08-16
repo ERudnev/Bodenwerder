@@ -11,7 +11,7 @@ namespace si01::invaders {
 
     using namespace fqsm::api;
 
-    // Doctrine: invaders/gun.q1.types — aggregate under Player.gun custody.
+    // Doctrine: invaders/gun.q1 — aggregate under Player.gun custody.
     struct Gun : Entity<Gun> {
         static constexpr integer mech_cooldown_steps = 250;
         static constexpr integer temp_max_celsius = 500;

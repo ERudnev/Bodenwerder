@@ -1,10 +1,10 @@
 # Q1 Language (Cursor)
 
-Minimal local language extension to get `*.q1.types` highlighted and recognized as **Q1**.
+Minimal local language extension to get `*.q1` highlighted and recognized as **Q1**.
 
 ## Syntax notes (DSL)
 
-- **Imports:** `import "path/to/module"` at the top of a file (see `modules/Q1/syntax.txt`). Paths are logical, without the `.q1.types` suffix; C-style `#include` is not used in Q1 types.
+- **Imports:** `import "path/to/module"` at the top of a file (see `modules/Q1/syntax.txt`). Paths are logical, without the `.q1` suffix; C-style `#include` is not used in Q1 types.
 - **Keywords:**
   - `attribute Name of Host` — attribute aspect parasitic on `Host`
   - `feature Name of Host` — feature aspect parasitic on `Host`
@@ -17,7 +17,7 @@ Minimal local language extension to get `*.q1.types` highlighted and recognized 
 3. Select this folder: `tools/cursor-q1-language`
 4. Restart Cursor.
 
-After install, `*.q1.types` should open in Language Mode **Q1** automatically.
+After install, `*.q1` should open in Language Mode **Q1** automatically.
 
 Operation line prefixes (`?`, `=`, `>`, `*`, `!`) use the TextMate scope **`keyword.other.q1.operation-prefix`**. The extension contributes a default **yellow** foreground (`#e2c943`) via `contributes.configurationDefaults` → `editor.tokenColorCustomizations.textMateRules` (global rules object: the scope string only appears in Q1 grammar, so other languages are unaffected).
 

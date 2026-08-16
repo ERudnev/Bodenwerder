@@ -2,7 +2,7 @@
 
 This folder is a hand-maintained projection reference for turning Q1 DSL into fQSM-facing C++ headers.
 
-The authoritative source is `../doctrine/aspects.q1.types`. The C++ header is only a projection of that model. In this folder, `aspects.q1.h` is the aspect-level target, while `elementary.q1.h` shows the same projection mindset for plain structural types. This document is intentionally header-only and does not yet specify `.cpp` behavior.
+The authoritative source is `../doctrine/aspects.q1`. The C++ header is only a projection of that model. In this folder, `aspects.q1.h` is the aspect-level target, while `elementary.q1.h` shows the same projection mindset for plain structural types. This document is intentionally header-only and does not yet specify `.cpp` behavior.
 
 ## Core Principles
 
@@ -21,7 +21,7 @@ The purpose of this etalon is not to produce "nice C++ by taste". Its purpose is
 
 ## Projection Scope
 
-This spec covers projection from `aspects.q1.types` into `aspects.q1.h`.
+This spec covers projection from `aspects.q1` into `aspects.q1.h`.
 
 It describes:
 

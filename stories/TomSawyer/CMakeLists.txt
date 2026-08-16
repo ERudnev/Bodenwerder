@@ -6,7 +6,7 @@ project("TomSawyer"
 )
 
 set(TomSawyer_Q1
-    world.q1.types
+    world.q1
 )
 
 add_executable(${PROJECT_NAME})

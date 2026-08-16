@@ -6,13 +6,13 @@ project("workshop_si01"
 )
 
 set(workshop_si01_Q1
-    world.q1.types
-    invaders/gameObject.q1.types
-    invaders/session.q1.types
-    invaders/gun.q1.types
-    invaders/actors.q1.types
-    invaders/combat.q1.types
-    invaders/bootstrap.q1.types
+    world.q1
+    invaders/gameObject.q1
+    invaders/session.q1
+    invaders/gun.q1
+    invaders/actors.q1
+    invaders/combat.q1
+    invaders/bootstrap.q1
 )
 
 add_executable(${PROJECT_NAME})

@@ -974,7 +974,7 @@ def _json_default(value: Any) -> Any:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Parse a narrow subset of Q1 and optionally dump JSON.")
-    parser.add_argument("path", help="Path to a .q1.types file")
+    parser.add_argument("path", help="Path to a .q1 file")
     parser.add_argument("--dump-json", action="store_true", help="Print parsed AST as JSON")
     args = parser.parse_args(argv)
 

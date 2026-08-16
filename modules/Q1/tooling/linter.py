@@ -71,7 +71,7 @@ def _import_targets(ast: dict[str, Any]) -> list[str]:
 
 
 def _resolve_import_path(source_file: Path, logical_path: str) -> Path:
-    return source_file.parent / f"{logical_path}.q1.types"
+    return source_file.parent / f"{logical_path}.q1"
 
 
 def collect_import_symbols(
@@ -483,7 +483,7 @@ def lint_text(text: str, source: str = "<memory>") -> tuple[dict[str, Any] | Non
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Conservative linter for the current golden subset of Q1.")
-    ap.add_argument("path", help="Path to a .q1.types file")
+    ap.add_argument("path", help="Path to a .q1 file")
     ap.add_argument("--dump-json", action="store_true", help="Dump diagnostics as JSON")
     args = ap.parse_args(argv)
 

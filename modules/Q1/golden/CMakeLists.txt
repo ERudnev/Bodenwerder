@@ -6,8 +6,8 @@ project("Q1_Etalon_fqsm"
 )
 
 set(Q1_Etalon_fqsm_Q1
-  aspects.q1.types
-  elementary.q1.types
+  aspects.q1
+  elementary.q1
 )
 
 add_library(${PROJECT_NAME} STATIC ${MODULE_SOURCES})
