@@ -9,6 +9,7 @@
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/resources/texpack.q1.h>
+#include <rmmr/resources/texture3array.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/system/core.q1.h>
 
@@ -64,6 +65,11 @@ namespace rmmr::resource {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    struct Texture3arrayRuntime_group : Group<Texture3arrayRuntime_group, DeviceRuntimes, texture3array::Runtime> {
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
     struct ShaderRuntime_group : Group<ShaderRuntime_group, DeviceRuntimes, shader::Runtime> {
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
@@ -98,6 +104,7 @@ namespace rmmr::resource {
         struct Quantum {
             umap<texture::Asset::Id, texture::Runtime::Id> textures_id_mapping;
             umap<texpack::Pack::Id, texpack::Runtime::Id> texpacks_id_mapping;
+            umap<texture3array::Asset::Id, texture3array::Runtime::Id> texture3arrays_id_mapping;
             umap<shader::Asset::Id, shader::Runtime::Id> shaders_id_mapping;
             umap<material::Asset::Id, material::Runtime::Id> materials_id_mapping;
             umap<overlay::Asset::Id, overlay::Runtime::Id> overlays_id_mapping;

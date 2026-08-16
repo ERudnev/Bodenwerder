@@ -29,6 +29,26 @@ namespace Q1_iQSM
         =add_from(?source: StructWithMethods)
         >build_from(?source: StructWithMethods) -> StructWithMethods
 
+      struct MultistyleFieldsSyntax
+        always
+          myStaticConst: integer = 7
+        always myOtherStaticConst: integer = 8
+        one
+          field1: integer
+          field2: integer
+        one field3: integer
+        one field4: integer
+        one
+          field5: integer
+          field6: integer
+        all staticMutable1: integer
+        all staticMutable2: integer
+        all
+          staticMutable3: integer
+          staticMutable4: integer
+        always myTable: umap<string, integer> = @external(Mayers)
+
+
     namespace Namespaces
       namespace Some
         using Type as integer

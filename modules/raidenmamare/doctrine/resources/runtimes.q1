@@ -2,6 +2,7 @@ import "resources/manager"
 import "resources/meshpack"
 import "resources/overlays"
 import "resources/texpack"
+import "resources/texture3array"
 
 namespace rmmr
   namespace resource
@@ -34,6 +35,7 @@ namespace rmmr
 
     group<texture::Runtime> of resource::DeviceRuntimes
     group<texpack::Runtime> of resource::DeviceRuntimes
+    group<texture3array::Runtime> of resource::DeviceRuntimes
     group<shader::Runtime> of resource::DeviceRuntimes
     group<material::Runtime> of resource::DeviceRuntimes
     group<overlay::Runtime> of resource::DeviceRuntimes
@@ -45,6 +47,7 @@ namespace rmmr
       one
         textures_id_mapping: umap<#texture::Asset, #texture::Runtime> // allows finding Asset presentation of this Device
         texpacks_id_mapping: umap<#texpack::Pack, #texpack::Runtime>
+        texture3arrays_id_mapping: umap<#texture3array::Asset, #texture3array::Runtime>
         shaders_id_mapping: umap<#shader::Asset, #shader::Runtime>
         materials_id_mapping: umap<#material::Asset, #material::Runtime>
         overlays_id_mapping: umap<#overlay::Asset, #overlay::Runtime>

@@ -138,6 +138,10 @@ namespace eltanin::views::blueprints {
     void syncGhostMountActors(Writing, rmmr::scene::Root::Id root, ::rmmr::resource::material::Asset::Id ghostMaterial, const Blueprint& blueprint, Display, std::vector<MountActor>& actors, rmmr::RGB albedo, float opacity);
     auto refreshGhostMountActors(Writing, const Blueprint& blueprint, Display, std::vector<MountActor>& actors, rmmr::RGB albedo, float opacity) -> bool;
 
+    void destroyMeshActor(Writing, rmmr::scene::Root::Id root, rmmr::scene::actor::Mesh::Id actor);
+    auto spawnGhostMount(Writing, rmmr::scene::Root::Id root, ::rmmr::resource::material::Asset::Id ghostMaterial, mech::Mount::Id, const mech::space::Transform&, rmmr::RGB albedo, float opacity) -> base::maybe<rmmr::scene::actor::Mesh::Id>;
+    void poseGhostMount(Writing, rmmr::scene::actor::Mesh::Id, const mech::space::Transform&);
+
     } // namespace geometry
 
 } // namespace eltanin::views::blueprints

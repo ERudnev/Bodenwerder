@@ -591,28 +591,65 @@ def _parse_reaction(line: Line) -> dict[str, Any]:
     )
 
 
-def _parse_field(line: Line, allow_const: bool) -> dict[str, Any]:
+def _split_top_level_assign(text: str) -> tuple[str, str | None]:
+    depth_angle = 0
+    depth_paren = 0
+    for index, ch in enumerate(text):
+        if ch == "<":
+            depth_angle += 1
+        elif ch == ">":
+            depth_angle = max(0, depth_angle - 1)
+        elif ch == "(":
+            depth_paren += 1
+        elif ch == ")":
+            depth_paren = max(0, depth_paren - 1)
+        elif ch == "=" and depth_angle == 0 and depth_paren == 0:
+            return text[:index].rstrip(), text[index + 1 :].strip()
+    return text, None
+
+
+def _parse_field(line: Line, allow_const: bool, role: str | None = None) -> dict[str, Any]:
     name, rest = line.content.split(":", 1)
     field_name = name.strip()
-    base, annotations = _split_type_and_field_directives(rest.strip())
-    if allow_const and "=" in base:
-        type_text, literal_text = base.split("=", 1)
+    type_text, initializer_text = _split_top_level_assign(rest.strip())
+    base, annotations = _split_type_and_field_directives(type_text.strip())
+    field_type = parse_type_expr(base.strip())
+    extra: dict[str, Any] = {}
+    if role is not None:
+        extra["role"] = role
+    if initializer_text is not None:
+        if initializer_text.startswith("@external("):
+            return _node(
+                "ConstField",
+                line.number,
+                name=field_name,
+                type=field_type,
+                value=None,
+                initializer=parse_type_expr(initializer_text),
+                annotations=annotations,
+                comment=line.comment,
+                **extra,
+            )
+        if not allow_const:
+            raise ParseError(f"Field initializer is only allowed in `always`: {line.content!r}", line.number)
         return _node(
             "ConstField",
             line.number,
             name=field_name,
-            type=parse_type_expr(type_text.strip()),
-            value=int(literal_text.strip()),
+            type=field_type,
+            value=int(initializer_text),
             annotations=annotations,
             comment=line.comment,
+            **extra,
         )
     return _node(
         "FieldDecl",
         line.number,
         name=field_name,
-        type=parse_type_expr(base.strip()),
+        type=field_type,
         annotations=annotations,
         comment=line.comment,
+        **extra,
     )
 
 
@@ -659,7 +696,36 @@ def _child_indent(cursor: Cursor, parent_indent: int) -> int | None:
     return line.indent
 
 
-def _parse_generic_members(cursor: Cursor, indent: int, allow_const: bool) -> list[dict[str, Any]]:
+FIELD_ROLES = ("always", "one", "all")
+
+
+def _split_role_prefix(content: str) -> tuple[str | None, str]:
+    for role in FIELD_ROLES:
+        if content == role:
+            return role, ""
+        prefix = role + " "
+        if content.startswith(prefix):
+            return role, content[len(prefix) :].strip()
+    return None, content
+
+
+def _parse_one_member(cursor: Cursor, line: Line, allow_const: bool, role: str | None) -> dict[str, Any]:
+    if line.content.startswith("using "):
+        return _parse_type_alias(line)
+    if line.content.startswith("struct "):
+        return _parse_struct(cursor, line)
+    if line.content[:1] in "?=>":
+        return _parse_operation(line)
+    if line.content.startswith("*"):
+        return _parse_steward_operation(line)
+    if line.content.startswith("!"):
+        return _parse_reaction(line)
+    if ":" in line.content:
+        return _parse_field(line, allow_const=allow_const, role=role)
+    raise ParseError(f"Unsupported member syntax: {line.content!r}", line.number)
+
+
+def _parse_generic_members(cursor: Cursor, indent: int, allow_const: bool, default_role: str | None = None) -> list[dict[str, Any]]:
     members: list[dict[str, Any]] = []
     while True:
         line = cursor.peek()
@@ -668,20 +734,18 @@ def _parse_generic_members(cursor: Cursor, indent: int, allow_const: bool) -> li
         if line.indent > indent:
             raise ParseError("Unexpected indentation", line.number)
         line = cursor.pop()
-        if line.content.startswith("using "):
-            members.append(_parse_type_alias(line))
-        elif line.content.startswith("struct "):
-            members.append(_parse_struct(cursor, line))
-        elif line.content[:1] in "?=>":
-            members.append(_parse_operation(line))
-        elif line.content.startswith("*"):
-            members.append(_parse_steward_operation(line))
-        elif line.content.startswith("!"):
-            members.append(_parse_reaction(line))
-        elif ":" in line.content:
-            members.append(_parse_field(line, allow_const=allow_const))
-        else:
-            raise ParseError(f"Unsupported member syntax: {line.content!r}", line.number)
+        role, rest = _split_role_prefix(line.content)
+        if role is not None and rest == "":
+            child_indent = _child_indent(cursor, line.indent)
+            if child_indent is None:
+                continue
+            members.extend(_parse_generic_members(cursor, child_indent, allow_const=(role == "always"), default_role=role))
+            continue
+        if role is not None:
+            fake = Line(line.number, line.indent, rest, line.comment)
+            members.append(_parse_one_member(cursor, fake, allow_const=(role == "always"), role=role))
+            continue
+        members.append(_parse_one_member(cursor, line, allow_const=allow_const, role=default_role))
     return members
 
 
@@ -725,13 +789,17 @@ def _parse_aspect_blocks(cursor: Cursor, parent_indent: int) -> list[dict[str, A
         if line.indent > indent:
             raise ParseError("Unexpected indentation in aspect body", line.number)
         line = cursor.pop()
-        role = line.content
-        if role not in {"always", "one", "all"}:
-            raise ParseError(f"Expected aspect block, got {role!r}", line.number)
-        member_indent = _child_indent(cursor, line.indent)
-        members = [] if member_indent is None else _parse_generic_members(
-            cursor, member_indent, allow_const=(role == "always")
-        )
+        role, rest = _split_role_prefix(line.content)
+        if role is None:
+            raise ParseError(f"Expected aspect block, got {line.content!r}", line.number)
+        if rest:
+            fake = Line(line.number, line.indent, rest, line.comment)
+            members = [_parse_one_member(cursor, fake, allow_const=(role == "always"), role=role)]
+        else:
+            member_indent = _child_indent(cursor, line.indent)
+            members = [] if member_indent is None else _parse_generic_members(
+                cursor, member_indent, allow_const=(role == "always"), default_role=role
+            )
         blocks.append(_node("AspectBlock", line.number, role=role, members=members, comment=line.comment))
     return blocks
 

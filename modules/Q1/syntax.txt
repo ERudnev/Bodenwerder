@@ -22,9 +22,12 @@
     'component' : declares component (mandatory particle with Owner)
     'agent' : declares external runtime-bound agent (wrapper/binding to an external resource)
     'depends' : adds dependency manually
-    'one' : opens per-item data+operations block inside aspect definition
-    'all' : opens field-own data+operations block inside aspect definition
-    'always' : opens static constants + pure functions block inside aspect definition
+    'one' : opens per-item data+operations block inside aspect definition;
+            also a field category on `struct` (instance field): block `one` / inline `one name: Type`
+    'all' : opens field-own data+operations block inside aspect definition;
+            also a field category on `struct` (mutable static): block `all` / inline `all name: Type`
+    'always' : opens static constants + pure functions block inside aspect definition;
+            also a field category on `struct` (const static): block `always` / inline `always name: Type = ...`
     '#' : id type constructor (inside type expressions only):  #T == T::id (decode only) ; # == id (local Aspect type; decode only)
     '?' : postfix Optional type constructor (inside type expressions only):  T? == optional<T> (decode only)
     'anchor<T>' : typed structural link to aspect T (C++: Anchor<T>; implies anchored reaction behavior)

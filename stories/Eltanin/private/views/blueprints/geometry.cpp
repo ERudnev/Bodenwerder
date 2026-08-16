@@ -475,4 +475,27 @@ namespace eltanin::views::blueprints::geometry {
         return at == actors.size();
     }
 
+    void destroyMeshActor(Writing context, scene::Root::Id root, scene::actor::Mesh::Id actor) {
+        destroyActor(context, root, actor);
+    }
+
+    auto spawnGhostMount(Writing context, scene::Root::Id root, ::rmmr::resource::material::Asset::Id ghostMaterial, mech::Mount::Id mountId, const mech::space::Transform& transform, RGB albedo, float opacity) -> base::maybe<scene::actor::Mesh::Id> {
+        if (not with<::eltanin::mech::Mount>::exists(context, mountId))
+            return {};
+        const auto& mount = with<::eltanin::mech::Mount>::get(context, mountId);
+        const auto packId = with<::rmmr::resource::Assets>::find<meshpack::Asset>(context, mount.tempMesh.pack);
+        if (not packId)
+            return {};
+        const auto resolved = with<meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
+        if (not resolved)
+            return {};
+        return spawnGhost(context, root, gridActorPose(transform), *resolved, ghostMaterial, albedo, opacity);
+    }
+
+    void poseGhostMount(Writing context, scene::actor::Mesh::Id actor, const mech::space::Transform& transform) {
+        if (not with<scene::Node>::exists(context, actor))
+            return;
+        with<scene::Node>::modify(context, actor)->pose = gridActorPose(transform);
+    }
+
 } // namespace eltanin::views::blueprints::geometry

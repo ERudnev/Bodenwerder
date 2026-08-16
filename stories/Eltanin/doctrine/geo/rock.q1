@@ -1,0 +1,28 @@
+import "rmmr/math"
+import "rmmr/scene/root"
+import "rmmr/scene/actors/mesh"
+import "rmmr/system/core"
+import "physics/atomic"
+
+namespace eltanin
+  namespace geo
+
+    using Mix as @external(C++ uint64_t; 16x4-bit voxel word)
+
+    // Octree node on the 4 m lattice. scale is log2(edge in cells): 0 = one cell.
+    // Empty children: homogeneous leaf. mix 0 = vacuum (omitted). Sparse: missing child = empty octant.
+    struct Volume
+      origin: index3
+      scale: integer
+      mix: Mix
+      children: vector<Volume>
+
+    entity Rock
+      one
+        body: custody<phys::Atomic>
+        actor: custody<rmmr::scene::actor::Mesh>
+        volume: Volume
+      all
+        >spawn(#rmmr::scene::Root, #system::Device, Pose, Volume)->#
+        >spawnIceSphere(#rmmr::scene::Root, #system::Device, Pose)->#
+        !followBody(~phys::Atomic)->>linearPass(>all)

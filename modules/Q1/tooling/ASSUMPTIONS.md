@@ -158,6 +158,26 @@ Meaning:
 
 The parser records `category: "feature"`.
 
+### 15. Struct field categories `always` / `one` / `all`
+
+Value `struct` bodies may mark each field's storage the same way aspect blocks do:
+
+- block: `always` / `one` / `all` then indented fields
+- inline: `always name: Type = ...`, `one name: Type`, `all name: Type`
+
+C++ projection (see `golden/elementary.q1.h`):
+
+- `always` + integer literal → `static const T name = literal;`
+- `always` + `= @external(...)` → `static const T name();` (body in `.cpp`, Mayer's singleton)
+- `one` → instance field
+- `all` → `static T name;` (mutable)
+
+Bare `name: Type` in a struct remains an instance field (implicit `one`) so older etalon structs stay valid.
+
+The same inline form is accepted in aspect bodies (`one hp: integer` as a one-member `one` block).
+
+Golden example: `MultistyleFieldsSyntax` in `elementary.q1`. Product example: `eltanin::geo::Mineral`.
+
 ## Open questions
 
 1. Should future tooling also accept the older vocabulary `element` / `table` / `static`, or should that stay outside this tooling folder until a real migration is needed?

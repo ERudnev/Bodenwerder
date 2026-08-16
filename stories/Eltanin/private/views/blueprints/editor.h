@@ -90,6 +90,9 @@ namespace eltanin::views {
             struct {
                 bool place;
                 bool close;
+                base::maybe<rmmr::scene::actor::Mesh::Id> preview;
+                base::maybe<mech::Mount::Id> previewMount;
+                base::maybe<mech::space::Transform> previewTransform;
             } spaceMenu;
         };
 

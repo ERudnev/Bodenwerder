@@ -32,7 +32,8 @@ It understands:
 
 - indentation-scoped namespaces
 - `using`, `struct`, `entity`, `attribute`, `feature`, `component`, `group`, `archetype`, `manipulation`
-- aspect blocks `always`, `one`, `all`
+- aspect blocks `always`, `one`, `all` (block or inline field)
+- `struct` field categories `always` / `one` / `all` (block or inline)
 - operations `?`, `=`, `>`, Stewarding `*name(~Scope[, params...])`, and template ops `?name<P as Constraint>(...)`
 - reactions `!name(scope)` with optional effect tail `->>op(...)` / `->=op(...)`
 - the currently used type forms such as `#`, `#Type`, `T?`, `anchor<T>`, `custody<T>`, `affects<T>`, `~Type::member`

@@ -252,6 +252,7 @@ namespace rmmr::resource {
         with<DeviceRuntimes>::extend(context, device, DeviceRuntimes::Quantum{.assets = *assets});
         with<Runtime_group>::extend(context, device);
         with<TexpackRuntime_group>::extend(context, device);
+        with<Texture3arrayRuntime_group>::extend(context, device);
         with<ShaderRuntime_group>::extend(context, device);
         with<MaterialRuntime_group>::extend(context, device);
         with<OverlayRuntime_group>::extend(context, device);
@@ -303,6 +304,7 @@ namespace rmmr::resource {
             for (const auto [runtimes_id, quantum] : context.proposal.aspect<Runtimes>().items()) {
                 scrub_mapping<texture::Asset, texture::Runtime>(context, runtimes_id, quantum.textures_id_mapping, &Quantum::textures_id_mapping);
                 scrub_mapping<texpack::Pack, texpack::Runtime>(context, runtimes_id, quantum.texpacks_id_mapping, &Quantum::texpacks_id_mapping);
+                scrub_mapping<texture3array::Asset, texture3array::Runtime>(context, runtimes_id, quantum.texture3arrays_id_mapping, &Quantum::texture3arrays_id_mapping);
                 scrub_mapping<shader::Asset, shader::Runtime>(context, runtimes_id, quantum.shaders_id_mapping, &Quantum::shaders_id_mapping);
                 scrub_mapping<material::Asset, material::Runtime>(context, runtimes_id, quantum.materials_id_mapping, &Quantum::materials_id_mapping);
                 scrub_mapping<overlay::Asset, overlay::Runtime>(context, runtimes_id, quantum.overlays_id_mapping, &Quantum::overlays_id_mapping);

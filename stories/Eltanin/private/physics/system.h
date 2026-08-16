@@ -31,6 +31,7 @@ namespace eltanin::phys {
         static constexpr float gravitySoften = 0.25f;
         static constexpr float gravitySoften2 = gravitySoften * gravitySoften;
         static constexpr float clueTolerance = 0.01f;
+        static constexpr float voxelCenterMassFraction = 2.0f / 3.0f; // cube I = m a²/6: remaining 1/3 split across 8 corners
     };
 
     struct System {

@@ -1,6 +1,7 @@
 #include "story.h"
 
 #include <eltanin/entities/block.q1.h>
+#include <eltanin/geo/rock.q1.h>
 #include <eltanin/physics/atomic.q1.h>
 #include <eltanin/physics/particle.q1.h>
 #include <eltanin/physics/strong.q1.h>
@@ -45,6 +46,7 @@ namespace eltanin {
             ask::schema::aspect<phys::strong::Nail>(),
             ask::schema::aspect<phys::strong::Gluon>(),
             ask::schema::aspect<Block>(),
+            ask::schema::aspect<geo::Rock>(),
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<mech::Blueprint>(),
             ask::schema::aspect<mech::Mount>(),
@@ -206,12 +208,14 @@ namespace eltanin {
         };
         const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved);
 
-        const Pos cameraPos{8.0f, 6.0f, 16.0f};
-        const Pos cameraTarget{0.0f, 0.0f, -2.0f};
+        const Pos cameraPos{40.0f, 28.0f, 52.0f};
+        const Pos cameraTarget{0.0f, 0.0f, 0.0f};
         const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
         const auto camera = with<scene::Interface>::createCamera(context, root, cameraPose, 100.0f * std::numbers::pi_v<float> / 180.0f);
         with<controller::Camera3d>::create(context, camera);
-        with<scene::Interface>::createLight(context, root, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});
+        with<scene::Interface>::createLight(context, root, Pose::from(Pos{24.0f, 48.0f, 32.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 120.0f});
+
+        with<geo::Rock>::spawnIceSphere(context, root, window, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
 
         {
             auto world = with<World>::modify_global(context);

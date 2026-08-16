@@ -1,0 +1,15 @@
+namespace eltanin
+  namespace geo
+
+    // Table order is the 16-channel basis (nibble index in a voxel). Palettes inside a channel are Rock's business.
+    // Wider than OpenGL or physics need today.
+    struct Mineral
+      one
+        name: string
+        density: float // g/cm3
+        scale: float // object-space 3D texture scale
+        albedo: vec3
+        roughness: float
+        metalness: float
+        hardness: float
+      always table: vector<Mineral> = @external(Mayers)

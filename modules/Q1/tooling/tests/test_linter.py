@@ -12,6 +12,15 @@ import linter as q1_linter
 
 ROOT = TOOLING_DIR.parents[2]
 ASPECTS = ROOT / "modules" / "Q1" / "golden" / "doctrine" / "aspects.q1"
+ELEMENTARY = ROOT / "modules" / "Q1" / "golden" / "doctrine" / "elementary.q1"
+
+
+def test_linter_runs_on_golden_elementary_without_crash() -> None:
+    ast, diagnostics, error = q1_linter.lint_file(ELEMENTARY)
+    assert error is None
+    assert ast is not None
+    codes = {diag.code for diag in diagnostics}
+    assert "unknown-type" not in codes
 
 
 def test_linter_runs_on_golden_aspects_without_crash() -> None:

@@ -1,0 +1,29 @@
+import "renderer/gl"
+import "resources/manager"
+
+namespace rmmr
+  namespace resource
+    namespace texture3array
+
+    using Reference as resource::Unit::Reference
+    using LayerRgba as @external(RGBA8 tightly packed volume bytes)
+
+    struct CpuPresentation
+      layerSize: index3
+      layers: vector<LayerRgba>
+
+    // GPU face: N cubic volumes of one size. Each layer is GL_TEXTURE_3D
+    // (OpenGL has no 3D-array target). Engine holds and releases handles;
+    // it does not generate voxels. Game Kind fills CPU layers and calls Asset.install.
+    entity Runtime
+      one
+        device: #system::Device
+        layers: vector<renderer::Texture>
+        layerSize: index3
+        capacity: integer
+
+    feature Asset of resource::Unit
+      one
+        layerSize: index3
+        capacity: integer
+        >install(#system::Device, ?cpu: CpuPresentation) -> #Runtime?

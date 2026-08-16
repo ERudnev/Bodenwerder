@@ -36,4 +36,13 @@ auto StructWithMethods::build_from(const StructWithMethods& source) -> StructWit
     return StructWithMethods{source.x, source.y};
 }
 
+const std::unordered_map<string, integer>&
+MultistyleFieldsSyntax::myTable() {
+    static const std::unordered_map<string, integer> table{
+        {"someString", 27},
+        {"someStringOther", 127},
+    };
+    return table;
+}
+
 } // namespace Q1_iQSM::Syntax::Typization

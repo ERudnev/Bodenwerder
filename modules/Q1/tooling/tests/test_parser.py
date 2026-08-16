@@ -597,3 +597,59 @@ def test_golden_elementary_param_binding_ops() -> None:
     assert add_from["kind"] == "CommandOp"
     assert add_from["params"][0]["binding"] == "read"
     assert build_from["params"][0]["binding"] == "read"
+
+
+def test_parse_struct_field_roles_block_and_inline() -> None:
+    text = """
+namespace Demo
+  struct Mineral
+    one name: string
+    one density: float
+    always table: vector<Mineral> = @external(Mayers)
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    mineral = ast["declarations"][0]["declarations"][0]
+    members = {m["name"]: m for m in mineral["members"] if m["kind"] in {"FieldDecl", "ConstField", "TypeAliasDecl"}}
+    assert members["name"]["kind"] == "FieldDecl"
+    assert members["name"]["role"] == "one"
+    assert members["density"]["role"] == "one"
+    table = members["table"]
+    assert table["kind"] == "ConstField"
+    assert table["role"] == "always"
+    assert table["value"] is None
+    assert table["initializer"]["kind"] == "ExternalType"
+    assert table["initializer"]["description"] == "Mayers"
+
+
+def test_golden_elementary_multistyle_fields() -> None:
+    ast = q1_parser.parse_file(ELEMENTARY)
+    typization = ast["declarations"][0]["declarations"][0]["declarations"][0]
+    multi = next(decl for decl in typization["declarations"] if decl.get("name") == "MultistyleFieldsSyntax")
+    by_name = {m["name"]: m for m in multi["members"] if m.get("name")}
+    assert by_name["myStaticConst"]["kind"] == "ConstField"
+    assert by_name["myStaticConst"]["role"] == "always"
+    assert by_name["myStaticConst"]["value"] == 7
+    assert by_name["myOtherStaticConst"]["value"] == 8
+    assert by_name["field3"]["kind"] == "FieldDecl"
+    assert by_name["field3"]["role"] == "one"
+    assert by_name["staticMutable1"]["role"] == "all"
+    table = by_name["myTable"]
+    assert table["kind"] == "ConstField"
+    assert table["initializer"]["description"] == "Mayers"
+
+
+def test_parse_aspect_inline_field_role() -> None:
+    text = """
+namespace Demo
+  entity Rock
+    one mass: float
+    always max_mass: integer = 9
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    rock = ast["declarations"][0]["declarations"][0]
+    roles = [block["role"] for block in rock["blocks"]]
+    assert roles == ["one", "always"]
+    assert rock["blocks"][0]["members"][0]["name"] == "mass"
+    assert rock["blocks"][1]["members"][0]["kind"] == "ConstField"
+    assert rock["blocks"][1]["members"][0]["value"] == 9
+
