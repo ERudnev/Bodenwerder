@@ -14,6 +14,7 @@
 
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/sprites.q1.h>
+#include <rmmr/resources/texture3array.q1.h>
 #include <rmmr/semantics.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/camera.q1.h>
@@ -387,6 +388,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             using Id = material::Semantics::PersistentId;
             Id shadowMap = material::Semantics::id_of("shadowMap");
             Id albedoMap = material::Semantics::id_of("albedoMap");
+            Id minerals = material::Semantics::id_of("minerals");
             Id atlasTexture = material::Semantics::id_of("atlasTexture");
             Id atlasEntries = material::Semantics::id_of("atlasEntries");
             Id inverseAtlasSize = material::Semantics::id_of("inverseAtlasSize");
@@ -662,6 +664,14 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             if (binding.id == semantic.albedoMap) {
                 if (not batch.texpack or not with<resource::texpack::Runtime>::exists(args.world, *batch.texpack)) throw std::runtime_error("Renderer: GPU batch missing texpack");
                 setUniformSampler(binding, with<resource::texpack::Runtime>::get(args.world, *batch.texpack).handle, material.nearest);
+            } else if (binding.id == semantic.minerals) {
+                if (not batch.texture3array or not with<resource::texture3array::Runtime>::exists(args.world, *batch.texture3array)) throw std::runtime_error("Renderer: GPU batch missing texture3array");
+                const auto& pack = with<resource::texture3array::Runtime>::get(args.world, *batch.texture3array);
+                if (pack.layers.size() != 16)
+                    throw std::runtime_error("Renderer: minerals pack must have 16 layers");
+                const auto unit0 = material::Semantics::binding_of(binding.id);
+                for (int layer = 0; layer < 16; ++layer)
+                    glBindTextureUnit(unit0 + layer, pack.layers[static_cast<std::size_t>(layer)]);
             } else if (binding.id == semantic.atlasTexture) {
                 if (not sprite) throw std::runtime_error("Renderer: atlasTexture requested on non-sprite GPU batch");
                 const auto& texture = with<resource::texture::Runtime>::get(args.world, sprite->texture);

@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <format>
 #include <vector>
@@ -258,6 +259,7 @@ namespace rmmr::resource::geometry {
             const auto normal_id = primitive::GeometrySemantics::id_of("normal");
             const auto uv0_id = primitive::GeometrySemantics::id_of("uv0");
             const auto color0_id = primitive::GeometrySemantics::id_of("color0");
+            const auto mix0_id = primitive::GeometrySemantics::id_of("mix0");
 
             const bool position_only = cpu.layout.size() == std::size_t{1} && cpu.layout[0] == pos_id;
             const bool position_normal = cpu.layout.size() == std::size_t{2} && cpu.layout[0] == pos_id && cpu.layout[1] == normal_id;
@@ -273,9 +275,17 @@ namespace rmmr::resource::geometry {
                 && cpu.layout[0] == pos_id
                 && cpu.layout[1] == normal_id
                 && cpu.layout[2] == uv0_id;
+            const bool position_normal_mix0 =
+                cpu.layout.size() == std::size_t{3}
+                && cpu.layout[0] == pos_id
+                && cpu.layout[1] == normal_id
+                && cpu.layout[2] == mix0_id;
 
-            if (not position_only && not position_normal && not position_uv0 && not position_color0 && not position_uv0_color0 && not position_normal_uv0) {
+            if (not position_only && not position_normal && not position_uv0 && not position_color0 && not position_uv0_color0 && not position_normal_uv0 && not position_normal_mix0) {
                 return context.refuse("resource::geometry::bake: unsupported vertex layout");
+            }
+            if (not position_normal_mix0 and not cpu.mix0.empty()) {
+                return context.refuse("resource::geometry::bake: mix0 must be empty for this layout");
             }
 
             if (position_only) {
@@ -317,6 +327,19 @@ namespace rmmr::resource::geometry {
                 }
                 if (cpu.color0.size() != cpu.positions.size()) {
                     return context.refuse("resource::geometry::bake: color0 count must match positions");
+                }
+            } else if (position_normal_mix0) {
+                if (cpu.normals.size() != cpu.positions.size()) {
+                    return context.refuse("resource::geometry::bake: normals count must match positions");
+                }
+                if (cpu.mix0.size() != cpu.positions.size()) {
+                    return context.refuse("resource::geometry::bake: mix0 count must match positions");
+                }
+                if (not cpu.uv0.empty()) {
+                    return context.refuse("resource::geometry::bake: uv0 must be empty for position+normal+mix0 layout");
+                }
+                if (not cpu.color0.empty()) {
+                    return context.refuse("resource::geometry::bake: color0 must be empty for position+normal+mix0 layout");
                 }
             } else {
                 if (cpu.normals.size() != cpu.positions.size()) {
@@ -384,6 +407,11 @@ namespace rmmr::resource::geometry {
             auto setupAttrib = [&](GLuint index, GLint components, GLuint relativeOffset) {
                 glEnableVertexArrayAttrib(vao, index);
                 glVertexArrayAttribFormat(vao, index, components, GL_FLOAT, GL_FALSE, relativeOffset);
+                glVertexArrayAttribBinding(vao, index, 0);
+            };
+            auto setupAttribI = [&](GLuint index, GLint components, GLenum type, GLuint relativeOffset) {
+                glEnableVertexArrayAttrib(vao, index);
+                glVertexArrayAttribIFormat(vao, index, components, type, relativeOffset);
                 glVertexArrayAttribBinding(vao, index, 0);
             };
 
@@ -479,6 +507,31 @@ namespace rmmr::resource::geometry {
                 glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
                 setupAttrib(0, 3, 0);
                 setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
+            } else if (position_normal_mix0) {
+                struct Packed {
+                    float px;
+                    float py;
+                    float pz;
+                    float nx;
+                    float ny;
+                    float nz;
+                    std::uint32_t mixLo;
+                    std::uint32_t mixHi;
+                };
+                static_assert(sizeof(Packed) == 32);
+                std::vector<Packed> packed;
+                packed.reserve(vertex_count);
+                for (std::size_t i = 0; i < vertex_count; ++i) {
+                    const auto& p = cpu.positions[i];
+                    const auto& n = cpu.normals[i];
+                    packed.push_back(Packed{.px = p.x, .py = p.y, .pz = p.z, .nx = n.x, .ny = n.y, .nz = n.z, .mixLo = static_cast<std::uint32_t>(cpu.mix0[i]), .mixHi = static_cast<std::uint32_t>(cpu.mix0[i] >> 32)});
+                }
+                constexpr renderer::Count stride = renderer::Count(sizeof(Packed));
+                glNamedBufferData(vbo, renderer::SizePtr(packed.size() * sizeof(Packed)), packed.data(), GL_STATIC_DRAW);
+                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
+                setupAttrib(0, 3, 0);
+                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
+                setupAttribI(2, 2, GL_UNSIGNED_INT, renderer::Count(6 * sizeof(float)));
             } else {
                 interleaved.reserve(vertex_count * 8);
                 for (std::size_t i = 0; i < vertex_count; ++i) {

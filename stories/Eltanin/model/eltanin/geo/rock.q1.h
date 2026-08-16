@@ -32,6 +32,7 @@ namespace eltanin::geo {
         struct Actions : BaseActions {
             static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, Volume) -> Id;
             static auto spawnIceSphere(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
+            static auto spawnPaletteTorus(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
         };
         struct Internals;
         static const Behavior customAspectReactions();

@@ -25,4 +25,5 @@ namespace eltanin
       all
         >spawn(#rmmr::scene::Root, #system::Device, Pose, Volume)->#
         >spawnIceSphere(#rmmr::scene::Root, #system::Device, Pose)->#
+        >spawnPaletteTorus(#rmmr::scene::Root, #system::Device, Pose)->#
         !followBody(~phys::Atomic)->>linearPass(>all)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <fQSM/api/interface.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/semantics/geometry.h>
@@ -22,6 +24,7 @@ namespace rmmr::resource::builders::geometry {
         vector<UV> uv0;
         vector<vec4> color0;
         vector<integer> indices;
+        vector<std::uint64_t> mix0;
     };
 
     struct GeometryGenerator final {

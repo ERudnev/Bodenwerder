@@ -1,6 +1,7 @@
 #include <rmmr/scene/actors/mesh.q1.h>
 
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/resources/texture3array.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
 
 #include <GL/glew.h>
@@ -73,6 +74,7 @@ namespace rmmr::scene::actor {
                 .material = material,
                 .shader = shader,
                 .texpack = texpack,
+                .texture3array = bucket.texture3array,
                 .sprite = mesh.sprite,
                 .actorState = mesh.actorState,
                 .poses = mesh.poses,
@@ -223,6 +225,7 @@ namespace rmmr::scene::actor {
                 .geometry = source.geometry,
                 .material = source.material,
                 .texpack = source.texpack,
+                .texture3array = {},
                 .indirect = indirect,
                 .drawCount = static_cast<renderer::Count>(source.commands.size()),
                 .metadataByteOffset = static_cast<renderer::IntPtr>(metadataOffsets[index]),
@@ -247,6 +250,19 @@ namespace rmmr::scene::actor {
             surfaces.emplace(surface, resource::material::Instance{.material = material, .textures = {}});
         }
         return compose(context, resource::meshpack::Asset::Resolved{.geometry = geometryId, .entry = resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = {}});
+    }
+
+    auto Mesh::Actions::composeOne(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id material, resource::texture3array::Asset::Id crust) -> optional<Quantum> {
+        auto quantum = composeOne(context, geometryId, material);
+        if (not quantum)
+            return {};
+        const auto& runtimes = with<resource::Runtimes>::get(context, quantum->device);
+        const auto found = runtimes.texture3arrays_id_mapping.find(crust);
+        if (found == runtimes.texture3arrays_id_mapping.end() or not with<resource::texture3array::Runtime>::exists(context, found->second))
+            return {};
+        for (auto& bucket : quantum->buckets)
+            bucket.texture3array = found->second;
+        return quantum;
     }
 
     auto MeshState::Actions::defaults() -> Quantum {

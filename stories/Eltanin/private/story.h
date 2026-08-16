@@ -8,6 +8,7 @@
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/texpack.q1.h>
+#include <rmmr/resources/texture3array.q1.h>
 #include <rmmr/wrapper/product.h>
 
 #include "blueprints/catalog.h"
@@ -31,6 +32,8 @@ namespace eltanin {
             } primitive;
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
             base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
+            base::maybe<rmmr::resource::material::Asset::Id> rockMaterial;
+            base::maybe<rmmr::resource::texture3array::Asset::Id> crust;
             base::maybe<rmmr::resource::texpack::Pack::Id> sprites;
             base::maybe<rmmr::resource::texpack::Pack::Id> mech;
             base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;

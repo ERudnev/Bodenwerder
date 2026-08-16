@@ -1,4 +1,6 @@
 import "resources/meshpack"
+import "resources/texpack"
+import "resources/texture3array"
 import "resources/materials"
 import "resources/sprites"
 import "renderer/types"
@@ -18,6 +20,7 @@ namespace rmmr
           geometry: #resource::geometry::Runtime
           material: #resource::material::Runtime
           texpack: #resource::texpack::Runtime?
+          texture3array: #resource::texture3array::Runtime?
           indirect: renderer::IndirectBuffer
           drawCount: renderer::Count
           metadataByteOffset: renderer::IntPtr
@@ -36,6 +39,7 @@ namespace rmmr
           ?compose(vector<Occurrence>)->one?
           ?compose(resource::meshpack::Asset::Resolved)->one?
           ?composeOne(#resource::geometry::Asset, #resource::material::Asset)->one?
+          ?composeOne(#resource::geometry::Asset, #resource::material::Asset, #resource::texture3array::Asset)->one?
 
       feature MeshState of Mesh
         one

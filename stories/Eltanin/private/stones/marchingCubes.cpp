@@ -34,10 +34,10 @@ namespace eltanin::geo {
             return 1 << scale;
         }
 
-        void stampOccupied(vector<std::uint8_t>& occupied, index3 rootOrigin, integer extent, const Volume& node) {
+        void stampOccupied(vector<std::uint8_t>& occupied, vector<Mix>& cellMix, index3 rootOrigin, integer extent, const Volume& node) {
             if (not node.children.empty()) {
                 for (const auto& child : node.children)
-                    stampOccupied(occupied, rootOrigin, extent, child);
+                    stampOccupied(occupied, cellMix, rootOrigin, extent, child);
                 return;
             }
             if (node.mix == 0)
@@ -51,7 +51,9 @@ namespace eltanin::geo {
                         const integer gridZ = node.origin.z + cellZ - rootOrigin.z;
                         if (gridX < 0 or gridY < 0 or gridZ < 0 or gridX >= extent or gridY >= extent or gridZ >= extent)
                             continue;
-                        occupied[static_cast<std::size_t>(gridX + extent * (gridY + extent * gridZ))] = 1;
+                        const auto index = static_cast<std::size_t>(gridX + extent * (gridY + extent * gridZ));
+                        occupied[index] = 1;
+                        cellMix[index] = node.mix;
                     }
                 }
             }
@@ -196,18 +198,20 @@ namespace eltanin::geo {
 
     auto meshVolume(const Volume& root) -> CpuPresentation {
         CpuPresentation cpu{
-            .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal"}),
+            .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "mix0"}),
             .positions = {},
             .normals = {},
             .uv0 = {},
             .color0 = {},
             .indices = {},
+            .mix0 = {},
         };
         if (root.scale < 0)
             return cpu;
         const integer extent = edgeCells(root.scale);
         vector<std::uint8_t> occupied(static_cast<std::size_t>(extent * extent * extent), 0);
-        stampOccupied(occupied, root.origin, extent, root);
+        vector<Mix> cellMix(static_cast<std::size_t>(extent * extent * extent), Mix{0});
+        stampOccupied(occupied, cellMix, root.origin, extent, root);
 
         const float meters = mech::space::local::edge2meters;
         const integer verts = extent + 1;
@@ -276,6 +280,39 @@ namespace eltanin::geo {
             if (length < 1.0e-8f)
                 continue;
             cpu.normals[vertex] = -grad / length;
+        }
+
+        auto mixAt = [&](vec3 world) -> Mix {
+            vec3 grid = world / meters - vec3{static_cast<float>(root.origin.x), static_cast<float>(root.origin.y), static_cast<float>(root.origin.z)};
+            const integer cellX = static_cast<integer>(glm::floor(grid.x));
+            const integer cellY = static_cast<integer>(glm::floor(grid.y));
+            const integer cellZ = static_cast<integer>(glm::floor(grid.z));
+            auto sample = [&](integer x, integer y, integer z) -> Mix {
+                if (x < 0 or y < 0 or z < 0 or x >= extent or y >= extent or z >= extent)
+                    return Mix{0};
+                const auto index = static_cast<std::size_t>(x + extent * (y + extent * z));
+                if (occupied[index] == 0)
+                    return Mix{0};
+                return cellMix[index];
+            };
+            const Mix here = sample(cellX, cellY, cellZ);
+            if (here != Mix{0})
+                return here;
+            for (integer offsetZ = -1; offsetZ <= 1; ++offsetZ) {
+                for (integer offsetY = -1; offsetY <= 1; ++offsetY) {
+                    for (integer offsetX = -1; offsetX <= 1; ++offsetX) {
+                        const Mix neighbor = sample(cellX + offsetX, cellY + offsetY, cellZ + offsetZ);
+                        if (neighbor != Mix{0})
+                            return neighbor;
+                    }
+                }
+            }
+            return Mix{0};
+        };
+        cpu.mix0.resize(cpu.positions.size(), Mix{0});
+        for (std::size_t vertex = 0; vertex < cpu.positions.size(); ++vertex) {
+            const vec3 inward = cpu.positions[vertex] - cpu.normals[vertex] * (0.25f * meters);
+            cpu.mix0[vertex] = mixAt(inward);
         }
         return cpu;
     }

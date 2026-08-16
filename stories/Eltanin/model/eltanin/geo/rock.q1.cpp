@@ -5,14 +5,20 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/texture3array.q1.h>
 #include <rmmr/scene/node.q1.h>
 
 #include "mech/semantics/space.h"
 #include "physics/system.h"
 #include "stones/marchingCubes.h"
+#include "stones/crust.h"
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
+
+#include <cmath>
+#include <numbers>
 
 namespace eltanin::geo {
 
@@ -123,6 +129,103 @@ namespace eltanin::geo {
             return Volume{.origin = origin, .scale = iceSphereScale, .mix = 0, .children = {}};
         }
 
+        constexpr integer torusScale = 5;
+        constexpr float torusMajorCells = 8.0f;
+        constexpr float torusMinorCells = 4.0f;
+
+        auto pureMix(int channel) -> Mix {
+            return Mix{15} << (channel * 4);
+        }
+
+        auto torusInside(vec3 localMeters, float majorMeters, float minorMeters) -> bool {
+            const float rho = glm::length(vec2{localMeters.x, localMeters.z});
+            return glm::length(vec2{rho - majorMeters, localMeters.y}) < minorMeters;
+        }
+
+        auto torusSector(vec3 localMeters) -> int {
+            float angle = std::atan2(localMeters.z, localMeters.x);
+            if (angle < 0.0f)
+                angle += 2.0f * std::numbers::pi_v<float>;
+            const int sector = static_cast<int>(angle * static_cast<float>(mixChannels) / (2.0f * std::numbers::pi_v<float>));
+            if (sector < 0)
+                return 0;
+            if (sector >= mixChannels)
+                return mixChannels - 1;
+            return sector;
+        }
+
+        auto torusOccupancy(index3 origin, integer scale, float majorMeters, float minorMeters) -> Occupancy {
+            const integer edge = edgeCells(scale);
+            const float meters = mech::space::local::edge2meters;
+            const vec3 aabbMin = vec3{static_cast<float>(origin.x), static_cast<float>(origin.y), static_cast<float>(origin.z)} * meters;
+            const vec3 aabbMax = vec3{static_cast<float>(origin.x + edge), static_cast<float>(origin.y + edge), static_cast<float>(origin.z + edge)} * meters;
+            if (aabbMax.y <= -minorMeters or aabbMin.y >= minorMeters)
+                return Occupancy::vacuum;
+            const vec2 xzMin{aabbMin.x, aabbMin.z};
+            const vec2 xzMax{aabbMax.x, aabbMax.z};
+            const vec2 xzClosest = glm::clamp(vec2{0.0f, 0.0f}, xzMin, xzMax);
+            const float closestRho = glm::length(xzClosest);
+            if (closestRho >= majorMeters + minorMeters)
+                return Occupancy::vacuum;
+            const vec2 xzFarthest{
+                glm::abs(aabbMin.x) > glm::abs(aabbMax.x) ? aabbMin.x : aabbMax.x,
+                glm::abs(aabbMin.z) > glm::abs(aabbMax.z) ? aabbMin.z : aabbMax.z,
+            };
+            if (glm::length(xzFarthest) <= majorMeters - minorMeters)
+                return Occupancy::vacuum;
+            if (scale == 0) {
+                if (torusInside(mech::space::cell::center2local(ivec3{origin.x, origin.y, origin.z}), majorMeters, minorMeters))
+                    return Occupancy::solid;
+                return Occupancy::vacuum;
+            }
+            return Occupancy::mixed;
+        }
+
+        auto makeTorusNode(index3 origin, integer scale, float majorMeters, float minorMeters) -> optional<Volume> {
+            switch (torusOccupancy(origin, scale, majorMeters, minorMeters)) {
+                case Occupancy::vacuum:
+                    return {};
+                case Occupancy::solid:
+                    if (scale == 0)
+                        return Volume{.origin = origin, .scale = scale, .mix = pureMix(torusSector(mech::space::cell::center2local(ivec3{origin.x, origin.y, origin.z}))), .children = {}};
+                    break;
+                case Occupancy::mixed:
+                    break;
+            }
+            Volume node{.origin = origin, .scale = scale, .mix = 0, .children = {}};
+            const integer childScale = scale - 1;
+            const integer half = edgeCells(childScale);
+            for (const auto& octant : mech::cube::corners) {
+                const index3 childOrigin{origin.x + octant.x * half, origin.y + octant.y * half, origin.z + octant.z * half};
+                if (auto child = makeTorusNode(childOrigin, childScale, majorMeters, minorMeters))
+                    node.children.push_back(std::move(*child));
+            }
+            if (node.children.empty())
+                return {};
+            if (node.children.size() == 8) {
+                const Mix mix = node.children[0].mix;
+                bool collapse = mix != 0 and node.children[0].children.empty();
+                for (const auto& child : node.children) {
+                    if (not child.children.empty() or child.mix != mix)
+                        collapse = false;
+                }
+                if (collapse)
+                    return Volume{.origin = origin, .scale = scale, .mix = mix, .children = {}};
+            }
+            return node;
+        }
+
+        auto paletteTorusVolume() -> Volume {
+            const integer half = edgeCells(torusScale) / 2;
+            const float meters = mech::space::local::edge2meters;
+            const float majorMeters = torusMajorCells * meters;
+            const float minorMeters = torusMinorCells * meters;
+            const index3 origin{-half, -half, -half};
+            if (auto root = makeTorusNode(origin, torusScale, majorMeters, minorMeters))
+                return std::move(*root);
+            return Volume{.origin = origin, .scale = torusScale, .mix = 0, .children = {}};
+        }
+
         struct Sample {
             vec3 local;
             float mass;
@@ -184,16 +287,22 @@ namespace eltanin::geo {
         if (not with<rmmr::resource::geometry::Asset>::install(context, geometryId, device, cpu))
             return context.refuse("eltanin::geo::Rock::spawn: geometry install failed");
 
-        const auto lit = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, rmmr::resource::Unit::Name::from("rmmr", "lit"));
-        if (not lit)
-            return context.refuse("eltanin::geo::Rock::spawn: lit material missing");
-        auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, geometryId, *lit);
+        const auto rockMaterial = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "rock"));
+        if (not rockMaterial)
+            return context.refuse("eltanin::geo::Rock::spawn: rock material missing");
+        const auto crust = with<rmmr::resource::Assets>::find<rmmr::resource::texture3array::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "crust"));
+        if (not crust)
+            return context.refuse("eltanin::geo::Rock::spawn: crust pack missing");
+        const auto& runtimes = with<rmmr::resource::Runtimes>::get(context, device);
+        if (runtimes.texture3arrays_id_mapping.find(*crust) == runtimes.texture3arrays_id_mapping.end()) {
+            if (not with<rmmr::resource::texture3array::Asset>::install(context, *crust, device, generateCrust()))
+                return context.refuse("eltanin::geo::Rock::spawn: crust install failed");
+        }
+        auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, geometryId, *rockMaterial, *crust);
         if (not meshQuantum)
             return context.refuse("eltanin::geo::Rock::spawn: mesh compose failed");
 
-        const auto& table = Mineral::table();
-        const RGB iceAlbedo = table.empty() ? RGB{1.0f, 1.0f, 1.0f} : table.front().albedo;
-        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), with<rmmr::scene::actor::MeshState>::defaults(iceAlbedo, 1.0f));
+        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f));
 
         vector<phys::Particle::Id> ids;
         ids.reserve(samples.size());
@@ -222,6 +331,10 @@ namespace eltanin::geo {
 
     auto Rock::Actions::spawnIceSphere(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
         return spawn(context, root, device, pose, iceSphereVolume());
+    }
+
+    auto Rock::Actions::spawnPaletteTorus(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
+        return spawn(context, root, device, pose, paletteTorusVolume());
     }
 
     struct Rock::Internals : Rock::DefaultInternals {

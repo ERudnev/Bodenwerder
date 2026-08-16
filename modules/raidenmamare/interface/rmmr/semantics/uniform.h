@@ -36,6 +36,7 @@ namespace rmmr::material {
             m4f,
             sampler2d,
             sampler2dArray,
+            sampler3d,
             ssbo,
         };
 
@@ -55,9 +56,10 @@ namespace rmmr::material {
         // - 0: albedoMap / atlasTexture / sceneColor / compose overlay
         // - 1: shadowMap / identiffyMap
         // - 2: selectedMap
+        // - 3..18: minerals[16] (GL_TEXTURE_3D layers)
         // SSBO binding points:
         // - 0: atlasEntries
-        static constexpr auto vocabulary = std::array<Entry, 13>{{
+        static constexpr auto vocabulary = std::array<Entry, 14>{{
             Entry{0, Type::i32, "_undefined", -1},
 
             Entry{109, Type::sampler2d, "shadowMap", 1},
@@ -65,6 +67,7 @@ namespace rmmr::material {
             Entry{111, Type::sampler2d, "atlasTexture", 0},
             Entry{112, Type::ssbo, "atlasEntries", 0},
             Entry{114, Type::v2f, "inverseAtlasSize", -1},
+            Entry{115, Type::sampler3d, "minerals", 3},
 
             // Overlay / screen-space (gap after world materials — start at 2000)
             Entry{2000, Type::sampler2d, "sceneColor", 0},
@@ -77,7 +80,7 @@ namespace rmmr::material {
         }};
 
         static constexpr auto isBoundResource(Type type) -> bool {
-            return type == Type::sampler2d or type == Type::sampler2dArray or type == Type::ssbo;
+            return type == Type::sampler2d or type == Type::sampler2dArray or type == Type::sampler3d or type == Type::ssbo;
         }
 
         static constexpr auto name_of(PersistentId id) -> Name {

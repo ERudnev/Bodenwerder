@@ -20,6 +20,7 @@
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/texpack.q1.h>
+#include <rmmr/resources/texture3array.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
@@ -118,6 +119,39 @@ namespace eltanin {
                 .blend = renderer::BlendMode::additive,
             });
 
+        if (not shared or not shared->material.lit) {
+            return (void)context.refuse("eltanin::Game::addAssets: rmmr lit missing");
+        }
+        const auto rock_shader = with<Assets>::add_shader_loader(
+            context,
+            Name::from("Eltanin", "rock"),
+            item<shader::Loader>{
+                .vertex = "shaders/rock.vert.glsl",
+                .fragment = "shaders/rock.frag.glsl",
+            });
+        const auto& litQuantum = with<Material>::get(context, *shared->material.lit);
+        const auto shadowTechnique = litQuantum.techniques.find(renderer::Pass::shadow);
+        if (shadowTechnique == litQuantum.techniques.end()) {
+            return (void)context.refuse("eltanin::Game::addAssets: lit shadow technique missing");
+        }
+        assets.rockMaterial = with<Assets>::add_material(
+            context,
+            Name::from("Eltanin", "rock"),
+            Material::Quantum{
+                .techniques = {
+                    {renderer::Pass::opaque, Material::Technique{
+                        .program = with<Unit>::remember(context, rock_shader),
+                        .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}),
+                    }},
+                    {renderer::Pass::shadow, Material::Technique{
+                        .program = shadowTechnique->second.program,
+                        .uniforms = {},
+                    }},
+                },
+                .nearest = false,
+                .blend = renderer::BlendMode::inherit,
+            });
+
         // Mech albedo catalog; editor meshpacks under meshes/editor.
         if (not shared or not shared->material.litTextured) {
             return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_textured missing");
@@ -172,6 +206,9 @@ namespace eltanin {
             .angular_diameter_deg = 0.41f,
         });
         assets.skySphereGeometry = sky_geometry_id;
+        const auto crust_id = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "crust")});
+        with<texture3array::Asset>::extend(context, crust_id, texture3array::Asset::Quantum{.layerSize = index3{0, 0, 0}, .capacity = 0});
+        assets.crust = crust_id;
     }
 
     void Game::prepareAssets(Writing) {
@@ -208,14 +245,15 @@ namespace eltanin {
         };
         const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved);
 
-        const Pos cameraPos{40.0f, 28.0f, 52.0f};
-        const Pos cameraTarget{0.0f, 0.0f, 0.0f};
+        const Pos cameraPos{90.0f, 55.0f, 120.0f};
+        const Pos cameraTarget{40.0f, 0.0f, 0.0f};
         const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
         const auto camera = with<scene::Interface>::createCamera(context, root, cameraPose, 100.0f * std::numbers::pi_v<float> / 180.0f);
         with<controller::Camera3d>::create(context, camera);
-        with<scene::Interface>::createLight(context, root, Pose::from(Pos{24.0f, 48.0f, 32.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 120.0f});
+        with<scene::Interface>::createLight(context, root, Pose::from(Pos{40.0f, 80.0f, 40.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 280.0f});
 
         with<geo::Rock>::spawnIceSphere(context, root, window, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
+        with<geo::Rock>::spawnPaletteTorus(context, root, window, Pose::from(Pos{80.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
 
         {
             auto world = with<World>::modify_global(context);

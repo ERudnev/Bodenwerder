@@ -6,6 +6,7 @@ import "resources/materials"
 import "resources/shaders"
 import "resources/sprites"
 import "resources/texpack"
+import "resources/texture3array"
 
 namespace rmmr
   namespace renderer
@@ -59,6 +60,7 @@ namespace rmmr
       material: #resource::material::Runtime
       shader: #resource::shader::Runtime
       texpack: #resource::texpack::Runtime?
+      texture3array: #resource::texture3array::Runtime?
       sprite: #resource::sprite::Runtime?
       actorState: StorageBuffer
       poses: StorageBuffer

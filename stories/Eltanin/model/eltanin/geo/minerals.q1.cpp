@@ -7,6 +7,7 @@ namespace eltanin::geo {
 using base::common_types::rgb;
 
 const vector<Mineral>& Mineral::table() {
+    // .scale must match assets/Eltanin/shaders/rock.frag.glsl mineralScale
     static const vector<Mineral> table{
         Mineral{.name = "Ice", .density = 0.92f, .scale = 0.08f, .albedo = rgb(217, 235, 242), .roughness = 0.25f, .metalness = 0.0f, .hardness = 1.5f},
         Mineral{.name = "Olivine", .density = 3.32f, .scale = 0.25f, .albedo = rgb(64, 89, 38), .roughness = 0.72f, .metalness = 0.0f, .hardness = 6.5f},
