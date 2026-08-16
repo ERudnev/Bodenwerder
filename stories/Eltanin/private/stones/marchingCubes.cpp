@@ -83,36 +83,41 @@ namespace eltanin::geo {
             return (glm::abs(a.x - b.x) <= eps and glm::abs(a.x - c.x) <= eps) or (glm::abs(a.y - b.y) <= eps and glm::abs(a.y - c.y) <= eps) or (glm::abs(a.z - b.z) <= eps and glm::abs(a.z - c.z) <= eps);
         }
 
-        auto interpolate(vec3 a, float fillA, vec3 b, float fillB) -> vec3 {
-            const float delta = fillB - fillA;
+        struct Corner {
+            vec3 pos;
+            float fill;
+        };
+
+        auto interpolate(const Corner& from, const Corner& to) -> vec3 {
+            const float delta = to.fill - from.fill;
             if (glm::abs(delta) < 1.0e-6f)
-                return a;
-            return glm::mix(a, b, (isoLevel - fillA) / delta);
+                return from.pos;
+            return glm::mix(from.pos, to.pos, (isoLevel - from.fill) / delta);
         }
 
         void emitOriented(CpuPresentation& cpu, vec3 a, vec3 b, vec3 c, vec3 inside) {
-            vec3 normal = glm::cross(b - a, c - a);
-            const float length = glm::length(normal);
+            vec3 face = glm::cross(b - a, c - a);
+            const float length = glm::length(face);
             if (length < 1.0e-8f)
                 return;
-            normal /= length;
+            face /= length;
             const vec3 mid = (a + b + c) / 3.0f;
-            if (glm::dot(normal, mid - inside) < 0.0f) {
+            if (glm::dot(face, mid - inside) < 0.0f) {
                 std::swap(b, c);
-                normal = -normal;
+                face = -face;
             }
             cpu.positions.push_back(a);
             cpu.positions.push_back(b);
             cpu.positions.push_back(c);
-            cpu.normals.push_back(normal);
-            cpu.normals.push_back(normal);
-            cpu.normals.push_back(normal);
+            cpu.normals.push_back(face);
+            cpu.normals.push_back(face);
+            cpu.normals.push_back(face);
         }
 
-        void emitTet(CpuPresentation& cpu, const std::array<vec3, 4>& pos, const std::array<float, 4>& fill) {
+        void emitTet(CpuPresentation& cpu, const std::array<Corner, 4>& corners) {
             int mask = 0;
             for (int corner = 0; corner < 4; ++corner) {
-                if (fill[corner] >= isoLevel)
+                if (corners[static_cast<std::size_t>(corner)].fill >= isoLevel)
                     mask |= 1 << corner;
             }
             const int insideCount = (mask & 1) + ((mask >> 1) & 1) + ((mask >> 2) & 1) + ((mask >> 3) & 1);
@@ -123,15 +128,19 @@ namespace eltanin::geo {
                 int onCount = 0;
                 vec3 centroid{0.0f, 0.0f, 0.0f};
                 for (int corner = 0; corner < 4; ++corner) {
-                    centroid += pos[corner];
-                    if (not onIso(fill[corner]))
+                    centroid += corners[static_cast<std::size_t>(corner)].pos;
+                    if (not onIso(corners[static_cast<std::size_t>(corner)].fill))
                         continue;
                     on[onCount] = corner;
                     ++onCount;
                 }
                 centroid *= 0.25f;
-                if (onCount == 3 and axisAlignedFace(pos[on[0]], pos[on[1]], pos[on[2]]))
-                    emitOriented(cpu, pos[on[0]], pos[on[1]], pos[on[2]], centroid);
+                if (onCount == 3 and axisAlignedFace(corners[static_cast<std::size_t>(on[0])].pos, corners[static_cast<std::size_t>(on[1])].pos, corners[static_cast<std::size_t>(on[2])].pos)) {
+                    const auto& a = corners[static_cast<std::size_t>(on[0])];
+                    const auto& b = corners[static_cast<std::size_t>(on[1])];
+                    const auto& c = corners[static_cast<std::size_t>(on[2])];
+                    emitOriented(cpu, a.pos, b.pos, c.pos, centroid);
+                }
                 return;
             }
 
@@ -140,7 +149,7 @@ namespace eltanin::geo {
             for (int corner = 0; corner < 4; ++corner) {
                 if ((mask & (1 << corner)) == 0)
                     continue;
-                inside += pos[corner];
+                inside += corners[static_cast<std::size_t>(corner)].pos;
                 insideMass += 1.0f;
             }
             inside /= insideMass;
@@ -153,7 +162,7 @@ namespace eltanin::geo {
                 const int a = (loneIndex + 1) & 3;
                 const int b = (loneIndex + 2) & 3;
                 const int c = (loneIndex + 3) & 3;
-                emitOriented(cpu, interpolate(pos[loneIndex], fill[loneIndex], pos[a], fill[a]), interpolate(pos[loneIndex], fill[loneIndex], pos[b], fill[b]), interpolate(pos[loneIndex], fill[loneIndex], pos[c], fill[c]), inside);
+                emitOriented(cpu, interpolate(corners[static_cast<std::size_t>(loneIndex)], corners[static_cast<std::size_t>(a)]), interpolate(corners[static_cast<std::size_t>(loneIndex)], corners[static_cast<std::size_t>(b)]), interpolate(corners[static_cast<std::size_t>(loneIndex)], corners[static_cast<std::size_t>(c)]), inside);
                 return;
             }
 
@@ -175,10 +184,10 @@ namespace eltanin::geo {
                 outside[outsideCount] = corner;
                 ++outsideCount;
             }
-            const auto ac = interpolate(pos[first], fill[first], pos[outside[0]], fill[outside[0]]);
-            const auto ad = interpolate(pos[first], fill[first], pos[outside[1]], fill[outside[1]]);
-            const auto bc = interpolate(pos[second], fill[second], pos[outside[0]], fill[outside[0]]);
-            const auto bd = interpolate(pos[second], fill[second], pos[outside[1]], fill[outside[1]]);
+            const auto ac = interpolate(corners[static_cast<std::size_t>(first)], corners[static_cast<std::size_t>(outside[0])]);
+            const auto ad = interpolate(corners[static_cast<std::size_t>(first)], corners[static_cast<std::size_t>(outside[1])]);
+            const auto bc = interpolate(corners[static_cast<std::size_t>(second)], corners[static_cast<std::size_t>(outside[0])]);
+            const auto bd = interpolate(corners[static_cast<std::size_t>(second)], corners[static_cast<std::size_t>(outside[1])]);
             emitOriented(cpu, ac, bc, bd, inside);
             emitOriented(cpu, ac, bd, ad, inside);
         }
@@ -201,27 +210,72 @@ namespace eltanin::geo {
         stampOccupied(occupied, root.origin, extent, root);
 
         const float meters = mech::space::local::edge2meters;
+        const integer verts = extent + 1;
+        auto latticeIndex = [&](integer gridX, integer gridY, integer gridZ) -> std::size_t {
+            return static_cast<std::size_t>(gridX + verts * (gridY + verts * gridZ));
+        };
         auto latticePos = [&](integer gridX, integer gridY, integer gridZ) -> vec3 {
             return vec3{static_cast<float>(root.origin.x + gridX), static_cast<float>(root.origin.y + gridY), static_cast<float>(root.origin.z + gridZ)} * meters;
+        };
+        vector<float> latticeFill(static_cast<std::size_t>(verts * verts * verts), 0.0f);
+        for (integer gridZ = 0; gridZ < verts; ++gridZ) {
+            for (integer gridY = 0; gridY < verts; ++gridY) {
+                for (integer gridX = 0; gridX < verts; ++gridX)
+                    latticeFill[latticeIndex(gridX, gridY, gridZ)] = vertexFill(occupied, extent, gridX, gridY, gridZ);
+            }
+        }
+
+        auto fillAt = [&](vec3 world) -> float {
+            vec3 grid = world / meters - vec3{static_cast<float>(root.origin.x), static_cast<float>(root.origin.y), static_cast<float>(root.origin.z)};
+            grid = glm::clamp(grid, vec3{0.0f, 0.0f, 0.0f}, vec3{static_cast<float>(extent), static_cast<float>(extent), static_cast<float>(extent)});
+            const vec3 originCell = glm::floor(grid);
+            const vec3 frac = grid - originCell;
+            const integer x0 = static_cast<integer>(originCell.x);
+            const integer y0 = static_cast<integer>(originCell.y);
+            const integer z0 = static_cast<integer>(originCell.z);
+            const integer x1 = x0 < extent ? x0 + 1 : extent;
+            const integer y1 = y0 < extent ? y0 + 1 : extent;
+            const integer z1 = z0 < extent ? z0 + 1 : extent;
+            const float c000 = latticeFill[latticeIndex(x0, y0, z0)];
+            const float c100 = latticeFill[latticeIndex(x1, y0, z0)];
+            const float c010 = latticeFill[latticeIndex(x0, y1, z0)];
+            const float c110 = latticeFill[latticeIndex(x1, y1, z0)];
+            const float c001 = latticeFill[latticeIndex(x0, y0, z1)];
+            const float c101 = latticeFill[latticeIndex(x1, y0, z1)];
+            const float c011 = latticeFill[latticeIndex(x0, y1, z1)];
+            const float c111 = latticeFill[latticeIndex(x1, y1, z1)];
+            return glm::mix(glm::mix(glm::mix(c000, c100, frac.x), glm::mix(c010, c110, frac.x), frac.y), glm::mix(glm::mix(c001, c101, frac.x), glm::mix(c011, c111, frac.x), frac.y), frac.z);
         };
 
         for (integer cellZ = 0; cellZ < extent; ++cellZ) {
             for (integer cellY = 0; cellY < extent; ++cellY) {
                 for (integer cellX = 0; cellX < extent; ++cellX) {
-                    std::array<vec3, 8> cornerPos{};
-                    std::array<float, 8> cornerFill{};
+                    std::array<Corner, 8> cube{};
                     for (int corner = 0; corner < 8; ++corner) {
                         const integer gridX = cellX + cubeCorner[corner].x;
                         const integer gridY = cellY + cubeCorner[corner].y;
                         const integer gridZ = cellZ + cubeCorner[corner].z;
-                        cornerPos[static_cast<std::size_t>(corner)] = latticePos(gridX, gridY, gridZ);
-                        cornerFill[static_cast<std::size_t>(corner)] = vertexFill(occupied, extent, gridX, gridY, gridZ);
+                        const auto index = latticeIndex(gridX, gridY, gridZ);
+                        cube[static_cast<std::size_t>(corner)] = Corner{.pos = latticePos(gridX, gridY, gridZ), .fill = latticeFill[index]};
                     }
-                    for (const auto& tet : tetCorners) {
-                        emitTet(cpu, {cornerPos[static_cast<std::size_t>(tet[0])], cornerPos[static_cast<std::size_t>(tet[1])], cornerPos[static_cast<std::size_t>(tet[2])], cornerPos[static_cast<std::size_t>(tet[3])]}, {cornerFill[static_cast<std::size_t>(tet[0])], cornerFill[static_cast<std::size_t>(tet[1])], cornerFill[static_cast<std::size_t>(tet[2])], cornerFill[static_cast<std::size_t>(tet[3])]});
-                    }
+                    for (const auto& tet : tetCorners)
+                        emitTet(cpu, {cube[static_cast<std::size_t>(tet[0])], cube[static_cast<std::size_t>(tet[1])], cube[static_cast<std::size_t>(tet[2])], cube[static_cast<std::size_t>(tet[3])]});
                 }
             }
+        }
+
+        const float step = meters;
+        for (std::size_t vertex = 0; vertex < cpu.positions.size(); ++vertex) {
+            const vec3 pos = cpu.positions[vertex];
+            const vec3 grad{
+                fillAt(pos + vec3{step, 0.0f, 0.0f}) - fillAt(pos - vec3{step, 0.0f, 0.0f}),
+                fillAt(pos + vec3{0.0f, step, 0.0f}) - fillAt(pos - vec3{0.0f, step, 0.0f}),
+                fillAt(pos + vec3{0.0f, 0.0f, step}) - fillAt(pos - vec3{0.0f, 0.0f, step}),
+            };
+            const float length = glm::length(grad);
+            if (length < 1.0e-8f)
+                continue;
+            cpu.normals[vertex] = -grad / length;
         }
         return cpu;
     }
