@@ -260,6 +260,7 @@ namespace rmmr::resource::geometry {
             const auto uv0_id = primitive::GeometrySemantics::id_of("uv0");
             const auto color0_id = primitive::GeometrySemantics::id_of("color0");
             const auto mix0_id = primitive::GeometrySemantics::id_of("mix0");
+            const auto heat_id = primitive::GeometrySemantics::id_of("heat");
 
             const bool position_only = cpu.layout.size() == std::size_t{1} && cpu.layout[0] == pos_id;
             const bool position_normal = cpu.layout.size() == std::size_t{2} && cpu.layout[0] == pos_id && cpu.layout[1] == normal_id;
@@ -280,12 +281,26 @@ namespace rmmr::resource::geometry {
                 && cpu.layout[0] == pos_id
                 && cpu.layout[1] == normal_id
                 && cpu.layout[2] == mix0_id;
+            const bool position_normal_heat =
+                cpu.layout.size() == std::size_t{3}
+                && cpu.layout[0] == pos_id
+                && cpu.layout[1] == normal_id
+                && cpu.layout[2] == heat_id;
+            const bool position_normal_mix0_heat =
+                cpu.layout.size() == std::size_t{4}
+                && cpu.layout[0] == pos_id
+                && cpu.layout[1] == normal_id
+                && cpu.layout[2] == mix0_id
+                && cpu.layout[3] == heat_id;
 
-            if (not position_only && not position_normal && not position_uv0 && not position_color0 && not position_uv0_color0 && not position_normal_uv0 && not position_normal_mix0) {
+            if (not position_only && not position_normal && not position_uv0 && not position_color0 && not position_uv0_color0 && not position_normal_uv0 && not position_normal_mix0 && not position_normal_heat && not position_normal_mix0_heat) {
                 return context.refuse("resource::geometry::bake: unsupported vertex layout");
             }
-            if (not position_normal_mix0 and not cpu.mix0.empty()) {
+            if (not position_normal_mix0 and not position_normal_mix0_heat and not cpu.mix0.empty()) {
                 return context.refuse("resource::geometry::bake: mix0 must be empty for this layout");
+            }
+            if (not position_normal_heat and not position_normal_mix0_heat and not cpu.heat.empty()) {
+                return context.refuse("resource::geometry::bake: heat must be empty for this layout");
             }
 
             if (position_only) {
@@ -328,18 +343,37 @@ namespace rmmr::resource::geometry {
                 if (cpu.color0.size() != cpu.positions.size()) {
                     return context.refuse("resource::geometry::bake: color0 count must match positions");
                 }
-            } else if (position_normal_mix0) {
+            } else if (position_normal_mix0 or position_normal_mix0_heat) {
                 if (cpu.normals.size() != cpu.positions.size()) {
                     return context.refuse("resource::geometry::bake: normals count must match positions");
                 }
                 if (cpu.mix0.size() != cpu.positions.size()) {
                     return context.refuse("resource::geometry::bake: mix0 count must match positions");
                 }
+                if (position_normal_mix0_heat and cpu.heat.size() != cpu.positions.size()) {
+                    return context.refuse("resource::geometry::bake: heat count must match positions");
+                }
+                if (position_normal_mix0 and not cpu.heat.empty()) {
+                    return context.refuse("resource::geometry::bake: heat must be empty for position+normal+mix0 layout");
+                }
                 if (not cpu.uv0.empty()) {
-                    return context.refuse("resource::geometry::bake: uv0 must be empty for position+normal+mix0 layout");
+                    return context.refuse("resource::geometry::bake: uv0 must be empty for this layout");
                 }
                 if (not cpu.color0.empty()) {
-                    return context.refuse("resource::geometry::bake: color0 must be empty for position+normal+mix0 layout");
+                    return context.refuse("resource::geometry::bake: color0 must be empty for this layout");
+                }
+            } else if (position_normal_heat) {
+                if (cpu.normals.size() != cpu.positions.size()) {
+                    return context.refuse("resource::geometry::bake: normals count must match positions");
+                }
+                if (cpu.heat.size() != cpu.positions.size()) {
+                    return context.refuse("resource::geometry::bake: heat count must match positions");
+                }
+                if (not cpu.uv0.empty()) {
+                    return context.refuse("resource::geometry::bake: uv0 must be empty for position+normal+heat layout");
+                }
+                if (not cpu.color0.empty()) {
+                    return context.refuse("resource::geometry::bake: color0 must be empty for position+normal+heat layout");
                 }
             } else {
                 if (cpu.normals.size() != cpu.positions.size()) {
@@ -532,6 +566,56 @@ namespace rmmr::resource::geometry {
                 setupAttrib(0, 3, 0);
                 setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
                 setupAttribI(2, 2, GL_UNSIGNED_INT, renderer::Count(6 * sizeof(float)));
+            } else if (position_normal_mix0_heat) {
+                struct Packed {
+                    float px;
+                    float py;
+                    float pz;
+                    float nx;
+                    float ny;
+                    float nz;
+                    std::uint32_t mixLo;
+                    std::uint32_t mixHi;
+                    float kelvin;
+                    float erosion;
+                };
+                static_assert(sizeof(Packed) == 40);
+                std::vector<Packed> packed;
+                packed.reserve(vertex_count);
+                for (std::size_t i = 0; i < vertex_count; ++i) {
+                    const auto& p = cpu.positions[i];
+                    const auto& n = cpu.normals[i];
+                    const auto& heat = cpu.heat[i];
+                    packed.push_back(Packed{.px = p.x, .py = p.y, .pz = p.z, .nx = n.x, .ny = n.y, .nz = n.z, .mixLo = static_cast<std::uint32_t>(cpu.mix0[i]), .mixHi = static_cast<std::uint32_t>(cpu.mix0[i] >> 32), .kelvin = heat.x, .erosion = heat.y});
+                }
+                constexpr renderer::Count stride = renderer::Count(sizeof(Packed));
+                glNamedBufferData(vbo, renderer::SizePtr(packed.size() * sizeof(Packed)), packed.data(), GL_STATIC_DRAW);
+                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
+                setupAttrib(0, 3, 0);
+                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
+                setupAttribI(2, 2, GL_UNSIGNED_INT, renderer::Count(6 * sizeof(float)));
+                setupAttrib(3, 2, renderer::Count(8 * sizeof(float)));
+            } else if (position_normal_heat) {
+                interleaved.reserve(vertex_count * 8);
+                for (std::size_t i = 0; i < vertex_count; ++i) {
+                    const auto& p = cpu.positions[i];
+                    const auto& n = cpu.normals[i];
+                    const auto& heat = cpu.heat[i];
+                    interleaved.push_back(p.x);
+                    interleaved.push_back(p.y);
+                    interleaved.push_back(p.z);
+                    interleaved.push_back(n.x);
+                    interleaved.push_back(n.y);
+                    interleaved.push_back(n.z);
+                    interleaved.push_back(heat.x);
+                    interleaved.push_back(heat.y);
+                }
+                constexpr renderer::Count stride = renderer::Count(8 * sizeof(float));
+                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
+                setupAttrib(0, 3, 0);
+                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
+                setupAttrib(2, 2, renderer::Count(6 * sizeof(float)));
             } else {
                 interleaved.reserve(vertex_count * 8);
                 for (std::size_t i = 0; i < vertex_count; ++i) {

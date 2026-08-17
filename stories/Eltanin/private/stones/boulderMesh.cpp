@@ -104,7 +104,7 @@ namespace eltanin::geo {
 
     auto meshBoulder(const Boulder::Recipe& recipe) -> CpuPresentation {
         CpuPresentation cpu{
-            .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal"}),
+            .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "heat"}),
             .positions = {},
             .normals = {},
             .uv0 = {},
@@ -145,6 +145,7 @@ namespace eltanin::geo {
             else
                 cpu.normals[index] /= std::sqrt(length2);
         }
+        cpu.heat.assign(cpu.positions.size(), vec2{0.0f, 1.0f});
         return cpu;
     }
 

@@ -38,7 +38,7 @@ namespace rmmr::primitive {
         // ID convention:
         // - 1..99: primary vertex attributes
         // - 100..: auxiliary / optional attributes
-        static constexpr auto vocabulary = std::array<Entry, 6>{{
+        static constexpr auto vocabulary = std::array<Entry, 7>{{
             Entry{0, Type::f32, "_undefined"},
 
             Entry{1, Type::v3f, "position"},
@@ -46,6 +46,7 @@ namespace rmmr::primitive {
             Entry{3, Type::v2f, "uv0"},
             Entry{100, Type::v4f, "color0"},
             Entry{101, Type::uvec2, "mix0"},
+            Entry{102, Type::v2f, "heat"},
         }};
 
         static constexpr auto name_of(PersistentId id) -> Name {

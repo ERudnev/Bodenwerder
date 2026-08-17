@@ -14,6 +14,7 @@
 #include "fittings/mounts/catalog.h"
 #include "physics/system.h"
 #include "scenarios/boundersAndStones.h"
+#include "scenarios/lavaAndRock.h"
 #include "story.ui.h"
 #include "views/blueprints/editor.h"
 
@@ -46,6 +47,7 @@ namespace eltanin {
         base::maybe<View> world_view;
         phys::System physics;
         scenarios::BoundersAndStones boundersAndStones;
+        scenarios::LavaAndRock lavaAndRock;
         BlueprintCatalog blueprintPack;
         MountCatalog mountPack;
         ::eltanin::views::Blueprints blueprints;

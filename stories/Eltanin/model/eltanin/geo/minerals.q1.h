@@ -14,6 +14,10 @@ namespace eltanin::geo {
         float roughness;
         float metalness;
         float hardness;
+        float meltKelvin;
+        float tintKelvin;
+        float glowKelvin;
+        float sootMul;
         static const vector<Mineral>& table();
     };
 

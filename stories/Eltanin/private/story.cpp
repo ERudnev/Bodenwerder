@@ -125,8 +125,10 @@ namespace eltanin {
         if (not shared or not shared->material.lit) {
             return (void)context.refuse("eltanin::Game::addAssets: rmmr lit missing");
         }
-        if (not boundersAndStones.loadResources(context, *shared))
+        if (not lavaAndRock.loadResources(context, *shared))
             return;
+        // if (not boundersAndStones.loadResources(context, *shared))
+        //     return;
 
         // Mech albedo catalog; editor meshpacks under meshes/editor.
         if (not shared or not shared->material.litTextured) {
@@ -222,7 +224,7 @@ namespace eltanin {
         };
         const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved);
 
-        const Pos cameraPos{0.0f, 160.0f, 520.0f};
+        const Pos cameraPos{0.0f, 48.0f, 140.0f};
         const Pos cameraTarget{0.0f, 0.0f, 0.0f};
         const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
         const auto camera = with<scene::Interface>::createCamera(context, root, cameraPose, 100.0f * std::numbers::pi_v<float> / 180.0f);
@@ -235,7 +237,8 @@ namespace eltanin {
         with<controller::Camera3d>::create(context, camera);
         with<scene::Interface>::createLight(context, root, Pose::from(Pos{160.0f, 280.0f, 120.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 8.0f, .range = 1600.0f});
 
-        boundersAndStones.populate(context, root, window);
+        lavaAndRock.populate(context, root, window);
+        // boundersAndStones.populate(context, root, window);
 
         {
             auto world = with<World>::modify_global(context);

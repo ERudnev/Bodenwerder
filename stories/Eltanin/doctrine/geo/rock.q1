@@ -38,4 +38,5 @@ namespace eltanin
         >spawnGenerated(#rmmr::scene::Root, #system::Device, Pose, Recipe, vec3, vec3)->#
         >spawnIceSphere(#rmmr::scene::Root, #system::Device, Pose)->#
         >spawnPaletteTorus(#rmmr::scene::Root, #system::Device, Pose)->#
+        >spawnLavaBrick(#rmmr::scene::Root, #system::Device, Pose)->#
         !followBody(~phys::Atomic)->>linearPass(>all)

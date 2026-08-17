@@ -384,6 +384,15 @@ namespace eltanin::geo {
         return spawn(context, root, device, pose, paletteTorusVolume(), vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
+    auto Rock::Actions::spawnLavaBrick(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
+        auto volume = generateLavaBrickVolume();
+        if (not scaleInRange(volume))
+            return context.refuse("eltanin::geo::Rock::spawnLavaBrick: volume scale out of range");
+        auto cpu = meshVolume(volume);
+        applyLavaBrickHeat(cpu);
+        return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+    }
+
     struct Rock::Internals : Rock::DefaultInternals {
         static void followBody(Reacting context) {
             using namespace api_for_internals;

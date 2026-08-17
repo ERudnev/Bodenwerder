@@ -356,4 +356,99 @@ namespace eltanin::geo {
         return glm::length(point) - radiusAt(point, radius, amp, recipe.seed);
     }
 
+    namespace {
+
+        constexpr integer lavaBrickCells = 20;
+        constexpr integer lavaBrickHalf = 10;
+        constexpr integer lavaLayerCells = 4;
+        constexpr integer lavaHeightCells = lavaLayerCells * mixChannels;
+        constexpr integer lavaHeightHalf = lavaHeightCells / 2;
+        constexpr integer lavaOctreeScale = 6;
+
+        auto lavaLayer(integer cellY) -> integer {
+            return glm::clamp((cellY + lavaHeightHalf) / lavaLayerCells, integer{0}, integer{mixChannels - 1});
+        }
+
+        auto lavaMixForLayer(integer channel) -> Mix {
+            MixWeights weights{};
+            weights[static_cast<std::size_t>(channel)] = 1.0f;
+            return packMix(weights);
+        }
+
+        auto lavaOneLayer(index3 origin, integer scale) -> bool {
+            const integer edge = edgeCells(scale);
+            const integer y0 = glm::max(origin.y, -lavaHeightHalf);
+            const integer y1 = glm::min(origin.y + edge, lavaHeightHalf);
+            if (y0 >= y1)
+                return true;
+            return lavaLayer(y0) == lavaLayer(y1 - 1);
+        }
+
+        auto brickOccupancy(index3 origin, integer scale) -> Occupancy {
+            const integer edge = edgeCells(scale);
+            const integer x1 = origin.x + edge;
+            const integer y1 = origin.y + edge;
+            const integer z1 = origin.z + edge;
+            if (x1 <= -lavaBrickHalf or origin.x >= lavaBrickHalf or y1 <= -lavaHeightHalf or origin.y >= lavaHeightHalf or z1 <= -lavaBrickHalf or origin.z >= lavaBrickHalf)
+                return Occupancy::vacuum;
+            if (origin.x >= -lavaBrickHalf and x1 <= lavaBrickHalf and origin.y >= -lavaHeightHalf and y1 <= lavaHeightHalf and origin.z >= -lavaBrickHalf and z1 <= lavaBrickHalf)
+                return Occupancy::solid;
+            return Occupancy::mixed;
+        }
+
+        auto makeLavaNode(index3 origin, integer scale) -> optional<Volume> {
+            const Occupancy occ = brickOccupancy(origin, scale);
+            if (occ == Occupancy::vacuum)
+                return {};
+            if ((occ == Occupancy::solid and lavaOneLayer(origin, scale)) or scale == 0)
+                return Volume{.origin = origin, .scale = scale, .mix = lavaMixForLayer(lavaLayer(origin.y)), .children = {}};
+            Volume node{.origin = origin, .scale = scale, .mix = Mix{0}, .children = {}};
+            const integer childScale = scale - 1;
+            const integer half = edgeCells(childScale);
+            for (const auto& octant : mech::cube::corners) {
+                const index3 childOrigin{origin.x + octant.x * half, origin.y + octant.y * half, origin.z + octant.z * half};
+                if (auto child = makeLavaNode(childOrigin, childScale))
+                    node.children.push_back(std::move(*child));
+            }
+            if (node.children.empty())
+                return {};
+            if (node.children.size() == 8) {
+                const Mix leafMix = node.children[0].mix;
+                bool collapse = node.children[0].children.empty();
+                for (const auto& child : node.children) {
+                    if (not child.children.empty() or child.mix != leafMix)
+                        collapse = false;
+                }
+                if (collapse)
+                    return Volume{.origin = origin, .scale = scale, .mix = leafMix, .children = {}};
+            }
+            return node;
+        }
+
+    } // namespace
+
+    auto generateLavaBrickVolume() -> Volume {
+        const integer half = edgeCells(lavaOctreeScale) / 2;
+        const index3 origin{-half, -half, -half};
+        if (auto root = makeLavaNode(origin, lavaOctreeScale))
+            return *root;
+        return Volume{.origin = origin, .scale = lavaOctreeScale, .mix = 0, .children = {}};
+    }
+
+    auto applyLavaBrickHeat(rmmr::resource::builders::geometry::CpuPresentation& cpu) -> void {
+        const float meters = mech::space::local::edge2meters;
+        const float span = static_cast<float>(lavaBrickCells) * meters;
+        const float origin = -static_cast<float>(lavaBrickHalf) * meters;
+        const float tMin = 80.0f;
+        const float tMax = 3600.0f;
+        const float logSpan = std::log(tMax / tMin);
+        cpu.heat.resize(cpu.positions.size());
+        for (std::size_t vertex = 0; vertex < cpu.positions.size(); ++vertex) {
+            const vec3 point = cpu.positions[vertex];
+            const float u = glm::clamp((point.x - origin) / span, 0.0f, 1.0f);
+            const float w = glm::clamp((point.z - origin) / span, 0.0f, 1.0f);
+            cpu.heat[vertex] = vec2{tMin * std::exp(u * logSpan), w};
+        }
+    }
+
 }

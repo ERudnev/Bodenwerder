@@ -25,6 +25,7 @@ namespace rmmr::resource::builders::geometry {
         vector<vec4> color0;
         vector<integer> indices;
         vector<std::uint64_t> mix0;
+        vector<vec2> heat;
     };
 
     struct GeometryGenerator final {
