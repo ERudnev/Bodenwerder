@@ -21,7 +21,7 @@ namespace eltanin::phys {
     // Constraint wave: Atomic / Nail / Gluon `*satisfy(~Particle)` × constraintPasses.
     struct Settings {
         static constexpr float gravity = 0.0f; // unused while central gravity is on
-        static constexpr float centralMu = 701838.54f; // Kepler: T=60s at 400m, T≈2.5s at 48m
+        static constexpr float centralMu = 70183.854f;
         static constexpr float constraintStiffness = 0.75f; // Hitman-style goal pull (constraints)
         static constexpr int constraintPasses = 4; // full wave (Horn+Nail+Gluon) per tick
         static constexpr float massMin = 1.0f;

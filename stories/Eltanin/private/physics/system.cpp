@@ -14,9 +14,9 @@ namespace eltanin::phys {
         accelerations.resize(particles.items.size());
         std::size_t slot = 0;
         for (auto [_, particle] : particles.items) {
-            const float r2 = std::max(glm::dot(particle.current, particle.current), Settings::gravitySoften2);
-            const float invR3 = 1.0f / (r2 * std::sqrt(r2));
-            accelerations[slot++] = -Settings::centralMu * particle.current * invR3;
+            const float distance = std::max(glm::length(particle.current), 1.0e-8f);
+            const float effective = std::max(distance, 1.0f);
+            accelerations[slot++] = -Settings::centralMu * particle.current / (distance * effective * effective);
         }
     }
 

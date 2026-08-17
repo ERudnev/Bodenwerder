@@ -32,6 +32,7 @@
 #include <cmath>
 #include <cstdint>
 #include <numbers>
+#include <random>
 #include <utility>
 
 #include <glm/common.hpp>
@@ -285,44 +286,30 @@ namespace eltanin {
                 tangent = glm::cross(vec3{1.0f, 0.0f, 0.0f}, position);
             return glm::normalize(tangent) * std::sqrt(phys::Settings::centralMu / radius);
         };
-        // Belt spawn — temporarily parked; restore the loop soon.
-        // std::mt19937 rng{20260817};
-        // std::normal_distribution<float> gauss{0.0f, 1.0f};
-        // std::uniform_real_distribution<float> unit{0.0f, 1.0f};
-        // constexpr float goldenAzim = 137.508f;
-        // constexpr float periodMin = 2.5f;
-        // constexpr float periodMax = 60.0f;
-        // const float twoPi = 2.0f * std::numbers::pi_v<float>;
-        // for (int index = 0; index < 50; ++index) {
-        //     const float diameter = (index < 2) ? 100.0f : 12.0f + 13.0f * unit(rng);
-        //     const float period = periodMin * std::pow(periodMax / periodMin, unit(rng));
-        //     const float orbitKepler = std::cbrt(phys::Settings::centralMu * period * period / (twoPi * twoPi));
-        //     const float orbit = glm::max(orbitKepler, diameter * 0.55f + 40.0f);
-        //     const float azim = (goldenAzim * static_cast<float>(index) + 8.0f * gauss(rng)) * std::numbers::pi_v<float> / 180.0f;
-        //     const Pose pose = Pose::from(Pos{orbit * std::cos(azim), 0.0f, orbit * std::sin(azim)}, HPB{360.0f * unit(rng), 30.0f * gauss(rng), 360.0f * unit(rng)});
-        //     const geo::Recipe recipe{
-        //         .mix = palettes[index % 10],
-        //         .spotMeters = glm::clamp(diameter * 0.22f, 4.0f, 28.0f),
-        //         .spotContrast = glm::clamp(0.35f + 0.25f * gauss(rng), 0.05f, 0.90f),
-        //         .diameterMeters = diameter,
-        //         .lump = glm::clamp(0.35f + 0.20f * gauss(rng), 0.12f, 0.80f),
-        //         .seed = 1100 + index,
-        //     };
-        //     const vec3 omega{0.35f * gauss(rng), 0.55f * gauss(rng), 0.35f * gauss(rng)};
-        //     with<geo::Rock>::spawnGenerated(context, root, window, pose, recipe, circularVelocity(pose.position), omega);
-        // }
-        {
-            const float diameter = 100.0f;
-            const Pose pose = Pose::from(Pos{0.0f, 0.0f, 400.0f}, HPB{0.0f, 0.0f, 0.0f});
+        std::mt19937 rng{20260817};
+        std::normal_distribution<float> gauss{0.0f, 1.0f};
+        std::uniform_real_distribution<float> unit{0.0f, 1.0f};
+        constexpr float goldenAzim = 137.508f;
+        constexpr float periodMin = 2.5f;
+        constexpr float periodMax = 60.0f;
+        const float twoPi = 2.0f * std::numbers::pi_v<float>;
+        for (int index = 0; index < 50; ++index) {
+            const float diameter = (index < 2) ? 100.0f : 12.0f + 13.0f * unit(rng);
+            const float period = periodMin * std::pow(periodMax / periodMin, unit(rng));
+            const float orbitKepler = std::cbrt(phys::Settings::centralMu * period * period / (twoPi * twoPi));
+            const float orbit = glm::max(orbitKepler, diameter * 0.55f + 40.0f);
+            const float azim = (goldenAzim * static_cast<float>(index) + 8.0f * gauss(rng)) * std::numbers::pi_v<float> / 180.0f;
+            const Pose pose = Pose::from(Pos{orbit * std::cos(azim), 0.0f, orbit * std::sin(azim)}, HPB{360.0f * unit(rng), 30.0f * gauss(rng), 360.0f * unit(rng)});
             const geo::Recipe recipe{
-                .mix = palettes[2],
+                .mix = palettes[index % 10],
                 .spotMeters = glm::clamp(diameter * 0.22f, 4.0f, 28.0f),
-                .spotContrast = 0.95f,
+                .spotContrast = glm::clamp(0.35f + 0.25f * gauss(rng), 0.05f, 0.90f),
                 .diameterMeters = diameter,
-                .lump = 0.85f,
-                .seed = 2000,
+                .lump = glm::clamp(0.35f + 0.20f * gauss(rng), 0.12f, 0.80f),
+                .seed = 1100 + index,
             };
-            with<geo::Rock>::spawnGenerated(context, root, window, pose, recipe, circularVelocity(pose.position) * 10.0f, vec3{10.0f, 0.0f, 0.0f});
+            const vec3 omega{0.35f * gauss(rng), 0.55f * gauss(rng), 0.35f * gauss(rng)};
+            with<geo::Rock>::spawnGenerated(context, root, window, pose, recipe, circularVelocity(pose.position), omega);
         }
 
         {

@@ -33,6 +33,7 @@ namespace eltanin::geo {
         constexpr Mix iceMix = 15;
         constexpr integer iceSphereScale = 3;
         constexpr integer maxScale = 16;
+        constexpr float particleSnapMeters = 0.1f;
 
         auto mixDensity(Mix mix) -> float {
             if (mix == 0)
@@ -242,18 +243,23 @@ namespace eltanin::geo {
         }
 
         auto uniquePositions(const vector<vec3>& positions) -> vector<vec3> {
-            vector<vec3> unique = positions;
             auto key = [](vec3 point) -> ivec3 {
-                return ivec3{static_cast<int>(std::lround(point.x * 1000.0f)), static_cast<int>(std::lround(point.y * 1000.0f)), static_cast<int>(std::lround(point.z * 1000.0f))};
+                return ivec3{static_cast<int>(std::lround(point.x / particleSnapMeters)), static_cast<int>(std::lround(point.y / particleSnapMeters)), static_cast<int>(std::lround(point.z / particleSnapMeters))};
             };
-            std::sort(unique.begin(), unique.end(), [&](vec3 left, vec3 right) {
-                const ivec3 leftKey = key(left);
-                const ivec3 rightKey = key(right);
-                if (leftKey.x != rightKey.x) return leftKey.x < rightKey.x;
-                if (leftKey.y != rightKey.y) return leftKey.y < rightKey.y;
-                return leftKey.z < rightKey.z;
+            vector<ivec3> bins;
+            bins.reserve(positions.size());
+            for (const vec3& point : positions)
+                bins.push_back(key(point));
+            std::sort(bins.begin(), bins.end(), [](ivec3 left, ivec3 right) {
+                if (left.x != right.x) return left.x < right.x;
+                if (left.y != right.y) return left.y < right.y;
+                return left.z < right.z;
             });
-            unique.erase(std::unique(unique.begin(), unique.end(), [&](vec3 left, vec3 right) { return key(left) == key(right); }), unique.end());
+            bins.erase(std::unique(bins.begin(), bins.end()), bins.end());
+            vector<vec3> unique;
+            unique.reserve(bins.size());
+            for (const ivec3& bin : bins)
+                unique.push_back(vec3{bin} * particleSnapMeters);
             return unique;
         }
 

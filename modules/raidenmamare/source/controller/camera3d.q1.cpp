@@ -67,7 +67,8 @@ namespace rmmr::controller {
             }
 
             const glm::vec3 right_xz = glm::normalize(glm::cross(forward_xz, k_world_up));
-            const float step = k_move_units_per_sec * static_cast<float>(delta_sec);
+            const float boost = (key_down(keys, GLFW_KEY_LEFT_SHIFT) || key_down(keys, GLFW_KEY_RIGHT_SHIFT)) ? 10.0f : 1.0f;
+            const float step = k_move_units_per_sec * boost * static_cast<float>(delta_sec);
             glm::vec3 delta{0.0f};
 
             if (key_down(keys, GLFW_KEY_UP)) delta += forward_cam * step;

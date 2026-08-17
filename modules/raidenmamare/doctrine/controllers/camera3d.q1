@@ -11,4 +11,4 @@ namespace rmmr
       one
         >create()-> #
       all
-        !update(~system::Clock) // RMB look + arrows / PageUp/Down
+        !update(~system::Clock) // RMB look + arrows / PageUp/Down; Shift ×10 move
