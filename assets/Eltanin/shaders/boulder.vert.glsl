@@ -10,6 +10,7 @@ layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     vec2 actorLatticePattern;
     uint actorScenicAlias;
     uint actorSpriteIndex;
+    vec4 actorHeat;
 };
 
 layout(std140, binding = 0) uniform PassStateBuffer {

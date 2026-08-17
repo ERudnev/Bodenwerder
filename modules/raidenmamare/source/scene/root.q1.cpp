@@ -81,7 +81,7 @@ namespace rmmr::scene {
         if (not mesh) return context.refuse("scene::Interface::createGrid: mesh composition failed");
         const auto node = with<Node_group>::addElement(context, root, Node::Quantum{.pose = pose});
         with<actor::Mesh>::extend(context, node, std::move(*mesh));
-        with<actor::MeshState>::extend(context, node, actor::MeshState::Quantum{.albedo = RGB{0.0f, 0.0f, 0.0f}, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = gridQuantum.patternScale, .opacity = gridQuantum.opacity, .visible = true});
+        with<actor::MeshState>::extend(context, node, actor::MeshState::Quantum{.albedo = RGB{0.0f, 0.0f, 0.0f}, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = gridQuantum.patternScale, .opacity = gridQuantum.opacity, .visible = true, .heat = vec2{0.0f, 1.0f}});
         with<Grid>::extend(context, node, std::move(gridQuantum));
         return node;
     }

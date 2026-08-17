@@ -210,6 +210,8 @@ namespace eltanin::scenarios {
                 .diameterMeters = diameter,
                 .lump = glm::clamp(0.40f + 0.25f * gauss(rng), 0.15f, 1.0f),
                 .seed = 4100 + slot,
+                .kelvin = 80.0f,
+                .erosion = 1.0f,
             };
             const float mass = sphereMass(diameter, geo::Mineral::table()[static_cast<std::size_t>(mineral)].density);
             boulders.push_back(with<geo::Boulder>::spawn(context, root, device, pose, recipe, rest, spinOmega(mass, spinK, unit(rng), rng)));

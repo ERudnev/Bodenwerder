@@ -49,6 +49,7 @@ namespace rmmr
           patternScale: float
           opacity: float
           visible: bool
+          heat: vec2
           >setVisible(bool)
         all
           ?defaults()->one

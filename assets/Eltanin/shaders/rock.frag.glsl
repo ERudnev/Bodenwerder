@@ -17,6 +17,7 @@ layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     vec2 actorLatticePattern;
     uint actorScenicAlias;
     uint actorSpriteIndex;
+    vec4 actorHeat;
 };
 
 layout(std140, binding = 0) uniform PassStateBuffer {
@@ -198,7 +199,7 @@ void applyHeat(int channel, float weight, float kelvin, inout vec3 albedo, inout
     float glow = smoothstep(mineralGlowK[channel], mineralGlowK[channel] + 500.0, kelvin);
     float melt = smoothstep(mineralMeltK[channel] - 90.0, mineralMeltK[channel] + 70.0, kelvin);
     vec3 hot = blackbody(max(kelvin, mineralTintK[channel]));
-    albedo = mix(albedo, mix(albedo, hot, 0.88), tint * weight);
+    albedo = mix(albedo, mix(albedo, hot, 0.55), tint * weight);
     roughness = mix(roughness, mix(roughness, 0.10, melt), weight);
     metalness = mix(metalness, mix(metalness, 0.85, melt), weight);
     emissive += hot * glow * (2.4 + 5.5 * melt) * weight;
@@ -208,15 +209,12 @@ float sootFromErosion(float erosion) {
     return 1.0 - clamp(erosion / 0.2, 0.0, 1.0);
 }
 
-float crustFromErosion(float erosion) {
-    return clamp((erosion - 0.2) / 0.8, 0.0, 1.0);
+float sootAgainstHeat(int channel, float kelvin) {
+    return 1.0 - smoothstep(mineralGlowK[channel] - 250.0, mineralGlowK[channel], kelvin);
 }
 
-void applySoot(float soot, float sootMul, inout vec3 albedo, inout float roughness, inout float metalness, inout vec3 emissive) {
+void applySoot(float soot, float sootMul, inout vec3 albedo) {
     albedo *= mix(1.0, sootMul, soot);
-    roughness = mix(roughness, 0.92, soot);
-    metalness *= (1.0 - soot);
-    emissive *= mix(1.0, sootMul, soot);
 }
 
 void main() {
@@ -253,15 +251,20 @@ void main() {
     float kelvin = max(v_heat.x, 0.0);
     float erosion = clamp(v_heat.y, 0.0, 1.0);
     vec3 emissive = vec3(0.0);
+    float sootGate = 0.0;
     for (int channel = 0; channel < 16; ++channel) {
         float weight = channelWeight(channel);
         if (weight <= 0.0)
             continue;
         applyHeat(channel, weight, kelvin, albedo, roughness, metalness, emissive);
+        sootGate += weight * sootAgainstHeat(channel, kelvin);
     }
-    float soot = sootFromErosion(erosion);
-    float crustAmt = crustFromErosion(erosion);
-    applySoot(soot, sootMul, albedo, roughness, metalness, emissive);
+    if (mass > 0.0)
+        sootGate /= mass;
+    float soot = sootFromErosion(erosion) * sootGate;
+    float crustAmt = mix(max(erosion, 0.55), 0.0, soot);
+    vec3 f0Albedo = albedo;
+    applySoot(soot, sootMul, albedo);
     roughness = mix(roughness, max(0.22, roughness * 0.62), crustAmt);
     roughness = clamp(roughness + 0.18 * (1.0 - height) * crustAmt, 0.06, 1.0);
 
@@ -276,7 +279,7 @@ void main() {
     float NdotH = max(dot(N, H), 0.0);
     float VdotH = max(dot(V, H), 0.0);
 
-    vec3 F0 = mix(vec3(0.04), albedo, metalness);
+    vec3 F0 = mix(vec3(0.04), f0Albedo, metalness);
     vec3 F = fresnelSchlick(VdotH, F0);
     float D = distributionGgx(NdotH, roughness);
     float G = geometrySchlick(NdotV, roughness) * geometrySchlick(NdotL, roughness);

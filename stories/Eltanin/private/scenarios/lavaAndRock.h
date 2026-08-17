@@ -1,6 +1,7 @@
 #pragma once
 
 #include <base/maybe.h>
+#include <eltanin/geo/boulder.q1.h>
 #include <eltanin/geo/rock.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -21,6 +22,7 @@ namespace eltanin::scenarios {
 
         Assets assets;
         vector<geo::Rock::Id> rocks;
+        vector<geo::Boulder::Id> boulders;
 
         auto loadResources(Writing, const rmmr::wrapper::assets::Handles& shared) -> bool;
         void populate(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id);

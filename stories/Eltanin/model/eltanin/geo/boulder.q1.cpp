@@ -7,12 +7,15 @@
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/texture3array.q1.h>
+#include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/node.q1.h>
+#include <rmmr/scene/root.q1.h>
 
 #include "physics/system.h"
 #include "stones/boulderMesh.h"
 #include "stones/crust.h"
 
+#include <glm/common.hpp>
 #include <glm/geometric.hpp>
 
 #include <numbers>
@@ -37,6 +40,12 @@ namespace eltanin::geo {
             case 4: return vec3{0.0f, 0.0f, restRadius};
             default: return vec3{0.0f, 0.0f, -restRadius};
             }
+        }
+
+        auto thermalMass(integer mineral, float diameterMeters) -> float {
+            const float radius = diameterMeters * 0.5f;
+            const float volume = (4.0f / 3.0f) * std::numbers::pi_v<float> * radius * radius * radius;
+            return Mineral::table()[static_cast<std::size_t>(mineral)].density * volume;
         }
 
     } // namespace
@@ -77,11 +86,13 @@ namespace eltanin::geo {
             return context.refuse("eltanin::geo::Boulder::spawn: mesh compose failed");
         meshQuantum->spriteIndex = recipe.mineral;
 
-        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), rmmr::scene::actor::MeshState::Quantum{.albedo = RGB{1.0f, 1.0f, 1.0f}, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = recipe.diameterMeters, .opacity = 1.0f, .visible = true});
-
         const float restRadius = recipe.diameterMeters * 0.5f;
         const float volume = (4.0f / 3.0f) * std::numbers::pi_v<float> * restRadius * restRadius * restRadius;
         const float massEach = Mineral::table()[static_cast<std::size_t>(recipe.mineral)].density * volume / static_cast<float>(clastCount);
+        const float kelvin = glm::max(recipe.kelvin, 0.0f);
+        const float erosion = glm::clamp(recipe.erosion, 0.0f, 1.0f);
+
+        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), rmmr::scene::actor::MeshState::Quantum{.albedo = RGB{1.0f, 1.0f, 1.0f}, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = recipe.diameterMeters, .opacity = 1.0f, .visible = true, .heat = vec2{kelvin, erosion}});
 
         vector<phys::Particle::Id> ids;
         ids.reserve(clastCount);
@@ -97,7 +108,7 @@ namespace eltanin::geo {
             .restRadius = restRadius,
             .restored = pose,
         });
-        return with<Boulder>::create(context, Boulder::Quantum{.body = body, .actor = actor, .mineral = recipe.mineral, .diameterMeters = recipe.diameterMeters});
+        return with<Boulder>::create(context, Boulder::Quantum{.body = body, .actor = actor, .mineral = recipe.mineral, .diameterMeters = recipe.diameterMeters, .kelvin = kelvin, .erosion = erosion});
     }
 
     void Boulder::Actions::syncPose(Stewarding context) {
@@ -110,6 +121,33 @@ namespace eltanin::geo {
                 continue;
             if (not clast->restored.near(with<rmmr::scene::Node>::get(context, boulder.actor).pose))
                 with<rmmr::scene::Node>::modify(context, boulder.actor)->pose = clast->restored;
+        }
+    }
+
+    void Boulder::Actions::radiate(Stewarding context, float dt) {
+        if (dt <= 0.0f)
+            return;
+        const float sigma = phys::Settings::radiateSigma;
+        const float sky = phys::Settings::skyKelvin;
+        for (auto [_, boulder] : context.direct<Boulder>().items) {
+            const float mass = thermalMass(boulder.mineral, boulder.diameterMeters);
+            if (mass <= 0.0f)
+                continue;
+            const float radius = boulder.diameterMeters * 0.5f;
+            const float area = 4.0f * std::numbers::pi_v<float> * radius * radius;
+            const float kelvin = glm::max(boulder.kelvin, sky);
+            const float t2 = kelvin * kelvin;
+            const float lost = sigma * area * t2 * t2 * dt;
+            const float energy = mass * kelvin;
+            boulder.kelvin = glm::max(sky, (energy - lost) / mass);
+            if (boulder.kelvin >= Mineral::table()[static_cast<std::size_t>(boulder.mineral)].glowKelvin)
+                boulder.erosion = 0.0f;
+            if (not with<rmmr::scene::actor::MeshState>::exists(context, boulder.actor))
+                continue;
+            const vec2 nextHeat{boulder.kelvin, boulder.erosion};
+            if (with<rmmr::scene::actor::MeshState>::get(context, boulder.actor).heat == nextHeat)
+                continue;
+            with<rmmr::scene::actor::MeshState>::modify(context, boulder.actor)->heat = nextHeat;
         }
     }
 

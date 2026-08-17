@@ -108,6 +108,7 @@ namespace rmmr::scene::actor {
                 .latticePattern = vec2{meshState.latticeStep, meshState.patternScale},
                 .scenicAlias = scenicAlias,
                 .spriteIndex = spriteIndex,
+                .heat = vec4{meshState.heat.x, meshState.heat.y, 0.0f, 0.0f},
             };
         }
 
@@ -205,6 +206,7 @@ namespace rmmr::scene::actor {
             .latticePattern = vec2{1.0f, 1.0f},
             .scenicAlias = renderer::Integer32{0},
             .spriteIndex = renderer::Integer32{0},
+            .heat = vec4{0.0f, 1.0f, 0.0f, 0.0f},
         };
         glNamedBufferStorage(actorStateBuffer, sizeof(renderer::ActorState), &initialActorState, GL_DYNAMIC_STORAGE_BIT);
         glNamedBufferStorage(poseBuffer, static_cast<renderer::SizePtr>(poses.size() * sizeof(renderer::DiscretePose)), poses.data(), 0);
@@ -266,15 +268,15 @@ namespace rmmr::scene::actor {
     }
 
     auto MeshState::Actions::defaults() -> Quantum {
-        return Quantum{.albedo = RGB{1.0f, 1.0f, 1.0f}, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = 1.0f, .visible = true};
+        return Quantum{.albedo = RGB{1.0f, 1.0f, 1.0f}, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = 1.0f, .visible = true, .heat = vec2{0.0f, 1.0f}};
     }
 
     auto MeshState::Actions::defaults(RGB albedo, float opacity) -> Quantum {
-        return Quantum{.albedo = albedo, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = opacity, .visible = true};
+        return Quantum{.albedo = albedo, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = opacity, .visible = true, .heat = vec2{0.0f, 1.0f}};
     }
 
     auto MeshState::Actions::defaults(RGB albedo, float opacity, vec3 scale) -> Quantum {
-        return Quantum{.albedo = albedo, .scale = scale, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = opacity, .visible = true};
+        return Quantum{.albedo = albedo, .scale = scale, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = opacity, .visible = true, .heat = vec2{0.0f, 1.0f}};
     }
 
     void Mesh::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {

@@ -15,10 +15,10 @@ namespace eltanin::phys {
     }
 
     void System::constraintPass(Stewarding context) {
-        Atomic::Actions::satisfy(context);
-        Clast::Actions::satisfy(context);
-        strong::Nail::Actions::satisfy(context);
-        strong::Gluon::Actions::satisfy(context);
+        with<Atomic>::satisfy(context);
+        with<Clast>::satisfy(context);
+        with<strong::Nail>::satisfy(context);
+        with<strong::Gluon>::satisfy(context);
     }
 
     void System::tick(Stewarding context) {
@@ -27,20 +27,28 @@ namespace eltanin::phys {
         for (int pass = 0; pass < Settings::constraintPasses; ++pass) {
             constraintPass(context);
         }
-        ::eltanin::geo::Boulder::Actions::syncPose(context);
+        with<::eltanin::geo::Boulder>::syncPose(context);
+    }
+
+    void System::radiate(Stewarding context) {
+        if (thermalDebtUs < Settings::thermalStepUs)
+            return;
+        with<::eltanin::geo::Boulder>::radiate(context, static_cast<float>(thermalDebtUs) * 1e-6f);
+        thermalDebtUs = 0;
     }
 
     void System::step(establish::Realm& world, int64 dt_us) {
-        debt_us += static_cast<int64>(static_cast<double>(dt_us) * static_cast<double>(state.time_scale));
-        if (debt_us < Settings::fixedStepUs) {
+        const int64 scaled = static_cast<int64>(static_cast<double>(dt_us) * static_cast<double>(state.time_scale));
+        debt_us += scaled;
+        thermalDebtUs += scaled;
+        if (debt_us < Settings::fixedStepUs and thermalDebtUs < Settings::thermalStepUs)
             return;
-        }
-        // One Stewarding for the whole catch-up loop (commit after last tick).
         Stewarding session = world;
         while (debt_us >= Settings::fixedStepUs) {
             tick(session);
             debt_us -= Settings::fixedStepUs;
         }
+        radiate(session);
     }
 
     auto System::addParticle(Writing context, vec3 pos, vec3 velocity, float mass) -> Particle::Id {

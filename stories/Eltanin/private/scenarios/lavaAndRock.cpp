@@ -1,5 +1,6 @@
 #include "scenarios/lavaAndRock.h"
 
+#include <eltanin/geo/boulder.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -94,6 +95,21 @@ namespace eltanin::scenarios {
 
     void LavaAndRock::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
         rocks.push_back(with<geo::Rock>::spawnLavaBrick(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f})));
+        constexpr int count = 100;
+        constexpr float diameter = 0.5f;
+        constexpr float spacing = 1.0f;
+        constexpr float rowStep = 2.0f;
+        constexpr float kelvinMax = 2000.0f;
+        constexpr integer minerals[4] = {1, 3, 6, 0}; // olivine, feldspar, iron, ice
+        boulders.reserve(static_cast<std::size_t>(count) * 4);
+        for (int row = 0; row < 4; ++row) {
+            for (int index = 0; index < count; ++index) {
+                const float kelvin = kelvinMax * static_cast<float>(index) / static_cast<float>(count - 1);
+                const float x = 55.0f + spacing * static_cast<float>(index);
+                const float z = 70.0f + rowStep * static_cast<float>(row);
+                boulders.push_back(with<geo::Boulder>::spawn(context, root, device, Pose::from(Pos{x, 0.0f, z}, HPB{0.0f, 0.0f, 0.0f}), geo::Boulder::Recipe{.mineral = minerals[row], .diameterMeters = diameter, .lump = 0.55f, .seed = 7 + index + row * 1000, .kelvin = kelvin, .erosion = 1.0f}, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f}));
+            }
+        }
     }
 
 }

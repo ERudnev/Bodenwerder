@@ -52,12 +52,13 @@ namespace rmmr::renderer {
     static_assert(sizeof(DrawElementsIndirect) == 20);
     static_assert(sizeof(DrawMetadata) == 8);
 
-    struct ActorState {
+        struct ActorState {
         mat4 model;
         vec4 albedoOpacity;
         vec2 latticePattern;
         Integer32 scenicAlias;
         Integer32 spriteIndex;
+        vec4 heat;
     };
 
     struct PassState {
@@ -69,11 +70,12 @@ namespace rmmr::renderer {
         vec4 primaryLightColorRange;
     };
 
-    static_assert(sizeof(ActorState) == 96);
+    static_assert(sizeof(ActorState) == 112);
     static_assert(offsetof(ActorState, albedoOpacity) == 64);
     static_assert(offsetof(ActorState, latticePattern) == 80);
     static_assert(offsetof(ActorState, scenicAlias) == 88);
     static_assert(offsetof(ActorState, spriteIndex) == 92);
+    static_assert(offsetof(ActorState, heat) == 96);
     static_assert(sizeof(PassState) == 240);
 
     namespace StorageBindings {

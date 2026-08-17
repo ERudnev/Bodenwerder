@@ -15,5 +15,5 @@ namespace eltanin
         meltKelvin: float // solid → molten
         tintKelvin: float // albedo starts shifting toward incandescent
         glowKelvin: float // emissive glow of that heat color
-        sootMul: float // albedo (and glow) scale at full char; soot lives in [0 .. 0.2]; ice stays pale, rock/metal near soot black
+        sootMul: float // albedo scale at full char; soot lives in [0 .. 0.2] and yields to incandescence; ice stays pale, rock/metal near soot black
       always table: vector<Mineral> = @external(Mayers)

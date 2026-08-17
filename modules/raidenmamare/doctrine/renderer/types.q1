@@ -38,13 +38,14 @@ namespace rmmr
     // 7 ActorState, 8 DiscretePose[], 9 DrawMetadata[], 10 uint surfacePalette[], 11 uint primitiveSurfaces[].
 
     // std430-compatible actor data. albedoOpacity.w is opacity;
-    // latticePattern is latticeStep/patternScale.
+    // latticePattern is latticeStep/patternScale. heat.xy is kelvin/erosion.
     struct ActorState
       model: mat4
       albedoOpacity: vec4
       latticePattern: vec2
       scenicAlias: Integer32
       spriteIndex: Integer32
+      heat: vec4
 
     // std140-compatible frame/pass data. Vec4 tails carry meaningful values.
     struct PassState

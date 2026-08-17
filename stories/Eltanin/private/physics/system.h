@@ -18,6 +18,7 @@ namespace eltanin::phys {
     // One Dock per tick; hot mutation via Stewarding::direct<T>(); Nail/Gluon seppuku via Writing under Stewarding.
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
     // Constraint wave: Atomic / Clast / Nail / Gluon `*satisfy(~Particle)` × constraintPasses.
+    // Thermal: accumulate to thermalStepUs, then one radiate(dt) for the whole debt (no substeps).
     struct Settings {
         static constexpr float constraintStiffness = 0.75f; // Hitman-style goal pull (constraints)
         static constexpr int constraintPasses = 4;
@@ -25,6 +26,9 @@ namespace eltanin::phys {
         static constexpr float massMax = 100.0f;
         static constexpr int64 fixedStepUs = 10'000;
         static constexpr float fixedDtS = static_cast<float>(fixedStepUs) / 1'000'000.0f;
+        static constexpr int64 thermalStepUs = 200'000;
+        static constexpr float skyKelvin = 3.0f;
+        static constexpr float radiateSigma = 5.0e-13f; // parrot mass × kelvin; five times slower than the first lava-scale guess
         static constexpr float clueTolerance = 0.01f;
     };
 
@@ -40,8 +44,10 @@ namespace eltanin::phys {
 
     private:
         int64 debt_us = 0;
+        int64 thermalDebtUs = 0;
 
         void tick(Stewarding);
+        void radiate(Stewarding);
         void constraintPass(Stewarding);
         void integrate(fqsm::Direct<Particle>);
     };

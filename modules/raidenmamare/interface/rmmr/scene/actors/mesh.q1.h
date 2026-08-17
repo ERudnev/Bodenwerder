@@ -59,6 +59,7 @@ namespace rmmr::scene::actor {
             float patternScale;
             float opacity;
             bool visible;
+            vec2 heat;
         };
         struct Actions : BaseActions {
             static void setVisible(Writing, Id, bool);
