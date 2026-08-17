@@ -77,7 +77,7 @@ namespace eltanin::geo {
             return context.refuse("eltanin::geo::Boulder::spawn: mesh compose failed");
         meshQuantum->spriteIndex = recipe.mineral;
 
-        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f));
+        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), rmmr::scene::actor::MeshState::Quantum{.albedo = RGB{1.0f, 1.0f, 1.0f}, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = recipe.diameterMeters, .opacity = 1.0f, .visible = true});
 
         const float restRadius = recipe.diameterMeters * 0.5f;
         const float volume = (4.0f / 3.0f) * std::numbers::pi_v<float> * restRadius * restRadius * restRadius;

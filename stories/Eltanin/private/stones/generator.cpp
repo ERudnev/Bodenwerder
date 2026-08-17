@@ -17,7 +17,8 @@ namespace eltanin::geo {
 
         constexpr int mixChannels = 16;
         constexpr integer maxScale = 16;
-        constexpr float lumpAmp = 0.55f;
+        constexpr float lumpAmp = 0.92f;
+        constexpr int maxMixSites = 10;
 
         using MixWeights = std::array<float, 16>;
 
@@ -73,6 +74,20 @@ namespace eltanin::geo {
             return sum;
         }
 
+        auto hashDir(int tag, int seed) -> vec3 {
+            const vec3 raw{2.0f * hash31(tag, 1, 4, seed) - 1.0f, 2.0f * hash31(tag, 2, 5, seed) - 1.0f, 2.0f * hash31(tag, 3, 6, seed) - 1.0f};
+            const float length = glm::length(raw);
+            if (length < 1.0e-5f)
+                return vec3{0.0f, 1.0f, 0.0f};
+            return raw / length;
+        }
+
+        auto ellipsoidAxes(int seed) -> vec3 {
+            const vec3 axes{0.46f + 0.98f * hash31(0, 8, 1, seed), 0.46f + 0.98f * hash31(1, 8, 2, seed), 0.46f + 0.98f * hash31(2, 8, 3, seed)};
+            const float mean = std::pow(axes.x * axes.y * axes.z, 1.0f / 3.0f);
+            return axes / glm::max(mean, 1.0e-4f);
+        }
+
         auto edgeCells(integer scale) -> integer {
             return 1 << scale;
         }
@@ -98,25 +113,89 @@ namespace eltanin::geo {
             return packed;
         }
 
+        auto mixesClose(const MixWeights& left, const MixWeights& right) -> bool {
+            for (int channel = 0; channel < mixChannels; ++channel) {
+                if (std::abs(left[static_cast<std::size_t>(channel)] - right[static_cast<std::size_t>(channel)]) > 0.07f)
+                    return false;
+            }
+            return true;
+        }
+
+        auto siteInBall(int index, int seed, float radius) -> vec3 {
+            const vec3 raw{2.0f * hash31(index, 11, 1, seed) - 1.0f, 2.0f * hash31(index, 11, 2, seed) - 1.0f, 2.0f * hash31(index, 11, 3, seed) - 1.0f};
+            const float length = glm::length(raw);
+            const vec3 dir = length < 1.0e-5f ? vec3{0.0f, 1.0f, 0.0f} : raw / length;
+            const float radial = 0.18f + 0.72f * hash31(index, 12, 4, seed);
+            return dir * radius * radial;
+        }
+
+        auto pickSiteChannel(int index, int seed, const MixWeights& mean, float total) -> int {
+            float pick = hash31(index, 13, 5, seed) * total;
+            float acc = 0.0f;
+            int chosen = 0;
+            for (int channel = 0; channel < mixChannels; ++channel) {
+                const float weight = mean[static_cast<std::size_t>(channel)];
+                if (weight <= 0.0f)
+                    continue;
+                acc += weight;
+                chosen = channel;
+                if (pick <= acc)
+                    return channel;
+            }
+            return chosen;
+        }
+
         auto mixAt(vec3 point, const Recipe& recipe) -> MixWeights {
             const MixWeights mean = unpackMix(recipe.mix);
-            MixWeights local{};
-            float mass = 0.0f;
-            const float contrast = glm::clamp(recipe.spotContrast, 0.0f, 1.0f);
-            const float freq = 1.0f / glm::max(recipe.spotMeters, mech::space::local::edge2meters);
+            float total = 0.0f;
+            int present = 0;
             for (int channel = 0; channel < mixChannels; ++channel) {
-                const float meanWeight = mean[static_cast<std::size_t>(channel)];
-                if (meanWeight <= 0.0f)
+                if (mean[static_cast<std::size_t>(channel)] <= 0.0f)
                     continue;
-                const float noise = fbm(point.x * freq, point.y * freq, point.z * freq, static_cast<int>(recipe.seed) + channel * 19);
-                const float gain = 1.0f + contrast * (2.0f * noise - 1.0f);
-                local[static_cast<std::size_t>(channel)] = meanWeight * glm::max(gain, 0.0f);
-                mass += local[static_cast<std::size_t>(channel)];
+                total += mean[static_cast<std::size_t>(channel)];
+                ++present;
             }
-            if (mass <= 0.0f)
+            const float contrast = glm::clamp(recipe.spotContrast, 0.0f, 1.0f);
+            if (present <= 1 or contrast <= 0.02f or total <= 0.0f)
                 return mean;
-            for (int channel = 0; channel < mixChannels; ++channel)
-                local[static_cast<std::size_t>(channel)] /= mass;
+
+            const float radius = recipe.diameterMeters * 0.5f;
+            const float patch = glm::clamp(recipe.spotMeters, mech::space::local::edge2meters, glm::max(recipe.diameterMeters * 0.5f, mech::space::local::edge2meters));
+            const int siteCount = glm::clamp(static_cast<int>(std::lround(recipe.diameterMeters / patch)), 4, maxMixSites);
+            const float warp = patch * 0.28f;
+            const vec3 query{
+                point.x + warp * (2.0f * fbm(point.x / patch, point.y / patch, point.z / patch, static_cast<int>(recipe.seed) + 41) - 1.0f),
+                point.y + warp * (2.0f * fbm(point.x / patch, point.y / patch, point.z / patch, static_cast<int>(recipe.seed) + 43) - 1.0f),
+                point.z + warp * (2.0f * fbm(point.x / patch, point.y / patch, point.z / patch, static_cast<int>(recipe.seed) + 47) - 1.0f),
+            };
+
+            float nearest = 1.0e9f;
+            float second = 1.0e9f;
+            int nearestChannel = 0;
+            int secondChannel = 0;
+            for (int index = 0; index < siteCount; ++index) {
+                const float distance = glm::length(query - siteInBall(index, static_cast<int>(recipe.seed), radius));
+                const int channel = pickSiteChannel(index, static_cast<int>(recipe.seed), mean, total);
+                if (distance < nearest) {
+                    second = nearest;
+                    secondChannel = nearestChannel;
+                    nearest = distance;
+                    nearestChannel = channel;
+                } else if (distance < second) {
+                    second = distance;
+                    secondChannel = channel;
+                }
+            }
+
+            MixWeights local{};
+            if (nearestChannel == secondChannel or second >= 1.0e8f) {
+                local[static_cast<std::size_t>(nearestChannel)] = 1.0f;
+                return local;
+            }
+            const float edge = glm::mix(patch * 0.42f, patch * 0.07f, contrast);
+            const float inside = glm::smoothstep(0.0f, glm::max(edge, 1.0f), second - nearest);
+            local[static_cast<std::size_t>(nearestChannel)] += inside;
+            local[static_cast<std::size_t>(secondChannel)] += 1.0f - inside;
             return local;
         }
 
@@ -152,11 +231,26 @@ namespace eltanin::geo {
         auto radiusAt(vec3 point, float radius, float amp, integer seed) -> float {
             const float length = glm::length(point);
             if (length < 1.0e-5f)
-                return radius;
+                return radius * (1.0f - amp);
             const vec3 dir = point / length;
-            const float lobe = 2.0f * fbm(dir.x * 3.0f, dir.y * 3.0f, dir.z * 3.0f, static_cast<int>(seed) + 7) - 1.0f;
-            const float dent = 2.0f * fbm(point.x / radius, point.y / radius, point.z / radius, static_cast<int>(seed) + 13) - 1.0f;
-            return glm::clamp(radius * (1.0f + amp * (0.65f * lobe + 0.35f * dent)), radius * (1.0f - amp), radius * (1.0f + amp));
+            const vec3 axes = ellipsoidAxes(static_cast<int>(seed));
+            const float ellip = 1.0f / glm::length(vec3{dir.x / axes.x, dir.y / axes.y, dir.z / axes.z});
+            float knobs = 0.0f;
+            for (int index = 0; index < 4; ++index) {
+                const vec3 lobe = hashDir(20 + index, static_cast<int>(seed));
+                const float strength = 0.28f + 0.95f * hash31(index, 21, 8, static_cast<int>(seed));
+                const float sharpness = 1.6f + 5.5f * hash31(index, 22, 9, static_cast<int>(seed));
+                knobs += strength * std::pow(glm::max(glm::dot(dir, lobe), 0.0f), sharpness);
+            }
+            float craters = 0.0f;
+            for (int index = 0; index < 3; ++index) {
+                const vec3 pit = hashDir(30 + index, static_cast<int>(seed));
+                const float depth = 0.35f + 0.70f * hash31(index, 31, 8, static_cast<int>(seed));
+                craters += depth * std::pow(glm::max(glm::dot(dir, pit), 0.0f), 7.0f + 6.0f * hash31(index, 32, 9, static_cast<int>(seed)));
+            }
+            const float wrinkle = 2.0f * fbm(dir.x * 1.35f, dir.y * 1.35f, dir.z * 1.35f, static_cast<int>(seed) + 7) - 1.0f;
+            const float deform = 0.38f * wrinkle + 0.55f * (knobs - 0.55f) - 0.48f * craters;
+            return radius * ellip * glm::clamp(1.0f + amp * deform, 1.0f - amp, 1.0f + amp);
         }
 
         enum class Occupancy { vacuum, solid, mixed };
@@ -183,17 +277,18 @@ namespace eltanin::geo {
             return vec3{static_cast<float>(origin.x) + half, static_cast<float>(origin.y) + half, static_cast<float>(origin.z) + half} * mech::space::local::edge2meters;
         }
 
-        auto makeNode(index3 origin, integer scale, const Recipe& recipe, float radius, float amp) -> optional<BuildNode> {
-            const float rMin = radius * (1.0f - amp);
-            const float rMax = radius * (1.0f + amp);
+        auto makeNode(index3 origin, integer scale, const Recipe& recipe, float radius, float amp, float rMin, float rMax) -> optional<BuildNode> {
             const Occupancy occ = occupancy(origin, scale, rMin, rMax);
             if (occ == Occupancy::vacuum)
                 return {};
             const vec3 center = brickCenter(origin, scale);
-            if (occ == Occupancy::solid)
-                return BuildNode{.origin = origin, .scale = scale, .weights = mixAt(center, recipe), .children = {}};
-            if (scale == 0) {
+            const float brickMeters = static_cast<float>(edgeCells(scale)) * mech::space::local::edge2meters;
+            const float domainMeters = glm::max(recipe.spotMeters * 0.35f, mech::space::local::edge2meters);
+            const bool leafHere = scale == 0 or (occ == Occupancy::solid and brickMeters <= domainMeters);
+            if (leafHere) {
                 if (glm::length(center) < radiusAt(center, radius, amp, recipe.seed))
+                    return BuildNode{.origin = origin, .scale = scale, .weights = mixAt(center, recipe), .children = {}};
+                if (occ == Occupancy::solid)
                     return BuildNode{.origin = origin, .scale = scale, .weights = mixAt(center, recipe), .children = {}};
                 return {};
             }
@@ -202,7 +297,7 @@ namespace eltanin::geo {
             const integer half = edgeCells(childScale);
             for (const auto& octant : mech::cube::corners) {
                 const index3 childOrigin{origin.x + octant.x * half, origin.y + octant.y * half, origin.z + octant.z * half};
-                if (auto child = makeNode(childOrigin, childScale, recipe, radius, amp))
+                if (auto child = makeNode(childOrigin, childScale, recipe, radius, amp, rMin, rMax))
                     node.children.push_back(std::move(*child));
             }
             if (node.children.empty())
@@ -214,11 +309,18 @@ namespace eltanin::geo {
                         allLeaves = false;
                 }
                 if (allLeaves) {
-                    vector<MixWeights> parts;
-                    parts.reserve(8);
-                    for (const auto& child : node.children)
-                        parts.push_back(child.weights);
-                    return BuildNode{.origin = origin, .scale = scale, .weights = averageWeights(parts), .children = {}};
+                    bool sameMix = true;
+                    for (const auto& child : node.children) {
+                        if (not mixesClose(child.weights, node.children.front().weights))
+                            sameMix = false;
+                    }
+                    if (sameMix) {
+                        vector<MixWeights> parts;
+                        parts.reserve(8);
+                        for (const auto& child : node.children)
+                            parts.push_back(child.weights);
+                        return BuildNode{.origin = origin, .scale = scale, .weights = averageWeights(parts), .children = {}};
+                    }
                 }
             }
             return node;
@@ -229,9 +331,13 @@ namespace eltanin::geo {
     auto generateRockVolume(const Recipe& recipe) -> Volume {
         const float radius = recipe.diameterMeters * 0.5f;
         const float amp = glm::clamp(recipe.lump, 0.0f, 1.0f) * lumpAmp;
-        const float envelope = radius * (1.0f + amp);
+        const vec3 axes = ellipsoidAxes(static_cast<int>(recipe.seed));
+        const float axisMax = glm::max(axes.x, glm::max(axes.y, axes.z));
+        const float axisMin = glm::min(axes.x, glm::min(axes.y, axes.z));
+        const float rMin = radius * axisMin * (1.0f - amp);
+        const float rMax = radius * axisMax * (1.0f + amp);
         const float meters = mech::space::local::edge2meters;
-        integer cells = static_cast<integer>(std::ceil(2.0f * envelope / meters));
+        integer cells = static_cast<integer>(std::ceil(2.0f * rMax / meters));
         if (cells < 2)
             cells = 2;
         integer scale = 0;
@@ -239,7 +345,7 @@ namespace eltanin::geo {
             ++scale;
         const integer half = edgeCells(scale) / 2;
         const index3 origin{-half, -half, -half};
-        if (auto root = makeNode(origin, scale, recipe, radius, amp))
+        if (auto root = makeNode(origin, scale, recipe, radius, amp, rMin, rMax))
             return toVolume(*root);
         return Volume{.origin = origin, .scale = scale, .mix = 0, .children = {}};
     }

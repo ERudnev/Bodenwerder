@@ -17,9 +17,9 @@ namespace eltanin
       mix: Mix
       children: vector<Volume>
 
-    // Mean mix is the typical voxel; dispersion only redistributes channels already present (zeros stay zero).
-    // spotMeters — Mix patch wavelength (below 4 m is lost on the lattice). spotContrast 0 = uniform, 1 = strong spots.
-    // lump 0 = sphere, 1 = potato (radius ±55%).
+    // Mean mix names the minerals; zeros stay zero. Domains are geological patches, not grain noise.
+    // spotMeters — clean-zone width (≈ 10–50% of diameter). spotContrast 0 = alloy, 1 = sharp contacts.
+    // lump 0 = sphere, 1 = triaxial potato with knobs and pits.
     struct Recipe
       mix: Mix
       spotMeters: float

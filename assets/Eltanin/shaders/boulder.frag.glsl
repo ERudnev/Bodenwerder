@@ -93,26 +93,32 @@ float crustLod(vec3 camera) {
 }
 
 vec4 sampleLayer(int channel, vec3 objectPos, float freqMul, float lod) {
-    return textureLod(u_minerals[channel], fract(objectPos * mineralScale[channel] * freqMul), lod);
+    float diameter = max(actorLatticePattern.y, 0.5);
+    float worldFreq = mineralScale[channel];
+    float unstretch = max(1.0, 1.0 / max(diameter * worldFreq, 1.0e-5));
+    return textureLod(u_minerals[channel], fract(objectPos * worldFreq * unstretch * freqMul), lod);
 }
 
-float crustHeight(vec3 objectPos, float lod) {
+float crustHeight(vec3 objectPos, float lod, float gritAmt) {
     int channel = mineralChannel();
     vec4 crust = sampleLayer(channel, objectPos, 1.0, lod);
     vec4 grit = sampleLayer(channel, objectPos, 4.0, lod + 2.0);
-    return clamp(crust.a + gritWeight * (grit.a - 0.5), 0.0, 1.0);
+    return clamp(crust.a + gritWeight * gritAmt * (grit.a - 0.5), 0.0, 1.0);
 }
 
 vec3 perturbNormal(vec3 geometric, vec3 objectPos, float lod) {
-    const float step = 0.06;
+    float pixel = 0.5 * (length(dFdx(objectPos)) + length(dFdy(objectPos)));
+    float step = max(0.06, pixel);
+    float bumpLod = min(lod + log2(max(step / 0.06, 1.0)), 5.0);
+    float fade = exp2(-0.85 * bumpLod);
     vec3 gradObject = vec3(
-        crustHeight(objectPos + vec3(step, 0.0, 0.0), lod) - crustHeight(objectPos - vec3(step, 0.0, 0.0), lod),
-        crustHeight(objectPos + vec3(0.0, step, 0.0), lod) - crustHeight(objectPos - vec3(0.0, step, 0.0), lod),
-        crustHeight(objectPos + vec3(0.0, 0.0, step), lod) - crustHeight(objectPos - vec3(0.0, 0.0, step), lod)
+        crustHeight(objectPos + vec3(step, 0.0, 0.0), bumpLod, fade) - crustHeight(objectPos - vec3(step, 0.0, 0.0), bumpLod, fade),
+        crustHeight(objectPos + vec3(0.0, step, 0.0), bumpLod, fade) - crustHeight(objectPos - vec3(0.0, step, 0.0), bumpLod, fade),
+        crustHeight(objectPos + vec3(0.0, 0.0, step), bumpLod, fade) - crustHeight(objectPos - vec3(0.0, 0.0, step), bumpLod, fade)
     ) / (2.0 * step);
     vec3 gradWorld = mat3(actorModel) * gradObject;
     vec3 tangentGrad = gradWorld - geometric * dot(gradWorld, geometric);
-    vec3 bumped = normalize(geometric - bumpStrength * tangentGrad);
+    vec3 bumped = normalize(geometric - bumpStrength * fade * tangentGrad);
     if (dot(bumped, geometric) < 0.0)
         return geometric;
     return bumped;

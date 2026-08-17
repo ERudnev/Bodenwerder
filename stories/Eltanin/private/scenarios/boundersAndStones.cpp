@@ -179,10 +179,10 @@ namespace eltanin::scenarios {
             const Pose pose = ringPose(azim, rng);
             const geo::Recipe recipe{
                 .mix = palettes[index],
-                .spotMeters = glm::clamp(diameter * 0.12f, 4.0f, 48.0f),
-                .spotContrast = glm::clamp(0.40f + 0.20f * gauss(rng), 0.10f, 0.90f),
+                .spotMeters = glm::clamp(diameter * (0.22f + 0.24f * unit(rng)), 8.0f, diameter * 0.48f),
+                .spotContrast = glm::clamp(0.78f + 0.14f * unit(rng), 0.70f, 1.0f),
                 .diameterMeters = diameter,
-                .lump = glm::clamp(0.40f + 0.20f * gauss(rng), 0.18f, 0.85f),
+                .lump = glm::clamp(0.78f + 0.22f * unit(rng), 0.72f, 1.0f),
                 .seed = 1100 + index,
             };
             occupied[index] = Occupied{.position = pose.position, .radius = diameter * 0.5f};
