@@ -72,7 +72,6 @@ namespace fqsm::processing::algorithm::normalization {
 
     model::complex::Patch::Summary normalization(const model::complex::State& world, ref<Patch> patch, Rtid::Set taintedLines) {
         model::complex::Patch::Summary accumulated;
-        Rtid::Set taintedLinesAccumulated = taintedLines;
 
         _DBG_TX_("norm: start user patch={}", utility::format_patch(fqsm::freeze(patch)));
 
@@ -86,9 +85,11 @@ namespace fqsm::processing::algorithm::normalization {
 
         _DBG_TX_("norm: incoming={}", utility::format_patch(fqsm::freeze(incoming)));
 
+        // Incoming taint fuels wave 1 only. The original set is left as the caller passed it; later waves get none.
         model::complex::Future advancing(world, patch, taintedLines);
         ref<Patch> lastCorrection = incoming;
         int wave = 0;
+        auto waveTaint = taintedLines;
 
         for (;;) {
             if (wave >= temp_defence_normalization_waves) {
@@ -101,7 +102,7 @@ namespace fqsm::processing::algorithm::normalization {
 
             _DBG_TX_("norm: wave {} correction={}", wave, utility::format_patch(fqsm::freeze(lastCorrection)));
 
-            const auto fix = reactions_pass(advancing, world, lastCorrection, taintedLinesAccumulated);
+            const auto fix = reactions_pass(advancing, world, lastCorrection, waveTaint);
             append(accumulated, fix.patch->summary);
 
             if (not fix.patch->summary.good()) {
@@ -117,7 +118,7 @@ namespace fqsm::processing::algorithm::normalization {
                 break;
 
             lastCorrection = fix.patch;
-            // TODO: extend taintedLinesAccumulated with fix.taintedDuringPatch
+            waveTaint.clear();
         }
 
         _DBG_TX_("norm: done final patch={}", utility::format_patch(fqsm::freeze(patch)));
