@@ -5,8 +5,10 @@
 #include <array>
 #include <cmath>
 #include <map>
+#include <numbers>
 #include <utility>
 
+#include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/trigonometric.hpp>
 
@@ -19,15 +21,18 @@ namespace eltanin::geo {
 
         constexpr float lumpAmplitude = 0.55f;
         constexpr float targetEdgeMeters = 0.45f;
-        constexpr int subdivMin = 1;
+        constexpr int silhouetteSides = 32;
+        constexpr int subdivMin = 2;
         constexpr int subdivMax = 4;
         constexpr float icosaEdgeOnUnit = 1.0514622242382672f;
 
         auto subdivFromDiameter(float diameterMeters) -> int {
             const float radius = diameterMeters * 0.5f;
+            const float angularEdge = (2.0f * std::numbers::pi_v<float> * radius) / static_cast<float>(silhouetteSides);
+            const float target = glm::min(targetEdgeMeters, angularEdge);
             float edge = radius * icosaEdgeOnUnit;
             int subdiv = 0;
-            while (subdiv < subdivMax and edge > targetEdgeMeters) {
+            while (subdiv < subdivMax and edge > target) {
                 edge *= 0.5f;
                 ++subdiv;
             }
@@ -112,34 +117,33 @@ namespace eltanin::geo {
             return cpu;
 
         auto [dirs, faces] = icosphere(subdivFromDiameter(recipe.diameterMeters));
-        cpu.positions.reserve(faces.size() * 3);
-        cpu.normals.reserve(faces.size() * 3);
+        cpu.positions.resize(dirs.size());
+        cpu.normals.assign(dirs.size(), vec3{0.0f, 0.0f, 0.0f});
         cpu.indices.reserve(faces.size() * 3);
 
-        auto displaced = [&](std::size_t index) -> vec3 {
+        for (std::size_t index = 0; index < dirs.size(); ++index) {
             const vec3 dir = dirs[index];
-            return dir * (radius * (1.0f + recipe.lump * lumpNoise(dir, recipe.seed)));
-        };
+            cpu.positions[index] = dir * (radius * (1.0f + recipe.lump * lumpNoise(dir, recipe.seed)));
+        }
 
         for (const auto& face : faces) {
-            const vec3 pa = displaced(static_cast<std::size_t>(face[0]));
-            const vec3 pb = displaced(static_cast<std::size_t>(face[1]));
-            const vec3 pc = displaced(static_cast<std::size_t>(face[2]));
-            vec3 normal = glm::cross(pb - pa, pc - pa);
-            const float normal2 = glm::dot(normal, normal);
-            if (normal2 <= 1.0e-16f)
-                continue;
-            normal /= std::sqrt(normal2);
-            const integer base = static_cast<integer>(cpu.positions.size());
-            cpu.positions.push_back(pa);
-            cpu.positions.push_back(pb);
-            cpu.positions.push_back(pc);
-            cpu.normals.push_back(normal);
-            cpu.normals.push_back(normal);
-            cpu.normals.push_back(normal);
-            cpu.indices.push_back(base);
-            cpu.indices.push_back(base + 1);
-            cpu.indices.push_back(base + 2);
+            const auto ia = static_cast<std::size_t>(face[0]);
+            const auto ib = static_cast<std::size_t>(face[1]);
+            const auto ic = static_cast<std::size_t>(face[2]);
+            const vec3 faceNormal = glm::cross(cpu.positions[ib] - cpu.positions[ia], cpu.positions[ic] - cpu.positions[ia]);
+            cpu.normals[ia] += faceNormal;
+            cpu.normals[ib] += faceNormal;
+            cpu.normals[ic] += faceNormal;
+            cpu.indices.push_back(static_cast<integer>(face[0]));
+            cpu.indices.push_back(static_cast<integer>(face[1]));
+            cpu.indices.push_back(static_cast<integer>(face[2]));
+        }
+        for (std::size_t index = 0; index < cpu.normals.size(); ++index) {
+            const float length2 = glm::dot(cpu.normals[index], cpu.normals[index]);
+            if (length2 <= 1.0e-16f)
+                cpu.normals[index] = dirs[index];
+            else
+                cpu.normals[index] /= std::sqrt(length2);
         }
         return cpu;
     }
