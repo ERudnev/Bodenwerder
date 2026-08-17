@@ -7,8 +7,6 @@
 
 #include <fQSM/api/interface.h>
 
-#include <vector>
-
 namespace eltanin::phys {
 
     using namespace fqsm::api;
@@ -16,21 +14,17 @@ namespace eltanin::phys {
 
     // Private physics subsystem (not Q1).
     // Fixed tick 10ms; wall dt accumulates as debt (sub-step remainder).
-    // Central μ at origin (softened). Linear −Y kept in Settings but not applied.
+    // No gravity: Verlet + rigid constraints only.
     // One Dock per tick; hot mutation via Stewarding::direct<T>(); Nail/Gluon seppuku via Writing under Stewarding.
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
     // Constraint wave: Atomic / Clast / Nail / Gluon `*satisfy(~Particle)` × constraintPasses.
     struct Settings {
-        static constexpr float gravity = 0.0f; // unused while central gravity is on
-        static constexpr float centralMu = 70183.854f;
         static constexpr float constraintStiffness = 0.75f; // Hitman-style goal pull (constraints)
-        static constexpr int constraintPasses = 4; // full wave (Horn+Nail+Gluon) per tick
+        static constexpr int constraintPasses = 4;
         static constexpr float massMin = 1.0f;
         static constexpr float massMax = 100.0f;
         static constexpr int64 fixedStepUs = 10'000;
         static constexpr float fixedDtS = static_cast<float>(fixedStepUs) / 1'000'000.0f;
-        static constexpr float gravitySoften = 0.25f;
-        static constexpr float gravitySoften2 = gravitySoften * gravitySoften;
         static constexpr float clueTolerance = 0.01f;
     };
 
@@ -45,12 +39,10 @@ namespace eltanin::phys {
         Particle::Id addParticle(Writing, vec3 pos, vec3 velocity, float mass);
 
     private:
-        std::vector<vec3> accelerations;
         int64 debt_us = 0;
 
         void tick(Stewarding);
         void constraintPass(Stewarding);
-        void applyForces(fqsm::Direct<Particle>);
         void integrate(fqsm::Direct<Particle>);
     };
 

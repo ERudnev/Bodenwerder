@@ -4,30 +4,12 @@
 
 #include <base/logging.h>
 
-#include <algorithm>
-#include <cmath>
-
-#include <glm/geometric.hpp>
-#include <glm/gtc/quaternion.hpp>
-
 namespace eltanin::phys {
 
-    void System::applyForces(fqsm::Direct<Particle> particles) {
-        accelerations.resize(particles.items.size());
-        std::size_t slot = 0;
-        for (auto [_, particle] : particles.items) {
-            const float distance = std::max(glm::length(particle.current), 1.0e-8f);
-            const float effective = std::max(distance, 1.0f);
-            accelerations[slot++] = -Settings::centralMu * particle.current / (distance * effective * effective);
-        }
-    }
-
     void System::integrate(fqsm::Direct<Particle> particles) {
-        const float dt2 = Settings::fixedDtS * Settings::fixedDtS;
-        std::size_t slot = 0;
         for (auto [_, particle] : particles.items) {
             const vec3 previous = particle.current;
-            particle.current += particle.current - particle.prev + accelerations[slot++] * dt2;
+            particle.current += particle.current - particle.prev;
             particle.prev = previous;
         }
     }
@@ -40,8 +22,7 @@ namespace eltanin::phys {
     }
 
     void System::tick(Stewarding context) {
-        // Jakobsen: AccumulateForces → Verlet → constraint wave × N; Nail/Gluon seppuku via Writing under Stewarding.
-        applyForces(context.direct<Particle>());
+        // Jakobsen: Verlet → constraint wave × N; Nail/Gluon seppuku via Writing under Stewarding.
         integrate(context.direct<Particle>());
         for (int pass = 0; pass < Settings::constraintPasses; ++pass) {
             constraintPass(context);

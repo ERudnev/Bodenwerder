@@ -254,8 +254,8 @@ namespace eltanin {
                 } else {
                     ImGui::TextDisabled("Parallel projection (reserved).");
                 }
-                ImGui::DragFloat("Near", &quantum->z_near, 0.01f, 0.001f, quantum->z_far - 0.001f, "%.3f");
-                ImGui::DragFloat("Far", &quantum->z_far, 0.1f, quantum->z_near + 0.001f, 1000.0f, "%.3f");
+                ImGui::DragFloat("Near", &quantum->z_near, 0.1f, 1.0f, quantum->z_far - 1.0f, "%.1f");
+                ImGui::DragFloat("Far", &quantum->z_far, 16.0f, quantum->z_near + 1.0f, 32768.0f, "%.0f");
             }
         }
         ImGui::End();

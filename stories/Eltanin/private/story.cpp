@@ -226,6 +226,12 @@ namespace eltanin {
         const Pos cameraTarget{0.0f, 0.0f, 0.0f};
         const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
         const auto camera = with<scene::Interface>::createCamera(context, root, cameraPose, 100.0f * std::numbers::pi_v<float> / 180.0f);
+        {
+            // Local frame ~8192 m; 24-bit depth, no reverse-Z → near stays ≥1 m (far/near ≈ 16k).
+            auto quantum = with<scene::Camera>::modify(context, camera);
+            quantum->z_near = 1.0f;
+            quantum->z_far = 16384.0f;
+        }
         with<controller::Camera3d>::create(context, camera);
         with<scene::Interface>::createLight(context, root, Pose::from(Pos{160.0f, 280.0f, 120.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 8.0f, .range = 1600.0f});
 

@@ -1,7 +1,6 @@
 #include "scenarios/boundersAndStones.h"
 
-#include "physics/system.h"
-
+#include <eltanin/geo/minerals.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -24,19 +23,54 @@ namespace eltanin::scenarios {
 
     namespace {
 
-        auto circularVelocity(vec3 position) -> vec3 {
-            const float radius = glm::length(position);
-            if (radius < 1.0f)
-                return vec3{0.0f, 0.0f, 0.0f};
-            vec3 tangent = glm::cross(vec3{0.0f, 1.0f, 0.0f}, position);
-            if (glm::dot(tangent, tangent) < 1.0e-8f)
-                tangent = glm::cross(vec3{1.0f, 0.0f, 0.0f}, position);
-            return glm::normalize(tangent) * std::sqrt(phys::Settings::centralMu / radius);
-        }
+        constexpr float ringRadius = 800.0f;
+        constexpr float boulderStep = 20.0f;
+        constexpr float clearanceGap = 8.0f;
+        constexpr float giantPeriodSeconds = 180.0f;
+        constexpr float pebbleRevPerSecMax = 2.0f;
+        constexpr int mixChannels = 16;
 
         auto nibble(int channel, int fill) -> geo::Mix {
             return geo::Mix{static_cast<std::uint64_t>(fill)} << (channel * 4);
         }
+
+        auto mixDensity(geo::Mix mix) -> float {
+            const auto& table = geo::Mineral::table();
+            float density = 0.0f;
+            const auto channels = table.size() < static_cast<std::size_t>(mixChannels) ? table.size() : static_cast<std::size_t>(mixChannels);
+            for (std::size_t channel = 0; channel < channels; ++channel) {
+                const float fill = static_cast<float>((mix >> (channel * 4)) & 0xF) / 15.0f;
+                density += fill * table[channel].density;
+            }
+            return density;
+        }
+
+        auto sphereMass(float diameter, float density) -> float {
+            const float radius = diameter * 0.5f;
+            return density * (4.0f / 3.0f) * std::numbers::pi_v<float> * radius * radius * radius;
+        }
+
+        auto spinOmega(float mass, float spinK, float jitter, std::mt19937& rng) -> vec3 {
+            std::normal_distribution<float> gauss{0.0f, 1.0f};
+            float magnitude = spinK / glm::max(mass, 1.0e-6f);
+            magnitude = glm::min(magnitude, pebbleRevPerSecMax * 2.0f * std::numbers::pi_v<float>);
+            magnitude *= jitter;
+            vec3 axis{gauss(rng), gauss(rng), gauss(rng)};
+            if (glm::dot(axis, axis) < 1.0e-8f)
+                axis = vec3{0.0f, 1.0f, 0.0f};
+            return glm::normalize(axis) * magnitude;
+        }
+
+        auto ringPose(float azim, std::mt19937& rng) -> Pose {
+            std::uniform_real_distribution<float> unit{0.0f, 1.0f};
+            std::normal_distribution<float> gauss{0.0f, 1.0f};
+            return Pose::from(Pos{ringRadius * std::cos(azim), 0.0f, ringRadius * std::sin(azim)}, HPB{360.0f * unit(rng), 30.0f * gauss(rng), 360.0f * unit(rng)});
+        }
+
+        struct Occupied {
+            vec3 position;
+            float radius;
+        };
 
     } // namespace
 
@@ -121,65 +155,64 @@ namespace eltanin::scenarios {
     }
 
     void BoundersAndStones::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
-        // with<geo::Rock>::spawnIceSphere(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
-        // with<geo::Rock>::spawnPaletteTorus(context, root, device, Pose::from(Pos{80.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
-
-        const geo::Mix palettes[10]{
+        const geo::Mix palettes[5]{
+            nibble(1, 8) | nibble(2, 4) | nibble(3, 3),
             nibble(0, 15),
-            nibble(1, 8) | nibble(3, 7),
-            nibble(1, 10) | nibble(2, 4) | nibble(3, 1),
-            nibble(1, 6) | nibble(2, 3) | nibble(6, 4) | nibble(7, 2),
-            nibble(5, 11) | nibble(4, 3) | nibble(1, 1),
-            nibble(6, 9) | nibble(7, 5) | nibble(8, 1),
-            nibble(0, 8) | nibble(1, 4) | nibble(14, 3),
-            nibble(3, 7) | nibble(4, 4) | nibble(9, 4),
-            nibble(2, 10) | nibble(11, 3) | nibble(6, 2),
-            nibble(5, 8) | nibble(0, 5) | nibble(15, 2),
+            nibble(6, 9) | nibble(7, 6),
+            nibble(5, 11) | nibble(4, 4),
+            nibble(9, 7) | nibble(8, 5) | nibble(3, 3),
         };
+        const float potatoDiameters[5]{400.0f, 200.0f, 100.0f, 50.0f, 25.0f};
         std::mt19937 rng{20260817};
         std::normal_distribution<float> gauss{0.0f, 1.0f};
         std::uniform_real_distribution<float> unit{0.0f, 1.0f};
-        constexpr float goldenAzim = 137.508f;
-        constexpr float periodMin = 2.5f;
-        constexpr float periodMax = 60.0f;
         const float twoPi = 2.0f * std::numbers::pi_v<float>;
-        rocks.reserve(50);
-        for (int index = 0; index < 50; ++index) {
-            const float diameter = (index < 2) ? 100.0f : 12.0f + 13.0f * unit(rng);
-            const float period = periodMin * std::pow(periodMax / periodMin, unit(rng));
-            const float orbitKepler = std::cbrt(phys::Settings::centralMu * period * period / (twoPi * twoPi));
-            const float orbit = glm::max(orbitKepler, diameter * 0.55f + 40.0f);
-            const float azim = (goldenAzim * static_cast<float>(index) + 8.0f * gauss(rng)) * std::numbers::pi_v<float> / 180.0f;
-            const Pose pose = Pose::from(Pos{orbit * std::cos(azim), 0.0f, orbit * std::sin(azim)}, HPB{360.0f * unit(rng), 30.0f * gauss(rng), 360.0f * unit(rng)});
+        const vec3 rest{0.0f, 0.0f, 0.0f};
+        const float giantMass = sphereMass(potatoDiameters[0], mixDensity(palettes[0]));
+        const float spinK = (twoPi / giantPeriodSeconds) * giantMass;
+
+        Occupied occupied[5];
+        rocks.reserve(5);
+        for (int index = 0; index < 5; ++index) {
+            const float diameter = potatoDiameters[index];
+            const float azim = twoPi * static_cast<float>(index) / 5.0f;
+            const Pose pose = ringPose(azim, rng);
             const geo::Recipe recipe{
-                .mix = palettes[index % 10],
-                .spotMeters = glm::clamp(diameter * 0.22f, 4.0f, 28.0f),
-                .spotContrast = glm::clamp(0.35f + 0.25f * gauss(rng), 0.05f, 0.90f),
+                .mix = palettes[index],
+                .spotMeters = glm::clamp(diameter * 0.12f, 4.0f, 48.0f),
+                .spotContrast = glm::clamp(0.40f + 0.20f * gauss(rng), 0.10f, 0.90f),
                 .diameterMeters = diameter,
-                .lump = glm::clamp(0.35f + 0.90f * gauss(rng), 0.12f, 0.99f),
+                .lump = glm::clamp(0.40f + 0.20f * gauss(rng), 0.18f, 0.85f),
                 .seed = 1100 + index,
             };
-            const vec3 omega{0.35f * gauss(rng), 0.55f * gauss(rng), 0.35f * gauss(rng)};
-            rocks.push_back(with<geo::Rock>::spawnGenerated(context, root, device, pose, recipe, circularVelocity(pose.position), omega));
+            occupied[index] = Occupied{.position = pose.position, .radius = diameter * 0.5f};
+            rocks.push_back(with<geo::Rock>::spawnGenerated(context, root, device, pose, recipe, rest, spinOmega(sphereMass(diameter, mixDensity(recipe.mix)), spinK, 1.0f, rng)));
         }
 
-        std::mt19937 debrisRng{20260818};
-        boulders.reserve(220);
-        for (int index = 0; index < 220; ++index) {
-            const float diameter = 0.5f + 3.5f * unit(debrisRng);
-            const float period = periodMin * std::pow(periodMax / periodMin, unit(debrisRng));
-            const float orbitKepler = std::cbrt(phys::Settings::centralMu * period * period / (twoPi * twoPi));
-            const float orbit = glm::max(orbitKepler, diameter * 0.55f + 40.0f);
-            const float azim = (goldenAzim * static_cast<float>(index) + 41.0f + 6.0f * gauss(debrisRng)) * std::numbers::pi_v<float> / 180.0f;
-            const Pose pose = Pose::from(Pos{orbit * std::cos(azim), 0.0f, orbit * std::sin(azim)}, HPB{360.0f * unit(debrisRng), 30.0f * gauss(debrisRng), 360.0f * unit(debrisRng)});
+        const int boulderSlots = static_cast<int>(twoPi * ringRadius / boulderStep);
+        boulders.reserve(static_cast<std::size_t>(boulderSlots));
+        for (int slot = 0; slot < boulderSlots; ++slot) {
+            const float diameter = 0.5f + 9.5f * unit(rng);
+            const float azim = static_cast<float>(slot) * boulderStep / ringRadius;
+            const Pose pose = ringPose(azim, rng);
+            bool blocked = false;
+            for (const auto& body : occupied) {
+                if (glm::length(pose.position - body.position) < body.radius + diameter * 0.5f + clearanceGap) {
+                    blocked = true;
+                    break;
+                }
+            }
+            if (blocked)
+                continue;
+            const integer mineral = static_cast<integer>(slot % 16);
             const geo::Boulder::Recipe recipe{
-                .mineral = static_cast<integer>(index % 16),
+                .mineral = mineral,
                 .diameterMeters = diameter,
-                .lump = glm::clamp(0.40f + 0.25f * gauss(debrisRng), 0.15f, 1.0f),
-                .seed = 4100 + index,
+                .lump = glm::clamp(0.40f + 0.25f * gauss(rng), 0.15f, 1.0f),
+                .seed = 4100 + slot,
             };
-            const vec3 omega{0.55f * gauss(debrisRng), 0.75f * gauss(debrisRng), 0.55f * gauss(debrisRng)};
-            boulders.push_back(with<geo::Boulder>::spawn(context, root, device, pose, recipe, circularVelocity(pose.position), omega));
+            const float mass = sphereMass(diameter, geo::Mineral::table()[static_cast<std::size_t>(mineral)].density);
+            boulders.push_back(with<geo::Boulder>::spawn(context, root, device, pose, recipe, rest, spinOmega(mass, spinK, unit(rng), rng)));
         }
     }
 
