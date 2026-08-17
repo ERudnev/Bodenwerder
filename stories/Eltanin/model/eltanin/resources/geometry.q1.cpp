@@ -25,8 +25,8 @@ namespace eltanin::resource {
     namespace {
 
         constexpr float k_mesh_radius = 100.0f;
-        constexpr float k_atlas_size = 5.0f;
-        constexpr float k_star_texels = 5.0f;
+        constexpr float polarAngularDeg = 0.5f;
+        constexpr float polarRadius = k_mesh_radius * 0.98f;
         constexpr float k_ly_per_pc = 3.261563777f;
         constexpr float k_m_sun_abs = 4.83f;
         // Sun: R≈8.2 kpc, z≈+20 pc (in the mid-plane — not lifted above the disk).
@@ -42,10 +42,11 @@ namespace eltanin::resource {
         };
 
         struct PendingBillboard {
-            glm::vec3 direction{};
-            float half = 1.0f;
-            vec4 color{1.0f};
-            BillboardUv uv{};
+            glm::vec3 direction;
+            float radius;
+            float half;
+            vec4 color;
+            BillboardUv uv;
         };
 
         auto quad_size_from_angular_diameter(float mesh_radius, float angular_diameter_deg) -> float {
@@ -92,7 +93,7 @@ namespace eltanin::resource {
         }
 
         void emit_billboard(CpuPresentation& cpu, const PendingBillboard& billboard) {
-            const vec3 center = vec3{billboard.direction} * k_mesh_radius;
+            const vec3 center = vec3{billboard.direction} * billboard.radius;
             const vec3 up = std::abs(billboard.direction.y) < 0.99f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f};
             const vec3 tangent = glm::normalize(glm::cross(up, billboard.direction));
             const vec3 bitangent = glm::cross(billboard.direction, tangent);
@@ -119,8 +120,9 @@ namespace eltanin::resource {
             const std::size_t star_count = quantum.count > 0 ? static_cast<std::size_t>(quantum.count) : std::size_t{0};
             const Galaxy galaxy = generate_spiral_galaxy(star_count, static_cast<std::uint32_t>(quantum.seed));
 
-            const BillboardUv star_uv{0.0f, 0.0f, k_star_texels / k_atlas_size, k_star_texels / k_atlas_size};
+            const BillboardUv starUv{0.0f, 0.0f, 1.0f, 1.0f};
             const float star_half = 0.5f * quad_size_from_angular_diameter(k_mesh_radius, quantum.angular_diameter_deg);
+            const float polarHalf = 0.5f * quad_size_from_angular_diameter(polarRadius, polarAngularDeg);
 
             CpuPresentation cpu{
                 .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "uv0", "color0"}),
@@ -130,9 +132,9 @@ namespace eltanin::resource {
                 .color0 = {},
                 .indices = {},
             };
-            cpu.positions.reserve(galaxy.size() * 6);
-            cpu.uv0.reserve(galaxy.size() * 6);
-            cpu.color0.reserve(galaxy.size() * 6);
+            cpu.positions.reserve((galaxy.size() + 6) * 6);
+            cpu.uv0.reserve((galaxy.size() + 6) * 6);
+            cpu.color0.reserve((galaxy.size() + 6) * 6);
 
             for (const Star& star : galaxy) {
                 const auto [direction, distance] = direction_and_distance(star.position_ly);
@@ -155,13 +157,32 @@ namespace eltanin::resource {
                 const vec3 rgb = temperature_rgb(star.temperature_K) * brightness;
                 emit_billboard(cpu, PendingBillboard{
                     .direction = direction,
+                    .radius = k_mesh_radius,
                     .half = star_half * size_scale,
                     .color = vec4{rgb, 1.0f},
-                    .uv = star_uv,
+                    .uv = starUv,
                 });
             }
 
-            base::message("eltanin::SkySphereGenerator: stars={}", galaxy.size());
+            const struct { vec3 direction; vec3 rgb; } polars[]{
+                {{1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+                {{-1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 1.0f}},
+                {{0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+                {{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 1.0f}},
+                {{0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
+                {{0.0f, 0.0f, -1.0f}, {1.0f, 1.0f, 0.0f}},
+            };
+            for (const auto& polar : polars) {
+                emit_billboard(cpu, PendingBillboard{
+                    .direction = polar.direction,
+                    .radius = polarRadius,
+                    .half = polarHalf,
+                    .color = vec4{polar.rgb, 1.0f},
+                    .uv = starUv,
+                });
+            }
+
+            base::message("eltanin::SkySphereGenerator: stars={} polars=6", galaxy.size());
             return cpu;
         }
 
