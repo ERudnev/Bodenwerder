@@ -11,14 +11,13 @@
 namespace eltanin::phys {
 
     void System::applyForces(fqsm::Direct<Particle> particles) {
-        // Central μ at origin (softened) — parked while the pendulum uses linear g.
-        // for (auto [_, particle] : particles.items) {
-        //     const vec3& sample = glm::dot(particle.prev, particle.prev) > glm::dot(particle.current, particle.current) ? particle.prev : particle.current;
-        //     const float r2 = std::max(glm::dot(sample, sample), Settings::gravitySoften2);
-        //     const float inv_r3 = 1.0f / (r2 * std::sqrt(r2));
-        //     accelerations[slot++] = -Settings::centralMu * sample * inv_r3;
-        // }
-        accelerations.assign(particles.items.size(), vec3{0.0f, -Settings::gravity, 0.0f});
+        accelerations.resize(particles.items.size());
+        std::size_t slot = 0;
+        for (auto [_, particle] : particles.items) {
+            const float r2 = std::max(glm::dot(particle.current, particle.current), Settings::gravitySoften2);
+            const float invR3 = 1.0f / (r2 * std::sqrt(r2));
+            accelerations[slot++] = -Settings::centralMu * particle.current * invR3;
+        }
     }
 
     void System::integrate(fqsm::Direct<Particle> particles) {

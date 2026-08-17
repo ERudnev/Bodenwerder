@@ -15,13 +15,13 @@ namespace eltanin::phys {
 
     // Private physics subsystem (not Q1).
     // Fixed tick 10ms; wall dt accumulates as debt (sub-step remainder).
-    // Linear gravity −Y (9.81); central μ-gravity kept in Settings but not applied.
+    // Central μ at origin (softened). Linear −Y kept in Settings but not applied.
     // One Dock per tick; hot mutation via Stewarding::direct<T>(); Nail/Gluon seppuku via Writing under Stewarding.
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
     // Constraint wave: Atomic / Nail / Gluon `*satisfy(~Particle)` × constraintPasses.
     struct Settings {
-        static constexpr float gravity = 0.0f; // temporary: off for single-plate sandbox
-        static constexpr float centralMu = 8.0f; // unused while linear gravity is on
+        static constexpr float gravity = 0.0f; // unused while central gravity is on
+        static constexpr float centralMu = 701838.54f; // Kepler: T=60s at 400m, T≈2.5s at 48m
         static constexpr float constraintStiffness = 0.75f; // Hitman-style goal pull (constraints)
         static constexpr int constraintPasses = 4; // full wave (Horn+Nail+Gluon) per tick
         static constexpr float massMin = 1.0f;
@@ -31,7 +31,6 @@ namespace eltanin::phys {
         static constexpr float gravitySoften = 0.25f;
         static constexpr float gravitySoften2 = gravitySoften * gravitySoften;
         static constexpr float clueTolerance = 0.01f;
-        static constexpr float voxelCenterMassFraction = 2.0f / 3.0f; // cube I = m a²/6: remaining 1/3 split across 8 corners
     };
 
     struct System {

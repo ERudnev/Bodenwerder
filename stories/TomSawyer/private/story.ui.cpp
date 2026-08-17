@@ -11,7 +11,7 @@ namespace tommy {
     using namespace fqsm::api;
     using namespace rmmr;
 
-    void SpriteTest::contributeViewMenu() {
+    void SpriteTest::contributeViewMenu(Writing) {
         rmmr::wrapper::ui::viewToggle("Camera", &ui.camera);
         rmmr::wrapper::ui::viewToggle("HUD", &ui.hud);
     }

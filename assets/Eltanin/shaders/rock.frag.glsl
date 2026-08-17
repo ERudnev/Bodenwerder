@@ -3,7 +3,10 @@
 in vec3 v_worldPos;
 in vec3 v_worldNormal;
 in vec3 v_objectPos;
-flat in uvec2 v_mix0;
+in vec4 v_mix0;
+in vec4 v_mix1;
+in vec4 v_mix2;
+in vec4 v_mix3;
 
 out vec4 FragColor;
 
@@ -64,17 +67,16 @@ float fetch_shadow(vec4 light_space_pos) {
     return shadow / 9.0;
 }
 
-float nibbleWeight(uint nibbleIndex) {
-    uint word = nibbleIndex < 8u ? v_mix0.x : v_mix0.y;
-    uint shift = (nibbleIndex & 7u) * 4u;
-    return float((word >> shift) & 15u) / 15.0;
+float channelWeight(int channel) {
+    vec4 groups[4] = vec4[4](v_mix0, v_mix1, v_mix2, v_mix3);
+    return groups[channel / 4][channel - (channel / 4) * 4];
 }
 
 void main() {
     vec3 albedo = vec3(0.0);
     float mass = 0.0;
     for (int channel = 0; channel < 16; ++channel) {
-        float weight = nibbleWeight(uint(channel));
+        float weight = channelWeight(channel);
         if (weight <= 0.0)
             continue;
         vec3 uvw = fract(v_objectPos * mineralScale[channel]);

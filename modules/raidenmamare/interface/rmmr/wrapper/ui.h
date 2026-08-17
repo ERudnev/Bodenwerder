@@ -33,7 +33,7 @@ namespace rmmr::wrapper::ui {
         void draw(Writing, Product&);
 
     private:
-        void drawViewToolbar(Product&);
+        void drawViewToolbar(Writing, Product&);
         void drawStatsWindow(Writing);
     };
 

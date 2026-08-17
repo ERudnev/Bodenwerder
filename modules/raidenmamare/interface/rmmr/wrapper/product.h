@@ -36,7 +36,7 @@ namespace rmmr::wrapper {
         // App frame pulse: wall dt in microseconds (glfw). Product owns sim cadence.
         virtual void onFrame(establish::Realm&, int64 dt_us) = 0;
 
-        virtual void contributeViewMenu() = 0;
+        virtual void contributeViewMenu(Writing) = 0;
         virtual void drawUi(Writing) = 0;
         // Screen overlay for this frame (nullopt = off). Engine composites before ImGui.
         virtual auto activeOverlay() const -> base::maybe<resource::overlay::Asset::Id> { return {}; }

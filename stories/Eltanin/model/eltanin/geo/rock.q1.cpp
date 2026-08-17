@@ -13,10 +13,12 @@
 #include "physics/system.h"
 #include "stones/marchingCubes.h"
 #include "stones/crust.h"
+#include "stones/generator.h"
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 
@@ -57,11 +59,6 @@ namespace eltanin::geo {
         auto leafCenterLocal(const Volume& node) -> vec3 {
             const float half = static_cast<float>(edgeCells(node.scale)) * 0.5f;
             return vec3{static_cast<float>(node.origin.x) + half, static_cast<float>(node.origin.y) + half, static_cast<float>(node.origin.z) + half} * mech::space::local::edge2meters;
-        }
-
-        auto leafCornerLocal(const Volume& node, ivec3 corner) -> vec3 {
-            const integer edge = edgeCells(node.scale);
-            return vec3{static_cast<float>(node.origin.x + corner.x * edge), static_cast<float>(node.origin.y + corner.y * edge), static_cast<float>(node.origin.z + corner.z * edge)} * mech::space::local::edge2meters;
         }
 
         enum class Occupancy { vacuum, solid, mixed };
@@ -231,25 +228,51 @@ namespace eltanin::geo {
             float mass;
         };
 
-        void collectLeafSamples(const Volume& node, vector<Sample>& samples) {
+        void accumulateVolumeMass(const Volume& node, float& mass, vec3& moment) {
             if (not node.children.empty()) {
                 for (const auto& child : node.children)
-                    collectLeafSamples(child, samples);
+                    accumulateVolumeMass(child, mass, moment);
                 return;
             }
-            const float mass = leafMass(node);
-            if (mass <= 0.0f)
+            const float leaf = leafMass(node);
+            if (leaf <= 0.0f)
                 return;
-            const float centerShare = phys::Settings::voxelCenterMassFraction;
-            const float cornerShare = (1.0f - centerShare) / 8.0f;
-            samples.push_back(Sample{.local = leafCenterLocal(node), .mass = mass * centerShare});
-            for (const auto& corner : mech::cube::corners)
-                samples.push_back(Sample{.local = leafCornerLocal(node, corner), .mass = mass * cornerShare});
+            mass += leaf;
+            moment += leafCenterLocal(node) * leaf;
         }
 
-        auto samplesFromVolume(const Volume& volume) -> vector<Sample> {
+        auto uniquePositions(const vector<vec3>& positions) -> vector<vec3> {
+            vector<vec3> unique = positions;
+            auto key = [](vec3 point) -> ivec3 {
+                return ivec3{static_cast<int>(std::lround(point.x * 1000.0f)), static_cast<int>(std::lround(point.y * 1000.0f)), static_cast<int>(std::lround(point.z * 1000.0f))};
+            };
+            std::sort(unique.begin(), unique.end(), [&](vec3 left, vec3 right) {
+                const ivec3 leftKey = key(left);
+                const ivec3 rightKey = key(right);
+                if (leftKey.x != rightKey.x) return leftKey.x < rightKey.x;
+                if (leftKey.y != rightKey.y) return leftKey.y < rightKey.y;
+                return leftKey.z < rightKey.z;
+            });
+            unique.erase(std::unique(unique.begin(), unique.end(), [&](vec3 left, vec3 right) { return key(left) == key(right); }), unique.end());
+            return unique;
+        }
+
+        auto samplesFromMesh(const Volume& volume, const vector<vec3>& positions) -> vector<Sample> {
+            float mass = 0.0f;
+            vec3 moment{0.0f, 0.0f, 0.0f};
+            accumulateVolumeMass(volume, mass, moment);
+            if (mass <= 0.0f)
+                return {};
+            const auto rim = uniquePositions(positions);
+            if (rim.empty())
+                return {};
+            const vec3 com = moment / mass;
+            const float rimMass = (0.5f * mass) / static_cast<float>(rim.size());
             vector<Sample> samples;
-            collectLeafSamples(volume, samples);
+            samples.reserve(rim.size() + 1);
+            samples.push_back(Sample{.local = com, .mass = 0.5f * mass});
+            for (const vec3& local : rim)
+                samples.push_back(Sample{.local = local, .mass = rimMass});
             return samples;
         }
 
@@ -263,78 +286,96 @@ namespace eltanin::geo {
             return true;
         }
 
+        auto assembleRock(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, Volume volume, rmmr::resource::builders::geometry::CpuPresentation cpu, vec3 velocity, vec3 omega) -> Rock::Id {
+            if (cpu.positions.empty())
+                return context.refuse("eltanin::geo::Rock::spawn: no surface");
+
+            const auto samples = samplesFromMesh(volume, cpu.positions);
+            if (samples.empty())
+                return context.refuse("eltanin::geo::Rock::spawn: no mass in volume");
+
+            const auto manager = with<rmmr::resource::Manager>::singleton(context);
+            if (not manager)
+                return context.refuse("eltanin::geo::Rock::spawn: resource Manager missing");
+            if (not with<rmmr::resource::Unit_group>::exists(context, *manager))
+                with<rmmr::resource::Unit_group>::extend(context, *manager);
+            const auto geometryId = with<rmmr::resource::Unit_group>::addElement(context, *manager, rmmr::resource::Unit::Quantum{.name = rmmr::resource::Unit::Name::from("Eltanin", "rock")});
+            with<rmmr::resource::geometry::Asset>::extend(context, geometryId, rmmr::resource::geometry::Asset::Quantum{});
+            if (not with<rmmr::resource::geometry::Asset>::install(context, geometryId, device, cpu))
+                return context.refuse("eltanin::geo::Rock::spawn: geometry install failed");
+
+            const auto rockMaterial = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "rock"));
+            if (not rockMaterial)
+                return context.refuse("eltanin::geo::Rock::spawn: rock material missing");
+            const auto crust = with<rmmr::resource::Assets>::find<rmmr::resource::texture3array::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "crust"));
+            if (not crust)
+                return context.refuse("eltanin::geo::Rock::spawn: crust pack missing");
+            const auto& runtimes = with<rmmr::resource::Runtimes>::get(context, device);
+            if (runtimes.texture3arrays_id_mapping.find(*crust) == runtimes.texture3arrays_id_mapping.end()) {
+                if (not with<rmmr::resource::texture3array::Asset>::install(context, *crust, device, generateCrust()))
+                    return context.refuse("eltanin::geo::Rock::spawn: crust install failed");
+            }
+            auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, geometryId, *rockMaterial, *crust);
+            if (not meshQuantum)
+                return context.refuse("eltanin::geo::Rock::spawn: mesh compose failed");
+
+            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f));
+
+            vector<phys::Particle::Id> ids;
+            ids.reserve(samples.size());
+            vec3 restCom{0.0f, 0.0f, 0.0f};
+            float massSum = 0.0f;
+            for (const auto& sample : samples) {
+                restCom += sample.local * sample.mass;
+                massSum += sample.mass;
+            }
+            restCom /= massSum;
+            for (const auto& sample : samples) {
+                const vec3 world = pose.position + pose.rotation * sample.local;
+                const vec3 spin = glm::cross(omega, pose.rotation * (sample.local - restCom));
+                ids.push_back(with<phys::Particle>::create(context, phys::Particle::Quantum{.current = world, .prev = world - (velocity + spin) * phys::Settings::fixedDtS, .mass = sample.mass}));
+            }
+
+            vector<vec3> restCentered;
+            restCentered.reserve(samples.size());
+            for (const auto& sample : samples)
+                restCentered.push_back(sample.local - restCom);
+
+            const auto body = with<phys::Atomic>::create(context, phys::Atomic::Quantum{
+                .particles = std::move(ids),
+                .rest = phys::Atomic::Rest{.centered = std::move(restCentered), .com = restCom},
+                .restored = pose,
+            });
+            return with<Rock>::create(context, Rock::Quantum{.body = body, .actor = actor, .volume = std::move(volume)});
+        }
+
     } // namespace
 
-    auto Rock::Actions::spawn(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, Volume volume) -> Id {
+    auto Rock::Actions::spawn(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, Volume volume, vec3 velocity, vec3 omega) -> Id {
         if (not scaleInRange(volume))
             return context.refuse("eltanin::geo::Rock::spawn: volume scale out of range");
-
-        const auto samples = samplesFromVolume(volume);
-        if (samples.empty())
-            return context.refuse("eltanin::geo::Rock::spawn: no mass in volume");
-
         auto cpu = meshVolume(volume);
-        if (cpu.positions.empty())
-            return context.refuse("eltanin::geo::Rock::spawn: no surface");
+        return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), velocity, omega);
+    }
 
-        const auto manager = with<rmmr::resource::Manager>::singleton(context);
-        if (not manager)
-            return context.refuse("eltanin::geo::Rock::spawn: resource Manager missing");
-        if (not with<rmmr::resource::Unit_group>::exists(context, *manager))
-            with<rmmr::resource::Unit_group>::extend(context, *manager);
-        const auto geometryId = with<rmmr::resource::Unit_group>::addElement(context, *manager, rmmr::resource::Unit::Quantum{.name = rmmr::resource::Unit::Name::from("Eltanin", "rock")});
-        with<rmmr::resource::geometry::Asset>::extend(context, geometryId, rmmr::resource::geometry::Asset::Quantum{});
-        if (not with<rmmr::resource::geometry::Asset>::install(context, geometryId, device, cpu))
-            return context.refuse("eltanin::geo::Rock::spawn: geometry install failed");
-
-        const auto rockMaterial = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "rock"));
-        if (not rockMaterial)
-            return context.refuse("eltanin::geo::Rock::spawn: rock material missing");
-        const auto crust = with<rmmr::resource::Assets>::find<rmmr::resource::texture3array::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "crust"));
-        if (not crust)
-            return context.refuse("eltanin::geo::Rock::spawn: crust pack missing");
-        const auto& runtimes = with<rmmr::resource::Runtimes>::get(context, device);
-        if (runtimes.texture3arrays_id_mapping.find(*crust) == runtimes.texture3arrays_id_mapping.end()) {
-            if (not with<rmmr::resource::texture3array::Asset>::install(context, *crust, device, generateCrust()))
-                return context.refuse("eltanin::geo::Rock::spawn: crust install failed");
-        }
-        auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, geometryId, *rockMaterial, *crust);
-        if (not meshQuantum)
-            return context.refuse("eltanin::geo::Rock::spawn: mesh compose failed");
-
-        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f));
-
-        vector<phys::Particle::Id> ids;
-        ids.reserve(samples.size());
-        vec3 restCom{0.0f, 0.0f, 0.0f};
-        float massSum = 0.0f;
-        for (const auto& sample : samples) {
-            const vec3 world = pose.position + pose.rotation * sample.local;
-            ids.push_back(with<phys::Particle>::create(context, phys::Particle::Quantum{.current = world, .prev = world, .mass = sample.mass}));
-            restCom += sample.local * sample.mass;
-            massSum += sample.mass;
-        }
-        restCom /= massSum;
-
-        vector<vec3> restCentered;
-        restCentered.reserve(samples.size());
-        for (const auto& sample : samples)
-            restCentered.push_back(sample.local - restCom);
-
-        const auto body = with<phys::Atomic>::create(context, phys::Atomic::Quantum{
-            .particles = std::move(ids),
-            .rest = phys::Atomic::Rest{.centered = std::move(restCentered), .com = restCom},
-            .restored = pose,
-        });
-        return with<Rock>::create(context, Quantum{.body = body, .actor = actor, .volume = std::move(volume)});
+    auto Rock::Actions::spawnGenerated(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, Recipe recipe, vec3 velocity, vec3 omega) -> Id {
+        if (recipe.diameterMeters <= 0.0f)
+            return context.refuse("eltanin::geo::Rock::spawnGenerated: diameterMeters must be positive");
+        if (recipe.mix == 0)
+            return context.refuse("eltanin::geo::Rock::spawnGenerated: mix is vacuum");
+        auto volume = generateRockVolume(recipe);
+        if (not scaleInRange(volume))
+            return context.refuse("eltanin::geo::Rock::spawnGenerated: volume scale out of range");
+        auto cpu = meshVolume(volume);
+        return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), velocity, omega);
     }
 
     auto Rock::Actions::spawnIceSphere(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
-        return spawn(context, root, device, pose, iceSphereVolume());
+        return spawn(context, root, device, pose, iceSphereVolume(), vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
     auto Rock::Actions::spawnPaletteTorus(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
-        return spawn(context, root, device, pose, paletteTorusVolume());
+        return spawn(context, root, device, pose, paletteTorusVolume(), vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
     struct Rock::Internals : Rock::DefaultInternals {

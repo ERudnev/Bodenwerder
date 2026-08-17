@@ -26,7 +26,7 @@ namespace tommy {
         }
         void setup(Writing, rmmr::system::Window::Id) override;
         void onFrame(establish::Realm&, int64 dt_us) override;
-        void contributeViewMenu() override;
+        void contributeViewMenu(Writing) override;
         void drawUi(Writing) override;
 
     private:

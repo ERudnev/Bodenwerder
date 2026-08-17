@@ -53,7 +53,7 @@ namespace si02 {
 
     } // namespace
 
-    void SpriteTest::contributeViewMenu() {
+    void SpriteTest::contributeViewMenu(Writing) {
         rmmr::wrapper::ui::viewToggle("Camera", &ui.camera);
         rmmr::wrapper::ui::viewToggle("HUD", &ui.hud);
         rmmr::wrapper::ui::viewToggle("Ship", &ui.ship);

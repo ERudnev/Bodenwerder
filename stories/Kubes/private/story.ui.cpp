@@ -101,7 +101,7 @@ namespace kubes {
 
     } // namespace
 
-    void KubeOfKubes::contributeViewMenu() {
+    void KubeOfKubes::contributeViewMenu(Writing) {
         rmmr::wrapper::ui::viewToggle("Camera", &ui.camera);
         rmmr::wrapper::ui::viewToggle("Lighting", &ui.lighting);
         rmmr::wrapper::ui::viewToggle("Materials", &ui.materials);

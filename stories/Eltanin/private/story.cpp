@@ -29,9 +29,13 @@
 #include <rmmr/semantics/uniform.h>
 #include <rmmr/system/viewport.q1.h>
 
+#include <cmath>
+#include <cstdint>
 #include <numbers>
 #include <utility>
 
+#include <glm/common.hpp>
+#include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 namespace eltanin {
@@ -215,7 +219,11 @@ namespace eltanin {
     }
 
     void Game::populateWorld(Writing context, system::Window::Id window) {
-        with<World>::modify_global(context)->window = window;
+        {
+            auto world = with<World>::modify_global(context);
+            world->window = window;
+            world->paused = true;
+        }
 
         const auto framebuffer = with<system::Window>::framebufferSize(context, window);
         const auto viewport = with<system::Viewport_group>::addElement(context, window, system::Viewport::Quantum{
@@ -245,15 +253,77 @@ namespace eltanin {
         };
         const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved);
 
-        const Pos cameraPos{90.0f, 55.0f, 120.0f};
-        const Pos cameraTarget{40.0f, 0.0f, 0.0f};
+        const Pos cameraPos{0.0f, 160.0f, 520.0f};
+        const Pos cameraTarget{0.0f, 0.0f, 0.0f};
         const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
         const auto camera = with<scene::Interface>::createCamera(context, root, cameraPose, 100.0f * std::numbers::pi_v<float> / 180.0f);
         with<controller::Camera3d>::create(context, camera);
-        with<scene::Interface>::createLight(context, root, Pose::from(Pos{40.0f, 80.0f, 40.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 280.0f});
+        with<scene::Interface>::createLight(context, root, Pose::from(Pos{160.0f, 280.0f, 120.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 8.0f, .range = 1600.0f});
 
-        with<geo::Rock>::spawnIceSphere(context, root, window, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
-        with<geo::Rock>::spawnPaletteTorus(context, root, window, Pose::from(Pos{80.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
+        // with<geo::Rock>::spawnIceSphere(context, root, window, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
+        // with<geo::Rock>::spawnPaletteTorus(context, root, window, Pose::from(Pos{80.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
+
+        auto nibble = [](int channel, int fill) -> geo::Mix { return geo::Mix{static_cast<std::uint64_t>(fill)} << (channel * 4); };
+        const geo::Mix palettes[10]{
+            nibble(0, 15),
+            nibble(1, 8) | nibble(3, 7),
+            nibble(1, 10) | nibble(2, 4) | nibble(3, 1),
+            nibble(1, 6) | nibble(2, 3) | nibble(6, 4) | nibble(7, 2),
+            nibble(5, 11) | nibble(4, 3) | nibble(1, 1),
+            nibble(6, 9) | nibble(7, 5) | nibble(8, 1),
+            nibble(0, 8) | nibble(1, 4) | nibble(14, 3),
+            nibble(3, 7) | nibble(4, 4) | nibble(9, 4),
+            nibble(2, 10) | nibble(11, 3) | nibble(6, 2),
+            nibble(5, 8) | nibble(0, 5) | nibble(15, 2),
+        };
+        auto circularVelocity = [](vec3 position) -> vec3 {
+            const float radius = glm::length(position);
+            if (radius < 1.0f)
+                return vec3{0.0f, 0.0f, 0.0f};
+            vec3 tangent = glm::cross(vec3{0.0f, 1.0f, 0.0f}, position);
+            if (glm::dot(tangent, tangent) < 1.0e-8f)
+                tangent = glm::cross(vec3{1.0f, 0.0f, 0.0f}, position);
+            return glm::normalize(tangent) * std::sqrt(phys::Settings::centralMu / radius);
+        };
+        // Belt spawn — temporarily parked; restore the loop soon.
+        // std::mt19937 rng{20260817};
+        // std::normal_distribution<float> gauss{0.0f, 1.0f};
+        // std::uniform_real_distribution<float> unit{0.0f, 1.0f};
+        // constexpr float goldenAzim = 137.508f;
+        // constexpr float periodMin = 2.5f;
+        // constexpr float periodMax = 60.0f;
+        // const float twoPi = 2.0f * std::numbers::pi_v<float>;
+        // for (int index = 0; index < 50; ++index) {
+        //     const float diameter = (index < 2) ? 100.0f : 12.0f + 13.0f * unit(rng);
+        //     const float period = periodMin * std::pow(periodMax / periodMin, unit(rng));
+        //     const float orbitKepler = std::cbrt(phys::Settings::centralMu * period * period / (twoPi * twoPi));
+        //     const float orbit = glm::max(orbitKepler, diameter * 0.55f + 40.0f);
+        //     const float azim = (goldenAzim * static_cast<float>(index) + 8.0f * gauss(rng)) * std::numbers::pi_v<float> / 180.0f;
+        //     const Pose pose = Pose::from(Pos{orbit * std::cos(azim), 0.0f, orbit * std::sin(azim)}, HPB{360.0f * unit(rng), 30.0f * gauss(rng), 360.0f * unit(rng)});
+        //     const geo::Recipe recipe{
+        //         .mix = palettes[index % 10],
+        //         .spotMeters = glm::clamp(diameter * 0.22f, 4.0f, 28.0f),
+        //         .spotContrast = glm::clamp(0.35f + 0.25f * gauss(rng), 0.05f, 0.90f),
+        //         .diameterMeters = diameter,
+        //         .lump = glm::clamp(0.35f + 0.20f * gauss(rng), 0.12f, 0.80f),
+        //         .seed = 1100 + index,
+        //     };
+        //     const vec3 omega{0.35f * gauss(rng), 0.55f * gauss(rng), 0.35f * gauss(rng)};
+        //     with<geo::Rock>::spawnGenerated(context, root, window, pose, recipe, circularVelocity(pose.position), omega);
+        // }
+        {
+            const float diameter = 100.0f;
+            const Pose pose = Pose::from(Pos{0.0f, 0.0f, 400.0f}, HPB{0.0f, 0.0f, 0.0f});
+            const geo::Recipe recipe{
+                .mix = palettes[2],
+                .spotMeters = glm::clamp(diameter * 0.22f, 4.0f, 28.0f),
+                .spotContrast = 0.95f,
+                .diameterMeters = diameter,
+                .lump = 0.85f,
+                .seed = 2000,
+            };
+            with<geo::Rock>::spawnGenerated(context, root, window, pose, recipe, circularVelocity(pose.position) * 10.0f, vec3{10.0f, 0.0f, 0.0f});
+        }
 
         {
             auto world = with<World>::modify_global(context);
@@ -290,8 +360,9 @@ namespace eltanin {
                 world.branch([&](Writing context) { blueprints.show(context, *blueprintPack.unnamed); });
         }
         with<World>::tetherEnvironment(world);
-        physics.step(world, dt_us);
-        advanceSim(world, dt_us);
+        const int64 simDt = with<World>::get_global(world).paused ? int64{0} : dt_us;
+        physics.step(world, simDt);
+        advanceSim(world, simDt);
     }
 
 }

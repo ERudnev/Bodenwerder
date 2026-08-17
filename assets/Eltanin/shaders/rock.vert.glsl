@@ -28,7 +28,10 @@ layout(std430, binding = 8) readonly buffer PoseBuffer {
 out vec3 v_worldPos;
 out vec3 v_worldNormal;
 out vec3 v_objectPos;
-flat out uvec2 v_mix0;
+out vec4 v_mix0;
+out vec4 v_mix1;
+out vec4 v_mix2;
+out vec4 v_mix3;
 
 const ivec3 orientationRow0[24] = ivec3[24](
     ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0),
@@ -62,7 +65,10 @@ void main() {
     vec4 worldPos = actorModel * vec4(localPosition, 1.0);
     v_worldPos = worldPos.xyz;
     v_objectPos = localPosition;
-    v_mix0 = aMix0;
+    v_mix0 = vec4(float((aMix0.x >> 0u) & 15u), float((aMix0.x >> 4u) & 15u), float((aMix0.x >> 8u) & 15u), float((aMix0.x >> 12u) & 15u)) / 15.0;
+    v_mix1 = vec4(float((aMix0.x >> 16u) & 15u), float((aMix0.x >> 20u) & 15u), float((aMix0.x >> 24u) & 15u), float((aMix0.x >> 28u) & 15u)) / 15.0;
+    v_mix2 = vec4(float((aMix0.y >> 0u) & 15u), float((aMix0.y >> 4u) & 15u), float((aMix0.y >> 8u) & 15u), float((aMix0.y >> 12u) & 15u)) / 15.0;
+    v_mix3 = vec4(float((aMix0.y >> 16u) & 15u), float((aMix0.y >> 20u) & 15u), float((aMix0.y >> 24u) & 15u), float((aMix0.y >> 28u) & 15u)) / 15.0;
 
     mat3 normalMat = mat3(transpose(inverse(actorModel)));
     v_worldNormal = normalize(normalMat * localRotation * aNormal);

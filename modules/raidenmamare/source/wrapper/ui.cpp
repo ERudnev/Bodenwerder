@@ -15,7 +15,7 @@ namespace rmmr::wrapper::ui {
     using namespace fqsm::api;
     using namespace rmmr;
 
-    void State::drawViewToolbar(Product& product) {
+    void State::drawViewToolbar(Writing world, Product& product) {
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGui::SetNextWindowPos(ImVec2{viewport->WorkPos.x + 8.f, viewport->WorkPos.y + 8.f}, ImGuiCond_Always);
         ImGui::SetNextWindowBgAlpha(0.55f);
@@ -33,7 +33,7 @@ namespace rmmr::wrapper::ui {
                 stats = not stats;
             if (pressed)
                 ImGui::PopStyleColor(2);
-            product.contributeViewMenu();
+            product.contributeViewMenu(world);
         }
         ImGui::End();
         ImGui::PopStyleVar(2);
@@ -98,7 +98,7 @@ namespace rmmr::wrapper::ui {
     }
 
     void State::draw(Writing world, Product& product) {
-        drawViewToolbar(product);
+        drawViewToolbar(world, product);
         drawStatsWindow(world);
         product.drawUi(world);
     }

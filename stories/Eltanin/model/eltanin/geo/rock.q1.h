@@ -23,6 +23,15 @@ namespace eltanin::geo {
         vector<Volume> children;
     };
 
+    struct Recipe {
+        Mix mix;
+        float spotMeters;
+        float spotContrast;
+        float diameterMeters;
+        float lump;
+        integer seed;
+    };
+
     struct Rock : Entity<Rock> {
         struct Quantum {
             Custody<phys::Atomic> body;
@@ -30,7 +39,8 @@ namespace eltanin::geo {
             Volume volume;
         };
         struct Actions : BaseActions {
-            static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, Volume) -> Id;
+            static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, Volume, vec3, vec3) -> Id;
+            static auto spawnGenerated(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, Recipe, vec3, vec3) -> Id;
             static auto spawnIceSphere(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
             static auto spawnPaletteTorus(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
         };

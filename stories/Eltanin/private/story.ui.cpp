@@ -13,6 +13,7 @@
 
 #include <base/logging.h>
 #include <eltanin/mech/blueprint.q1.h>
+#include <eltanin/world.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -115,7 +116,11 @@ namespace eltanin {
 
     } // namespace
 
-    void Game::contributeViewMenu() {
+    void Game::contributeViewMenu(Writing world) {
+        bool paused = with<World>::get_global(world).paused;
+        rmmr::wrapper::ui::viewToggle("Pause", &paused);
+        if (paused != with<World>::get_global(world).paused)
+            with<World>::modify_global(world)->paused = paused;
         togglePanel("Camera", ui.camera);
         togglePanel("Lighting", ui.lighting);
         togglePanel("Materials", ui.materials);

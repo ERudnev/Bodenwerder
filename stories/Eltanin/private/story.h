@@ -57,7 +57,7 @@ namespace eltanin {
         void prepareAssets(Writing) override;
         void setup(Writing, rmmr::system::Window::Id) override;
         void onFrame(establish::Realm&, int64 dt_us) override;
-        void contributeViewMenu() override;
+        void contributeViewMenu(Writing) override;
         void drawUi(Writing) override;
         auto activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> override;
         auto overlaySelection() const -> std::span<const rmmr::renderer::Integer32> override;
