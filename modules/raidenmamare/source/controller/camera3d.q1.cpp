@@ -5,9 +5,6 @@
 
 #include <GLFW/glfw3.h>
 
-#include <algorithm>
-#include <cmath>
-
 #include <glm/gtc/quaternion.hpp>
 #include <glm/glm.hpp>
 
@@ -21,87 +18,68 @@ namespace rmmr::controller {
 
         constexpr float k_mouse_sens_deg_per_pixel = 0.12f;
         constexpr float k_mouse_yaw_scale_x = -1.0f;
-        constexpr float k_pitch_min_deg = -89.0f;
-        constexpr float k_pitch_max_deg = 89.0f;
         constexpr float k_move_units_per_sec = 30.0f;
-
-        const glm::vec3 k_world_up{0.0f, 1.0f, 0.0f};
-
-        void apply_mouse_look(glm::quat& rotation, index2 delta_mouse) {
-            if (delta_mouse.x == 0 && delta_mouse.y == 0) return;
-
-            const float sens_rad = glm::radians(k_mouse_sens_deg_per_pixel);
-            const float yaw = k_mouse_yaw_scale_x * static_cast<float>(delta_mouse.x) * sens_rad;
-            const float pitch_delta = -static_cast<float>(delta_mouse.y) * sens_rad;
-
-            rotation = glm::normalize(glm::angleAxis(yaw, k_world_up) * rotation);
-
-            const glm::vec3 forward = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
-            const float pitch_now = std::asin(std::clamp(forward.y, -1.0f, 1.0f));
-            const float pitch = std::clamp(pitch_now + pitch_delta, glm::radians(k_pitch_min_deg), glm::radians(k_pitch_max_deg)) - pitch_now;
-            if (std::abs(pitch) <= 1e-8f) return;
-
-            const glm::vec3 right = glm::normalize(rotation * glm::vec3(1.0f, 0.0f, 0.0f));
-            rotation = glm::normalize(glm::angleAxis(pitch, right) * rotation);
-        }
+        constexpr float k_roll_deg_per_sec = 90.0f;
 
         auto key_down(const vector<bool>& keys, int key) -> bool {
             return static_cast<std::size_t>(key) < keys.size() && keys[static_cast<std::size_t>(key)];
-        }
-
-        void apply_arrow_move(scene::Node::Quantum& node, glm::quat rotation, const vector<bool>& keys, seconds delta_sec) {
-            if (delta_sec <= 0.0) {
-                return;
-            }
-
-            rotation = glm::normalize(rotation);
-            const glm::vec3 forward_cam = glm::normalize(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
-            const glm::vec3 up_cam = glm::normalize(rotation * glm::vec3(0.0f, 1.0f, 0.0f));
-
-            glm::vec3 forward_xz = forward_cam;
-            forward_xz.y = 0.0f;
-            if (glm::dot(forward_xz, forward_xz) < 1e-10f) {
-                forward_xz = glm::vec3(0.0f, 0.0f, -1.0f);
-            } else {
-                forward_xz = glm::normalize(forward_xz);
-            }
-
-            const glm::vec3 right_xz = glm::normalize(glm::cross(forward_xz, k_world_up));
-            const float boost = (key_down(keys, GLFW_KEY_LEFT_SHIFT) || key_down(keys, GLFW_KEY_RIGHT_SHIFT)) ? 10.0f : 1.0f;
-            const float step = k_move_units_per_sec * boost * static_cast<float>(delta_sec);
-            glm::vec3 delta{0.0f};
-
-            if (key_down(keys, GLFW_KEY_UP)) delta += forward_cam * step;
-            if (key_down(keys, GLFW_KEY_DOWN)) delta -= forward_cam * step;
-            if (key_down(keys, GLFW_KEY_LEFT)) delta -= right_xz * step;
-            if (key_down(keys, GLFW_KEY_RIGHT)) delta += right_xz * step;
-            if (key_down(keys, GLFW_KEY_PAGE_UP)) delta += up_cam * step;
-            if (key_down(keys, GLFW_KEY_PAGE_DOWN)) delta -= up_cam * step;
-
-            if (glm::dot(delta, delta) <= 0.0f) {
-                return;
-            }
-
-            node.pose.position.x += delta.x;
-            node.pose.position.y += delta.y;
-            node.pose.position.z += delta.z;
         }
 
         auto button_down(const system::Window::InputState& input, int button) -> bool {
             return static_cast<std::size_t>(button) < input.buttons.size() && input.buttons[static_cast<std::size_t>(button)];
         }
 
-        void drive(Writing context, Camera3d::Id self, system::Window::Id window, seconds delta_sec) {
+        auto keyBoost(const vector<bool>& keys) -> float {
+            return (key_down(keys, GLFW_KEY_LEFT_SHIFT) || key_down(keys, GLFW_KEY_RIGHT_SHIFT)) ? 10.0f : 1.0f;
+        }
+
+        void applyMouseLook(glm::quat& rotation, index2 deltaMouse) {
+            if (deltaMouse.x == 0 && deltaMouse.y == 0) return;
+            const float sensRad = glm::radians(k_mouse_sens_deg_per_pixel);
+            const float yaw = k_mouse_yaw_scale_x * static_cast<float>(deltaMouse.x) * sensRad;
+            const float pitch = -static_cast<float>(deltaMouse.y) * sensRad;
+            rotation = glm::normalize(rotation * glm::angleAxis(pitch, glm::vec3{1.0f, 0.0f, 0.0f}) * glm::angleAxis(yaw, glm::vec3{0.0f, 1.0f, 0.0f}));
+        }
+
+        void applyRoll(glm::quat& rotation, const vector<bool>& keys, seconds deltaSec) {
+            if (deltaSec <= 0.0) return;
+            float roll = 0.0f;
+            if (key_down(keys, GLFW_KEY_Q)) roll += 1.0f;
+            if (key_down(keys, GLFW_KEY_E)) roll -= 1.0f;
+            if (roll == 0.0f) return;
+            const float angle = roll * glm::radians(k_roll_deg_per_sec) * keyBoost(keys) * static_cast<float>(deltaSec);
+            rotation = glm::normalize(rotation * glm::angleAxis(angle, glm::vec3{0.0f, 0.0f, 1.0f}));
+        }
+
+        void applyMove(scene::Node::Quantum& node, glm::quat rotation, const vector<bool>& keys, seconds deltaSec) {
+            if (deltaSec <= 0.0) return;
+            rotation = glm::normalize(rotation);
+            const glm::vec3 forward = glm::normalize(rotation * glm::vec3{0.0f, 0.0f, -1.0f});
+            const glm::vec3 right = glm::normalize(rotation * glm::vec3{1.0f, 0.0f, 0.0f});
+            const glm::vec3 up = glm::normalize(rotation * glm::vec3{0.0f, 1.0f, 0.0f});
+            const float step = k_move_units_per_sec * keyBoost(keys) * static_cast<float>(deltaSec);
+            glm::vec3 delta{0.0f};
+            if (key_down(keys, GLFW_KEY_W)) delta += forward * step;
+            if (key_down(keys, GLFW_KEY_S)) delta -= forward * step;
+            if (key_down(keys, GLFW_KEY_A)) delta -= right * step;
+            if (key_down(keys, GLFW_KEY_D)) delta += right * step;
+            if (key_down(keys, GLFW_KEY_R)) delta += up * step;
+            if (key_down(keys, GLFW_KEY_F)) delta -= up * step;
+            if (glm::dot(delta, delta) <= 0.0f) return;
+            node.pose.position.x += delta.x;
+            node.pose.position.y += delta.y;
+            node.pose.position.z += delta.z;
+        }
+
+        void drive(Writing context, Camera3d::Id self, system::Window::Id window, seconds deltaSec) {
             const auto& input = with<system::Window>::get(context, window);
             auto node = with<scene::Node>::modify(context, self);
             glm::quat rotation = glm::normalize(node->pose.rotation);
-
-            apply_arrow_move(*node, rotation, input.current.keys, delta_sec);
-
-            if (button_down(input.current, GLFW_MOUSE_BUTTON_RIGHT)) {
-                apply_mouse_look(rotation, with<system::Window>::mouseShift(context, window));
-                node->pose.rotation = rotation;
-            }
+            applyRoll(rotation, input.current.keys, deltaSec);
+            if (button_down(input.current, GLFW_MOUSE_BUTTON_RIGHT))
+                applyMouseLook(rotation, with<system::Window>::mouseShift(context, window));
+            node->pose.rotation = rotation;
+            applyMove(*node, rotation, input.current.keys, deltaSec);
         }
 
     } // namespace

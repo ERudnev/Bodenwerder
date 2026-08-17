@@ -33,6 +33,7 @@ namespace eltanin {
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
             base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
             base::maybe<rmmr::resource::material::Asset::Id> rockMaterial;
+            base::maybe<rmmr::resource::material::Asset::Id> boulderMaterial;
             base::maybe<rmmr::resource::texture3array::Asset::Id> crust;
             base::maybe<rmmr::resource::texpack::Pack::Id> sprites;
             base::maybe<rmmr::resource::texpack::Pack::Id> mech;

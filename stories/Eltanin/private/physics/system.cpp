@@ -1,5 +1,7 @@
 #include "physics/system.h"
 
+#include <eltanin/geo/boulder.q1.h>
+
 #include <base/logging.h>
 
 #include <algorithm>
@@ -32,6 +34,7 @@ namespace eltanin::phys {
 
     void System::constraintPass(Stewarding context) {
         Atomic::Actions::satisfy(context);
+        Clast::Actions::satisfy(context);
         strong::Nail::Actions::satisfy(context);
         strong::Gluon::Actions::satisfy(context);
     }
@@ -43,6 +46,7 @@ namespace eltanin::phys {
         for (int pass = 0; pass < Settings::constraintPasses; ++pass) {
             constraintPass(context);
         }
+        ::eltanin::geo::Boulder::Actions::syncPose(context);
     }
 
     void System::step(establish::Realm& world, int64 dt_us) {

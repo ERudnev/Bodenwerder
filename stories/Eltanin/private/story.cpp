@@ -1,8 +1,10 @@
 #include "story.h"
 
 #include <eltanin/entities/block.q1.h>
+#include <eltanin/geo/boulder.q1.h>
 #include <eltanin/geo/rock.q1.h>
 #include <eltanin/physics/atomic.q1.h>
+#include <eltanin/physics/clast.q1.h>
 #include <eltanin/physics/particle.q1.h>
 #include <eltanin/physics/strong.q1.h>
 #include <eltanin/mech/blueprint.q1.h>
@@ -49,10 +51,12 @@ namespace eltanin {
             ask::schema::aspect<World>(),
             ask::schema::aspect<phys::Particle>(),
             ask::schema::aspect<phys::Atomic>(),
+            ask::schema::aspect<phys::Clast>(),
             ask::schema::aspect<phys::strong::Nail>(),
             ask::schema::aspect<phys::strong::Gluon>(),
             ask::schema::aspect<Block>(),
             ask::schema::aspect<geo::Rock>(),
+            ask::schema::aspect<geo::Boulder>(),
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<mech::Blueprint>(),
             ask::schema::aspect<mech::Mount>(),
@@ -146,6 +150,31 @@ namespace eltanin {
                 .techniques = {
                     {renderer::Pass::opaque, Material::Technique{
                         .program = with<Unit>::remember(context, rock_shader),
+                        .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}),
+                    }},
+                    {renderer::Pass::shadow, Material::Technique{
+                        .program = shadowTechnique->second.program,
+                        .uniforms = {},
+                    }},
+                },
+                .nearest = false,
+                .blend = renderer::BlendMode::inherit,
+            });
+
+        const auto boulder_shader = with<Assets>::add_shader_loader(
+            context,
+            Name::from("Eltanin", "boulder"),
+            item<shader::Loader>{
+                .vertex = "shaders/boulder.vert.glsl",
+                .fragment = "shaders/boulder.frag.glsl",
+            });
+        assets.boulderMaterial = with<Assets>::add_material(
+            context,
+            Name::from("Eltanin", "boulder"),
+            Material::Quantum{
+                .techniques = {
+                    {renderer::Pass::opaque, Material::Technique{
+                        .program = with<Unit>::remember(context, boulder_shader),
                         .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}),
                     }},
                     {renderer::Pass::shadow, Material::Technique{
@@ -310,6 +339,24 @@ namespace eltanin {
             };
             const vec3 omega{0.35f * gauss(rng), 0.55f * gauss(rng), 0.35f * gauss(rng)};
             with<geo::Rock>::spawnGenerated(context, root, window, pose, recipe, circularVelocity(pose.position), omega);
+        }
+
+        std::mt19937 debrisRng{20260818};
+        for (int index = 0; index < 220; ++index) {
+            const float diameter = 0.5f + 3.5f * unit(debrisRng);
+            const float period = periodMin * std::pow(periodMax / periodMin, unit(debrisRng));
+            const float orbitKepler = std::cbrt(phys::Settings::centralMu * period * period / (twoPi * twoPi));
+            const float orbit = glm::max(orbitKepler, diameter * 0.55f + 40.0f);
+            const float azim = (goldenAzim * static_cast<float>(index) + 41.0f + 6.0f * gauss(debrisRng)) * std::numbers::pi_v<float> / 180.0f;
+            const Pose pose = Pose::from(Pos{orbit * std::cos(azim), 0.0f, orbit * std::sin(azim)}, HPB{360.0f * unit(debrisRng), 30.0f * gauss(debrisRng), 360.0f * unit(debrisRng)});
+            const geo::Boulder::Recipe recipe{
+                .mineral = static_cast<integer>(index % 16),
+                .diameterMeters = diameter,
+                .lump = glm::clamp(0.40f + 0.25f * gauss(debrisRng), 0.15f, 1.0f),
+                .seed = 4100 + index,
+            };
+            const vec3 omega{0.55f * gauss(debrisRng), 0.75f * gauss(debrisRng), 0.55f * gauss(debrisRng)};
+            with<geo::Boulder>::spawn(context, root, window, pose, recipe, circularVelocity(pose.position), omega);
         }
 
         {

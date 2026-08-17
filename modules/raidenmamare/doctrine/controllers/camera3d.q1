@@ -11,4 +11,4 @@ namespace rmmr
       one
         >create()-> #
       all
-        !update(~system::Clock) // RMB look + arrows / PageUp/Down; Shift ×10 move
+        !update(~system::Clock) // RMB look in camera space; WASD+RF move; QE roll around view; Shift ×10

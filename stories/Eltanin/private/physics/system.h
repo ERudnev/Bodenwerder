@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eltanin/physics/atomic.q1.h>
+#include <eltanin/physics/clast.q1.h>
 #include <eltanin/physics/particle.q1.h>
 #include <eltanin/physics/strong.q1.h>
 
@@ -18,7 +19,7 @@ namespace eltanin::phys {
     // Central μ at origin (softened). Linear −Y kept in Settings but not applied.
     // One Dock per tick; hot mutation via Stewarding::direct<T>(); Nail/Gluon seppuku via Writing under Stewarding.
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
-    // Constraint wave: Atomic / Nail / Gluon `*satisfy(~Particle)` × constraintPasses.
+    // Constraint wave: Atomic / Clast / Nail / Gluon `*satisfy(~Particle)` × constraintPasses.
     struct Settings {
         static constexpr float gravity = 0.0f; // unused while central gravity is on
         static constexpr float centralMu = 70183.854f;
