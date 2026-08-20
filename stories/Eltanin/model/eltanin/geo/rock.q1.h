@@ -1,11 +1,13 @@
 #pragma once
 
-#include <eltanin/physics/atomic.q1.h>
+#include <eltanin/geo/minerals.q1.h>
+#include <eltanin/physics/rigid.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
 
+#include <base/maybe.h>
 #include <fQSM/api/interface.h>
 
 #include <cstdint>
@@ -23,27 +25,30 @@ namespace eltanin::geo {
         vector<Volume> children;
     };
 
-    struct Recipe {
-        Mix mix;
-        float spotMeters;
-        float spotContrast;
-        float diameterMeters;
-        float lump;
-        integer seed;
-    };
-
     struct Rock : Entity<Rock> {
+        struct GeneralizedRecipe {
+            Mix mix;
+            float radius;
+            float lump;
+            integer seed;
+            float spotMeters;
+            float spotContrast;
+
+            static auto homogenous(Mineral::Index) -> Mix;
+        };
         struct Quantum {
-            Custody<phys::Atomic> body;
+            Custody<phys::rigid::Crystal> body;
             Custody<rmmr::scene::actor::Mesh> actor;
-            Volume volume;
+            base::maybe<Volume> volume;
         };
         struct Actions : BaseActions {
             static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, Volume, vec3, vec3) -> Id;
-            static auto spawnGenerated(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, Recipe, vec3, vec3) -> Id;
+            static auto spawnGenerated(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, GeneralizedRecipe, vec3, vec3) -> Id;
             static auto spawnIceSphere(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
             static auto spawnPaletteTorus(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
             static auto spawnLavaBrick(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
+            static auto spawnIceBlob(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
+            static void radiate(Stewarding, float dt);
         };
         struct Internals;
         static const Behavior customAspectReactions();

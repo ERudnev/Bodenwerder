@@ -72,9 +72,9 @@ namespace eltanin::phys {
             .texpack = shapeTexpack,
         };
         const auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{edge, edge, edge});
-        for (const auto [atomic_id, atomic] : context->aspect<Atomic>().items()) {
-            state.actors.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, atomic.restored, resolved, appearance));
-            bodies.push_back(atomic_id);
+        for (const auto [crystalId, crystal] : context->aspect<rigid::Crystal>().items()) {
+            state.actors.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, crystal.restored.pose(), resolved, appearance));
+            bodies.push_back(crystalId);
         }
     }
 
@@ -100,9 +100,11 @@ namespace eltanin::phys {
             .texpack = {},
         };
         const auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{particleWorldScale, particleWorldScale, particleWorldScale});
-        for (const auto [particle_id, particle] : context->aspect<Particle>().items()) {
-            state.particles.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, rmmr::Pose::from(particle.current, HPB{0.0f, 0.0f, 0.0f}), resolved, appearance));
-            particleIds.push_back(particle_id);
+        for (const auto [crystalId, crystal] : context->aspect<rigid::Crystal>().items()) {
+            for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
+                state.particles.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, rmmr::Pose::from(crystal.particles[index].position, HPB{0.0f, 0.0f, 0.0f}), resolved, appearance));
+                particleRefs.push_back(ParticleRef{.crystal = crystalId, .index = index});
+            }
         }
     }
 
@@ -111,7 +113,7 @@ namespace eltanin::phys {
             destroy_actor(context, actor);
         }
         state.particles.clear();
-        particleIds.clear();
+        particleRefs.clear();
     }
 
     void Ui::syncColliders(Writing context) {
@@ -119,7 +121,7 @@ namespace eltanin::phys {
         while (slot < state.actors.size()) {
             const auto actor = state.actors[slot];
             const auto body = bodies[slot];
-            if (not with<Atomic>::exists(context, body) or not with<rmmr::scene::actor::Mesh>::exists(context, actor)) {
+            if (not with<rigid::Crystal>::exists(context, body) or not with<rmmr::scene::actor::Mesh>::exists(context, actor)) {
                 if (with<rmmr::scene::actor::Mesh>::exists(context, actor)) {
                     destroy_actor(context, actor);
                 }
@@ -127,7 +129,7 @@ namespace eltanin::phys {
                 bodies.erase(bodies.begin() + static_cast<std::ptrdiff_t>(slot));
                 continue;
             }
-            with<rmmr::scene::Node>::modify(context, actor)->pose = with<Atomic>::get(context, body).restored;
+            with<rmmr::scene::Node>::modify(context, actor)->pose = with<rigid::Crystal>::get(context, body).restored.pose();
             ++slot;
         }
     }
@@ -136,18 +138,20 @@ namespace eltanin::phys {
         std::size_t slot = 0;
         while (slot < state.particles.size()) {
             const auto actor = state.particles[slot];
-            const auto particle_id = particleIds[slot];
-            if (not with<Particle>::exists(context, particle_id) or not with<rmmr::scene::actor::Mesh>::exists(context, actor)) {
+            const ParticleRef particleRef = particleRefs[slot];
+            const bool missingCrystal = not with<rigid::Crystal>::exists(context, particleRef.crystal);
+            const bool missingParticle = not missingCrystal and particleRef.index >= with<rigid::Crystal>::get(context, particleRef.crystal).particles.size();
+            if (missingCrystal or missingParticle or not with<rmmr::scene::actor::Mesh>::exists(context, actor)) {
                 if (with<rmmr::scene::actor::Mesh>::exists(context, actor)) {
                     destroy_actor(context, actor);
                 }
                 state.particles.erase(state.particles.begin() + static_cast<std::ptrdiff_t>(slot));
-                particleIds.erase(particleIds.begin() + static_cast<std::ptrdiff_t>(slot));
+                particleRefs.erase(particleRefs.begin() + static_cast<std::ptrdiff_t>(slot));
                 continue;
             }
-            const auto& particle = with<Particle>::get(context, particle_id);
+            const Particle& particle = with<rigid::Crystal>::get(context, particleRef.crystal).particles[particleRef.index];
             auto node = with<rmmr::scene::Node>::modify(context, actor);
-            node->pose.position = particle.current;
+            node->pose.position = particle.position;
             node->pose.rotation = quat{1.0f, 0.0f, 0.0f, 0.0f};
             ++slot;
         }
@@ -176,7 +180,7 @@ namespace eltanin::phys {
                 };
                 int selected = 4;
                 for (int i = 0; i < 9; ++i) {
-                    if (system.state.time_scale == scales[i]) {
+                    if (system.state.timeScale == scales[i]) {
                         selected = i;
                     }
                 }
@@ -185,7 +189,7 @@ namespace eltanin::phys {
                         ImGui::SameLine();
                     }
                     if (ImGui::RadioButton(labels[i], selected == i)) {
-                        system.state.time_scale = scales[i];
+                        system.state.timeScale = scales[i];
                     }
                 }
 

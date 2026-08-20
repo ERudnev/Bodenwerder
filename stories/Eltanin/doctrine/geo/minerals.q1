@@ -4,11 +4,13 @@ namespace eltanin
     // Table order is the 16-channel basis (nibble index in a voxel). Palettes inside a channel are Rock's business.
     // Wider than OpenGL or physics need today.
     struct Mineral
+      using Index as integer
       one
         name: string
         density: float // g/cm3
         scale: float // object-space 3D texture scale
-        albedo: vec3
+        albedo: vec3 // symbolic / UI / crust basis; keep matched to the 3D texture
+        sinter: vec3 // glaze at cohesion 1; texture grain is kept
         roughness: float
         metalness: float
         hardness: float

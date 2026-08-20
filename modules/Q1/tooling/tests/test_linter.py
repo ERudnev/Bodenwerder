@@ -214,3 +214,73 @@ namespace Demo
     assert error is None
     assert ast is not None
     assert diagnostics == []
+
+
+def test_lint_struct_inheritance_is_clean() -> None:
+    text = """
+namespace Demo
+  struct Simple
+    fieldA: integer
+  struct Complex of Simple
+    fieldExtended: string
+  using Inherited as ~Complex::fieldA
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    assert diagnostics == []
+
+
+def test_lint_struct_unknown_base_warns() -> None:
+    text = """
+namespace Demo
+  struct Complex of Missing
+    fieldExtended: string
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    codes = {diag.code for diag in diagnostics}
+    assert "unknown-struct-base" in codes
+
+
+def test_lint_struct_non_struct_base_warns() -> None:
+    text = """
+namespace Demo
+  using Simple as integer
+  struct Complex of Simple
+    fieldExtended: string
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    codes = {diag.code for diag in diagnostics}
+    assert "non-struct-base" in codes
+
+
+def test_lint_struct_inherits_self_warns() -> None:
+    text = """
+namespace Demo
+  struct Loop of Loop
+    x: integer
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    codes = {diag.code for diag in diagnostics}
+    assert "struct-inherits-self" in codes
+
+
+def test_lint_nested_struct_inheritance_is_clean() -> None:
+    text = """
+namespace Demo
+  struct Uniform
+    struct Binding
+      id: integer
+    struct Extra of Binding
+      extra: integer
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    assert diagnostics == []

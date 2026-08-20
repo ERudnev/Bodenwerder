@@ -178,6 +178,24 @@ The same inline form is accepted in aspect bodies (`one hp: integer` as a one-me
 
 Golden example: `MultistyleFieldsSyntax` in `elementary.q1`. Product example: `eltanin::geo::Mineral`.
 
+### 16. Value-struct inheritance `struct Derived of Base`
+
+Form:
+
+- `struct Simple`
+- `struct Complex of Simple`
+
+Meaning:
+
+- `of` on a value `struct` is single inheritance, not aspect ownership (`attribute A of Host`)
+- `Base` is a qualified struct name (`Simple` or `ns::Simple`)
+- C++ projection: `struct Complex : Simple { ... };` — public inheritance, derived fields only in the derived body
+- AST: `StructDecl.base` is `null` without `of`, otherwise the base name string
+
+The linter warns `unknown-struct-base` / `non-struct-base` / `struct-inherits-self`. Nested `struct Extra of Binding` resolves `Binding` among sibling nested structs. `~Derived::inheritedField` walks the base chain for namespace-level structs.
+
+Golden example: `Simple` / `Complex of Simple` in `elementary.q1`.
+
 ## Open questions
 
 1. Should future tooling also accept the older vocabulary `element` / `table` / `static`, or should that stay outside this tooling folder until a real migration is needed?

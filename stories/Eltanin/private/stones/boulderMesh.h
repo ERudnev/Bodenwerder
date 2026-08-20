@@ -1,10 +1,10 @@
 #pragma once
 
-#include <eltanin/geo/boulder.q1.h>
+#include <eltanin/geo/rock.q1.h>
 #include <rmmr/resources/builders/geometryGenerator.h>
 
 namespace eltanin::geo {
 
-    auto meshBoulder(const Boulder::Recipe&) -> rmmr::resource::builders::geometry::CpuPresentation;
+    auto meshDebris(const Rock::GeneralizedRecipe&) -> rmmr::resource::builders::geometry::CpuPresentation;
 
 }

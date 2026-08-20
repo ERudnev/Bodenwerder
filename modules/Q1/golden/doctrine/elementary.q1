@@ -48,6 +48,12 @@ namespace Q1_iQSM
           staticMutable4: integer
         always myTable: umap<string, integer> = @external(Mayers)
 
+      struct Simple
+        fieldA: integer
+
+      struct Complex of Simple
+        fieldExtended: string
+
 
     namespace Namespaces
       namespace Some

@@ -653,3 +653,81 @@ namespace Demo
     assert rock["blocks"][1]["members"][0]["kind"] == "ConstField"
     assert rock["blocks"][1]["members"][0]["value"] == 9
 
+
+def test_parse_struct_inheritance() -> None:
+    text = """
+namespace Demo
+  struct Simple
+    fieldA: integer
+  struct Complex of Simple
+    fieldExtended: string
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    decls = ast["declarations"][0]["declarations"]
+    simple = decls[0]
+    complex = decls[1]
+    assert simple["kind"] == "StructDecl"
+    assert simple["name"] == "Simple"
+    assert simple["base"] is None
+    assert simple["members"][0]["name"] == "fieldA"
+    assert complex["kind"] == "StructDecl"
+    assert complex["name"] == "Complex"
+    assert complex["base"] == "Simple"
+    assert complex["members"][0]["name"] == "fieldExtended"
+
+
+def test_parse_struct_inheritance_qualified_base() -> None:
+    text = """
+namespace Demo
+  namespace Other
+    struct Simple
+      fieldA: integer
+  struct Complex of Other::Simple
+    fieldExtended: string
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    complex = ast["declarations"][0]["declarations"][1]
+    assert complex["name"] == "Complex"
+    assert complex["base"] == "Other::Simple"
+
+
+def test_parse_nested_struct_inheritance() -> None:
+    text = """
+namespace Demo
+  struct Uniform
+    struct Binding
+      id: integer
+    struct Extra of Binding
+      extra: integer
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    uniform = ast["declarations"][0]["declarations"][0]
+    binding = uniform["members"][0]
+    extra = uniform["members"][1]
+    assert binding["name"] == "Binding"
+    assert binding["base"] is None
+    assert extra["name"] == "Extra"
+    assert extra["base"] == "Binding"
+
+
+def test_parse_struct_inheritance_rejects_malformed_header() -> None:
+    text = """
+namespace Demo
+  struct Complex of
+    fieldExtended: string
+"""
+    try:
+        q1_parser.parse_text(text, source="<snippet>")
+        raise AssertionError("expected ParseError")
+    except q1_parser.ParseError as exc:
+        assert "Malformed struct" in str(exc)
+
+
+def test_golden_elementary_struct_inheritance() -> None:
+    ast = q1_parser.parse_file(ELEMENTARY)
+    typization = ast["declarations"][0]["declarations"][0]["declarations"][0]
+    by_name = {decl["name"]: decl for decl in typization["declarations"] if decl.get("kind") == "StructDecl"}
+    assert by_name["Simple"]["base"] is None
+    assert by_name["Complex"]["base"] == "Simple"
+    assert by_name["Complex"]["members"][0]["name"] == "fieldExtended"
+

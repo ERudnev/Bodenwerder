@@ -271,6 +271,43 @@ namespace tests {
         base::message(std::format("horn_grid: OK {} orientations", index));
     }
 
+    void hornSpawnPoseInvariant() {
+        const vector<vec3> locals{
+            vec3{-3.0f, 1.0f, 0.5f},
+            vec3{2.0f, -1.5f, 4.0f},
+            vec3{0.25f, 3.0f, -2.0f},
+            vec3{5.0f, 0.75f, 1.0f},
+        };
+        const vector<float> masses{1.0f, 2.0f, 4.0f, 3.0f};
+        vec3 restCom{0.0f, 0.0f, 0.0f};
+        float massSum = 0.0f;
+        for (std::size_t index = 0; index < locals.size(); ++index) {
+            restCom += locals[index] * masses[index];
+            massSum += masses[index];
+        }
+        restCom /= massSum;
+
+        vector<vec3> restCentered;
+        vector<vec3> world;
+        const vec3 origin{37.0f, -11.0f, 23.0f};
+        const quat known = glm::normalize(quat{0.7f, -0.2f, 0.4f, 0.5f});
+        // shape stays object-local (`locals`); Horn sees only q = shape − restCOM.
+        for (const vec3 local : locals) {
+            restCentered.push_back(local - restCom);
+            world.push_back(origin + known * local);
+        }
+        const vector<vec3> worldCentered = center(world, masses);
+        vec3 worldCom{0.0f, 0.0f, 0.0f};
+        for (std::size_t index = 0; index < world.size(); ++index)
+            worldCom += world[index] * masses[index];
+        worldCom /= massSum;
+
+        const quat restored = orientation(restCentered, worldCentered, masses);
+        for (std::size_t index = 0; index < world.size(); ++index)
+            EXPECT_TRUE(glm::length(worldCom + restored * restCentered[index] - world[index]) < 1.0e-4f);
+        EXPECT_TRUE(glm::length(worldCom - restored * restCom - origin) < 1.0e-4f);
+    }
+
 }
 
 #define HORN_TESTS(X) \
@@ -283,6 +320,7 @@ namespace tests {
     X(horn_weighted_masses) \
     X(horn_sweep_random_and_smooth) \
     X(horn_sweep_nested_grid) \
+    X(hornSpawnPoseInvariant) \
     // end
 
 BASETEST_FORWARD_DECLARE_TESTS(HORN_TESTS)

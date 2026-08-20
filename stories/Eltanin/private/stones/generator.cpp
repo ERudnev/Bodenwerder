@@ -145,7 +145,7 @@ namespace eltanin::geo {
             return chosen;
         }
 
-        auto mixAt(vec3 point, const Recipe& recipe) -> MixWeights {
+        auto mixAt(vec3 point, const Rock::GeneralizedRecipe& recipe) -> MixWeights {
             const MixWeights mean = unpackMix(recipe.mix);
             float total = 0.0f;
             int present = 0;
@@ -159,9 +159,9 @@ namespace eltanin::geo {
             if (present <= 1 or contrast <= 0.02f or total <= 0.0f)
                 return mean;
 
-            const float radius = recipe.diameterMeters * 0.5f;
-            const float patch = glm::clamp(recipe.spotMeters, mech::space::local::edge2meters, glm::max(recipe.diameterMeters * 0.5f, mech::space::local::edge2meters));
-            const int siteCount = glm::clamp(static_cast<int>(std::lround(recipe.diameterMeters / patch)), 4, maxMixSites);
+            const float radius = recipe.radius;
+            const float patch = glm::clamp(recipe.spotMeters, mech::space::local::edge2meters, glm::max(recipe.radius, mech::space::local::edge2meters));
+            const int siteCount = glm::clamp(static_cast<int>(std::lround((recipe.radius * 2.0f) / patch)), 4, maxMixSites);
             const float warp = patch * 0.28f;
             const vec3 query{
                 point.x + warp * (2.0f * fbm(point.x / patch, point.y / patch, point.z / patch, static_cast<int>(recipe.seed) + 41) - 1.0f),
@@ -277,7 +277,7 @@ namespace eltanin::geo {
             return vec3{static_cast<float>(origin.x) + half, static_cast<float>(origin.y) + half, static_cast<float>(origin.z) + half} * mech::space::local::edge2meters;
         }
 
-        auto makeNode(index3 origin, integer scale, const Recipe& recipe, float radius, float amp, float rMin, float rMax) -> optional<BuildNode> {
+        auto makeNode(index3 origin, integer scale, const Rock::GeneralizedRecipe& recipe, float radius, float amp, float rMin, float rMax) -> optional<BuildNode> {
             const Occupancy occ = occupancy(origin, scale, rMin, rMax);
             if (occ == Occupancy::vacuum)
                 return {};
@@ -328,8 +328,8 @@ namespace eltanin::geo {
 
     } // namespace
 
-    auto generateRockVolume(const Recipe& recipe) -> Volume {
-        const float radius = recipe.diameterMeters * 0.5f;
+    auto generateRockVolume(const Rock::GeneralizedRecipe& recipe) -> Volume {
+        const float radius = recipe.radius;
         const float amp = glm::clamp(recipe.lump, 0.0f, 1.0f) * lumpAmp;
         const vec3 axes = ellipsoidAxes(static_cast<int>(recipe.seed));
         const float axisMax = glm::max(axes.x, glm::max(axes.y, axes.z));
@@ -350,8 +350,8 @@ namespace eltanin::geo {
         return Volume{.origin = origin, .scale = scale, .mix = 0, .children = {}};
     }
 
-    auto rockSdf(const Recipe& recipe, vec3 point) -> float {
-        const float radius = recipe.diameterMeters * 0.5f;
+    auto rockSdf(const Rock::GeneralizedRecipe& recipe, vec3 point) -> float {
+        const float radius = recipe.radius;
         const float amp = glm::clamp(recipe.lump, 0.0f, 1.0f) * lumpAmp;
         return glm::length(point) - radiusAt(point, radius, amp, recipe.seed);
     }
@@ -448,6 +448,29 @@ namespace eltanin::geo {
             const float u = glm::clamp((point.x - origin) / span, 0.0f, 1.0f);
             const float w = glm::clamp((point.z - origin) / span, 0.0f, 1.0f);
             cpu.heat[vertex] = vec2{tMin * std::exp(u * logSpan), w};
+        }
+    }
+
+    auto generateIceBlobVolume() -> Volume {
+        const Rock::GeneralizedRecipe recipe{
+            .mix = Rock::GeneralizedRecipe::homogenous(0),
+            .radius = 25.0f,
+            .lump = 0.82f,
+            .seed = 20260818,
+            .spotMeters = 12.0f,
+            .spotContrast = 0.0f,
+        };
+        return generateRockVolume(recipe);
+    }
+
+    auto applyIceBlobSinter(rmmr::resource::builders::geometry::CpuPresentation& cpu) -> void {
+        cpu.heat.resize(cpu.positions.size());
+        for (std::size_t vertex = 0; vertex < cpu.positions.size(); ++vertex) {
+            const vec3 point = cpu.positions[vertex];
+            const float noise = 0.45f * std::sin(glm::dot(point, vec3{0.18f, 0.11f, 0.14f})) + 0.35f * std::sin(glm::dot(point, vec3{0.31f, 0.22f, 0.09f}) + 1.3f) + 0.20f * std::sin(glm::dot(point, vec3{0.55f, 0.17f, 0.41f}) + 2.1f);
+            const float unit = glm::clamp(0.5f + 0.5f * noise, 0.0f, 1.0f);
+            const float patch = glm::smoothstep(0.62f, 0.88f, unit);
+            cpu.heat[vertex] = vec2{80.0f, glm::mix(0.08f, 1.0f, patch)};
         }
     }
 

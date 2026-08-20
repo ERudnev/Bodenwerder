@@ -2,8 +2,7 @@
 
 #include "physics/system.h"
 
-#include <eltanin/physics/atomic.q1.h>
-#include <eltanin/physics/particle.q1.h>
+#include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/texpack.q1.h>
@@ -15,6 +14,10 @@
 namespace eltanin::phys {
 
     struct Ui {
+        struct ParticleRef {
+            rigid::Crystal::Id crystal;
+            std::size_t index;
+        };
         struct State {
             vector<rmmr::scene::actor::Mesh::Id> actors;
             vector<rmmr::scene::actor::Mesh::Id> particles;
@@ -42,8 +45,8 @@ namespace eltanin::phys {
         bool prevShowColliders;
         bool prevShowParticles;
 
-        vector<Atomic::Id> bodies;
-        vector<Particle::Id> particleIds;
+        vector<rigid::Crystal::Id> bodies;
+        vector<ParticleRef> particleRefs;
 
         void enableColliders(Writing);
         void disableColliders(Writing);

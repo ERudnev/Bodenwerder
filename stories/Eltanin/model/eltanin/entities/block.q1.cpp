@@ -1,5 +1,4 @@
 #include <eltanin/entities/block.q1.h>
-#include <eltanin/physics/particle.q1.h>
 #include <rmmr/scene/node.q1.h>
 
 #include <base/logging.h>
@@ -9,7 +8,7 @@ namespace eltanin {
 
     namespace {
 
-        auto locals_from_corner_indices(const vector<mech::cube::Corner>& indices) -> vector<vec3> {
+        auto localsFromCornerIndices(const vector<mech::cube::Corner>& indices) -> vector<vec3> {
             vector<vec3> locals;
             locals.reserve(indices.size());
             for (const mech::cube::Corner corner : indices) {
@@ -23,34 +22,33 @@ namespace eltanin {
                 return context.refuse("eltanin::Block::spawn: rest locals empty");
             }
 
-            vector<phys::Particle::Id> ids;
-            ids.reserve(locals.size());
-
-            vec3 rest_com{0.0f, 0.0f, 0.0f};
-            float mass_sum = 0.0f;
+            vec3 restCom{0.0f, 0.0f, 0.0f};
+            float massSum = 0.0f;
             for (const auto& local : locals) {
                 constexpr float mass = 1.0f;
-                const vec3 world = pose.position + pose.rotation * local;
-                ids.push_back(with<phys::Particle>::create(context, phys::Particle::Quantum{.current = world, .prev = world, .mass = mass}));
-                rest_com += local * mass;
-                mass_sum += mass;
+                restCom += local * mass;
+                massSum += mass;
             }
-            rest_com /= mass_sum;
+            restCom /= massSum;
 
-            vector<vec3> rest_centered;
-            rest_centered.reserve(locals.size());
+            vector<phys::Particle> particles;
+            particles.reserve(locals.size());
+            vector<vec3> shape;
+            shape.reserve(locals.size());
             for (const auto& local : locals) {
-                rest_centered.push_back(local - rest_com);
+                const vec3 world = pose.position + pose.rotation * local;
+                particles.push_back(phys::Particle{phys::Matter{.position = world, .mass = 1.0f, .temperature = 0.0f, .cohesion = 1.0f}, world});
+                shape.push_back(local);
             }
 
-            const auto body = with<phys::Atomic>::create(context, phys::Atomic::Quantum{
-                .particles = std::move(ids),
-                .rest = phys::Atomic::Rest{
-                    .centered = std::move(rest_centered),
-                    .com = rest_com,
-                },
-                .restored = pose,
+            const phys::Body restored = phys::rigid::restoredBody(pose, particles, shape);
+            const auto body = with<phys::rigid::Crystal>::create(context, phys::rigid::Crystal::Quantum{
+                .particles = std::move(particles),
+                .shape = std::move(shape),
+                .com = restCom,
+                .restored = restored,
             });
+            with<phys::rigid::Horned>::extend(context, body, phys::rigid::Horned::Quantum{});
             const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(actorQuantum), std::move(stateQuantum));
             return with<Block>::create(context, Block::Quantum{.body = body, .actor = actor});
         }
@@ -62,7 +60,7 @@ namespace eltanin {
         if (index >= mech::plate::perimeter.size()) {
             return context.refuse("eltanin::Block::spawnPlate: shape out of range");
         }
-        return spawnWithLocals(context, root, pose, locals_from_corner_indices(mech::plate::perimeter[index]), std::move(actorQuantum), std::move(stateQuantum));
+        return spawnWithLocals(context, root, pose, localsFromCornerIndices(mech::plate::perimeter[index]), std::move(actorQuantum), std::move(stateQuantum));
     }
 
     auto Block::Actions::spawnFrame(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::frame::shape shape, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Id {
@@ -70,7 +68,7 @@ namespace eltanin {
         if (index >= mech::frame::corners.size()) {
             return context.refuse("eltanin::Block::spawnFrame: shape out of range");
         }
-        return spawnWithLocals(context, root, pose, locals_from_corner_indices(mech::frame::corners[index]), std::move(actorQuantum), std::move(stateQuantum));
+        return spawnWithLocals(context, root, pose, localsFromCornerIndices(mech::frame::corners[index]), std::move(actorQuantum), std::move(stateQuantum));
     }
 
     auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::frame::shape shape, mech::Role role, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Id {
@@ -79,7 +77,7 @@ namespace eltanin {
         if (index >= mech::frame::corners.size()) {
             return context.refuse("eltanin::Block::spawnInner: shape out of range");
         }
-        return spawnWithLocals(context, root, pose, locals_from_corner_indices(mech::frame::corners[index]), std::move(actorQuantum), std::move(stateQuantum));
+        return spawnWithLocals(context, root, pose, localsFromCornerIndices(mech::frame::corners[index]), std::move(actorQuantum), std::move(stateQuantum));
     }
 
     struct Block::Internals : Block::DefaultInternals {
@@ -90,17 +88,18 @@ namespace eltanin {
                 if (not body) { my::remove(context, id); continue; }
                 if (not my::ward(context, id, &Quantum::actor)) { my::remove(context, id); continue; }
                 if (not with<rmmr::scene::Node>::exists(context, block.actor)) { my::remove(context, id); continue; }
-                if (not body->restored.near(with<rmmr::scene::Node>::get(context, block.actor).pose))
-                    with<rmmr::scene::Node>::modify(context, block.actor)->pose = body->restored;
+                const rmmr::Pose pose = body->restored.pose();
+                if (not pose.near(with<rmmr::scene::Node>::get(context, block.actor).pose))
+                    with<rmmr::scene::Node>::modify(context, block.actor)->pose = pose;
             }
         }
     };
 
     auto Block::customAspectReactions() -> const Behavior {
         return {
-            reaction::structural::custody<Block, phys::Atomic, &Block::Quantum::body>{},
+            reaction::structural::custody<Block, phys::rigid::Crystal, &Block::Quantum::body>{},
             reaction::structural::custody<Block, rmmr::scene::actor::Mesh, &Block::Quantum::actor>{},
-            reaction::aspect_wide<Block, phys::Atomic>(&Block::Internals::followBody),
+            reaction::aspect_wide<Block, phys::rigid::Crystal>(&Block::Internals::followBody),
         };
     }
 }

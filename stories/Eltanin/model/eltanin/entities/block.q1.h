@@ -1,6 +1,6 @@
 #pragma once
 
-#include <eltanin/physics/atomic.q1.h>
+#include <eltanin/physics/rigid.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -15,7 +15,7 @@ namespace eltanin {
 
     struct Block : Entity<Block> {
         struct Quantum {
-            Custody<phys::Atomic> body;
+            Custody<phys::rigid::Crystal> body;
             Custody<rmmr::scene::actor::Mesh> actor;
         };
         struct Actions : BaseActions {

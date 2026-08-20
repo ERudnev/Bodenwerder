@@ -172,25 +172,24 @@ namespace eltanin::scenarios {
         const float spinK = (twoPi / giantPeriodSeconds) * giantMass;
 
         Occupied occupied[5];
-        rocks.reserve(5);
+        const int boulderSlots = static_cast<int>(twoPi * ringRadius / boulderStep);
+        rocks.reserve(static_cast<std::size_t>(5 + boulderSlots));
         for (int index = 0; index < 5; ++index) {
             const float diameter = potatoDiameters[index];
             const float azim = twoPi * static_cast<float>(index) / 5.0f;
             const Pose pose = ringPose(azim, rng);
-            const geo::Recipe recipe{
+            const geo::Rock::GeneralizedRecipe recipe{
                 .mix = palettes[index],
-                .spotMeters = glm::clamp(diameter * (0.22f + 0.24f * unit(rng)), 8.0f, diameter * 0.48f),
-                .spotContrast = glm::clamp(0.78f + 0.14f * unit(rng), 0.70f, 1.0f),
-                .diameterMeters = diameter,
+                .radius = diameter * 0.5f,
                 .lump = glm::clamp(0.78f + 0.22f * unit(rng), 0.72f, 1.0f),
                 .seed = 1100 + index,
+                .spotMeters = glm::clamp(diameter * (0.22f + 0.24f * unit(rng)), 8.0f, diameter * 0.48f),
+                .spotContrast = glm::clamp(0.78f + 0.14f * unit(rng), 0.70f, 1.0f),
             };
             occupied[index] = Occupied{.position = pose.position, .radius = diameter * 0.5f};
             rocks.push_back(with<geo::Rock>::spawnGenerated(context, root, device, pose, recipe, rest, spinOmega(sphereMass(diameter, mixDensity(recipe.mix)), spinK, 1.0f, rng)));
         }
 
-        const int boulderSlots = static_cast<int>(twoPi * ringRadius / boulderStep);
-        boulders.reserve(static_cast<std::size_t>(boulderSlots));
         for (int slot = 0; slot < boulderSlots; ++slot) {
             const float diameter = 0.5f + 9.5f * unit(rng);
             const float azim = static_cast<float>(slot) * boulderStep / ringRadius;
@@ -205,16 +204,16 @@ namespace eltanin::scenarios {
             if (blocked)
                 continue;
             const integer mineral = static_cast<integer>(slot % 16);
-            const geo::Boulder::Recipe recipe{
-                .mineral = mineral,
-                .diameterMeters = diameter,
+            const geo::Rock::GeneralizedRecipe recipe{
+                .mix = geo::Rock::GeneralizedRecipe::homogenous(mineral),
+                .radius = diameter * 0.5f,
                 .lump = glm::clamp(0.40f + 0.25f * gauss(rng), 0.15f, 1.0f),
                 .seed = 4100 + slot,
-                .kelvin = 80.0f,
-                .erosion = 1.0f,
+                .spotMeters = diameter,
+                .spotContrast = 0.0f,
             };
             const float mass = sphereMass(diameter, geo::Mineral::table()[static_cast<std::size_t>(mineral)].density);
-            boulders.push_back(with<geo::Boulder>::spawn(context, root, device, pose, recipe, rest, spinOmega(mass, spinK, unit(rng), rng)));
+            rocks.push_back(with<geo::Rock>::spawnGenerated(context, root, device, pose, recipe, rest, spinOmega(mass, spinK, unit(rng), rng)));
         }
     }
 

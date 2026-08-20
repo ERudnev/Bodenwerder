@@ -183,6 +183,58 @@ def decl_fields(node: dict[str, Any]) -> set[str]:
     return fields
 
 
+def struct_has_field(
+    node: dict[str, Any],
+    member: str,
+    namespace: tuple[str, ...],
+    symbols: dict[tuple[str, ...], Symbol],
+    seen: set[int] | None = None,
+) -> bool:
+    if member in decl_fields(node):
+        return True
+    if node.get("kind") != "StructDecl":
+        return False
+    base = node.get("base")
+    if not base:
+        return False
+    if seen is None:
+        seen = set()
+    node_id = id(node)
+    if node_id in seen:
+        return False
+    seen.add(node_id)
+    symbol = resolve_name(qualified_name_parts(base), namespace, symbols)
+    if symbol is None or symbol.node["kind"] != "StructDecl":
+        return False
+    return struct_has_field(symbol.node, member, symbol.namespace, symbols, seen)
+
+
+def lint_struct_base(
+    decl: dict[str, Any],
+    namespace: tuple[str, ...],
+    symbols: dict[tuple[str, ...], Symbol],
+    diags: list[Diagnostic],
+    local_structs: dict[str, dict[str, Any]] | None = None,
+) -> None:
+    base = decl.get("base")
+    if not base:
+        return
+    parts = qualified_name_parts(base)
+    if local_structs and len(parts) == 1 and parts[0] in local_structs:
+        if local_structs[parts[0]] is decl:
+            warn(diags, decl["line"], "struct-inherits-self", f"Struct {decl['name']} cannot inherit from itself")
+        return
+    symbol = resolve_name(parts, namespace, symbols)
+    if symbol is None:
+        warn(diags, decl["line"], "unknown-struct-base", f"Unknown struct base: {base}")
+        return
+    if symbol.node is decl:
+        warn(diags, decl["line"], "struct-inherits-self", f"Struct {decl['name']} cannot inherit from itself")
+        return
+    if symbol.node["kind"] != "StructDecl":
+        warn(diags, decl["line"], "non-struct-base", f"Struct base is not a struct: {base}")
+
+
 def lint_type_expr(
     expr: dict[str, Any],
     namespace: tuple[str, ...],
@@ -250,7 +302,7 @@ def lint_type_expr(
         if not symbol:
             warn(diags, line, "unknown-typeof-target", f"Unknown type-of target: {target_name}")
             return
-        if expr["member"] not in decl_fields(symbol.node):
+        if not struct_has_field(symbol.node, expr["member"], namespace, symbols):
             warn(diags, line, "unknown-typeof-member", f"Unknown member {expr['member']} on {target_name}")
         return
 
@@ -266,6 +318,7 @@ def lint_members(
     entity_local_structs: dict[str, dict[str, Any]] | None = None,
     primary_aspect: str | None = None,
 ) -> None:
+    sibling_structs = {member["name"]: member for member in members if member["kind"] == "StructDecl"}
     seen: dict[str, dict[str, Any]] = {}
     for member in members:
         if member["kind"] in {"FieldDecl", "ConstField", "TypeAliasDecl", "QueryOp", "CommandOp", "FactoryOp", "StewardOp", "ReactionDecl"}:
@@ -284,6 +337,9 @@ def lint_members(
             if member["target"] is not None:
                 lint_type_expr(member["target"], namespace, symbols, diags, member["line"], entity_local_types, entity_local_structs, primary_aspect, block_role)
         elif member["kind"] == "StructDecl":
+            nested_local_structs = dict(entity_local_structs or {})
+            nested_local_structs.update(sibling_structs)
+            lint_struct_base(member, namespace, symbols, diags, local_structs=nested_local_structs)
             lint_members(
                 member["members"],
                 namespace,
@@ -292,7 +348,7 @@ def lint_members(
                 f"{context}::{member['name']}",
                 block_role=block_role,
                 entity_local_types=entity_local_types,
-                entity_local_structs=entity_local_structs,
+                entity_local_structs=nested_local_structs,
                 primary_aspect=primary_aspect,
             )
         elif member["kind"] in {"QueryOp", "CommandOp", "FactoryOp"}:
@@ -355,6 +411,7 @@ def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagn
                     for member in decl["members"]
                     if member["kind"] == "TypeAliasDecl"
                 }
+                lint_struct_base(decl, namespace, symbols, diags)
                 lint_members(
                     decl["members"],
                     namespace,
@@ -389,6 +446,7 @@ def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagn
                     if local_type["target"] is not None:
                         lint_type_expr(local_type["target"], namespace, symbols, diags, local_type["line"], entity_local_types, entity_local_structs)
                 for local_struct in entity_local_structs.values():
+                    lint_struct_base(local_struct, namespace, symbols, diags, local_structs=entity_local_structs)
                     lint_members(
                         local_struct["members"],
                         namespace,

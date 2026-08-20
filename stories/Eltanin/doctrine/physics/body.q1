@@ -1,0 +1,28 @@
+import "rmmr/math"
+
+namespace eltanin
+  namespace phys
+
+    using Kelvins as float
+
+    struct Matter
+      position: vec3
+      mass: float
+      temperature: Kelvins
+      cohesion: float
+      ?hp()->float
+      ?thermalEnergy()->float
+
+    struct Particle of Matter
+      always dt: float = 0.01
+      prev: vec3
+      ?velocity()->vec3
+      ?impulse()->vec3
+
+    // Derived cache and interface between simulation, actors, and game logic.
+    struct Body of Matter
+      orientation: quat
+      radius: float
+      hitpoints: float
+      ?pose()->rmmr::Pose
+      =pose(rmmr::Pose)

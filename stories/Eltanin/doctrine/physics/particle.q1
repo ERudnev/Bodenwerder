@@ -1,8 +1,0 @@
-namespace eltanin
-  namespace phys
-
-    entity Particle
-      one
-        current: vec3
-        prev: vec3 // Verlet planned
-        mass: float

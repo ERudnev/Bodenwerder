@@ -1,0 +1,21 @@
+import "rmmr/math"
+import "physics/body"
+
+namespace eltanin
+  namespace phys
+    namespace rigid
+
+      entity Crystal
+        one
+          particles: vector<Particle>
+          shape: vector<vec3> // Immutable particle locals in the body's frame; origin is not COM
+          com: vec3 // restCOM = Σ(m·shape)/Σm, computed once for this shape
+          restored: Body // Cache reconstructed from particles
+          =debugAddImpulse(imp: vec3)
+          =setMotion(linear: vec3, omega: vec3) // Verlet: prev = position − (linear + ω×(position−currentCOM))·dt
+
+      feature Octa of Crystal
+        *satisfy(~Crystal) // Triad on p=position−currentCOM vs q=shape−restCOM; goal = currentCOM + R·q
+
+      feature Horned of Crystal
+        *satisfy(~Crystal) // Horn on the same q/p; Body.pose origin is currentCOM − R·restCOM

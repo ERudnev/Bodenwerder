@@ -1,12 +1,8 @@
 #include "story.h"
 
 #include <eltanin/entities/block.q1.h>
-#include <eltanin/geo/boulder.q1.h>
 #include <eltanin/geo/rock.q1.h>
-#include <eltanin/physics/atomic.q1.h>
-#include <eltanin/physics/clast.q1.h>
-#include <eltanin/physics/particle.q1.h>
-#include <eltanin/physics/strong.q1.h>
+#include <eltanin/physics/rigid.q1.h>
 #include <eltanin/mech/blueprint.q1.h>
 #include <eltanin/mech/mount.q1.h>
 #include <eltanin/resources/assets.q1.h>
@@ -43,14 +39,11 @@ namespace eltanin {
     Schema Game::schema() const {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
-            ask::schema::aspect<phys::Particle>(),
-            ask::schema::aspect<phys::Atomic>(),
-            ask::schema::aspect<phys::Clast>(),
-            ask::schema::aspect<phys::strong::Nail>(),
-            ask::schema::aspect<phys::strong::Gluon>(),
+            ask::schema::aspect<phys::rigid::Crystal>(),
+            ask::schema::aspect<phys::rigid::Octa>(),
+            ask::schema::aspect<phys::rigid::Horned>(),
             ask::schema::aspect<Block>(),
             ask::schema::aspect<geo::Rock>(),
-            ask::schema::aspect<geo::Boulder>(),
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<mech::Blueprint>(),
             ask::schema::aspect<mech::Mount>(),

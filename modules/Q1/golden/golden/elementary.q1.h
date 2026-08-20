@@ -55,6 +55,14 @@ namespace Q1_iQSM {
                 static integer staticMutable4;
                 static const std::unordered_map<string, integer>& myTable();
             };
+
+            struct Simple {
+                integer fieldA;
+            };
+
+            struct Complex : Simple {
+                string fieldExtended;
+            };
         }
 
         namespace Namespaces {

@@ -65,17 +65,18 @@ const float mineralGlowK[16] = float[](
     1100.0, 1300.0, 1100.0, 1450.0,
     1150.0, 1150.0, 1000.0, 2600.0
 );
-const float mineralSootMul[16] = float[](
-    0.85, 0.08, 0.08, 0.10,
-    0.10, 0.45, 0.06, 0.06,
-    0.10, 0.12, 0.07, 0.06,
-    0.10, 0.10, 0.22, 0.10
+const vec3 mineralSinter[16] = vec3[](
+    vec3(0.220, 0.659, 1.000), vec3(0.165, 0.227, 0.098), vec3(0.141, 0.118, 0.098), vec3(0.541, 0.518, 0.486),
+    vec3(0.384, 0.290, 0.188), vec3(0.063, 0.055, 0.047), vec3(0.769, 0.729, 0.690), vec3(0.824, 0.800, 0.729),
+    vec3(0.659, 0.518, 0.227), vec3(0.251, 0.125, 0.086), vec3(0.910, 0.604, 0.306), vec3(0.769, 0.784, 0.824),
+    vec3(0.290, 0.329, 0.275), vec3(0.204, 0.220, 0.157), vec3(0.973, 0.980, 0.988), vec3(0.659, 0.251, 1.000)
 );
 
 const float k_shadow_bias = 0.005;
 const float pi = 3.14159265;
-const float bumpStrength = 1.35;
-const float gritWeight = 0.40;
+const float bumpHeightMeters = 0.018;
+const float gritWeight = 0.30;
+const float sinterStart = 0.8;
 
 float sample_shadow(vec2 uv, float current_depth) {
     float closest = texture(u_shadowMap, uv).r;
@@ -121,8 +122,9 @@ float crustLod(vec3 camera) {
 vec4 sampleLayer(int channel, vec3 objectPos, float freqMul, float lod) {
     float diameter = max(actorLatticePattern.y, 0.5);
     float worldFreq = mineralScale[channel];
-    float unstretch = max(1.0, 1.0 / max(diameter * worldFreq, 1.0e-5));
-    return textureLod(u_minerals[channel], fract(objectPos * worldFreq * unstretch * freqMul), lod);
+    float minFreq = 4.0 / diameter;
+    float freq = max(worldFreq, minFreq);
+    return textureLod(u_minerals[channel], fract(objectPos * freq * freqMul), lod);
 }
 
 float crustHeight(vec3 objectPos, float lod, float gritAmt) {
@@ -133,18 +135,23 @@ float crustHeight(vec3 objectPos, float lod, float gritAmt) {
 }
 
 vec3 perturbNormal(vec3 geometric, vec3 objectPos, float lod, float bumpAmt) {
+    float amount = clamp(bumpAmt, 0.0, 1.0);
+    if (amount <= 0.0)
+        return geometric;
+    float diameter = max(actorLatticePattern.y, 0.5);
     float pixel = 0.5 * (length(dFdx(objectPos)) + length(dFdy(objectPos)));
-    float step = max(0.06, pixel);
-    float bumpLod = min(lod + log2(max(step / 0.06, 1.0)), 5.0);
-    float fade = exp2(-0.85 * bumpLod) * clamp(bumpAmt, 0.0, 1.0);
+    float step = max(diameter * 0.03, pixel);
+    float bumpLod = min(lod + log2(max(step / max(diameter * 0.03, 1.0e-5), 1.0)), 5.0);
+    float fade = exp2(-0.85 * bumpLod);
     vec3 gradObject = vec3(
         crustHeight(objectPos + vec3(step, 0.0, 0.0), bumpLod, fade) - crustHeight(objectPos - vec3(step, 0.0, 0.0), bumpLod, fade),
         crustHeight(objectPos + vec3(0.0, step, 0.0), bumpLod, fade) - crustHeight(objectPos - vec3(0.0, step, 0.0), bumpLod, fade),
         crustHeight(objectPos + vec3(0.0, 0.0, step), bumpLod, fade) - crustHeight(objectPos - vec3(0.0, 0.0, step), bumpLod, fade)
-    ) / (2.0 * step);
-    vec3 gradWorld = mat3(actorModel) * gradObject;
+    ) * (bumpHeightMeters / (2.0 * step));
+    mat3 toWorld = mat3(transpose(inverse(actorModel)));
+    vec3 gradWorld = toWorld * gradObject;
     vec3 tangentGrad = gradWorld - geometric * dot(gradWorld, geometric);
-    vec3 bumped = normalize(geometric - bumpStrength * fade * tangentGrad);
+    vec3 bumped = normalize(geometric - amount * fade * tangentGrad);
     if (dot(bumped, geometric) < 0.0)
         return geometric;
     return bumped;
@@ -193,16 +200,14 @@ void applyHeat(int channel, float weight, float kelvin, inout vec3 albedo, inout
     emissive += hot * glow * (2.4 + 5.5 * melt) * weight;
 }
 
-float sootFromErosion(float erosion) {
-    return 1.0 - clamp(erosion / 0.2, 0.0, 1.0);
+vec3 glazeAlbedo(vec3 albedo, vec3 sinterTint, float sinter) {
+    float luma = max(dot(albedo, vec3(0.2126, 0.7152, 0.0722)), 0.001);
+    vec3 glaze = sinterTint * mix(vec3(1.0), albedo / luma, 0.35);
+    return mix(albedo, glaze, sinter);
 }
 
-float sootAgainstHeat(int channel, float kelvin) {
-    return 1.0 - smoothstep(mineralGlowK[channel] - 250.0, mineralGlowK[channel], kelvin);
-}
-
-void applySoot(float soot, float sootMul, inout vec3 albedo) {
-    albedo *= mix(1.0, sootMul, soot);
+vec3 glazeF0(vec3 albedo, vec3 sinterTint, float metalness, float sinter) {
+    return mix(mix(vec3(0.04), sinterTint * 0.55, sinter), mix(albedo, sinterTint, sinter), metalness);
 }
 
 void main() {
@@ -216,18 +221,18 @@ void main() {
     float roughness = mineralRoughness[channel];
     float metalness = mineralMetalness[channel];
     float kelvin = max(actorHeat.x, 0.0);
-    float erosion = clamp(actorHeat.y, 0.0, 1.0);
+    float cohesion = clamp(actorHeat.y, 0.0, 1.0);
     vec3 emissive = vec3(0.0);
     applyHeat(channel, 1.0, kelvin, albedo, roughness, metalness, emissive);
-    float soot = sootFromErosion(erosion) * sootAgainstHeat(channel, kelvin);
-    float crustAmt = mix(max(erosion, 0.55), 0.0, soot);
-    vec3 f0Albedo = albedo;
-    applySoot(soot, mineralSootMul[channel], albedo);
-    roughness = mix(roughness, max(0.22, roughness * 0.62), crustAmt);
-    roughness = clamp(roughness + 0.18 * (1.0 - height) * crustAmt, 0.06, 1.0);
+    float bumpAmt = 1.0 - cohesion;
+    float sinter = smoothstep(sinterStart, 1.0, cohesion);
+    vec3 sinterTint = mineralSinter[channel];
+    albedo = glazeAlbedo(albedo, sinterTint, sinter);
+    roughness = mix(roughness, 0.08, sinter);
+    roughness = clamp(roughness + 0.12 * (1.0 - height) * bumpAmt, 0.06, 1.0);
 
     vec3 geometric = normalize(v_worldNormal);
-    vec3 N = perturbNormal(geometric, v_objectPos, lod, crustAmt);
+    vec3 N = perturbNormal(geometric, v_objectPos, lod, bumpAmt);
     vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos);
     vec3 V = normalize(camera - v_worldPos);
     vec3 H = normalize(V + L);
@@ -237,7 +242,7 @@ void main() {
     float NdotH = max(dot(N, H), 0.0);
     float VdotH = max(dot(V, H), 0.0);
 
-    vec3 F0 = mix(vec3(0.04), f0Albedo, metalness);
+    vec3 F0 = glazeF0(albedo, sinterTint, metalness, sinter);
     vec3 F = fresnelSchlick(VdotH, F0);
     float D = distributionGgx(NdotH, roughness);
     float G = geometrySchlick(NdotV, roughness) * geometrySchlick(NdotL, roughness);
@@ -245,7 +250,7 @@ void main() {
     vec3 kD = (vec3(1.0) - F) * (1.0 - metalness);
     vec3 diffuse = kD * albedo;
 
-    float cavity = mix(mix(0.58, 1.0, height), 1.0, soot);
+    float cavity = mix(0.58, 1.0, height);
     float slope = 1.0 - max(dot(geometric, L), 0.0);
     float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos, 1.0), slope);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);

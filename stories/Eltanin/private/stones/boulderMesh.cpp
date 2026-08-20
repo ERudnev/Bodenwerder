@@ -26,8 +26,7 @@ namespace eltanin::geo {
         constexpr int subdivMax = 4;
         constexpr float icosaEdgeOnUnit = 1.0514622242382672f;
 
-        auto subdivFromDiameter(float diameterMeters) -> int {
-            const float radius = diameterMeters * 0.5f;
+        auto subdivFromRadius(float radius) -> int {
             const float angularEdge = (2.0f * std::numbers::pi_v<float> * radius) / static_cast<float>(silhouetteSides);
             const float target = glm::min(targetEdgeMeters, angularEdge);
             float edge = radius * icosaEdgeOnUnit;
@@ -102,7 +101,7 @@ namespace eltanin::geo {
 
     } // namespace
 
-    auto meshBoulder(const Boulder::Recipe& recipe) -> CpuPresentation {
+    auto meshDebris(const Rock::GeneralizedRecipe& recipe) -> CpuPresentation {
         CpuPresentation cpu{
             .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "heat"}),
             .positions = {},
@@ -112,11 +111,11 @@ namespace eltanin::geo {
             .indices = {},
             .mix0 = {},
         };
-        const float radius = recipe.diameterMeters * 0.5f;
+        const float radius = recipe.radius;
         if (radius <= 0.0f)
             return cpu;
 
-        auto [dirs, faces] = icosphere(subdivFromDiameter(recipe.diameterMeters));
+        auto [dirs, faces] = icosphere(subdivFromRadius(recipe.radius));
         cpu.positions.resize(dirs.size());
         cpu.normals.assign(dirs.size(), vec3{0.0f, 0.0f, 0.0f});
         cpu.indices.reserve(faces.size() * 3);
@@ -145,7 +144,7 @@ namespace eltanin::geo {
             else
                 cpu.normals[index] /= std::sqrt(length2);
         }
-        cpu.heat.assign(cpu.positions.size(), vec2{0.0f, 1.0f});
+        cpu.heat.assign(cpu.positions.size(), vec2{0.0f, 0.0f});
         return cpu;
     }
 

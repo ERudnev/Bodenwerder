@@ -1,63 +1,55 @@
 #include "physics/system.h"
 
-#include <eltanin/geo/boulder.q1.h>
-
-#include <base/logging.h>
+#include <eltanin/geo/rock.q1.h>
 
 namespace eltanin::phys {
 
-    void System::integrate(fqsm::Direct<Particle> particles) {
-        for (auto [_, particle] : particles.items) {
-            const vec3 previous = particle.current;
-            particle.current += particle.current - particle.prev;
-            particle.prev = previous;
+    System::System()
+        : state{.timeScale = 1.0f}
+        , debtUs(0)
+        , thermalDebtUs(0) {
+    }
+
+    void System::integrate(fqsm::Direct<rigid::Crystal> crystals) {
+        for (auto [_, crystal] : crystals.items) {
+            for (Particle& particle : crystal.particles) {
+                const vec3 previous = particle.position;
+                particle.position += particle.position - particle.prev;
+                particle.prev = previous;
+            }
         }
     }
 
     void System::constraintPass(Stewarding context) {
-        with<Atomic>::satisfy(context);
-        with<Clast>::satisfy(context);
-        with<strong::Nail>::satisfy(context);
-        with<strong::Gluon>::satisfy(context);
+        with<rigid::Octa>::satisfy(context);
+        with<rigid::Horned>::satisfy(context);
     }
 
     void System::tick(Stewarding context) {
-        // Jakobsen: Verlet → constraint wave × N; Nail/Gluon seppuku via Writing under Stewarding.
-        integrate(context.direct<Particle>());
-        for (int pass = 0; pass < Settings::constraintPasses; ++pass) {
+        integrate(context.direct<rigid::Crystal>());
+        for (int pass = 0; pass < Settings::constraintPasses; ++pass)
             constraintPass(context);
-        }
-        with<::eltanin::geo::Boulder>::syncPose(context);
     }
 
     void System::radiate(Stewarding context) {
         if (thermalDebtUs < Settings::thermalStepUs)
             return;
-        with<::eltanin::geo::Boulder>::radiate(context, static_cast<float>(thermalDebtUs) * 1e-6f);
+        with<::eltanin::geo::Rock>::radiate(context, static_cast<float>(thermalDebtUs) * 1e-6f);
         thermalDebtUs = 0;
     }
 
-    void System::step(establish::Realm& world, int64 dt_us) {
-        const int64 scaled = static_cast<int64>(static_cast<double>(dt_us) * static_cast<double>(state.time_scale));
-        debt_us += scaled;
+    void System::step(establish::Realm& world, int64 dtUs) {
+        const int64 scaled = static_cast<int64>(static_cast<double>(dtUs) * static_cast<double>(state.timeScale));
+        debtUs += scaled;
         thermalDebtUs += scaled;
-        if (debt_us < Settings::fixedStepUs and thermalDebtUs < Settings::thermalStepUs)
+        if (debtUs < Settings::fixedStepUs and thermalDebtUs < Settings::thermalStepUs)
             return;
         Stewarding session = world;
-        while (debt_us >= Settings::fixedStepUs) {
+        while (debtUs >= Settings::fixedStepUs) {
             tick(session);
-            debt_us -= Settings::fixedStepUs;
+            debtUs -= Settings::fixedStepUs;
         }
         radiate(session);
-    }
-
-    auto System::addParticle(Writing context, vec3 pos, vec3 velocity, float mass) -> Particle::Id {
-        // Verlet: v ≈ (current − prev) / dt  ⇒  prev = current − v·dt
-        return with<Particle>::create(context, Particle::Quantum{
-            .current = pos,
-            .prev = pos - velocity * Settings::fixedDtS,
-            .mass = mass,
-        });
     }
 
 }

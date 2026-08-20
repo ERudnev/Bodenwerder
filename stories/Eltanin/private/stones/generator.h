@@ -5,9 +5,11 @@
 
 namespace eltanin::geo {
 
-    auto generateRockVolume(const Recipe&) -> Volume;
-    auto rockSdf(const Recipe&, vec3) -> float;
+    auto generateRockVolume(const Rock::GeneralizedRecipe&) -> Volume;
+    auto rockSdf(const Rock::GeneralizedRecipe&, vec3) -> float;
     auto generateLavaBrickVolume() -> Volume;
     auto applyLavaBrickHeat(rmmr::resource::builders::geometry::CpuPresentation&) -> void;
+    auto generateIceBlobVolume() -> Volume;
+    auto applyIceBlobSinter(rmmr::resource::builders::geometry::CpuPresentation&) -> void;
 
 }

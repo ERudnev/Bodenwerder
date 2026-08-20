@@ -2,7 +2,8 @@ import "rmmr/math"
 import "rmmr/scene/root"
 import "rmmr/scene/actors/mesh"
 import "rmmr/system/core"
-import "physics/atomic"
+import "geo/minerals"
+import "physics/rigid"
 
 namespace eltanin
   namespace geo
@@ -17,26 +18,28 @@ namespace eltanin
       mix: Mix
       children: vector<Volume>
 
-    // Mean mix names the minerals; zeros stay zero. Domains are geological patches, not grain noise.
-    // spotMeters — clean-zone width (≈ 10–50% of diameter). spotContrast 0 = alloy, 1 = sharp contacts.
-    // lump 0 = sphere, 1 = triaxial potato with knobs and pits.
-    struct Recipe
-      mix: Mix
-      spotMeters: float
-      spotContrast: float
-      diameterMeters: float
-      lump: float
-      seed: integer
-
     entity Rock
+      // Mean mix names the minerals; zeros stay zero. Domains are geological patches, not grain noise.
+      // spotMeters — clean-zone width (≈ 10–50% of diameter). spotContrast 0 = alloy, 1 = sharp contacts.
+      // lump 0 = sphere, 1 = triaxial potato with knobs and pits.
+      struct GeneralizedRecipe
+        mix: Mix
+        radius: float
+        lump: float
+        seed: integer
+        spotMeters: float
+        spotContrast: float
+        always ?homogenous(Mineral::Index)->Mix
       one
-        body: custody<phys::Atomic>
+        body: custody<phys::rigid::Crystal>
         actor: custody<rmmr::scene::actor::Mesh>
-        volume: Volume
+        volume: Volume?
       all
         >spawn(#rmmr::scene::Root, #system::Device, Pose, Volume, vec3, vec3)->#
-        >spawnGenerated(#rmmr::scene::Root, #system::Device, Pose, Recipe, vec3, vec3)->#
+        >spawnGenerated(#rmmr::scene::Root, #system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#
         >spawnIceSphere(#rmmr::scene::Root, #system::Device, Pose)->#
         >spawnPaletteTorus(#rmmr::scene::Root, #system::Device, Pose)->#
         >spawnLavaBrick(#rmmr::scene::Root, #system::Device, Pose)->#
-        !followBody(~phys::Atomic)->>linearPass(>all)
+        >spawnIceBlob(#rmmr::scene::Root, #system::Device, Pose)->#
+        *radiate(dt: float)
+        !followBody(~phys::rigid::Crystal)->>linearPass(>all)

@@ -25,7 +25,7 @@ type_alias_rhs      ::= "as" type_expr
 annotation          ::= "@" IDENT [ "(" annotation_body ")" ] ;
 annotation_body     ::= TEXT ;
 
-struct_decl         ::= "struct" IDENT INDENT struct_member+ DEDENT ;
+struct_decl         ::= "struct" IDENT [ "of" qualified_name ] INDENT struct_member+ DEDENT ;
 struct_member       ::= type_alias_decl
                       | field_role_block
                       | field_role_prefix field_decl
@@ -170,3 +170,5 @@ literal             ::= INTEGER ;
    6. steward_op first argument is analysis scope (~ / ~Type), not a C++ parameter; remaining params are ordinary.
    7. struct fields may carry an explicit always/one/all category (block or inline). `always name: T = @external(...)`
       is a ConstField whose initializer is an ExternalType, not an integer literal.
+   8. `struct Derived of Base` is single value-struct inheritance (C++: `struct Derived : Base`). `of` here
+      names a struct, not an aspect owner. Nested structs may use the same header form.

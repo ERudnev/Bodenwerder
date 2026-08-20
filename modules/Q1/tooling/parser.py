@@ -816,13 +816,13 @@ def _parse_archetype_members(cursor: Cursor, parent_indent: int) -> list[dict[st
 
 
 def _parse_struct(cursor: Cursor, line: Line) -> dict[str, Any]:
-    _, name = line.content.split("struct", 1)
-    name = name.strip()
-    if not IDENT_RE.match(name):
-        raise ParseError(f"Invalid struct name: {name!r}", line.number)
+    match = re.fullmatch(rf"struct\s+({SIMPLE_IDENT})(?:\s+of\s+({QUALIFIED_IDENT}))?", line.content)
+    if not match:
+        raise ParseError(f"Malformed struct declaration: {line.content!r}", line.number)
+    name, base = match.groups()
     indent = _child_indent(cursor, line.indent)
     members = [] if indent is None else _parse_generic_members(cursor, indent, allow_const=False)
-    return _node("StructDecl", line.number, name=name, members=members, comment=line.comment)
+    return _node("StructDecl", line.number, name=name, base=base, members=members, comment=line.comment)
 
 
 def _parse_aspect(cursor: Cursor, line: Line, category: str) -> dict[str, Any]:

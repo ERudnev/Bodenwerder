@@ -43,6 +43,7 @@ namespace Q1-fQSM {
        (`!` и `*` внутри value-struct недопустимы).
       1: `?` → обычно `T name(...) const;`; `=` → `void name(...);`; `>` → `static S name(...);`.
       2: `*` → только в aspect `one`/`all` → `Stewarding` (см. blocks_and_operations).
+      3: `struct D of B` → `struct D : B { ... };` (одиночное публичное наследование; `B` — имя value-struct).
     2: `using A as B` → `using A = B;` (B без ведущего `~`).
     3: `using A as ~Expr` → `using A = decltype(<Expr>);`.
     4: категории аспектов (см. golden README):

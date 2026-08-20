@@ -59,6 +59,13 @@ Each Q1 aspect becomes one C++ `struct` derived from the matching fQSM category:
 - `group<E> of Host` -> a dedicated group aspect type, e.g. `GroupName : Group<GroupName, Host, E>`
 - `archetype T` -> `struct T : Archetype<T>`
 
+Value structs are not aspects. Their optional `of` is ordinary C++ inheritance:
+
+- `struct Simple` -> `struct Simple { ... };`
+- `struct Complex of Simple` -> `struct Complex : Simple { ... };`
+
+See `elementary.q1` / `elementary.q1.h` (`Simple`, `Complex`).
+
 ### Why
 
 The aspect category already carries core semantics. The header should express that directly instead of rebuilding category meaning through ad hoc helper code.
