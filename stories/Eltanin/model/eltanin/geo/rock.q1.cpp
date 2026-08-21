@@ -1,7 +1,6 @@
 #include <eltanin/geo/rock.q1.h>
 
 #include <eltanin/geo/minerals.q1.h>
-#include "physics/compound.h"
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -20,8 +19,10 @@
 #include <glm/geometric.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <numbers>
+#include <unordered_map>
 
 namespace eltanin::geo {
 
@@ -257,25 +258,114 @@ namespace eltanin::geo {
             moment += leafCenterLocal(node) * leaf;
         }
 
-        auto uniquePositions(const vector<vec3>& positions) -> vector<vec3> {
-            auto key = [](vec3 point) -> ivec3 {
-                return ivec3{static_cast<int>(std::lround(point.x / particleSnapMeters)), static_cast<int>(std::lround(point.y / particleSnapMeters)), static_cast<int>(std::lround(point.z / particleSnapMeters))};
+        auto snapKey(vec3 point) -> ivec3 {
+            return ivec3{static_cast<int>(std::lround(point.x / particleSnapMeters)), static_cast<int>(std::lround(point.y / particleSnapMeters)), static_cast<int>(std::lround(point.z / particleSnapMeters))};
+        }
+
+        auto triangleFace(integer a, integer b, integer c, const vector<vec3>& shape, vec3 inside) -> phys::rigid::Compound::Hull::Face {
+            const vec3 ab = shape[static_cast<std::size_t>(b)] - shape[static_cast<std::size_t>(a)];
+            const vec3 ac = shape[static_cast<std::size_t>(c)] - shape[static_cast<std::size_t>(a)];
+            vec3 normal = glm::cross(ab, ac);
+            const float mag = glm::length(normal);
+            if (mag <= 1.0e-12f)
+                return phys::rigid::Compound::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}};
+            normal /= mag;
+            const vec3 centroid = (shape[static_cast<std::size_t>(a)] + shape[static_cast<std::size_t>(b)] + shape[static_cast<std::size_t>(c)]) / 3.0f;
+            if (glm::dot(normal, centroid - inside) < 0.0f) {
+                std::swap(b, c);
+                normal = -normal;
+            }
+            return phys::rigid::Compound::Hull::Face{.points = {a, b, c}, .normal = normal};
+        }
+
+        auto octaHull(const vector<vec3>& shape) -> phys::rigid::Compound::Hull {
+            constexpr integer plusX = 0, minusX = 1, plusY = 2, minusY = 3, plusZ = 4, minusZ = 5;
+            const integer tris[8][3] = {
+                {plusX, plusY, plusZ}, {plusY, minusX, plusZ}, {minusX, minusY, plusZ}, {minusY, plusX, plusZ},
+                {plusX, minusZ, plusY}, {plusY, minusZ, minusX}, {minusX, minusZ, minusY}, {minusY, minusZ, plusX},
             };
-            vector<ivec3> bins;
-            bins.reserve(positions.size());
-            for (const vec3& point : positions)
-                bins.push_back(key(point));
-            std::sort(bins.begin(), bins.end(), [](ivec3 left, ivec3 right) {
-                if (left.x != right.x) return left.x < right.x;
-                if (left.y != right.y) return left.y < right.y;
-                return left.z < right.z;
-            });
-            bins.erase(std::unique(bins.begin(), bins.end()), bins.end());
-            vector<vec3> unique;
-            unique.reserve(bins.size());
-            for (const ivec3& bin : bins)
-                unique.push_back(vec3{bin} * particleSnapMeters);
-            return unique;
+            phys::rigid::Compound::Hull hull{.faces = {}};
+            hull.faces.reserve(8);
+            const vec3 inside{0.0f, 0.0f, 0.0f};
+            for (const auto& tri : tris) {
+                auto face = triangleFace(tri[0], tri[1], tri[2], shape, inside);
+                if (face.points.size() == 3)
+                    hull.faces.push_back(std::move(face));
+            }
+            return hull;
+        }
+
+        struct SurfaceBody {
+            vector<Sample> samples;
+            phys::rigid::Compound::Hull hull;
+        };
+
+        auto surfaceFromMesh(const Volume& volume, const rmmr::resource::builders::geometry::CpuPresentation& cpu) -> SurfaceBody {
+            struct Lattice {
+                integer x;
+                integer y;
+                integer z;
+                bool operator==(const Lattice&) const = default;
+            };
+            struct LatticeHash {
+                auto operator()(const Lattice& key) const noexcept -> std::size_t {
+                    return static_cast<std::size_t>(key.x) * 73856093u ^ static_cast<std::size_t>(key.y) * 19349663u ^ static_cast<std::size_t>(key.z) * 83492791u;
+                }
+            };
+            std::unordered_map<Lattice, integer, LatticeHash> indexOf;
+            vector<vec3> rim;
+            auto weld = [&](vec3 point) -> integer {
+                const ivec3 snapped = snapKey(point);
+                const Lattice key{.x = snapped.x, .y = snapped.y, .z = snapped.z};
+                const auto found = indexOf.find(key);
+                if (found != indexOf.end())
+                    return found->second;
+                const integer id = static_cast<integer>(rim.size());
+                indexOf.emplace(key, id);
+                rim.push_back(vec3{static_cast<float>(snapped.x), static_cast<float>(snapped.y), static_cast<float>(snapped.z)} * particleSnapMeters);
+                return id;
+            };
+            vector<std::array<integer, 3>> tris;
+            auto emit = [&](std::size_t ia, std::size_t ib, std::size_t ic) {
+                if (ia >= cpu.positions.size() or ib >= cpu.positions.size() or ic >= cpu.positions.size())
+                    return;
+                const integer a = weld(cpu.positions[ia]);
+                const integer b = weld(cpu.positions[ib]);
+                const integer c = weld(cpu.positions[ic]);
+                if (a == b or b == c or c == a)
+                    return;
+                tris.push_back({a, b, c});
+            };
+            if (cpu.indices.size() >= 3) {
+                for (std::size_t index = 0; index + 2 < cpu.indices.size(); index += 3)
+                    emit(static_cast<std::size_t>(cpu.indices[index]), static_cast<std::size_t>(cpu.indices[index + 1]), static_cast<std::size_t>(cpu.indices[index + 2]));
+            } else {
+                for (std::size_t index = 0; index + 2 < cpu.positions.size(); index += 3)
+                    emit(index, index + 1, index + 2);
+            }
+            float mass = 0.0f;
+            vec3 moment{0.0f, 0.0f, 0.0f};
+            accumulateVolumeMass(volume, mass, moment);
+            SurfaceBody surface{.samples = {}, .hull = phys::rigid::Compound::Hull{.faces = {}}};
+            if (mass <= 0.0f or rim.empty())
+                return surface;
+            const vec3 com = moment / mass;
+            const float rimMass = (0.5f * mass) / static_cast<float>(rim.size());
+            surface.samples.reserve(rim.size() + 1);
+            surface.samples.push_back(Sample{.local = com, .mass = 0.5f * mass});
+            for (const vec3& local : rim)
+                surface.samples.push_back(Sample{.local = local, .mass = rimMass});
+            vector<vec3> shape;
+            shape.reserve(surface.samples.size());
+            for (const Sample& sample : surface.samples)
+                shape.push_back(sample.local);
+            surface.hull.faces.reserve(tris.size());
+            for (const auto& tri : tris) {
+                auto face = triangleFace(tri[0] + 1, tri[1] + 1, tri[2] + 1, shape, com);
+                if (face.points.size() == 3)
+                    surface.hull.faces.push_back(std::move(face));
+            }
+            return surface;
         }
 
         auto nearestHeat(const rmmr::resource::builders::geometry::CpuPresentation& cpu, vec3 local, vec2 fallback) -> vec2 {
@@ -293,25 +383,6 @@ namespace eltanin::geo {
                 }
             }
             return cpu.heat[best];
-        }
-
-        auto samplesFromMesh(const Volume& volume, const vector<vec3>& positions) -> vector<Sample> {
-            float mass = 0.0f;
-            vec3 moment{0.0f, 0.0f, 0.0f};
-            accumulateVolumeMass(volume, mass, moment);
-            if (mass <= 0.0f)
-                return {};
-            const auto rim = uniquePositions(positions);
-            if (rim.empty())
-                return {};
-            const vec3 com = moment / mass;
-            const float rimMass = (0.5f * mass) / static_cast<float>(rim.size());
-            vector<Sample> samples;
-            samples.reserve(rim.size() + 1);
-            samples.push_back(Sample{.local = com, .mass = 0.5f * mass});
-            for (const vec3& local : rim)
-                samples.push_back(Sample{.local = local, .mass = rimMass});
-            return samples;
         }
 
         auto sphereArea(float mass) -> float {
@@ -349,7 +420,7 @@ namespace eltanin::geo {
             return true;
         }
 
-        auto assembleRock(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, base::maybe<Volume> volume, rmmr::resource::builders::geometry::CpuPresentation cpu, vector<Sample> samples, rmmr::resource::Unit::Name materialName, integer spriteIndex, bool octa, float temperature, float cohesion, vec3 velocity, vec3 omega) -> Rock::Id {
+        auto assembleRock(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, base::maybe<Volume> volume, rmmr::resource::builders::geometry::CpuPresentation cpu, vector<Sample> samples, phys::rigid::Compound::Hull hull, rmmr::resource::Unit::Name materialName, integer spriteIndex, bool octa, float temperature, float cohesion, vec3 velocity, vec3 omega) -> Rock::Id {
             if (cpu.positions.empty())
                 return context.refuse("eltanin::geo::Rock::spawn: no surface");
             if (samples.empty())
@@ -420,18 +491,17 @@ namespace eltanin::geo {
             }
 
             const phys::Body restored = phys::rigid::restoredBody(pose, particles, shape);
-            const phys::rigid::Compound compound = octa ? phys::rigid::octaCompound() : (volume ? phys::rigid::volumeCompound(*volume, shape, massCom) : phys::rigid::wrapCompound(shape, massCom));
             const auto body = with<phys::rigid::Crystal>::create(context, phys::rigid::Crystal::Quantum{
                 .particles = std::move(particles),
                 .shape = std::move(shape),
                 .com = massCom,
                 .restored = restored,
+                .hull = std::move(hull),
             });
             if (octa)
                 with<phys::rigid::Octa>::extend(context, body, phys::rigid::Octa::Quantum{});
             else
                 with<phys::rigid::Horned>::extend(context, body, phys::rigid::Horned::Quantum{});
-            with<phys::rigid::Collision>::extend(context, body, phys::rigid::Collision::Quantum{.compound = compound});
             return with<Rock>::create(context, Rock::Quantum{.body = body, .actor = actor, .volume = std::move(volume)});
         }
 
@@ -441,8 +511,8 @@ namespace eltanin::geo {
         if (not scaleInRange(volume))
             return context.refuse("eltanin::geo::Rock::spawn: volume scale out of range");
         auto cpu = meshVolume(volume);
-        auto samples = samplesFromMesh(volume, cpu.positions);
-        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(samples), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, false, 0.0f, 0.0f, velocity, omega);
+        auto surface = surfaceFromMesh(volume, cpu);
+        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, false, 0.0f, 0.0f, velocity, omega);
     }
 
     auto Rock::Actions::spawnGenerated(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, GeneralizedRecipe recipe, vec3 velocity, vec3 omega) -> Id {
@@ -454,14 +524,18 @@ namespace eltanin::geo {
             auto cpu = meshDebris(recipe);
             const float volume = (4.0f / 3.0f) * std::numbers::pi_v<float> * recipe.radius * recipe.radius * recipe.radius;
             auto samples = octaSamples(recipe.radius, volume * mixDensity(recipe.mix));
-            return assembleRock(context, root, device, pose, {}, std::move(cpu), std::move(samples), rmmr::resource::Unit::Name::from("Eltanin", "boulder"), dominantMineral(recipe.mix), true, 0.0f, 0.0f, velocity, omega);
+            vector<vec3> octaShape;
+            octaShape.reserve(samples.size());
+            for (const Sample& sample : samples)
+                octaShape.push_back(sample.local);
+            return assembleRock(context, root, device, pose, {}, std::move(cpu), std::move(samples), octaHull(octaShape), rmmr::resource::Unit::Name::from("Eltanin", "boulder"), dominantMineral(recipe.mix), true, 0.0f, 0.0f, velocity, omega);
         }
         auto volume = generateRockVolume(recipe);
         if (not scaleInRange(volume))
             return context.refuse("eltanin::geo::Rock::spawnGenerated: volume scale out of range");
         auto cpu = meshVolume(volume);
-        auto samples = samplesFromMesh(volume, cpu.positions);
-        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(samples), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, false, 0.0f, 0.0f, velocity, omega);
+        auto surface = surfaceFromMesh(volume, cpu);
+        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, false, 0.0f, 0.0f, velocity, omega);
     }
 
     auto Rock::Actions::spawnIceSphere(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
@@ -478,8 +552,8 @@ namespace eltanin::geo {
             return context.refuse("eltanin::geo::Rock::spawnLavaBrick: volume scale out of range");
         auto cpu = meshVolume(volume);
         applyLavaBrickHeat(cpu);
-        auto samples = samplesFromMesh(volume, cpu.positions);
-        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(samples), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, false, 80.0f, 1.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        auto surface = surfaceFromMesh(volume, cpu);
+        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, false, 80.0f, 1.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
     auto Rock::Actions::spawnIceBlob(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
@@ -488,8 +562,8 @@ namespace eltanin::geo {
             return context.refuse("eltanin::geo::Rock::spawnIceBlob: volume scale out of range");
         auto cpu = meshVolume(volume);
         applyIceBlobSinter(cpu);
-        auto samples = samplesFromMesh(volume, cpu.positions);
-        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(samples), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, false, 80.0f, 0.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        auto surface = surfaceFromMesh(volume, cpu);
+        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, false, 80.0f, 0.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
     void Rock::Actions::radiate(Stewarding context, float dt) {

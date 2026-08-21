@@ -8,7 +8,6 @@
 #include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 
-#include <string>
 #include <vector>
 
 namespace eltanin::phys {
@@ -18,43 +17,44 @@ namespace eltanin::phys {
             rigid::Crystal::Id crystal;
             std::size_t index;
         };
+        struct HullRef {
+            rigid::Crystal::Id crystal;
+        };
         struct State {
-            vector<rmmr::scene::actor::Mesh::Id> actors;
             vector<rmmr::scene::actor::Mesh::Id> particles;
+            vector<rmmr::scene::actor::Mesh::Id> hulls;
         };
         State state;
-        rmmr::resource::material::Asset::Id shapeMaterial;
-        rmmr::resource::texpack::Pack::Id shapeTexpack;
-        std::string shapeAlbedoLayer;
-        rmmr::resource::geometry::Asset::Id shapeGeometry;
         rmmr::resource::geometry::Asset::Id particleGeometry;
         rmmr::resource::material::Asset::Id particleMaterial;
+        rmmr::resource::material::Asset::Id hullMaterial;
+        rmmr::resource::texpack::Pack::Id hullTexpack;
 
-        Ui(rmmr::resource::material::Asset::Id shapeMaterial,
-           rmmr::resource::texpack::Pack::Id shapeTexpack,
-           std::string shapeAlbedoLayer,
-           rmmr::resource::geometry::Asset::Id shapeGeometry,
-           rmmr::resource::geometry::Asset::Id particleGeometry,
-           rmmr::resource::material::Asset::Id particleMaterial);
+        Ui(rmmr::resource::geometry::Asset::Id particleGeometry,
+           rmmr::resource::material::Asset::Id particleMaterial,
+           rmmr::resource::material::Asset::Id hullMaterial,
+           rmmr::resource::texpack::Pack::Id hullTexpack);
 
         void draw(Writing, bool& open, System&);
 
     private:
-        bool showColliders;
         bool showParticles;
-        bool prevShowColliders;
         bool prevShowParticles;
+        bool showHulls;
+        bool prevShowHulls;
 
-        vector<rigid::Crystal::Id> bodies;
-        vector<rmmr::resource::geometry::Asset::Id> colliderGeometries;
         vector<ParticleRef> particleRefs;
+        vector<HullRef> hullRefs;
+        vector<rmmr::scene::actor::Mesh::Id> hiddenCombat;
 
-        void enableColliders(Writing);
-        void disableColliders(Writing);
         void enableParticles(Writing);
         void disableParticles(Writing);
-        void syncColliders(Writing);
         void syncParticles(Writing);
+        void enableHulls(Writing);
+        void disableHulls(Writing);
+        void syncHulls(Writing);
+        void hideCombat(Writing);
+        void restoreCombat(Writing);
     };
 
 }

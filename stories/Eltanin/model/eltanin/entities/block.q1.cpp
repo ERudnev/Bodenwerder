@@ -3,6 +3,10 @@
 
 #include <base/logging.h>
 
+#include <glm/geometric.hpp>
+
+#include <utility>
+
 namespace eltanin {
     using namespace fqsm::api;
 
@@ -17,7 +21,68 @@ namespace eltanin {
             return locals;
         }
 
-        auto spawnWithLocals(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, vector<vec3> locals, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Block::Id {
+        auto triangleFace(integer a, integer b, integer c, const vector<vec3>& shape, vec3 inside) -> phys::rigid::Compound::Hull::Face {
+            const vec3 ab = shape[static_cast<std::size_t>(b)] - shape[static_cast<std::size_t>(a)];
+            const vec3 ac = shape[static_cast<std::size_t>(c)] - shape[static_cast<std::size_t>(a)];
+            vec3 normal = glm::cross(ab, ac);
+            const float mag = glm::length(normal);
+            if (mag <= 1.0e-12f)
+                return phys::rigid::Compound::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}};
+            normal /= mag;
+            const vec3 centroid = (shape[static_cast<std::size_t>(a)] + shape[static_cast<std::size_t>(b)] + shape[static_cast<std::size_t>(c)]) / 3.0f;
+            if (glm::dot(normal, centroid - inside) < 0.0f) {
+                std::swap(b, c);
+                normal = -normal;
+            }
+            return phys::rigid::Compound::Hull::Face{.points = {a, b, c}, .normal = normal};
+        }
+
+        auto hullFromCorners(const vector<vec3>& locals, const vector<mech::cube::Corner>& corners) -> phys::rigid::Compound::Hull {
+            integer at[8];
+            for (integer& slot : at)
+                slot = -1;
+            for (std::size_t index = 0; index < corners.size() and index < locals.size(); ++index)
+                at[static_cast<std::size_t>(corners[index])] = static_cast<integer>(index);
+            vec3 inside{0.0f, 0.0f, 0.0f};
+            for (const vec3& local : locals)
+                inside += local;
+            if (not locals.empty())
+                inside /= static_cast<float>(locals.size());
+            phys::rigid::Compound::Hull hull{.faces = {}};
+            for (const auto& loop : mech::cube::faces) {
+                if (loop.size() != 4)
+                    continue;
+                integer quad[4];
+                bool complete = true;
+                for (std::size_t index = 0; index < 4; ++index) {
+                    const integer id = at[static_cast<std::size_t>(loop[index])];
+                    if (id < 0) {
+                        complete = false;
+                        break;
+                    }
+                    quad[index] = id;
+                }
+                if (not complete)
+                    continue;
+                auto first = triangleFace(quad[0], quad[1], quad[2], locals, inside);
+                auto second = triangleFace(quad[0], quad[2], quad[3], locals, inside);
+                if (first.points.size() == 3)
+                    hull.faces.push_back(std::move(first));
+                if (second.points.size() == 3)
+                    hull.faces.push_back(std::move(second));
+            }
+            if (hull.faces.empty() and locals.size() >= 3) {
+                for (integer index = 1; index + 1 < static_cast<integer>(locals.size()); ++index) {
+                    auto face = triangleFace(0, index, index + 1, locals, inside);
+                    if (face.points.size() == 3)
+                        hull.faces.push_back(std::move(face));
+                }
+            }
+            return hull;
+        }
+
+        auto spawnWithLocals(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, const vector<mech::cube::Corner>& corners, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Block::Id {
+            auto locals = localsFromCornerIndices(corners);
             if (locals.empty()) {
                 return context.refuse("eltanin::Block::spawn: rest locals empty");
             }
@@ -41,12 +106,14 @@ namespace eltanin {
                 shape.push_back(local);
             }
 
+            auto hull = hullFromCorners(shape, corners);
             const phys::Body restored = phys::rigid::restoredBody(pose, particles, shape);
             const auto body = with<phys::rigid::Crystal>::create(context, phys::rigid::Crystal::Quantum{
                 .particles = std::move(particles),
                 .shape = std::move(shape),
                 .com = restCom,
                 .restored = restored,
+                .hull = std::move(hull),
             });
             with<phys::rigid::Horned>::extend(context, body, phys::rigid::Horned::Quantum{});
             const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(actorQuantum), std::move(stateQuantum));
@@ -60,7 +127,7 @@ namespace eltanin {
         if (index >= mech::plate::perimeter.size()) {
             return context.refuse("eltanin::Block::spawnPlate: shape out of range");
         }
-        return spawnWithLocals(context, root, pose, localsFromCornerIndices(mech::plate::perimeter[index]), std::move(actorQuantum), std::move(stateQuantum));
+        return spawnWithLocals(context, root, pose, mech::plate::perimeter[index], std::move(actorQuantum), std::move(stateQuantum));
     }
 
     auto Block::Actions::spawnFrame(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::frame::shape shape, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Id {
@@ -68,7 +135,7 @@ namespace eltanin {
         if (index >= mech::frame::corners.size()) {
             return context.refuse("eltanin::Block::spawnFrame: shape out of range");
         }
-        return spawnWithLocals(context, root, pose, localsFromCornerIndices(mech::frame::corners[index]), std::move(actorQuantum), std::move(stateQuantum));
+        return spawnWithLocals(context, root, pose, mech::frame::corners[index], std::move(actorQuantum), std::move(stateQuantum));
     }
 
     auto Block::Actions::spawnInner(Writing context, rmmr::scene::Root::Id root, rmmr::Pose pose, mech::frame::shape shape, mech::Role role, rmmr::scene::actor::Mesh::Quantum actorQuantum, rmmr::scene::actor::MeshState::Quantum stateQuantum) -> Id {
@@ -77,7 +144,7 @@ namespace eltanin {
         if (index >= mech::frame::corners.size()) {
             return context.refuse("eltanin::Block::spawnInner: shape out of range");
         }
-        return spawnWithLocals(context, root, pose, localsFromCornerIndices(mech::frame::corners[index]), std::move(actorQuantum), std::move(stateQuantum));
+        return spawnWithLocals(context, root, pose, mech::frame::corners[index], std::move(actorQuantum), std::move(stateQuantum));
     }
 
     struct Block::Internals : Block::DefaultInternals {

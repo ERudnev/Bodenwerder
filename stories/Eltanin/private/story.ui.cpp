@@ -129,17 +129,10 @@ namespace eltanin {
             rmmr::wrapper::ui::viewToggle("Physics", &open);
             if (open != ui.physics.has_value()) {
                 if (open) {
-                    if (not shared->material.gizmo.textured or not shared->texture.debug or not shared->material.gizmo.vertexColor
-                        or not assets.primitive.kube or not assets.primitive.diamond) {
-                        base::message("eltanin::Game: Physics UI needs gizmo materials, debug texpack, kube/diamond primitives");
+                    if (not shared->material.gizmo.vertexColor or not shared->material.gizmo.textured or not shared->texture.debug or not assets.primitive.diamond) {
+                        base::message("eltanin::Game: Physics UI needs gizmo materials, debug texpack and diamond primitive");
                     } else {
-                        ui.physics.emplace(
-                            *shared->material.gizmo.textured,
-                            *shared->texture.debug,
-                            string{"debug02.jpg"},
-                            *assets.primitive.kube,
-                            *assets.primitive.diamond,
-                            *shared->material.gizmo.vertexColor);
+                        ui.physics.emplace(*assets.primitive.diamond, *shared->material.gizmo.vertexColor, *shared->material.gizmo.textured, *shared->texture.debug);
                     }
                 } else {
                     ui.physics.reset();

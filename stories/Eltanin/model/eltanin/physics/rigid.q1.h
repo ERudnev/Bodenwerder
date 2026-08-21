@@ -18,7 +18,6 @@ namespace eltanin::phys::rigid {
             };
             vector<Face> faces;
         };
-        vector<Hull> hulls;
     };
 
     struct Crystal : Entity<Crystal> {
@@ -27,6 +26,7 @@ namespace eltanin::phys::rigid {
             vector<vec3> shape;
             vec3 com;
             Body restored;
+            Compound::Hull hull;
 
             void refreshMatter();
         };
@@ -34,15 +34,6 @@ namespace eltanin::phys::rigid {
             static void debugAddImpulse(Writing, Id, vec3 imp);
             static void setMotion(Writing, Id, rmmr::Pose, vec3 linear, vec3 omega);
         };
-        struct Internals : DefaultInternals {};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
-    struct Collision : Feature<Collision, Crystal> {
-        struct Quantum {
-            Compound compound;
-        };
-        struct Actions : BaseActions {};
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
     };

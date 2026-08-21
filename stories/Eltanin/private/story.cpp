@@ -40,7 +40,6 @@ namespace eltanin {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
             ask::schema::aspect<phys::rigid::Crystal>(),
-            ask::schema::aspect<phys::rigid::Collision>(),
             ask::schema::aspect<phys::rigid::Octa>(),
             ask::schema::aspect<phys::rigid::Horned>(),
             ask::schema::aspect<phys::rigid::CelestialGravity>(),
