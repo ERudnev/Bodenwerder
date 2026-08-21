@@ -1,10 +1,13 @@
 #include "physics/ui.h"
-#include "mech/semantics/together.include.h"
+#include "physics/compound.h"
 
 #include <eltanin/world.q1.h>
 #include <rmmr/resources/geometry.q1.h>
+#include <rmmr/resources/manager.q1.h>
+#include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
+#include <rmmr/system/window.q1.h>
 
 #include <base/logging.h>
 
@@ -43,6 +46,13 @@ namespace eltanin::phys {
             return {};
         }
 
+        auto first_device(Reading context) -> base::maybe<rmmr::system::Device::Id> {
+            for (const auto [id, _] : context->aspect<rmmr::system::Window>().items()) {
+                return id;
+            }
+            return {};
+        }
+
         void destroy_actor(Writing context, rmmr::scene::actor::Mesh::Id actor) {
             for (const auto [root, group] : context->aspect<rmmr::scene::Node_group>().items()) {
                 if (group.contains(actor)) {
@@ -60,21 +70,38 @@ namespace eltanin::phys {
     void Ui::enableColliders(Writing context) {
         disableColliders(context);
         const auto root = first_root(context);
-        if (not root) {
-            base::message("eltanin::phys::Ui: no scene Root; skip collider actors");
+        const auto device = first_device(context);
+        if (not root or not device) {
+            base::message("eltanin::phys::Ui: no scene Root/Device; skip collision actors");
             return;
         }
-        const auto edge = mech::space::local::edge2meters;
-        const auto resolved = rmmr::resource::meshpack::Asset::Resolved{
-            .geometry = shapeGeometry,
-            .entry = rmmr::resource::geometry::EntryId{0},
-            .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = shapeMaterial, .textures = {{"albedoMap", shapeAlbedoLayer}}}}},
-            .texpack = shapeTexpack,
-        };
-        const auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{edge, edge, edge});
+        const auto manager = with<rmmr::resource::Manager>::singleton(context);
+        if (not manager) {
+            base::message("eltanin::phys::Ui: no resource Manager; skip collision actors");
+            return;
+        }
+        if (not with<rmmr::resource::Unit_group>::exists(context, *manager))
+            with<rmmr::resource::Unit_group>::extend(context, *manager);
+        auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f);
         for (const auto [crystalId, crystal] : context->aspect<rigid::Crystal>().items()) {
+            if (not with<rigid::Collision>::exists(context, crystalId))
+                continue;
+            const auto cpu = rigid::debugMeshFromCompound(with<rigid::Collision>::get(context, crystalId).compound, crystal.shape);
+            if (cpu.positions.empty() or cpu.indices.empty())
+                continue;
+            const auto geometryId = with<rmmr::resource::Unit_group>::addElement(context, *manager, rmmr::resource::Unit::Quantum{.name = rmmr::resource::Unit::Name::from("Eltanin", "collision")});
+            with<rmmr::resource::geometry::Asset>::extend(context, geometryId, rmmr::resource::geometry::Asset::Quantum{});
+            if (not with<rmmr::resource::geometry::Asset>::install(context, geometryId, *device, cpu))
+                continue;
+            const auto resolved = rmmr::resource::meshpack::Asset::Resolved{
+                .geometry = geometryId,
+                .entry = rmmr::resource::geometry::EntryId{0},
+                .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = shapeMaterial, .textures = {{"albedoMap", shapeAlbedoLayer}}}}},
+                .texpack = shapeTexpack,
+            };
             state.actors.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, crystal.restored.pose(), resolved, appearance));
             bodies.push_back(crystalId);
+            colliderGeometries.push_back(geometryId);
         }
     }
 
@@ -84,6 +111,7 @@ namespace eltanin::phys {
         }
         state.actors.clear();
         bodies.clear();
+        colliderGeometries.clear();
     }
 
     void Ui::enableParticles(Writing context) {
@@ -195,7 +223,7 @@ namespace eltanin::phys {
 
                 ImGui::Separator();
                 ImGui::TextUnformatted("Debug draw");
-                ImGui::Checkbox("Colliders", &showColliders);
+                ImGui::Checkbox("Collisions", &showColliders);
                 ImGui::SameLine();
                 ImGui::Checkbox("Particles", &showParticles);
             }

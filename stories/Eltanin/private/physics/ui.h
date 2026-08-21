@@ -46,6 +46,7 @@ namespace eltanin::phys {
         bool prevShowParticles;
 
         vector<rigid::Crystal::Id> bodies;
+        vector<rmmr::resource::geometry::Asset::Id> colliderGeometries;
         vector<ParticleRef> particleRefs;
 
         void enableColliders(Writing);

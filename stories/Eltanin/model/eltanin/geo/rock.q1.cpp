@@ -1,6 +1,7 @@
 #include <eltanin/geo/rock.q1.h>
 
 #include <eltanin/geo/minerals.q1.h>
+#include "physics/compound.h"
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -419,6 +420,7 @@ namespace eltanin::geo {
             }
 
             const phys::Body restored = phys::rigid::restoredBody(pose, particles, shape);
+            const phys::rigid::Compound compound = octa ? phys::rigid::octaCompound() : (volume ? phys::rigid::volumeCompound(*volume, shape, massCom) : phys::rigid::wrapCompound(shape, massCom));
             const auto body = with<phys::rigid::Crystal>::create(context, phys::rigid::Crystal::Quantum{
                 .particles = std::move(particles),
                 .shape = std::move(shape),
@@ -429,6 +431,7 @@ namespace eltanin::geo {
                 with<phys::rigid::Octa>::extend(context, body, phys::rigid::Octa::Quantum{});
             else
                 with<phys::rigid::Horned>::extend(context, body, phys::rigid::Horned::Quantum{});
+            with<phys::rigid::Collision>::extend(context, body, phys::rigid::Collision::Quantum{.compound = compound});
             return with<Rock>::create(context, Rock::Quantum{.body = body, .actor = actor, .volume = std::move(volume)});
         }
 

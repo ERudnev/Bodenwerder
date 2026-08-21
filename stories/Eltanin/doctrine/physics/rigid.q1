@@ -5,6 +5,16 @@ namespace eltanin
   namespace phys
     namespace rigid
 
+      // Graphics front faces are CCW: (b−a)×(c−a) points toward the camera / outward.
+      // Physics uses the same winding. Each Face is planar and convex.
+      struct Compound
+        struct Hull
+          struct Face
+            points: vector<integer> // into Crystal.shape
+            normal: vec3
+          faces: vector<Face>
+        hulls: vector<Hull>
+
       entity Crystal
         one
           particles: vector<Particle>
@@ -13,6 +23,10 @@ namespace eltanin
           restored: Body // Cache reconstructed from particles
           =debugAddImpulse(imp: vec3)
           =setMotion(pose: Pose, linear: vec3, omega: vec3) // Place shape by Pose; prev = position − (linear + ω×(position−currentCOM))·dt
+
+      feature Collision of Crystal
+        one
+          compound: Compound // Non-convex body as convex Hulls
 
       feature Octa of Crystal
         all *satisfy(~Crystal) // Triad → Pose; position = (1−k)·current + k·(pose * shape)

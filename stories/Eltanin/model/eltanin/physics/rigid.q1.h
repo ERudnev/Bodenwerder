@@ -10,6 +10,17 @@ namespace eltanin::phys::rigid {
 
     using namespace fqsm::api;
 
+    struct Compound {
+        struct Hull {
+            struct Face {
+                vector<integer> points;
+                vec3 normal;
+            };
+            vector<Face> faces;
+        };
+        vector<Hull> hulls;
+    };
+
     struct Crystal : Entity<Crystal> {
         struct Quantum {
             vector<Particle> particles;
@@ -23,6 +34,15 @@ namespace eltanin::phys::rigid {
             static void debugAddImpulse(Writing, Id, vec3 imp);
             static void setMotion(Writing, Id, rmmr::Pose, vec3 linear, vec3 omega);
         };
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct Collision : Feature<Collision, Crystal> {
+        struct Quantum {
+            Compound compound;
+        };
+        struct Actions : BaseActions {};
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
     };
