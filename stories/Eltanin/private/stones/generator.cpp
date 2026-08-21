@@ -441,15 +441,10 @@ namespace eltanin::geo {
         const float meters = mech::space::local::edge2meters;
         const float span = static_cast<float>(lavaBrickCells) * meters;
         const float origin = -static_cast<float>(lavaBrickHalf) * meters;
-        const float tMin = 80.0f;
-        const float tMax = 3600.0f;
-        const float logSpan = std::log(tMax / tMin);
-        cpu.heat.resize(cpu.positions.size());
+        cpu.cohesion.resize(cpu.positions.size());
         for (std::size_t vertex = 0; vertex < cpu.positions.size(); ++vertex) {
-            const vec3 point = cpu.positions[vertex];
-            const float u = glm::clamp((point.x - origin) / span, 0.0f, 1.0f);
-            const float w = glm::clamp((point.z - origin) / span, 0.0f, 1.0f);
-            cpu.heat[vertex] = vec2{tMin * std::exp(u * logSpan), w};
+            const float w = glm::clamp((cpu.positions[vertex].z - origin) / span, 0.0f, 1.0f);
+            cpu.cohesion[vertex] = w;
         }
     }
 
@@ -466,13 +461,13 @@ namespace eltanin::geo {
     }
 
     auto applyIceBlobSinter(rmmr::resource::builders::geometry::CpuPresentation& cpu) -> void {
-        cpu.heat.resize(cpu.positions.size());
+        cpu.cohesion.resize(cpu.positions.size());
         for (std::size_t vertex = 0; vertex < cpu.positions.size(); ++vertex) {
             const vec3 point = cpu.positions[vertex];
             const float noise = 0.45f * std::sin(glm::dot(point, vec3{0.18f, 0.11f, 0.14f})) + 0.35f * std::sin(glm::dot(point, vec3{0.31f, 0.22f, 0.09f}) + 1.3f) + 0.20f * std::sin(glm::dot(point, vec3{0.55f, 0.17f, 0.41f}) + 2.1f);
             const float unit = glm::clamp(0.5f + 0.5f * noise, 0.0f, 1.0f);
             const float patch = glm::smoothstep(0.62f, 0.88f, unit);
-            cpu.heat[vertex] = vec2{80.0f, glm::mix(0.08f, 1.0f, patch)};
+            cpu.cohesion[vertex] = glm::mix(0.08f, 1.0f, patch);
         }
     }
 

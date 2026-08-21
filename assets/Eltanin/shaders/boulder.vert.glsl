@@ -2,7 +2,7 @@
 
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
-layout (location = 2) in vec2 aHeat;
+layout (location = 2) in float aCohesion;
 
 layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     mat4 actorModel;
@@ -29,7 +29,7 @@ layout(std430, binding = 8) readonly buffer PoseBuffer {
 out vec3 v_worldPos;
 out vec3 v_worldNormal;
 out vec3 v_objectPos;
-out vec2 v_heat;
+out float v_cohesion;
 
 const ivec3 orientationRow0[24] = ivec3[24](
     ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0),
@@ -63,7 +63,7 @@ void main() {
     vec4 worldPos = actorModel * vec4(localPosition, 1.0);
     v_worldPos = worldPos.xyz;
     v_objectPos = localPosition;
-    v_heat = aHeat;
+    v_cohesion = aCohesion;
 
     mat3 normalMat = mat3(transpose(inverse(actorModel)));
     v_worldNormal = normalize(normalMat * localRotation * aNormal);

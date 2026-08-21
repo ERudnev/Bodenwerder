@@ -3,7 +3,7 @@
 in vec3 v_worldPos;
 in vec3 v_worldNormal;
 in vec3 v_objectPos;
-in vec2 v_heat;
+in float v_cohesion;
 
 out vec4 FragColor;
 
@@ -221,7 +221,7 @@ void main() {
     float roughness = mineralRoughness[channel];
     float metalness = mineralMetalness[channel];
     float kelvin = max(actorHeat.x, 0.0);
-    float cohesion = clamp(actorHeat.y, 0.0, 1.0);
+    float cohesion = clamp(v_cohesion, 0.0, 1.0);
     vec3 emissive = vec3(0.0);
     applyHeat(channel, 1.0, kelvin, albedo, roughness, metalness, emissive);
     float bumpAmt = 1.0 - cohesion;

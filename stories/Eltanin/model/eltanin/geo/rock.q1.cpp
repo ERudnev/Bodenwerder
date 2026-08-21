@@ -368,8 +368,8 @@ namespace eltanin::geo {
             return surface;
         }
 
-        auto nearestHeat(const rmmr::resource::builders::geometry::CpuPresentation& cpu, vec3 local, vec2 fallback) -> vec2 {
-            if (cpu.heat.empty() or cpu.heat.size() != cpu.positions.size())
+        auto nearestCohesion(const rmmr::resource::builders::geometry::CpuPresentation& cpu, vec3 local, float fallback) -> float {
+            if (cpu.cohesion.empty() or cpu.cohesion.size() != cpu.positions.size())
                 return fallback;
             std::size_t best = 0;
             vec3 delta = cpu.positions[0] - local;
@@ -382,7 +382,7 @@ namespace eltanin::geo {
                     best = index;
                 }
             }
-            return cpu.heat[best];
+            return cpu.cohesion[best];
         }
 
         auto sphereArea(float mass) -> float {
@@ -437,13 +437,13 @@ namespace eltanin::geo {
             const vec3 massCom{massMoment / massTotal};
             const float massSum = static_cast<float>(massTotal);
 
-            vector<vec2> sampleHeat;
-            sampleHeat.reserve(samples.size());
-            vec2 heatSum{0.0f, 0.0f};
+            vector<float> sampleCohesion;
+            sampleCohesion.reserve(samples.size());
+            float cohesionSum = 0.0f;
             for (const Sample& sample : samples) {
-                const vec2 heat = nearestHeat(cpu, sample.local, vec2{temperature, cohesion});
-                sampleHeat.push_back(heat);
-                heatSum += heat * sample.mass;
+                const float sampleCohesionValue = nearestCohesion(cpu, sample.local, cohesion);
+                sampleCohesion.push_back(sampleCohesionValue);
+                cohesionSum += sampleCohesionValue * sample.mass;
             }
 
             const auto manager = with<rmmr::resource::Manager>::singleton(context);
@@ -474,7 +474,7 @@ namespace eltanin::geo {
 
             auto meshState = with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
             meshState.patternScale = glm::max(0.5f, sampleRadius(samples) * 2.0f);
-            meshState.heat = heatSum / massSum;
+            meshState.heat = vec2{temperature, cohesionSum / massSum};
             const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), meshState);
 
             vector<phys::Particle> particles;
@@ -485,8 +485,7 @@ namespace eltanin::geo {
                 const Sample& sample = samples[index];
                 const vec3 world = pose.position + pose.rotation * sample.local;
                 const vec3 spin = glm::cross(omega, pose.rotation * (sample.local - massCom));
-                const vec2 heat = sampleHeat[index];
-                particles.push_back(phys::Particle{phys::Matter{.position = world, .mass = sample.mass, .temperature = heat.x, .cohesion = heat.y}, world - (velocity + spin) * phys::Particle::dt});
+                particles.push_back(phys::Particle{phys::Matter{.position = world, .mass = sample.mass, .temperature = temperature, .cohesion = sampleCohesion[index]}, world - (velocity + spin) * phys::Particle::dt});
                 shape.push_back(sample.local);
             }
 
@@ -573,6 +572,8 @@ namespace eltanin::geo {
         const float sky = phys::Settings::skyKelvin;
         auto crystals = context.direct<phys::rigid::Crystal>();
         for (auto [_, rock] : context.direct<Rock>().items) {
+            if (rock.volume)
+                continue;
             auto* body = crystals.items.find(rock.body);
             if (not body)
                 continue;

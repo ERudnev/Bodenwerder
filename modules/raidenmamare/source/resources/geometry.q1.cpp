@@ -260,47 +260,45 @@ namespace rmmr::resource::geometry {
             const auto uv0_id = primitive::GeometrySemantics::id_of("uv0");
             const auto color0_id = primitive::GeometrySemantics::id_of("color0");
             const auto mix0_id = primitive::GeometrySemantics::id_of("mix0");
-            const auto heat_id = primitive::GeometrySemantics::id_of("heat");
+            const auto cohesion_id = primitive::GeometrySemantics::id_of("cohesion");
 
-            const bool position_only = cpu.layout.size() == std::size_t{1} && cpu.layout[0] == pos_id;
-            const bool position_normal = cpu.layout.size() == std::size_t{2} && cpu.layout[0] == pos_id && cpu.layout[1] == normal_id;
-            const bool position_uv0 = cpu.layout.size() == std::size_t{2} && cpu.layout[0] == pos_id && cpu.layout[1] == uv0_id;
-            const bool position_color0 = cpu.layout.size() == std::size_t{2} && cpu.layout[0] == pos_id && cpu.layout[1] == color0_id;
+            auto attribs = cpu.layout;
+            const bool liveCohesion = not attribs.empty() and attribs.back() == cohesion_id;
+            const GLuint cohesionLocation = liveCohesion ? static_cast<GLuint>(attribs.size() - 1) : 0;
+            if (liveCohesion)
+                attribs.pop_back();
+
+            const bool position_only = attribs.size() == std::size_t{1} && attribs[0] == pos_id;
+            const bool position_normal = attribs.size() == std::size_t{2} && attribs[0] == pos_id && attribs[1] == normal_id;
+            const bool position_uv0 = attribs.size() == std::size_t{2} && attribs[0] == pos_id && attribs[1] == uv0_id;
+            const bool position_color0 = attribs.size() == std::size_t{2} && attribs[0] == pos_id && attribs[1] == color0_id;
             const bool position_uv0_color0 =
-                cpu.layout.size() == std::size_t{3}
-                && cpu.layout[0] == pos_id
-                && cpu.layout[1] == uv0_id
-                && cpu.layout[2] == color0_id;
+                attribs.size() == std::size_t{3}
+                && attribs[0] == pos_id
+                && attribs[1] == uv0_id
+                && attribs[2] == color0_id;
             const bool position_normal_uv0 =
-                cpu.layout.size() == std::size_t{3}
-                && cpu.layout[0] == pos_id
-                && cpu.layout[1] == normal_id
-                && cpu.layout[2] == uv0_id;
+                attribs.size() == std::size_t{3}
+                && attribs[0] == pos_id
+                && attribs[1] == normal_id
+                && attribs[2] == uv0_id;
             const bool position_normal_mix0 =
-                cpu.layout.size() == std::size_t{3}
-                && cpu.layout[0] == pos_id
-                && cpu.layout[1] == normal_id
-                && cpu.layout[2] == mix0_id;
-            const bool position_normal_heat =
-                cpu.layout.size() == std::size_t{3}
-                && cpu.layout[0] == pos_id
-                && cpu.layout[1] == normal_id
-                && cpu.layout[2] == heat_id;
-            const bool position_normal_mix0_heat =
-                cpu.layout.size() == std::size_t{4}
-                && cpu.layout[0] == pos_id
-                && cpu.layout[1] == normal_id
-                && cpu.layout[2] == mix0_id
-                && cpu.layout[3] == heat_id;
+                attribs.size() == std::size_t{3}
+                && attribs[0] == pos_id
+                && attribs[1] == normal_id
+                && attribs[2] == mix0_id;
 
-            if (not position_only && not position_normal && not position_uv0 && not position_color0 && not position_uv0_color0 && not position_normal_uv0 && not position_normal_mix0 && not position_normal_heat && not position_normal_mix0_heat) {
+            if (not position_only && not position_normal && not position_uv0 && not position_color0 && not position_uv0_color0 && not position_normal_uv0 && not position_normal_mix0) {
                 return context.refuse("resource::geometry::bake: unsupported vertex layout");
             }
-            if (not position_normal_mix0 and not position_normal_mix0_heat and not cpu.mix0.empty()) {
+            if (not position_normal_mix0 and not cpu.mix0.empty()) {
                 return context.refuse("resource::geometry::bake: mix0 must be empty for this layout");
             }
-            if (not position_normal_heat and not position_normal_mix0_heat and not cpu.heat.empty()) {
-                return context.refuse("resource::geometry::bake: heat must be empty for this layout");
+            if (liveCohesion and cpu.cohesion.size() != cpu.positions.size()) {
+                return context.refuse("resource::geometry::bake: cohesion count must match positions");
+            }
+            if (not liveCohesion and not cpu.cohesion.empty()) {
+                return context.refuse("resource::geometry::bake: cohesion must be empty for this layout");
             }
 
             if (position_only) {
@@ -343,37 +341,18 @@ namespace rmmr::resource::geometry {
                 if (cpu.color0.size() != cpu.positions.size()) {
                     return context.refuse("resource::geometry::bake: color0 count must match positions");
                 }
-            } else if (position_normal_mix0 or position_normal_mix0_heat) {
+            } else if (position_normal_mix0) {
                 if (cpu.normals.size() != cpu.positions.size()) {
                     return context.refuse("resource::geometry::bake: normals count must match positions");
                 }
                 if (cpu.mix0.size() != cpu.positions.size()) {
                     return context.refuse("resource::geometry::bake: mix0 count must match positions");
                 }
-                if (position_normal_mix0_heat and cpu.heat.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: heat count must match positions");
-                }
-                if (position_normal_mix0 and not cpu.heat.empty()) {
-                    return context.refuse("resource::geometry::bake: heat must be empty for position+normal+mix0 layout");
-                }
                 if (not cpu.uv0.empty()) {
                     return context.refuse("resource::geometry::bake: uv0 must be empty for this layout");
                 }
                 if (not cpu.color0.empty()) {
                     return context.refuse("resource::geometry::bake: color0 must be empty for this layout");
-                }
-            } else if (position_normal_heat) {
-                if (cpu.normals.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: normals count must match positions");
-                }
-                if (cpu.heat.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: heat count must match positions");
-                }
-                if (not cpu.uv0.empty()) {
-                    return context.refuse("resource::geometry::bake: uv0 must be empty for position+normal+heat layout");
-                }
-                if (not cpu.color0.empty()) {
-                    return context.refuse("resource::geometry::bake: color0 must be empty for position+normal+heat layout");
                 }
             } else {
                 if (cpu.normals.size() != cpu.positions.size()) {
@@ -566,56 +545,6 @@ namespace rmmr::resource::geometry {
                 setupAttrib(0, 3, 0);
                 setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
                 setupAttribI(2, 2, GL_UNSIGNED_INT, renderer::Count(6 * sizeof(float)));
-            } else if (position_normal_mix0_heat) {
-                struct Packed {
-                    float px;
-                    float py;
-                    float pz;
-                    float nx;
-                    float ny;
-                    float nz;
-                    std::uint32_t mixLo;
-                    std::uint32_t mixHi;
-                    float kelvin;
-                    float erosion;
-                };
-                static_assert(sizeof(Packed) == 40);
-                std::vector<Packed> packed;
-                packed.reserve(vertex_count);
-                for (std::size_t i = 0; i < vertex_count; ++i) {
-                    const auto& p = cpu.positions[i];
-                    const auto& n = cpu.normals[i];
-                    const auto& heat = cpu.heat[i];
-                    packed.push_back(Packed{.px = p.x, .py = p.y, .pz = p.z, .nx = n.x, .ny = n.y, .nz = n.z, .mixLo = static_cast<std::uint32_t>(cpu.mix0[i]), .mixHi = static_cast<std::uint32_t>(cpu.mix0[i] >> 32), .kelvin = heat.x, .erosion = heat.y});
-                }
-                constexpr renderer::Count stride = renderer::Count(sizeof(Packed));
-                glNamedBufferData(vbo, renderer::SizePtr(packed.size() * sizeof(Packed)), packed.data(), GL_STATIC_DRAW);
-                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
-                setupAttrib(0, 3, 0);
-                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
-                setupAttribI(2, 2, GL_UNSIGNED_INT, renderer::Count(6 * sizeof(float)));
-                setupAttrib(3, 2, renderer::Count(8 * sizeof(float)));
-            } else if (position_normal_heat) {
-                interleaved.reserve(vertex_count * 8);
-                for (std::size_t i = 0; i < vertex_count; ++i) {
-                    const auto& p = cpu.positions[i];
-                    const auto& n = cpu.normals[i];
-                    const auto& heat = cpu.heat[i];
-                    interleaved.push_back(p.x);
-                    interleaved.push_back(p.y);
-                    interleaved.push_back(p.z);
-                    interleaved.push_back(n.x);
-                    interleaved.push_back(n.y);
-                    interleaved.push_back(n.z);
-                    interleaved.push_back(heat.x);
-                    interleaved.push_back(heat.y);
-                }
-                constexpr renderer::Count stride = renderer::Count(8 * sizeof(float));
-                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
-                setupAttrib(0, 3, 0);
-                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
-                setupAttrib(2, 2, renderer::Count(6 * sizeof(float)));
             } else {
                 interleaved.reserve(vertex_count * 8);
                 for (std::size_t i = 0; i < vertex_count; ++i) {
@@ -656,10 +585,31 @@ namespace rmmr::resource::geometry {
             }
             glNamedBufferData(primitiveSurfaces, renderer::SizePtr(primitiveSurfaceData.size() * sizeof(SurfaceId)), primitiveSurfaceData.data(), GL_STATIC_DRAW);
 
+            umap<primitive::GeometrySemantics::PersistentId, renderer::VertexBuffer> channels;
+            if (liveCohesion) {
+                renderer::VertexBuffer buffer{0};
+                glCreateBuffers(1, &buffer);
+                if (not buffer) {
+                    glDeleteVertexArrays(1, &vao);
+                    glDeleteBuffers(1, &vbo);
+                    if (ebo)
+                        glDeleteBuffers(1, &ebo);
+                    glDeleteBuffers(1, &primitiveSurfaces);
+                    return context.refuse("resource::geometry::bake: failed to allocate attrib channel");
+                }
+                glNamedBufferData(buffer, static_cast<renderer::SizePtr>(cpu.cohesion.size() * sizeof(float)), cpu.cohesion.data(), GL_STATIC_DRAW);
+                glEnableVertexArrayAttrib(vao, cohesionLocation);
+                glVertexArrayAttribFormat(vao, cohesionLocation, 1, GL_FLOAT, GL_FALSE, 0);
+                glVertexArrayAttribBinding(vao, cohesionLocation, 1);
+                glVertexArrayVertexBuffer(vao, 1, buffer, 0, renderer::Count(sizeof(float)));
+                channels.insert_or_assign(cohesion_id, buffer);
+            }
+
             return Runtime::Quantum{
                 .device = device,
                 .vao = vao,
                 .vbo = vbo,
+                .channels = std::move(channels),
                 .ebo = ebo,
                 .primitiveSurfaces = primitiveSurfaces,
                 .vertex_count = renderer::Count(vertex_count),
@@ -680,7 +630,7 @@ namespace rmmr::resource::geometry {
         }
 
         void release_gl(Writing context, const Runtime::Quantum& last) {
-            if (not last.vao && not last.vbo && not last.ebo && not last.primitiveSurfaces) {
+            if (not last.vao && not last.vbo && last.channels.empty() && not last.ebo && not last.primitiveSurfaces) {
                 return;
             }
             glfwMakeContextCurrent(with<system::Device>::get(context, last.device).handle);
@@ -691,6 +641,11 @@ namespace rmmr::resource::geometry {
             if (last.vbo) {
                 auto vbo = last.vbo;
                 glDeleteBuffers(1, &vbo);
+            }
+            for (const auto& channel : last.channels) {
+                auto buffer = channel.second;
+                if (buffer)
+                    glDeleteBuffers(1, &buffer);
             }
             if (last.ebo) {
                 auto ebo = last.ebo;
@@ -731,7 +686,29 @@ namespace rmmr::resource::geometry {
             asset->surfaceCatalogs = {{{"surface", SurfaceId{0}}}};
         }
 
+        template<typename Context>
+        void writeChannelOn(Context context, Runtime::Id id, primitive::GeometrySemantics::PersistentId semantic, const void* data, renderer::SizePtr bytes) {
+            if (semantic == primitive::GeometrySemantics::PersistentId{0} or data == nullptr or bytes == 0 or not with<Runtime>::exists(context, id))
+                return;
+            const auto& runtime = with<Runtime>::get(context, id);
+            const auto found = runtime.channels.find(semantic);
+            if (found == runtime.channels.end() or not found->second)
+                return;
+            if (bytes != static_cast<renderer::SizePtr>(static_cast<std::size_t>(runtime.vertex_count) * sizeof(float)))
+                return;
+            glfwMakeContextCurrent(with<system::Device>::get(context, runtime.device).handle);
+            glNamedBufferSubData(found->second, 0, bytes, data);
+        }
+
     } // namespace
+
+    void Asset::Actions::writeChannel(Writing context, Runtime::Id id, primitive::GeometrySemantics::PersistentId semantic, const void* data, renderer::SizePtr bytes) {
+        writeChannelOn(context, id, semantic, data, bytes);
+    }
+
+    void Asset::Actions::writeChannel(Stewarding context, Runtime::Id id, primitive::GeometrySemantics::PersistentId semantic, const void* data, renderer::SizePtr bytes) {
+        writeChannelOn(context, id, semantic, data, bytes);
+    }
 
     auto Asset::Actions::install(Writing context, Id asset_id, system::Device::Id device, const CpuPresentation& cpu) -> optional<Runtime::Id> {
         setSingleEntry(context, asset_id, cpu);

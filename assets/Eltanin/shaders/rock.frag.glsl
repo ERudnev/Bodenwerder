@@ -7,7 +7,7 @@ in vec4 v_mix0;
 in vec4 v_mix1;
 in vec4 v_mix2;
 in vec4 v_mix3;
-in vec2 v_heat;
+in float v_cohesion;
 
 out vec4 FragColor;
 
@@ -251,8 +251,8 @@ void main() {
     }
     albedo *= actorAlbedoOpacity.rgb;
     height = clamp(height, 0.0, 1.0);
-    float kelvin = max(v_heat.x, 0.0);
-    float cohesion = clamp(v_heat.y, 0.0, 1.0);
+    float kelvin = max(actorHeat.x, 0.0);
+    float cohesion = clamp(v_cohesion, 0.0, 1.0);
     vec3 emissive = vec3(0.0);
     for (int channel = 0; channel < 16; ++channel) {
         float weight = channelWeight(channel);

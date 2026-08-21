@@ -15,7 +15,7 @@ namespace eltanin::phys {
     // One Dock per tick; hot mutation via Stewarding::direct<rigid::Crystal>().
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
     // Constraint wave: each installed rigid feature contributes its Crystal solver.
-    // Thermal: accumulate to thermalStepUs, then one radiate(dt) for the whole debt (no substeps).
+    // Thermal: small rocks only (no Volume). Accumulate to thermalStepUs, then radiate. No conduction.
     struct Settings {
         static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
         static constexpr int constraintPasses = 1;//4;

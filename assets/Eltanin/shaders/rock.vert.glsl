@@ -3,7 +3,7 @@
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in uvec2 aMix0;
-layout (location = 3) in vec2 aHeat;
+layout (location = 3) in float aCohesion;
 
 layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     mat4 actorModel;
@@ -34,7 +34,7 @@ out vec4 v_mix0;
 out vec4 v_mix1;
 out vec4 v_mix2;
 out vec4 v_mix3;
-out vec2 v_heat;
+out float v_cohesion;
 
 const ivec3 orientationRow0[24] = ivec3[24](
     ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0),
@@ -72,7 +72,7 @@ void main() {
     v_mix1 = vec4(float((aMix0.x >> 16u) & 15u), float((aMix0.x >> 20u) & 15u), float((aMix0.x >> 24u) & 15u), float((aMix0.x >> 28u) & 15u)) / 15.0;
     v_mix2 = vec4(float((aMix0.y >> 0u) & 15u), float((aMix0.y >> 4u) & 15u), float((aMix0.y >> 8u) & 15u), float((aMix0.y >> 12u) & 15u)) / 15.0;
     v_mix3 = vec4(float((aMix0.y >> 16u) & 15u), float((aMix0.y >> 20u) & 15u), float((aMix0.y >> 24u) & 15u), float((aMix0.y >> 28u) & 15u)) / 15.0;
-    v_heat = aHeat;
+    v_cohesion = aCohesion;
 
     mat3 normalMat = mat3(transpose(inverse(actorModel)));
     v_worldNormal = normalize(normalMat * localRotation * aNormal);

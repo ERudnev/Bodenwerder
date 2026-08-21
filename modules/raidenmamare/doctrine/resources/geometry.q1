@@ -15,6 +15,7 @@ namespace rmmr
         device: #system::Device
         vao: renderer::VertexArray
         vbo: renderer::VertexBuffer
+        channels: umap<integer, renderer::VertexBuffer>
         ebo: renderer::ElementBuffer
         primitiveSurfaces: renderer::StorageBuffer
         vertex_count: renderer::Count
@@ -43,6 +44,8 @@ namespace rmmr
         mounts: vector<Mount>
         entryCatalog: umap<string, EntryId>
         surfaceCatalogs: vector<umap<string, SurfaceId>>
+      all
+        >writeChannel(#Runtime, semantic: integer)
 
     feature Loader of Asset
       one

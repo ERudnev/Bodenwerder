@@ -103,7 +103,7 @@ namespace eltanin::geo {
 
     auto meshDebris(const Rock::GeneralizedRecipe& recipe) -> CpuPresentation {
         CpuPresentation cpu{
-            .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "heat"}),
+            .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "cohesion"}),
             .positions = {},
             .normals = {},
             .uv0 = {},
@@ -144,7 +144,7 @@ namespace eltanin::geo {
             else
                 cpu.normals[index] /= std::sqrt(length2);
         }
-        cpu.heat.assign(cpu.positions.size(), vec2{0.0f, 0.0f});
+        cpu.cohesion.assign(cpu.positions.size(), 0.0f);
         return cpu;
     }
 

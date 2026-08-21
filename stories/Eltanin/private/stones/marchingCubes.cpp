@@ -189,7 +189,7 @@ namespace eltanin::geo {
 
     auto meshVolume(const Volume& root) -> CpuPresentation {
         CpuPresentation cpu{
-            .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "mix0", "heat"}),
+            .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "mix0", "cohesion"}),
             .positions = {},
             .normals = {},
             .uv0 = {},
@@ -324,7 +324,7 @@ namespace eltanin::geo {
             return packMix(lerpWeights(c0, c1, frac.z));
         };
         cpu.mix0.resize(cpu.positions.size(), Mix{0});
-        cpu.heat.assign(cpu.positions.size(), vec2{0.0f, 0.0f});
+        cpu.cohesion.assign(cpu.positions.size(), 0.0f);
         for (std::size_t vertex = 0; vertex < cpu.positions.size(); ++vertex) {
             const vec3 inward = cpu.positions[vertex] - cpu.normals[vertex] * (0.25f * meters);
             cpu.mix0[vertex] = mixAt(inward);

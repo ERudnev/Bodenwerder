@@ -23,6 +23,7 @@ namespace rmmr::resource::geometry {
             system::Device::Id device;
             renderer::VertexArray vao;
             renderer::VertexBuffer vbo;
+            umap<primitive::GeometrySemantics::PersistentId, renderer::VertexBuffer> channels;
             renderer::ElementBuffer ebo;
             renderer::StorageBuffer primitiveSurfaces;
             renderer::Count vertex_count;
@@ -62,6 +63,8 @@ namespace rmmr::resource::geometry {
         struct Actions : BaseActions {
             // Bake CPU mesh into a Runtime and bind it in DeviceRuntimes mapping.
             static auto install(Writing, Id, system::Device::Id, const builders::geometry::CpuPresentation&) -> optional<Runtime::Id>;
+            static void writeChannel(Writing, Runtime::Id, primitive::GeometrySemantics::PersistentId, const void*, renderer::SizePtr);
+            static void writeChannel(Stewarding, Runtime::Id, primitive::GeometrySemantics::PersistentId, const void*, renderer::SizePtr);
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

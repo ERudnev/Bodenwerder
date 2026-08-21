@@ -46,7 +46,7 @@ namespace rmmr::primitive {
             Entry{3, Type::v2f, "uv0"},
             Entry{100, Type::v4f, "color0"},
             Entry{101, Type::uvec2, "mix0"},
-            Entry{102, Type::v2f, "heat"},
+            Entry{102, Type::f32, "cohesion"},
         }};
 
         static constexpr auto name_of(PersistentId id) -> Name {
