@@ -88,9 +88,7 @@ namespace eltanin {
                 if (not body) { my::remove(context, id); continue; }
                 if (not my::ward(context, id, &Quantum::actor)) { my::remove(context, id); continue; }
                 if (not with<rmmr::scene::Node>::exists(context, block.actor)) { my::remove(context, id); continue; }
-                const rmmr::Pose pose = body->restored.pose();
-                if (not pose.near(with<rmmr::scene::Node>::get(context, block.actor).pose))
-                    with<rmmr::scene::Node>::modify(context, block.actor)->pose = pose;
+                with<rmmr::scene::Node>::modify(context, block.actor)->pose = body->restored.pose();
             }
         }
     };

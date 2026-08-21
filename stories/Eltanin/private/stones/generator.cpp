@@ -229,6 +229,8 @@ namespace eltanin::geo {
         }
 
         auto radiusAt(vec3 point, float radius, float amp, integer seed) -> float {
+            if (amp <= 0.0f)
+                return radius;
             const float length = glm::length(point);
             if (length < 1.0e-5f)
                 return radius * (1.0f - amp);
@@ -331,7 +333,7 @@ namespace eltanin::geo {
     auto generateRockVolume(const Rock::GeneralizedRecipe& recipe) -> Volume {
         const float radius = recipe.radius;
         const float amp = glm::clamp(recipe.lump, 0.0f, 1.0f) * lumpAmp;
-        const vec3 axes = ellipsoidAxes(static_cast<int>(recipe.seed));
+        const vec3 axes = amp > 0.0f ? ellipsoidAxes(static_cast<int>(recipe.seed)) : vec3{1.0f, 1.0f, 1.0f};
         const float axisMax = glm::max(axes.x, glm::max(axes.y, axes.z));
         const float axisMin = glm::min(axes.x, glm::min(axes.y, axes.z));
         const float rMin = radius * axisMin * (1.0f - amp);

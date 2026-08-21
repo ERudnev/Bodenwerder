@@ -1,11 +1,13 @@
 #include "scenarios/boundersAndStones.h"
 
 #include <eltanin/geo/minerals.q1.h>
+#include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/texture3array.q1.h>
+#include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/semantics/rendering.h>
 #include <rmmr/semantics/uniform.h>
 
@@ -23,12 +25,16 @@ namespace eltanin::scenarios {
 
     namespace {
 
-        constexpr float ringRadius = 800.0f;
-        constexpr float boulderStep = 20.0f;
+        constexpr float coreRadius = 20.0f;
+        constexpr float coreSurfaceAccel = 2.0f;
+        constexpr float coreKelvin = 6000.0f;
+        constexpr float ringRadius = 90.0f;
         constexpr float clearanceGap = 8.0f;
-        constexpr float giantPeriodSeconds = 180.0f;
         constexpr float pebbleRevPerSecMax = 2.0f;
         constexpr int mixChannels = 16;
+        constexpr int ironMineral = 6;
+        constexpr int pebbleCount = 100;
+        constexpr int hornCount = 4;
 
         auto nibble(int channel, int fill) -> geo::Mix {
             return geo::Mix{static_cast<std::uint64_t>(fill)} << (channel * 4);
@@ -155,28 +161,54 @@ namespace eltanin::scenarios {
     }
 
     void BoundersAndStones::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
-        const geo::Mix palettes[5]{
+        const geo::Mix palettes[hornCount]{
             nibble(1, 8) | nibble(2, 4) | nibble(3, 3),
             nibble(0, 15),
             nibble(6, 9) | nibble(7, 6),
             nibble(5, 11) | nibble(4, 4),
-            nibble(9, 7) | nibble(8, 5) | nibble(3, 3),
         };
-        const float potatoDiameters[5]{400.0f, 200.0f, 100.0f, 50.0f, 25.0f};
+        const float potatoDiameters[hornCount]{40.0f, 30.0f, 22.0f, 18.0f};
         std::mt19937 rng{20260817};
         std::normal_distribution<float> gauss{0.0f, 1.0f};
         std::uniform_real_distribution<float> unit{0.0f, 1.0f};
         const float twoPi = 2.0f * std::numbers::pi_v<float>;
-        const vec3 rest{0.0f, 0.0f, 0.0f};
-        const float giantMass = sphereMass(potatoDiameters[0], mixDensity(palettes[0]));
-        const float spinK = (twoPi / giantPeriodSeconds) * giantMass;
+        const phys::rigid::CelestialGravity::Quantum coreGravity{.averageRadius = coreRadius, .surfaceAcceleration = coreSurfaceAccel};
+        const float spinK = (twoPi / 180.0f) * sphereMass(coreRadius * 2.0f, geo::Mineral::table()[static_cast<std::size_t>(ironMineral)].density);
 
-        Occupied occupied[5];
-        const int boulderSlots = static_cast<int>(twoPi * ringRadius / boulderStep);
-        rocks.reserve(static_cast<std::size_t>(5 + boulderSlots));
-        for (int index = 0; index < 5; ++index) {
+        auto orbitVelocity = [&](vec3 position) -> vec3 {
+            const float distance = glm::length(position);
+            if (distance <= 1.0e-6f)
+                return vec3{0.0f, 0.0f, 0.0f};
+            return vec3{-position.z, 0.0f, position.x} * (coreGravity.roundOrbitHelper(distance) / distance);
+        };
+
+        rocks.reserve(static_cast<std::size_t>(1 + hornCount + pebbleCount));
+        {
+            const geo::Rock::GeneralizedRecipe recipe{
+                .mix = geo::Rock::GeneralizedRecipe::homogenous(ironMineral),
+                .radius = coreRadius,
+                .lump = 0.0f,
+                .seed = 1,
+                .spotMeters = 8.0f,
+                .spotContrast = 0.0f,
+            };
+            const auto id = with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.08f, 0.0f});
+            rocks.push_back(id);
+            const auto& rock = with<geo::Rock>::get(context, id);
+            with<phys::rigid::CelestialGravity>::extend(context, rock.body, coreGravity);
+            auto crystal = with<phys::rigid::Crystal>::modify(context, rock.body);
+            for (phys::Particle& particle : crystal->particles) {
+                particle.temperature = coreKelvin;
+                particle.cohesion = 0.25f;
+            }
+            crystal->refreshMatter();
+            with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat = vec2{coreKelvin, 0.25f};
+        }
+
+        Occupied occupied[hornCount];
+        for (int index = 0; index < hornCount; ++index) {
             const float diameter = potatoDiameters[index];
-            const float azim = twoPi * static_cast<float>(index) / 5.0f;
+            const float azim = twoPi * static_cast<float>(index) / static_cast<float>(hornCount);
             const Pose pose = ringPose(azim, rng);
             const geo::Rock::GeneralizedRecipe recipe{
                 .mix = palettes[index],
@@ -187,12 +219,12 @@ namespace eltanin::scenarios {
                 .spotContrast = glm::clamp(0.78f + 0.14f * unit(rng), 0.70f, 1.0f),
             };
             occupied[index] = Occupied{.position = pose.position, .radius = diameter * 0.5f};
-            rocks.push_back(with<geo::Rock>::spawnGenerated(context, root, device, pose, recipe, rest, spinOmega(sphereMass(diameter, mixDensity(recipe.mix)), spinK, 1.0f, rng)));
+            rocks.push_back(with<geo::Rock>::spawnGenerated(context, root, device, pose, recipe, orbitVelocity(pose.position), spinOmega(sphereMass(diameter, mixDensity(recipe.mix)), spinK, 1.0f, rng)));
         }
 
-        for (int slot = 0; slot < boulderSlots; ++slot) {
-            const float diameter = 0.5f + 9.5f * unit(rng);
-            const float azim = static_cast<float>(slot) * boulderStep / ringRadius;
+        for (int slot = 0; slot < pebbleCount; ++slot) {
+            const float diameter = 0.5f + 1.5f * unit(rng);
+            const float azim = twoPi * static_cast<float>(slot) / static_cast<float>(pebbleCount);
             const Pose pose = ringPose(azim, rng);
             bool blocked = false;
             for (const auto& body : occupied) {
@@ -213,7 +245,7 @@ namespace eltanin::scenarios {
                 .spotContrast = 0.0f,
             };
             const float mass = sphereMass(diameter, geo::Mineral::table()[static_cast<std::size_t>(mineral)].density);
-            rocks.push_back(with<geo::Rock>::spawnGenerated(context, root, device, pose, recipe, rest, spinOmega(mass, spinK, unit(rng), rng)));
+            rocks.push_back(with<geo::Rock>::spawnGenerated(context, root, device, pose, recipe, orbitVelocity(pose.position), spinOmega(mass, spinK, unit(rng), rng)));
         }
     }
 

@@ -55,27 +55,15 @@ namespace eltanin::phys::rigid {
             return candidate - axis * glm::dot(candidate, axis);
         }
 
-        // goal[i] = currentCOM + R·q[i], q = shape − restCOM. Pulls position only; prev is impulse.
-        // Subtracts mass-weighted mean correction so the shape solver cannot translate COM.
-        void pullToShape(Crystal::Quantum& crystal, quat rotation, vec3 currentCom) {
-            const vec3 restCom = crystal.com;
-            glm::dvec3 correctionMoment{0.0, 0.0, 0.0};
-            double mass = 0.0;
-            for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
-                const vec3 q = crystal.shape[index] - restCom;
-                const vec3 goal = currentCom + rotation * q;
-                const vec3 correction = goal - crystal.particles[index].position;
-                correctionMoment += static_cast<double>(crystal.particles[index].mass) * glm::dvec3{correction};
-                mass += static_cast<double>(crystal.particles[index].mass);
-            }
-            const vec3 meanCorrection = mass > 0.0 ? vec3{correctionMoment / mass} : vec3{0.0f, 0.0f, 0.0f};
+        // goal = pose * shape; position = (1−k)·current + k·goal. Pose only; prev is impulse.
+        void pullToShape(Crystal::Quantum& crystal, Pose pose) {
+            const float k = Settings::constraintStiffness;
             for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
                 Particle& particle = crystal.particles[index];
-                const vec3 q = crystal.shape[index] - restCom;
-                const vec3 goal = currentCom + rotation * q;
-                particle.position += Settings::constraintStiffness * (goal - particle.position - meanCorrection);
+                const vec3 goal = pose.position + pose.rotation * crystal.shape[index];
+                particle.position = particle.position * (1.0f - k) + goal * k;
             }
-            crystal.restored = restoredBody(Pose{.position = currentCom - rotation * restCom, .rotation = rotation}, crystal.particles, crystal.shape);
+            crystal.restored.pose(pose);
         }
 
     }
@@ -109,15 +97,18 @@ namespace eltanin::phys::rigid {
         }
     }
 
-    void Crystal::Actions::setMotion(Writing context, Id id, vec3 linear, vec3 omega) {
+    void Crystal::Actions::setMotion(Writing context, Id id, Pose pose, vec3 linear, vec3 omega) {
         auto crystal = with<Crystal>::modify(context, id);
-        if (crystal->particles.empty())
+        if (crystal->particles.empty() or crystal->particles.size() != crystal->shape.size())
             return;
-        const vec3 currentCom = currentComOf(crystal->particles);
-        for (Particle& particle : crystal->particles) {
+        const vec3 currentCom = pose.position + pose.rotation * crystal->com;
+        for (std::size_t index = 0; index < crystal->particles.size(); ++index) {
+            Particle& particle = crystal->particles[index];
+            particle.position = pose.position + pose.rotation * crystal->shape[index];
             const vec3 spin = glm::cross(omega, particle.position - currentCom);
             particle.prev = particle.position - (linear + spin) * Particle::dt;
         }
+        crystal->restored = restoredBody(pose, crystal->particles, crystal->shape);
     }
 
     void Octa::Actions::satisfy(Stewarding context) {
@@ -146,7 +137,7 @@ namespace eltanin::phys::rigid {
             quat rotation = glm::quat_cast(mat3{axisX, axisY, axisZ});
             if (glm::dot(rotation, crystal->restored.orientation) < 0.0f)
                 rotation = -rotation;
-            pullToShape(*crystal, rotation, currentCom);
+            pullToShape(*crystal, Pose{.position = currentCom - rotation * crystal->com, .rotation = rotation});
         }
     }
 
@@ -179,7 +170,42 @@ namespace eltanin::phys::rigid {
                 continue;
 
             const quat rotation = horn::orientation(restCentered, worldCentered, masses);
-            pullToShape(*crystal, rotation, currentCom);
+            pullToShape(*crystal, Pose{.position = currentCom - rotation * restCom, .rotation = rotation});
+        }
+    }
+
+    auto CelestialGravity::Quantum::roundOrbitHelper(float distance) const -> float {
+        if (distance < averageRadius or averageRadius <= 0.0f or surfaceAcceleration <= 0.0f)
+            return 0.0f;
+        return std::sqrt(surfaceAcceleration * averageRadius * averageRadius / distance);
+    }
+
+    // Verlet: position += a·dt² toward the source COM. Outside ~ 1/r²; inside a uniform sphere, linear in r.
+    void CelestialGravity::Actions::apply(Stewarding context) {
+        auto crystals = context.direct<Crystal>();
+        const float dt2 = Particle::dt * Particle::dt;
+        for (auto [sourceId, gravity] : context.direct<CelestialGravity>().items) {
+            if (gravity.averageRadius <= 0.0f or gravity.surfaceAcceleration == 0.0f)
+                continue;
+            auto* source = crystals.items.find(sourceId);
+            if (not source or source->particles.empty())
+                continue;
+            const vec3 sourceCom = currentComOf(source->particles);
+            const float radius = gravity.averageRadius;
+            const float surface = gravity.surfaceAcceleration;
+            for (auto [targetId, crystal] : crystals.items) {
+                if (targetId == sourceId)
+                    continue;
+                for (Particle& particle : crystal.particles) {
+                    const vec3 offset = particle.position - sourceCom;
+                    const float distance2 = glm::dot(offset, offset);
+                    if (distance2 <= 1.0e-12f)
+                        continue;
+                    const float distance = std::sqrt(distance2);
+                    const float accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
+                    particle.position += offset * accelScale * dt2;
+                }
+            }
         }
     }
 

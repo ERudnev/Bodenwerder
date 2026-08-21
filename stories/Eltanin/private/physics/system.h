@@ -11,14 +11,14 @@ namespace eltanin::phys {
 
     // Private physics subsystem (not Q1).
     // Fixed tick 10ms; wall dt accumulates as debt (sub-step remainder).
-    // No gravity: Verlet + rigid constraints only.
+    // Verlet + CelestialGravity (a·dt² on other crystals) + rigid constraints.
     // One Dock per tick; hot mutation via Stewarding::direct<rigid::Crystal>().
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
     // Constraint wave: each installed rigid feature contributes its Crystal solver.
     // Thermal: accumulate to thermalStepUs, then one radiate(dt) for the whole debt (no substeps).
     struct Settings {
-        static constexpr float constraintStiffness = 0.75f; // Hitman-style goal pull (constraints)
-        static constexpr int constraintPasses = 4;
+        static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
+        static constexpr int constraintPasses = 1;//4;
         static constexpr int64 fixedStepUs = 10'000;
         static constexpr int64 thermalStepUs = 200'000;
         static constexpr float skyKelvin = 3.0f;

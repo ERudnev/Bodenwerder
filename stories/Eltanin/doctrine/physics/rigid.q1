@@ -12,10 +12,17 @@ namespace eltanin
           com: vec3 // restCOM = Σ(m·shape)/Σm, computed once for this shape
           restored: Body // Cache reconstructed from particles
           =debugAddImpulse(imp: vec3)
-          =setMotion(linear: vec3, omega: vec3) // Verlet: prev = position − (linear + ω×(position−currentCOM))·dt
+          =setMotion(pose: Pose, linear: vec3, omega: vec3) // Place shape by Pose; prev = position − (linear + ω×(position−currentCOM))·dt
 
       feature Octa of Crystal
-        *satisfy(~Crystal) // Triad on p=position−currentCOM vs q=shape−restCOM; goal = currentCOM + R·q
+        all *satisfy(~Crystal) // Triad → Pose; position = (1−k)·current + k·(pose * shape)
 
       feature Horned of Crystal
-        *satisfy(~Crystal) // Horn on the same q/p; Body.pose origin is currentCOM − R·restCOM
+        all *satisfy(~Crystal) // Horn on q/p; same pull; Pose origin is currentCOM − R·restCOM
+
+      attribute CelestialGravity of Crystal
+        one
+          averageRadius: float
+          surfaceAcceleration: float
+          ?roundOrbitHelper(distance: float)->float
+        all *apply(~Crystal)

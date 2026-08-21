@@ -21,7 +21,7 @@ namespace eltanin::phys::rigid {
         };
         struct Actions : BaseActions {
             static void debugAddImpulse(Writing, Id, vec3 imp);
-            static void setMotion(Writing, Id, vec3 linear, vec3 omega);
+            static void setMotion(Writing, Id, rmmr::Pose, vec3 linear, vec3 omega);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
@@ -40,6 +40,20 @@ namespace eltanin::phys::rigid {
         struct Quantum {};
         struct Actions : BaseActions {
             static void satisfy(Stewarding);
+        };
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
+    struct CelestialGravity : Attribute<CelestialGravity, Crystal> {
+        struct Quantum {
+            float averageRadius;
+            float surfaceAcceleration;
+
+            auto roundOrbitHelper(float distance) const -> float;
+        };
+        struct Actions : BaseActions {
+            static void apply(Stewarding);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }

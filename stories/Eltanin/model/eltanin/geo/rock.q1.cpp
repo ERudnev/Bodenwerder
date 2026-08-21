@@ -532,9 +532,7 @@ namespace eltanin::geo {
                 if (not body) { my::remove(context, id); continue; }
                 if (not my::ward(context, id, &Quantum::actor)) { my::remove(context, id); continue; }
                 if (not with<rmmr::scene::Node>::exists(context, rock.actor)) { my::remove(context, id); continue; }
-                const Pose pose = body->restored.pose();
-                if (not pose.near(with<rmmr::scene::Node>::get(context, rock.actor).pose))
-                    with<rmmr::scene::Node>::modify(context, rock.actor)->pose = pose;
+                with<rmmr::scene::Node>::modify(context, rock.actor)->pose = body->restored.pose();
             }
         }
     };

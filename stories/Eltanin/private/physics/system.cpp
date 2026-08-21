@@ -27,6 +27,7 @@ namespace eltanin::phys {
 
     void System::tick(Stewarding context) {
         integrate(context.direct<rigid::Crystal>());
+        with<rigid::CelestialGravity>::apply(context);
         for (int pass = 0; pass < Settings::constraintPasses; ++pass)
             constraintPass(context);
     }
