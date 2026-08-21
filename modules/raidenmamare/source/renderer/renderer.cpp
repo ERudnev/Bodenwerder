@@ -36,8 +36,13 @@ namespace rmmr {
         : scene_color_{.fbo = 0, .color = 0, .size = index2{0, 0}}
         , overlay_color_{.fbo = 0, .color = 0, .size = index2{0, 0}}
         , identity_{.all_fbo = 0, .selected_fbo = 0, .color = 0, .selected = 0, .depth = 0, .size = index2{0, 0}}
+        , sceneTarget_{.fbo = 0, .hdr = 0, .bloomMask = 0, .depth = 0, .size = index2{0, 0}}
+        , bloomTarget_{.sourceFbo = 0, .scratchFbo = 0, .source = 0, .scratch = 0, .size = index2{0, 0}}
         , fullscreen_vao_{0}
         , passStateBuffer{0}
+        , bloomDownsampleProgram_{0}
+        , bloomBlurProgram_{0}
+        , tonemapProgram_{0}
         , lastStats{.mdiCalls = 0, .indirectDraws = 0}
     {}
 
@@ -46,6 +51,12 @@ namespace rmmr {
             glDeleteBuffers(1, &passStateBuffer);
         if (fullscreen_vao_)
             glDeleteVertexArrays(1, &fullscreen_vao_);
+        if (bloomDownsampleProgram_)
+            glDeleteProgram(bloomDownsampleProgram_);
+        if (bloomBlurProgram_)
+            glDeleteProgram(bloomBlurProgram_);
+        if (tonemapProgram_)
+            glDeleteProgram(tonemapProgram_);
         auto release = [](ColorTarget& target) {
             if (target.fbo)
                 glDeleteFramebuffers(1, &target.fbo);
@@ -54,6 +65,26 @@ namespace rmmr {
         };
         release(scene_color_);
         release(overlay_color_);
+        auto releaseTex = [](renderer::Texture& texture) {
+            if (texture) {
+                glDeleteTextures(1, &texture);
+                texture = 0;
+            }
+        };
+        auto releaseFbo = [](renderer::Framebuffer& fbo) {
+            if (fbo) {
+                glDeleteFramebuffers(1, &fbo);
+                fbo = 0;
+            }
+        };
+        releaseFbo(sceneTarget_.fbo);
+        releaseTex(sceneTarget_.hdr);
+        releaseTex(sceneTarget_.bloomMask);
+        releaseTex(sceneTarget_.depth);
+        releaseFbo(bloomTarget_.sourceFbo);
+        releaseFbo(bloomTarget_.scratchFbo);
+        releaseTex(bloomTarget_.source);
+        releaseTex(bloomTarget_.scratch);
         if (identity_.all_fbo)
             glDeleteFramebuffers(1, &identity_.all_fbo);
         if (identity_.selected_fbo)
@@ -96,6 +127,320 @@ namespace rmmr {
             throw std::runtime_error(std::string("Renderer: ") + label + " framebuffer incomplete");
         }
         target.size = size;
+    }
+
+    namespace {
+
+        constexpr int bloomScale = 4;
+
+        auto compileGlsl(GLenum type, const char* src) -> GLuint {
+            GLuint shader = glCreateShader(type);
+            glShaderSource(shader, 1, &src, nullptr);
+            glCompileShader(shader);
+            GLint ok = 0;
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
+            if (not ok) {
+                GLint length = 0;
+                glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+                std::string log(static_cast<std::size_t>(std::max(length, 1)), '\0');
+                glGetShaderInfoLog(shader, length, nullptr, log.data());
+                glDeleteShader(shader);
+                throw std::runtime_error(std::string("Renderer: post shader compile failed: ") + log);
+            }
+            return shader;
+        }
+
+        auto linkProgram(const char* vsSrc, const char* fsSrc) -> renderer::Program {
+            const GLuint vs = compileGlsl(GL_VERTEX_SHADER, vsSrc);
+            const GLuint fs = compileGlsl(GL_FRAGMENT_SHADER, fsSrc);
+            renderer::Program program = glCreateProgram();
+            glAttachShader(program, vs);
+            glAttachShader(program, fs);
+            glLinkProgram(program);
+            glDeleteShader(vs);
+            glDeleteShader(fs);
+            GLint linked = 0;
+            glGetProgramiv(program, GL_LINK_STATUS, &linked);
+            if (not linked) {
+                GLint length = 0;
+                glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+                std::string log(static_cast<std::size_t>(std::max(length, 1)), '\0');
+                glGetProgramInfoLog(program, length, nullptr, log.data());
+                glDeleteProgram(program);
+                throw std::runtime_error(std::string("Renderer: post program link failed: ") + log);
+            }
+            return program;
+        }
+
+        const char* fullscreenVs = R"(#version 460 core
+out vec2 vUv;
+void main() {
+    const vec2 pos[3] = vec2[](vec2(-1.0,-1.0), vec2(3.0,-1.0), vec2(-1.0,3.0));
+    vec2 p = pos[gl_VertexID];
+    vUv = p * 0.5 + 0.5;
+    gl_Position = vec4(p, 0.0, 1.0);
+})";
+
+        void drawFullscreenTriangle(renderer::VertexArray& vao) {
+            if (vao == 0)
+                glCreateVertexArrays(1, &vao);
+            glBindVertexArray(vao);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glBindVertexArray(0);
+        }
+
+        auto bloomSizeFor(index2 sceneSize) -> index2 {
+            return index2{std::max(static_cast<int>(sceneSize.x) / bloomScale, 1), std::max(static_cast<int>(sceneSize.y) / bloomScale, 1)};
+        }
+
+        auto isSceneColorPass(renderer::Pass pass) -> bool {
+            return pass == renderer::Pass::environment or pass == renderer::Pass::opaque or pass == renderer::Pass::transparent or pass == renderer::Pass::sprite or pass == renderer::Pass::gizmo;
+        }
+
+        void setGlowSpreadWrite(bool on) {
+            const GLboolean mask = on ? GL_TRUE : GL_FALSE;
+            glColorMaski(1, mask, mask, mask, mask);
+        }
+
+    } // namespace
+
+    void Renderer::ensureSceneTarget(index2 size) {
+        const int width = std::max(static_cast<int>(size.x), 1);
+        const int height = std::max(static_cast<int>(size.y), 1);
+        if (sceneTarget_.fbo and sceneTarget_.size.x == size.x and sceneTarget_.size.y == size.y)
+            return;
+
+        auto releaseTex = [](renderer::Texture& texture) {
+            if (texture) {
+                glDeleteTextures(1, &texture);
+                texture = 0;
+            }
+        };
+        if (sceneTarget_.fbo) {
+            glDeleteFramebuffers(1, &sceneTarget_.fbo);
+            sceneTarget_.fbo = 0;
+        }
+        releaseTex(sceneTarget_.hdr);
+        releaseTex(sceneTarget_.bloomMask);
+        releaseTex(sceneTarget_.depth);
+
+        glCreateTextures(GL_TEXTURE_2D, 1, &sceneTarget_.hdr);
+        glTextureStorage2D(sceneTarget_.hdr, 1, GL_RGBA16F, width, height);
+        glTextureParameteri(sceneTarget_.hdr, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTextureParameteri(sceneTarget_.hdr, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(sceneTarget_.hdr, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(sceneTarget_.hdr, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glCreateTextures(GL_TEXTURE_2D, 1, &sceneTarget_.bloomMask);
+        glTextureStorage2D(sceneTarget_.bloomMask, 1, GL_R16F, width, height);
+        glTextureParameteri(sceneTarget_.bloomMask, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTextureParameteri(sceneTarget_.bloomMask, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTextureParameteri(sceneTarget_.bloomMask, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(sceneTarget_.bloomMask, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glCreateTextures(GL_TEXTURE_2D, 1, &sceneTarget_.depth);
+        glTextureStorage2D(sceneTarget_.depth, 1, GL_DEPTH_COMPONENT24, width, height);
+        glTextureParameteri(sceneTarget_.depth, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTextureParameteri(sceneTarget_.depth, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        glCreateFramebuffers(1, &sceneTarget_.fbo);
+        glNamedFramebufferTexture(sceneTarget_.fbo, GL_COLOR_ATTACHMENT0, sceneTarget_.hdr, 0);
+        glNamedFramebufferTexture(sceneTarget_.fbo, GL_COLOR_ATTACHMENT1, sceneTarget_.bloomMask, 0);
+        glNamedFramebufferTexture(sceneTarget_.fbo, GL_DEPTH_ATTACHMENT, sceneTarget_.depth, 0);
+        const GLenum drawBuffers[]{GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+        glNamedFramebufferDrawBuffers(sceneTarget_.fbo, 2, drawBuffers);
+        if (glCheckNamedFramebufferStatus(sceneTarget_.fbo, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            throw std::runtime_error("Renderer: scene HDR framebuffer incomplete");
+        sceneTarget_.size = size;
+    }
+
+    void Renderer::bindSceneTarget(index2 size) {
+        ensureSceneTarget(size);
+        glBindFramebuffer(GL_FRAMEBUFFER, sceneTarget_.fbo);
+        glViewport(0, 0, std::max(static_cast<int>(size.x), 1), std::max(static_cast<int>(size.y), 1));
+        glDisablei(GL_BLEND, 1);
+        setGlowSpreadWrite(false);
+    }
+
+    void Renderer::beginSceneTarget(index2 size, vec4 clearColor) {
+        bindSceneTarget(size);
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        const float hdrClear[]{clearColor.x, clearColor.y, clearColor.z, clearColor.w};
+        const float maskClear[]{0.0f, 0.0f, 0.0f, 0.0f};
+        glClearBufferfv(GL_COLOR, 0, hdrClear);
+        glClearBufferfv(GL_COLOR, 1, maskClear);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        setGlowSpreadWrite(false);
+    }
+
+    void Renderer::ensureBloomTarget(index2 sceneSize) {
+        const index2 size = bloomSizeFor(sceneSize);
+        const int width = std::max(static_cast<int>(size.x), 1);
+        const int height = std::max(static_cast<int>(size.y), 1);
+        if (bloomTarget_.sourceFbo and bloomTarget_.size.x == size.x and bloomTarget_.size.y == size.y)
+            return;
+
+        auto releaseTex = [](renderer::Texture& texture) {
+            if (texture) {
+                glDeleteTextures(1, &texture);
+                texture = 0;
+            }
+        };
+        auto releaseFbo = [](renderer::Framebuffer& fbo) {
+            if (fbo) {
+                glDeleteFramebuffers(1, &fbo);
+                fbo = 0;
+            }
+        };
+        releaseFbo(bloomTarget_.sourceFbo);
+        releaseFbo(bloomTarget_.scratchFbo);
+        releaseTex(bloomTarget_.source);
+        releaseTex(bloomTarget_.scratch);
+
+        auto makeColor = [&](renderer::Texture& texture) {
+            glCreateTextures(GL_TEXTURE_2D, 1, &texture);
+            glTextureStorage2D(texture, 1, GL_RGBA16F, width, height);
+            glTextureParameteri(texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTextureParameteri(texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTextureParameteri(texture, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTextureParameteri(texture, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        };
+        makeColor(bloomTarget_.source);
+        makeColor(bloomTarget_.scratch);
+
+        auto makeFbo = [&](renderer::Framebuffer& fbo, renderer::Texture color, const char* label) {
+            glCreateFramebuffers(1, &fbo);
+            glNamedFramebufferTexture(fbo, GL_COLOR_ATTACHMENT0, color, 0);
+            const GLenum buffers[]{GL_COLOR_ATTACHMENT0};
+            glNamedFramebufferDrawBuffers(fbo, 1, buffers);
+            if (glCheckNamedFramebufferStatus(fbo, GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                throw std::runtime_error(std::string("Renderer: ") + label + " framebuffer incomplete");
+        };
+        makeFbo(bloomTarget_.sourceFbo, bloomTarget_.source, "bloom source");
+        makeFbo(bloomTarget_.scratchFbo, bloomTarget_.scratch, "bloom scratch");
+        bloomTarget_.size = size;
+    }
+
+    void Renderer::ensurePostPrograms() {
+        if (not bloomDownsampleProgram_)
+            bloomDownsampleProgram_ = linkProgram(fullscreenVs, R"(#version 460 core
+layout(binding = 0) uniform sampler2D u_hdr;
+layout(binding = 1) uniform sampler2D u_bloomMask;
+layout(location = 0) out vec4 outBloom;
+void main() {
+    const int scale = 4;
+    ivec2 dst = ivec2(gl_FragCoord.xy);
+    ivec2 srcSize = textureSize(u_hdr, 0);
+    ivec2 srcBase = dst * scale;
+    vec3 acc = vec3(0.0);
+    int count = 0;
+    for (int y = 0; y < scale; ++y) {
+        for (int x = 0; x < scale; ++x) {
+            ivec2 src = min(srcBase + ivec2(x, y), srcSize - ivec2(1));
+            acc += texelFetch(u_hdr, src, 0).rgb * texelFetch(u_bloomMask, src, 0).r;
+            ++count;
+        }
+    }
+    outBloom = vec4(acc / float(max(count, 1)), 1.0);
+})");
+        if (not bloomBlurProgram_)
+            bloomBlurProgram_ = linkProgram(fullscreenVs, R"(#version 460 core
+layout(binding = 0) uniform sampler2D u_src;
+uniform vec2 u_texelDir;
+uniform float u_radius;
+in vec2 vUv;
+layout(location = 0) out vec4 fragColor;
+void main() {
+    const int kMax = 8;
+    float sigma = max(u_radius / 3.0, 0.01);
+    float twoSigma2 = 2.0 * sigma * sigma;
+    int radius = int(ceil(u_radius));
+    vec3 acc = vec3(0.0);
+    float wsum = 0.0;
+    for (int i = -kMax; i <= kMax; ++i) {
+        if (abs(i) > radius) continue;
+        float fi = float(i);
+        float w = exp(-(fi * fi) / twoSigma2);
+        acc += texture(u_src, vUv + u_texelDir * fi).rgb * w;
+        wsum += w;
+    }
+    fragColor = vec4(acc / max(wsum, 1e-6), 1.0);
+})");
+        if (not tonemapProgram_)
+            tonemapProgram_ = linkProgram(fullscreenVs, R"(#version 460 core
+layout(binding = 0) uniform sampler2D u_hdr;
+layout(binding = 1) uniform sampler2D u_bloom;
+uniform float u_intensity;
+in vec2 vUv;
+layout(location = 0) out vec4 fragColor;
+vec3 aces(vec3 x) {
+    const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+void main() {
+    vec3 hdr = texture(u_hdr, vUv).rgb;
+    vec3 bloom = texture(u_bloom, vUv).rgb;
+    fragColor = vec4(aces(hdr + bloom * u_intensity), 1.0);
+})");
+    }
+
+    void Renderer::downsampleBloom() {
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        const int width = std::max(static_cast<int>(bloomTarget_.size.x), 1);
+        const int height = std::max(static_cast<int>(bloomTarget_.size.y), 1);
+        glBindFramebuffer(GL_FRAMEBUFFER, bloomTarget_.sourceFbo);
+        glViewport(0, 0, width, height);
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_BLEND);
+        glUseProgram(bloomDownsampleProgram_);
+        glBindTextureUnit(0, sceneTarget_.hdr);
+        glBindTextureUnit(1, sceneTarget_.bloomMask);
+        drawFullscreenTriangle(fullscreen_vao_);
+        glUseProgram(0);
+    }
+
+    void Renderer::blurBloom(float radius) {
+        const int width = std::max(static_cast<int>(bloomTarget_.size.x), 1);
+        const int height = std::max(static_cast<int>(bloomTarget_.size.y), 1);
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_BLEND);
+        glUseProgram(bloomBlurProgram_);
+        const GLint texelDirLoc = glGetUniformLocation(bloomBlurProgram_, "u_texelDir");
+        const GLint radiusLoc = glGetUniformLocation(bloomBlurProgram_, "u_radius");
+        glUniform1f(radiusLoc, std::max(radius, 0.0f));
+
+        glBindFramebuffer(GL_FRAMEBUFFER, bloomTarget_.scratchFbo);
+        glViewport(0, 0, width, height);
+        glBindTextureUnit(0, bloomTarget_.source);
+        glUniform2f(texelDirLoc, 1.0f / static_cast<float>(width), 0.0f);
+        drawFullscreenTriangle(fullscreen_vao_);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, bloomTarget_.sourceFbo);
+        glBindTextureUnit(0, bloomTarget_.scratch);
+        glUniform2f(texelDirLoc, 0.0f, 1.0f / static_cast<float>(height));
+        drawFullscreenTriangle(fullscreen_vao_);
+        glUseProgram(0);
+    }
+
+    void Renderer::tonemapToWindow(FrameContext args, float intensity) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        system::Viewport::Actions::activate(args.world, args.view.viewport);
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_BLEND);
+        glUseProgram(tonemapProgram_);
+        glBindTextureUnit(0, sceneTarget_.hdr);
+        glBindTextureUnit(1, bloomTarget_.source);
+        glUniform1f(glGetUniformLocation(tonemapProgram_, "u_intensity"), std::max(intensity, 0.0f));
+        drawFullscreenTriangle(fullscreen_vao_);
+        glUseProgram(0);
+        glDepthMask(GL_TRUE);
+        glEnable(GL_DEPTH_TEST);
     }
 
     void Renderer::ensure_identity_target(index2 size) {
@@ -583,6 +928,8 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         base::maybe<resource::shadow::Runtime::Id> shadow)
     {
         const auto material_pass = pass == renderer::Pass::identitySelected ? renderer::Pass::identity : pass;
+        const auto& materialQuantum = with<resource::material::Runtime>::get(args.world, material);
+        const bool glowSpread = technique_for(materialQuantum, pass).glowSpread;
         // Depth-only shadow technique has no material-unique samplers: cache by program.
         if (pass == renderer::Pass::shadow) {
             if (state.bound_shader && *state.bound_shader == shader) {
@@ -592,6 +939,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             bindPassResources(args, material_pass, material, shadow);
             state.bound_shader = shader;
             state.bound_material = material;
+            setGlowSpreadWrite(glowSpread);
             return;
         }
 
@@ -608,6 +956,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         }
 
         state.bound_material = material;
+        setGlowSpreadWrite(glowSpread);
     }
 
     void Renderer::uploadPassState(FrameContext args, base::maybe<scene::Light::Id> primaryLight) {
@@ -729,6 +1078,8 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         renderer::Integer32 identity_under = renderer::Integer32{0};
         bool identity_published = false;
         bool identity_feature_cleared = false;
+        bool sceneBegun = false;
+        const auto& viewport = with<system::Viewport>::get(args.world, args.view.viewport);
 
         for (const auto pass : render_queue_passes) {
             const auto passEmpty = commands.gpu[pass].empty();
@@ -740,7 +1091,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             }
             if (pass == renderer::Pass::identity && passEmpty) {
                 if (not identity_feature_cleared) {
-                    clear_identity_feature(with<system::Viewport>::get(args.world, args.view.viewport).size);
+                    clear_identity_feature(viewport.size);
                     identity_feature_cleared = true;
                 }
                 identity_under = renderer::Integer32{0};
@@ -759,7 +1110,14 @@ void main() { fragColor = texture(u_overlay, vUv); })";
                 continue;
             }
 
-            const auto& viewport = with<system::Viewport>::get(args.world, args.view.viewport);
+            if (isSceneColorPass(pass)) {
+                if (not sceneBegun) {
+                    beginSceneTarget(viewport.size, viewport.clear_color);
+                    sceneBegun = true;
+                } else {
+                    bindSceneTarget(viewport.size);
+                }
+            }
             if (pass == renderer::Pass::identitySelected) {
                 begin_identity_selected_pass(viewport.size);
                 identity_feature_cleared = true;
@@ -780,6 +1138,7 @@ void main() { fragColor = texture(u_overlay, vUv); })";
             for (const auto& batch : gpuBatches) {
                 if (batch.drawCount <= renderer::Count{0} or not with<resource::geometry::Runtime>::exists(args.world, batch.geometry)) continue;
                 apply_blend(pass, batch.renderState.blend);
+                glDisablei(GL_BLEND, 1);
                 ensure_material(args, pass, batch.material, batch.shader, pass_state, shadow);
                 drawGpuBatch(args, pass, batch);
                 if (pass == renderer::Pass::identity) identity_draws += batch.drawCount;
@@ -803,8 +1162,16 @@ void main() { fragColor = texture(u_overlay, vUv); })";
         if (not identity_published)
             publish_identity(args, 0, renderer::Integer32{0});
 
+        if (not sceneBegun)
+            beginSceneTarget(viewport.size, viewport.clear_color);
+        const auto& root = with<scene::Root>::get(args.world, args.view.scene);
+        ensurePostPrograms();
+        ensureBloomTarget(viewport.size);
+        downsampleBloom();
+        blurBloom(root.bloom.radius);
+        tonemapToWindow(args, root.bloom.intensity);
+
         if (args.overlay) {
-            const auto& viewport = with<system::Viewport>::get(args.world, args.view.viewport);
             capture_scene_color(viewport.size);
             ensure_identity_target(viewport.size);
             if (not identity_feature_cleared) {

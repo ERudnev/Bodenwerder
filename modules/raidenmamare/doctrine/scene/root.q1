@@ -13,9 +13,13 @@ namespace rmmr
   namespace scene
 
     entity Root
+      struct Bloom
+        radius: float
+        intensity: float
       one
         ambient: RGB
         ambient_intensity: float
+        bloom: Bloom
 
     group<Node> of Root
     group<Camera> of Root

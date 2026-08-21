@@ -65,14 +65,43 @@ namespace rmmr {
             index2 size;
         };
 
+        struct SceneTarget {
+            renderer::Framebuffer fbo;
+            renderer::Texture hdr;
+            renderer::Texture bloomMask;
+            renderer::Texture depth;
+            index2 size;
+        };
+
+        struct BloomTarget {
+            renderer::Framebuffer sourceFbo;
+            renderer::Framebuffer scratchFbo;
+            renderer::Texture source;
+            renderer::Texture scratch;
+            index2 size;
+        };
+
         ColorTarget scene_color_;
         ColorTarget overlay_color_;
         IdentityTarget identity_;
+        SceneTarget sceneTarget_;
+        BloomTarget bloomTarget_;
         renderer::VertexArray fullscreen_vao_;
         renderer::UniformBuffer passStateBuffer;
+        renderer::Program bloomDownsampleProgram_;
+        renderer::Program bloomBlurProgram_;
+        renderer::Program tonemapProgram_;
         Stats lastStats;
 
         void ensure_color_target(ColorTarget& target, index2 size, const char* label);
+        void ensureSceneTarget(index2 size);
+        void beginSceneTarget(index2 size, vec4 clearColor);
+        void bindSceneTarget(index2 size);
+        void ensureBloomTarget(index2 sceneSize);
+        void ensurePostPrograms();
+        void downsampleBloom();
+        void blurBloom(float radius);
+        void tonemapToWindow(FrameContext args, float intensity);
         void ensure_identity_target(index2 size);
         void clear_identity_feature(index2 size);
         void begin_identity_selected_pass(index2 size);

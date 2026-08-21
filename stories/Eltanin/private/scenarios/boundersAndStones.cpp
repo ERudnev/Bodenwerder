@@ -112,10 +112,12 @@ namespace eltanin::scenarios {
                     {renderer::Pass::opaque, Material::Technique{
                         .program = with<Unit>::remember(context, rockShader),
                         .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}),
+                        .glowSpread = true,
                     }},
                     {renderer::Pass::shadow, Material::Technique{
                         .program = shadowTechnique->second.program,
                         .uniforms = {},
+                        .glowSpread = false,
                     }},
                 },
                 .nearest = false,
@@ -137,10 +139,12 @@ namespace eltanin::scenarios {
                     {renderer::Pass::opaque, Material::Technique{
                         .program = with<Unit>::remember(context, boulderShader),
                         .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}),
+                        .glowSpread = true,
                     }},
                     {renderer::Pass::shadow, Material::Technique{
                         .program = shadowTechnique->second.program,
                         .uniforms = {},
+                        .glowSpread = false,
                     }},
                 },
                 .nearest = false,

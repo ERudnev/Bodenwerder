@@ -160,6 +160,10 @@ namespace kubes {
                 auto root = with<scene::Root>::modify(world, scene);
                 ImGui::ColorEdit3("Ambient", &root->ambient.x);
                 ImGui::DragFloat("Ambient intensity", &root->ambient_intensity, 0.05f, 0.0f, 20.0f, "%.2f");
+                ImGui::Separator();
+                ImGui::TextUnformatted("Bloom");
+                ImGui::DragFloat("Bloom radius", &root->bloom.radius, 0.05f, 0.0f, 8.0f, "%.2f");
+                ImGui::DragFloat("Bloom intensity", &root->bloom.intensity, 0.05f, 0.0f, 8.0f, "%.2f");
 
                 const auto& light_group = with<scene::Light_group>::get(world, scene);
                 if (light_group.empty()) {

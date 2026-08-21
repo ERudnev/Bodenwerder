@@ -16,8 +16,13 @@ namespace rmmr::scene {
 
     struct Root : Entity<Root> {
         struct Quantum {
+            struct Bloom {
+                float radius;
+                float intensity;
+            };
             RGB ambient;
             float ambient_intensity;
+            Bloom bloom;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

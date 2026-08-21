@@ -9,7 +9,8 @@ in vec4 v_mix2;
 in vec4 v_mix3;
 in float v_cohesion;
 
-out vec4 FragColor;
+layout(location = 0) out vec4 FragColor;
+layout(location = 1) out float BloomMask;
 
 layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     mat4 actorModel;
@@ -199,7 +200,7 @@ vec3 blackbody(float kelvin) {
     return mix(yellow, white, (t - 0.72) / 0.28);
 }
 
-void applyHeat(int channel, float weight, float kelvin, inout vec3 albedo, inout float roughness, inout float metalness, inout vec3 emissive) {
+void applyHeat(int channel, float weight, float kelvin, inout vec3 albedo, inout float roughness, inout float metalness, inout vec3 emissive, inout float bloomMask) {
     float tint = smoothstep(mineralTintK[channel], mineralGlowK[channel], kelvin);
     float glow = smoothstep(mineralGlowK[channel], mineralGlowK[channel] + 500.0, kelvin);
     float melt = smoothstep(mineralMeltK[channel] - 90.0, mineralMeltK[channel] + 70.0, kelvin);
@@ -208,6 +209,7 @@ void applyHeat(int channel, float weight, float kelvin, inout vec3 albedo, inout
     roughness = mix(roughness, mix(roughness, 0.10, melt), weight);
     metalness = mix(metalness, mix(metalness, 0.85, melt), weight);
     emissive += hot * glow * (2.4 + 5.5 * melt) * weight;
+    bloomMask += glow * weight;
 }
 
 vec3 glazeAlbedo(vec3 albedo, vec3 sinterTint, float sinter) {
@@ -254,11 +256,12 @@ void main() {
     float kelvin = max(actorHeat.x, 0.0);
     float cohesion = clamp(v_cohesion, 0.0, 1.0);
     vec3 emissive = vec3(0.0);
+    float bloomMask = 0.0;
     for (int channel = 0; channel < 16; ++channel) {
         float weight = channelWeight(channel);
         if (weight <= 0.0)
             continue;
-        applyHeat(channel, weight, kelvin, albedo, roughness, metalness, emissive);
+        applyHeat(channel, weight, kelvin, albedo, roughness, metalness, emissive, bloomMask);
     }
     float bumpAmt = 1.0 - cohesion;
     float sinter = smoothstep(sinterStart, 1.0, cohesion);
@@ -295,4 +298,5 @@ void main() {
     vec3 direct = (diffuse + specular) * passPrimaryLightColorRange.rgb * NdotL * shadow * (lightGain / (1.0 + lightGain)) * cavity;
 
     FragColor = vec4(ambient + direct + emissive, 1.0);
+    BloomMask = bloomMask;
 }

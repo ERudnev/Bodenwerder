@@ -20,6 +20,7 @@ namespace rmmr
         shader: #shader::Runtime
         locations: Locations
         bindings: vector<Uniform::Binding>
+        glowSpread: bool
       one
         techniques: umap<renderer::Pass, Technique>
         nearest: bool
@@ -30,6 +31,7 @@ namespace rmmr
       struct Technique
         program: shader::Reference
         uniforms: Uniform::Palette
+        glowSpread: bool
       one
         techniques: umap<renderer::Pass, Technique>
         nearest: bool

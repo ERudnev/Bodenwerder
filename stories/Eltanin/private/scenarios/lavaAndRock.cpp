@@ -45,10 +45,12 @@ namespace eltanin::scenarios {
                     {renderer::Pass::opaque, Material::Technique{
                         .program = with<Unit>::remember(context, rockShader),
                         .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}),
+                        .glowSpread = true,
                     }},
                     {renderer::Pass::shadow, Material::Technique{
                         .program = shadowTechnique->second.program,
                         .uniforms = {},
+                        .glowSpread = false,
                     }},
                 },
                 .nearest = false,
@@ -70,10 +72,12 @@ namespace eltanin::scenarios {
                     {renderer::Pass::opaque, Material::Technique{
                         .program = with<Unit>::remember(context, boulderShader),
                         .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}),
+                        .glowSpread = true,
                     }},
                     {renderer::Pass::shadow, Material::Technique{
                         .program = shadowTechnique->second.program,
                         .uniforms = {},
+                        .glowSpread = false,
                     }},
                 },
                 .nearest = false,
@@ -94,15 +98,25 @@ namespace eltanin::scenarios {
     }
 
     void LavaAndRock::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
-        rocks.push_back(with<geo::Rock>::spawnLavaBrick(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f})));
-        rocks.push_back(with<geo::Rock>::spawnIceBlob(context, root, device, Pose::from(Pos{-200.0f, 0.0f, -200.0f}, HPB{0.0f, 0.0f, 0.0f})));
+        const auto brick = with<geo::Rock>::spawnLavaBrick(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
+        rocks.push_back(brick);
+        constexpr float brickKelvin = 1800.0f;
+        {
+            const auto& rock = with<geo::Rock>::get(context, brick);
+            auto crystal = with<phys::rigid::Crystal>::modify(context, rock.body);
+            for (phys::Particle& particle : crystal->particles)
+                particle.temperature = brickKelvin;
+            crystal->refreshMatter();
+            with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat.x = brickKelvin;
+        }
+
         constexpr int count = 50;
         constexpr int rows = 16;
         constexpr float diameter = 0.5f;
         constexpr float spacing = 1.0f;
         constexpr float rowStep = 2.0f;
         constexpr float kelvinMax = 2000.0f;
-        rocks.reserve(2 + static_cast<std::size_t>(count) * rows);
+        rocks.reserve(1 + static_cast<std::size_t>(count) * rows);
         for (int row = 0; row < rows; ++row) {
             for (int index = 0; index < count; ++index) {
                 const float kelvin = kelvinMax * static_cast<float>(index) / static_cast<float>(count - 1);
@@ -120,12 +134,10 @@ namespace eltanin::scenarios {
                 rocks.push_back(id);
                 const auto& rock = with<geo::Rock>::get(context, id);
                 auto crystal = with<phys::rigid::Crystal>::modify(context, rock.body);
-                for (phys::Particle& particle : crystal->particles) {
+                for (phys::Particle& particle : crystal->particles)
                     particle.temperature = kelvin;
-                    particle.cohesion = 0.0f;
-                }
                 crystal->refreshMatter();
-                with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat = vec2{kelvin, 0.0f};
+                with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat.x = kelvin;
             }
         }
     }

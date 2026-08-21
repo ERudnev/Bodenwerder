@@ -20,6 +20,7 @@ namespace rmmr::resource::material {
             shader::Runtime::Id shader;
             Locations locations;
             vector<Uniform::Binding> bindings;
+            bool glowSpread;
         };
         struct Quantum {
             umap<renderer::Pass, Technique> techniques;
@@ -37,6 +38,7 @@ namespace rmmr::resource::material {
         struct Technique {
             shader::Reference program;
             Uniform::Palette uniforms;
+            bool glowSpread;
         };
         struct Quantum {
             umap<renderer::Pass, Technique> techniques;

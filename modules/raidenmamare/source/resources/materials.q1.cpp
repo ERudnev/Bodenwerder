@@ -60,6 +60,7 @@ namespace rmmr::resource::material {
                 .shader = shader_it->second,
                 .locations = std::move(locations),
                 .bindings = std::move(bindings),
+                .glowSpread = asset_technique.glowSpread,
             };
         }
 

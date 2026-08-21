@@ -12,6 +12,7 @@ namespace rmmr::resource::builders::material {
             return Asset::Technique{
                 .program = program,
                 .uniforms = {},
+                .glowSpread = false,
             };
         }
 
@@ -23,6 +24,7 @@ namespace rmmr::resource::builders::material {
                 {renderer::Pass::opaque, Asset::Technique{
                     .program = program,
                     .uniforms = {},
+                    .glowSpread = false,
                 }},
                 {renderer::Pass::shadow, shadow_depth_technique(shadow_depth)},
             },
@@ -39,6 +41,7 @@ namespace rmmr::resource::builders::material {
                     .uniforms = ::rmmr::material::Semantics::ids_of({
                         "shadowMap",
                     }),
+                    .glowSpread = false,
                 }},
                 {renderer::Pass::shadow, shadow_depth_technique(shadow_depth)},
             },
@@ -55,6 +58,7 @@ namespace rmmr::resource::builders::material {
                     .uniforms = ::rmmr::material::Semantics::ids_of({
                         "shadowMap",
                     }),
+                    .glowSpread = false,
                 }},
             },
             .nearest = false,
@@ -71,6 +75,7 @@ namespace rmmr::resource::builders::material {
                         "albedoMap",
                         "shadowMap",
                     }),
+                    .glowSpread = false,
                 }},
                 {renderer::Pass::shadow, shadow_depth_technique(shadow_depth)},
             },
@@ -88,6 +93,7 @@ namespace rmmr::resource::builders::material {
                         "albedoMap",
                         "shadowMap",
                     }),
+                    .glowSpread = false,
                 }},
             },
             .nearest = false,
@@ -103,6 +109,7 @@ namespace rmmr::resource::builders::material {
                     .uniforms = ::rmmr::material::Semantics::ids_of({
                         "albedoMap",
                     }),
+                    .glowSpread = false,
                 }},
             },
             .nearest = false,
@@ -118,6 +125,7 @@ namespace rmmr::resource::builders::material {
                     .uniforms = ::rmmr::material::Semantics::ids_of({
                         "albedoMap",
                     }),
+                    .glowSpread = false,
                 }},
             },
             .nearest = false,
@@ -131,6 +139,7 @@ namespace rmmr::resource::builders::material {
                 {renderer::Pass::gizmo, Asset::Technique{
                     .program = program,
                     .uniforms = {},
+                    .glowSpread = false,
                 }},
             },
             .nearest = false,
@@ -144,6 +153,7 @@ namespace rmmr::resource::builders::material {
                 {renderer::Pass::transparent, Asset::Technique{
                     .program = program,
                     .uniforms = {},
+                    .glowSpread = false,
                 }},
             },
             .nearest = false,
@@ -161,6 +171,7 @@ namespace rmmr::resource::builders::material {
                         "atlasEntries",
                         "inverseAtlasSize",
                     }),
+                    .glowSpread = false,
                 }},
             },
             .nearest = true,
@@ -174,6 +185,7 @@ namespace rmmr::resource::builders::material {
                 {renderer::Pass::identity, Asset::Technique{
                     .program = program,
                     .uniforms = {},
+                    .glowSpread = false,
                 }},
             },
             .nearest = false,

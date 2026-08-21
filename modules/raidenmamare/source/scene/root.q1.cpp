@@ -24,6 +24,7 @@ namespace rmmr::scene {
         const auto root = with<Root>::create(context, Root::Quantum{
             .ambient = RGB{0.4f, 0.4f, 0.4f},
             .ambient_intensity = 0.8f,
+            .bloom = {.radius = 5.0f, .intensity = 1.0f},
         });
 
         with<Node_group>::extend(context, root);
