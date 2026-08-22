@@ -164,13 +164,21 @@ namespace kubes {
                 ImGui::TextUnformatted("Bloom");
                 ImGui::DragFloat("Bloom radius", &root->bloom.radius, 0.05f, 0.0f, 8.0f, "%.2f");
                 ImGui::DragFloat("Bloom intensity", &root->bloom.intensity, 0.05f, 0.0f, 8.0f, "%.2f");
+                ImGui::Separator();
+                ImGui::TextUnformatted("Fog");
+                ImGui::ColorEdit3("Fog color", &root->fog.color.x);
+                ImGui::DragFloat("Fog density", &root->fog.density, 0.0001f, 0.0f, 0.05f, "%.4f");
+                ImGui::DragFloat("Fog height", &root->fog.height, 0.1f, 0.0f, 0.0f, "%.2f");
+                ImGui::DragFloat("Fog height falloff", &root->fog.heightFalloff, 0.01f, 0.0f, 2.0f, "%.3f");
+                ImGui::DragFloat("Fog max opacity", &root->fog.maxOpacity, 0.01f, 0.0f, 1.0f, "%.2f");
+                ImGui::DragFloat("Fog distance scale", &root->fog.distanceScale, 0.01f, 0.0f, 8.0f, "%.2f");
+                ImGui::DragFloat3("Gravity", &root->gravity.x, 0.01f, 0.0f, 0.0f, "%.3f");
 
-                const auto& light_group = with<scene::Light_group>::get(world, scene);
-                if (light_group.empty()) {
+                if (not root->primaryLight) {
                     ImGui::Separator();
-                    ImGui::TextDisabled("Scene has no lights.");
+                    ImGui::TextDisabled("Scene has no primary light.");
                 } else {
-                    const auto light_id = *light_group.begin();
+                    const auto light_id = *root->primaryLight;
                     if (with<scene::Light>::exists(world, light_id)) {
                         ImGui::Separator();
                         ImGui::TextUnformatted("Primary light");

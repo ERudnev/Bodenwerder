@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <array>
 #include <stdexcept>
-#include <vector>
 #include <GL/glew.h>
+#include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <base/logging.h>
 #include <base/maybe.h>
@@ -33,6 +33,7 @@ namespace rmmr {
     Renderer::Renderer()
         : sceneTarget{.fbo = 0, .hdr = 0, .bloomMask = 0, .depth = 0, .size = index2{0, 0}}
         , bloom{.sourceFbo = 0, .scratchFbo = 0, .source = 0, .scratch = 0, .size = index2{0, 0}, .downsampleProgram = 0, .blurProgram = 0, .tonemapProgram = 0}
+        , fog{.target = {.fbo = 0, .color = 0, .size = index2{0, 0}}, .program = 0}
         , identity{.allFbo = 0, .selectedFbo = 0, .color = 0, .selected = 0, .depth = 0, .size = index2{0, 0}}
         , overlay{.sceneColor = {.fbo = 0, .color = 0, .size = index2{0, 0}}, .overlayColor = {.fbo = 0, .color = 0, .size = index2{0, 0}}, .composeProgram = 0}
         , fullscreen{.vao = 0}
@@ -46,6 +47,7 @@ namespace rmmr {
         fullscreen.destroy();
         sceneTarget.destroy();
         bloom.destroy();
+        fog.destroy();
         identity.destroy();
         overlay.destroy();
     }
@@ -82,7 +84,7 @@ namespace rmmr {
         };
 
         struct FrameLighting {
-            vector<scene::Light::Id> lights;
+            base::maybe<scene::Light::Id> primary;
             base::maybe<ShadowCaster> shadow;
         };
 
@@ -93,14 +95,9 @@ namespace rmmr {
             return width / height;
         }
 
-        auto gather_lights(Reading context, scene::Root::Id root) -> vector<scene::Light::Id> {
-            const auto& light_group = with<scene::Light_group>::get(context, root);
-            return {light_group.begin(), light_group.end()};
-        }
-
-        auto assign_shadows_to_lights(Reading context, system::Device::Id device, vector<scene::Light::Id> lights) -> FrameLighting {
-            FrameLighting lighting{.lights = std::move(lights), .shadow = {}};
-            if (lighting.lights.empty())
+        auto frame_lighting(Reading context, scene::Root::Id root, system::Device::Id device) -> FrameLighting {
+            FrameLighting lighting{.primary = with<scene::Root>::get(context, root).primaryLight, .shadow = {}};
+            if (not lighting.primary)
                 return lighting;
             const auto& runtimes = with<resource::Runtimes>::get(context, device);
             for (const auto& [_, runtime] : runtimes.shadows_id_mapping) {
@@ -360,15 +357,11 @@ namespace rmmr {
             return;
         }
 
-        const auto lights = gather_lights(args.world, args.view.scene);
-        const auto lighting = assign_shadows_to_lights(args.world, args.window, lights);
+        const auto lighting = frame_lighting(args.world, args.view.scene, args.window);
         base::maybe<resource::shadow::Runtime::Id> shadow{};
         if (lighting.shadow)
             shadow = lighting.shadow->runtime;
-        base::maybe<scene::Light::Id> primaryLight{};
-        if (not lighting.lights.empty())
-            primaryLight = lighting.lights.front();
-        uploadPassState(args, primaryLight);
+        uploadPassState(args, lighting.primary);
 
         renderer::CommandBuffer commands{};
         scene::Interface::render(args.world, args.view.scene, args.window, commands);
@@ -400,9 +393,9 @@ namespace rmmr {
                 continue;
             }
             const bool unlitPass = pass == renderer::Pass::sprite or pass == renderer::Pass::gizmo or pass == renderer::Pass::environment or pass == renderer::Pass::identitySelected or pass == renderer::Pass::identity;
-            if (lighting.lights.empty() && not unlitPass) {
+            if (not lighting.primary && not unlitPass) {
                 if (not passEmpty)
-                    base::message("Renderer: no light; skipping draws for pass");
+                    base::message("Renderer: no primary light; skipping draws for pass");
                 continue;
             }
 
@@ -458,11 +451,18 @@ namespace rmmr {
             sceneTarget.begin(viewport.size, viewport.clear_color);
         const auto& root = with<scene::Root>::get(args.world, args.view.scene);
         const auto shaders = postShaders(args.world);
+        renderer::Texture hdr = sceneTarget.hdr;
+        if (root.fog.density > 0.0f) {
+            const auto view = scene::Camera::Actions::view(args.world, args.view.camera);
+            const auto projection = scene::Camera::Actions::projection(args.world, args.view.camera, viewport_aspect_ratio(args.world, args.view.viewport));
+            fog.ensurePrograms(shaders);
+            hdr = fog.apply(viewport.size, root.fog, glm::inverse(projection * view), vec3{glm::inverse(view)[3]}, sceneTarget.hdr, sceneTarget.depth, fullscreen);
+        }
         bloom.ensurePrograms(shaders);
         bloom.ensure(viewport.size);
-        bloom.downsample(sceneTarget.hdr, sceneTarget.bloomMask, fullscreen);
+        bloom.downsample(hdr, sceneTarget.bloomMask, fullscreen);
         bloom.blur(root.bloom.radius, fullscreen);
-        bloom.tonemapToWindow(args.world, args.view.viewport, sceneTarget.hdr, root.bloom.intensity, fullscreen);
+        bloom.tonemapToWindow(args.world, args.view.viewport, hdr, root.bloom.intensity, fullscreen);
 
         if (args.overlay) {
             overlay.ensurePrograms(shaders);

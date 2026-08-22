@@ -25,6 +25,9 @@ namespace rmmr::scene {
             .ambient = RGB{0.4f, 0.4f, 0.4f},
             .ambient_intensity = 0.8f,
             .bloom = {.radius = 5.0f, .intensity = 1.0f},
+            .fog = {.color = RGB{0.0f, 0.0f, 0.0f}, .density = 0.0f, .height = 0.0f, .heightFalloff = 0.0f, .maxOpacity = 1.0f, .distanceScale = 1.0f},
+            .gravity = vec3{0.0f, 0.0f, 0.0f},
+            .primaryLight = {},
         });
 
         with<Node_group>::extend(context, root);
@@ -47,6 +50,9 @@ namespace rmmr::scene {
     auto Interface::createLight(Writing context, Root::Id root, Pose pose, Light::Quantum lightQuantum) -> Light::Id {
         const auto node = with<Node_group>::addElement(context, root, Node::Quantum{.pose = pose});
         with<Light_group>::addElement(context, root, node, std::move(lightQuantum));
+        auto quantum = with<Root>::modify(context, root);
+        if (not quantum->primaryLight)
+            quantum->primaryLight = node;
         return node;
     }
 

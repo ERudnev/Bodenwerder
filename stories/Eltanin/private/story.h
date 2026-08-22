@@ -13,7 +13,7 @@
 #include "blueprints/catalog.h"
 #include "fittings/mounts/catalog.h"
 #include "physics/system.h"
-#include "scenarios/lavaAndRock.h"
+#include "scenarios/asterField.h"
 #include "story.ui.h"
 #include "views/blueprints/editor.h"
 
@@ -45,7 +45,7 @@ namespace eltanin {
         Ui ui;
         base::maybe<View> world_view;
         phys::System physics;
-        scenario::LavaAndRock scenario;
+        scenario::AsterField scenario;
         BlueprintCatalog blueprintPack;
         MountCatalog mountPack;
         ::eltanin::views::Blueprints blueprints;

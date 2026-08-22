@@ -1,5 +1,6 @@
 #pragma once
 
+#include <base/maybe.h>
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
@@ -20,9 +21,20 @@ namespace rmmr::scene {
                 float radius;
                 float intensity;
             };
+            struct Fog {
+                RGB color;
+                float density;
+                float height;
+                float heightFalloff;
+                float maxOpacity;
+                float distanceScale;
+            };
             RGB ambient;
             float ambient_intensity;
             Bloom bloom;
+            Fog fog;
+            vec3 gravity;
+            base::maybe<Light::Id> primaryLight;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

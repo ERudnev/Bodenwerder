@@ -16,10 +16,20 @@ namespace rmmr
       struct Bloom
         radius: float
         intensity: float
+      struct Fog
+        color: RGB
+        density: float
+        height: float
+        heightFalloff: float
+        maxOpacity: float
+        distanceScale: float
       one
         ambient: RGB
         ambient_intensity: float
         bloom: Bloom
+        fog: Fog
+        gravity: vec3
+        primaryLight: #Light?
 
     group<Node> of Root
     group<Camera> of Root
