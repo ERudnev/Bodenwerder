@@ -23,10 +23,10 @@ namespace rmmr::resource {
     struct Assets : Component<Assets, Manager> {
         struct Quantum {};
         struct Global {
-            optional<Id> singleton{};
+            Id singleton = Id::please_never_use_this_except_patch_rejection_mechanism();
         };
         struct Actions : BaseActions {
-            static auto singleton(Reading) -> optional<Id>;
+            static auto singleton(Reading) -> Id;
             static auto add_texture_loader(Writing, Unit::Name, texture::Loader::Quantum) -> texture::Asset::Id;
             static auto add_texture_generator(Writing, Unit::Name, texture::Generator::Quantum) -> texture::Asset::Id;
             static auto add_texpack_catalog(Writing, Unit::Name, texpack::LoaderCatalog::Quantum, index2 layerSize, integer capacity) -> texpack::Pack::Id;

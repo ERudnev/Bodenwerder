@@ -9,7 +9,7 @@ namespace rmmr::resource {
 
     using namespace fqsm::api;
 
-    auto Manager::Actions::singleton(Reading context) -> optional<Id> {
+    auto Manager::Actions::singleton(Reading context) -> Id {
         return with<system::Core>::singleton(context);
     }
 
@@ -25,7 +25,7 @@ namespace rmmr::resource {
     }
 
     auto Manager::Actions::resolve(Reading context, const Unit::Quantum& unit, const filename& relative) -> filepath {
-        const auto& manager = with<Manager>::get(context, *singleton(context));
+        const auto& manager = with<Manager>::get(context, singleton(context));
         const std::filesystem::path file_path(relative);
         if (file_path.is_absolute())
             return file_path;

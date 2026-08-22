@@ -16,7 +16,7 @@ namespace rmmr::resource {
 
         template<typename Asset, typename Kind>
         auto register_unit(Writing context, Unit::Name name, typename Asset::Quantum asset, typename Kind::Quantum kind) -> typename Asset::Id {
-            const auto assets = *with<Assets>::singleton(context);
+            const auto assets = with<Assets>::singleton(context);
             const auto unit_id = with<Unit_group>::addElement(context, assets, Unit::Quantum{.name = std::move(name)});
             with<Asset>::extend(context, unit_id, std::move(asset));
             with<Kind>::extend(context, unit_id, std::move(kind));
@@ -120,7 +120,7 @@ namespace rmmr::resource {
 
     } // namespace
 
-    auto Assets::Actions::singleton(Reading context) -> optional<Id> {
+    auto Assets::Actions::singleton(Reading context) -> Id {
         return with<Assets>::get_global(context).singleton;
     }
 
@@ -149,14 +149,14 @@ namespace rmmr::resource {
     }
 
     auto Assets::Actions::add_material(Writing context, Unit::Name name, material::Asset::Quantum asset) -> material::Asset::Id {
-        const auto assets = *singleton(context);
+        const auto assets = singleton(context);
         const auto unit_id = with<Unit_group>::addElement(context, assets, Unit::Quantum{.name = std::move(name)});
         with<material::Asset>::extend(context, unit_id, std::move(asset));
         return unit_id;
     }
 
     auto Assets::Actions::add_overlay(Writing context, Unit::Name name, overlay::Asset::Quantum asset) -> overlay::Asset::Id {
-        const auto assets = *singleton(context);
+        const auto assets = singleton(context);
         const auto unit_id = with<Unit_group>::addElement(context, assets, Unit::Quantum{.name = std::move(name)});
         with<overlay::Asset>::extend(context, unit_id, std::move(asset));
         return unit_id;
@@ -219,7 +219,7 @@ namespace rmmr::resource {
     }
 
     void Assets::Actions::extend(Writing context, filepath path) {
-        const auto manager = *with<Manager>::singleton(context);
+        const auto manager = with<Manager>::singleton(context);
         with<Manager>::modify(context, manager)->location = std::move(path);
         with<Assets>::modify_global(context)->singleton = manager;
     }
@@ -227,7 +227,7 @@ namespace rmmr::resource {
     void Runtimes::Actions::install(Writing context, Id device) {
         if (with<Runtimes>::exists(context, device)) return (void)context.refuse(std::format("resource::Runtimes::install: already installed for device {}", device));
 
-        const auto assets = *with<Assets>::singleton(context);
+        const auto assets = with<Assets>::singleton(context);
         with<DeviceRuntimes>::extend(context, device, DeviceRuntimes::Quantum{.assets = assets});
         with<Runtime_group>::extend(context, device);
         with<TexpackRuntime_group>::extend(context, device);
@@ -242,7 +242,7 @@ namespace rmmr::resource {
     }
 
     void Runtimes::Actions::materialize(Writing context, Id device) {
-        const auto assets = *with<Assets>::singleton(context);
+        const auto assets = with<Assets>::singleton(context);
         with<DeviceRuntimes>::modify(context, device)->assets = assets;
 
         for (const auto [id, _] : context->aspect<texture::Asset>().items()) {

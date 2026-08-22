@@ -119,7 +119,7 @@ namespace rmmr::system {
             throw std::runtime_error("system::Window::create: glfwInit() failed");
         }
 
-        const auto core = *with<Core>::singleton(context);
+        const auto core = with<Core>::singleton(context);
         const auto& core_quantum = with<Core>::get(context, core);
         const auto handle = create_glfw_handle(core_quantum.version, title, requested_size, presentation);
 

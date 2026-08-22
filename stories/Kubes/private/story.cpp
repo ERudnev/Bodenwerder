@@ -71,7 +71,7 @@ namespace kubes {
                 .blend = renderer::BlendMode::additive,
             });
 
-        const auto manager = *with<Manager>::singleton(context);
+        const auto manager = with<Manager>::singleton(context);
         if (not with<Unit_group>::exists(context, manager)) {
             with<Unit_group>::extend(context, manager);
         }

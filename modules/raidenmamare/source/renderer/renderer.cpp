@@ -53,7 +53,7 @@ namespace rmmr {
     namespace {
 
         auto postShaders(Reading world) -> filepath {
-            const auto& core = with<system::Core>::get(world, *with<system::Core>::singleton(world));
+            const auto& core = with<system::Core>::get(world, with<system::Core>::singleton(world));
             return core.assets_root / "rmmr" / "shaders";
         }
 

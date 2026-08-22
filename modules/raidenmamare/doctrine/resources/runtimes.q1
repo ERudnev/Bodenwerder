@@ -24,8 +24,8 @@ namespace rmmr
         >add_meshpack_lwo_loader(Unit::Name, meshpack::LoaderLwo)->#meshpack::Asset
         ?find<R as feature of Unit>(Unit::Name)-> #R?
       all
-        singleton: #?
-        ?singleton()->#?
+        singleton: #
+        ?singleton()-> #
         >extend(path: filepath)
 
     // TODO: mve to Interface file (dependencies, must be invisible to major types)

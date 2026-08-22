@@ -9,7 +9,7 @@ namespace rmmr
         location: filepath
         >load()
       all
-        ?singleton()->#?
+        ?singleton()-> #
         // kit-relative filename → absolute under Manager.location [/ library]
         ?resolve(one<Unit>, filename)->filepath
 

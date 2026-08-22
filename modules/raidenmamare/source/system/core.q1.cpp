@@ -8,17 +8,15 @@ namespace rmmr::system {
 
     using namespace fqsm::api;
 
-    auto Core::Actions::singleton(Reading context) -> optional<Id> {
+    auto Core::Actions::singleton(Reading context) -> Id {
         return with<Core>::get_global(context).singleton;
     }
 
     auto Core::Actions::access(Reading context) -> const Quantum* {
-        const auto id = singleton(context);
-        if (not id) return nullptr;
-        return &with<Core>::get(context, *id);
+        return &with<Core>::get(context, singleton(context));
     }
 
-    auto Clock::Actions::singleton(Reading context) -> optional<Id> {
+    auto Clock::Actions::singleton(Reading context) -> Id {
         return with<Clock>::get_global(context).singleton;
     }
 

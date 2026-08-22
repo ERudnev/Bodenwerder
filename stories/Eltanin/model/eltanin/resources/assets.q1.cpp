@@ -12,7 +12,7 @@ namespace eltanin::resource {
 
         template <typename Feature>
         auto registerAndMaybeLoad(Writing context, rmmr::resource::Unit::Name name, filename file, typename Feature::Quantum quantum) -> typename Feature::Id {
-            const auto assets = *with<rmmr::resource::Assets>::singleton(context);
+            const auto assets = with<rmmr::resource::Assets>::singleton(context);
             quantum.file = std::move(file);
             const auto unitId = with<rmmr::resource::Unit_group>::addElement(context, assets, rmmr::resource::Unit::Quantum{.name = std::move(name)});
             with<Feature>::extend(context, unitId, std::move(quantum));

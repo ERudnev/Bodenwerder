@@ -217,7 +217,7 @@ namespace eltanin::phys {
             base::message("eltanin::phys::Ui: no Root/Device; skip hull actors");
             return;
         }
-        const auto manager = *with<rmmr::resource::Manager>::singleton(context);
+        const auto manager = with<rmmr::resource::Manager>::singleton(context);
         const auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f);
         for (const auto [crystalId, crystal] : context->aspect<rigid::Crystal>().items()) {
             auto cpu = debugMeshFromHull(crystal.hull, crystal.shape);

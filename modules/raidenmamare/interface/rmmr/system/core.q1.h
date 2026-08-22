@@ -19,11 +19,11 @@ namespace rmmr::system {
             GLVer version;
         };
         struct Global {
-            optional<Id> singleton{};
+            Id singleton = Id::please_never_use_this_except_patch_rejection_mechanism();
         };
         struct Actions : BaseActions {
             // For change analysis (Clock deltas keyed by Core id).
-            static auto singleton(Reading) -> optional<Id>;
+            static auto singleton(Reading) -> Id;
             // Current Core quantum, if the singleton is alive.
             static auto access(Reading) -> const Quantum*;
         };
@@ -36,10 +36,10 @@ namespace rmmr::system {
             int64 absolute; // microseconds since process start
         };
         struct Global {
-            optional<Id> singleton{};
+            Id singleton = Id::please_never_use_this_except_patch_rejection_mechanism();
         };
         struct Actions : BaseActions {
-            static auto singleton(Reading) -> optional<Id>;
+            static auto singleton(Reading) -> Id;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

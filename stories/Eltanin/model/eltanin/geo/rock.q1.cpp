@@ -446,7 +446,7 @@ namespace eltanin::geo {
                 cohesionSum += sampleCohesionValue * sample.mass;
             }
 
-            const auto manager = *with<rmmr::resource::Manager>::singleton(context);
+            const auto manager = with<rmmr::resource::Manager>::singleton(context);
             const auto geometryId = with<rmmr::resource::Unit_group>::addElement(context, manager, rmmr::resource::Unit::Quantum{.name = rmmr::resource::Unit::Name::from("Eltanin", "rock")});
             with<rmmr::resource::geometry::Asset>::extend(context, geometryId, rmmr::resource::geometry::Asset::Quantum{});
             if (not with<rmmr::resource::geometry::Asset>::install(context, geometryId, device, cpu))

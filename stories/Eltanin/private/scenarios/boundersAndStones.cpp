@@ -147,7 +147,7 @@ namespace eltanin::scenario {
                 .blend = renderer::BlendMode::inherit,
             });
 
-        const auto manager = *with<Manager>::singleton(context);
+        const auto manager = with<Manager>::singleton(context);
         const auto crustId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "crust")});
         with<texture3array::Asset>::extend(context, crustId, texture3array::Asset::Quantum{.layerSize = index3{0, 0, 0}, .capacity = 0});
         assets.crust = crustId;

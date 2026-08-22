@@ -53,29 +53,26 @@ namespace rmmr::wrapper::ui {
         if (ImGui::Begin("Stats", &stats, flags)) {
             ImGui::SetWindowFontScale(0.75f);
 
-            if (const auto core = with<system::Core>::singleton(world)) {
-                const int64 now = with<system::Clock>::get(world, *core).absolute;
-                int64 frame_us = 0;
-                if (last_absolute > 0 and now >= last_absolute) {
-                    frame_us = now - last_absolute;
-                }
-                last_absolute = now;
-
-                const auto total_sec = now / 1'000'000;
-                const auto hours = total_sec / 3600;
-                const auto minutes = (total_sec / 60) % 60;
-                const auto seconds = total_sec % 60;
-                const auto fps = frame_us > 0 ? 1'000'000.0 / static_cast<double>(frame_us) : 0.0;
-
-                ImGui::Text("Time: %02lld:%02lld:%02lld",
-                    static_cast<long long>(hours),
-                    static_cast<long long>(minutes),
-                    static_cast<long long>(seconds));
-                ImGui::Text("FPS: %.1f", fps);
-                ImGui::Text("Frame: %.3f ms", static_cast<double>(frame_us) / 1000.0);
-            } else {
-                ImGui::TextDisabled("No system clock.");
+            const auto core = with<system::Core>::singleton(world);
+            const int64 now = with<system::Clock>::get(world, core).absolute;
+            int64 frame_us = 0;
+            if (last_absolute > 0 and now >= last_absolute) {
+                frame_us = now - last_absolute;
             }
+            last_absolute = now;
+
+            const auto total_sec = now / 1'000'000;
+            const auto hours = total_sec / 3600;
+            const auto minutes = (total_sec / 60) % 60;
+            const auto seconds = total_sec % 60;
+            const auto fps = frame_us > 0 ? 1'000'000.0 / static_cast<double>(frame_us) : 0.0;
+
+            ImGui::Text("Time: %02lld:%02lld:%02lld",
+                static_cast<long long>(hours),
+                static_cast<long long>(minutes),
+                static_cast<long long>(seconds));
+            ImGui::Text("FPS: %.1f", fps);
+            ImGui::Text("Frame: %.3f ms", static_cast<double>(frame_us) / 1000.0);
 
             integer identity_draws = 0;
             for (const auto [_, window] : world->aspect<system::Window>().items()) {

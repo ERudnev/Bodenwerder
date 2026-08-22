@@ -53,7 +53,7 @@ namespace eltanin {
     }
 
     void Game::createCore(Writing context) {
-        const auto host = *with<::rmmr::resource::Assets>::singleton(context);
+        const auto host = with<::rmmr::resource::Assets>::singleton(context);
         with<::eltanin::resource::Assets>::extend(context, host, ::eltanin::resource::Assets::Quantum{});
     }
 
@@ -163,7 +163,7 @@ namespace eltanin {
             Name::from("Eltanin", "devices"),
             item<meshpack::LoaderLwo>{.file = "meshes/fittings/devices/cannon_temp_solid.lwo.meshpack", .geometry = {}, .pending = {}});
 
-        const auto manager = *with<Manager>::singleton(context);
+        const auto manager = with<Manager>::singleton(context);
         const auto sky_geometry_id = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "skySphere")});
         with<geometry::Asset>::extend(context, sky_geometry_id, geometry::Asset::Quantum{});
         with<resource::SkySphereGenerator>::extend(context, sky_geometry_id, resource::SkySphereGenerator::Quantum{
@@ -237,7 +237,7 @@ namespace eltanin {
         world_view = View{.viewport = viewport, .scene = root, .camera = camera};
         views = {*world_view};
 
-        const auto manager = *with<::rmmr::resource::Manager>::singleton(context);
+        const auto manager = with<::rmmr::resource::Manager>::singleton(context);
         blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "blueprints");
         mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings" / "mounts");
         blueprints.create(context);

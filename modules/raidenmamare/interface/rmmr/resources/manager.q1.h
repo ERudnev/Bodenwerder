@@ -40,7 +40,7 @@ namespace rmmr::resource {
             filepath location;
         };
         struct Actions : BaseActions {
-            static auto singleton(Reading) -> optional<Id>;
+            static auto singleton(Reading) -> Id;
             static void load(Writing);
             // Q1: ?resolve(one<Unit>, filename)->filepath
             static auto resolve(Reading, const Unit::Quantum&, const filename&) -> filepath;
