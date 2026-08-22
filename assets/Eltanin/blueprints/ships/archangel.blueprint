@@ -3813,7 +3813,9 @@
                 ["he3deg90", "ends", 19],
                 ["he3deg90", "starts", 19]
             ],
-            []
+            [
+                ["u121", 19]
+            ]
         ],
         [
             [1, 1, 4],
@@ -3832,7 +3834,9 @@
                 ["he3deg90", "ends", 19],
                 ["he3deg90", "starts", 19]
             ],
-            []
+            [
+                ["u121", 19]
+            ]
         ],
         [
             [2, 1, 4],
@@ -3851,7 +3855,9 @@
                 ["he3deg90", "ends", 19],
                 ["he3deg90", "starts", 19]
             ],
-            []
+            [
+                ["u121", 19]
+            ]
         ],
         [
             [2, 1, 4],
@@ -3870,7 +3876,9 @@
                 ["he3deg90", "ends", 19],
                 ["he3deg90", "starts", 19]
             ],
-            []
+            [
+                ["u121", 19]
+            ]
         ],
         [
             [-1, 1, 4],
@@ -3889,7 +3897,9 @@
                 ["he3deg90", "ends", 19],
                 ["he3deg90", "starts", 19]
             ],
-            []
+            [
+                ["u121", 19]
+            ]
         ],
         [
             [3, 1, 2],
@@ -3908,7 +3918,9 @@
                 ["he3deg90", "ends", 19],
                 ["he3deg90", "starts", 19]
             ],
-            []
+            [
+                ["u121", 19]
+            ]
         ],
         [
             [-2, 1, 2],
@@ -3927,7 +3939,9 @@
                 ["he3deg90", "ends", 19],
                 ["he3deg90", "starts", 19]
             ],
-            []
+            [
+                ["u121", 19]
+            ]
         ]
     ],
     [
@@ -4006,7 +4020,7 @@
         ["Eltanin::mounts.dummy_custom", [-2, 0, -2], 0],
         ["Eltanin::mounts.dummy_custom", [2, 0, -2], 0],
         ["Eltanin::mounts.p1111_default", [0, 0, 0], 16],
-        ["Eltanin::mounts.p1111_default", [1, 0, 1], 8],
+        ["Eltanin::mounts.p1111_deco_fat_cut", [1, 0, 1], 8],
         ["Eltanin::mounts.p1111_default", [1, 0, 1], 1],
         ["Eltanin::mounts.p1111_default", [1, 1, 1], 14],
         ["Eltanin::mounts.p1111_default", [1, 0, 2], 1],
@@ -4143,11 +4157,11 @@
         ["Eltanin::mounts.p1111_default", [0, 0, -5], 4],
         ["Eltanin::mounts.p1111_default", [-1, 0, -4], 12],
         ["Eltanin::mounts.p1111_default", [-1, 0, -5], 16],
-        ["Eltanin::mounts.p1111_default", [-1, 0, -5], 0],
+        ["Eltanin::mounts.p1111_thruster_cover", [-1, 0, -5], 0],
         ["Eltanin::mounts.p1111_default", [0, 1, -5], 4],
         ["Eltanin::mounts.p1111_default", [-1, 1, -4], 12],
         ["Eltanin::mounts.p1111_default", [-1, 2, -4], 18],
-        ["Eltanin::mounts.p1111_default", [-1, 1, -5], 0],
+        ["Eltanin::mounts.p1111_thruster_cover", [-1, 1, -5], 0],
         ["Eltanin::mounts.p1111_default", [1, 0, -3], 16],
         ["Eltanin::mounts.p121_default", [2, 2, -3], 7],
         ["Eltanin::mounts.p1111_default", [2, 2, -3], 20],
@@ -4160,11 +4174,11 @@
         ["Eltanin::mounts.p1111_default", [2, 0, -5], 4],
         ["Eltanin::mounts.p1111_default", [1, 0, -4], 12],
         ["Eltanin::mounts.p1111_default", [1, 0, -5], 16],
-        ["Eltanin::mounts.p1111_default", [1, 0, -5], 0],
+        ["Eltanin::mounts.p1111_thruster_cover", [1, 0, -5], 0],
         ["Eltanin::mounts.p1111_default", [2, 1, -5], 4],
         ["Eltanin::mounts.p1111_default", [1, 1, -4], 12],
         ["Eltanin::mounts.p1111_default", [1, 2, -4], 18],
-        ["Eltanin::mounts.p1111_default", [1, 1, -5], 0],
+        ["Eltanin::mounts.p1111_thruster_cover", [1, 1, -5], 0],
         ["Eltanin::mounts.p1111_default", [1, 0, -2], 22],
         ["Eltanin::mounts.p1111_default", [0, 0, -3], 0],
         ["Eltanin::mounts.p1111_default", [0, 2, -3], 3],
