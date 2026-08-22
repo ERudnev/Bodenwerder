@@ -227,11 +227,9 @@ namespace rmmr {
         }
 
         {
-            const auto clock = with<system::Clock>::singleton(context);
-            if (clock) {
-                const auto us = static_cast<int64>(glfwGetTime() * 1'000'000.0);
-                with<system::Clock>::modify(context, *clock)->absolute = us;
-            }
+            const auto clock = *with<system::Clock>::singleton(context);
+            const auto us = static_cast<int64>(glfwGetTime() * 1'000'000.0);
+            with<system::Clock>::modify(context, clock)->absolute = us;
         }
 
         {

@@ -213,19 +213,17 @@ namespace eltanin::phys {
         disableHulls(context);
         const auto root = first_root(context);
         const auto device = first_device(context);
-        const auto manager = with<rmmr::resource::Manager>::singleton(context);
-        if (not root or not device or not manager) {
-            base::message("eltanin::phys::Ui: no Root/Device/Manager; skip hull actors");
+        if (not root or not device) {
+            base::message("eltanin::phys::Ui: no Root/Device; skip hull actors");
             return;
         }
-        if (not with<rmmr::resource::Unit_group>::exists(context, *manager))
-            with<rmmr::resource::Unit_group>::extend(context, *manager);
+        const auto manager = *with<rmmr::resource::Manager>::singleton(context);
         const auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f);
         for (const auto [crystalId, crystal] : context->aspect<rigid::Crystal>().items()) {
             auto cpu = debugMeshFromHull(crystal.hull, crystal.shape);
             if (cpu.positions.empty())
                 continue;
-            const auto geometryId = with<rmmr::resource::Unit_group>::addElement(context, *manager, rmmr::resource::Unit::Quantum{.name = rmmr::resource::Unit::Name::from("Eltanin", "hullDebug")});
+            const auto geometryId = with<rmmr::resource::Unit_group>::addElement(context, manager, rmmr::resource::Unit::Quantum{.name = rmmr::resource::Unit::Name::from("Eltanin", "hullDebug")});
             with<rmmr::resource::geometry::Asset>::extend(context, geometryId, rmmr::resource::geometry::Asset::Quantum{});
             if (not with<rmmr::resource::geometry::Asset>::install(context, geometryId, *device, cpu)) {
                 base::message("eltanin::phys::Ui: hull debug geometry install failed");

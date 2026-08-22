@@ -53,10 +53,8 @@ namespace rmmr {
     namespace {
 
         auto postShaders(Reading world) -> filepath {
-            const auto* core = system::Core::Actions::access(world);
-            if (not core)
-                throw std::runtime_error("Renderer: Core singleton missing");
-            return core->assets_root / "rmmr" / "shaders";
+            const auto& core = with<system::Core>::get(world, *with<system::Core>::singleton(world));
+            return core.assets_root / "rmmr" / "shaders";
         }
 
         auto isSceneColorPass(renderer::Pass pass) -> bool {

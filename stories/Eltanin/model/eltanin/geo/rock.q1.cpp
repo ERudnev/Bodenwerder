@@ -446,12 +446,8 @@ namespace eltanin::geo {
                 cohesionSum += sampleCohesionValue * sample.mass;
             }
 
-            const auto manager = with<rmmr::resource::Manager>::singleton(context);
-            if (not manager)
-                return context.refuse("eltanin::geo::Rock::spawn: resource Manager missing");
-            if (not with<rmmr::resource::Unit_group>::exists(context, *manager))
-                with<rmmr::resource::Unit_group>::extend(context, *manager);
-            const auto geometryId = with<rmmr::resource::Unit_group>::addElement(context, *manager, rmmr::resource::Unit::Quantum{.name = rmmr::resource::Unit::Name::from("Eltanin", "rock")});
+            const auto manager = *with<rmmr::resource::Manager>::singleton(context);
+            const auto geometryId = with<rmmr::resource::Unit_group>::addElement(context, manager, rmmr::resource::Unit::Quantum{.name = rmmr::resource::Unit::Name::from("Eltanin", "rock")});
             with<rmmr::resource::geometry::Asset>::extend(context, geometryId, rmmr::resource::geometry::Asset::Quantum{});
             if (not with<rmmr::resource::geometry::Asset>::install(context, geometryId, device, cpu))
                 return context.refuse("eltanin::geo::Rock::spawn: geometry install failed");

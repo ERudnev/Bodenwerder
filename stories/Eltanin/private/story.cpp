@@ -53,9 +53,8 @@ namespace eltanin {
     }
 
     void Game::createCore(Writing context) {
-        const auto host = with<::rmmr::resource::Assets>::singleton(context);
-        if (not host) return (void)context.refuse("eltanin::Game::createCore: rmmr Assets singleton missing");
-        with<::eltanin::resource::Assets>::extend(context, *host, ::eltanin::resource::Assets::Quantum{});
+        const auto host = *with<::rmmr::resource::Assets>::singleton(context);
+        with<::eltanin::resource::Assets>::extend(context, host, ::eltanin::resource::Assets::Quantum{});
     }
 
     void Game::addAssets(Writing context) {
@@ -165,9 +164,6 @@ namespace eltanin {
             item<meshpack::LoaderLwo>{.file = "meshes/fittings/devices/cannon_temp_solid.lwo.meshpack", .geometry = {}, .pending = {}});
 
         const auto manager = *with<Manager>::singleton(context);
-        if (not with<Unit_group>::exists(context, manager)) {
-            with<Unit_group>::extend(context, manager);
-        }
         const auto sky_geometry_id = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "skySphere")});
         with<geometry::Asset>::extend(context, sky_geometry_id, geometry::Asset::Quantum{});
         with<resource::SkySphereGenerator>::extend(context, sky_geometry_id, resource::SkySphereGenerator::Quantum{
@@ -241,11 +237,9 @@ namespace eltanin {
         world_view = View{.viewport = viewport, .scene = root, .camera = camera};
         views = {*world_view};
 
-        const auto manager = with<::rmmr::resource::Manager>::singleton(context);
-        if (not manager)
-            return (void)context.refuse("eltanin::Game::populateWorld: resource Manager missing");
-        blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, *manager).location / "Eltanin" / "blueprints");
-        mountPack.bind(with<::rmmr::resource::Manager>::get(context, *manager).location / "Eltanin" / "fittings" / "mounts");
+        const auto manager = *with<::rmmr::resource::Manager>::singleton(context);
+        blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "blueprints");
+        mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings" / "mounts");
         blueprints.create(context);
     }
 

@@ -4,7 +4,6 @@
 #include <rmmr/resources/texpack.q1.h>
 
 #include <filesystem>
-#include <stdexcept>
 
 namespace rmmr::resource {
 
@@ -15,34 +14,18 @@ namespace rmmr::resource {
     }
 
     void Manager::Actions::load(Writing context) {
-        if (not singleton(context)) return;
-        for (const auto [id, _] : context->aspect<texpack::LoaderCatalog>().items()) {
+        for (const auto [id, _] : context->aspect<texpack::LoaderCatalog>().items())
             texpack::LoaderCatalog::Actions::load(context, id);
-            if (not context.workers_interface().summary().good())
-                return;
-        }
-        for (const auto [id, _] : context->aspect<sprite::LoaderKenney>().items()) {
+        for (const auto [id, _] : context->aspect<sprite::LoaderKenney>().items())
             sprite::LoaderKenney::Actions::load(context, id);
-            if (not context.workers_interface().summary().good())
-                return;
-        }
-        for (const auto [id, _] : context->aspect<meshpack::LoaderObjs>().items()) {
+        for (const auto [id, _] : context->aspect<meshpack::LoaderObjs>().items())
             meshpack::LoaderObjs::Actions::load(context, id);
-            if (not context.workers_interface().summary().good())
-                return;
-        }
-        for (const auto [id, _] : context->aspect<meshpack::LoaderLwo>().items()) {
+        for (const auto [id, _] : context->aspect<meshpack::LoaderLwo>().items())
             meshpack::LoaderLwo::Actions::load(context, id);
-            if (not context.workers_interface().summary().good())
-                return;
-        }
     }
 
     auto Manager::Actions::resolve(Reading context, const Unit::Quantum& unit, const filename& relative) -> filepath {
-        const auto manager_id = singleton(context);
-        if (not manager_id)
-            throw std::runtime_error("resource::Manager::resolve: singleton missing");
-        const auto& manager = with<Manager>::get(context, *manager_id);
+        const auto& manager = with<Manager>::get(context, *singleton(context));
         const std::filesystem::path file_path(relative);
         if (file_path.is_absolute())
             return file_path;

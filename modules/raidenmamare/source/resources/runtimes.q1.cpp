@@ -16,12 +16,8 @@ namespace rmmr::resource {
 
         template<typename Asset, typename Kind>
         auto register_unit(Writing context, Unit::Name name, typename Asset::Quantum asset, typename Kind::Quantum kind) -> typename Asset::Id {
-            const auto assets = with<Assets>::singleton(context);
-            if (not assets) return context.refuse("resource::Assets: singleton missing");
-            if (not with<Unit_group>::exists(context, *assets)) {
-                with<Unit_group>::extend(context, *assets);
-            }
-            const auto unit_id = with<Unit_group>::addElement(context, *assets, Unit::Quantum{.name = std::move(name)});
+            const auto assets = *with<Assets>::singleton(context);
+            const auto unit_id = with<Unit_group>::addElement(context, assets, Unit::Quantum{.name = std::move(name)});
             with<Asset>::extend(context, unit_id, std::move(asset));
             with<Kind>::extend(context, unit_id, std::move(kind));
             return unit_id;
@@ -153,27 +149,15 @@ namespace rmmr::resource {
     }
 
     auto Assets::Actions::add_material(Writing context, Unit::Name name, material::Asset::Quantum asset) -> material::Asset::Id {
-        const auto assets = singleton(context);
-        if (not assets) {
-            return context.refuse("resource::Assets: singleton missing");
-        }
-        if (not with<Unit_group>::exists(context, *assets)) {
-            with<Unit_group>::extend(context, *assets);
-        }
-        const auto unit_id = with<Unit_group>::addElement(context, *assets, Unit::Quantum{.name = std::move(name)});
+        const auto assets = *singleton(context);
+        const auto unit_id = with<Unit_group>::addElement(context, assets, Unit::Quantum{.name = std::move(name)});
         with<material::Asset>::extend(context, unit_id, std::move(asset));
         return unit_id;
     }
 
     auto Assets::Actions::add_overlay(Writing context, Unit::Name name, overlay::Asset::Quantum asset) -> overlay::Asset::Id {
-        const auto assets = singleton(context);
-        if (not assets) {
-            return context.refuse("resource::Assets: singleton missing");
-        }
-        if (not with<Unit_group>::exists(context, *assets)) {
-            with<Unit_group>::extend(context, *assets);
-        }
-        const auto unit_id = with<Unit_group>::addElement(context, *assets, Unit::Quantum{.name = std::move(name)});
+        const auto assets = *singleton(context);
+        const auto unit_id = with<Unit_group>::addElement(context, assets, Unit::Quantum{.name = std::move(name)});
         with<overlay::Asset>::extend(context, unit_id, std::move(asset));
         return unit_id;
     }
@@ -235,21 +219,16 @@ namespace rmmr::resource {
     }
 
     void Assets::Actions::extend(Writing context, filepath path) {
-        const auto manager = with<Manager>::singleton(context);
-        if (not manager) return (void)context.refuse("resource::Assets::extend: Manager singleton missing");
-        with<Manager>::modify(context, *manager)->location = std::move(path);
-        if (not with<Assets>::exists(context, *manager)) {
-            BaseActions::extend(context, *manager, Quantum{});
-        }
-        with<Assets>::modify_global(context)->singleton = *manager;
+        const auto manager = *with<Manager>::singleton(context);
+        with<Manager>::modify(context, manager)->location = std::move(path);
+        with<Assets>::modify_global(context)->singleton = manager;
     }
 
     void Runtimes::Actions::install(Writing context, Id device) {
         if (with<Runtimes>::exists(context, device)) return (void)context.refuse(std::format("resource::Runtimes::install: already installed for device {}", device));
 
-        const auto assets = with<Assets>::singleton(context);
-        if (not assets) return (void)context.refuse("resource::Runtimes::install: Assets singleton missing");
-        with<DeviceRuntimes>::extend(context, device, DeviceRuntimes::Quantum{.assets = *assets});
+        const auto assets = *with<Assets>::singleton(context);
+        with<DeviceRuntimes>::extend(context, device, DeviceRuntimes::Quantum{.assets = assets});
         with<Runtime_group>::extend(context, device);
         with<TexpackRuntime_group>::extend(context, device);
         with<Texture3arrayRuntime_group>::extend(context, device);
@@ -263,9 +242,8 @@ namespace rmmr::resource {
     }
 
     void Runtimes::Actions::materialize(Writing context, Id device) {
-        const auto assets = with<Assets>::singleton(context);
-        if (not assets) return (void)context.refuse("resource::Runtimes::materialize: Assets singleton missing");
-        with<DeviceRuntimes>::modify(context, device)->assets = *assets;
+        const auto assets = *with<Assets>::singleton(context);
+        with<DeviceRuntimes>::modify(context, device)->assets = assets;
 
         for (const auto [id, _] : context->aspect<texture::Asset>().items()) {
             rematerialize_texture(context, id, device);
