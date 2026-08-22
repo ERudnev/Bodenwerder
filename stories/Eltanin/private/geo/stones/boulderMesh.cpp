@@ -1,4 +1,4 @@
-#include "stones/boulderMesh.h"
+#include "geo/stones/boulderMesh.h"
 
 #include <rmmr/semantics/geometry.h>
 

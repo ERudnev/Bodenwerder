@@ -9,20 +9,18 @@
 #include <rmmr/semantics/rendering.h>
 #include <rmmr/semantics/uniform.h>
 
-namespace eltanin::scenarios {
+namespace eltanin::scenario {
 
     using namespace rmmr;
 
-    auto LavaAndRock::loadResources(Writing context, const rmmr::wrapper::assets::Handles& shared) -> bool {
+    void LavaAndRock::loadResources(Writing context, const rmmr::wrapper::assets::Handles& shared) {
         using namespace ::rmmr::resource;
         using AssetsHost = ::rmmr::resource::Assets;
         using Name = Unit::Name;
         using Material = ::rmmr::resource::material::Asset;
 
-        if (not shared.material.lit) {
-            context.refuse("eltanin::scenarios::LavaAndRock::loadResources: rmmr lit missing");
-            return false;
-        }
+        if (not shared.material.lit)
+            return (void)context.refuse("eltanin::scenario::LavaAndRock::loadResources: rmmr lit missing");
 
         const auto rockShader = with<AssetsHost>::add_shader_loader(
             context,
@@ -33,10 +31,8 @@ namespace eltanin::scenarios {
             });
         const auto& litQuantum = with<Material>::get(context, *shared.material.lit);
         const auto shadowTechnique = litQuantum.techniques.find(renderer::Pass::shadow);
-        if (shadowTechnique == litQuantum.techniques.end()) {
-            context.refuse("eltanin::scenarios::LavaAndRock::loadResources: lit shadow technique missing");
-            return false;
-        }
+        if (shadowTechnique == litQuantum.techniques.end())
+            return (void)context.refuse("eltanin::scenario::LavaAndRock::loadResources: lit shadow technique missing");
         assets.rock = with<AssetsHost>::add_material(
             context,
             Name::from("Eltanin", "rock"),
@@ -84,17 +80,10 @@ namespace eltanin::scenarios {
                 .blend = renderer::BlendMode::inherit,
             });
 
-        const auto manager = with<Manager>::singleton(context);
-        if (not manager) {
-            context.refuse("eltanin::scenarios::LavaAndRock::loadResources: resource Manager missing");
-            return false;
-        }
-        if (not with<Unit_group>::exists(context, *manager))
-            with<Unit_group>::extend(context, *manager);
-        const auto crustId = with<Unit_group>::addElement(context, *manager, Unit::Quantum{.name = Name::from("Eltanin", "crust")});
+        const auto manager = *with<Manager>::singleton(context);
+        const auto crustId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "crust")});
         with<texture3array::Asset>::extend(context, crustId, texture3array::Asset::Quantum{.layerSize = index3{0, 0, 0}, .capacity = 0});
         assets.crust = crustId;
-        return true;
     }
 
     void LavaAndRock::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {

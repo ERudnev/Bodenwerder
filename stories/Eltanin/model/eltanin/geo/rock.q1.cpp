@@ -10,10 +10,10 @@
 
 #include "mech/semantics/space.h"
 #include "physics/system.h"
-#include "stones/boulderMesh.h"
-#include "stones/marchingCubes.h"
-#include "stones/crust.h"
-#include "stones/generator.h"
+#include "geo/stones/boulderMesh.h"
+#include "geo/stones/marchingCubes.h"
+#include "geo/stones/crust.h"
+#include "geo/stones/generator.h"
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>

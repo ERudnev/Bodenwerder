@@ -120,8 +120,7 @@ namespace eltanin {
         if (not shared or not shared->material.lit) {
             return (void)context.refuse("eltanin::Game::addAssets: rmmr lit missing");
         }
-        if (not lavaAndRock.loadResources(context, *shared))
-            return;
+        scenario.loadResources(context, *shared);
 
         // Mech albedo catalog; editor meshpacks under meshes/editor.
         if (not shared or not shared->material.litTextured) {
@@ -230,7 +229,7 @@ namespace eltanin {
         with<controller::Camera3d>::create(context, camera);
         with<scene::Interface>::createLight(context, root, Pose::from(Pos{160.0f, 280.0f, 120.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 8.0f, .range = 1600.0f});
 
-        lavaAndRock.populate(context, root, window);
+        scenario.populate(context, root, window);
 
         {
             auto world = with<World>::modify_global(context);

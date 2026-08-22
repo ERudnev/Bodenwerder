@@ -1,4 +1,4 @@
-#include "stones/crust.h"
+#include "geo/stones/crust.h"
 
 #include <eltanin/geo/minerals.q1.h>
 

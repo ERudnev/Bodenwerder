@@ -1,4 +1,4 @@
-#include "stones/generator.h"
+#include "geo/stones/generator.h"
 
 #include "mech/semantics/space.h"
 

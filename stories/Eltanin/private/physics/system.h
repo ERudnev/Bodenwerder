@@ -17,8 +17,8 @@ namespace eltanin::phys {
     // Constraint wave: each installed rigid feature contributes its Crystal solver.
     // Thermal: small rocks only (no Volume). Accumulate to thermalStepUs, then radiate. No conduction.
     struct Settings {
-        static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
-        static constexpr int constraintPasses = 1;//4;
+        static constexpr float constraintStiffness = 0.75f; // Hitman-style goal pull (constraints)
+        static constexpr int constraintPasses = 4;
         static constexpr int64 fixedStepUs = 10'000;
         static constexpr int64 thermalStepUs = 200'000;
         static constexpr float skyKelvin = 3.0f;

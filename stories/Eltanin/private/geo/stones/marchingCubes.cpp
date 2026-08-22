@@ -1,4 +1,4 @@
-#include "stones/marchingCubes.h"
+#include "geo/stones/marchingCubes.h"
 
 #include "mech/semantics/space.h"
 
