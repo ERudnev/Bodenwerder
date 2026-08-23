@@ -14,6 +14,15 @@ namespace eltanin
             normal: vec3
           faces: vector<Face>
 
+      entity Ball
+        struct Data of phys::Body
+          prevPos: vec3
+          prevOri: quat
+          forceLinear: vec3
+          forceAngular: vec3
+        one
+          body: Data
+
       entity Crystal
         one
           particles: vector<Particle>
@@ -23,12 +32,8 @@ namespace eltanin
           hull: Compound::Hull
           =debugAddImpulse(imp: vec3)
           =setMotion(pose: Pose, linear: vec3, omega: vec3) // Place shape by Pose; prev = position − (linear + ω×(position−currentCOM))·dt
-
-      feature Octa of Crystal
-        all *satisfy(~Crystal) // Triad → Pose; position = (1−k)·current + k·(pose * shape)
-
-      feature Horned of Crystal
-        all *satisfy(~Crystal) // Horn on q/p; same pull; Pose origin is currentCOM − R·restCOM
+          all *restore() // Horn → Pose into restored; particles untouched
+          all *applyRestored() // position += k·(goal−position); prev += same (velocity preserved through projection)
 
       attribute CelestialGravity of Crystal
         one

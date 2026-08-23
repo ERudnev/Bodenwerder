@@ -12,6 +12,7 @@
 
 #include <base/logging.h>
 
+#include <glm/common.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
 
 #include <algorithm>
@@ -605,6 +606,12 @@ namespace rmmr::resource::geometry {
                 channels.insert_or_assign(cohesion_id, buffer);
             }
 
+            vec3 boundMin = cpu.positions.front();
+            vec3 boundMax = boundMin;
+            for (const auto& position : cpu.positions) {
+                boundMin = glm::min(boundMin, vec3{position});
+                boundMax = glm::max(boundMax, vec3{position});
+            }
             return Runtime::Quantum{
                 .device = device,
                 .vao = vao,
@@ -614,6 +621,8 @@ namespace rmmr::resource::geometry {
                 .primitiveSurfaces = primitiveSurfaces,
                 .vertex_count = renderer::Count(vertex_count),
                 .index_count = renderer::Count(index_data.size()),
+                .boundMin = boundMin,
+                .boundMax = boundMax,
             };
         }
 

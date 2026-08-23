@@ -37,7 +37,8 @@ namespace eltanin::geo {
             static auto homogenous(Mineral::Index) -> Mix;
         };
         struct Quantum {
-            Custody<phys::rigid::Crystal> body;
+            base::maybe<Custody<phys::rigid::Crystal>> body;
+            base::maybe<Custody<phys::rigid::Ball>> ball;
             Custody<rmmr::scene::actor::Mesh> actor;
             base::maybe<Volume> volume;
         };

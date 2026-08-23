@@ -1,7 +1,6 @@
 #pragma once
 
 #include "bloom.h"
-#include "fog.h"
 #include "gl.h"
 #include "identity.h"
 #include "overlayCompose.h"
@@ -59,7 +58,6 @@ namespace rmmr {
     private:
         SceneTarget sceneTarget;
         Bloom bloom;
-        FogPass fog;
         Identity identity;
         OverlayCompose overlay;
         gl::Triangle fullscreen;

@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <stdexcept>
 #include <GL/glew.h>
-#include <glm/gtc/matrix_inverse.hpp>
+#include <glm/common.hpp>
+#include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <base/logging.h>
 #include <base/maybe.h>
@@ -33,7 +35,6 @@ namespace rmmr {
     Renderer::Renderer()
         : sceneTarget{.fbo = 0, .hdr = 0, .bloomMask = 0, .depth = 0, .size = index2{0, 0}}
         , bloom{.sourceFbo = 0, .scratchFbo = 0, .source = 0, .scratch = 0, .size = index2{0, 0}, .downsampleProgram = 0, .blurProgram = 0, .tonemapProgram = 0}
-        , fog{.target = {.fbo = 0, .color = 0, .size = index2{0, 0}}, .program = 0}
         , identity{.allFbo = 0, .selectedFbo = 0, .color = 0, .selected = 0, .depth = 0, .size = index2{0, 0}}
         , overlay{.sceneColor = {.fbo = 0, .color = 0, .size = index2{0, 0}}, .overlayColor = {.fbo = 0, .color = 0, .size = index2{0, 0}}, .composeProgram = 0}
         , fullscreen{.vao = 0}
@@ -47,7 +48,6 @@ namespace rmmr {
         fullscreen.destroy();
         sceneTarget.destroy();
         bloom.destroy();
-        fog.destroy();
         identity.destroy();
         overlay.destroy();
     }
@@ -136,7 +136,63 @@ namespace rmmr {
             return it->second;
         }
 
-        auto light_space_matrix(Reading context, scene::Light::Id light_node) -> mat4 {
+        auto directional_to_light(const mat4& lightWorld) -> vec3 {
+            return glm::normalize(vec3{mat3{lightWorld}[2]});
+        }
+
+        void include_point(vec3& lo, vec3& hi, bool& any, vec3 point) {
+            if (not any) {
+                lo = hi = point;
+                any = true;
+                return;
+            }
+            lo = glm::min(lo, point);
+            hi = glm::max(hi, point);
+        }
+
+        auto scene_node_aabb(Reading context, scene::Root::Id root) -> base::maybe<std::array<vec3, 2>> {
+            vec3 lo{};
+            vec3 hi{};
+            bool any = false;
+            for (const auto node : with<scene::Node_group>::get(context, root))
+                include_point(lo, hi, any, with<scene::Node>::get(context, node).pose.position);
+            if (not any)
+                return {};
+            return std::array<vec3, 2>{lo, hi};
+        }
+
+        auto world_fitted_ortho(vec3 toLight, vec3 lo, vec3 hi) -> mat4 {
+            const vec3 center = (lo + hi) * 0.5f;
+            const float radius = 0.5f * glm::length(hi - lo);
+            const float pad = glm::max(0.25f, 0.02f * glm::max(radius, 1.0f));
+            const vec3 up = std::abs(glm::dot(toLight, vec3{0.0f, 1.0f, 0.0f})) > 0.99f ? vec3{0.0f, 0.0f, 1.0f} : vec3{0.0f, 1.0f, 0.0f};
+            const mat4 view = glm::lookAt(center + toLight * (radius + pad), center, up);
+            vec3 viewLo{};
+            vec3 viewHi{};
+            bool any = false;
+            for (int corner = 0; corner < 8; ++corner) {
+                const vec3 world{
+                    (corner & 1) ? hi.x : lo.x,
+                    (corner & 2) ? hi.y : lo.y,
+                    (corner & 4) ? hi.z : lo.z,
+                };
+                include_point(viewLo, viewHi, any, vec3{view * vec4{world, 1.0f}});
+            }
+            viewLo -= vec3{pad, pad, pad};
+            viewHi += vec3{pad, pad, pad};
+            const float nearDist = glm::max(0.05f, -viewHi.z);
+            const float farDist = glm::max(nearDist + 0.1f, -viewLo.z);
+            return glm::ortho(viewLo.x, viewHi.x, viewLo.y, viewHi.y, nearDist, farDist) * view;
+        }
+
+        auto light_space_matrix(Reading context, scene::Light::Id light_node, scene::Root::Id root) -> mat4 {
+            const auto& light = with<scene::Light>::get(context, light_node);
+            if (light.kind == scene::Light::Kind::directional) {
+                const vec3 toLight = directional_to_light(scene::Node::Actions::transform(context, light_node));
+                if (const auto aabb = scene_node_aabb(context, root))
+                    return world_fitted_ortho(toLight, (*aabb)[0], (*aabb)[1]);
+                return world_fitted_ortho(toLight, vec3{-80.0f, -80.0f, -80.0f}, vec3{80.0f, 80.0f, 80.0f});
+            }
             const mat4 light_transform = scene::Node::Actions::transform(context, light_node);
             const glm::vec3 light_position{light_transform[3]};
             const mat4 light_view = glm::lookAt(light_position, glm::vec3{0.0f, 0.0f, 0.0f}, glm::vec3{0.0f, 1.0f, 0.0f});
@@ -267,10 +323,16 @@ namespace rmmr {
         auto lightColorRange = vec4{0.0f};
         if (primaryLight) {
             const auto& light = with<scene::Light>::get(args.world, *primaryLight);
-            lightSpace = light_space_matrix(args.world, *primaryLight);
-            const auto lightTransform = scene::Node::Actions::transform(args.world, *primaryLight);
-            lightPositionIntensity = vec4{Pos{lightTransform[3]}, light.intensity};
-            lightColorRange = vec4{light.color, light.range};
+            lightSpace = light_space_matrix(args.world, *primaryLight, args.view.scene);
+            if (light.kind == scene::Light::Kind::directional) {
+                const vec3 toLight = directional_to_light(scene::Node::Actions::transform(args.world, *primaryLight));
+                lightPositionIntensity = vec4{toLight, light.intensity};
+                lightColorRange = vec4{light.color, 0.0f};
+            } else {
+                const auto lightTransform = scene::Node::Actions::transform(args.world, *primaryLight);
+                lightPositionIntensity = vec4{Pos{lightTransform[3]}, light.intensity};
+                lightColorRange = vec4{light.color, light.range};
+            }
         }
         const auto state = renderer::PassState{
             .view = scene::Camera::Actions::view(args.world, args.view.camera),
@@ -451,18 +513,11 @@ namespace rmmr {
             sceneTarget.begin(viewport.size, viewport.clear_color);
         const auto& root = with<scene::Root>::get(args.world, args.view.scene);
         const auto shaders = postShaders(args.world);
-        renderer::Texture hdr = sceneTarget.hdr;
-        if (root.fog.density > 0.0f) {
-            const auto view = scene::Camera::Actions::view(args.world, args.view.camera);
-            const auto projection = scene::Camera::Actions::projection(args.world, args.view.camera, viewport_aspect_ratio(args.world, args.view.viewport));
-            fog.ensurePrograms(shaders);
-            hdr = fog.apply(viewport.size, root.fog, glm::inverse(projection * view), vec3{glm::inverse(view)[3]}, sceneTarget.hdr, sceneTarget.depth, fullscreen);
-        }
         bloom.ensurePrograms(shaders);
         bloom.ensure(viewport.size);
-        bloom.downsample(hdr, sceneTarget.bloomMask, fullscreen);
+        bloom.downsample(sceneTarget.hdr, sceneTarget.bloomMask, fullscreen);
         bloom.blur(root.bloom.radius, fullscreen);
-        bloom.tonemapToWindow(args.world, args.view.viewport, hdr, root.bloom.intensity, fullscreen);
+        bloom.tonemapToWindow(args.world, args.view.viewport, sceneTarget.hdr, root.bloom.intensity, fullscreen);
 
         if (args.overlay) {
             overlay.ensurePrograms(shaders);

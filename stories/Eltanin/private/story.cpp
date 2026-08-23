@@ -40,8 +40,7 @@ namespace eltanin {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
             ask::schema::aspect<phys::rigid::Crystal>(),
-            ask::schema::aspect<phys::rigid::Octa>(),
-            ask::schema::aspect<phys::rigid::Horned>(),
+            ask::schema::aspect<phys::rigid::Ball>(),
             ask::schema::aspect<phys::rigid::CelestialGravity>(),
             ask::schema::aspect<Block>(),
             ask::schema::aspect<geo::Rock>(),
@@ -223,7 +222,7 @@ namespace eltanin {
             quantum->z_far = 16384.0f;
         }
         with<controller::Camera3d>::create(context, camera);
-        with<scene::Interface>::createLight(context, root, Pose::from(Pos{160.0f, 280.0f, 120.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 8.0f, .range = 1600.0f});
+        with<scene::Interface>::createLight(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{25.0f, -30.0f, 0.0f}), item<scene::Light>{.kind = scene::Light::Kind::directional, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 8.0f, .range = 0.0f});
 
         scenario.populate(context, root, window);
 

@@ -236,7 +236,7 @@ void main() {
 
     vec3 geometric = normalize(v_worldNormal);
     vec3 N = perturbNormal(geometric, v_objectPos, lod, bumpAmt);
-    vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos);
+    vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
     vec3 V = normalize(camera - v_worldPos);
     vec3 H = normalize(V + L);
 

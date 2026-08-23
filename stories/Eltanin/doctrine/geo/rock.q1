@@ -31,7 +31,8 @@ namespace eltanin
         spotContrast: float
         always ?homogenous(Mineral::Index)->Mix
       one
-        body: custody<phys::rigid::Crystal>
+        body: custody<phys::rigid::Crystal>?
+        ball: custody<phys::rigid::Ball>?
         actor: custody<rmmr::scene::actor::Mesh>
         volume: Volume?
       all
@@ -43,3 +44,4 @@ namespace eltanin
         >spawnIceBlob(#rmmr::scene::Root, #system::Device, Pose)->#
         *radiate(dt: float)
         !followBody(~phys::rigid::Crystal)->>linearPass(>all)
+        !followBody(~phys::rigid::Ball)->>linearPass(>all)

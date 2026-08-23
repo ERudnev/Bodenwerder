@@ -321,7 +321,7 @@ namespace eltanin::views {
         with<controller::CameraOrbit>::create(context, camera, pivot, glm::length(camera_pos - pivot));
         applyOrbitPose(context, camera);
 
-        with<scene::Interface>::createLight(context, root, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 120.0f});
+        with<scene::Interface>::createLight(context, root, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.kind = scene::Light::Kind::point, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 120.0f});
 
         state.mainScene.root = root;
         state.mainScene.camera = camera;
@@ -354,7 +354,7 @@ namespace eltanin::views {
         const auto paletteCamera = with<scene::Interface>::createCamera(context, paletteRoot, Pose::from(paletteCameraPos, HPB{36.87f, -29.74f, 0.0f}), 60.0f * std::numbers::pi_v<float> / 180.0f);
         with<controller::CameraOrbit>::create(context, paletteCamera, palettePivot, glm::length(paletteCameraPos - palettePivot));
         applyOrbitPose(context, paletteCamera);
-        with<scene::Interface>::createLight(context, paletteRoot, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 120.0f});
+        with<scene::Interface>::createLight(context, paletteRoot, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.kind = scene::Light::Kind::point, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 120.0f});
         state.paletteScene.root = paletteRoot;
         state.paletteScene.camera = paletteCamera;
         state.paletteScene.actors = {};

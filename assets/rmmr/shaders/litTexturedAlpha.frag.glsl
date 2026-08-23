@@ -77,7 +77,7 @@ void main() {
     }
 
     vec3 N = normalize(v_worldNormal);
-    vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos);
+    vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
     vec3 baseColor = texel.rgb * actorAlbedoOpacity.rgb;
 
     float ndotl = max(dot(N, L), 0.0);

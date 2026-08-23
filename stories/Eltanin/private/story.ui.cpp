@@ -129,10 +129,10 @@ namespace eltanin {
             rmmr::wrapper::ui::viewToggle("Physics", &open);
             if (open != ui.physics.has_value()) {
                 if (open) {
-                    if (not shared->material.gizmo.vertexColor or not shared->material.gizmo.textured or not shared->texture.debug or not assets.primitive.diamond) {
-                        base::message("eltanin::Game: Physics UI needs gizmo materials, debug texpack and diamond primitive");
+                    if (not shared->material.gizmo.vertexColor or not shared->material.gizmo.textured or not shared->texture.debug or not assets.primitive.diamond or not assets.primitive.sphere) {
+                        base::message("eltanin::Game: Physics UI needs gizmo materials, debug texpack, diamond and sphere primitives");
                     } else {
-                        ui.physics.emplace(*assets.primitive.diamond, *shared->material.gizmo.vertexColor, *shared->material.gizmo.textured, *shared->texture.debug);
+                        ui.physics.emplace(*assets.primitive.diamond, *assets.primitive.sphere, *shared->material.gizmo.vertexColor, *shared->material.gizmo.textured, *shared->texture.debug);
                     }
                 } else {
                     ui.physics.reset();
@@ -273,15 +273,8 @@ namespace eltanin {
                 ImGui::TextUnformatted("Bloom");
                 ImGui::DragFloat("Bloom radius", &root->bloom.radius, 0.05f, 0.0f, 8.0f, "%.2f");
                 ImGui::DragFloat("Bloom intensity", &root->bloom.intensity, 0.05f, 0.0f, 8.0f, "%.2f");
-                ImGui::Separator();
-                ImGui::TextUnformatted("Fog");
-                ImGui::ColorEdit3("Fog color", &root->fog.color.x);
-                ImGui::DragFloat("Fog density", &root->fog.density, 0.0001f, 0.0f, 0.05f, "%.4f");
-                ImGui::DragFloat("Fog height", &root->fog.height, 0.1f, 0.0f, 0.0f, "%.2f");
-                ImGui::DragFloat("Fog height falloff", &root->fog.heightFalloff, 0.01f, 0.0f, 2.0f, "%.3f");
-                ImGui::DragFloat("Fog max opacity", &root->fog.maxOpacity, 0.01f, 0.0f, 1.0f, "%.2f");
-                ImGui::DragFloat("Fog distance scale", &root->fog.distanceScale, 0.01f, 0.0f, 8.0f, "%.2f");
                 ImGui::DragFloat3("Gravity", &root->gravity.x, 0.01f, 0.0f, 0.0f, "%.3f");
+                ImGui::DragFloat("Atmosphere density", &root->atmosphereDensity, 1.0f, 0.0f, 0.0f, "%.0f g/m³");
 
                 if (not root->primaryLight) {
                     ImGui::Separator();
@@ -291,12 +284,18 @@ namespace eltanin {
                     if (with<scene::Light>::exists(world, light_id)) {
                         ImGui::Separator();
                         ImGui::TextUnformatted("Primary light");
-                        auto node = with<scene::Node>::modify(world, light_id);
-                        ImGui::DragFloat3("Position", &node->pose.position.x, 0.1f, 0.0f, 0.0f, "%.2f");
                         auto light = with<scene::Light>::modify(world, light_id);
+                        auto node = with<scene::Node>::modify(world, light_id);
+                        if (light->kind == scene::Light::Kind::directional) {
+                            HPB sun = node->pose.hpb();
+                            if (ImGui::DragFloat3("Sun HPB", &sun.x, 0.5f, 0.0f, 0.0f, "%.1f"))
+                                node->pose.hpb(sun);
+                        } else {
+                            ImGui::DragFloat3("Position", &node->pose.position.x, 0.1f, 0.0f, 0.0f, "%.2f");
+                            ImGui::DragFloat("Range", &light->range, 0.1f, 0.0f, 500.0f, "%.2f");
+                        }
                         ImGui::ColorEdit3("Color", &light->color.x);
                         ImGui::DragFloat("Intensity", &light->intensity, 0.05f, 0.0f, 100.0f, "%.2f");
-                        ImGui::DragFloat("Range", &light->range, 0.1f, 0.0f, 500.0f, "%.2f");
                     }
                 }
             }

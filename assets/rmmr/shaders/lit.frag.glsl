@@ -54,7 +54,7 @@ float fetch_shadow(vec4 light_space_pos) {
 
 void main() {
     vec3 N = normalize(v_worldNormal);
-    vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos);
+    vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
 
     float ndotl = max(dot(N, L), 0.0);
     float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos, 1.0));

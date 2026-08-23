@@ -20,6 +20,21 @@ namespace eltanin::phys::rigid {
         };
     };
 
+    struct Ball : Entity<Ball> {
+        struct Data : Body {
+            vec3 prevPos;
+            quat prevOri;
+            vec3 forceLinear;
+            vec3 forceAngular;
+        };
+        struct Quantum {
+            Data body;
+        };
+        struct Actions : BaseActions {};
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
     struct Crystal : Entity<Crystal> {
         struct Quantum {
             vector<Particle> particles;
@@ -33,24 +48,8 @@ namespace eltanin::phys::rigid {
         struct Actions : BaseActions {
             static void debugAddImpulse(Writing, Id, vec3 imp);
             static void setMotion(Writing, Id, rmmr::Pose, vec3 linear, vec3 omega);
-        };
-        struct Internals : DefaultInternals {};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
-    struct Octa : Feature<Octa, Crystal> {
-        struct Quantum {};
-        struct Actions : BaseActions {
-            static void satisfy(Stewarding);
-        };
-        struct Internals : DefaultInternals {};
-        static const Behavior customAspectReactions() { return {}; }
-    };
-
-    struct Horned : Feature<Horned, Crystal> {
-        struct Quantum {};
-        struct Actions : BaseActions {
-            static void satisfy(Stewarding);
+            static void restore(Stewarding);
+            static void applyRestored(Stewarding);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }

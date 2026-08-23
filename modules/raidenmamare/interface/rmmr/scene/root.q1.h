@@ -21,19 +21,11 @@ namespace rmmr::scene {
                 float radius;
                 float intensity;
             };
-            struct Fog {
-                RGB color;
-                float density;
-                float height;
-                float heightFalloff;
-                float maxOpacity;
-                float distanceScale;
-            };
             RGB ambient;
             float ambient_intensity;
             Bloom bloom;
-            Fog fog;
             vec3 gravity;
+            float atmosphereDensity;
             base::maybe<Light::Id> primaryLight;
         };
         struct Internals : DefaultInternals{};

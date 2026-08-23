@@ -20,6 +20,8 @@ namespace rmmr
         primitiveSurfaces: renderer::StorageBuffer
         vertex_count: renderer::Count
         index_count: renderer::Count
+        boundMin: vec3
+        boundMax: vec3
 
     // One Asset/Runtime pool owns one source file and its common VAO/VBO/EBO/surface SSBO.
     // Names are catalog-only; scene/render data carries numeric EntryId/SurfaceId.

@@ -8,6 +8,8 @@
 #include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 
+#include <base/maybe.h>
+
 #include <vector>
 
 namespace eltanin::phys {
@@ -18,7 +20,8 @@ namespace eltanin::phys {
             std::size_t index;
         };
         struct HullRef {
-            rigid::Crystal::Id crystal;
+            base::maybe<rigid::Crystal::Id> crystal;
+            base::maybe<rigid::Ball::Id> ball;
         };
         struct State {
             vector<rmmr::scene::actor::Mesh::Id> particles;
@@ -26,11 +29,13 @@ namespace eltanin::phys {
         };
         State state;
         rmmr::resource::geometry::Asset::Id particleGeometry;
+        rmmr::resource::geometry::Asset::Id sphereGeometry;
         rmmr::resource::material::Asset::Id particleMaterial;
         rmmr::resource::material::Asset::Id hullMaterial;
         rmmr::resource::texpack::Pack::Id hullTexpack;
 
         Ui(rmmr::resource::geometry::Asset::Id particleGeometry,
+           rmmr::resource::geometry::Asset::Id sphereGeometry,
            rmmr::resource::material::Asset::Id particleMaterial,
            rmmr::resource::material::Asset::Id hullMaterial,
            rmmr::resource::texpack::Pack::Id hullTexpack);

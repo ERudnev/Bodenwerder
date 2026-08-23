@@ -69,7 +69,7 @@ float fetch_shadow(vec4 light_space_pos) {
 
 void main() {
     vec3 N = normalize(v_worldNormal);
-    vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos);
+    vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
     uvec2 drawMetadata = metadata[v_drawId];
     uint surface = primitiveSurfaces[drawMetadata.x + uint(gl_PrimitiveID)];
     uint layer = surfacePalette[drawMetadata.y + surface];

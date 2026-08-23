@@ -11,14 +11,16 @@ namespace eltanin::phys {
 
     // Private physics subsystem (not Q1).
     // Fixed tick 10ms; wall dt accumulates as debt (sub-step remainder).
-    // Verlet + CelestialGravity (a·dt² on other crystals) + rigid constraints.
+    // One pass: accumulate forces (aerodynamics, gravity, …) → Verlet with dissipation → restore bases → connectivity → apply constraint wishes.
     // One Dock per tick; hot mutation via Stewarding::direct<rigid::Crystal>().
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
-    // Constraint wave: each installed rigid feature contributes its Crystal solver.
     // Thermal: small rocks only (no Volume). Accumulate to thermalStepUs, then radiate. No conduction.
     struct Settings {
-        static constexpr float constraintStiffness = 0.75f; // Hitman-style goal pull (constraints)
-        static constexpr int constraintPasses = 4;
+        static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
+        static constexpr float isaAirDensity = 1225.0f; // g/m³ ISA
+        static constexpr float airDragTau = 1.0f; // seconds to e-fold at isaAirDensity
+        static constexpr float dissipation = 0.99f; // Verlet (x−prev) scale per tick; 1 = none (Jakobsen ~0.99 for drag)
+        static constexpr float restLinear = 1.0e-3f; // m/tick; below this (x−prev) is zeroed (0.99 never reaches 0)
         static constexpr int64 fixedStepUs = 10'000;
         static constexpr int64 thermalStepUs = 200'000;
         static constexpr float skyKelvin = 3.0f;
@@ -40,9 +42,14 @@ namespace eltanin::phys {
         int64 thermalDebtUs;
 
         void tick(Stewarding);
-        void radiate(Stewarding);
-        void constraintPass(Stewarding);
+        void accumulateForces(Stewarding);
+        void applyAerodynamics(Stewarding);
         void integrate(fqsm::Direct<rigid::Crystal>);
+        void integrateBalls(fqsm::Direct<rigid::Ball>);
+        void restoreBases(Stewarding);
+        void applyConnectivity(Stewarding);
+        void applyConstraintWishes(Stewarding);
+        void radiate(Stewarding);
     };
 
 }

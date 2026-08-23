@@ -62,7 +62,7 @@ void main() {
     vec4 worldPos = actorModel * vec4(localPosition, 1.0);
     mat3 normalMat = mat3(transpose(inverse(actorModel)));
     vec3 N = normalize(normalMat * localRotation * aNormal);
-    vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - worldPos.xyz);
+    vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - worldPos.xyz * float(passPrimaryLightColorRange.w > 0.0));
     vec3 eye = (inverse(passView) * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
     vec3 V = normalize(eye - worldPos.xyz);
     vec3 H = normalize(L + V);

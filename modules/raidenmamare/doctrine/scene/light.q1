@@ -4,11 +4,14 @@ import "scene/node"
 namespace rmmr
   namespace scene
 
-    // Simple point light bound to a scene node.
+    // Light bound to a scene node. Point: pose is world position. Directional: rotation only,
+    // world +Z is the to-light vector (parallel rays, not parented to the camera).
     feature Light of Node
+      enum Kind : point, directional
       one
+        kind: Kind
         color: RGB
         intensity: float
         range: float
       all
-        >create(Pose, RGB, intensity: float, range: float) -> #
+        >create(Pose, Kind, RGB, intensity: float, range: float) -> #

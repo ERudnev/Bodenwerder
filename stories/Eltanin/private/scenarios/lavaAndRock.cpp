@@ -92,7 +92,7 @@ namespace eltanin::scenario {
         constexpr float brickKelvin = 1800.0f;
         {
             const auto& rock = with<geo::Rock>::get(context, brick);
-            auto crystal = with<phys::rigid::Crystal>::modify(context, rock.body);
+            auto crystal = with<phys::rigid::Crystal>::modify(context, *rock.body);
             for (phys::Particle& particle : crystal->particles)
                 particle.temperature = brickKelvin;
             crystal->refreshMatter();
@@ -122,11 +122,17 @@ namespace eltanin::scenario {
                 const auto id = with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{x, 0.0f, z}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
                 rocks.push_back(id);
                 const auto& rock = with<geo::Rock>::get(context, id);
-                auto crystal = with<phys::rigid::Crystal>::modify(context, rock.body);
-                for (phys::Particle& particle : crystal->particles)
-                    particle.temperature = kelvin;
-                crystal->refreshMatter();
-                with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat.x = kelvin;
+                if (rock.ball) {
+                    auto ball = with<phys::rigid::Ball>::modify(context, *rock.ball);
+                    ball->body.temperature = kelvin;
+                    with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat.x = kelvin;
+                } else if (rock.body) {
+                    auto crystal = with<phys::rigid::Crystal>::modify(context, *rock.body);
+                    for (phys::Particle& particle : crystal->particles)
+                        particle.temperature = kelvin;
+                    crystal->refreshMatter();
+                    with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat.x = kelvin;
+                }
             }
         }
     }

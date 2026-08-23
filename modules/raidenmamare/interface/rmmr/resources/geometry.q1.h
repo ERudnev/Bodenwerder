@@ -28,6 +28,8 @@ namespace rmmr::resource::geometry {
             renderer::StorageBuffer primitiveSurfaces;
             renderer::Count vertex_count;
             renderer::Count index_count;
+            vec3 boundMin;
+            vec3 boundMax;
         };
         struct Internals;
         static const Behavior customAspectReactions();

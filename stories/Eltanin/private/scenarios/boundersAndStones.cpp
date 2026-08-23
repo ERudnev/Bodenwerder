@@ -188,8 +188,8 @@ namespace eltanin::scenario {
             const auto id = with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.08f, 0.0f});
             rocks.push_back(id);
             const auto& rock = with<geo::Rock>::get(context, id);
-            with<phys::rigid::CelestialGravity>::extend(context, rock.body, coreGravity);
-            auto crystal = with<phys::rigid::Crystal>::modify(context, rock.body);
+            with<phys::rigid::CelestialGravity>::extend(context, *rock.body, coreGravity);
+            auto crystal = with<phys::rigid::Crystal>::modify(context, *rock.body);
             for (phys::Particle& particle : crystal->particles) {
                 particle.temperature = coreKelvin;
                 particle.cohesion = 0.25f;

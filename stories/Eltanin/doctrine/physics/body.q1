@@ -16,6 +16,7 @@ namespace eltanin
     struct Particle of Matter
       always dt: float = 0.01
       prev: vec3
+      force: vec3
       ?velocity()->vec3
       ?impulse()->vec3
 

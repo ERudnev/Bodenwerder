@@ -10,8 +10,11 @@
 #include <rmmr/semantics/uniform.h>
 
 #include <cmath>
+#include <cstdint>
 #include <numbers>
 #include <random>
+
+#include <glm/geometric.hpp>
 
 namespace eltanin::scenario {
 
@@ -19,22 +22,45 @@ namespace eltanin::scenario {
 
     namespace {
 
-        constexpr float diskRadius = 400.0f;
-        constexpr float diskThickness = 10.0f;
-        constexpr int pebbleCount = 1000;
-        constexpr integer iron = 6;
-        constexpr integer ice = 0;
-        constexpr integer silicates[]{1, 2, 3};
+        constexpr float shellRadius = 10.0f;
+        constexpr float pebbleRadius = 2.0f;
+        constexpr float radialSpeed = 100.0f;
+        constexpr float cloudSpacing = 30.0f;
+        constexpr float spinRate = 2.0f * std::numbers::pi_v<float>; // 1 rev/s
+        constexpr integer feldspar = 3;
 
-        auto pickMix(std::mt19937& rng) -> geo::Mix {
-            std::uniform_real_distribution<float> unit{0.0f, 1.0f};
-            const float roll = unit(rng);
-            if (roll < 0.10f)
-                return geo::Rock::GeneralizedRecipe::homogenous(iron);
-            if (roll < 0.35f)
-                return geo::Rock::GeneralizedRecipe::homogenous(ice);
-            std::uniform_int_distribution<int> silicate{0, 2};
-            return geo::Rock::GeneralizedRecipe::homogenous(silicates[silicate(rng)]);
+        auto geodesicIcosaVertices() -> vector<vec3> {
+            const float phi = 0.5f * (1.0f + std::sqrt(5.0f));
+            vector<vec3> verts{
+                {0.0f, -1.0f, -phi}, {0.0f, -1.0f, phi}, {0.0f, 1.0f, -phi}, {0.0f, 1.0f, phi},
+                {-1.0f, -phi, 0.0f}, {-1.0f, phi, 0.0f}, {1.0f, -phi, 0.0f}, {1.0f, phi, 0.0f},
+                {-phi, 0.0f, -1.0f}, {-phi, 0.0f, 1.0f}, {phi, 0.0f, -1.0f}, {phi, 0.0f, 1.0f},
+            };
+            for (vec3& vert : verts)
+                vert = glm::normalize(vert);
+            const auto icosaCount = verts.size();
+            for (size_t i = 0; i < icosaCount; ++i)
+                for (size_t j = i + 1; j < icosaCount; ++j)
+                    if (glm::dot(verts[i], verts[j]) > 0.4f)
+                        verts.push_back(glm::normalize(verts[i] + verts[j]));
+            return verts;
+        }
+
+        auto randomUnitAxis(std::mt19937& rng) -> vec3 {
+            std::uniform_real_distribution<float> unit(-1.0f, 1.0f);
+            vec3 axis{unit(rng), unit(rng), unit(rng)};
+            const float length2 = glm::dot(axis, axis);
+            if (length2 <= 1.0e-12f)
+                return vec3{0.0f, 1.0f, 0.0f};
+            return axis / std::sqrt(length2);
+        }
+
+        void spawnCloud(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, vec3 origin, const geo::Rock::GeneralizedRecipe& recipe, float outboundSpeed, vec3 bodyOmega, bool randomSpin, uint32_t spinSeed) {
+            std::mt19937 spinRng(spinSeed);
+            for (const vec3& dir : geodesicIcosaVertices()) {
+                const vec3 omega = randomSpin ? randomUnitAxis(spinRng) * spinRate : bodyOmega;
+                with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{origin + dir * shellRadius}, HPB{0.0f, 0.0f, 0.0f}), recipe, dir * outboundSpeed, omega);
+            }
         }
 
     } // namespace
@@ -113,29 +139,18 @@ namespace eltanin::scenario {
     }
 
     void AsterField::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
-        {
-            auto place = with<scene::Root>::modify(context, root);
-            place->fog = {.color = RGB{0.55f, 0.52f, 0.48f}, .density = 0.0012f, .height = 0.0f, .heightFalloff = 0.12f, .maxOpacity = 0.72f, .distanceScale = 1.0f};
-            place->gravity = vec3{0.0f, 0.0f, 0.0f};
-        }
-        std::mt19937 rng{20260822};
-        std::uniform_real_distribution<float> unit{0.0f, 1.0f};
-        const float twoPi = 2.0f * std::numbers::pi_v<float>;
-        for (int slot = 0; slot < pebbleCount; ++slot) {
-            const float azim = twoPi * unit(rng);
-            const float radius = diskRadius * std::sqrt(unit(rng));
-            const float y = (unit(rng) - 0.5f) * diskThickness;
-            const float diameter = 0.35f + 1.15f * unit(rng);
-            const geo::Rock::GeneralizedRecipe recipe{
-                .mix = pickMix(rng),
-                .radius = diameter * 0.5f,
-                .lump = 0.35f + 0.40f * unit(rng),
-                .seed = 8000 + slot,
-                .spotMeters = diameter,
-                .spotContrast = 0.0f,
-            };
-            with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{radius * std::cos(azim), y, radius * std::sin(azim)}, HPB{360.0f * unit(rng), 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
-        }
+        with<scene::Root>::modify(context, root)->atmosphereDensity = 1225.0f;
+        const geo::Rock::GeneralizedRecipe recipe{
+            .mix = geo::Rock::GeneralizedRecipe::homogenous(feldspar),
+            .radius = pebbleRadius,
+            .lump = 0.55f,
+            .seed = 8000,
+            .spotMeters = pebbleRadius * 2.0f,
+            .spotContrast = 0.0f,
+        };
+        spawnCloud(context, root, device, vec3{0.0f, 0.0f, 0.0f}, recipe, radialSpeed, vec3{0.0f, 0.0f, 0.0f}, false, 0);
+        spawnCloud(context, root, device, vec3{-cloudSpacing, 0.0f, 0.0f}, recipe, radialSpeed, vec3{0.0f, 0.0f, 0.0f}, true, 9001);
+        spawnCloud(context, root, device, vec3{cloudSpacing, 0.0f, 0.0f}, recipe, 0.0f, vec3{0.0f, 0.0f, 0.0f}, false, 0);
     }
 
 }
