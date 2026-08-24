@@ -1,4 +1,5 @@
 #include "physics/system.h"
+#include "physics/collisions.h"
 
 #include <eltanin/geo/rock.q1.h>
 #include <eltanin/geo/boulder.q1.h>
@@ -120,7 +121,10 @@ namespace eltanin::phys {
         with<rigid::Crystal>::restore(context);
     }
 
-    void System::applyConnectivity(Stewarding) {}
+    void System::applyConnectivity(Stewarding context) {
+        collisions.build(context);
+        collisions.solve(context);
+    }
 
     void System::applyConstraintWishes(Stewarding context) {
         with<rigid::Crystal>::applyRestored(context);

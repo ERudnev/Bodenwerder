@@ -1,5 +1,7 @@
 #pragma once
 
+#include "physics/collisions.h"
+
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 
@@ -41,6 +43,7 @@ namespace eltanin::phys {
     private:
         int64 debtUs;
         int64 thermalDebtUs;
+        collision::State collisions;
 
         void tick(Stewarding);
         void accumulateForces(Stewarding);

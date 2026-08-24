@@ -41,7 +41,7 @@ namespace eltanin::phys::collision {
         Endpoint b;
         vec3 point; // world
         vec3 normal; // unit, from a toward b (resolve by moving a along −normal / b along +normal)
-        float penetration; // > 0 overlapping depth at build
+        float penetration; // > 0 overlapping depth at last measure
         integer candidate; // index into State.candidates
         float correction; // accumulated normal separation this tick (m), written by solver
         float relativeNormalSpeed; // closing (+) along normal at build; Commit may re-sample
@@ -58,6 +58,9 @@ namespace eltanin::phys::collision {
         vector<Candidate> candidates;
         vector<Contact> contacts;
         vector<Island> islands;
+
+        void build(Stewarding);
+        void solve(Stewarding);
     };
 
 }
