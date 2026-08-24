@@ -4,6 +4,7 @@
 
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
+#include <rmmr/scene/root.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -22,7 +23,7 @@ namespace eltanin::phys {
         static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
         static constexpr float isaAirDensity = 1225.0f; // g/m³ ISA
         static constexpr float airDragTau = 1.0f; // seconds to e-fold at isaAirDensity
-        static constexpr float dissipation = 0.99f; // Verlet (x−prev) scale per tick; 1 = none (Jakobsen ~0.99 for drag)
+        static constexpr float dissipation = 1.0f;//0.99f; // Verlet (x−prev) scale per tick; 1 = none (Jakobsen ~0.99 for drag)
         static constexpr float restLinear = 1.0e-3f; // m/tick; below this (x−prev) is zeroed (0.99 never reaches 0)
         static constexpr int64 fixedStepUs = 10'000;
         static constexpr int64 thermalStepUs = 200'000;
@@ -36,8 +37,9 @@ namespace eltanin::phys {
             float timeScale; // wall dt → physics time
         };
         State state;
+        scene::Root::Id scene;
 
-        System();
+        System(scene::Root::Id);
         void step(establish::Realm&, int64 dtUs);
 
     private:
@@ -48,6 +50,7 @@ namespace eltanin::phys {
         void tick(Stewarding);
         void accumulateForces(Stewarding);
         void applyAerodynamics(Stewarding);
+        void applyLinearGravity(Stewarding);
         void integrate(fqsm::Direct<rigid::Crystal>);
         void integrateBalls(fqsm::Direct<Body>, fqsm::Direct<rigid::Ball>);
         void restoreBases(Stewarding);

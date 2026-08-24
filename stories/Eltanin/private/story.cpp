@@ -220,6 +220,7 @@ namespace eltanin {
         });
 
         const auto root = with<scene::Interface>::createScene(context);
+        physics.emplace(root);
 
         if (not with<resource::SkySphereGenerator>::materialize(context, *assets.skySphereGeometry, window)) {
             return (void)context.refuse("eltanin::Game::populateWorld: sky geometry materialization failed");
@@ -289,7 +290,8 @@ namespace eltanin {
         }
         with<World>::tetherEnvironment(world);
         const int64 simDt = with<World>::get_global(world).paused ? int64{0} : dt_us;
-        physics.step(world, simDt);
+        if (physics)
+            physics->step(world, simDt);
         advanceSim(world, simDt);
     }
 

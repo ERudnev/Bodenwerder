@@ -45,13 +45,6 @@ namespace eltanin::phys {
 
         constexpr float particleWorldScale = 0.1f; // fixed debug diamond size (meters)
 
-        auto first_root(Reading context) -> base::maybe<rmmr::scene::Root::Id> {
-            for (const auto [id, _] : context->aspect<rmmr::scene::Root>().items()) {
-                return id;
-            }
-            return {};
-        }
-
         auto first_device(Reading context) -> base::maybe<rmmr::system::Device::Id> {
             for (const auto [id, _] : context->aspect<rmmr::system::Window>().items()) {
                 return id;
@@ -144,10 +137,9 @@ namespace eltanin::phys {
 
     } // namespace
 
-    void Ui::enableParticles(Writing context) {
+    void Ui::enableParticles(Writing context, rmmr::scene::Root::Id root) {
         disableParticles(context);
-        const auto root = first_root(context);
-        if (not root) {
+        if (not with<rmmr::scene::Root>::exists(context, root)) {
             base::message("eltanin::phys::Ui: no scene Root; skip particle actors");
             return;
         }
@@ -160,7 +152,7 @@ namespace eltanin::phys {
         const auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{particleWorldScale, particleWorldScale, particleWorldScale});
         for (const auto [crystalId, crystal] : context->aspect<rigid::Crystal>().items()) {
             for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
-                state.particles.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, rmmr::Pose::from(crystal.particles[index].position, HPB{0.0f, 0.0f, 0.0f}), resolved, appearance));
+                state.particles.push_back(with<rmmr::scene::Interface>::createMeshActor(context, root, rmmr::Pose::from(crystal.particles[index].position, HPB{0.0f, 0.0f, 0.0f}), resolved, appearance));
                 particleRefs.push_back(ParticleRef{.crystal = crystalId, .index = index});
             }
         }
@@ -216,11 +208,10 @@ namespace eltanin::phys {
         hiddenProduction.clear();
     }
 
-    void Ui::enableHulls(Writing context) {
+    void Ui::enableHulls(Writing context, rmmr::scene::Root::Id root) {
         disableHulls(context);
-        const auto root = first_root(context);
         const auto device = first_device(context);
-        if (not root or not device) {
+        if (not with<rmmr::scene::Root>::exists(context, root) or not device) {
             base::message("eltanin::phys::Ui: no Root/Device; skip hull actors");
             return;
         }
@@ -242,7 +233,7 @@ namespace eltanin::phys {
                 .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = hullMaterial, .textures = {{"albedoMap", "debug02.jpg"}}}}},
                 .texpack = hullTexpack,
             };
-            state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, with<Body>::get(context, crystalId).pose(), resolved, appearance));
+            state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, root, with<Body>::get(context, crystalId).pose(), resolved, appearance));
             hullRefs.push_back(HullRef{.body = crystalId});
         }
         for (const auto [ballId, _] : context->aspect<rigid::Ball>().items()) {
@@ -257,7 +248,7 @@ namespace eltanin::phys {
                 .texpack = hullTexpack,
             };
             const auto ballAppearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{radius, radius, radius});
-            state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, body.pose(), resolved, ballAppearance));
+            state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, root, body.pose(), resolved, ballAppearance));
             hullRefs.push_back(HullRef{.body = ballId});
         }
         hideProduction(context);
@@ -328,6 +319,16 @@ namespace eltanin::phys {
                 }
 
                 ImGui::Separator();
+                ImGui::TextUnformatted("Location");
+                if (with<rmmr::scene::Root>::exists(context, system.scene)) {
+                    auto root = with<rmmr::scene::Root>::modify(context, system.scene);
+                    ImGui::DragFloat3("Gravity", &root->gravity.x, 0.01f, 0.0f, 0.0f, "%.3f m/s²");
+                    ImGui::DragFloat("Atmosphere density", &root->atmosphereDensity, 1.0f, 0.0f, 0.0f, "%.0f g/m³");
+                } else {
+                    ImGui::TextDisabled("No scene Root.");
+                }
+
+                ImGui::Separator();
                 ImGui::TextUnformatted("Debug draw");
                 ImGui::Checkbox("Particles", &showParticles);
                 ImGui::Checkbox("Collisions", &showHulls);
@@ -341,14 +342,14 @@ namespace eltanin::phys {
         }
 
         if (showParticles and not prevShowParticles) {
-            enableParticles(context);
+            enableParticles(context, system.scene);
         } else if (not showParticles and prevShowParticles) {
             disableParticles(context);
         }
         prevShowParticles = showParticles;
 
         if (showHulls and not prevShowHulls) {
-            enableHulls(context);
+            enableHulls(context, system.scene);
         } else if (not showHulls and prevShowHulls) {
             disableHulls(context);
         }

@@ -162,9 +162,9 @@ namespace eltanin {
         drawLightingWindow(world);
         drawMaterialsWindow(world);
         drawAssemblerWindow(world);
-        if (ui.physics.has_value()) {
+        if (ui.physics.has_value() and physics.has_value()) {
             bool open = true;
-            ui.physics->draw(world, open, physics);
+            ui.physics->draw(world, open, *physics);
             if (not open)
                 ui.physics.reset();
         }

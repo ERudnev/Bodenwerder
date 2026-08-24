@@ -45,7 +45,7 @@ namespace eltanin {
         Handles assets;
         Ui ui;
         base::maybe<View> world_view;
-        phys::System physics;
+        base::maybe<phys::System> physics;
         scenario::AsterField scenario;
         BlueprintCatalog blueprintPack;
         MountCatalog mountPack;

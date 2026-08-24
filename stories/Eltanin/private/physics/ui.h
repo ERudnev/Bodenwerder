@@ -50,10 +50,10 @@ namespace eltanin::phys {
         vector<HullRef> hullRefs;
         vector<rmmr::scene::actor::Mesh::Id> hiddenProduction;
 
-        void enableParticles(Writing);
+        void enableParticles(Writing, rmmr::scene::Root::Id);
         void disableParticles(Writing);
         void syncParticles(Writing);
-        void enableHulls(Writing);
+        void enableHulls(Writing, rmmr::scene::Root::Id);
         void disableHulls(Writing);
         void syncHulls(Writing);
         void hideProduction(Writing);

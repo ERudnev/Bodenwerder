@@ -10,18 +10,26 @@
 
 namespace eltanin::phys {
 
-    System::System()
+    System::System(scene::Root::Id scene)
         : state{.timeScale = 1.0f}
+        , scene(scene)
         , debtUs(0)
         , thermalDebtUs(0) {
     }
 
-    void System::applyAerodynamics(Stewarding context) {
-        float density = 0.0f;
-        for (auto [_, root] : context.direct<scene::Root>().items) {
-            density = root.atmosphereDensity;
-            break;
+    namespace {
+
+        auto location(Stewarding context, scene::Root::Id scene) -> scene::Root::Quantum* {
+            return context.direct<scene::Root>().items.find(scene);
         }
+
+    }
+
+    void System::applyAerodynamics(Stewarding context) {
+        auto* root = location(context, scene);
+        if (not root)
+            return;
+        const float density = root->atmosphereDensity;
         if (density <= 0.0f)
             return;
         float factor = 1.0f - (density / Settings::isaAirDensity) * (Particle::dt / Settings::airDragTau);
@@ -57,7 +65,31 @@ namespace eltanin::phys {
             ball.forceAngular = vec3{0.0f, 0.0f, 0.0f};
         }
         applyAerodynamics(context);
+        applyLinearGravity(context);
         with<rigid::CelestialGravity>::apply(context);
+    }
+
+    void System::applyLinearGravity(Stewarding context) {
+        auto* root = location(context, scene);
+        if (not root)
+            return;
+        const vec3 gravity = root->gravity;
+        if (glm::dot(gravity, gravity) == 0.0f)
+            return;
+        for (auto [_, crystal] : context.direct<rigid::Crystal>().items) {
+            for (Particle& particle : crystal.particles) {
+                if (particle.mass <= 0.0f)
+                    continue;
+                particle.force += particle.mass * gravity;
+            }
+        }
+        auto bodies = context.direct<Body>();
+        for (auto [id, ball] : context.direct<rigid::Ball>().items) {
+            auto* body = bodies.items.find(id);
+            if (not body or body->mass <= 0.0f)
+                continue;
+            ball.forceLinear += body->mass * gravity;
+        }
     }
 
     void System::integrate(fqsm::Direct<rigid::Crystal> crystals) {
