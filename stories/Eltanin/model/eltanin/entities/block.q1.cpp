@@ -1,4 +1,5 @@
 #include <eltanin/entities/block.q1.h>
+#include <eltanin/physics/compound.q1.h>
 #include <rmmr/scene/node.q1.h>
 
 #include <base/logging.h>
@@ -114,6 +115,7 @@ namespace eltanin {
                 .com = restCom,
                 .hull = std::move(hull),
             });
+            with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
             const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(actorQuantum), std::move(stateQuantum));
             return with<Block>::create(context, Block::Quantum{.body = body, .actor = actor});
         }

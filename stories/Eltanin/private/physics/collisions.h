@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eltanin/physics/body.q1.h>
+#include <eltanin/physics/compound.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 
 #include <vector>
@@ -11,6 +12,7 @@ namespace eltanin::phys::collision {
     using namespace rmmr;
 
     // Tick-local collision workspace (private physics, not Q1).
+    // First-class citizens are Compounds; global sweep is compound-vs-compound.
     // Built after predict / integrate; feeds constraint solve and Commit consequences.
     // Contact = positional constraint + event payload — not a force into accumulateForces.
 

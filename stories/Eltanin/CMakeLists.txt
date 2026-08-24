@@ -9,6 +9,7 @@ project("Eltanin"
 set(Eltanin_Q1
     world.q1
     physics/body.q1
+    physics/compound.q1
     physics/rigid.q1
     entities/block.q1
     resources/geometry.q1

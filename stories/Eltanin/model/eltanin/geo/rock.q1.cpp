@@ -1,6 +1,7 @@
 #include <eltanin/geo/rock.q1.h>
 
 #include <eltanin/geo/minerals.q1.h>
+#include <eltanin/physics/compound.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -442,6 +443,7 @@ namespace eltanin::geo {
                 .com = massCom,
                 .hull = std::move(hull),
             });
+            with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
             return with<Rock>::create(context, Rock::Quantum{.body = body, .actor = actor, .volume = std::move(volume)});
         }
 

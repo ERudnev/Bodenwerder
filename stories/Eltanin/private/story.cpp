@@ -4,6 +4,7 @@
 #include <eltanin/geo/rock.q1.h>
 #include <eltanin/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
+#include <eltanin/physics/compound.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <eltanin/mech/blueprint.q1.h>
 #include <eltanin/mech/mount.q1.h>
@@ -42,6 +43,7 @@ namespace eltanin {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
             ask::schema::aspect<phys::Body>(),
+            ask::schema::aspect<phys::Compound>(),
             ask::schema::aspect<phys::rigid::Crystal>(),
             ask::schema::aspect<phys::rigid::Ball>(),
             ask::schema::aspect<phys::rigid::CelestialGravity>(),

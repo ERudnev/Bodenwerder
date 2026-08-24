@@ -1,6 +1,7 @@
 #include <eltanin/geo/boulder.q1.h>
 
 #include <eltanin/geo/minerals.q1.h>
+#include <eltanin/physics/compound.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -122,6 +123,7 @@ namespace eltanin::geo {
             .forceLinear = vec3{0.0f, 0.0f, 0.0f},
             .forceAngular = vec3{0.0f, 0.0f, 0.0f},
         });
+        with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
         return with<Boulder>::create(context, Boulder::Quantum{.body = body, .actor = actor});
     }
 

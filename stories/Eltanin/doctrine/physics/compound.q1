@@ -1,0 +1,10 @@
+import "physics/body"
+
+namespace eltanin
+  namespace phys
+
+    // First-class collision citizen. Sweep is compound-vs-compound.
+    // Id = host Body (the principal). members = extra bodies; host is not listed.
+    attribute Compound of Body
+      one
+        members: vector<#Body>
