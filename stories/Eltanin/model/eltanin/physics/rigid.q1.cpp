@@ -56,12 +56,11 @@ namespace eltanin::phys::rigid {
                 particle.position += correction;
                 particle.prev += correction;
             }
-            crystal.restored.pose(pose);
         }
 
     }
 
-    auto restoredBody(Pose pose, const vector<Particle>& particles, const vector<vec3>& shape) -> Body {
+    auto restoredBody(Pose pose, const vector<Particle>& particles, const vector<vec3>& shape) -> Body::Quantum {
         float mass = 0.0f;
         float thermalEnergy = 0.0f;
         float hitpoints = 0.0f;
@@ -72,11 +71,11 @@ namespace eltanin::phys::rigid {
         }
         const float temperature = mass > 0.0f ? thermalEnergy / mass : 0.0f;
         const float cohesion = mass > 0.0f ? hitpoints / mass : 0.0f;
-        return Body{Matter{.position = pose.position, .mass = mass, .temperature = temperature, .cohesion = cohesion}, pose.rotation, radiusOf(particles, shape), hitpoints};
+        return Body::Quantum{Matter{.position = pose.position, .mass = mass, .temperature = temperature, .cohesion = cohesion}, pose.rotation, radiusOf(particles, shape), hitpoints};
     }
 
-    void Crystal::Quantum::refreshMatter() {
-        restored = restoredBody(restored.pose(), particles, shape);
+    void Crystal::Quantum::refreshMatter(Body::Quantum& body) {
+        body = restoredBody(body.pose(), particles, shape);
     }
 
     void Crystal::Actions::debugAddImpulse(Writing context, Id id, vec3 impulse) {
@@ -92,6 +91,7 @@ namespace eltanin::phys::rigid {
 
     void Crystal::Actions::setMotion(Writing context, Id id, Pose pose, vec3 linear, vec3 omega) {
         auto crystal = with<Crystal>::modify(context, id);
+        auto body = with<Body>::modify(context, id);
         if (crystal->particles.empty() or crystal->particles.size() != crystal->shape.size())
             return;
         const vec3 currentCom = pose.position + pose.rotation * crystal->com;
@@ -102,14 +102,18 @@ namespace eltanin::phys::rigid {
             particle.prev = particle.position - (linear + spin) * Particle::dt;
             particle.force = vec3{0.0f, 0.0f, 0.0f};
         }
-        crystal->restored = restoredBody(pose, crystal->particles, crystal->shape);
+        *body = restoredBody(pose, crystal->particles, crystal->shape);
     }
 
     void Crystal::Actions::restore(Stewarding context) {
+        auto bodies = context.direct<Body>();
         vector<vec3> restCentered;
         vector<vec3> worldCentered;
         vector<float> masses;
-        for (auto [_, crystal] : context.direct<Crystal>().items) {
+        for (auto [id, crystal] : context.direct<Crystal>().items) {
+            auto* body = bodies.items.find(id);
+            if (not body)
+                continue;
             const std::size_t count = crystal.particles.size();
             if (count == 0 or crystal.shape.size() != count)
                 continue;
@@ -130,15 +134,19 @@ namespace eltanin::phys::rigid {
                 continue;
 
             const quat rotation = horn::orientation(restCentered, worldCentered, masses);
-            crystal.restored.pose(Pose{.position = currentCom - rotation * restCom, .rotation = rotation});
+            body->pose(Pose{.position = currentCom - rotation * restCom, .rotation = rotation});
         }
     }
 
     void Crystal::Actions::applyRestored(Stewarding context) {
-        for (auto [_, crystal] : context.direct<Crystal>().items) {
+        auto bodies = context.direct<Body>();
+        for (auto [id, crystal] : context.direct<Crystal>().items) {
+            auto* body = bodies.items.find(id);
+            if (not body)
+                continue;
             if (crystal.particles.empty() or crystal.particles.size() != crystal.shape.size())
                 continue;
-            pullToShape(crystal, crystal.restored.pose());
+            pullToShape(crystal, body->pose());
         }
     }
 
@@ -152,6 +160,7 @@ namespace eltanin::phys::rigid {
     void CelestialGravity::Actions::apply(Stewarding context) {
         auto crystals = context.direct<Crystal>();
         auto balls = context.direct<Ball>();
+        auto bodies = context.direct<Body>();
         for (auto [sourceId, gravity] : context.direct<CelestialGravity>().items) {
             if (gravity.averageRadius <= 0.0f or gravity.surfaceAcceleration == 0.0f)
                 continue;
@@ -174,17 +183,17 @@ namespace eltanin::phys::rigid {
                     particle.force += offset * accelScale * particle.mass;
                 }
             }
-            for (auto [_, ball] : balls.items) {
-                Ball::Data& body = ball.body;
-                if (body.mass <= 0.0f)
+            for (auto [id, ball] : balls.items) {
+                auto* body = bodies.items.find(id);
+                if (not body or body->mass <= 0.0f)
                     continue;
-                const vec3 offset = body.position - sourceCom;
+                const vec3 offset = body->position - sourceCom;
                 const float distance2 = glm::dot(offset, offset);
                 if (distance2 <= 1.0e-12f)
                     continue;
                 const float distance = std::sqrt(distance2);
                 const float accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
-                body.forceLinear += offset * accelScale * body.mass;
+                ball.forceLinear += offset * accelScale * body->mass;
             }
         }
     }

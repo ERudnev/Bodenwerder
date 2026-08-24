@@ -71,21 +71,17 @@ namespace eltanin::phys {
             }
         }
 
-        auto combatActorOf(Reading context, rigid::Crystal::Id crystal) -> base::maybe<rmmr::scene::actor::Mesh::Id> {
+        auto productionActorOf(Reading context, Body::Id body) -> base::maybe<rmmr::scene::actor::Mesh::Id> {
             for (const auto [_, rock] : context->aspect<geo::Rock>().items()) {
-                if (rock.body == crystal)
+                if (rock.body == body)
                     return rock.actor;
             }
             for (const auto [_, block] : context->aspect<Block>().items()) {
-                if (block.body == crystal)
+                if (block.body == body)
                     return block.actor;
             }
-            return {};
-        }
-
-        auto combatActorOf(Reading context, rigid::Ball::Id ball) -> base::maybe<rmmr::scene::actor::Mesh::Id> {
             for (const auto [_, boulder] : context->aspect<geo::Boulder>().items()) {
-                if (boulder.ball == ball)
+                if (boulder.body == body)
                     return boulder.actor;
             }
             return {};
@@ -201,27 +197,27 @@ namespace eltanin::phys {
         }
     }
 
-    void Ui::hideCombat(Writing context) {
-        restoreCombat(context);
+    void Ui::hideProduction(Writing context) {
+        restoreProduction(context);
         for (const auto& hullRef : hullRefs) {
             base::maybe<rmmr::scene::actor::Mesh::Id> actor;
             if (hullRef.crystal)
-                actor = combatActorOf(context, *hullRef.crystal);
+                actor = productionActorOf(context, *hullRef.crystal);
             else if (hullRef.ball)
-                actor = combatActorOf(context, *hullRef.ball);
+                actor = productionActorOf(context, *hullRef.ball);
             if (not actor or not with<rmmr::scene::actor::MeshState>::exists(context, *actor))
                 continue;
             rmmr::scene::actor::MeshState::Actions::setVisible(context, *actor, false);
-            hiddenCombat.push_back(*actor);
+            hiddenProduction.push_back(*actor);
         }
     }
 
-    void Ui::restoreCombat(Writing context) {
-        for (const auto actor : hiddenCombat) {
+    void Ui::restoreProduction(Writing context) {
+        for (const auto actor : hiddenProduction) {
             if (with<rmmr::scene::actor::MeshState>::exists(context, actor))
                 rmmr::scene::actor::MeshState::Actions::setVisible(context, actor, true);
         }
-        hiddenCombat.clear();
+        hiddenProduction.clear();
     }
 
     void Ui::enableHulls(Writing context) {
@@ -250,11 +246,12 @@ namespace eltanin::phys {
                 .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = hullMaterial, .textures = {{"albedoMap", "debug02.jpg"}}}}},
                 .texpack = hullTexpack,
             };
-            state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, crystal.restored.pose(), resolved, appearance));
+            state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, with<Body>::get(context, crystalId).pose(), resolved, appearance));
             hullRefs.push_back(HullRef{.crystal = crystalId, .ball = {}});
         }
-        for (const auto [ballId, ball] : context->aspect<rigid::Ball>().items()) {
-            const float radius = ball.body.radius;
+        for (const auto [ballId, _] : context->aspect<rigid::Ball>().items()) {
+            const auto& body = with<Body>::get(context, ballId);
+            const float radius = body.radius;
             if (radius <= 0.0f)
                 continue;
             const auto resolved = rmmr::resource::meshpack::Asset::Resolved{
@@ -264,14 +261,14 @@ namespace eltanin::phys {
                 .texpack = hullTexpack,
             };
             const auto ballAppearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{radius, radius, radius});
-            state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, ball.body.pose(), resolved, ballAppearance));
+            state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, body.pose(), resolved, ballAppearance));
             hullRefs.push_back(HullRef{.crystal = {}, .ball = ballId});
         }
-        hideCombat(context);
+        hideProduction(context);
     }
 
     void Ui::disableHulls(Writing context) {
-        restoreCombat(context);
+        restoreProduction(context);
         for (const auto actor : state.hulls) {
             destroy_actor(context, actor);
         }
@@ -294,7 +291,7 @@ namespace eltanin::phys {
                     hullRefs.erase(hullRefs.begin() + static_cast<std::ptrdiff_t>(slot));
                     continue;
                 }
-                with<rmmr::scene::Node>::modify(context, actor)->pose = with<rigid::Crystal>::get(context, *hullRef.crystal).restored.pose();
+                with<rmmr::scene::Node>::modify(context, actor)->pose = with<Body>::get(context, *hullRef.crystal).pose();
             } else if (hullRef.ball) {
                 const bool missingBall = not with<rigid::Ball>::exists(context, *hullRef.ball);
                 if (missingBall or missingActor) {
@@ -304,7 +301,7 @@ namespace eltanin::phys {
                     hullRefs.erase(hullRefs.begin() + static_cast<std::ptrdiff_t>(slot));
                     continue;
                 }
-                with<rmmr::scene::Node>::modify(context, actor)->pose = with<rigid::Ball>::get(context, *hullRef.ball).body.pose();
+                with<rmmr::scene::Node>::modify(context, actor)->pose = with<Body>::get(context, *hullRef.ball).pose();
             } else {
                 if (with<rmmr::scene::actor::Mesh>::exists(context, actor))
                     destroy_actor(context, actor);

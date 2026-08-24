@@ -2,6 +2,7 @@
 
 #include <eltanin/geo/boulder.q1.h>
 #include <eltanin/geo/minerals.q1.h>
+#include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -196,7 +197,7 @@ namespace eltanin::scenario {
                 particle.temperature = coreKelvin;
                 particle.cohesion = 0.25f;
             }
-            crystal->refreshMatter();
+            crystal->refreshMatter(*with<phys::Body>::modify(context, rock.body));
             with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat = vec2{coreKelvin, 0.25f};
         }
 

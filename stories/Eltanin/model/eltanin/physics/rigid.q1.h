@@ -20,30 +20,26 @@ namespace eltanin::phys::rigid {
         };
     };
 
-    struct Ball : Entity<Ball> {
-        struct Data : Body {
+    struct Ball : Feature<Ball, Body> {
+        struct Quantum {
             vec3 prevPos;
             quat prevOri;
             vec3 forceLinear;
             vec3 forceAngular;
-        };
-        struct Quantum {
-            Data body;
         };
         struct Actions : BaseActions {};
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct Crystal : Entity<Crystal> {
+    struct Crystal : Feature<Crystal, Body> {
         struct Quantum {
             vector<Particle> particles;
             vector<vec3> shape;
             vec3 com;
-            Body restored;
             Compound::Hull hull;
 
-            void refreshMatter();
+            void refreshMatter(Body::Quantum&);
         };
         struct Actions : BaseActions {
             static void debugAddImpulse(Writing, Id, vec3 imp);
@@ -69,6 +65,6 @@ namespace eltanin::phys::rigid {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    auto restoredBody(rmmr::Pose, const vector<Particle>&, const vector<vec3>&) -> Body;
+    auto restoredBody(rmmr::Pose, const vector<Particle>&, const vector<vec3>&) -> Body::Quantum;
 
 }

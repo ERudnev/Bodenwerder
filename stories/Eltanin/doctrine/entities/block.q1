@@ -1,6 +1,7 @@
 import "rmmr/math"
 import "rmmr/scene/root"
 import "rmmr/scene/actors/mesh"
+import "physics/body"
 import "physics/rigid"
 import "mech/semantics"
 
@@ -8,10 +9,10 @@ namespace eltanin
 
   entity Block
     one
-      body: custody<phys::rigid::Crystal>
+      body: custody<phys::Body>
       actor: custody<rmmr::scene::actor::Mesh>
     all
       >spawnPlate(#rmmr::scene::Root, Pose, mech::plate::shape, mech::Role, one<rmmr::scene::actor::Mesh>, one<rmmr::scene::actor::MeshState>)->#
       >spawnFrame(#rmmr::scene::Root, Pose, mech::frame::shape, one<rmmr::scene::actor::Mesh>, one<rmmr::scene::actor::MeshState>)->#
       >spawnInner(#rmmr::scene::Root, Pose, mech::frame::shape, mech::Role, one<rmmr::scene::actor::Mesh>, one<rmmr::scene::actor::MeshState>)->#
-      !followBody(~phys::rigid::Crystal)->>linearPass(>all)
+      !followBody(~phys::Body)->>linearPass(>all)

@@ -37,11 +37,12 @@ namespace eltanin::phys {
                 particle.force += particle.mass * dragScale * (particle.position - particle.prev);
             }
         }
-        for (auto [_, ball] : context.direct<rigid::Ball>().items) {
-            rigid::Ball::Data& body = ball.body;
-            if (body.mass <= 0.0f)
+        auto bodies = context.direct<Body>();
+        for (auto [id, ball] : context.direct<rigid::Ball>().items) {
+            auto* body = bodies.items.find(id);
+            if (not body or body->mass <= 0.0f)
                 continue;
-            body.forceLinear += body.mass * dragScale * (body.position - body.prevPos);
+            ball.forceLinear += body->mass * dragScale * (body->position - ball.prevPos);
         }
     }
 
@@ -51,8 +52,8 @@ namespace eltanin::phys {
                 particle.force = vec3{0.0f, 0.0f, 0.0f};
         }
         for (auto [_, ball] : context.direct<rigid::Ball>().items) {
-            ball.body.forceLinear = vec3{0.0f, 0.0f, 0.0f};
-            ball.body.forceAngular = vec3{0.0f, 0.0f, 0.0f};
+            ball.forceLinear = vec3{0.0f, 0.0f, 0.0f};
+            ball.forceAngular = vec3{0.0f, 0.0f, 0.0f};
         }
         applyAerodynamics(context);
         with<rigid::CelestialGravity>::apply(context);
@@ -74,44 +75,44 @@ namespace eltanin::phys {
         }
     }
 
-    void System::integrateBalls(fqsm::Direct<rigid::Ball> balls) {
+    void System::integrateBalls(fqsm::Direct<Body> bodies, fqsm::Direct<rigid::Ball> balls) {
         const float dt = Particle::dt;
         const float dt2 = dt * dt;
         const float rest2 = Settings::restLinear * Settings::restLinear;
-        for (auto [_, ball] : balls.items) {
-            rigid::Ball::Data& body = ball.body;
-            if (body.mass <= 0.0f)
+        for (auto [id, ball] : balls.items) {
+            auto* body = bodies.items.find(id);
+            if (not body or body->mass <= 0.0f)
                 continue;
 
-            const vec3 previousPos = body.position;
-            const vec3 accel = body.forceLinear / body.mass;
-            vec3 step = (body.position - body.prevPos) * Settings::dissipation;
+            const vec3 previousPos = body->position;
+            const vec3 accel = ball.forceLinear / body->mass;
+            vec3 step = (body->position - ball.prevPos) * Settings::dissipation;
             if (glm::dot(step, step) < rest2)
                 step = vec3{0.0f, 0.0f, 0.0f};
-            body.position += step + accel * dt2;
-            body.prevPos = previousPos;
+            body->position += step + accel * dt2;
+            ball.prevPos = previousPos;
 
             // Solid sphere: I = ⅖ m r²
-            const float inertia = 0.4f * body.mass * body.radius * body.radius;
+            const float inertia = 0.4f * body->mass * body->radius * body->radius;
             if (inertia <= 1.0e-12f)
                 continue;
 
-            const quat qRel = glm::normalize(body.orientation * glm::conjugate(body.prevOri));
+            const quat qRel = glm::normalize(body->orientation * glm::conjugate(ball.prevOri));
             vec3 omega = (2.0f / dt) * vec3{qRel.x, qRel.y, qRel.z};
             if (qRel.w < 0.0f)
                 omega = -omega;
             omega *= Settings::dissipation;
-            omega += (body.forceAngular / inertia) * dt;
+            omega += (ball.forceAngular / inertia) * dt;
             if (glm::length(omega) * dt < Settings::restLinear)
                 omega = vec3{0.0f, 0.0f, 0.0f};
 
-            const quat previousOri = body.orientation;
+            const quat previousOri = body->orientation;
             const float omegaLen = glm::length(omega);
             if (omegaLen > 1.0e-12f) {
                 const quat stepOri = glm::angleAxis(omegaLen * dt, omega / omegaLen);
-                body.orientation = glm::normalize(stepOri * body.orientation);
+                body->orientation = glm::normalize(stepOri * body->orientation);
             }
-            body.prevOri = previousOri;
+            ball.prevOri = previousOri;
         }
     }
 
@@ -128,7 +129,7 @@ namespace eltanin::phys {
     void System::tick(Stewarding context) {
         accumulateForces(context);
         integrate(context.direct<rigid::Crystal>());
-        integrateBalls(context.direct<rigid::Ball>());
+        integrateBalls(context.direct<Body>(), context.direct<rigid::Ball>());
         restoreBases(context);
         applyConnectivity(context);
         applyConstraintWishes(context);

@@ -14,25 +14,22 @@ namespace eltanin
             normal: vec3
           faces: vector<Face>
 
-      entity Ball
-        struct Data of phys::Body
+      feature Ball of phys::Body
+        one
           prevPos: vec3
           prevOri: quat
           forceLinear: vec3
           forceAngular: vec3
-        one
-          body: Data
 
-      entity Crystal
+      feature Crystal of phys::Body
         one
           particles: vector<Particle>
           shape: vector<vec3> // Immutable particle locals in the body's frame; origin is not COM
           com: vec3 // restCOM = Σ(m·shape)/Σm, computed once for this shape
-          restored: Body // Cache reconstructed from particles
           hull: Compound::Hull
           =debugAddImpulse(imp: vec3)
           =setMotion(pose: Pose, linear: vec3, omega: vec3) // Place shape by Pose; prev = position − (linear + ω×(position−currentCOM))·dt
-          all *restore() // Horn → Pose into restored; particles untouched
+          all *restore() // Horn → Pose into Body; particles untouched
           all *applyRestored() // position += k·(goal−position); prev += same (velocity preserved through projection)
 
       attribute CelestialGravity of Crystal

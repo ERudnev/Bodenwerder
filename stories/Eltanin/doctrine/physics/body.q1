@@ -20,10 +20,17 @@ namespace eltanin
       ?velocity()->vec3
       ?impulse()->vec3
 
-    // Derived cache and interface between simulation, actors, and game logic.
-    struct Body of Matter
-      orientation: quat
-      radius: float
-      hitpoints: float
-      ?pose()->rmmr::Pose
-      =pose(rmmr::Pose)
+    // World-facing Matter cache. Ball and Crystal are features of the same id.
+    entity Body
+      one
+        position: vec3
+        mass: float
+        temperature: Kelvins
+        cohesion: float
+        orientation: quat
+        radius: float
+        hitpoints: float
+        ?hp()->float
+        ?thermalEnergy()->float
+        ?pose()->rmmr::Pose
+        =pose(rmmr::Pose)

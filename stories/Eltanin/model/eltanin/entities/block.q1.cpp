@@ -107,12 +107,11 @@ namespace eltanin {
             }
 
             auto hull = hullFromCorners(shape, corners);
-            const phys::Body restored = phys::rigid::restoredBody(pose, particles, shape);
-            const auto body = with<phys::rigid::Crystal>::create(context, phys::rigid::Crystal::Quantum{
+            const auto body = with<phys::Body>::create(context, phys::rigid::restoredBody(pose, particles, shape));
+            with<phys::rigid::Crystal>::extend(context, body, phys::rigid::Crystal::Quantum{
                 .particles = std::move(particles),
                 .shape = std::move(shape),
                 .com = restCom,
-                .restored = restored,
                 .hull = std::move(hull),
             });
             const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(actorQuantum), std::move(stateQuantum));
@@ -154,16 +153,16 @@ namespace eltanin {
                 if (not body) { my::remove(context, id); continue; }
                 if (not my::ward(context, id, &Quantum::actor)) { my::remove(context, id); continue; }
                 if (not with<rmmr::scene::Node>::exists(context, block.actor)) { my::remove(context, id); continue; }
-                with<rmmr::scene::Node>::modify(context, block.actor)->pose = body->restored.pose();
+                with<rmmr::scene::Node>::modify(context, block.actor)->pose = body->pose();
             }
         }
     };
 
     auto Block::customAspectReactions() -> const Behavior {
         return {
-            reaction::structural::custody<Block, phys::rigid::Crystal, &Block::Quantum::body>{},
+            reaction::structural::custody<Block, phys::Body, &Block::Quantum::body>{},
             reaction::structural::custody<Block, rmmr::scene::actor::Mesh, &Block::Quantum::actor>{},
-            reaction::aspect_wide<Block, phys::rigid::Crystal>(&Block::Internals::followBody),
+            reaction::aspect_wide<Block, phys::Body>(&Block::Internals::followBody),
         };
     }
 }

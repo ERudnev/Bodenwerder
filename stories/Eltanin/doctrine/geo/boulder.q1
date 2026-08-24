@@ -3,17 +3,18 @@ import "rmmr/scene/root"
 import "rmmr/scene/actors/mesh"
 import "rmmr/system/core"
 import "geo/rock"
+import "physics/body"
 import "physics/rigid"
 
 namespace eltanin
   namespace geo
 
-    // Small debris: Ball physics + debris mesh. No Volume / Crystal.
+    // Small debris: Body + Ball + debris mesh. No Volume / Crystal.
     entity Boulder
       one
-        ball: custody<phys::rigid::Ball>
+        body: custody<phys::Body>
         actor: custody<rmmr::scene::actor::Mesh>
       all
         >spawnGenerated(#rmmr::scene::Root, #system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#
         *radiate(dt: float)
-        !followBody(~phys::rigid::Ball)->>linearPass(>all)
+        !followBody(~phys::Body)->>linearPass(>all)

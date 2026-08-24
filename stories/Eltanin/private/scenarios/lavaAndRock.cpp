@@ -1,6 +1,7 @@
 #include "scenarios/lavaAndRock.h"
 
 #include <eltanin/geo/boulder.q1.h>
+#include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -96,7 +97,7 @@ namespace eltanin::scenario {
             auto crystal = with<phys::rigid::Crystal>::modify(context, rock.body);
             for (phys::Particle& particle : crystal->particles)
                 particle.temperature = brickKelvin;
-            crystal->refreshMatter();
+            crystal->refreshMatter(*with<phys::Body>::modify(context, rock.body));
             with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat.x = brickKelvin;
         }
 
@@ -123,8 +124,7 @@ namespace eltanin::scenario {
                 const auto id = with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{x, 0.0f, z}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
                 boulders.push_back(id);
                 const auto& boulder = with<geo::Boulder>::get(context, id);
-                auto ball = with<phys::rigid::Ball>::modify(context, boulder.ball);
-                ball->body.temperature = kelvin;
+                with<phys::Body>::modify(context, boulder.body)->temperature = kelvin;
                 with<rmmr::scene::actor::MeshState>::modify(context, boulder.actor)->heat.x = kelvin;
             }
         }

@@ -28,16 +28,21 @@ namespace eltanin::phys {
         auto impulse() const -> vec3 { return velocity() * mass; }
     };
 
-    struct Body : Matter {
-        quat orientation;
-        float radius;
-        float hitpoints;
+    struct Body : Entity<Body> {
+        struct Quantum : Matter {
+            quat orientation;
+            float radius;
+            float hitpoints;
 
-        auto pose() const -> rmmr::Pose { return rmmr::Pose{.position = position, .rotation = orientation}; }
-        void pose(rmmr::Pose value) {
-            position = value.position;
-            orientation = value.rotation;
-        }
+            auto pose() const -> rmmr::Pose { return rmmr::Pose{.position = position, .rotation = orientation}; }
+            void pose(rmmr::Pose value) {
+                position = value.position;
+                orientation = value.rotation;
+            }
+        };
+        struct Actions : BaseActions {};
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
     };
 
 }

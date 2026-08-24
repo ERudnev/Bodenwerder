@@ -1,5 +1,6 @@
 #pragma once
 
+#include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -12,7 +13,7 @@ namespace eltanin::phys {
     // Private physics subsystem (not Q1).
     // Fixed tick 10ms; wall dt accumulates as debt (sub-step remainder).
     // One pass: accumulate forces (aerodynamics, gravity, …) → Verlet with dissipation → restore bases → connectivity → apply constraint wishes.
-    // One Dock per tick; hot mutation via Stewarding::direct<rigid::Crystal>().
+    // One Dock per tick; hot mutation via Stewarding::direct<Body>() and direct<rigid::Crystal>() / direct<rigid::Ball>().
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
     // Thermal: Boulder. Rock Volume thermal deferred. Accumulate to thermalStepUs, then radiate. No conduction.
     struct Settings {
@@ -45,7 +46,7 @@ namespace eltanin::phys {
         void accumulateForces(Stewarding);
         void applyAerodynamics(Stewarding);
         void integrate(fqsm::Direct<rigid::Crystal>);
-        void integrateBalls(fqsm::Direct<rigid::Ball>);
+        void integrateBalls(fqsm::Direct<Body>, fqsm::Direct<rigid::Ball>);
         void restoreBases(Stewarding);
         void applyConnectivity(Stewarding);
         void applyConstraintWishes(Stewarding);

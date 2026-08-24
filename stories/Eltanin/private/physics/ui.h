@@ -50,7 +50,7 @@ namespace eltanin::phys {
 
         vector<ParticleRef> particleRefs;
         vector<HullRef> hullRefs;
-        vector<rmmr::scene::actor::Mesh::Id> hiddenCombat;
+        vector<rmmr::scene::actor::Mesh::Id> hiddenProduction;
 
         void enableParticles(Writing);
         void disableParticles(Writing);
@@ -58,8 +58,8 @@ namespace eltanin::phys {
         void enableHulls(Writing);
         void disableHulls(Writing);
         void syncHulls(Writing);
-        void hideCombat(Writing);
-        void restoreCombat(Writing);
+        void hideProduction(Writing);
+        void restoreProduction(Writing);
     };
 
 }

@@ -104,25 +104,25 @@ namespace eltanin::geo {
         meshState.heat = vec2{0.0f, 0.0f};
         const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), meshState);
 
-        phys::rigid::Ball::Data data{
-            phys::Body{
-                phys::Matter{.position = pose.position, .mass = mass, .temperature = 0.0f, .cohesion = 0.0f},
-                pose.rotation,
-                recipe.radius,
-                0.0f,
-            },
-            pose.position - velocity * phys::Particle::dt,
+        const auto body = with<phys::Body>::create(context, phys::Body::Quantum{
+            phys::Matter{.position = pose.position, .mass = mass, .temperature = 0.0f, .cohesion = 0.0f},
             pose.rotation,
-            vec3{0.0f, 0.0f, 0.0f},
-            vec3{0.0f, 0.0f, 0.0f},
-        };
+            recipe.radius,
+            0.0f,
+        });
+        quat prevOri = pose.rotation;
         const float omegaLen = glm::length(omega);
         if (omegaLen > 1.0e-12f) {
             const quat step = glm::angleAxis(-omegaLen * phys::Particle::dt, omega / omegaLen);
-            data.prevOri = glm::normalize(step * pose.rotation);
+            prevOri = glm::normalize(step * pose.rotation);
         }
-        const auto ball = with<phys::rigid::Ball>::create(context, phys::rigid::Ball::Quantum{.body = data});
-        return with<Boulder>::create(context, Boulder::Quantum{.ball = ball, .actor = actor});
+        with<phys::rigid::Ball>::extend(context, body, phys::rigid::Ball::Quantum{
+            .prevPos = pose.position - velocity * phys::Particle::dt,
+            .prevOri = prevOri,
+            .forceLinear = vec3{0.0f, 0.0f, 0.0f},
+            .forceAngular = vec3{0.0f, 0.0f, 0.0f},
+        });
+        return with<Boulder>::create(context, Boulder::Quantum{.body = body, .actor = actor});
     }
 
     void Boulder::Actions::radiate(Stewarding context, float dt) {
@@ -130,22 +130,21 @@ namespace eltanin::geo {
             return;
         const float sigma = phys::Settings::radiateSigma;
         const float sky = phys::Settings::skyKelvin;
-        auto balls = context.direct<phys::rigid::Ball>();
+        auto bodies = context.direct<phys::Body>();
         for (auto [_, boulder] : context.direct<Boulder>().items) {
-            auto* ball = balls.items.find(boulder.ball);
-            if (not ball)
+            auto* body = bodies.items.find(boulder.body);
+            if (not body)
                 continue;
-            phys::Body& body = ball->body;
-            if (body.mass <= 0.0f)
+            if (body->mass <= 0.0f)
                 continue;
-            const float temperature = glm::max(body.temperature, sky);
+            const float temperature = glm::max(body->temperature, sky);
             const float t2 = temperature * temperature;
-            const float lost = sigma * sphereArea(body.mass) * t2 * t2 * dt;
-            const float energy = body.mass * temperature;
-            body.temperature = glm::max(sky, (energy - lost) / body.mass);
+            const float lost = sigma * sphereArea(body->mass) * t2 * t2 * dt;
+            const float energy = body->mass * temperature;
+            body->temperature = glm::max(sky, (energy - lost) / body->mass);
             if (not with<rmmr::scene::actor::MeshState>::exists(context, boulder.actor))
                 continue;
-            const vec2 nextHeat{body.temperature, body.cohesion};
+            const vec2 nextHeat{body->temperature, body->cohesion};
             if (with<rmmr::scene::actor::MeshState>::get(context, boulder.actor).heat == nextHeat)
                 continue;
             with<rmmr::scene::actor::MeshState>::modify(context, boulder.actor)->heat = nextHeat;
@@ -158,9 +157,9 @@ namespace eltanin::geo {
             for (auto [id, boulder] : context.proposal.aspect<Boulder>().items()) {
                 if (not my::ward(context, id, &Quantum::actor)) { my::remove(context, id); continue; }
                 if (not with<rmmr::scene::Node>::exists(context, boulder.actor)) { my::remove(context, id); continue; }
-                const auto* ball = my::ward(context, id, &Quantum::ball);
-                if (not ball) { my::remove(context, id); continue; }
-                with<rmmr::scene::Node>::modify(context, boulder.actor)->pose = ball->body.pose();
+                const auto* body = my::ward(context, id, &Quantum::body);
+                if (not body) { my::remove(context, id); continue; }
+                with<rmmr::scene::Node>::modify(context, boulder.actor)->pose = body->pose();
             }
         }
     };
@@ -168,7 +167,7 @@ namespace eltanin::geo {
     auto Boulder::customAspectReactions() -> const Behavior {
         return {
             reaction::structural::custody<Boulder, rmmr::scene::actor::Mesh, &Boulder::Quantum::actor>{},
-            reaction::aspect_wide<Boulder, phys::rigid::Ball>(&Boulder::Internals::followBody),
+            reaction::aspect_wide<Boulder, phys::Body>(&Boulder::Internals::followBody),
         };
     }
 

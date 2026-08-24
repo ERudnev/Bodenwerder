@@ -435,12 +435,11 @@ namespace eltanin::geo {
                 shape.push_back(sample.local);
             }
 
-            const phys::Body restored = phys::rigid::restoredBody(pose, particles, shape);
-            const auto body = with<phys::rigid::Crystal>::create(context, phys::rigid::Crystal::Quantum{
+            const auto body = with<phys::Body>::create(context, phys::rigid::restoredBody(pose, particles, shape));
+            with<phys::rigid::Crystal>::extend(context, body, phys::rigid::Crystal::Quantum{
                 .particles = std::move(particles),
                 .shape = std::move(shape),
                 .com = massCom,
-                .restored = restored,
                 .hull = std::move(hull),
             });
             return with<Rock>::create(context, Rock::Quantum{.body = body, .actor = actor, .volume = std::move(volume)});
@@ -519,7 +518,7 @@ namespace eltanin::geo {
                 if (not with<rmmr::scene::Node>::exists(context, rock.actor)) { my::remove(context, id); continue; }
                 const auto* body = my::ward(context, id, &Quantum::body);
                 if (not body) { my::remove(context, id); continue; }
-                with<rmmr::scene::Node>::modify(context, rock.actor)->pose = body->restored.pose();
+                with<rmmr::scene::Node>::modify(context, rock.actor)->pose = body->pose();
             }
         }
     };
@@ -527,7 +526,7 @@ namespace eltanin::geo {
     auto Rock::customAspectReactions() -> const Behavior {
         return {
             reaction::structural::custody<Rock, rmmr::scene::actor::Mesh, &Rock::Quantum::actor>{},
-            reaction::aspect_wide<Rock, phys::rigid::Crystal>(&Rock::Internals::followBody),
+            reaction::aspect_wide<Rock, phys::Body>(&Rock::Internals::followBody),
         };
     }
 

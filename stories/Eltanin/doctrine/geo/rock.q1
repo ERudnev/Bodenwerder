@@ -3,6 +3,7 @@ import "rmmr/scene/root"
 import "rmmr/scene/actors/mesh"
 import "rmmr/system/core"
 import "geo/minerals"
+import "physics/body"
 import "physics/rigid"
 
 namespace eltanin
@@ -30,10 +31,10 @@ namespace eltanin
       spotContrast: float
       always ?homogenous(Mineral::Index)->Mix
 
-    // Large rock: Crystal body + octree Volume. Small debris → Boulder.
+    // Large rock: Body + Crystal + octree Volume. Small debris → Boulder.
     entity Rock
       one
-        body: custody<phys::rigid::Crystal>
+        body: custody<phys::Body>
         actor: custody<rmmr::scene::actor::Mesh>
         volume: Volume
       all
@@ -44,4 +45,4 @@ namespace eltanin
         >spawnLavaBrick(#rmmr::scene::Root, #system::Device, Pose)->#
         >spawnIceBlob(#rmmr::scene::Root, #system::Device, Pose)->#
         *radiate(dt: float)
-        !followBody(~phys::rigid::Crystal)->>linearPass(>all)
+        !followBody(~phys::Body)->>linearPass(>all)
