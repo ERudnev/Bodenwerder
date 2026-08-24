@@ -18,23 +18,24 @@ namespace eltanin
       mix: Mix
       children: vector<Volume>
 
+    // Mean mix names the minerals; zeros stay zero. Domains are geological patches, not grain noise.
+    // spotMeters — clean-zone width (≈ 10–50% of diameter). spotContrast 0 = alloy, 1 = sharp contacts.
+    // lump 0 = sphere, 1 = triaxial potato with knobs and pits.
+    struct GeneralizedRecipe
+      mix: Mix
+      radius: float
+      lump: float
+      seed: integer
+      spotMeters: float
+      spotContrast: float
+      always ?homogenous(Mineral::Index)->Mix
+
+    // Large rock: Crystal body + octree Volume. Small debris → Boulder.
     entity Rock
-      // Mean mix names the minerals; zeros stay zero. Domains are geological patches, not grain noise.
-      // spotMeters — clean-zone width (≈ 10–50% of diameter). spotContrast 0 = alloy, 1 = sharp contacts.
-      // lump 0 = sphere, 1 = triaxial potato with knobs and pits.
-      struct GeneralizedRecipe
-        mix: Mix
-        radius: float
-        lump: float
-        seed: integer
-        spotMeters: float
-        spotContrast: float
-        always ?homogenous(Mineral::Index)->Mix
       one
-        body: custody<phys::rigid::Crystal>?
-        ball: custody<phys::rigid::Ball>?
+        body: custody<phys::rigid::Crystal>
         actor: custody<rmmr::scene::actor::Mesh>
-        volume: Volume?
+        volume: Volume
       all
         >spawn(#rmmr::scene::Root, #system::Device, Pose, Volume, vec3, vec3)->#
         >spawnGenerated(#rmmr::scene::Root, #system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#
@@ -44,4 +45,3 @@ namespace eltanin
         >spawnIceBlob(#rmmr::scene::Root, #system::Device, Pose)->#
         *radiate(dt: float)
         !followBody(~phys::rigid::Crystal)->>linearPass(>all)
-        !followBody(~phys::rigid::Ball)->>linearPass(>all)

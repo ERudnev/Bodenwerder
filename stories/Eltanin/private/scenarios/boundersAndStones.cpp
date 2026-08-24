@@ -1,5 +1,6 @@
 #include "scenarios/boundersAndStones.h"
 
+#include <eltanin/geo/boulder.q1.h>
 #include <eltanin/geo/minerals.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/manager.q1.h>
@@ -175,10 +176,11 @@ namespace eltanin::scenario {
             return vec3{-position.z, 0.0f, position.x} * (coreGravity.roundOrbitHelper(distance) / distance);
         };
 
-        rocks.reserve(static_cast<std::size_t>(1 + hornCount + pebbleCount));
+        rocks.reserve(static_cast<std::size_t>(1 + hornCount));
+        boulders.reserve(static_cast<std::size_t>(pebbleCount));
         {
-            const geo::Rock::GeneralizedRecipe recipe{
-                .mix = geo::Rock::GeneralizedRecipe::homogenous(ironMineral),
+            const geo::GeneralizedRecipe recipe{
+                .mix = geo::GeneralizedRecipe::homogenous(ironMineral),
                 .radius = coreRadius,
                 .lump = 0.0f,
                 .seed = 1,
@@ -188,8 +190,8 @@ namespace eltanin::scenario {
             const auto id = with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.08f, 0.0f});
             rocks.push_back(id);
             const auto& rock = with<geo::Rock>::get(context, id);
-            with<phys::rigid::CelestialGravity>::extend(context, *rock.body, coreGravity);
-            auto crystal = with<phys::rigid::Crystal>::modify(context, *rock.body);
+            with<phys::rigid::CelestialGravity>::extend(context, rock.body, coreGravity);
+            auto crystal = with<phys::rigid::Crystal>::modify(context, rock.body);
             for (phys::Particle& particle : crystal->particles) {
                 particle.temperature = coreKelvin;
                 particle.cohesion = 0.25f;
@@ -203,7 +205,7 @@ namespace eltanin::scenario {
             const float diameter = potatoDiameters[index];
             const float azim = twoPi * static_cast<float>(index) / static_cast<float>(hornCount);
             const Pose pose = ringPose(azim, rng);
-            const geo::Rock::GeneralizedRecipe recipe{
+            const geo::GeneralizedRecipe recipe{
                 .mix = palettes[index],
                 .radius = diameter * 0.5f,
                 .lump = glm::clamp(0.78f + 0.22f * unit(rng), 0.72f, 1.0f),
@@ -229,8 +231,8 @@ namespace eltanin::scenario {
             if (blocked)
                 continue;
             const integer mineral = static_cast<integer>(slot % 16);
-            const geo::Rock::GeneralizedRecipe recipe{
-                .mix = geo::Rock::GeneralizedRecipe::homogenous(mineral),
+            const geo::GeneralizedRecipe recipe{
+                .mix = geo::GeneralizedRecipe::homogenous(mineral),
                 .radius = diameter * 0.5f,
                 .lump = glm::clamp(0.40f + 0.25f * gauss(rng), 0.15f, 1.0f),
                 .seed = 4100 + slot,
@@ -238,7 +240,7 @@ namespace eltanin::scenario {
                 .spotContrast = 0.0f,
             };
             const float mass = sphereMass(diameter, geo::Mineral::table()[static_cast<std::size_t>(mineral)].density);
-            rocks.push_back(with<geo::Rock>::spawnGenerated(context, root, device, pose, recipe, orbitVelocity(pose.position), spinOmega(mass, spinK, unit(rng), rng)));
+            boulders.push_back(with<geo::Boulder>::spawnGenerated(context, root, device, pose, recipe, orbitVelocity(pose.position), spinOmega(mass, spinK, unit(rng), rng)));
         }
     }
 

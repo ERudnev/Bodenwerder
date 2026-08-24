@@ -7,7 +7,6 @@
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
 
-#include <base/maybe.h>
 #include <fQSM/api/interface.h>
 
 #include <cstdint>
@@ -25,22 +24,22 @@ namespace eltanin::geo {
         vector<Volume> children;
     };
 
-    struct Rock : Entity<Rock> {
-        struct GeneralizedRecipe {
-            Mix mix;
-            float radius;
-            float lump;
-            integer seed;
-            float spotMeters;
-            float spotContrast;
+    struct GeneralizedRecipe {
+        Mix mix;
+        float radius;
+        float lump;
+        integer seed;
+        float spotMeters;
+        float spotContrast;
 
-            static auto homogenous(Mineral::Index) -> Mix;
-        };
+        static auto homogenous(Mineral::Index) -> Mix;
+    };
+
+    struct Rock : Entity<Rock> {
         struct Quantum {
-            base::maybe<Custody<phys::rigid::Crystal>> body;
-            base::maybe<Custody<phys::rigid::Ball>> ball;
+            Custody<phys::rigid::Crystal> body;
             Custody<rmmr::scene::actor::Mesh> actor;
-            base::maybe<Volume> volume;
+            Volume volume;
         };
         struct Actions : BaseActions {
             static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, Volume, vec3, vec3) -> Id;

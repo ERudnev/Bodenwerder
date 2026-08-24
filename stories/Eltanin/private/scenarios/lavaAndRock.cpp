@@ -1,5 +1,6 @@
 #include "scenarios/lavaAndRock.h"
 
+#include <eltanin/geo/boulder.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -92,7 +93,7 @@ namespace eltanin::scenario {
         constexpr float brickKelvin = 1800.0f;
         {
             const auto& rock = with<geo::Rock>::get(context, brick);
-            auto crystal = with<phys::rigid::Crystal>::modify(context, *rock.body);
+            auto crystal = with<phys::rigid::Crystal>::modify(context, rock.body);
             for (phys::Particle& particle : crystal->particles)
                 particle.temperature = brickKelvin;
             crystal->refreshMatter();
@@ -105,34 +106,26 @@ namespace eltanin::scenario {
         constexpr float spacing = 1.0f;
         constexpr float rowStep = 2.0f;
         constexpr float kelvinMax = 2000.0f;
-        rocks.reserve(1 + static_cast<std::size_t>(count) * rows);
+        boulders.reserve(static_cast<std::size_t>(count) * rows);
         for (int row = 0; row < rows; ++row) {
             for (int index = 0; index < count; ++index) {
                 const float kelvin = kelvinMax * static_cast<float>(index) / static_cast<float>(count - 1);
                 const float x = 55.0f + spacing * static_cast<float>(index);
                 const float z = 70.0f + rowStep * static_cast<float>(row);
-                const geo::Rock::GeneralizedRecipe recipe{
-                    .mix = geo::Rock::GeneralizedRecipe::homogenous(row),
+                const geo::GeneralizedRecipe recipe{
+                    .mix = geo::GeneralizedRecipe::homogenous(row),
                     .radius = diameter * 0.5f,
                     .lump = 0.55f,
                     .seed = 7 + index + row * 1000,
                     .spotMeters = diameter,
                     .spotContrast = 0.0f,
                 };
-                const auto id = with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{x, 0.0f, z}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
-                rocks.push_back(id);
-                const auto& rock = with<geo::Rock>::get(context, id);
-                if (rock.ball) {
-                    auto ball = with<phys::rigid::Ball>::modify(context, *rock.ball);
-                    ball->body.temperature = kelvin;
-                    with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat.x = kelvin;
-                } else if (rock.body) {
-                    auto crystal = with<phys::rigid::Crystal>::modify(context, *rock.body);
-                    for (phys::Particle& particle : crystal->particles)
-                        particle.temperature = kelvin;
-                    crystal->refreshMatter();
-                    with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat.x = kelvin;
-                }
+                const auto id = with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{x, 0.0f, z}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+                boulders.push_back(id);
+                const auto& boulder = with<geo::Boulder>::get(context, id);
+                auto ball = with<phys::rigid::Ball>::modify(context, boulder.ball);
+                ball->body.temperature = kelvin;
+                with<rmmr::scene::actor::MeshState>::modify(context, boulder.actor)->heat.x = kelvin;
             }
         }
     }

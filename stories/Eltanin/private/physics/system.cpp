@@ -1,6 +1,7 @@
 #include "physics/system.h"
 
 #include <eltanin/geo/rock.q1.h>
+#include <eltanin/geo/boulder.q1.h>
 #include <rmmr/scene/root.q1.h>
 
 #include <glm/geometric.hpp>
@@ -137,6 +138,7 @@ namespace eltanin::phys {
         if (thermalDebtUs < Settings::thermalStepUs)
             return;
         with<::eltanin::geo::Rock>::radiate(context, static_cast<float>(thermalDebtUs) * 1e-6f);
+        with<::eltanin::geo::Boulder>::radiate(context, static_cast<float>(thermalDebtUs) * 1e-6f);
         thermalDebtUs = 0;
     }
 

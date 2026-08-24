@@ -5,6 +5,6 @@
 
 namespace eltanin::geo {
 
-    auto meshDebris(const Rock::GeneralizedRecipe&) -> rmmr::resource::builders::geometry::CpuPresentation;
+    auto meshDebris(const GeneralizedRecipe&) -> rmmr::resource::builders::geometry::CpuPresentation;
 
 }

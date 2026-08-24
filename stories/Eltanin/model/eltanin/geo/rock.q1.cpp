@@ -9,15 +9,12 @@
 #include <rmmr/scene/node.q1.h>
 
 #include "mech/semantics/space.h"
-#include "physics/system.h"
-#include "geo/stones/boulderMesh.h"
 #include "geo/stones/marchingCubes.h"
 #include "geo/stones/crust.h"
 #include "geo/stones/generator.h"
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
-#include <glm/gtc/quaternion.hpp>
 
 #include <algorithm>
 #include <array>
@@ -50,19 +47,6 @@ namespace eltanin::geo {
                 density += fill * table[channel].density;
             }
             return density;
-        }
-
-        auto dominantMineral(Mix mix) -> integer {
-            integer dominant = 0;
-            Mix weight = 0;
-            for (integer channel = 0; channel < mixChannels; ++channel) {
-                const Mix candidate = (mix >> (channel * 4)) & 0xF;
-                if (candidate > weight) {
-                    dominant = channel;
-                    weight = candidate;
-                }
-            }
-            return dominant;
         }
 
         auto edgeCells(integer scale) -> integer {
@@ -369,12 +353,6 @@ namespace eltanin::geo {
             return cpu.cohesion[best];
         }
 
-        auto sphereArea(float mass) -> float {
-            const float volume = glm::max(mass, 1.0e-6f);
-            const float radius = std::cbrt((3.0f * volume) / (4.0f * std::numbers::pi_v<float>));
-            return 4.0f * std::numbers::pi_v<float> * radius * radius;
-        }
-
         auto sampleRadius(const vector<Sample>& samples) -> float {
             float radius = 0.0f;
             for (const Sample& sample : samples)
@@ -392,7 +370,7 @@ namespace eltanin::geo {
             return true;
         }
 
-        auto assembleRock(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, base::maybe<Volume> volume, rmmr::resource::builders::geometry::CpuPresentation cpu, vector<Sample> samples, phys::rigid::Compound::Hull hull, rmmr::resource::Unit::Name materialName, integer spriteIndex, float temperature, float cohesion, vec3 velocity, vec3 omega) -> Rock::Id {
+        auto assembleRock(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, Volume volume, rmmr::resource::builders::geometry::CpuPresentation cpu, vector<Sample> samples, phys::rigid::Compound::Hull hull, rmmr::resource::Unit::Name materialName, integer spriteIndex, float temperature, float cohesion, vec3 velocity, vec3 omega) -> Rock::Id {
             if (cpu.positions.empty())
                 return context.refuse("eltanin::geo::Rock::spawn: no surface");
             if (samples.empty())
@@ -465,61 +443,7 @@ namespace eltanin::geo {
                 .restored = restored,
                 .hull = std::move(hull),
             });
-            return with<Rock>::create(context, Rock::Quantum{.body = body, .ball = {}, .actor = actor, .volume = std::move(volume)});
-        }
-
-        auto assembleBallRock(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, rmmr::resource::builders::geometry::CpuPresentation cpu, float radius, float mass, rmmr::resource::Unit::Name materialName, integer spriteIndex, float temperature, float cohesion, vec3 velocity, vec3 omega) -> Rock::Id {
-            if (cpu.positions.empty())
-                return context.refuse("eltanin::geo::Rock::spawn: no surface");
-            if (radius <= 0.0f or mass <= 0.0f)
-                return context.refuse("eltanin::geo::Rock::spawn: ball mass/radius must be positive");
-
-            const auto manager = with<rmmr::resource::Manager>::singleton(context);
-            const auto geometryId = with<rmmr::resource::Unit_group>::addElement(context, manager, rmmr::resource::Unit::Quantum{.name = rmmr::resource::Unit::Name::from("Eltanin", "rock")});
-            with<rmmr::resource::geometry::Asset>::extend(context, geometryId, rmmr::resource::geometry::Asset::Quantum{});
-            if (not with<rmmr::resource::geometry::Asset>::install(context, geometryId, device, cpu))
-                return context.refuse("eltanin::geo::Rock::spawn: geometry install failed");
-
-            const auto rockMaterial = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, materialName);
-            if (not rockMaterial)
-                return context.refuse("eltanin::geo::Rock::spawn: rock material missing");
-            const auto crust = with<rmmr::resource::Assets>::find<rmmr::resource::texture3array::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "crust"));
-            if (not crust)
-                return context.refuse("eltanin::geo::Rock::spawn: crust pack missing");
-            const auto& runtimes = with<rmmr::resource::Runtimes>::get(context, device);
-            if (runtimes.texture3arrays_id_mapping.find(*crust) == runtimes.texture3arrays_id_mapping.end()) {
-                if (not with<rmmr::resource::texture3array::Asset>::install(context, *crust, device, generateCrust()))
-                    return context.refuse("eltanin::geo::Rock::spawn: crust install failed");
-            }
-            auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, geometryId, *rockMaterial, *crust);
-            if (not meshQuantum)
-                return context.refuse("eltanin::geo::Rock::spawn: mesh compose failed");
-            meshQuantum->spriteIndex = spriteIndex;
-
-            auto meshState = with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
-            meshState.patternScale = glm::max(0.5f, radius * 2.0f);
-            meshState.heat = vec2{temperature, cohesion};
-            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), meshState);
-
-            phys::rigid::Ball::Data data{
-                phys::Body{
-                    phys::Matter{.position = pose.position, .mass = mass, .temperature = temperature, .cohesion = cohesion},
-                    pose.rotation,
-                    radius,
-                    mass * cohesion,
-                },
-                pose.position - velocity * phys::Particle::dt,
-                pose.rotation,
-                vec3{0.0f, 0.0f, 0.0f},
-                vec3{0.0f, 0.0f, 0.0f},
-            };
-            const float omegaLen = glm::length(omega);
-            if (omegaLen > 1.0e-12f) {
-                const quat step = glm::angleAxis(-omegaLen * phys::Particle::dt, omega / omegaLen);
-                data.prevOri = glm::normalize(step * pose.rotation);
-            }
-            const auto ball = with<phys::rigid::Ball>::create(context, phys::rigid::Ball::Quantum{.body = data});
-            return with<Rock>::create(context, Rock::Quantum{.body = {}, .ball = ball, .actor = actor, .volume = {}});
+            return with<Rock>::create(context, Rock::Quantum{.body = body, .actor = actor, .volume = std::move(volume)});
         }
 
     } // namespace
@@ -529,7 +453,7 @@ namespace eltanin::geo {
             return context.refuse("eltanin::geo::Rock::spawn: volume scale out of range");
         auto cpu = meshVolume(volume);
         auto surface = surfaceFromMesh(volume, cpu);
-        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 0.0f, 0.0f, velocity, omega);
+        return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 0.0f, 0.0f, velocity, omega);
     }
 
     auto Rock::Actions::spawnGenerated(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, GeneralizedRecipe recipe, vec3 velocity, vec3 omega) -> Id {
@@ -537,18 +461,14 @@ namespace eltanin::geo {
             return context.refuse("eltanin::geo::Rock::spawnGenerated: radius must be positive");
         if (recipe.mix == 0)
             return context.refuse("eltanin::geo::Rock::spawnGenerated: mix is vacuum");
-        if (recipe.radius <= octreeResolutionRadius) {
-            auto cpu = meshDebris(recipe);
-            const float volume = (4.0f / 3.0f) * std::numbers::pi_v<float> * recipe.radius * recipe.radius * recipe.radius;
-            const float mass = volume * mixDensity(recipe.mix);
-            return assembleBallRock(context, root, device, pose, std::move(cpu), recipe.radius, mass, rmmr::resource::Unit::Name::from("Eltanin", "boulder"), dominantMineral(recipe.mix), 0.0f, 0.0f, velocity, omega);
-        }
+        if (recipe.radius <= octreeResolutionRadius)
+            return context.refuse("eltanin::geo::Rock::spawnGenerated: radius too small for Crystal; use Boulder");
         auto volume = generateRockVolume(recipe);
         if (not scaleInRange(volume))
             return context.refuse("eltanin::geo::Rock::spawnGenerated: volume scale out of range");
         auto cpu = meshVolume(volume);
         auto surface = surfaceFromMesh(volume, cpu);
-        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 0.0f, 0.0f, velocity, omega);
+        return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 0.0f, 0.0f, velocity, omega);
     }
 
     auto Rock::Actions::spawnIceSphere(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
@@ -566,7 +486,7 @@ namespace eltanin::geo {
         auto cpu = meshVolume(volume);
         applyLavaBrickHeat(cpu);
         auto surface = surfaceFromMesh(volume, cpu);
-        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 80.0f, 1.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 80.0f, 1.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
     auto Rock::Actions::spawnIceBlob(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
@@ -576,64 +496,16 @@ namespace eltanin::geo {
         auto cpu = meshVolume(volume);
         applyIceBlobSinter(cpu);
         auto surface = surfaceFromMesh(volume, cpu);
-        return assembleRock(context, root, device, pose, base::maybe<Volume>{std::move(volume)}, std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 80.0f, 0.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 80.0f, 0.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
-    void Rock::Actions::radiate(Stewarding context, float dt) {
+    void Rock::Actions::radiate(Stewarding, float dt) {
         if (dt <= 0.0f)
             return;
-        const float sigma = phys::Settings::radiateSigma;
-        const float sky = phys::Settings::skyKelvin;
-        auto crystals = context.direct<phys::rigid::Crystal>();
-        auto balls = context.direct<phys::rigid::Ball>();
-        for (auto [_, rock] : context.direct<Rock>().items) {
-            if (rock.volume)
-                continue;
-            if (rock.ball) {
-                auto* ball = balls.items.find(*rock.ball);
-                if (not ball)
-                    continue;
-                phys::Body& body = ball->body;
-                if (body.mass <= 0.0f)
-                    continue;
-                const float temperature = glm::max(body.temperature, sky);
-                const float t2 = temperature * temperature;
-                const float lost = sigma * sphereArea(body.mass) * t2 * t2 * dt;
-                const float energy = body.mass * temperature;
-                body.temperature = glm::max(sky, (energy - lost) / body.mass);
-                if (not with<rmmr::scene::actor::MeshState>::exists(context, rock.actor))
-                    continue;
-                const vec2 nextHeat{body.temperature, body.cohesion};
-                if (with<rmmr::scene::actor::MeshState>::get(context, rock.actor).heat == nextHeat)
-                    continue;
-                with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat = nextHeat;
-                continue;
-            }
-            if (not rock.body)
-                continue;
-            auto* body = crystals.items.find(*rock.body);
-            if (not body)
-                continue;
-            for (phys::Particle& particle : body->particles) {
-                if (particle.mass <= 0.0f)
-                    continue;
-                const float temperature = glm::max(particle.temperature, sky);
-                const float t2 = temperature * temperature;
-                const float lost = sigma * sphereArea(particle.mass) * t2 * t2 * dt;
-                const float energy = particle.mass * temperature;
-                particle.temperature = glm::max(sky, (energy - lost) / particle.mass);
-            }
-            body->refreshMatter();
-            if (not with<rmmr::scene::actor::MeshState>::exists(context, rock.actor))
-                continue;
-            const vec2 nextHeat{body->restored.temperature, body->restored.cohesion};
-            if (with<rmmr::scene::actor::MeshState>::get(context, rock.actor).heat == nextHeat)
-                continue;
-            with<rmmr::scene::actor::MeshState>::modify(context, rock.actor)->heat = nextHeat;
-        }
+        // Volume rocks: thermal / conduction later (destruction path). Boulder handles small-body radiate.
     }
 
-    auto Rock::GeneralizedRecipe::homogenous(Mineral::Index mineral) -> Mix {
+    auto GeneralizedRecipe::homogenous(Mineral::Index mineral) -> Mix {
         if (mineral < 0 or mineral >= mixChannels)
             return 0;
         return Mix{15} << (mineral * 4);
@@ -645,19 +517,9 @@ namespace eltanin::geo {
             for (auto [id, rock] : context.proposal.aspect<Rock>().items()) {
                 if (not my::ward(context, id, &Quantum::actor)) { my::remove(context, id); continue; }
                 if (not with<rmmr::scene::Node>::exists(context, rock.actor)) { my::remove(context, id); continue; }
-                if (rock.ball) {
-                    const auto* ball = my::ward(context, id, &Quantum::ball);
-                    if (not ball) { my::remove(context, id); continue; }
-                    with<rmmr::scene::Node>::modify(context, rock.actor)->pose = ball->body.pose();
-                    continue;
-                }
-                if (rock.body) {
-                    const auto* body = my::ward(context, id, &Quantum::body);
-                    if (not body) { my::remove(context, id); continue; }
-                    with<rmmr::scene::Node>::modify(context, rock.actor)->pose = body->restored.pose();
-                    continue;
-                }
-                my::remove(context, id);
+                const auto* body = my::ward(context, id, &Quantum::body);
+                if (not body) { my::remove(context, id); continue; }
+                with<rmmr::scene::Node>::modify(context, rock.actor)->pose = body->restored.pose();
             }
         }
     };
@@ -666,7 +528,6 @@ namespace eltanin::geo {
         return {
             reaction::structural::custody<Rock, rmmr::scene::actor::Mesh, &Rock::Quantum::actor>{},
             reaction::aspect_wide<Rock, phys::rigid::Crystal>(&Rock::Internals::followBody),
-            reaction::aspect_wide<Rock, phys::rigid::Ball>(&Rock::Internals::followBody),
         };
     }
 

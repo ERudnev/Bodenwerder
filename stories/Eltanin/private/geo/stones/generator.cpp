@@ -145,7 +145,7 @@ namespace eltanin::geo {
             return chosen;
         }
 
-        auto mixAt(vec3 point, const Rock::GeneralizedRecipe& recipe) -> MixWeights {
+        auto mixAt(vec3 point, const GeneralizedRecipe& recipe) -> MixWeights {
             const MixWeights mean = unpackMix(recipe.mix);
             float total = 0.0f;
             int present = 0;
@@ -284,7 +284,7 @@ namespace eltanin::geo {
             return vec3{static_cast<float>(origin.x) + half, static_cast<float>(origin.y) + half, static_cast<float>(origin.z) + half} * mech::space::local::edge2meters;
         }
 
-        auto makeNode(index3 origin, integer scale, const Rock::GeneralizedRecipe& recipe, float radius, float amp, float rMin, float rMax) -> optional<BuildNode> {
+        auto makeNode(index3 origin, integer scale, const GeneralizedRecipe& recipe, float radius, float amp, float rMin, float rMax) -> optional<BuildNode> {
             const Occupancy occ = occupancy(origin, scale, rMin, rMax);
             if (occ == Occupancy::vacuum)
                 return {};
@@ -335,7 +335,7 @@ namespace eltanin::geo {
 
     } // namespace
 
-    auto generateRockVolume(const Rock::GeneralizedRecipe& recipe) -> Volume {
+    auto generateRockVolume(const GeneralizedRecipe& recipe) -> Volume {
         const float radius = recipe.radius;
         const float amp = glm::clamp(recipe.lump, 0.0f, 1.0f) * lumpAmp;
         const vec3 axes = scaledAxes(amp, static_cast<int>(recipe.seed));
@@ -357,7 +357,7 @@ namespace eltanin::geo {
         return Volume{.origin = origin, .scale = scale, .mix = 0, .children = {}};
     }
 
-    auto rockSdf(const Rock::GeneralizedRecipe& recipe, vec3 point) -> float {
+    auto rockSdf(const GeneralizedRecipe& recipe, vec3 point) -> float {
         const float radius = recipe.radius;
         const float amp = glm::clamp(recipe.lump, 0.0f, 1.0f) * lumpAmp;
         return glm::length(point) - radiusAt(point, radius, amp, recipe.seed);
@@ -454,8 +454,8 @@ namespace eltanin::geo {
     }
 
     auto generateIceBlobVolume() -> Volume {
-        const Rock::GeneralizedRecipe recipe{
-            .mix = Rock::GeneralizedRecipe::homogenous(0),
+        const GeneralizedRecipe recipe{
+            .mix = GeneralizedRecipe::homogenous(0),
             .radius = 25.0f,
             .lump = 0.82f,
             .seed = 20260818,

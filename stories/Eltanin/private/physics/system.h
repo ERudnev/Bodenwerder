@@ -14,7 +14,7 @@ namespace eltanin::phys {
     // One pass: accumulate forces (aerodynamics, gravity, …) → Verlet with dissipation → restore bases → connectivity → apply constraint wishes.
     // One Dock per tick; hot mutation via Stewarding::direct<rigid::Crystal>().
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
-    // Thermal: small rocks only (no Volume). Accumulate to thermalStepUs, then radiate. No conduction.
+    // Thermal: Boulder. Rock Volume thermal deferred. Accumulate to thermalStepUs, then radiate. No conduction.
     struct Settings {
         static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
         static constexpr float isaAirDensity = 1225.0f; // g/m³ ISA

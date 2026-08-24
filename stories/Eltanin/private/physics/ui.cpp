@@ -1,6 +1,7 @@
 #include "physics/ui.h"
 
 #include <eltanin/entities/block.q1.h>
+#include <eltanin/geo/boulder.q1.h>
 #include <eltanin/geo/rock.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/resources/builders/geometryGenerator.h>
@@ -72,7 +73,7 @@ namespace eltanin::phys {
 
         auto combatActorOf(Reading context, rigid::Crystal::Id crystal) -> base::maybe<rmmr::scene::actor::Mesh::Id> {
             for (const auto [_, rock] : context->aspect<geo::Rock>().items()) {
-                if (rock.body and *rock.body == crystal)
+                if (rock.body == crystal)
                     return rock.actor;
             }
             for (const auto [_, block] : context->aspect<Block>().items()) {
@@ -83,9 +84,9 @@ namespace eltanin::phys {
         }
 
         auto combatActorOf(Reading context, rigid::Ball::Id ball) -> base::maybe<rmmr::scene::actor::Mesh::Id> {
-            for (const auto [_, rock] : context->aspect<geo::Rock>().items()) {
-                if (rock.ball and *rock.ball == ball)
-                    return rock.actor;
+            for (const auto [_, boulder] : context->aspect<geo::Boulder>().items()) {
+                if (boulder.ball == ball)
+                    return boulder.actor;
             }
             return {};
         }

@@ -1,5 +1,6 @@
 #include "scenarios/asterField.h"
 
+#include <eltanin/geo/boulder.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -65,8 +66,8 @@ namespace eltanin::scenario {
             return axis / std::sqrt(length2);
         }
 
-        void spawnCloud(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, vec3 origin, const geo::Rock::GeneralizedRecipe& recipe, float outboundSpeed, vec3 bodyOmega, bool randomSpin, uint32_t spinSeed, integer coreSeed) {
-            const geo::Rock::GeneralizedRecipe coreRecipe{
+        void spawnCloud(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, vec3 origin, const geo::GeneralizedRecipe& recipe, float outboundSpeed, vec3 bodyOmega, bool randomSpin, uint32_t spinSeed, integer coreSeed) {
+            const geo::GeneralizedRecipe coreRecipe{
                 .mix = stoneCoreMix(),
                 .radius = coreRadius,
                 .lump = 0.0f,
@@ -78,7 +79,7 @@ namespace eltanin::scenario {
             std::mt19937 spinRng(spinSeed);
             for (const vec3& dir : geodesicIcosaVertices()) {
                 const vec3 omega = randomSpin ? randomUnitAxis(spinRng) * spinRate : bodyOmega;
-                with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{origin + dir * shellRadius}, HPB{0.0f, 0.0f, 0.0f}), recipe, dir * outboundSpeed, omega);
+                with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{origin + dir * shellRadius}, HPB{0.0f, 0.0f, 0.0f}), recipe, dir * outboundSpeed, omega);
             }
         }
 
@@ -159,8 +160,8 @@ namespace eltanin::scenario {
 
     void AsterField::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
         with<scene::Root>::modify(context, root)->atmosphereDensity = 1225.0f;
-        const geo::Rock::GeneralizedRecipe recipe{
-            .mix = geo::Rock::GeneralizedRecipe::homogenous(feldspar),
+        const geo::GeneralizedRecipe recipe{
+            .mix = geo::GeneralizedRecipe::homogenous(feldspar),
             .radius = pebbleRadius,
             .lump = 0.55f,
             .seed = 8000,

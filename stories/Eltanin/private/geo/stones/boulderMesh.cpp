@@ -101,7 +101,7 @@ namespace eltanin::geo {
 
     } // namespace
 
-    auto meshDebris(const Rock::GeneralizedRecipe& recipe) -> CpuPresentation {
+    auto meshDebris(const GeneralizedRecipe& recipe) -> CpuPresentation {
         CpuPresentation cpu{
             .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "cohesion"}),
             .positions = {},

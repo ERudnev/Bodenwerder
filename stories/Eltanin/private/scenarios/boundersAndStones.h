@@ -3,6 +3,7 @@
 #include "scenario.h"
 
 #include <base/maybe.h>
+#include <eltanin/geo/boulder.q1.h>
 #include <eltanin/geo/rock.q1.h>
 #include <rmmr/resources/texture3array.q1.h>
 
@@ -17,6 +18,7 @@ namespace eltanin::scenario {
 
         Assets assets;
         vector<geo::Rock::Id> rocks;
+        vector<geo::Boulder::Id> boulders;
 
         void loadResources(Writing, const rmmr::wrapper::assets::Handles& shared) override;
         void populate(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id) override;

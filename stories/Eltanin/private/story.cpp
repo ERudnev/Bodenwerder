@@ -2,6 +2,7 @@
 
 #include <eltanin/entities/block.q1.h>
 #include <eltanin/geo/rock.q1.h>
+#include <eltanin/geo/boulder.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <eltanin/mech/blueprint.q1.h>
 #include <eltanin/mech/mount.q1.h>
@@ -44,6 +45,7 @@ namespace eltanin {
             ask::schema::aspect<phys::rigid::CelestialGravity>(),
             ask::schema::aspect<Block>(),
             ask::schema::aspect<geo::Rock>(),
+            ask::schema::aspect<geo::Boulder>(),
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<mech::Blueprint>(),
             ask::schema::aspect<mech::Mount>(),
