@@ -24,10 +24,20 @@ namespace eltanin::scenario {
 
         constexpr float shellRadius = 10.0f;
         constexpr float pebbleRadius = 2.0f;
+        constexpr float coreRadius = 8.1f; // Crystal (> octreeResolutionRadius); fits inside shellRadius − pebbleRadius
         constexpr float radialSpeed = 100.0f;
         constexpr float cloudSpacing = 30.0f;
         constexpr float spinRate = 2.0f * std::numbers::pi_v<float>; // 1 rev/s
         constexpr integer feldspar = 3;
+        constexpr integer olivine = 1;
+
+        auto nibble(integer channel, integer fill) -> geo::Mix {
+            return geo::Mix{static_cast<std::uint64_t>(fill)} << (channel * 4);
+        }
+
+        auto stoneCoreMix() -> geo::Mix {
+            return nibble(olivine, 8) | nibble(feldspar, 7);
+        }
 
         auto geodesicIcosaVertices() -> vector<vec3> {
             const float phi = 0.5f * (1.0f + std::sqrt(5.0f));
@@ -55,7 +65,16 @@ namespace eltanin::scenario {
             return axis / std::sqrt(length2);
         }
 
-        void spawnCloud(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, vec3 origin, const geo::Rock::GeneralizedRecipe& recipe, float outboundSpeed, vec3 bodyOmega, bool randomSpin, uint32_t spinSeed) {
+        void spawnCloud(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, vec3 origin, const geo::Rock::GeneralizedRecipe& recipe, float outboundSpeed, vec3 bodyOmega, bool randomSpin, uint32_t spinSeed, integer coreSeed) {
+            const geo::Rock::GeneralizedRecipe coreRecipe{
+                .mix = stoneCoreMix(),
+                .radius = coreRadius,
+                .lump = 0.0f,
+                .seed = coreSeed,
+                .spotMeters = coreRadius * 0.45f,
+                .spotContrast = 0.12f,
+            };
+            with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{origin}, HPB{0.0f, 0.0f, 0.0f}), coreRecipe, vec3{0.0f, 0.0f, 0.0f}, bodyOmega);
             std::mt19937 spinRng(spinSeed);
             for (const vec3& dir : geodesicIcosaVertices()) {
                 const vec3 omega = randomSpin ? randomUnitAxis(spinRng) * spinRate : bodyOmega;
@@ -148,9 +167,9 @@ namespace eltanin::scenario {
             .spotMeters = pebbleRadius * 2.0f,
             .spotContrast = 0.0f,
         };
-        spawnCloud(context, root, device, vec3{0.0f, 0.0f, 0.0f}, recipe, radialSpeed, vec3{0.0f, 0.0f, 0.0f}, false, 0);
-        spawnCloud(context, root, device, vec3{-cloudSpacing, 0.0f, 0.0f}, recipe, radialSpeed, vec3{0.0f, 0.0f, 0.0f}, true, 9001);
-        spawnCloud(context, root, device, vec3{cloudSpacing, 0.0f, 0.0f}, recipe, 0.0f, vec3{0.0f, 0.0f, 0.0f}, false, 0);
+        spawnCloud(context, root, device, vec3{0.0f, 0.0f, 0.0f}, recipe, radialSpeed, vec3{0.0f, 0.0f, 0.0f}, false, 0, 7001);
+        spawnCloud(context, root, device, vec3{-cloudSpacing, 0.0f, 0.0f}, recipe, radialSpeed, vec3{0.0f, 0.0f, 0.0f}, true, 9001, 7002);
+        spawnCloud(context, root, device, vec3{cloudSpacing, 0.0f, 0.0f}, recipe, 0.0f, vec3{0.0f, 0.0f, 0.0f}, false, 0, 7003);
     }
 
 }

@@ -228,6 +228,11 @@ namespace eltanin::geo {
             return volume;
         }
 
+        auto scaledAxes(float amp, integer seed) -> vec3 {
+            const vec3 raw = ellipsoidAxes(static_cast<int>(seed));
+            return vec3{glm::mix(1.0f, raw.x, amp), glm::mix(1.0f, raw.y, amp), glm::mix(1.0f, raw.z, amp)};
+        }
+
         auto radiusAt(vec3 point, float radius, float amp, integer seed) -> float {
             if (amp <= 0.0f)
                 return radius;
@@ -235,7 +240,7 @@ namespace eltanin::geo {
             if (length < 1.0e-5f)
                 return radius * (1.0f - amp);
             const vec3 dir = point / length;
-            const vec3 axes = ellipsoidAxes(static_cast<int>(seed));
+            const vec3 axes = scaledAxes(amp, seed);
             const float ellip = 1.0f / glm::length(vec3{dir.x / axes.x, dir.y / axes.y, dir.z / axes.z});
             float knobs = 0.0f;
             for (int index = 0; index < 4; ++index) {
@@ -333,7 +338,7 @@ namespace eltanin::geo {
     auto generateRockVolume(const Rock::GeneralizedRecipe& recipe) -> Volume {
         const float radius = recipe.radius;
         const float amp = glm::clamp(recipe.lump, 0.0f, 1.0f) * lumpAmp;
-        const vec3 axes = amp > 0.0f ? ellipsoidAxes(static_cast<int>(recipe.seed)) : vec3{1.0f, 1.0f, 1.0f};
+        const vec3 axes = scaledAxes(amp, static_cast<int>(recipe.seed));
         const float axisMax = glm::max(axes.x, glm::max(axes.y, axes.z));
         const float axisMin = glm::min(axes.x, glm::min(axes.y, axes.z));
         const float rMin = radius * axisMin * (1.0f - amp);

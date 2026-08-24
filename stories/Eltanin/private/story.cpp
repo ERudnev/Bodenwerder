@@ -115,8 +115,31 @@ namespace eltanin {
                 .blend = renderer::BlendMode::additive,
             });
 
-        if (not shared or not shared->material.lit) {
+        if (not shared->material.lit) {
             return (void)context.refuse("eltanin::Game::addAssets: rmmr lit missing");
+        }
+        if (not shared->material.gizmo.textured) {
+            return (void)context.refuse("eltanin::Game::addAssets: rmmr gizmo_textured missing");
+        }
+        {
+            const auto& gizmoTextured = with<Material>::get(context, *shared->material.gizmo.textured);
+            const auto gizmoTechnique = gizmoTextured.techniques.find(renderer::Pass::gizmo);
+            if (gizmoTechnique == gizmoTextured.techniques.end())
+                return (void)context.refuse("eltanin::Game::addAssets: gizmo_textured technique missing");
+            assets.collisionDebugMaterial = with<Assets>::add_material(
+                context,
+                Name::from("Eltanin", "collisionDebug"),
+                Material::Quantum{
+                    .techniques = {
+                        {renderer::Pass::opaque, Material::Technique{
+                            .program = gizmoTechnique->second.program,
+                            .uniforms = gizmoTechnique->second.uniforms,
+                            .glowSpread = false,
+                        }},
+                    },
+                    .nearest = false,
+                    .blend = renderer::BlendMode::inherit,
+                });
         }
         scenario.loadResources(context, *shared);
 

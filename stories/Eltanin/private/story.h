@@ -39,6 +39,7 @@ namespace eltanin {
             base::maybe<rmmr::resource::meshpack::Asset::Id> armour;
             base::maybe<rmmr::resource::meshpack::Asset::Id> devices;
             base::maybe<rmmr::resource::overlay::Asset::Id> blueprintsEditorEffect;
+            base::maybe<rmmr::resource::material::Asset::Id> collisionDebugMaterial;
         };
 
         Handles assets;
