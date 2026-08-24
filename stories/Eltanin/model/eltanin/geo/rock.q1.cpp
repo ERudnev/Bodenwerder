@@ -247,25 +247,25 @@ namespace eltanin::geo {
             return ivec3{static_cast<int>(std::lround(point.x / particleSnapMeters)), static_cast<int>(std::lround(point.y / particleSnapMeters)), static_cast<int>(std::lround(point.z / particleSnapMeters))};
         }
 
-        auto triangleFace(integer a, integer b, integer c, const vector<vec3>& shape, vec3 inside) -> phys::rigid::Compound::Hull::Face {
+        auto triangleFace(integer a, integer b, integer c, const vector<vec3>& shape, vec3 inside) -> phys::rigid::Hull::Face {
             const vec3 ab = shape[static_cast<std::size_t>(b)] - shape[static_cast<std::size_t>(a)];
             const vec3 ac = shape[static_cast<std::size_t>(c)] - shape[static_cast<std::size_t>(a)];
             vec3 normal = glm::cross(ab, ac);
             const float mag = glm::length(normal);
             if (mag <= 1.0e-12f)
-                return phys::rigid::Compound::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}};
+                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}};
             normal /= mag;
             const vec3 centroid = (shape[static_cast<std::size_t>(a)] + shape[static_cast<std::size_t>(b)] + shape[static_cast<std::size_t>(c)]) / 3.0f;
             if (glm::dot(normal, centroid - inside) < 0.0f) {
                 std::swap(b, c);
                 normal = -normal;
             }
-            return phys::rigid::Compound::Hull::Face{.points = {a, b, c}, .normal = normal};
+            return phys::rigid::Hull::Face{.points = {a, b, c}, .normal = normal};
         }
 
         struct SurfaceBody {
             vector<Sample> samples;
-            phys::rigid::Compound::Hull hull;
+            phys::rigid::Hull hull;
         };
 
         auto surfaceFromMesh(const Volume& volume, const rmmr::resource::builders::geometry::CpuPresentation& cpu) -> SurfaceBody {
@@ -314,7 +314,7 @@ namespace eltanin::geo {
             float mass = 0.0f;
             vec3 moment{0.0f, 0.0f, 0.0f};
             accumulateVolumeMass(volume, mass, moment);
-            SurfaceBody surface{.samples = {}, .hull = phys::rigid::Compound::Hull{.faces = {}}};
+            SurfaceBody surface{.samples = {}, .hull = phys::rigid::Hull{.faces = {}}};
             if (mass <= 0.0f or rim.empty())
                 return surface;
             const vec3 com = moment / mass;
@@ -370,7 +370,7 @@ namespace eltanin::geo {
             return true;
         }
 
-        auto assembleRock(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, Volume volume, rmmr::resource::builders::geometry::CpuPresentation cpu, vector<Sample> samples, phys::rigid::Compound::Hull hull, rmmr::resource::Unit::Name materialName, integer spriteIndex, float temperature, float cohesion, vec3 velocity, vec3 omega) -> Rock::Id {
+        auto assembleRock(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, Volume volume, rmmr::resource::builders::geometry::CpuPresentation cpu, vector<Sample> samples, phys::rigid::Hull hull, rmmr::resource::Unit::Name materialName, integer spriteIndex, float temperature, float cohesion, vec3 velocity, vec3 omega) -> Rock::Id {
             if (cpu.positions.empty())
                 return context.refuse("eltanin::geo::Rock::spawn: no surface");
             if (samples.empty())

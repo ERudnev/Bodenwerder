@@ -21,23 +21,23 @@ namespace eltanin {
             return locals;
         }
 
-        auto triangleFace(integer a, integer b, integer c, const vector<vec3>& shape, vec3 inside) -> phys::rigid::Compound::Hull::Face {
+        auto triangleFace(integer a, integer b, integer c, const vector<vec3>& shape, vec3 inside) -> phys::rigid::Hull::Face {
             const vec3 ab = shape[static_cast<std::size_t>(b)] - shape[static_cast<std::size_t>(a)];
             const vec3 ac = shape[static_cast<std::size_t>(c)] - shape[static_cast<std::size_t>(a)];
             vec3 normal = glm::cross(ab, ac);
             const float mag = glm::length(normal);
             if (mag <= 1.0e-12f)
-                return phys::rigid::Compound::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}};
+                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}};
             normal /= mag;
             const vec3 centroid = (shape[static_cast<std::size_t>(a)] + shape[static_cast<std::size_t>(b)] + shape[static_cast<std::size_t>(c)]) / 3.0f;
             if (glm::dot(normal, centroid - inside) < 0.0f) {
                 std::swap(b, c);
                 normal = -normal;
             }
-            return phys::rigid::Compound::Hull::Face{.points = {a, b, c}, .normal = normal};
+            return phys::rigid::Hull::Face{.points = {a, b, c}, .normal = normal};
         }
 
-        auto hullFromCorners(const vector<vec3>& locals, const vector<mech::cube::Corner>& corners) -> phys::rigid::Compound::Hull {
+        auto hullFromCorners(const vector<vec3>& locals, const vector<mech::cube::Corner>& corners) -> phys::rigid::Hull {
             integer at[8];
             for (integer& slot : at)
                 slot = -1;
@@ -48,7 +48,7 @@ namespace eltanin {
                 inside += local;
             if (not locals.empty())
                 inside /= static_cast<float>(locals.size());
-            phys::rigid::Compound::Hull hull{.faces = {}};
+            phys::rigid::Hull hull{.faces = {}};
             for (const auto& loop : mech::cube::faces) {
                 if (loop.size() != 4)
                     continue;

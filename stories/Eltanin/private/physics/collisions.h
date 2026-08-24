@@ -1,8 +1,7 @@
 #pragma once
 
+#include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
-
-#include <base/maybe.h>
 
 #include <vector>
 
@@ -16,16 +15,15 @@ namespace eltanin::phys::collision {
     // Contact = positional constraint + event payload — not a force into accumulateForces.
 
 
-    // One side of a candidate or contact. Exactly one of crystal / ball is set (by primitive).
+    // One side of a candidate or contact. Ball and Crystal share Body::Id; type selects the primitive.
     struct Endpoint {
         enum class Type {
-            crystal, // Compound::Hull triangle in Crystal.shape
+            crystal, // Hull triangle in Crystal.shape
             ball,
             // projectile — segment (prev→position); when the entity exists
         };
         Type type;
-        base::maybe<rigid::Crystal::Id> crystal;
-        base::maybe<rigid::Ball::Id> ball;
+        Body::Id body;
         integer face; // Crystal hull face index; ignored for ball
     };
 

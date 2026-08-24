@@ -7,12 +7,11 @@ namespace eltanin
 
       // Graphics front faces are CCW: (b−a)×(c−a) points toward the camera / outward.
       // Physics uses the same winding. Hull is the triangle surface of Crystal.shape; not necessarily convex.
-      struct Compound
-        struct Hull
-          struct Face
-            points: vector<integer> // into Crystal.shape
-            normal: vec3
-          faces: vector<Face>
+      struct Hull
+        struct Face
+          points: vector<integer> // into Crystal.shape
+          normal: vec3
+        faces: vector<Face>
 
       feature Ball of phys::Body
         one
@@ -26,7 +25,7 @@ namespace eltanin
           particles: vector<Particle>
           shape: vector<vec3> // Immutable particle locals in the body's frame; origin is not COM
           com: vec3 // restCOM = Σ(m·shape)/Σm, computed once for this shape
-          hull: Compound::Hull
+          hull: Hull
           =debugAddImpulse(imp: vec3)
           =setMotion(pose: Pose, linear: vec3, omega: vec3) // Place shape by Pose; prev = position − (linear + ω×(position−currentCOM))·dt
           all *restore() // Horn → Pose into Body; particles untouched

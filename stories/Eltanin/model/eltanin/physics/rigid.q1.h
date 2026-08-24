@@ -10,14 +10,12 @@ namespace eltanin::phys::rigid {
 
     using namespace fqsm::api;
 
-    struct Compound {
-        struct Hull {
-            struct Face {
-                vector<integer> points;
-                vec3 normal;
-            };
-            vector<Face> faces;
+    struct Hull {
+        struct Face {
+            vector<integer> points;
+            vec3 normal;
         };
+        vector<Face> faces;
     };
 
     struct Ball : Feature<Ball, Body> {
@@ -37,7 +35,7 @@ namespace eltanin::phys::rigid {
             vector<Particle> particles;
             vector<vec3> shape;
             vec3 com;
-            Compound::Hull hull;
+            Hull hull;
 
             void refreshMatter(Body::Quantum&);
         };

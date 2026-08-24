@@ -97,7 +97,7 @@ namespace eltanin::phys {
             return {u, glm::normalize(glm::cross(normal, u))};
         }
 
-        auto debugMeshFromHull(const rigid::Compound::Hull& hull, const vector<vec3>& shape) -> rmmr::resource::builders::geometry::CpuPresentation {
+        auto debugMeshFromHull(const rigid::Hull& hull, const vector<vec3>& shape) -> rmmr::resource::builders::geometry::CpuPresentation {
             using rmmr::resource::builders::geometry::CpuPresentation;
             CpuPresentation cpu{
                 .layout = rmmr::primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"}),
@@ -200,11 +200,7 @@ namespace eltanin::phys {
     void Ui::hideProduction(Writing context) {
         restoreProduction(context);
         for (const auto& hullRef : hullRefs) {
-            base::maybe<rmmr::scene::actor::Mesh::Id> actor;
-            if (hullRef.crystal)
-                actor = productionActorOf(context, *hullRef.crystal);
-            else if (hullRef.ball)
-                actor = productionActorOf(context, *hullRef.ball);
+            const auto actor = productionActorOf(context, hullRef.body);
             if (not actor or not with<rmmr::scene::actor::MeshState>::exists(context, *actor))
                 continue;
             rmmr::scene::actor::MeshState::Actions::setVisible(context, *actor, false);
@@ -247,7 +243,7 @@ namespace eltanin::phys {
                 .texpack = hullTexpack,
             };
             state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, with<Body>::get(context, crystalId).pose(), resolved, appearance));
-            hullRefs.push_back(HullRef{.crystal = crystalId, .ball = {}});
+            hullRefs.push_back(HullRef{.body = crystalId});
         }
         for (const auto [ballId, _] : context->aspect<rigid::Ball>().items()) {
             const auto& body = with<Body>::get(context, ballId);
@@ -262,7 +258,7 @@ namespace eltanin::phys {
             };
             const auto ballAppearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{radius, radius, radius});
             state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, *root, body.pose(), resolved, ballAppearance));
-            hullRefs.push_back(HullRef{.crystal = {}, .ball = ballId});
+            hullRefs.push_back(HullRef{.body = ballId});
         }
         hideProduction(context);
     }
@@ -281,34 +277,16 @@ namespace eltanin::phys {
         while (slot < state.hulls.size()) {
             const auto actor = state.hulls[slot];
             const HullRef hullRef = hullRefs[slot];
+            const bool missingBody = not with<Body>::exists(context, hullRef.body);
             const bool missingActor = not with<rmmr::scene::actor::Mesh>::exists(context, actor);
-            if (hullRef.crystal) {
-                const bool missingCrystal = not with<rigid::Crystal>::exists(context, *hullRef.crystal);
-                if (missingCrystal or missingActor) {
-                    if (with<rmmr::scene::actor::Mesh>::exists(context, actor))
-                        destroy_actor(context, actor);
-                    state.hulls.erase(state.hulls.begin() + static_cast<std::ptrdiff_t>(slot));
-                    hullRefs.erase(hullRefs.begin() + static_cast<std::ptrdiff_t>(slot));
-                    continue;
-                }
-                with<rmmr::scene::Node>::modify(context, actor)->pose = with<Body>::get(context, *hullRef.crystal).pose();
-            } else if (hullRef.ball) {
-                const bool missingBall = not with<rigid::Ball>::exists(context, *hullRef.ball);
-                if (missingBall or missingActor) {
-                    if (with<rmmr::scene::actor::Mesh>::exists(context, actor))
-                        destroy_actor(context, actor);
-                    state.hulls.erase(state.hulls.begin() + static_cast<std::ptrdiff_t>(slot));
-                    hullRefs.erase(hullRefs.begin() + static_cast<std::ptrdiff_t>(slot));
-                    continue;
-                }
-                with<rmmr::scene::Node>::modify(context, actor)->pose = with<Body>::get(context, *hullRef.ball).pose();
-            } else {
+            if (missingBody or missingActor) {
                 if (with<rmmr::scene::actor::Mesh>::exists(context, actor))
                     destroy_actor(context, actor);
                 state.hulls.erase(state.hulls.begin() + static_cast<std::ptrdiff_t>(slot));
                 hullRefs.erase(hullRefs.begin() + static_cast<std::ptrdiff_t>(slot));
                 continue;
             }
+            with<rmmr::scene::Node>::modify(context, actor)->pose = with<Body>::get(context, hullRef.body).pose();
             ++slot;
         }
     }
