@@ -1,6 +1,6 @@
-# Три паразита
-
 2026-07-10
+
+# Три паразита
 
 До этого в Q1 и fQSM parasitic-аспекты фактически сводились к одной модели: `attribute X of Host`. Для optional decoration этого хватало, но для co-born runtime-связей и mandatory aggregate — нет.
 
