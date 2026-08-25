@@ -65,7 +65,7 @@ namespace eltanin::phys::collision {
         }
 
         auto worldOf(const Body::Quantum& body, vec3 local) -> vec3 {
-            return body.position + body.orientation * local;
+            return vec3{body.position + dvec3{body.orientation * local}};
         }
 
         auto faceUsable(const Crystal::Quantum& crystal, const Hull::Face& face) -> bool {
@@ -80,7 +80,7 @@ namespace eltanin::phys::collision {
             if (not body or body->radius <= 0.0f or body->mass <= 0.0f)
                 return;
             if (balls.items.find(id)) {
-                occupants.push_back(Occupant{Endpoint::Type::ball, id, body->position, body->radius});
+                occupants.push_back(Occupant{Endpoint::Type::ball, id, vec3{body->position}, body->radius});
                 return;
             }
             auto* crystal = crystals.items.find(id);
@@ -95,15 +95,15 @@ namespace eltanin::phys::collision {
                 auto* ball = balls.items.find(id);
                 if (not body or not ball)
                     return vec3{0.0f, 0.0f, 0.0f};
-                return (body->position - ball->prevPos) / Particle::dt;
+                return vec3{(body->position - ball->prevPos) / double(Particle::dt)};
             }
             auto* crystal = crystals.items.find(id);
             if (not crystal or crystal->particles.empty())
                 return vec3{0.0f, 0.0f, 0.0f};
-            vec3 sum{0.0f, 0.0f, 0.0f};
+            dvec3 sum{0.0, 0.0, 0.0};
             for (const Particle& particle : crystal->particles)
                 sum += particle.velocity();
-            return sum / static_cast<float>(crystal->particles.size());
+            return vec3{sum / double(crystal->particles.size())};
         }
 
         auto spheresOverlap(vec3 centerA, float radiusA, vec3 centerB, float radiusB) -> bool {
@@ -251,10 +251,12 @@ namespace eltanin::phys::collision {
         }
 
         auto measureBallBall(const Body::Quantum& first, const Body::Quantum& second, vec3& point, vec3& normal) -> float {
-            const vec3 offset = second.position - first.position;
+            const vec3 firstPos{first.position};
+            const vec3 secondPos{second.position};
+            const vec3 offset = secondPos - firstPos;
             const float distance = glm::length(offset);
             const vec3 fromFirstTowardSecond = distance >= minLength ? offset / distance : vec3{1.0f, 0.0f, 0.0f};
-            point = first.position + fromFirstTowardSecond * first.radius;
+            point = firstPos + fromFirstTowardSecond * first.radius;
             normal = fromFirstTowardSecond;
             return first.radius + second.radius - distance;
         }
@@ -268,8 +270,9 @@ namespace eltanin::phys::collision {
             const vec3 corner0 = worldOf(crystalBody, crystal.shape[static_cast<std::size_t>(face.points[0])]);
             const vec3 corner1 = worldOf(crystalBody, crystal.shape[static_cast<std::size_t>(face.points[1])]);
             const vec3 corner2 = worldOf(crystalBody, crystal.shape[static_cast<std::size_t>(face.points[2])]);
-            const vec3 closest = closestPointOnTriangle(ball.position, corner0, corner1, corner2);
-            const vec3 offset = ball.position - closest;
+            const vec3 ballPos{ball.position};
+            const vec3 closest = closestPointOnTriangle(ballPos, corner0, corner1, corner2);
+            const vec3 offset = ballPos - closest;
             const float distance = glm::length(offset);
             const float penetration = ball.radius - distance;
             if (penetration <= 0.0f)
@@ -471,8 +474,8 @@ namespace eltanin::phys::collision {
                 if (weightSum <= 0.0f)
                     continue;
                 const float step = remaining * solverRate;
-                bodyA->position -= contact.normal * (step * (weightA / weightSum));
-                bodyB->position += contact.normal * (step * (weightB / weightSum));
+                bodyA->position -= dvec3{contact.normal * (step * (weightA / weightSum))};
+                bodyB->position += dvec3{contact.normal * (step * (weightB / weightSum))};
                 contact.correction += step;
                 contact.penetration = remaining;
             }

@@ -14,6 +14,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+#include <glm/ext/vector_double3.hpp>
 #include <glm/mat3x3.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/ext/matrix_int3x3.hpp>
@@ -75,6 +76,7 @@ namespace base::common_types {
     using imat3 = glm::imat3;
     using vec2 = glm::vec2;
     using vec3 = glm::vec3;
+    using dvec3 = glm::dvec3;
     using vec4 = glm::vec4;
     using ivec3 = glm::ivec3;
     using quat = glm::quat;

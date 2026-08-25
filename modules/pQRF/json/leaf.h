@@ -12,6 +12,7 @@
 
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/ext/vector_double3.hpp>
 
 #include <base/maybe.h>
 #include <base/types/common_types.h>
@@ -330,6 +331,33 @@ namespace fqsm::processing::persistency::json::detail::leaf {
         }
 
         static void read(const Value& value, glm::vec3& target) {
+            target = decode(value);
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct codec<glm::dvec3> {
+        static auto write(const glm::dvec3& value) -> Value {
+            return Value::array_value({
+                codec<double>::write(value.x),
+                codec<double>::write(value.y),
+                codec<double>::write(value.z),
+            });
+        }
+
+        static auto decode(const Value& value) -> glm::dvec3 {
+            if (!value.is_array() || value.array.size() != 3)
+                throw std::runtime_error("json leaf: expected dvec3 array");
+            return glm::dvec3{
+                codec<double>::decode(value.array[0]),
+                codec<double>::decode(value.array[1]),
+                codec<double>::decode(value.array[2]),
+            };
+        }
+
+        static void read(const Value& value, glm::dvec3& target) {
             target = decode(value);
         }
 

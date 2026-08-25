@@ -20,7 +20,7 @@ namespace eltanin::phys::rigid {
 
     struct Ball : Feature<Ball, Body> {
         struct Quantum {
-            vec3 prevPos;
+            dvec3 prevPos;
             quat prevOri;
             vec3 forceLinear;
             vec3 forceAngular;
@@ -63,6 +63,7 @@ namespace eltanin::phys::rigid {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    auto restoredBody(dvec3 origin, quat rotation, const vector<Particle>&, const vector<vec3>&) -> Body::Quantum;
     auto restoredBody(rmmr::Pose, const vector<Particle>&, const vector<vec3>&) -> Body::Quantum;
 
 }

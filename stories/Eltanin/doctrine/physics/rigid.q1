@@ -15,7 +15,7 @@ namespace eltanin
 
       feature Ball of phys::Body
         one
-          prevPos: vec3
+          prevPos: dvec3
           prevOri: quat
           forceLinear: vec3
           forceAngular: vec3

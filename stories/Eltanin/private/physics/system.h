@@ -15,7 +15,7 @@ namespace eltanin::phys {
 
     // Private physics subsystem (not Q1).
     // Fixed tick 10ms; wall dt accumulates as debt (sub-step remainder).
-    // One pass: accumulate forces (aerodynamics, gravity, …) → Verlet with dissipation → restore bases → connectivity → apply constraint wishes.
+    // One pass: accumulate forces (aerodynamics, gravity, …) → Verlet → restore bases → connectivity → apply constraint wishes.
     // One Dock per tick; hot mutation via Stewarding::direct<Body>() and direct<rigid::Crystal>() / direct<rigid::Ball>().
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
     // Thermal: Boulder. Rock Volume thermal deferred. Accumulate to thermalStepUs, then radiate. No conduction.
@@ -23,8 +23,7 @@ namespace eltanin::phys {
         static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
         static constexpr float isaAirDensity = 1225.0f; // g/m³ ISA
         static constexpr float airDragTau = 1.0f; // seconds to e-fold at isaAirDensity
-        static constexpr float dissipation = 1.0f;//0.99f; // Verlet (x−prev) scale per tick; 1 = none (Jakobsen ~0.99 for drag)
-        static constexpr float restLinear = 1.0e-3f; // m/tick; below this (x−prev) is zeroed (0.99 never reaches 0)
+        static constexpr float restLinear = 1.0e-5f; // m/tick; below this (x−prev) is zeroed
         static constexpr int64 fixedStepUs = 10'000;
         static constexpr int64 thermalStepUs = 200'000;
         static constexpr float skyKelvin = 3.0f;

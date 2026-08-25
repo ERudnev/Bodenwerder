@@ -152,7 +152,7 @@ namespace eltanin::phys {
         const auto appearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{particleWorldScale, particleWorldScale, particleWorldScale});
         for (const auto [crystalId, crystal] : context->aspect<rigid::Crystal>().items()) {
             for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
-                state.particles.push_back(with<rmmr::scene::Interface>::createMeshActor(context, root, rmmr::Pose::from(crystal.particles[index].position, HPB{0.0f, 0.0f, 0.0f}), resolved, appearance));
+                state.particles.push_back(with<rmmr::scene::Interface>::createMeshActor(context, root, rmmr::Pose::from(vec3{crystal.particles[index].position}, HPB{0.0f, 0.0f, 0.0f}), resolved, appearance));
                 particleRefs.push_back(ParticleRef{.crystal = crystalId, .index = index});
             }
         }
@@ -183,7 +183,7 @@ namespace eltanin::phys {
             }
             const Particle& particle = with<rigid::Crystal>::get(context, particleRef.crystal).particles[particleRef.index];
             auto node = with<rmmr::scene::Node>::modify(context, actor);
-            node->pose.position = particle.position;
+            node->pose.position = vec3{particle.position};
             node->pose.rotation = quat{1.0f, 0.0f, 0.0f, 0.0f};
             ++slot;
         }

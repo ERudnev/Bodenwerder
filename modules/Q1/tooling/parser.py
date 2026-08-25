@@ -87,6 +87,7 @@ BUILTINS = frozenset({
     "boolean",
     "vec2",
     "vec3",
+    "dvec3",
     "vec4",
     "quat",
     "mat4",

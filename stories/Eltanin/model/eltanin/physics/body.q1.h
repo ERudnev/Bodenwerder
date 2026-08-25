@@ -10,7 +10,7 @@ namespace eltanin::phys {
     using Kelvins = float;
 
     struct Matter {
-        vec3 position;
+        dvec3 position;
         float mass;
         Kelvins temperature;
         float cohesion;
@@ -21,11 +21,11 @@ namespace eltanin::phys {
 
     struct Particle : Matter {
         static constexpr float dt = 0.01f;
-        vec3 prev;
+        dvec3 prev;
         vec3 force;
 
-        auto velocity() const -> vec3 { return (position - prev) / dt; }
-        auto impulse() const -> vec3 { return velocity() * mass; }
+        auto velocity() const -> dvec3 { return (position - prev) / double(dt); }
+        auto impulse() const -> vec3 { return vec3{velocity() * double(mass)}; }
     };
 
     struct Body : Entity<Body> {
@@ -34,9 +34,9 @@ namespace eltanin::phys {
             float radius;
             float hitpoints;
 
-            auto pose() const -> rmmr::Pose { return rmmr::Pose{.position = position, .rotation = orientation}; }
+            auto pose() const -> rmmr::Pose { return rmmr::Pose{.position = vec3{position}, .rotation = orientation}; }
             void pose(rmmr::Pose value) {
-                position = value.position;
+                position = dvec3{value.position};
                 orientation = value.rotation;
             }
         };

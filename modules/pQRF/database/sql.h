@@ -17,6 +17,7 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/ext/vector_double3.hpp>
 
 #include <base/maybe.h>
 #include <base/types/common_types.h>
@@ -389,6 +390,36 @@ namespace fqsm::processing::persistency::database::detail::sql {
 
         static auto decode(sqlite3_stmt* statement, int index) -> glm::vec3 {
             glm::vec3 value{};
+            read(statement, index, value);
+            return value;
+        }
+
+        static consteval void require() {}
+    };
+
+    template<>
+    struct atom<glm::dvec3> {
+        static constexpr bool nullable = false;
+        static constexpr auto columns = std::array<ColumnDef, 3>{
+            ColumnDef{"_x", "REAL"},
+            ColumnDef{"_y", "REAL"},
+            ColumnDef{"_z", "REAL"},
+        };
+
+        static auto bind(sqlite3_stmt* statement, int index, const glm::dvec3& value) -> int {
+            index = atom<double>::bind(statement, index, value.x);
+            index = atom<double>::bind(statement, index, value.y);
+            return atom<double>::bind(statement, index, value.z);
+        }
+
+        static auto read(sqlite3_stmt* statement, int index, glm::dvec3& value) -> int {
+            index = atom<double>::read(statement, index, value.x);
+            index = atom<double>::read(statement, index, value.y);
+            return atom<double>::read(statement, index, value.z);
+        }
+
+        static auto decode(sqlite3_stmt* statement, int index) -> glm::dvec3 {
+            glm::dvec3 value{};
             read(statement, index, value);
             return value;
         }

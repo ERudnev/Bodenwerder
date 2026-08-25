@@ -106,7 +106,7 @@ namespace eltanin::geo {
         const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), meshState);
 
         const auto body = with<phys::Body>::create(context, phys::Body::Quantum{
-            phys::Matter{.position = pose.position, .mass = mass, .temperature = 0.0f, .cohesion = 0.0f},
+            phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = 0.0f},
             pose.rotation,
             recipe.radius,
             0.0f,
@@ -118,7 +118,7 @@ namespace eltanin::geo {
             prevOri = glm::normalize(step * pose.rotation);
         }
         with<phys::rigid::Ball>::extend(context, body, phys::rigid::Ball::Quantum{
-            .prevPos = pose.position - velocity * phys::Particle::dt,
+            .prevPos = dvec3{pose.position} - dvec3{velocity * phys::Particle::dt},
             .prevOri = prevOri,
             .forceLinear = vec3{0.0f, 0.0f, 0.0f},
             .forceAngular = vec3{0.0f, 0.0f, 0.0f},

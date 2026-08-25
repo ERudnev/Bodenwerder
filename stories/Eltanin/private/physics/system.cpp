@@ -43,7 +43,7 @@ namespace eltanin::phys {
             for (Particle& particle : crystal.particles) {
                 if (particle.mass <= 0.0f)
                     continue;
-                particle.force += particle.mass * dragScale * (particle.position - particle.prev);
+                particle.force += particle.mass * dragScale * vec3{particle.position - particle.prev};
             }
         }
         auto bodies = context.direct<Body>();
@@ -51,7 +51,7 @@ namespace eltanin::phys {
             auto* body = bodies.items.find(id);
             if (not body or body->mass <= 0.0f)
                 continue;
-            ball.forceLinear += body->mass * dragScale * (body->position - ball.prevPos);
+            ball.forceLinear += body->mass * dragScale * vec3{body->position - ball.prevPos};
         }
     }
 
@@ -93,15 +93,15 @@ namespace eltanin::phys {
     }
 
     void System::integrate(fqsm::Direct<rigid::Crystal> crystals) {
-        const float dt2 = Particle::dt * Particle::dt;
-        const float rest2 = Settings::restLinear * Settings::restLinear;
+        const double dt2 = double(Particle::dt) * double(Particle::dt);
+        const double rest2 = double(Settings::restLinear) * double(Settings::restLinear);
         for (auto [_, crystal] : crystals.items) {
             for (Particle& particle : crystal.particles) {
-                const vec3 previous = particle.position;
-                const vec3 accel = particle.mass > 0.0f ? particle.force / particle.mass : vec3{0.0f, 0.0f, 0.0f};
-                vec3 step = (particle.position - particle.prev) * Settings::dissipation;
+                const dvec3 previous = particle.position;
+                const dvec3 accel = particle.mass > 0.0f ? dvec3{particle.force / particle.mass} : dvec3{0.0, 0.0, 0.0};
+                dvec3 step = particle.position - particle.prev;
                 if (glm::dot(step, step) < rest2)
-                    step = vec3{0.0f, 0.0f, 0.0f};
+                    step = dvec3{0.0, 0.0, 0.0};
                 particle.position += step + accel * dt2;
                 particle.prev = previous;
             }
@@ -110,18 +110,18 @@ namespace eltanin::phys {
 
     void System::integrateBalls(fqsm::Direct<Body> bodies, fqsm::Direct<rigid::Ball> balls) {
         const float dt = Particle::dt;
-        const float dt2 = dt * dt;
-        const float rest2 = Settings::restLinear * Settings::restLinear;
+        const double dt2 = double(dt) * double(dt);
+        const double rest2 = double(Settings::restLinear) * double(Settings::restLinear);
         for (auto [id, ball] : balls.items) {
             auto* body = bodies.items.find(id);
             if (not body or body->mass <= 0.0f)
                 continue;
 
-            const vec3 previousPos = body->position;
-            const vec3 accel = ball.forceLinear / body->mass;
-            vec3 step = (body->position - ball.prevPos) * Settings::dissipation;
+            const dvec3 previousPos = body->position;
+            const dvec3 accel = dvec3{ball.forceLinear / body->mass};
+            dvec3 step = body->position - ball.prevPos;
             if (glm::dot(step, step) < rest2)
-                step = vec3{0.0f, 0.0f, 0.0f};
+                step = dvec3{0.0, 0.0, 0.0};
             body->position += step + accel * dt2;
             ball.prevPos = previousPos;
 
@@ -134,7 +134,6 @@ namespace eltanin::phys {
             vec3 omega = (2.0f / dt) * vec3{qRel.x, qRel.y, qRel.z};
             if (qRel.w < 0.0f)
                 omega = -omega;
-            omega *= Settings::dissipation;
             omega += (ball.forceAngular / inertia) * dt;
             if (glm::length(omega) * dt < Settings::restLinear)
                 omega = vec3{0.0f, 0.0f, 0.0f};

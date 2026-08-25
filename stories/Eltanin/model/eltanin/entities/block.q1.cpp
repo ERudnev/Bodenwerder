@@ -103,7 +103,7 @@ namespace eltanin {
             shape.reserve(locals.size());
             for (const auto& local : locals) {
                 const vec3 world = pose.position + pose.rotation * local;
-                particles.push_back(phys::Particle{phys::Matter{.position = world, .mass = 1.0f, .temperature = 0.0f, .cohesion = 1.0f}, world, vec3{0.0f, 0.0f, 0.0f}});
+                particles.push_back(phys::Particle{phys::Matter{.position = dvec3{world}, .mass = 1.0f, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{world}, vec3{0.0f, 0.0f, 0.0f}});
                 shape.push_back(local);
             }
 

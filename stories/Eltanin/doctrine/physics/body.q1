@@ -6,7 +6,7 @@ namespace eltanin
     using Kelvins as float
 
     struct Matter
-      position: vec3
+      position: dvec3
       mass: float
       temperature: Kelvins
       cohesion: float
@@ -15,15 +15,15 @@ namespace eltanin
 
     struct Particle of Matter
       always dt: float = 0.01
-      prev: vec3
+      prev: dvec3
       force: vec3
-      ?velocity()->vec3
+      ?velocity()->dvec3
       ?impulse()->vec3
 
     // World-facing Matter cache. Ball and Crystal are features of the same id.
     entity Body
       one
-        position: vec3
+        position: dvec3
         mass: float
         temperature: Kelvins
         cohesion: float

@@ -33,26 +33,23 @@ namespace eltanin::phys::rigid {
             return radius;
         }
 
-        auto currentComOf(const vector<Particle>& particles) -> vec3 {
-            if (particles.empty())
-                return vec3{0.0f, 0.0f, 0.0f};
-            const vec3 anchor = particles.front().position;
-            glm::dvec3 moment{0.0, 0.0, 0.0};
+        auto currentComOf(const vector<Particle>& particles) -> dvec3 {
+            dvec3 moment{0.0, 0.0, 0.0};
             double mass = 0.0;
             for (const Particle& particle : particles) {
-                moment += glm::dvec3{particle.position - anchor} * static_cast<double>(particle.mass);
-                mass += static_cast<double>(particle.mass);
+                moment += particle.position * double(particle.mass);
+                mass += double(particle.mass);
             }
-            return mass > 0.0 ? anchor + vec3{moment / mass} : vec3{0.0f, 0.0f, 0.0f};
+            return mass > 0.0 ? moment / mass : dvec3{0.0, 0.0, 0.0};
         }
 
-        // goal = pose * shape; position += k·(goal−position). Shift prev by the same delta so projection does not invent Verlet velocity.
-        void pullToShape(Crystal::Quantum& crystal, Pose pose) {
-            const float k = Settings::constraintStiffness;
+        // goal = origin + R·shape; position += k·(goal−position). Same delta on prev so projection does not invent Verlet velocity.
+        void pullToShape(Crystal::Quantum& crystal, dvec3 origin, quat rotation) {
+            const double k = double(Settings::constraintStiffness);
             for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
                 Particle& particle = crystal.particles[index];
-                const vec3 goal = pose.position + pose.rotation * crystal.shape[index];
-                const vec3 correction = (goal - particle.position) * k;
+                const dvec3 goal = origin + dvec3{rotation * crystal.shape[index]};
+                const dvec3 correction = (goal - particle.position) * k;
                 particle.position += correction;
                 particle.prev += correction;
             }
@@ -60,7 +57,7 @@ namespace eltanin::phys::rigid {
 
     }
 
-    auto restoredBody(Pose pose, const vector<Particle>& particles, const vector<vec3>& shape) -> Body::Quantum {
+    auto restoredBody(dvec3 origin, quat rotation, const vector<Particle>& particles, const vector<vec3>& shape) -> Body::Quantum {
         float mass = 0.0f;
         float thermalEnergy = 0.0f;
         float hitpoints = 0.0f;
@@ -71,11 +68,15 @@ namespace eltanin::phys::rigid {
         }
         const float temperature = mass > 0.0f ? thermalEnergy / mass : 0.0f;
         const float cohesion = mass > 0.0f ? hitpoints / mass : 0.0f;
-        return Body::Quantum{Matter{.position = pose.position, .mass = mass, .temperature = temperature, .cohesion = cohesion}, pose.rotation, radiusOf(particles, shape), hitpoints};
+        return Body::Quantum{Matter{.position = origin, .mass = mass, .temperature = temperature, .cohesion = cohesion}, rotation, radiusOf(particles, shape), hitpoints};
+    }
+
+    auto restoredBody(Pose pose, const vector<Particle>& particles, const vector<vec3>& shape) -> Body::Quantum {
+        return restoredBody(dvec3{pose.position}, pose.rotation, particles, shape);
     }
 
     void Crystal::Quantum::refreshMatter(Body::Quantum& body) {
-        body = restoredBody(body.pose(), particles, shape);
+        body = restoredBody(body.position, body.orientation, particles, shape);
     }
 
     void Crystal::Actions::debugAddImpulse(Writing context, Id id, vec3 impulse) {
@@ -94,15 +95,16 @@ namespace eltanin::phys::rigid {
         auto body = with<Body>::modify(context, id);
         if (crystal->particles.empty() or crystal->particles.size() != crystal->shape.size())
             return;
-        const vec3 currentCom = pose.position + pose.rotation * crystal->com;
+        const dvec3 origin{pose.position};
+        const dvec3 currentCom = origin + dvec3{pose.rotation * crystal->com};
         for (std::size_t index = 0; index < crystal->particles.size(); ++index) {
             Particle& particle = crystal->particles[index];
-            particle.position = pose.position + pose.rotation * crystal->shape[index];
-            const vec3 spin = glm::cross(omega, particle.position - currentCom);
-            particle.prev = particle.position - (linear + spin) * Particle::dt;
+            particle.position = origin + dvec3{pose.rotation * crystal->shape[index]};
+            const vec3 spin = glm::cross(omega, vec3{particle.position - currentCom});
+            particle.prev = particle.position - dvec3{(linear + spin) * Particle::dt};
             particle.force = vec3{0.0f, 0.0f, 0.0f};
         }
-        *body = restoredBody(pose, crystal->particles, crystal->shape);
+        *body = restoredBody(origin, pose.rotation, crystal->particles, crystal->shape);
     }
 
     void Crystal::Actions::restore(Stewarding context) {
@@ -118,7 +120,7 @@ namespace eltanin::phys::rigid {
             if (count == 0 or crystal.shape.size() != count)
                 continue;
 
-            const vec3 currentCom = currentComOf(crystal.particles);
+            const dvec3 currentCom = currentComOf(crystal.particles);
             const vec3 restCom = crystal.com;
             restCentered.resize(count);
             worldCentered.resize(count);
@@ -126,7 +128,7 @@ namespace eltanin::phys::rigid {
             float mass = 0.0f;
             for (std::size_t index = 0; index < count; ++index) {
                 restCentered[index] = crystal.shape[index] - restCom;
-                worldCentered[index] = crystal.particles[index].position - currentCom;
+                worldCentered[index] = vec3{crystal.particles[index].position - currentCom};
                 masses[index] = crystal.particles[index].mass;
                 mass += masses[index];
             }
@@ -134,7 +136,8 @@ namespace eltanin::phys::rigid {
                 continue;
 
             const quat rotation = horn::orientation(restCentered, worldCentered, masses);
-            body->pose(Pose{.position = currentCom - rotation * restCom, .rotation = rotation});
+            body->orientation = rotation;
+            body->position = currentCom - dvec3{rotation * restCom};
         }
     }
 
@@ -146,7 +149,7 @@ namespace eltanin::phys::rigid {
                 continue;
             if (crystal.particles.empty() or crystal.particles.size() != crystal.shape.size())
                 continue;
-            pullToShape(crystal, body->pose());
+            pullToShape(crystal, body->position, body->orientation);
         }
     }
 
@@ -167,33 +170,33 @@ namespace eltanin::phys::rigid {
             auto* source = crystals.items.find(sourceId);
             if (not source or source->particles.empty())
                 continue;
-            const vec3 sourceCom = currentComOf(source->particles);
-            const float radius = gravity.averageRadius;
-            const float surface = gravity.surfaceAcceleration;
+            const dvec3 sourceCom = currentComOf(source->particles);
+            const double radius = double(gravity.averageRadius);
+            const double surface = double(gravity.surfaceAcceleration);
             for (auto [targetId, crystal] : crystals.items) {
                 if (targetId == sourceId)
                     continue;
                 for (Particle& particle : crystal.particles) {
-                    const vec3 offset = particle.position - sourceCom;
-                    const float distance2 = glm::dot(offset, offset);
-                    if (distance2 <= 1.0e-12f)
+                    const dvec3 offset = particle.position - sourceCom;
+                    const double distance2 = glm::dot(offset, offset);
+                    if (distance2 <= 1.0e-12)
                         continue;
-                    const float distance = std::sqrt(distance2);
-                    const float accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
-                    particle.force += offset * accelScale * particle.mass;
+                    const double distance = std::sqrt(distance2);
+                    const double accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
+                    particle.force += vec3{offset * (accelScale * double(particle.mass))};
                 }
             }
             for (auto [id, ball] : balls.items) {
                 auto* body = bodies.items.find(id);
                 if (not body or body->mass <= 0.0f)
                     continue;
-                const vec3 offset = body->position - sourceCom;
-                const float distance2 = glm::dot(offset, offset);
-                if (distance2 <= 1.0e-12f)
+                const dvec3 offset = body->position - sourceCom;
+                const double distance2 = glm::dot(offset, offset);
+                if (distance2 <= 1.0e-12)
                     continue;
-                const float distance = std::sqrt(distance2);
-                const float accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
-                ball.forceLinear += offset * accelScale * body->mass;
+                const double distance = std::sqrt(distance2);
+                const double accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
+                ball.forceLinear += vec3{offset * (accelScale * double(body->mass))};
             }
         }
     }
