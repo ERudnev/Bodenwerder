@@ -13,20 +13,21 @@ namespace eltanin::phys::collision {
 
     // Tick-local collision workspace (private physics, not Q1).
     // First-class citizens are Compounds; global sweep is compound-vs-compound.
-    // Built after predict / integrate; feeds constraint solve and Commit consequences.
+    // Narrow phase: live particles of one body vs pose*shape of the other.
+    // Each particle queries the rest-space hull BVH for the nearest face; depth is signed distance to that primitive.
+    // Solver once per tick: pull the tested point onto frozen pose*shape. Next iteration is the next physics tick.
     // Contact = positional constraint + event payload — not a force into accumulateForces.
-
 
     // One side of a candidate or contact. Ball and Crystal share Body::Id; type selects the primitive.
     struct Endpoint {
         enum class Type {
-            crystal, // Hull triangle in Crystal.shape
+            crystal, // Particle (tested point) or hull face (frozen shape), selected by `face`
             ball,
             // projectile — segment (prev→position); when the entity exists
         };
         Type type;
         Body::Id body;
-        integer face; // Crystal hull face index; ignored for ball
+        integer face; // Particle index when this side is the tested point; hull face index when it is the shape; ignored for ball
     };
 
     // Broad-phase pair (order not significant until keyed).
@@ -35,29 +36,22 @@ namespace eltanin::phys::collision {
         Endpoint b;
     };
 
-    // Narrow-phase hit. Solver applies separation; Commit reads correction / speed for damage.
+    // Narrow-phase hit. Solver pulls the tested point onto frozen pose*shape once per tick.
     struct Contact {
         Endpoint a;
         Endpoint b;
         vec3 point; // world
-        vec3 normal; // unit, from a toward b (resolve by moving a along −normal / b along +normal)
-        float penetration; // > 0 overlapping depth at last measure
+        vec3 normal; // unit, from a toward b; solve moves only a along −normal (b is frozen pose*shape, except ball–ball)
+        float penetration; // > 0 overlapping depth at build
         integer candidate; // index into State.candidates
-        float correction; // accumulated normal separation this tick (m), written by solver
+        float correction; // normal separation this tick (m), written by solver
         float relativeNormalSpeed; // closing (+) along normal at build; Commit may re-sample
-    };
-
-    // Contiguous contact slice that shares a constraint island.
-    struct Island {
-        integer contactBegin;
-        integer contactEnd; // half-open [begin, end) into State.contacts
     };
 
     // Per-tick buffer: clear or reuse at start of build; discard after Commit.
     struct State {
         vector<Candidate> candidates;
         vector<Contact> contacts;
-        vector<Island> islands;
 
         void build(Stewarding);
         void solve(Stewarding);

@@ -1,23 +1,20 @@
 #include "physics/collisions.h"
+#include "physics/hullBvh.h"
 
+#include <base/logging.h>
+
+#include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
-
-#include <algorithm>
-#include <unordered_map>
 
 namespace eltanin::phys::collision {
 
     using rigid::Ball;
     using rigid::Crystal;
-    using rigid::Hull;
 
     namespace {
 
         constexpr float minLength = 1.0e-8f;
-        constexpr int solverPasses = 4;
-        constexpr float solverRate = 0.5f;
-        constexpr float clusterAlign = 0.75f;
 
         struct Occupant {
             Endpoint::Type type;
@@ -33,46 +30,48 @@ namespace eltanin::phys::collision {
             vector<Occupant> occupants;
         };
 
-        auto closestPointOnTriangle(vec3 point, vec3 corner0, vec3 corner1, vec3 corner2) -> vec3 {
-            const vec3 edge01 = corner1 - corner0;
-            const vec3 edge02 = corner2 - corner0;
-            const vec3 toPoint0 = point - corner0;
-            const float dot01 = glm::dot(edge01, toPoint0);
-            const float dot02 = glm::dot(edge02, toPoint0);
-            if (dot01 <= 0.0f and dot02 <= 0.0f)
-                return corner0;
-            const vec3 toPoint1 = point - corner1;
-            const float dot11 = glm::dot(edge01, toPoint1);
-            const float dot12 = glm::dot(edge02, toPoint1);
-            if (dot11 >= 0.0f and dot12 <= dot11)
-                return corner1;
-            const float regionEdge01 = dot01 * dot12 - dot11 * dot02;
-            if (regionEdge01 <= 0.0f and dot01 >= 0.0f and dot11 <= 0.0f)
-                return corner0 + (dot01 / (dot01 - dot11)) * edge01;
-            const vec3 toPoint2 = point - corner2;
-            const float dot21 = glm::dot(edge01, toPoint2);
-            const float dot22 = glm::dot(edge02, toPoint2);
-            if (dot22 >= 0.0f and dot21 <= dot22)
-                return corner2;
-            const float regionEdge02 = dot21 * dot02 - dot01 * dot22;
-            if (regionEdge02 <= 0.0f and dot02 >= 0.0f and dot22 <= 0.0f)
-                return corner0 + (dot02 / (dot02 - dot22)) * edge02;
-            const float regionEdge12 = dot11 * dot22 - dot21 * dot12;
-            if (regionEdge12 <= 0.0f and (dot12 - dot11) >= 0.0f and (dot21 - dot22) >= 0.0f)
-                return corner1 + ((dot12 - dot11) / ((dot12 - dot11) + (dot21 - dot22))) * (corner2 - corner1);
-            const float denom = 1.0f / (regionEdge12 + regionEdge02 + regionEdge01);
-            return corner0 + edge01 * (regionEdge02 * denom) + edge02 * (regionEdge01 * denom);
-        }
-
         auto worldOf(const Body::Quantum& body, vec3 local) -> vec3 {
             return vec3{body.position + dvec3{body.orientation * local}};
         }
 
-        auto faceUsable(const Crystal::Quantum& crystal, const Hull::Face& face) -> bool {
-            return face.points.size() >= 3
-                and static_cast<std::size_t>(face.points[0]) < crystal.shape.size()
-                and static_cast<std::size_t>(face.points[1]) < crystal.shape.size()
-                and static_cast<std::size_t>(face.points[2]) < crystal.shape.size();
+        auto toLocal(const Body::Quantum& body, vec3 world) -> vec3 {
+            return glm::conjugate(body.orientation) * vec3{dvec3{world} - body.position};
+        }
+
+        void ensureBvh(Crystal::Quantum& crystal) {
+            if (not crystal.hull.bvh.nodes.empty())
+                return;
+            cookHullBvh(crystal.hull, crystal.shape);
+        }
+
+        auto nearestSurface(const Body::Quantum& shapeBody, const Crystal::Quantum& shapeCrystal, vec3 worldPoint, float radius, integer& faceIndex, vec3& closest, vec3& outward) -> float {
+            const SurfaceHit hit = closestOnHull(shapeCrystal.hull, shapeCrystal.shape, toLocal(shapeBody, worldPoint));
+            if (hit.face < 0)
+                return 0.0f;
+            if (hit.signedDistance >= radius)
+                return 0.0f;
+            faceIndex = hit.face;
+            closest = worldOf(shapeBody, hit.localClosest);
+            outward = shapeBody.orientation * hit.localOutward;
+            const float length = glm::length(outward);
+            if (length < minLength)
+                return 0.0f;
+            outward /= length;
+            return radius - hit.signedDistance;
+        }
+
+        auto inverseMass(float mass) -> float {
+            return mass > 0.0f ? 1.0f / mass : 0.0f;
+        }
+
+        void kickParticle(Particle& particle, vec3 delta) {
+            particle.position += dvec3{delta};
+        }
+
+        void kickVertex(Crystal::Quantum& crystal, integer vertexIndex, vec3 delta) {
+            if (vertexIndex < 0 or static_cast<std::size_t>(vertexIndex) >= crystal.particles.size())
+                return;
+            kickParticle(crystal.particles[static_cast<std::size_t>(vertexIndex)], delta);
         }
 
         void addOccupant(vector<Occupant>& occupants, Body::Id id, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
@@ -138,69 +137,86 @@ namespace eltanin::phys::collision {
             pushContact(state, candidate, Endpoint{Endpoint::Type::ball, first.body, 0}, Endpoint{Endpoint::Type::ball, second.body, 0}, point, fromFirstTowardSecond, penetration, velocityOf(first.body, first.type, bodies, balls, crystals), velocityOf(second.body, second.type, bodies, balls, crystals));
         }
 
-        void contactBallCrystal(State& state, integer candidate, const Occupant& ball, const Occupant& crystalOccupant, bool ballIsFirst, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
-            auto* body = bodies.items.find(crystalOccupant.body);
-            auto* crystal = crystals.items.find(crystalOccupant.body);
-            if (not body or not crystal)
+        void contactParticlesVsShape(State& state, integer candidate, const Occupant& particleSide, const Occupant& shapeSide, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
+            auto* particleCrystal = crystals.items.find(particleSide.body);
+            auto* shapeBody = bodies.items.find(shapeSide.body);
+            auto* shapeCrystal = crystals.items.find(shapeSide.body);
+            if (not particleCrystal or not shapeBody or not shapeCrystal)
+                return;
+            if (particleCrystal->particles.empty() or particleCrystal->particles.size() != particleCrystal->shape.size())
+                return;
+            const vec3 shapeVelocity = velocityOf(shapeSide.body, shapeSide.type, bodies, balls, crystals);
+            for (std::size_t vertexIndex = 0; vertexIndex < particleCrystal->particles.size(); ++vertexIndex) {
+                integer faceIndex = -1;
+                vec3 closest;
+                vec3 outward;
+                const vec3 vertex = vec3{particleCrystal->particles[vertexIndex].position};
+                const float depth = nearestSurface(*shapeBody, *shapeCrystal, vertex, 0.0f, faceIndex, closest, outward);
+                if (depth <= 0.0f)
+                    continue;
+                const vec3 vertexVelocity = vec3{particleCrystal->particles[vertexIndex].velocity()};
+                pushContact(state, candidate, Endpoint{Endpoint::Type::crystal, particleSide.body, static_cast<integer>(vertexIndex)}, Endpoint{Endpoint::Type::crystal, shapeSide.body, faceIndex}, closest, -outward, depth, vertexVelocity, shapeVelocity);
+            }
+        }
+
+        void contactBallVsShape(State& state, integer candidate, const Occupant& ball, const Occupant& shapeSide, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
+            auto* shapeBody = bodies.items.find(shapeSide.body);
+            auto* shapeCrystal = crystals.items.find(shapeSide.body);
+            if (not shapeBody or not shapeCrystal)
+                return;
+            integer faceIndex = -1;
+            vec3 closest;
+            vec3 outward;
+            const float depth = nearestSurface(*shapeBody, *shapeCrystal, ball.center, ball.radius, faceIndex, closest, outward);
+            if (depth <= 0.0f)
+                return;
+            pushContact(state, candidate, Endpoint{Endpoint::Type::ball, ball.body, 0}, Endpoint{Endpoint::Type::crystal, shapeSide.body, faceIndex}, closest, -outward, depth, velocityOf(ball.body, ball.type, bodies, balls, crystals), velocityOf(shapeSide.body, shapeSide.type, bodies, balls, crystals));
+        }
+
+        void contactParticlesVsBall(State& state, integer candidate, const Occupant& particleSide, const Occupant& ball, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
+            auto* particleCrystal = crystals.items.find(particleSide.body);
+            if (not particleCrystal or particleCrystal->particles.empty())
                 return;
             const vec3 ballVelocity = velocityOf(ball.body, ball.type, bodies, balls, crystals);
-            const vec3 crystalVelocity = velocityOf(crystalOccupant.body, crystalOccupant.type, bodies, balls, crystals);
-            for (std::size_t faceIndex = 0; faceIndex < crystal->hull.faces.size(); ++faceIndex) {
-                const auto& face = crystal->hull.faces[faceIndex];
-                if (not faceUsable(*crystal, face))
-                    continue;
-                const vec3 corner0 = worldOf(*body, crystal->shape[static_cast<std::size_t>(face.points[0])]);
-                const vec3 corner1 = worldOf(*body, crystal->shape[static_cast<std::size_t>(face.points[1])]);
-                const vec3 corner2 = worldOf(*body, crystal->shape[static_cast<std::size_t>(face.points[2])]);
-                const vec3 closest = closestPointOnTriangle(ball.center, corner0, corner1, corner2);
-                const vec3 offset = ball.center - closest;
+            const vec3 center = ball.center;
+            for (std::size_t vertexIndex = 0; vertexIndex < particleCrystal->particles.size(); ++vertexIndex) {
+                const vec3 vertex = vec3{particleCrystal->particles[vertexIndex].position};
+                const vec3 offset = vertex - center;
                 const float distance = glm::length(offset);
                 const float penetration = ball.radius - distance;
                 if (penetration <= 0.0f)
                     continue;
-                const vec3 fromCrystalTowardBall = distance >= minLength ? offset : body->orientation * face.normal;
-                const Endpoint ballEnd{Endpoint::Type::ball, ball.body, 0};
-                const Endpoint crystalEnd{Endpoint::Type::crystal, crystalOccupant.body, static_cast<integer>(faceIndex)};
-                if (ballIsFirst)
-                    pushContact(state, candidate, ballEnd, crystalEnd, closest, -fromCrystalTowardBall, penetration, ballVelocity, crystalVelocity);
-                else
-                    pushContact(state, candidate, crystalEnd, ballEnd, closest, fromCrystalTowardBall, penetration, crystalVelocity, ballVelocity);
+                const vec3 away = distance >= minLength ? offset / distance : vec3{1.0f, 0.0f, 0.0f};
+                const vec3 vertexVelocity = vec3{particleCrystal->particles[vertexIndex].velocity()};
+                pushContact(state, candidate, Endpoint{Endpoint::Type::crystal, particleSide.body, static_cast<integer>(vertexIndex)}, Endpoint{Endpoint::Type::ball, ball.body, 0}, center + away * ball.radius, -away, penetration, vertexVelocity, ballVelocity);
             }
         }
 
-        void contactCrystalVertexFaces(State& state, integer candidate, const Occupant& vertexSide, const Occupant& faceSide, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
-            auto* vertexBody = bodies.items.find(vertexSide.body);
-            auto* vertexCrystal = crystals.items.find(vertexSide.body);
-            auto* faceBody = bodies.items.find(faceSide.body);
-            auto* faceCrystal = crystals.items.find(faceSide.body);
-            if (not vertexBody or not vertexCrystal or not faceBody or not faceCrystal)
+        void separate(Contact& contact, float remaining, fqsm::Direct<Body> bodies, fqsm::Direct<Crystal> crystals) {
+            auto* left = bodies.items.find(contact.a.body);
+            auto* right = bodies.items.find(contact.b.body);
+            if (not left or not right)
                 return;
-            const vec3 velocityVertex = velocityOf(vertexSide.body, vertexSide.type, bodies, balls, crystals);
-            const vec3 velocityFace = velocityOf(faceSide.body, faceSide.type, bodies, balls, crystals);
-            for (std::size_t vertexIndex = 0; vertexIndex < vertexCrystal->shape.size(); ++vertexIndex) {
-                const vec3 vertex = worldOf(*vertexBody, vertexCrystal->shape[vertexIndex]);
-                for (std::size_t faceIndex = 0; faceIndex < faceCrystal->hull.faces.size(); ++faceIndex) {
-                    const auto& face = faceCrystal->hull.faces[faceIndex];
-                    if (not faceUsable(*faceCrystal, face))
-                        continue;
-                    const vec3 corner0 = worldOf(*faceBody, faceCrystal->shape[static_cast<std::size_t>(face.points[0])]);
-                    const vec3 corner1 = worldOf(*faceBody, faceCrystal->shape[static_cast<std::size_t>(face.points[1])]);
-                    const vec3 corner2 = worldOf(*faceBody, faceCrystal->shape[static_cast<std::size_t>(face.points[2])]);
-                    const vec3 closest = closestPointOnTriangle(vertex, corner0, corner1, corner2);
-                    const vec3 rotated = faceBody->orientation * face.normal;
-                    const float normalLength = glm::length(rotated);
-                    if (normalLength < minLength)
-                        continue;
-                    const vec3 worldNormal = rotated / normalLength;
-                    const float signedDistance = glm::dot(vertex - corner0, worldNormal);
-                    if (signedDistance >= 0.0f)
-                        continue;
-                    const vec3 delta = vertex - closest;
-                    if (glm::dot(delta, delta) > signedDistance * signedDistance + 1.0e-6f)
-                        continue;
-                    pushContact(state, candidate, Endpoint{Endpoint::Type::crystal, vertexSide.body, static_cast<integer>(vertexIndex)}, Endpoint{Endpoint::Type::crystal, faceSide.body, static_cast<integer>(faceIndex)}, closest, -worldNormal, -signedDistance, velocityVertex, velocityFace);
-                }
+            const vec3 along = contact.normal;
+            const float step = remaining;
+            if (contact.a.type == Endpoint::Type::ball and contact.b.type == Endpoint::Type::ball) {
+                const float weightA = inverseMass(left->mass);
+                const float weightB = inverseMass(right->mass);
+                const float weightSum = weightA + weightB;
+                if (weightSum <= 0.0f)
+                    return;
+                left->position -= dvec3{along * (step * (weightA / weightSum))};
+                right->position += dvec3{along * (step * (weightB / weightSum))};
+                return;
             }
+            if (contact.a.type == Endpoint::Type::ball) {
+                left->position -= dvec3{along * step};
+                return;
+            }
+            auto* particleCrystal = crystals.items.find(contact.a.body);
+            if (not particleCrystal)
+                return;
+            kickVertex(*particleCrystal, contact.a.face, -along * step);
         }
 
         auto collectOccupants(Compound::Id host, const Compound::Quantum& compound, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) -> vector<Occupant> {
@@ -223,143 +239,8 @@ namespace eltanin::phys::collision {
             center /= static_cast<float>(occupants.size());
             radius = 0.0f;
             for (const Occupant& occupant : occupants)
-                radius = std::max(radius, glm::length(occupant.center - center) + occupant.radius);
+                radius = glm::max(radius, glm::length(occupant.center - center) + occupant.radius);
             return true;
-        }
-
-        auto indexOf(std::unordered_map<Body::Id, integer>& indices, vector<Body::Id>& bodies, Body::Id id) -> integer {
-            auto found = indices.find(id);
-            if (found != indices.end())
-                return found->second;
-            const integer index = static_cast<integer>(bodies.size());
-            bodies.push_back(id);
-            indices.emplace(id, index);
-            return index;
-        }
-
-        auto rootOf(vector<integer>& parent, integer index) -> integer {
-            integer root = index;
-            while (parent[static_cast<std::size_t>(root)] != root)
-                root = parent[static_cast<std::size_t>(root)];
-            integer walk = index;
-            while (parent[static_cast<std::size_t>(walk)] != root) {
-                const integer next = parent[static_cast<std::size_t>(walk)];
-                parent[static_cast<std::size_t>(walk)] = root;
-                walk = next;
-            }
-            return root;
-        }
-
-        auto measureBallBall(const Body::Quantum& first, const Body::Quantum& second, vec3& point, vec3& normal) -> float {
-            const vec3 firstPos{first.position};
-            const vec3 secondPos{second.position};
-            const vec3 offset = secondPos - firstPos;
-            const float distance = glm::length(offset);
-            const vec3 fromFirstTowardSecond = distance >= minLength ? offset / distance : vec3{1.0f, 0.0f, 0.0f};
-            point = firstPos + fromFirstTowardSecond * first.radius;
-            normal = fromFirstTowardSecond;
-            return first.radius + second.radius - distance;
-        }
-
-        auto measureBallFace(const Body::Quantum& ball, const Body::Quantum& crystalBody, const Crystal::Quantum& crystal, integer faceIndex, bool ballIsFirst, vec3& point, vec3& normal) -> float {
-            if (faceIndex < 0 or static_cast<std::size_t>(faceIndex) >= crystal.hull.faces.size())
-                return 0.0f;
-            const auto& face = crystal.hull.faces[static_cast<std::size_t>(faceIndex)];
-            if (not faceUsable(crystal, face))
-                return 0.0f;
-            const vec3 corner0 = worldOf(crystalBody, crystal.shape[static_cast<std::size_t>(face.points[0])]);
-            const vec3 corner1 = worldOf(crystalBody, crystal.shape[static_cast<std::size_t>(face.points[1])]);
-            const vec3 corner2 = worldOf(crystalBody, crystal.shape[static_cast<std::size_t>(face.points[2])]);
-            const vec3 ballPos{ball.position};
-            const vec3 closest = closestPointOnTriangle(ballPos, corner0, corner1, corner2);
-            const vec3 offset = ballPos - closest;
-            const float distance = glm::length(offset);
-            const float penetration = ball.radius - distance;
-            if (penetration <= 0.0f)
-                return 0.0f;
-            const vec3 fromCrystalTowardBall = distance >= minLength ? offset / distance : glm::normalize(crystalBody.orientation * face.normal);
-            point = closest;
-            normal = ballIsFirst ? -fromCrystalTowardBall : fromCrystalTowardBall;
-            return penetration;
-        }
-
-        auto measureVertexFace(const Body::Quantum& vertexBody, const Crystal::Quantum& vertexCrystal, integer vertexIndex, const Body::Quantum& faceBody, const Crystal::Quantum& faceCrystal, integer faceIndex, vec3& point, vec3& normal) -> float {
-            if (vertexIndex < 0 or static_cast<std::size_t>(vertexIndex) >= vertexCrystal.shape.size())
-                return 0.0f;
-            if (faceIndex < 0 or static_cast<std::size_t>(faceIndex) >= faceCrystal.hull.faces.size())
-                return 0.0f;
-            const auto& face = faceCrystal.hull.faces[static_cast<std::size_t>(faceIndex)];
-            if (not faceUsable(faceCrystal, face))
-                return 0.0f;
-            const vec3 vertex = worldOf(vertexBody, vertexCrystal.shape[static_cast<std::size_t>(vertexIndex)]);
-            const vec3 corner0 = worldOf(faceBody, faceCrystal.shape[static_cast<std::size_t>(face.points[0])]);
-            const vec3 corner1 = worldOf(faceBody, faceCrystal.shape[static_cast<std::size_t>(face.points[1])]);
-            const vec3 corner2 = worldOf(faceBody, faceCrystal.shape[static_cast<std::size_t>(face.points[2])]);
-            const vec3 closest = closestPointOnTriangle(vertex, corner0, corner1, corner2);
-            const vec3 rotated = faceBody.orientation * face.normal;
-            const float normalLength = glm::length(rotated);
-            if (normalLength < minLength)
-                return 0.0f;
-            const vec3 worldNormal = rotated / normalLength;
-            const float signedDistance = glm::dot(vertex - corner0, worldNormal);
-            if (signedDistance >= 0.0f)
-                return 0.0f;
-            const vec3 delta = vertex - closest;
-            if (glm::dot(delta, delta) > signedDistance * signedDistance + 1.0e-6f)
-                return 0.0f;
-            point = closest;
-            normal = -worldNormal;
-            return -signedDistance;
-        }
-
-        auto remeasure(Contact& contact, fqsm::Direct<Body> bodies, fqsm::Direct<Crystal> crystals) -> float {
-            auto* bodyA = bodies.items.find(contact.a.body);
-            auto* bodyB = bodies.items.find(contact.b.body);
-            if (not bodyA or not bodyB)
-                return 0.0f;
-            if (contact.a.type == Endpoint::Type::ball and contact.b.type == Endpoint::Type::ball)
-                return measureBallBall(*bodyA, *bodyB, contact.point, contact.normal);
-            if (contact.a.type == Endpoint::Type::ball and contact.b.type == Endpoint::Type::crystal) {
-                auto* crystal = crystals.items.find(contact.b.body);
-                if (not crystal)
-                    return 0.0f;
-                return measureBallFace(*bodyA, *bodyB, *crystal, contact.b.face, true, contact.point, contact.normal);
-            }
-            if (contact.a.type == Endpoint::Type::crystal and contact.b.type == Endpoint::Type::ball) {
-                auto* crystal = crystals.items.find(contact.a.body);
-                if (not crystal)
-                    return 0.0f;
-                return measureBallFace(*bodyB, *bodyA, *crystal, contact.a.face, false, contact.point, contact.normal);
-            }
-            auto* crystalA = crystals.items.find(contact.a.body);
-            auto* crystalB = crystals.items.find(contact.b.body);
-            if (not crystalA or not crystalB)
-                return 0.0f;
-            return measureVertexFace(*bodyA, *crystalA, contact.a.face, *bodyB, *crystalB, contact.b.face, contact.point, contact.normal);
-        }
-
-        void reduceManifold(State& state) {
-            if (state.contacts.size() < 2)
-                return;
-            std::sort(state.contacts.begin(), state.contacts.end(), [](const Contact& left, const Contact& right) {
-                return left.penetration > right.penetration;
-            });
-            vector<Contact> kept;
-            kept.reserve(state.contacts.size());
-            for (const Contact& contact : state.contacts) {
-                bool clustered = false;
-                for (const Contact& existing : kept) {
-                    if (existing.a.body != contact.a.body or existing.b.body != contact.b.body)
-                        continue;
-                    if (glm::dot(existing.normal, contact.normal) < clusterAlign)
-                        continue;
-                    clustered = true;
-                    break;
-                }
-                if (not clustered)
-                    kept.push_back(contact);
-            }
-            state.contacts.swap(kept);
         }
 
         void pairOccupants(State& state, const Occupant& first, const Occupant& second, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
@@ -374,51 +255,16 @@ namespace eltanin::phys::collision {
             });
             if (first.type == Endpoint::Type::ball and second.type == Endpoint::Type::ball)
                 contactBallBall(state, candidate, first, second, bodies, balls, crystals);
-            else if (first.type == Endpoint::Type::ball and second.type == Endpoint::Type::crystal)
-                contactBallCrystal(state, candidate, first, second, true, bodies, balls, crystals);
-            else if (first.type == Endpoint::Type::crystal and second.type == Endpoint::Type::ball)
-                contactBallCrystal(state, candidate, second, first, false, bodies, balls, crystals);
-            else {
-                contactCrystalVertexFaces(state, candidate, first, second, bodies, balls, crystals);
-                contactCrystalVertexFaces(state, candidate, second, first, bodies, balls, crystals);
+            else if (first.type == Endpoint::Type::ball and second.type == Endpoint::Type::crystal) {
+                contactBallVsShape(state, candidate, first, second, bodies, balls, crystals);
+                contactParticlesVsBall(state, candidate, second, first, bodies, balls, crystals);
+            } else if (first.type == Endpoint::Type::crystal and second.type == Endpoint::Type::ball) {
+                contactBallVsShape(state, candidate, second, first, bodies, balls, crystals);
+                contactParticlesVsBall(state, candidate, first, second, bodies, balls, crystals);
+            } else {
+                contactParticlesVsShape(state, candidate, first, second, bodies, balls, crystals);
+                contactParticlesVsShape(state, candidate, second, first, bodies, balls, crystals);
             }
-        }
-
-        void formIslands(State& state) {
-            state.islands.clear();
-            if (state.contacts.empty())
-                return;
-            vector<Body::Id> bodies;
-            std::unordered_map<Body::Id, integer> indices;
-            for (const Contact& contact : state.contacts) {
-                indexOf(indices, bodies, contact.a.body);
-                indexOf(indices, bodies, contact.b.body);
-            }
-            vector<integer> parent(bodies.size());
-            for (std::size_t index = 0; index < parent.size(); ++index)
-                parent[index] = static_cast<integer>(index);
-            for (const Contact& contact : state.contacts) {
-                const integer first = rootOf(parent, indices.at(contact.a.body));
-                const integer second = rootOf(parent, indices.at(contact.b.body));
-                if (first != second)
-                    parent[static_cast<std::size_t>(second)] = first;
-            }
-            for (std::size_t index = 0; index < parent.size(); ++index)
-                (void)rootOf(parent, static_cast<integer>(index));
-            std::sort(state.contacts.begin(), state.contacts.end(), [&](const Contact& left, const Contact& right) {
-                return parent[static_cast<std::size_t>(indices.at(left.a.body))] < parent[static_cast<std::size_t>(indices.at(right.a.body))];
-            });
-            integer currentRoot = parent[static_cast<std::size_t>(indices.at(state.contacts.front().a.body))];
-            integer begin = 0;
-            for (integer index = 1; index < static_cast<integer>(state.contacts.size()); ++index) {
-                const integer root = parent[static_cast<std::size_t>(indices.at(state.contacts[static_cast<std::size_t>(index)].a.body))];
-                if (root == currentRoot)
-                    continue;
-                state.islands.push_back(Island{.contactBegin = begin, .contactEnd = index});
-                begin = index;
-                currentRoot = root;
-            }
-            state.islands.push_back(Island{.contactBegin = begin, .contactEnd = static_cast<integer>(state.contacts.size())});
         }
 
     }
@@ -426,11 +272,12 @@ namespace eltanin::phys::collision {
     void State::build(Stewarding context) {
         candidates.clear();
         contacts.clear();
-        islands.clear();
         auto bodies = context.direct<Body>();
         auto balls = context.direct<Ball>();
         auto crystals = context.direct<Crystal>();
         auto compounds = context.direct<Compound>();
+        for (auto [id, crystal] : crystals.items)
+            ensureBvh(crystal);
         vector<Cohort> cohorts;
         for (auto [id, compound] : compounds.items) {
             auto occupants = collectOccupants(id, compound, bodies, balls, crystals);
@@ -450,36 +297,55 @@ namespace eltanin::phys::collision {
                 }
             }
         }
-        reduceManifold(*this);
-        formIslands(*this);
     }
 
     void State::solve(Stewarding context) {
-        if (contacts.empty())
+        static bool wasHit = false;
+        static int quiet = 0;
+        if (contacts.empty()) {
+            if (wasHit) {
+                wasHit = false;
+                quiet = 0;
+                base::message("phys::hit end");
+            }
             return;
+        }
         auto bodies = context.direct<Body>();
         auto crystals = context.direct<Crystal>();
-        for (int pass = 0; pass < solverPasses; ++pass) {
-            for (Contact& contact : contacts) {
-                const float remaining = remeasure(contact, bodies, crystals);
-                if (remaining <= 0.0f)
-                    continue;
-                auto* bodyA = bodies.items.find(contact.a.body);
-                auto* bodyB = bodies.items.find(contact.b.body);
-                if (not bodyA or not bodyB)
-                    continue;
-                const float weightA = bodyA->mass > 0.0f ? 1.0f / bodyA->mass : 0.0f;
-                const float weightB = bodyB->mass > 0.0f ? 1.0f / bodyB->mass : 0.0f;
-                const float weightSum = weightA + weightB;
-                if (weightSum <= 0.0f)
-                    continue;
-                const float step = remaining * solverRate;
-                bodyA->position -= dvec3{contact.normal * (step * (weightA / weightSum))};
-                bodyB->position += dvec3{contact.normal * (step * (weightB / weightSum))};
-                contact.correction += step;
-                contact.penetration = remaining;
-            }
+        float maxPen = 0.0f;
+        float vn = 0.0f;
+        vec3 nrm{0.0f, 0.0f, 0.0f};
+        for (const Contact& contact : contacts) {
+            if (contact.penetration <= maxPen)
+                continue;
+            maxPen = contact.penetration;
+            vn = contact.relativeNormalSpeed;
+            nrm = contact.normal;
         }
+        auto* bodyA = bodies.items.find(contacts.front().a.body);
+        auto* bodyB = bodies.items.find(contacts.front().b.body);
+        const dvec3 originA = bodyA ? bodyA->position : dvec3{0.0, 0.0, 0.0};
+        const dvec3 originB = bodyB ? bodyB->position : dvec3{0.0, 0.0, 0.0};
+        for (Contact& contact : contacts) {
+            if (contact.penetration <= 0.0f)
+                continue;
+            separate(contact, contact.penetration, bodies, crystals);
+            contact.correction = contact.penetration;
+        }
+        float corr = 0.0f;
+        int live = 0;
+        for (const Contact& contact : contacts) {
+            corr += contact.correction;
+            if (contact.correction > 0.0f)
+                ++live;
+        }
+        const float dA = bodyA ? float(glm::length(bodyA->position - originA)) : 0.0f;
+        const float dB = bodyB ? float(glm::length(bodyB->position - originB)) : 0.0f;
+        const bool shout = not wasHit or quiet == 0;
+        wasHit = true;
+        quiet = (quiet + 1) % 10;
+        if (shout)
+            base::message("phys::hit n={} live={} pen={:.2f} vn={:.1f} corr={:.2f} dA={:.2f} dB={:.2f} nrm={:.2f},{:.2f},{:.2f}", contacts.size(), live, maxPen, vn, corr, dA, dB, nrm.x, nrm.y, nrm.z);
     }
 
 }

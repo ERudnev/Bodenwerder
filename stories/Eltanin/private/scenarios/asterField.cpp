@@ -10,12 +10,7 @@
 #include <rmmr/semantics/rendering.h>
 #include <rmmr/semantics/uniform.h>
 
-#include <cmath>
 #include <cstdint>
-#include <numbers>
-#include <random>
-
-#include <glm/geometric.hpp>
 
 namespace eltanin::scenario {
 
@@ -23,12 +18,12 @@ namespace eltanin::scenario {
 
     namespace {
 
-        constexpr float shellRadius = 10.0f;
-        constexpr float pebbleRadius = 2.0f;
-        constexpr float coreRadius = 8.1f; // Crystal (> octreeResolutionRadius); fits inside shellRadius − pebbleRadius
-        constexpr float radialSpeed = 100.0f;
-        constexpr float cloudSpacing = 30.0f;
-        constexpr float spinRate = 2.0f * std::numbers::pi_v<float>; // 1 rev/s
+        constexpr float coreRadius = 8.1f;
+        constexpr float banditRadius = coreRadius * 2.0f;
+        constexpr float banditX = -80.0f;
+        constexpr float banditSpeed = 160.0f;
+        constexpr float pebbleRadius = 2.4f;
+        constexpr integer ice = 0;
         constexpr integer feldspar = 3;
         constexpr integer olivine = 1;
 
@@ -38,49 +33,6 @@ namespace eltanin::scenario {
 
         auto stoneCoreMix() -> geo::Mix {
             return nibble(olivine, 8) | nibble(feldspar, 7);
-        }
-
-        auto geodesicIcosaVertices() -> vector<vec3> {
-            const float phi = 0.5f * (1.0f + std::sqrt(5.0f));
-            vector<vec3> verts{
-                {0.0f, -1.0f, -phi}, {0.0f, -1.0f, phi}, {0.0f, 1.0f, -phi}, {0.0f, 1.0f, phi},
-                {-1.0f, -phi, 0.0f}, {-1.0f, phi, 0.0f}, {1.0f, -phi, 0.0f}, {1.0f, phi, 0.0f},
-                {-phi, 0.0f, -1.0f}, {-phi, 0.0f, 1.0f}, {phi, 0.0f, -1.0f}, {phi, 0.0f, 1.0f},
-            };
-            for (vec3& vert : verts)
-                vert = glm::normalize(vert);
-            const auto icosaCount = verts.size();
-            for (size_t i = 0; i < icosaCount; ++i)
-                for (size_t j = i + 1; j < icosaCount; ++j)
-                    if (glm::dot(verts[i], verts[j]) > 0.4f)
-                        verts.push_back(glm::normalize(verts[i] + verts[j]));
-            return verts;
-        }
-
-        auto randomUnitAxis(std::mt19937& rng) -> vec3 {
-            std::uniform_real_distribution<float> unit(-1.0f, 1.0f);
-            vec3 axis{unit(rng), unit(rng), unit(rng)};
-            const float length2 = glm::dot(axis, axis);
-            if (length2 <= 1.0e-12f)
-                return vec3{0.0f, 1.0f, 0.0f};
-            return axis / std::sqrt(length2);
-        }
-
-        void spawnCloud(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, vec3 origin, const geo::GeneralizedRecipe& recipe, float outboundSpeed, vec3 bodyOmega, bool randomSpin, uint32_t spinSeed, integer coreSeed) {
-            const geo::GeneralizedRecipe coreRecipe{
-                .mix = stoneCoreMix(),
-                .radius = coreRadius,
-                .lump = 0.0f,
-                .seed = coreSeed,
-                .spotMeters = coreRadius * 0.45f,
-                .spotContrast = 0.12f,
-            };
-            with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{origin}, HPB{0.0f, 0.0f, 0.0f}), coreRecipe, vec3{0.0f, 0.0f, 0.0f}, bodyOmega);
-            std::mt19937 spinRng(spinSeed);
-            for (const vec3& dir : geodesicIcosaVertices()) {
-                const vec3 omega = randomSpin ? randomUnitAxis(spinRng) * spinRate : bodyOmega;
-                with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{origin + dir * shellRadius}, HPB{0.0f, 0.0f, 0.0f}), recipe, dir * outboundSpeed, omega);
-            }
         }
 
     } // namespace
@@ -160,17 +112,42 @@ namespace eltanin::scenario {
 
     void AsterField::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
         with<scene::Root>::modify(context, root)->atmosphereDensity = 1225.0f;
-        const geo::GeneralizedRecipe recipe{
-            .mix = geo::GeneralizedRecipe::homogenous(feldspar),
-            .radius = pebbleRadius,
-            .lump = 0.55f,
-            .seed = 8000,
-            .spotMeters = pebbleRadius * 2.0f,
+        const geo::GeneralizedRecipe core{
+            .mix = stoneCoreMix(),
+            .radius = coreRadius,
+            .lump = 0.0f,
+            .seed = 7001,
+            .spotMeters = coreRadius * 0.45f,
+            .spotContrast = 0.12f,
+        };
+        with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), core, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        const geo::GeneralizedRecipe bandit{
+            .mix = geo::GeneralizedRecipe::homogenous(ice),
+            .radius = banditRadius,
+            .lump = 0.82f,
+            .seed = 20260818,
+            .spotMeters = banditRadius * 0.48f,
             .spotContrast = 0.0f,
         };
-        spawnCloud(context, root, device, vec3{0.0f, 0.0f, 0.0f}, recipe, radialSpeed, vec3{0.0f, 0.0f, 0.0f}, false, 0, 7001);
-        spawnCloud(context, root, device, vec3{-cloudSpacing, 0.0f, 0.0f}, recipe, radialSpeed, vec3{0.0f, 0.0f, 0.0f}, true, 9001, 7002);
-        spawnCloud(context, root, device, vec3{cloudSpacing, 0.0f, 0.0f}, recipe, 0.0f, vec3{0.0f, 0.0f, 0.0f}, false, 0, 7003);
+        with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{banditX, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), bandit, vec3{banditSpeed, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        const geo::GeneralizedRecipe pebbleA{
+            .mix = stoneCoreMix(),
+            .radius = pebbleRadius,
+            .lump = 0.35f,
+            .seed = 3101,
+            .spotMeters = pebbleRadius * 0.5f,
+            .spotContrast = 0.1f,
+        };
+        const geo::GeneralizedRecipe pebbleB{
+            .mix = stoneCoreMix(),
+            .radius = pebbleRadius,
+            .lump = 0.28f,
+            .seed = 3102,
+            .spotMeters = pebbleRadius * 0.5f,
+            .spotContrast = 0.1f,
+        };
+        with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{-52.0f, 0.0f, 17.1f}, HPB{0.0f, 0.0f, 0.0f}), pebbleA, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{-47.5f, 0.5f, 19.2f}, HPB{0.0f, 0.0f, 0.0f}), pebbleB, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
 }

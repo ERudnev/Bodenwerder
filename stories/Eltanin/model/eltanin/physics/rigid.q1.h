@@ -14,8 +14,21 @@ namespace eltanin::phys::rigid {
         struct Face {
             vector<integer> points;
             vec3 normal;
+            float thickness;
+        };
+        struct Bvh {
+            struct Node {
+                vec3 boundMin;
+                vec3 boundMax;
+                integer left;
+                integer right;
+                integer face;
+            };
+            vector<Node> nodes;
+            integer root;
         };
         vector<Face> faces;
+        Bvh bvh;
     };
 
     struct Ball : Feature<Ball, Body> {

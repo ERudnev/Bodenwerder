@@ -6,11 +6,13 @@ namespace eltanin
     namespace rigid
 
       // Graphics front faces are CCW: (b−a)×(c−a) points toward the camera / outward.
-      // Physics uses the same winding. Hull is the triangle surface of Crystal.shape; not necessarily convex.
+      // Physics uses the same winding. Hull is convex-polygon faces of Crystal.shape (triangle or convex quad); the body need not be convex.
+      // Rest-space BVH is cooked in C++ on Hull from faces+shape; queries run in the body's frame.
       struct Hull
         struct Face
           points: vector<integer> // into Crystal.shape
           normal: vec3
+          thickness: float // rest distance from Crystal.com to the face plane; a vertex farther behind than this is past COM / the far wall
         faces: vector<Face>
 
       feature Ball of phys::Body

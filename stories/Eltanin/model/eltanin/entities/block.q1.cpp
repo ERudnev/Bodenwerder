@@ -28,14 +28,15 @@ namespace eltanin {
             vec3 normal = glm::cross(ab, ac);
             const float mag = glm::length(normal);
             if (mag <= 1.0e-12f)
-                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}};
+                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}, .thickness = 0.0f};
             normal /= mag;
             const vec3 centroid = (shape[static_cast<std::size_t>(a)] + shape[static_cast<std::size_t>(b)] + shape[static_cast<std::size_t>(c)]) / 3.0f;
             if (glm::dot(normal, centroid - inside) < 0.0f) {
                 std::swap(b, c);
                 normal = -normal;
             }
-            return phys::rigid::Hull::Face{.points = {a, b, c}, .normal = normal};
+            const float planeGap = glm::dot(centroid - inside, normal);
+            return phys::rigid::Hull::Face{.points = {a, b, c}, .normal = normal, .thickness = planeGap > 0.0f ? planeGap : 0.0f};
         }
 
         auto hullFromCorners(const vector<vec3>& locals, const vector<mech::cube::Corner>& corners) -> phys::rigid::Hull {
