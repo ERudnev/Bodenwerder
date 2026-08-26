@@ -1,7 +1,7 @@
 #include "physics/ui.h"
 
-#include <eltanin/entities/block.q1.h>
 #include <eltanin/geo/boulder.q1.h>
+#include <eltanin/mech/construction.q1.h>
 #include <eltanin/geo/rock.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/resources/builders/geometryGenerator.h>
@@ -69,9 +69,9 @@ namespace eltanin::phys {
                 if (rock.body == body)
                     return rock.actor;
             }
-            for (const auto [_, block] : context->aspect<Block>().items()) {
-                if (block.body == body)
-                    return block.actor;
+            for (const auto [_, construct] : context->aspect<mech::Construct>().items()) {
+                if (construct.body == body)
+                    return construct.actor;
             }
             for (const auto [_, boulder] : context->aspect<geo::Boulder>().items()) {
                 if (boulder.body == body)

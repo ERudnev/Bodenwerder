@@ -59,16 +59,9 @@ namespace eltanin::phys::rigid {
 
     auto restoredBody(dvec3 origin, quat rotation, const vector<Particle>& particles, const vector<vec3>& shape) -> Body::Quantum {
         float mass = 0.0f;
-        float thermalEnergy = 0.0f;
-        float hitpoints = 0.0f;
-        for (const Particle& particle : particles) {
+        for (const Particle& particle : particles)
             mass += particle.mass;
-            thermalEnergy += particle.thermalEnergy();
-            hitpoints += particle.hp();
-        }
-        const float temperature = mass > 0.0f ? thermalEnergy / mass : 0.0f;
-        const float cohesion = mass > 0.0f ? hitpoints / mass : 0.0f;
-        return Body::Quantum{Matter{.position = origin, .mass = mass, .temperature = temperature, .cohesion = cohesion}, rotation, radiusOf(particles, shape), hitpoints};
+        return Body::Quantum{.position = origin, .orientation = rotation, .totalMass = mass, .radius = radiusOf(particles, shape)};
     }
 
     auto restoredBody(Pose pose, const vector<Particle>& particles, const vector<vec3>& shape) -> Body::Quantum {
@@ -160,6 +153,7 @@ namespace eltanin::phys::rigid {
     }
 
     // Outside ~ 1/r²; inside a uniform sphere, linear in r.
+    // Each pull on a victim gets −F on the source, mass-weighted onto source particles once per source per tick.
     void CelestialGravity::Actions::apply(Stewarding context) {
         auto crystals = context.direct<Crystal>();
         auto balls = context.direct<Ball>();
@@ -173,6 +167,7 @@ namespace eltanin::phys::rigid {
             const dvec3 sourceCom = currentComOf(source->particles);
             const double radius = double(gravity.averageRadius);
             const double surface = double(gravity.surfaceAcceleration);
+            dvec3 recoil{0.0, 0.0, 0.0};
             for (auto [targetId, crystal] : crystals.items) {
                 if (targetId == sourceId)
                     continue;
@@ -183,12 +178,14 @@ namespace eltanin::phys::rigid {
                         continue;
                     const double distance = std::sqrt(distance2);
                     const double accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
-                    particle.force += vec3{offset * (accelScale * double(particle.mass))};
+                    const dvec3 force = offset * (accelScale * double(particle.mass));
+                    particle.force += vec3{force};
+                    recoil -= force;
                 }
             }
             for (auto [id, ball] : balls.items) {
                 auto* body = bodies.items.find(id);
-                if (not body or body->mass <= 0.0f)
+                if (not body or body->totalMass <= 0.0f)
                     continue;
                 const dvec3 offset = body->position - sourceCom;
                 const double distance2 = glm::dot(offset, offset);
@@ -196,7 +193,19 @@ namespace eltanin::phys::rigid {
                     continue;
                 const double distance = std::sqrt(distance2);
                 const double accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
-                ball.forceLinear += vec3{offset * (accelScale * double(body->mass))};
+                const dvec3 force = offset * (accelScale * double(body->totalMass));
+                ball.center.force += vec3{force};
+                recoil -= force;
+            }
+            double sourceMass = 0.0;
+            for (const Particle& particle : source->particles)
+                sourceMass += double(particle.mass);
+            if (sourceMass <= 1.0e-12)
+                continue;
+            for (Particle& particle : source->particles) {
+                if (particle.mass <= 0.0f)
+                    continue;
+                particle.force += vec3{recoil * (double(particle.mass) / sourceMass)};
             }
         }
     }

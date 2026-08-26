@@ -1,7 +1,7 @@
 #include "story.h"
 
-#include <eltanin/entities/block.q1.h>
 #include <eltanin/geo/rock.q1.h>
+#include <eltanin/mech/construction.q1.h>
 #include <eltanin/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/compound.q1.h>
@@ -47,7 +47,7 @@ namespace eltanin {
             ask::schema::aspect<phys::rigid::Crystal>(),
             ask::schema::aspect<phys::rigid::Ball>(),
             ask::schema::aspect<phys::rigid::CelestialGravity>(),
-            ask::schema::aspect<Block>(),
+            ask::schema::aspect<mech::Construct>(),
             ask::schema::aspect<geo::Rock>(),
             ask::schema::aspect<geo::Boulder>(),
             ask::schema::aspect<resource::Assets>(),

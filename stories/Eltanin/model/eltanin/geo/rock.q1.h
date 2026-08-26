@@ -38,7 +38,7 @@ namespace eltanin::geo {
 
     struct Rock : Entity<Rock> {
         struct Quantum {
-            Custody<phys::Body> body;
+            Custody<phys::rigid::Crystal> body;
             Custody<rmmr::scene::actor::Mesh> actor;
             Volume volume;
         };

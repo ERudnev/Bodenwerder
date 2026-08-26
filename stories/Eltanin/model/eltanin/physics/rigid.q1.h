@@ -33,9 +33,8 @@ namespace eltanin::phys::rigid {
 
     struct Ball : Feature<Ball, Body> {
         struct Quantum {
-            dvec3 prevPos;
+            Particle center;
             quat prevOri;
-            vec3 forceLinear;
             vec3 forceAngular;
         };
         struct Actions : BaseActions {};

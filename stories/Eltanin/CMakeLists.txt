@@ -11,10 +11,10 @@ set(Eltanin_Q1
     physics/body.q1
     physics/compound.q1
     physics/rigid.q1
-    entities/block.q1
     resources/geometry.q1
     resources/assets.q1
     mech/semantics.q1
+    mech/construction.q1
     mech/blueprint.q1
     mech/mount.q1
     geo/minerals.q1

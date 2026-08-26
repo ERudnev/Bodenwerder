@@ -81,14 +81,10 @@ namespace rmmr::wrapper::ui {
             }
             ImGui::Text("Identity: %lld", static_cast<long long>(identity_draws));
 
-            ImGui::Separator();
-            ImGui::Text("Materials: %zu", with<resource::material::Asset>::count(world));
-            ImGui::Text("Textures: %zu", with<resource::texture::Asset>::count(world));
-
             const auto wall = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
             std::tm local_tm{};
             localtime_s(&local_tm, &wall);
-            ImGui::Text("Eltanin (Sigma Dracomis)  ·  %02d.%02d.%04d", local_tm.tm_mday, local_tm.tm_mon + 1, local_tm.tm_year + 1900);
+            ImGui::Text("Eltanin (Gamma Dracomis)  ·  %02d.%02d.%04d", local_tm.tm_mday, local_tm.tm_mon + 1, local_tm.tm_year + 1900);
         }
         ImGui::End();
         ImGui::PopStyleVar(2);

@@ -29,10 +29,11 @@ namespace eltanin::phys {
     };
 
     struct Body : Entity<Body> {
-        struct Quantum : Matter {
+        struct Quantum {
+            dvec3 position;
             quat orientation;
+            float totalMass;
             float radius;
-            float hitpoints;
 
             auto pose() const -> rmmr::Pose { return rmmr::Pose{.position = vec3{position}, .rotation = orientation}; }
             void pose(rmmr::Pose value) {

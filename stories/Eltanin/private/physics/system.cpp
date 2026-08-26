@@ -47,13 +47,13 @@ namespace eltanin::phys {
         }
         for (auto [id, ball] : context.direct<rigid::Ball>().items) {
             auto* body = bodies.items.find(id);
-            if (not body or body->mass <= 0.0f)
+            if (not body or body->totalMass <= 0.0f)
                 continue;
             if (factor < 1.0f)
-                ball.forceLinear += body->mass * dragScale * vec3{body->position - ball.prevPos};
+                ball.center.force += body->totalMass * dragScale * vec3{body->position - ball.center.prev};
             if (spinFactor >= 1.0f)
                 continue;
-            const float inertia = 0.4f * body->mass * body->radius * body->radius;
+            const float inertia = 0.4f * body->totalMass * body->radius * body->radius;
             if (inertia <= 1.0e-12f)
                 continue;
             const quat qRel = glm::normalize(body->orientation * glm::conjugate(ball.prevOri));
@@ -70,7 +70,7 @@ namespace eltanin::phys {
                 particle.force = vec3{0.0f, 0.0f, 0.0f};
         }
         for (auto [_, ball] : context.direct<rigid::Ball>().items) {
-            ball.forceLinear = vec3{0.0f, 0.0f, 0.0f};
+            ball.center.force = vec3{0.0f, 0.0f, 0.0f};
             ball.forceAngular = vec3{0.0f, 0.0f, 0.0f};
         }
         applyAerodynamics(context);
@@ -93,9 +93,9 @@ namespace eltanin::phys {
         auto bodies = context.direct<Body>();
         for (auto [id, ball] : context.direct<rigid::Ball>().items) {
             auto* body = bodies.items.find(id);
-            if (not body or body->mass <= 0.0f)
+            if (not body or body->totalMass <= 0.0f)
                 continue;
-            ball.forceLinear += body->mass * gravity;
+            ball.center.force += body->totalMass * gravity;
         }
     }
 
@@ -121,19 +121,20 @@ namespace eltanin::phys {
         const double rest2 = double(Settings::restLinear) * double(Settings::restLinear);
         for (auto [id, ball] : balls.items) {
             auto* body = bodies.items.find(id);
-            if (not body or body->mass <= 0.0f)
+            if (not body or body->totalMass <= 0.0f)
                 continue;
 
             const dvec3 previousPos = body->position;
-            const dvec3 accel = dvec3{ball.forceLinear / body->mass};
-            dvec3 step = body->position - ball.prevPos;
+            const dvec3 accel = dvec3{ball.center.force / body->totalMass};
+            dvec3 step = body->position - ball.center.prev;
             if (glm::dot(step, step) < rest2)
                 step = dvec3{0.0, 0.0, 0.0};
             body->position += step + accel * dt2;
-            ball.prevPos = previousPos;
+            ball.center.prev = previousPos;
+            ball.center.position = body->position;
 
             // Solid sphere: I = ⅖ m r²
-            const float inertia = 0.4f * body->mass * body->radius * body->radius;
+            const float inertia = 0.4f * body->totalMass * body->radius * body->radius;
             if (inertia <= 1.0e-12f)
                 continue;
 

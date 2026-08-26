@@ -17,9 +17,8 @@ namespace eltanin
 
       feature Ball of phys::Body
         one
-          prevPos: dvec3
+          center: Particle
           prevOri: quat
-          forceLinear: vec3
           forceAngular: vec3
 
       feature Crystal of phys::Body

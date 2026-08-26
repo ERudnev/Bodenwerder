@@ -15,7 +15,7 @@ namespace eltanin::geo {
 
     struct Boulder : Entity<Boulder> {
         struct Quantum {
-            Custody<phys::Body> body;
+            Custody<phys::rigid::Ball> body;
             Custody<rmmr::scene::actor::Mesh> actor;
         };
         struct Actions : BaseActions {

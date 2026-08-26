@@ -106,10 +106,10 @@ namespace eltanin::geo {
         const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), meshState);
 
         const auto body = with<phys::Body>::create(context, phys::Body::Quantum{
-            phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = 0.0f},
-            pose.rotation,
-            recipe.radius,
-            0.0f,
+            .position = dvec3{pose.position},
+            .orientation = pose.rotation,
+            .totalMass = mass,
+            .radius = recipe.radius,
         });
         quat prevOri = pose.rotation;
         const float omegaLen = glm::length(omega);
@@ -118,9 +118,8 @@ namespace eltanin::geo {
             prevOri = glm::normalize(step * pose.rotation);
         }
         with<phys::rigid::Ball>::extend(context, body, phys::rigid::Ball::Quantum{
-            .prevPos = dvec3{pose.position} - dvec3{velocity * phys::Particle::dt},
+            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = 0.0f}, dvec3{pose.position} - dvec3{velocity * phys::Particle::dt}, vec3{0.0f, 0.0f, 0.0f}},
             .prevOri = prevOri,
-            .forceLinear = vec3{0.0f, 0.0f, 0.0f},
             .forceAngular = vec3{0.0f, 0.0f, 0.0f},
         });
         with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
@@ -132,21 +131,22 @@ namespace eltanin::geo {
             return;
         const float sigma = phys::Settings::radiateSigma;
         const float sky = phys::Settings::skyKelvin;
-        auto bodies = context.direct<phys::Body>();
+        auto balls = context.direct<phys::rigid::Ball>();
         for (auto [_, boulder] : context.direct<Boulder>().items) {
-            auto* body = bodies.items.find(boulder.body);
-            if (not body)
+            auto* ball = balls.items.find(boulder.body);
+            if (not ball)
                 continue;
-            if (body->mass <= 0.0f)
+            auto& particle = ball->center;
+            if (particle.mass <= 0.0f)
                 continue;
-            const float temperature = glm::max(body->temperature, sky);
+            const float temperature = glm::max(particle.temperature, sky);
             const float t2 = temperature * temperature;
-            const float lost = sigma * sphereArea(body->mass) * t2 * t2 * dt;
-            const float energy = body->mass * temperature;
-            body->temperature = glm::max(sky, (energy - lost) / body->mass);
+            const float lost = sigma * sphereArea(particle.mass) * t2 * t2 * dt;
+            const float energy = particle.mass * temperature;
+            particle.temperature = glm::max(sky, (energy - lost) / particle.mass);
             if (not with<rmmr::scene::actor::MeshState>::exists(context, boulder.actor))
                 continue;
-            const vec2 nextHeat{body->temperature, body->cohesion};
+            const vec2 nextHeat{particle.temperature, 0.0f};
             if (with<rmmr::scene::actor::MeshState>::get(context, boulder.actor).heat == nextHeat)
                 continue;
             with<rmmr::scene::actor::MeshState>::modify(context, boulder.actor)->heat = nextHeat;

@@ -136,7 +136,7 @@ namespace eltanin::phys::collision {
 
         void addOccupant(vector<Occupant>& occupants, Body::Id id, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
             auto* body = bodies.items.find(id);
-            if (not body or body->radius <= 0.0f or body->mass <= 0.0f)
+            if (not body or body->radius <= 0.0f or body->totalMass <= 0.0f)
                 return;
             if (balls.items.find(id)) {
                 occupants.push_back(Occupant{Endpoint::Type::ball, id, vec3{body->position}, body->radius});
@@ -154,7 +154,7 @@ namespace eltanin::phys::collision {
                 auto* ball = balls.items.find(id);
                 if (not body or not ball)
                     return vec3{0.0f, 0.0f, 0.0f};
-                return vec3{(body->position - ball->prevPos) / double(Particle::dt)};
+                return vec3{(body->position - ball->center.prev) / double(Particle::dt)};
             }
             auto* crystal = crystals.items.find(id);
             if (not crystal or crystal->particles.empty())
@@ -175,24 +175,25 @@ namespace eltanin::phys::collision {
         }
 
         auto velocityAt(const Body::Quantum& body, const Ball::Quantum& ball, vec3 worldPoint) -> vec3 {
-            const vec3 linear = vec3{(body.position - ball.prevPos) / double(Particle::dt)};
+            const vec3 linear = vec3{(body.position - ball.center.prev) / double(Particle::dt)};
             return linear + glm::cross(omegaOf(body, ball), worldPoint - vec3{body.position});
         }
 
         auto sphereInertia(const Body::Quantum& body) -> float {
-            return 0.4f * body.mass * body.radius * body.radius;
+            return 0.4f * body.totalMass * body.radius * body.radius;
         }
 
         auto spinWeight(const Body::Quantum& body, vec3 arm, vec3 tangent) -> float {
             const float inertia = sphereInertia(body);
             const vec3 rxt = glm::cross(arm, tangent);
-            return inverseMass(body.mass) + (inertia > 1.0e-12f ? glm::dot(rxt, rxt) / inertia : 0.0f);
+            return inverseMass(body.totalMass) + (inertia > 1.0e-12f ? glm::dot(rxt, rxt) / inertia : 0.0f);
         }
 
-        void kickBall(Body::Quantum& body, vec3 arm, vec3 impulse) {
-            if (body.mass <= 0.0f)
+        void kickBall(Body::Quantum& body, Ball::Quantum& ball, vec3 arm, vec3 impulse) {
+            if (body.totalMass <= 0.0f)
                 return;
-            body.position += dvec3{impulse / body.mass};
+            body.position += dvec3{impulse / body.totalMass};
+            ball.center.position = body.position;
             const float inertia = sphereInertia(body);
             if (inertia <= 1.0e-12f)
                 return;
@@ -309,10 +310,10 @@ namespace eltanin::phys::collision {
             if (weight <= 0.0f)
                 return;
             float impulse = slide * Particle::dt / weight;
-            const float limit = ballFriction * live * body.mass * normalStep;
+            const float limit = ballFriction * live * body.totalMass * normalStep;
             if (impulse > limit)
                 impulse = limit;
-            kickBall(body, arm, -tangent * impulse);
+            kickBall(body, ball, arm, -tangent * impulse);
         }
 
         void frictionBallBall(Contact& contact, float normalStep, Body::Quantum& bodyA, Ball::Quantum& ballA, Body::Quantum& bodyB, Ball::Quantum& ballB) {
@@ -329,38 +330,38 @@ namespace eltanin::phys::collision {
             const float weight = spinWeight(bodyA, armA, tangent) + spinWeight(bodyB, armB, tangent);
             if (weight <= 0.0f)
                 return;
-            const float invSum = inverseMass(bodyA.mass) + inverseMass(bodyB.mass);
+            const float invSum = inverseMass(bodyA.totalMass) + inverseMass(bodyB.totalMass);
             if (invSum <= 0.0f)
                 return;
             float impulse = slide * Particle::dt / weight;
             const float limit = ballFriction * (normalStep / invSum);
             if (impulse > limit)
                 impulse = limit;
-            kickBall(bodyA, armA, -tangent * impulse);
-            kickBall(bodyB, armB, tangent * impulse);
+            kickBall(bodyA, ballA, armA, -tangent * impulse);
+            kickBall(bodyB, ballB, armB, tangent * impulse);
         }
 
-        // Reflect Verlet normal step via prevPos only — position already on the surface. Crystal particles do not use this.
+        // Reflect Verlet normal step via center.prev only — position already on the surface. Crystal particles do not use this.
         // `live` soft-scales restitution (0 → e=0 stick; 1 → full ballRestitution). Separation is unchanged.
         void bounceBall(Body::Quantum& body, Ball::Quantum& ball, vec3 normal, float otherNormalStep, float live) {
-            const float vn = float(glm::dot(body.position - ball.prevPos, dvec3{normal})) - otherNormalStep;
+            const float vn = float(glm::dot(body.position - ball.center.prev, dvec3{normal})) - otherNormalStep;
             if (vn <= 0.0f)
                 return;
-            ball.prevPos += dvec3{normal * ((1.0f + ballRestitution * live) * vn)};
+            ball.center.prev += dvec3{normal * ((1.0f + ballRestitution * live) * vn)};
         }
 
         void bounceBallBall(Body::Quantum& bodyA, Ball::Quantum& ballA, Body::Quantum& bodyB, Ball::Quantum& ballB, vec3 normal) {
-            const float weightA = inverseMass(bodyA.mass);
-            const float weightB = inverseMass(bodyB.mass);
+            const float weightA = inverseMass(bodyA.totalMass);
+            const float weightB = inverseMass(bodyB.totalMass);
             const float weightSum = weightA + weightB;
             if (weightSum <= 0.0f)
                 return;
-            const float vn = float(glm::dot((bodyA.position - ballA.prevPos) - (bodyB.position - ballB.prevPos), dvec3{normal}));
+            const float vn = float(glm::dot((bodyA.position - ballA.center.prev) - (bodyB.position - ballB.center.prev), dvec3{normal}));
             if (vn <= 0.0f)
                 return;
             const float jump = (1.0f + ballRestitution) * vn / weightSum;
-            ballA.prevPos += dvec3{normal * (jump * weightA)};
-            ballB.prevPos -= dvec3{normal * (jump * weightB)};
+            ballA.center.prev += dvec3{normal * (jump * weightA)};
+            ballB.center.prev -= dvec3{normal * (jump * weightB)};
         }
 
         auto ballCrystalLive(float closingSpeed) -> float {
@@ -380,6 +381,7 @@ namespace eltanin::phys::collision {
             if (not body or not ball)
                 return;
             body->position -= dvec3{contact.normal * remaining};
+            ball->center.position = body->position;
             const float live = ballCrystalLive(glm::max(0.0f, contact.relativeNormalSpeed));
             const vec3 otherVelocity = velocityOf(contact.b.body, contact.b.type, bodies, balls, crystals);
             bounceBall(*body, *ball, contact.normal, glm::dot(otherVelocity, contact.normal) * Particle::dt, live);
@@ -388,7 +390,7 @@ namespace eltanin::phys::collision {
             auto* crystalBody = bodies.items.find(contact.b.body);
             if (not crystal or not crystalBody)
                 return;
-            kickFaceSupports(*crystal, *crystalBody, contact.b.face, contact.point, contact.normal * remaining, body->mass);
+            kickFaceSupports(*crystal, *crystalBody, contact.b.face, contact.point, contact.normal * remaining, body->totalMass);
         }
 
         void respondBallBall(Contact& contact, float remaining, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls) {
@@ -398,13 +400,15 @@ namespace eltanin::phys::collision {
             auto* ballB = balls.items.find(contact.b.body);
             if (not bodyA or not bodyB or not ballA or not ballB)
                 return;
-            const float weightA = inverseMass(bodyA->mass);
-            const float weightB = inverseMass(bodyB->mass);
+            const float weightA = inverseMass(bodyA->totalMass);
+            const float weightB = inverseMass(bodyB->totalMass);
             const float weightSum = weightA + weightB;
             if (weightSum <= 0.0f)
                 return;
             bodyA->position -= dvec3{contact.normal * (remaining * (weightA / weightSum))};
             bodyB->position += dvec3{contact.normal * (remaining * (weightB / weightSum))};
+            ballA->center.position = bodyA->position;
+            ballB->center.position = bodyB->position;
             bounceBallBall(*bodyA, *ballA, *bodyB, *ballB, contact.normal);
             frictionBallBall(contact, remaining, *bodyA, *ballA, *bodyB, *ballB);
         }

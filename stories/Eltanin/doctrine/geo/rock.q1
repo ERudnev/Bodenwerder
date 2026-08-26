@@ -34,7 +34,7 @@ namespace eltanin
     // Large rock: Body + Crystal + octree Volume. Small debris → Boulder.
     entity Rock
       one
-        body: custody<phys::Body>
+        body: custody<phys::rigid::Crystal>
         actor: custody<rmmr::scene::actor::Mesh>
         volume: Volume
       all

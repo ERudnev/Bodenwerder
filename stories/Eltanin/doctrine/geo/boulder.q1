@@ -12,7 +12,7 @@ namespace eltanin
     // Small debris: Body + Ball + debris mesh. No Volume / Crystal.
     entity Boulder
       one
-        body: custody<phys::Body>
+        body: custody<phys::rigid::Ball>
         actor: custody<rmmr::scene::actor::Mesh>
       all
         >spawnGenerated(#rmmr::scene::Root, #system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#

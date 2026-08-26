@@ -20,17 +20,12 @@ namespace eltanin
       ?velocity()->dvec3
       ?impulse()->vec3
 
-    // World-facing Matter cache. Ball and Crystal are features of the same id.
+    // World-facing kinematics cache. Ball and Crystal are features of the same id.
     entity Body
       one
         position: dvec3
-        mass: float
-        temperature: Kelvins
-        cohesion: float
         orientation: quat
+        totalMass: float
         radius: float
-        hitpoints: float
-        ?hp()->float
-        ?thermalEnergy()->float
         ?pose()->rmmr::Pose
         =pose(rmmr::Pose)

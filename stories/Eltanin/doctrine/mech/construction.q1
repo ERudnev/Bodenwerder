@@ -1,0 +1,16 @@
+import "rmmr/scene/actors/mesh"
+import "physics/body"
+import "physics/rigid"
+
+namespace eltanin
+  namespace mech
+
+    struct Construction // TBD
+
+    entity Construct
+      one
+        body: custody<phys::rigid::Crystal>
+        actor: custody<rmmr::scene::actor::Mesh>
+        construction: Construction
+      all
+        !followBody(~phys::Body)->>linearPass(>all)
