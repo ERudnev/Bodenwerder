@@ -22,8 +22,10 @@ namespace eltanin::phys {
     struct Settings {
         static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
         static constexpr float isaAirDensity = 1225.0f; // g/m³ ISA
-        static constexpr float airDragTau = 1.0f; // seconds to e-fold at isaAirDensity
+        static constexpr float airDragTau = 1.0f; // seconds to e-fold linear speed at isaAirDensity
+        static constexpr float airSpinHalfLife = 3.0f; // Ball ω halves in this many seconds at isaAirDensity
         static constexpr float restLinear = 1.0e-5f; // m/tick; below this (x−prev) is zeroed
+        static constexpr float ballLiveSpeed = 0.1f; // m/s; Ball↔Crystal — soft fade of restitution and spin below this closing speed
         static constexpr int64 fixedStepUs = 10'000;
         static constexpr int64 thermalStepUs = 200'000;
         static constexpr float skyKelvin = 3.0f;

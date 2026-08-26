@@ -1,5 +1,6 @@
 #include "physics/collisions.h"
 #include "physics/hullBvh.h"
+#include "physics/system.h"
 
 #include <base/logging.h>
 
@@ -289,7 +290,14 @@ namespace eltanin::phys::collision {
             }
         }
 
-        void frictionBallCrystal(Contact& contact, float normalStep, Body::Quantum& body, Ball::Quantum& ball, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
+        void clearBallSpin(const Body::Quantum& body, Ball::Quantum& ball) {
+            ball.prevOri = body.orientation;
+        }
+
+        void frictionBallCrystal(Contact& contact, float normalStep, float live, Body::Quantum& body, Ball::Quantum& ball, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
+            clearBallSpin(body, ball);
+            if (live <= 0.0f)
+                return;
             const vec3 arm = contact.point - vec3{body.position};
             const vec3 slideVec = velocityAt(body, ball, contact.point) - velocityOf(contact.b.body, contact.b.type, bodies, balls, crystals);
             const vec3 tangentVel = slideVec - contact.normal * glm::dot(slideVec, contact.normal);
@@ -301,13 +309,15 @@ namespace eltanin::phys::collision {
             if (weight <= 0.0f)
                 return;
             float impulse = slide * Particle::dt / weight;
-            const float limit = ballFriction * body.mass * normalStep;
+            const float limit = ballFriction * live * body.mass * normalStep;
             if (impulse > limit)
                 impulse = limit;
             kickBall(body, arm, -tangent * impulse);
         }
 
         void frictionBallBall(Contact& contact, float normalStep, Body::Quantum& bodyA, Ball::Quantum& ballA, Body::Quantum& bodyB, Ball::Quantum& ballB) {
+            clearBallSpin(bodyA, ballA);
+            clearBallSpin(bodyB, ballB);
             const vec3 armA = contact.point - vec3{bodyA.position};
             const vec3 armB = contact.point - vec3{bodyB.position};
             const vec3 slideVec = velocityAt(bodyA, ballA, contact.point) - velocityAt(bodyB, ballB, contact.point);
@@ -331,11 +341,12 @@ namespace eltanin::phys::collision {
         }
 
         // Reflect Verlet normal step via prevPos only — position already on the surface. Crystal particles do not use this.
-        void bounceBall(Body::Quantum& body, Ball::Quantum& ball, vec3 normal, float otherNormalStep) {
+        // `live` soft-scales restitution (0 → e=0 stick; 1 → full ballRestitution). Separation is unchanged.
+        void bounceBall(Body::Quantum& body, Ball::Quantum& ball, vec3 normal, float otherNormalStep, float live) {
             const float vn = float(glm::dot(body.position - ball.prevPos, dvec3{normal})) - otherNormalStep;
             if (vn <= 0.0f)
                 return;
-            ball.prevPos += dvec3{normal * ((1.0f + ballRestitution) * vn)};
+            ball.prevPos += dvec3{normal * ((1.0f + ballRestitution * live) * vn)};
         }
 
         void bounceBallBall(Body::Quantum& bodyA, Ball::Quantum& ballA, Body::Quantum& bodyB, Ball::Quantum& ballB, vec3 normal) {
@@ -352,15 +363,27 @@ namespace eltanin::phys::collision {
             ballB.prevPos -= dvec3{normal * (jump * weightB)};
         }
 
+        auto ballCrystalLive(float closingSpeed) -> float {
+            if (Settings::ballLiveSpeed <= 0.0f)
+                return 1.0f;
+            const float t = closingSpeed / Settings::ballLiveSpeed;
+            if (t <= 0.0f)
+                return 0.0f;
+            if (t >= 1.0f)
+                return 1.0f;
+            return t * t * (3.0f - 2.0f * t);
+        }
+
         void respondBallCrystal(Contact& contact, float remaining, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
             auto* body = bodies.items.find(contact.a.body);
             auto* ball = balls.items.find(contact.a.body);
             if (not body or not ball)
                 return;
             body->position -= dvec3{contact.normal * remaining};
+            const float live = ballCrystalLive(glm::max(0.0f, contact.relativeNormalSpeed));
             const vec3 otherVelocity = velocityOf(contact.b.body, contact.b.type, bodies, balls, crystals);
-            bounceBall(*body, *ball, contact.normal, glm::dot(otherVelocity, contact.normal) * Particle::dt);
-            frictionBallCrystal(contact, remaining, *body, *ball, bodies, balls, crystals);
+            bounceBall(*body, *ball, contact.normal, glm::dot(otherVelocity, contact.normal) * Particle::dt, live);
+            frictionBallCrystal(contact, remaining, live, *body, *ball, bodies, balls, crystals);
             auto* crystal = crystals.items.find(contact.b.body);
             auto* crystalBody = bodies.items.find(contact.b.body);
             if (not crystal or not crystalBody)

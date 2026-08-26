@@ -22,26 +22,45 @@ namespace eltanin::phys {
         const float density = root.atmosphereDensity;
         if (density <= 0.0f)
             return;
-        float factor = 1.0f - (density / Settings::isaAirDensity) * (Particle::dt / Settings::airDragTau);
-        if (factor >= 1.0f)
-            return;
+        const float densityRatio = density / Settings::isaAirDensity;
+        float factor = 1.0f - densityRatio * (Particle::dt / Settings::airDragTau);
         if (factor < 0.0f)
             factor = 0.0f;
-        const float dt2 = Particle::dt * Particle::dt;
+        const float spinTau = Settings::airSpinHalfLife / 0.693147f;
+        float spinFactor = 1.0f - densityRatio * (Particle::dt / spinTau);
+        if (spinFactor < 0.0f)
+            spinFactor = 0.0f;
+        if (factor >= 1.0f and spinFactor >= 1.0f)
+            return;
+        const float dt = Particle::dt;
+        const float dt2 = dt * dt;
         const float dragScale = (factor - 1.0f) / dt2;
-        for (auto [_, crystal] : context.direct<rigid::Crystal>().items) {
-            for (Particle& particle : crystal.particles) {
-                if (particle.mass <= 0.0f)
-                    continue;
-                particle.force += particle.mass * dragScale * vec3{particle.position - particle.prev};
+        auto bodies = context.direct<Body>();
+        if (factor < 1.0f) {
+            for (auto [_, crystal] : context.direct<rigid::Crystal>().items) {
+                for (Particle& particle : crystal.particles) {
+                    if (particle.mass <= 0.0f)
+                        continue;
+                    particle.force += particle.mass * dragScale * vec3{particle.position - particle.prev};
+                }
             }
         }
-        auto bodies = context.direct<Body>();
         for (auto [id, ball] : context.direct<rigid::Ball>().items) {
             auto* body = bodies.items.find(id);
             if (not body or body->mass <= 0.0f)
                 continue;
-            ball.forceLinear += body->mass * dragScale * vec3{body->position - ball.prevPos};
+            if (factor < 1.0f)
+                ball.forceLinear += body->mass * dragScale * vec3{body->position - ball.prevPos};
+            if (spinFactor >= 1.0f)
+                continue;
+            const float inertia = 0.4f * body->mass * body->radius * body->radius;
+            if (inertia <= 1.0e-12f)
+                continue;
+            const quat qRel = glm::normalize(body->orientation * glm::conjugate(ball.prevOri));
+            vec3 omega = (2.0f / dt) * vec3{qRel.x, qRel.y, qRel.z};
+            if (qRel.w < 0.0f)
+                omega = -omega;
+            ball.forceAngular += inertia * ((spinFactor - 1.0f) / dt) * omega;
         }
     }
 
