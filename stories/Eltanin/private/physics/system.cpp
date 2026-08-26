@@ -17,19 +17,9 @@ namespace eltanin::phys {
         , thermalDebtUs(0) {
     }
 
-    namespace {
-
-        auto location(Stewarding context, scene::Root::Id scene) -> scene::Root::Quantum* {
-            return context.direct<scene::Root>().items.find(scene);
-        }
-
-    }
-
     void System::applyAerodynamics(Stewarding context) {
-        auto* root = location(context, scene);
-        if (not root)
-            return;
-        const float density = root->atmosphereDensity;
+        const auto& root = with<scene::Root>::get(context, scene);
+        const float density = root.atmosphereDensity;
         if (density <= 0.0f)
             return;
         float factor = 1.0f - (density / Settings::isaAirDensity) * (Particle::dt / Settings::airDragTau);
@@ -70,10 +60,8 @@ namespace eltanin::phys {
     }
 
     void System::applyLinearGravity(Stewarding context) {
-        auto* root = location(context, scene);
-        if (not root)
-            return;
-        const vec3 gravity = root->gravity;
+        const auto& root = with<scene::Root>::get(context, scene);
+        const vec3 gravity = root.gravity;
         if (glm::dot(gravity, gravity) == 0.0f)
             return;
         for (auto [_, crystal] : context.direct<rigid::Crystal>().items) {
@@ -185,6 +173,8 @@ namespace eltanin::phys {
         if (debtUs < Settings::fixedStepUs and thermalDebtUs < Settings::thermalStepUs)
             return;
         Stewarding session = world;
+        if (not with<scene::Root>::exists(session, scene))
+            return;
         while (debtUs >= Settings::fixedStepUs) {
             tick(session);
             debtUs -= Settings::fixedStepUs;

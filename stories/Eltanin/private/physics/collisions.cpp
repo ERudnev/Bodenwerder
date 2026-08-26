@@ -15,6 +15,7 @@ namespace eltanin::phys::collision {
     namespace {
 
         constexpr float minLength = 1.0e-8f;
+        constexpr float ballFriction = 0.8f;
 
         struct Occupant {
             Endpoint::Type type;
@@ -103,6 +104,44 @@ namespace eltanin::phys::collision {
             for (const Particle& particle : crystal->particles)
                 sum += particle.velocity();
             return vec3{sum / double(crystal->particles.size())};
+        }
+
+        auto omegaOf(const Body::Quantum& body, const Ball::Quantum& ball) -> vec3 {
+            const float dt = Particle::dt;
+            const quat qRel = glm::normalize(body.orientation * glm::conjugate(ball.prevOri));
+            vec3 omega = (2.0f / dt) * vec3{qRel.x, qRel.y, qRel.z};
+            if (qRel.w < 0.0f)
+                omega = -omega;
+            return omega;
+        }
+
+        auto velocityAt(const Body::Quantum& body, const Ball::Quantum& ball, vec3 worldPoint) -> vec3 {
+            const vec3 linear = vec3{(body.position - ball.prevPos) / double(Particle::dt)};
+            return linear + glm::cross(omegaOf(body, ball), worldPoint - vec3{body.position});
+        }
+
+        auto sphereInertia(const Body::Quantum& body) -> float {
+            return 0.4f * body.mass * body.radius * body.radius;
+        }
+
+        auto spinWeight(const Body::Quantum& body, vec3 arm, vec3 tangent) -> float {
+            const float inertia = sphereInertia(body);
+            const vec3 rxt = glm::cross(arm, tangent);
+            return inverseMass(body.mass) + (inertia > 1.0e-12f ? glm::dot(rxt, rxt) / inertia : 0.0f);
+        }
+
+        void kickBall(Body::Quantum& body, vec3 arm, vec3 impulse) {
+            if (body.mass <= 0.0f)
+                return;
+            body.position += dvec3{impulse / body.mass};
+            const float inertia = sphereInertia(body);
+            if (inertia <= 1.0e-12f)
+                return;
+            const vec3 delta = glm::cross(arm, impulse) / inertia;
+            const float angle = glm::length(delta);
+            if (angle < minLength)
+                return;
+            body.orientation = glm::normalize(glm::angleAxis(angle, delta / angle) * body.orientation);
         }
 
         auto spheresOverlap(vec3 centerA, float radiusA, vec3 centerB, float radiusB) -> bool {
@@ -219,6 +258,64 @@ namespace eltanin::phys::collision {
             kickVertex(*particleCrystal, contact.a.face, -along * step);
         }
 
+        void frictionBallCrystal(Contact& contact, float normalStep, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
+            auto* body = bodies.items.find(contact.a.body);
+            auto* ball = balls.items.find(contact.a.body);
+            if (not body or not ball)
+                return;
+            const vec3 arm = contact.point - vec3{body->position};
+            const vec3 slideVec = velocityAt(*body, *ball, contact.point) - velocityOf(contact.b.body, contact.b.type, bodies, balls, crystals);
+            const vec3 tangentVel = slideVec - contact.normal * glm::dot(slideVec, contact.normal);
+            const float slide = glm::length(tangentVel);
+            if (slide < minLength)
+                return;
+            const vec3 tangent = tangentVel / slide;
+            const float weight = spinWeight(*body, arm, tangent);
+            if (weight <= 0.0f)
+                return;
+            float impulse = slide * Particle::dt / weight;
+            const float limit = ballFriction * body->mass * normalStep;
+            if (impulse > limit)
+                impulse = limit;
+            kickBall(*body, arm, -tangent * impulse);
+        }
+
+        void frictionBallBall(Contact& contact, float normalStep, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls) {
+            auto* bodyA = bodies.items.find(contact.a.body);
+            auto* bodyB = bodies.items.find(contact.b.body);
+            auto* ballA = balls.items.find(contact.a.body);
+            auto* ballB = balls.items.find(contact.b.body);
+            if (not bodyA or not bodyB or not ballA or not ballB)
+                return;
+            const vec3 armA = contact.point - vec3{bodyA->position};
+            const vec3 armB = contact.point - vec3{bodyB->position};
+            const vec3 slideVec = velocityAt(*bodyA, *ballA, contact.point) - velocityAt(*bodyB, *ballB, contact.point);
+            const vec3 tangentVel = slideVec - contact.normal * glm::dot(slideVec, contact.normal);
+            const float slide = glm::length(tangentVel);
+            if (slide < minLength)
+                return;
+            const vec3 tangent = tangentVel / slide;
+            const float weight = spinWeight(*bodyA, armA, tangent) + spinWeight(*bodyB, armB, tangent);
+            if (weight <= 0.0f)
+                return;
+            const float invSum = inverseMass(bodyA->mass) + inverseMass(bodyB->mass);
+            if (invSum <= 0.0f)
+                return;
+            float impulse = slide * Particle::dt / weight;
+            const float limit = ballFriction * (normalStep / invSum);
+            if (impulse > limit)
+                impulse = limit;
+            kickBall(*bodyA, armA, -tangent * impulse);
+            kickBall(*bodyB, armB, tangent * impulse);
+        }
+
+        void spinBalls(Contact& contact, float normalStep, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
+            if (contact.a.type == Endpoint::Type::ball and contact.b.type == Endpoint::Type::ball)
+                frictionBallBall(contact, normalStep, bodies, balls);
+            else if (contact.a.type == Endpoint::Type::ball)
+                frictionBallCrystal(contact, normalStep, bodies, balls, crystals);
+        }
+
         auto collectOccupants(Compound::Id host, const Compound::Quantum& compound, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) -> vector<Occupant> {
             vector<Occupant> occupants;
             addOccupant(occupants, host, bodies, balls, crystals);
@@ -311,6 +408,7 @@ namespace eltanin::phys::collision {
             return;
         }
         auto bodies = context.direct<Body>();
+        auto balls = context.direct<Ball>();
         auto crystals = context.direct<Crystal>();
         float maxPen = 0.0f;
         float vn = 0.0f;
@@ -330,6 +428,7 @@ namespace eltanin::phys::collision {
             if (contact.penetration <= 0.0f)
                 continue;
             separate(contact, contact.penetration, bodies, crystals);
+            spinBalls(contact, contact.penetration, bodies, balls, crystals);
             contact.correction = contact.penetration;
         }
         float corr = 0.0f;

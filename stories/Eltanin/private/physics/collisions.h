@@ -16,6 +16,7 @@ namespace eltanin::phys::collision {
     // Narrow phase: live particles of one body vs pose*shape of the other.
     // Each particle queries the rest-space hull BVH for the nearest face; depth is signed distance to that primitive.
     // Solver once per tick: pull the tested point onto frozen pose*shape. Next iteration is the next physics tick.
+    // Ball friction: after the normal kick, Coulomb tangent impulse spins orientation (not prevOri) vs Crystal and vs Ball.
     // Contact = positional constraint + event payload — not a force into accumulateForces.
 
     // One side of a candidate or contact. Ball and Crystal share Body::Id; type selects the primitive.

@@ -19,11 +19,11 @@ namespace eltanin::scenario {
     namespace {
 
         constexpr float coreRadius = 8.1f;
-        constexpr float banditRadius = coreRadius * 2.0f;
-        constexpr float banditX = -80.0f;
-        constexpr float banditSpeed = 160.0f;
         constexpr float pebbleRadius = 2.4f;
-        constexpr integer ice = 0;
+        constexpr integer shrapnelCount = 20;
+        constexpr float shrapnelSpeed = 100.0f;
+        constexpr vec3 shrapnelOrigin{-200.0f, 2.0f, 0.0f};
+        constexpr vec3 shrapnelStride{5.0f, 0.0f, 0.0f};
         constexpr integer feldspar = 3;
         constexpr integer olivine = 1;
 
@@ -111,7 +111,7 @@ namespace eltanin::scenario {
     }
 
     void AsterField::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
-        with<scene::Root>::modify(context, root)->atmosphereDensity = 1225.0f;
+        with<scene::Root>::modify(context, root)->atmosphereDensity = 1225.0f * 0.01f;
         const geo::GeneralizedRecipe core{
             .mix = stoneCoreMix(),
             .radius = coreRadius,
@@ -121,33 +121,32 @@ namespace eltanin::scenario {
             .spotContrast = 0.12f,
         };
         with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), core, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
-        const geo::GeneralizedRecipe bandit{
-            .mix = geo::GeneralizedRecipe::homogenous(ice),
-            .radius = banditRadius,
-            .lump = 0.82f,
-            .seed = 20260818,
-            .spotMeters = banditRadius * 0.48f,
-            .spotContrast = 0.0f,
-        };
-        with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{banditX, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), bandit, vec3{banditSpeed, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
-        const geo::GeneralizedRecipe pebbleA{
-            .mix = stoneCoreMix(),
-            .radius = pebbleRadius,
-            .lump = 0.35f,
-            .seed = 3101,
-            .spotMeters = pebbleRadius * 0.5f,
-            .spotContrast = 0.1f,
-        };
-        const geo::GeneralizedRecipe pebbleB{
-            .mix = stoneCoreMix(),
-            .radius = pebbleRadius,
-            .lump = 0.28f,
-            .seed = 3102,
-            .spotMeters = pebbleRadius * 0.5f,
-            .spotContrast = 0.1f,
-        };
-        with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{-52.0f, 0.0f, 17.1f}, HPB{0.0f, 0.0f, 0.0f}), pebbleA, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
-        with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{-47.5f, 0.5f, 19.2f}, HPB{0.0f, 0.0f, 0.0f}), pebbleB, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        // parked: first hooligan — keep the lump, useful shape
+        // constexpr float banditRadius = coreRadius * 2.0f;
+        // constexpr float banditX = -80.0f;
+        // constexpr float banditSpeed = 160.0f;
+        // constexpr integer ice = 0;
+        // const geo::GeneralizedRecipe bandit{
+        //     .mix = geo::GeneralizedRecipe::homogenous(ice),
+        //     .radius = banditRadius,
+        //     .lump = 0.82f,
+        //     .seed = 20260818,
+        //     .spotMeters = banditRadius * 0.48f,
+        //     .spotContrast = 0.0f,
+        // };
+        // with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{banditX, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), bandit, vec3{banditSpeed, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        for (integer n = 0; n < shrapnelCount; ++n) {
+            const geo::GeneralizedRecipe shard{
+                .mix = stoneCoreMix(),
+                .radius = pebbleRadius,
+                .lump = 0.3f,
+                .seed = 4101 + n,
+                .spotMeters = pebbleRadius * 0.5f,
+                .spotContrast = 0.1f,
+            };
+            const vec3 pos = shrapnelOrigin + float(n) * shrapnelStride;
+            with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{pos.x, pos.y, pos.z}, HPB{0.0f, 0.0f, 0.0f}), shard, vec3{shrapnelSpeed, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        }
     }
 
 }
