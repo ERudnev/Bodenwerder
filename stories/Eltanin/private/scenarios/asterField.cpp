@@ -1,6 +1,7 @@
 #include "scenarios/asterField.h"
 
 #include <eltanin/geo/boulder.q1.h>
+#include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -18,22 +19,15 @@ namespace eltanin::scenario {
 
     namespace {
 
-        constexpr float coreRadius = 8.1f;
-        constexpr float pebbleRadius = 2.4f;
-        constexpr integer shrapnelCount = 20;
-        constexpr float shrapnelSpeed = 100.0f;
-        constexpr vec3 shrapnelOrigin{-200.0f, 2.0f, 0.0f};
+        // Ice ρ=0.92: sphere 1 t → r≈0.64. Victim envelope ~18.5 + lump 0.82 → mass order ~10⁴ t (×10 from the previous ~8.5 envelope).
+        constexpr float victimRadius = 18.5f;
+        constexpr float victimSurfaceAccel = 10.0f;
+        constexpr float pebbleRadius = 0.64f;
+        constexpr integer shrapnelCount = 100;
+        constexpr float shrapnelSpeed = 1.0f;
+        constexpr vec3 shrapnelOrigin{-600.0f, 0.0f, 0.0f};
         constexpr vec3 shrapnelStride{5.0f, 0.0f, 0.0f};
-        constexpr integer feldspar = 3;
-        constexpr integer olivine = 1;
-
-        auto nibble(integer channel, integer fill) -> geo::Mix {
-            return geo::Mix{static_cast<std::uint64_t>(fill)} << (channel * 4);
-        }
-
-        auto stoneCoreMix() -> geo::Mix {
-            return nibble(olivine, 8) | nibble(feldspar, 7);
-        }
+        constexpr integer ice = 0;
 
     } // namespace
 
@@ -112,20 +106,20 @@ namespace eltanin::scenario {
 
     void AsterField::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
         with<scene::Root>::modify(context, root)->atmosphereDensity = 1225.0f * 0.01f;
-        const geo::GeneralizedRecipe core{
-            .mix = stoneCoreMix(),
-            .radius = coreRadius,
-            .lump = 0.0f,
+        const geo::GeneralizedRecipe victim{
+            .mix = geo::GeneralizedRecipe::homogenous(ice),
+            .radius = victimRadius,
+            .lump = 0.82f,
             .seed = 7001,
-            .spotMeters = coreRadius * 0.45f,
-            .spotContrast = 0.12f,
+            .spotMeters = victimRadius * 0.48f,
+            .spotContrast = 0.0f,
         };
-        with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), core, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        const auto victimId = with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{-90.0f, 0.0f, 0.0f}), victim, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        with<phys::rigid::CelestialGravity>::extend(context, with<geo::Rock>::get(context, victimId).body, phys::rigid::CelestialGravity::Quantum{.averageRadius = victimRadius, .surfaceAcceleration = victimSurfaceAccel});
         // parked: first hooligan — keep the lump, useful shape
-        // constexpr float banditRadius = coreRadius * 2.0f;
+        // constexpr float banditRadius = 16.2f;
         // constexpr float banditX = -80.0f;
         // constexpr float banditSpeed = 160.0f;
-        // constexpr integer ice = 0;
         // const geo::GeneralizedRecipe bandit{
         //     .mix = geo::GeneralizedRecipe::homogenous(ice),
         //     .radius = banditRadius,
@@ -137,12 +131,12 @@ namespace eltanin::scenario {
         // with<geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{banditX, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), bandit, vec3{banditSpeed, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
         for (integer n = 0; n < shrapnelCount; ++n) {
             const geo::GeneralizedRecipe shard{
-                .mix = stoneCoreMix(),
+                .mix = geo::GeneralizedRecipe::homogenous(ice),
                 .radius = pebbleRadius,
                 .lump = 0.3f,
                 .seed = 4101 + n,
                 .spotMeters = pebbleRadius * 0.5f,
-                .spotContrast = 0.1f,
+                .spotContrast = 0.0f,
             };
             const vec3 pos = shrapnelOrigin + float(n) * shrapnelStride;
             with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{pos.x, pos.y, pos.z}, HPB{0.0f, 0.0f, 0.0f}), shard, vec3{shrapnelSpeed, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});

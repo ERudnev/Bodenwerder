@@ -16,6 +16,7 @@ namespace eltanin::phys::collision {
 
         constexpr float minLength = 1.0e-8f;
         constexpr float ballFriction = 0.8f;
+        constexpr float ballRestitution = 0.6f; // rigid primitives only (Ball; later Cube); Crystal particles stay e≈0 positional kicks
 
         struct Occupant {
             Endpoint::Type type;
@@ -73,6 +74,63 @@ namespace eltanin::phys::collision {
             if (vertexIndex < 0 or static_cast<std::size_t>(vertexIndex) >= crystal.particles.size())
                 return;
             kickParticle(crystal.particles[static_cast<std::size_t>(vertexIndex)], delta);
+        }
+
+        auto triangleWeights(vec3 point, vec3 cornerA, vec3 cornerB, vec3 cornerC) -> vec3 {
+            const vec3 n = glm::cross(cornerB - cornerA, cornerC - cornerA);
+            const float area2 = glm::dot(n, n);
+            if (area2 < minLength * minLength)
+                return vec3{1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f};
+            vec3 weight{glm::dot(glm::cross(cornerC - cornerB, point - cornerB), n), glm::dot(glm::cross(cornerA - cornerC, point - cornerC), n), glm::dot(glm::cross(cornerB - cornerA, point - cornerA), n)};
+            if (weight.x < 0.0f)
+                weight.x = 0.0f;
+            if (weight.y < 0.0f)
+                weight.y = 0.0f;
+            if (weight.z < 0.0f)
+                weight.z = 0.0f;
+            const float sum = weight.x + weight.y + weight.z;
+            if (sum < minLength)
+                return vec3{1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f};
+            return weight / sum;
+        }
+
+        void kickFaceSupports(Crystal::Quantum& crystal, const Body::Quantum& crystalBody, integer faceIndex, vec3 worldPoint, vec3 recoil, float ballMass) {
+            if (ballMass <= 0.0f or faceIndex < 0 or static_cast<std::size_t>(faceIndex) >= crystal.hull.faces.size())
+                return;
+            const auto& face = crystal.hull.faces[static_cast<std::size_t>(faceIndex)];
+            const std::size_t count = face.points.size();
+            if (count < 2)
+                return;
+            float weights[8];
+            integer ids[8];
+            std::size_t used = 0;
+            for (std::size_t index = 0; index < count and used < 8; ++index) {
+                const integer id = face.points[index];
+                if (id < 0 or static_cast<std::size_t>(id) >= crystal.particles.size() or static_cast<std::size_t>(id) >= crystal.shape.size())
+                    continue;
+                if (crystal.particles[static_cast<std::size_t>(id)].mass <= 0.0f)
+                    continue;
+                ids[used] = id;
+                weights[used] = 1.0f;
+                ++used;
+            }
+            if (used == 0)
+                return;
+            if (used == 3) {
+                const vec3 bary = triangleWeights(worldPoint, worldOf(crystalBody, crystal.shape[static_cast<std::size_t>(ids[0])]), worldOf(crystalBody, crystal.shape[static_cast<std::size_t>(ids[1])]), worldOf(crystalBody, crystal.shape[static_cast<std::size_t>(ids[2])]));
+                weights[0] = bary.x;
+                weights[1] = bary.y;
+                weights[2] = bary.z;
+            }
+            float sum = 0.0f;
+            for (std::size_t index = 0; index < used; ++index)
+                sum += weights[index];
+            if (sum < minLength)
+                return;
+            for (std::size_t index = 0; index < used; ++index) {
+                Particle& particle = crystal.particles[static_cast<std::size_t>(ids[index])];
+                kickParticle(particle, recoil * (ballMass * (weights[index] / sum) / particle.mass));
+            }
         }
 
         void addOccupant(vector<Occupant>& occupants, Body::Id id, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
@@ -231,89 +289,117 @@ namespace eltanin::phys::collision {
             }
         }
 
-        void separate(Contact& contact, float remaining, fqsm::Direct<Body> bodies, fqsm::Direct<Crystal> crystals) {
-            auto* left = bodies.items.find(contact.a.body);
-            auto* right = bodies.items.find(contact.b.body);
-            if (not left or not right)
-                return;
-            const vec3 along = contact.normal;
-            const float step = remaining;
-            if (contact.a.type == Endpoint::Type::ball and contact.b.type == Endpoint::Type::ball) {
-                const float weightA = inverseMass(left->mass);
-                const float weightB = inverseMass(right->mass);
-                const float weightSum = weightA + weightB;
-                if (weightSum <= 0.0f)
-                    return;
-                left->position -= dvec3{along * (step * (weightA / weightSum))};
-                right->position += dvec3{along * (step * (weightB / weightSum))};
-                return;
-            }
-            if (contact.a.type == Endpoint::Type::ball) {
-                left->position -= dvec3{along * step};
-                return;
-            }
-            auto* particleCrystal = crystals.items.find(contact.a.body);
-            if (not particleCrystal)
-                return;
-            kickVertex(*particleCrystal, contact.a.face, -along * step);
-        }
-
-        void frictionBallCrystal(Contact& contact, float normalStep, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
-            auto* body = bodies.items.find(contact.a.body);
-            auto* ball = balls.items.find(contact.a.body);
-            if (not body or not ball)
-                return;
-            const vec3 arm = contact.point - vec3{body->position};
-            const vec3 slideVec = velocityAt(*body, *ball, contact.point) - velocityOf(contact.b.body, contact.b.type, bodies, balls, crystals);
+        void frictionBallCrystal(Contact& contact, float normalStep, Body::Quantum& body, Ball::Quantum& ball, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
+            const vec3 arm = contact.point - vec3{body.position};
+            const vec3 slideVec = velocityAt(body, ball, contact.point) - velocityOf(contact.b.body, contact.b.type, bodies, balls, crystals);
             const vec3 tangentVel = slideVec - contact.normal * glm::dot(slideVec, contact.normal);
             const float slide = glm::length(tangentVel);
             if (slide < minLength)
                 return;
             const vec3 tangent = tangentVel / slide;
-            const float weight = spinWeight(*body, arm, tangent);
+            const float weight = spinWeight(body, arm, tangent);
             if (weight <= 0.0f)
                 return;
             float impulse = slide * Particle::dt / weight;
-            const float limit = ballFriction * body->mass * normalStep;
+            const float limit = ballFriction * body.mass * normalStep;
             if (impulse > limit)
                 impulse = limit;
-            kickBall(*body, arm, -tangent * impulse);
+            kickBall(body, arm, -tangent * impulse);
         }
 
-        void frictionBallBall(Contact& contact, float normalStep, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls) {
-            auto* bodyA = bodies.items.find(contact.a.body);
-            auto* bodyB = bodies.items.find(contact.b.body);
-            auto* ballA = balls.items.find(contact.a.body);
-            auto* ballB = balls.items.find(contact.b.body);
-            if (not bodyA or not bodyB or not ballA or not ballB)
-                return;
-            const vec3 armA = contact.point - vec3{bodyA->position};
-            const vec3 armB = contact.point - vec3{bodyB->position};
-            const vec3 slideVec = velocityAt(*bodyA, *ballA, contact.point) - velocityAt(*bodyB, *ballB, contact.point);
+        void frictionBallBall(Contact& contact, float normalStep, Body::Quantum& bodyA, Ball::Quantum& ballA, Body::Quantum& bodyB, Ball::Quantum& ballB) {
+            const vec3 armA = contact.point - vec3{bodyA.position};
+            const vec3 armB = contact.point - vec3{bodyB.position};
+            const vec3 slideVec = velocityAt(bodyA, ballA, contact.point) - velocityAt(bodyB, ballB, contact.point);
             const vec3 tangentVel = slideVec - contact.normal * glm::dot(slideVec, contact.normal);
             const float slide = glm::length(tangentVel);
             if (slide < minLength)
                 return;
             const vec3 tangent = tangentVel / slide;
-            const float weight = spinWeight(*bodyA, armA, tangent) + spinWeight(*bodyB, armB, tangent);
+            const float weight = spinWeight(bodyA, armA, tangent) + spinWeight(bodyB, armB, tangent);
             if (weight <= 0.0f)
                 return;
-            const float invSum = inverseMass(bodyA->mass) + inverseMass(bodyB->mass);
+            const float invSum = inverseMass(bodyA.mass) + inverseMass(bodyB.mass);
             if (invSum <= 0.0f)
                 return;
             float impulse = slide * Particle::dt / weight;
             const float limit = ballFriction * (normalStep / invSum);
             if (impulse > limit)
                 impulse = limit;
-            kickBall(*bodyA, armA, -tangent * impulse);
-            kickBall(*bodyB, armB, tangent * impulse);
+            kickBall(bodyA, armA, -tangent * impulse);
+            kickBall(bodyB, armB, tangent * impulse);
         }
 
-        void spinBalls(Contact& contact, float normalStep, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
+        // Reflect Verlet normal step via prevPos only — position already on the surface. Crystal particles do not use this.
+        void bounceBall(Body::Quantum& body, Ball::Quantum& ball, vec3 normal, float otherNormalStep) {
+            const float vn = float(glm::dot(body.position - ball.prevPos, dvec3{normal})) - otherNormalStep;
+            if (vn <= 0.0f)
+                return;
+            ball.prevPos += dvec3{normal * ((1.0f + ballRestitution) * vn)};
+        }
+
+        void bounceBallBall(Body::Quantum& bodyA, Ball::Quantum& ballA, Body::Quantum& bodyB, Ball::Quantum& ballB, vec3 normal) {
+            const float weightA = inverseMass(bodyA.mass);
+            const float weightB = inverseMass(bodyB.mass);
+            const float weightSum = weightA + weightB;
+            if (weightSum <= 0.0f)
+                return;
+            const float vn = float(glm::dot((bodyA.position - ballA.prevPos) - (bodyB.position - ballB.prevPos), dvec3{normal}));
+            if (vn <= 0.0f)
+                return;
+            const float jump = (1.0f + ballRestitution) * vn / weightSum;
+            ballA.prevPos += dvec3{normal * (jump * weightA)};
+            ballB.prevPos -= dvec3{normal * (jump * weightB)};
+        }
+
+        void respondBallCrystal(Contact& contact, float remaining, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
+            auto* body = bodies.items.find(contact.a.body);
+            auto* ball = balls.items.find(contact.a.body);
+            if (not body or not ball)
+                return;
+            body->position -= dvec3{contact.normal * remaining};
+            const vec3 otherVelocity = velocityOf(contact.b.body, contact.b.type, bodies, balls, crystals);
+            bounceBall(*body, *ball, contact.normal, glm::dot(otherVelocity, contact.normal) * Particle::dt);
+            frictionBallCrystal(contact, remaining, *body, *ball, bodies, balls, crystals);
+            auto* crystal = crystals.items.find(contact.b.body);
+            auto* crystalBody = bodies.items.find(contact.b.body);
+            if (not crystal or not crystalBody)
+                return;
+            kickFaceSupports(*crystal, *crystalBody, contact.b.face, contact.point, contact.normal * remaining, body->mass);
+        }
+
+        void respondBallBall(Contact& contact, float remaining, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls) {
+            auto* bodyA = bodies.items.find(contact.a.body);
+            auto* bodyB = bodies.items.find(contact.b.body);
+            auto* ballA = balls.items.find(contact.a.body);
+            auto* ballB = balls.items.find(contact.b.body);
+            if (not bodyA or not bodyB or not ballA or not ballB)
+                return;
+            const float weightA = inverseMass(bodyA->mass);
+            const float weightB = inverseMass(bodyB->mass);
+            const float weightSum = weightA + weightB;
+            if (weightSum <= 0.0f)
+                return;
+            bodyA->position -= dvec3{contact.normal * (remaining * (weightA / weightSum))};
+            bodyB->position += dvec3{contact.normal * (remaining * (weightB / weightSum))};
+            bounceBallBall(*bodyA, *ballA, *bodyB, *ballB, contact.normal);
+            frictionBallBall(contact, remaining, *bodyA, *ballA, *bodyB, *ballB);
+        }
+
+        void kickContactVertex(Contact& contact, float remaining, fqsm::Direct<Crystal> crystals) {
+            auto* particleCrystal = crystals.items.find(contact.a.body);
+            if (not particleCrystal)
+                return;
+            kickVertex(*particleCrystal, contact.a.face, -contact.normal * remaining);
+        }
+
+        void solveContact(Contact& contact, float remaining, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
             if (contact.a.type == Endpoint::Type::ball and contact.b.type == Endpoint::Type::ball)
-                frictionBallBall(contact, normalStep, bodies, balls);
+                respondBallBall(contact, remaining, bodies, balls);
             else if (contact.a.type == Endpoint::Type::ball)
-                frictionBallCrystal(contact, normalStep, bodies, balls, crystals);
+                respondBallCrystal(contact, remaining, bodies, balls, crystals);
+            else if (contact.b.type != Endpoint::Type::ball)
+                kickContactVertex(contact, remaining, crystals);
         }
 
         auto collectOccupants(Compound::Id host, const Compound::Quantum& compound, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) -> vector<Occupant> {
@@ -427,8 +513,7 @@ namespace eltanin::phys::collision {
         for (Contact& contact : contacts) {
             if (contact.penetration <= 0.0f)
                 continue;
-            separate(contact, contact.penetration, bodies, crystals);
-            spinBalls(contact, contact.penetration, bodies, balls, crystals);
+            solveContact(contact, contact.penetration, bodies, balls, crystals);
             contact.correction = contact.penetration;
         }
         float corr = 0.0f;
