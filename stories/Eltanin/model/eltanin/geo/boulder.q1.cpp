@@ -37,7 +37,7 @@ namespace eltanin::geo {
             const auto channels = table.size() < static_cast<std::size_t>(mixChannels) ? table.size() : static_cast<std::size_t>(mixChannels);
             for (std::size_t channel = 0; channel < channels; ++channel) {
                 const float fill = static_cast<float>((mix >> (channel * 4)) & 0xF) / 15.0f;
-                density += fill * table[channel].density;
+                density += fill * table[channel].kgPerCubicMeter();
             }
             return density;
         }
@@ -56,7 +56,7 @@ namespace eltanin::geo {
         }
 
         auto sphereArea(float mass) -> float {
-            const float volume = glm::max(mass, 1.0e-6f);
+            const float volume = glm::max(mass / 1000.0f, 1.0e-6f); // kg → the g/cm³·m³ quantity this formula was written for
             const float radius = std::cbrt((3.0f * volume) / (4.0f * std::numbers::pi_v<float>));
             return 4.0f * std::numbers::pi_v<float> * radius * radius;
         }

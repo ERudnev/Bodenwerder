@@ -1,6 +1,7 @@
 {
   "name": "Armour p222A",
   "author": "Eltanin",
+  "mass": 3400,
   "attachment": {
     "points": [
       [0, 0, 1],

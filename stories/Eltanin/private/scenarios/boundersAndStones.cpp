@@ -48,7 +48,7 @@ namespace eltanin::scenario {
             const auto channels = table.size() < static_cast<std::size_t>(mixChannels) ? table.size() : static_cast<std::size_t>(mixChannels);
             for (std::size_t channel = 0; channel < channels; ++channel) {
                 const float fill = static_cast<float>((mix >> (channel * 4)) & 0xF) / 15.0f;
-                density += fill * table[channel].density;
+                density += fill * table[channel].kgPerCubicMeter();
             }
             return density;
         }
@@ -168,7 +168,7 @@ namespace eltanin::scenario {
         std::uniform_real_distribution<float> unit{0.0f, 1.0f};
         const float twoPi = 2.0f * std::numbers::pi_v<float>;
         const phys::rigid::CelestialGravity::Quantum coreGravity{.averageRadius = coreRadius, .surfaceAcceleration = coreSurfaceAccel};
-        const float spinK = (twoPi / 180.0f) * sphereMass(coreRadius * 2.0f, geo::Mineral::table()[static_cast<std::size_t>(ironMineral)].density);
+        const float spinK = (twoPi / 180.0f) * sphereMass(coreRadius * 2.0f, geo::Mineral::table()[static_cast<std::size_t>(ironMineral)].kgPerCubicMeter());
 
         auto orbitVelocity = [&](vec3 position) -> vec3 {
             const float distance = glm::length(position);
@@ -240,7 +240,7 @@ namespace eltanin::scenario {
                 .spotMeters = diameter,
                 .spotContrast = 0.0f,
             };
-            const float mass = sphereMass(diameter, geo::Mineral::table()[static_cast<std::size_t>(mineral)].density);
+            const float mass = sphereMass(diameter, geo::Mineral::table()[static_cast<std::size_t>(mineral)].kgPerCubicMeter());
             boulders.push_back(with<geo::Boulder>::spawnGenerated(context, root, device, pose, recipe, orbitVelocity(pose.position), spinOmega(mass, spinK, unit(rng), rng)));
         }
     }

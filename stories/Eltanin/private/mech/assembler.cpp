@@ -9,6 +9,7 @@
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/root.q1.h>
 
+#include "mech/semantics/physicalParameters.h"
 #include "mech/semantics/quarks.h"
 #include "mech/semantics/shapes.h"
 #include "mech/semantics/space.h"
@@ -242,8 +243,6 @@ namespace eltanin::mech {
         using Primitive = Construction::Primitive;
         using PrimitiveId = Primitive::Id;
 
-        constexpr float shellThickness = 0.2f;
-        constexpr float knotMass = 1.0f;
         constexpr float weldUnit = 1.0f;
 
         auto weldedAt(index3 grid, float mass, float strength) -> Primitive::Welded {
@@ -257,6 +256,14 @@ namespace eltanin::mech {
             for (const auto& grid : verts)
                 primitive.loop.push_back(weldedAt(grid, share, strength));
             return primitive;
+        }
+
+        void addMass(Primitive& primitive, float totalMass) {
+            if (primitive.loop.empty())
+                return;
+            const float share = totalMass / static_cast<float>(primitive.loop.size());
+            for (auto& welded : primitive.loop)
+                welded.mass += share;
         }
 
         auto loopGrid(const Primitive& primitive) -> vector<index3> {
@@ -360,8 +367,10 @@ namespace eltanin::mech {
                     auto found = knotsAt.find(grid);
                     if (found == knotsAt.end()) {
                         const auto id = takeId();
-                        construction.knots.emplace(id, primitiveOn({grid}, knotMass, 0.0f, weldUnit));
+                        construction.knots.emplace(id, primitiveOn({grid}, physical::knotQuarkMass.at(corner.kind), physical::knotShell, weldUnit));
                         found = knotsAt.emplace(grid, id).first;
+                    } else {
+                        addMass(construction.knots.at(found->second), physical::knotQuarkMass.at(corner.kind));
                     }
                     if (resolved)
                         fragments.ofKnot.push_back(Construct::ActorFragments::OfKnot{.knot = found->second, .quark = skeleton::Corner{.kind = corner.kind, .ori = world.ori}});
@@ -374,8 +383,10 @@ namespace eltanin::mech {
                     auto found = ribsAt.find(edge);
                     if (found == ribsAt.end()) {
                         const auto id = takeId();
-                        construction.ribs.emplace(id, primitiveOn({edge.first, edge.second}, 0.0f, shellThickness, weldUnit));
+                        construction.ribs.emplace(id, primitiveOn({edge.first, edge.second}, physical::halfribQuarkMass.at(halfrib.kind), physical::ribShell, weldUnit));
                         found = ribsAt.emplace(edge, id).first;
+                    } else {
+                        addMass(construction.ribs.at(found->second), physical::halfribQuarkMass.at(halfrib.kind));
                     }
                     const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, halfribMesh(halfrib.kind, halfrib.pole));
                     if (not resolved) {
@@ -403,8 +414,10 @@ namespace eltanin::mech {
                     auto found = membranesAt.find(key);
                     if (found == membranesAt.end()) {
                         const auto id = takeId();
-                        construction.membranes.emplace(id, primitiveOn(loop, 0.0f, shellThickness, weldUnit));
+                        construction.membranes.emplace(id, primitiveOn(loop, physical::membraneQuarkMass.at(membrane.kind), physical::membraneShell, weldUnit));
                         found = membranesAt.emplace(key, id).first;
+                    } else {
+                        addMass(construction.membranes.at(found->second), physical::membraneQuarkMass.at(membrane.kind));
                     }
                     const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, membraneMesh(membrane.kind));
                     if (not resolved) {
@@ -443,10 +456,11 @@ namespace eltanin::mech {
                     auto found = platesAt.find(key);
                     if (found == platesAt.end()) {
                         const auto id = takeId();
-                        construction.plates.emplace(id, primitiveOn(loop, 0.0f, mount.collision.thickness, weldUnit));
+                        construction.plates.emplace(id, primitiveOn(loop, mount.mass, mount.collision.thickness, weldUnit));
                         found = platesAt.emplace(key, id).first;
                     } else {
                         auto& plate = construction.plates.at(found->second);
+                        addMass(plate, mount.mass);
                         if (mount.collision.thickness > plate.thickness)
                             plate.thickness = mount.collision.thickness;
                     }
@@ -461,12 +475,15 @@ namespace eltanin::mech {
                     const auto id = takeId();
                     vector<Primitive> faces;
                     faces.reserve(worldFaces.size());
+                    const float faceMass = mount.mass / static_cast<float>(worldFaces.size());
                     for (const auto& loop : worldFaces)
-                        faces.push_back(primitiveOn(loop, 0.0f, mount.collision.thickness, weldUnit));
+                        faces.push_back(primitiveOn(loop, faceMass, mount.collision.thickness, weldUnit));
                     construction.volumes.emplace(id, std::move(faces));
                     found = volumesAt.emplace(key, id).first;
                 } else {
+                    const float faceMass = mount.mass / static_cast<float>(worldFaces.size());
                     for (auto& face : construction.volumes.at(found->second)) {
+                        addMass(face, faceMass);
                         if (mount.collision.thickness > face.thickness)
                             face.thickness = mount.collision.thickness;
                     }

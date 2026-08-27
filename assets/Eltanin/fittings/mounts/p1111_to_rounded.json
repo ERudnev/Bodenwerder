@@ -1,6 +1,7 @@
 {
   "name": "Armour p1111 to rounded",
   "author": "Eltanin",
+  "mass": 4000,
   "attachment": {
     "points": [
       [0, 0, 0],

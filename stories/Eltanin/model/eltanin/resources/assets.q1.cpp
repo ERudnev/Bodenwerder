@@ -38,6 +38,7 @@ namespace eltanin::resource {
             mech::Mount::Quantum{
                 .name = {},
                 .author = {},
+                .mass = 0.0f,
                 .attachment = mech::Attachment{.points = {}},
                 .collision = mech::Collision{.thickness = 0.0f, .faces = {}},
                 .tempMesh = mech::Mount::TempMesh{.pack = {}, .entry = {}},

@@ -1,6 +1,7 @@
 {
   "name": "Dummy custom",
   "author": "Eltanin",
+  "mass": 24000,
   "attachment": {
     "points": [
       [0, 0, 0],

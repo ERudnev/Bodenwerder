@@ -24,7 +24,7 @@ namespace eltanin {
 
     // Disk layout under assets/Eltanin/blueprints/:
     //   _unnamed.blueprint     — editor fallback (not a product)
-    //   ships/*.blueprint      — products (editor ships list)
+    //   ships/*.blueprint      — products (editor + Assembler spawn)
     //   prefabs/*.blueprint    — editor building blocks + Assembler spawn
     struct BlueprintCatalog {
         filepath root;

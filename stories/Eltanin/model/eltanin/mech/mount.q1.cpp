@@ -284,6 +284,9 @@ namespace eltanin::mech {
             expect_key(cursor, "author");
             auto author = take_string(cursor);
             expect(cursor, ',');
+            expect_key(cursor, "mass");
+            const auto mass = take_number(cursor);
+            expect(cursor, ',');
             expect_key(cursor, "attachment");
             auto attachment = take_attachment(cursor);
             expect(cursor, ',');
@@ -302,6 +305,7 @@ namespace eltanin::mech {
             return Mount::Quantum{
                 .name = std::move(name),
                 .author = std::move(author),
+                .mass = mass,
                 .attachment = std::move(attachment),
                 .collision = collision,
                 .tempMesh = std::move(tempMesh),
@@ -315,6 +319,7 @@ namespace eltanin::mech {
             out << "{\n";
             out << "  \"name\": \"" << data.name << "\",\n";
             out << "  \"author\": \"" << data.author << "\",\n";
+            out << "  \"mass\": " << data.mass << ",\n";
             out << "  \"attachment\": {\n";
             out << "    \"points\": [\n";
             for (std::size_t i = 0; i < data.attachment.points.size(); ++i) {

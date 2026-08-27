@@ -20,6 +20,9 @@ namespace eltanin::geo {
         float tintKelvin;
         float glowKelvin;
         float sootMul;
+
+        auto kgPerCubicMeter() const -> float { return density * 1000.0f; }
+
         static const vector<Mineral>& table();
     };
 

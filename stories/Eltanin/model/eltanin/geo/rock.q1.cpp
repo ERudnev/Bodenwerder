@@ -45,7 +45,7 @@ namespace eltanin::geo {
             const auto channels = table.size() < static_cast<std::size_t>(mixChannels) ? table.size() : static_cast<std::size_t>(mixChannels);
             for (std::size_t channel = 0; channel < channels; ++channel) {
                 const float fill = static_cast<float>((mix >> (channel * 4)) & 0xF) / 15.0f;
-                density += fill * table[channel].density;
+                density += fill * table[channel].kgPerCubicMeter();
             }
             return density;
         }

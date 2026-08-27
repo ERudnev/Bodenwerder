@@ -21,6 +21,7 @@ namespace eltanin
       one
         name: string
         author: string
+        mass: float
         attachment: Attachment
         collision: Collision
         tempMesh: TempMesh

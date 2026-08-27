@@ -33,6 +33,7 @@ namespace eltanin::mech {
         struct Quantum {
             std::string name;
             std::string author;
+            float mass;
             Attachment attachment;
             Collision collision;
             TempMesh tempMesh;

@@ -9,6 +9,7 @@
 
 // Skeleton inventory + smoke recipes (types: model/eltanin/mech/semantics.q1.h).
 // 1) cornerSpecs / halfribSpecs / membraneSpecs — interframe mesh inventory (asset tag, …). No per-cell placement.
+//    Masses and hull shells: physicalParameters.h.
 // 2) shapes.h frame::corners — which cell vertices exist on each k* (topology). Not repeated here.
 // 3) recipes[shape] — smoke assembly only: which mesh kind at which cell vertex/edge + orient roll.
 // Edge row: cellAt0/cellAtRay = cell lattice after orient (cornerIndex(orient, mesh slot 0 / ray)); cellAt0 < cellAtRay.

@@ -64,6 +64,18 @@ namespace eltanin::phys {
             }
         }
 
+        auto bodyLinearSpeed(const rigid::Crystal::Quantum& crystal) -> float {
+            dvec3 moment{0.0, 0.0, 0.0};
+            double mass = 0.0;
+            for (const Particle& particle : crystal.particles) {
+                moment += particle.velocity() * double(particle.mass);
+                mass += double(particle.mass);
+            }
+            if (mass <= 0.0)
+                return 0.0f;
+            return static_cast<float>(glm::length(moment / mass));
+        }
+
         auto productionActorOf(Reading context, Body::Id body) -> base::maybe<rmmr::scene::actor::Mesh::Id> {
             for (const auto [_, rock] : context->aspect<geo::Rock>().items()) {
                 if (rock.body == body)
@@ -338,6 +350,40 @@ namespace eltanin::phys {
                 ImGui::TextUnformatted("Debug draw");
                 ImGui::Checkbox("Particles", &showParticles);
                 ImGui::Checkbox("Collisions", &showHulls);
+
+                ImGui::Separator();
+                ImGui::TextUnformatted("Constructs");
+                bool any = false;
+                for (const auto [id, construct] : context->aspect<mech::Construct>().items()) {
+                    if (with<Body>::exists(context, construct.body)) {
+                        any = true;
+                        break;
+                    }
+                }
+                if (not any) {
+                    ImGui::TextDisabled("None.");
+                } else if (ImGui::BeginTable("constructs", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+                    ImGui::TableSetupColumn("Id", ImGuiTableColumnFlags_WidthFixed, 48.0f);
+                    ImGui::TableSetupColumn("Mass");
+                    ImGui::TableSetupColumn("Speed");
+                    ImGui::TableHeadersRow();
+                    for (const auto [id, construct] : context->aspect<mech::Construct>().items()) {
+                        if (not with<Body>::exists(context, construct.body))
+                            continue;
+                        const auto& body = with<Body>::get(context, construct.body);
+                        float speed = 0.0f;
+                        if (with<rigid::Crystal>::exists(context, construct.body))
+                            speed = bodyLinearSpeed(with<rigid::Crystal>::get(context, construct.body));
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%d", static_cast<int>(id.raw()));
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%.2f t", body.totalMass / 1000.0f);
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%.2f m/s", speed);
+                    }
+                    ImGui::EndTable();
+                }
             }
             ImGui::End();
         }

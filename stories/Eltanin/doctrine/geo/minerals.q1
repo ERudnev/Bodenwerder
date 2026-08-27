@@ -7,7 +7,7 @@ namespace eltanin
       using Index as integer
       one
         name: string
-        density: float // g/cm3
+        density: float // g/cm3; physics mass uses kgPerCubicMeter (×1000 → kg/m³)
         scale: float // object-space 3D texture scale
         albedo: vec3 // symbolic / UI / crust basis; keep matched to the 3D texture
         sinter: vec3 // glaze at cohesion 1; texture grain is kept
@@ -18,4 +18,5 @@ namespace eltanin
         tintKelvin: float // albedo starts shifting toward incandescent
         glowKelvin: float // emissive glow of that heat color
         sootMul: float // albedo scale at full char; soot lives in [0 .. 0.2] and yields to incandescence; ice stays pale, rock/metal near soot black
+        ?kgPerCubicMeter()->float
       always table: vector<Mineral> = @external(Mayers)
