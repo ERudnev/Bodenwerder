@@ -191,22 +191,40 @@ namespace eltanin::mech {
             return std::stof(std::string{cursor.text.substr(begin, cursor.at - begin)});
         }
 
+        auto take_int_array(Cursor& cursor) -> vector<integer> {
+            expect(cursor, '[');
+            vector<integer> values;
+            if (peek(cursor) != ']') {
+                for (;;) {
+                    values.push_back(take_int(cursor));
+                    if (peek(cursor) == ']')
+                        break;
+                    expect(cursor, ',');
+                }
+            }
+            expect(cursor, ']');
+            return values;
+        }
+
         auto take_collision(Cursor& cursor) -> Collision {
             expect(cursor, '{');
-            expect_key(cursor, "shape");
-            const auto shapeText = take_string(cursor);
-            Collision::Shape shape = Collision::Shape::capsule;
-            if (shapeText == "capsule")
-                shape = Collision::Shape::capsule;
-            else if (shapeText == "volume")
-                shape = Collision::Shape::volume;
-            else
-                throw std::runtime_error(std::format("mount: unknown collision shape '{}'", shapeText));
+            expect_key(cursor, "thickness");
+            const auto thickness = take_number(cursor);
             expect(cursor, ',');
-            expect_key(cursor, "parameter1");
-            const auto parameter1 = take_number(cursor);
+            expect_key(cursor, "faces");
+            expect(cursor, '[');
+            vector<vector<integer>> faces;
+            if (peek(cursor) != ']') {
+                for (;;) {
+                    faces.push_back(take_int_array(cursor));
+                    if (peek(cursor) == ']')
+                        break;
+                    expect(cursor, ',');
+                }
+            }
+            expect(cursor, ']');
             expect(cursor, '}');
-            return Collision{.shape = shape, .parameter1 = parameter1};
+            return Collision{.thickness = thickness, .faces = std::move(faces)};
         }
 
         auto take_temp_mesh(Cursor& cursor) -> Mount::TempMesh {
@@ -306,8 +324,16 @@ namespace eltanin::mech {
             out << "    ]\n";
             out << "  },\n";
             out << "  \"collision\": {\n";
-            out << "    \"shape\": \"" << (data.collision.shape == Collision::Shape::volume ? "volume" : "capsule") << "\",\n";
-            out << "    \"parameter1\": " << data.collision.parameter1 << "\n";
+            out << "    \"thickness\": " << data.collision.thickness << ",\n";
+            out << "    \"faces\": [\n";
+            for (std::size_t face = 0; face < data.collision.faces.size(); ++face) {
+                const auto& loop = data.collision.faces[face];
+                out << "      [";
+                for (std::size_t index = 0; index < loop.size(); ++index)
+                    out << loop[index] << (index + 1 < loop.size() ? ", " : "");
+                out << "]" << (face + 1 < data.collision.faces.size() ? ",\n" : "\n");
+            }
+            out << "    ]\n";
             out << "  },\n";
             out << "  \"tempMesh\": {\n";
             out << "    \"pack\": \"" << data.tempMesh.pack.text() << "\",\n";

@@ -8,50 +8,48 @@ namespace eltanin
   namespace mech
 
     struct Construction
-      struct Knot
+      struct Primitive
         using Id as integer
-        position: index3
-      struct Rib
-        using Id as integer
-        start: index3
-        end: index3
-      struct Tile
-        using Id as integer
-        loop: vector<index3>
-      struct Plate
-        using Id as integer
-        loop: vector<index3>
+        struct Point
+          gridPos: index3
+          mass: float
+        struct Welded of Point
+          strength: float
+        loop: vector<Welded>
         thickness: float
-      struct Weld4Rib
-        knot: Knot::Id
-        rib: Rib::Id
-      knots: umap<Knot::Id, Knot>
-      ribs: umap<Rib::Id, Rib>
-      tiles: umap<Tile::Id, Tile>
-      plates: umap<Plate::Id, Plate>
-      weld4rib: vector<Weld4Rib>
+      knots: umap<Primitive::Id, Primitive>
+      ribs: umap<Primitive::Id, Primitive>
+      membranes: umap<Primitive::Id, Primitive>
+      plates: umap<Primitive::Id, Primitive>
+      volumes: umap<Primitive::Id, vector<Primitive>>
+      evaluatedParticles: vector<Primitive::Point>
 
     entity Construct
       struct ActorFragments
         struct OfKnot
-          knot: Construction::Knot::Id
+          knot: Construction::Primitive::Id
           quark: skeleton::Corner
         struct OfRib
-          rib: Construction::Rib::Id
+          rib: Construction::Primitive::Id
           quark: skeleton::Halfrib
           at: index3
         struct OfMembrane
-          tile: Construction::Tile::Id
+          membrane: Construction::Primitive::Id
           quark: skeleton::Membrane
           at: index3
         struct OfPlate
-          plate: Construction::Plate::Id
+          plate: Construction::Primitive::Id
+          mount: rmmr::resource::Unit::Name
+          transform: space::Transform
+        struct OfVolume
+          volume: Construction::Primitive::Id
           mount: rmmr::resource::Unit::Name
           transform: space::Transform
         ofKnot: vector<OfKnot>
         ofRib: vector<OfRib>
         ofMembrane: vector<OfMembrane>
         ofPlate: vector<OfPlate>
+        ofVolume: vector<OfVolume>
       one
         body: custody<phys::rigid::Crystal>
         actor: custody<rmmr::scene::actor::Mesh>

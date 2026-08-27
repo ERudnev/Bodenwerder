@@ -19,12 +19,8 @@ namespace eltanin::mech {
     };
 
     struct Collision {
-        enum class Shape {
-            capsule,
-            volume,
-        };
-        Shape shape;
-        float parameter1;
+        float thickness;
+        vector<vector<integer>> faces;
     };
 
     // Library entry: placeable external equipment. Visual = soft meshpack link (placeholder).

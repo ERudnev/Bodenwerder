@@ -12,53 +12,49 @@ namespace eltanin::mech {
     using namespace fqsm::api;
 
     struct Construction {
-        struct Knot {
+        struct Primitive {
             using Id = integer;
-            index3 position;
-        };
-        struct Rib {
-            using Id = integer;
-            index3 start;
-            index3 end;
-        };
-        struct Tile {
-            using Id = integer;
-            vector<index3> loop;
-        };
-        struct Plate {
-            using Id = integer;
-            vector<index3> loop;
+            struct Point {
+                index3 gridPos;
+                float mass;
+            };
+            struct Welded : Point {
+                float strength;
+            };
+            vector<Welded> loop;
             float thickness;
         };
-        struct Weld4Rib {
-            Knot::Id knot;
-            Rib::Id rib;
-        };
-        umap<Knot::Id, Knot> knots;
-        umap<Rib::Id, Rib> ribs;
-        umap<Tile::Id, Tile> tiles;
-        umap<Plate::Id, Plate> plates;
-        vector<Weld4Rib> weld4rib;
+        umap<Primitive::Id, Primitive> knots;
+        umap<Primitive::Id, Primitive> ribs;
+        umap<Primitive::Id, Primitive> membranes;
+        umap<Primitive::Id, Primitive> plates;
+        umap<Primitive::Id, vector<Primitive>> volumes;
+        vector<Primitive::Point> evaluatedParticles;
     };
 
     struct Construct : Entity<Construct> {
         struct ActorFragments {
             struct OfKnot {
-                Construction::Knot::Id knot;
+                Construction::Primitive::Id knot;
                 skeleton::Corner quark;
             };
             struct OfRib {
-                Construction::Rib::Id rib;
+                Construction::Primitive::Id rib;
                 skeleton::Halfrib quark;
                 index3 at;
             };
             struct OfMembrane {
-                Construction::Tile::Id tile;
+                Construction::Primitive::Id membrane;
                 skeleton::Membrane quark;
                 index3 at;
             };
             struct OfPlate {
-                Construction::Plate::Id plate;
+                Construction::Primitive::Id plate;
+                rmmr::resource::Unit::Name mount;
+                space::Transform transform;
+            };
+            struct OfVolume {
+                Construction::Primitive::Id volume;
                 rmmr::resource::Unit::Name mount;
                 space::Transform transform;
             };
@@ -66,6 +62,7 @@ namespace eltanin::mech {
             vector<OfRib> ofRib;
             vector<OfMembrane> ofMembrane;
             vector<OfPlate> ofPlate;
+            vector<OfVolume> ofVolume;
         };
         struct Quantum {
             Custody<phys::rigid::Crystal> body;

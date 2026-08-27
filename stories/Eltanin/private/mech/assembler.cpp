@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <format>
 #include <map>
+#include <set>
 #include <utility>
 
 #include <glm/geometric.hpp>
@@ -115,6 +116,20 @@ namespace eltanin::mech {
             }
         };
 
+        struct ShellLess {
+            auto operator()(const vector<vector<index3>>& left, const vector<vector<index3>>& right) const -> bool {
+                if (left.size() != right.size())
+                    return left.size() < right.size();
+                for (std::size_t index = 0; index < left.size(); ++index) {
+                    if (LoopLess{}(left[index], right[index]))
+                        return true;
+                    if (LoopLess{}(right[index], left[index]))
+                        return false;
+                }
+                return false;
+            }
+        };
+
         auto hasDuplicateVertex(const vector<index3>& loop) -> bool {
             for (std::size_t i = 0; i < loop.size(); ++i) {
                 for (std::size_t j = i + 1; j < loop.size(); ++j) {
@@ -144,6 +159,15 @@ namespace eltanin::mech {
             return rotated;
         }
 
+        auto shellKey(const vector<vector<index3>>& worldFaces) -> vector<vector<index3>> {
+            vector<vector<index3>> keys;
+            keys.reserve(worldFaces.size());
+            for (const auto& loop : worldFaces)
+                keys.push_back(cycleKey(loop));
+            std::sort(keys.begin(), keys.end(), LoopLess{});
+            return keys;
+        }
+
         auto worldLoop(const space::cell::Placement& world, skeleton::Membrane::Kind kind) -> vector<index3> {
             const auto& canonical = plate::perimeter[static_cast<std::size_t>(skeleton::plateOf(kind))];
             vector<index3> loop;
@@ -164,11 +188,14 @@ namespace eltanin::mech {
             return index3{.x = transform.grid.x + rotated.x, .y = transform.grid.y + rotated.y, .z = transform.grid.z + rotated.z};
         }
 
-        auto mountLoop(const space::Transform& transform, const Attachment& attachment) -> vector<index3> {
+        auto worldFace(const space::Transform& transform, const Attachment& attachment, const vector<integer>& indices) -> vector<index3> {
             vector<index3> loop;
-            loop.reserve(attachment.points.size());
-            for (const auto& point : attachment.points)
-                loop.push_back(worldPoint(transform, point));
+            loop.reserve(indices.size());
+            for (const auto index : indices) {
+                if (index < 0 or static_cast<std::size_t>(index) >= attachment.points.size())
+                    return {};
+                loop.push_back(worldPoint(transform, attachment.points[static_cast<std::size_t>(index)]));
+            }
             return loop;
         }
 
@@ -212,13 +239,111 @@ namespace eltanin::mech {
             return plateFace(points, shape, thickness);
         }
 
+        using Primitive = Construction::Primitive;
+        using PrimitiveId = Primitive::Id;
+
+        constexpr float shellThickness = 0.2f;
+        constexpr float knotMass = 1.0f;
+        constexpr float weldUnit = 1.0f;
+
+        auto weldedAt(index3 grid, float mass, float strength) -> Primitive::Welded {
+            return Primitive::Welded{Primitive::Point{.gridPos = grid, .mass = mass}, strength};
+        }
+
+        auto primitiveOn(const vector<index3>& verts, float totalMass, float thickness, float strength) -> Primitive {
+            Primitive primitive{.loop = {}, .thickness = thickness};
+            const float share = verts.empty() ? 0.0f : totalMass / static_cast<float>(verts.size());
+            primitive.loop.reserve(verts.size());
+            for (const auto& grid : verts)
+                primitive.loop.push_back(weldedAt(grid, share, strength));
+            return primitive;
+        }
+
+        auto loopGrid(const Primitive& primitive) -> vector<index3> {
+            vector<index3> grid;
+            grid.reserve(primitive.loop.size());
+            for (const auto& welded : primitive.loop)
+                grid.push_back(welded.gridPos);
+            return grid;
+        }
+
+        void accumulateMass(const Primitive& primitive, std::map<index3, float, LatticeLess>& massAt) {
+            for (const auto& welded : primitive.loop)
+                massAt[welded.gridPos] += welded.mass;
+        }
+
+        void compileParticles(Construction& construction) {
+            std::map<index3, float, LatticeLess> massAt;
+            for (const auto& [_, primitive] : construction.knots)
+                accumulateMass(primitive, massAt);
+            for (const auto& [_, primitive] : construction.ribs)
+                accumulateMass(primitive, massAt);
+            for (const auto& [_, primitive] : construction.membranes)
+                accumulateMass(primitive, massAt);
+            for (const auto& [_, primitive] : construction.plates)
+                accumulateMass(primitive, massAt);
+            for (const auto& [_, faces] : construction.volumes) {
+                for (const auto& primitive : faces)
+                    accumulateMass(primitive, massAt);
+            }
+
+            vector<std::pair<PrimitiveId, index3>> knotOrder;
+            for (const auto& [id, primitive] : construction.knots) {
+                if (primitive.loop.empty())
+                    continue;
+                knotOrder.emplace_back(id, primitive.loop[0].gridPos);
+            }
+            std::sort(knotOrder.begin(), knotOrder.end(), [](const auto& left, const auto& right) { return left.first < right.first; });
+
+            construction.evaluatedParticles.clear();
+            std::map<index3, bool, LatticeLess> seen;
+            for (const auto& [_, grid] : knotOrder) {
+                if (seen.find(grid) != seen.end())
+                    continue;
+                seen.emplace(grid, true);
+                construction.evaluatedParticles.push_back(Primitive::Point{.gridPos = grid, .mass = massAt[grid]});
+            }
+            for (const auto& [grid, mass] : massAt) {
+                if (seen.find(grid) != seen.end())
+                    continue;
+                construction.evaluatedParticles.push_back(Primitive::Point{.gridPos = grid, .mass = mass});
+            }
+        }
+
+        void addLoopEdges(const Primitive& primitive, std::set<EdgeKey, EdgeLess>& covered) {
+            const auto grid = loopGrid(primitive);
+            if (grid.size() == 2) {
+                covered.insert(canonicalEdge(grid[0], grid[1]));
+                return;
+            }
+            if (grid.size() < 3)
+                return;
+            for (std::size_t index = 0; index < grid.size(); ++index)
+                covered.insert(canonicalEdge(grid[index], grid[(index + 1) % grid.size()]));
+        }
+
+        auto particlePoints(const Primitive& primitive, const std::map<index3, integer, LatticeLess>& at) -> vector<integer> {
+            vector<integer> points;
+            points.reserve(primitive.loop.size());
+            for (const auto& welded : primitive.loop) {
+                const auto found = at.find(welded.gridPos);
+                if (found == at.end())
+                    return {};
+                points.push_back(found->second);
+            }
+            return points;
+        }
+
         auto glueFrame(Reading context, resource::meshpack::Asset::Id interframe, const Blueprint::Quantum& blueprint) -> std::pair<Construction, Construct::ActorFragments> {
-            Construction construction{.knots = {}, .ribs = {}, .tiles = {}, .plates = {}, .weld4rib = {}};
-            Construct::ActorFragments fragments{.ofKnot = {}, .ofRib = {}, .ofMembrane = {}, .ofPlate = {}};
-            std::map<index3, Construction::Knot::Id, LatticeLess> knotsAt;
-            std::map<EdgeKey, Construction::Rib::Id, EdgeLess> ribsAt;
-            std::map<vector<index3>, Construction::Tile::Id, LoopLess> tilesAt;
-            std::map<vector<index3>, Construction::Plate::Id, LoopLess> platesAt;
+            Construction construction{.knots = {}, .ribs = {}, .membranes = {}, .plates = {}, .volumes = {}, .evaluatedParticles = {}};
+            Construct::ActorFragments fragments{.ofKnot = {}, .ofRib = {}, .ofMembrane = {}, .ofPlate = {}, .ofVolume = {}};
+            integer nextId = 0;
+            const auto takeId = [&]() { return static_cast<PrimitiveId>(nextId++); };
+            std::map<index3, PrimitiveId, LatticeLess> knotsAt;
+            std::map<EdgeKey, PrimitiveId, EdgeLess> ribsAt;
+            std::map<vector<index3>, PrimitiveId, LoopLess> membranesAt;
+            std::map<vector<index3>, PrimitiveId, LoopLess> platesAt;
+            std::map<vector<vector<index3>>, PrimitiveId, ShellLess> volumesAt;
 
             for (const auto& cell : blueprint.cells) {
                 for (const auto& corner : cell.corners) {
@@ -234,8 +359,8 @@ namespace eltanin::mech {
                     const auto grid = gridVertex(world, localSeat);
                     auto found = knotsAt.find(grid);
                     if (found == knotsAt.end()) {
-                        const auto id = static_cast<Construction::Knot::Id>(construction.knots.size());
-                        construction.knots.emplace(id, Construction::Knot{.position = grid});
+                        const auto id = takeId();
+                        construction.knots.emplace(id, primitiveOn({grid}, knotMass, 0.0f, weldUnit));
                         found = knotsAt.emplace(grid, id).first;
                     }
                     if (resolved)
@@ -248,8 +373,8 @@ namespace eltanin::mech {
                     const auto edge = canonicalEdge(gridVertex(world, 0), gridVertex(world, static_cast<cube::Corner>(ray)));
                     auto found = ribsAt.find(edge);
                     if (found == ribsAt.end()) {
-                        const auto id = static_cast<Construction::Rib::Id>(construction.ribs.size());
-                        construction.ribs.emplace(id, Construction::Rib{.start = edge.first, .end = edge.second});
+                        const auto id = takeId();
+                        construction.ribs.emplace(id, primitiveOn({edge.first, edge.second}, 0.0f, shellThickness, weldUnit));
                         found = ribsAt.emplace(edge, id).first;
                     }
                     const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, halfribMesh(halfrib.kind, halfrib.pole));
@@ -275,11 +400,11 @@ namespace eltanin::mech {
                     if (loop.size() < 3 or hasDuplicateVertex(loop))
                         continue;
                     const auto key = cycleKey(loop);
-                    auto found = tilesAt.find(key);
-                    if (found == tilesAt.end()) {
-                        const auto id = static_cast<Construction::Tile::Id>(construction.tiles.size());
-                        construction.tiles.emplace(id, Construction::Tile{.loop = std::move(loop)});
-                        found = tilesAt.emplace(key, id).first;
+                    auto found = membranesAt.find(key);
+                    if (found == membranesAt.end()) {
+                        const auto id = takeId();
+                        construction.membranes.emplace(id, primitiveOn(loop, 0.0f, shellThickness, weldUnit));
+                        found = membranesAt.emplace(key, id).first;
                     }
                     const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, membraneMesh(membrane.kind));
                     if (not resolved) {
@@ -290,14 +415,13 @@ namespace eltanin::mech {
                     if (const auto origin = entryOrigin(context, *resolved))
                         localSeat = localSeatFromOrigin(*origin);
                     fragments.ofMembrane.push_back(Construct::ActorFragments::OfMembrane{
-                        .tile = found->second,
+                        .membrane = found->second,
                         .quark = skeleton::Membrane{.kind = membrane.kind, .ori = world.ori},
                         .at = gridVertex(world, localSeat),
                     });
                 }
             }
 
-            constexpr std::size_t maxPlanarMountPoints = 4;
             for (const auto& placed : blueprint.mounts) {
                 const auto mountId = with<resource::Assets>::find<Mount>(context, placed.mount);
                 if (not mountId) {
@@ -305,50 +429,66 @@ namespace eltanin::mech {
                     continue;
                 }
                 const auto& mount = with<Mount>::get(context, *mountId);
-                if (not mount.attachment.flatMounted() or mount.collision.shape != Collision::Shape::capsule)
+                vector<vector<index3>> worldFaces;
+                worldFaces.reserve(mount.collision.faces.size());
+                for (const auto& indices : mount.collision.faces) {
+                    auto loop = worldFace(placed.transform, mount.attachment, indices);
+                    if (loop.size() < 2 or hasDuplicateVertex(loop))
+                        continue;
+                    worldFaces.push_back(std::move(loop));
+                }
+                if (worldFaces.size() == 1) {
+                    auto loop = std::move(worldFaces.front());
+                    const auto key = cycleKey(loop);
+                    auto found = platesAt.find(key);
+                    if (found == platesAt.end()) {
+                        const auto id = takeId();
+                        construction.plates.emplace(id, primitiveOn(loop, 0.0f, mount.collision.thickness, weldUnit));
+                        found = platesAt.emplace(key, id).first;
+                    } else {
+                        auto& plate = construction.plates.at(found->second);
+                        if (mount.collision.thickness > plate.thickness)
+                            plate.thickness = mount.collision.thickness;
+                    }
+                    fragments.ofPlate.push_back(Construct::ActorFragments::OfPlate{.plate = found->second, .mount = placed.mount, .transform = placed.transform});
                     continue;
-                if (mount.attachment.points.empty() or mount.attachment.points.size() > maxPlanarMountPoints)
+                }
+                if (worldFaces.empty())
                     continue;
-                auto loop = mountLoop(placed.transform, mount.attachment);
-                if (hasDuplicateVertex(loop))
-                    continue;
-                const auto key = cycleKey(loop);
-                auto found = platesAt.find(key);
-                if (found == platesAt.end()) {
-                    const auto id = static_cast<Construction::Plate::Id>(construction.plates.size());
-                    construction.plates.emplace(id, Construction::Plate{.loop = std::move(loop), .thickness = mount.collision.parameter1});
-                    found = platesAt.emplace(key, id).first;
+                const auto key = shellKey(worldFaces);
+                auto found = volumesAt.find(key);
+                if (found == volumesAt.end()) {
+                    const auto id = takeId();
+                    vector<Primitive> faces;
+                    faces.reserve(worldFaces.size());
+                    for (const auto& loop : worldFaces)
+                        faces.push_back(primitiveOn(loop, 0.0f, mount.collision.thickness, weldUnit));
+                    construction.volumes.emplace(id, std::move(faces));
+                    found = volumesAt.emplace(key, id).first;
                 } else {
-                    auto& plate = construction.plates.at(found->second);
-                    if (mount.collision.parameter1 > plate.thickness)
-                        plate.thickness = mount.collision.parameter1;
+                    for (auto& face : construction.volumes.at(found->second)) {
+                        if (mount.collision.thickness > face.thickness)
+                            face.thickness = mount.collision.thickness;
+                    }
                 }
-                fragments.ofPlate.push_back(Construct::ActorFragments::OfPlate{.plate = found->second, .mount = placed.mount, .transform = placed.transform});
+                fragments.ofVolume.push_back(Construct::ActorFragments::OfVolume{.volume = found->second, .mount = placed.mount, .transform = placed.transform});
             }
 
-            for (const auto& [ribId, rib] : construction.ribs) {
-                if (const auto knot = knotsAt.find(rib.start); knot != knotsAt.end())
-                    construction.weld4rib.push_back(Construction::Weld4Rib{.knot = knot->second, .rib = ribId});
-                if (not sameLattice(rib.start, rib.end)) {
-                    if (const auto knot = knotsAt.find(rib.end); knot != knotsAt.end())
-                        construction.weld4rib.push_back(Construction::Weld4Rib{.knot = knot->second, .rib = ribId});
-                }
-            }
-
+            compileParticles(construction);
             return {std::move(construction), std::move(fragments)};
         }
 
         auto cookOccurrences(Reading context, resource::meshpack::Asset::Id interframe, const Construction& construction, const Construct::ActorFragments& fragments) -> vector<scene::actor::Mesh::Occurrence> {
             vector<scene::actor::Mesh::Occurrence> occurrences;
-            occurrences.reserve(fragments.ofKnot.size() + fragments.ofRib.size() + fragments.ofMembrane.size() + fragments.ofPlate.size());
+            occurrences.reserve(fragments.ofKnot.size() + fragments.ofRib.size() + fragments.ofMembrane.size() + fragments.ofPlate.size() + fragments.ofVolume.size());
             for (const auto& piece : fragments.ofKnot) {
                 const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, cornerMesh(piece.quark.kind));
                 if (not resolved)
                     continue;
                 const auto knot = construction.knots.find(piece.knot);
-                if (knot == construction.knots.end())
+                if (knot == construction.knots.end() or knot->second.loop.empty())
                     continue;
-                occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = knot->second.position, .ori = piece.quark.ori}});
+                occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = knot->second.loop[0].gridPos, .ori = piece.quark.ori}});
             }
             for (const auto& piece : fragments.ofRib) {
                 const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, halfribMesh(piece.quark.kind, piece.quark.pole));
@@ -375,89 +515,88 @@ namespace eltanin::mech {
                     continue;
                 occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
             }
+            for (const auto& piece : fragments.ofVolume) {
+                const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
+                if (not mountId)
+                    continue;
+                const auto& mount = with<Mount>::get(context, *mountId);
+                const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, mount.tempMesh.pack);
+                if (not packId)
+                    continue;
+                const auto resolved = with<resource::meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
+                if (not resolved)
+                    continue;
+                occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
+            }
             return occurrences;
         }
 
         auto crystalFrom(const Construction& construction, Pose pose) -> phys::rigid::Crystal::Quantum {
-            const auto count = construction.knots.size();
+            const auto count = construction.evaluatedParticles.size();
             vector<vec3> shape(count, vec3{0.0f, 0.0f, 0.0f});
             vector<phys::Particle> particles(count, phys::Particle{phys::Matter{.position = dvec3{0.0, 0.0, 0.0}, .mass = 1.0f, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{0.0, 0.0, 0.0}, vec3{0.0f, 0.0f, 0.0f}});
             glm::dvec3 moment{0.0, 0.0, 0.0};
             double mass = 0.0;
-            for (const auto& [id, knot] : construction.knots) {
-                const auto index = static_cast<std::size_t>(id);
-                const vec3 local{static_cast<float>(knot.position.x), static_cast<float>(knot.position.y), static_cast<float>(knot.position.z)};
+            std::map<index3, integer, LatticeLess> at;
+            for (std::size_t index = 0; index < count; ++index) {
+                const auto& point = construction.evaluatedParticles[index];
+                const vec3 local{static_cast<float>(point.gridPos.x), static_cast<float>(point.gridPos.y), static_cast<float>(point.gridPos.z)};
                 const vec3 meters = local * space::local::edge2meters;
                 const vec3 world = pose.position + pose.rotation * meters;
                 shape[index] = meters;
-                particles[index] = phys::Particle{phys::Matter{.position = dvec3{world}, .mass = 1.0f, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{world}, vec3{0.0f, 0.0f, 0.0f}};
-                moment += glm::dvec3{meters};
-                mass += 1.0;
+                particles[index] = phys::Particle{phys::Matter{.position = dvec3{world}, .mass = point.mass, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{world}, vec3{0.0f, 0.0f, 0.0f}};
+                moment += glm::dvec3{meters} * double(point.mass);
+                mass += double(point.mass);
+                at.emplace(point.gridPos, static_cast<integer>(index));
             }
-            std::map<index3, Construction::Knot::Id, LatticeLess> knotsAt;
-            for (const auto& [id, knot] : construction.knots)
-                knotsAt.emplace(knot.position, id);
+            std::set<EdgeKey, EdgeLess> covered;
+            for (const auto& [_, primitive] : construction.membranes)
+                addLoopEdges(primitive, covered);
+            for (const auto& [_, primitive] : construction.plates)
+                addLoopEdges(primitive, covered);
+            for (const auto& [_, faces] : construction.volumes) {
+                for (const auto& primitive : faces)
+                    addLoopEdges(primitive, covered);
+            }
             phys::rigid::Hull hull{.faces = {}};
-            hull.faces.reserve(construction.ribs.size() + construction.tiles.size() + construction.plates.size());
-            for (const auto& ribPair : construction.ribs) {
-                const auto& rib = ribPair.second;
-                const auto startKnot = knotsAt.find(rib.start);
-                const auto endKnot = knotsAt.find(rib.end);
-                if (startKnot == knotsAt.end() or endKnot == knotsAt.end() or startKnot->second == endKnot->second)
+            hull.faces.reserve(construction.ribs.size() + construction.membranes.size() + construction.plates.size());
+            for (const auto& [_, rib] : construction.ribs) {
+                const auto grid = loopGrid(rib);
+                if (grid.size() != 2 or sameLattice(grid[0], grid[1]))
                     continue;
-                hull.faces.push_back(beamFace(startKnot->second, endKnot->second, shape, 0.2f));
+                if (covered.find(canonicalEdge(grid[0], grid[1])) != covered.end())
+                    continue;
+                const auto points = particlePoints(rib, at);
+                if (points.size() != 2)
+                    continue;
+                hull.faces.push_back(beamFace(points[0], points[1], shape, rib.thickness));
             }
-            for (const auto& tilePair : construction.tiles) {
-                vector<integer> points;
-                points.reserve(tilePair.second.loop.size());
-                bool complete = true;
-                for (const auto& vertex : tilePair.second.loop) {
-                    const auto knot = knotsAt.find(vertex);
-                    if (knot == knotsAt.end()) {
-                        complete = false;
-                        break;
-                    }
-                    points.push_back(knot->second);
-                }
-                if (not complete)
-                    continue;
-                auto face = plateFace(points, shape, 0.2f);
+            auto pushPolygon = [&](const Primitive& primitive) {
+                if (primitive.loop.size() < 2)
+                    return;
+                const auto points = particlePoints(primitive, at);
+                if (points.size() != primitive.loop.size())
+                    return;
+                auto face = hullFace(points, shape, primitive.thickness);
                 if (face.points.empty())
-                    continue;
-                hull.faces.push_back(std::move(face));
-            }
-            for (const auto& platePair : construction.plates) {
-                const auto& plate = platePair.second;
-                if (plate.loop.size() < 2)
-                    continue;
-                vector<integer> points;
-                points.reserve(plate.loop.size());
-                bool complete = true;
-                for (const auto& vertex : plate.loop) {
-                    const auto knot = knotsAt.find(vertex);
-                    if (knot == knotsAt.end()) {
-                        complete = false;
-                        break;
-                    }
-                    points.push_back(knot->second);
-                }
-                if (not complete)
-                    continue;
-                auto face = hullFace(points, shape, plate.thickness);
-                if (face.points.empty())
-                    continue;
+                    return;
                 const auto key = sortedKnots(points);
-                bool replaced = false;
                 for (auto& existing : hull.faces) {
                     if (sortedKnots(existing.points) != key)
                         continue;
-                    if (plate.thickness > existing.thickness)
+                    if (primitive.thickness > existing.thickness)
                         existing = std::move(face);
-                    replaced = true;
-                    break;
+                    return;
                 }
-                if (not replaced)
-                    hull.faces.push_back(std::move(face));
+                hull.faces.push_back(std::move(face));
+            };
+            for (const auto& [_, primitive] : construction.membranes)
+                pushPolygon(primitive);
+            for (const auto& [_, primitive] : construction.plates)
+                pushPolygon(primitive);
+            for (const auto& [_, faces] : construction.volumes) {
+                for (const auto& primitive : faces)
+                    pushPolygon(primitive);
             }
             return phys::rigid::Crystal::Quantum{
                 .particles = std::move(particles),

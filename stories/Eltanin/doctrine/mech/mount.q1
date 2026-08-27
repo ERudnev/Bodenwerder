@@ -9,9 +9,8 @@ namespace eltanin
       ?flatMounted()->bool // true → one lattice plane (externals); false → volume (internals)
 
     struct Collision
-      enum Shape capsule, volume // volume reserved for 3-D attachments
-      shape: Shape
-      parameter1: float // capsule: shell meters both sides of the planar loop
+      thickness: float
+      faces: vector<vector<integer>> // loops of indices into Attachment.points
 
     // Library entry: placeable external equipment. Visual = soft meshpack link (placeholder).
     // Disk: fittings/mounts/*.json (classic JSON).
