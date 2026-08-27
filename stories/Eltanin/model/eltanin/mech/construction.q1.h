@@ -2,6 +2,7 @@
 
 #include <eltanin/mech/semantics.q1.h>
 #include <eltanin/physics/rigid.q1.h>
+#include <rmmr/resources/manager.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -24,6 +25,11 @@ namespace eltanin::mech {
             using Id = integer;
             vector<index3> loop;
         };
+        struct Plate {
+            using Id = integer;
+            vector<index3> loop;
+            float thickness;
+        };
         struct Weld4Rib {
             Knot::Id knot;
             Rib::Id rib;
@@ -31,6 +37,7 @@ namespace eltanin::mech {
         umap<Knot::Id, Knot> knots;
         umap<Rib::Id, Rib> ribs;
         umap<Tile::Id, Tile> tiles;
+        umap<Plate::Id, Plate> plates;
         vector<Weld4Rib> weld4rib;
     };
 
@@ -50,9 +57,15 @@ namespace eltanin::mech {
                 skeleton::Membrane quark;
                 index3 at;
             };
+            struct OfPlate {
+                Construction::Plate::Id plate;
+                rmmr::resource::Unit::Name mount;
+                space::Transform transform;
+            };
             vector<OfKnot> ofKnot;
             vector<OfRib> ofRib;
             vector<OfMembrane> ofMembrane;
+            vector<OfPlate> ofPlate;
         };
         struct Quantum {
             Custody<phys::rigid::Crystal> body;

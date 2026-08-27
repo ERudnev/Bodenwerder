@@ -18,6 +18,15 @@ namespace eltanin::mech {
         auto flatMounted() const -> bool;
     };
 
+    struct Collision {
+        enum class Shape {
+            capsule,
+            volume,
+        };
+        Shape shape;
+        float parameter1;
+    };
+
     // Library entry: placeable external equipment. Visual = soft meshpack link (placeholder).
     // Files: assets/Eltanin/fittings/mounts/*.json
     struct Mount : Feature<Mount, rmmr::resource::Unit> {
@@ -29,6 +38,7 @@ namespace eltanin::mech {
             std::string name;
             std::string author;
             Attachment attachment;
+            Collision collision;
             TempMesh tempMesh;
             base::maybe<Role> role;
             filename file; // kit-relative; under fittings/mounts/

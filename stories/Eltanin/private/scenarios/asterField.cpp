@@ -91,10 +91,10 @@ namespace eltanin::scenario {
     }
 
     void AsterField::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
-        constexpr int iceMineral = 0;
+        constexpr int pgmMineral = 11;
         constexpr int countY = 30;
         constexpr int countZ = 52;
-        constexpr float pebbleRadius = 0.1f;
+        constexpr float pebbleRadius = 0.15f;
         constexpr float pad = 0.4f;
         constexpr vec3 drift{4.0f, 0.0f, 0.0f};
         const float cell = mech::space::local::edge2meters;
@@ -109,7 +109,7 @@ namespace eltanin::scenario {
             for (int col = 0; col < countZ; ++col) {
                 const vec3 position = cloudCenter + stepY * (static_cast<float>(row) - originY) + stepZ * (static_cast<float>(col) - originZ);
                 const geo::GeneralizedRecipe recipe{
-                    .mix = geo::GeneralizedRecipe::homogenous(iceMineral),
+                    .mix = geo::GeneralizedRecipe::homogenous(pgmMineral),
                     .radius = pebbleRadius,
                     .lump = 0.4f,
                     .seed = 11 + row * countZ + col,

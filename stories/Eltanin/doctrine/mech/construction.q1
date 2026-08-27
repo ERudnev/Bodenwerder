@@ -1,4 +1,5 @@
 import "rmmr/scene/actors/mesh"
+import "rmmr/resources/manager"
 import "physics/body"
 import "physics/rigid"
 import "semantics"
@@ -17,12 +18,17 @@ namespace eltanin
       struct Tile
         using Id as integer
         loop: vector<index3>
+      struct Plate
+        using Id as integer
+        loop: vector<index3>
+        thickness: float
       struct Weld4Rib
         knot: Knot::Id
         rib: Rib::Id
       knots: umap<Knot::Id, Knot>
       ribs: umap<Rib::Id, Rib>
       tiles: umap<Tile::Id, Tile>
+      plates: umap<Plate::Id, Plate>
       weld4rib: vector<Weld4Rib>
 
     entity Construct
@@ -38,9 +44,14 @@ namespace eltanin
           tile: Construction::Tile::Id
           quark: skeleton::Membrane
           at: index3
+        struct OfPlate
+          plate: Construction::Plate::Id
+          mount: rmmr::resource::Unit::Name
+          transform: space::Transform
         ofKnot: vector<OfKnot>
         ofRib: vector<OfRib>
         ofMembrane: vector<OfMembrane>
+        ofPlate: vector<OfPlate>
       one
         body: custody<phys::rigid::Crystal>
         actor: custody<rmmr::scene::actor::Mesh>

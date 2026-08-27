@@ -1,5 +1,6 @@
 #include "mech/assembler.h"
 
+#include <eltanin/mech/mount.q1.h>
 #include <eltanin/physics/compound.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -125,6 +126,8 @@ namespace eltanin::mech {
         }
 
         auto cycleKey(vector<index3> loop) -> vector<index3> {
+            if (loop.size() == 2)
+                return LatticeLess{}(loop[1], loop[0]) ? vector<index3>{loop[1], loop[0]} : loop;
             if (loop.size() < 3)
                 return loop;
             std::size_t minIndex = 0;
@@ -150,7 +153,31 @@ namespace eltanin::mech {
             return loop;
         }
 
-        auto beamFace(integer start, integer end, const vector<vec3>& shape) -> phys::rigid::Hull::Face {
+        auto rotateLocal(space::orient::key rotation, index3 local) -> index3 {
+            const auto& matrix = space::orient::matrix[static_cast<std::size_t>(rotation)];
+            const auto rotated = matrix * space::ivec3{local.x, local.y, local.z};
+            return index3{.x = rotated.x, .y = rotated.y, .z = rotated.z};
+        }
+
+        auto worldPoint(const space::Transform& transform, index3 local) -> index3 {
+            const auto rotated = rotateLocal(transform.rotation, local);
+            return index3{.x = transform.grid.x + rotated.x, .y = transform.grid.y + rotated.y, .z = transform.grid.z + rotated.z};
+        }
+
+        auto mountLoop(const space::Transform& transform, const Attachment& attachment) -> vector<index3> {
+            vector<index3> loop;
+            loop.reserve(attachment.points.size());
+            for (const auto& point : attachment.points)
+                loop.push_back(worldPoint(transform, point));
+            return loop;
+        }
+
+        auto sortedKnots(vector<integer> points) -> vector<integer> {
+            std::sort(points.begin(), points.end());
+            return points;
+        }
+
+        auto beamFace(integer start, integer end, const vector<vec3>& shape, float thickness) -> phys::rigid::Hull::Face {
             const vec3 edge = shape[static_cast<std::size_t>(end)] - shape[static_cast<std::size_t>(start)];
             const vec3 mid = 0.5f * (shape[static_cast<std::size_t>(start)] + shape[static_cast<std::size_t>(end)]);
             vec3 normal = glm::cross(edge, mid);
@@ -163,28 +190,35 @@ namespace eltanin::mech {
                 normal /= mag;
             else
                 normal = vec3{0.0f, 1.0f, 0.0f};
-            return phys::rigid::Hull::Face{.points = {start, end}, .normal = normal, .thickness = 0.2f, .twoSided = false};
+            return phys::rigid::Hull::Face{.points = {start, end}, .normal = normal, .thickness = thickness, .twoSided = false};
         }
 
-        auto plateFace(const vector<integer>& points, const vector<vec3>& shape) -> phys::rigid::Hull::Face {
+        auto plateFace(const vector<integer>& points, const vector<vec3>& shape, float thickness) -> phys::rigid::Hull::Face {
             if (points.size() < 3)
-                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}, .thickness = 0.2f, .twoSided = false};
+                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}, .thickness = thickness, .twoSided = false};
             const vec3 ab = shape[static_cast<std::size_t>(points[1])] - shape[static_cast<std::size_t>(points[0])];
             const vec3 ac = shape[static_cast<std::size_t>(points[2])] - shape[static_cast<std::size_t>(points[0])];
             vec3 normal = glm::cross(ab, ac);
             const float mag = glm::length(normal);
             if (mag <= 1.0e-12f)
-                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}, .thickness = 0.2f, .twoSided = false};
+                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}, .thickness = thickness, .twoSided = false};
             normal /= mag;
-            return phys::rigid::Hull::Face{.points = points, .normal = normal, .thickness = 0.2f, .twoSided = true};
+            return phys::rigid::Hull::Face{.points = points, .normal = normal, .thickness = thickness, .twoSided = true};
+        }
+
+        auto hullFace(const vector<integer>& points, const vector<vec3>& shape, float thickness) -> phys::rigid::Hull::Face {
+            if (points.size() == 2)
+                return beamFace(points[0], points[1], shape, thickness);
+            return plateFace(points, shape, thickness);
         }
 
         auto glueFrame(Reading context, resource::meshpack::Asset::Id interframe, const Blueprint::Quantum& blueprint) -> std::pair<Construction, Construct::ActorFragments> {
-            Construction construction{.knots = {}, .ribs = {}, .tiles = {}, .weld4rib = {}};
-            Construct::ActorFragments fragments{.ofKnot = {}, .ofRib = {}, .ofMembrane = {}};
+            Construction construction{.knots = {}, .ribs = {}, .tiles = {}, .plates = {}, .weld4rib = {}};
+            Construct::ActorFragments fragments{.ofKnot = {}, .ofRib = {}, .ofMembrane = {}, .ofPlate = {}};
             std::map<index3, Construction::Knot::Id, LatticeLess> knotsAt;
             std::map<EdgeKey, Construction::Rib::Id, EdgeLess> ribsAt;
             std::map<vector<index3>, Construction::Tile::Id, LoopLess> tilesAt;
+            std::map<vector<index3>, Construction::Plate::Id, LoopLess> platesAt;
 
             for (const auto& cell : blueprint.cells) {
                 for (const auto& corner : cell.corners) {
@@ -263,6 +297,35 @@ namespace eltanin::mech {
                 }
             }
 
+            constexpr std::size_t maxPlanarMountPoints = 4;
+            for (const auto& placed : blueprint.mounts) {
+                const auto mountId = with<resource::Assets>::find<Mount>(context, placed.mount);
+                if (not mountId) {
+                    base::message("eltanin::mech::Assembler::spawn: mount '{}' missing", placed.mount.text());
+                    continue;
+                }
+                const auto& mount = with<Mount>::get(context, *mountId);
+                if (not mount.attachment.flatMounted() or mount.collision.shape != Collision::Shape::capsule)
+                    continue;
+                if (mount.attachment.points.empty() or mount.attachment.points.size() > maxPlanarMountPoints)
+                    continue;
+                auto loop = mountLoop(placed.transform, mount.attachment);
+                if (hasDuplicateVertex(loop))
+                    continue;
+                const auto key = cycleKey(loop);
+                auto found = platesAt.find(key);
+                if (found == platesAt.end()) {
+                    const auto id = static_cast<Construction::Plate::Id>(construction.plates.size());
+                    construction.plates.emplace(id, Construction::Plate{.loop = std::move(loop), .thickness = mount.collision.parameter1});
+                    found = platesAt.emplace(key, id).first;
+                } else {
+                    auto& plate = construction.plates.at(found->second);
+                    if (mount.collision.parameter1 > plate.thickness)
+                        plate.thickness = mount.collision.parameter1;
+                }
+                fragments.ofPlate.push_back(Construct::ActorFragments::OfPlate{.plate = found->second, .mount = placed.mount, .transform = placed.transform});
+            }
+
             for (const auto& [ribId, rib] : construction.ribs) {
                 if (const auto knot = knotsAt.find(rib.start); knot != knotsAt.end())
                     construction.weld4rib.push_back(Construction::Weld4Rib{.knot = knot->second, .rib = ribId});
@@ -277,7 +340,7 @@ namespace eltanin::mech {
 
         auto cookOccurrences(Reading context, resource::meshpack::Asset::Id interframe, const Construction& construction, const Construct::ActorFragments& fragments) -> vector<scene::actor::Mesh::Occurrence> {
             vector<scene::actor::Mesh::Occurrence> occurrences;
-            occurrences.reserve(fragments.ofKnot.size() + fragments.ofRib.size() + fragments.ofMembrane.size());
+            occurrences.reserve(fragments.ofKnot.size() + fragments.ofRib.size() + fragments.ofMembrane.size() + fragments.ofPlate.size());
             for (const auto& piece : fragments.ofKnot) {
                 const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, cornerMesh(piece.quark.kind));
                 if (not resolved)
@@ -298,6 +361,19 @@ namespace eltanin::mech {
                 if (not resolved)
                     continue;
                 occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.at, .ori = piece.quark.ori}});
+            }
+            for (const auto& piece : fragments.ofPlate) {
+                const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
+                if (not mountId)
+                    continue;
+                const auto& mount = with<Mount>::get(context, *mountId);
+                const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, mount.tempMesh.pack);
+                if (not packId)
+                    continue;
+                const auto resolved = with<resource::meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
+                if (not resolved)
+                    continue;
+                occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
             }
             return occurrences;
         }
@@ -322,14 +398,14 @@ namespace eltanin::mech {
             for (const auto& [id, knot] : construction.knots)
                 knotsAt.emplace(knot.position, id);
             phys::rigid::Hull hull{.faces = {}};
-            hull.faces.reserve(construction.ribs.size() + construction.tiles.size());
+            hull.faces.reserve(construction.ribs.size() + construction.tiles.size() + construction.plates.size());
             for (const auto& ribPair : construction.ribs) {
                 const auto& rib = ribPair.second;
                 const auto startKnot = knotsAt.find(rib.start);
                 const auto endKnot = knotsAt.find(rib.end);
                 if (startKnot == knotsAt.end() or endKnot == knotsAt.end() or startKnot->second == endKnot->second)
                     continue;
-                hull.faces.push_back(beamFace(startKnot->second, endKnot->second, shape));
+                hull.faces.push_back(beamFace(startKnot->second, endKnot->second, shape, 0.2f));
             }
             for (const auto& tilePair : construction.tiles) {
                 vector<integer> points;
@@ -345,10 +421,43 @@ namespace eltanin::mech {
                 }
                 if (not complete)
                     continue;
-                auto face = plateFace(points, shape);
+                auto face = plateFace(points, shape, 0.2f);
                 if (face.points.empty())
                     continue;
                 hull.faces.push_back(std::move(face));
+            }
+            for (const auto& platePair : construction.plates) {
+                const auto& plate = platePair.second;
+                if (plate.loop.size() < 2)
+                    continue;
+                vector<integer> points;
+                points.reserve(plate.loop.size());
+                bool complete = true;
+                for (const auto& vertex : plate.loop) {
+                    const auto knot = knotsAt.find(vertex);
+                    if (knot == knotsAt.end()) {
+                        complete = false;
+                        break;
+                    }
+                    points.push_back(knot->second);
+                }
+                if (not complete)
+                    continue;
+                auto face = hullFace(points, shape, plate.thickness);
+                if (face.points.empty())
+                    continue;
+                const auto key = sortedKnots(points);
+                bool replaced = false;
+                for (auto& existing : hull.faces) {
+                    if (sortedKnots(existing.points) != key)
+                        continue;
+                    if (plate.thickness > existing.thickness)
+                        existing = std::move(face);
+                    replaced = true;
+                    break;
+                }
+                if (not replaced)
+                    hull.faces.push_back(std::move(face));
             }
             return phys::rigid::Crystal::Quantum{
                 .particles = std::move(particles),

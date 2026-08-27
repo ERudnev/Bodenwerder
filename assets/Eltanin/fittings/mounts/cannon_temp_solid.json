@@ -13,6 +13,10 @@
       [1, 1, 1]
     ]
   },
+  "collision": {
+    "shape": "volume",
+    "parameter1": 0
+  },
   "tempMesh": {
     "pack": "Eltanin::devices",
     "entry": "cannon_temp_solid"

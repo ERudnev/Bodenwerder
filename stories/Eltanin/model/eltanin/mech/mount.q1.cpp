@@ -173,6 +173,42 @@ namespace eltanin::mech {
             return attachment;
         }
 
+        auto take_number(Cursor& cursor) -> float {
+            skip_ws(cursor);
+            const auto begin = cursor.at;
+            if (cursor.at < cursor.text.size() and (cursor.text[cursor.at] == '-' or cursor.text[cursor.at] == '+'))
+                ++cursor.at;
+            const auto digitsStart = cursor.at;
+            while (cursor.at < cursor.text.size() and std::isdigit(static_cast<unsigned char>(cursor.text[cursor.at])))
+                ++cursor.at;
+            if (cursor.at < cursor.text.size() and cursor.text[cursor.at] == '.') {
+                ++cursor.at;
+                while (cursor.at < cursor.text.size() and std::isdigit(static_cast<unsigned char>(cursor.text[cursor.at])))
+                    ++cursor.at;
+            }
+            if (begin == cursor.at or digitsStart == cursor.at)
+                throw std::runtime_error("mount: expected number");
+            return std::stof(std::string{cursor.text.substr(begin, cursor.at - begin)});
+        }
+
+        auto take_collision(Cursor& cursor) -> Collision {
+            expect(cursor, '{');
+            expect_key(cursor, "shape");
+            const auto shapeText = take_string(cursor);
+            Collision::Shape shape = Collision::Shape::capsule;
+            if (shapeText == "capsule")
+                shape = Collision::Shape::capsule;
+            else if (shapeText == "volume")
+                shape = Collision::Shape::volume;
+            else
+                throw std::runtime_error(std::format("mount: unknown collision shape '{}'", shapeText));
+            expect(cursor, ',');
+            expect_key(cursor, "parameter1");
+            const auto parameter1 = take_number(cursor);
+            expect(cursor, '}');
+            return Collision{.shape = shape, .parameter1 = parameter1};
+        }
+
         auto take_temp_mesh(Cursor& cursor) -> Mount::TempMesh {
             expect(cursor, '{');
             expect_key(cursor, "pack");
@@ -233,6 +269,9 @@ namespace eltanin::mech {
             expect_key(cursor, "attachment");
             auto attachment = take_attachment(cursor);
             expect(cursor, ',');
+            expect_key(cursor, "collision");
+            auto collision = take_collision(cursor);
+            expect(cursor, ',');
             expect_key(cursor, "tempMesh");
             auto tempMesh = take_temp_mesh(cursor);
             base::maybe<Role> role;
@@ -246,6 +285,7 @@ namespace eltanin::mech {
                 .name = std::move(name),
                 .author = std::move(author),
                 .attachment = std::move(attachment),
+                .collision = collision,
                 .tempMesh = std::move(tempMesh),
                 .role = role,
                 .file = {},
@@ -264,6 +304,10 @@ namespace eltanin::mech {
                 out << "      [" << point.x << ", " << point.y << ", " << point.z << "]" << (i + 1 < data.attachment.points.size() ? ",\n" : "\n");
             }
             out << "    ]\n";
+            out << "  },\n";
+            out << "  \"collision\": {\n";
+            out << "    \"shape\": \"" << (data.collision.shape == Collision::Shape::volume ? "volume" : "capsule") << "\",\n";
+            out << "    \"parameter1\": " << data.collision.parameter1 << "\n";
             out << "  },\n";
             out << "  \"tempMesh\": {\n";
             out << "    \"pack\": \"" << data.tempMesh.pack.text() << "\",\n";

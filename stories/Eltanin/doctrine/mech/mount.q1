@@ -8,6 +8,11 @@ namespace eltanin
       points: vector<index3> // just points in discrete local space
       ?flatMounted()->bool // true → one lattice plane (externals); false → volume (internals)
 
+    struct Collision
+      enum Shape capsule, volume // volume reserved for 3-D attachments
+      shape: Shape
+      parameter1: float // capsule: shell meters both sides of the planar loop
+
     // Library entry: placeable external equipment. Visual = soft meshpack link (placeholder).
     // Disk: fittings/mounts/*.json (classic JSON).
     feature Mount of rmmr::resource::Unit
@@ -18,6 +23,7 @@ namespace eltanin
         name: string
         author: string
         attachment: Attachment
+        collision: Collision
         tempMesh: TempMesh
         role: Role?
         file: filename // kit-relative; under fittings/mounts/

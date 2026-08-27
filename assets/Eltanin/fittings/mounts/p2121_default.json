@@ -9,6 +9,10 @@
       [1, 0, 0]
     ]
   },
+  "collision": {
+    "shape": "capsule",
+    "parameter1": 0.2
+  },
   "tempMesh": {
     "pack": "Eltanin::armour",
     "entry": "p2121_default"
