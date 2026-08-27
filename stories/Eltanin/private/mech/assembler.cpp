@@ -107,7 +107,7 @@ namespace eltanin::mech {
                 normal /= mag;
             else
                 normal = vec3{0.0f, 1.0f, 0.0f};
-            return phys::rigid::Hull::Face{.points = {start, end}, .normal = normal, .thickness = 0.1f};
+            return phys::rigid::Hull::Face{.points = {start, end}, .normal = normal, .thickness = 0.2f};
         }
 
         auto glueFrame(Reading context, resource::meshpack::Asset::Id interframe, const Blueprint::Quantum& blueprint) -> std::pair<Construction, Construct::ActorFragments> {

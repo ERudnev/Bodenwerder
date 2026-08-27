@@ -31,7 +31,22 @@ namespace eltanin::phys::collision {
                 boundMin = glm::min(boundMin, point);
                 boundMax = glm::max(boundMax, point);
             }
-            return any;
+            if (not any)
+                return false;
+            const float pad = glm::max(face.thickness, 0.0f);
+            boundMin -= vec3{pad, pad, pad};
+            boundMax += vec3{pad, pad, pad};
+            return true;
+        }
+
+        auto unitOrFallback(vec3 candidate, vec3 fallback) -> vec3 {
+            const float length = glm::length(candidate);
+            if (length >= minLength)
+                return candidate / length;
+            const float fallbackLength = glm::length(fallback);
+            if (fallbackLength >= minLength)
+                return fallback / fallbackLength;
+            return vec3{0.0f, 1.0f, 0.0f};
         }
 
         auto faceCentroid(const Hull::Face& face, const vector<vec3>& shape) -> vec3 {
@@ -178,13 +193,20 @@ namespace eltanin::phys::collision {
             return false;
         const Hull::Face& face = hull.faces[static_cast<std::size_t>(faceIndex)];
         const std::size_t count = face.points.size();
-        if (count < 3 or count > maxFaceVertices)
+        if (count < 2 or count > maxFaceVertices)
             return false;
         vec3 vertices[maxFaceVertices];
         for (std::size_t index = 0; index < count; ++index) {
             if (face.points[index] < 0 or static_cast<std::size_t>(face.points[index]) >= shape.size())
                 return false;
             vertices[index] = shape[static_cast<std::size_t>(face.points[index])];
+        }
+        const float shell = glm::max(face.thickness, 0.0f);
+        if (count == 2) {
+            const vec3 axisClosest = closestOnSegment(localPoint, vertices[0], vertices[1]);
+            localOutward = unitOrFallback(localPoint - axisClosest, face.normal);
+            localClosest = axisClosest + localOutward * shell;
+            return true;
         }
         vec3 normal = face.normal;
         float length = glm::length(normal);
@@ -195,8 +217,10 @@ namespace eltanin::phys::collision {
                 return false;
         }
         normal /= length;
-        const float signedDistance = glm::dot(localPoint - vertices[0], normal);
-        const vec3 projected = localPoint - signedDistance * normal;
+        const float planeDistance = glm::dot(localPoint - vertices[0], normal);
+        if (planeDistance < -shell)
+            return false;
+        const vec3 projected = localPoint - planeDistance * normal;
         if (projectsInside(vertices, count, projected, normal)) {
             localClosest = projected;
             localOutward = normal;

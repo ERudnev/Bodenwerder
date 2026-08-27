@@ -14,7 +14,7 @@ namespace eltanin::phys::collision {
     // Tick-local collision workspace (private physics, not Q1).
     // First-class citizens are Compounds; global sweep is compound-vs-compound.
     // Narrow phase: live particles of one body vs pose*shape of the other.
-    // Each particle queries the rest-space hull BVH for the nearest face; depth is signed distance to that primitive.
+    // Each particle queries the rest-space hull BVH for the nearest face; depth is signed distance to that primitive (polygon slab or 2-vert capsule).
     // Solver once per tick: pull the tested point onto frozen pose*shape. Next iteration is the next physics tick.
     // Ball vs crystal: both queries detect; impulse is only ball-vs-shape — separate, restitution+friction on the Ball (center.prev), kick face supports on Crystal.
     // Contact = positional constraint + event payload — not a force into accumulateForces.
