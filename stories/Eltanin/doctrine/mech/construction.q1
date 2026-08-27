@@ -1,16 +1,41 @@
 import "rmmr/scene/actors/mesh"
 import "physics/body"
 import "physics/rigid"
+import "semantics"
 
 namespace eltanin
   namespace mech
 
-    struct Construction // TBD
+    struct Construction
+      struct Knot
+        using Id as integer
+        position: index3
+      struct Rib
+        using Id as integer
+        start: index3
+        end: index3
+      struct Weld4Rib
+        knot: Knot::Id
+        rib: Rib::Id
+      knots: umap<Knot::Id, Knot>
+      ribs: umap<Rib::Id, Rib>
+      weld4rib: vector<Weld4Rib>
 
     entity Construct
+      struct ActorFragments
+        struct OfKnot
+          knot: Construction::Knot::Id
+          quark: skeleton::Corner
+        struct OfRib
+          rib: Construction::Rib::Id
+          quark: skeleton::Halfrib
+          at: index3
+        ofKnot: vector<OfKnot>
+        ofRib: vector<OfRib>
       one
         body: custody<phys::rigid::Crystal>
         actor: custody<rmmr::scene::actor::Mesh>
+        fragments: ActorFragments
         construction: Construction
       all
         !followBody(~phys::Body)->>linearPass(>all)

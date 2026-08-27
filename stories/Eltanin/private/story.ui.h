@@ -39,7 +39,7 @@ namespace eltanin {
 
         // Always-on spawn panel (no view-menu toggle).
         struct Assembler {
-            base::maybe<mech::Blueprint::Id> ship;
+            base::maybe<mech::Blueprint::Id> prefab;
             rmmr::Pos spawnPos;
             rmmr::HPB spawnHpb;
         };

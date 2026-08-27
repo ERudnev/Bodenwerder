@@ -1,0 +1,158 @@
+{
+    "etalon",
+    "dev_sample",
+    [
+        [
+            [0, 0, 0],
+            0,
+            "k8",
+            [
+                ["c124", 0],
+                ["c124", 4],
+                ["c124", 3],
+                ["c124", 7],
+                ["c124", 1],
+                ["c124", 5],
+                ["c124", 2],
+                ["c124", 6]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he1deg90", "starts", 15],
+                ["he1deg90", "ends", 15],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he1deg90", "starts", 21],
+                ["he1deg90", "ends", 21],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he1deg90", "starts", 3],
+                ["he1deg90", "ends", 3],
+                ["he1deg90", "starts", 14],
+                ["he1deg90", "ends", 14],
+                ["he1deg90", "starts", 20],
+                ["he1deg90", "ends", 20],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 2],
+                ["he1deg90", "ends", 2]
+            ],
+            [
+                ["u1111", 1]
+            ]
+        ],
+        [
+            [0, 0, 1],
+            8,
+            "k6",
+            [
+                ["c164", 0],
+                ["c134", 4],
+                ["c124", 1],
+                ["c124", 5],
+                ["c134", 13],
+                ["c164", 9]
+            ],
+            [
+                ["he1deg45", "starts", 0],
+                ["he1deg45", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg90", "starts", 13],
+                ["he3deg90", "ends", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg90", "starts", 4],
+                ["he3deg90", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg45", "ends", 9],
+                ["he1deg45", "starts", 9]
+            ],
+            [
+                ["u1111", 1]
+            ]
+        ],
+        [
+            [1, 0, 0],
+            8,
+            "k7",
+            [
+                ["c1364", 0],
+                ["c124", 4],
+                ["c1364", 20],
+                ["c124", 1],
+                ["c124", 5],
+                ["c1364", 13],
+                ["c124", 6]
+            ],
+            [
+                ["he1deg90", "starts", 0],
+                ["he1deg90", "ends", 0],
+                ["he3deg125", "starts", 0],
+                ["he3deg125", "ends", 0],
+                ["he1deg90", "starts", 16],
+                ["he1deg90", "ends", 16],
+                ["he3deg125", "ends", 13],
+                ["he3deg125", "starts", 13],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg125", "starts", 20],
+                ["he3deg125", "ends", 20],
+                ["he1deg90", "starts", 20],
+                ["he1deg90", "ends", 20],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he1deg90", "starts", 17],
+                ["he1deg90", "ends", 17],
+                ["he1deg90", "starts", 5],
+                ["he1deg90", "ends", 5],
+                ["he1deg90", "starts", 2],
+                ["he1deg90", "ends", 2]
+            ],
+            [
+                ["u1111", 1]
+            ]
+        ],
+        [
+            [1, 0, 1],
+            8,
+            "k4",
+            [
+                ["c135", 4],
+                ["c135", 1],
+                ["c124", 5],
+                ["c135", 23]
+            ],
+            [
+                ["he3deg71", "ends", 1],
+                ["he3deg71", "starts", 1],
+                ["he1deg90", "starts", 4],
+                ["he1deg90", "ends", 4],
+                ["he3deg71", "starts", 4],
+                ["he3deg71", "ends", 4],
+                ["he1deg90", "starts", 1],
+                ["he1deg90", "ends", 1],
+                ["he3deg71", "ends", 23],
+                ["he3deg71", "starts", 23]
+            ],
+            [
+                ["u121", 1]
+            ]
+        ]
+    ],
+    [
+        ["Eltanin::mounts.p1111_default", [0, 1, 0], 14],
+        ["Eltanin::mounts.p1111_default", [0, 0, 0], 0],
+        ["Eltanin::mounts.p1111_default", [0, 1, 0], 3],
+        ["Eltanin::mounts.p121_default", [0, 0, 1], 15],
+        ["Eltanin::mounts.p1111_default", [1, 0, 0], 0],
+        ["Eltanin::mounts.p121_default", [2, 0, 0], 4],
+        ["Eltanin::mounts.p121_default", [1, 1, 0], 3]
+    ]
+}

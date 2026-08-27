@@ -1,6 +1,6 @@
 #include "story.h"
 
-#include "assembler.h"
+#include "mech/assembler.h"
 
 #include <algorithm>
 #include <array>
@@ -186,36 +186,36 @@ namespace eltanin {
         auto& panel = ui.assembler;
         ImGui::DragFloat3("Spawn pos", &panel.spawnPos.x, 0.1f, 0.0f, 0.0f, "%.2f");
         ImGui::DragFloat3("Spawn HPB", &panel.spawnHpb.x, 0.1f, -180.0f, 180.0f, "%.1f°");
-        if (panel.ship.has_value() and not with<::eltanin::mech::Blueprint>::exists(world, *panel.ship))
-            panel.ship = {};
+        if (panel.prefab.has_value() and not with<::eltanin::mech::Blueprint>::exists(world, *panel.prefab))
+            panel.prefab = {};
         const char* preview = "(none)";
-        if (panel.ship.has_value()) {
-            const auto& asset = with<::eltanin::mech::Blueprint>::get(world, *panel.ship);
-            const auto& unit = with<::rmmr::resource::Unit>::get(world, *panel.ship);
+        if (panel.prefab.has_value()) {
+            const auto& asset = with<::eltanin::mech::Blueprint>::get(world, *panel.prefab);
+            const auto& unit = with<::rmmr::resource::Unit>::get(world, *panel.prefab);
             preview = asset.name.empty() ? unit.name.own.c_str() : asset.name.c_str();
         }
-        if (ImGui::BeginCombo("Ship", preview)) {
-            for (const auto id : blueprintPack.ships) {
+        if (ImGui::BeginCombo("Prefab", preview)) {
+            for (const auto id : blueprintPack.prefabs) {
                 if (not with<::eltanin::mech::Blueprint>::exists(world, id))
                     continue;
                 const auto& asset = with<::eltanin::mech::Blueprint>::get(world, id);
                 const auto& unit = with<::rmmr::resource::Unit>::get(world, id);
                 const char* label = asset.name.empty() ? unit.name.own.c_str() : asset.name.c_str();
-                const bool selected = panel.ship.has_value() and *panel.ship == id;
+                const bool selected = panel.prefab.has_value() and *panel.prefab == id;
                 pushEntityId<::eltanin::mech::Blueprint>(id);
                 if (ImGui::Selectable(label, selected))
-                    panel.ship = id;
+                    panel.prefab = id;
                 if (selected)
                     ImGui::SetItemDefaultFocus();
                 ImGui::PopID();
             }
             ImGui::EndCombo();
         }
-        const bool canCreate = panel.ship.has_value();
+        const bool canCreate = panel.prefab.has_value() and world_view.has_value();
         if (not canCreate)
             ImGui::BeginDisabled();
         if (ImGui::Button("Create", ImVec2{-1.0f, 0.0f}) and canCreate)
-            Assembler::immediateSpawn(world, *panel.ship, Pose::from(panel.spawnPos, panel.spawnHpb));
+            mech::Assembler::spawn(world, world_view->scene, Pose::from(panel.spawnPos, panel.spawnHpb), *panel.prefab);
         if (not canCreate)
             ImGui::EndDisabled();
         ImGui::End();
