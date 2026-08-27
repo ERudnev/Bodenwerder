@@ -102,18 +102,20 @@ namespace eltanin::phys {
                 .mix0 = {},
             };
             for (const auto& face : hull.faces) {
-                if (face.points.size() != 3)
+                if (face.points.size() < 3)
                     continue;
-                const integer ia = face.points[0];
-                const integer ib = face.points[1];
-                const integer ic = face.points[2];
-                if (ia < 0 or ib < 0 or ic < 0)
+                bool valid = true;
+                for (const integer id : face.points) {
+                    if (id < 0 or static_cast<std::size_t>(id) >= shape.size()) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (not valid)
                     continue;
-                if (static_cast<std::size_t>(ia) >= shape.size() or static_cast<std::size_t>(ib) >= shape.size() or static_cast<std::size_t>(ic) >= shape.size())
-                    continue;
-                const vec3 a = shape[static_cast<std::size_t>(ia)];
-                const vec3 b = shape[static_cast<std::size_t>(ib)];
-                const vec3 c = shape[static_cast<std::size_t>(ic)];
+                const vec3 a = shape[static_cast<std::size_t>(face.points[0])];
+                const vec3 b = shape[static_cast<std::size_t>(face.points[1])];
+                const vec3 c = shape[static_cast<std::size_t>(face.points[2])];
                 vec3 normal = face.normal;
                 if (glm::dot(normal, normal) < 1.0e-12f)
                     normal = glm::cross(b - a, c - a);
@@ -122,15 +124,19 @@ namespace eltanin::phys {
                     continue;
                 normal /= mag;
                 const auto [uAxis, vAxis] = planarAxes(normal, b - a);
-                cpu.positions.push_back(a);
-                cpu.positions.push_back(b);
-                cpu.positions.push_back(c);
-                cpu.normals.push_back(normal);
-                cpu.normals.push_back(normal);
-                cpu.normals.push_back(normal);
-                cpu.uv0.push_back(rmmr::UV{glm::dot(a, uAxis), glm::dot(a, vAxis)});
-                cpu.uv0.push_back(rmmr::UV{glm::dot(b, uAxis), glm::dot(b, vAxis)});
-                cpu.uv0.push_back(rmmr::UV{glm::dot(c, uAxis), glm::dot(c, vAxis)});
+                for (std::size_t i = 1; i + 1 < face.points.size(); ++i) {
+                    const vec3 p1 = shape[static_cast<std::size_t>(face.points[i])];
+                    const vec3 p2 = shape[static_cast<std::size_t>(face.points[i + 1])];
+                    cpu.positions.push_back(a);
+                    cpu.positions.push_back(p1);
+                    cpu.positions.push_back(p2);
+                    cpu.normals.push_back(normal);
+                    cpu.normals.push_back(normal);
+                    cpu.normals.push_back(normal);
+                    cpu.uv0.push_back(rmmr::UV{glm::dot(a, uAxis), glm::dot(a, vAxis)});
+                    cpu.uv0.push_back(rmmr::UV{glm::dot(p1, uAxis), glm::dot(p1, vAxis)});
+                    cpu.uv0.push_back(rmmr::UV{glm::dot(p2, uAxis), glm::dot(p2, vAxis)});
+                }
             }
             return cpu;
         }

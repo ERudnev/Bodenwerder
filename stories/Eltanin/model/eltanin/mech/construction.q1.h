@@ -20,12 +20,17 @@ namespace eltanin::mech {
             index3 start;
             index3 end;
         };
+        struct Tile {
+            using Id = integer;
+            vector<index3> loop;
+        };
         struct Weld4Rib {
             Knot::Id knot;
             Rib::Id rib;
         };
         umap<Knot::Id, Knot> knots;
         umap<Rib::Id, Rib> ribs;
+        umap<Tile::Id, Tile> tiles;
         vector<Weld4Rib> weld4rib;
     };
 
@@ -40,8 +45,14 @@ namespace eltanin::mech {
                 skeleton::Halfrib quark;
                 index3 at;
             };
+            struct OfMembrane {
+                Construction::Tile::Id tile;
+                skeleton::Membrane quark;
+                index3 at;
+            };
             vector<OfKnot> ofKnot;
             vector<OfRib> ofRib;
+            vector<OfMembrane> ofMembrane;
         };
         struct Quantum {
             Custody<phys::rigid::Crystal> body;

@@ -80,6 +80,17 @@ namespace eltanin::mech::skeleton {
         return Membrane::Kind::u1111;
     }
 
+    inline auto plateOf(Membrane::Kind kind) -> plate::shape {
+        switch (kind) {
+            case Membrane::Kind::u1111: return plate::shape::p1111;
+            case Membrane::Kind::u121: return plate::shape::p121;
+            case Membrane::Kind::u2121: return plate::shape::p2121;
+            case Membrane::Kind::u222A: return plate::shape::p222A;
+            case Membrane::Kind::u222V: return plate::shape::p222V;
+        }
+        return plate::shape::p1111;
+    }
+
     struct Recipe {
         struct AtCorner {
             Corner::Kind kind;

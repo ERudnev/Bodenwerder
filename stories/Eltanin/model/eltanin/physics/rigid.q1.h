@@ -15,6 +15,7 @@ namespace eltanin::phys::rigid {
             vector<integer> points;
             vec3 normal;
             float thickness;
+            bool twoSided;
         };
         struct Bvh {
             struct Node {

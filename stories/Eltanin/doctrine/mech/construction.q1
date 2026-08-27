@@ -14,11 +14,15 @@ namespace eltanin
         using Id as integer
         start: index3
         end: index3
+      struct Tile
+        using Id as integer
+        loop: vector<index3>
       struct Weld4Rib
         knot: Knot::Id
         rib: Rib::Id
       knots: umap<Knot::Id, Knot>
       ribs: umap<Rib::Id, Rib>
+      tiles: umap<Tile::Id, Tile>
       weld4rib: vector<Weld4Rib>
 
     entity Construct
@@ -30,8 +34,13 @@ namespace eltanin
           rib: Construction::Rib::Id
           quark: skeleton::Halfrib
           at: index3
+        struct OfMembrane
+          tile: Construction::Tile::Id
+          quark: skeleton::Membrane
+          at: index3
         ofKnot: vector<OfKnot>
         ofRib: vector<OfRib>
+        ofMembrane: vector<OfMembrane>
       one
         body: custody<phys::rigid::Crystal>
         actor: custody<rmmr::scene::actor::Mesh>

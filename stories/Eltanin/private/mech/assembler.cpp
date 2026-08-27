@@ -8,12 +8,14 @@
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/root.q1.h>
 
+#include "mech/semantics/quarks.h"
+#include "mech/semantics/shapes.h"
 #include "mech/semantics/space.h"
 #include "mech/semantics/subframe.h"
-#include "mech/semantics/quarks.h"
 
 #include <base/logging.h>
 
+#include <algorithm>
 #include <format>
 #include <map>
 #include <utility>
@@ -67,6 +69,10 @@ namespace eltanin::mech {
             return std::format("{}{}", skeleton::halfribSpecs.at(kind).code, poleTag);
         }
 
+        auto membraneMesh(skeleton::Membrane::Kind kind) -> std::string {
+            return std::string{skeleton::membraneSpecs.at(kind).code};
+        }
+
         auto localSeatFromOrigin(vec3 origin) -> cube::Corner {
             const space::ivec3 bit{
                 origin.x >= 0.0f ? 1 : 0,
@@ -94,6 +100,56 @@ namespace eltanin::mech {
             return asset.entries[resolved.entry].origin;
         }
 
+        struct LoopLess {
+            auto operator()(const vector<index3>& left, const vector<index3>& right) const -> bool {
+                if (left.size() != right.size())
+                    return left.size() < right.size();
+                for (std::size_t i = 0; i < left.size(); ++i) {
+                    if (LatticeLess{}(left[i], right[i]))
+                        return true;
+                    if (LatticeLess{}(right[i], left[i]))
+                        return false;
+                }
+                return false;
+            }
+        };
+
+        auto hasDuplicateVertex(const vector<index3>& loop) -> bool {
+            for (std::size_t i = 0; i < loop.size(); ++i) {
+                for (std::size_t j = i + 1; j < loop.size(); ++j) {
+                    if (sameLattice(loop[i], loop[j]))
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        auto cycleKey(vector<index3> loop) -> vector<index3> {
+            if (loop.size() < 3)
+                return loop;
+            std::size_t minIndex = 0;
+            for (std::size_t i = 1; i < loop.size(); ++i) {
+                if (LatticeLess{}(loop[i], loop[minIndex]))
+                    minIndex = i;
+            }
+            vector<index3> rotated;
+            rotated.reserve(loop.size());
+            for (std::size_t i = 0; i < loop.size(); ++i)
+                rotated.push_back(loop[(minIndex + i) % loop.size()]);
+            if (LatticeLess{}(rotated.back(), rotated[1]))
+                std::reverse(rotated.begin() + 1, rotated.end());
+            return rotated;
+        }
+
+        auto worldLoop(const space::cell::Placement& world, skeleton::Membrane::Kind kind) -> vector<index3> {
+            const auto& canonical = plate::perimeter[static_cast<std::size_t>(skeleton::plateOf(kind))];
+            vector<index3> loop;
+            loop.reserve(canonical.size());
+            for (const auto corner : canonical)
+                loop.push_back(gridVertex(world, corner));
+            return loop;
+        }
+
         auto beamFace(integer start, integer end, const vector<vec3>& shape) -> phys::rigid::Hull::Face {
             const vec3 edge = shape[static_cast<std::size_t>(end)] - shape[static_cast<std::size_t>(start)];
             const vec3 mid = 0.5f * (shape[static_cast<std::size_t>(start)] + shape[static_cast<std::size_t>(end)]);
@@ -107,14 +163,28 @@ namespace eltanin::mech {
                 normal /= mag;
             else
                 normal = vec3{0.0f, 1.0f, 0.0f};
-            return phys::rigid::Hull::Face{.points = {start, end}, .normal = normal, .thickness = 0.2f};
+            return phys::rigid::Hull::Face{.points = {start, end}, .normal = normal, .thickness = 0.2f, .twoSided = false};
+        }
+
+        auto plateFace(const vector<integer>& points, const vector<vec3>& shape) -> phys::rigid::Hull::Face {
+            if (points.size() < 3)
+                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}, .thickness = 0.2f, .twoSided = false};
+            const vec3 ab = shape[static_cast<std::size_t>(points[1])] - shape[static_cast<std::size_t>(points[0])];
+            const vec3 ac = shape[static_cast<std::size_t>(points[2])] - shape[static_cast<std::size_t>(points[0])];
+            vec3 normal = glm::cross(ab, ac);
+            const float mag = glm::length(normal);
+            if (mag <= 1.0e-12f)
+                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}, .thickness = 0.2f, .twoSided = false};
+            normal /= mag;
+            return phys::rigid::Hull::Face{.points = points, .normal = normal, .thickness = 0.2f, .twoSided = true};
         }
 
         auto glueFrame(Reading context, resource::meshpack::Asset::Id interframe, const Blueprint::Quantum& blueprint) -> std::pair<Construction, Construct::ActorFragments> {
-            Construction construction{.knots = {}, .ribs = {}, .weld4rib = {}};
-            Construct::ActorFragments fragments{.ofKnot = {}, .ofRib = {}};
+            Construction construction{.knots = {}, .ribs = {}, .tiles = {}, .weld4rib = {}};
+            Construct::ActorFragments fragments{.ofKnot = {}, .ofRib = {}, .ofMembrane = {}};
             std::map<index3, Construction::Knot::Id, LatticeLess> knotsAt;
             std::map<EdgeKey, Construction::Rib::Id, EdgeLess> ribsAt;
+            std::map<vector<index3>, Construction::Tile::Id, LoopLess> tilesAt;
 
             for (const auto& cell : blueprint.cells) {
                 for (const auto& corner : cell.corners) {
@@ -164,6 +234,35 @@ namespace eltanin::mech {
                 }
             }
 
+            for (const auto& cell : blueprint.cells) {
+                for (const auto& membrane : cell.membranes) {
+                    const auto world = skeleton::worldPose(cell.placement, membrane.ori);
+                    auto loop = worldLoop(world, membrane.kind);
+                    if (loop.size() < 3 or hasDuplicateVertex(loop))
+                        continue;
+                    const auto key = cycleKey(loop);
+                    auto found = tilesAt.find(key);
+                    if (found == tilesAt.end()) {
+                        const auto id = static_cast<Construction::Tile::Id>(construction.tiles.size());
+                        construction.tiles.emplace(id, Construction::Tile{.loop = std::move(loop)});
+                        found = tilesAt.emplace(key, id).first;
+                    }
+                    const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, membraneMesh(membrane.kind));
+                    if (not resolved) {
+                        base::message("eltanin::mech::Assembler::spawn: membrane mesh missing");
+                        continue;
+                    }
+                    cube::Corner localSeat = 0;
+                    if (const auto origin = entryOrigin(context, *resolved))
+                        localSeat = localSeatFromOrigin(*origin);
+                    fragments.ofMembrane.push_back(Construct::ActorFragments::OfMembrane{
+                        .tile = found->second,
+                        .quark = skeleton::Membrane{.kind = membrane.kind, .ori = world.ori},
+                        .at = gridVertex(world, localSeat),
+                    });
+                }
+            }
+
             for (const auto& [ribId, rib] : construction.ribs) {
                 if (const auto knot = knotsAt.find(rib.start); knot != knotsAt.end())
                     construction.weld4rib.push_back(Construction::Weld4Rib{.knot = knot->second, .rib = ribId});
@@ -178,7 +277,7 @@ namespace eltanin::mech {
 
         auto cookOccurrences(Reading context, resource::meshpack::Asset::Id interframe, const Construction& construction, const Construct::ActorFragments& fragments) -> vector<scene::actor::Mesh::Occurrence> {
             vector<scene::actor::Mesh::Occurrence> occurrences;
-            occurrences.reserve(fragments.ofKnot.size() + fragments.ofRib.size());
+            occurrences.reserve(fragments.ofKnot.size() + fragments.ofRib.size() + fragments.ofMembrane.size());
             for (const auto& piece : fragments.ofKnot) {
                 const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, cornerMesh(piece.quark.kind));
                 if (not resolved)
@@ -190,6 +289,12 @@ namespace eltanin::mech {
             }
             for (const auto& piece : fragments.ofRib) {
                 const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, halfribMesh(piece.quark.kind, piece.quark.pole));
+                if (not resolved)
+                    continue;
+                occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.at, .ori = piece.quark.ori}});
+            }
+            for (const auto& piece : fragments.ofMembrane) {
+                const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, membraneMesh(piece.quark.kind));
                 if (not resolved)
                     continue;
                 occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.at, .ori = piece.quark.ori}});
@@ -217,7 +322,7 @@ namespace eltanin::mech {
             for (const auto& [id, knot] : construction.knots)
                 knotsAt.emplace(knot.position, id);
             phys::rigid::Hull hull{.faces = {}};
-            hull.faces.reserve(construction.ribs.size());
+            hull.faces.reserve(construction.ribs.size() + construction.tiles.size());
             for (const auto& ribPair : construction.ribs) {
                 const auto& rib = ribPair.second;
                 const auto startKnot = knotsAt.find(rib.start);
@@ -225,6 +330,25 @@ namespace eltanin::mech {
                 if (startKnot == knotsAt.end() or endKnot == knotsAt.end() or startKnot->second == endKnot->second)
                     continue;
                 hull.faces.push_back(beamFace(startKnot->second, endKnot->second, shape));
+            }
+            for (const auto& tilePair : construction.tiles) {
+                vector<integer> points;
+                points.reserve(tilePair.second.loop.size());
+                bool complete = true;
+                for (const auto& vertex : tilePair.second.loop) {
+                    const auto knot = knotsAt.find(vertex);
+                    if (knot == knotsAt.end()) {
+                        complete = false;
+                        break;
+                    }
+                    points.push_back(knot->second);
+                }
+                if (not complete)
+                    continue;
+                auto face = plateFace(points, shape);
+                if (face.points.empty())
+                    continue;
+                hull.faces.push_back(std::move(face));
             }
             return phys::rigid::Crystal::Quantum{
                 .particles = std::move(particles),
