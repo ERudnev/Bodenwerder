@@ -35,10 +35,11 @@ namespace rmmr
       surfaceBase: Integer32
 
     // Mesh shader SSBO bindings:
-    // 7 ActorState, 8 DiscretePose[], 9 DrawMetadata[], 10 uint surfacePalette[], 11 uint primitiveSurfaces[].
+    // 7 ActorState, 8 DiscretePose[], 9 DrawMetadata[], 10 uint surfacePalette[], 11 uint primitiveSurfaces[], 12 float cohesions[].
 
     // std430-compatible actor data. albedoOpacity.w is opacity;
-    // latticePattern is latticeStep/patternScale. heat.xy is kelvin/erosion.
+    // latticePattern is latticeStep/patternScale. heat.xy is kelvin/erosion;
+    // heat.zw is wrecked/mask texpack layers for hull (negative = unused).
     struct ActorState
       model: mat4
       albedoOpacity: vec4
@@ -66,6 +67,7 @@ namespace rmmr
       sprite: #resource::sprite::Runtime?
       actorState: StorageBuffer
       poses: StorageBuffer
+      cohesions: StorageBuffer
       drawMetadata: StorageBuffer
       surfacePalette: StorageBuffer
       metadataByteOffset: IntPtr

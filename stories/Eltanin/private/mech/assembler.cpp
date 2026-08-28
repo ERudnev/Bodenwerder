@@ -495,9 +495,11 @@ namespace eltanin::mech {
             return {std::move(construction), std::move(fragments)};
         }
 
-        auto cookOccurrences(Reading context, resource::meshpack::Asset::Id interframe, const Construction& construction, const Construct::ActorFragments& fragments) -> vector<scene::actor::Mesh::Occurrence> {
+        auto cookOccurrences(Reading context, resource::meshpack::Asset::Id interframe, const Construction& construction, const Construct::ActorFragments& fragments, vector<Construction::Primitive::Id>& visualOf) -> vector<scene::actor::Mesh::Occurrence> {
             vector<scene::actor::Mesh::Occurrence> occurrences;
+            visualOf.clear();
             occurrences.reserve(fragments.ofKnot.size() + fragments.ofRib.size() + fragments.ofMembrane.size() + fragments.ofPlate.size() + fragments.ofVolume.size());
+            visualOf.reserve(occurrences.capacity());
             for (const auto& piece : fragments.ofKnot) {
                 const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, cornerMesh(piece.quark.kind));
                 if (not resolved)
@@ -506,18 +508,21 @@ namespace eltanin::mech {
                 if (knot == construction.knots.end() or knot->second.loop.empty())
                     continue;
                 occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = knot->second.loop[0].gridPos, .ori = piece.quark.ori}});
+                visualOf.push_back(piece.knot);
             }
             for (const auto& piece : fragments.ofRib) {
                 const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, halfribMesh(piece.quark.kind, piece.quark.pole));
                 if (not resolved)
                     continue;
                 occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.at, .ori = piece.quark.ori}});
+                visualOf.push_back(piece.rib);
             }
             for (const auto& piece : fragments.ofMembrane) {
                 const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, membraneMesh(piece.quark.kind));
                 if (not resolved)
                     continue;
                 occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.at, .ori = piece.quark.ori}});
+                visualOf.push_back(piece.membrane);
             }
             for (const auto& piece : fragments.ofPlate) {
                 const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
@@ -531,6 +536,7 @@ namespace eltanin::mech {
                 if (not resolved)
                     continue;
                 occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
+                visualOf.push_back(piece.plate);
             }
             for (const auto& piece : fragments.ofVolume) {
                 const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
@@ -544,6 +550,7 @@ namespace eltanin::mech {
                 if (not resolved)
                     continue;
                 occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
+                visualOf.push_back(piece.volume);
             }
             return occurrences;
         }
@@ -551,7 +558,7 @@ namespace eltanin::mech {
         auto crystalFrom(const Construction& construction, Pose pose) -> phys::rigid::Crystal::Quantum {
             const auto count = construction.evaluatedParticles.size();
             vector<vec3> shape(count, vec3{0.0f, 0.0f, 0.0f});
-            vector<phys::Particle> particles(count, phys::Particle{phys::Matter{.position = dvec3{0.0, 0.0, 0.0}, .mass = 1.0f, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{0.0, 0.0, 0.0}, vec3{0.0f, 0.0f, 0.0f}});
+            vector<phys::Particle> particles(count, phys::Particle{phys::Matter{.position = dvec3{0.0, 0.0, 0.0}, .mass = 1.0f, .temperature = 0.0f, .cohesion = 0.5f}, dvec3{0.0, 0.0, 0.0}, vec3{0.0f, 0.0f, 0.0f}});
             glm::dvec3 moment{0.0, 0.0, 0.0};
             double mass = 0.0;
             std::map<index3, integer, LatticeLess> at;
@@ -637,7 +644,8 @@ namespace eltanin::mech {
         if (construction.knots.empty())
             return context.refuse("eltanin::mech::Assembler::spawn: blueprint has no knots");
 
-        auto occurrences = cookOccurrences(context, *interframe, construction, fragments);
+        vector<Construction::Primitive::Id> visualOf;
+        auto occurrences = cookOccurrences(context, *interframe, construction, fragments, visualOf);
         if (occurrences.empty())
             return context.refuse("eltanin::mech::Assembler::spawn: no quark meshes to compose");
         auto meshQuantum = with<scene::actor::Mesh>::compose(context, occurrences);
@@ -652,7 +660,9 @@ namespace eltanin::mech {
         with<phys::rigid::Crystal>::extend(context, body, std::move(crystal));
         with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
 
-        return with<Construct>::create(context, Construct::Quantum{.body = body, .actor = actor, .fragments = std::move(fragments), .construction = std::move(construction)});
+        const auto id = with<Construct>::create(context, Construct::Quantum{.body = body, .actor = actor, .fragments = std::move(fragments), .construction = std::move(construction), .visualOf = std::move(visualOf)});
+        with<Construct>::syncVisualCohesion(context, id);
+        return id;
     }
 
 }

@@ -170,6 +170,16 @@ namespace eltanin {
             item<texpack::LoaderCatalog>{.directory = "textures/mech"},
             index2{1024, 1024},
             32);
+        {
+            const auto hullProgram = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "hull"), item<shader::Loader>{.vertex = "shaders/hull.vert.glsl", .fragment = "shaders/hull.frag.glsl"});
+            auto hull = with<Material>::get(context, *shared->material.litTextured);
+            const auto opaque = hull.techniques.find(renderer::Pass::opaque);
+            if (opaque == hull.techniques.end()) {
+                return (void)context.refuse("eltanin::Game::addAssets: lit_textured has no opaque pass");
+            }
+            opaque->second.program = with<Unit>::remember(context, hullProgram);
+            (void)with<Assets>::add_material(context, Name::from("Eltanin", "hull"), std::move(hull));
+        }
         // Transparent: world cursor. Opaque: role-colored placeholder boxes (attachments).
         (void)with<Assets>::add_material(context, Name::from("Eltanin", "type"), with<Material>::get(context, *shared->material.litTransparent));
         (void)with<Assets>::add_material(context, Name::from("Eltanin", "typeSolid"), with<Material>::get(context, *shared->material.lit));

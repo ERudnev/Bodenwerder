@@ -11,6 +11,8 @@
 
 #include <fQSM/api/interface.h>
 
+#include <span>
+
 namespace rmmr::scene::actor {
 
     using namespace fqsm::api;
@@ -34,6 +36,10 @@ namespace rmmr::scene::actor {
             system::Device::Id device;
             renderer::StorageBuffer actorState;
             renderer::StorageBuffer poses;
+            renderer::StorageBuffer cohesions;
+            integer instanceCount;
+            integer wreckedLayer;
+            integer maskLayer;
             renderer::StorageBuffer drawMetadata;
             renderer::StorageBuffer surfacePalette;
             base::maybe<resource::sprite::Runtime::Id> sprite;
@@ -45,6 +51,7 @@ namespace rmmr::scene::actor {
             static auto compose(Reading, resource::meshpack::Asset::Resolved) -> optional<Quantum>;
             static auto composeOne(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id) -> optional<Quantum>;
             static auto composeOne(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texture3array::Asset::Id) -> optional<Quantum>;
+            static void writeCohesions(Reading, Id, std::span<const float>);
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };
         struct Internals;

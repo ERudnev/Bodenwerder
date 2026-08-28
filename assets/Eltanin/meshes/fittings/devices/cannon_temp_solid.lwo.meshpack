@@ -4,8 +4,8 @@
     "meshes/fittings/devices/cannon_temp_solid.lwo",
     "Eltanin::mech",
     [
-        {"armor_light", {"rmmr::lit_textured", [{"albedoMap", "10469-v3.jpg"}]}},
-        {"steel", {"rmmr::lit_textured", [{"albedoMap", "STEEL1.JPG"}]}},
-        {"steel_hard", {"rmmr::lit_textured", [{"albedoMap", "CH_T_KOSMOSSCIANAA.JPG"}]}}
+        {"armor_light", {"Eltanin::hull", [{"albedoMap", "10469-v3.jpg"}]}},
+        {"steel", {"Eltanin::hull", [{"albedoMap", "STEEL1.JPG"}]}},
+        {"steel_hard", {"Eltanin::hull", [{"albedoMap", "CH_T_KOSMOSSCIANAA.JPG"}]}}
     ]
 }

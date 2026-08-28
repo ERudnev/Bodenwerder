@@ -87,6 +87,7 @@ namespace rmmr::renderer {
         inline constexpr Integer32 drawMetadata = 9;
         inline constexpr Integer32 surfacePalette = 10;
         inline constexpr Integer32 primitiveSurfaces = 11;
+        inline constexpr Integer32 cohesions = 12;
 
     }
 
@@ -99,6 +100,7 @@ namespace rmmr::renderer {
         base::maybe<resource::sprite::Runtime::Id> sprite;
         StorageBuffer actorState;
         StorageBuffer poses;
+        StorageBuffer cohesions;
         StorageBuffer drawMetadata;
         StorageBuffer surfacePalette;
         IntPtr metadataByteOffset;

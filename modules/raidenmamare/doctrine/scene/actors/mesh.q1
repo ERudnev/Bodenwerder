@@ -29,12 +29,17 @@ namespace rmmr
           device: #system::Device
           actorState: renderer::StorageBuffer
           poses: renderer::StorageBuffer
+          cohesions: renderer::StorageBuffer
+          instanceCount: integer
+          wreckedLayer: integer
+          maskLayer: integer
           drawMetadata: renderer::StorageBuffer
           surfacePalette: renderer::StorageBuffer
           sprite: #resource::sprite::Runtime?
           spriteIndex: integer
           buckets: vector<Bucket>
           ?submit(#system::Device, >where: renderer::CommandBuffer)
+          ?writeCohesions(vector<float>)
         all
           ?compose(vector<Occurrence>)->one?
           ?compose(resource::meshpack::Asset::Resolved)->one?

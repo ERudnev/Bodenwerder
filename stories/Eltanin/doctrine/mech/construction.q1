@@ -55,5 +55,7 @@ namespace eltanin
         actor: custody<rmmr::scene::actor::Mesh>
         fragments: ActorFragments
         construction: Construction
+        visualOf: vector<Construction::Primitive::Id>
       all
         !followBody(~phys::Body)->>linearPass(>all)
+        >syncVisualCohesion()

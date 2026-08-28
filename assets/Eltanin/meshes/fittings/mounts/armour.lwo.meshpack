@@ -4,12 +4,12 @@
     "meshes/fittings/mounts/armour.lwo",
     "Eltanin::mech",
     [
-        {"armor", {"rmmr::lit_textured", [{"albedoMap", "gray_plated_steel.png"}]}},
-        {"armor_hard", {"rmmr::lit_textured", [{"albedoMap", "CH_T_KOSMOSSCIANAA.JPG"}]}},
-        {"grid", {"rmmr::lit_textured", [{"albedoMap", "GRATING6.BMP"}]}},
-        {"inner", {"rmmr::lit_textured", [{"albedoMap", "STEEL4.JPG"}]}},
-        {"mount", {"rmmr::lit_textured", [{"albedoMap", "pewter2.bmp"}]}},
-        {"outer", {"rmmr::lit_textured", [{"albedoMap", "gray_plated_steel.png"}]}},
-        {"panel", {"rmmr::lit_textured", [{"albedoMap", "grabbed02.jpg"}]}}
+        {"armor", {"Eltanin::hull", [{"albedoMap", "gray_plated_steel.png"}]}},
+        {"armor_hard", {"Eltanin::hull", [{"albedoMap", "CH_T_KOSMOSSCIANAA.JPG"}]}},
+        {"grid", {"Eltanin::hull", [{"albedoMap", "GRATING6.BMP"}]}},
+        {"inner", {"Eltanin::hull", [{"albedoMap", "STEEL4.JPG"}]}},
+        {"mount", {"Eltanin::hull", [{"albedoMap", "pewter2.bmp"}]}},
+        {"outer", {"Eltanin::hull", [{"albedoMap", "gray_plated_steel.png"}]}},
+        {"panel", {"Eltanin::hull", [{"albedoMap", "grabbed02.jpg"}]}}
     ]
 }

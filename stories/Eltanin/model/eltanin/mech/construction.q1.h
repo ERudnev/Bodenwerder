@@ -69,8 +69,11 @@ namespace eltanin::mech {
             Custody<rmmr::scene::actor::Mesh> actor;
             ActorFragments fragments;
             Construction construction;
+            vector<Construction::Primitive::Id> visualOf;
         };
-        struct Actions : BaseActions {};
+        struct Actions : BaseActions {
+            static void syncVisualCohesion(Reading, Id);
+        };
         struct Internals;
         static const Behavior customAspectReactions();
     };

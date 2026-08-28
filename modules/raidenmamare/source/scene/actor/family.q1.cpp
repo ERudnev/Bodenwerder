@@ -115,6 +115,11 @@ namespace rmmr::scene::actor {
                 glDeleteBuffers(1, &poses);
                 mesh.poses = renderer::StorageBuffer{0};
             }
+            if (mesh.cohesions) {
+                auto cohesions = mesh.cohesions;
+                glDeleteBuffers(1, &cohesions);
+                mesh.cohesions = renderer::StorageBuffer{0};
+            }
             renderer::StorageBuffer instances{0};
             glCreateBuffers(1, &instances);
             if (not instances) {
@@ -182,6 +187,7 @@ namespace rmmr::scene::actor {
                 .sprite = {},
                 .actorState = family.actorState,
                 .poses = family.instances,
+                .cohesions = {},
                 .drawMetadata = family.drawMetadata,
                 .surfacePalette = family.surfacePalette,
                 .metadataByteOffset = bucket.metadataByteOffset,
