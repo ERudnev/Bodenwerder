@@ -15,7 +15,7 @@ namespace eltanin::phys {
 
     // Private physics subsystem (not Q1).
     // Fixed tick 10ms; wall dt accumulates as debt (sub-step remainder).
-    // One pass: accumulate forces → Verlet (crystals, balls, rays) → restore bases → connectivity (no rays) → traceRays → apply constraint wishes.
+    // One pass: accumulate forces → Verlet → Horn (query pose) → connectivity → Horn (absorb kicks) → pull to shape.
     // One Dock per tick; hot mutation via Stewarding::direct<Body>() and direct<rigid::Crystal>() / direct<rigid::Ball>().
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
     // Thermal: Boulder. Rock Volume thermal deferred. Accumulate to thermalStepUs, then radiate. No conduction.

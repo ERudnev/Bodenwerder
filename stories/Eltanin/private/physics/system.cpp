@@ -226,6 +226,7 @@ namespace eltanin::phys {
         integrateRays(context.direct<Body>(), context.direct<rigid::Ray>());
         restoreBases(context);
         applyConnectivity(context);
+        restoreBases(context);
         applyConstraintWishes(context);
     }
 

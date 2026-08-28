@@ -402,13 +402,13 @@ namespace eltanin::phys::collision {
         }
         normal /= length;
         const float planeDistance = glm::dot(localPoint - vertices[0], normal);
-        if (planeDistance < -shell)
+        if (planeDistance < -shell and not face.twoSided)
             return false;
         const vec3 side = face.twoSided and planeDistance < 0.0f ? -normal : normal;
         const vec3 projected = localPoint - planeDistance * normal;
         if (projectsInside(vertices, count, projected, normal)) {
-            localClosest = projected;
             localOutward = side;
+            localClosest = face.twoSided ? projected + side * shell : projected;
             return true;
         }
         localClosest = closestOnSegment(localPoint, vertices[count - 1], vertices[0]);
@@ -423,6 +423,8 @@ namespace eltanin::phys::collision {
             localClosest = candidate;
         }
         localOutward = face.twoSided ? unitOrFallback(localPoint - localClosest, side) : normal;
+        if (face.twoSided)
+            localClosest += localOutward * shell;
         return true;
     }
 

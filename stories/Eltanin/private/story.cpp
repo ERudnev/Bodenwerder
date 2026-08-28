@@ -291,7 +291,7 @@ namespace eltanin {
     }
 
     void Game::advanceSim(Writing context, int64 dt_us) {
-        with<World>::advance(context, dt_us);
+        with<locality::Thing>::update(context, dt_us);
     }
 
     void Game::onFrame(establish::Realm& world, int64 dt_us) {

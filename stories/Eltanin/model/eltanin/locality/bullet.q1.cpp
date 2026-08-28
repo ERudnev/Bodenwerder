@@ -86,7 +86,7 @@ namespace eltanin::locality {
         with<phys::rigid::Ray>::extend(context, body, phys::rigid::Ray::Quantum{
             .core = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = shellMass, .temperature = shellHeat, .cohesion = 1.0f}, dvec3{pose.position} - dvec3{velocity * phys::Particle::dt}, vec3{0.0f, 0.0f, 0.0f}},
         });
-        const auto thing = with<Thing>::create(context, Thing::Quantum{});
+        const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
         with<Bullet>::extend(context, thing, Bullet::Quantum{.actor = replica, .body = body, .speed = speed});
         return thing;
     }
