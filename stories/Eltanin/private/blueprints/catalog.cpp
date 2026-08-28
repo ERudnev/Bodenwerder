@@ -142,10 +142,7 @@ namespace eltanin {
     }
 
     auto BlueprintCatalog::loadOne(Writing context, BlueprintShelf shelf, string stem) -> base::maybe<mech::Blueprint::Id> {
-        const auto assetId = with<::eltanin::resource::Assets>::add_blueprint(
-            context,
-            Unit::Name::from("Eltanin", unitOwn(shelf, stem)),
-            relativeFile(shelf, stem));
+        const auto assetId = with<::eltanin::resource::Assets>::add_blueprint(context, Unit::Name::from("Eltanin", unitOwn(shelf, stem)), relativeFile(shelf, stem));
         if (not context.workers_interface().summary().good())
             return {};
         return assetId;

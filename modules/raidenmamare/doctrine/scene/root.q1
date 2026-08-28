@@ -23,6 +23,7 @@ namespace rmmr
         bloom: Bloom
         gravity: vec3
         atmosphereDensity: float // g/m³ = kg/m³ × 1000
+        shutter: float // seconds; smear metres = speed × shutter
         primaryLight: #Light?
 
     group<Node> of Root

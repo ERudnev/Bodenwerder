@@ -53,6 +53,7 @@ namespace rmmr::wrapper::assets {
         const auto identity = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "identity"), item<shader::Loader>{.vertex = "shaders/identity.vert.glsl", .fragment = "shaders/identity.frag.glsl"});
         const auto family = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "family"), item<shader::Loader>{.vertex = "shaders/family.vert.glsl", .fragment = "shaders/lit.frag.glsl"});
         const auto family_shadow = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "family_shadow"), item<shader::Loader>{.vertex = "shaders/familyShadow.vert.glsl", .fragment = "shaders/shadowDepth.frag.glsl"});
+        const auto familyTracer = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "familyTracer"), item<shader::Loader>{.vertex = "shaders/familyTracer.vert.glsl", .fragment = "shaders/familyTracer.frag.glsl"});
 
         handles.material.gizmo.textured = with<Assets>::add_material(context, Unit::Name::from("rmmr", "gizmo_textured"), builders::material::Presets::gizmoTextured(with<Unit>::remember(context, gizmo_textured)));
         handles.material.gizmo.vertexColor = with<Assets>::add_material(context, Unit::Name::from("rmmr", "gizmo_vertex_color"), builders::material::Presets::gizmoVertexColor(with<Unit>::remember(context, vertex_color)));
@@ -66,6 +67,7 @@ namespace rmmr::wrapper::assets {
         handles.material.sprite = with<Assets>::add_material(context, Unit::Name::from("rmmr", "sprite"), builders::material::Presets::sprite(with<Unit>::remember(context, sprite)));
         handles.material.identity = with<Assets>::add_material(context, Unit::Name::from("rmmr", "identity"), builders::material::Presets::identity(with<Unit>::remember(context, identity)));
         handles.material.family = with<Assets>::add_material(context, Unit::Name::from("rmmr", "family"), builders::material::Presets::lit(with<Unit>::remember(context, family), with<Unit>::remember(context, family_shadow)));
+        handles.material.familyTracer = with<Assets>::add_material(context, Unit::Name::from("rmmr", "familyTracer"), builders::material::Presets::familyGlow(with<Unit>::remember(context, familyTracer)));
         with<scene::actor::Identified>::modify_global(context)->material = handles.material.identity;
 
         const auto default_blur = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "defaultBlur"), item<shader::Loader>{.vertex = "shaders/overlayDefaultBlur.vert.glsl", .fragment = "shaders/overlayDefaultBlur.frag.glsl"});

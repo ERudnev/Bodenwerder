@@ -68,6 +68,7 @@ namespace rmmr::renderer {
         vec4 ambientColorIntensity;
         vec4 primaryLightPositionIntensity;
         vec4 primaryLightColorRange;
+        vec4 shutter;
     };
 
     static_assert(sizeof(ActorState) == 112);
@@ -76,7 +77,8 @@ namespace rmmr::renderer {
     static_assert(offsetof(ActorState, scenicAlias) == 88);
     static_assert(offsetof(ActorState, spriteIndex) == 92);
     static_assert(offsetof(ActorState, heat) == 96);
-    static_assert(sizeof(PassState) == 240);
+    static_assert(sizeof(PassState) == 256);
+    static_assert(offsetof(PassState, shutter) == 240);
 
     namespace StorageBindings {
 

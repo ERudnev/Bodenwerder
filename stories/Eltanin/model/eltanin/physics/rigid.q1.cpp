@@ -197,6 +197,19 @@ namespace eltanin::phys::rigid {
                 ball.center.force += vec3{force};
                 recoil -= force;
             }
+            for (auto [_, ray] : context.direct<Ray>().items) {
+                if (ray.core.mass <= 0.0f)
+                    continue;
+                const dvec3 offset = ray.core.position - sourceCom;
+                const double distance2 = glm::dot(offset, offset);
+                if (distance2 <= 1.0e-12)
+                    continue;
+                const double distance = std::sqrt(distance2);
+                const double accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
+                const dvec3 force = offset * (accelScale * double(ray.core.mass));
+                ray.core.force += vec3{force};
+                recoil -= force;
+            }
             double sourceMass = 0.0;
             for (const Particle& particle : source->particles)
                 sourceMass += double(particle.mass);

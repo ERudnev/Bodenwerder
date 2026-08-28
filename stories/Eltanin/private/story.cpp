@@ -1,8 +1,9 @@
 #include "story.h"
 
 #include <eltanin/geo/rock.q1.h>
+#include <eltanin/locality/thing.q1.h>
+#include <eltanin/locality/bullet.q1.h>
 #include <eltanin/mech/construction.q1.h>
-#include <eltanin/mech/bullet.q1.h>
 #include <eltanin/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/compound.q1.h>
@@ -47,9 +48,11 @@ namespace eltanin {
             ask::schema::aspect<phys::Compound>(),
             ask::schema::aspect<phys::rigid::Crystal>(),
             ask::schema::aspect<phys::rigid::Ball>(),
+            ask::schema::aspect<phys::rigid::Ray>(),
             ask::schema::aspect<phys::rigid::CelestialGravity>(),
             ask::schema::aspect<mech::Construct>(),
-            ask::schema::aspect<mech::Bullet>(),
+            ask::schema::aspect<locality::Thing>(),
+            ask::schema::aspect<locality::Bullet>(),
             ask::schema::aspect<geo::Rock>(),
             ask::schema::aspect<geo::Boulder>(),
             ask::schema::aspect<resource::Assets>(),
@@ -280,7 +283,7 @@ namespace eltanin {
     }
 
     void Game::bindGameEntities(Writing context, scene::Root::Id root) {
-        with<mech::Bullet>::bind(context, root);
+        with<locality::Bullet>::bind(context, root);
     }
 
     void Game::setup(Writing context, system::Window::Id window) {

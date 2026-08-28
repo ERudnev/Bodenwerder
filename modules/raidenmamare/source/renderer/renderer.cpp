@@ -341,6 +341,7 @@ namespace rmmr {
             .ambientColorIntensity = vec4{root.ambient, root.ambient_intensity},
             .primaryLightPositionIntensity = lightPositionIntensity,
             .primaryLightColorRange = lightColorRange,
+            .shutter = vec4{root.shutter, 0.0f, 0.0f, 0.0f},
         };
         if (not passStateBuffer) {
             glCreateBuffers(1, &passStateBuffer);

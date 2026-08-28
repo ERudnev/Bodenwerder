@@ -20,6 +20,7 @@ namespace rmmr::resource::builders::material {
         static Configured grid(resource::shader::Reference program);
         static Configured sprite(resource::shader::Reference program);
         static Configured identity(resource::shader::Reference program);
+        static Configured familyGlow(resource::shader::Reference program);
     };
 
 }

@@ -10,6 +10,23 @@
 
 namespace eltanin::phys {
 
+    namespace {
+
+        constexpr float minLook = 1.0e-8f;
+
+        auto lookAlong(vec3 forward, quat fallback) -> quat {
+            const float length = glm::length(forward);
+            if (length < minLook)
+                return fallback;
+            const vec3 dir = forward / length;
+            vec3 up{0.0f, 1.0f, 0.0f};
+            if (glm::abs(glm::dot(dir, up)) > 0.99f)
+                up = vec3{1.0f, 0.0f, 0.0f};
+            return glm::quatLookAt(dir, up);
+        }
+
+    }
+
     System::System(scene::Root::Id scene)
         : state{.timeScale = 1.0f}
         , scene(scene)
@@ -44,6 +61,11 @@ namespace eltanin::phys {
                     particle.force += particle.mass * dragScale * vec3{particle.position - particle.prev};
                 }
             }
+            for (auto [_, ray] : context.direct<rigid::Ray>().items) {
+                if (ray.core.mass <= 0.0f)
+                    continue;
+                ray.core.force += ray.core.mass * dragScale * vec3{ray.core.position - ray.core.prev};
+            }
         }
         for (auto [id, ball] : context.direct<rigid::Ball>().items) {
             auto* body = bodies.items.find(id);
@@ -73,6 +95,8 @@ namespace eltanin::phys {
             ball.center.force = vec3{0.0f, 0.0f, 0.0f};
             ball.forceAngular = vec3{0.0f, 0.0f, 0.0f};
         }
+        for (auto [_, ray] : context.direct<rigid::Ray>().items)
+            ray.core.force = vec3{0.0f, 0.0f, 0.0f};
         applyAerodynamics(context);
         applyLinearGravity(context);
         with<rigid::CelestialGravity>::apply(context);
@@ -96,6 +120,11 @@ namespace eltanin::phys {
             if (not body or body->totalMass <= 0.0f)
                 continue;
             ball.center.force += body->totalMass * gravity;
+        }
+        for (auto [_, ray] : context.direct<rigid::Ray>().items) {
+            if (ray.core.mass <= 0.0f)
+                continue;
+            ray.core.force += ray.core.mass * gravity;
         }
     }
 
@@ -156,6 +185,26 @@ namespace eltanin::phys {
         }
     }
 
+    void System::integrateRays(fqsm::Direct<Body> bodies, fqsm::Direct<rigid::Ray> rays) {
+        const double dt2 = double(Particle::dt) * double(Particle::dt);
+        const double rest2 = double(Settings::restLinear) * double(Settings::restLinear);
+        for (auto [id, ray] : rays.items) {
+            auto* body = bodies.items.find(id);
+            if (not body or ray.core.mass <= 0.0f)
+                continue;
+            const dvec3 previous = ray.core.position;
+            const dvec3 accel = dvec3{ray.core.force / ray.core.mass};
+            dvec3 step = ray.core.position - ray.core.prev;
+            if (glm::dot(step, step) < rest2)
+                step = dvec3{0.0, 0.0, 0.0};
+            ray.core.position += step + accel * dt2;
+            ray.core.prev = previous;
+            body->position = ray.core.position;
+            body->totalMass = ray.core.mass;
+            body->orientation = lookAlong(vec3{ray.core.velocity()}, body->orientation);
+        }
+    }
+
     void System::restoreBases(Stewarding context) {
         with<rigid::Crystal>::restore(context);
     }
@@ -163,6 +212,7 @@ namespace eltanin::phys {
     void System::applyConnectivity(Stewarding context) {
         collisions.build(context);
         collisions.solve(context);
+        collisions.traceRays(context);
     }
 
     void System::applyConstraintWishes(Stewarding context) {
@@ -173,6 +223,7 @@ namespace eltanin::phys {
         accumulateForces(context);
         integrate(context.direct<rigid::Crystal>());
         integrateBalls(context.direct<Body>(), context.direct<rigid::Ball>());
+        integrateRays(context.direct<Body>(), context.direct<rigid::Ray>());
         restoreBases(context);
         applyConnectivity(context);
         applyConstraintWishes(context);

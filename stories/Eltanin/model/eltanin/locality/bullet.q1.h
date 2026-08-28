@@ -1,19 +1,22 @@
 #pragma once
 
 #include <base/maybe.h>
+#include <eltanin/locality/thing.q1.h>
+#include <eltanin/physics/rigid.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/family.q1.h>
 #include <rmmr/scene/root.q1.h>
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::mech {
+namespace eltanin::locality {
 
     using namespace fqsm::api;
 
-    struct Bullet : Entity<Bullet> {
+    struct Bullet : Feature<Bullet, Thing> {
         struct Quantum {
             Custody<rmmr::scene::actor::Replica> actor;
+            Custody<phys::rigid::Ray> body;
             float speed;
         };
         struct Global {
@@ -23,7 +26,7 @@ namespace eltanin::mech {
             static void bind(Writing, rmmr::scene::Root::Id);
             static auto spawnShell30mm(Writing, rmmr::scene::Root::Id, rmmr::Pose, float speed) -> Id;
         };
-        struct Internals : DefaultInternals{};
+        struct Internals;
         static const Behavior customAspectReactions();
     };
 

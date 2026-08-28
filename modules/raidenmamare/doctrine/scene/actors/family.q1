@@ -16,7 +16,8 @@ namespace rmmr
       using Packed as @external(std::vector<std::byte>)
 
       // Homogeneous instanced draw. Not of Node: the family has no world pose.
-      // Layout is the instance SSBO record (names, Uniform::Type, byte offsets). Not the material uniform vocabulary.
+      // Layout is the instance SSBO record after mat4 (names, Uniform::Type, byte offsets). GPU stride is 16-aligned.
+      // Not the material uniform vocabulary.
       entity Family
         struct Field
           name: string

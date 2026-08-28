@@ -22,6 +22,11 @@ namespace eltanin
           prevOri: quat
           forceAngular: vec3
 
+      // Death-ray kinematics: one Particle, Verlet prev→position. Not an Occupant; own CCD phase. Rays do not see each other.
+      feature Ray of phys::Body
+        one
+          core: Particle
+
       feature Crystal of phys::Body
         one
           particles: vector<Particle>

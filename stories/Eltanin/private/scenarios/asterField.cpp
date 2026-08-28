@@ -1,8 +1,6 @@
 #include "scenarios/asterField.h"
 
-#include "mech/semantics/space.h"
-
-#include <eltanin/mech/bullet.q1.h>
+#include <eltanin/locality/bullet.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -11,6 +9,10 @@
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/semantics/rendering.h>
 #include <rmmr/semantics/uniform.h>
+
+#include <random>
+
+#include <glm/geometric.hpp>
 
 namespace eltanin::scenario {
 
@@ -90,19 +92,19 @@ namespace eltanin::scenario {
     }
 
     void AsterField::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id) {
-        constexpr int bulletRows = 4;
-        constexpr int bulletCols = 6;
-        const float cell = mech::space::local::edge2meters;
-        const vec3 flockCenter{0.0f, 0.5f * cell, cell};
-        const vec3 flockStepY{0.0f, 0.4f, 0.0f};
-        const vec3 flockStepZ{0.0f, 0.0f, 0.4f};
-        const float flockOriginY = 0.5f * static_cast<float>(bulletRows - 1);
-        const float flockOriginZ = 0.5f * static_cast<float>(bulletCols - 1);
-        for (int row = 0; row < bulletRows; ++row) {
-            for (int col = 0; col < bulletCols; ++col) {
-                const vec3 position = flockCenter + flockStepY * (static_cast<float>(row) - flockOriginY) + flockStepZ * (static_cast<float>(col) - flockOriginZ);
-                with<mech::Bullet>::spawnShell30mm(context, root, Pose::from(Pos{position}, HPB{90.0f, 0.0f, 0.0f}), 300.0f);
-            }
+        constexpr int bulletCount = 1000;
+        constexpr float bulletStep = 3.0f;
+        constexpr float speed = 200.0f;
+        constexpr float scatter = 0.50f;
+        std::mt19937 rng{20260828};
+        std::normal_distribution<float> gauss{0.0f, scatter / 3.0f};
+        for (int i = 0; i < bulletCount; ++i) {
+            vec3 offset{0.0f, gauss(rng), gauss(rng)};
+            const float length = glm::length(offset);
+            if (length > scatter)
+                offset *= scatter / length;
+            const vec3 position{-100.0f - bulletStep * static_cast<float>(i), 0.0f, 0.0f};
+            with<locality::Bullet>::spawnShell30mm(context, root, Pose::from(Pos{position + offset}, HPB{90.0f, 0.0f, 0.0f}), speed);
         }
     }
 

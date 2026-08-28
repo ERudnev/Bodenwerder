@@ -4,6 +4,7 @@
 #include <glm/geometric.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <limits>
 
@@ -135,6 +136,189 @@ namespace eltanin::phys::collision {
             return static_cast<integer>(bvh.nodes.size() - 1);
         }
 
+        auto clipSegmentAabb(vec3 p0, vec3 p1, vec3 bmin, vec3 bmax, float pad) -> bool {
+            const vec3 mn = bmin - vec3{pad};
+            const vec3 mx = bmax + vec3{pad};
+            const vec3 d = p1 - p0;
+            float t0 = 0.0f;
+            float t1 = 1.0f;
+            for (int axis = 0; axis < 3; ++axis) {
+                if (glm::abs(d[axis]) < minLength) {
+                    if (p0[axis] < mn[axis] or p0[axis] > mx[axis])
+                        return false;
+                    continue;
+                }
+                const float inv = 1.0f / d[axis];
+                float ta = (mn[axis] - p0[axis]) * inv;
+                float tb = (mx[axis] - p0[axis]) * inv;
+                if (ta > tb) {
+                    const float tmp = ta;
+                    ta = tb;
+                    tb = tmp;
+                }
+                t0 = glm::max(t0, ta);
+                t1 = glm::min(t1, tb);
+                if (t0 > t1)
+                    return false;
+            }
+            return true;
+        }
+
+        auto firstOnSphere(vec3 p0, vec3 p1, vec3 center, float radius) -> float {
+            const vec3 d = p1 - p0;
+            const vec3 f = p0 - center;
+            const float r2 = radius * radius;
+            const float c = glm::dot(f, f) - r2;
+            if (c <= 0.0f)
+                return 0.0f;
+            const float a = glm::dot(d, d);
+            if (a < minLength)
+                return -1.0f;
+            const float b = 2.0f * glm::dot(f, d);
+            const float disc = b * b - 4.0f * a * c;
+            if (disc < 0.0f)
+                return -1.0f;
+            const float t = (-b - std::sqrt(disc)) / (2.0f * a);
+            if (t < 0.0f or t > 1.0f)
+                return -1.0f;
+            return t;
+        }
+
+        auto firstOnFiniteCylinder(vec3 p0, vec3 p1, vec3 a, vec3 b, float radius) -> float {
+            const vec3 d = p1 - p0;
+            const vec3 ba = b - a;
+            const vec3 m = p0 - a;
+            const float dd = glm::dot(ba, ba);
+            if (dd < minLength)
+                return -1.0f;
+            const float nn = glm::dot(d, d);
+            const float nd = glm::dot(d, ba);
+            const float md = glm::dot(m, ba);
+            const float mm = glm::dot(m, m);
+            const float mn = glm::dot(m, d);
+            const float r2 = radius * radius;
+            const float A = dd * nn - nd * nd;
+            const float C = dd * (mm - r2) - md * md;
+            if (C <= 0.0f)
+                return -1.0f;
+            if (A < minLength)
+                return -1.0f;
+            const float B = dd * mn - nd * md;
+            const float disc = B * B - A * C;
+            if (disc < 0.0f)
+                return -1.0f;
+            const float t = (-B - std::sqrt(disc)) / A;
+            if (t < 0.0f or t > 1.0f)
+                return -1.0f;
+            const float u = (md + t * nd) / dd;
+            if (u < 0.0f or u > 1.0f)
+                return -1.0f;
+            return t;
+        }
+
+        auto firstOnCapsule(vec3 p0, vec3 p1, vec3 a, vec3 b, float radius) -> float {
+            float best = 2.0f;
+            const float ta = firstOnSphere(p0, p1, a, radius);
+            const float tb = firstOnSphere(p0, p1, b, radius);
+            const float tc = firstOnFiniteCylinder(p0, p1, a, b, radius);
+            if (ta >= 0.0f and ta < best)
+                best = ta;
+            if (tb >= 0.0f and tb < best)
+                best = tb;
+            if (tc >= 0.0f and tc < best)
+                best = tc;
+            return best <= 1.0f ? best : -1.0f;
+        }
+
+        void considerSegment(SegmentHit& best, integer face, float t, vec3 closest, vec3 outward) {
+            if (t < 0.0f or t > 1.0f or t >= best.t)
+                return;
+            const float length = glm::length(outward);
+            if (length < minLength)
+                return;
+            best.face = face;
+            best.localClosest = closest;
+            best.localOutward = outward / length;
+            best.t = t;
+        }
+
+        void firstOnFace(const Hull& hull, const vector<vec3>& shape, integer faceIndex, vec3 localStart, vec3 localEnd, float radius, SegmentHit& best) {
+            if (faceIndex < 0 or static_cast<std::size_t>(faceIndex) >= hull.faces.size())
+                return;
+            const Hull::Face& face = hull.faces[static_cast<std::size_t>(faceIndex)];
+            const std::size_t count = face.points.size();
+            if (count < 2 or count > maxFaceVertices)
+                return;
+            vec3 vertices[maxFaceVertices];
+            for (std::size_t index = 0; index < count; ++index) {
+                if (face.points[index] < 0 or static_cast<std::size_t>(face.points[index]) >= shape.size())
+                    return;
+                vertices[index] = shape[static_cast<std::size_t>(face.points[index])];
+            }
+            const float shell = glm::max(face.thickness, 0.0f);
+            const float reach = shell + glm::max(radius, 0.0f);
+            const vec3 d = localEnd - localStart;
+            if (count == 2) {
+                const float t = firstOnCapsule(localStart, localEnd, vertices[0], vertices[1], reach);
+                if (t < 0.0f)
+                    return;
+                const vec3 point = localStart + t * d;
+                const vec3 axisClosest = closestOnSegment(point, vertices[0], vertices[1]);
+                const vec3 outward = unitOrFallback(point - axisClosest, face.normal);
+                considerSegment(best, faceIndex, t, axisClosest + outward * shell, outward);
+                return;
+            }
+            vec3 normal = face.normal;
+            float length = glm::length(normal);
+            if (length < minLength) {
+                normal = glm::cross(vertices[1] - vertices[0], vertices[2] - vertices[0]);
+                length = glm::length(normal);
+                if (length < minLength)
+                    return;
+            }
+            normal /= length;
+            const float denom = glm::dot(d, normal);
+            const float dist0 = glm::dot(localStart - vertices[0], normal);
+            const float offsets[2] = {radius, -radius};
+            const vec3 sides[2] = {normal, -normal};
+            const int planes = face.twoSided ? 2 : 1;
+            for (int plane = 0; plane < planes; ++plane) {
+                if (glm::abs(denom) < minLength)
+                    break;
+                const float t = (offsets[plane] - dist0) / denom;
+                const vec3 point = localStart + t * d;
+                const vec3 projected = point - glm::dot(point - vertices[0], normal) * normal;
+                if (not projectsInside(vertices, count, projected, normal))
+                    continue;
+                considerSegment(best, faceIndex, t, projected, sides[plane]);
+            }
+            for (std::size_t index = 0; index < count; ++index) {
+                const vec3& a = vertices[index];
+                const vec3& b = vertices[(index + 1) % count];
+                const float t = firstOnCapsule(localStart, localEnd, a, b, reach);
+                if (t < 0.0f)
+                    continue;
+                const vec3 point = localStart + t * d;
+                const vec3 axisClosest = closestOnSegment(point, a, b);
+                const vec3 outward = face.twoSided ? unitOrFallback(point - axisClosest, normal) : normal;
+                considerSegment(best, faceIndex, t, axisClosest, outward);
+            }
+        }
+
+        void visitSegment(const Hull::Bvh& bvh, const Hull& hull, const vector<vec3>& shape, vec3 localStart, vec3 localEnd, float radius, integer nodeIndex, SegmentHit& hit) {
+            if (nodeIndex < 0)
+                return;
+            const Hull::Bvh::Node& node = bvh.nodes[static_cast<std::size_t>(nodeIndex)];
+            if (not clipSegmentAabb(localStart, localEnd, node.boundMin, node.boundMax, glm::max(radius, 0.0f)))
+                return;
+            if (node.face >= 0) {
+                firstOnFace(hull, shape, node.face, localStart, localEnd, radius, hit);
+                return;
+            }
+            visitSegment(bvh, hull, shape, localStart, localEnd, radius, node.left, hit);
+            visitSegment(bvh, hull, shape, localStart, localEnd, radius, node.right, hit);
+        }
+
         void visit(const Hull::Bvh& bvh, const Hull& hull, const vector<vec3>& shape, vec3 localPoint, integer nodeIndex, float& bestDist2, SurfaceHit& hit) {
             if (nodeIndex < 0)
                 return;
@@ -248,6 +432,22 @@ namespace eltanin::phys::collision {
             return hit;
         float bestDist2 = std::numeric_limits<float>::infinity();
         visit(hull.bvh, hull, shape, localPoint, hull.bvh.root, bestDist2, hit);
+        return hit;
+    }
+
+    auto firstOnHull(const Hull& hull, const vector<vec3>& shape, vec3 localStart, vec3 localEnd, float radius) -> SegmentHit {
+        SegmentHit hit{.face = -1, .localClosest = localStart, .localOutward = vec3{0.0f, 1.0f, 0.0f}, .t = 2.0f};
+        if (hull.bvh.nodes.empty() or hull.bvh.root < 0)
+            return hit;
+        const SurfaceHit near = closestOnHull(hull, shape, localStart);
+        if (near.face >= 0 and near.signedDistance < radius) {
+            hit.face = near.face;
+            hit.localClosest = near.localClosest;
+            hit.localOutward = near.localOutward;
+            hit.t = 0.0f;
+            return hit;
+        }
+        visitSegment(hull.bvh, hull, shape, localStart, localEnd, radius, hull.bvh.root, hit);
         return hit;
     }
 

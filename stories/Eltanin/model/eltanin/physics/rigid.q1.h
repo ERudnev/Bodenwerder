@@ -43,6 +43,15 @@ namespace eltanin::phys::rigid {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    struct Ray : Feature<Ray, Body> {
+        struct Quantum {
+            Particle core;
+        };
+        struct Actions : BaseActions {};
+        struct Internals : DefaultInternals {};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
     struct Crystal : Feature<Crystal, Body> {
         struct Quantum {
             vector<Particle> particles;

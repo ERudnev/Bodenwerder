@@ -8,16 +8,24 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include <cmath>
+
 namespace eltanin::phys::collision {
 
     using rigid::Ball;
     using rigid::Crystal;
+    using rigid::Ray;
 
     namespace {
 
         constexpr float minLength = 1.0e-8f;
         constexpr float ballFriction = 0.8f;
         constexpr float ballRestitution = 0.6f; // rigid primitives only (Ball; later Cube); Crystal particles stay e≈0 positional kicks
+        constexpr float rayRestitution = 0.45f;
+        constexpr float rayPierceBegin = 200.0f;
+        constexpr float rayPierceFull = 800.0f;
+        constexpr float rayPierceKeep = 0.70f;
+        constexpr float raySkin = 1.0e-4f;
 
         struct Occupant {
             Endpoint::Type type;
@@ -477,6 +485,68 @@ namespace eltanin::phys::collision {
             }
         }
 
+        auto firstOnSphere(vec3 p0, vec3 p1, vec3 center, float radius) -> float {
+            const vec3 d = p1 - p0;
+            const vec3 f = p0 - center;
+            const float r2 = radius * radius;
+            const float c = glm::dot(f, f) - r2;
+            if (c <= 0.0f)
+                return 0.0f;
+            const float a = glm::dot(d, d);
+            if (a < minLength)
+                return -1.0f;
+            const float b = 2.0f * glm::dot(f, d);
+            const float disc = b * b - 4.0f * a * c;
+            if (disc < 0.0f)
+                return -1.0f;
+            const float t = (-b - std::sqrt(disc)) / (2.0f * a);
+            if (t < 0.0f or t > 1.0f)
+                return -1.0f;
+            return t;
+        }
+
+        auto lookAlong(vec3 forward, quat fallback) -> quat {
+            const float length = glm::length(forward);
+            if (length < minLength)
+                return fallback;
+            const vec3 dir = forward / length;
+            vec3 up{0.0f, 1.0f, 0.0f};
+            if (glm::abs(glm::dot(dir, up)) > 0.99f)
+                up = vec3{1.0f, 0.0f, 0.0f};
+            return glm::quatLookAt(dir, up);
+        }
+
+        auto faceInvMassAndVelocity(const Crystal::Quantum& crystal, integer faceIndex, vec3& velocity) -> float {
+            velocity = vec3{0.0f, 0.0f, 0.0f};
+            if (faceIndex < 0 or static_cast<std::size_t>(faceIndex) >= crystal.hull.faces.size())
+                return 0.0f;
+            const auto& face = crystal.hull.faces[static_cast<std::size_t>(faceIndex)];
+            double mass = 0.0;
+            dvec3 momentum{0.0, 0.0, 0.0};
+            for (const integer id : face.points) {
+                if (id < 0 or static_cast<std::size_t>(id) >= crystal.particles.size())
+                    continue;
+                const Particle& particle = crystal.particles[static_cast<std::size_t>(id)];
+                if (particle.mass <= 0.0f)
+                    continue;
+                mass += double(particle.mass);
+                momentum += particle.velocity() * double(particle.mass);
+            }
+            if (mass <= 1.0e-12)
+                return 0.0f;
+            velocity = vec3{momentum / mass};
+            return float(1.0 / mass);
+        }
+
+        auto pierceBlend(float closingSpeed) -> float {
+            if (closingSpeed <= rayPierceBegin)
+                return 0.0f;
+            if (closingSpeed >= rayPierceFull)
+                return 1.0f;
+            const float t = (closingSpeed - rayPierceBegin) / (rayPierceFull - rayPierceBegin);
+            return t * t * (3.0f - 2.0f * t);
+        }
+
     }
 
     void State::build(Stewarding context) {
@@ -557,6 +627,119 @@ namespace eltanin::phys::collision {
         quiet = (quiet + 1) % 10;
         if (shout)
             base::message("phys::hit n={} live={} pen={:.2f} vn={:.1f} corr={:.2f} dA={:.2f} dB={:.2f} nrm={:.2f},{:.2f},{:.2f}", contacts.size(), live, maxPen, vn, corr, dA, dB, nrm.x, nrm.y, nrm.z);
+    }
+
+    void State::traceRays(Stewarding context) {
+        auto bodies = context.direct<Body>();
+        auto balls = context.direct<Ball>();
+        auto crystals = context.direct<Crystal>();
+        auto rays = context.direct<Ray>();
+        for (auto [_, crystal] : crystals.items)
+            ensureBvh(crystal);
+        for (auto [id, ray] : rays.items) {
+            auto* body = bodies.items.find(id);
+            if (not body or ray.core.mass <= 0.0f)
+                continue;
+            const vec3 start = vec3{ray.core.prev};
+            const vec3 end = vec3{ray.core.position};
+            const float rayRadius = glm::max(body->radius, 0.0f);
+            const vec3 span = end - start;
+            float bestT = 2.0f;
+            bool hitBall = false;
+            Body::Id other = id;
+            integer face = -1;
+            vec3 point = end;
+            vec3 normal{0.0f, 1.0f, 0.0f};
+            for (auto [ballId, _] : balls.items) {
+                auto* ballBody = bodies.items.find(ballId);
+                if (not ballBody or ballBody->radius <= 0.0f)
+                    continue;
+                const vec3 center = vec3{ballBody->position};
+                const float t = firstOnSphere(start, end, center, ballBody->radius + rayRadius);
+                if (t < 0.0f or t >= bestT)
+                    continue;
+                const vec3 at = start + t * span;
+                vec3 away = at - center;
+                const float awayLen = glm::length(away);
+                if (awayLen < minLength)
+                    continue;
+                bestT = t;
+                hitBall = true;
+                other = ballId;
+                face = -1;
+                point = at;
+                normal = away / awayLen;
+            }
+            for (auto [crystalId, crystal] : crystals.items) {
+                auto* crystalBody = bodies.items.find(crystalId);
+                if (not crystalBody)
+                    continue;
+                const SegmentHit hit = firstOnHull(crystal.hull, crystal.shape, toLocal(*crystalBody, start), toLocal(*crystalBody, end), rayRadius);
+                if (hit.face < 0 or hit.t >= bestT)
+                    continue;
+                vec3 away = crystalBody->orientation * hit.localOutward;
+                const float awayLen = glm::length(away);
+                if (awayLen < minLength)
+                    continue;
+                bestT = hit.t;
+                hitBall = false;
+                other = crystalId;
+                face = hit.face;
+                point = worldOf(*crystalBody, hit.localClosest);
+                normal = away / awayLen;
+            }
+            if (bestT > 1.0f)
+                continue;
+            const vec3 vRay = vec3{ray.core.velocity()};
+            vec3 vOther{0.0f, 0.0f, 0.0f};
+            float invOther = 0.0f;
+            vec3 arm{0.0f, 0.0f, 0.0f};
+            if (hitBall) {
+                auto* ballBody = bodies.items.find(other);
+                auto* ball = balls.items.find(other);
+                if (not ballBody or not ball)
+                    continue;
+                vOther = velocityAt(*ballBody, *ball, point);
+                arm = point - vec3{ballBody->position};
+                invOther = spinWeight(*ballBody, arm, normal);
+            } else {
+                auto* crystal = crystals.items.find(other);
+                if (not crystal)
+                    continue;
+                invOther = faceInvMassAndVelocity(*crystal, face, vOther);
+            }
+            const float vn = glm::dot(vRay - vOther, normal);
+            if (vn >= 0.0f)
+                continue;
+            const float invRay = inverseMass(ray.core.mass);
+            const float denom = invRay + invOther;
+            if (denom <= 0.0f)
+                continue;
+            const float pierce = pierceBlend(-vn);
+            const float restitution = rayRestitution * (1.0f - rayPierceKeep * pierce);
+            const float j = -(1.0f + restitution) * vn / denom;
+            if (hitBall) {
+                auto* ballBody = bodies.items.find(other);
+                auto* ball = balls.items.find(other);
+                if (ballBody and ball)
+                    kickBall(*ballBody, *ball, arm, -normal * (j * Particle::dt));
+            } else {
+                auto* crystal = crystals.items.find(other);
+                auto* crystalBody = bodies.items.find(other);
+                if (crystal and crystalBody)
+                    kickFaceSupports(*crystal, *crystalBody, face, point, -normal * (j * Particle::dt / ray.core.mass), ray.core.mass);
+            }
+            const vec3 vNew = vRay + normal * (j * invRay);
+            if (glm::dot(vNew, normal) >= 0.0f) {
+                const dvec3 hitPos = dvec3{point + normal * raySkin};
+                ray.core.position = hitPos;
+                ray.core.prev = hitPos - dvec3{vNew * Particle::dt};
+            } else {
+                ray.core.prev = ray.core.position - dvec3{vNew * Particle::dt};
+            }
+            body->position = ray.core.position;
+            body->orientation = lookAlong(vNew, body->orientation);
+        }
     }
 
 }

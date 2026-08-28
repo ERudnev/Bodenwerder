@@ -18,13 +18,14 @@ namespace eltanin::phys::collision {
     // Solver once per tick: pull the tested point onto frozen pose*shape. Next iteration is the next physics tick.
     // Ball vs crystal: both queries detect; impulse is only ball-vs-shape — separate, restitution+friction on the Ball (center.prev), kick face supports on Crystal.
     // Contact = positional constraint + event payload — not a force into accumulateForces.
+    // Rays are not Occupants. After solve, traceRays() CCD-tests each Ray segment (prev→position) against Balls and Crystal hulls. Rays do not see each other.
 
     // One side of a candidate or contact. Ball and Crystal share Body::Id; type selects the primitive.
     struct Endpoint {
         enum class Type {
             crystal, // Particle (tested point) or hull face (frozen shape), selected by `face`
             ball,
-            // projectile — segment (prev→position); when the entity exists
+            ray, // segment prev→position; own phase, not Occupant
         };
         Type type;
         Body::Id body;
@@ -56,6 +57,7 @@ namespace eltanin::phys::collision {
 
         void build(Stewarding);
         void solve(Stewarding);
+        void traceRays(Stewarding); // CCD segment vs frozen Ball / Crystal; one hit per ray per tick
     };
 
 }

@@ -1,0 +1,5 @@
+
+namespace eltanin
+  namespace locality
+
+    entity Thing

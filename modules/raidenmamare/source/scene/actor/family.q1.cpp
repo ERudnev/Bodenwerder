@@ -36,6 +36,12 @@ namespace rmmr::scene::actor {
             return 0;
         }
 
+        auto instanceStride(const Family::Layout& layout) -> std::size_t {
+            const auto packed = static_cast<std::size_t>(layout.instanceBytes);
+            const auto aligned = (packed + 15u) & ~std::size_t{15};
+            return sizeof(mat4) + aligned;
+        }
+
         auto layoutOk(const Family::Layout& layout) -> bool {
             if (layout.instanceBytes < 0)
                 return false;
@@ -121,7 +127,7 @@ namespace rmmr::scene::actor {
                 deleteFamilyBuffers(Family::Quantum{.device = mesh.device, .layout = layout, .actorState = mesh.actorState, .instances = {}, .drawMetadata = mesh.drawMetadata, .surfacePalette = mesh.surfacePalette, .buckets = {}});
                 return {};
             }
-            glNamedBufferData(instances, static_cast<GLsizeiptr>(16 * sizeof(mat4)), nullptr, GL_DYNAMIC_DRAW);
+            glNamedBufferData(instances, static_cast<GLsizeiptr>(16 * instanceStride(layout)), nullptr, GL_DYNAMIC_DRAW);
             vector<Family::Bucket> buckets;
             buckets.reserve(mesh.buckets.size());
             for (auto& meshBucket : mesh.buckets) {
@@ -246,19 +252,26 @@ namespace rmmr::scene::actor {
         const auto& family = with<Family>::get(context, id);
         if (family.device != device or family.buckets.empty())
             return;
-        vector<mat4> models;
+        vector<std::byte> records;
+        const auto stride = instanceStride(family.layout);
         if (with<Replica_group>::exists(context, id)) {
             for (const auto replica : with<Replica_group>::get(context, id)) {
                 if (not with<Replica>::exists(context, replica) or not with<Node>::exists(context, replica) or not with<Node>::get(context, replica).visible)
                     continue;
-                models.push_back(Node::Actions::transform(context, replica));
+                const mat4 model = Node::Actions::transform(context, replica);
+                const auto& packed = with<Replica>::get(context, replica).packed;
+                const auto at = records.size();
+                records.resize(at + stride, std::byte{0});
+                std::memcpy(records.data() + at, &model, sizeof(mat4));
+                if (not packed.empty())
+                    std::memcpy(records.data() + at + sizeof(mat4), packed.data(), packed.size());
             }
         }
-        if (models.empty())
+        if (records.empty())
             return;
         glfwMakeContextCurrent(with<system::Device>::get(context, device).handle);
-        glNamedBufferData(family.instances, static_cast<GLsizeiptr>(models.size() * sizeof(mat4)), models.data(), GL_DYNAMIC_DRAW);
-        const auto live = static_cast<renderer::Integer32>(models.size());
+        glNamedBufferData(family.instances, static_cast<GLsizeiptr>(records.size()), records.data(), GL_DYNAMIC_DRAW);
+        const auto live = static_cast<renderer::Integer32>(records.size() / stride);
         const renderer::ActorState gpuState{
             .model = mat4{1.0f},
             .albedoOpacity = vec4{1.0f, 1.0f, 1.0f, 1.0f},

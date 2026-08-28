@@ -193,4 +193,18 @@ namespace rmmr::resource::builders::material {
         };
     }
 
+    auto Presets::familyGlow(resource::shader::Reference program) -> Asset::Quantum {
+        return Asset::Quantum{
+            .techniques = {
+                {renderer::Pass::opaque, Asset::Technique{
+                    .program = program,
+                    .uniforms = {},
+                    .glowSpread = true,
+                }},
+            },
+            .nearest = false,
+            .blend = renderer::BlendMode::inherit,
+        };
+    }
+
 }

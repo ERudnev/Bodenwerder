@@ -55,6 +55,7 @@ namespace rmmr
       ambientColorIntensity: vec4
       primaryLightPositionIntensity: vec4
       primaryLightColorRange: vec4
+      shutter: vec4 // x = seconds; yzw unused
 
     struct GpuBatch
       geometry: #resource::geometry::Runtime
