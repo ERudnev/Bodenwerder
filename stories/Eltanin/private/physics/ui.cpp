@@ -211,17 +211,17 @@ namespace eltanin::phys {
         restoreProduction(context);
         for (const auto& hullRef : hullRefs) {
             const auto actor = productionActorOf(context, hullRef.body);
-            if (not actor or not with<rmmr::scene::actor::MeshState>::exists(context, *actor))
+            if (not actor or not with<rmmr::scene::Node>::exists(context, *actor))
                 continue;
-            rmmr::scene::actor::MeshState::Actions::setVisible(context, *actor, false);
+            rmmr::scene::Node::Actions::setVisible(context, *actor, false);
             hiddenProduction.push_back(*actor);
         }
     }
 
     void Ui::restoreProduction(Writing context) {
         for (const auto actor : hiddenProduction) {
-            if (with<rmmr::scene::actor::MeshState>::exists(context, actor))
-                rmmr::scene::actor::MeshState::Actions::setVisible(context, actor, true);
+            if (with<rmmr::scene::Node>::exists(context, actor))
+                rmmr::scene::Node::Actions::setVisible(context, actor, true);
         }
         hiddenProduction.clear();
     }

@@ -116,7 +116,7 @@ namespace eltanin::views::blueprints {
     void clearMountActors(Writing, rmmr::scene::Root::Id root, std::vector<MountActor>& actors);
     void clearPaletteActors(Writing, rmmr::scene::Root::Id root, std::vector<PaletteMountActor>& actors);
 
-    // Filter pass only — setVisible; actors stay resident (Layer + floor).
+    // Filter pass only — Node.setVisible; actors stay resident (Layer + floor).
     void applyDisplay(Writing, Display, int currentFloor, const std::vector<QuarkActor>& quarks, const std::vector<MountActor>& mounts);
 
     // Structural rebuild: spawn every quark/mount, then applyDisplay. Use on load / paste / undo / heavy edits.

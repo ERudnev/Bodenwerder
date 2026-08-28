@@ -317,7 +317,7 @@ namespace eltanin::views {
 
         const Pos pivot{0.0f, 0.0f, 0.0f};
         const Pos camera_pos{24.0f, 20.0f, 40.0f};
-        const auto camera = with<scene::Interface>::createCamera(context, root, Pose::from(camera_pos, HPB{36.87f, -29.74f, 0.0f}), 60.0f * std::numbers::pi_v<float> / 180.0f);
+        const auto camera = with<scene::Interface>::createCamera(context, root, Pose::from(camera_pos, HPB{-36.87f, -29.74f, 0.0f}), 60.0f * std::numbers::pi_v<float> / 180.0f);
         with<controller::CameraOrbit>::create(context, camera, pivot, glm::length(camera_pos - pivot));
         applyOrbitPose(context, camera);
 
@@ -351,7 +351,7 @@ namespace eltanin::views {
         state.paletteScene.grid = with<scene::Interface>::createGrid(context, paletteRoot, *device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *grid_geometry, .material = *grid_material, .opacity = gridOpacity, .patternScale = patternScale});
         const Pos palettePivot{4.0f, 0.0f, 4.0f};
         const Pos paletteCameraPos{28.0f, 24.0f, 44.0f};
-        const auto paletteCamera = with<scene::Interface>::createCamera(context, paletteRoot, Pose::from(paletteCameraPos, HPB{36.87f, -29.74f, 0.0f}), 60.0f * std::numbers::pi_v<float> / 180.0f);
+        const auto paletteCamera = with<scene::Interface>::createCamera(context, paletteRoot, Pose::from(paletteCameraPos, HPB{-36.87f, -29.74f, 0.0f}), 60.0f * std::numbers::pi_v<float> / 180.0f);
         with<controller::CameraOrbit>::create(context, paletteCamera, palettePivot, glm::length(paletteCameraPos - palettePivot));
         applyOrbitPose(context, paletteCamera);
         with<scene::Interface>::createLight(context, paletteRoot, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.kind = scene::Light::Kind::point, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 120.0f});
@@ -721,8 +721,8 @@ namespace eltanin::views {
         if (not state.mainScene.worldCursor.has_value() or not with<scene::Node>::exists(context, *state.mainScene.worldCursor))
             return;
 
-        if (with<scene::actor::MeshState>::exists(context, *state.mainScene.worldCursor))
-            scene::actor::MeshState::Actions::setVisible(context, *state.mainScene.worldCursor, not state.membranes.enabled and not state.mounts.enabled);
+        if (with<scene::Node>::exists(context, *state.mainScene.worldCursor))
+            scene::Node::Actions::setVisible(context, *state.mainScene.worldCursor, not state.membranes.enabled and not state.mounts.enabled);
 
         if (state.membranes.enabled or state.mounts.enabled)
             return;

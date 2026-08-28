@@ -3,7 +3,7 @@
 #include "scenario.h"
 
 #include <base/maybe.h>
-#include <eltanin/geo/rock.q1.h>
+#include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/texture3array.q1.h>
 
 namespace eltanin::scenario {

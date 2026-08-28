@@ -2,6 +2,7 @@
 
 #include <eltanin/geo/rock.q1.h>
 #include <eltanin/mech/construction.q1.h>
+#include <eltanin/mech/bullet.q1.h>
 #include <eltanin/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/compound.q1.h>
@@ -48,6 +49,7 @@ namespace eltanin {
             ask::schema::aspect<phys::rigid::Ball>(),
             ask::schema::aspect<phys::rigid::CelestialGravity>(),
             ask::schema::aspect<mech::Construct>(),
+            ask::schema::aspect<mech::Bullet>(),
             ask::schema::aspect<geo::Rock>(),
             ask::schema::aspect<geo::Boulder>(),
             ask::schema::aspect<resource::Assets>(),
@@ -190,6 +192,10 @@ namespace eltanin {
             context,
             Name::from("Eltanin", "devices"),
             item<meshpack::LoaderLwo>{.file = "meshes/fittings/devices/cannon_temp_solid.lwo.meshpack", .geometry = {}, .pending = {}});
+        assets.projectiles = with<Assets>::add_meshpack_lwo_loader(
+            context,
+            Name::from("Eltanin", "projectiles"),
+            item<meshpack::LoaderLwo>{.file = "meshes/misc/projectiles.lwo.meshpack", .geometry = {}, .pending = {}});
 
         const auto manager = with<Manager>::singleton(context);
         const auto sky_geometry_id = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "skySphere")});
@@ -252,8 +258,9 @@ namespace eltanin {
             quantum->z_far = 16384.0f;
         }
         with<controller::Camera3d>::create(context, camera);
-        with<scene::Interface>::createLight(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{25.0f, -30.0f, 0.0f}), item<scene::Light>{.kind = scene::Light::Kind::directional, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 8.0f, .range = 0.0f});
+        with<scene::Interface>::createLight(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{-25.0f, -30.0f, 0.0f}), item<scene::Light>{.kind = scene::Light::Kind::directional, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 8.0f, .range = 0.0f});
 
+        bindGameEntities(context, root);
         scenario.populate(context, root, window);
 
         {
@@ -270,6 +277,10 @@ namespace eltanin {
         blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "blueprints");
         mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings" / "mounts");
         blueprints.create(context);
+    }
+
+    void Game::bindGameEntities(Writing context, scene::Root::Id root) {
+        with<mech::Bullet>::bind(context, root);
     }
 
     void Game::setup(Writing context, system::Window::Id window) {

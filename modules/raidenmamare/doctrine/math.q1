@@ -8,7 +8,7 @@ namespace rmmr
   struct Pose
     position: Pos
     rotation: quat
-    ?hpb() -> HPB // heading/pitch/bank (degrees)
+    ?hpb() -> HPB // degrees: +heading nose right, +pitch nose up, +bank clockwise along nose
     =hpb(HPB)
     ?near(Pose) -> bool
     >from(Pos, HPB) -> Pose

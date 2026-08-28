@@ -2,6 +2,7 @@
 
 #include <base/maybe.h>
 #include <rmmr/renderer/types.q1.h>
+#include <rmmr/scene/actors/family.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
@@ -47,6 +48,11 @@ namespace rmmr::scene {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    struct Family_group : Group<Family_group, Root, actor::Family> {
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
     struct Interface : Manipulation<Interface, Root> {
         using Meshes = resource::meshpack::Asset;
 
@@ -59,6 +65,10 @@ namespace rmmr::scene {
         static auto createMeshActor(Writing, Root::Id, Pose, Meshes::Id, string entry) -> actor::Mesh::Id;
         static auto createMeshActor(Writing, Root::Id, Pose, Meshes::Id, string entry, actor::MeshState::Quantum) -> actor::Mesh::Id;
         static auto createGrid(Writing, Root::Id, system::Device::Id, Pose, Grid::Quantum) -> Grid::Id;
+        static auto createFamily(Writing, Root::Id, actor::Family::Quantum) -> actor::Family::Id;
+        static auto createFamily(Writing, Root::Id, Meshes::Resolved, actor::Family::Layout) -> actor::Family::Id;
+        static auto createFamily(Writing, Root::Id, Meshes::Id, string entry, actor::Family::Layout) -> actor::Family::Id;
+        static auto createReplica(Writing, Root::Id, actor::Family::Id, Pose, actor::Replica::Quantum) -> actor::Replica::Id;
         static void render(Reading, Root::Id, system::Device::Id, renderer::CommandBuffer& where);
     };
 

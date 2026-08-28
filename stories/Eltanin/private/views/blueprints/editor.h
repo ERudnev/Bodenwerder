@@ -104,7 +104,7 @@ namespace eltanin::views {
         void syncGridToFloor(Writing);
         void updateWorldCursor(Writing);
         void syncVisuals(Writing);
-        // Layer / floor filter only — setVisible on resident actors.
+        // Layer / floor filter only — Node.setVisible on resident actors.
         void applyDisplay(Writing);
         void rebuildCellBox(Reading);
         void syncClipboardGhost(Writing);

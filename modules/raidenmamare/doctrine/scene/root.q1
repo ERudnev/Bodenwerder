@@ -4,6 +4,7 @@ import "system/core"
 import "resources/meshpack"
 import "scene/actors/mesh"
 import "scene/actors/sprite"
+import "scene/actors/family"
 import "scene/camera"
 import "scene/gizmos"
 import "scene/light"
@@ -27,6 +28,7 @@ namespace rmmr
     group<Node> of Root
     group<Camera> of Root
     group<Light> of Root
+    group<actor::Family> of Root
 
     manipulation Interface of Root
       using Meshes as resource::meshpack::Asset
@@ -39,6 +41,10 @@ namespace rmmr
       >createMeshActor(#, Pose, #Meshes, entry: string)->#actor::Mesh
       >createMeshActor(#, Pose, #Meshes, entry: string, one<actor::MeshState>)->#actor::Mesh
       >createGrid(#, #system::Device, Pose, one<Grid>)->#Grid
+      >createFamily(#, one<actor::Family>)->#actor::Family
+      >createFamily(#, Meshes::Resolved, actor::Family::Layout)->#actor::Family
+      >createFamily(#, #Meshes, entry: string, actor::Family::Layout)->#actor::Family
+      >createReplica(#, #actor::Family, Pose, one<actor::Replica>)->#actor::Replica
       ?render(#, #system::Device, >where: renderer::CommandBuffer)
 
     // Ortho/2D layer on a scene root — sprite actors created here.

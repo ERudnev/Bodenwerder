@@ -13,7 +13,9 @@
 #include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shadows.q1.h>
+#include <rmmr/scene/actors/family.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
+#include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/interface.q1.h>
@@ -95,6 +97,10 @@ namespace rmmr {
                 ask::schema::aspect<scene::actor::MeshState>(),
                 ask::schema::aspect<scene::actor::Identified>(),
                 ask::schema::aspect<scene::actor::Sprite>(),
+                ask::schema::aspect<scene::actor::Family>(),
+                ask::schema::aspect<scene::actor::Replica>(),
+                ask::schema::aspect<scene::actor::Replica_group>(),
+                ask::schema::aspect<scene::Family_group>(),
                 ask::schema::aspect<scene::Flat2d>(),
                 ask::schema::aspect<scene::Grid>(),
             });

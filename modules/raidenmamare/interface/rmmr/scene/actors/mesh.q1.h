@@ -58,11 +58,9 @@ namespace rmmr::scene::actor {
             float latticeStep;
             float patternScale;
             float opacity;
-            bool visible;
             vec2 heat;
         };
         struct Actions : BaseActions {
-            static void setVisible(Writing, Id, bool);
             static auto defaults() -> Quantum;
             static auto defaults(RGB albedo, float opacity) -> Quantum;
             static auto defaults(RGB albedo, float opacity, vec3 scale) -> Quantum;

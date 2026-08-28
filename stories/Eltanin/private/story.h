@@ -38,6 +38,7 @@ namespace eltanin {
             base::maybe<rmmr::resource::meshpack::Asset::Id> attachments;
             base::maybe<rmmr::resource::meshpack::Asset::Id> armour;
             base::maybe<rmmr::resource::meshpack::Asset::Id> devices;
+            base::maybe<rmmr::resource::meshpack::Asset::Id> projectiles;
             base::maybe<rmmr::resource::overlay::Asset::Id> blueprintsEditorEffect;
             base::maybe<rmmr::resource::material::Asset::Id> collisionDebugMaterial;
         };
@@ -64,6 +65,7 @@ namespace eltanin {
 
     private:
         void populateWorld(Writing, rmmr::system::Window::Id);
+        void bindGameEntities(Writing, rmmr::scene::Root::Id);
         void advanceSim(Writing, int64 dt_us);
         void drawCameraWindow(Writing);
         void drawLightingWindow(Writing);

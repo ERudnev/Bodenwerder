@@ -117,7 +117,7 @@ namespace kubes {
         const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved);
 
         const auto camera = with<scene::Interface>::createCamera(context, root,
-            Pose::from(Pos{10.5f, 10.0f, 14.0f}, HPB{36.87f, -29.74f, 0.0f}),
+            Pose::from(Pos{10.5f, 10.0f, 14.0f}, HPB{-36.87f, -29.74f, 0.0f}),
             100.0f * std::numbers::pi_v<float> / 180.0f);
         // R=100 sphere + offset camera: default z_far=100 would clip the far hemisphere.
         with<scene::Camera>::modify(context, camera)->z_far = 250.0f;

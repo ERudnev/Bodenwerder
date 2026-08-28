@@ -221,14 +221,14 @@ namespace eltanin::views::blueprints::geometry {
 
     void applyDisplay(Writing context, Display display, int currentFloor, const std::vector<QuarkActor>& quarks, const std::vector<MountActor>& mounts) {
         for (const auto& actor : quarks) {
-            if (not with<scene::actor::MeshState>::exists(context, actor.id))
+            if (not with<scene::Node>::exists(context, actor.id))
                 continue;
-            scene::actor::MeshState::Actions::setVisible(context, actor.id, display.showsQuark(actor.kind, actor.cellY, currentFloor));
+            scene::Node::Actions::setVisible(context, actor.id, display.showsQuark(actor.kind, actor.cellY, currentFloor));
         }
         for (const auto& actor : mounts) {
-            if (not with<scene::actor::MeshState>::exists(context, actor.id))
+            if (not with<scene::Node>::exists(context, actor.id))
                 continue;
-            scene::actor::MeshState::Actions::setVisible(context, actor.id, display.showsMount(actor.layer, actor.cellYMin, actor.cellYMax, currentFloor));
+            scene::Node::Actions::setVisible(context, actor.id, display.showsMount(actor.layer, actor.cellYMin, actor.cellYMax, currentFloor));
         }
     }
 
@@ -288,7 +288,7 @@ namespace eltanin::views::blueprints::geometry {
             return false;
         const auto cellY = placement.cell.y;
         actors.push_back(QuarkActor{.id = *id, .kind = QuarkActor::Kind::wall, .cell = cellIndex, .index = membraneIndex, .cellY = cellY});
-        scene::actor::MeshState::Actions::setVisible(context, *id, display.showsQuark(QuarkActor::Kind::wall, cellY, currentFloor));
+        scene::Node::Actions::setVisible(context, *id, display.showsQuark(QuarkActor::Kind::wall, cellY, currentFloor));
         return true;
     }
 
@@ -381,7 +381,7 @@ namespace eltanin::views::blueprints::geometry {
             auto state = with<scene::actor::MeshState>::modify(context, slot.id);
             state->albedo = albedo;
             state->opacity = opacity;
-            state->visible = true;
+            scene::Node::Actions::setVisible(context, slot.id, true);
             ++at;
             return true;
         };
@@ -469,7 +469,7 @@ namespace eltanin::views::blueprints::geometry {
             auto state = with<scene::actor::MeshState>::modify(context, slot.id);
             state->albedo = albedo;
             state->opacity = opacity;
-            state->visible = true;
+            scene::Node::Actions::setVisible(context, slot.id, true);
             ++at;
         }
         return at == actors.size();

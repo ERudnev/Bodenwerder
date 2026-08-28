@@ -16,11 +16,15 @@ namespace rmmr::scene {
     } // namespace
 
     auto Node::Actions::create(Writing context, Pose pose) -> Id {
-        return Node::BaseActions::create(context, Node::Quantum{.pose = pose});
+        return Node::BaseActions::create(context, Node::Quantum{.pose = pose, .visible = true});
     }
 
     auto Node::Actions::transform(Reading context, Id id) -> mat4 {
         return make_transform(with<Node>::get(context, id));
+    }
+
+    void Node::Actions::setVisible(Writing context, Id id, bool visible) {
+        with<Node>::modify(context, id)->visible = visible;
     }
 
 }

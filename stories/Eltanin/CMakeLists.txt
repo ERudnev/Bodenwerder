@@ -17,6 +17,7 @@ set(Eltanin_Q1
     mech/construction.q1
     mech/blueprint.q1
     mech/mount.q1
+    mech/bullet.q1
     geo/minerals.q1
     geo/rock.q1
     geo/boulder.q1

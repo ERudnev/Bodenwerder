@@ -48,9 +48,7 @@ namespace rmmr
           latticeStep: float
           patternScale: float
           opacity: float
-          visible: bool
           heat: vec2
-          >setVisible(bool)
         all
           ?defaults()->one
           ?defaults(RGB, opacity: float)->one

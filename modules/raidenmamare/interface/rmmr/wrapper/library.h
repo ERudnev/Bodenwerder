@@ -36,6 +36,7 @@ namespace rmmr::wrapper::assets {
             base::maybe<rmmr::resource::material::Asset::Id> grid;
             base::maybe<rmmr::resource::material::Asset::Id> sprite;
             base::maybe<rmmr::resource::material::Asset::Id> identity;
+            base::maybe<rmmr::resource::material::Asset::Id> family;
         } material;
         struct {
             base::maybe<rmmr::resource::overlay::Asset::Id> defaultBlur;

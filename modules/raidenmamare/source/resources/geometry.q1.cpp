@@ -180,8 +180,7 @@ namespace rmmr::resource::geometry {
         }
 
         auto read_assimp_scene(Assimp::Importer& importer, const filepath& path) -> const aiScene* {
-            // RH OpenGL: do not pass MakeLeftHanded / FlipWindingOrder here.
-            // Note: Assimp LWOImporter still applies both inside GenerateNodeGraph — undone in load_assimp via restore_lwo_file_space.
+            // RH OpenGL: do not pass MakeLeftHanded / FlipWindingOrder here (would double LWO: importer already does both in GenerateNodeGraph).
             // Keep file normals (LW OBJ hard/smooth). GenSmoothNormals only if a mesh has none — and before Join (Assimp needs verbose verts).
             const auto* scene = importer.ReadFile(
                 path.string(),
@@ -205,20 +204,6 @@ namespace rmmr::resource::geometry {
             }
             scene = importer.ApplyPostProcessing(aiProcess_JoinIdenticalVertices);
             return scene;
-        }
-
-        // Assimp LWOImporter::GenerateNodeGraph always MakeLeftHanded (z*=-1) then FlipWindingOrder
-        // (hardcoded; ReadFile flags cannot disable it). Restore file/RH/RedStar space for our pipeline.
-        void restore_lwo_file_space(LoadedMesh& mesh) {
-            for (auto& p : mesh.cpu.positions)
-                p.z = -p.z;
-            for (auto& n : mesh.cpu.normals)
-                n.z = -n.z;
-            for (auto& entry : mesh.entries)
-                entry.origin.z = -entry.origin.z;
-            auto& indices = mesh.cpu.indices;
-            for (std::size_t i = 0; i + 2 < indices.size(); i += 3)
-                std::swap(indices[i + 1], indices[i + 2]);
         }
 
         auto load_assimp(const filepath& path) -> optional<LoadedMesh> {
@@ -245,8 +230,6 @@ namespace rmmr::resource::geometry {
             if (out.cpu.positions.empty() or out.cpu.indices.empty()) {
                 return {};
             }
-
-            if (lwo) restore_lwo_file_space(out);
 
             return out;
         }

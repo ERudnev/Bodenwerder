@@ -268,21 +268,21 @@ namespace rmmr::scene::actor {
     }
 
     auto MeshState::Actions::defaults() -> Quantum {
-        return Quantum{.albedo = RGB{1.0f, 1.0f, 1.0f}, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = 1.0f, .visible = true, .heat = vec2{0.0f, 1.0f}};
+        return Quantum{.albedo = RGB{1.0f, 1.0f, 1.0f}, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = 1.0f, .heat = vec2{0.0f, 1.0f}};
     }
 
     auto MeshState::Actions::defaults(RGB albedo, float opacity) -> Quantum {
-        return Quantum{.albedo = albedo, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = opacity, .visible = true, .heat = vec2{0.0f, 1.0f}};
+        return Quantum{.albedo = albedo, .scale = vec3{1.0f, 1.0f, 1.0f}, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = opacity, .heat = vec2{0.0f, 1.0f}};
     }
 
     auto MeshState::Actions::defaults(RGB albedo, float opacity, vec3 scale) -> Quantum {
-        return Quantum{.albedo = albedo, .scale = scale, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = opacity, .visible = true, .heat = vec2{0.0f, 1.0f}};
+        return Quantum{.albedo = albedo, .scale = scale, .latticeStep = 1.0f, .patternScale = 1.0f, .opacity = opacity, .heat = vec2{0.0f, 1.0f}};
     }
 
     void Mesh::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {
         const auto& mesh = with<Mesh>::get(context, node);
         const auto& state = with<MeshState>::get(context, node);
-        if (not state.visible or mesh.device != device) return;
+        if (not with<Node>::get(context, node).visible or mesh.device != device) return;
         const auto gpuState = actorState(context, node, mesh, state);
         glNamedBufferSubData(mesh.actorState, 0, sizeof(renderer::ActorState), &gpuState);
         for (const auto& bucket : mesh.buckets) {
@@ -291,10 +291,6 @@ namespace rmmr::scene::actor {
                 where.gpu[pass].push_back(gpuBatch(mesh, bucket, bucket.material, technique.shader, bucket.texpack, material.blend));
             }
         }
-    }
-
-    void MeshState::Actions::setVisible(Writing context, Id node, bool visible) {
-        with<MeshState>::modify(context, node)->visible = visible;
     }
 
     void Identified::Actions::extend(Writing context, Mesh::Id mesh) {
@@ -332,9 +328,8 @@ namespace rmmr::scene::actor {
 
     void Identified::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {
         const auto& mesh = with<Mesh>::get(context, node);
-        const auto& state = with<MeshState>::get(context, node);
         const auto& global = with<Identified>::get_global(context);
-        if (not state.visible or mesh.device != device or not global.material) return;
+        if (not with<Node>::get(context, node).visible or mesh.device != device or not global.material) return;
         const auto& runtimes = with<resource::Runtimes>::get(context, device);
         const auto materialFound = runtimes.materials_id_mapping.find(*global.material);
         if (materialFound == runtimes.materials_id_mapping.end()) throw std::runtime_error("scene::actor::Identified: identity material runtime missing");

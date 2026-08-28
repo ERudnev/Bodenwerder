@@ -268,8 +268,8 @@ namespace eltanin::views::blueprints::mountPlacement {
             if (not with<scene::Node>::exists(context, cursor.balls[i]))
                 continue;
             with<scene::Node>::modify(context, cursor.balls[i])->pose = Pose::from(gridMeters(cursor.points[i]), HPB{0.0f, 0.0f, 0.0f});
-            if (with<scene::actor::MeshState>::exists(context, cursor.balls[i]))
-                scene::actor::MeshState::Actions::setVisible(context, cursor.balls[i], true);
+            if (with<scene::Node>::exists(context, cursor.balls[i]))
+                scene::Node::Actions::setVisible(context, cursor.balls[i], true);
         }
     }
 

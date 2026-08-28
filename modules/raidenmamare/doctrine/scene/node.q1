@@ -7,6 +7,8 @@ namespace rmmr
     entity Node
       one
         pose: Pose
+        visible: bool
         ?transform() -> mat4
+        >setVisible(bool)
       all
         >create(Pose) -> #

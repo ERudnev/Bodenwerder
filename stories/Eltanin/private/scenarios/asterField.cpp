@@ -2,8 +2,7 @@
 
 #include "mech/semantics/space.h"
 
-#include <eltanin/geo/boulder.q1.h>
-#include <eltanin/geo/rock.q1.h>
+#include <eltanin/mech/bullet.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -90,33 +89,19 @@ namespace eltanin::scenario {
         assets.crust = crustId;
     }
 
-    void AsterField::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
-        constexpr int pgmMineral = 11;
-        constexpr int countY = 30;
-        constexpr int countZ = 52;
-        constexpr float pebbleRadius = 0.15f;
-        constexpr float pad = 0.4f;
-        constexpr vec3 drift{4.0f, 0.0f, 0.0f};
+    void AsterField::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id) {
+        constexpr int bulletRows = 4;
+        constexpr int bulletCols = 6;
         const float cell = mech::space::local::edge2meters;
-        const float spanY = 2.0f * (cell + 2.0f * pad);
-        const float spanZ = 2.0f * (cell * 2.0f + 2.0f * pad);
-        const vec3 cloudCenter{-8.0f, 0.5f * cell, cell};
-        const vec3 stepY{0.0f, spanY / static_cast<float>(countY - 1), 0.0f};
-        const vec3 stepZ{0.0f, 0.0f, spanZ / static_cast<float>(countZ - 1)};
-        const float originY = 0.5f * static_cast<float>(countY - 1);
-        const float originZ = 0.5f * static_cast<float>(countZ - 1);
-        for (int row = 0; row < countY; ++row) {
-            for (int col = 0; col < countZ; ++col) {
-                const vec3 position = cloudCenter + stepY * (static_cast<float>(row) - originY) + stepZ * (static_cast<float>(col) - originZ);
-                const geo::GeneralizedRecipe recipe{
-                    .mix = geo::GeneralizedRecipe::homogenous(pgmMineral),
-                    .radius = pebbleRadius,
-                    .lump = 0.4f,
-                    .seed = 11 + row * countZ + col,
-                    .spotMeters = pebbleRadius * 2.0f,
-                    .spotContrast = 0.0f,
-                };
-                with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{position}, HPB{0.0f, 0.0f, 0.0f}), recipe, drift, vec3{0.0f, 0.0f, 0.0f});
+        const vec3 flockCenter{0.0f, 0.5f * cell, cell};
+        const vec3 flockStepY{0.0f, 0.4f, 0.0f};
+        const vec3 flockStepZ{0.0f, 0.0f, 0.4f};
+        const float flockOriginY = 0.5f * static_cast<float>(bulletRows - 1);
+        const float flockOriginZ = 0.5f * static_cast<float>(bulletCols - 1);
+        for (int row = 0; row < bulletRows; ++row) {
+            for (int col = 0; col < bulletCols; ++col) {
+                const vec3 position = flockCenter + flockStepY * (static_cast<float>(row) - flockOriginY) + flockStepZ * (static_cast<float>(col) - flockOriginZ);
+                with<mech::Bullet>::spawnShell30mm(context, root, Pose::from(Pos{position}, HPB{90.0f, 0.0f, 0.0f}), 300.0f);
             }
         }
     }

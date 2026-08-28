@@ -1,0 +1,61 @@
+import "resources/geometry"
+import "resources/materials"
+import "resources/meshpack"
+import "resources/texpack"
+import "renderer/types"
+import "semantics"
+import "system/core"
+import "math"
+import "scene/node"
+
+namespace rmmr
+  namespace scene
+    namespace actor
+
+      // Opaque per-instance record. Layout belongs to Family; bits are integers or floats as that family packed them.
+      using Packed as @external(std::vector<std::byte>)
+
+      // Homogeneous instanced draw. Not of Node: the family has no world pose.
+      // Layout is the instance SSBO record (names, Uniform::Type, byte offsets). Not the material uniform vocabulary.
+      entity Family
+        struct Field
+          name: string
+          type: resource::Uniform::Type
+          offset: integer
+        struct Layout
+          instanceBytes: integer
+          fields: vector<Field>
+        struct Bucket
+          geometry: #resource::geometry::Runtime
+          material: #resource::material::Runtime
+          texpack: #resource::texpack::Runtime?
+          indirect: renderer::IndirectBuffer
+          drawCount: renderer::Count
+          metadataByteOffset: renderer::IntPtr
+          metadataByteSize: renderer::SizePtr
+        one
+          device: #system::Device
+          layout: Layout
+          actorState: renderer::StorageBuffer
+          instances: renderer::StorageBuffer
+          drawMetadata: renderer::StorageBuffer
+          surfacePalette: renderer::StorageBuffer
+          buckets: vector<Bucket>
+          ?field(string)->Field?
+          =write(>Packed, string, float)
+          =write(>Packed, string, integer)
+          =write(>Packed, string, vec2)
+          =write(>Packed, string, vec3)
+          ?submit(#system::Device, >where: renderer::CommandBuffer)
+        all
+          ?compose(resource::meshpack::Asset::Resolved, Layout)->one?
+          ?composeOne(#resource::geometry::Asset, #resource::material::Asset, Layout)->one?
+
+      // Drawn member of a Family. Pose and visibility live on Node.
+      // packed size is layout.instanceBytes; field meaning is Family.layout, not Replica's schema.
+      feature Replica of Node
+        one
+          family: #Family
+          packed: Packed
+
+      group<Replica> of Family
