@@ -2,12 +2,11 @@ namespace eltanin
   namespace locality
 
     // Local scene pulse lives in Thing Global (not per-instance Quantum).
-    //   Product::onFrame → =update may grow Global.now
-    //   Global.now changes → locality features wake on ~Thing
+    //   Product::onFrame → *update advances now and calls locality feature updates.
     // Quantum.bornAt snapshots now at create.
     entity Thing
       one
         bornAt: int64
       all
         now: int64 // wall µs
-        =update(dtUs: int64)
+        *update(dtUs: int64)

@@ -228,6 +228,48 @@ void group_category_ring_scenarios(fqsm::api::Schema schema)
         EXPECT_EQ(with<Keyring>::get_global(main).generationCount, 2);
         EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 0);
     }
+
+    {
+        establish::Realm main(schema);
+
+        const auto keyring = with<KeyManager>::create_keyring(main, {"ring-D"});
+        const auto firstClient = with<KeyManager>::addClient(main, keyring);
+        const auto secondClient = with<KeyManager>::addClient(main, keyring);
+
+        with<Client>::remove(main, firstClient);
+
+        EXPECT_TRUE(main.result().good());
+        EXPECT_FALSE(with<Client>::exists(main, firstClient));
+        EXPECT_TRUE(with<Client>::exists(main, secondClient));
+        EXPECT_TRUE(with<Keyring>::exists(main, keyring));
+        EXPECT_TRUE(with<Client_group>::exists(main, keyring));
+        EXPECT_FALSE(with<Client_group>::get(main, keyring).contains(firstClient));
+        EXPECT_TRUE(with<Client_group>::get(main, keyring).contains(secondClient));
+        EXPECT_EQ(with<Keyring>::get_global(main).generationCount, 2);
+        EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 1);
+    }
+
+    {
+        establish::Realm main(schema);
+
+        const auto keyring = with<KeyManager>::create_keyring(main, {"ring-E"});
+        const auto firstClient = with<KeyManager>::addClient(main, keyring);
+        const auto secondClient = with<KeyManager>::addClient(main, keyring);
+
+        main.branch([&](Writing context) {
+            with<Client>::remove(context, firstClient);
+            with<Client>::remove(context, secondClient);
+        });
+
+        EXPECT_TRUE(main.result().good());
+        EXPECT_FALSE(with<Client>::exists(main, firstClient));
+        EXPECT_FALSE(with<Client>::exists(main, secondClient));
+        EXPECT_TRUE(with<Keyring>::exists(main, keyring));
+        EXPECT_TRUE(with<Client_group>::exists(main, keyring));
+        EXPECT_TRUE(with<Client_group>::get(main, keyring).empty());
+        EXPECT_EQ(with<Keyring>::get_global(main).generationCount, 2);
+        EXPECT_EQ(with<Keyring>::get_global(main).activeCount, 0);
+    }
 }
 
 

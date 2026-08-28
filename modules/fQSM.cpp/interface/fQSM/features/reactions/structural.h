@@ -26,6 +26,9 @@ namespace fqsm::features::reactions::structural {
     template<category::Group GroupMeta, category::Any Element>
     struct group_removal_removes_elements;
 
+    template<category::Group GroupMeta, category::Any Element>
+    struct element_removal_unhooks_from_group;
+
 }
 
 // Impl:
@@ -125,6 +128,25 @@ namespace fqsm::features::reactions::structural {
                     _DBG_TX_("structural group_removal: {} removed -> put_deletion {} {}", Rtid::name<GroupMeta>(), Rtid::name<Element>(), id);
                     target.put_deletion(id);
                 }
+            }
+        }
+    };
+
+    template<category::Group GroupMeta, category::Any Element>
+    struct element_removal_unhooks_from_group : Abstract {
+        Abstract::Sources listens() const override { return Abstract::typed_set<Element>(); }
+        void apply(Reacting context) override {
+            const auto elementDelta = Abstract::changes<Element>(context);
+            if (elementDelta.removed().empty()) return;
+            auto& groupPatch = context.adjustments<GroupMeta>();
+            for (const auto entry : context.proposal.aspect<GroupMeta>().items()) {
+                auto next = entry.value;
+                bool hit = false;
+                for (const auto& change : elementDelta.removed())
+                    if (next.erase(change.id)) hit = true;
+                if (not hit) continue;
+                _DBG_TX_("structural element_unhook: {} removed from {} {}", Rtid::name<Element>(), Rtid::name<GroupMeta>(), entry.id);
+                groupPatch.put_modification(entry.id, std::move(next));
             }
         }
     };

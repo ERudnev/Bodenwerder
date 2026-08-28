@@ -290,7 +290,7 @@ namespace eltanin {
         populateWorld(context, window);
     }
 
-    void Game::advanceSim(Writing context, int64 dt_us) {
+    void Game::advanceSim(Stewarding context, int64 dt_us) {
         with<locality::Thing>::update(context, dt_us);
     }
 

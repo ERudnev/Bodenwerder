@@ -91,6 +91,23 @@ namespace eltanin::locality {
         return thing;
     }
 
+    void Bullet::Actions::update(Stewarding context) {
+        constexpr int64 lifetimeUs = 5'000'000;
+        auto things = context.direct<Thing>();
+        const int64 now = things.global.now;
+        vector<Id> expired;
+        for (auto [id, _] : context.direct<Bullet>().items) {
+            const auto* thing = things.items.find(id);
+            if (not thing)
+                continue;
+            if (now - thing->bornAt >= lifetimeUs)
+                expired.push_back(id);
+
+        }
+        for (const auto id : expired)
+            with<Bullet>::kraken(context, id);
+    }
+
     struct Bullet::Internals : Bullet::DefaultInternals {
         static void followBody(Reacting context) {
             using namespace api_for_internals;
