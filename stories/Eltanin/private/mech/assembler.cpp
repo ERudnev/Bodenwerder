@@ -246,7 +246,7 @@ namespace eltanin::mech {
         constexpr float weldUnit = 1.0f;
 
         auto weldedAt(index3 grid, float mass, float strength) -> Primitive::Welded {
-            return Primitive::Welded{Primitive::Point{.gridPos = grid, .mass = mass}, strength};
+            return Primitive::Welded{Primitive::Point{.gridPos = grid, .mass = mass, .particle = -1}, strength};
         }
 
         auto primitiveOn(const vector<index3>& verts, float totalMass, float thickness, float strength) -> Primitive {
@@ -274,46 +274,36 @@ namespace eltanin::mech {
             return grid;
         }
 
-        void accumulateMass(const Primitive& primitive, std::map<index3, float, LatticeLess>& massAt) {
-            for (const auto& welded : primitive.loop)
-                massAt[welded.gridPos] += welded.mass;
+        void emitLoop(Primitive& primitive, Construction& construction) {
+            for (auto& welded : primitive.loop) {
+                const auto index = static_cast<integer>(construction.evaluatedParticles.size());
+                welded.particle = index;
+                construction.evaluatedParticles.push_back(Primitive::Point{.gridPos = welded.gridPos, .mass = welded.mass, .particle = index});
+            }
+        }
+
+        auto sortedPrimitiveIds(const auto& items) -> vector<PrimitiveId> {
+            vector<PrimitiveId> ids;
+            ids.reserve(items.size());
+            for (const auto& [id, _] : items)
+                ids.push_back(id);
+            std::sort(ids.begin(), ids.end());
+            return ids;
         }
 
         void compileParticles(Construction& construction) {
-            std::map<index3, float, LatticeLess> massAt;
-            for (const auto& [_, primitive] : construction.knots)
-                accumulateMass(primitive, massAt);
-            for (const auto& [_, primitive] : construction.ribs)
-                accumulateMass(primitive, massAt);
-            for (const auto& [_, primitive] : construction.membranes)
-                accumulateMass(primitive, massAt);
-            for (const auto& [_, primitive] : construction.plates)
-                accumulateMass(primitive, massAt);
-            for (const auto& [_, faces] : construction.volumes) {
-                for (const auto& primitive : faces)
-                    accumulateMass(primitive, massAt);
-            }
-
-            vector<std::pair<PrimitiveId, index3>> knotOrder;
-            for (const auto& [id, primitive] : construction.knots) {
-                if (primitive.loop.empty())
-                    continue;
-                knotOrder.emplace_back(id, primitive.loop[0].gridPos);
-            }
-            std::sort(knotOrder.begin(), knotOrder.end(), [](const auto& left, const auto& right) { return left.first < right.first; });
-
             construction.evaluatedParticles.clear();
-            std::map<index3, bool, LatticeLess> seen;
-            for (const auto& [_, grid] : knotOrder) {
-                if (seen.find(grid) != seen.end())
-                    continue;
-                seen.emplace(grid, true);
-                construction.evaluatedParticles.push_back(Primitive::Point{.gridPos = grid, .mass = massAt[grid]});
-            }
-            for (const auto& [grid, mass] : massAt) {
-                if (seen.find(grid) != seen.end())
-                    continue;
-                construction.evaluatedParticles.push_back(Primitive::Point{.gridPos = grid, .mass = mass});
+            for (const auto id : sortedPrimitiveIds(construction.knots))
+                emitLoop(construction.knots.at(id), construction);
+            for (const auto id : sortedPrimitiveIds(construction.ribs))
+                emitLoop(construction.ribs.at(id), construction);
+            for (const auto id : sortedPrimitiveIds(construction.membranes))
+                emitLoop(construction.membranes.at(id), construction);
+            for (const auto id : sortedPrimitiveIds(construction.plates))
+                emitLoop(construction.plates.at(id), construction);
+            for (const auto id : sortedPrimitiveIds(construction.volumes)) {
+                for (auto& face : construction.volumes.at(id))
+                    emitLoop(face, construction);
             }
         }
 
@@ -329,14 +319,13 @@ namespace eltanin::mech {
                 covered.insert(canonicalEdge(grid[index], grid[(index + 1) % grid.size()]));
         }
 
-        auto particlePoints(const Primitive& primitive, const std::map<index3, integer, LatticeLess>& at) -> vector<integer> {
+        auto particlePoints(const Primitive& primitive) -> vector<integer> {
             vector<integer> points;
             points.reserve(primitive.loop.size());
             for (const auto& welded : primitive.loop) {
-                const auto found = at.find(welded.gridPos);
-                if (found == at.end())
+                if (welded.particle < 0)
                     return {};
-                points.push_back(found->second);
+                points.push_back(welded.particle);
             }
             return points;
         }
@@ -555,23 +544,21 @@ namespace eltanin::mech {
             return occurrences;
         }
 
-        auto crystalFrom(const Construction& construction, Pose pose) -> phys::rigid::Crystal::Quantum {
+        auto crystalFrom(const Construction& construction, Pose pose, vec3 velocity) -> phys::rigid::Crystal::Quantum {
             const auto count = construction.evaluatedParticles.size();
             vector<vec3> shape(count, vec3{0.0f, 0.0f, 0.0f});
             vector<phys::Particle> particles(count, phys::Particle{phys::Matter{.position = dvec3{0.0, 0.0, 0.0}, .mass = 1.0f, .temperature = 0.0f, .cohesion = 0.5f}, dvec3{0.0, 0.0, 0.0}, vec3{0.0f, 0.0f, 0.0f}});
             glm::dvec3 moment{0.0, 0.0, 0.0};
             double mass = 0.0;
-            std::map<index3, integer, LatticeLess> at;
             for (std::size_t index = 0; index < count; ++index) {
                 const auto& point = construction.evaluatedParticles[index];
                 const vec3 local{static_cast<float>(point.gridPos.x), static_cast<float>(point.gridPos.y), static_cast<float>(point.gridPos.z)};
                 const vec3 meters = local * space::local::edge2meters;
                 const vec3 world = pose.position + pose.rotation * meters;
                 shape[index] = meters;
-                particles[index] = phys::Particle{phys::Matter{.position = dvec3{world}, .mass = point.mass, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{world}, vec3{0.0f, 0.0f, 0.0f}};
+                particles[index] = phys::Particle{phys::Matter{.position = dvec3{world}, .mass = point.mass, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{world} - dvec3{velocity * phys::Particle::dt}, vec3{0.0f, 0.0f, 0.0f}};
                 moment += glm::dvec3{meters} * double(point.mass);
                 mass += double(point.mass);
-                at.emplace(point.gridPos, static_cast<integer>(index));
             }
             std::set<EdgeKey, EdgeLess> covered;
             for (const auto& [_, primitive] : construction.membranes)
@@ -590,7 +577,7 @@ namespace eltanin::mech {
                     continue;
                 if (covered.find(canonicalEdge(grid[0], grid[1])) != covered.end())
                     continue;
-                const auto points = particlePoints(rib, at);
+                const auto points = particlePoints(rib);
                 if (points.size() != 2)
                     continue;
                 hull.faces.push_back(beamFace(points[0], points[1], shape, rib.thickness));
@@ -598,7 +585,7 @@ namespace eltanin::mech {
             auto pushPolygon = [&](const Primitive& primitive) {
                 if (primitive.loop.size() < 2)
                     return;
-                const auto points = particlePoints(primitive, at);
+                const auto points = particlePoints(primitive);
                 if (points.size() != primitive.loop.size())
                     return;
                 auto face = hullFace(points, shape, primitive.thickness);
@@ -632,7 +619,7 @@ namespace eltanin::mech {
 
     }
 
-    auto Assembler::spawn(Writing context, scene::Root::Id root, Pose pose, Blueprint::Id blueprintId) -> Construct::Id {
+    auto Assembler::spawn(Writing context, scene::Root::Id root, Pose pose, Blueprint::Id blueprintId, vec3 velocity) -> Construct::Id {
         if (not with<Blueprint>::exists(context, blueprintId))
             return context.refuse("eltanin::mech::Assembler::spawn: blueprint missing");
         const auto interframe = with<resource::Assets>::find<resource::meshpack::Asset>(context, resource::Unit::Name::from("Eltanin", "interframe"));
@@ -655,7 +642,7 @@ namespace eltanin::mech {
         meshState.latticeStep = space::local::edge2meters;
         const auto actor = with<scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), std::move(meshState));
 
-        auto crystal = crystalFrom(construction, pose);
+        auto crystal = crystalFrom(construction, pose, velocity);
         const auto body = with<phys::Body>::create(context, phys::rigid::restoredBody(pose, crystal.particles, crystal.shape));
         with<phys::rigid::Crystal>::extend(context, body, std::move(crystal));
         with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});

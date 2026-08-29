@@ -142,6 +142,31 @@ namespace eltanin::phys::collision {
             }
         }
 
+        void scarFace(Crystal::Quantum& crystal, integer faceIndex, float impulseMag) {
+            if (impulseMag <= 0.0f or Settings::cohesionWound <= 0.0f or faceIndex < 0 or static_cast<std::size_t>(faceIndex) >= crystal.hull.faces.size())
+                return;
+            const auto& face = crystal.hull.faces[static_cast<std::size_t>(faceIndex)];
+            float clientMass = 0.0f;
+            for (const integer id : face.points) {
+                if (id < 0 or static_cast<std::size_t>(id) >= crystal.particles.size())
+                    continue;
+                const float mass = crystal.particles[static_cast<std::size_t>(id)].mass;
+                if (mass > 0.0f)
+                    clientMass += mass;
+            }
+            if (clientMass <= 0.0f)
+                return;
+            const float drop = Settings::cohesionWound * impulseMag / clientMass;
+            for (const integer id : face.points) {
+                if (id < 0 or static_cast<std::size_t>(id) >= crystal.particles.size())
+                    continue;
+                Particle& particle = crystal.particles[static_cast<std::size_t>(id)];
+                if (particle.mass <= 0.0f)
+                    continue;
+                particle.cohesion = glm::max(0.0f, particle.cohesion - drop);
+            }
+        }
+
         void addOccupant(vector<Occupant>& occupants, Body::Id id, fqsm::Direct<Body> bodies, fqsm::Direct<Ball> balls, fqsm::Direct<Crystal> crystals) {
             auto* body = bodies.items.find(id);
             if (not body or body->radius <= 0.0f or body->totalMass <= 0.0f)
@@ -726,8 +751,10 @@ namespace eltanin::phys::collision {
             } else {
                 auto* crystal = crystals.items.find(other);
                 auto* crystalBody = bodies.items.find(other);
-                if (crystal and crystalBody)
+                if (crystal and crystalBody) {
                     kickFaceSupports(*crystal, *crystalBody, face, point, -normal * (j * Particle::dt / ray.core.mass), ray.core.mass);
+                    scarFace(*crystal, face, glm::length(ray.core.impulse()));
+                }
             }
             const vec3 vNew = vRay + normal * (j * invRay);
             if (glm::dot(vNew, normal) >= 0.0f) {

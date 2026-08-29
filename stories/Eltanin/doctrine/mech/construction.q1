@@ -13,6 +13,7 @@ namespace eltanin
         struct Point
           gridPos: index3
           mass: float
+          particle: integer // into evaluatedParticles / Crystal.particles; unique per primitive vertex, even at a shared lattice knot
         struct Welded of Point
           strength: float
         loop: vector<Welded>

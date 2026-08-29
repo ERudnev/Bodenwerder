@@ -26,6 +26,7 @@ namespace eltanin::phys {
         static constexpr float airSpinHalfLife = 3.0f; // Ball ω halves in this many seconds at isaAirDensity
         static constexpr float restLinear = 1.0e-5f; // m/tick; below this (x−prev) is zeroed
         static constexpr float ballLiveSpeed = 0.1f; // m/s; Ball↔Crystal — soft fade of restitution and spin below this closing speed
+        static constexpr float cohesionWound = 2.5f; // Δcohesion = cohesionWound · |p_ray| / m_face; 30mm 0.4 kg × 200 m/s vs 4 t plate → 5%
         static constexpr int64 fixedStepUs = 10'000;
         static constexpr int64 thermalStepUs = 200'000;
         static constexpr float skyKelvin = 3.0f;

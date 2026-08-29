@@ -11,7 +11,7 @@ namespace eltanin::mech {
     using namespace fqsm::api;
 
     struct Assembler {
-        static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::Pose, Blueprint::Id) -> Construct::Id;
+        static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::Pose, Blueprint::Id, vec3 velocity) -> Construct::Id;
     };
 
 }

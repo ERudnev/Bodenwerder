@@ -186,6 +186,7 @@ namespace eltanin {
         auto& panel = ui.assembler;
         ImGui::DragFloat3("Spawn pos", &panel.spawnPos.x, 0.1f, 0.0f, 0.0f, "%.2f");
         ImGui::DragFloat3("Spawn HPB", &panel.spawnHpb.x, 0.1f, -180.0f, 180.0f, "%.1f°");
+        ImGui::DragFloat3("Spawn vel", &panel.spawnVel.x, 0.1f, 0.0f, 0.0f, "%.2f");
         if (panel.blueprint.has_value() and not with<::eltanin::mech::Blueprint>::exists(world, *panel.blueprint))
             panel.blueprint = {};
         const char* preview = "(none)";
@@ -225,7 +226,7 @@ namespace eltanin {
         if (not canCreate)
             ImGui::BeginDisabled();
         if (ImGui::Button("Create", ImVec2{-1.0f, 0.0f}) and canCreate)
-            mech::Assembler::spawn(world, world_view->scene, Pose::from(panel.spawnPos, panel.spawnHpb), *panel.blueprint);
+            mech::Assembler::spawn(world, world_view->scene, Pose::from(panel.spawnPos, panel.spawnHpb), *panel.blueprint, panel.spawnVel);
         if (not canCreate)
             ImGui::EndDisabled();
         ImGui::End();

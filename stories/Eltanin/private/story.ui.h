@@ -42,6 +42,7 @@ namespace eltanin {
             base::maybe<mech::Blueprint::Id> blueprint;
             rmmr::Pos spawnPos;
             rmmr::HPB spawnHpb;
+            rmmr::vec3 spawnVel;
         };
         Assembler assembler{};
     };

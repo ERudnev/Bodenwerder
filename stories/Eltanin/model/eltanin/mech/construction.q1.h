@@ -17,6 +17,7 @@ namespace eltanin::mech {
             struct Point {
                 index3 gridPos;
                 float mass;
+                integer particle;
             };
             struct Welded : Point {
                 float strength;
