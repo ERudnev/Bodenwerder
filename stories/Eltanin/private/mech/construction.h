@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eltanin/mech/construction.q1.h>
+#include <eltanin/physics/rigid.q1.h>
 
 #include <algorithm>
 
@@ -29,5 +30,15 @@ namespace eltanin::mech {
                 fn(id, face);
         }
     }
+
+    inline void compileParticles(Construction& construction) {
+        construction.evaluatedParticles.clear();
+        forEachPrimitiveLoop(construction, [&](Construction::Primitive::Id, const Construction::Primitive& primitive) {
+            for (const auto& welded : primitive.loop)
+                construction.evaluatedParticles.push_back(Construction::Primitive::Point{.gridPos = welded.gridPos, .mass = welded.mass});
+        });
+    }
+
+    auto cookHull(const Construction&, const vector<vec3>& shape) -> phys::rigid::Hull;
 
 }

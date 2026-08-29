@@ -1,11 +1,17 @@
 #include <eltanin/locality/construct.q1.h>
 
+#include "mech/assembler.h"
 #include "mech/construction.h"
+#include "physics/hullBvh.h"
 #include <eltanin/physics/rigid.q1.h>
+#include <rmmr/resources/meshpack.q1.h>
+#include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/node.q1.h>
 
 #include <span>
+
+#include <glm/geometric.hpp>
 
 namespace eltanin::locality {
 
@@ -33,9 +39,129 @@ namespace eltanin::locality {
             return worst;
         }
 
+        auto dropPrimitive(const umap<mech::Construction::Primitive::Id, float>& worst, mech::Construction::Primitive::Id id) -> bool {
+            const auto found = worst.find(id);
+            return found != worst.end() and found->second <= 0.0f;
+        }
+
+        template<typename Piece, typename IdOf>
+        void keepLive(vector<Piece>& items, IdOf idOf, const umap<mech::Construction::Primitive::Id, float>& worst) {
+            vector<Piece> live;
+            live.reserve(items.size());
+            for (auto& piece : items) {
+                if (not dropPrimitive(worst, idOf(piece)))
+                    live.push_back(std::move(piece));
+            }
+            items = std::move(live);
+        }
+
+        auto shedOne(Stewarding context, Construct::Id id, Construct::Quantum& construct) -> bool {
+            if (not with<phys::rigid::Crystal>::exists(context, construct.body))
+                return true;
+            auto crystals = context.direct<phys::rigid::Crystal>();
+            auto* crystal = crystals.items.find(construct.body);
+            if (not crystal or crystal->particles.size() != construct.construction.evaluatedParticles.size() or crystal->particles.size() != crystal->shape.size())
+                return true;
+            const auto worst = cohesionByPrimitive(construct.construction, crystal->particles);
+            bool anyDead = false;
+            for (const auto& [_, cohesion] : worst) {
+                if (cohesion <= 0.0f) {
+                    anyDead = true;
+                    break;
+                }
+            }
+            if (not anyDead)
+                return true;
+
+            vector<phys::Particle> particles;
+            vector<vec3> shape;
+            particles.reserve(crystal->particles.size());
+            shape.reserve(crystal->shape.size());
+            integer cursor = 0;
+            bool mismatch = false;
+            mech::forEachPrimitiveLoop(construct.construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
+                if (mismatch)
+                    return;
+                const bool dead = dropPrimitive(worst, primitiveId);
+                for (std::size_t slot = 0; slot < primitive.loop.size(); ++slot) {
+                    const auto index = static_cast<std::size_t>(cursor);
+                    if (index >= crystal->particles.size() or index >= crystal->shape.size()) {
+                        mismatch = true;
+                        return;
+                    }
+                    if (not dead) {
+                        particles.push_back(crystal->particles[index]);
+                        shape.push_back(crystal->shape[index]);
+                    }
+                    ++cursor;
+                }
+            });
+            if (mismatch or static_cast<std::size_t>(cursor) != crystal->particles.size())
+                return true;
+            if (particles.empty())
+                return false;
+
+            glm::dvec3 moment{0.0, 0.0, 0.0};
+            double mass = 0.0;
+            for (std::size_t index = 0; index < particles.size(); ++index) {
+                moment += glm::dvec3{shape[index]} * static_cast<double>(particles[index].mass);
+                mass += static_cast<double>(particles[index].mass);
+            }
+            auto eraseDead = [&](auto& items) {
+                for (auto it = items.begin(); it != items.end(); ) {
+                    if (dropPrimitive(worst, it->first))
+                        it = items.erase(it);
+                    else
+                        ++it;
+                }
+            };
+            eraseDead(construct.construction.knots);
+            eraseDead(construct.construction.ribs);
+            eraseDead(construct.construction.membranes);
+            eraseDead(construct.construction.plates);
+            eraseDead(construct.construction.volumes);
+            keepLive(construct.fragments.ofKnot, [](const auto& piece) { return piece.knot; }, worst);
+            keepLive(construct.fragments.ofRib, [](const auto& piece) { return piece.rib; }, worst);
+            keepLive(construct.fragments.ofMembrane, [](const auto& piece) { return piece.membrane; }, worst);
+            keepLive(construct.fragments.ofPlate, [](const auto& piece) { return piece.plate; }, worst);
+            keepLive(construct.fragments.ofVolume, [](const auto& piece) { return piece.volume; }, worst);
+            mech::compileParticles(construct.construction);
+            crystal->particles = std::move(particles);
+            crystal->shape = std::move(shape);
+            crystal->com = mass > 0.0 ? vec3{moment / mass} : vec3{0.0f, 0.0f, 0.0f};
+            crystal->hull = mech::cookHull(construct.construction, crystal->shape);
+            phys::collision::cookHullBvh(crystal->hull, crystal->shape);
+            auto bodies = context.direct<phys::Body>();
+            if (auto* body = bodies.items.find(construct.body))
+                crystal->refreshMatter(*body);
+
+            const auto interframe = with<rmmr::resource::Assets>::find<rmmr::resource::meshpack::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "interframe"));
+            if (interframe and with<rmmr::scene::actor::Mesh>::exists(context, construct.actor)) {
+                auto occurrences = mech::cookOccurrences(context, *interframe, construct.construction, construct.fragments, construct.visualOf);
+                if (not occurrences.empty()) {
+                    auto meshQuantum = with<rmmr::scene::actor::Mesh>::compose(context, occurrences);
+                    if (meshQuantum)
+                        with<rmmr::scene::actor::Mesh>::replace(context, construct.actor, std::move(*meshQuantum));
+                }
+            }
+            Construct::Actions::syncVisualCohesion(context, id);
+            return true;
+        }
+
     }
 
-    void Construct::Actions::update(Stewarding) {
+    void Construct::Actions::update(Stewarding context) {
+        shedDead(context);
+    }
+
+    void Construct::Actions::shedDead(Stewarding context) {
+        vector<Id> gone;
+        for (auto [id, construct] : context.direct<Construct>().items) {
+            if (not shedOne(context, id, construct))
+                gone.push_back(id);
+        }
+        for (const auto id : gone)
+            with<Construct>::kraken(context, id);
     }
 
     struct Construct::Internals : Construct::DefaultInternals {

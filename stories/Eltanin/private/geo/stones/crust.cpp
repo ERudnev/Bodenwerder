@@ -1,13 +1,13 @@
 #include "geo/stones/crust.h"
 
-#include <eltanin/geo/minerals.q1.h>
+#include <eltanin/locality/geo/minerals.q1.h>
 
 #include <glm/common.hpp>
 
 #include <cmath>
 #include <cstdint>
 
-namespace eltanin::geo {
+namespace eltanin::locality::geo {
 
     using namespace fqsm::api;
 

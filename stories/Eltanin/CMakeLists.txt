@@ -20,9 +20,9 @@ set(Eltanin_Q1
     locality/thing.q1
     locality/bullet.q1
     locality/construct.q1
-    geo/minerals.q1
-    geo/rock.q1
-    geo/boulder.q1
+    locality/geo/minerals.q1
+    locality/geo/rock.q1
+    locality/geo/boulder.q1
 )
 
 add_executable(${PROJECT_NAME})

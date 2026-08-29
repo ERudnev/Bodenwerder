@@ -380,6 +380,14 @@ namespace rmmr::scene::actor {
         }
     };
 
+    void Mesh::Actions::replace(Writing context, Id id, Quantum next) {
+        auto mesh = with<Mesh>::modify(context, id);
+        next.sprite = mesh->sprite;
+        next.spriteIndex = mesh->spriteIndex;
+        Mesh::Internals::release(context, id, *mesh);
+        *mesh = std::move(next);
+    }
+
     auto Mesh::customAspectReactions() -> const Behavior {
         return {
             reaction::deletion<Mesh>(&Mesh::Internals::release),

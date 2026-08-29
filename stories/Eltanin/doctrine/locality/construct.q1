@@ -43,5 +43,6 @@ namespace eltanin
         visualOf: vector<mech::Construction::Primitive::Id>
       all
         *update()
+        *shedDead()
         !followBody(~phys::Body)->>linearPass(>all)
         >syncVisualCohesion()

@@ -22,7 +22,6 @@
 #include <algorithm>
 #include <format>
 #include <map>
-#include <set>
 #include <utility>
 
 #include <glm/geometric.hpp>
@@ -203,46 +202,6 @@ namespace eltanin::mech {
             return loop;
         }
 
-        auto sortedKnots(vector<integer> points) -> vector<integer> {
-            std::sort(points.begin(), points.end());
-            return points;
-        }
-
-        auto beamFace(integer start, integer end, const vector<vec3>& shape, float thickness) -> phys::rigid::Hull::Face {
-            const vec3 edge = shape[static_cast<std::size_t>(end)] - shape[static_cast<std::size_t>(start)];
-            const vec3 mid = 0.5f * (shape[static_cast<std::size_t>(start)] + shape[static_cast<std::size_t>(end)]);
-            vec3 normal = glm::cross(edge, mid);
-            if (glm::dot(normal, normal) < 1.0e-12f)
-                normal = glm::cross(edge, vec3{1.0f, 0.0f, 0.0f});
-            if (glm::dot(normal, normal) < 1.0e-12f)
-                normal = glm::cross(edge, vec3{0.0f, 1.0f, 0.0f});
-            const float mag = glm::length(normal);
-            if (mag > 1.0e-12f)
-                normal /= mag;
-            else
-                normal = vec3{0.0f, 1.0f, 0.0f};
-            return phys::rigid::Hull::Face{.points = {start, end}, .normal = normal, .thickness = thickness, .twoSided = false};
-        }
-
-        auto plateFace(const vector<integer>& points, const vector<vec3>& shape, float thickness) -> phys::rigid::Hull::Face {
-            if (points.size() < 3)
-                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}, .thickness = thickness, .twoSided = false};
-            const vec3 ab = shape[static_cast<std::size_t>(points[1])] - shape[static_cast<std::size_t>(points[0])];
-            const vec3 ac = shape[static_cast<std::size_t>(points[2])] - shape[static_cast<std::size_t>(points[0])];
-            vec3 normal = glm::cross(ab, ac);
-            const float mag = glm::length(normal);
-            if (mag <= 1.0e-12f)
-                return phys::rigid::Hull::Face{.points = {}, .normal = vec3{0.0f, 1.0f, 0.0f}, .thickness = thickness, .twoSided = false};
-            normal /= mag;
-            return phys::rigid::Hull::Face{.points = points, .normal = normal, .thickness = thickness, .twoSided = true};
-        }
-
-        auto hullFace(const vector<integer>& points, const vector<vec3>& shape, float thickness) -> phys::rigid::Hull::Face {
-            if (points.size() == 2)
-                return beamFace(points[0], points[1], shape, thickness);
-            return plateFace(points, shape, thickness);
-        }
-
         using Primitive = Construction::Primitive;
         using PrimitiveId = Primitive::Id;
 
@@ -267,34 +226,6 @@ namespace eltanin::mech {
             const float share = totalMass / static_cast<float>(primitive.loop.size());
             for (auto& welded : primitive.loop)
                 welded.mass += share;
-        }
-
-        auto loopGrid(const Primitive& primitive) -> vector<index3> {
-            vector<index3> grid;
-            grid.reserve(primitive.loop.size());
-            for (const auto& welded : primitive.loop)
-                grid.push_back(welded.gridPos);
-            return grid;
-        }
-
-        void compileParticles(Construction& construction) {
-            construction.evaluatedParticles.clear();
-            forEachPrimitiveLoop(construction, [&](PrimitiveId, const Primitive& primitive) {
-                for (const auto& welded : primitive.loop)
-                    construction.evaluatedParticles.push_back(Primitive::Point{.gridPos = welded.gridPos, .mass = welded.mass});
-            });
-        }
-
-        void addLoopEdges(const Primitive& primitive, std::set<EdgeKey, EdgeLess>& covered) {
-            const auto grid = loopGrid(primitive);
-            if (grid.size() == 2) {
-                covered.insert(canonicalEdge(grid[0], grid[1]));
-                return;
-            }
-            if (grid.size() < 3)
-                return;
-            for (std::size_t index = 0; index < grid.size(); ++index)
-                covered.insert(canonicalEdge(grid[index], grid[(index + 1) % grid.size()]));
         }
 
         auto glueFrame(Reading context, resource::meshpack::Asset::Id interframe, const Blueprint::Quantum& blueprint) -> std::pair<Construction, Construct::ActorFragments> {
@@ -451,66 +382,6 @@ namespace eltanin::mech {
             return {std::move(construction), std::move(fragments)};
         }
 
-        auto cookOccurrences(Reading context, resource::meshpack::Asset::Id interframe, const Construction& construction, const Construct::ActorFragments& fragments, vector<Construction::Primitive::Id>& visualOf) -> vector<scene::actor::Mesh::Occurrence> {
-            vector<scene::actor::Mesh::Occurrence> occurrences;
-            visualOf.clear();
-            occurrences.reserve(fragments.ofKnot.size() + fragments.ofRib.size() + fragments.ofMembrane.size() + fragments.ofPlate.size() + fragments.ofVolume.size());
-            visualOf.reserve(occurrences.capacity());
-            for (const auto& piece : fragments.ofKnot) {
-                const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, cornerMesh(piece.quark.kind));
-                if (not resolved)
-                    continue;
-                const auto knot = construction.knots.find(piece.knot);
-                if (knot == construction.knots.end() or knot->second.loop.empty())
-                    continue;
-                occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = knot->second.loop[0].gridPos, .ori = piece.quark.ori}});
-                visualOf.push_back(piece.knot);
-            }
-            for (const auto& piece : fragments.ofRib) {
-                const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, halfribMesh(piece.quark.kind, piece.quark.pole));
-                if (not resolved)
-                    continue;
-                occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.at, .ori = piece.quark.ori}});
-                visualOf.push_back(piece.rib);
-            }
-            for (const auto& piece : fragments.ofMembrane) {
-                const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, membraneMesh(piece.quark.kind));
-                if (not resolved)
-                    continue;
-                occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.at, .ori = piece.quark.ori}});
-                visualOf.push_back(piece.membrane);
-            }
-            for (const auto& piece : fragments.ofPlate) {
-                const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
-                if (not mountId)
-                    continue;
-                const auto& mount = with<Mount>::get(context, *mountId);
-                const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, mount.tempMesh.pack);
-                if (not packId)
-                    continue;
-                const auto resolved = with<resource::meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
-                if (not resolved)
-                    continue;
-                occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
-                visualOf.push_back(piece.plate);
-            }
-            for (const auto& piece : fragments.ofVolume) {
-                const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
-                if (not mountId)
-                    continue;
-                const auto& mount = with<Mount>::get(context, *mountId);
-                const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, mount.tempMesh.pack);
-                if (not packId)
-                    continue;
-                const auto resolved = with<resource::meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
-                if (not resolved)
-                    continue;
-                occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
-                visualOf.push_back(piece.volume);
-            }
-            return occurrences;
-        }
-
         auto crystalFrom(const Construction& construction, Pose pose, vec3 velocity) -> phys::rigid::Crystal::Quantum {
             const auto count = construction.evaluatedParticles.size();
             vector<vec3> shape(count, vec3{0.0f, 0.0f, 0.0f});
@@ -527,58 +398,7 @@ namespace eltanin::mech {
                 moment += glm::dvec3{meters} * double(point.mass);
                 mass += double(point.mass);
             }
-            std::set<EdgeKey, EdgeLess> covered;
-            for (const auto& [_, primitive] : construction.membranes)
-                addLoopEdges(primitive, covered);
-            for (const auto& [_, primitive] : construction.plates)
-                addLoopEdges(primitive, covered);
-            for (const auto& [_, faces] : construction.volumes) {
-                for (const auto& primitive : faces)
-                    addLoopEdges(primitive, covered);
-            }
-            phys::rigid::Hull hull{.faces = {}};
-            hull.faces.reserve(construction.ribs.size() + construction.membranes.size() + construction.plates.size());
-            integer cursor = 0;
-            auto takeLoop = [&](const Primitive& primitive) {
-                vector<integer> points;
-                points.reserve(primitive.loop.size());
-                while (points.size() < primitive.loop.size())
-                    points.push_back(cursor++);
-                return points;
-            };
-            auto pushPolygon = [&](const Primitive& primitive, const vector<integer>& points) {
-                if (primitive.loop.size() < 2 or points.size() != primitive.loop.size())
-                    return;
-                auto face = hullFace(points, shape, primitive.thickness);
-                if (face.points.empty())
-                    return;
-                const auto key = sortedKnots(points);
-                for (auto& existing : hull.faces) {
-                    if (sortedKnots(existing.points) != key)
-                        continue;
-                    if (primitive.thickness > existing.thickness)
-                        existing = std::move(face);
-                    return;
-                }
-                hull.faces.push_back(std::move(face));
-            };
-            forEachPrimitiveLoop(construction, [&](PrimitiveId id, const Primitive& primitive) {
-                const auto points = takeLoop(primitive);
-                if (construction.knots.find(id) != construction.knots.end())
-                    return;
-                if (construction.ribs.find(id) != construction.ribs.end()) {
-                    const auto grid = loopGrid(primitive);
-                    if (grid.size() != 2 or sameLattice(grid[0], grid[1]))
-                        return;
-                    if (covered.find(canonicalEdge(grid[0], grid[1])) != covered.end())
-                        return;
-                    if (points.size() != 2)
-                        return;
-                    hull.faces.push_back(beamFace(points[0], points[1], shape, primitive.thickness));
-                    return;
-                }
-                pushPolygon(primitive, points);
-            });
+            auto hull = cookHull(construction, shape);
             return phys::rigid::Crystal::Quantum{
                 .particles = std::move(particles),
                 .shape = std::move(shape),
@@ -587,6 +407,66 @@ namespace eltanin::mech {
             };
         }
 
+    }
+
+    auto cookOccurrences(Reading context, resource::meshpack::Asset::Id interframe, const Construction& construction, const locality::Construct::ActorFragments& fragments, vector<Construction::Primitive::Id>& visualOf) -> vector<scene::actor::Mesh::Occurrence> {
+        vector<scene::actor::Mesh::Occurrence> occurrences;
+        visualOf.clear();
+        occurrences.reserve(fragments.ofKnot.size() + fragments.ofRib.size() + fragments.ofMembrane.size() + fragments.ofPlate.size() + fragments.ofVolume.size());
+        visualOf.reserve(occurrences.capacity());
+        for (const auto& piece : fragments.ofKnot) {
+            const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, cornerMesh(piece.quark.kind));
+            if (not resolved)
+                continue;
+            const auto knot = construction.knots.find(piece.knot);
+            if (knot == construction.knots.end() or knot->second.loop.empty())
+                continue;
+            occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = knot->second.loop[0].gridPos, .ori = piece.quark.ori}});
+            visualOf.push_back(piece.knot);
+        }
+        for (const auto& piece : fragments.ofRib) {
+            const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, halfribMesh(piece.quark.kind, piece.quark.pole));
+            if (not resolved)
+                continue;
+            occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.at, .ori = piece.quark.ori}});
+            visualOf.push_back(piece.rib);
+        }
+        for (const auto& piece : fragments.ofMembrane) {
+            const auto resolved = with<resource::meshpack::Asset>::resolve(context, interframe, membraneMesh(piece.quark.kind));
+            if (not resolved)
+                continue;
+            occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.at, .ori = piece.quark.ori}});
+            visualOf.push_back(piece.membrane);
+        }
+        for (const auto& piece : fragments.ofPlate) {
+            const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
+            if (not mountId)
+                continue;
+            const auto& mount = with<Mount>::get(context, *mountId);
+            const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, mount.tempMesh.pack);
+            if (not packId)
+                continue;
+            const auto resolved = with<resource::meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
+            if (not resolved)
+                continue;
+            occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
+            visualOf.push_back(piece.plate);
+        }
+        for (const auto& piece : fragments.ofVolume) {
+            const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
+            if (not mountId)
+                continue;
+            const auto& mount = with<Mount>::get(context, *mountId);
+            const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, mount.tempMesh.pack);
+            if (not packId)
+                continue;
+            const auto resolved = with<resource::meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
+            if (not resolved)
+                continue;
+            occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
+            visualOf.push_back(piece.volume);
+        }
+        return occurrences;
     }
 
     auto Assembler::spawn(Writing context, scene::Root::Id root, Pose pose, Blueprint::Id blueprintId, vec3 velocity) -> locality::Construct::Id {

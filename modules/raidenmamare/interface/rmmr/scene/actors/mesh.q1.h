@@ -52,6 +52,7 @@ namespace rmmr::scene::actor {
             static auto composeOne(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id) -> optional<Quantum>;
             static auto composeOne(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texture3array::Asset::Id) -> optional<Quantum>;
             static void writeCohesions(Reading, Id, std::span<const float>);
+            static void replace(Writing, Id, Quantum);
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };
         struct Internals;

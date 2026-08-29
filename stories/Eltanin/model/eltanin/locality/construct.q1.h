@@ -54,6 +54,7 @@ namespace eltanin::locality {
         };
         struct Actions : BaseActions {
             static void update(Stewarding);
+            static void shedDead(Stewarding);
             static void syncVisualCohesion(Reading, Id);
         };
         struct Internals;

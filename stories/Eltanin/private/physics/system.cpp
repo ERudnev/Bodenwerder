@@ -1,8 +1,8 @@
 #include "physics/system.h"
 #include "physics/collisions.h"
 
-#include <eltanin/geo/rock.q1.h>
-#include <eltanin/geo/boulder.q1.h>
+#include <eltanin/locality/geo/rock.q1.h>
+#include <eltanin/locality/geo/boulder.q1.h>
 #include <rmmr/scene/root.q1.h>
 
 #include <glm/geometric.hpp>
@@ -233,8 +233,8 @@ namespace eltanin::phys {
     void System::radiate(Stewarding context) {
         if (thermalDebtUs < Settings::thermalStepUs)
             return;
-        with<::eltanin::geo::Rock>::radiate(context, static_cast<float>(thermalDebtUs) * 1e-6f);
-        with<::eltanin::geo::Boulder>::radiate(context, static_cast<float>(thermalDebtUs) * 1e-6f);
+        with<::eltanin::locality::geo::Rock>::radiate(context, static_cast<float>(thermalDebtUs) * 1e-6f);
+        with<::eltanin::locality::geo::Boulder>::radiate(context, static_cast<float>(thermalDebtUs) * 1e-6f);
         thermalDebtUs = 0;
     }
 

@@ -1,8 +1,8 @@
 #include "physics/ui.h"
 
-#include <eltanin/geo/boulder.q1.h>
 #include <eltanin/locality/construct.q1.h>
-#include <eltanin/geo/rock.q1.h>
+#include <eltanin/locality/geo/boulder.q1.h>
+#include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/resources/builders/geometryGenerator.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -77,7 +77,7 @@ namespace eltanin::phys {
         }
 
         auto productionActorOf(Reading context, Body::Id body) -> base::maybe<rmmr::scene::actor::Mesh::Id> {
-            for (const auto [_, rock] : context->aspect<geo::Rock>().items()) {
+            for (const auto [_, rock] : context->aspect<locality::geo::Rock>().items()) {
                 if (rock.body == body)
                     return rock.actor;
             }
@@ -85,7 +85,7 @@ namespace eltanin::phys {
                 if (construct.body == body)
                     return construct.actor;
             }
-            for (const auto [_, boulder] : context->aspect<geo::Boulder>().items()) {
+            for (const auto [_, boulder] : context->aspect<locality::geo::Boulder>().items()) {
                 if (boulder.body == body)
                     return boulder.actor;
             }

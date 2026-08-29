@@ -1,10 +1,10 @@
 #include "story.h"
 
-#include <eltanin/geo/rock.q1.h>
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/locality/bullet.q1.h>
 #include <eltanin/locality/construct.q1.h>
-#include <eltanin/geo/boulder.q1.h>
+#include <eltanin/locality/geo/rock.q1.h>
+#include <eltanin/locality/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/compound.q1.h>
 #include <eltanin/physics/rigid.q1.h>
@@ -53,8 +53,8 @@ namespace eltanin {
             ask::schema::aspect<locality::Thing>(),
             ask::schema::aspect<locality::Bullet>(),
             ask::schema::aspect<locality::Construct>(),
-            ask::schema::aspect<geo::Rock>(),
-            ask::schema::aspect<geo::Boulder>(),
+            ask::schema::aspect<locality::geo::Rock>(),
+            ask::schema::aspect<locality::geo::Boulder>(),
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<mech::Blueprint>(),
             ask::schema::aspect<mech::Mount>(),

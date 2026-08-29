@@ -12,7 +12,7 @@
 #include <glm/geometric.hpp>
 #include <glm/trigonometric.hpp>
 
-namespace eltanin::geo {
+namespace eltanin::locality::geo {
 
     using namespace fqsm::api;
     using rmmr::resource::builders::geometry::CpuPresentation;

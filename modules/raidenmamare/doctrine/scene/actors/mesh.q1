@@ -40,6 +40,7 @@ namespace rmmr
           buckets: vector<Bucket>
           ?submit(#system::Device, >where: renderer::CommandBuffer)
           ?writeCohesions(vector<float>)
+          ?replace(one)
         all
           ?compose(vector<Occurrence>)->one?
           ?compose(resource::meshpack::Asset::Resolved)->one?

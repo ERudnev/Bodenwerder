@@ -1,6 +1,6 @@
 #pragma once
 
-#include <eltanin/geo/rock.q1.h>
+#include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
@@ -9,16 +9,17 @@
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::geo {
+namespace eltanin::locality::geo {
 
     using namespace fqsm::api;
 
-    struct Boulder : Entity<Boulder> {
+    struct Boulder : Feature<Boulder, Thing> {
         struct Quantum {
             Custody<phys::rigid::Ball> body;
             Custody<rmmr::scene::actor::Mesh> actor;
         };
         struct Actions : BaseActions {
+            static void update(Stewarding);
             static auto spawnGenerated(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, GeneralizedRecipe, vec3, vec3) -> Id;
             static void radiate(Stewarding, float dt);
         };

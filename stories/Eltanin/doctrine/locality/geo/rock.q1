@@ -2,12 +2,14 @@ import "rmmr/math"
 import "rmmr/scene/root"
 import "rmmr/scene/actors/mesh"
 import "rmmr/system/core"
-import "geo/minerals"
+import "locality/geo/minerals"
+import "locality/thing"
 import "physics/body"
 import "physics/rigid"
 
 namespace eltanin
-  namespace geo
+  namespace locality
+    namespace geo
 
     using Mix as @external(C++ uint64_t; 16x4-bit voxel word)
 
@@ -32,12 +34,13 @@ namespace eltanin
       always ?homogenous(Mineral::Index)->Mix
 
     // Large rock: Body + Crystal + octree Volume. Small debris → Boulder.
-    entity Rock
+    feature Rock of locality::Thing
       one
         body: custody<phys::rigid::Crystal>
         actor: custody<rmmr::scene::actor::Mesh>
         volume: Volume
       all
+        *update()
         >spawn(#rmmr::scene::Root, #system::Device, Pose, Volume, vec3, vec3)->#
         >spawnGenerated(#rmmr::scene::Root, #system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#
         >spawnIceSphere(#rmmr::scene::Root, #system::Device, Pose)->#

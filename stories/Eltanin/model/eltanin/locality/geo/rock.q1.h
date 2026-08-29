@@ -1,6 +1,7 @@
 #pragma once
 
-#include <eltanin/geo/minerals.q1.h>
+#include <eltanin/locality/geo/minerals.q1.h>
+#include <eltanin/locality/thing.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/math.q1.h>
@@ -12,7 +13,7 @@
 
 #include <cstdint>
 
-namespace eltanin::geo {
+namespace eltanin::locality::geo {
 
     using namespace fqsm::api;
 
@@ -36,13 +37,14 @@ namespace eltanin::geo {
         static auto homogenous(Mineral::Index) -> Mix;
     };
 
-    struct Rock : Entity<Rock> {
+    struct Rock : Feature<Rock, Thing> {
         struct Quantum {
             Custody<phys::rigid::Crystal> body;
             Custody<rmmr::scene::actor::Mesh> actor;
             Volume volume;
         };
         struct Actions : BaseActions {
+            static void update(Stewarding);
             static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, Volume, vec3, vec3) -> Id;
             static auto spawnGenerated(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, GeneralizedRecipe, vec3, vec3) -> Id;
             static auto spawnIceSphere(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;

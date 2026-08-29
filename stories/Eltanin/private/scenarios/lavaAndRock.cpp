@@ -1,6 +1,6 @@
 #include "scenarios/lavaAndRock.h"
 
-#include <eltanin/geo/boulder.q1.h>
+#include <eltanin/locality/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/manager.q1.h>
@@ -89,11 +89,11 @@ namespace eltanin::scenario {
     }
 
     void LavaAndRock::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
-        const auto brick = with<geo::Rock>::spawnLavaBrick(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
+        const auto brick = with<locality::geo::Rock>::spawnLavaBrick(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
         rocks.push_back(brick);
         constexpr float brickKelvin = 1800.0f;
         {
-            const auto& rock = with<geo::Rock>::get(context, brick);
+            const auto& rock = with<locality::geo::Rock>::get(context, brick);
             auto crystal = with<phys::rigid::Crystal>::modify(context, rock.body);
             for (phys::Particle& particle : crystal->particles)
                 particle.temperature = brickKelvin;
@@ -113,17 +113,17 @@ namespace eltanin::scenario {
                 const float kelvin = kelvinMax * static_cast<float>(index) / static_cast<float>(count - 1);
                 const float x = 55.0f + spacing * static_cast<float>(index);
                 const float z = 70.0f + rowStep * static_cast<float>(row);
-                const geo::GeneralizedRecipe recipe{
-                    .mix = geo::GeneralizedRecipe::homogenous(row),
+                const locality::geo::GeneralizedRecipe recipe{
+                    .mix = locality::geo::GeneralizedRecipe::homogenous(row),
                     .radius = diameter * 0.5f,
                     .lump = 0.55f,
                     .seed = 7 + index + row * 1000,
                     .spotMeters = diameter,
                     .spotContrast = 0.0f,
                 };
-                const auto id = with<geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{x, 0.0f, z}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+                const auto id = with<locality::geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{x, 0.0f, z}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
                 boulders.push_back(id);
-                const auto& boulder = with<geo::Boulder>::get(context, id);
+                const auto& boulder = with<locality::geo::Boulder>::get(context, id);
                 with<phys::rigid::Ball>::modify(context, boulder.body)->center.temperature = kelvin;
                 with<rmmr::scene::actor::MeshState>::modify(context, boulder.actor)->heat.x = kelvin;
             }
