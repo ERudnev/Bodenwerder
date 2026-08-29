@@ -22,4 +22,8 @@ namespace eltanin::resource {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    struct ScrapBox {
+        static auto materialize(Writing, rmmr::resource::geometry::Asset::Id, rmmr::system::Device::Id) -> optional<rmmr::resource::geometry::Runtime::Id>;
+    };
+
 }

@@ -8,12 +8,13 @@ import "physics/rigid"
 namespace eltanin
   namespace locality
 
-    // Hull wreckage: Body + box Solid + kube. Not geo, not Crystal.
+    // Hull wreckage: Body + box Solid + Eltanin::scrap cube (±Z face / four cut rims). Not geo, not Crystal.
+    // Cohesion 0 on the parent was the failed joint. The lump is a new body and starts with modest strength.
     feature Scrap of locality::Thing
       one
         body: custody<phys::rigid::Solid>
         actor: custody<rmmr::scene::actor::Mesh>
       all
         >update()
-        >spawn(#rmmr::scene::Root, Pose, halfExtents: vec3, mass: float, linear: vec3, omega: vec3)->#
+        >spawn(#rmmr::scene::Root, Pose, halfExtents: vec3, mass: float, linear: vec3, omega: vec3, cohesion: float)->#
         !followBody(~phys::Body)->>linearPass(>all)

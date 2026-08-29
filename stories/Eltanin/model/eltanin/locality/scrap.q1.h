@@ -19,7 +19,7 @@ namespace eltanin::locality {
         };
         struct Actions : BaseActions {
             static void update(Writing);
-            static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::Pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega) -> Id;
+            static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::Pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion) -> Id;
             static void breakOff(Writing, rmmr::scene::Root::Id, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion);
         };
         struct Internals;

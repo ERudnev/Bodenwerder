@@ -195,4 +195,16 @@ namespace eltanin::resource {
         return with<rmmr::resource::geometry::Asset>::install(context, asset_id, device, build_cpu(generator));
     }
 
+    auto ScrapBox::materialize(Writing context, rmmr::resource::geometry::Asset::Id assetId, rmmr::system::Device::Id device)
+        -> optional<rmmr::resource::geometry::Runtime::Id>
+    {
+        using SurfaceId = rmmr::resource::geometry::SurfaceId;
+        // kube() face order is +Z −Z +X −X +Y −Y; boxOf puts plate normal on Z, so the first four tris are hull, the rest are cuts.
+        auto cpu = rmmr::resource::builders::geometry::GeometryGenerator::kube();
+        vector<SurfaceId> primitiveSurfaces(12, SurfaceId{1});
+        for (std::size_t triangle = 0; triangle < 4; ++triangle)
+            primitiveSurfaces[triangle] = SurfaceId{0};
+        return with<rmmr::resource::geometry::Asset>::install(context, assetId, device, cpu, primitiveSurfaces, umap<string, SurfaceId>{{"face", SurfaceId{0}}, {"cut", SurfaceId{1}}});
+    }
+
 }

@@ -70,7 +70,7 @@ namespace eltanin::locality {
         };
 
         auto boxOf(const vector<vec3>& points, float thickness) -> LocalBox {
-            const float shell = glm::max(thickness, minHalf);
+            const float shell = glm::max(thickness * 0.5f, 0.08f);
             const quat identity{1.0f, 0.0f, 0.0f, 0.0f};
             if (points.empty())
                 return LocalBox{.center = vec3{0.0f, 0.0f, 0.0f}, .rotation = identity, .half = vec3{minHalf, minHalf, minHalf}};

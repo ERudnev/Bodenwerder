@@ -7,7 +7,9 @@
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/texture3array.q1.h>
+#include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/node.q1.h>
+#include <rmmr/scene/root.q1.h>
 
 #include "physics/system.h"
 #include "geo/stones/boulderMesh.h"
@@ -59,6 +61,49 @@ namespace eltanin::locality::geo {
             const float volume = glm::max(mass / 1000.0f, 1.0e-6f); // kg → the g/cm³·m³ quantity this formula was written for
             const float radius = std::cbrt((3.0f * volume) / (4.0f * std::numbers::pi_v<float>));
             return 4.0f * std::numbers::pi_v<float> * radius * radius;
+        }
+
+        constexpr float vaporAt = 4.0f;
+        constexpr float cutStep = 0.5f;
+        constexpr int maxCuts = 3;
+        constexpr float minRadius = 0.12f;
+        constexpr float splitPop = 2.0f;
+        constexpr float bornCohesion = 0.5f;
+
+        struct Pebble {
+            vec3 center;
+            float radius;
+            integer seed;
+        };
+
+        auto cutCount(float cohesion) -> int {
+            if (cohesion < -vaporAt)
+                return -1;
+            if (cohesion > 0.0f)
+                return 0;
+            return glm::min(maxCuts, 1 + static_cast<int>(-cohesion / cutStep));
+        }
+
+        void dichotomy(vec3 center, quat rotation, float radius, int cuts, integer seed, int axis, vector<Pebble>& out) {
+            if (cuts <= 0 or radius < minRadius * 2.0f) {
+                out.push_back(Pebble{.center = center, .radius = radius, .seed = seed});
+                return;
+            }
+            const float childRadius = radius * std::cbrt(0.5f);
+            vec3 unit{0.0f, 0.0f, 0.0f};
+            unit[axis % 3] = 1.0f;
+            const vec3 along = rotation * unit;
+            const float h = radius * 0.5f;
+            dichotomy(center - along * h, rotation, childRadius, cuts - 1, seed * 2 + 1, axis + 1, out);
+            dichotomy(center + along * h, rotation, childRadius, cuts - 1, seed * 2 + 2, axis + 1, out);
+        }
+
+        auto rootOf(Reading context, rmmr::scene::actor::Mesh::Id actor) -> optional<rmmr::scene::Root::Id> {
+            for (const auto [root, group] : context->aspect<rmmr::scene::Node_group>().items()) {
+                if (group.contains(actor))
+                    return root;
+            }
+            return {};
         }
 
     } // namespace
@@ -118,7 +163,7 @@ namespace eltanin::locality::geo {
             prevOri = glm::normalize(step * pose.rotation);
         }
         with<phys::rigid::Solid>::extend(context, body, phys::rigid::Solid::Quantum{
-            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = 0.0f}, dvec3{pose.position} - dvec3{velocity * phys::Particle::dt}, vec3{0.0f, 0.0f, 0.0f}},
+            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = bornCohesion}, dvec3{pose.position} - dvec3{velocity * phys::Particle::dt}, vec3{0.0f, 0.0f, 0.0f}},
             .prevOri = prevOri,
             .forceAngular = vec3{0.0f, 0.0f, 0.0f},
             .kind = phys::rigid::Solid::Kind::sphere,
@@ -126,11 +171,50 @@ namespace eltanin::locality::geo {
         });
         with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
         const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
-        with<Boulder>::extend(context, thing, Boulder::Quantum{.body = body, .actor = actor});
+        with<Boulder>::extend(context, thing, Boulder::Quantum{.body = body, .actor = actor, .recipe = recipe});
         return thing;
     }
 
-    void Boulder::Actions::update(Writing) {
+    void Boulder::Actions::update(Writing context) {
+        vector<Id> living;
+        for (auto [id, _] : context->aspect<Boulder>().items())
+            living.push_back(id);
+        for (const auto id : living) {
+            if (not with<Boulder>::exists(context, id))
+                continue;
+            const auto& boulder = with<Boulder>::get(context, id);
+            if (not with<phys::rigid::Solid>::exists(context, boulder.body) or not with<phys::Body>::exists(context, boulder.body)) {
+                with<Boulder>::kraken(context, id);
+                continue;
+            }
+            const auto& solid = with<phys::rigid::Solid>::get(context, boulder.body);
+            const auto& body = with<phys::Body>::get(context, boulder.body);
+            const int cuts = cutCount(solid.center.cohesion);
+            if (cuts == 0)
+                continue;
+            if (cuts > 0 and boulder.recipe.radius >= minRadius * 2.0f) {
+                const auto root = rootOf(context, boulder.actor);
+                if (root and with<rmmr::scene::actor::Mesh>::exists(context, boulder.actor)) {
+                    const auto device = with<rmmr::scene::actor::Mesh>::get(context, boulder.actor).device;
+                    const vec3 linear = vec3{(body.position - solid.center.prev) / double(phys::Particle::dt)};
+                    vector<Pebble> pieces;
+                    dichotomy(vec3{body.position}, body.orientation, boulder.recipe.radius, cuts, boulder.recipe.seed, 0, pieces);
+                    if (pieces.size() >= 2) {
+                        for (const Pebble& piece : pieces) {
+                            GeneralizedRecipe child = boulder.recipe;
+                            child.radius = piece.radius;
+                            child.seed = piece.seed;
+                            child.spotMeters = piece.radius * 2.0f;
+                            const vec3 offset = piece.center - vec3{body.position};
+                            const float offsetLen = glm::length(offset);
+                            const vec3 pop = offsetLen > 1.0e-5f ? (offset / offsetLen) * splitPop : vec3{0.0f, 0.0f, 0.0f};
+                            spawnGenerated(context, *root, device, Pose{.position = piece.center, .rotation = body.orientation}, child, linear + pop, vec3{0.0f, 0.0f, 0.0f});
+                        }
+                    }
+                }
+            }
+            with<Boulder>::kraken(context, id);
+        }
     }
 
     void Boulder::Actions::radiate(Stewarding context, float dt) {

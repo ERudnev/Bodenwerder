@@ -221,6 +221,10 @@ namespace eltanin {
             .angular_diameter_deg = 0.41f,
         });
         assets.skySphereGeometry = sky_geometry_id;
+
+        const auto scrap_id = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "scrap")});
+        with<geometry::Asset>::extend(context, scrap_id, geometry::Asset::Quantum{.entries = {}, .surfaces = {}, .mounts = {}, .entryCatalog = {}, .surfaceCatalogs = {}});
+        assets.scrap = scrap_id;
     }
 
     void Game::prepareAssets(Writing) {
@@ -245,6 +249,9 @@ namespace eltanin {
 
         if (not with<resource::SkySphereGenerator>::materialize(context, *assets.skySphereGeometry, window)) {
             return (void)context.refuse("eltanin::Game::populateWorld: sky geometry materialization failed");
+        }
+        if (not assets.scrap or not resource::ScrapBox::materialize(context, *assets.scrap, window)) {
+            return (void)context.refuse("eltanin::Game::populateWorld: scrap geometry materialization failed");
         }
 
         with<scene::Interface>::createGrid(context, root, window,

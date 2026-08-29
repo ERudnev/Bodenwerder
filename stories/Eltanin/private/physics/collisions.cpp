@@ -985,8 +985,11 @@ namespace eltanin::phys::collision {
             if (hitSolid) {
                 auto* solidBody = bodies.items.find(other);
                 auto* solid = solids.items.find(other);
-                if (solidBody and solid)
+                if (solidBody and solid) {
                     kickSolid(*solidBody, *solid, arm, -normal * (j * Particle::dt));
+                    if (solid->center.mass > 0.0f)
+                        solid->center.cohesion -= Settings::cohesionWound * glm::length(ray.core.impulse()) / solid->center.mass;
+                }
             } else {
                 auto* crystal = crystals.items.find(other);
                 auto* crystalBody = bodies.items.find(other);

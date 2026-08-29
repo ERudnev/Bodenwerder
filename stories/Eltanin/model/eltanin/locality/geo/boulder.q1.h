@@ -17,6 +17,7 @@ namespace eltanin::locality::geo {
         struct Quantum {
             Custody<phys::rigid::Solid> body;
             Custody<rmmr::scene::actor::Mesh> actor;
+            GeneralizedRecipe recipe;
         };
         struct Actions : BaseActions {
             static void update(Writing);

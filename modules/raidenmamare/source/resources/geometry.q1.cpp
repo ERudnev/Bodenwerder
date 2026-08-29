@@ -678,6 +678,33 @@ namespace rmmr::resource::geometry {
             asset->surfaceCatalogs = {{{"surface", SurfaceId{0}}}};
         }
 
+        void setCataloguedEntry(Writing context, Asset::Id assetId, const CpuPresentation& cpu, const vector<SurfaceId>& primitiveSurfaces, const umap<string, SurfaceId>& catalog) {
+            const auto indexCount = static_cast<renderer::Count>(cpu.indices.empty() ? cpu.positions.size() : cpu.indices.size());
+            SurfaceId surfaceCount{0};
+            for (const auto surface : primitiveSurfaces)
+                if (surface >= surfaceCount) surfaceCount = surface + 1;
+            vector<Asset::Surface> surfaces(static_cast<std::size_t>(surfaceCount), Asset::Surface{.indices = Asset::Range{.first = renderer::Count{0}, .count = renderer::Count{0}}});
+            for (std::size_t triangle = 0; triangle < primitiveSurfaces.size(); ++triangle) {
+                auto& range = surfaces[static_cast<std::size_t>(primitiveSurfaces[triangle])].indices;
+                const auto first = static_cast<renderer::Count>(triangle * 3);
+                if (range.count == renderer::Count{0})
+                    range.first = first;
+                range.count += renderer::Count{3};
+            }
+            auto asset = with<Asset>::modify(context, assetId);
+            asset->entries = {Asset::Entry{
+                .vertices = Asset::Range{.first = renderer::Count{0}, .count = static_cast<renderer::Count>(cpu.positions.size())},
+                .indices = Asset::Range{.first = renderer::Count{0}, .count = indexCount},
+                .surfaces = Asset::Range{.first = renderer::Count{0}, .count = static_cast<renderer::Count>(surfaceCount)},
+                .mounts = Asset::Range{.first = renderer::Count{0}, .count = renderer::Count{0}},
+                .origin = vec3{0.0f, 0.0f, 0.0f},
+            }};
+            asset->surfaces = std::move(surfaces);
+            asset->mounts = {};
+            asset->entryCatalog = {{"mesh", EntryId{0}}};
+            asset->surfaceCatalogs = {catalog};
+        }
+
         template<typename Context>
         void writeChannelOn(Context context, Runtime::Id id, primitive::GeometrySemantics::PersistentId semantic, const void* data, renderer::SizePtr bytes) {
             if (semantic == primitive::GeometrySemantics::PersistentId{0} or data == nullptr or bytes == 0 or not with<Runtime>::exists(context, id))
@@ -708,6 +735,23 @@ namespace rmmr::resource::geometry {
         if (not quantum.vao) {
             return {};
         }
+        const auto runtime_id = install_runtime(context, device, asset_id, std::move(quantum));
+        with<Runtimes>::modify(context, device)->geometries_id_mapping.insert_or_assign(asset_id, runtime_id);
+        return runtime_id;
+    }
+
+    auto Asset::Actions::install(Writing context, Id asset_id, system::Device::Id device, const CpuPresentation& cpu, const vector<SurfaceId>& primitiveSurfaces, const umap<string, SurfaceId>& surfaceCatalog) -> optional<Runtime::Id> {
+        const auto indexCount = cpu.indices.empty() ? cpu.positions.size() : cpu.indices.size();
+        if (cpu.positions.empty() or indexCount % 3 != 0)
+            return context.refuse("resource::geometry::Asset::install: mesh is empty or not triangulated");
+        if (primitiveSurfaces.size() != indexCount / 3)
+            return context.refuse("resource::geometry::Asset::install: primitive surface count does not match triangle count");
+        if (surfaceCatalog.empty())
+            return context.refuse("resource::geometry::Asset::install: surface catalog is empty");
+        setCataloguedEntry(context, asset_id, cpu, primitiveSurfaces, surfaceCatalog);
+        auto quantum = bake(context, device, cpu, primitiveSurfaces);
+        if (not quantum.vao)
+            return {};
         const auto runtime_id = install_runtime(context, device, asset_id, std::move(quantum));
         with<Runtimes>::modify(context, device)->geometries_id_mapping.insert_or_assign(asset_id, runtime_id);
         return runtime_id;

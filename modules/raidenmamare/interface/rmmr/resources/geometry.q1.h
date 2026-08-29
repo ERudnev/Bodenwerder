@@ -65,6 +65,7 @@ namespace rmmr::resource::geometry {
         struct Actions : BaseActions {
             // Bake CPU mesh into a Runtime and bind it in DeviceRuntimes mapping.
             static auto install(Writing, Id, system::Device::Id, const builders::geometry::CpuPresentation&) -> optional<Runtime::Id>;
+            static auto install(Writing, Id, system::Device::Id, const builders::geometry::CpuPresentation&, const vector<SurfaceId>&, const umap<string, SurfaceId>&) -> optional<Runtime::Id>;
             static void writeChannel(Writing, Runtime::Id, primitive::GeometrySemantics::PersistentId, const void*, renderer::SizePtr);
             static void writeChannel(Stewarding, Runtime::Id, primitive::GeometrySemantics::PersistentId, const void*, renderer::SizePtr);
         };
