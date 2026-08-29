@@ -1,5 +1,7 @@
 #include "mech/assembler.h"
 
+#include "mech/construction.h"
+#include <eltanin/locality/thing.q1.h>
 #include <eltanin/mech/mount.q1.h>
 #include <eltanin/physics/compound.q1.h>
 #include <eltanin/physics/rigid.q1.h>
@@ -29,6 +31,7 @@ namespace eltanin::mech {
 
     using namespace fqsm::api;
     using namespace rmmr;
+    using Construct = locality::Construct;
 
     namespace {
 
@@ -246,7 +249,7 @@ namespace eltanin::mech {
         constexpr float weldUnit = 1.0f;
 
         auto weldedAt(index3 grid, float mass, float strength) -> Primitive::Welded {
-            return Primitive::Welded{Primitive::Point{.gridPos = grid, .mass = mass, .particle = -1}, strength};
+            return Primitive::Welded{Primitive::Point{.gridPos = grid, .mass = mass}, strength};
         }
 
         auto primitiveOn(const vector<index3>& verts, float totalMass, float thickness, float strength) -> Primitive {
@@ -274,37 +277,12 @@ namespace eltanin::mech {
             return grid;
         }
 
-        void emitLoop(Primitive& primitive, Construction& construction) {
-            for (auto& welded : primitive.loop) {
-                const auto index = static_cast<integer>(construction.evaluatedParticles.size());
-                welded.particle = index;
-                construction.evaluatedParticles.push_back(Primitive::Point{.gridPos = welded.gridPos, .mass = welded.mass, .particle = index});
-            }
-        }
-
-        auto sortedPrimitiveIds(const auto& items) -> vector<PrimitiveId> {
-            vector<PrimitiveId> ids;
-            ids.reserve(items.size());
-            for (const auto& [id, _] : items)
-                ids.push_back(id);
-            std::sort(ids.begin(), ids.end());
-            return ids;
-        }
-
         void compileParticles(Construction& construction) {
             construction.evaluatedParticles.clear();
-            for (const auto id : sortedPrimitiveIds(construction.knots))
-                emitLoop(construction.knots.at(id), construction);
-            for (const auto id : sortedPrimitiveIds(construction.ribs))
-                emitLoop(construction.ribs.at(id), construction);
-            for (const auto id : sortedPrimitiveIds(construction.membranes))
-                emitLoop(construction.membranes.at(id), construction);
-            for (const auto id : sortedPrimitiveIds(construction.plates))
-                emitLoop(construction.plates.at(id), construction);
-            for (const auto id : sortedPrimitiveIds(construction.volumes)) {
-                for (auto& face : construction.volumes.at(id))
-                    emitLoop(face, construction);
-            }
+            forEachPrimitiveLoop(construction, [&](PrimitiveId, const Primitive& primitive) {
+                for (const auto& welded : primitive.loop)
+                    construction.evaluatedParticles.push_back(Primitive::Point{.gridPos = welded.gridPos, .mass = welded.mass});
+            });
         }
 
         void addLoopEdges(const Primitive& primitive, std::set<EdgeKey, EdgeLess>& covered) {
@@ -317,17 +295,6 @@ namespace eltanin::mech {
                 return;
             for (std::size_t index = 0; index < grid.size(); ++index)
                 covered.insert(canonicalEdge(grid[index], grid[(index + 1) % grid.size()]));
-        }
-
-        auto particlePoints(const Primitive& primitive) -> vector<integer> {
-            vector<integer> points;
-            points.reserve(primitive.loop.size());
-            for (const auto& welded : primitive.loop) {
-                if (welded.particle < 0)
-                    return {};
-                points.push_back(welded.particle);
-            }
-            return points;
         }
 
         auto glueFrame(Reading context, resource::meshpack::Asset::Id interframe, const Blueprint::Quantum& blueprint) -> std::pair<Construction, Construct::ActorFragments> {
@@ -571,22 +538,16 @@ namespace eltanin::mech {
             }
             phys::rigid::Hull hull{.faces = {}};
             hull.faces.reserve(construction.ribs.size() + construction.membranes.size() + construction.plates.size());
-            for (const auto& [_, rib] : construction.ribs) {
-                const auto grid = loopGrid(rib);
-                if (grid.size() != 2 or sameLattice(grid[0], grid[1]))
-                    continue;
-                if (covered.find(canonicalEdge(grid[0], grid[1])) != covered.end())
-                    continue;
-                const auto points = particlePoints(rib);
-                if (points.size() != 2)
-                    continue;
-                hull.faces.push_back(beamFace(points[0], points[1], shape, rib.thickness));
-            }
-            auto pushPolygon = [&](const Primitive& primitive) {
-                if (primitive.loop.size() < 2)
-                    return;
-                const auto points = particlePoints(primitive);
-                if (points.size() != primitive.loop.size())
+            integer cursor = 0;
+            auto takeLoop = [&](const Primitive& primitive) {
+                vector<integer> points;
+                points.reserve(primitive.loop.size());
+                while (points.size() < primitive.loop.size())
+                    points.push_back(cursor++);
+                return points;
+            };
+            auto pushPolygon = [&](const Primitive& primitive, const vector<integer>& points) {
+                if (primitive.loop.size() < 2 or points.size() != primitive.loop.size())
                     return;
                 auto face = hullFace(points, shape, primitive.thickness);
                 if (face.points.empty())
@@ -601,14 +562,23 @@ namespace eltanin::mech {
                 }
                 hull.faces.push_back(std::move(face));
             };
-            for (const auto& [_, primitive] : construction.membranes)
-                pushPolygon(primitive);
-            for (const auto& [_, primitive] : construction.plates)
-                pushPolygon(primitive);
-            for (const auto& [_, faces] : construction.volumes) {
-                for (const auto& primitive : faces)
-                    pushPolygon(primitive);
-            }
+            forEachPrimitiveLoop(construction, [&](PrimitiveId id, const Primitive& primitive) {
+                const auto points = takeLoop(primitive);
+                if (construction.knots.find(id) != construction.knots.end())
+                    return;
+                if (construction.ribs.find(id) != construction.ribs.end()) {
+                    const auto grid = loopGrid(primitive);
+                    if (grid.size() != 2 or sameLattice(grid[0], grid[1]))
+                        return;
+                    if (covered.find(canonicalEdge(grid[0], grid[1])) != covered.end())
+                        return;
+                    if (points.size() != 2)
+                        return;
+                    hull.faces.push_back(beamFace(points[0], points[1], shape, primitive.thickness));
+                    return;
+                }
+                pushPolygon(primitive, points);
+            });
             return phys::rigid::Crystal::Quantum{
                 .particles = std::move(particles),
                 .shape = std::move(shape),
@@ -619,7 +589,7 @@ namespace eltanin::mech {
 
     }
 
-    auto Assembler::spawn(Writing context, scene::Root::Id root, Pose pose, Blueprint::Id blueprintId, vec3 velocity) -> Construct::Id {
+    auto Assembler::spawn(Writing context, scene::Root::Id root, Pose pose, Blueprint::Id blueprintId, vec3 velocity) -> locality::Construct::Id {
         if (not with<Blueprint>::exists(context, blueprintId))
             return context.refuse("eltanin::mech::Assembler::spawn: blueprint missing");
         const auto interframe = with<resource::Assets>::find<resource::meshpack::Asset>(context, resource::Unit::Name::from("Eltanin", "interframe"));
@@ -647,9 +617,10 @@ namespace eltanin::mech {
         with<phys::rigid::Crystal>::extend(context, body, std::move(crystal));
         with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
 
-        const auto id = with<Construct>::create(context, Construct::Quantum{.body = body, .actor = actor, .fragments = std::move(fragments), .construction = std::move(construction), .visualOf = std::move(visualOf)});
-        with<Construct>::syncVisualCohesion(context, id);
-        return id;
+        const auto thing = with<locality::Thing>::create(context, locality::Thing::Quantum{.bornAt = with<locality::Thing>::get_global(context).now});
+        with<Construct>::extend(context, thing, Construct::Quantum{.body = body, .actor = actor, .fragments = std::move(fragments), .construction = std::move(construction), .visualOf = std::move(visualOf)});
+        with<Construct>::syncVisualCohesion(context, thing);
+        return thing;
     }
 
 }

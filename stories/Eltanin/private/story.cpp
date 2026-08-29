@@ -3,7 +3,7 @@
 #include <eltanin/geo/rock.q1.h>
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/locality/bullet.q1.h>
-#include <eltanin/mech/construction.q1.h>
+#include <eltanin/locality/construct.q1.h>
 #include <eltanin/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/compound.q1.h>
@@ -50,9 +50,9 @@ namespace eltanin {
             ask::schema::aspect<phys::rigid::Ball>(),
             ask::schema::aspect<phys::rigid::Ray>(),
             ask::schema::aspect<phys::rigid::CelestialGravity>(),
-            ask::schema::aspect<mech::Construct>(),
             ask::schema::aspect<locality::Thing>(),
             ask::schema::aspect<locality::Bullet>(),
+            ask::schema::aspect<locality::Construct>(),
             ask::schema::aspect<geo::Rock>(),
             ask::schema::aspect<geo::Boulder>(),
             ask::schema::aspect<resource::Assets>(),

@@ -1,5 +1,6 @@
 #include <eltanin/locality/thing.q1.h>
 
+#include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/bullet.q1.h>
 
 namespace eltanin::locality {
@@ -11,6 +12,7 @@ namespace eltanin::locality {
             return;
         context.direct<Thing>().global.now += dtUs;
         with<Bullet>::update(context);
+        with<Construct>::update(context);
     }
 
 }

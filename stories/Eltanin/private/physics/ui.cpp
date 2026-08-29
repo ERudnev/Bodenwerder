@@ -1,7 +1,7 @@
 #include "physics/ui.h"
 
 #include <eltanin/geo/boulder.q1.h>
-#include <eltanin/mech/construction.q1.h>
+#include <eltanin/locality/construct.q1.h>
 #include <eltanin/geo/rock.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/resources/builders/geometryGenerator.h>
@@ -81,7 +81,7 @@ namespace eltanin::phys {
                 if (rock.body == body)
                     return rock.actor;
             }
-            for (const auto [_, construct] : context->aspect<mech::Construct>().items()) {
+            for (const auto [_, construct] : context->aspect<locality::Construct>().items()) {
                 if (construct.body == body)
                     return construct.actor;
             }
@@ -354,7 +354,7 @@ namespace eltanin::phys {
                 ImGui::Separator();
                 ImGui::TextUnformatted("Constructs");
                 bool any = false;
-                for (const auto [id, construct] : context->aspect<mech::Construct>().items()) {
+                for (const auto [id, construct] : context->aspect<locality::Construct>().items()) {
                     if (with<Body>::exists(context, construct.body)) {
                         any = true;
                         break;
@@ -367,7 +367,7 @@ namespace eltanin::phys {
                     ImGui::TableSetupColumn("Mass");
                     ImGui::TableSetupColumn("Speed");
                     ImGui::TableHeadersRow();
-                    for (const auto [id, construct] : context->aspect<mech::Construct>().items()) {
+                    for (const auto [id, construct] : context->aspect<locality::Construct>().items()) {
                         if (not with<Body>::exists(context, construct.body))
                             continue;
                         const auto& body = with<Body>::get(context, construct.body);

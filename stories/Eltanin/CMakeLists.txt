@@ -19,6 +19,7 @@ set(Eltanin_Q1
     mech/mount.q1
     locality/thing.q1
     locality/bullet.q1
+    locality/construct.q1
     geo/minerals.q1
     geo/rock.q1
     geo/boulder.q1

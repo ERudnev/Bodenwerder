@@ -1,0 +1,47 @@
+import "rmmr/scene/actors/mesh"
+import "rmmr/resources/manager"
+import "physics/body"
+import "physics/rigid"
+import "mech/semantics"
+import "mech/construction"
+import "locality/thing"
+
+namespace eltanin
+  namespace locality
+
+    feature Construct of Thing
+      struct ActorFragments
+        struct OfKnot
+          knot: mech::Construction::Primitive::Id
+          quark: mech::skeleton::Corner
+        struct OfRib
+          rib: mech::Construction::Primitive::Id
+          quark: mech::skeleton::Halfrib
+          at: index3
+        struct OfMembrane
+          membrane: mech::Construction::Primitive::Id
+          quark: mech::skeleton::Membrane
+          at: index3
+        struct OfPlate
+          plate: mech::Construction::Primitive::Id
+          mount: rmmr::resource::Unit::Name
+          transform: mech::space::Transform
+        struct OfVolume
+          volume: mech::Construction::Primitive::Id
+          mount: rmmr::resource::Unit::Name
+          transform: mech::space::Transform
+        ofKnot: vector<OfKnot>
+        ofRib: vector<OfRib>
+        ofMembrane: vector<OfMembrane>
+        ofPlate: vector<OfPlate>
+        ofVolume: vector<OfVolume>
+      one
+        body: custody<phys::rigid::Crystal>
+        actor: custody<rmmr::scene::actor::Mesh>
+        fragments: ActorFragments
+        construction: mech::Construction
+        visualOf: vector<mech::Construction::Primitive::Id>
+      all
+        *update()
+        !followBody(~phys::Body)->>linearPass(>all)
+        >syncVisualCohesion()

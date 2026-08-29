@@ -1,7 +1,3 @@
-import "rmmr/scene/actors/mesh"
-import "rmmr/resources/manager"
-import "physics/body"
-import "physics/rigid"
 import "semantics"
 
 namespace eltanin
@@ -13,7 +9,6 @@ namespace eltanin
         struct Point
           gridPos: index3
           mass: float
-          particle: integer // into evaluatedParticles / Crystal.particles; unique per primitive vertex, even at a shared lattice knot
         struct Welded of Point
           strength: float
         loop: vector<Welded>
@@ -24,39 +19,3 @@ namespace eltanin
       plates: umap<Primitive::Id, Primitive>
       volumes: umap<Primitive::Id, vector<Primitive>>
       evaluatedParticles: vector<Primitive::Point>
-
-    entity Construct
-      struct ActorFragments
-        struct OfKnot
-          knot: Construction::Primitive::Id
-          quark: skeleton::Corner
-        struct OfRib
-          rib: Construction::Primitive::Id
-          quark: skeleton::Halfrib
-          at: index3
-        struct OfMembrane
-          membrane: Construction::Primitive::Id
-          quark: skeleton::Membrane
-          at: index3
-        struct OfPlate
-          plate: Construction::Primitive::Id
-          mount: rmmr::resource::Unit::Name
-          transform: space::Transform
-        struct OfVolume
-          volume: Construction::Primitive::Id
-          mount: rmmr::resource::Unit::Name
-          transform: space::Transform
-        ofKnot: vector<OfKnot>
-        ofRib: vector<OfRib>
-        ofMembrane: vector<OfMembrane>
-        ofPlate: vector<OfPlate>
-        ofVolume: vector<OfVolume>
-      one
-        body: custody<phys::rigid::Crystal>
-        actor: custody<rmmr::scene::actor::Mesh>
-        fragments: ActorFragments
-        construction: Construction
-        visualOf: vector<Construction::Primitive::Id>
-      all
-        !followBody(~phys::Body)->>linearPass(>all)
-        >syncVisualCohesion()
