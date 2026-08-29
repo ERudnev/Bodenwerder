@@ -1,23 +1,19 @@
 import "rmmr/math"
 import "rmmr/scene/root"
 import "rmmr/scene/actors/mesh"
-import "rmmr/system/core"
-import "locality/geo/rock"
 import "locality/thing"
 import "physics/body"
 import "physics/rigid"
 
 namespace eltanin
   namespace locality
-    namespace geo
 
-    // Small debris: Body + Solid + debris mesh. No Volume / Crystal.
-    feature Boulder of locality::Thing
+    // Hull wreckage: Body + box Solid + kube. Not geo, not Crystal.
+    feature Scrap of locality::Thing
       one
         body: custody<phys::rigid::Solid>
         actor: custody<rmmr::scene::actor::Mesh>
       all
         >update()
-        >spawnGenerated(#rmmr::scene::Root, #system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#
-        *radiate(dt: float)
+        >spawn(#rmmr::scene::Root, Pose, halfExtents: vec3, mass: float, linear: vec3, omega: vec3)->#
         !followBody(~phys::Body)->>linearPass(>all)

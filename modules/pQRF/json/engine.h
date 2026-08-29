@@ -294,11 +294,8 @@ namespace fqsm::processing::persistency::json {
             return has_aspect_document<Meta>(document.root());
         }
 
-        void replace(Stewarding steward, JsonDocument& document) override {
-            const auto name = aspect_name_of<Meta>();
-            const auto* aspect = document.root().find(name);
-            if (!aspect) return;
-            replace_aspect_document<Meta>(steward, *aspect);
+        void replace(Writing context, JsonDocument& document) override {
+            pull(context, document);
         }
 
         void pull(Writing context, JsonDocument& document) override {

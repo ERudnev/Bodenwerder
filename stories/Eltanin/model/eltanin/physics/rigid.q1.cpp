@@ -156,7 +156,7 @@ namespace eltanin::phys::rigid {
     // Each pull on a victim gets −F on the source, mass-weighted onto source particles once per source per tick.
     void CelestialGravity::Actions::apply(Stewarding context) {
         auto crystals = context.direct<Crystal>();
-        auto balls = context.direct<Ball>();
+        auto solids = context.direct<Solid>();
         auto bodies = context.direct<Body>();
         for (auto [sourceId, gravity] : context.direct<CelestialGravity>().items) {
             if (gravity.averageRadius <= 0.0f or gravity.surfaceAcceleration == 0.0f)
@@ -183,7 +183,7 @@ namespace eltanin::phys::rigid {
                     recoil -= force;
                 }
             }
-            for (auto [id, ball] : balls.items) {
+            for (auto [id, solid] : solids.items) {
                 auto* body = bodies.items.find(id);
                 if (not body or body->totalMass <= 0.0f)
                     continue;
@@ -194,7 +194,7 @@ namespace eltanin::phys::rigid {
                 const double distance = std::sqrt(distance2);
                 const double accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
                 const dvec3 force = offset * (accelScale * double(body->totalMass));
-                ball.center.force += vec3{force};
+                solid.center.force += vec3{force};
                 recoil -= force;
             }
             for (auto [_, ray] : context.direct<Ray>().items) {

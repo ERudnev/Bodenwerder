@@ -3,6 +3,7 @@
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/locality/bullet.q1.h>
 #include <eltanin/locality/construct.q1.h>
+#include <eltanin/locality/scrap.q1.h>
 #include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
@@ -47,12 +48,13 @@ namespace eltanin {
             ask::schema::aspect<phys::Body>(),
             ask::schema::aspect<phys::Compound>(),
             ask::schema::aspect<phys::rigid::Crystal>(),
-            ask::schema::aspect<phys::rigid::Ball>(),
+            ask::schema::aspect<phys::rigid::Solid>(),
             ask::schema::aspect<phys::rigid::Ray>(),
             ask::schema::aspect<phys::rigid::CelestialGravity>(),
             ask::schema::aspect<locality::Thing>(),
             ask::schema::aspect<locality::Bullet>(),
             ask::schema::aspect<locality::Construct>(),
+            ask::schema::aspect<locality::Scrap>(),
             ask::schema::aspect<locality::geo::Rock>(),
             ask::schema::aspect<locality::geo::Boulder>(),
             ask::schema::aspect<resource::Assets>(),
@@ -300,7 +302,7 @@ namespace eltanin {
         populateWorld(context, window);
     }
 
-    void Game::advanceSim(Stewarding context, int64 dt_us) {
+    void Game::advanceSim(Writing context, int64 dt_us) {
         with<locality::Thing>::update(context, dt_us);
     }
 

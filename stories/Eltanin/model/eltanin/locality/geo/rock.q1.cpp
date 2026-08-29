@@ -503,7 +503,7 @@ namespace eltanin::locality::geo {
         return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 80.0f, 0.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
-    void Rock::Actions::update(Stewarding) {
+    void Rock::Actions::update(Writing) {
     }
 
     void Rock::Actions::radiate(Stewarding, float dt) {

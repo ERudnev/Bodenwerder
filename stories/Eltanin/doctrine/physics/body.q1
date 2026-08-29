@@ -20,7 +20,7 @@ namespace eltanin
       ?velocity()->dvec3
       ?impulse()->vec3
 
-    // World-facing kinematics cache. Ball, Crystal and Ray are features of the same id.
+    // World-facing kinematics cache. Solid, Crystal and Ray are features of the same id.
     entity Body
       one
         position: dvec3

@@ -24,7 +24,7 @@ namespace fqsm::processing::persistency {
 
         virtual Palette getTypesAtLocation(Reading, Location) = 0;
         virtual bool updateFromLocation(Writing, Palette, Location) = 0;
-        virtual bool loadFromLocation(Stewarding, Palette, Location) = 0;
+        virtual bool loadFromLocation(Writing, Palette, Location) = 0;
         virtual bool saveToLocation(Writing, Palette, Location) = 0;
 
     protected:

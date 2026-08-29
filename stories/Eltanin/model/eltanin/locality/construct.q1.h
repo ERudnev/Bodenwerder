@@ -53,8 +53,8 @@ namespace eltanin::locality {
             vector<mech::Construction::Primitive::Id> visualOf;
         };
         struct Actions : BaseActions {
-            static void update(Stewarding);
-            static void shedDead(Stewarding);
+            static void update(Writing);
+            static void shedDead(Writing);
             static void syncVisualCohesion(Reading, Id);
         };
         struct Internals;

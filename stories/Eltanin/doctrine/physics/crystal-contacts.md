@@ -18,7 +18,7 @@
 
 Узкая фаза против Crystal — **точка или шар против граней hull**. BVH в rest-space, запрос в системе тела. Один контакт — **одна ближайшая грань**.
 
-Crystal–Crystal: два прохода (живые партиклы A против `pose * shape` B и наоборот). Ball–Crystal: шар против hull; импульс только с пути шар-против-shape, плюс пинки опор грани.
+Crystal–Crystal: два прохода (живые партиклы A против `pose * shape` B и наоборот). Solid–Crystal: сфера или OBB против hull; импульс только с пути simple-против-shape, плюс пинки опор грани. `Solid.kind` читается один раз в Occupant (`sphere` / `box`).
 
 `Face.thickness` входит в запрос (AABB грани раздувается на `thickness`). `Face.twoSided` — только 3+.
 
@@ -29,7 +29,7 @@ Crystal–Crystal: два прохода (живые партиклы A прот
 
 1-vert (коробочка) нет. Дырка у Construct = не создали face, либо точка дальше 20 см от оси балки / от плиты.
 
-Камни-шрапнель — щуп формы (Ball в compound-vs-compound). Это не боеприпас.
+Камни-шрапнель — щуп формы (Solid-сфера в compound-vs-compound). Это не боеприпас. Будущий лом — Solid-коробки в `Compound.members`.
 
 ---
 

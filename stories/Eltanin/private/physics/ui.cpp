@@ -1,6 +1,7 @@
 #include "physics/ui.h"
 
 #include <eltanin/locality/construct.q1.h>
+#include <eltanin/locality/scrap.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
 #include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/world.q1.h>
@@ -88,6 +89,10 @@ namespace eltanin::phys {
             for (const auto [_, boulder] : context->aspect<locality::geo::Boulder>().items()) {
                 if (boulder.body == body)
                     return boulder.actor;
+            }
+            for (const auto [_, scrap] : context->aspect<locality::Scrap>().items()) {
+                if (scrap.body == body)
+                    return scrap.actor;
             }
             return {};
         }
@@ -254,8 +259,8 @@ namespace eltanin::phys {
             state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, root, with<Body>::get(context, crystalId).pose(), resolved, appearance));
             hullRefs.push_back(HullRef{.body = crystalId});
         }
-        for (const auto [ballId, _] : context->aspect<rigid::Ball>().items()) {
-            const auto& body = with<Body>::get(context, ballId);
+        for (const auto [solidId, _] : context->aspect<rigid::Solid>().items()) {
+            const auto& body = with<Body>::get(context, solidId);
             const float radius = body.radius;
             if (radius <= 0.0f)
                 continue;
@@ -265,9 +270,9 @@ namespace eltanin::phys {
                 .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = hullMaterial, .textures = {{"albedoMap", "debug02.jpg"}}}}},
                 .texpack = hullTexpack,
             };
-            const auto ballAppearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{radius, radius, radius});
-            state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, root, body.pose(), resolved, ballAppearance));
-            hullRefs.push_back(HullRef{.body = ballId});
+            const auto solidAppearance = with<rmmr::scene::actor::MeshState>::defaults(rmmr::RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{radius, radius, radius});
+            state.hulls.push_back(with<rmmr::scene::Interface>::createMeshActor(context, root, body.pose(), resolved, solidAppearance));
+            hullRefs.push_back(HullRef{.body = solidId});
         }
         hideProduction(context);
     }

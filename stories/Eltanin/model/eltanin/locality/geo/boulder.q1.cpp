@@ -117,10 +117,12 @@ namespace eltanin::locality::geo {
             const quat step = glm::angleAxis(-omegaLen * phys::Particle::dt, omega / omegaLen);
             prevOri = glm::normalize(step * pose.rotation);
         }
-        with<phys::rigid::Ball>::extend(context, body, phys::rigid::Ball::Quantum{
+        with<phys::rigid::Solid>::extend(context, body, phys::rigid::Solid::Quantum{
             .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = 0.0f}, dvec3{pose.position} - dvec3{velocity * phys::Particle::dt}, vec3{0.0f, 0.0f, 0.0f}},
             .prevOri = prevOri,
             .forceAngular = vec3{0.0f, 0.0f, 0.0f},
+            .kind = phys::rigid::Solid::Kind::sphere,
+            .halfExtents = vec3{recipe.radius, recipe.radius, recipe.radius},
         });
         with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
         const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
@@ -128,7 +130,7 @@ namespace eltanin::locality::geo {
         return thing;
     }
 
-    void Boulder::Actions::update(Stewarding) {
+    void Boulder::Actions::update(Writing) {
     }
 
     void Boulder::Actions::radiate(Stewarding context, float dt) {
@@ -136,12 +138,12 @@ namespace eltanin::locality::geo {
             return;
         const float sigma = phys::Settings::radiateSigma;
         const float sky = phys::Settings::skyKelvin;
-        auto balls = context.direct<phys::rigid::Ball>();
+        auto solids = context.direct<phys::rigid::Solid>();
         for (auto [_, boulder] : context.direct<Boulder>().items) {
-            auto* ball = balls.items.find(boulder.body);
-            if (not ball)
+            auto* solid = solids.items.find(boulder.body);
+            if (not solid)
                 continue;
-            auto& particle = ball->center;
+            auto& particle = solid->center;
             if (particle.mass <= 0.0f)
                 continue;
             const float temperature = glm::max(particle.temperature, sky);
@@ -174,7 +176,7 @@ namespace eltanin::locality::geo {
     auto Boulder::customAspectReactions() -> const Behavior {
         return {
             reaction::structural::custody<Boulder, rmmr::scene::actor::Mesh, &Boulder::Quantum::actor>{},
-            reaction::structural::custody<Boulder, phys::rigid::Ball, &Boulder::Quantum::body>{},
+            reaction::structural::custody<Boulder, phys::rigid::Solid, &Boulder::Quantum::body>{},
             reaction::aspect_wide<Boulder, phys::Body>(&Boulder::Internals::followBody),
         };
     }

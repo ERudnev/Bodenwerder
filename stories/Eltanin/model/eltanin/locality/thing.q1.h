@@ -14,7 +14,7 @@ namespace eltanin::locality {
             int64 now;
         };
         struct Actions : BaseActions {
-            static void update(Stewarding, int64 dtUs);
+            static void update(Writing, int64 dtUs);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }

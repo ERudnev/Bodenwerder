@@ -1,17 +1,23 @@
 #include <eltanin/locality/construct.q1.h>
+#include <eltanin/locality/scrap.q1.h>
 
 #include "mech/assembler.h"
 #include "mech/construction.h"
 #include "physics/hullBvh.h"
+#include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/node.q1.h>
+#include <rmmr/scene/root.q1.h>
 
 #include <span>
 
+#include <glm/common.hpp>
 #include <glm/geometric.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/mat3x3.hpp>
 
 namespace eltanin::locality {
 
@@ -44,6 +50,86 @@ namespace eltanin::locality {
             return found != worst.end() and found->second <= 0.0f;
         }
 
+        constexpr float minHalf = 0.25f;
+
+        auto quatFromAxes(vec3 x, vec3 y, vec3 z) -> quat {
+            return glm::normalize(glm::quat_cast(mat3{x, y, z}));
+        }
+
+        auto perpendicular(vec3 axis) -> vec3 {
+            vec3 hint{0.0f, 1.0f, 0.0f};
+            if (glm::abs(glm::dot(axis, hint)) > 0.9f)
+                hint = vec3{1.0f, 0.0f, 0.0f};
+            return glm::normalize(glm::cross(axis, hint));
+        }
+
+        struct LocalBox {
+            vec3 center;
+            quat rotation;
+            vec3 half;
+        };
+
+        auto boxOf(const vector<vec3>& points, float thickness) -> LocalBox {
+            const float shell = glm::max(thickness, minHalf);
+            const quat identity{1.0f, 0.0f, 0.0f, 0.0f};
+            if (points.empty())
+                return LocalBox{.center = vec3{0.0f, 0.0f, 0.0f}, .rotation = identity, .half = vec3{minHalf, minHalf, minHalf}};
+            if (points.size() == 1)
+                return LocalBox{.center = points[0], .rotation = identity, .half = vec3{shell, shell, shell}};
+            if (points.size() == 2) {
+                const vec3 delta = points[1] - points[0];
+                const float length = glm::length(delta);
+                if (length < 1.0e-5f)
+                    return LocalBox{.center = points[0], .rotation = identity, .half = vec3{shell, shell, shell}};
+                const vec3 x = delta / length;
+                const vec3 y = perpendicular(x);
+                const vec3 z = glm::cross(x, y);
+                return LocalBox{.center = 0.5f * (points[0] + points[1]), .rotation = quatFromAxes(x, y, z), .half = vec3{length * 0.5f, shell, shell}};
+            }
+            vec3 sum{0.0f, 0.0f, 0.0f};
+            for (const vec3& point : points)
+                sum += point;
+            const vec3 centroid = sum / static_cast<float>(points.size());
+            vec3 normal = glm::cross(points[1] - points[0], points[2] - points[0]);
+            const float normalLen = glm::length(normal);
+            if (normalLen < 1.0e-8f)
+                return LocalBox{.center = centroid, .rotation = identity, .half = vec3{shell, shell, shell}};
+            normal /= normalLen;
+            const vec3 x = glm::normalize(points[1] - points[0]);
+            const vec3 y = glm::cross(normal, x);
+            float minX = 1.0e30f;
+            float maxX = -1.0e30f;
+            float minY = 1.0e30f;
+            float maxY = -1.0e30f;
+            for (const vec3& point : points) {
+                const vec3 delta = point - centroid;
+                const float u = glm::dot(delta, x);
+                const float v = glm::dot(delta, y);
+                minX = glm::min(minX, u);
+                maxX = glm::max(maxX, u);
+                minY = glm::min(minY, v);
+                maxY = glm::max(maxY, v);
+            }
+            const vec3 center = centroid + x * (0.5f * (minX + maxX)) + y * (0.5f * (minY + maxY));
+            return LocalBox{.center = center, .rotation = quatFromAxes(x, y, normal), .half = vec3{glm::max(0.5f * (maxX - minX), minHalf), glm::max(0.5f * (maxY - minY), minHalf), shell}};
+        }
+
+        auto rootOf(Reading context, rmmr::scene::actor::Mesh::Id actor) -> optional<rmmr::scene::Root::Id> {
+            for (const auto [root, group] : context->aspect<rmmr::scene::Node_group>().items()) {
+                if (group.contains(actor))
+                    return root;
+            }
+            return {};
+        }
+
+        struct DeadChunk {
+            float cohesion;
+            float thickness;
+            float mass;
+            dvec3 momentum;
+            vector<vec3> locals;
+        };
+
         template<typename Piece, typename IdOf>
         void keepLive(vector<Piece>& items, IdOf idOf, const umap<mech::Construction::Primitive::Id, float>& worst) {
             vector<Piece> live;
@@ -55,12 +141,11 @@ namespace eltanin::locality {
             items = std::move(live);
         }
 
-        auto shedOne(Stewarding context, Construct::Id id, Construct::Quantum& construct) -> bool {
+        auto shedOne(Writing context, Construct::Id id, Construct::Quantum& construct) -> bool {
             if (not with<phys::rigid::Crystal>::exists(context, construct.body))
                 return true;
-            auto crystals = context.direct<phys::rigid::Crystal>();
-            auto* crystal = crystals.items.find(construct.body);
-            if (not crystal or crystal->particles.size() != construct.construction.evaluatedParticles.size() or crystal->particles.size() != crystal->shape.size())
+            auto crystal = with<phys::rigid::Crystal>::modify(context, construct.body);
+            if (crystal->particles.size() != construct.construction.evaluatedParticles.size() or crystal->particles.size() != crystal->shape.size())
                 return true;
             const auto worst = cohesionByPrimitive(construct.construction, crystal->particles);
             bool anyDead = false;
@@ -77,19 +162,35 @@ namespace eltanin::locality {
             vector<vec3> shape;
             particles.reserve(crystal->particles.size());
             shape.reserve(crystal->shape.size());
+            umap<mech::Construction::Primitive::Id, DeadChunk> dead;
             integer cursor = 0;
             bool mismatch = false;
             mech::forEachPrimitiveLoop(construct.construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
                 if (mismatch)
                     return;
-                const bool dead = dropPrimitive(worst, primitiveId);
+                const bool gone = dropPrimitive(worst, primitiveId);
+                DeadChunk* chunk = nullptr;
+                if (gone) {
+                    auto found = dead.find(primitiveId);
+                    if (found == dead.end()) {
+                        const auto cohesion = worst.find(primitiveId);
+                        found = dead.emplace(primitiveId, DeadChunk{.cohesion = cohesion->second, .thickness = primitive.thickness, .mass = 0.0f, .momentum = dvec3{0.0, 0.0, 0.0}, .locals = {}}).first;
+                    }
+                    found->second.thickness = glm::max(found->second.thickness, primitive.thickness);
+                    chunk = &found->second;
+                }
                 for (std::size_t slot = 0; slot < primitive.loop.size(); ++slot) {
                     const auto index = static_cast<std::size_t>(cursor);
                     if (index >= crystal->particles.size() or index >= crystal->shape.size()) {
                         mismatch = true;
                         return;
                     }
-                    if (not dead) {
+                    if (gone) {
+                        const auto& particle = crystal->particles[index];
+                        chunk->locals.push_back(crystal->shape[index]);
+                        chunk->mass += particle.mass;
+                        chunk->momentum += particle.velocity() * double(particle.mass);
+                    } else {
                         particles.push_back(crystal->particles[index]);
                         shape.push_back(crystal->shape[index]);
                     }
@@ -98,6 +199,22 @@ namespace eltanin::locality {
             });
             if (mismatch or static_cast<std::size_t>(cursor) != crystal->particles.size())
                 return true;
+
+            if (const auto root = rootOf(context, construct.actor)) {
+                if (with<phys::Body>::exists(context, construct.body)) {
+                    const auto& body = with<phys::Body>::get(context, construct.body);
+                    for (const auto& [_, chunk] : dead) {
+                        if (chunk.mass <= 0.0f or chunk.locals.empty())
+                            continue;
+                        const auto box = boxOf(chunk.locals, chunk.thickness);
+                        const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
+                        const quat worldRot = glm::normalize(body.orientation * box.rotation);
+                        const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
+                        Scrap::Actions::breakOff(context, *root, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion);
+                    }
+                }
+            }
+
             if (particles.empty())
                 return false;
 
@@ -131,9 +248,8 @@ namespace eltanin::locality {
             crystal->com = mass > 0.0 ? vec3{moment / mass} : vec3{0.0f, 0.0f, 0.0f};
             crystal->hull = mech::cookHull(construct.construction, crystal->shape);
             phys::collision::cookHullBvh(crystal->hull, crystal->shape);
-            auto bodies = context.direct<phys::Body>();
-            if (auto* body = bodies.items.find(construct.body))
-                crystal->refreshMatter(*body);
+            if (with<phys::Body>::exists(context, construct.body))
+                crystal->refreshMatter(*with<phys::Body>::modify(context, construct.body));
 
             const auto interframe = with<rmmr::resource::Assets>::find<rmmr::resource::meshpack::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "interframe"));
             if (interframe and with<rmmr::scene::actor::Mesh>::exists(context, construct.actor)) {
@@ -150,14 +266,18 @@ namespace eltanin::locality {
 
     }
 
-    void Construct::Actions::update(Stewarding context) {
+    void Construct::Actions::update(Writing context) {
         shedDead(context);
     }
 
-    void Construct::Actions::shedDead(Stewarding context) {
+    void Construct::Actions::shedDead(Writing context) {
         vector<Id> gone;
-        for (auto [id, construct] : context.direct<Construct>().items) {
-            if (not shedOne(context, id, construct))
+        vector<Id> living;
+        for (auto [id, _] : context->aspect<Construct>().items())
+            living.push_back(id);
+        for (const auto id : living) {
+            auto construct = with<Construct>::modify(context, id);
+            if (not shedOne(context, id, *construct))
                 gone.push_back(id);
         }
         for (const auto id : gone)

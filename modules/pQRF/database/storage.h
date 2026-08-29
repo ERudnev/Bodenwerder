@@ -42,7 +42,7 @@ namespace fqsm::processing::persistency::database {
         virtual ~ArchiveOps() = default;
 
         virtual bool present(DatabaseProxy&) = 0;
-        virtual void replace(Stewarding, DatabaseProxy&) = 0;
+        virtual void replace(Writing, DatabaseProxy&) = 0;
         virtual void pull(Writing, DatabaseProxy&) = 0;
         virtual void push(Reading, DatabaseProxy&) = 0;
 
@@ -56,7 +56,7 @@ namespace fqsm::processing::persistency::database {
 
         auto getTypesAtLocation(Reading, Location) -> Palette override;
         bool updateFromLocation(Writing, Palette, Location) override;
-        bool loadFromLocation(Stewarding, Palette, Location) override;
+        bool loadFromLocation(Writing, Palette, Location) override;
         bool saveToLocation(Writing, Palette, Location) override;
     };
 

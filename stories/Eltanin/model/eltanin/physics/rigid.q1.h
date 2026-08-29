@@ -4,6 +4,7 @@
 
 #include <fQSM/api/interface.h>
 
+#include <cstdint>
 #include <vector>
 
 namespace eltanin::phys::rigid {
@@ -32,11 +33,17 @@ namespace eltanin::phys::rigid {
         Bvh bvh;
     };
 
-    struct Ball : Feature<Ball, Body> {
+    struct Solid : Feature<Solid, Body> {
+        enum class Kind : std::uint8_t {
+            sphere,
+            box,
+        };
         struct Quantum {
             Particle center;
             quat prevOri;
             vec3 forceAngular;
+            Kind kind;
+            vec3 halfExtents;
         };
         struct Actions : BaseActions {};
         struct Internals : DefaultInternals {};

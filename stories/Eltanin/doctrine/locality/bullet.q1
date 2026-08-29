@@ -20,5 +20,5 @@ namespace eltanin
         shell30mm: #rmmr::scene::actor::Family?
         >bind(#rmmr::scene::Root)
         >spawnShell30mm(#rmmr::scene::Root, Pose, speed: float)->#
-        *update()
+        >update()
         !followBody(~phys::Body)->>linearPass(>all)

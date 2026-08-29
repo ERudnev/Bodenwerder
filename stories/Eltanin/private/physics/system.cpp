@@ -67,22 +67,22 @@ namespace eltanin::phys {
                 ray.core.force += ray.core.mass * dragScale * vec3{ray.core.position - ray.core.prev};
             }
         }
-        for (auto [id, ball] : context.direct<rigid::Ball>().items) {
+        for (auto [id, solid] : context.direct<rigid::Solid>().items) {
             auto* body = bodies.items.find(id);
             if (not body or body->totalMass <= 0.0f)
                 continue;
             if (factor < 1.0f)
-                ball.center.force += body->totalMass * dragScale * vec3{body->position - ball.center.prev};
+                solid.center.force += body->totalMass * dragScale * vec3{body->position - solid.center.prev};
             if (spinFactor >= 1.0f)
                 continue;
             const float inertia = 0.4f * body->totalMass * body->radius * body->radius;
             if (inertia <= 1.0e-12f)
                 continue;
-            const quat qRel = glm::normalize(body->orientation * glm::conjugate(ball.prevOri));
+            const quat qRel = glm::normalize(body->orientation * glm::conjugate(solid.prevOri));
             vec3 omega = (2.0f / dt) * vec3{qRel.x, qRel.y, qRel.z};
             if (qRel.w < 0.0f)
                 omega = -omega;
-            ball.forceAngular += inertia * ((spinFactor - 1.0f) / dt) * omega;
+            solid.forceAngular += inertia * ((spinFactor - 1.0f) / dt) * omega;
         }
     }
 
@@ -91,9 +91,9 @@ namespace eltanin::phys {
             for (Particle& particle : crystal.particles)
                 particle.force = vec3{0.0f, 0.0f, 0.0f};
         }
-        for (auto [_, ball] : context.direct<rigid::Ball>().items) {
-            ball.center.force = vec3{0.0f, 0.0f, 0.0f};
-            ball.forceAngular = vec3{0.0f, 0.0f, 0.0f};
+        for (auto [_, solid] : context.direct<rigid::Solid>().items) {
+            solid.center.force = vec3{0.0f, 0.0f, 0.0f};
+            solid.forceAngular = vec3{0.0f, 0.0f, 0.0f};
         }
         for (auto [_, ray] : context.direct<rigid::Ray>().items)
             ray.core.force = vec3{0.0f, 0.0f, 0.0f};
@@ -115,11 +115,11 @@ namespace eltanin::phys {
             }
         }
         auto bodies = context.direct<Body>();
-        for (auto [id, ball] : context.direct<rigid::Ball>().items) {
+        for (auto [id, solid] : context.direct<rigid::Solid>().items) {
             auto* body = bodies.items.find(id);
             if (not body or body->totalMass <= 0.0f)
                 continue;
-            ball.center.force += body->totalMass * gravity;
+            solid.center.force += body->totalMass * gravity;
         }
         for (auto [_, ray] : context.direct<rigid::Ray>().items) {
             if (ray.core.mass <= 0.0f)
@@ -144,34 +144,34 @@ namespace eltanin::phys {
         }
     }
 
-    void System::integrateBalls(fqsm::Direct<Body> bodies, fqsm::Direct<rigid::Ball> balls) {
+    void System::integrateSolids(fqsm::Direct<Body> bodies, fqsm::Direct<rigid::Solid> solids) {
         const float dt = Particle::dt;
         const double dt2 = double(dt) * double(dt);
         const double rest2 = double(Settings::restLinear) * double(Settings::restLinear);
-        for (auto [id, ball] : balls.items) {
+        for (auto [id, solid] : solids.items) {
             auto* body = bodies.items.find(id);
             if (not body or body->totalMass <= 0.0f)
                 continue;
 
             const dvec3 previousPos = body->position;
-            const dvec3 accel = dvec3{ball.center.force / body->totalMass};
-            dvec3 step = body->position - ball.center.prev;
+            const dvec3 accel = dvec3{solid.center.force / body->totalMass};
+            dvec3 step = body->position - solid.center.prev;
             if (glm::dot(step, step) < rest2)
                 step = dvec3{0.0, 0.0, 0.0};
             body->position += step + accel * dt2;
-            ball.center.prev = previousPos;
-            ball.center.position = body->position;
+            solid.center.prev = previousPos;
+            solid.center.position = body->position;
 
-            // Solid sphere: I = ⅖ m r²
+            // Sphere inertia: I = ⅖ m r²
             const float inertia = 0.4f * body->totalMass * body->radius * body->radius;
             if (inertia <= 1.0e-12f)
                 continue;
 
-            const quat qRel = glm::normalize(body->orientation * glm::conjugate(ball.prevOri));
+            const quat qRel = glm::normalize(body->orientation * glm::conjugate(solid.prevOri));
             vec3 omega = (2.0f / dt) * vec3{qRel.x, qRel.y, qRel.z};
             if (qRel.w < 0.0f)
                 omega = -omega;
-            omega += (ball.forceAngular / inertia) * dt;
+            omega += (solid.forceAngular / inertia) * dt;
             if (glm::length(omega) * dt < Settings::restLinear)
                 omega = vec3{0.0f, 0.0f, 0.0f};
 
@@ -181,7 +181,7 @@ namespace eltanin::phys {
                 const quat stepOri = glm::angleAxis(omegaLen * dt, omega / omegaLen);
                 body->orientation = glm::normalize(stepOri * body->orientation);
             }
-            ball.prevOri = previousOri;
+            solid.prevOri = previousOri;
         }
     }
 
@@ -222,7 +222,7 @@ namespace eltanin::phys {
     void System::tick(Stewarding context) {
         accumulateForces(context);
         integrate(context.direct<rigid::Crystal>());
-        integrateBalls(context.direct<Body>(), context.direct<rigid::Ball>());
+        integrateSolids(context.direct<Body>(), context.direct<rigid::Solid>());
         integrateRays(context.direct<Body>(), context.direct<rigid::Ray>());
         restoreBases(context);
         applyConnectivity(context);

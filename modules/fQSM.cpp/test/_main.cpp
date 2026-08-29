@@ -4,6 +4,7 @@
 
 #define FQSM_FEATURES_TESTS(X) \
     X(structural_constraints) \
+    X(direct_taint_feature_birth) \
     X(anchor_constraints) \
     X(entity_relations) \
     X(relations_index_build) \

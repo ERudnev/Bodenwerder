@@ -1259,8 +1259,8 @@ namespace fqsm::processing::persistency::database {
             return has_storage_schema<Meta>(db.engine());
         }
 
-        void replace(Stewarding steward, DatabaseProxy& db) override {
-            replace_aspect<Meta>(db.engine(), steward);
+        void replace(Writing context, DatabaseProxy& db) override {
+            pull(context, db);
         }
 
         void pull(Writing context, DatabaseProxy& db) override {

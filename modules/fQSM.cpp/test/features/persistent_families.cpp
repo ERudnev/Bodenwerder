@@ -83,7 +83,7 @@ void persistent_families()
         const auto loadable = archivist.getTypesAtLocation(fromDb, dbPath) & palette;
         EXPECT_TRUE(!loadable.empty()) << "db has Person/Family tables";
         {
-            Stewarding session = fromDb;
+            Writing session = fromDb;
             EXPECT_TRUE(archivist.loadFromLocation(session, loadable, dbPath)) << "load sqlite";
         }
 
@@ -103,7 +103,7 @@ void persistent_families()
         const auto loadable = archivist.getTypesAtLocation(fromJson, jsonPath) & palette;
         EXPECT_TRUE(!loadable.empty()) << "json has Person/Family sections";
         {
-            Stewarding session = fromJson;
+            Writing session = fromJson;
             EXPECT_TRUE(archivist.loadFromLocation(session, loadable, jsonPath)) << "load json";
         }
 

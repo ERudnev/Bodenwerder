@@ -91,16 +91,14 @@ namespace eltanin::locality {
         return thing;
     }
 
-    void Bullet::Actions::update(Stewarding context) {
+    void Bullet::Actions::update(Writing context) {
         constexpr int64 lifetimeUs = 5'000'000;
-        auto things = context.direct<Thing>();
-        const int64 now = things.global.now;
+        const int64 now = with<Thing>::get_global(context).now;
         vector<Id> expired;
-        for (auto [id, _] : context.direct<Bullet>().items) {
-            const auto* thing = things.items.find(id);
-            if (not thing)
+        for (auto [id, _] : context->aspect<Bullet>().items()) {
+            if (not with<Thing>::exists(context, id))
                 continue;
-            if (now - thing->bornAt >= lifetimeUs)
+            if (now - with<Thing>::get(context, id).bornAt >= lifetimeUs)
                 expired.push_back(id);
 
         }

@@ -124,7 +124,7 @@ namespace eltanin::scenario {
                 const auto id = with<locality::geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{x, 0.0f, z}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
                 boulders.push_back(id);
                 const auto& boulder = with<locality::geo::Boulder>::get(context, id);
-                with<phys::rigid::Ball>::modify(context, boulder.body)->center.temperature = kelvin;
+                with<phys::rigid::Solid>::modify(context, boulder.body)->center.temperature = kelvin;
                 with<rmmr::scene::actor::MeshState>::modify(context, boulder.actor)->heat.x = kelvin;
             }
         }
