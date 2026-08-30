@@ -2,7 +2,7 @@ namespace eltanin
   namespace locality
 
     feature Flash of Thing
-      one
+      struct Effect
         struct Kinetic
           strength: float
           radius: float
@@ -10,13 +10,16 @@ namespace eltanin
           temperature: Kelvins
           energy: float
           radius: float
-        struct Light
-          energy: float
+        struct Fracture
+          yield: float
           radius: float
         duration: seconds
         kinetic: Kinetic
         thermal: Thermal
-        light: Light
+        fracture: Fracture
+      one
+        effect: Effect
+        actor: custody<rmmr::scene::actor::Mesh>
       all
         >update()
         >spawnAsExplosion(position: vec3, strength: float)->#

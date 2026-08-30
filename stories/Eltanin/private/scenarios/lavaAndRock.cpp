@@ -88,8 +88,8 @@ namespace eltanin::scenario {
         assets.crust = crustId;
     }
 
-    void LavaAndRock::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
-        const auto brick = with<locality::geo::Rock>::spawnLavaBrick(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
+    void LavaAndRock::populate(Writing context, rmmr::system::Device::Id device) {
+        const auto brick = with<locality::geo::Rock>::spawnLavaBrick(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
         rocks.push_back(brick);
         constexpr float brickKelvin = 1800.0f;
         {
@@ -121,7 +121,7 @@ namespace eltanin::scenario {
                     .spotMeters = diameter,
                     .spotContrast = 0.0f,
                 };
-                const auto id = with<locality::geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{x, 0.0f, z}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+                const auto id = with<locality::geo::Boulder>::spawnGenerated(context, device, Pose::from(Pos{x, 0.0f, z}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
                 boulders.push_back(id);
                 const auto& boulder = with<locality::geo::Boulder>::get(context, id);
                 with<phys::rigid::Solid>::modify(context, boulder.body)->center.temperature = kelvin;

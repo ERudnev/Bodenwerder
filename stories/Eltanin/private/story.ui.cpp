@@ -226,7 +226,7 @@ namespace eltanin {
         if (not canCreate)
             ImGui::BeginDisabled();
         if (ImGui::Button("Create", ImVec2{-1.0f, 0.0f}) and canCreate)
-            mech::Assembler::spawn(world, world_view->scene, Pose::from(panel.spawnPos, panel.spawnHpb), *panel.blueprint, panel.spawnVel);
+            mech::Assembler::spawn(world, Pose::from(panel.spawnPos, panel.spawnHpb), *panel.blueprint, panel.spawnVel);
         if (not canCreate)
             ImGui::EndDisabled();
         ImGui::End();

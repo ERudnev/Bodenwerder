@@ -246,6 +246,7 @@ namespace eltanin {
         });
 
         const auto root = with<scene::Interface>::createScene(context);
+        with<locality::Thing>::modify_global(context)->scene = root;
         physics.emplace(root);
 
         if (not with<resource::SkySphereGenerator>::materialize(context, *assets.skySphereGeometry, window)) {
@@ -283,8 +284,8 @@ namespace eltanin {
         with<controller::Camera3d>::create(context, camera);
         with<scene::Interface>::createLight(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{-25.0f, -30.0f, 0.0f}), item<scene::Light>{.kind = scene::Light::Kind::directional, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 8.0f, .range = 0.0f});
 
-        bindGameEntities(context, root);
-        scenario.populate(context, root, window);
+        bindGameEntities(context);
+        scenario.populate(context, window);
 
         {
             auto world = with<World>::modify_global(context);
@@ -302,8 +303,8 @@ namespace eltanin {
         blueprints.create(context);
     }
 
-    void Game::bindGameEntities(Writing context, scene::Root::Id root) {
-        with<locality::Bullet>::bind(context, root);
+    void Game::bindGameEntities(Writing context) {
+        with<locality::Bullet>::bind(context);
     }
 
     void Game::setup(Writing context, system::Window::Id window) {

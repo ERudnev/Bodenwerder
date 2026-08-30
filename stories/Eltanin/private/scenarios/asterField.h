@@ -18,7 +18,7 @@ namespace eltanin::scenario {
         Assets assets;
 
         void loadResources(Writing, const rmmr::wrapper::assets::Handles& shared) override;
-        void populate(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id) override;
+        void populate(Writing, rmmr::system::Device::Id) override;
     };
 
 }

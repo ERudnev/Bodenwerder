@@ -155,7 +155,7 @@ namespace eltanin::scenario {
         assets.crust = crustId;
     }
 
-    void BoundersAndStones::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
+    void BoundersAndStones::populate(Writing context, rmmr::system::Device::Id device) {
         const locality::geo::Mix palettes[hornCount]{
             nibble(1, 8) | nibble(2, 4) | nibble(3, 3),
             nibble(0, 15),
@@ -188,7 +188,7 @@ namespace eltanin::scenario {
                 .spotMeters = 8.0f,
                 .spotContrast = 0.0f,
             };
-            const auto id = with<locality::geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.08f, 0.0f});
+            const auto id = with<locality::geo::Rock>::spawnGenerated(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.08f, 0.0f});
             rocks.push_back(id);
             const auto& rock = with<locality::geo::Rock>::get(context, id);
             with<phys::rigid::CelestialGravity>::extend(context, rock.body, coreGravity);
@@ -215,7 +215,7 @@ namespace eltanin::scenario {
                 .spotContrast = glm::clamp(0.78f + 0.14f * unit(rng), 0.70f, 1.0f),
             };
             occupied[index] = Occupied{.position = pose.position, .radius = diameter * 0.5f};
-            rocks.push_back(with<locality::geo::Rock>::spawnGenerated(context, root, device, pose, recipe, orbitVelocity(pose.position), spinOmega(sphereMass(diameter, mixDensity(recipe.mix)), spinK, 1.0f, rng)));
+            rocks.push_back(with<locality::geo::Rock>::spawnGenerated(context, device, pose, recipe, orbitVelocity(pose.position), spinOmega(sphereMass(diameter, mixDensity(recipe.mix)), spinK, 1.0f, rng)));
         }
 
         for (int slot = 0; slot < pebbleCount; ++slot) {
@@ -241,7 +241,7 @@ namespace eltanin::scenario {
                 .spotContrast = 0.0f,
             };
             const float mass = sphereMass(diameter, locality::geo::Mineral::table()[static_cast<std::size_t>(mineral)].kgPerCubicMeter());
-            boulders.push_back(with<locality::geo::Boulder>::spawnGenerated(context, root, device, pose, recipe, orbitVelocity(pose.position), spinOmega(mass, spinK, unit(rng), rng)));
+            boulders.push_back(with<locality::geo::Boulder>::spawnGenerated(context, device, pose, recipe, orbitVelocity(pose.position), spinOmega(mass, spinK, unit(rng), rng)));
         }
     }
 

@@ -1,5 +1,4 @@
 import "rmmr/math"
-import "rmmr/scene/root"
 import "rmmr/scene/actors/mesh"
 import "rmmr/system/core"
 import "locality/geo/rock"
@@ -20,6 +19,6 @@ namespace eltanin
         recipe: GeneralizedRecipe
       all
         >update()
-        >spawnGenerated(#rmmr::scene::Root, #system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#
+        >spawnGenerated(#system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#
         *radiate(dt: seconds)
         !followBody(~phys::Body)->>linearPass(>all)

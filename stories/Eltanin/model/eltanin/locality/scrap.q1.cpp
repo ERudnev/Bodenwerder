@@ -77,14 +77,6 @@ namespace eltanin::locality {
             dichotomy(second, cuts - 1, out);
         }
 
-        auto rootOf(Reading context, scene::actor::Mesh::Id actor) -> optional<scene::Root::Id> {
-            for (const auto [root, group] : context->aspect<scene::Node_group>().items()) {
-                if (group.contains(actor))
-                    return root;
-            }
-            return {};
-        }
-
     }
 
     void Scrap::Actions::update(Writing context) {
@@ -105,18 +97,20 @@ namespace eltanin::locality {
             if (cuts == 0)
                 continue;
             if (cuts > 0) {
-                const auto root = rootOf(context, scrap.actor);
                 const int axis = longestAxis(solid.halfExtents);
-                if (root and solid.halfExtents[axis] >= minHalf * 2.0f) {
+                if (with<Thing>::get_global(context).scene and solid.halfExtents[axis] >= minHalf * 2.0f) {
                     const vec3 linear = vec3{(body.position - solid.center.prev) / double(phys::Particle::dt)};
-                    breakOff(context, *root, vec3{body.position}, body.orientation, solid.halfExtents, body.totalMass, linear, solid.center.cohesion);
+                    breakOff(context, vec3{body.position}, body.orientation, solid.halfExtents, body.totalMass, linear, solid.center.cohesion);
                 }
             }
             with<Scrap>::kraken(context, id);
         }
     }
 
-    auto Scrap::Actions::spawn(Writing context, scene::Root::Id root, Pose pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion) -> Id {
+    auto Scrap::Actions::spawn(Writing context, Pose pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion) -> Id {
+        const auto scene = with<Thing>::get_global(context).scene;
+        if (not scene)
+            return context.refuse("eltanin::locality::Scrap::spawn: locality has no scene");
         const vec3 half = glm::max(halfExtents, vec3{0.08f, 0.08f, 0.08f});
         if (mass <= 0.0f)
             return context.refuse("eltanin::locality::Scrap::spawn: mass must be positive");
@@ -142,7 +136,7 @@ namespace eltanin::locality {
         if (not meshQuantum)
             return context.refuse("eltanin::locality::Scrap::spawn: mesh compose failed");
         const vec3 scale{half.x * 2.0f, half.y * 2.0f, half.z * 2.0f};
-        const auto actor = with<scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, scale));
+        const auto actor = with<scene::Interface>::createMeshActor(context, *scene, pose, std::move(*meshQuantum), with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, scale));
         // Hull wreck-mix is actor-wide; cohesion 0 would paint the steel rims with panel_tech_1.
         const float intact[] = {1.0f};
         with<scene::actor::Mesh>::writeCohesions(context, actor, std::span<const float>{intact, 1});
@@ -167,7 +161,7 @@ namespace eltanin::locality {
         return thing;
     }
 
-    void Scrap::Actions::breakOff(Writing context, scene::Root::Id root, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion) {
+    void Scrap::Actions::breakOff(Writing context, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion) {
         const int cuts = cutCount(cohesion);
         if (cuts < 0 or mass <= 0.0f)
             return;
@@ -182,7 +176,7 @@ namespace eltanin::locality {
             const vec3 offset = piece.center - worldCenter;
             const float offsetLen = glm::length(offset);
             const vec3 pop = offsetLen > 1.0e-5f ? (offset / offsetLen) * splitPop : vec3{0.0f, 0.0f, 0.0f};
-            spawn(context, root, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear + pop, omega, bornCohesion);
+            spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear + pop, omega, bornCohesion);
         }
     }
 

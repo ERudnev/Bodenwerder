@@ -1,5 +1,4 @@
 import "rmmr/math"
-import "rmmr/scene/root"
 import "rmmr/scene/actors/family"
 import "physics/body"
 import "physics/rigid"
@@ -18,7 +17,7 @@ namespace eltanin
         speed: float
       all
         shell30mm: #rmmr::scene::actor::Family?
-        >bind(#rmmr::scene::Root)
-        >spawnShell30mm(#rmmr::scene::Root, Pose, speed: float)->#
+        >bind()
+        >spawnShell30mm(Pose, speed: float)->#
         >update()
         !followBody(~phys::Body)->>linearPass(>all)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <rmmr/scene/root.q1.h>
+
 #include <fQSM/api/interface.h>
 
 namespace eltanin::locality {
@@ -13,6 +15,7 @@ namespace eltanin::locality {
         struct Global {
             seconds now;
             float timeScale;
+            optional<rmmr::scene::Root::Id> scene;
         };
         struct Actions : BaseActions {
             static void update(Writing, seconds dt);

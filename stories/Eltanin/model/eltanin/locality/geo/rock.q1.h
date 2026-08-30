@@ -6,7 +6,6 @@
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
-#include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -45,12 +44,12 @@ namespace eltanin::locality::geo {
         };
         struct Actions : BaseActions {
             static void update(Writing);
-            static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, Volume, vec3, vec3) -> Id;
-            static auto spawnGenerated(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, GeneralizedRecipe, vec3, vec3) -> Id;
-            static auto spawnIceSphere(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
-            static auto spawnPaletteTorus(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
-            static auto spawnLavaBrick(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
-            static auto spawnIceBlob(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
+            static auto spawn(Writing, rmmr::system::Device::Id, rmmr::Pose, Volume, vec3, vec3) -> Id;
+            static auto spawnGenerated(Writing, rmmr::system::Device::Id, rmmr::Pose, GeneralizedRecipe, vec3, vec3) -> Id;
+            static auto spawnIceSphere(Writing, rmmr::system::Device::Id, rmmr::Pose) -> Id;
+            static auto spawnPaletteTorus(Writing, rmmr::system::Device::Id, rmmr::Pose) -> Id;
+            static auto spawnLavaBrick(Writing, rmmr::system::Device::Id, rmmr::Pose) -> Id;
+            static auto spawnIceBlob(Writing, rmmr::system::Device::Id, rmmr::Pose) -> Id;
             static void radiate(Stewarding, seconds dt);
         };
         struct Internals;

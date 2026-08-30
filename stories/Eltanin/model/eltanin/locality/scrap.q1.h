@@ -4,7 +4,6 @@
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
-#include <rmmr/scene/root.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -19,8 +18,8 @@ namespace eltanin::locality {
         };
         struct Actions : BaseActions {
             static void update(Writing);
-            static auto spawn(Writing, rmmr::scene::Root::Id, rmmr::Pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion) -> Id;
-            static void breakOff(Writing, rmmr::scene::Root::Id, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion);
+            static auto spawn(Writing, rmmr::Pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion) -> Id;
+            static void breakOff(Writing, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion);
         };
         struct Internals;
         static const Behavior customAspectReactions();

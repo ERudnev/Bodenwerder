@@ -10,7 +10,6 @@
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/node.q1.h>
-#include <rmmr/scene/root.q1.h>
 
 #include <span>
 
@@ -114,14 +113,6 @@ namespace eltanin::locality {
             return LocalBox{.center = center, .rotation = quatFromAxes(x, y, normal), .half = vec3{glm::max(0.5f * (maxX - minX), minHalf), glm::max(0.5f * (maxY - minY), minHalf), shell}};
         }
 
-        auto rootOf(Reading context, rmmr::scene::actor::Mesh::Id actor) -> optional<rmmr::scene::Root::Id> {
-            for (const auto [root, group] : context->aspect<rmmr::scene::Node_group>().items()) {
-                if (group.contains(actor))
-                    return root;
-            }
-            return {};
-        }
-
         struct DeadChunk {
             float cohesion;
             float thickness;
@@ -200,7 +191,7 @@ namespace eltanin::locality {
             if (mismatch or static_cast<std::size_t>(cursor) != crystal->particles.size())
                 return true;
 
-            if (const auto root = rootOf(context, construct.actor)) {
+            if (with<Thing>::get_global(context).scene) {
                 if (with<phys::Body>::exists(context, construct.body)) {
                     const auto& body = with<phys::Body>::get(context, construct.body);
                     for (const auto& [_, chunk] : dead) {
@@ -210,7 +201,7 @@ namespace eltanin::locality {
                         const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
                         const quat worldRot = glm::normalize(body.orientation * box.rotation);
                         const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
-                        Scrap::Actions::breakOff(context, *root, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion);
+                        Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion);
                     }
                 }
             }

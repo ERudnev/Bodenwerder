@@ -8,6 +8,7 @@
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/texture3array.q1.h>
 #include <rmmr/scene/node.q1.h>
+#include <rmmr/scene/root.q1.h>
 
 #include "mech/semantics/space.h"
 #include "geo/stones/marchingCubes.h"
@@ -372,7 +373,10 @@ namespace eltanin::locality::geo {
             return true;
         }
 
-        auto assembleRock(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, Volume volume, rmmr::resource::builders::geometry::CpuPresentation cpu, vector<Sample> samples, phys::rigid::Hull hull, rmmr::resource::Unit::Name materialName, integer spriteIndex, float temperature, float cohesion, vec3 velocity, vec3 omega) -> Rock::Id {
+        auto assembleRock(Writing context, rmmr::system::Device::Id device, Pose pose, Volume volume, rmmr::resource::builders::geometry::CpuPresentation cpu, vector<Sample> samples, phys::rigid::Hull hull, rmmr::resource::Unit::Name materialName, integer spriteIndex, float temperature, float cohesion, vec3 velocity, vec3 omega) -> Rock::Id {
+            const auto scene = with<Thing>::get_global(context).scene;
+            if (not scene)
+                return context.refuse("eltanin::locality::geo::Rock::spawn: locality has no scene");
             if (cpu.positions.empty())
                 return context.refuse("eltanin::locality::geo::Rock::spawn: no surface");
             if (samples.empty())
@@ -423,7 +427,7 @@ namespace eltanin::locality::geo {
             auto meshState = with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
             meshState.patternScale = glm::max(0.5f, sampleRadius(samples) * 2.0f);
             meshState.heat = vec2{temperature, cohesionSum / massSum};
-            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), meshState);
+            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, *scene, pose, std::move(*meshQuantum), meshState);
 
             vector<phys::Particle> particles;
             particles.reserve(samples.size());
@@ -452,15 +456,15 @@ namespace eltanin::locality::geo {
 
     } // namespace
 
-    auto Rock::Actions::spawn(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, Volume volume, vec3 velocity, vec3 omega) -> Id {
+    auto Rock::Actions::spawn(Writing context, rmmr::system::Device::Id device, Pose pose, Volume volume, vec3 velocity, vec3 omega) -> Id {
         if (not scaleInRange(volume))
             return context.refuse("eltanin::locality::geo::Rock::spawn: volume scale out of range");
         auto cpu = meshVolume(volume);
         auto surface = surfaceFromMesh(volume, cpu);
-        return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 0.0f, 0.0f, velocity, omega);
+        return assembleRock(context, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 0.0f, 0.0f, velocity, omega);
     }
 
-    auto Rock::Actions::spawnGenerated(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, GeneralizedRecipe recipe, vec3 velocity, vec3 omega) -> Id {
+    auto Rock::Actions::spawnGenerated(Writing context, rmmr::system::Device::Id device, Pose pose, GeneralizedRecipe recipe, vec3 velocity, vec3 omega) -> Id {
         if (recipe.radius <= 0.0f)
             return context.refuse("eltanin::locality::geo::Rock::spawnGenerated: radius must be positive");
         if (recipe.mix == 0)
@@ -472,35 +476,35 @@ namespace eltanin::locality::geo {
             return context.refuse("eltanin::locality::geo::Rock::spawnGenerated: volume scale out of range");
         auto cpu = meshVolume(volume);
         auto surface = surfaceFromMesh(volume, cpu);
-        return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 0.0f, 0.0f, velocity, omega);
+        return assembleRock(context, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 0.0f, 0.0f, velocity, omega);
     }
 
-    auto Rock::Actions::spawnIceSphere(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
-        return spawn(context, root, device, pose, iceSphereVolume(), vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+    auto Rock::Actions::spawnIceSphere(Writing context, rmmr::system::Device::Id device, Pose pose) -> Id {
+        return spawn(context, device, pose, iceSphereVolume(), vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
-    auto Rock::Actions::spawnPaletteTorus(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
-        return spawn(context, root, device, pose, paletteTorusVolume(), vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+    auto Rock::Actions::spawnPaletteTorus(Writing context, rmmr::system::Device::Id device, Pose pose) -> Id {
+        return spawn(context, device, pose, paletteTorusVolume(), vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
-    auto Rock::Actions::spawnLavaBrick(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
+    auto Rock::Actions::spawnLavaBrick(Writing context, rmmr::system::Device::Id device, Pose pose) -> Id {
         auto volume = generateLavaBrickVolume();
         if (not scaleInRange(volume))
             return context.refuse("eltanin::locality::geo::Rock::spawnLavaBrick: volume scale out of range");
         auto cpu = meshVolume(volume);
         applyLavaBrickHeat(cpu);
         auto surface = surfaceFromMesh(volume, cpu);
-        return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 80.0f, 1.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        return assembleRock(context, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 80.0f, 1.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
-    auto Rock::Actions::spawnIceBlob(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose) -> Id {
+    auto Rock::Actions::spawnIceBlob(Writing context, rmmr::system::Device::Id device, Pose pose) -> Id {
         auto volume = generateIceBlobVolume();
         if (not scaleInRange(volume))
             return context.refuse("eltanin::locality::geo::Rock::spawnIceBlob: volume scale out of range");
         auto cpu = meshVolume(volume);
         applyIceBlobSinter(cpu);
         auto surface = surfaceFromMesh(volume, cpu);
-        return assembleRock(context, root, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 80.0f, 0.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        return assembleRock(context, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 80.0f, 0.0f, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
     void Rock::Actions::update(Writing) {

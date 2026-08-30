@@ -1,5 +1,4 @@
 import "rmmr/math"
-import "rmmr/scene/root"
 import "rmmr/scene/actors/mesh"
 import "rmmr/system/core"
 import "locality/geo/minerals"
@@ -41,11 +40,11 @@ namespace eltanin
         volume: Volume
       all
         >update()
-        >spawn(#rmmr::scene::Root, #system::Device, Pose, Volume, vec3, vec3)->#
-        >spawnGenerated(#rmmr::scene::Root, #system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#
-        >spawnIceSphere(#rmmr::scene::Root, #system::Device, Pose)->#
-        >spawnPaletteTorus(#rmmr::scene::Root, #system::Device, Pose)->#
-        >spawnLavaBrick(#rmmr::scene::Root, #system::Device, Pose)->#
-        >spawnIceBlob(#rmmr::scene::Root, #system::Device, Pose)->#
+        >spawn(#system::Device, Pose, Volume, vec3, vec3)->#
+        >spawnGenerated(#system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#
+        >spawnIceSphere(#system::Device, Pose)->#
+        >spawnPaletteTorus(#system::Device, Pose)->#
+        >spawnLavaBrick(#system::Device, Pose)->#
+        >spawnIceBlob(#system::Device, Pose)->#
         *radiate(dt: seconds)
         !followBody(~phys::Body)->>linearPass(>all)

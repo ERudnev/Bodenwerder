@@ -1,13 +1,17 @@
+import "rmmr/scene/root"
+
 namespace eltanin
   namespace locality
 
     // Local scene pulse lives in Thing Global (not per-instance Quantum).
     //   Product::onFrame wall dt → locality dt (paused, timeScale), then physics and >update share that dt.
     // Quantum.bornAt snapshots now at create.
+    // scene — the one gameplay Root; locality spawn places world actors there. Unset until Product binds it.
     entity Thing
       one
         bornAt: seconds
       all
         now: seconds
         timeScale: float // wall dt → locality dt
+        scene: #rmmr::scene::Root?
         >update(dt: seconds)

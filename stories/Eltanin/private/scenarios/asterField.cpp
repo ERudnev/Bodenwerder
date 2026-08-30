@@ -1,22 +1,12 @@
 #include "scenarios/asterField.h"
 
-#include <eltanin/locality/bullet.q1.h>
-#include <eltanin/locality/geo/boulder.q1.h>
-#include <eltanin/locality/geo/rock.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/texture3array.q1.h>
-#include <rmmr/scene/root.q1.h>
 #include <rmmr/semantics/rendering.h>
 #include <rmmr/semantics/uniform.h>
-
-#include <random>
-#include <cmath>
-
-#include <glm/geometric.hpp>
-#include <glm/gtc/constants.hpp>
 
 namespace eltanin::scenario {
 
@@ -95,53 +85,7 @@ namespace eltanin::scenario {
         assets.crust = crustId;
     }
 
-    void AsterField::populate(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device) {
-        constexpr int pebbleCount = 10;
-        constexpr float pebbleRadius = 0.35f;
-        constexpr vec3 cloudCenter{-50.0f, 0.0f, 0.0f};
-        constexpr float cloudRadius = 1.2f;
-        for (int index = 0; index < pebbleCount; ++index) {
-            const float golden = glm::pi<float>() * (3.0f - std::sqrt(5.0f));
-            const float y = 1.0f - 2.0f * (static_cast<float>(index) + 0.5f) / static_cast<float>(pebbleCount);
-            const float ring = std::sqrt(glm::max(0.0f, 1.0f - y * y));
-            const float theta = golden * static_cast<float>(index);
-            const vec3 onSphere{ring * std::cos(theta), y, ring * std::sin(theta)};
-            const locality::geo::GeneralizedRecipe recipe{
-                .mix = locality::geo::GeneralizedRecipe::homogenous(index % 4),
-                .radius = pebbleRadius,
-                .lump = 0.45f,
-                .seed = 40 + index,
-                .spotMeters = pebbleRadius * 2.0f,
-                .spotContrast = 0.35f,
-            };
-            with<locality::geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{cloudCenter + cloudRadius * onSphere}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
-        }
-        {
-            constexpr float hooliganRadius = 20.0f;
-            const locality::geo::GeneralizedRecipe recipe{
-                .mix = locality::geo::GeneralizedRecipe::homogenous(0),
-                .radius = hooliganRadius,
-                .lump = 0.55f,
-                .seed = 77,
-                .spotMeters = hooliganRadius * 0.4f,
-                .spotContrast = 0.45f,
-            };
-            with<locality::geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{-100.0f, 0.0f, 100.0f}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{20.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
-        }
-        constexpr int bulletCount = 1000;
-        constexpr float bulletStep = 3.0f;
-        constexpr float speed = 200.0f;
-        constexpr float scatter = 0.50f;
-        std::mt19937 rng{20260828};
-        std::normal_distribution<float> gauss{0.0f, scatter / 3.0f};
-        for (int i = 0; i < bulletCount; ++i) {
-            vec3 offset{0.0f, gauss(rng), gauss(rng)};
-            const float length = glm::length(offset);
-            if (length > scatter)
-                offset *= scatter / length;
-            const vec3 position{-100.0f - bulletStep * static_cast<float>(i), 0.0f, 0.0f};
-            with<locality::Bullet>::spawnShell30mm(context, root, Pose::from(Pos{position + offset}, HPB{90.0f, 0.0f, 0.0f}), speed);
-        }
+    void AsterField::populate(Writing, rmmr::system::Device::Id) {
     }
 
 }

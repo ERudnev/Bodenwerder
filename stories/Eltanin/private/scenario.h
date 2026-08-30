@@ -1,6 +1,5 @@
 #pragma once
 
-#include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/wrapper/library.h>
 
@@ -12,7 +11,7 @@ namespace eltanin::scenario {
 
     struct Scenario {
         virtual void loadResources(Writing, const rmmr::wrapper::assets::Handles& shared) = 0;
-        virtual void populate(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id) = 0;
+        virtual void populate(Writing, rmmr::system::Device::Id) = 0;
     };
 
 }

@@ -469,7 +469,10 @@ namespace eltanin::mech {
         return occurrences;
     }
 
-    auto Assembler::spawn(Writing context, scene::Root::Id root, Pose pose, Blueprint::Id blueprintId, vec3 velocity) -> locality::Construct::Id {
+    auto Assembler::spawn(Writing context, Pose pose, Blueprint::Id blueprintId, vec3 velocity) -> locality::Construct::Id {
+        const auto scene = with<locality::Thing>::get_global(context).scene;
+        if (not scene)
+            return context.refuse("eltanin::mech::Assembler::spawn: locality has no scene");
         if (not with<Blueprint>::exists(context, blueprintId))
             return context.refuse("eltanin::mech::Assembler::spawn: blueprint missing");
         const auto interframe = with<resource::Assets>::find<resource::meshpack::Asset>(context, resource::Unit::Name::from("Eltanin", "interframe"));
@@ -490,7 +493,7 @@ namespace eltanin::mech {
             return context.refuse("eltanin::mech::Assembler::spawn: mesh compose failed");
         auto meshState = with<scene::actor::MeshState>::defaults();
         meshState.latticeStep = space::local::edge2meters;
-        const auto actor = with<scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), std::move(meshState));
+        const auto actor = with<scene::Interface>::createMeshActor(context, *scene, pose, std::move(*meshQuantum), std::move(meshState));
 
         auto crystal = crystalFrom(construction, pose, velocity);
         const auto body = with<phys::Body>::create(context, phys::rigid::restoredBody(pose, crystal.particles, crystal.shape));

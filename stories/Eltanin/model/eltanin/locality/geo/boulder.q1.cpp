@@ -98,17 +98,12 @@ namespace eltanin::locality::geo {
             dichotomy(center + along * h, rotation, childRadius, cuts - 1, seed * 2 + 2, axis + 1, out);
         }
 
-        auto rootOf(Reading context, rmmr::scene::actor::Mesh::Id actor) -> optional<rmmr::scene::Root::Id> {
-            for (const auto [root, group] : context->aspect<rmmr::scene::Node_group>().items()) {
-                if (group.contains(actor))
-                    return root;
-            }
-            return {};
-        }
-
     } // namespace
 
-    auto Boulder::Actions::spawnGenerated(Writing context, rmmr::scene::Root::Id root, rmmr::system::Device::Id device, Pose pose, GeneralizedRecipe recipe, vec3 velocity, vec3 omega) -> Id {
+    auto Boulder::Actions::spawnGenerated(Writing context, rmmr::system::Device::Id device, Pose pose, GeneralizedRecipe recipe, vec3 velocity, vec3 omega) -> Id {
+        const auto scene = with<Thing>::get_global(context).scene;
+        if (not scene)
+            return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: locality has no scene");
         if (recipe.radius <= 0.0f)
             return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: radius must be positive");
         if (recipe.mix == 0)
@@ -148,7 +143,7 @@ namespace eltanin::locality::geo {
         auto meshState = with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
         meshState.patternScale = glm::max(0.5f, recipe.radius * 2.0f);
         meshState.heat = vec2{0.0f, 0.0f};
-        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, root, pose, std::move(*meshQuantum), meshState);
+        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, *scene, pose, std::move(*meshQuantum), meshState);
 
         const auto body = with<phys::Body>::create(context, phys::Body::Quantum{
             .position = dvec3{pose.position},
@@ -193,8 +188,7 @@ namespace eltanin::locality::geo {
             if (cuts == 0)
                 continue;
             if (cuts > 0 and boulder.recipe.radius >= minRadius * 2.0f) {
-                const auto root = rootOf(context, boulder.actor);
-                if (root and with<rmmr::scene::actor::Mesh>::exists(context, boulder.actor)) {
+                if (with<Thing>::get_global(context).scene and with<rmmr::scene::actor::Mesh>::exists(context, boulder.actor)) {
                     const auto device = with<rmmr::scene::actor::Mesh>::get(context, boulder.actor).device;
                     const vec3 linear = vec3{(body.position - solid.center.prev) / double(phys::Particle::dt)};
                     vector<Pebble> pieces;
@@ -208,7 +202,7 @@ namespace eltanin::locality::geo {
                             const vec3 offset = piece.center - vec3{body.position};
                             const float offsetLen = glm::length(offset);
                             const vec3 pop = offsetLen > 1.0e-5f ? (offset / offsetLen) * splitPop : vec3{0.0f, 0.0f, 0.0f};
-                            spawnGenerated(context, *root, device, Pose{.position = piece.center, .rotation = body.orientation}, child, linear + pop, vec3{0.0f, 0.0f, 0.0f});
+                            spawnGenerated(context, device, Pose{.position = piece.center, .rotation = body.orientation}, child, linear + pop, vec3{0.0f, 0.0f, 0.0f});
                         }
                     }
                 }

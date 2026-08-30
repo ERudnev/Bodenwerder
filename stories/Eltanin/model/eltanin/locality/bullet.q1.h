@@ -5,7 +5,6 @@
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/family.q1.h>
-#include <rmmr/scene/root.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -23,8 +22,8 @@ namespace eltanin::locality {
             base::maybe<rmmr::scene::actor::Family::Id> shell30mm;
         };
         struct Actions : BaseActions {
-            static void bind(Writing, rmmr::scene::Root::Id);
-            static auto spawnShell30mm(Writing, rmmr::scene::Root::Id, rmmr::Pose, float speed) -> Id;
+            static void bind(Writing);
+            static auto spawnShell30mm(Writing, rmmr::Pose, float speed) -> Id;
             static void update(Writing);
         };
         struct Internals;
