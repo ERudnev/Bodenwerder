@@ -1,6 +1,7 @@
 #include <eltanin/locality/thing.q1.h>
 
 #include <eltanin/locality/construct.q1.h>
+#include <eltanin/locality/flash.q1.h>
 #include <eltanin/locality/bullet.q1.h>
 #include <eltanin/locality/scrap.q1.h>
 #include <eltanin/locality/geo/rock.q1.h>
@@ -20,6 +21,7 @@ namespace eltanin::locality {
         if (dt <= 0)
             return;
         with<Thing>::modify_global(context)->now += dt;
+        with<Flash>::update(context);
         with<Bullet>::update(context);
         with<Construct>::update(context);
         with<Scrap>::update(context);

@@ -18,6 +18,7 @@ set(Eltanin_Q1
     mech/blueprint.q1
     mech/mount.q1
     locality/thing.q1
+    locality/flash.q1
     locality/bullet.q1
     locality/construct.q1
     locality/scrap.q1

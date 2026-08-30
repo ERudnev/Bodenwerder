@@ -1,5 +1,6 @@
 #include "scenarios/asterField.h"
 
+#include <eltanin/locality/flash.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -85,7 +86,8 @@ namespace eltanin::scenario {
         assets.crust = crustId;
     }
 
-    void AsterField::populate(Writing, rmmr::system::Device::Id) {
+    void AsterField::populate(Writing context, rmmr::system::Device::Id) {
+        with<locality::Flash>::spawnAsExplosion(context, vec3{0.0f, 0.0f, 0.0f}, 10.0f);
     }
 
 }

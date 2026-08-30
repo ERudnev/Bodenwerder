@@ -1,3 +1,9 @@
+import "rmmr/math"
+import "rmmr/scene/actors/mesh"
+import "physics/body"
+import "physics/rigid"
+import "locality/thing"
+
 namespace eltanin
   namespace locality
 
@@ -20,6 +26,8 @@ namespace eltanin
       one
         effect: Effect
         actor: custody<rmmr::scene::actor::Mesh>
+        elapsed: seconds // wave clock; physics ticks, not Thing.now
       all
         >update()
         >spawnAsExplosion(position: vec3, strength: float)->#
+        *apply(~phys::rigid::Crystal, ~phys::rigid::Solid)

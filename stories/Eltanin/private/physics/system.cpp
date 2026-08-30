@@ -1,6 +1,7 @@
 #include "physics/system.h"
 #include "physics/collisions.h"
 
+#include <eltanin/locality/flash.q1.h>
 #include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -99,6 +100,7 @@ namespace eltanin::phys {
         applyAerodynamics(context);
         applyLinearGravity(context);
         with<rigid::CelestialGravity>::apply(context);
+        with<locality::Flash>::apply(context);
     }
 
     void System::applyLinearGravity(Stewarding context) {

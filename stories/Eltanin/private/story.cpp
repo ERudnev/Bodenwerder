@@ -1,6 +1,7 @@
 #include "story.h"
 
 #include <eltanin/locality/thing.q1.h>
+#include <eltanin/locality/flash.q1.h>
 #include <eltanin/locality/bullet.q1.h>
 #include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/scrap.q1.h>
@@ -52,6 +53,7 @@ namespace eltanin {
             ask::schema::aspect<phys::rigid::Ray>(),
             ask::schema::aspect<phys::rigid::CelestialGravity>(),
             ask::schema::aspect<locality::Thing>(),
+            ask::schema::aspect<locality::Flash>(),
             ask::schema::aspect<locality::Bullet>(),
             ask::schema::aspect<locality::Construct>(),
             ask::schema::aspect<locality::Scrap>(),
@@ -122,6 +124,22 @@ namespace eltanin {
                         .program = with<Unit>::remember(context, sky_sphere_shader),
                         .uniforms = ::rmmr::material::Semantics::ids_of({"albedoMap"}),
                         .glowSpread = false,
+                    }},
+                },
+                .nearest = false,
+                .blend = renderer::BlendMode::additive,
+            });
+
+        const auto flashShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "flash"), item<shader::Loader>{.vertex = "shaders/flash.vert.glsl", .fragment = "shaders/flash.frag.glsl"});
+        with<Assets>::add_material(
+            context,
+            Name::from("Eltanin", "flash"),
+            Material::Quantum{
+                .techniques = {
+                    {renderer::Pass::transparent, Material::Technique{
+                        .program = with<Unit>::remember(context, flashShader),
+                        .uniforms = {},
+                        .glowSpread = true,
                     }},
                 },
                 .nearest = false,
