@@ -1,0 +1,22 @@
+namespace eltanin
+  namespace locality
+
+    feature Flash of Thing
+      one
+        struct Kinetic
+          strength: float
+          radius: float
+        struct Thermal
+          temperature: Kelvins
+          energy: float
+          radius: float
+        struct Light
+          energy: float
+          radius: float
+        duration: seconds
+        kinetic: Kinetic
+        thermal: Thermal
+        light: Light
+      all
+        >update()
+        >spawnAsExplosion(position: vec3, strength: float)->#

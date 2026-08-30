@@ -8,13 +8,14 @@ namespace eltanin::locality {
 
     struct Thing : Entity<Thing> {
         struct Quantum {
-            int64 bornAt;
+            seconds bornAt;
         };
         struct Global {
-            int64 now;
+            seconds now;
+            float timeScale;
         };
         struct Actions : BaseActions {
-            static void update(Writing, int64 dtUs);
+            static void update(Writing, seconds dt);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }

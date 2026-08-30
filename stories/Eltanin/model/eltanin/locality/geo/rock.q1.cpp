@@ -506,8 +506,8 @@ namespace eltanin::locality::geo {
     void Rock::Actions::update(Writing) {
     }
 
-    void Rock::Actions::radiate(Stewarding, float dt) {
-        if (dt <= 0.0f)
+    void Rock::Actions::radiate(Stewarding, seconds dt) {
+        if (dt <= 0)
             return;
         // Volume rocks: thermal / conduction later (destruction path). Boulder handles small-body radiate.
     }

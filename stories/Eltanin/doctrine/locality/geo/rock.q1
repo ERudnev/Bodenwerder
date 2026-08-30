@@ -47,5 +47,5 @@ namespace eltanin
         >spawnPaletteTorus(#rmmr::scene::Root, #system::Device, Pose)->#
         >spawnLavaBrick(#rmmr::scene::Root, #system::Device, Pose)->#
         >spawnIceBlob(#rmmr::scene::Root, #system::Device, Pose)->#
-        *radiate(dt: float)
+        *radiate(dt: seconds)
         !followBody(~phys::Body)->>linearPass(>all)

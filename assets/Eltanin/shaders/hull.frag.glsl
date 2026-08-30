@@ -40,14 +40,17 @@ layout(std430, binding = 11) readonly buffer PrimitiveSurfacesBuffer {
 
 layout(binding = 1) uniform sampler2D u_shadowMap;
 
-const float k_shadow_bias = 0.005;
+const float k_shadow_bias = 0.001;
+const float k_shadow_slope = 0.01;
 
 float sample_shadow(vec2 uv, float current_depth) {
     float closest = texture(u_shadowMap, uv).r;
     return current_depth > closest ? 0.0 : 1.0;
 }
 
-float fetch_shadow(vec4 light_space_pos) {
+float fetch_shadow(vec3 worldPos, vec3 N, vec3 L) {
+    float slope = 1.0 - max(dot(N, L), 0.0);
+    vec4 light_space_pos = passLightSpace * vec4(worldPos + N * (0.4 + 1.2 * slope), 1.0);
     vec3 proj = light_space_pos.xyz / light_space_pos.w;
     proj = proj * 0.5 + 0.5;
 
@@ -55,7 +58,7 @@ float fetch_shadow(vec4 light_space_pos) {
         return 1.0;
     }
 
-    float current_depth = proj.z - k_shadow_bias;
+    float current_depth = proj.z - (k_shadow_bias + k_shadow_slope * slope);
     vec2 texel = 1.0 / vec2(textureSize(u_shadowMap, 0));
 
     float shadow = 0.0;
@@ -85,7 +88,7 @@ void main() {
     }
 
     float ndotl = max(dot(N, L), 0.0);
-    float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos, 1.0));
+    float shadow = fetch_shadow(v_worldPos, N, L);
 
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);
     float lightGain = max(passPrimaryLightPositionIntensity.w, 0.0);

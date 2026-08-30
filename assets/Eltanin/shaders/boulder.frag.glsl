@@ -73,7 +73,7 @@ const vec3 mineralSinter[16] = vec3[](
     vec3(0.290, 0.329, 0.275), vec3(0.204, 0.220, 0.157), vec3(0.973, 0.980, 0.988), vec3(0.659, 0.251, 1.000)
 );
 
-const float k_shadow_bias = 0.005;
+const float k_shadow_bias = 0.0005;
 const float pi = 3.14159265;
 const float bumpHeightMeters = 0.018;
 const float gritWeight = 0.30;
@@ -255,7 +255,7 @@ void main() {
 
     float cavity = mix(0.58, 1.0, height);
     float slope = 1.0 - max(dot(geometric, L), 0.0);
-    float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos, 1.0), slope);
+    float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos + geometric * (0.4 + 1.2 * slope), 1.0), slope);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);
     float lightGain = max(passPrimaryLightPositionIntensity.w, 0.0);
 

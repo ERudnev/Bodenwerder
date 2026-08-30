@@ -236,6 +236,7 @@ namespace eltanin {
             world->window = window;
             world->paused = true;
         }
+        with<locality::Thing>::modify_global(context)->timeScale = 1.0f;
 
         const auto framebuffer = with<system::Window>::framebufferSize(context, window);
         const auto viewport = with<system::Viewport_group>::addElement(context, window, system::Viewport::Quantum{
@@ -309,8 +310,8 @@ namespace eltanin {
         populateWorld(context, window);
     }
 
-    void Game::advanceSim(Writing context, int64 dt_us) {
-        with<locality::Thing>::update(context, dt_us);
+    void Game::advanceSim(Writing context, seconds dt) {
+        with<locality::Thing>::update(context, dt);
     }
 
     void Game::onFrame(establish::Realm& world, int64 dt_us) {
@@ -322,7 +323,8 @@ namespace eltanin {
                 world.branch([&](Writing context) { blueprints.show(context, *blueprintPack.unnamed); });
         }
         with<World>::tetherEnvironment(world);
-        const int64 simDt = with<World>::get_global(world).paused ? int64{0} : dt_us;
+        const seconds wallDt = static_cast<seconds>(dt_us) / 1'000'000.0;
+        const seconds simDt = with<World>::get_global(world).paused ? seconds{0} : wallDt * static_cast<seconds>(with<locality::Thing>::get_global(world).timeScale);
         if (physics)
             physics->step(world, simDt);
         advanceSim(world, simDt);

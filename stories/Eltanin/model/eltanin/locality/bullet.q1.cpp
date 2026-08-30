@@ -92,13 +92,13 @@ namespace eltanin::locality {
     }
 
     void Bullet::Actions::update(Writing context) {
-        constexpr int64 lifetimeUs = 5'000'000;
-        const int64 now = with<Thing>::get_global(context).now;
+        constexpr seconds lifetime = 5.0;
+        const seconds now = with<Thing>::get_global(context).now;
         vector<Id> expired;
         for (auto [id, _] : context->aspect<Bullet>().items()) {
             if (not with<Thing>::exists(context, id))
                 continue;
-            if (now - with<Thing>::get(context, id).bornAt >= lifetimeUs)
+            if (now - with<Thing>::get(context, id).bornAt >= lifetime)
                 expired.push_back(id);
 
         }

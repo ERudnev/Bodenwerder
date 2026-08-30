@@ -34,7 +34,8 @@ namespace eltanin::phys::collision {
             }
             if (not any)
                 return false;
-            const float pad = glm::max(face.thickness, 0.0f);
+            // twoSided plates and 2-vert capsules offset the surface by thickness; one-sided rock faces use thickness only as a far-wall reject slab (COM depth), not a geometric shell.
+            const float pad = (face.points.size() == 2 or face.twoSided) ? glm::max(face.thickness, 0.0f) : 0.0f;
             boundMin -= vec3{pad, pad, pad};
             boundMax += vec3{pad, pad, pad};
             return true;
@@ -256,7 +257,8 @@ namespace eltanin::phys::collision {
                 vertices[index] = shape[static_cast<std::size_t>(face.points[index])];
             }
             const float shell = glm::max(face.thickness, 0.0f);
-            const float reach = shell + glm::max(radius, 0.0f);
+            const float skin = (count == 2 or face.twoSided) ? shell : 0.0f;
+            const float reach = skin + glm::max(radius, 0.0f);
             const vec3 d = localEnd - localStart;
             if (count == 2) {
                 const float t = firstOnCapsule(localStart, localEnd, vertices[0], vertices[1], reach);
@@ -441,13 +443,17 @@ namespace eltanin::phys::collision {
         SegmentHit hit{.face = -1, .localClosest = localStart, .localOutward = vec3{0.0f, 1.0f, 0.0f}, .t = 2.0f};
         if (hull.bvh.nodes.empty() or hull.bvh.root < 0)
             return hit;
-        const SurfaceHit near = closestOnHull(hull, shape, localStart);
-        if (near.face >= 0 and near.signedDistance < radius) {
-            hit.face = near.face;
-            hit.localClosest = near.localClosest;
-            hit.localOutward = near.localOutward;
-            hit.t = 0.0f;
-            return hit;
+        const Hull::Bvh::Node& root = hull.bvh.nodes[static_cast<std::size_t>(hull.bvh.root)];
+        const float reach = glm::max(radius, 0.0f);
+        if (aabbDistance2(localStart, root.boundMin, root.boundMax) <= reach * reach) {
+            const SurfaceHit near = closestOnHull(hull, shape, localStart);
+            if (near.face >= 0 and near.signedDistance < radius) {
+                hit.face = near.face;
+                hit.localClosest = near.localClosest;
+                hit.localOutward = near.localOutward;
+                hit.t = 0.0f;
+                return hit;
+            }
         }
         visitSegment(hull.bvh, hull, shape, localStart, localEnd, radius, hull.bvh.root, hit);
         return hit;

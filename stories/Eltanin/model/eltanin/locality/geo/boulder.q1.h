@@ -22,7 +22,7 @@ namespace eltanin::locality::geo {
         struct Actions : BaseActions {
             static void update(Writing);
             static auto spawnGenerated(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose, GeneralizedRecipe, vec3, vec3) -> Id;
-            static void radiate(Stewarding, float dt);
+            static void radiate(Stewarding, seconds dt);
         };
         struct Internals;
         static const Behavior customAspectReactions();

@@ -2,11 +2,12 @@ namespace eltanin
   namespace locality
 
     // Local scene pulse lives in Thing Global (not per-instance Quantum).
-    //   Product::onFrame → physics Stewarding, then >update (Writing) advances now and locality features.
+    //   Product::onFrame wall dt → locality dt (paused, timeScale), then physics and >update share that dt.
     // Quantum.bornAt snapshots now at create.
     entity Thing
       one
-        bornAt: int64
+        bornAt: seconds
       all
-        now: int64 // wall µs
-        >update(dtUs: int64)
+        now: seconds
+        timeScale: float // wall dt → locality dt
+        >update(dt: seconds)

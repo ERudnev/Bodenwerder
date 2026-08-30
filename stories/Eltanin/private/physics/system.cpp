@@ -28,10 +28,9 @@ namespace eltanin::phys {
     }
 
     System::System(scene::Root::Id scene)
-        : state{.timeScale = 1.0f}
-        , scene(scene)
-        , debtUs(0)
-        , thermalDebtUs(0) {
+        : scene(scene)
+        , debt(0)
+        , thermalDebt(0) {
     }
 
     void System::applyAerodynamics(Stewarding context) {
@@ -231,25 +230,24 @@ namespace eltanin::phys {
     }
 
     void System::radiate(Stewarding context) {
-        if (thermalDebtUs < Settings::thermalStepUs)
+        if (thermalDebt < Settings::thermalStep)
             return;
-        with<::eltanin::locality::geo::Rock>::radiate(context, static_cast<float>(thermalDebtUs) * 1e-6f);
-        with<::eltanin::locality::geo::Boulder>::radiate(context, static_cast<float>(thermalDebtUs) * 1e-6f);
-        thermalDebtUs = 0;
+        with<::eltanin::locality::geo::Rock>::radiate(context, thermalDebt);
+        with<::eltanin::locality::geo::Boulder>::radiate(context, thermalDebt);
+        thermalDebt = 0;
     }
 
-    void System::step(establish::Realm& world, int64 dtUs) {
-        const int64 scaled = static_cast<int64>(static_cast<double>(dtUs) * static_cast<double>(state.timeScale));
-        debtUs += scaled;
-        thermalDebtUs += scaled;
-        if (debtUs < Settings::fixedStepUs and thermalDebtUs < Settings::thermalStepUs)
+    void System::step(establish::Realm& world, seconds dt) {
+        debt += dt;
+        thermalDebt += dt;
+        if (debt < Settings::fixedStep and thermalDebt < Settings::thermalStep)
             return;
         Stewarding session = world;
         if (not with<scene::Root>::exists(session, scene))
             return;
-        while (debtUs >= Settings::fixedStepUs) {
+        while (debt >= Settings::fixedStep) {
             tick(session);
-            debtUs -= Settings::fixedStepUs;
+            debt -= Settings::fixedStep;
         }
         radiate(session);
     }

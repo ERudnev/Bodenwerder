@@ -51,7 +51,7 @@ namespace eltanin::locality::geo {
             static auto spawnPaletteTorus(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
             static auto spawnLavaBrick(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
             static auto spawnIceBlob(Writing, rmmr::scene::Root::Id, rmmr::system::Device::Id, rmmr::Pose) -> Id;
-            static void radiate(Stewarding, float dt);
+            static void radiate(Stewarding, seconds dt);
         };
         struct Internals;
         static const Behavior customAspectReactions();

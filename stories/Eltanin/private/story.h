@@ -67,7 +67,7 @@ namespace eltanin {
     private:
         void populateWorld(Writing, rmmr::system::Window::Id);
         void bindGameEntities(Writing, rmmr::scene::Root::Id);
-        void advanceSim(Writing, int64 dt_us);
+        void advanceSim(Writing, seconds dt);
         void drawCameraWindow(Writing);
         void drawLightingWindow(Writing);
         void drawMaterialsWindow(Writing);

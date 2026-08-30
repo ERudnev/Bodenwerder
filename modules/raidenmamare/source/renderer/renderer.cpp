@@ -22,6 +22,7 @@
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/node.q1.h>
+#include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -140,7 +141,7 @@ namespace rmmr {
             return glm::normalize(vec3{mat3{lightWorld}[2]});
         }
 
-        void include_point(vec3& lo, vec3& hi, bool& any, vec3 point) {
+        void includePoint(vec3& lo, vec3& hi, bool& any, vec3 point) {
             if (not any) {
                 lo = hi = point;
                 any = true;
@@ -150,33 +151,46 @@ namespace rmmr {
             hi = glm::max(hi, point);
         }
 
-        auto scene_node_aabb(Reading context, scene::Root::Id root) -> base::maybe<std::array<vec3, 2>> {
-            vec3 lo{};
-            vec3 hi{};
-            bool any = false;
-            for (const auto node : with<scene::Node_group>::get(context, root))
-                include_point(lo, hi, any, with<scene::Node>::get(context, node).pose.position);
-            if (not any)
-                return {};
-            return std::array<vec3, 2>{lo, hi};
+        auto meshCastsShadow(Reading context, const scene::actor::Mesh::Quantum& mesh) -> bool {
+            for (const auto& bucket : mesh.buckets) {
+                if (not with<resource::material::Runtime>::exists(context, bucket.material))
+                    continue;
+                const auto& techniques = with<resource::material::Runtime>::get(context, bucket.material).techniques;
+                if (techniques.find(renderer::Pass::shadow) != techniques.end())
+                    return true;
+            }
+            return false;
         }
 
-        auto world_fitted_ortho(vec3 toLight, vec3 lo, vec3 hi) -> mat4 {
-            const vec3 center = (lo + hi) * 0.5f;
-            const float radius = 0.5f * glm::length(hi - lo);
-            const float pad = glm::max(0.25f, 0.02f * glm::max(radius, 1.0f));
+        auto shadowCubeHalf(Reading context, scene::Root::Id root) -> float {
+            constexpr float minHalf = 150.0f;
+            constexpr float maxHalf = 1000.0f;
+            constexpr float shell = 50.0f;
+            float contentHalf = 0.0f;
+            for (const auto node : with<scene::Node_group>::get(context, root)) {
+                if (not with<scene::actor::Mesh>::exists(context, node))
+                    continue;
+                if (not meshCastsShadow(context, with<scene::actor::Mesh>::get(context, node)))
+                    continue;
+                const vec3 a = glm::abs(with<scene::Node>::get(context, node).pose.position);
+                contentHalf = glm::max(contentHalf, glm::max(a.x, glm::max(a.y, a.z)));
+            }
+            return glm::min(maxHalf, glm::max(minHalf, contentHalf + shell));
+        }
+
+        auto worldCubeOrtho(vec3 toLight, float half) -> mat4 {
+            const vec3 lo{-half, -half, -half};
+            const vec3 hi{half, half, half};
+            const float radius = half * std::sqrt(3.0f);
+            const float pad = 1.0f;
             const vec3 up = std::abs(glm::dot(toLight, vec3{0.0f, 1.0f, 0.0f})) > 0.99f ? vec3{0.0f, 0.0f, 1.0f} : vec3{0.0f, 1.0f, 0.0f};
-            const mat4 view = glm::lookAt(center + toLight * (radius + pad), center, up);
+            const mat4 view = glm::lookAt(toLight * (radius + pad), vec3{0.0f, 0.0f, 0.0f}, up);
             vec3 viewLo{};
             vec3 viewHi{};
             bool any = false;
             for (int corner = 0; corner < 8; ++corner) {
-                const vec3 world{
-                    (corner & 1) ? hi.x : lo.x,
-                    (corner & 2) ? hi.y : lo.y,
-                    (corner & 4) ? hi.z : lo.z,
-                };
-                include_point(viewLo, viewHi, any, vec3{view * vec4{world, 1.0f}});
+                const vec3 world{(corner & 1) ? hi.x : lo.x, (corner & 2) ? hi.y : lo.y, (corner & 4) ? hi.z : lo.z};
+                includePoint(viewLo, viewHi, any, vec3{view * vec4{world, 1.0f}});
             }
             viewLo -= vec3{pad, pad, pad};
             viewHi += vec3{pad, pad, pad};
@@ -189,9 +203,7 @@ namespace rmmr {
             const auto& light = with<scene::Light>::get(context, light_node);
             if (light.kind == scene::Light::Kind::directional) {
                 const vec3 toLight = directional_to_light(scene::Node::Actions::transform(context, light_node));
-                if (const auto aabb = scene_node_aabb(context, root))
-                    return world_fitted_ortho(toLight, (*aabb)[0], (*aabb)[1]);
-                return world_fitted_ortho(toLight, vec3{-80.0f, -80.0f, -80.0f}, vec3{80.0f, 80.0f, 80.0f});
+                return worldCubeOrtho(toLight, shadowCubeHalf(context, root));
             }
             const mat4 light_transform = scene::Node::Actions::transform(context, light_node);
             const glm::vec3 light_position{light_transform[3]};
@@ -204,6 +216,8 @@ namespace rmmr {
             if (pass == renderer::Pass::shadow) {
                 resource::shadow::Runtime::Actions::bind(args.world, shadow->runtime);
                 resource::shadow::Runtime::Actions::clear(args.world, shadow->runtime);
+                glEnable(GL_POLYGON_OFFSET_FILL);
+                glPolygonOffset(2.0f, 8.0f);
                 return;
             }
             if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite) {
@@ -227,6 +241,7 @@ namespace rmmr {
 
         void end_pass(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
             if (pass == renderer::Pass::shadow) {
+                glDisable(GL_POLYGON_OFFSET_FILL);
                 resource::shadow::Runtime::Actions::unbind(args.world, shadow->runtime);
                 system::Viewport::Actions::activate(args.world, args.view.viewport);
                 return;

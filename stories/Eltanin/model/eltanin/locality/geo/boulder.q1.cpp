@@ -217,8 +217,8 @@ namespace eltanin::locality::geo {
         }
     }
 
-    void Boulder::Actions::radiate(Stewarding context, float dt) {
-        if (dt <= 0.0f)
+    void Boulder::Actions::radiate(Stewarding context, seconds dt) {
+        if (dt <= 0)
             return;
         const float sigma = phys::Settings::radiateSigma;
         const float sky = phys::Settings::skyKelvin;

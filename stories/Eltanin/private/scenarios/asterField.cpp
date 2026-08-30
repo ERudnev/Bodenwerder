@@ -2,6 +2,7 @@
 
 #include <eltanin/locality/bullet.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
+#include <eltanin/locality/geo/rock.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -114,6 +115,18 @@ namespace eltanin::scenario {
                 .spotContrast = 0.35f,
             };
             with<locality::geo::Boulder>::spawnGenerated(context, root, device, Pose::from(Pos{cloudCenter + cloudRadius * onSphere}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        }
+        {
+            constexpr float hooliganRadius = 20.0f;
+            const locality::geo::GeneralizedRecipe recipe{
+                .mix = locality::geo::GeneralizedRecipe::homogenous(0),
+                .radius = hooliganRadius,
+                .lump = 0.55f,
+                .seed = 77,
+                .spotMeters = hooliganRadius * 0.4f,
+                .spotContrast = 0.45f,
+            };
+            with<locality::geo::Rock>::spawnGenerated(context, root, device, Pose::from(Pos{-100.0f, 0.0f, 100.0f}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{20.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
         }
         constexpr int bulletCount = 1000;
         constexpr float bulletStep = 3.0f;

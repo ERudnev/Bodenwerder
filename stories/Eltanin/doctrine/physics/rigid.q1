@@ -12,7 +12,7 @@ namespace eltanin
         struct Face
           points: vector<integer> // into Crystal.shape
           normal: vec3
-          thickness: float // receive depth: polygon slab behind the plane (Rock ~ COM); 2-vert capsule radius (Construct ~ 20 cm)
+          thickness: float // receive depth behind the plane (Rock ~ COM). Geometric shell / BVH pad only when twoSided (plates) or 2-vert (capsule radius)
           twoSided: bool // 3+: Construct membranes receive from both sides; Rock stays a solid half-space. 2-vert capsule ignores this.
         faces: vector<Face>
 

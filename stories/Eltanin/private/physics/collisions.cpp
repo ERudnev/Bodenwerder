@@ -38,6 +38,17 @@ namespace eltanin::phys::collision {
             return type == Endpoint::Type::sphere or type == Endpoint::Type::box;
         }
 
+        // Rock puts rest COM at particle 0 and never indexes it from hull faces. That point sits inside the solid; probing it against any hull is a 1×radius false contact.
+        auto firstSurfaceVertex(const Crystal::Quantum& crystal) -> std::size_t {
+            for (const auto& face : crystal.hull.faces) {
+                for (const integer point : face.points) {
+                    if (point == 0)
+                        return 0;
+                }
+            }
+            return 1;
+        }
+
         auto halfOf(const Solid::Quantum& solid, const Body::Quantum& body) -> vec3 {
             if (solid.kind == Solid::Kind::box)
                 return glm::max(solid.halfExtents, vec3{minLength, minLength, minLength});
@@ -483,7 +494,7 @@ namespace eltanin::phys::collision {
             if (particleCrystal->particles.empty() or particleCrystal->particles.size() != particleCrystal->shape.size())
                 return;
             const vec3 shapeVelocity = velocityOf(shapeSide.body, shapeSide.type, bodies, solids, crystals);
-            for (std::size_t vertexIndex = 0; vertexIndex < particleCrystal->particles.size(); ++vertexIndex) {
+            for (std::size_t vertexIndex = firstSurfaceVertex(*particleCrystal); vertexIndex < particleCrystal->particles.size(); ++vertexIndex) {
                 integer faceIndex = -1;
                 vec3 closest;
                 vec3 outward;
@@ -530,7 +541,7 @@ namespace eltanin::phys::collision {
                 if (not boxBody or not boxSolid)
                     return;
                 const vec3 half = halfOf(*boxSolid, *boxBody);
-                for (std::size_t vertexIndex = 0; vertexIndex < particleCrystal->particles.size(); ++vertexIndex) {
+                for (std::size_t vertexIndex = firstSurfaceVertex(*particleCrystal); vertexIndex < particleCrystal->particles.size(); ++vertexIndex) {
                     const vec3 vertex = vec3{particleCrystal->particles[vertexIndex].position};
                     const SimpleHit hit = overlapPointObb(vertex, *boxBody, half);
                     if (not hit.hit)
@@ -541,7 +552,7 @@ namespace eltanin::phys::collision {
                 return;
             }
             const vec3 center = solid.center;
-            for (std::size_t vertexIndex = 0; vertexIndex < particleCrystal->particles.size(); ++vertexIndex) {
+            for (std::size_t vertexIndex = firstSurfaceVertex(*particleCrystal); vertexIndex < particleCrystal->particles.size(); ++vertexIndex) {
                 const vec3 vertex = vec3{particleCrystal->particles[vertexIndex].position};
                 const vec3 offset = vertex - center;
                 const float distance = glm::length(offset);
@@ -681,6 +692,17 @@ namespace eltanin::phys::collision {
             if (not particleCrystal)
                 return;
             kickVertex(*particleCrystal, contact.a.face, -contact.normal * remaining);
+            if (contact.relativeNormalSpeed <= 0.0f)
+                return;
+            if (contact.a.face < 0 or static_cast<std::size_t>(contact.a.face) >= particleCrystal->particles.size())
+                return;
+            const float mass = particleCrystal->particles[static_cast<std::size_t>(contact.a.face)].mass;
+            if (mass <= 0.0f)
+                return;
+            auto* shapeCrystal = crystals.items.find(contact.b.body);
+            if (not shapeCrystal)
+                return;
+            scarFace(*shapeCrystal, contact.b.face, mass * contact.relativeNormalSpeed);
         }
 
         void solveContact(Contact& contact, float remaining, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
@@ -937,6 +959,8 @@ namespace eltanin::phys::collision {
             for (auto [crystalId, crystal] : crystals.items) {
                 auto* crystalBody = bodies.items.find(crystalId);
                 if (not crystalBody)
+                    continue;
+                if (firstOnSphere(start, end, vec3{crystalBody->position}, crystalBody->radius + rayRadius) < 0)
                     continue;
                 const SegmentHit hit = firstOnHull(crystal.hull, crystal.shape, toLocal(*crystalBody, start), toLocal(*crystalBody, end), rayRadius);
                 if (hit.face < 0 or hit.t >= bestT)

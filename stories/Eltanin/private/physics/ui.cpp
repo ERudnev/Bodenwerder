@@ -1,5 +1,6 @@
 #include "physics/ui.h"
 
+#include <eltanin/locality/thing.q1.h>
 #include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/scrap.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
@@ -326,9 +327,10 @@ namespace eltanin::phys {
                     "1",
                     "x2", "x4", "x8", "x16",
                 };
+                auto thing = with<locality::Thing>::modify_global(context);
                 int selected = 4;
                 for (int i = 0; i < 9; ++i) {
-                    if (system.state.timeScale == scales[i]) {
+                    if (thing->timeScale == scales[i]) {
                         selected = i;
                     }
                 }
@@ -337,7 +339,7 @@ namespace eltanin::phys {
                         ImGui::SameLine();
                     }
                     if (ImGui::RadioButton(labels[i], selected == i)) {
-                        system.state.timeScale = scales[i];
+                        thing->timeScale = scales[i];
                     }
                 }
 

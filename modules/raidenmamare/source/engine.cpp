@@ -153,7 +153,7 @@ namespace rmmr {
             handles.default_shadow = with<Assets>::add_shadow_allocator(
                 context,
                 Unit::Name::from("rmmr", "main_shadow"),
-                resource::shadow::Allocator::Quantum{.size = index2{1024, 1024}});
+                resource::shadow::Allocator::Quantum{.size = index2{2048, 2048}});
         }
 
         void loadPastState(Writing) override {}
