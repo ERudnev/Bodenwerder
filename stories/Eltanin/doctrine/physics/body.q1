@@ -14,11 +14,8 @@ namespace eltanin
       ?thermalEnergy()->float
 
     struct Particle of Matter
-      always dt: float = 0.01
       prev: dvec3
       force: vec3
-      ?velocity()->dvec3
-      ?impulse()->vec3
 
     // World-facing kinematics cache. Solid, Crystal and Ray are features of the same id.
     entity Body

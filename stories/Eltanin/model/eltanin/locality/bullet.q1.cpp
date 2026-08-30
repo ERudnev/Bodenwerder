@@ -1,6 +1,7 @@
 #include <eltanin/locality/bullet.q1.h>
 
 #include <eltanin/physics/body.q1.h>
+#include "physics/settings.h"
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
@@ -86,7 +87,7 @@ namespace eltanin::locality {
             .radius = shellRadius,
         });
         with<phys::rigid::Ray>::extend(context, body, phys::rigid::Ray::Quantum{
-            .core = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = shellMass, .temperature = shellHeat, .cohesion = 1.0f}, dvec3{pose.position} - dvec3{velocity * phys::Particle::dt}, vec3{0.0f, 0.0f, 0.0f}},
+            .core = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = shellMass, .temperature = shellHeat, .cohesion = 1.0f}, dvec3{pose.position} - dvec3{velocity * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}},
         });
         const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
         with<Bullet>::extend(context, thing, Bullet::Quantum{.actor = replica, .body = body, .speed = speed});
@@ -102,35 +103,36 @@ namespace eltanin::locality {
                 continue;
             if (now - with<Thing>::get(context, id).bornAt >= lifetime)
                 expired.push_back(id);
-
         }
         for (const auto id : expired)
             with<Bullet>::kraken(context, id);
     }
 
-    struct Bullet::Internals : Bullet::DefaultInternals {
-        static void followBody(Reacting context) {
-            using namespace api_for_internals;
-            for (auto [id, bullet] : context.proposal.aspect<Bullet>().items()) {
-                if (not my::ward(context, id, &Quantum::actor)) { my::remove(context, id); continue; }
-                if (not with<rmmr::scene::Node>::exists(context, bullet.actor)) { my::remove(context, id); continue; }
-                const auto* body = my::ward(context, id, &Quantum::body);
-                if (not body) { my::remove(context, id); continue; }
-                with<rmmr::scene::Node>::modify(context, bullet.actor)->pose = body->pose();
-                if (not with<phys::rigid::Ray>::exists(context, bullet.body) or not with<scene::actor::Replica>::exists(context, bullet.actor))
-                    continue;
-                const float speed = float(glm::length(with<phys::rigid::Ray>::get(context, bullet.body).core.velocity()));
-                auto replica = with<scene::actor::Replica>::modify(context, bullet.actor);
-                with<scene::actor::Family>::write(context, replica->family, replica->packed, "speed", speed);
-            }
+    void Bullet::Actions::followBody(Stewarding context) {
+        auto nodes = context.direct<scene::Node>();
+        auto bodies = context.direct<phys::Body>();
+        auto rays = context.direct<phys::rigid::Ray>();
+        auto replicas = context.direct<scene::actor::Replica>();
+        for (auto [_, bullet] : context->aspect<Bullet>().items()) {
+            auto* node = nodes.items.find(bullet.actor);
+            if (not node)
+                continue;
+            auto* body = bodies.items.find(bullet.body);
+            if (not body)
+                continue;
+            node->pose = body->pose();
+            auto* ray = rays.items.find(bullet.body);
+            auto* replica = replicas.items.find(bullet.actor);
+            if (not ray or not replica)
+                continue;
+            with<scene::actor::Family>::write(context, replica->family, replica->packed, "speed", float(glm::length((ray->core.position - ray->core.prev) / phys::Settings::fixedStep)));
         }
-    };
+    }
 
     auto Bullet::customAspectReactions() -> const Behavior {
         return {
             reaction::structural::custody<Bullet, scene::actor::Replica, &Bullet::Quantum::actor>{},
             reaction::structural::custody<Bullet, phys::rigid::Ray, &Bullet::Quantum::body>{},
-            reaction::aspect_wide<Bullet, phys::Body>(&Bullet::Internals::followBody),
         };
     }
 

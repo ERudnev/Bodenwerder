@@ -20,4 +20,4 @@ namespace eltanin
         >bind()
         >spawnShell30mm(Pose, speed: float)->#
         >update()
-        !followBody(~phys::Body)->>linearPass(>all)
+        *followBody()

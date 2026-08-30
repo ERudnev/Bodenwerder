@@ -51,8 +51,9 @@ namespace eltanin::locality::geo {
             static auto spawnLavaBrick(Writing, rmmr::system::Device::Id, rmmr::Pose) -> Id;
             static auto spawnIceBlob(Writing, rmmr::system::Device::Id, rmmr::Pose) -> Id;
             static void radiate(Stewarding, seconds dt);
+            static void followBody(Stewarding);
         };
-        struct Internals;
+        struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions();
     };
 

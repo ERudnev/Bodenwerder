@@ -1,0 +1,23 @@
+#pragma once
+
+#include <fQSM/api/interface.h>
+
+namespace eltanin::phys {
+
+    using namespace fqsm::api;
+
+    struct Settings {
+        static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
+        static constexpr float isaAirDensity = 1225.0f; // g/m³ ISA
+        static constexpr float airDragTau = 1.0f; // seconds to e-fold linear speed at isaAirDensity
+        static constexpr float airSpinHalfLife = 3.0f; // Solid ω halves in this many seconds at isaAirDensity
+        static constexpr float restLinear = 1.0e-5f; // m/tick; below this (x−prev) is zeroed
+        static constexpr float solidLiveSpeed = 0.1f; // m/s; Solid↔Crystal — soft fade of restitution and spin below this closing speed
+        static constexpr float cohesionWound = 2.5f; // Δcohesion = cohesionWound · |p_ray| / m_face; 30mm 0.4 kg × 200 m/s vs 4 t plate → 5%
+        static constexpr seconds fixedStep = 0.01;
+        static constexpr seconds thermalStep = 0.2;
+        static constexpr float skyKelvin = 3.0f;
+        static constexpr float radiateSigma = 5.0e-13f; // parrot mass × kelvin; five times slower than the first lava-scale guess
+    };
+
+}

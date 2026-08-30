@@ -41,21 +41,22 @@
 
 ### `Custody<Ward>`
 
-Локальная обязанность cleanup: при уходе holder’а (и позже — при release/смене Id) *попытаться* убрать ward.  
-Не unique_ptr / shared_ptr: нет уникальности владельца, нет гарантии жизни, stale Id нормален, внешняя смерть ward **не** чистит поле holder’а автоматически.  
-Носитель тот же, что `#` / `Identifier` (алиас); опциональность `?` ортогональна.
+Запчасть через разные id: holder умер → похоронить ward; ward убили → holder не живёт.  
+Слушает только `removed()` (не updates). Обратная стрелка — `ask::relations`, не скан таблицы holder’ов.  
+Не unique_ptr: уникальности нет; несколько holder’ов одной ward — смерть ward убивает всех, смерть одного хоронит ward (и остальных).  
+Носитель тот же, что `#` / `Identifier` (алиас). `custody<T>?` ортогонален: слот может быть пуст; release при смене id ещё TODO.
 
 Lookup: `ward(context, id, &Quantum::myTrunk)` → `const Ward::Quantum*` | `nullptr`.
 
 `optional<Custody<…>>`: `nullopt` или мёртвая цель → тот же `nullptr` (вопрос ward — «есть ли живой квант»).  
 Явный отрыв хобота в образце — смена поля `Some → nullopt` (дельта слона), не телепатия по таблице `Trunk`.
 
-Lifecycle cleanup holder→ward: `reaction::structural::custody<…>` (в Behavior, если нужен).
+Пакт: `reaction::structural::custody<…>` (в Behavior). Не путать с `anchor` («нужен, но не мой») и с `#` / `#?` (знаю id, не хороню).
 
 ### `Anchor<T>`
 
-Обратная ось зависимости жизни: нет цели — holder не живёт (`reaction::structural::anchored`, если зарегистрирован в Behavior).  
-Lookup того же семейства, что Id-поле: `ward(...)`.
+Обратная ось «нужен, но не мой»: нет цели — holder не живёт; цель при смерти holder’а **не** хоронится (`reaction::structural::anchored`).  
+Для запчасти, которую holder породил и без которой не живёт — `custody`, не якорь на том же поле.
 
 Обратный обход «кто смотрит на этот T» в реакциях — через **`ask::relations`**, не полный скан таблицы holder’ов.
 
@@ -156,7 +157,7 @@ Internals::boostHappiest / trunklessSadnessAndMelancholy / envyTearOffs — по
 - Второй `context` в ручном `get`+`find`, если достаточно `my::ward` / `with<>::ward`.
 - Голые `get`/`modify`/`vital` в Internals (зоопарк в scope) — только `my::`.
 - `throwing_before` / сырой `Change.before` в доменных реакциях — для слоёв есть `old`/`now`.
-- Авто-обнулять поле holder’а при смерти ward (для custody — запрещено контрактом).
+- Авто-обнулять поле holder’а при смерти ward (holder умирает вместе с ward; поле не «чистится»).
 - `for (change) for (all holders)` вместо `ask::relations` при наличии поля-ссылки на изменившийся тип.
 - Сохранять `changes().removed()` (view) без живой `Delta` — dangling.
 

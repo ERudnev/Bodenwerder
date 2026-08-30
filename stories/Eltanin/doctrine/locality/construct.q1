@@ -44,5 +44,5 @@ namespace eltanin
       all
         >update()
         >shedDead()
-        !followBody(~phys::Body)->>linearPass(>all)
+        *followBody()
         >syncVisualCohesion()

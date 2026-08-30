@@ -101,7 +101,7 @@ The parser and linter treat them as special type constructors (AST kinds `Anchor
 Projection notes (C++ / fQSM):
 
 - `anchor<T>` → `Anchor<T>` — structural lifecycle (anchored reaction)
-- `custody<T>` → `Custody<T>` — structural lifecycle (custody cleanup)
+- `custody<T>` → `Custody<T>` — structural lifecycle (pact: holder dies → bury ward; ward murdered → holder dies)
 - `affects<T>` → `Affected<T>` — typed Id link **without** structural lifecycle; lookup via `relation` / `vital`
 
 `anchor<>` / `custody<>` imply custom reaction-bearing aspect behavior. `affects<>` alone does not register a structural reaction; domain `!` rules (and optional `vital`) supply behavior.

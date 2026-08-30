@@ -81,23 +81,11 @@ namespace local {
                 }
             }
         }
-
-        // Degenerate: if kept B disappears, clear ticks (do not remove C — not vital)
-        static void hush_on_kept_gone(Reacting context) {
-            const auto by_kept = ask::relations<B>(context).removed<C, &C::Quantum::kept>();
-            for (const auto& change : context.changes<B>().removed()) {
-                for (const auto id : by_kept.ids(change.id)) {
-                    with<C>::modify(context, id)->ticks = 0;
-                }
-            }
-        }
     };
 
     auto C::customAspectReactions() -> const Behavior {
         return {
             reaction::aspect_wide<C, A>(&Internals::pulse_on_hub),
-            reaction::aspect_wide<C, B>(&Internals::hush_on_kept_gone),
-            // codegen for anchor<> / custody<> fields:
             reaction::structural::anchored<C, A, &C::Quantum::hub>{},
             reaction::structural::custody<C, B, &C::Quantum::kept>{},
         };

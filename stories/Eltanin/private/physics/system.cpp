@@ -4,6 +4,7 @@
 #include <eltanin/locality/flash.q1.h>
 #include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
+#include <eltanin/locality/thing.q1.h>
 #include <rmmr/scene/root.q1.h>
 
 #include <glm/geometric.hpp>
@@ -31,7 +32,8 @@ namespace eltanin::phys {
     System::System(scene::Root::Id scene)
         : scene(scene)
         , debt(0)
-        , thermalDebt(0) {
+        , thermalDebt(0)
+        , collisions{} {
     }
 
     void System::applyAerodynamics(Stewarding context) {
@@ -40,16 +42,16 @@ namespace eltanin::phys {
         if (density <= 0.0f)
             return;
         const float densityRatio = density / Settings::isaAirDensity;
-        float factor = 1.0f - densityRatio * (Particle::dt / Settings::airDragTau);
+        float factor = 1.0f - densityRatio * (float(Settings::fixedStep) / Settings::airDragTau);
         if (factor < 0.0f)
             factor = 0.0f;
         const float spinTau = Settings::airSpinHalfLife / 0.693147f;
-        float spinFactor = 1.0f - densityRatio * (Particle::dt / spinTau);
+        float spinFactor = 1.0f - densityRatio * (float(Settings::fixedStep) / spinTau);
         if (spinFactor < 0.0f)
             spinFactor = 0.0f;
         if (factor >= 1.0f and spinFactor >= 1.0f)
             return;
-        const float dt = Particle::dt;
+        const float dt = float(Settings::fixedStep);
         const float dt2 = dt * dt;
         const float dragScale = (factor - 1.0f) / dt2;
         auto bodies = context.direct<Body>();
@@ -130,7 +132,7 @@ namespace eltanin::phys {
     }
 
     void System::integrate(fqsm::Direct<rigid::Crystal> crystals) {
-        const double dt2 = double(Particle::dt) * double(Particle::dt);
+        const double dt2 = Settings::fixedStep * Settings::fixedStep;
         const double rest2 = double(Settings::restLinear) * double(Settings::restLinear);
         for (auto [_, crystal] : crystals.items) {
             for (Particle& particle : crystal.particles) {
@@ -146,7 +148,7 @@ namespace eltanin::phys {
     }
 
     void System::integrateSolids(fqsm::Direct<Body> bodies, fqsm::Direct<rigid::Solid> solids) {
-        const float dt = Particle::dt;
+        const float dt = float(Settings::fixedStep);
         const double dt2 = double(dt) * double(dt);
         const double rest2 = double(Settings::restLinear) * double(Settings::restLinear);
         for (auto [id, solid] : solids.items) {
@@ -187,7 +189,7 @@ namespace eltanin::phys {
     }
 
     void System::integrateRays(fqsm::Direct<Body> bodies, fqsm::Direct<rigid::Ray> rays) {
-        const double dt2 = double(Particle::dt) * double(Particle::dt);
+        const double dt2 = Settings::fixedStep * Settings::fixedStep;
         const double rest2 = double(Settings::restLinear) * double(Settings::restLinear);
         for (auto [id, ray] : rays.items) {
             auto* body = bodies.items.find(id);
@@ -202,7 +204,7 @@ namespace eltanin::phys {
             ray.core.prev = previous;
             body->position = ray.core.position;
             body->totalMass = ray.core.mass;
-            body->orientation = lookAlong(vec3{ray.core.velocity()}, body->orientation);
+            body->orientation = lookAlong(vec3{(ray.core.position - ray.core.prev) / Settings::fixedStep}, body->orientation);
         }
     }
 
@@ -247,11 +249,15 @@ namespace eltanin::phys {
         Stewarding session = world;
         if (not with<scene::Root>::exists(session, scene))
             return;
+        bool ticked = false;
         while (debt >= Settings::fixedStep) {
             tick(session);
             debt -= Settings::fixedStep;
+            ticked = true;
         }
         radiate(session);
+        if (ticked)
+            with<locality::Thing>::followBodies(session);
     }
 
 }

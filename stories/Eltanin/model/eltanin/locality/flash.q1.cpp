@@ -1,6 +1,7 @@
 #include <eltanin/locality/flash.q1.h>
 
 #include <eltanin/physics/rigid.q1.h>
+#include "physics/settings.h"
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -124,7 +125,7 @@ namespace eltanin::locality {
         auto crystals = context.direct<phys::rigid::Crystal>();
         auto solids = context.direct<phys::rigid::Solid>();
         auto bodies = context.direct<phys::Body>();
-        const float tick = phys::Particle::dt;
+        const float tick = float(phys::Settings::fixedStep);
         for (auto [_, flash] : context.direct<Flash>().items) {
             if (flash.effect.duration <= 0)
                 continue;

@@ -21,4 +21,4 @@ namespace eltanin
         >update()
         >spawnGenerated(#system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#
         *radiate(dt: seconds)
-        !followBody(~phys::Body)->>linearPass(>all)
+        *followBody()

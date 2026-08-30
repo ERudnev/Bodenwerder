@@ -51,10 +51,33 @@ namespace eltanin::phys::collision {
         float relativeNormalSpeed; // closing (+) along normal at build; Commit may re-sample
     };
 
+    // Last connectivity tick. Observational; not a profiler.
+    struct Census {
+        integer crystals;
+        integer solids;
+        integer spheres;
+        integer boxes;
+        integer rays;
+        integer compounds;
+        integer cohorts;
+        integer occupants;
+        integer maxOccupants;
+        integer particles;
+        integer hullFaces;
+        integer cohortPairs;
+        integer cohortHits;
+        integer occupantTries;
+        integer candidates;
+        integer contacts;
+        integer rayTries;
+        integer rayHits;
+    };
+
     // Per-tick buffer: clear or reuse at start of build; discard after Commit.
     struct State {
         vector<Candidate> candidates;
         vector<Contact> contacts;
+        Census census;
 
         void build(Stewarding);
         void solve(Stewarding);

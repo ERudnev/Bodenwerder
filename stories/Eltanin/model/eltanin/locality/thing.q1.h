@@ -22,6 +22,7 @@ namespace eltanin::locality {
         };
         struct Actions : BaseActions {
             static void update(Writing, seconds dt);
+            static void followBodies(Stewarding);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }

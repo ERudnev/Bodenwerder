@@ -11,6 +11,7 @@
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/root.q1.h>
 
+#include "physics/settings.h"
 #include "mech/semantics/physicalParameters.h"
 #include "mech/semantics/quarks.h"
 #include "mech/semantics/shapes.h"
@@ -394,7 +395,7 @@ namespace eltanin::mech {
                 const vec3 meters = local * space::local::edge2meters;
                 const vec3 world = pose.position + pose.rotation * meters;
                 shape[index] = meters;
-                particles[index] = phys::Particle{phys::Matter{.position = dvec3{world}, .mass = point.mass, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{world} - dvec3{velocity * phys::Particle::dt}, vec3{0.0f, 0.0f, 0.0f}};
+                particles[index] = phys::Particle{phys::Matter{.position = dvec3{world}, .mass = point.mass, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{world} - dvec3{velocity * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}};
                 moment += glm::dvec3{meters} * double(point.mass);
                 mass += double(point.mass);
             }

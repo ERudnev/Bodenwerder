@@ -17,3 +17,4 @@ namespace eltanin
         timeScale: float // wall dt → locality dt
         scene: #rmmr::scene::Root
         >update(dt: seconds)
+        *followBodies() // after phys ticks: Node.pose ← Body; missing ward → skip (lock). lifetime = custody pact.

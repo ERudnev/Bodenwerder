@@ -1,11 +1,8 @@
-# `custody<T>`: cleanup on release (reset still TODO)
+# `custody<T>`: release on reassign still TODO
 
-`custody<T>` is local cleanup duty at a link: when the holder is removed (or, when implemented, when the field Id is reassigned), request deletion of the linked Observed. It is **not** unique_ptr / shared_ptr: no uniqueness, no liveness warranty, stale Ids are valid; external death of Observed must not auto-clear the holder's field.
+`custody<T>` is the identity-part pact: holder dies → bury ward; ward murdered → holder dies. Removal only; reverse via `ask::relations`. `custody<T>?` is an orthogonal empty slot (`#?` is a non-owning observer — do not mix).
 
-Сейчас реакция убивает Observed только при удалении владельца. Нужно ещё при **смене id** в поле custody — старый `Observed` удалять (локальный акт release, аналог `reset` без encapsulation).
+Still missing: when a live holder **reassigns or clears** the field, bury the previous ward (local `reset`, no encapsulation).
 
-**Пилот:** `rmmr::Device` — `window: custody<Window>`; окно выделить в отдельный аспект `rmmr::Window` (`!release(-one)` там, не на девайсе).
-
-- [ ] Расширить `reaction::structural::custody` в `anchoring.h` (слушать изменение `link`, не только removal клиента)
-- [ ] Тест на переназначение custody при живом `Client`
-- [ ] `device.q1` + `window.q1` → проекция по Etalon
+- [ ] Слушать изменение `link` в `reaction::structural::custody`, не только removal
+- [ ] Тест на переназначение / `nullopt` при живом `Client`

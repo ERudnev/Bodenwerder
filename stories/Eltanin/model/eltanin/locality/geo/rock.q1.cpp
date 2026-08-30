@@ -10,6 +10,7 @@
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
 
+#include "physics/settings.h"
 #include "mech/semantics/space.h"
 #include "geo/stones/marchingCubes.h"
 #include "geo/stones/crust.h"
@@ -435,7 +436,7 @@ namespace eltanin::locality::geo {
                 const Sample& sample = samples[index];
                 const vec3 world = pose.position + pose.rotation * sample.local;
                 const vec3 spin = glm::cross(omega, pose.rotation * (sample.local - massCom));
-                particles.push_back(phys::Particle{phys::Matter{.position = dvec3{world}, .mass = sample.mass, .temperature = temperature, .cohesion = sampleCohesion[index]}, dvec3{world} - dvec3{(velocity + spin) * phys::Particle::dt}, vec3{0.0f, 0.0f, 0.0f}});
+                particles.push_back(phys::Particle{phys::Matter{.position = dvec3{world}, .mass = sample.mass, .temperature = temperature, .cohesion = sampleCohesion[index]}, dvec3{world} - dvec3{(velocity + spin) * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}});
                 shape.push_back(sample.local);
             }
 
@@ -520,24 +521,24 @@ namespace eltanin::locality::geo {
         return Mix{15} << (mineral * 4);
     }
 
-    struct Rock::Internals : Rock::DefaultInternals {
-        static void followBody(Reacting context) {
-            using namespace api_for_internals;
-            for (auto [id, rock] : context.proposal.aspect<Rock>().items()) {
-                if (not my::ward(context, id, &Quantum::actor)) { my::remove(context, id); continue; }
-                if (not with<rmmr::scene::Node>::exists(context, rock.actor)) { my::remove(context, id); continue; }
-                const auto* body = my::ward(context, id, &Quantum::body);
-                if (not body) { my::remove(context, id); continue; }
-                with<rmmr::scene::Node>::modify(context, rock.actor)->pose = body->pose();
-            }
+    void Rock::Actions::followBody(Stewarding context) {
+        auto nodes = context.direct<rmmr::scene::Node>();
+        auto bodies = context.direct<phys::Body>();
+        for (auto [_, rock] : context->aspect<Rock>().items()) {
+            auto* node = nodes.items.find(rock.actor);
+            if (not node)
+                continue;
+            auto* body = bodies.items.find(rock.body);
+            if (not body)
+                continue;
+            node->pose = body->pose();
         }
-    };
+    }
 
     auto Rock::customAspectReactions() -> const Behavior {
         return {
             reaction::structural::custody<Rock, rmmr::scene::actor::Mesh, &Rock::Quantum::actor>{},
             reaction::structural::custody<Rock, phys::rigid::Crystal, &Rock::Quantum::body>{},
-            reaction::aspect_wide<Rock, phys::Body>(&Rock::Internals::followBody),
         };
     }
 

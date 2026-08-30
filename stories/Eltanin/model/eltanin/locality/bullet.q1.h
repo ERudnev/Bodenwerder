@@ -25,8 +25,9 @@ namespace eltanin::locality {
             static void bind(Writing);
             static auto spawnShell30mm(Writing, rmmr::Pose, float speed) -> Id;
             static void update(Writing);
+            static void followBody(Stewarding);
         };
-        struct Internals;
+        struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions();
     };
 

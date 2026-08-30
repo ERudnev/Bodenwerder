@@ -47,4 +47,4 @@ namespace eltanin
         >spawnLavaBrick(#system::Device, Pose)->#
         >spawnIceBlob(#system::Device, Pose)->#
         *radiate(dt: seconds)
-        !followBody(~phys::Body)->>linearPass(>all)
+        *followBody()

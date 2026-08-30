@@ -152,11 +152,11 @@ namespace eltanin::locality::geo {
         quat prevOri = pose.rotation;
         const float omegaLen = glm::length(omega);
         if (omegaLen > 1.0e-12f) {
-            const quat step = glm::angleAxis(-omegaLen * phys::Particle::dt, omega / omegaLen);
+            const quat step = glm::angleAxis(-omegaLen * float(phys::Settings::fixedStep), omega / omegaLen);
             prevOri = glm::normalize(step * pose.rotation);
         }
         with<phys::rigid::Solid>::extend(context, body, phys::rigid::Solid::Quantum{
-            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = bornCohesion}, dvec3{pose.position} - dvec3{velocity * phys::Particle::dt}, vec3{0.0f, 0.0f, 0.0f}},
+            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = bornCohesion}, dvec3{pose.position} - dvec3{velocity * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}},
             .prevOri = prevOri,
             .forceAngular = vec3{0.0f, 0.0f, 0.0f},
             .kind = phys::rigid::Solid::Kind::sphere,
@@ -176,10 +176,8 @@ namespace eltanin::locality::geo {
             if (not with<Boulder>::exists(context, id))
                 continue;
             const auto& boulder = with<Boulder>::get(context, id);
-            if (not with<phys::rigid::Solid>::exists(context, boulder.body) or not with<phys::Body>::exists(context, boulder.body)) {
-                with<Boulder>::kraken(context, id);
+            if (not with<phys::rigid::Solid>::exists(context, boulder.body) or not with<phys::Body>::exists(context, boulder.body) or not with<rmmr::scene::actor::Mesh>::exists(context, boulder.actor))
                 continue;
-            }
             const auto& solid = with<phys::rigid::Solid>::get(context, boulder.body);
             const auto& body = with<phys::Body>::get(context, boulder.body);
             const int cuts = cutCount(solid.center.cohesion);
@@ -188,7 +186,7 @@ namespace eltanin::locality::geo {
             if (cuts > 0 and boulder.recipe.radius >= minRadius * 2.0f) {
                 if (with<rmmr::scene::actor::Mesh>::exists(context, boulder.actor)) {
                     const auto device = with<rmmr::scene::actor::Mesh>::get(context, boulder.actor).device;
-                    const vec3 linear = vec3{(body.position - solid.center.prev) / double(phys::Particle::dt)};
+                    const vec3 linear = vec3{(body.position - solid.center.prev) / phys::Settings::fixedStep};
                     vector<Pebble> pieces;
                     dichotomy(vec3{body.position}, body.orientation, boulder.recipe.radius, cuts, boulder.recipe.seed, 0, pieces);
                     if (pieces.size() >= 2) {
@@ -236,24 +234,24 @@ namespace eltanin::locality::geo {
         }
     }
 
-    struct Boulder::Internals : Boulder::DefaultInternals {
-        static void followBody(Reacting context) {
-            using namespace api_for_internals;
-            for (auto [id, boulder] : context.proposal.aspect<Boulder>().items()) {
-                if (not my::ward(context, id, &Quantum::actor)) { my::remove(context, id); continue; }
-                if (not with<rmmr::scene::Node>::exists(context, boulder.actor)) { my::remove(context, id); continue; }
-                const auto* body = my::ward(context, id, &Quantum::body);
-                if (not body) { my::remove(context, id); continue; }
-                with<rmmr::scene::Node>::modify(context, boulder.actor)->pose = body->pose();
-            }
+    void Boulder::Actions::followBody(Stewarding context) {
+        auto nodes = context.direct<rmmr::scene::Node>();
+        auto bodies = context.direct<phys::Body>();
+        for (auto [_, boulder] : context->aspect<Boulder>().items()) {
+            auto* node = nodes.items.find(boulder.actor);
+            if (not node)
+                continue;
+            auto* body = bodies.items.find(boulder.body);
+            if (not body)
+                continue;
+            node->pose = body->pose();
         }
-    };
+    }
 
     auto Boulder::customAspectReactions() -> const Behavior {
         return {
             reaction::structural::custody<Boulder, rmmr::scene::actor::Mesh, &Boulder::Quantum::actor>{},
             reaction::structural::custody<Boulder, phys::rigid::Solid, &Boulder::Quantum::body>{},
-            reaction::aspect_wide<Boulder, phys::Body>(&Boulder::Internals::followBody),
         };
     }
 

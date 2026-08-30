@@ -22,8 +22,9 @@ namespace eltanin::locality::geo {
             static void update(Writing);
             static auto spawnGenerated(Writing, rmmr::system::Device::Id, rmmr::Pose, GeneralizedRecipe, vec3, vec3) -> Id;
             static void radiate(Stewarding, seconds dt);
+            static void followBody(Stewarding);
         };
-        struct Internals;
+        struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions();
     };
 

@@ -55,9 +55,10 @@ namespace eltanin::locality {
         struct Actions : BaseActions {
             static void update(Writing);
             static void shedDead(Writing);
+            static void followBody(Stewarding);
             static void syncVisualCohesion(Reading, Id);
         };
-        struct Internals;
+        struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions();
     };
 

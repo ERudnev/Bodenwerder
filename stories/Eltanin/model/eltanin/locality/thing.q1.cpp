@@ -29,4 +29,12 @@ namespace eltanin::locality {
         with<geo::Boulder>::update(context);
     }
 
+    void Thing::Actions::followBodies(Stewarding context) {
+        with<Bullet>::followBody(context);
+        with<Construct>::followBody(context);
+        with<Scrap>::followBody(context);
+        with<geo::Rock>::followBody(context);
+        with<geo::Boulder>::followBody(context);
+    }
+
 }

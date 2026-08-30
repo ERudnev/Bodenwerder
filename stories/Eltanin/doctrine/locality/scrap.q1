@@ -16,4 +16,4 @@ namespace eltanin
       all
         >update()
         >spawn(Pose, halfExtents: vec3, mass: float, linear: vec3, omega: vec3, cohesion: float)->#
-        !followBody(~phys::Body)->>linearPass(>all)
+        *followBody()

@@ -4,6 +4,7 @@
 #include "mech/assembler.h"
 #include "mech/construction.h"
 #include "physics/hullBvh.h"
+#include "physics/settings.h"
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
@@ -133,7 +134,7 @@ namespace eltanin::locality {
         }
 
         auto shedOne(Writing context, Construct::Id id, Construct::Quantum& construct) -> bool {
-            if (not with<phys::rigid::Crystal>::exists(context, construct.body))
+            if (not with<phys::rigid::Crystal>::exists(context, construct.body) or not with<rmmr::scene::actor::Mesh>::exists(context, construct.actor))
                 return true;
             auto crystal = with<phys::rigid::Crystal>::modify(context, construct.body);
             if (crystal->particles.size() != construct.construction.evaluatedParticles.size() or crystal->particles.size() != crystal->shape.size())
@@ -180,7 +181,7 @@ namespace eltanin::locality {
                         const auto& particle = crystal->particles[index];
                         chunk->locals.push_back(crystal->shape[index]);
                         chunk->mass += particle.mass;
-                        chunk->momentum += particle.velocity() * double(particle.mass);
+                        chunk->momentum += (particle.position - particle.prev) / phys::Settings::fixedStep * double(particle.mass);
                     } else {
                         particles.push_back(crystal->particles[index]);
                         shape.push_back(crystal->shape[index]);
@@ -273,19 +274,20 @@ namespace eltanin::locality {
             with<Construct>::kraken(context, id);
     }
 
-    struct Construct::Internals : Construct::DefaultInternals {
-        static void followBody(Reacting context) {
-            using namespace api_for_internals;
-            for (auto [id, construct] : context.proposal.aspect<Construct>().items()) {
-                if (not my::ward(context, id, &Quantum::actor)) { my::remove(context, id); continue; }
-                if (not with<rmmr::scene::Node>::exists(context, construct.actor)) { my::remove(context, id); continue; }
-                const auto* body = my::ward(context, id, &Quantum::body);
-                if (not body) { my::remove(context, id); continue; }
-                with<rmmr::scene::Node>::modify(context, construct.actor)->pose = body->pose();
-                Construct::Actions::syncVisualCohesion(context, id);
-            }
+    void Construct::Actions::followBody(Stewarding context) {
+        auto nodes = context.direct<rmmr::scene::Node>();
+        auto bodies = context.direct<phys::Body>();
+        for (auto [id, construct] : context->aspect<Construct>().items()) {
+            auto* node = nodes.items.find(construct.actor);
+            if (not node)
+                continue;
+            auto* body = bodies.items.find(construct.body);
+            if (not body)
+                continue;
+            node->pose = body->pose();
+            Construct::Actions::syncVisualCohesion(context, id);
         }
-    };
+    }
 
     void Construct::Actions::syncVisualCohesion(Reading context, Id id) {
         const auto& construct = with<Construct>::get(context, id);
@@ -307,7 +309,6 @@ namespace eltanin::locality {
         return {
             reaction::structural::custody<Construct, rmmr::scene::actor::Mesh, &Construct::Quantum::actor>{},
             reaction::structural::custody<Construct, phys::rigid::Crystal, &Construct::Quantum::body>{},
-            reaction::aspect_wide<Construct, phys::Body>(&Construct::Internals::followBody),
         };
     }
 

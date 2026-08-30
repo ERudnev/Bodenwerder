@@ -20,8 +20,9 @@ namespace eltanin::locality {
             static void update(Writing);
             static auto spawn(Writing, rmmr::Pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion) -> Id;
             static void breakOff(Writing, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion);
+            static void followBody(Stewarding);
         };
-        struct Internals;
+        struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions();
     };
 

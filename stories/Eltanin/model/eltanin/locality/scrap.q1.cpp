@@ -1,6 +1,7 @@
 #include <eltanin/locality/scrap.q1.h>
 
 #include <eltanin/physics/compound.q1.h>
+#include "physics/settings.h"
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -87,10 +88,8 @@ namespace eltanin::locality {
             if (not with<Scrap>::exists(context, id))
                 continue;
             const auto& scrap = with<Scrap>::get(context, id);
-            if (not with<phys::rigid::Solid>::exists(context, scrap.body) or not with<phys::Body>::exists(context, scrap.body)) {
-                with<Scrap>::kraken(context, id);
+            if (not with<phys::rigid::Solid>::exists(context, scrap.body) or not with<phys::Body>::exists(context, scrap.body) or not with<rmmr::scene::actor::Mesh>::exists(context, scrap.actor))
                 continue;
-            }
             const auto& solid = with<phys::rigid::Solid>::get(context, scrap.body);
             const auto& body = with<phys::Body>::get(context, scrap.body);
             const int cuts = cutCount(solid.center.cohesion);
@@ -99,7 +98,7 @@ namespace eltanin::locality {
             if (cuts > 0) {
                 const int axis = longestAxis(solid.halfExtents);
                 if (solid.halfExtents[axis] >= minHalf * 2.0f) {
-                    const vec3 linear = vec3{(body.position - solid.center.prev) / double(phys::Particle::dt)};
+                    const vec3 linear = vec3{(body.position - solid.center.prev) / phys::Settings::fixedStep};
                     breakOff(context, vec3{body.position}, body.orientation, solid.halfExtents, body.totalMass, linear, solid.center.cohesion);
                 }
             }
@@ -143,11 +142,11 @@ namespace eltanin::locality {
         quat prevOri = pose.rotation;
         const float omegaLen = glm::length(omega);
         if (omegaLen > 1.0e-12f) {
-            const quat step = glm::angleAxis(-omegaLen * phys::Particle::dt, omega / omegaLen);
+            const quat step = glm::angleAxis(-omegaLen * float(phys::Settings::fixedStep), omega / omegaLen);
             prevOri = glm::normalize(step * pose.rotation);
         }
         with<phys::rigid::Solid>::extend(context, body, phys::rigid::Solid::Quantum{
-            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = cohesion}, dvec3{pose.position} - dvec3{linear * phys::Particle::dt}, vec3{0.0f, 0.0f, 0.0f}},
+            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = cohesion}, dvec3{pose.position} - dvec3{linear * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}},
             .prevOri = prevOri,
             .forceAngular = vec3{0.0f, 0.0f, 0.0f},
             .kind = phys::rigid::Solid::Kind::box,
@@ -178,24 +177,24 @@ namespace eltanin::locality {
         }
     }
 
-    struct Scrap::Internals : Scrap::DefaultInternals {
-        static void followBody(Reacting context) {
-            using namespace api_for_internals;
-            for (auto [id, scrap] : context.proposal.aspect<Scrap>().items()) {
-                if (not my::ward(context, id, &Quantum::actor)) { my::remove(context, id); continue; }
-                if (not with<rmmr::scene::Node>::exists(context, scrap.actor)) { my::remove(context, id); continue; }
-                const auto* body = my::ward(context, id, &Quantum::body);
-                if (not body) { my::remove(context, id); continue; }
-                with<rmmr::scene::Node>::modify(context, scrap.actor)->pose = body->pose();
-            }
+    void Scrap::Actions::followBody(Stewarding context) {
+        auto nodes = context.direct<scene::Node>();
+        auto bodies = context.direct<phys::Body>();
+        for (auto [_, scrap] : context->aspect<Scrap>().items()) {
+            auto* node = nodes.items.find(scrap.actor);
+            if (not node)
+                continue;
+            auto* body = bodies.items.find(scrap.body);
+            if (not body)
+                continue;
+            node->pose = body->pose();
         }
-    };
+    }
 
     auto Scrap::customAspectReactions() -> const Behavior {
         return {
             reaction::structural::custody<Scrap, rmmr::scene::actor::Mesh, &Scrap::Quantum::actor>{},
             reaction::structural::custody<Scrap, phys::rigid::Solid, &Scrap::Quantum::body>{},
-            reaction::aspect_wide<Scrap, phys::Body>(&Scrap::Internals::followBody),
         };
     }
 

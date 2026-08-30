@@ -2,6 +2,8 @@
 
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/locality/construct.q1.h>
+#include <eltanin/locality/flash.q1.h>
+#include <eltanin/locality/bullet.q1.h>
 #include <eltanin/locality/scrap.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
 #include <eltanin/locality/geo/rock.q1.h>
@@ -70,7 +72,7 @@ namespace eltanin::phys {
             dvec3 moment{0.0, 0.0, 0.0};
             double mass = 0.0;
             for (const Particle& particle : crystal.particles) {
-                moment += particle.velocity() * double(particle.mass);
+                moment += (particle.position - particle.prev) / Settings::fixedStep * double(particle.mass);
                 mass += double(particle.mass);
             }
             if (mass <= 0.0)
@@ -157,6 +159,14 @@ namespace eltanin::phys {
                 }
             }
             return cpu;
+        }
+
+        void censusRow(const char* name, std::size_t n) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(name);
+            ImGui::TableNextColumn();
+            ImGui::Text("%d", static_cast<int>(n));
         }
 
     } // namespace
@@ -357,6 +367,50 @@ namespace eltanin::phys {
                 ImGui::TextUnformatted("Debug draw");
                 ImGui::Checkbox("Particles", &showParticles);
                 ImGui::Checkbox("Collisions", &showHulls);
+
+                ImGui::Separator();
+                ImGui::TextUnformatted("Now");
+                int particles = 0;
+                int hullFaces = 0;
+                int boxes = 0;
+                int spheres = 0;
+                for (const auto [_, crystal] : context->aspect<rigid::Crystal>().items()) {
+                    particles += static_cast<int>(crystal.particles.size());
+                    hullFaces += static_cast<int>(crystal.hull.faces.size());
+                }
+                for (const auto [_, solid] : context->aspect<rigid::Solid>().items()) {
+                    if (solid.kind == rigid::Solid::Kind::box)
+                        ++boxes;
+                    else
+                        ++spheres;
+                }
+                if (ImGui::BeginTable("censusNow", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+                    ImGui::TableSetupColumn("Kind");
+                    ImGui::TableSetupColumn("N", ImGuiTableColumnFlags_WidthFixed, 64.0f);
+                    ImGui::TableHeadersRow();
+                    censusRow("construct", context->aspect<locality::Construct>().items().size());
+                    censusRow("scrap", context->aspect<locality::Scrap>().items().size());
+                    censusRow("rock", context->aspect<locality::geo::Rock>().items().size());
+                    censusRow("boulder", context->aspect<locality::geo::Boulder>().items().size());
+                    censusRow("bullet", context->aspect<locality::Bullet>().items().size());
+                    censusRow("flash", context->aspect<locality::Flash>().items().size());
+                    censusRow("crystal", context->aspect<rigid::Crystal>().items().size());
+                    censusRow("solid", context->aspect<rigid::Solid>().items().size());
+                    censusRow("  box", static_cast<std::size_t>(boxes));
+                    censusRow("  sphere", static_cast<std::size_t>(spheres));
+                    censusRow("ray", context->aspect<rigid::Ray>().items().size());
+                    censusRow("compound", context->aspect<Compound>().items().size());
+                    censusRow("particle", static_cast<std::size_t>(particles));
+                    censusRow("hull face", static_cast<std::size_t>(hullFaces));
+                    ImGui::EndTable();
+                }
+
+                ImGui::Separator();
+                ImGui::TextUnformatted("Last collision tick");
+                const auto& census = system.collisionCensus();
+                ImGui::Text("broad  %d cohorts → %d pair tests, %d overlap", census.cohorts, census.cohortPairs, census.cohortHits);
+                ImGui::Text("occupants  %d (max %d)  tries %d → candidates %d → contacts %d", census.occupants, census.maxOccupants, census.occupantTries, census.candidates, census.contacts);
+                ImGui::Text("rays  %d tries %d, hits %d", census.rays, census.rayTries, census.rayHits);
 
                 ImGui::Separator();
                 ImGui::TextUnformatted("Constructs");

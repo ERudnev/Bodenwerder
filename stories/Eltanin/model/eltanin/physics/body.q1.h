@@ -20,12 +20,8 @@ namespace eltanin::phys {
     };
 
     struct Particle : Matter {
-        static constexpr float dt = 0.01f;
         dvec3 prev;
         vec3 force;
-
-        auto velocity() const -> dvec3 { return (position - prev) / double(dt); }
-        auto impulse() const -> vec3 { return vec3{velocity() * double(mass)}; }
     };
 
     struct Body : Entity<Body> {

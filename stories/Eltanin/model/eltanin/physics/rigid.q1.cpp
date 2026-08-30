@@ -79,7 +79,7 @@ namespace eltanin::phys::rigid {
         const vec3 share = impulse / static_cast<float>(crystal->particles.size());
         for (Particle& particle : crystal->particles) {
             if (particle.mass > 0.0f)
-                particle.force += share / Particle::dt;
+                particle.force += share / float(Settings::fixedStep);
         }
     }
 
@@ -94,7 +94,7 @@ namespace eltanin::phys::rigid {
             Particle& particle = crystal->particles[index];
             particle.position = origin + dvec3{pose.rotation * crystal->shape[index]};
             const vec3 spin = glm::cross(omega, vec3{particle.position - currentCom});
-            particle.prev = particle.position - dvec3{(linear + spin) * Particle::dt};
+            particle.prev = particle.position - dvec3{(linear + spin) * float(Settings::fixedStep)};
             particle.force = vec3{0.0f, 0.0f, 0.0f};
         }
         *body = restoredBody(origin, pose.rotation, crystal->particles, crystal->shape);
