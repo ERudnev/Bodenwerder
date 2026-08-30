@@ -84,7 +84,7 @@ Q1 aspect blocks map to nested C++ types by role:
 - `Global` is world-owned aspect-wide state.
 - `Global` is emitted only when `all` contains actual data.
 - Empty `Global` should be omitted.
-- `Always` is for compile-time constants and pure helper functions that do not depend on `Reading`, `Writing`, `Id`, or `Global`.
+- `Always` is for compile-time constants, pure helpers without `Reading`/`Writing`/`Id`, and at most one Global assembler `>name() -> all` (`static auto name(SettingUp&) -> Global`).
 
 ### Why
 
@@ -92,7 +92,7 @@ This preserves the semantic split already present in Q1:
 
 - item-owned state
 - aspect-owned state
-- timeless pure/static surface
+- timeless pure/static surface, plus optional one-shot Global birth (`SettingUp`)
 
 That split is more important than keeping everything flat in one C++ struct body.
 
@@ -103,6 +103,7 @@ Public Q1 operations become declarations in `Actions : BaseActions`, except for 
 ### Mapping table
 
 - `always ?name(...) -> T` -> `static auto name(...) -> T` inside `Always`
+- `always >name() -> all` -> `static auto name(SettingUp&) -> Global` inside `Always` (Realm constructor only; at most one per aspect)
 - `one ?name(...) -> T` -> `static auto name(Reading, Id, ...) -> T` inside `Actions`
 - `one =name(...)` -> `static void name(Writing, Id, ...)` inside `Actions`
 - `all ?name(...) -> T` -> `static auto name(Reading, ...) -> T` inside `Actions`

@@ -17,6 +17,7 @@
 #include <fQSM/processing/orchestrators/realm.h>
 #include <fQSM/processing/orchestrators/branch.h>
 #include <fQSM/processing/orchestrators/module.h>
+#include <fQSM/processing/contexts/settingUp.h>
 
 // Behavior definition for Aspects:
 #include <fQSM/features/behavior.h>
@@ -96,5 +97,6 @@ namespace fqsm::api {
         using Reading = fqsm::Reading;
         using Reacting = fqsm::Reacting;
         using Stewarding = fqsm::Stewarding;
+        using SettingUp = fqsm::SettingUp;
     //}
 }

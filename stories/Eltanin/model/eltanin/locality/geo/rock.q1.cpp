@@ -375,8 +375,6 @@ namespace eltanin::locality::geo {
 
         auto assembleRock(Writing context, rmmr::system::Device::Id device, Pose pose, Volume volume, rmmr::resource::builders::geometry::CpuPresentation cpu, vector<Sample> samples, phys::rigid::Hull hull, rmmr::resource::Unit::Name materialName, integer spriteIndex, float temperature, float cohesion, vec3 velocity, vec3 omega) -> Rock::Id {
             const auto scene = with<Thing>::get_global(context).scene;
-            if (not scene)
-                return context.refuse("eltanin::locality::geo::Rock::spawn: locality has no scene");
             if (cpu.positions.empty())
                 return context.refuse("eltanin::locality::geo::Rock::spawn: no surface");
             if (samples.empty())
@@ -427,7 +425,7 @@ namespace eltanin::locality::geo {
             auto meshState = with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
             meshState.patternScale = glm::max(0.5f, sampleRadius(samples) * 2.0f);
             meshState.heat = vec2{temperature, cohesionSum / massSum};
-            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, *scene, pose, std::move(*meshQuantum), meshState);
+            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), meshState);
 
             vector<phys::Particle> particles;
             particles.reserve(samples.size());

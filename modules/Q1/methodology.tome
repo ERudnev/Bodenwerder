@@ -142,4 +142,14 @@ namespace Q1 {
     Reason:
       Один параметризованный запрос к полке (`Assets::find`) вместо зоопарка `find_geometry` / `find_material` без поддержки в DSL.
   }
+
+  always_assemble_is_global_constructor: @Statement(~0.9) {
+    Core:
+      В `always` допускается ровно один эффектор `>name() -> all`: статический конструктор сумки `all` (C++ `Always::assemble(SettingUp&) -> Global`).
+      `SettingUp` чеканит только конструктор `Realm`; из него получают `Writing` явно (`setup.writing()`), не подменяя `Writing`.
+      Пока assembler не вернул Global и `Realm` не завершил конструктор, мир ненаблюдаем. Копия Realm и persistency assembler не вызывают.
+      `always ?` по-прежнему чистые функции без контекста. `-> all` — сумка Global, не `-> #`.
+    Reason:
+      Не-optional `#T` на Global не умеет default-ctor; фальшивый Id в поле — ложь типа. Сборщик на SettingUp рождает законную сумку в точке создания.
+  }
 }

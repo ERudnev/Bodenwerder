@@ -98,7 +98,7 @@ namespace eltanin::locality {
                 continue;
             if (cuts > 0) {
                 const int axis = longestAxis(solid.halfExtents);
-                if (with<Thing>::get_global(context).scene and solid.halfExtents[axis] >= minHalf * 2.0f) {
+                if (solid.halfExtents[axis] >= minHalf * 2.0f) {
                     const vec3 linear = vec3{(body.position - solid.center.prev) / double(phys::Particle::dt)};
                     breakOff(context, vec3{body.position}, body.orientation, solid.halfExtents, body.totalMass, linear, solid.center.cohesion);
                 }
@@ -109,8 +109,6 @@ namespace eltanin::locality {
 
     auto Scrap::Actions::spawn(Writing context, Pose pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion) -> Id {
         const auto scene = with<Thing>::get_global(context).scene;
-        if (not scene)
-            return context.refuse("eltanin::locality::Scrap::spawn: locality has no scene");
         const vec3 half = glm::max(halfExtents, vec3{0.08f, 0.08f, 0.08f});
         if (mass <= 0.0f)
             return context.refuse("eltanin::locality::Scrap::spawn: mass must be positive");
@@ -136,7 +134,7 @@ namespace eltanin::locality {
         if (not meshQuantum)
             return context.refuse("eltanin::locality::Scrap::spawn: mesh compose failed");
         const vec3 scale{half.x * 2.0f, half.y * 2.0f, half.z * 2.0f};
-        const auto actor = with<scene::Interface>::createMeshActor(context, *scene, pose, std::move(*meshQuantum), with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, scale));
+        const auto actor = with<scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, scale));
         // Hull wreck-mix is actor-wide; cohesion 0 would paint the steel rims with panel_tech_1.
         const float intact[] = {1.0f};
         with<scene::actor::Mesh>::writeCohesions(context, actor, std::span<const float>{intact, 1});

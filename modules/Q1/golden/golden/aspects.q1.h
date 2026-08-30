@@ -13,6 +13,18 @@ namespace Q1_fQSM::Etalon {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    struct Origin : Entity<Origin> {
+        struct Quantum {};
+        struct Global {
+            Trivia::Id trivia;
+        };
+        struct Always {
+            static auto assemble(SettingUp&) -> Global;
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
     struct SampleEntity : Entity<SampleEntity> {
         //@ always: treat constants as static constexpr in Always; pure functions likewise
         struct Always {

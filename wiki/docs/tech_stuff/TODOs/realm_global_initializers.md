@@ -1,42 +1,24 @@
 # Realm рождается непустым: инициализаторы Global
 
-Связано: [`needless_invariant_checks.md`](needless_invariant_checks.md) — тот же запах (`optional` на синглтоне / Global, проверки в каждом caller), но здесь не «как прочитать тип», а **кто имеет право родить мир**.
+Связано: [`needless_invariant_checks.md`](needless_invariant_checks.md).
 
-## Триггер (Eltanin)
+## Сделано (schema-born)
 
-`locality::Thing.Global.scene` сейчас `#Root?`. Spawn пуль, лома, скал, вспышки спрашивают «а сцена есть?» и `refuse`, если нет.
+Q1: `always >assemble() -> all` — статический конструктор сумки `all`. C++: `Always::assemble(SettingUp&) -> Global`. `SettingUp` чеканит только конструктор `Realm`; `Writing` получают явно (`setup.writing()`). Пока ctor не закончился, мир ненаблюдаем.
 
-Договор другой: **эти методы без живой locality-сцены никто не зовёт.** `Product::populateWorld` создаёт Root, кладёт id в Global, потом bind/populate. Проверка — страховка от пустого Realm, не доменная ветка.
+Пилот: `eltanin::locality::Thing.scene` — `#rmmr::scene::Root` без `?`. Assembler зовёт `scene::Interface::createScene`. Spawn больше не спрашивает «есть ли сцена».
 
-Убрать `optional` с поля честно нельзя, пока Realm можно наблюдать в состоянии «Global Thing ещё не просетаплен». `Id` пустым не бывает; `?` — стенд-ин «ещё не родили», как `Core.Global.singleton`.
+Тестовая схема без assembler-аспектов по-прежнему даёт пустые линии (default-constructible Global). Схема с Thing без Root в схеме — ошибка сборки мира.
 
-## Что должно быть правдой
+## Осталось
 
-Realm **не существует и не читается**, пока мета-класс (Global) каждого аспекта в схеме корректно просетаплен.
-
-Корректный сетап **конкретно Thing** — не «записать optional», а **создать в мире объект `rmmr::scene::Root`** и держать на Global уже голый `#Root`.
-
-Это тянет одеяло: чтобы Root вообще можно было создать, мир должен уметь рожать сцену (группы Node/Camera/Light/Family на Root, Interface). А тот слой может требовать Core / Device / Manager — сегодня это `system::Interface::create` руками в Product, не схема.
-
-Единственный честный рычаг — **мета-конструкторы, инициализаторы Global** в fQSM/Q1. Не C++ static, не «не забудь вызвать setup».
-
-## Сейчас
-
-`establish::Realm(Schema)` → пустая `Reality`. Global-ы есть как default-сумки. Первый Writing (`Interface::create`, `createScene`, `Thing.scene = root`) — неформальный конструктор мира, живёт в story.
-
-Тесты нарочно крутят пустые Realm на схеме. Сборка «непустой пустоты» не может быть единственным конструктором без слоя: тестовая схема ≠ схема игры.
-
-## Цель
-
-При создании Realm — не «вот Schema, вот воздух», а **схема сборки пустого мира**. Realm стартует уже не пустой: Global-ы заполнены, обязательные экземпляры (Root locality, Core, …) существуют.
-
-Наблюдаемый Reading/Writing/Stewarding — уже после этой сборки. `Thing.scene` тогда `#Root` без `?`; spawn не спрашивает «есть ли сцена».
-
-Порядок инициализаторов — DAG по зависимостям Global (Thing.scene → создать Root → Root должен быть рождаем в этой схеме). Цикл или «создать Root до того, как аспект Root в схеме» — ошибка сборки мира, не runtime `refuse`.
+- `Core` / `Clock` / `Assets.singleton` — сентринел-Id до `Interface::create` (нужны `path` / `GLVer`). SettingUp без сессии их не соберёт.
+- Явный DAG assembler-ов по полям `#T` на Global (сейчас порядок узлов схемы; для одного Thing достаточно).
+- Persistency / загрузка с диска — другой вход, assembler не гонять.
 
 ## Чего не делать
 
 - Не маскировать дыру вечным `optional` + `if (not scene) refuse` как дизайн.
-- Не объявлять `Product::setup` / `populateWorld` мета-конструктором fQSM: это story, его нет у тестов и у второго Realm.
-- Не тащить GLFW/GPU в инициализатор Thing: locality-Root — логический якорь сцены; Device — другая ось (уже отдельно у Rock/Boulder).
-- Не смешивать с persistency: «мир с диска» — другой вход; этот TODO про *рождение* пустого живого Realm.
+- Не объявлять `Product::setup` / `populateWorld` мета-конструктором fQSM.
+- Не тащить GLFW/GPU в инициализатор Thing.
+- Не смешивать с persistency.

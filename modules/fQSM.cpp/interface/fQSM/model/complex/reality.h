@@ -13,6 +13,8 @@ namespace fqsm::model::complex {
         Reality(const State& source);
         Reality(const Reality& other)=delete;
 
+        void putLine(meta::Rtid typeId, ref<linear::state::Erased> line);
+
         // schema
         template<category::Any Meta>
         static ref<linear::state::Erased> clone(const State& source) {

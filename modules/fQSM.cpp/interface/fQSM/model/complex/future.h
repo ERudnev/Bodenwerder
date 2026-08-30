@@ -82,6 +82,7 @@ namespace fqsm::model::complex {
 
     inline void Future::initStructure() {
         for (const auto& [typeId, node] : schema->nodes) {
+            if (not state.hasLine(typeId)) continue;
             futureLines.container.emplace(typeId, node.binding.createFuture(state, changes));
         }
     }

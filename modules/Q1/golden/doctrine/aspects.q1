@@ -7,6 +7,12 @@ namespace Q1_fQSM
     //@ in is not forward, it is mature Aspect definition (just minimal Aspect)
     entity Trivia
 
+    entity Origin
+      always
+        >assemble() -> all
+      all
+        trivia: #Trivia
+
     entity SampleEntity
       always //@ treat as public static const (constexpr) in the Aspect root
         max_elements: integer = 2000 // static constants values must be always defined

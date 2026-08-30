@@ -710,6 +710,27 @@ namespace Demo
     assert extra["base"] == "Binding"
 
 
+def test_parse_always_assemble_returns_all_bag() -> None:
+    text = """
+namespace Demo
+  entity Trivia
+  entity Origin
+    always
+      >assemble() -> all
+    all
+      trivia: #Trivia
+"""
+    ast = q1_parser.parse_text(text, source="<snippet>")
+    origin = ast["declarations"][0]["declarations"][1]
+    always = origin["blocks"][0]
+    assert always["role"] == "always"
+    op = always["members"][0]
+    assert op["kind"] == "FactoryOp"
+    assert op["name"] == "assemble"
+    assert op["return_type"]["kind"] == "AllBagType"
+    assert op["return_type"]["raw"] == "all"
+
+
 def test_parse_struct_inheritance_rejects_malformed_header() -> None:
     text = """
 namespace Demo

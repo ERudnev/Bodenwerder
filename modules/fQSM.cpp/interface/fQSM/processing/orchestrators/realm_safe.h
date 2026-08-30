@@ -17,7 +17,7 @@ namespace fqsm::processing::orchestrator {
 
     // Debug Realm: Gate collapse only parks the raw patch; normalize/integrate run in finish_patch().
     struct RealmSafe : Transaction {
-        RealmSafe(Schema schema) : reality(schema) {}
+        RealmSafe(Schema schema) : reality(schema) { assembleGlobals(); }
         RealmSafe(const RealmSafe& other) : reality(static_cast<const State&>(other.reality)) {}
         RealmSafe(const State& other) : reality(other) {}
 
@@ -55,6 +55,7 @@ namespace fqsm::processing::orchestrator {
         auto writing(Mode) -> Writing override;
         auto makeChildPolicy() -> ChildPolicy override;
 
+        void assembleGlobals();
         void acceptWriting(Context::PatchRef, Mode);
         void acceptStewarding(Context::PatchRef, Rtid::Set dirtyTypes);
 

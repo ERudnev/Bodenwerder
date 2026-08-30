@@ -15,7 +15,10 @@ namespace eltanin::locality {
         struct Global {
             seconds now;
             float timeScale;
-            optional<rmmr::scene::Root::Id> scene;
+            rmmr::scene::Root::Id scene;
+        };
+        struct Always {
+            static auto assemble(SettingUp&) -> Global;
         };
         struct Actions : BaseActions {
             static void update(Writing, seconds dt);

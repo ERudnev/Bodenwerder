@@ -11,7 +11,7 @@
 namespace fqsm::processing::orchestrator {
 
     struct Realm : Transaction {
-        Realm(Schema schema) : reality(schema) {}
+        Realm(Schema schema) : reality(schema) { assembleGlobals(); }
         //Realm(const Realm& other) : Realm(static_cast<const State&>(other)) {} // forcing deep copy
         Realm(const Realm& other) : reality(static_cast<const State&>(other.reality)) {} // TODO clarify me
         Realm(const State& other) : reality(other) {}
@@ -34,6 +34,7 @@ namespace fqsm::processing::orchestrator {
         auto writing(Mode) -> Writing override;
         auto makeChildPolicy() -> ChildPolicy override;
 
+        void assembleGlobals();
         void acceptWriting(Context::PatchRef, Mode);
         void acceptStewarding(Context::PatchRef, Rtid::Set dirtyTypes);
     };

@@ -10,6 +10,12 @@ namespace eltanin::locality {
 
     using namespace fqsm::api;
 
+    auto Thing::Always::assemble(SettingUp& setup) -> Thing::Global {
+        auto world = setup.writing();
+        const auto root = with<rmmr::scene::Interface>::createScene(world);
+        return Global{.now = seconds{}, .timeScale = 1.0f, .scene = root};
+    }
+
     void Thing::Actions::update(Writing context, seconds dt) {
         if (dt <= 0)
             return;

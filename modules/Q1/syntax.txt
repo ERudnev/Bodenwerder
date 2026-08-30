@@ -26,8 +26,9 @@
             also a field category on `struct` (instance field): block `one` / inline `one name: Type`
     'all' : opens field-own data+operations block inside aspect definition;
             also a field category on `struct` (mutable static): block `all` / inline `all name: Type`
-    'always' : opens static constants + pure functions block inside aspect definition;
-            also a field category on `struct` (const static): block `always` / inline `always name: Type = ...`
+    'always' : opens static constants, pure functions, and at most one Global assembler
+            `>name() -> all` (C++: Always::assemble(SettingUp&) -> Global). Also a field
+            category on `struct` (const static): block `always` / inline `always name: Type = ...`
     '#' : id type constructor (inside type expressions only):  #T == T::id (decode only) ; # == id (local Aspect type; decode only)
     '?' : postfix Optional type constructor (inside type expressions only):  T? == optional<T> (decode only)
     'anchor<T>' : typed structural link to aspect T (C++: Anchor<T>; implies anchored reaction behavior)
@@ -44,7 +45,7 @@
   function prefix symbols:
     '?' : declares read-only operation (query) signature
     '=' : declares modifier limited with scope of local item (for "one") this Type item set (for "all")
-    '>' : declares effector / action: may change object state or not, but changes world state. Factories are effectors (returning '#' or '#T'). Public when written explicitly in the aspect body.
+    '>' : declares effector / action: may change object state or not, but changes world state. Factories are effectors (returning '#' or '#T'). In `always`, `>name() -> all` is the Global assembler (SettingUp, returns the `all` bag). Public when written explicitly in the aspect body.
     '*' : declares Stewarding / Direct hot-pass operation. First item in `(...)` is analysis scope (same family as reaction watch: `~` / `~Type`); remaining items are ordinary named parameters. Scope is not a C++ argument (projects to `Stewarding` context + `direct<>` targets).
     '!' : declares reaction (watch / normalizer). Scope in `(...)` is not a parameter list (see reaction forms below).
 

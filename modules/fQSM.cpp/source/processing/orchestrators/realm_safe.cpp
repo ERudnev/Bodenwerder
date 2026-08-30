@@ -1,11 +1,21 @@
 #include <fQSM/processing/orchestrators/realm_safe.h>
 
 #include <fQSM/model/complex/patch.h>
+#include <fQSM/model/intertype/schema.h>
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/algorithms/normalization.h>
+#include <fQSM/processing/contexts/settingUp.h>
 #include <fQSM/utility/logging.h>
 
 namespace fqsm::processing::orchestrator {
+
+    void RealmSafe::assembleGlobals() {
+        SettingUp setup(*this, reality);
+        for (const auto& [typeId, node] : reality.schema->nodes) {
+            if (node.binding.assemble)
+                node.binding.assemble(setup);
+        }
+    }
 
     void RealmSafe::crash_if_deferred() const {
         if (deferred_writing or deferred_stewarding)

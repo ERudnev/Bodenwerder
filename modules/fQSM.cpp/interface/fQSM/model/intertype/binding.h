@@ -8,6 +8,7 @@
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/_forwards.h>
+#include <fQSM/processing/contexts/settingUp.h>
 #include <fQSM/references.h>
 
 namespace fqsm::model::intertype {
@@ -30,5 +31,6 @@ namespace fqsm::model::intertype {
         std::function<ref<linear::state::Erased>(const complex::State&, ref<complex::Patch>)> createFuture;
         std::function<void(complex::Reality&, const complex::Patch&)> integratePatchSlice;
         std::function<void(const complex::State&, complex::Patch&, const complex::Patch&)> mergePatchSlice;
+        std::function<void(::fqsm::processing::SettingUp&)> assemble;
     };
 }

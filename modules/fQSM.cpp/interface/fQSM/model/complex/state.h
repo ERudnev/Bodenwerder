@@ -27,6 +27,8 @@ namespace fqsm::model::complex {
 
         std::size_t quanta() const;
 
+        bool hasLine(meta::Rtid typeId) const { return composition().container.contains(typeId); }
+
         const Schema schema; // defined for Reality/Draft/any homogenous material object
     protected:
         using Erased = linear::state::Erased;

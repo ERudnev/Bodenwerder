@@ -245,8 +245,7 @@ namespace eltanin {
             .clear_color = vec4{0.0f, 0.0f, 0.0f, 1.0f},
         });
 
-        const auto root = with<scene::Interface>::createScene(context);
-        with<locality::Thing>::modify_global(context)->scene = root;
+        const auto root = with<locality::Thing>::get_global(context).scene;
         physics.emplace(root);
 
         if (not with<resource::SkySphereGenerator>::materialize(context, *assets.skySphereGeometry, window)) {

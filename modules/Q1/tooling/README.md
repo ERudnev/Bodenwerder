@@ -33,7 +33,7 @@ It understands:
 - indentation-scoped namespaces
 - `using`, `struct`, `entity`, `attribute`, `feature`, `component`, `group`, `archetype`, `manipulation`
 - `struct Name of Base` (single value-struct inheritance)
-- aspect blocks `always`, `one`, `all` (block or inline field)
+- aspect blocks `always`, `one`, `all` (block or inline field); `always >name() -> all` Global assembler
 - `struct` field categories `always` / `one` / `all` (block or inline)
 - operations `?`, `=`, `>`, Stewarding `*name(~Scope[, params...])`, and template ops `?name<P as Constraint>(...)`
 - reactions `!name(scope)` with optional effect tail `->>op(...)` / `->=op(...)`

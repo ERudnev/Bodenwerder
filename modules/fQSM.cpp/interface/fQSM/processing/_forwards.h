@@ -25,6 +25,7 @@ namespace fqsm::processing {
     struct Wall;
     struct Dock;
     struct Review;
+    struct SettingUp;
 
     template<meta::category::Any>
     struct Breach;
@@ -43,6 +44,7 @@ namespace fqsm {
     using Retrospecting = processing::Wall;
     using Reacting = processing::Review;
     using Stewarding = processing::Dock;
+    using SettingUp = processing::SettingUp;
 
     // being aside of verbs, this is a legal tansaction workaround
     // you can manipulate State direclty with Direct<T>. May be you need it. But be aware

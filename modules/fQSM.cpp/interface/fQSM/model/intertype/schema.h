@@ -10,6 +10,7 @@
 #include <fQSM/identifier.h>
 #include <fQSM/model/intertype/binding.h>
 #include <fQSM/model/intertype/set.h>
+#include <fQSM/processing/contexts/settingUp.h>
 
 namespace fqsm::model::intertype {
 

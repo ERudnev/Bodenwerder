@@ -298,6 +298,8 @@ def parse_type_expr(text: str) -> dict[str, Any]:
             "target": [part.strip() for part in target.split("::")],
             "member": member.strip(),
         }
+    if raw == "all":
+        return {"kind": "AllBagType", "raw": raw}
     if raw in BUILTINS:
         return {"kind": "BuiltinType", "raw": raw, "name": raw}
     container = _parse_container_type(raw)

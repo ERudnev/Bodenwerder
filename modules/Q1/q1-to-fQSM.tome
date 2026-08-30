@@ -55,7 +55,8 @@ namespace Q1-fQSM {
 
   blocks_and_operations: @Rule {
     Блоки аспекта: `one` → `Quantum`, `all` → `Global` (пустой `Global` не эмитить),
-    `always` → `Always` (constexpr / чистые функции без Reading/Writing/Id).
+    `always` → `Always` (constexpr / чистые `?` без контекста; опционально один `>name() -> all`
+    → `static auto name(SettingUp&) -> Global` — сборщик сумки, только из конструктора Realm).
     Публичные `?`/`=`/`>`/`*` из `one`/`all` → `struct Actions : BaseActions` с implicit:
     `Reading`/`Writing`/`Stewarding` первым аргументом; для `one` ещё `Id`; `>` из `all` возвращает `Id`.
     `*name(~Scope[, named...])` → `Stewarding` + named params only (`~`/`~Type` — Direct-скоуп, не аргументы).

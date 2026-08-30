@@ -102,8 +102,6 @@ namespace eltanin::locality::geo {
 
     auto Boulder::Actions::spawnGenerated(Writing context, rmmr::system::Device::Id device, Pose pose, GeneralizedRecipe recipe, vec3 velocity, vec3 omega) -> Id {
         const auto scene = with<Thing>::get_global(context).scene;
-        if (not scene)
-            return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: locality has no scene");
         if (recipe.radius <= 0.0f)
             return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: radius must be positive");
         if (recipe.mix == 0)
@@ -143,7 +141,7 @@ namespace eltanin::locality::geo {
         auto meshState = with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
         meshState.patternScale = glm::max(0.5f, recipe.radius * 2.0f);
         meshState.heat = vec2{0.0f, 0.0f};
-        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, *scene, pose, std::move(*meshQuantum), meshState);
+        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), meshState);
 
         const auto body = with<phys::Body>::create(context, phys::Body::Quantum{
             .position = dvec3{pose.position},
@@ -188,7 +186,7 @@ namespace eltanin::locality::geo {
             if (cuts == 0)
                 continue;
             if (cuts > 0 and boulder.recipe.radius >= minRadius * 2.0f) {
-                if (with<Thing>::get_global(context).scene and with<rmmr::scene::actor::Mesh>::exists(context, boulder.actor)) {
+                if (with<rmmr::scene::actor::Mesh>::exists(context, boulder.actor)) {
                     const auto device = with<rmmr::scene::actor::Mesh>::get(context, boulder.actor).device;
                     const vec3 linear = vec3{(body.position - solid.center.prev) / double(phys::Particle::dt)};
                     vector<Pebble> pieces;

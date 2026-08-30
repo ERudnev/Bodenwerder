@@ -28,6 +28,7 @@
     X(delta_iterators) \
     X(destructor_like_reactions) \
     X(globals) \
+    X(global_assemble) \
     X(global_is_change_too) \
     X(immediate) \
     X(no_resurrection) \

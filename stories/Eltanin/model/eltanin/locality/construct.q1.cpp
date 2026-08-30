@@ -191,18 +191,16 @@ namespace eltanin::locality {
             if (mismatch or static_cast<std::size_t>(cursor) != crystal->particles.size())
                 return true;
 
-            if (with<Thing>::get_global(context).scene) {
-                if (with<phys::Body>::exists(context, construct.body)) {
-                    const auto& body = with<phys::Body>::get(context, construct.body);
-                    for (const auto& [_, chunk] : dead) {
-                        if (chunk.mass <= 0.0f or chunk.locals.empty())
-                            continue;
-                        const auto box = boxOf(chunk.locals, chunk.thickness);
-                        const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
-                        const quat worldRot = glm::normalize(body.orientation * box.rotation);
-                        const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
-                        Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion);
-                    }
+            if (with<phys::Body>::exists(context, construct.body)) {
+                const auto& body = with<phys::Body>::get(context, construct.body);
+                for (const auto& [_, chunk] : dead) {
+                    if (chunk.mass <= 0.0f or chunk.locals.empty())
+                        continue;
+                    const auto box = boxOf(chunk.locals, chunk.thickness);
+                    const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
+                    const quat worldRot = glm::normalize(body.orientation * box.rotation);
+                    const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
+                    Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion);
                 }
             }
 

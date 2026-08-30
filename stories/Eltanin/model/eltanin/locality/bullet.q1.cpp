@@ -51,10 +51,6 @@ namespace eltanin::locality {
 
     void Bullet::Actions::bind(Writing context) {
         const auto scene = with<Thing>::get_global(context).scene;
-        if (not scene) {
-            context.refuse("eltanin::locality::Bullet::bind: locality has no scene");
-            return;
-        }
         if (with<Bullet>::get_global(context).shell30mm) {
             context.refuse("eltanin::locality::Bullet::bind: already bound");
             return;
@@ -64,13 +60,11 @@ namespace eltanin::locality {
             context.refuse("eltanin::locality::Bullet::bind: shell_30mm family compose failed");
             return;
         }
-        with<Bullet>::modify_global(context)->shell30mm = with<scene::Interface>::createFamily(context, *scene, std::move(*familyQuantum));
+        with<Bullet>::modify_global(context)->shell30mm = with<scene::Interface>::createFamily(context, scene, std::move(*familyQuantum));
     }
 
     auto Bullet::Actions::spawnShell30mm(Writing context, Pose pose, float speed) -> Id {
         const auto scene = with<Thing>::get_global(context).scene;
-        if (not scene)
-            return context.refuse("eltanin::locality::Bullet::spawnShell30mm: locality has no scene");
         const auto family = with<Bullet>::get_global(context).shell30mm;
         if (not family)
             return context.refuse("eltanin::locality::Bullet::spawnShell30mm: class is not bound");
@@ -80,7 +74,7 @@ namespace eltanin::locality {
         scene::actor::Packed packed(static_cast<std::size_t>(bytes));
         with<scene::actor::Family>::write(context, *family, packed, "speed", speed);
         with<scene::actor::Family>::write(context, *family, packed, "heat", shellHeat);
-        const auto replica = with<scene::Interface>::createReplica(context, *scene, *family, pose, scene::actor::Replica::Quantum{.family = *family, .packed = std::move(packed)});
+        const auto replica = with<scene::Interface>::createReplica(context, scene, *family, pose, scene::actor::Replica::Quantum{.family = *family, .packed = std::move(packed)});
         if (not with<scene::actor::Replica>::exists(context, replica))
             return context.refuse("eltanin::locality::Bullet::spawnShell30mm: replica create failed");
         const vec3 nose = pose.rotation * vec3{0.0f, 0.0f, -1.0f};

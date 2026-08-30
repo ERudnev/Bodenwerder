@@ -2,11 +2,21 @@
 #include <fQSM/processing/orchestrators/realm.h>
 
 #include <fQSM/model/complex/patch.h>
+#include <fQSM/model/intertype/schema.h>
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/algorithms/normalization.h>
+#include <fQSM/processing/contexts/settingUp.h>
 #include <fQSM/utility/logging.h>
 
 namespace fqsm::processing::orchestrator {
+
+    void Realm::assembleGlobals() {
+        SettingUp setup(*this, reality);
+        for (const auto& [typeId, node] : reality.schema->nodes) {
+            if (node.binding.assemble)
+                node.binding.assemble(setup);
+        }
+    }
 
     auto Realm::writing(Mode mode) -> Writing {
         auto patch = base::make_shared<model::complex::Patch>(reality.schema);

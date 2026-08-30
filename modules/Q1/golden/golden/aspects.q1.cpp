@@ -11,6 +11,12 @@ namespace Q1_fQSM::Etalon {
 
     using namespace fqsm::api;
 
+    auto Origin::Always::assemble(SettingUp& setup) -> Origin::Global {
+        auto world = setup.writing();
+        const auto trivia = with<Trivia>::create(world, {});
+        return Global{.trivia = trivia};
+    }
+
     struct SampleEntity::Internals : SampleEntity::DefaultInternals {
         static auto min_value(const Quantum& inspected) -> PossibleChange {
             if (inspected.data_field >= Always::absolute_min)

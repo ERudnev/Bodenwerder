@@ -284,3 +284,48 @@ namespace Demo
     assert error is None
     assert ast is not None
     assert diagnostics == []
+
+
+def test_lint_always_assemble_is_clean() -> None:
+    text = """
+namespace Demo
+  entity Trivia
+  entity Origin
+    always
+      >assemble() -> all
+    all
+      trivia: #Trivia
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    assert diagnostics == []
+
+
+def test_lint_always_assemble_wrong_return_warns() -> None:
+    text = """
+namespace Demo
+  entity Origin
+    always
+      >assemble() -> integer
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    codes = {diag.code for diag in diagnostics}
+    assert "always-assemble-must-return-all" in codes
+
+
+def test_lint_duplicate_always_assemble_warns() -> None:
+    text = """
+namespace Demo
+  entity Origin
+    always
+      >assemble() -> all
+      >other() -> all
+"""
+    ast, diagnostics, error = q1_linter.lint_text(text, source="<snippet>")
+    assert error is None
+    assert ast is not None
+    codes = {diag.code for diag in diagnostics}
+    assert "duplicate-always-assemble" in codes

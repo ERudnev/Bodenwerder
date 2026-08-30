@@ -247,6 +247,10 @@ def lint_type_expr(
     block_role: str | None = None,
 ) -> None:
     kind = expr["kind"]
+    if kind == "AllBagType":
+        if block_role != "always":
+            warn(diags, line, "all-bag-outside-always-assemble", "`all` as a type is the Global bag; only `always >name() -> all`")
+        return
     if kind == "BuiltinType":
         return
     if kind == "ExternalType":
@@ -506,9 +510,17 @@ def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagn
                         primary_aspect=decl["name"],
                     )
                     if role == "always":
+                        assemble_count = 0
                         for member in block["members"]:
-                            if member["kind"] not in {"ConstField", "QueryOp"}:
+                            if member["kind"] not in {"ConstField", "QueryOp", "FactoryOp"}:
                                 warn(diags, member["line"], "unexpected-member-in-always", f"{member['kind']} is not part of the current `always` subset")
+                            if member["kind"] == "FactoryOp":
+                                assemble_count += 1
+                                ret = member.get("return_type")
+                                if ret is None or ret.get("kind") != "AllBagType":
+                                    warn(diags, member["line"], "always-assemble-must-return-all", "`always` effector must return `all` (the Global bag)")
+                        if assemble_count > 1:
+                            warn(diags, block["line"], "duplicate-always-assemble", "At most one `always >name() -> all` assembler per aspect")
                     if role == "one":
                         for member in block["members"]:
                             if member["kind"] not in {"FieldDecl", "QueryOp", "CommandOp", "StewardOp", "ReactionDecl"}:

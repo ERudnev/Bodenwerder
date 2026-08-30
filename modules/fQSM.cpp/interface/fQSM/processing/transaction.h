@@ -7,7 +7,10 @@
 
 namespace fqsm::processing {
 
+    struct SettingUp;
+
     struct Transaction {
+        friend struct SettingUp;
         enum class Mode {
             normal,
             silent,
