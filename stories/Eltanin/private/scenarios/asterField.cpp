@@ -87,7 +87,7 @@ namespace eltanin::scenario {
     }
 
     void AsterField::populate(Writing context, rmmr::system::Device::Id) {
-        with<locality::Flash>::spawnAsThermal(context, vec3{0.0f, 0.0f, 0.0f}, 10.0f);
+        with<locality::Flash>::spawnAsThermal(context, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f}, 10.0f);
     }
 
 }

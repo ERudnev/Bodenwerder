@@ -35,11 +35,12 @@ namespace eltanin
         effect: Effect
         shock: custody<rmmr::scene::actor::Mesh>
         plasma: custody<rmmr::scene::actor::Mesh>
+        linear: vec3 // drift; actors stay identity orientation
         elapsed: seconds // wave clock; physics ticks, not Thing.now
       all
         resources: Resources?
         >bindResources()
         >update()
-        >spawnAsExplosion(position: vec3, strength: float)-># // warhead class; 10 = anti-frigate bang
-        >spawnAsThermal(position: vec3, strength: float)-># // plasma dump; heat only; 10 = same thermal class
+        >spawnAsExplosion(position: vec3, linear: vec3, strength: float)-># // warhead class; 10 = anti-frigate bang
+        >spawnAsThermal(position: vec3, linear: vec3, strength: float)-># // plasma dump; heat only; 10 = same thermal class
         *apply(~phys::rigid::Crystal, ~phys::rigid::Solid)

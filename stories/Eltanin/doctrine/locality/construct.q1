@@ -49,5 +49,6 @@ namespace eltanin
         >bindResources()
         >update()
         >shedDead()
+        *radiate(dt: seconds) // hull cool; hotter falls faster; GPU heats are write-only from followBody
         *followBody()
         >syncVisualCohesion()

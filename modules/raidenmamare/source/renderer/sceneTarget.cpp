@@ -32,12 +32,18 @@ namespace rmmr {
         glColorMaski(1, mask, mask, mask, mask);
     }
 
+    void SceneTarget::setMaskBlendMax() {
+        glEnablei(GL_BLEND, 1);
+        glBlendEquationi(1, GL_MAX);
+        glBlendFunci(1, GL_ONE, GL_ONE);
+    }
+
     void SceneTarget::bind(index2 size) {
         ensure(size);
         const auto wh = extent(size);
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
         glViewport(0, 0, wh.x, wh.y);
-        glDisablei(GL_BLEND, 1);
+        setMaskBlendMax();
         setGlowWrite(false);
     }
 

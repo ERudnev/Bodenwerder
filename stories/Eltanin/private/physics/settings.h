@@ -17,7 +17,8 @@ namespace eltanin::phys {
         static constexpr float hullShedKelvin = 2500.0f; // Thermal shed → Dust, not scrap split.
         static constexpr float scrapVaporKelvin = 3400.0f; // wreckage gone; later: melt VFX / secondary flash
         static constexpr seconds fixedStep = 0.01;
-        static constexpr seconds thermalStep = 0.2;
+        static constexpr seconds thermalStep = 0.05; // 20 Hz; Construct heats already uploaded every fixedStep via followBody
+        static constexpr seconds hullCool = 40; // Construct radiate; ~10× Dust. Each thermal step T *= (1 − dt/τ)²
         static constexpr float skyKelvin = 2.7f; // CMB default; live ambient is Root.atmosphereTemperature
         static constexpr float radiateSigma = 5.0e-13f; // parrot mass × kelvin; five times slower than the first lava-scale guess
     };

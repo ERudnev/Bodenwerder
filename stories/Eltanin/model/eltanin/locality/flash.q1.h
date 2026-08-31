@@ -45,6 +45,7 @@ namespace eltanin::locality {
             Effect effect;
             Custody<rmmr::scene::actor::Mesh> shock;
             Custody<rmmr::scene::actor::Mesh> plasma;
+            vec3 linear;
             seconds elapsed;
         };
         struct Global {
@@ -53,8 +54,8 @@ namespace eltanin::locality {
         struct Actions : BaseActions {
             static void bindResources(Writing);
             static void update(Writing);
-            static auto spawnAsExplosion(Writing, vec3 position, float strength) -> Id;
-            static auto spawnAsThermal(Writing, vec3 position, float strength) -> Id;
+            static auto spawnAsExplosion(Writing, vec3 position, vec3 linear, float strength) -> Id;
+            static auto spawnAsThermal(Writing, vec3 position, vec3 linear, float strength) -> Id;
             static void apply(Stewarding);
         };
         struct Internals : DefaultInternals {};

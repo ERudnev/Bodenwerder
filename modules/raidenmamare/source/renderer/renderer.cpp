@@ -507,7 +507,10 @@ namespace rmmr {
                 if (batch.drawCount <= renderer::Count{0} or not with<resource::geometry::Runtime>::exists(args.world, batch.geometry))
                     continue;
                 apply_blend(pass, batch.renderState.blend);
-                glDisablei(GL_BLEND, 1);
+                if (isSceneColorPass(pass))
+                    SceneTarget::setMaskBlendMax();
+                else
+                    glDisablei(GL_BLEND, 1);
                 ensure_material(args, pass, batch.material, batch.shader, passState, shadow);
                 drawGpuBatch(args, pass, batch);
                 if (pass == renderer::Pass::identity)

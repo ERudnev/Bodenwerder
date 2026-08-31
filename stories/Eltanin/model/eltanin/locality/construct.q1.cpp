@@ -13,6 +13,7 @@
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/node.q1.h>
+#include <rmmr/scene/root.q1.h>
 
 #include <span>
 
@@ -325,6 +326,25 @@ namespace eltanin::locality {
         }
         for (const auto id : gone)
             with<Construct>::kraken(context, id);
+    }
+
+    void Construct::Actions::radiate(Stewarding context, seconds dt) {
+        if (dt <= 0)
+            return;
+        const float sky = with<rmmr::scene::Root>::get(context, with<Thing>::get_global(context).scene).atmosphereTemperature;
+        const float remaining = glm::max(0.0f, 1.0f - float(dt) / float(phys::Settings::hullCool));
+        const float factor = remaining * remaining;
+        auto crystals = context.direct<phys::rigid::Crystal>();
+        for (auto [_, construct] : context.direct<Construct>().items) {
+            auto* crystal = crystals.items.find(construct.body);
+            if (not crystal)
+                continue;
+            for (phys::Particle& particle : crystal->particles) {
+                if (particle.temperature <= sky)
+                    continue;
+                particle.temperature = glm::max(sky, particle.temperature * factor);
+            }
+        }
     }
 
     void Construct::Actions::followBody(Stewarding context) {

@@ -64,6 +64,7 @@ namespace eltanin::locality {
             static void bindResources(Writing);
             static void update(Writing);
             static void shedDead(Writing);
+            static void radiate(Stewarding, seconds dt);
             static void followBody(Stewarding);
             static void syncVisualCohesion(Reading, Id);
         };

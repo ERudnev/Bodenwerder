@@ -1,6 +1,7 @@
 #include "physics/system.h"
 #include "physics/collisions.h"
 
+#include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/flash.q1.h>
 #include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
@@ -238,6 +239,7 @@ namespace eltanin::phys {
             return;
         with<::eltanin::locality::geo::Rock>::radiate(context, thermalDebt);
         with<::eltanin::locality::geo::Boulder>::radiate(context, thermalDebt);
+        with<::eltanin::locality::Construct>::radiate(context, thermalDebt);
         thermalDebt = 0;
     }
 

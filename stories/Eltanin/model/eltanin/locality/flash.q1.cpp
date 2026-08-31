@@ -147,7 +147,7 @@ namespace eltanin::locality {
             return with<scene::Interface>::createMeshActor(context, scene, Pose::from(position, HPB{0.0f, 0.0f, 0.0f}), std::move(*meshQuantum), look);
         }
 
-        auto spawnFlash(Writing context, vec3 position, Flash::Effect effect) -> Flash::Id {
+        auto spawnFlash(Writing context, vec3 position, vec3 linear, Flash::Effect effect) -> Flash::Id {
             const auto& resources = with<Flash>::get_global(context).resources;
             if (not resources)
                 return context.refuse("eltanin::locality::Flash::spawn: resources not bound");
@@ -158,7 +158,7 @@ namespace eltanin::locality {
             const auto shock = spawnSphere(context, scene, position, resources->sphere, resources->flash, shockLook);
             const auto plasma = spawnSphere(context, scene, position, resources->sphere, resources->flashGlow, plasmaLook);
             const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
-            with<Flash>::extend(context, thing, Flash::Quantum{.effect = effect, .shock = shock, .plasma = plasma, .elapsed = seconds{}});
+            with<Flash>::extend(context, thing, Flash::Quantum{.effect = effect, .shock = shock, .plasma = plasma, .linear = linear, .elapsed = seconds{}});
             return thing;
         }
 
@@ -185,16 +185,16 @@ namespace eltanin::locality {
         with<Flash>::modify_global(context)->resources = Resources{.sphere = *sphere, .flash = *flash, .flashGlow = *flashGlow};
     }
 
-    auto Flash::Actions::spawnAsExplosion(Writing context, vec3 position, float strength) -> Id {
+    auto Flash::Actions::spawnAsExplosion(Writing context, vec3 position, vec3 linear, float strength) -> Id {
         if (strength <= 0.0f)
             return context.refuse("eltanin::locality::Flash::spawnAsExplosion: strength must be positive");
-        return spawnFlash(context, position, flashWarhead(strength));
+        return spawnFlash(context, position, linear, flashWarhead(strength));
     }
 
-    auto Flash::Actions::spawnAsThermal(Writing context, vec3 position, float strength) -> Id {
+    auto Flash::Actions::spawnAsThermal(Writing context, vec3 position, vec3 linear, float strength) -> Id {
         if (strength <= 0.0f)
             return context.refuse("eltanin::locality::Flash::spawnAsThermal: strength must be positive");
-        return spawnFlash(context, position, flashPlasma(strength));
+        return spawnFlash(context, position, linear, flashPlasma(strength));
     }
 
     void Flash::Actions::update(Writing context) {
@@ -234,9 +234,14 @@ namespace eltanin::locality {
             const float inner = span > 0.0f ? glm::clamp(float(age) / span, 0.0f, 1.0f) : 1.0f;
             const float outer = span > 0.0f ? glm::clamp(float(flash.elapsed) / span, 0.0f, 1.0f) : 1.0f;
             const float pulse = thermalPulse(age, flash.effect.thermal.duration);
-            auto* node = nodes.items.find(flash.shock);
-            if (not node)
-                node = nodes.items.find(flash.plasma);
+            const vec3 drift = flash.linear * tick;
+            auto* shockNode = nodes.items.find(flash.shock);
+            auto* plasmaNode = nodes.items.find(flash.plasma);
+            if (shockNode)
+                shockNode->pose.position += drift;
+            if (plasmaNode)
+                plasmaNode->pose.position += drift;
+            auto* node = shockNode ? shockNode : plasmaNode;
             if (not node)
                 continue;
             const vec3 origin = node->pose.position;

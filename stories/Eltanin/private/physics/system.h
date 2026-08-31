@@ -20,7 +20,7 @@ namespace eltanin::phys {
     // After the last tick of this Dock: Thing::followBodies copies Body pose onto Node (missing ward → skip).
     // One Dock per tick; hot mutation via Stewarding::direct<Body>() and direct<rigid::Crystal>() / direct<rigid::Solid>().
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
-    // Thermal: Boulder. Rock Volume thermal deferred. Accumulate to thermalStep, then radiate. No conduction.
+    // Thermal: Boulder + Construct hull. Rock Volume deferred. Accumulate to thermalStep, then radiate. No conduction.
 
     struct System {
         scene::Root::Id scene;
