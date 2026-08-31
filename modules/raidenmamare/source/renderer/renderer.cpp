@@ -420,6 +420,7 @@ namespace rmmr {
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::actorState, batch.actorState);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::poses, batch.poses);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::cohesions, batch.cohesions);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::heats, batch.heats);
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::drawMetadata, batch.drawMetadata, batch.metadataByteOffset, batch.metadataByteSize);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::surfacePalette, batch.surfacePalette);
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, renderer::StorageBindings::primitiveSurfaces, geometry.primitiveSurfaces);

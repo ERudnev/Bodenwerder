@@ -30,11 +30,16 @@ layout(std430, binding = 12) readonly buffer CohesionBuffer {
     float cohesions[];
 };
 
+layout(std430, binding = 13) readonly buffer HeatBuffer {
+    float heats[];
+};
+
 out vec3 v_worldPos;
 out vec3 v_worldNormal;
 out vec2 v_uv0;
 flat out uint v_drawId;
 flat out float v_cohesion;
+flat out float v_heat;
 
 const ivec3 orientationRow0[24] = ivec3[24](
     ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0),
@@ -73,6 +78,7 @@ void main() {
     v_uv0 = aUv0;
     v_drawId = uint(gl_DrawID);
     v_cohesion = cohesions[gl_BaseInstance];
+    v_heat = heats[gl_BaseInstance];
 
     gl_Position = passProjection * passView * worldPos;
 }

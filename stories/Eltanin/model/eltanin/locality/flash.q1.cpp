@@ -127,13 +127,13 @@ namespace eltanin::locality {
             return effect;
         }
 
-        auto spawnSphere(Writing context, scene::Root::Id scene, vec3 position, scene::actor::MeshState::Quantum look) -> scene::actor::Mesh::Id {
+        auto spawnSphere(Writing context, scene::Root::Id scene, vec3 position, resource::Unit::Name materialName, scene::actor::MeshState::Quantum look) -> scene::actor::Mesh::Id {
             const auto sphere = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("Eltanin", "flashSphere"));
             if (not sphere)
                 return context.refuse("eltanin::locality::Flash::spawn: flashSphere geometry missing");
-            const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "flash"));
+            const auto material = with<resource::Assets>::find<resource::material::Asset>(context, materialName);
             if (not material)
-                return context.refuse("eltanin::locality::Flash::spawn: flash material missing");
+                return context.refuse("eltanin::locality::Flash::spawn: material missing");
             auto meshQuantum = with<scene::actor::Mesh>::composeOne(context, *sphere, *material);
             if (not meshQuantum)
                 return context.refuse("eltanin::locality::Flash::spawn: mesh compose failed");
@@ -145,8 +145,8 @@ namespace eltanin::locality {
             const float ambient = with<scene::Root>::get(context, scene).atmosphereTemperature;
             const auto shockLook = effect.kinetic.radius > 0.0f ? lookShock(effect, seconds{}) : hiddenLook();
             const auto plasmaLook = effect.thermal.radius > 0.0f ? lookPlasma(effect, seconds{}, ambient) : hiddenLook();
-            const auto shock = spawnSphere(context, scene, position, shockLook);
-            const auto plasma = spawnSphere(context, scene, position, plasmaLook);
+            const auto shock = spawnSphere(context, scene, position, resource::Unit::Name::from("Eltanin", "flash"), shockLook);
+            const auto plasma = spawnSphere(context, scene, position, resource::Unit::Name::from("Eltanin", "flashGlow"), plasmaLook);
             const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
             with<Flash>::extend(context, thing, Flash::Quantum{.effect = effect, .shock = shock, .plasma = plasma, .elapsed = seconds{}});
             return thing;

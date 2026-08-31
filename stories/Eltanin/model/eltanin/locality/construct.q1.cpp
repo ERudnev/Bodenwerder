@@ -25,29 +25,38 @@ namespace eltanin::locality {
 
     namespace {
 
-        auto cohesionByPrimitive(const mech::Construction& construction, const vector<phys::Particle>& particles) -> umap<mech::Construction::Primitive::Id, float> {
-            umap<mech::Construction::Primitive::Id, float> worst;
+        struct PrimitiveHurt {
+            float cohesion;
+            float temperature;
+        };
+
+        auto hurtByPrimitive(const mech::Construction& construction, const vector<phys::Particle>& particles) -> umap<mech::Construction::Primitive::Id, PrimitiveHurt> {
+            umap<mech::Construction::Primitive::Id, PrimitiveHurt> hurt;
             integer cursor = 0;
             mech::forEachPrimitiveLoop(construction, [&](mech::Construction::Primitive::Id id, const mech::Construction::Primitive& primitive) {
                 const auto count = primitive.loop.size();
                 for (std::size_t slot = 0; slot < count; ++slot) {
                     if (static_cast<std::size_t>(cursor) >= particles.size())
                         return;
-                    const float cohesion = particles[static_cast<std::size_t>(cursor)].cohesion;
+                    const auto& particle = particles[static_cast<std::size_t>(cursor)];
                     ++cursor;
-                    auto found = worst.find(id);
-                    if (found == worst.end())
-                        worst.emplace(id, cohesion);
-                    else if (cohesion < found->second)
-                        found->second = cohesion;
+                    auto found = hurt.find(id);
+                    if (found == hurt.end())
+                        hurt.emplace(id, PrimitiveHurt{.cohesion = particle.cohesion, .temperature = particle.temperature});
+                    else {
+                        found->second.cohesion = glm::min(found->second.cohesion, particle.cohesion);
+                        found->second.temperature = glm::max(found->second.temperature, particle.temperature);
+                    }
                 }
             });
-            return worst;
+            return hurt;
         }
 
-        auto dropPrimitive(const umap<mech::Construction::Primitive::Id, float>& worst, mech::Construction::Primitive::Id id) -> bool {
-            const auto found = worst.find(id);
-            return found != worst.end() and found->second <= 0.0f;
+        auto dropPrimitive(const umap<mech::Construction::Primitive::Id, PrimitiveHurt>& hurt, mech::Construction::Primitive::Id id) -> bool {
+            const auto found = hurt.find(id);
+            if (found == hurt.end())
+                return false;
+            return found->second.cohesion <= 0.0f or found->second.temperature >= phys::Settings::hullShedKelvin;
         }
 
         constexpr float minHalf = 0.25f;
@@ -116,6 +125,7 @@ namespace eltanin::locality {
 
         struct DeadChunk {
             float cohesion;
+            float temperature;
             float thickness;
             float mass;
             dvec3 momentum;
@@ -123,11 +133,11 @@ namespace eltanin::locality {
         };
 
         template<typename Piece, typename IdOf>
-        void keepLive(vector<Piece>& items, IdOf idOf, const umap<mech::Construction::Primitive::Id, float>& worst) {
+        void keepLive(vector<Piece>& items, IdOf idOf, const umap<mech::Construction::Primitive::Id, PrimitiveHurt>& hurt) {
             vector<Piece> live;
             live.reserve(items.size());
             for (auto& piece : items) {
-                if (not dropPrimitive(worst, idOf(piece)))
+                if (not dropPrimitive(hurt, idOf(piece)))
                     live.push_back(std::move(piece));
             }
             items = std::move(live);
@@ -139,10 +149,10 @@ namespace eltanin::locality {
             auto crystal = with<phys::rigid::Crystal>::modify(context, construct.body);
             if (crystal->particles.size() != construct.construction.evaluatedParticles.size() or crystal->particles.size() != crystal->shape.size())
                 return true;
-            const auto worst = cohesionByPrimitive(construct.construction, crystal->particles);
+            const auto hurt = hurtByPrimitive(construct.construction, crystal->particles);
             bool anyDead = false;
-            for (const auto& [_, cohesion] : worst) {
-                if (cohesion <= 0.0f) {
+            for (const auto& [_, state] : hurt) {
+                if (state.cohesion <= 0.0f or state.temperature >= phys::Settings::hullShedKelvin) {
                     anyDead = true;
                     break;
                 }
@@ -160,13 +170,13 @@ namespace eltanin::locality {
             mech::forEachPrimitiveLoop(construct.construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
                 if (mismatch)
                     return;
-                const bool gone = dropPrimitive(worst, primitiveId);
+                const bool gone = dropPrimitive(hurt, primitiveId);
                 DeadChunk* chunk = nullptr;
                 if (gone) {
                     auto found = dead.find(primitiveId);
                     if (found == dead.end()) {
-                        const auto cohesion = worst.find(primitiveId);
-                        found = dead.emplace(primitiveId, DeadChunk{.cohesion = cohesion->second, .thickness = primitive.thickness, .mass = 0.0f, .momentum = dvec3{0.0, 0.0, 0.0}, .locals = {}}).first;
+                        const auto state = hurt.find(primitiveId);
+                        found = dead.emplace(primitiveId, DeadChunk{.cohesion = state->second.cohesion, .temperature = state->second.temperature, .thickness = primitive.thickness, .mass = 0.0f, .momentum = dvec3{0.0, 0.0, 0.0}, .locals = {}}).first;
                     }
                     found->second.thickness = glm::max(found->second.thickness, primitive.thickness);
                     chunk = &found->second;
@@ -201,7 +211,7 @@ namespace eltanin::locality {
                     const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
                     const quat worldRot = glm::normalize(body.orientation * box.rotation);
                     const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
-                    Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion);
+                    Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion, chunk.temperature);
                 }
             }
 
@@ -216,7 +226,7 @@ namespace eltanin::locality {
             }
             auto eraseDead = [&](auto& items) {
                 for (auto it = items.begin(); it != items.end(); ) {
-                    if (dropPrimitive(worst, it->first))
+                    if (dropPrimitive(hurt, it->first))
                         it = items.erase(it);
                     else
                         ++it;
@@ -227,11 +237,11 @@ namespace eltanin::locality {
             eraseDead(construct.construction.membranes);
             eraseDead(construct.construction.plates);
             eraseDead(construct.construction.volumes);
-            keepLive(construct.fragments.ofKnot, [](const auto& piece) { return piece.knot; }, worst);
-            keepLive(construct.fragments.ofRib, [](const auto& piece) { return piece.rib; }, worst);
-            keepLive(construct.fragments.ofMembrane, [](const auto& piece) { return piece.membrane; }, worst);
-            keepLive(construct.fragments.ofPlate, [](const auto& piece) { return piece.plate; }, worst);
-            keepLive(construct.fragments.ofVolume, [](const auto& piece) { return piece.volume; }, worst);
+            keepLive(construct.fragments.ofKnot, [](const auto& piece) { return piece.knot; }, hurt);
+            keepLive(construct.fragments.ofRib, [](const auto& piece) { return piece.rib; }, hurt);
+            keepLive(construct.fragments.ofMembrane, [](const auto& piece) { return piece.membrane; }, hurt);
+            keepLive(construct.fragments.ofPlate, [](const auto& piece) { return piece.plate; }, hurt);
+            keepLive(construct.fragments.ofVolume, [](const auto& piece) { return piece.volume; }, hurt);
             mech::compileParticles(construct.construction);
             crystal->particles = std::move(particles);
             crystal->shape = std::move(shape);
@@ -295,14 +305,18 @@ namespace eltanin::locality {
         if (not with<phys::rigid::Crystal>::exists(context, construct.body)) return;
         const auto& crystal = with<phys::rigid::Crystal>::get(context, construct.body);
         if (crystal.particles.size() != construct.construction.evaluatedParticles.size()) return;
-        const auto worst = cohesionByPrimitive(construct.construction, crystal.particles);
+        const auto hurt = hurtByPrimitive(construct.construction, crystal.particles);
         vector<float> cohesions;
+        vector<float> heats;
         cohesions.reserve(construct.visualOf.size());
+        heats.reserve(construct.visualOf.size());
         for (const auto primitive : construct.visualOf) {
-            const auto found = worst.find(primitive);
-            cohesions.push_back(found == worst.end() ? 1.0f : found->second);
+            const auto found = hurt.find(primitive);
+            cohesions.push_back(found == hurt.end() ? 1.0f : found->second.cohesion);
+            heats.push_back(found == hurt.end() ? 0.0f : found->second.temperature);
         }
         with<rmmr::scene::actor::Mesh>::writeCohesions(context, construct.actor, std::span<const float>{cohesions});
+        with<rmmr::scene::actor::Mesh>::writeHeats(context, construct.actor, std::span<const float>{heats});
     }
 
     auto Construct::customAspectReactions() -> const Behavior {

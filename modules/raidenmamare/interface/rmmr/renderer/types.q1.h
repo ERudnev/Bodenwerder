@@ -88,6 +88,7 @@ namespace rmmr::renderer {
         inline constexpr Integer32 surfacePalette = 10;
         inline constexpr Integer32 primitiveSurfaces = 11;
         inline constexpr Integer32 cohesions = 12;
+        inline constexpr Integer32 heats = 13;
 
     }
 
@@ -101,6 +102,7 @@ namespace rmmr::renderer {
         StorageBuffer actorState;
         StorageBuffer poses;
         StorageBuffer cohesions;
+        StorageBuffer heats;
         StorageBuffer drawMetadata;
         StorageBuffer surfacePalette;
         IntPtr metadataByteOffset;

@@ -37,6 +37,7 @@ namespace rmmr::scene::actor {
             renderer::StorageBuffer actorState;
             renderer::StorageBuffer poses;
             renderer::StorageBuffer cohesions;
+            renderer::StorageBuffer heats;
             integer instanceCount;
             integer wreckedLayer;
             integer maskLayer;
@@ -52,6 +53,7 @@ namespace rmmr::scene::actor {
             static auto composeOne(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id) -> optional<Quantum>;
             static auto composeOne(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texture3array::Asset::Id) -> optional<Quantum>;
             static void writeCohesions(Reading, Id, std::span<const float>);
+            static void writeHeats(Reading, Id, std::span<const float>);
             static void replace(Writing, Id, Quantum);
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };

@@ -35,7 +35,7 @@ namespace rmmr
       surfaceBase: Integer32
 
     // Mesh shader SSBO bindings:
-    // 7 ActorState, 8 DiscretePose[], 9 DrawMetadata[], 10 uint surfacePalette[], 11 uint primitiveSurfaces[], 12 float cohesions[].
+    // 7 ActorState, 8 DiscretePose[], 9 DrawMetadata[], 10 uint surfacePalette[], 11 uint primitiveSurfaces[], 12 float cohesions[], 13 float heats[].
 
     // std430-compatible actor data. albedoOpacity.w is opacity;
     // latticePattern is latticeStep/patternScale. heat.xy is kelvin/erosion;
@@ -68,6 +68,7 @@ namespace rmmr
       actorState: StorageBuffer
       poses: StorageBuffer
       cohesions: StorageBuffer
+      heats: StorageBuffer
       drawMetadata: StorageBuffer
       surfacePalette: StorageBuffer
       metadataByteOffset: IntPtr

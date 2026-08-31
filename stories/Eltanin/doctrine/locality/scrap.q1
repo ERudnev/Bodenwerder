@@ -15,5 +15,5 @@ namespace eltanin
         actor: custody<rmmr::scene::actor::Mesh>
       all
         >update()
-        >spawn(Pose, halfExtents: vec3, mass: float, linear: vec3, omega: vec3, cohesion: float)->#
+        >spawn(Pose, halfExtents: vec3, mass: float, linear: vec3, omega: vec3, cohesion: float, temperature: Kelvins)->#
         *followBody()

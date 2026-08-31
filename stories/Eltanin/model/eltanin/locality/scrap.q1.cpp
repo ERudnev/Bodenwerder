@@ -92,6 +92,10 @@ namespace eltanin::locality {
                 continue;
             const auto& solid = with<phys::rigid::Solid>::get(context, scrap.body);
             const auto& body = with<phys::Body>::get(context, scrap.body);
+            if (solid.center.temperature >= phys::Settings::scrapVaporKelvin) {
+                with<Scrap>::kraken(context, id);
+                continue;
+            }
             const int cuts = cutCount(solid.center.cohesion);
             if (cuts == 0)
                 continue;
@@ -99,14 +103,14 @@ namespace eltanin::locality {
                 const int axis = longestAxis(solid.halfExtents);
                 if (solid.halfExtents[axis] >= minHalf * 2.0f) {
                     const vec3 linear = vec3{(body.position - solid.center.prev) / phys::Settings::fixedStep};
-                    breakOff(context, vec3{body.position}, body.orientation, solid.halfExtents, body.totalMass, linear, solid.center.cohesion);
+                    breakOff(context, vec3{body.position}, body.orientation, solid.halfExtents, body.totalMass, linear, solid.center.cohesion, solid.center.temperature);
                 }
             }
             with<Scrap>::kraken(context, id);
         }
     }
 
-    auto Scrap::Actions::spawn(Writing context, Pose pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion) -> Id {
+    auto Scrap::Actions::spawn(Writing context, Pose pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature) -> Id {
         const auto scene = with<Thing>::get_global(context).scene;
         const vec3 half = glm::max(halfExtents, vec3{0.08f, 0.08f, 0.08f});
         if (mass <= 0.0f)
@@ -137,6 +141,8 @@ namespace eltanin::locality {
         // Hull wreck-mix is actor-wide; cohesion 0 would paint the steel rims with panel_tech_1.
         const float intact[] = {1.0f};
         with<scene::actor::Mesh>::writeCohesions(context, actor, std::span<const float>{intact, 1});
+        const float kelvin[] = {temperature};
+        with<scene::actor::Mesh>::writeHeats(context, actor, std::span<const float>{kelvin, 1});
         const float radius = glm::length(half);
         const auto body = with<phys::Body>::create(context, phys::Body::Quantum{.position = dvec3{pose.position}, .orientation = pose.rotation, .totalMass = mass, .radius = radius});
         quat prevOri = pose.rotation;
@@ -146,7 +152,7 @@ namespace eltanin::locality {
             prevOri = glm::normalize(step * pose.rotation);
         }
         with<phys::rigid::Solid>::extend(context, body, phys::rigid::Solid::Quantum{
-            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = cohesion}, dvec3{pose.position} - dvec3{linear * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}},
+            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = temperature, .cohesion = cohesion}, dvec3{pose.position} - dvec3{linear * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}},
             .prevOri = prevOri,
             .forceAngular = vec3{0.0f, 0.0f, 0.0f},
             .kind = phys::rigid::Solid::Kind::box,
@@ -158,7 +164,9 @@ namespace eltanin::locality {
         return thing;
     }
 
-    void Scrap::Actions::breakOff(Writing context, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion) {
+    void Scrap::Actions::breakOff(Writing context, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion, phys::Kelvins temperature) {
+        if (temperature >= phys::Settings::scrapVaporKelvin)
+            return;
         const int cuts = cutCount(cohesion);
         if (cuts < 0 or mass <= 0.0f)
             return;
@@ -173,7 +181,7 @@ namespace eltanin::locality {
             const vec3 offset = piece.center - worldCenter;
             const float offsetLen = glm::length(offset);
             const vec3 pop = offsetLen > 1.0e-5f ? (offset / offsetLen) * splitPop : vec3{0.0f, 0.0f, 0.0f};
-            spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear + pop, omega, bornCohesion);
+            spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear + pop, omega, bornCohesion, temperature);
         }
     }
 
@@ -188,6 +196,10 @@ namespace eltanin::locality {
             if (not body)
                 continue;
             node->pose = body->pose();
+            if (not with<phys::rigid::Solid>::exists(context, scrap.body) or not with<scene::actor::Mesh>::exists(context, scrap.actor))
+                continue;
+            const float kelvin[] = {with<phys::rigid::Solid>::get(context, scrap.body).center.temperature};
+            with<scene::actor::Mesh>::writeHeats(context, scrap.actor, std::span<const float>{kelvin, 1});
         }
     }
 

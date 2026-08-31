@@ -66,10 +66,11 @@ namespace rmmr::scene::actor {
             return {wrecked->second, mask->second};
         }
 
-        void deleteBuffers(renderer::StorageBuffer actorState, renderer::StorageBuffer poses, renderer::StorageBuffer cohesions, renderer::StorageBuffer metadata, renderer::StorageBuffer palette, const vector<Mesh::Bucket>& buckets) {
+        void deleteBuffers(renderer::StorageBuffer actorState, renderer::StorageBuffer poses, renderer::StorageBuffer cohesions, renderer::StorageBuffer heats, renderer::StorageBuffer metadata, renderer::StorageBuffer palette, const vector<Mesh::Bucket>& buckets) {
             if (actorState) glDeleteBuffers(1, &actorState);
             if (poses) glDeleteBuffers(1, &poses);
             if (cohesions) glDeleteBuffers(1, &cohesions);
+            if (heats) glDeleteBuffers(1, &heats);
             if (metadata) glDeleteBuffers(1, &metadata);
             if (palette) glDeleteBuffers(1, &palette);
             for (const auto& bucket : buckets) {
@@ -91,6 +92,7 @@ namespace rmmr::scene::actor {
                 .actorState = mesh.actorState,
                 .poses = mesh.poses,
                 .cohesions = mesh.cohesions,
+                .heats = mesh.heats,
                 .drawMetadata = mesh.drawMetadata,
                 .surfacePalette = mesh.surfacePalette,
                 .metadataByteOffset = bucket.metadataByteOffset,
@@ -205,16 +207,18 @@ namespace rmmr::scene::actor {
         renderer::StorageBuffer actorStateBuffer{0};
         renderer::StorageBuffer poseBuffer{0};
         renderer::StorageBuffer cohesionBuffer{0};
+        renderer::StorageBuffer heatBuffer{0};
         renderer::StorageBuffer metadataBuffer{0};
         renderer::StorageBuffer paletteBuffer{0};
         glCreateBuffers(1, &actorStateBuffer);
         glCreateBuffers(1, &poseBuffer);
         glCreateBuffers(1, &cohesionBuffer);
+        glCreateBuffers(1, &heatBuffer);
         glCreateBuffers(1, &metadataBuffer);
         glCreateBuffers(1, &paletteBuffer);
         vector<Bucket> buckets;
-        if (not actorStateBuffer or not poseBuffer or not cohesionBuffer or not metadataBuffer or not paletteBuffer) {
-            deleteBuffers(actorStateBuffer, poseBuffer, cohesionBuffer, metadataBuffer, paletteBuffer, buckets);
+        if (not actorStateBuffer or not poseBuffer or not cohesionBuffer or not heatBuffer or not metadataBuffer or not paletteBuffer) {
+            deleteBuffers(actorStateBuffer, poseBuffer, cohesionBuffer, heatBuffer, metadataBuffer, paletteBuffer, buckets);
             return {};
         }
         const auto hullLayers = hullSharedLayers(context, hullPack);
@@ -227,9 +231,11 @@ namespace rmmr::scene::actor {
             .heat = vec4{0.0f, 1.0f, static_cast<float>(hullLayers.first), static_cast<float>(hullLayers.second)},
         };
         vector<float> cohesions(poses.size(), 1.0f);
+        vector<float> heats(poses.size(), 0.0f);
         glNamedBufferStorage(actorStateBuffer, sizeof(renderer::ActorState), &initialActorState, GL_DYNAMIC_STORAGE_BIT);
         glNamedBufferStorage(poseBuffer, static_cast<renderer::SizePtr>(poses.size() * sizeof(renderer::DiscretePose)), poses.data(), 0);
         glNamedBufferStorage(cohesionBuffer, static_cast<renderer::SizePtr>(cohesions.size() * sizeof(float)), cohesions.data(), GL_DYNAMIC_STORAGE_BIT);
+        glNamedBufferStorage(heatBuffer, static_cast<renderer::SizePtr>(heats.size() * sizeof(float)), heats.data(), GL_DYNAMIC_STORAGE_BIT);
         glNamedBufferStorage(metadataBuffer, static_cast<renderer::SizePtr>(metadata.size() * sizeof(renderer::DrawMetadata)), metadata.data(), 0);
         glNamedBufferStorage(paletteBuffer, static_cast<renderer::SizePtr>(palette.size() * sizeof(renderer::Integer32)), palette.data(), 0);
 
@@ -238,7 +244,7 @@ namespace rmmr::scene::actor {
             renderer::IndirectBuffer indirect{0};
             glCreateBuffers(1, &indirect);
             if (not indirect) {
-                deleteBuffers(actorStateBuffer, poseBuffer, cohesionBuffer, metadataBuffer, paletteBuffer, buckets);
+                deleteBuffers(actorStateBuffer, poseBuffer, cohesionBuffer, heatBuffer, metadataBuffer, paletteBuffer, buckets);
                 return {};
             }
             const auto& source = cpuBuckets[index];
@@ -254,7 +260,7 @@ namespace rmmr::scene::actor {
                 .metadataByteSize = static_cast<renderer::SizePtr>(source.metadata.size() * sizeof(renderer::DrawMetadata)),
             });
         }
-        return Quantum{.device = *device, .actorState = actorStateBuffer, .poses = poseBuffer, .cohesions = cohesionBuffer, .instanceCount = static_cast<integer>(poses.size()), .wreckedLayer = hullLayers.first, .maskLayer = hullLayers.second, .drawMetadata = metadataBuffer, .surfacePalette = paletteBuffer, .sprite = {}, .spriteIndex = 0, .buckets = std::move(buckets)};
+        return Quantum{.device = *device, .actorState = actorStateBuffer, .poses = poseBuffer, .cohesions = cohesionBuffer, .heats = heatBuffer, .instanceCount = static_cast<integer>(poses.size()), .wreckedLayer = hullLayers.first, .maskLayer = hullLayers.second, .drawMetadata = metadataBuffer, .surfacePalette = paletteBuffer, .sprite = {}, .spriteIndex = 0, .buckets = std::move(buckets)};
     }
 
     auto Mesh::Actions::compose(Reading context, resource::meshpack::Asset::Resolved resolved) -> optional<Quantum> {
@@ -293,6 +299,14 @@ namespace rmmr::scene::actor {
         if (not with<system::Device>::exists(context, mesh.device)) return;
         glfwMakeContextCurrent(with<system::Device>::get(context, mesh.device).handle);
         glNamedBufferSubData(mesh.cohesions, 0, static_cast<renderer::SizePtr>(values.size() * sizeof(float)), values.data());
+    }
+
+    void Mesh::Actions::writeHeats(Reading context, Id node, std::span<const float> values) {
+        const auto& mesh = with<Mesh>::get(context, node);
+        if (not mesh.heats or values.size() != static_cast<std::size_t>(mesh.instanceCount)) return;
+        if (not with<system::Device>::exists(context, mesh.device)) return;
+        glfwMakeContextCurrent(with<system::Device>::get(context, mesh.device).handle);
+        glNamedBufferSubData(mesh.heats, 0, static_cast<renderer::SizePtr>(values.size() * sizeof(float)), values.data());
     }
 
     auto MeshState::Actions::defaults() -> Quantum {
@@ -376,7 +390,7 @@ namespace rmmr::scene::actor {
         static void release(Writing context, Id, const Quantum& last) {
             if (not with<system::Device>::exists(context, last.device)) return;
             glfwMakeContextCurrent(with<system::Device>::get(context, last.device).handle);
-            deleteBuffers(last.actorState, last.poses, last.cohesions, last.drawMetadata, last.surfacePalette, last.buckets);
+            deleteBuffers(last.actorState, last.poses, last.cohesions, last.heats, last.drawMetadata, last.surfacePalette, last.buckets);
         }
     };
 
