@@ -13,7 +13,8 @@ namespace eltanin::phys {
         static constexpr float airSpinHalfLife = 3.0f; // Solid ω halves in this many seconds at isaAirDensity
         static constexpr float restLinear = 1.0e-5f; // m/tick; below this (x−prev) is zeroed
         static constexpr float solidLiveSpeed = 0.1f; // m/s; Solid↔Crystal — soft fade of restitution and spin below this closing speed
-        static constexpr float cohesionWound = 2.5f; // Δcohesion = cohesionWound · |p_ray| / m_face; 30mm 0.4 kg × 200 m/s vs 4 t plate → 5%
+        static constexpr float cohesionWound = 2.5f; // Crystal faces: Δcohesion = cohesionWound · |p| / m_face; 30mm 0.4 kg × 200 m/s vs 4 t plate → 5%
+        static constexpr float boxCohesionWound = 25.0f; // Solid boxes (scrap): same law on whole-body mass; 10× so a 24 t dummy cube splits like a 4 t plate
         static constexpr float hullShedKelvin = 2500.0f; // Thermal shed → Dust, not scrap split.
         static constexpr float scrapVaporKelvin = 3400.0f; // wreckage gone; later: melt VFX / secondary flash
         static constexpr seconds fixedStep = 0.01;

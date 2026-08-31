@@ -19,6 +19,7 @@ namespace eltanin::locality {
             rmmr::resource::geometry::Asset::Id sphere;
             rmmr::resource::material::Asset::Id flash;
             rmmr::resource::material::Asset::Id flashGlow;
+            rmmr::resource::material::Asset::Id brisance;
         };
         struct Effect {
             struct Kinetic {
@@ -33,18 +34,20 @@ namespace eltanin::locality {
                 float radius;
                 seconds duration;
             };
-            struct Fracture {
+            struct Brisance {
                 float yield;
                 float radius;
+                seconds duration;
             };
             Kinetic kinetic;
             Thermal thermal;
-            Fracture fracture;
+            Brisance brisance;
         };
         struct Quantum {
             Effect effect;
             Custody<rmmr::scene::actor::Mesh> shock;
             Custody<rmmr::scene::actor::Mesh> plasma;
+            Custody<rmmr::scene::actor::Mesh> field;
             vec3 linear;
             seconds elapsed;
         };
@@ -56,6 +59,7 @@ namespace eltanin::locality {
             static void update(Writing);
             static auto spawnAsExplosion(Writing, vec3 position, vec3 linear, float strength) -> Id;
             static auto spawnAsThermal(Writing, vec3 position, vec3 linear, float strength) -> Id;
+            static auto spawnAsBrisance(Writing, vec3 position, vec3 linear, float strength) -> Id;
             static void apply(Stewarding);
         };
         struct Internals : DefaultInternals {};

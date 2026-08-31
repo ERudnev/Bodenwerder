@@ -26,6 +26,8 @@ namespace eltanin::locality {
         }
 
         constexpr float thermalHalo = 2.5f; // heat soaks this many plasma radii; visual ball stays thermal.radius
+        constexpr RGB brisanceTint{0.22f, 0.72f, 0.38f};
+        constexpr float brisanceFade = 0.10f;
 
         auto thermalSoak(float distance, float radius) -> float {
             if (radius <= 0.0f)
@@ -50,12 +52,25 @@ namespace eltanin::locality {
             return wave * wave;
         }
 
+        auto waveSpan(seconds elapsed, seconds duration, float& inner, float& outer) -> void {
+            const float span = float(duration);
+            if (span <= 0.0f) {
+                inner = 1.0f;
+                outer = 1.0f;
+                return;
+            }
+            inner = glm::clamp(float(elapsed) / span, 0.0f, 1.0f);
+            outer = glm::clamp((float(elapsed) + float(phys::Settings::fixedStep)) / span, 0.0f, 1.0f);
+        }
+
         auto flashLife(const Flash::Effect& effect) -> seconds {
             seconds life{};
             if (effect.kinetic.radius > 0.0f)
                 life = effect.kinetic.duration;
             if (effect.thermal.radius > 0.0f and effect.thermal.duration > life)
                 life = effect.thermal.duration;
+            if (effect.brisance.radius > 0.0f and effect.brisance.duration > life)
+                life = effect.brisance.duration;
             return life;
         }
 
@@ -63,34 +78,34 @@ namespace eltanin::locality {
             return with<scene::Root>::get(context, with<Thing>::get_global(context).scene).atmosphereTemperature;
         }
 
-        void strikeParticle(phys::Particle& particle, vec3 origin, float inner, float outer, float pulse, float ambient, const Flash::Effect& effect) {
+        void strikeParticle(phys::Particle& particle, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float pulse, float ambient, const Flash::Effect& effect) {
             if (particle.mass <= 0.0f)
                 return;
             const vec3 offset = vec3{particle.position} - origin;
             const float distance = glm::length(offset);
             const float atten = falloff(distance);
-            if (frontPasses(distance, effect.kinetic.radius, inner, outer) and distance > 1.0e-4f)
+            if (frontPasses(distance, effect.kinetic.radius, kineticInner, kineticOuter) and distance > 1.0e-4f)
                 particle.force += (offset / distance) * (effect.kinetic.strength * atten);
             const float soak = thermalSoak(distance, effect.thermal.radius);
             if (soak > 0.0f)
                 particle.temperature = glm::max(particle.temperature, ambient + (effect.thermal.temperature - ambient) * pulse * soak);
-            if (frontPasses(distance, effect.fracture.radius, inner, outer))
-                particle.cohesion -= effect.fracture.yield * atten;
+            if (frontPasses(distance, effect.brisance.radius, brisanceInner, brisanceOuter))
+                particle.cohesion -= effect.brisance.yield * atten;
         }
 
-        void strikeSolid(phys::rigid::Solid::Quantum& solid, const phys::Body::Quantum& body, vec3 origin, float inner, float outer, float pulse, float ambient, const Flash::Effect& effect) {
+        void strikeSolid(phys::rigid::Solid::Quantum& solid, const phys::Body::Quantum& body, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float pulse, float ambient, const Flash::Effect& effect) {
             if (body.totalMass <= 0.0f)
                 return;
             const vec3 offset = vec3{body.position} - origin;
             const float distance = glm::length(offset);
             const float atten = falloff(distance);
-            if (frontPasses(distance, effect.kinetic.radius, inner, outer) and distance > 1.0e-4f)
+            if (frontPasses(distance, effect.kinetic.radius, kineticInner, kineticOuter) and distance > 1.0e-4f)
                 solid.center.force += (offset / distance) * (effect.kinetic.strength * atten);
             const float soak = thermalSoak(distance, effect.thermal.radius);
             if (soak > 0.0f)
                 solid.center.temperature = glm::max(solid.center.temperature, ambient + (effect.thermal.temperature - ambient) * pulse * soak);
-            if (frontPasses(distance, effect.fracture.radius, inner, outer))
-                solid.center.cohesion -= effect.fracture.yield * atten;
+            if (frontPasses(distance, effect.brisance.radius, brisanceInner, brisanceOuter))
+                solid.center.cohesion -= effect.brisance.yield * atten;
         }
 
         auto lookShock(const Flash::Effect& effect, seconds elapsed) -> scene::actor::MeshState::Quantum {
@@ -111,6 +126,13 @@ namespace eltanin::locality {
             return state;
         }
 
+        auto lookField(const Flash::Effect& effect, seconds elapsed) -> scene::actor::MeshState::Quantum {
+            const float duration = float(effect.brisance.duration);
+            const float progress = duration > 0.0f ? glm::clamp(float(elapsed) / duration, 0.0f, 1.0f) : 1.0f;
+            const float radius = effect.brisance.radius;
+            return with<scene::actor::MeshState>::defaults(brisanceTint, brisanceFade * (1.0f - progress), vec3{radius, radius, radius});
+        }
+
         auto hiddenLook() -> scene::actor::MeshState::Quantum {
             return with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 0.0f, vec3{0.0f, 0.0f, 0.0f});
         }
@@ -119,6 +141,7 @@ namespace eltanin::locality {
             if (not with<scene::actor::MeshState>::exists(context, actor))
                 return;
             auto state = with<scene::actor::MeshState>::modify(context, actor);
+            state->albedo = look.albedo;
             state->scale = look.scale;
             state->opacity = look.opacity;
             state->heat.x = look.heat.x;
@@ -129,7 +152,7 @@ namespace eltanin::locality {
             return Flash::Effect{
                 .kinetic = {.strength = 5.0e7f * strength, .radius = radius, .core = 0.01f * strength, .duration = 0.70},
                 .thermal = {.temperature = 0.0f, .energy = 0.0f, .radius = 0.0f, .duration = seconds{}},
-                .fracture = {.yield = 8.0f * strength, .radius = radius * 0.85f},
+                .brisance = {.yield = 0.0f, .radius = 0.0f, .duration = seconds{}},
             };
         }
 
@@ -137,7 +160,15 @@ namespace eltanin::locality {
             return Flash::Effect{
                 .kinetic = {.strength = 0.0f, .radius = 0.0f, .core = 0.0f, .duration = seconds{}},
                 .thermal = {.temperature = 2800.0f + 200.0f * strength, .energy = 0.0f, .radius = 1.0f * strength, .duration = 1.0},
-                .fracture = {.yield = 0.0f, .radius = 0.0f},
+                .brisance = {.yield = 0.0f, .radius = 0.0f, .duration = seconds{}},
+            };
+        }
+
+        auto flashBrisance(float strength) -> Flash::Effect {
+            return Flash::Effect{
+                .kinetic = {.strength = 0.0f, .radius = 0.0f, .core = 0.0f, .duration = seconds{}},
+                .thermal = {.temperature = 0.0f, .energy = 0.0f, .radius = 0.0f, .duration = seconds{}},
+                .brisance = {.yield = 8.0f * strength, .radius = 12.0f * strength * 0.85f, .duration = 0.20},
             };
         }
 
@@ -156,10 +187,12 @@ namespace eltanin::locality {
             const float ambient = with<scene::Root>::get(context, scene).atmosphereTemperature;
             const auto shockLook = effect.kinetic.radius > 0.0f ? lookShock(effect, seconds{}) : hiddenLook();
             const auto plasmaLook = effect.thermal.radius > 0.0f ? lookPlasma(effect, seconds{}, ambient) : hiddenLook();
+            const auto fieldLook = effect.brisance.radius > 0.0f ? lookField(effect, seconds{}) : hiddenLook();
             const auto shock = spawnSphere(context, scene, position, resources->sphere, resources->flash, shockLook);
             const auto plasma = spawnSphere(context, scene, position, resources->sphere, resources->flashGlow, plasmaLook);
+            const auto field = spawnSphere(context, scene, position, resources->sphere, resources->brisance, fieldLook);
             const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
-            with<Flash>::extend(context, thing, Flash::Quantum{.effect = effect, .shock = shock, .plasma = plasma, .linear = linear, .elapsed = seconds{}});
+            with<Flash>::extend(context, thing, Flash::Quantum{.effect = effect, .shock = shock, .plasma = plasma, .field = field, .linear = linear, .elapsed = seconds{}});
             return thing;
         }
 
@@ -183,7 +216,12 @@ namespace eltanin::locality {
             context.refuse("eltanin::locality::Flash::bindResources: flashGlow material missing");
             return;
         }
-        with<Flash>::modify_global(context)->resources = Resources{.sphere = *sphere, .flash = *flash, .flashGlow = *flashGlow};
+        const auto brisance = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "flashBrisance"));
+        if (not brisance) {
+            context.refuse("eltanin::locality::Flash::bindResources: flashBrisance material missing");
+            return;
+        }
+        with<Flash>::modify_global(context)->resources = Resources{.sphere = *sphere, .flash = *flash, .flashGlow = *flashGlow, .brisance = *brisance};
     }
 
     auto Flash::Actions::spawnAsExplosion(Writing context, vec3 position, vec3 linear, float strength) -> Id {
@@ -196,6 +234,12 @@ namespace eltanin::locality {
         if (strength <= 0.0f)
             return context.refuse("eltanin::locality::Flash::spawnAsThermal: strength must be positive");
         return spawnFlash(context, position, linear, flashPlasma(strength));
+    }
+
+    auto Flash::Actions::spawnAsBrisance(Writing context, vec3 position, vec3 linear, float strength) -> Id {
+        if (strength <= 0.0f)
+            return context.refuse("eltanin::locality::Flash::spawnAsBrisance: strength must be positive");
+        return spawnFlash(context, position, linear, flashBrisance(strength));
     }
 
     void Flash::Actions::update(Writing context) {
@@ -211,6 +255,8 @@ namespace eltanin::locality {
                 paintActor(context, flash.shock, lookShock(flash.effect, flash.elapsed));
             if (flash.effect.thermal.radius > 0.0f)
                 paintActor(context, flash.plasma, lookPlasma(flash.effect, flash.elapsed, ambient));
+            if (flash.effect.brisance.radius > 0.0f)
+                paintActor(context, flash.field, lookField(flash.effect, flash.elapsed));
         }
         for (const auto id : expired)
             with<Flash>::kraken(context, id);
@@ -230,31 +276,37 @@ namespace eltanin::locality {
             const seconds age = flash.elapsed;
             if (age >= life)
                 continue;
+            float kineticInner = 1.0f;
+            float kineticOuter = 1.0f;
+            float brisanceInner = 1.0f;
+            float brisanceOuter = 1.0f;
+            waveSpan(age, flash.effect.kinetic.duration, kineticInner, kineticOuter);
+            waveSpan(age, flash.effect.brisance.duration, brisanceInner, brisanceOuter);
             flash.elapsed += tick;
-            const float span = float(flash.effect.kinetic.duration);
-            const float inner = span > 0.0f ? glm::clamp(float(age) / span, 0.0f, 1.0f) : 1.0f;
-            const float outer = span > 0.0f ? glm::clamp(float(flash.elapsed) / span, 0.0f, 1.0f) : 1.0f;
             const float pulse = thermalPulse(age, flash.effect.thermal.duration);
             const vec3 drift = flash.linear * tick;
             auto* shockNode = nodes.items.find(flash.shock);
             auto* plasmaNode = nodes.items.find(flash.plasma);
+            auto* fieldNode = nodes.items.find(flash.field);
             if (shockNode)
                 shockNode->pose.position += drift;
             if (plasmaNode)
                 plasmaNode->pose.position += drift;
-            auto* node = shockNode ? shockNode : plasmaNode;
+            if (fieldNode)
+                fieldNode->pose.position += drift;
+            auto* node = shockNode ? shockNode : (plasmaNode ? plasmaNode : fieldNode);
             if (not node)
                 continue;
             const vec3 origin = node->pose.position;
             for (auto [_, crystal] : crystals.items) {
                 for (phys::Particle& particle : crystal.particles)
-                    strikeParticle(particle, origin, inner, outer, pulse, ambient, flash.effect);
+                    strikeParticle(particle, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, pulse, ambient, flash.effect);
             }
             for (auto [bodyId, solid] : solids.items) {
                 auto* body = bodies.items.find(bodyId);
                 if (not body)
                     continue;
-                strikeSolid(solid, *body, origin, inner, outer, pulse, ambient, flash.effect);
+                strikeSolid(solid, *body, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, pulse, ambient, flash.effect);
             }
         }
     }
@@ -263,6 +315,7 @@ namespace eltanin::locality {
         return {
             reaction::structural::custody<Flash, scene::actor::Mesh, &Flash::Quantum::shock>{},
             reaction::structural::custody<Flash, scene::actor::Mesh, &Flash::Quantum::plasma>{},
+            reaction::structural::custody<Flash, scene::actor::Mesh, &Flash::Quantum::field>{},
         };
     }
 

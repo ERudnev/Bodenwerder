@@ -7,11 +7,13 @@ import "physics/body"
 namespace eltanin
   namespace decorations
 
-    // Lost-mass vis: no Body, no Solid, no Compound. Drifts, cools to 0 K over 4 s (hotter falls faster). Plasma glow, not salvage.
+    // Lost-mass vis: no Body, no Solid, no Compound. Drifts. Thermal: cools to 0 K over 4 s (hotter falls faster), plasma glow. Kinetic: opaque→clear fade, not salvage.
     feature Dust of rmmr::scene::actor::Mesh
+      enum Kind : thermal, kinetic
       struct Resources
         scrap: #rmmr::resource::geometry::Asset
         glow: #rmmr::resource::material::Asset
+        fade: #rmmr::resource::material::Asset
       one
         linear: vec3
         omega: vec3
@@ -19,9 +21,14 @@ namespace eltanin
         bornTemperature: Kelvins
         half: vec3
         life: seconds
+        lifeBorn: seconds
+        kind: Kind
+        fadeFrom: float
+        fadeTo: float
       all
         resources: Resources?
         >bindResources()
         >update(dt: seconds)
         >spawn(Pose, half: vec3, linear: vec3, omega: vec3, temperature: Kelvins)->#
+        >spawnKinetic(Pose, half: vec3, linear: vec3, omega: vec3)->#
         >spawnMesh(Pose, vector<rmmr::scene::actor::Mesh::Occurrence>, linear: vec3, omega: vec3, temperature: Kelvins, half: vec3, latticeStep: float)->#

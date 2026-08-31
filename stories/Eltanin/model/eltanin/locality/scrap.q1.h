@@ -21,10 +21,17 @@ namespace eltanin::locality {
             rmmr::resource::material::Asset::Id hull;
             rmmr::resource::texpack::Pack::Id mech;
         };
+        enum class Lineage {
+            common,
+            volume,
+            terminal,
+        };
         struct Quantum {
             Custody<phys::rigid::Solid> body;
             Custody<rmmr::scene::actor::Mesh> actor;
             phys::Kelvins gpuKelvin;
+            rmmr::Pose meshFromBody;
+            Lineage lineage;
         };
         struct Global {
             base::maybe<Resources> resources;
@@ -32,7 +39,9 @@ namespace eltanin::locality {
         struct Actions : BaseActions {
             static void bindResources(Writing);
             static void update(Writing);
-            static auto spawn(Writing, rmmr::Pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature) -> Id;
+            static auto spawn(Writing, rmmr::Pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, Lineage) -> Id;
+            static auto spawnMesh(Writing, rmmr::Pose actorPose, rmmr::Pose bodyPose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, vector<rmmr::scene::actor::Mesh::Occurrence>, float latticeStep, Lineage) -> Id;
+            static auto cutCount(float cohesion) -> int;
             static void breakOff(Writing, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion, phys::Kelvins temperature);
             static void followBody(Stewarding);
         };

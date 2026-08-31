@@ -14,6 +14,7 @@ namespace eltanin
         sphere: #rmmr::resource::geometry::Asset
         flash: #rmmr::resource::material::Asset
         flashGlow: #rmmr::resource::material::Asset
+        brisance: #rmmr::resource::material::Asset
       struct Effect
         struct Kinetic
           strength: float
@@ -25,22 +26,25 @@ namespace eltanin
           energy: float
           radius: float
           duration: seconds
-        struct Fracture
-          yield: float
+        struct Brisance
+          yield: float // cohesion wound; class 10 matches the old kinetic cohesion shell
           radius: float
+          duration: seconds // 0.2 s at class 10
         kinetic: Kinetic
         thermal: Thermal
-        fracture: Fracture
+        brisance: Brisance
       one
         effect: Effect
         shock: custody<rmmr::scene::actor::Mesh>
         plasma: custody<rmmr::scene::actor::Mesh>
+        field: custody<rmmr::scene::actor::Mesh>
         linear: vec3 // drift; actors stay identity orientation
         elapsed: seconds // wave clock; physics ticks, not Thing.now
       all
         resources: Resources?
         >bindResources()
         >update()
-        >spawnAsExplosion(position: vec3, linear: vec3, strength: float)-># // kinetic+fracture only; 10 = anti-frigate bang
+        >spawnAsExplosion(position: vec3, linear: vec3, strength: float)-># // kinetic only; 10 = anti-frigate bang
         >spawnAsThermal(position: vec3, linear: vec3, strength: float)-># // heat only; 10 = same class, no shock
+        >spawnAsBrisance(position: vec3, linear: vec3, strength: float)-># // cohesion only; 10 = same wound as the bang
         *apply(~phys::rigid::Crystal, ~phys::rigid::Solid)

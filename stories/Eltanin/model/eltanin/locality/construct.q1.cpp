@@ -65,6 +65,10 @@ namespace eltanin::locality {
         constexpr float minHalf = 0.25f;
         constexpr float heatUploadStep = 10.0f;
         constexpr float cohesionUploadStep = 0.001f;
+        constexpr float membraneScrapThickness = 0.05f;
+        constexpr float plateOutwardMeters = 0.40f;
+        constexpr float ribEndTrim = 0.20f;
+        constexpr float volumeFaceTrim = 0.50f;
 
         auto gpuStale(const vector<float>& was, const vector<float>& now, float step) -> bool {
             if (was.size() != now.size())
@@ -121,8 +125,7 @@ namespace eltanin::locality {
             vec3 half;
         };
 
-        auto boxOf(const vector<vec3>& points, float thickness) -> LocalBox {
-            const float shell = glm::max(thickness * 0.5f, 0.08f);
+        auto boxOf(const vector<vec3>& points, float shell) -> LocalBox {
             const quat identity{1.0f, 0.0f, 0.0f, 0.0f};
             if (points.empty())
                 return LocalBox{.center = vec3{0.0f, 0.0f, 0.0f}, .rotation = identity, .half = vec3{minHalf, minHalf, minHalf}};
@@ -166,6 +169,95 @@ namespace eltanin::locality {
             return LocalBox{.center = center, .rotation = quatFromAxes(x, y, normal), .half = vec3{glm::max(0.5f * (maxX - minX), minHalf), glm::max(0.5f * (maxY - minY), minHalf), shell}};
         }
 
+        auto boxOfRib(const vector<vec3>& points, float shell) -> LocalBox {
+            auto box = boxOf(points, shell);
+            const float span = glm::max(box.half.x * 2.0f - 2.0f * ribEndTrim, minHalf * 2.0f);
+            box.half.x = span * 0.5f;
+            return box;
+        }
+
+        auto boxOfVolume(const vector<vec3>& points) -> LocalBox {
+            const quat identity{1.0f, 0.0f, 0.0f, 0.0f};
+            if (points.empty())
+                return LocalBox{.center = vec3{0.0f, 0.0f, 0.0f}, .rotation = identity, .half = vec3{minHalf, minHalf, minHalf}};
+            vec3 boundMin = points[0];
+            vec3 boundMax = points[0];
+            for (const vec3& point : points) {
+                boundMin = glm::min(boundMin, point);
+                boundMax = glm::max(boundMax, point);
+            }
+            const vec3 half = glm::max(0.5f * (boundMax - boundMin) - vec3{volumeFaceTrim, volumeFaceTrim, volumeFaceTrim}, vec3{minHalf, minHalf, minHalf});
+            return LocalBox{.center = 0.5f * (boundMin + boundMax), .rotation = identity, .half = half};
+        }
+
+        auto sameGrid(const index3& left, const index3& right) -> bool {
+            return left.x == right.x and left.y == right.y and left.z == right.z;
+        }
+
+        auto hasKnotAt(const mech::Construction& construction, index3 grid) -> bool {
+            for (const auto& [_, knot] : construction.knots) {
+                if (not knot.loop.empty() and sameGrid(knot.loop[0].gridPos, grid))
+                    return true;
+            }
+            return false;
+        }
+
+        auto knotCountInCell(const mech::Construction& construction, index3 cell) -> int {
+            int count = 0;
+            for (int dx = 0; dx < 2; ++dx)
+                for (int dy = 0; dy < 2; ++dy)
+                    for (int dz = 0; dz < 2; ++dz)
+                        if (hasKnotAt(construction, index3{.x = cell.x + dx, .y = cell.y + dy, .z = cell.z + dz}))
+                            ++count;
+            return count;
+        }
+
+        auto cellOf(vec3 gridPoint) -> index3 {
+            const vec3 floored = glm::floor(gridPoint);
+            return index3{.x = static_cast<int>(floored.x), .y = static_cast<int>(floored.y), .z = static_cast<int>(floored.z)};
+        }
+
+        // Plate is glued to the outside of a cell. Occupied cell = more knots; outward goes through the face from that cell. Tie with knots on both sides → no shift. No skeleton → winding (CCW-out).
+        auto plateOutward(const mech::Construction::Primitive& plate, const mech::Construction& construction) -> vec3 {
+            if (plate.loop.size() < 3)
+                return vec3{0.0f, 0.0f, 0.0f};
+            vec3 sum{0.0f, 0.0f, 0.0f};
+            for (const auto& welded : plate.loop)
+                sum += vec3{static_cast<float>(welded.gridPos.x), static_cast<float>(welded.gridPos.y), static_cast<float>(welded.gridPos.z)};
+            const vec3 centroid = sum / static_cast<float>(plate.loop.size());
+            const vec3 ab = vec3{static_cast<float>(plate.loop[1].gridPos.x - plate.loop[0].gridPos.x), static_cast<float>(plate.loop[1].gridPos.y - plate.loop[0].gridPos.y), static_cast<float>(plate.loop[1].gridPos.z - plate.loop[0].gridPos.z)};
+            const vec3 ac = vec3{static_cast<float>(plate.loop[2].gridPos.x - plate.loop[0].gridPos.x), static_cast<float>(plate.loop[2].gridPos.y - plate.loop[0].gridPos.y), static_cast<float>(plate.loop[2].gridPos.z - plate.loop[0].gridPos.z)};
+            vec3 normal = glm::cross(ab, ac);
+            const float normalLen = glm::length(normal);
+            if (normalLen < 1.0e-8f)
+                return vec3{0.0f, 0.0f, 0.0f};
+            normal /= normalLen;
+            const index3 plusCell = cellOf(centroid + 0.5f * normal);
+            const index3 minusCell = cellOf(centroid - 0.5f * normal);
+            if (sameGrid(plusCell, minusCell))
+                return normal;
+            const int plusKnots = knotCountInCell(construction, plusCell);
+            const int minusKnots = knotCountInCell(construction, minusCell);
+            if (plusKnots == minusKnots)
+                return plusKnots > 0 ? vec3{0.0f, 0.0f, 0.0f} : normal;
+            return plusKnots > minusKnots ? -normal : normal;
+        }
+
+        auto scrapBox(const mech::Construction& construction, mech::Construction::Primitive::Id id, const vector<vec3>& locals, float thickness, vec3 outward) -> LocalBox {
+            if (construction.volumes.contains(id))
+                return boxOfVolume(locals);
+            if (construction.ribs.contains(id))
+                return boxOfRib(locals, glm::max(thickness * 0.5f, 0.08f));
+            if (construction.membranes.contains(id))
+                return boxOf(locals, membraneScrapThickness * 0.5f);
+            if (construction.plates.contains(id)) {
+                auto box = boxOf(locals, thickness * 0.25f);
+                box.center += outward * plateOutwardMeters;
+                return box;
+            }
+            return boxOf(locals, glm::max(thickness * 0.5f, 0.08f));
+        }
+
         struct DeadChunk {
             float cohesion;
             float temperature;
@@ -173,6 +265,7 @@ namespace eltanin::locality {
             float mass;
             dvec3 momentum;
             vector<vec3> locals;
+            vec3 outward;
         };
 
         template<typename Piece, typename IdOf>
@@ -239,7 +332,8 @@ namespace eltanin::locality {
                     auto found = dead.find(primitiveId);
                     if (found == dead.end()) {
                         const auto state = hurt.find(primitiveId);
-                        found = dead.emplace(primitiveId, DeadChunk{.cohesion = state->second.cohesion, .temperature = state->second.temperature, .thickness = primitive.thickness, .mass = 0.0f, .momentum = dvec3{0.0, 0.0, 0.0}, .locals = {}}).first;
+                        const vec3 outward = construct.construction.plates.contains(primitiveId) ? plateOutward(primitive, construct.construction) : vec3{0.0f, 0.0f, 0.0f};
+                        found = dead.emplace(primitiveId, DeadChunk{.cohesion = state->second.cohesion, .temperature = state->second.temperature, .thickness = primitive.thickness, .mass = 0.0f, .momentum = dvec3{0.0, 0.0, 0.0}, .locals = {}, .outward = outward}).first;
                     }
                     found->second.thickness = glm::max(found->second.thickness, primitive.thickness);
                     chunk = &found->second;
@@ -270,11 +364,25 @@ namespace eltanin::locality {
                 for (const auto& [primitiveId, chunk] : dead) {
                     if (chunk.mass <= 0.0f or chunk.locals.empty())
                         continue;
-                    const auto box = boxOf(chunk.locals, chunk.thickness);
+                    const auto box = scrapBox(construct.construction, primitiveId, chunk.locals, chunk.thickness, chunk.outward);
                     const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
                     const quat worldRot = glm::normalize(body.orientation * box.rotation);
                     const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
                     if (chunk.temperature < phys::Settings::hullShedKelvin) {
+                        const int cuts = Scrap::Actions::cutCount(chunk.cohesion);
+                        if (cuts < 0)
+                            continue;
+                        const bool volume = construct.construction.volumes.contains(primitiveId);
+                        if (volume or cuts == 0) {
+                            const auto& constructResources = with<Construct>::get_global(context).resources;
+                            vector<mech::Construction::Primitive::Id> visualOf;
+                            auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construct.construction, fragmentsOf(construct.fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
+                            auto actorPose = body.pose();
+                            actorPose.position += body.orientation * chunk.outward * plateOutwardMeters;
+                            const auto lineage = volume ? Scrap::Lineage::volume : Scrap::Lineage::common;
+                            Scrap::Actions::spawnMesh(context, actorPose, rmmr::Pose{.position = worldCenter, .rotation = worldRot}, box.half, chunk.mass, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.cohesion, chunk.temperature, std::move(occurrences), mech::space::local::edge2meters, lineage);
+                            continue;
+                        }
                         Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion, chunk.temperature);
                         continue;
                     }

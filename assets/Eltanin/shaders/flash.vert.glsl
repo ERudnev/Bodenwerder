@@ -30,6 +30,7 @@ out vec3 v_worldPos;
 out vec3 v_worldNormal;
 out float v_heat;
 out float v_fade;
+out vec3 v_albedo;
 
 const ivec3 orientationRow0[24] = ivec3[24](
     ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0),
@@ -66,5 +67,6 @@ void main() {
     v_worldNormal = normalize(normalMat * localRotation * aNormal);
     v_heat = actorHeat.x;
     v_fade = actorAlbedoOpacity.a;
+    v_albedo = actorAlbedoOpacity.rgb;
     gl_Position = passProjection * passView * worldPos;
 }

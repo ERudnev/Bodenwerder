@@ -9,6 +9,8 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include <cmath>
+#include <cstdint>
+#include <unordered_map>
 
 namespace eltanin::phys::collision {
 
@@ -96,6 +98,19 @@ namespace eltanin::phys::collision {
             std::size_t first;
             std::size_t second;
         };
+
+        struct Cell {
+            int x;
+            int y;
+            int z;
+        };
+
+        auto cellKey(int x, int y, int z) -> uint64_t {
+            uint64_t key = uint32_t(x);
+            key = key * 0x9E3779B97F4A7C15ull + uint32_t(y);
+            key = key * 0x9E3779B97F4A7C15ull + uint32_t(z);
+            return key;
+        }
 
         auto worldOf(const Body::Quantum& body, vec3 local) -> vec3 {
             return vec3{body.position + dvec3{body.orientation * local}};
@@ -979,17 +994,48 @@ namespace eltanin::phys::collision {
             items.push_back(Item{id, host, hasMembers});
         }
         census.cohorts = static_cast<integer>(spheres.size());
-        census.cohortPairs = census.cohorts * (census.cohorts - 1) / 2;
         vector<SphereHit> sphereHits;
-        for (std::size_t first = 0; first < spheres.size(); ++first) {
-            const vec3 centerA = spheres[first].center;
-            const float radiusA = spheres[first].radius;
-            for (std::size_t second = first + 1; second < spheres.size(); ++second) {
-                if (not spheresOverlap(centerA, radiusA, spheres[second].center, spheres[second].radius))
-                    continue;
-                ++census.cohortHits;
-                sphereHits.push_back(SphereHit{first, second});
+        if (not spheres.empty()) {
+            float maxRadius = 0.0f;
+            for (const Sphere& sphere : spheres)
+                maxRadius = glm::max(maxRadius, sphere.radius);
+            const float cellSize = 2.0f * glm::max(maxRadius, minLength);
+            const float invCell = 1.0f / cellSize;
+            vector<Cell> home;
+            home.reserve(spheres.size());
+            std::unordered_map<uint64_t, vector<std::size_t>> buckets;
+            buckets.reserve(spheres.size());
+            for (std::size_t index = 0; index < spheres.size(); ++index) {
+                const vec3 center = spheres[index].center;
+                const Cell cell{int(std::floor(center.x * invCell)), int(std::floor(center.y * invCell)), int(std::floor(center.z * invCell))};
+                home.push_back(cell);
+                buckets[cellKey(cell.x, cell.y, cell.z)].push_back(index);
             }
+            integer pairTests = 0;
+            for (std::size_t first = 0; first < spheres.size(); ++first) {
+                const vec3 centerA = spheres[first].center;
+                const float radiusA = spheres[first].radius;
+                const Cell cell = home[first];
+                for (int dx = -1; dx <= 1; ++dx) {
+                    for (int dy = -1; dy <= 1; ++dy) {
+                        for (int dz = -1; dz <= 1; ++dz) {
+                            auto found = buckets.find(cellKey(cell.x + dx, cell.y + dy, cell.z + dz));
+                            if (found == buckets.end())
+                                continue;
+                            for (const std::size_t second : found->second) {
+                                if (second <= first)
+                                    continue;
+                                ++pairTests;
+                                if (not spheresOverlap(centerA, radiusA, spheres[second].center, spheres[second].radius))
+                                    continue;
+                                ++census.cohortHits;
+                                sphereHits.push_back(SphereHit{first, second});
+                            }
+                        }
+                    }
+                }
+            }
+            census.cohortPairs = pairTests;
         }
         for (const SphereHit& hit : sphereHits) {
             if (not obbsOverlap(obbs[hit.first], obbs[hit.second]))
@@ -1161,8 +1207,10 @@ namespace eltanin::phys::collision {
                 auto* solid = solids.items.find(other);
                 if (solidBody and solid) {
                     kickSolid(*solidBody, *solid, arm, -normal * (j * float(Settings::fixedStep)));
-                    if (solid->center.mass > 0.0f)
-                        solid->center.cohesion -= Settings::cohesionWound * glm::length(vec3{verletVelocity(ray.core) * double(ray.core.mass)}) / solid->center.mass;
+                    if (solid->center.mass > 0.0f) {
+                        const float wound = solid->kind == Solid::Kind::box ? Settings::boxCohesionWound : Settings::cohesionWound;
+                        solid->center.cohesion -= wound * glm::length(vec3{verletVelocity(ray.core) * double(ray.core.mass)}) / solid->center.mass;
+                    }
                 }
             } else {
                 auto* crystal = crystals.items.find(other);

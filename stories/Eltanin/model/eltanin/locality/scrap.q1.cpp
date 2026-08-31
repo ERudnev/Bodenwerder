@@ -1,5 +1,6 @@
 #include <eltanin/locality/scrap.q1.h>
 
+#include <eltanin/decorations/dust.q1.h>
 #include <eltanin/physics/compound.q1.h>
 #include "physics/settings.h"
 #include <rmmr/resources/geometry.q1.h>
@@ -16,6 +17,7 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include <random>
 #include <span>
 
 namespace eltanin::locality {
@@ -29,8 +31,11 @@ namespace eltanin::locality {
         constexpr float vaporAt = 4.0f;
         constexpr float cutStep = 0.5f;
         constexpr int maxCuts = 3;
+        constexpr int maxScrapCuts = 2;
         constexpr float bornCohesion = 0.5f;
-        constexpr float splitPop = 2.0f;
+        constexpr float splitRecoil = 0.2f; // each half along the cut, as a fraction of parent |v|
+        constexpr float volumeKeep = 0.25f;
+        constexpr int volumeLattice = 3;
         constexpr float heatUploadStep = 10.0f;
 
         auto linearOf(const phys::Body::Quantum& body, const phys::rigid::Solid::Quantum& solid) -> vec3 {
@@ -51,12 +56,57 @@ namespace eltanin::locality {
             return 0;
         }
 
-        auto cutCount(float cohesion) -> int {
+        auto cutsOf(float cohesion) -> int {
             if (cohesion < -vaporAt)
                 return -1;
             if (cohesion > 0.0f)
                 return 0;
-            return glm::min(maxCuts, 1 + static_cast<int>(-cohesion / cutStep));
+            return glm::min(maxCuts, static_cast<int>(-cohesion / cutStep));
+        }
+
+        auto identityPose() -> Pose {
+            return Pose{.position = vec3{0.0f, 0.0f, 0.0f}, .rotation = quat{1.0f, 0.0f, 0.0f, 0.0f}};
+        }
+
+        auto meshFromBodyOf(const Pose& actorPose, const Pose& bodyPose) -> Pose {
+            const quat invBody = glm::conjugate(glm::normalize(bodyPose.rotation));
+            return Pose{.position = invBody * (actorPose.position - bodyPose.position), .rotation = glm::normalize(invBody * actorPose.rotation)};
+        }
+
+        auto actorPoseOf(const Pose& bodyPose, const Pose& meshFromBody) -> Pose {
+            return Pose{.position = bodyPose.position + bodyPose.rotation * meshFromBody.position, .rotation = glm::normalize(bodyPose.rotation * meshFromBody.rotation)};
+        }
+
+        auto hangScrap(Writing context, scene::actor::Mesh::Id actor, Pose bodyPose, vec3 half, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, Pose meshFromBody, Scrap::Lineage lineage) -> Scrap::Id {
+            const float radius = glm::length(half);
+            const auto body = with<phys::Body>::create(context, phys::Body::Quantum{.position = dvec3{bodyPose.position}, .orientation = bodyPose.rotation, .totalMass = mass, .radius = radius});
+            quat prevOri = bodyPose.rotation;
+            const float omegaLen = glm::length(omega);
+            if (omegaLen > 1.0e-12f) {
+                const quat step = glm::angleAxis(-omegaLen * float(phys::Settings::fixedStep), omega / omegaLen);
+                prevOri = glm::normalize(step * bodyPose.rotation);
+            }
+            with<phys::rigid::Solid>::extend(context, body, phys::rigid::Solid::Quantum{
+                .center = phys::Particle{phys::Matter{.position = dvec3{bodyPose.position}, .mass = mass, .temperature = temperature, .cohesion = cohesion}, dvec3{bodyPose.position} - dvec3{linear * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}},
+                .prevOri = prevOri,
+                .forceAngular = vec3{0.0f, 0.0f, 0.0f},
+                .kind = phys::rigid::Solid::Kind::box,
+                .halfExtents = half,
+            });
+            with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
+            const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
+            with<Scrap>::extend(context, thing, Scrap::Quantum{.body = body, .actor = actor, .gpuKelvin = temperature, .meshFromBody = meshFromBody, .lineage = lineage});
+            return thing;
+        }
+
+        void paintScrapHeats(Reading context, scene::actor::Mesh::Id actor, phys::Kelvins temperature) {
+            if (not with<scene::actor::Mesh>::exists(context, actor))
+                return;
+            const auto count = with<scene::actor::Mesh>::get(context, actor).instanceCount;
+            if (count <= 0)
+                return;
+            vector<float> heats(static_cast<std::size_t>(count), temperature);
+            with<scene::actor::Mesh>::writeHeats(context, actor, std::span<const float>{heats});
         }
 
         void dichotomy(const Box& box, int cuts, vector<Box>& out) {
@@ -81,6 +131,63 @@ namespace eltanin::locality {
             second.center = box.center + along * h;
             dichotomy(first, cuts - 1, out);
             dichotomy(second, cuts - 1, out);
+        }
+
+        void bisect(const Box& box, Box& first, Box& second) {
+            const int axis = longestAxis(box.half);
+            vec3 unit{0.0f, 0.0f, 0.0f};
+            unit[axis] = 1.0f;
+            const vec3 along = box.rotation * unit;
+            const float h = box.half[axis] * 0.5f;
+            first = box;
+            first.half[axis] = h;
+            first.center = box.center - along * h;
+            second = box;
+            second.half[axis] = h;
+            second.center = box.center + along * h;
+        }
+
+        auto splitKick(vec3 from, vec3 to, vec3 linear) -> vec3 {
+            const vec3 offset = to - from;
+            const float offsetLen = glm::length(offset);
+            if (offsetLen <= 1.0e-5f)
+                return vec3{0.0f, 0.0f, 0.0f};
+            return (offset / offsetLen) * (splitRecoil * glm::length(linear));
+        }
+
+        auto volumeKeepRoll() -> bool {
+            static thread_local std::mt19937 rng{std::random_device{}()};
+            std::uniform_real_distribution<float> unit{0.0f, 1.0f};
+            return unit(rng) < volumeKeep;
+        }
+
+        void burstVolume(Writing context, const Box& seed, float mass, vec3 linear, phys::Kelvins temperature) {
+            const vec3 childHalf = seed.half / static_cast<float>(volumeLattice);
+            const vec3 cell = childHalf * 2.0f;
+            const float pieceMass = mass / static_cast<float>(volumeLattice * volumeLattice * volumeLattice);
+            const vec3 omega{0.0f, 0.0f, 0.0f};
+            for (int ix = -1; ix <= 1; ++ix) {
+                for (int iy = -1; iy <= 1; ++iy) {
+                    for (int iz = -1; iz <= 1; ++iz) {
+                        const vec3 local{static_cast<float>(ix) * cell.x, static_cast<float>(iy) * cell.y, static_cast<float>(iz) * cell.z};
+                        const Box piece{.center = seed.center + seed.rotation * local, .rotation = seed.rotation, .half = childHalf};
+                        const vec3 pop = splitKick(seed.center, piece.center, linear);
+                        if (volumeKeepRoll())
+                            Scrap::Actions::spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear + pop, omega, bornCohesion, temperature, Scrap::Lineage::terminal);
+                        else
+                            decorations::Dust::Actions::spawnKinetic(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, linear + pop, omega);
+                    }
+                }
+            }
+        }
+
+        void spawnKineticPair(Writing context, const Box& box, vec3 linear) {
+            Box first;
+            Box second;
+            bisect(box, first, second);
+            const vec3 omega{0.0f, 0.0f, 0.0f};
+            decorations::Dust::Actions::spawnKinetic(context, Pose{.position = first.center, .rotation = first.rotation}, first.half, linear + splitKick(box.center, first.center, linear), omega);
+            decorations::Dust::Actions::spawnKinetic(context, Pose{.position = second.center, .rotation = second.rotation}, second.half, linear + splitKick(box.center, second.center, linear), omega);
         }
 
     }
@@ -111,7 +218,9 @@ namespace eltanin::locality {
         for (auto [id, _] : context->aspect<Scrap>().items())
             living.push_back(id);
         for (const auto id : living) {
-            if (not with<Scrap>::exists(context, id))
+            if (not with<Scrap>::exists(context, id) or not with<Thing>::exists(context, id))
+                continue;
+            if (with<Thing>::get(context, id).bornAt == with<Thing>::get_global(context).now)
                 continue;
             const auto& scrap = with<Scrap>::get(context, id);
             if (not with<phys::rigid::Solid>::exists(context, scrap.body) or not with<phys::Body>::exists(context, scrap.body))
@@ -122,19 +231,29 @@ namespace eltanin::locality {
                 with<Scrap>::kraken(context, id);
                 continue;
             }
-            const int cuts = cutCount(solid.center.cohesion);
+            const int cuts = cutsOf(solid.center.cohesion);
             if (cuts == 0)
                 continue;
-            if (cuts > 0) {
-                const int axis = longestAxis(solid.halfExtents);
-                if (solid.halfExtents[axis] >= minHalf * 2.0f)
-                    breakOff(context, vec3{body.position}, body.orientation, solid.halfExtents, body.totalMass, linearOf(body, solid), solid.center.cohesion, solid.center.temperature);
+            if (cuts < 0) {
+                with<Scrap>::kraken(context, id);
+                continue;
+            }
+            const vec3 worldCenter{body.position};
+            const vec3 linear = linearOf(body, solid);
+            if (scrap.lineage == Lineage::volume) {
+                Box seed{.center = worldCenter, .rotation = glm::normalize(body.orientation), .half = glm::max(solid.halfExtents, vec3{0.08f, 0.08f, 0.08f})};
+                burstVolume(context, seed, body.totalMass, linear, solid.center.temperature);
+            } else if (scrap.lineage == Lineage::terminal) {
+                Box seed{.center = worldCenter, .rotation = glm::normalize(body.orientation), .half = glm::max(solid.halfExtents, vec3{0.08f, 0.08f, 0.08f})};
+                spawnKineticPair(context, seed, linear);
+            } else {
+                breakOff(context, worldCenter, body.orientation, solid.halfExtents, body.totalMass, linear, solid.center.cohesion, solid.center.temperature);
             }
             with<Scrap>::kraken(context, id);
         }
     }
 
-    auto Scrap::Actions::spawn(Writing context, Pose pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature) -> Id {
+    auto Scrap::Actions::spawn(Writing context, Pose pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, Lineage lineage) -> Id {
         const auto scene = with<Thing>::get_global(context).scene;
         const vec3 half = glm::max(halfExtents, vec3{0.08f, 0.08f, 0.08f});
         if (mass <= 0.0f)
@@ -161,46 +280,75 @@ namespace eltanin::locality {
         with<scene::actor::Mesh>::writeCohesions(context, actor, std::span<const float>{intact, 1});
         const float kelvin[] = {temperature};
         with<scene::actor::Mesh>::writeHeats(context, actor, std::span<const float>{kelvin, 1});
-        const float radius = glm::length(half);
-        const auto body = with<phys::Body>::create(context, phys::Body::Quantum{.position = dvec3{pose.position}, .orientation = pose.rotation, .totalMass = mass, .radius = radius});
-        quat prevOri = pose.rotation;
-        const float omegaLen = glm::length(omega);
-        if (omegaLen > 1.0e-12f) {
-            const quat step = glm::angleAxis(-omegaLen * float(phys::Settings::fixedStep), omega / omegaLen);
-            prevOri = glm::normalize(step * pose.rotation);
+        return hangScrap(context, actor, pose, half, mass, linear, omega, cohesion, temperature, identityPose(), lineage);
+    }
+
+    auto Scrap::Actions::spawnMesh(Writing context, Pose actorPose, Pose bodyPose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, vector<scene::actor::Mesh::Occurrence> occurrences, float latticeStep, Lineage lineage) -> Id {
+        if (mass <= 0.0f)
+            return context.refuse("eltanin::locality::Scrap::spawnMesh: mass must be positive");
+        if (occurrences.empty())
+            return spawn(context, bodyPose, halfExtents, mass, linear, omega, cohesion, temperature, lineage);
+        const auto& resources = with<Scrap>::get_global(context).resources;
+        if (not resources)
+            return context.refuse("eltanin::locality::Scrap::spawnMesh: resources not bound");
+        for (auto& occurrence : occurrences) {
+            occurrence.entry.texpack = resources->mech;
+            for (auto& [_, instance] : occurrence.entry.surfaces) {
+                instance.material = resources->hull;
+                instance.textures = {{"albedoMap", "STEEL4.JPG"}};
+            }
         }
-        with<phys::rigid::Solid>::extend(context, body, phys::rigid::Solid::Quantum{
-            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = temperature, .cohesion = cohesion}, dvec3{pose.position} - dvec3{linear * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}},
-            .prevOri = prevOri,
-            .forceAngular = vec3{0.0f, 0.0f, 0.0f},
-            .kind = phys::rigid::Solid::Kind::box,
-            .halfExtents = half,
-        });
-        with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
-        const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
-        with<Scrap>::extend(context, thing, Scrap::Quantum{.body = body, .actor = actor, .gpuKelvin = temperature});
-        return thing;
+        auto meshQuantum = with<scene::actor::Mesh>::compose(context, occurrences);
+        if (not meshQuantum)
+            return context.refuse("eltanin::locality::Scrap::spawnMesh: mesh compose failed");
+        const auto scene = with<Thing>::get_global(context).scene;
+        auto look = with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
+        look.latticeStep = latticeStep;
+        const auto actor = with<scene::Interface>::createMeshActor(context, scene, actorPose, std::move(*meshQuantum), std::move(look));
+        const auto count = with<scene::actor::Mesh>::get(context, actor).instanceCount;
+        if (count > 0) {
+            vector<float> intact(static_cast<std::size_t>(count), 1.0f);
+            with<scene::actor::Mesh>::writeCohesions(context, actor, std::span<const float>{intact});
+            paintScrapHeats(context, actor, temperature);
+        }
+        const vec3 half = glm::max(halfExtents, vec3{0.01f, 0.01f, 0.01f});
+        return hangScrap(context, actor, bodyPose, half, mass, linear, omega, cohesion, temperature, meshFromBodyOf(actorPose, bodyPose), lineage);
+    }
+
+    auto Scrap::Actions::cutCount(float cohesion) -> int {
+        return cutsOf(cohesion);
     }
 
     void Scrap::Actions::breakOff(Writing context, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion, phys::Kelvins temperature) {
         if (temperature >= phys::Settings::scrapVaporKelvin)
             return;
-        const int cuts = cutCount(cohesion);
+        const int cuts = cutsOf(cohesion);
         if (cuts < 0 or mass <= 0.0f)
             return;
         Box seed{.center = worldCenter, .rotation = glm::normalize(worldRot), .half = glm::max(halfExtents, vec3{0.08f, 0.08f, 0.08f})};
-        vector<Box> pieces;
-        dichotomy(seed, cuts, pieces);
-        if (pieces.empty())
+        const int axis = longestAxis(seed.half);
+        const bool canCut = seed.half[axis] >= minHalf * 2.0f;
+        if (cuts <= maxScrapCuts and canCut) {
+            vector<Box> pieces;
+            dichotomy(seed, cuts, pieces);
+            if (pieces.empty())
+                return;
+            const float pieceMass = mass / static_cast<float>(pieces.size());
+            const vec3 omega{0.0f, 0.0f, 0.0f};
+            for (const Box& piece : pieces) {
+                const vec3 pop = splitKick(vec3{worldCenter}, piece.center, linear);
+                spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear + pop, omega, bornCohesion, temperature, Lineage::common);
+            }
             return;
-        const float pieceMass = mass / static_cast<float>(pieces.size());
-        const vec3 omega{0.0f, 0.0f, 0.0f};
-        for (const Box& piece : pieces) {
-            const vec3 offset = piece.center - worldCenter;
-            const float offsetLen = glm::length(offset);
-            const vec3 pop = offsetLen > 1.0e-5f ? (offset / offsetLen) * splitPop : vec3{0.0f, 0.0f, 0.0f};
-            spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear + pop, omega, bornCohesion, temperature);
         }
+        if (cuts > maxScrapCuts and canCut) {
+            vector<Box> quarters;
+            dichotomy(seed, maxScrapCuts, quarters);
+            for (const Box& quarter : quarters)
+                spawnKineticPair(context, quarter, linear);
+            return;
+        }
+        spawnKineticPair(context, seed, linear);
     }
 
     void Scrap::Actions::followBody(Stewarding context) {
@@ -214,7 +362,7 @@ namespace eltanin::locality {
             auto* body = bodies.items.find(scrap.body);
             if (not body)
                 continue;
-            node->pose = body->pose();
+            node->pose = actorPoseOf(body->pose(), scrap.meshFromBody);
             auto* solid = solids.items.find(scrap.body);
             if (not solid)
                 continue;
@@ -222,8 +370,7 @@ namespace eltanin::locality {
             if (glm::abs(kelvin - scrap.gpuKelvin) < heatUploadStep)
                 continue;
             scrap.gpuKelvin = kelvin;
-            const float heats[] = {kelvin};
-            with<scene::actor::Mesh>::writeHeats(context, scrap.actor, std::span<const float>{heats, 1});
+            paintScrapHeats(context, scrap.actor, kelvin);
         }
     }
 
