@@ -13,16 +13,19 @@ namespace eltanin::locality {
     using namespace fqsm::api;
 
     struct Bullet : Feature<Bullet, Thing> {
+        struct Resources {
+            rmmr::scene::actor::Family::Id shell30mm;
+        };
         struct Quantum {
             Custody<rmmr::scene::actor::Replica> actor;
             Custody<phys::rigid::Ray> body;
             float speed;
         };
         struct Global {
-            base::maybe<rmmr::scene::actor::Family::Id> shell30mm;
+            base::maybe<Resources> resources;
         };
         struct Actions : BaseActions {
-            static void bind(Writing);
+            static void bindResources(Writing);
             static auto spawnShell30mm(Writing, rmmr::Pose, float speed) -> Id;
             static void update(Writing);
             static void followBody(Stewarding);

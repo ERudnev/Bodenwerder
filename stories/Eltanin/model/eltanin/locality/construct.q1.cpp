@@ -251,19 +251,30 @@ namespace eltanin::locality {
             if (with<phys::Body>::exists(context, construct.body))
                 crystal->refreshMatter(*with<phys::Body>::modify(context, construct.body));
 
-            const auto interframe = with<rmmr::resource::Assets>::find<rmmr::resource::meshpack::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "interframe"));
-            if (interframe and with<rmmr::scene::actor::Mesh>::exists(context, construct.actor)) {
-                auto occurrences = mech::cookOccurrences(context, *interframe, construct.construction, construct.fragments, construct.visualOf);
-                if (not occurrences.empty()) {
-                    auto meshQuantum = with<rmmr::scene::actor::Mesh>::compose(context, occurrences);
-                    if (meshQuantum)
-                        with<rmmr::scene::actor::Mesh>::replace(context, construct.actor, std::move(*meshQuantum));
-                }
+            const auto& resources = with<Construct>::get_global(context).resources;
+            if (not resources)
+                return context.refuse("eltanin::locality::Construct::shedDead: resources not bound");
+            auto occurrences = mech::cookOccurrences(context, resources->interframe, construct.construction, construct.fragments, construct.visualOf);
+            if (not occurrences.empty()) {
+                auto meshQuantum = with<rmmr::scene::actor::Mesh>::compose(context, occurrences);
+                if (meshQuantum)
+                    with<rmmr::scene::actor::Mesh>::replace(context, construct.actor, std::move(*meshQuantum));
             }
             Construct::Actions::syncVisualCohesion(context, id);
             return true;
         }
 
+    }
+
+    void Construct::Actions::bindResources(Writing context) {
+        if (with<Construct>::get_global(context).resources)
+            return;
+        const auto interframe = with<rmmr::resource::Assets>::find<rmmr::resource::meshpack::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "interframe"));
+        if (not interframe) {
+            context.refuse("eltanin::locality::Construct::bindResources: interframe meshpack missing");
+            return;
+        }
+        with<Construct>::modify_global(context)->resources = Resources{.interframe = *interframe};
     }
 
     void Construct::Actions::update(Writing context) {

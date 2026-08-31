@@ -828,6 +828,44 @@ namespace eltanin::phys::collision {
             return t * t * (3.0f - 2.0f * t);
         }
 
+    } // namespace
+
+    auto boxOverlapsMatter(Writing context, Body::Id boxId) -> bool {
+        if (not with<Body>::exists(context, boxId) or not with<Solid>::exists(context, boxId))
+            return false;
+        const auto& boxBody = with<Body>::get(context, boxId);
+        const auto& boxSolid = with<Solid>::get(context, boxId);
+        const vec3 half = halfOf(boxSolid, boxBody);
+        const vec3 boxCenter = vec3{boxBody.position};
+        const float boxRadius = boxBody.radius;
+        for (auto [crystalId, _] : context->aspect<Crystal>().items()) {
+            if (not with<Body>::exists(context, crystalId))
+                continue;
+            const auto& shapeBody = with<Body>::get(context, crystalId);
+            if (not spheresOverlap(boxCenter, boxRadius, vec3{shapeBody.position}, shapeBody.radius))
+                continue;
+            auto crystal = with<Crystal>::modify(context, crystalId);
+            ensureBvh(*crystal);
+            integer faceIndex = -1;
+            vec3 closest;
+            vec3 outward;
+            if (nearestSurfaceObb(shapeBody, *crystal, boxBody, half, faceIndex, closest, outward) > 0.0f)
+                return true;
+        }
+        for (auto [solidId, _] : context->aspect<Solid>().items()) {
+            if (solidId == boxId or not with<Compound>::exists(context, solidId) or not with<Body>::exists(context, solidId))
+                continue;
+            const auto& otherBody = with<Body>::get(context, solidId);
+            const auto& otherSolid = with<Solid>::get(context, solidId);
+            if (not spheresOverlap(boxCenter, boxRadius, vec3{otherBody.position}, otherBody.radius))
+                continue;
+            if (otherSolid.kind == Solid::Kind::box) {
+                if (overlapBoxes(boxBody, half, otherBody, halfOf(otherSolid, otherBody)).hit)
+                    return true;
+            } else if (overlapSphereObb(vec3{otherBody.position}, otherBody.radius, boxBody, half).hit)
+                return true;
+        }
+        return false;
     }
 
     void State::build(Stewarding context) {

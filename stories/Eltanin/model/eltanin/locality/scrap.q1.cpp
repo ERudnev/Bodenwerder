@@ -1,6 +1,8 @@
 #include <eltanin/locality/scrap.q1.h>
 
 #include <eltanin/physics/compound.q1.h>
+#include <eltanin/decorations/dust.q1.h>
+#include "physics/collisions.h"
 #include "physics/settings.h"
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
@@ -16,6 +18,7 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include <cstdint>
 #include <span>
 
 namespace eltanin::locality {
@@ -31,6 +34,24 @@ namespace eltanin::locality {
         constexpr int maxCuts = 3;
         constexpr float bornCohesion = 0.5f;
         constexpr float splitPop = 2.0f;
+
+        auto fateDelay(phys::Body::Id body) -> seconds {
+            const auto mix = static_cast<std::uint32_t>(body.raw() ^ (body.raw() >> 32));
+            return 0.5 + static_cast<float>(mix % 1000) / 1000.0f;
+        }
+
+        auto linearOf(const phys::Body::Quantum& body, const phys::rigid::Solid::Quantum& solid) -> vec3 {
+            return vec3{(body.position - solid.center.prev) / phys::Settings::fixedStep};
+        }
+
+        auto omegaOf(const phys::Body::Quantum& body, const phys::rigid::Solid::Quantum& solid) -> vec3 {
+            const float dt = float(phys::Settings::fixedStep);
+            const quat qRel = glm::normalize(body.orientation * glm::conjugate(solid.prevOri));
+            vec3 omega = (2.0f / dt) * vec3{qRel.x, qRel.y, qRel.z};
+            if (qRel.w < 0.0f)
+                omega = -omega;
+            return omega;
+        }
 
         struct Box {
             vec3 center;
@@ -80,11 +101,33 @@ namespace eltanin::locality {
 
     }
 
+    void Scrap::Actions::bindResources(Writing context) {
+        if (with<Scrap>::get_global(context).resources)
+            return;
+        const auto scrap = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("Eltanin", "scrap"));
+        if (not scrap) {
+            context.refuse("eltanin::locality::Scrap::bindResources: scrap geometry missing");
+            return;
+        }
+        const auto hull = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "hull"));
+        if (not hull) {
+            context.refuse("eltanin::locality::Scrap::bindResources: hull material missing");
+            return;
+        }
+        const auto mech = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "mech"));
+        if (not mech) {
+            context.refuse("eltanin::locality::Scrap::bindResources: mech texpack missing");
+            return;
+        }
+        with<Scrap>::modify_global(context)->resources = Resources{.scrap = *scrap, .hull = *hull, .mech = *mech};
+    }
+
     void Scrap::Actions::update(Writing context) {
-        vector<Id> gone;
+        vector<Id> living;
         for (auto [id, _] : context->aspect<Scrap>().items())
-            gone.push_back(id);
-        for (const auto id : gone) {
+            living.push_back(id);
+        const seconds now = with<Thing>::get_global(context).now;
+        for (const auto id : living) {
             if (not with<Scrap>::exists(context, id))
                 continue;
             const auto& scrap = with<Scrap>::get(context, id);
@@ -96,15 +139,39 @@ namespace eltanin::locality {
                 with<Scrap>::kraken(context, id);
                 continue;
             }
-            const int cuts = cutCount(solid.center.cohesion);
-            if (cuts == 0)
-                continue;
-            if (cuts > 0) {
-                const int axis = longestAxis(solid.halfExtents);
-                if (solid.halfExtents[axis] >= minHalf * 2.0f) {
-                    const vec3 linear = vec3{(body.position - solid.center.prev) / phys::Settings::fixedStep};
-                    breakOff(context, vec3{body.position}, body.orientation, solid.halfExtents, body.totalMass, linear, solid.center.cohesion, solid.center.temperature);
+            if (with<phys::Compound>::exists(context, scrap.body)) {
+                const int cuts = cutCount(solid.center.cohesion);
+                if (cuts == 0)
+                    continue;
+                if (cuts > 0) {
+                    const int axis = longestAxis(solid.halfExtents);
+                    if (solid.halfExtents[axis] >= minHalf * 2.0f)
+                        breakOff(context, vec3{body.position}, body.orientation, solid.halfExtents, body.totalMass, linearOf(body, solid), solid.center.cohesion, solid.center.temperature);
                 }
+                with<Scrap>::kraken(context, id);
+                continue;
+            }
+            if (now < scrap.settleAt)
+                continue;
+            if (not phys::collision::boxOverlapsMatter(context, scrap.body)) {
+                with<phys::Compound>::extend(context, scrap.body, phys::Compound::Quantum{.members = {}});
+                continue;
+            }
+            const int axis = longestAxis(solid.halfExtents);
+            if (solid.halfExtents[axis] >= minHalf * 2.0f) {
+                vec3 unit{0.0f, 0.0f, 0.0f};
+                unit[axis] = 1.0f;
+                const vec3 along = body.orientation * unit;
+                const float h = solid.halfExtents[axis] * 0.5f;
+                vec3 half = solid.halfExtents;
+                half[axis] = h;
+                const vec3 linear = linearOf(body, solid);
+                const vec3 omega = omegaOf(body, solid);
+                const float pieceMass = body.totalMass * 0.5f;
+                spawn(context, Pose{.position = vec3{body.position} - along * h, .rotation = body.orientation}, half, pieceMass, linear - along * splitPop, omega, bornCohesion, solid.center.temperature);
+                spawn(context, Pose{.position = vec3{body.position} + along * h, .rotation = body.orientation}, half, pieceMass, linear + along * splitPop, omega, bornCohesion, solid.center.temperature);
+            } else {
+                decorations::Dust::Actions::spawn(context, body.pose(), solid.halfExtents, linearOf(body, solid), omegaOf(body, solid), solid.center.temperature);
             }
             with<Scrap>::kraken(context, id);
         }
@@ -115,25 +182,19 @@ namespace eltanin::locality {
         const vec3 half = glm::max(halfExtents, vec3{0.08f, 0.08f, 0.08f});
         if (mass <= 0.0f)
             return context.refuse("eltanin::locality::Scrap::spawn: mass must be positive");
-        const auto scrapAsset = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("Eltanin", "scrap"));
-        if (not scrapAsset)
-            return context.refuse("eltanin::locality::Scrap::spawn: scrap geometry missing");
-        const auto hull = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "hull"));
-        if (not hull)
-            return context.refuse("eltanin::locality::Scrap::spawn: hull material missing");
-        const auto mech = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "mech"));
-        if (not mech)
-            return context.refuse("eltanin::locality::Scrap::spawn: mech texpack missing");
-        const auto& geometry = with<resource::geometry::Asset>::get(context, *scrapAsset);
+        const auto& resources = with<Scrap>::get_global(context).resources;
+        if (not resources)
+            return context.refuse("eltanin::locality::Scrap::spawn: resources not bound");
+        const auto& geometry = with<resource::geometry::Asset>::get(context, resources->scrap);
         if (geometry.entries.empty() or geometry.surfaceCatalogs.empty())
             return context.refuse("eltanin::locality::Scrap::spawn: scrap has no entry");
         const auto& catalog = geometry.surfaceCatalogs.front();
         umap<resource::geometry::SurfaceId, resource::material::Instance> surfaces;
         for (const auto& [name, surface] : catalog) {
             const auto albedo = name == "face" ? "panel_tech_1.bmp" : "STEEL4.JPG";
-            surfaces.emplace(surface, resource::material::Instance{.material = *hull, .textures = {{"albedoMap", albedo}}});
+            surfaces.emplace(surface, resource::material::Instance{.material = resources->hull, .textures = {{"albedoMap", albedo}}});
         }
-        auto meshQuantum = with<scene::actor::Mesh>::compose(context, resource::meshpack::Asset::Resolved{.geometry = *scrapAsset, .entry = resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = *mech});
+        auto meshQuantum = with<scene::actor::Mesh>::compose(context, resource::meshpack::Asset::Resolved{.geometry = resources->scrap, .entry = resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = resources->mech});
         if (not meshQuantum)
             return context.refuse("eltanin::locality::Scrap::spawn: mesh compose failed");
         const vec3 scale{half.x * 2.0f, half.y * 2.0f, half.z * 2.0f};
@@ -158,9 +219,8 @@ namespace eltanin::locality {
             .kind = phys::rigid::Solid::Kind::box,
             .halfExtents = half,
         });
-        with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
         const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
-        with<Scrap>::extend(context, thing, Scrap::Quantum{.body = body, .actor = actor});
+        with<Scrap>::extend(context, thing, Scrap::Quantum{.body = body, .actor = actor, .settleAt = with<Thing>::get_global(context).now + fateDelay(body)});
         return thing;
     }
 

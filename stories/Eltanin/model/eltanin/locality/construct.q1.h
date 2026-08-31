@@ -1,10 +1,12 @@
 #pragma once
 
+#include <base/maybe.h>
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/mech/construction.q1.h>
 #include <eltanin/mech/semantics.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/manager.q1.h>
+#include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -45,6 +47,9 @@ namespace eltanin::locality {
             vector<OfPlate> ofPlate;
             vector<OfVolume> ofVolume;
         };
+        struct Resources {
+            rmmr::resource::meshpack::Asset::Id interframe;
+        };
         struct Quantum {
             Custody<phys::rigid::Crystal> body;
             Custody<rmmr::scene::actor::Mesh> actor;
@@ -52,7 +57,11 @@ namespace eltanin::locality {
             mech::Construction construction;
             vector<mech::Construction::Primitive::Id> visualOf;
         };
+        struct Global {
+            base::maybe<Resources> resources;
+        };
         struct Actions : BaseActions {
+            static void bindResources(Writing);
             static void update(Writing);
             static void shedDead(Writing);
             static void followBody(Stewarding);

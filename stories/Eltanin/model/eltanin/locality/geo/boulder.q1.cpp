@@ -100,6 +100,22 @@ namespace eltanin::locality::geo {
 
     } // namespace
 
+    void Boulder::Actions::bindResources(Writing context) {
+        if (with<Boulder>::get_global(context).resources)
+            return;
+        const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "boulder"));
+        if (not material) {
+            context.refuse("eltanin::locality::geo::Boulder::bindResources: boulder material missing");
+            return;
+        }
+        const auto crust = with<resource::Assets>::find<resource::texture3array::Asset>(context, resource::Unit::Name::from("Eltanin", "crust"));
+        if (not crust) {
+            context.refuse("eltanin::locality::geo::Boulder::bindResources: crust pack missing");
+            return;
+        }
+        with<Boulder>::modify_global(context)->resources = Resources{.material = *material, .crust = *crust};
+    }
+
     auto Boulder::Actions::spawnGenerated(Writing context, rmmr::system::Device::Id device, Pose pose, GeneralizedRecipe recipe, vec3 velocity, vec3 omega) -> Id {
         const auto scene = with<Thing>::get_global(context).scene;
         if (recipe.radius <= 0.0f)
@@ -121,19 +137,15 @@ namespace eltanin::locality::geo {
         if (not with<rmmr::resource::geometry::Asset>::install(context, geometryId, device, cpu))
             return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: geometry install failed");
 
-        const auto materialName = rmmr::resource::Unit::Name::from("Eltanin", "boulder");
-        const auto boulderMaterial = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, materialName);
-        if (not boulderMaterial)
-            return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: boulder material missing");
-        const auto crust = with<rmmr::resource::Assets>::find<rmmr::resource::texture3array::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "crust"));
-        if (not crust)
-            return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: crust pack missing");
+        const auto& resources = with<Boulder>::get_global(context).resources;
+        if (not resources)
+            return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: resources not bound");
         const auto& runtimes = with<rmmr::resource::Runtimes>::get(context, device);
-        if (runtimes.texture3arrays_id_mapping.find(*crust) == runtimes.texture3arrays_id_mapping.end()) {
-            if (not with<rmmr::resource::texture3array::Asset>::install(context, *crust, device, generateCrust()))
+        if (runtimes.texture3arrays_id_mapping.find(resources->crust) == runtimes.texture3arrays_id_mapping.end()) {
+            if (not with<rmmr::resource::texture3array::Asset>::install(context, resources->crust, device, generateCrust()))
                 return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: crust install failed");
         }
-        auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, geometryId, *boulderMaterial, *crust);
+        auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, geometryId, resources->material, resources->crust);
         if (not meshQuantum)
             return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: mesh compose failed");
         meshQuantum->spriteIndex = dominantMineral(recipe.mix);

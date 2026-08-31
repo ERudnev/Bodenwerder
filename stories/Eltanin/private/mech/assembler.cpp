@@ -474,17 +474,18 @@ namespace eltanin::mech {
         const auto scene = with<locality::Thing>::get_global(context).scene;
         if (not with<Blueprint>::exists(context, blueprintId))
             return context.refuse("eltanin::mech::Assembler::spawn: blueprint missing");
-        const auto interframe = with<resource::Assets>::find<resource::meshpack::Asset>(context, resource::Unit::Name::from("Eltanin", "interframe"));
-        if (not interframe)
-            return context.refuse("eltanin::mech::Assembler::spawn: interframe meshpack missing");
+        const auto& resources = with<Construct>::get_global(context).resources;
+        if (not resources)
+            return context.refuse("eltanin::mech::Assembler::spawn: Construct resources not bound");
+        const auto interframe = resources->interframe;
 
         const auto& blueprint = with<Blueprint>::get(context, blueprintId);
-        auto [construction, fragments] = glueFrame(context, *interframe, blueprint);
+        auto [construction, fragments] = glueFrame(context, interframe, blueprint);
         if (construction.knots.empty())
             return context.refuse("eltanin::mech::Assembler::spawn: blueprint has no knots");
 
         vector<Construction::Primitive::Id> visualOf;
-        auto occurrences = cookOccurrences(context, *interframe, construction, fragments, visualOf);
+        auto occurrences = cookOccurrences(context, interframe, construction, fragments, visualOf);
         if (occurrences.empty())
             return context.refuse("eltanin::mech::Assembler::spawn: no quark meshes to compose");
         auto meshQuantum = with<scene::actor::Mesh>::compose(context, occurrences);

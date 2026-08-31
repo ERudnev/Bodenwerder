@@ -1,5 +1,6 @@
 import "rmmr/scene/actors/mesh"
 import "rmmr/resources/manager"
+import "rmmr/resources/meshpack"
 import "physics/body"
 import "physics/rigid"
 import "mech/semantics"
@@ -35,6 +36,8 @@ namespace eltanin
         ofMembrane: vector<OfMembrane>
         ofPlate: vector<OfPlate>
         ofVolume: vector<OfVolume>
+      struct Resources
+        interframe: #rmmr::resource::meshpack::Asset
       one
         body: custody<phys::rigid::Crystal>
         actor: custody<rmmr::scene::actor::Mesh>
@@ -42,6 +45,8 @@ namespace eltanin
         construction: mech::Construction
         visualOf: vector<mech::Construction::Primitive::Id>
       all
+        resources: Resources?
+        >bindResources()
         >update()
         >shedDead()
         *followBody()

@@ -1,5 +1,7 @@
 import "rmmr/math"
 import "rmmr/scene/actors/mesh"
+import "rmmr/resources/geometry"
+import "rmmr/resources/materials"
 import "physics/body"
 import "physics/rigid"
 import "locality/thing"
@@ -8,6 +10,10 @@ namespace eltanin
   namespace locality
 
     feature Flash of Thing
+      struct Resources
+        sphere: #rmmr::resource::geometry::Asset
+        flash: #rmmr::resource::material::Asset
+        flashGlow: #rmmr::resource::material::Asset
       struct Effect
         struct Kinetic
           strength: float
@@ -31,6 +37,8 @@ namespace eltanin
         plasma: custody<rmmr::scene::actor::Mesh>
         elapsed: seconds // wave clock; physics ticks, not Thing.now
       all
+        resources: Resources?
+        >bindResources()
         >update()
         >spawnAsExplosion(position: vec3, strength: float)-># // warhead class; 10 = anti-frigate bang
         >spawnAsThermal(position: vec3, strength: float)-># // plasma dump; heat only; 10 = same thermal class

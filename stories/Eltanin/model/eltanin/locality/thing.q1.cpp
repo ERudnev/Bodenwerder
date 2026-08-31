@@ -6,6 +6,7 @@
 #include <eltanin/locality/scrap.q1.h>
 #include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
+#include <eltanin/decorations/dust.q1.h>
 
 namespace eltanin::locality {
 
@@ -25,6 +26,7 @@ namespace eltanin::locality {
         with<Bullet>::update(context);
         with<Construct>::update(context);
         with<Scrap>::update(context);
+        with<decorations::Dust>::update(context, dt);
         with<geo::Rock>::update(context);
         with<geo::Boulder>::update(context);
     }

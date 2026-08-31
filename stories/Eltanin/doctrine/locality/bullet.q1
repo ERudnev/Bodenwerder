@@ -8,16 +8,18 @@ namespace eltanin
   namespace locality
 
     // Visual flock member. Pose lives on Node; kinematics on Ray (Particle Verlet).
-    // Family prototypes live on the class (Global); bind after GPU materialize and scene create.
+    // Family prototypes live in class Resources; bindResources after GPU materialize and scene create.
     // Packed: speed + heat (kelvin). Length = speed × shutter (world). Width follows 1/z down to ~1 px; bloom only at world scale.
     feature Bullet of Thing
+      struct Resources
+        shell30mm: #rmmr::scene::actor::Family
       one
         actor: custody<rmmr::scene::actor::Replica>
         body: custody<phys::rigid::Ray>
         speed: float
       all
-        shell30mm: #rmmr::scene::actor::Family?
-        >bind()
+        resources: Resources?
+        >bindResources()
         >spawnShell30mm(Pose, speed: float)->#
         >update()
         *followBody()

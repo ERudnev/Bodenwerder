@@ -1,8 +1,7 @@
 #pragma once
 
 #include <base/maybe.h>
-#include <eltanin/locality/thing.q1.h>
-#include <eltanin/physics/rigid.q1.h>
+#include <eltanin/physics/body.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -11,33 +10,33 @@
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::locality {
+namespace eltanin::decorations {
 
     using namespace fqsm::api;
 
-    struct Scrap : Feature<Scrap, Thing> {
+    struct Dust : Feature<Dust, rmmr::scene::actor::Mesh> {
         struct Resources {
             rmmr::resource::geometry::Asset::Id scrap;
             rmmr::resource::material::Asset::Id hull;
             rmmr::resource::texpack::Pack::Id mech;
         };
         struct Quantum {
-            Custody<phys::rigid::Solid> body;
-            Custody<rmmr::scene::actor::Mesh> actor;
-            seconds settleAt;
+            vec3 linear;
+            vec3 omega;
+            phys::Kelvins temperature;
+            vec3 half;
+            seconds life;
         };
         struct Global {
             base::maybe<Resources> resources;
         };
         struct Actions : BaseActions {
             static void bindResources(Writing);
-            static void update(Writing);
-            static auto spawn(Writing, rmmr::Pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature) -> Id;
-            static void breakOff(Writing, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion, phys::Kelvins temperature);
-            static void followBody(Stewarding);
+            static void update(Writing, seconds dt);
+            static auto spawn(Writing, rmmr::Pose, vec3 half, vec3 linear, vec3 omega, phys::Kelvins temperature) -> Id;
         };
         struct Internals : DefaultInternals {};
-        static const Behavior customAspectReactions();
+        static const Behavior customAspectReactions() { return {}; }
     };
 
 }

@@ -407,18 +407,18 @@ namespace eltanin::locality::geo {
             if (not with<rmmr::resource::geometry::Asset>::install(context, geometryId, device, cpu))
                 return context.refuse("eltanin::locality::geo::Rock::spawn: geometry install failed");
 
+            const auto& resources = with<Rock>::get_global(context).resources;
+            if (not resources)
+                return context.refuse("eltanin::locality::geo::Rock::spawn: resources not bound");
             const auto rockMaterial = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, materialName);
             if (not rockMaterial)
                 return context.refuse("eltanin::locality::geo::Rock::spawn: rock material missing");
-            const auto crust = with<rmmr::resource::Assets>::find<rmmr::resource::texture3array::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "crust"));
-            if (not crust)
-                return context.refuse("eltanin::locality::geo::Rock::spawn: crust pack missing");
             const auto& runtimes = with<rmmr::resource::Runtimes>::get(context, device);
-            if (runtimes.texture3arrays_id_mapping.find(*crust) == runtimes.texture3arrays_id_mapping.end()) {
-                if (not with<rmmr::resource::texture3array::Asset>::install(context, *crust, device, generateCrust()))
+            if (runtimes.texture3arrays_id_mapping.find(resources->crust) == runtimes.texture3arrays_id_mapping.end()) {
+                if (not with<rmmr::resource::texture3array::Asset>::install(context, resources->crust, device, generateCrust()))
                     return context.refuse("eltanin::locality::geo::Rock::spawn: crust install failed");
             }
-            auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, geometryId, *rockMaterial, *crust);
+            auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, geometryId, *rockMaterial, resources->crust);
             if (not meshQuantum)
                 return context.refuse("eltanin::locality::geo::Rock::spawn: mesh compose failed");
             meshQuantum->spriteIndex = spriteIndex;
@@ -454,6 +454,17 @@ namespace eltanin::locality::geo {
         }
 
     } // namespace
+
+    void Rock::Actions::bindResources(Writing context) {
+        if (with<Rock>::get_global(context).resources)
+            return;
+        const auto crust = with<resource::Assets>::find<resource::texture3array::Asset>(context, resource::Unit::Name::from("Eltanin", "crust"));
+        if (not crust) {
+            context.refuse("eltanin::locality::geo::Rock::bindResources: crust pack missing");
+            return;
+        }
+        with<Rock>::modify_global(context)->resources = Resources{.crust = *crust};
+    }
 
     auto Rock::Actions::spawn(Writing context, rmmr::system::Device::Id device, Pose pose, Volume volume, vec3 velocity, vec3 omega) -> Id {
         if (not scaleInRange(volume))

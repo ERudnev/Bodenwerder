@@ -1,6 +1,8 @@
 import "rmmr/math"
 import "rmmr/scene/actors/mesh"
 import "rmmr/system/core"
+import "rmmr/resources/materials"
+import "rmmr/resources/texture3array"
 import "locality/geo/rock"
 import "locality/thing"
 import "physics/body"
@@ -13,11 +15,16 @@ namespace eltanin
     // Small debris: Body + Solid + debris mesh. No Volume / Crystal.
     // Splits like scrap when cohesion hits 0. Recipe stays so children can remesh.
     feature Boulder of locality::Thing
+      struct Resources
+        material: #rmmr::resource::material::Asset
+        crust: #rmmr::resource::texture3array::Asset
       one
         body: custody<phys::rigid::Solid>
         actor: custody<rmmr::scene::actor::Mesh>
         recipe: GeneralizedRecipe
       all
+        resources: Resources?
+        >bindResources()
         >update()
         >spawnGenerated(#system::Device, Pose, GeneralizedRecipe, vec3, vec3)->#
         *radiate(dt: seconds)

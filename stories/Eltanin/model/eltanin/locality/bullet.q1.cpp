@@ -50,32 +50,31 @@ namespace eltanin::locality {
 
     } // namespace
 
-    void Bullet::Actions::bind(Writing context) {
-        const auto scene = with<Thing>::get_global(context).scene;
-        if (with<Bullet>::get_global(context).shell30mm) {
-            context.refuse("eltanin::locality::Bullet::bind: already bound");
+    void Bullet::Actions::bindResources(Writing context) {
+        if (with<Bullet>::get_global(context).resources)
             return;
-        }
+        const auto scene = with<Thing>::get_global(context).scene;
         auto familyQuantum = composeShell30mm(context);
         if (not familyQuantum) {
-            context.refuse("eltanin::locality::Bullet::bind: shell_30mm family compose failed");
+            context.refuse("eltanin::locality::Bullet::bindResources: shell_30mm family compose failed");
             return;
         }
-        with<Bullet>::modify_global(context)->shell30mm = with<scene::Interface>::createFamily(context, scene, std::move(*familyQuantum));
+        with<Bullet>::modify_global(context)->resources = Resources{.shell30mm = with<scene::Interface>::createFamily(context, scene, std::move(*familyQuantum))};
     }
 
     auto Bullet::Actions::spawnShell30mm(Writing context, Pose pose, float speed) -> Id {
         const auto scene = with<Thing>::get_global(context).scene;
-        const auto family = with<Bullet>::get_global(context).shell30mm;
-        if (not family)
-            return context.refuse("eltanin::locality::Bullet::spawnShell30mm: class is not bound");
-        const auto bytes = with<scene::actor::Family>::get(context, *family).layout.instanceBytes;
+        const auto& resources = with<Bullet>::get_global(context).resources;
+        if (not resources)
+            return context.refuse("eltanin::locality::Bullet::spawnShell30mm: resources not bound");
+        const auto family = resources->shell30mm;
+        const auto bytes = with<scene::actor::Family>::get(context, family).layout.instanceBytes;
         if (bytes < 0)
             return context.refuse("eltanin::locality::Bullet::spawnShell30mm: Family.layout.instanceBytes is negative");
         scene::actor::Packed packed(static_cast<std::size_t>(bytes));
-        with<scene::actor::Family>::write(context, *family, packed, "speed", speed);
-        with<scene::actor::Family>::write(context, *family, packed, "heat", shellHeat);
-        const auto replica = with<scene::Interface>::createReplica(context, scene, *family, pose, scene::actor::Replica::Quantum{.family = *family, .packed = std::move(packed)});
+        with<scene::actor::Family>::write(context, family, packed, "speed", speed);
+        with<scene::actor::Family>::write(context, family, packed, "heat", shellHeat);
+        const auto replica = with<scene::Interface>::createReplica(context, scene, family, pose, scene::actor::Replica::Quantum{.family = family, .packed = std::move(packed)});
         if (not with<scene::actor::Replica>::exists(context, replica))
             return context.refuse("eltanin::locality::Bullet::spawnShell30mm: replica create failed");
         const vec3 nose = pose.rotation * vec3{0.0f, 0.0f, -1.0f};

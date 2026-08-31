@@ -127,31 +127,49 @@ namespace eltanin::locality {
             return effect;
         }
 
-        auto spawnSphere(Writing context, scene::Root::Id scene, vec3 position, resource::Unit::Name materialName, scene::actor::MeshState::Quantum look) -> scene::actor::Mesh::Id {
-            const auto sphere = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("Eltanin", "flashSphere"));
-            if (not sphere)
-                return context.refuse("eltanin::locality::Flash::spawn: flashSphere geometry missing");
-            const auto material = with<resource::Assets>::find<resource::material::Asset>(context, materialName);
-            if (not material)
-                return context.refuse("eltanin::locality::Flash::spawn: material missing");
-            auto meshQuantum = with<scene::actor::Mesh>::composeOne(context, *sphere, *material);
+        auto spawnSphere(Writing context, scene::Root::Id scene, vec3 position, resource::geometry::Asset::Id sphere, resource::material::Asset::Id material, scene::actor::MeshState::Quantum look) -> scene::actor::Mesh::Id {
+            auto meshQuantum = with<scene::actor::Mesh>::composeOne(context, sphere, material);
             if (not meshQuantum)
                 return context.refuse("eltanin::locality::Flash::spawn: mesh compose failed");
             return with<scene::Interface>::createMeshActor(context, scene, Pose::from(position, HPB{0.0f, 0.0f, 0.0f}), std::move(*meshQuantum), look);
         }
 
         auto spawnFlash(Writing context, vec3 position, Flash::Effect effect) -> Flash::Id {
+            const auto& resources = with<Flash>::get_global(context).resources;
+            if (not resources)
+                return context.refuse("eltanin::locality::Flash::spawn: resources not bound");
             const auto scene = with<Thing>::get_global(context).scene;
             const float ambient = with<scene::Root>::get(context, scene).atmosphereTemperature;
             const auto shockLook = effect.kinetic.radius > 0.0f ? lookShock(effect, seconds{}) : hiddenLook();
             const auto plasmaLook = effect.thermal.radius > 0.0f ? lookPlasma(effect, seconds{}, ambient) : hiddenLook();
-            const auto shock = spawnSphere(context, scene, position, resource::Unit::Name::from("Eltanin", "flash"), shockLook);
-            const auto plasma = spawnSphere(context, scene, position, resource::Unit::Name::from("Eltanin", "flashGlow"), plasmaLook);
+            const auto shock = spawnSphere(context, scene, position, resources->sphere, resources->flash, shockLook);
+            const auto plasma = spawnSphere(context, scene, position, resources->sphere, resources->flashGlow, plasmaLook);
             const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
             with<Flash>::extend(context, thing, Flash::Quantum{.effect = effect, .shock = shock, .plasma = plasma, .elapsed = seconds{}});
             return thing;
         }
 
+    }
+
+    void Flash::Actions::bindResources(Writing context) {
+        if (with<Flash>::get_global(context).resources)
+            return;
+        const auto sphere = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("Eltanin", "flashSphere"));
+        if (not sphere) {
+            context.refuse("eltanin::locality::Flash::bindResources: flashSphere geometry missing");
+            return;
+        }
+        const auto flash = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "flash"));
+        if (not flash) {
+            context.refuse("eltanin::locality::Flash::bindResources: flash material missing");
+            return;
+        }
+        const auto flashGlow = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "flashGlow"));
+        if (not flashGlow) {
+            context.refuse("eltanin::locality::Flash::bindResources: flashGlow material missing");
+            return;
+        }
+        with<Flash>::modify_global(context)->resources = Resources{.sphere = *sphere, .flash = *flash, .flashGlow = *flashGlow};
     }
 
     auto Flash::Actions::spawnAsExplosion(Writing context, vec3 position, float strength) -> Id {

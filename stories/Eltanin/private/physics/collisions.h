@@ -84,4 +84,7 @@ namespace eltanin::phys::collision {
         void traceRays(Stewarding); // CCD segment vs frozen Solid / Crystal; one hit per ray per tick
     };
 
+    // True if the box Solid overlaps a Crystal hull or a Compound Solid. Other ghost boxes (no Compound) are ignored.
+    auto boxOverlapsMatter(Writing, Body::Id) -> bool;
+
 }

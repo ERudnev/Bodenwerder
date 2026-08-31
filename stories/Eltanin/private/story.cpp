@@ -5,6 +5,7 @@
 #include <eltanin/locality/bullet.q1.h>
 #include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/scrap.q1.h>
+#include <eltanin/decorations/dust.q1.h>
 #include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
@@ -57,6 +58,7 @@ namespace eltanin {
             ask::schema::aspect<locality::Bullet>(),
             ask::schema::aspect<locality::Construct>(),
             ask::schema::aspect<locality::Scrap>(),
+            ask::schema::aspect<decorations::Dust>(),
             ask::schema::aspect<locality::geo::Rock>(),
             ask::schema::aspect<locality::geo::Boulder>(),
             ask::schema::aspect<resource::Assets>(),
@@ -338,7 +340,13 @@ namespace eltanin {
     }
 
     void Game::bindGameEntities(Writing context) {
-        with<locality::Bullet>::bind(context);
+        with<locality::Bullet>::bindResources(context);
+        with<decorations::Dust>::bindResources(context);
+        with<locality::Scrap>::bindResources(context);
+        with<locality::Flash>::bindResources(context);
+        with<locality::Construct>::bindResources(context);
+        with<locality::geo::Rock>::bindResources(context);
+        with<locality::geo::Boulder>::bindResources(context);
     }
 
     void Game::setup(Writing context, system::Window::Id window) {
