@@ -38,8 +38,8 @@ namespace kubes {
         using rmmr::resource::geometry::Generator;
         using Material = ::rmmr::resource::material::Asset;
 
-        assets.primitive.grid = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::Name::from("rmmr", "grid"), item<Generator>{.type = Generator::Type::gridPlane});
-        assets.primitive.sphere = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::Name::from("rmmr", "sphere"), item<Generator>{.type = Generator::Type::sphere});
+        assets.primitive.grid = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::Name::from("rmmr", "grid"), item<Generator>{.type = Generator::Type::gridPlane, .subdivisions = 0});
+        assets.primitive.sphere = with<::rmmr::resource::Assets>::add_geometry_generator(context, Unit::Name::from("rmmr", "sphere"), item<Generator>{.type = Generator::Type::sphere, .subdivisions = 1});
 
         assets.sprites = with<::rmmr::resource::Assets>::add_texpack_catalog(
             context,

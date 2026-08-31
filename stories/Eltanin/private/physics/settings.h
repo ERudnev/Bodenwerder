@@ -16,7 +16,7 @@ namespace eltanin::phys {
         static constexpr float cohesionWound = 2.5f; // Δcohesion = cohesionWound · |p_ray| / m_face; 30mm 0.4 kg × 200 m/s vs 4 t plate → 5%
         static constexpr seconds fixedStep = 0.01;
         static constexpr seconds thermalStep = 0.2;
-        static constexpr float skyKelvin = 3.0f;
+        static constexpr float skyKelvin = 2.7f; // CMB default; live ambient is Root.atmosphereTemperature
         static constexpr float radiateSigma = 5.0e-13f; // parrot mass × kelvin; five times slower than the first lava-scale guess
     };
 

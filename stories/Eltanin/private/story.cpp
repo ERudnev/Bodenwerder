@@ -78,10 +78,10 @@ namespace eltanin {
         using Name = Unit::Name;
         using Material = ::rmmr::resource::material::Asset;
 
-        assets.primitive.grid = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "grid"), item<Generator>{.type = Generator::Type::gridPlane});
-        assets.primitive.sphere = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "sphere"), item<Generator>{.type = Generator::Type::sphere});
-        assets.primitive.kube = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "kube"), item<Generator>{.type = Generator::Type::kube});
-        assets.primitive.diamond = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "diamond"), item<Generator>{.type = Generator::Type::diamond});
+        assets.primitive.grid = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "grid"), item<Generator>{.type = Generator::Type::gridPlane, .subdivisions = 0});
+        assets.primitive.sphere = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "sphere"), item<Generator>{.type = Generator::Type::sphere, .subdivisions = 1});
+        assets.primitive.kube = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "kube"), item<Generator>{.type = Generator::Type::kube, .subdivisions = 0});
+        assets.primitive.diamond = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "diamond"), item<Generator>{.type = Generator::Type::diamond, .subdivisions = 0});
 
         // Pack own name = directory basename; layers = image filenames (skySphere.png).
         assets.sprites = with<Assets>::add_texpack_catalog(
@@ -131,6 +131,7 @@ namespace eltanin {
             });
 
         const auto flashShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "flash"), item<shader::Loader>{.vertex = "shaders/flash.vert.glsl", .fragment = "shaders/flash.frag.glsl"});
+        with<Assets>::add_geometry_generator(context, Name::from("Eltanin", "flashSphere"), item<Generator>{.type = Generator::Type::sphere, .subdivisions = 3});
         with<Assets>::add_material(
             context,
             Name::from("Eltanin", "flash"),

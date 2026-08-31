@@ -12,22 +12,26 @@ namespace eltanin
         struct Kinetic
           strength: float
           radius: float
+          core: float // visual seed; 0.1 m at class 10
+          duration: seconds
         struct Thermal
           temperature: Kelvins
           energy: float
           radius: float
+          duration: seconds
         struct Fracture
           yield: float
           radius: float
-        duration: seconds
         kinetic: Kinetic
         thermal: Thermal
         fracture: Fracture
       one
         effect: Effect
-        actor: custody<rmmr::scene::actor::Mesh>
+        shock: custody<rmmr::scene::actor::Mesh>
+        plasma: custody<rmmr::scene::actor::Mesh>
         elapsed: seconds // wave clock; physics ticks, not Thing.now
       all
         >update()
-        >spawnAsExplosion(position: vec3, strength: float)->#
+        >spawnAsExplosion(position: vec3, strength: float)-># // warhead class; 10 = anti-frigate bang
+        >spawnAsThermal(position: vec3, strength: float)-># // plasma dump; heat only; 10 = same thermal class
         *apply(~phys::rigid::Crystal, ~phys::rigid::Solid)

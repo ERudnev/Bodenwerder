@@ -91,11 +91,12 @@ namespace rmmr::resource::geometry {
             bagel,
             gridPlane,
             unitQuad,
-            sphere, // regular icosahedron (20 faces); smooth sphere normals + spherical UV
+            sphere, // icosahedron; `subdivisions` frequency (1 = 80 tris)
             diamond, // regular octahedron; split verts; position+color0 (no UV/normals)
         };
         struct Quantum {
             Type type;
+            integer subdivisions;
         };
         struct Actions : BaseActions {
             static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;

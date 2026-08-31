@@ -609,14 +609,14 @@ namespace rmmr::resource::geometry {
             };
         }
 
-        auto cpu_for(Generator::Type type) -> CpuPresentation {
-            switch (type) {
+        auto cpu_for(const Generator::Quantum& generator) -> CpuPresentation {
+            switch (generator.type) {
                 case Generator::Type::triangle: return GeometryGenerator::triangle();
                 case Generator::Type::kube: return GeometryGenerator::kube();
                 case Generator::Type::bagel: return GeometryGenerator::bagel();
                 case Generator::Type::gridPlane: return GeometryGenerator::gridPlane();
                 case Generator::Type::unitQuad: return GeometryGenerator::unitQuad();
-                case Generator::Type::sphere: return GeometryGenerator::sphere();
+                case Generator::Type::sphere: return GeometryGenerator::sphere(generator.subdivisions);
                 case Generator::Type::diamond: return GeometryGenerator::diamond();
             }
         }
@@ -785,7 +785,7 @@ namespace rmmr::resource::geometry {
 
     auto Generator::Actions::materialize(Writing context, Id asset_id, system::Device::Id device) -> optional<Runtime::Id> {
         const auto& generator = with<Generator>::get(context, asset_id);
-        const auto cpu = cpu_for(generator.type);
+        const auto cpu = cpu_for(generator);
         setSingleEntry(context, asset_id, cpu);
         auto quantum = bake(context, device, cpu, {});
         if (not quantum.vao) {

@@ -27,7 +27,7 @@ namespace si01 {
         const auto unitQuad = with<::rmmr::resource::Assets>::add_geometry_generator(
             context,
             Unit::Name::from("workshop/si01", "sprite_unit_quad"),
-            item<Generator>{.type = Generator::Type::unitQuad});
+            item<Generator>{.type = Generator::Type::unitQuad, .subdivisions = 0});
 
         return std::unique_ptr<Assets>(new Assets{
             .kenney = kenney,

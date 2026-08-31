@@ -27,6 +27,7 @@ namespace rmmr::scene {
             Bloom bloom;
             vec3 gravity;
             float atmosphereDensity;
+            float atmosphereTemperature;
             float shutter;
             base::maybe<Light::Id> primaryLight;
         };

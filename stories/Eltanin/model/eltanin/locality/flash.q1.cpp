@@ -10,6 +10,7 @@
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
 
+#include <cmath>
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 
@@ -30,7 +31,28 @@ namespace eltanin::locality {
             return distance >= radius * inner and distance < radius * outer;
         }
 
-        void strikeParticle(phys::Particle& particle, vec3 origin, float inner, float outer, const Flash::Effect& effect) {
+        auto thermalPulse(seconds elapsed, seconds duration) -> float {
+            if (duration <= 0)
+                return 0.0f;
+            const float progress = glm::clamp(float(elapsed) / float(duration), 0.0f, 1.0f);
+            const float wave = std::sin(3.14159265f * progress);
+            return wave * wave;
+        }
+
+        auto flashLife(const Flash::Effect& effect) -> seconds {
+            seconds life{};
+            if (effect.kinetic.radius > 0.0f)
+                life = effect.kinetic.duration;
+            if (effect.thermal.radius > 0.0f and effect.thermal.duration > life)
+                life = effect.thermal.duration;
+            return life;
+        }
+
+        auto ambientKelvin(Reading context) -> float {
+            return with<scene::Root>::get(context, with<Thing>::get_global(context).scene).atmosphereTemperature;
+        }
+
+        void strikeParticle(phys::Particle& particle, vec3 origin, float inner, float outer, float pulse, float ambient, const Flash::Effect& effect) {
             if (particle.mass <= 0.0f)
                 return;
             const vec3 offset = vec3{particle.position} - origin;
@@ -38,13 +60,13 @@ namespace eltanin::locality {
             const float atten = falloff(distance);
             if (frontPasses(distance, effect.kinetic.radius, inner, outer) and distance > 1.0e-4f)
                 particle.force += (offset / distance) * (effect.kinetic.strength * atten);
-            if (frontPasses(distance, effect.thermal.radius, inner, outer))
-                particle.temperature = glm::max(particle.temperature, glm::min(effect.thermal.temperature, particle.temperature + effect.thermal.energy * atten / particle.mass));
+            if (effect.thermal.radius > 0.0f and distance <= effect.thermal.radius)
+                particle.temperature = glm::max(particle.temperature, ambient + (effect.thermal.temperature - ambient) * pulse);
             if (frontPasses(distance, effect.fracture.radius, inner, outer))
                 particle.cohesion -= effect.fracture.yield * atten;
         }
 
-        void strikeSolid(phys::rigid::Solid::Quantum& solid, const phys::Body::Quantum& body, vec3 origin, float inner, float outer, const Flash::Effect& effect) {
+        void strikeSolid(phys::rigid::Solid::Quantum& solid, const phys::Body::Quantum& body, vec3 origin, float inner, float outer, float pulse, float ambient, const Flash::Effect& effect) {
             if (body.totalMass <= 0.0f)
                 return;
             const vec3 offset = vec3{body.position} - origin;
@@ -52,31 +74,82 @@ namespace eltanin::locality {
             const float atten = falloff(distance);
             if (frontPasses(distance, effect.kinetic.radius, inner, outer) and distance > 1.0e-4f)
                 solid.center.force += (offset / distance) * (effect.kinetic.strength * atten);
-            if (frontPasses(distance, effect.thermal.radius, inner, outer))
-                solid.center.temperature = glm::max(solid.center.temperature, glm::min(effect.thermal.temperature, solid.center.temperature + effect.thermal.energy * atten / body.totalMass));
+            if (effect.thermal.radius > 0.0f and distance <= effect.thermal.radius)
+                solid.center.temperature = glm::max(solid.center.temperature, ambient + (effect.thermal.temperature - ambient) * pulse);
             if (frontPasses(distance, effect.fracture.radius, inner, outer))
                 solid.center.cohesion -= effect.fracture.yield * atten;
         }
 
-        auto lookOf(const Flash::Effect& effect, seconds elapsed) -> scene::actor::MeshState::Quantum {
-            const float duration = float(effect.duration);
+        auto lookShock(const Flash::Effect& effect, seconds elapsed) -> scene::actor::MeshState::Quantum {
+            const float duration = float(effect.kinetic.duration);
             const float progress = duration > 0.0f ? glm::clamp(float(elapsed) / duration, 0.0f, 1.0f) : 1.0f;
-            const float reach = glm::max(glm::max(effect.kinetic.radius, effect.thermal.radius), effect.fracture.radius);
-            const float radius = glm::max(reach * glm::max(progress, 0.02f), 0.4f);
+            const float radius = glm::mix(effect.kinetic.core, effect.kinetic.radius, progress);
             const float fade = 1.0f - progress;
             auto state = with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, fade * fade, vec3{radius, radius, radius});
-            state.heat.x = effect.thermal.temperature;
+            state.heat.x = 6500.0f;
             return state;
         }
 
-        void paintActor(Writing context, scene::actor::Mesh::Id actor, const Flash::Effect& effect, seconds elapsed) {
+        auto lookPlasma(const Flash::Effect& effect, seconds elapsed, float ambient) -> scene::actor::MeshState::Quantum {
+            const float pulse = thermalPulse(elapsed, effect.thermal.duration);
+            const float radius = effect.thermal.radius;
+            auto state = with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, pulse, vec3{radius, radius, radius});
+            state.heat.x = ambient + (effect.thermal.temperature - ambient) * pulse;
+            return state;
+        }
+
+        auto hiddenLook() -> scene::actor::MeshState::Quantum {
+            return with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 0.0f, vec3{0.0f, 0.0f, 0.0f});
+        }
+
+        void paintActor(Writing context, scene::actor::Mesh::Id actor, const scene::actor::MeshState::Quantum& look) {
             if (not with<scene::actor::MeshState>::exists(context, actor))
                 return;
-            const auto look = lookOf(effect, elapsed);
             auto state = with<scene::actor::MeshState>::modify(context, actor);
             state->scale = look.scale;
             state->opacity = look.opacity;
             state->heat.x = look.heat.x;
+        }
+
+        auto flashWarhead(float strength) -> Flash::Effect {
+            const float radius = 12.0f * strength;
+            return Flash::Effect{
+                .kinetic = {.strength = 5.0e7f * strength, .radius = radius, .core = 0.01f * strength, .duration = 0.70},
+                .thermal = {.temperature = 2800.0f + 200.0f * strength, .energy = 0.0f, .radius = 1.0f * strength, .duration = 1.0},
+                .fracture = {.yield = 8.0f * strength, .radius = radius * 0.85f},
+            };
+        }
+
+        auto flashPlasma(float strength) -> Flash::Effect {
+            auto effect = flashWarhead(strength);
+            effect.kinetic = {.strength = 0.0f, .radius = 0.0f, .core = 0.0f, .duration = seconds{}};
+            effect.fracture = {.yield = 0.0f, .radius = 0.0f};
+            return effect;
+        }
+
+        auto spawnSphere(Writing context, scene::Root::Id scene, vec3 position, scene::actor::MeshState::Quantum look) -> scene::actor::Mesh::Id {
+            const auto sphere = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("Eltanin", "flashSphere"));
+            if (not sphere)
+                return context.refuse("eltanin::locality::Flash::spawn: flashSphere geometry missing");
+            const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "flash"));
+            if (not material)
+                return context.refuse("eltanin::locality::Flash::spawn: flash material missing");
+            auto meshQuantum = with<scene::actor::Mesh>::composeOne(context, *sphere, *material);
+            if (not meshQuantum)
+                return context.refuse("eltanin::locality::Flash::spawn: mesh compose failed");
+            return with<scene::Interface>::createMeshActor(context, scene, Pose::from(position, HPB{0.0f, 0.0f, 0.0f}), std::move(*meshQuantum), look);
+        }
+
+        auto spawnFlash(Writing context, vec3 position, Flash::Effect effect) -> Flash::Id {
+            const auto scene = with<Thing>::get_global(context).scene;
+            const float ambient = with<scene::Root>::get(context, scene).atmosphereTemperature;
+            const auto shockLook = effect.kinetic.radius > 0.0f ? lookShock(effect, seconds{}) : hiddenLook();
+            const auto plasmaLook = effect.thermal.radius > 0.0f ? lookPlasma(effect, seconds{}, ambient) : hiddenLook();
+            const auto shock = spawnSphere(context, scene, position, shockLook);
+            const auto plasma = spawnSphere(context, scene, position, plasmaLook);
+            const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
+            with<Flash>::extend(context, thing, Flash::Quantum{.effect = effect, .shock = shock, .plasma = plasma, .elapsed = seconds{}});
+            return thing;
         }
 
     }
@@ -84,37 +157,28 @@ namespace eltanin::locality {
     auto Flash::Actions::spawnAsExplosion(Writing context, vec3 position, float strength) -> Id {
         if (strength <= 0.0f)
             return context.refuse("eltanin::locality::Flash::spawnAsExplosion: strength must be positive");
-        const auto scene = with<Thing>::get_global(context).scene;
-        const auto sphere = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("rmmr", "sphere"));
-        if (not sphere)
-            return context.refuse("eltanin::locality::Flash::spawnAsExplosion: sphere geometry missing");
-        const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "flash"));
-        if (not material)
-            return context.refuse("eltanin::locality::Flash::spawnAsExplosion: flash material missing");
-        auto meshQuantum = with<scene::actor::Mesh>::composeOne(context, *sphere, *material);
-        if (not meshQuantum)
-            return context.refuse("eltanin::locality::Flash::spawnAsExplosion: mesh compose failed");
-        const float radius = 12.0f * strength;
-        const Effect effect{
-            .duration = 0.70,
-            .kinetic = {.strength = 5.0e7f * strength, .radius = radius},
-            .thermal = {.temperature = 2800.0f + 200.0f * strength, .energy = 8.0e6f * strength, .radius = radius * 1.15f},
-            .fracture = {.yield = 8.0f * strength, .radius = radius * 0.85f},
-        };
-        const auto actor = with<scene::Interface>::createMeshActor(context, scene, Pose::from(position, HPB{0.0f, 0.0f, 0.0f}), std::move(*meshQuantum), lookOf(effect, seconds{}));
-        const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
-        with<Flash>::extend(context, thing, Flash::Quantum{.effect = effect, .actor = actor, .elapsed = seconds{}});
-        return thing;
+        return spawnFlash(context, position, flashWarhead(strength));
+    }
+
+    auto Flash::Actions::spawnAsThermal(Writing context, vec3 position, float strength) -> Id {
+        if (strength <= 0.0f)
+            return context.refuse("eltanin::locality::Flash::spawnAsThermal: strength must be positive");
+        return spawnFlash(context, position, flashPlasma(strength));
     }
 
     void Flash::Actions::update(Writing context) {
+        const float ambient = ambientKelvin(context);
         vector<Id> expired;
         for (auto [id, flash] : context->aspect<Flash>().items()) {
-            if (flash.effect.duration <= 0 or flash.elapsed >= flash.effect.duration) {
+            const seconds life = flashLife(flash.effect);
+            if (life <= 0 or flash.elapsed >= life) {
                 expired.push_back(id);
                 continue;
             }
-            paintActor(context, flash.actor, flash.effect, flash.elapsed);
+            if (flash.effect.kinetic.radius > 0.0f)
+                paintActor(context, flash.shock, lookShock(flash.effect, flash.elapsed));
+            if (flash.effect.thermal.radius > 0.0f)
+                paintActor(context, flash.plasma, lookPlasma(flash.effect, flash.elapsed, ambient));
         }
         for (const auto id : expired)
             with<Flash>::kraken(context, id);
@@ -126,36 +190,42 @@ namespace eltanin::locality {
         auto solids = context.direct<phys::rigid::Solid>();
         auto bodies = context.direct<phys::Body>();
         const float tick = float(phys::Settings::fixedStep);
+        const float ambient = ambientKelvin(context);
         for (auto [_, flash] : context.direct<Flash>().items) {
-            if (flash.effect.duration <= 0)
+            const seconds life = flashLife(flash.effect);
+            if (life <= 0)
                 continue;
             const seconds age = flash.elapsed;
-            if (age >= flash.effect.duration)
+            if (age >= life)
                 continue;
             flash.elapsed += tick;
-            const float span = float(flash.effect.duration);
-            const float inner = glm::clamp(float(age) / span, 0.0f, 1.0f);
-            const float outer = glm::clamp(float(flash.elapsed) / span, 0.0f, 1.0f);
-            auto* node = nodes.items.find(flash.actor);
+            const float span = float(flash.effect.kinetic.duration);
+            const float inner = span > 0.0f ? glm::clamp(float(age) / span, 0.0f, 1.0f) : 1.0f;
+            const float outer = span > 0.0f ? glm::clamp(float(flash.elapsed) / span, 0.0f, 1.0f) : 1.0f;
+            const float pulse = thermalPulse(age, flash.effect.thermal.duration);
+            auto* node = nodes.items.find(flash.shock);
+            if (not node)
+                node = nodes.items.find(flash.plasma);
             if (not node)
                 continue;
             const vec3 origin = node->pose.position;
             for (auto [_, crystal] : crystals.items) {
                 for (phys::Particle& particle : crystal.particles)
-                    strikeParticle(particle, origin, inner, outer, flash.effect);
+                    strikeParticle(particle, origin, inner, outer, pulse, ambient, flash.effect);
             }
             for (auto [bodyId, solid] : solids.items) {
                 auto* body = bodies.items.find(bodyId);
                 if (not body)
                     continue;
-                strikeSolid(solid, *body, origin, inner, outer, flash.effect);
+                strikeSolid(solid, *body, origin, inner, outer, pulse, ambient, flash.effect);
             }
         }
     }
 
     auto Flash::customAspectReactions() -> const Behavior {
         return {
-            reaction::structural::custody<Flash, scene::actor::Mesh, &Flash::Quantum::actor>{},
+            reaction::structural::custody<Flash, scene::actor::Mesh, &Flash::Quantum::shock>{},
+            reaction::structural::custody<Flash, scene::actor::Mesh, &Flash::Quantum::plasma>{},
         };
     }
 

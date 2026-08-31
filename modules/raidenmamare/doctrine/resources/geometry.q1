@@ -58,4 +58,5 @@ namespace rmmr
       enum Type : triangle, kube, bagel, gridPlane, unitQuad, sphere, diamond
       one
         type: Type
+        subdivisions: integer // icosphere frequency; 1 = 80 tris; unused unless sphere
         >materialize(#system::Device) -> #Runtime?

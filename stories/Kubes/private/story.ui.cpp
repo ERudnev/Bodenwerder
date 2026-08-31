@@ -166,6 +166,7 @@ namespace kubes {
                 ImGui::DragFloat("Bloom intensity", &root->bloom.intensity, 0.05f, 0.0f, 8.0f, "%.2f");
                 ImGui::DragFloat3("Gravity", &root->gravity.x, 0.01f, 0.0f, 0.0f, "%.3f");
                 ImGui::DragFloat("Atmosphere density", &root->atmosphereDensity, 1.0f, 0.0f, 0.0f, "%.0f g/m³");
+                ImGui::DragFloat("Atmosphere temperature", &root->atmosphereTemperature, 0.1f, 0.0f, 0.0f, "%.1f K");
 
                 if (not root->primaryLight) {
                     ImGui::Separator();

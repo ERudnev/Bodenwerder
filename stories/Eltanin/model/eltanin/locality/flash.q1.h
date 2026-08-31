@@ -16,29 +16,33 @@ namespace eltanin::locality {
             struct Kinetic {
                 float strength;
                 float radius;
+                float core;
+                seconds duration;
             };
             struct Thermal {
                 phys::Kelvins temperature;
                 float energy;
                 float radius;
+                seconds duration;
             };
             struct Fracture {
                 float yield;
                 float radius;
             };
-            seconds duration;
             Kinetic kinetic;
             Thermal thermal;
             Fracture fracture;
         };
         struct Quantum {
             Effect effect;
-            Custody<rmmr::scene::actor::Mesh> actor;
+            Custody<rmmr::scene::actor::Mesh> shock;
+            Custody<rmmr::scene::actor::Mesh> plasma;
             seconds elapsed;
         };
         struct Actions : BaseActions {
             static void update(Writing);
             static auto spawnAsExplosion(Writing, vec3 position, float strength) -> Id;
+            static auto spawnAsThermal(Writing, vec3 position, float strength) -> Id;
             static void apply(Stewarding);
         };
         struct Internals : DefaultInternals {};

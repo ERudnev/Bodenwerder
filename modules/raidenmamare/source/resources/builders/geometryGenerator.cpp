@@ -198,11 +198,12 @@ namespace rmmr::resource::builders::geometry {
         };
     }
 
-    // Regular icosahedron, one frequency subdivision (20→80 tris). Unit sphere; smooth normals; spherical UV.
-    auto GeometryGenerator::sphere() -> CpuPresentation {
+    // Regular icosahedron, `subdivisions` frequency (20 × 4^n tris). Unit sphere; smooth normals; spherical UV.
+    auto GeometryGenerator::sphere(integer subdivisions) -> CpuPresentation {
         constexpr float phi = 1.61803398875f; // (1+√5)/2
         constexpr float two_pi = 2.0f * std::numbers::pi_v<float>;
         constexpr float pi = std::numbers::pi_v<float>;
+        const int frequency = std::max(0, std::min(6, static_cast<int>(subdivisions)));
 
         const Pos raw[12]{
             Pos{-1.0f, phi, 0.0f}, Pos{1.0f, phi, 0.0f}, Pos{-1.0f, -phi, 0.0f}, Pos{1.0f, -phi, 0.0f},
@@ -210,7 +211,7 @@ namespace rmmr::resource::builders::geometry {
             Pos{phi, 0.0f, -1.0f}, Pos{phi, 0.0f, 1.0f}, Pos{-phi, 0.0f, -1.0f}, Pos{-phi, 0.0f, 1.0f},
         };
         vector<Pos> corners;
-        corners.reserve(42);
+        corners.reserve(static_cast<std::size_t>(10 * (1 << (2 * frequency)) + 2));
         for (const Pos& p : raw) {
             corners.push_back(Pos{glm::normalize(glm::vec3{p})});
         }
@@ -223,18 +224,17 @@ namespace rmmr::resource::builders::geometry {
             {4, 9, 5}, {2, 4, 11}, {6, 2, 10}, {8, 6, 7}, {9, 8, 1},
         };
 
-        // One subdivision: each triangle → 4, midpoints projected onto the unit sphere.
-        {
-            std::map<std::pair<int, int>, int> midpoint_of;
+        for (int step = 0; step < frequency; ++step) {
+            std::map<std::pair<int, int>, int> midpointOf;
             auto midpoint = [&](int left, int right) -> int {
                 const auto key = left < right ? std::pair{left, right} : std::pair{right, left};
-                if (const auto it = midpoint_of.find(key); it != midpoint_of.end()) {
+                if (const auto it = midpointOf.find(key); it != midpointOf.end()) {
                     return it->second;
                 }
                 const Pos mid = Pos{glm::normalize(0.5f * (glm::vec3{corners[left]} + glm::vec3{corners[right]}))};
                 const int index = static_cast<int>(corners.size());
                 corners.push_back(mid);
-                midpoint_of.emplace(key, index);
+                midpointOf.emplace(key, index);
                 return index;
             };
 

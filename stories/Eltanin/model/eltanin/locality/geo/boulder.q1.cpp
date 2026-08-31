@@ -211,7 +211,7 @@ namespace eltanin::locality::geo {
         if (dt <= 0)
             return;
         const float sigma = phys::Settings::radiateSigma;
-        const float sky = phys::Settings::skyKelvin;
+        const float sky = with<rmmr::scene::Root>::get(context, with<Thing>::get_global(context).scene).atmosphereTemperature;
         auto solids = context.direct<phys::rigid::Solid>();
         for (auto [_, boulder] : context.direct<Boulder>().items) {
             auto* solid = solids.items.find(boulder.body);
