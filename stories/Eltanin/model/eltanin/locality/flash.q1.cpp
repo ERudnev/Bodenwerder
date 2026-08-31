@@ -25,6 +25,17 @@ namespace eltanin::locality {
             return 1.0f / (distance * distance + 1.0f);
         }
 
+        constexpr float thermalHalo = 2.5f; // heat soaks this many plasma radii; visual ball stays thermal.radius
+
+        auto thermalSoak(float distance, float radius) -> float {
+            if (radius <= 0.0f)
+                return 0.0f;
+            const float u = distance / radius;
+            if (u >= thermalHalo)
+                return 0.0f;
+            return 1.0f / (1.0f + u * u);
+        }
+
         auto frontPasses(float distance, float radius, float inner, float outer) -> bool {
             if (radius <= 0.0f)
                 return false;
@@ -60,8 +71,9 @@ namespace eltanin::locality {
             const float atten = falloff(distance);
             if (frontPasses(distance, effect.kinetic.radius, inner, outer) and distance > 1.0e-4f)
                 particle.force += (offset / distance) * (effect.kinetic.strength * atten);
-            if (effect.thermal.radius > 0.0f and distance <= effect.thermal.radius)
-                particle.temperature = glm::max(particle.temperature, ambient + (effect.thermal.temperature - ambient) * pulse);
+            const float soak = thermalSoak(distance, effect.thermal.radius);
+            if (soak > 0.0f)
+                particle.temperature = glm::max(particle.temperature, ambient + (effect.thermal.temperature - ambient) * pulse * soak);
             if (frontPasses(distance, effect.fracture.radius, inner, outer))
                 particle.cohesion -= effect.fracture.yield * atten;
         }
@@ -74,8 +86,9 @@ namespace eltanin::locality {
             const float atten = falloff(distance);
             if (frontPasses(distance, effect.kinetic.radius, inner, outer) and distance > 1.0e-4f)
                 solid.center.force += (offset / distance) * (effect.kinetic.strength * atten);
-            if (effect.thermal.radius > 0.0f and distance <= effect.thermal.radius)
-                solid.center.temperature = glm::max(solid.center.temperature, ambient + (effect.thermal.temperature - ambient) * pulse);
+            const float soak = thermalSoak(distance, effect.thermal.radius);
+            if (soak > 0.0f)
+                solid.center.temperature = glm::max(solid.center.temperature, ambient + (effect.thermal.temperature - ambient) * pulse * soak);
             if (frontPasses(distance, effect.fracture.radius, inner, outer))
                 solid.center.cohesion -= effect.fracture.yield * atten;
         }

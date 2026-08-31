@@ -14,7 +14,7 @@ namespace eltanin::phys {
         static constexpr float restLinear = 1.0e-5f; // m/tick; below this (x−prev) is zeroed
         static constexpr float solidLiveSpeed = 0.1f; // m/s; Solid↔Crystal — soft fade of restitution and spin below this closing speed
         static constexpr float cohesionWound = 2.5f; // Δcohesion = cohesionWound · |p_ray| / m_face; 30mm 0.4 kg × 200 m/s vs 4 t plate → 5%
-        static constexpr float hullShedKelvin = 1600.0f; // p1111 4 t plate; class-10 oven (4800 K, 10 m) sheds a few metres from epicentre
+        static constexpr float hullShedKelvin = 2500.0f; // Thermal shed → Dust, not scrap split.
         static constexpr float scrapVaporKelvin = 3400.0f; // wreckage gone; later: melt VFX / secondary flash
         static constexpr seconds fixedStep = 0.01;
         static constexpr seconds thermalStep = 0.2;

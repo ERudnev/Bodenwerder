@@ -1,8 +1,10 @@
 #include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/scrap.q1.h>
+#include <eltanin/decorations/dust.q1.h>
 
 #include "mech/assembler.h"
 #include "mech/construction.h"
+#include "mech/semantics/space.h"
 #include "physics/hullBvh.h"
 #include "physics/settings.h"
 #include <eltanin/physics/body.q1.h>
@@ -143,6 +145,26 @@ namespace eltanin::locality {
             items = std::move(live);
         }
 
+        auto fragmentsOf(const Construct::ActorFragments& fragments, mech::Construction::Primitive::Id id) -> Construct::ActorFragments {
+            Construct::ActorFragments slice{.ofKnot = {}, .ofRib = {}, .ofMembrane = {}, .ofPlate = {}, .ofVolume = {}};
+            for (const auto& piece : fragments.ofKnot)
+                if (piece.knot == id)
+                    slice.ofKnot.push_back(piece);
+            for (const auto& piece : fragments.ofRib)
+                if (piece.rib == id)
+                    slice.ofRib.push_back(piece);
+            for (const auto& piece : fragments.ofMembrane)
+                if (piece.membrane == id)
+                    slice.ofMembrane.push_back(piece);
+            for (const auto& piece : fragments.ofPlate)
+                if (piece.plate == id)
+                    slice.ofPlate.push_back(piece);
+            for (const auto& piece : fragments.ofVolume)
+                if (piece.volume == id)
+                    slice.ofVolume.push_back(piece);
+            return slice;
+        }
+
         auto shedOne(Writing context, Construct::Id id, Construct::Quantum& construct) -> bool {
             if (not with<phys::rigid::Crystal>::exists(context, construct.body) or not with<rmmr::scene::actor::Mesh>::exists(context, construct.actor))
                 return true;
@@ -204,14 +226,24 @@ namespace eltanin::locality {
 
             if (with<phys::Body>::exists(context, construct.body)) {
                 const auto& body = with<phys::Body>::get(context, construct.body);
-                for (const auto& [_, chunk] : dead) {
+                for (const auto& [primitiveId, chunk] : dead) {
                     if (chunk.mass <= 0.0f or chunk.locals.empty())
                         continue;
                     const auto box = boxOf(chunk.locals, chunk.thickness);
                     const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
                     const quat worldRot = glm::normalize(body.orientation * box.rotation);
                     const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
-                    Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion, chunk.temperature);
+                    if (chunk.temperature < phys::Settings::hullShedKelvin) {
+                        Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion, chunk.temperature);
+                        continue;
+                    }
+                    const auto& constructResources = with<Construct>::get_global(context).resources;
+                    vector<mech::Construction::Primitive::Id> visualOf;
+                    auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construct.construction, fragmentsOf(construct.fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
+                    if (not occurrences.empty())
+                        decorations::Dust::Actions::spawnMesh(context, body.pose(), std::move(occurrences), linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature, box.half, mech::space::local::edge2meters);
+                    else
+                        decorations::Dust::Actions::spawn(context, rmmr::Pose{.position = worldCenter, .rotation = worldRot}, box.half, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature);
                 }
             }
 

@@ -1,8 +1,6 @@
 #include <eltanin/locality/scrap.q1.h>
 
 #include <eltanin/physics/compound.q1.h>
-#include <eltanin/decorations/dust.q1.h>
-#include "physics/collisions.h"
 #include "physics/settings.h"
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
@@ -18,7 +16,6 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-#include <cstdint>
 #include <span>
 
 namespace eltanin::locality {
@@ -35,22 +32,8 @@ namespace eltanin::locality {
         constexpr float bornCohesion = 0.5f;
         constexpr float splitPop = 2.0f;
 
-        auto fateDelay(phys::Body::Id body) -> seconds {
-            const auto mix = static_cast<std::uint32_t>(body.raw() ^ (body.raw() >> 32));
-            return 0.5 + static_cast<float>(mix % 1000) / 1000.0f;
-        }
-
         auto linearOf(const phys::Body::Quantum& body, const phys::rigid::Solid::Quantum& solid) -> vec3 {
             return vec3{(body.position - solid.center.prev) / phys::Settings::fixedStep};
-        }
-
-        auto omegaOf(const phys::Body::Quantum& body, const phys::rigid::Solid::Quantum& solid) -> vec3 {
-            const float dt = float(phys::Settings::fixedStep);
-            const quat qRel = glm::normalize(body.orientation * glm::conjugate(solid.prevOri));
-            vec3 omega = (2.0f / dt) * vec3{qRel.x, qRel.y, qRel.z};
-            if (qRel.w < 0.0f)
-                omega = -omega;
-            return omega;
         }
 
         struct Box {
@@ -126,12 +109,11 @@ namespace eltanin::locality {
         vector<Id> living;
         for (auto [id, _] : context->aspect<Scrap>().items())
             living.push_back(id);
-        const seconds now = with<Thing>::get_global(context).now;
         for (const auto id : living) {
             if (not with<Scrap>::exists(context, id))
                 continue;
             const auto& scrap = with<Scrap>::get(context, id);
-            if (not with<phys::rigid::Solid>::exists(context, scrap.body) or not with<phys::Body>::exists(context, scrap.body) or not with<rmmr::scene::actor::Mesh>::exists(context, scrap.actor))
+            if (not with<phys::rigid::Solid>::exists(context, scrap.body) or not with<phys::Body>::exists(context, scrap.body))
                 continue;
             const auto& solid = with<phys::rigid::Solid>::get(context, scrap.body);
             const auto& body = with<phys::Body>::get(context, scrap.body);
@@ -139,39 +121,13 @@ namespace eltanin::locality {
                 with<Scrap>::kraken(context, id);
                 continue;
             }
-            if (with<phys::Compound>::exists(context, scrap.body)) {
-                const int cuts = cutCount(solid.center.cohesion);
-                if (cuts == 0)
-                    continue;
-                if (cuts > 0) {
-                    const int axis = longestAxis(solid.halfExtents);
-                    if (solid.halfExtents[axis] >= minHalf * 2.0f)
-                        breakOff(context, vec3{body.position}, body.orientation, solid.halfExtents, body.totalMass, linearOf(body, solid), solid.center.cohesion, solid.center.temperature);
-                }
-                with<Scrap>::kraken(context, id);
+            const int cuts = cutCount(solid.center.cohesion);
+            if (cuts == 0)
                 continue;
-            }
-            if (now < scrap.settleAt)
-                continue;
-            if (not phys::collision::boxOverlapsMatter(context, scrap.body)) {
-                with<phys::Compound>::extend(context, scrap.body, phys::Compound::Quantum{.members = {}});
-                continue;
-            }
-            const int axis = longestAxis(solid.halfExtents);
-            if (solid.halfExtents[axis] >= minHalf * 2.0f) {
-                vec3 unit{0.0f, 0.0f, 0.0f};
-                unit[axis] = 1.0f;
-                const vec3 along = body.orientation * unit;
-                const float h = solid.halfExtents[axis] * 0.5f;
-                vec3 half = solid.halfExtents;
-                half[axis] = h;
-                const vec3 linear = linearOf(body, solid);
-                const vec3 omega = omegaOf(body, solid);
-                const float pieceMass = body.totalMass * 0.5f;
-                spawn(context, Pose{.position = vec3{body.position} - along * h, .rotation = body.orientation}, half, pieceMass, linear - along * splitPop, omega, bornCohesion, solid.center.temperature);
-                spawn(context, Pose{.position = vec3{body.position} + along * h, .rotation = body.orientation}, half, pieceMass, linear + along * splitPop, omega, bornCohesion, solid.center.temperature);
-            } else {
-                decorations::Dust::Actions::spawn(context, body.pose(), solid.halfExtents, linearOf(body, solid), omegaOf(body, solid), solid.center.temperature);
+            if (cuts > 0) {
+                const int axis = longestAxis(solid.halfExtents);
+                if (solid.halfExtents[axis] >= minHalf * 2.0f)
+                    breakOff(context, vec3{body.position}, body.orientation, solid.halfExtents, body.totalMass, linearOf(body, solid), solid.center.cohesion, solid.center.temperature);
             }
             with<Scrap>::kraken(context, id);
         }
@@ -219,8 +175,9 @@ namespace eltanin::locality {
             .kind = phys::rigid::Solid::Kind::box,
             .halfExtents = half,
         });
+        with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
         const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
-        with<Scrap>::extend(context, thing, Scrap::Quantum{.body = body, .actor = actor, .settleAt = with<Thing>::get_global(context).now + fateDelay(body)});
+        with<Scrap>::extend(context, thing, Scrap::Quantum{.body = body, .actor = actor});
         return thing;
     }
 

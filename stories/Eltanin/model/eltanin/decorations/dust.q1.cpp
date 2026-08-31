@@ -5,19 +5,13 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
-#include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
-#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
 
-#include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
-
-#include <cmath>
-#include <span>
 
 namespace eltanin::decorations {
 
@@ -28,33 +22,31 @@ namespace eltanin::decorations {
 
     namespace {
 
-        constexpr seconds bornLife = 2.5;
-        constexpr float coolTau = 0.35f;
+        constexpr seconds bornLife = 4;
 
-        auto composeBox(Writing context, Pose pose, vec3 half, phys::Kelvins temperature) -> rmmr::scene::actor::Mesh::Id {
+        void paintHeat(Writing context, rmmr::scene::actor::Mesh::Id actor, phys::Kelvins temperature) {
+            if (with<rmmr::scene::actor::MeshState>::exists(context, actor))
+                with<rmmr::scene::actor::MeshState>::modify(context, actor)->heat.x = temperature;
+        }
+
+        auto hang(Writing context, rmmr::scene::actor::Mesh::Id actor, vec3 linear, vec3 omega, phys::Kelvins temperature, vec3 half) -> Dust::Id {
+            if (not with<rmmr::scene::Node>::exists(context, actor))
+                return actor;
+            paintHeat(context, actor, temperature);
+            with<Dust>::extend(context, actor, Dust::Quantum{.linear = linear, .omega = omega, .temperature = temperature, .bornTemperature = temperature, .half = half, .life = bornLife});
+            return actor;
+        }
+
+        auto composeBox(Writing context, Pose pose, vec3 half) -> rmmr::scene::actor::Mesh::Id {
             const auto scene = with<locality::Thing>::get_global(context).scene;
             const auto& resources = with<Dust>::get_global(context).resources;
             if (not resources)
                 return context.refuse("eltanin::decorations::Dust::spawn: resources not bound");
-            const auto& geometry = with<rmmr::resource::geometry::Asset>::get(context, resources->scrap);
-            if (geometry.entries.empty() or geometry.surfaceCatalogs.empty())
-                return context.refuse("eltanin::decorations::Dust::spawn: scrap has no entry");
-            const auto& catalog = geometry.surfaceCatalogs.front();
-            umap<rmmr::resource::geometry::SurfaceId, rmmr::resource::material::Instance> surfaces;
-            for (const auto& [name, surface] : catalog) {
-                const auto albedo = name == "face" ? "panel_tech_1.bmp" : "STEEL4.JPG";
-                surfaces.emplace(surface, rmmr::resource::material::Instance{.material = resources->hull, .textures = {{"albedoMap", albedo}}});
-            }
-            auto meshQuantum = with<rmmr::scene::actor::Mesh>::compose(context, rmmr::resource::meshpack::Asset::Resolved{.geometry = resources->scrap, .entry = rmmr::resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = resources->mech});
+            auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, resources->scrap, resources->glow);
             if (not meshQuantum)
                 return context.refuse("eltanin::decorations::Dust::spawn: mesh compose failed");
             const vec3 scale{half.x * 2.0f, half.y * 2.0f, half.z * 2.0f};
-            const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, scale));
-            const float intact[] = {1.0f};
-            with<rmmr::scene::actor::Mesh>::writeCohesions(context, actor, std::span<const float>{intact, 1});
-            const float kelvin[] = {temperature};
-            with<rmmr::scene::actor::Mesh>::writeHeats(context, actor, std::span<const float>{kelvin, 1});
-            return actor;
+            return with<rmmr::scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, scale));
         }
 
         void dropActor(Writing context, Dust::Id id) {
@@ -75,25 +67,17 @@ namespace eltanin::decorations {
             context.refuse("eltanin::decorations::Dust::bindResources: scrap geometry missing");
             return;
         }
-        const auto hull = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "hull"));
-        if (not hull) {
-            context.refuse("eltanin::decorations::Dust::bindResources: hull material missing");
+        const auto glow = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "dust"));
+        if (not glow) {
+            context.refuse("eltanin::decorations::Dust::bindResources: dust material missing");
             return;
         }
-        const auto mech = with<rmmr::resource::Assets>::find<rmmr::resource::texpack::Pack>(context, rmmr::resource::Unit::Name::from("Eltanin", "mech"));
-        if (not mech) {
-            context.refuse("eltanin::decorations::Dust::bindResources: mech texpack missing");
-            return;
-        }
-        with<Dust>::modify_global(context)->resources = Resources{.scrap = *scrap, .hull = *hull, .mech = *mech};
+        with<Dust>::modify_global(context)->resources = Resources{.scrap = *scrap, .glow = *glow};
     }
 
     void Dust::Actions::update(Writing context, seconds dt) {
         if (dt <= 0)
             return;
-        const auto scene = with<locality::Thing>::get_global(context).scene;
-        const float ambient = with<rmmr::scene::Root>::exists(context, scene) ? with<rmmr::scene::Root>::get(context, scene).atmosphereTemperature : phys::Settings::skyKelvin;
-        const float fade = std::exp(-float(dt) / coolTau);
         vector<Id> living;
         for (auto [id, _] : context->aspect<Dust>().items())
             living.push_back(id);
@@ -109,12 +93,10 @@ namespace eltanin::decorations {
             const float spin = glm::length(dust->omega);
             if (spin > 1.0e-8f)
                 node->pose.rotation = glm::normalize(glm::angleAxis(spin * float(dt), dust->omega / spin) * node->pose.rotation);
-            dust->temperature = ambient + (dust->temperature - ambient) * fade;
             dust->life -= dt;
-            if (with<rmmr::scene::actor::Mesh>::exists(context, id)) {
-                const float kelvin[] = {dust->temperature};
-                with<rmmr::scene::actor::Mesh>::writeHeats(context, id, std::span<const float>{kelvin, 1});
-            }
+            const float remaining = dust->life > seconds{} ? float(dust->life / bornLife) : 0.0f;
+            dust->temperature = dust->bornTemperature * remaining * remaining;
+            paintHeat(context, id, dust->temperature);
             if (dust->life <= 0)
                 gone.push_back(id);
         }
@@ -124,11 +106,31 @@ namespace eltanin::decorations {
 
     auto Dust::Actions::spawn(Writing context, Pose pose, vec3 half, vec3 linear, vec3 omega, phys::Kelvins temperature) -> Id {
         const vec3 size = glm::max(half, vec3{0.08f, 0.08f, 0.08f});
-        const auto actor = composeBox(context, pose, size, temperature);
-        if (not with<rmmr::scene::Node>::exists(context, actor))
-            return actor;
-        with<Dust>::extend(context, actor, Dust::Quantum{.linear = linear, .omega = omega, .temperature = temperature, .half = size, .life = bornLife});
-        return actor;
+        return hang(context, composeBox(context, pose, size), linear, omega, temperature, size);
+    }
+
+    auto Dust::Actions::spawnMesh(Writing context, Pose pose, vector<rmmr::scene::actor::Mesh::Occurrence> occurrences, vec3 linear, vec3 omega, phys::Kelvins temperature, vec3 half, float latticeStep) -> Id {
+        if (occurrences.empty())
+            return context.refuse("eltanin::decorations::Dust::spawnMesh: no occurrences");
+        const auto& resources = with<Dust>::get_global(context).resources;
+        if (not resources)
+            return context.refuse("eltanin::decorations::Dust::spawnMesh: resources not bound");
+        for (auto& occurrence : occurrences) {
+            occurrence.entry.texpack = {};
+            for (auto& [_, instance] : occurrence.entry.surfaces) {
+                instance.material = resources->glow;
+                instance.textures = {};
+            }
+        }
+        auto meshQuantum = with<rmmr::scene::actor::Mesh>::compose(context, occurrences);
+        if (not meshQuantum)
+            return context.refuse("eltanin::decorations::Dust::spawnMesh: mesh compose failed");
+        const auto scene = with<locality::Thing>::get_global(context).scene;
+        auto look = with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
+        look.latticeStep = latticeStep;
+        look.heat.x = temperature;
+        const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), std::move(look));
+        return hang(context, actor, linear, omega, temperature, glm::max(half, vec3{0.08f, 0.08f, 0.08f}));
     }
 
 }

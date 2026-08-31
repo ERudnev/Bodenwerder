@@ -10,9 +10,7 @@ import "physics/rigid"
 namespace eltanin
   namespace locality
 
-    // Hull wreckage: Body + box Solid + Eltanin::scrap cube (±Z face / four cut rims). Not geo, not Crystal.
-    // Born without Compound (uncertain: ghost for collisions, still Solid for Flash/gravity). settleAt is Thing.now of the one occupancy probe; Compound present ⇒ salvage.
-    // Cohesion 0 on the parent was the failed joint. The lump is a new body and starts with modest strength.
+    // Hull wreckage: Body + box Solid + Compound + Eltanin::scrap cube. Kinetic/cohesion only. Not geo, not Crystal.
     feature Scrap of locality::Thing
       struct Resources
         scrap: #rmmr::resource::geometry::Asset
@@ -21,7 +19,6 @@ namespace eltanin
       one
         body: custody<phys::rigid::Solid>
         actor: custody<rmmr::scene::actor::Mesh>
-        settleAt: seconds
       all
         resources: Resources?
         >bindResources()
