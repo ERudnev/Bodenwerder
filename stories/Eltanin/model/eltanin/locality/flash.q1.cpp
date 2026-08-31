@@ -128,16 +128,17 @@ namespace eltanin::locality {
             const float radius = 12.0f * strength;
             return Flash::Effect{
                 .kinetic = {.strength = 5.0e7f * strength, .radius = radius, .core = 0.01f * strength, .duration = 0.70},
-                .thermal = {.temperature = 2800.0f + 200.0f * strength, .energy = 0.0f, .radius = 1.0f * strength, .duration = 1.0},
+                .thermal = {.temperature = 0.0f, .energy = 0.0f, .radius = 0.0f, .duration = seconds{}},
                 .fracture = {.yield = 8.0f * strength, .radius = radius * 0.85f},
             };
         }
 
         auto flashPlasma(float strength) -> Flash::Effect {
-            auto effect = flashWarhead(strength);
-            effect.kinetic = {.strength = 0.0f, .radius = 0.0f, .core = 0.0f, .duration = seconds{}};
-            effect.fracture = {.yield = 0.0f, .radius = 0.0f};
-            return effect;
+            return Flash::Effect{
+                .kinetic = {.strength = 0.0f, .radius = 0.0f, .core = 0.0f, .duration = seconds{}},
+                .thermal = {.temperature = 2800.0f + 200.0f * strength, .energy = 0.0f, .radius = 1.0f * strength, .duration = 1.0},
+                .fracture = {.yield = 0.0f, .radius = 0.0f},
+            };
         }
 
         auto spawnSphere(Writing context, scene::Root::Id scene, vec3 position, resource::geometry::Asset::Id sphere, resource::material::Asset::Id material, scene::actor::MeshState::Quantum look) -> scene::actor::Mesh::Id {

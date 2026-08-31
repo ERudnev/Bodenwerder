@@ -31,6 +31,7 @@ namespace eltanin::locality {
         constexpr int maxCuts = 3;
         constexpr float bornCohesion = 0.5f;
         constexpr float splitPop = 2.0f;
+        constexpr float heatUploadStep = 10.0f;
 
         auto linearOf(const phys::Body::Quantum& body, const phys::rigid::Solid::Quantum& solid) -> vec3 {
             return vec3{(body.position - solid.center.prev) / phys::Settings::fixedStep};
@@ -177,7 +178,7 @@ namespace eltanin::locality {
         });
         with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
         const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
-        with<Scrap>::extend(context, thing, Scrap::Quantum{.body = body, .actor = actor});
+        with<Scrap>::extend(context, thing, Scrap::Quantum{.body = body, .actor = actor, .gpuKelvin = temperature});
         return thing;
     }
 
@@ -205,7 +206,8 @@ namespace eltanin::locality {
     void Scrap::Actions::followBody(Stewarding context) {
         auto nodes = context.direct<scene::Node>();
         auto bodies = context.direct<phys::Body>();
-        for (auto [_, scrap] : context->aspect<Scrap>().items()) {
+        auto solids = context.direct<phys::rigid::Solid>();
+        for (auto [_, scrap] : context.direct<Scrap>().items) {
             auto* node = nodes.items.find(scrap.actor);
             if (not node)
                 continue;
@@ -213,10 +215,15 @@ namespace eltanin::locality {
             if (not body)
                 continue;
             node->pose = body->pose();
-            if (not with<phys::rigid::Solid>::exists(context, scrap.body) or not with<scene::actor::Mesh>::exists(context, scrap.actor))
+            auto* solid = solids.items.find(scrap.body);
+            if (not solid)
                 continue;
-            const float kelvin[] = {with<phys::rigid::Solid>::get(context, scrap.body).center.temperature};
-            with<scene::actor::Mesh>::writeHeats(context, scrap.actor, std::span<const float>{kelvin, 1});
+            const float kelvin = solid->center.temperature;
+            if (glm::abs(kelvin - scrap.gpuKelvin) < heatUploadStep)
+                continue;
+            scrap.gpuKelvin = kelvin;
+            const float heats[] = {kelvin};
+            with<scene::actor::Mesh>::writeHeats(context, scrap.actor, std::span<const float>{heats, 1});
         }
     }
 

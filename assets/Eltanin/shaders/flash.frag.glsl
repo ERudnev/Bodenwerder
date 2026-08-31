@@ -38,13 +38,13 @@ void main() {
     vec3 N = normalize(v_worldNormal);
     vec3 cam = vec3(inverse(passView)[3]);
     vec3 V = normalize(cam - v_worldPos);
-    float fres = pow(clamp(1.0 - abs(dot(N, V)), 0.0, 1.0), 2.2);
-    float shell = mix(0.16, 1.0, fres);
+    float chord = clamp(abs(dot(N, V)), 0.0, 1.0);
+    float density = chord * chord;
     float kelvin = max(v_heat, 0.0);
     float glow = smoothstep(700.0, 2200.0, kelvin);
     vec3 hot = blackbody(kelvin);
     float fade = clamp(v_fade, 0.0, 1.0);
-    vec3 rgb = hot * shell * fade * (1.4 + 3.2 * glow);
+    vec3 rgb = hot * density * fade * (1.4 + 3.2 * glow);
     FragColor = vec4(rgb, 1.0);
-    BloomMask = shell * fade * (0.35 + 0.65 * glow);
+    BloomMask = density * fade * (0.35 + 0.65 * glow);
 }

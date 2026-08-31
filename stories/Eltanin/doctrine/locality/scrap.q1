@@ -19,6 +19,7 @@ namespace eltanin
       one
         body: custody<phys::rigid::Solid>
         actor: custody<rmmr::scene::actor::Mesh>
+        gpuKelvin: Kelvins // last writeHeats; never read back from GPU
       all
         resources: Resources?
         >bindResources()

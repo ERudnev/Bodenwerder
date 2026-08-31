@@ -135,7 +135,7 @@ namespace eltanin {
         const auto flashShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "flash"), item<shader::Loader>{.vertex = "shaders/flash.vert.glsl", .fragment = "shaders/flash.frag.glsl"});
         const auto flashGlowShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "flashGlow"), item<shader::Loader>{.vertex = "shaders/flash.vert.glsl", .fragment = "shaders/flashGlow.frag.glsl"});
         const auto dustShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "dust"), item<shader::Loader>{.vertex = "shaders/flash.vert.glsl", .fragment = "shaders/dust.frag.glsl"});
-        with<Assets>::add_geometry_generator(context, Name::from("Eltanin", "flashSphere"), item<Generator>{.type = Generator::Type::sphere, .subdivisions = 3});
+        with<Assets>::add_geometry_generator(context, Name::from("Eltanin", "flashSphere"), item<Generator>{.type = Generator::Type::sphere, .subdivisions = 4});
         with<Assets>::add_material(
             context,
             Name::from("Eltanin", "flash"),

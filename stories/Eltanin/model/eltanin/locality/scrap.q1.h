@@ -24,6 +24,7 @@ namespace eltanin::locality {
         struct Quantum {
             Custody<phys::rigid::Solid> body;
             Custody<rmmr::scene::actor::Mesh> actor;
+            phys::Kelvins gpuKelvin;
         };
         struct Global {
             base::maybe<Resources> resources;
