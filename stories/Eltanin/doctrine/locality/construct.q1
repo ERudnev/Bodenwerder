@@ -44,6 +44,8 @@ namespace eltanin
         fragments: ActorFragments
         construction: mech::Construction
         visualOf: vector<mech::Construction::Primitive::Id>
+        gpuCohesions: vector<float> // last writeCohesions; never read back from GPU
+        gpuHeats: vector<float> // last writeHeats; never read back from GPU
       all
         resources: Resources?
         >bindResources()

@@ -409,7 +409,7 @@ namespace eltanin::phys {
                 ImGui::Separator();
                 ImGui::TextUnformatted("Last collision tick");
                 const auto& census = system.collisionCensus();
-                ImGui::Text("broad  %d cohorts → %d pair tests, %d overlap", census.cohorts, census.cohortPairs, census.cohortHits);
+                ImGui::Text("broad  %d → %d pair tests, sphere %d → obb %d", census.cohorts, census.cohortPairs, census.cohortHits, census.obbHits);
                 ImGui::Text("occupants  %d (max %d)  tries %d → candidates %d → contacts %d", census.occupants, census.maxOccupants, census.occupantTries, census.candidates, census.contacts);
                 ImGui::Text("rays  %d tries %d, hits %d", census.rays, census.rayTries, census.rayHits);
 

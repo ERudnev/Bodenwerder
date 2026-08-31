@@ -63,6 +63,46 @@ namespace eltanin::locality {
         }
 
         constexpr float minHalf = 0.25f;
+        constexpr float heatUploadStep = 10.0f;
+        constexpr float cohesionUploadStep = 0.001f;
+
+        auto gpuStale(const vector<float>& was, const vector<float>& now, float step) -> bool {
+            if (was.size() != now.size())
+                return true;
+            for (std::size_t index = 0; index < now.size(); ++index) {
+                if (glm::abs(was[index] - now[index]) >= step)
+                    return true;
+            }
+            return false;
+        }
+
+        void uploadVisual(Reading context, Construct::Quantum& construct) {
+            if (not with<rmmr::scene::actor::Mesh>::exists(context, construct.actor))
+                return;
+            if (not with<phys::rigid::Crystal>::exists(context, construct.body))
+                return;
+            const auto& crystal = with<phys::rigid::Crystal>::get(context, construct.body);
+            if (crystal.particles.size() != construct.construction.evaluatedParticles.size())
+                return;
+            const auto hurt = hurtByPrimitive(construct.construction, crystal.particles);
+            vector<float> cohesions;
+            vector<float> heats;
+            cohesions.reserve(construct.visualOf.size());
+            heats.reserve(construct.visualOf.size());
+            for (const auto primitive : construct.visualOf) {
+                const auto found = hurt.find(primitive);
+                cohesions.push_back(found == hurt.end() ? 1.0f : found->second.cohesion);
+                heats.push_back(found == hurt.end() ? 0.0f : found->second.temperature);
+            }
+            if (gpuStale(construct.gpuCohesions, cohesions, cohesionUploadStep)) {
+                with<rmmr::scene::actor::Mesh>::writeCohesions(context, construct.actor, std::span<const float>{cohesions});
+                construct.gpuCohesions = std::move(cohesions);
+            }
+            if (gpuStale(construct.gpuHeats, heats, heatUploadStep)) {
+                with<rmmr::scene::actor::Mesh>::writeHeats(context, construct.actor, std::span<const float>{heats});
+                construct.gpuHeats = std::move(heats);
+            }
+        }
 
         auto quatFromAxes(vec3 x, vec3 y, vec3 z) -> quat {
             return glm::normalize(glm::quat_cast(mat3{x, y, z}));
@@ -293,7 +333,9 @@ namespace eltanin::locality {
                 if (meshQuantum)
                     with<rmmr::scene::actor::Mesh>::replace(context, construct.actor, std::move(*meshQuantum));
             }
-            Construct::Actions::syncVisualCohesion(context, id);
+            construct.gpuCohesions.clear();
+            construct.gpuHeats.clear();
+            uploadVisual(context, construct);
             return true;
         }
 
@@ -350,7 +392,8 @@ namespace eltanin::locality {
     void Construct::Actions::followBody(Stewarding context) {
         auto nodes = context.direct<rmmr::scene::Node>();
         auto bodies = context.direct<phys::Body>();
-        for (auto [id, construct] : context->aspect<Construct>().items()) {
+        auto constructs = context.direct<Construct>();
+        for (auto [id, construct] : constructs.items) {
             auto* node = nodes.items.find(construct.actor);
             if (not node)
                 continue;
@@ -358,28 +401,12 @@ namespace eltanin::locality {
             if (not body)
                 continue;
             node->pose = body->pose();
-            Construct::Actions::syncVisualCohesion(context, id);
+            uploadVisual(context, construct);
         }
     }
 
-    void Construct::Actions::syncVisualCohesion(Reading context, Id id) {
-        const auto& construct = with<Construct>::get(context, id);
-        if (not with<rmmr::scene::actor::Mesh>::exists(context, construct.actor)) return;
-        if (not with<phys::rigid::Crystal>::exists(context, construct.body)) return;
-        const auto& crystal = with<phys::rigid::Crystal>::get(context, construct.body);
-        if (crystal.particles.size() != construct.construction.evaluatedParticles.size()) return;
-        const auto hurt = hurtByPrimitive(construct.construction, crystal.particles);
-        vector<float> cohesions;
-        vector<float> heats;
-        cohesions.reserve(construct.visualOf.size());
-        heats.reserve(construct.visualOf.size());
-        for (const auto primitive : construct.visualOf) {
-            const auto found = hurt.find(primitive);
-            cohesions.push_back(found == hurt.end() ? 1.0f : found->second.cohesion);
-            heats.push_back(found == hurt.end() ? 0.0f : found->second.temperature);
-        }
-        with<rmmr::scene::actor::Mesh>::writeCohesions(context, construct.actor, std::span<const float>{cohesions});
-        with<rmmr::scene::actor::Mesh>::writeHeats(context, construct.actor, std::span<const float>{heats});
+    void Construct::Actions::syncVisualCohesion(Writing context, Id id) {
+        uploadVisual(context, *with<Construct>::modify(context, id));
     }
 
     auto Construct::customAspectReactions() -> const Behavior {

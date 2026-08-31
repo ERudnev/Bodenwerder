@@ -56,6 +56,8 @@ namespace eltanin::locality {
             ActorFragments fragments;
             mech::Construction construction;
             vector<mech::Construction::Primitive::Id> visualOf;
+            vector<float> gpuCohesions;
+            vector<float> gpuHeats;
         };
         struct Global {
             base::maybe<Resources> resources;
@@ -66,7 +68,7 @@ namespace eltanin::locality {
             static void shedDead(Writing);
             static void radiate(Stewarding, seconds dt);
             static void followBody(Stewarding);
-            static void syncVisualCohesion(Reading, Id);
+            static void syncVisualCohesion(Writing, Id);
         };
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions();

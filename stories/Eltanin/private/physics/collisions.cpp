@@ -75,11 +75,26 @@ namespace eltanin::phys::collision {
             return fromBodyLocal(body, closestOnAabb(toBodyLocal(body, world), half));
         }
 
-        struct Cohort {
-            Compound::Id id;
+        struct Sphere {
             vec3 center;
             float radius;
-            vector<Occupant> occupants;
+        };
+
+        struct Obb {
+            vec3 center;
+            quat orientation;
+            vec3 half;
+        };
+
+        struct Item {
+            Compound::Id id;
+            Occupant host;
+            bool hasMembers;
+        };
+
+        struct SphereHit {
+            std::size_t first;
+            std::size_t second;
         };
 
         auto worldOf(const Body::Quantum& body, vec3 local) -> vec3 {
@@ -208,19 +223,63 @@ namespace eltanin::phys::collision {
             }
         }
 
-        void addOccupant(vector<Occupant>& occupants, Body::Id id, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
+        auto fillOccupant(Occupant& occupant, Body::Id id, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) -> bool {
             auto* body = bodies.items.find(id);
             if (not body or body->radius <= 0.0f or body->totalMass <= 0.0f)
-                return;
+                return false;
             if (auto* solid = solids.items.find(id)) {
                 const auto type = solid->kind == Solid::Kind::box ? Endpoint::Type::box : Endpoint::Type::sphere;
-                occupants.push_back(Occupant{type, id, vec3{body->position}, body->radius});
-                return;
+                occupant = Occupant{type, id, vec3{body->position}, body->radius};
+                return true;
             }
             auto* crystal = crystals.items.find(id);
             if (not crystal)
+                return false;
+            occupant = Occupant{Endpoint::Type::crystal, id, worldOf(*body, crystal->com), body->radius};
+            return true;
+        }
+
+        void addOccupant(vector<Occupant>& occupants, Body::Id id, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
+            Occupant occupant{Endpoint::Type::sphere, id, vec3{0.0f, 0.0f, 0.0f}, 0.0f};
+            if (fillOccupant(occupant, id, bodies, solids, crystals))
+                occupants.push_back(occupant);
+        }
+
+        void restAabb(const vector<vec3>& shape, vec3& center, vec3& half) {
+            if (shape.empty()) {
+                center = vec3{0.0f, 0.0f, 0.0f};
+                half = vec3{minLength, minLength, minLength};
                 return;
-            occupants.push_back(Occupant{Endpoint::Type::crystal, id, worldOf(*body, crystal->com), body->radius});
+            }
+            vec3 lo = shape.front();
+            vec3 hi = shape.front();
+            for (const vec3& point : shape) {
+                lo = glm::min(lo, point);
+                hi = glm::max(hi, point);
+            }
+            center = 0.5f * (lo + hi);
+            half = glm::max(0.5f * (hi - lo), vec3{minLength, minLength, minLength});
+        }
+
+        auto obbOf(const Occupant& host, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) -> Obb {
+            auto* body = bodies.items.find(host.body);
+            if (not body)
+                return Obb{host.center, quat{1.0f, 0.0f, 0.0f, 0.0f}, vec3{host.radius, host.radius, host.radius}};
+            if (host.type == Endpoint::Type::sphere)
+                return Obb{host.center, quat{1.0f, 0.0f, 0.0f, 0.0f}, vec3{host.radius, host.radius, host.radius}};
+            if (host.type == Endpoint::Type::box) {
+                auto* solid = solids.items.find(host.body);
+                if (not solid)
+                    return Obb{host.center, body->orientation, vec3{host.radius, host.radius, host.radius}};
+                return Obb{vec3{body->position}, body->orientation, halfOf(*solid, *body)};
+            }
+            auto* crystal = crystals.items.find(host.body);
+            if (not crystal)
+                return Obb{host.center, body->orientation, vec3{host.radius, host.radius, host.radius}};
+            vec3 localCenter;
+            vec3 localHalf;
+            restAabb(crystal->shape, localCenter, localHalf);
+            return Obb{worldOf(*body, localCenter), body->orientation, localHalf};
         }
 
         auto velocityOf(Body::Id id, Endpoint::Type type, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) -> vec3 {
@@ -285,6 +344,10 @@ namespace eltanin::phys::collision {
             return glm::dot(offset, offset) <= limit * limit;
         }
 
+        void cover(Sphere& sphere, vec3 point, float radius) {
+            sphere.radius = glm::max(sphere.radius, glm::length(point - sphere.center) + radius);
+        }
+
         struct SimpleHit {
             bool hit;
             float penetration;
@@ -333,9 +396,33 @@ namespace eltanin::phys::collision {
             return SimpleHit{.hit = true, .penetration = penetration, .fromFirstTowardSecond = -outward, .point = sphereCenter - outward * sphereRadius};
         }
 
-        auto projectObb(const Body::Quantum& body, vec3 half, vec3 axis) -> float {
-            const vec3 local = glm::abs(glm::conjugate(body.orientation) * axis);
+        auto projectObb(quat orientation, vec3 half, vec3 axis) -> float {
+            const vec3 local = glm::abs(glm::conjugate(orientation) * axis);
             return glm::dot(local, half);
+        }
+
+        auto obbsOverlap(const Obb& first, const Obb& second) -> bool {
+            const vec3 offset = second.center - first.center;
+            const vec3 axisA[3] = {first.orientation * vec3{1.0f, 0.0f, 0.0f}, first.orientation * vec3{0.0f, 1.0f, 0.0f}, first.orientation * vec3{0.0f, 0.0f, 1.0f}};
+            const vec3 axisB[3] = {second.orientation * vec3{1.0f, 0.0f, 0.0f}, second.orientation * vec3{0.0f, 1.0f, 0.0f}, second.orientation * vec3{0.0f, 0.0f, 1.0f}};
+            auto consider = [&](vec3 axis) -> bool {
+                const float length = glm::length(axis);
+                if (length < minLength)
+                    return true;
+                axis /= length;
+                return projectObb(first.orientation, first.half, axis) + projectObb(second.orientation, second.half, axis) - glm::abs(glm::dot(offset, axis)) > 0.0f;
+            };
+            for (int index = 0; index < 3; ++index) {
+                if (not consider(axisA[index]) or not consider(axisB[index]))
+                    return false;
+            }
+            for (int firstAxis = 0; firstAxis < 3; ++firstAxis) {
+                for (int secondAxis = 0; secondAxis < 3; ++secondAxis) {
+                    if (not consider(glm::cross(axisA[firstAxis], axisB[secondAxis])))
+                        return false;
+                }
+            }
+            return true;
         }
 
         auto overlapBoxes(const Body::Quantum& first, vec3 halfA, const Body::Quantum& second, vec3 halfB) -> SimpleHit {
@@ -349,7 +436,7 @@ namespace eltanin::phys::collision {
                 if (length < minLength)
                     return true;
                 axis /= length;
-                const float overlap = projectObb(first, halfA, axis) + projectObb(second, halfB, axis) - glm::abs(glm::dot(offset, axis));
+                const float overlap = projectObb(first.orientation, halfA, axis) + projectObb(second.orientation, halfB, axis) - glm::abs(glm::dot(offset, axis));
                 if (overlap <= 0.0f)
                     return false;
                 if (overlap >= bestOverlap)
@@ -729,19 +816,6 @@ namespace eltanin::phys::collision {
             return occupants;
         }
 
-        auto boundOf(const vector<Occupant>& occupants, vec3& center, float& radius) -> bool {
-            if (occupants.empty())
-                return false;
-            center = vec3{0.0f, 0.0f, 0.0f};
-            for (const Occupant& occupant : occupants)
-                center += occupant.center;
-            center /= static_cast<float>(occupants.size());
-            radius = 0.0f;
-            for (const Occupant& occupant : occupants)
-                radius = glm::max(radius, glm::length(occupant.center - center) + occupant.radius);
-            return true;
-        }
-
         void pairOccupants(State& state, const Occupant& first, const Occupant& second, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
             if (first.body == second.body)
                 return;
@@ -763,6 +837,26 @@ namespace eltanin::phys::collision {
             } else {
                 contactParticlesVsShape(state, candidate, first, second, bodies, solids, crystals);
                 contactParticlesVsShape(state, candidate, second, first, bodies, solids, crystals);
+            }
+        }
+
+        void collideItems(State& state, const Item& first, const Item& second, fqsm::Direct<Compound> compounds, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
+            if (not first.hasMembers and not second.hasMembers) {
+                ++state.census.occupantTries;
+                pairOccupants(state, first.host, second.host, bodies, solids, crystals);
+                return;
+            }
+            auto* compoundA = compounds.items.find(first.id);
+            auto* compoundB = compounds.items.find(second.id);
+            if (not compoundA or not compoundB)
+                return;
+            const auto occupantsA = collectOccupants(first.id, *compoundA, bodies, solids, crystals);
+            const auto occupantsB = collectOccupants(second.id, *compoundB, bodies, solids, crystals);
+            for (const Occupant& occupantA : occupantsA) {
+                for (const Occupant& occupantB : occupantsB) {
+                    ++state.census.occupantTries;
+                    pairOccupants(state, occupantA, occupantB, bodies, solids, crystals);
+                }
             }
         }
 
@@ -853,32 +947,55 @@ namespace eltanin::phys::collision {
             else
                 ++census.spheres;
         }
-        vector<Cohort> cohorts;
+        vector<Sphere> spheres;
+        vector<Obb> obbs;
+        vector<Item> items;
+        spheres.reserve(compounds.items.size());
+        obbs.reserve(compounds.items.size());
+        items.reserve(compounds.items.size());
         for (auto [id, compound] : compounds.items) {
             ++census.compounds;
-            auto occupants = collectOccupants(id, compound, bodies, solids, crystals);
-            vec3 center;
-            float radius;
-            if (not boundOf(occupants, center, radius))
+            Occupant host{Endpoint::Type::sphere, id, vec3{0.0f, 0.0f, 0.0f}, 0.0f};
+            if (not fillOccupant(host, id, bodies, solids, crystals))
                 continue;
-            census.occupants += static_cast<integer>(occupants.size());
-            census.maxOccupants = glm::max(census.maxOccupants, static_cast<integer>(occupants.size()));
-            cohorts.push_back(Cohort{id, center, radius, std::move(occupants)});
-        }
-        census.cohorts = static_cast<integer>(cohorts.size());
-        census.cohortPairs = census.cohorts * (census.cohorts - 1) / 2;
-        for (std::size_t first = 0; first < cohorts.size(); ++first) {
-            for (std::size_t second = first + 1; second < cohorts.size(); ++second) {
-                if (not spheresOverlap(cohorts[first].center, cohorts[first].radius, cohorts[second].center, cohorts[second].radius))
-                    continue;
-                ++census.cohortHits;
-                for (const Occupant& occupantA : cohorts[first].occupants) {
-                    for (const Occupant& occupantB : cohorts[second].occupants) {
-                        ++census.occupantTries;
-                        pairOccupants(*this, occupantA, occupantB, bodies, solids, crystals);
-                    }
+            Sphere sphere{host.center, host.radius};
+            const bool hasMembers = not compound.members.empty();
+            if (hasMembers) {
+                for (const Body::Id member : compound.members) {
+                    if (member == id)
+                        continue;
+                    auto* body = bodies.items.find(member);
+                    if (not body or body->radius <= 0.0f or body->totalMass <= 0.0f)
+                        continue;
+                    cover(sphere, vec3{body->position}, body->radius);
                 }
             }
+            Obb obb = hasMembers ? Obb{sphere.center, quat{1.0f, 0.0f, 0.0f, 0.0f}, vec3{sphere.radius, sphere.radius, sphere.radius}} : obbOf(host, bodies, solids, crystals);
+            const integer occupants = 1 + static_cast<integer>(compound.members.size());
+            census.occupants += occupants;
+            census.maxOccupants = glm::max(census.maxOccupants, occupants);
+            spheres.push_back(sphere);
+            obbs.push_back(obb);
+            items.push_back(Item{id, host, hasMembers});
+        }
+        census.cohorts = static_cast<integer>(spheres.size());
+        census.cohortPairs = census.cohorts * (census.cohorts - 1) / 2;
+        vector<SphereHit> sphereHits;
+        for (std::size_t first = 0; first < spheres.size(); ++first) {
+            const vec3 centerA = spheres[first].center;
+            const float radiusA = spheres[first].radius;
+            for (std::size_t second = first + 1; second < spheres.size(); ++second) {
+                if (not spheresOverlap(centerA, radiusA, spheres[second].center, spheres[second].radius))
+                    continue;
+                ++census.cohortHits;
+                sphereHits.push_back(SphereHit{first, second});
+            }
+        }
+        for (const SphereHit& hit : sphereHits) {
+            if (not obbsOverlap(obbs[hit.first], obbs[hit.second]))
+                continue;
+            ++census.obbHits;
+            collideItems(*this, items[hit.first], items[hit.second], compounds, bodies, solids, crystals);
         }
         census.candidates = static_cast<integer>(candidates.size());
         census.contacts = static_cast<integer>(contacts.size());

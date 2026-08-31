@@ -12,11 +12,11 @@ namespace eltanin::phys::collision {
     using namespace rmmr;
 
     // Tick-local collision workspace (private physics, not Q1).
-    // First-class citizens are Compounds; global sweep is compound-vs-compound.
-    // Narrow phase: live particles of one body vs pose*shape of the other.
-    // Each particle queries the rest-space hull BVH for the nearest face; depth is signed distance to that primitive (polygon slab or 2-vert capsule).
+    // Citizens are Compounds (usually one Body). Broad: spheres, then OBB. Isolates never leave the sphere pass.
+    // Narrow: box/sphere SAT; solid vs frozen hull; Crystal vs Crystal is asymmetric — each side's live particles vs the other's pose*shape.
+    // Each particle queries the rest-space hull BVH; depth is signed distance to that primitive (polygon slab or 2-vert capsule).
     // Solver once per tick: pull the tested point onto frozen pose*shape. Next iteration is the next physics tick.
-    // Solid vs crystal: both queries detect; impulse is only solid-vs-shape — separate, restitution+friction on the Solid (center.prev), kick face supports on Crystal.
+    // Solid vs crystal: both queries detect; impulse is only solid-vs-shape — restitution+friction on the Solid (center.prev), kick face supports on Crystal.
     // Contact = positional constraint + event payload — not a force into accumulateForces.
     // Rays are not Occupants. After solve, traceRays() CCD-tests each Ray segment (prev→position) against Solids and Crystal hulls. Rays do not see each other.
 
@@ -66,6 +66,7 @@ namespace eltanin::phys::collision {
         integer hullFaces;
         integer cohortPairs;
         integer cohortHits;
+        integer obbHits;
         integer occupantTries;
         integer candidates;
         integer contacts;
