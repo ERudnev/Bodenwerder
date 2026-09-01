@@ -25,11 +25,14 @@ namespace eltanin::locality {
 
     namespace {
 
+        auto classSpan(float strength) -> float {
+            return phys::Settings::Explosions::kineticMeters * std::sqrt(glm::max(strength, 0.0f));
+        }
+
         auto falloff(float distance) -> float {
             return 1.0f / (distance * distance + 1.0f);
         }
 
-        constexpr float thermalHalo = 2.5f; // heat soaks this many plasma radii; visual ball stays thermal.radius
         constexpr RGB brisanceTint{0.22f, 0.72f, 0.38f};
         constexpr float brisanceFade = 0.10f;
 
@@ -37,7 +40,7 @@ namespace eltanin::locality {
             if (radius <= 0.0f)
                 return 0.0f;
             const float u = distance / radius;
-            if (u >= thermalHalo)
+            if (u >= phys::Settings::Explosions::thermalHalo)
                 return 0.0f;
             return 1.0f / (1.0f + u * u);
         }
@@ -111,7 +114,7 @@ namespace eltanin::locality {
         auto victimSpeedOf(const Flash::Effect& effect) -> float {
             if (effect.kinetic.radius <= 0.0f)
                 return 0.0f;
-            return effect.kinetic.radius / phys::Settings::kineticVictimDuration;
+            return effect.kinetic.radius / phys::Settings::Explosions::victimDuration;
         }
 
         auto projectedBoxArea(quat orientation, vec3 half, vec3 radial) -> float {
@@ -170,7 +173,7 @@ namespace eltanin::locality {
                 return vec3{0.0f, 0.0f, 0.0f};
             const float bang = glm::clamp(deltaV / glm::max(vWave, 1.0f), 0.0f, 1.0f);
             const float massScale = glm::max(massFloor, 1.0f / std::pow(mass / massPivot + 0.15f, massPower));
-            const float gain = glm::max(phys::Settings::kineticSpin, 0.0f);
+            const float gain = glm::max(phys::Settings::Explosions::kineticSpin, 0.0f);
             const float cap = spinMax * glm::max(gain, 1.0e-4f);
             const float raw = spinRef * gain * bang * massScale * couple;
             return axis * (cap * std::tanh(raw / cap));
@@ -331,11 +334,10 @@ namespace eltanin::locality {
         }
 
         auto flashWarhead(float strength) -> Flash::Effect {
-            const float radius = 12.0f * strength;
-            constexpr float kineticPascal = 5.0e6f; // Pa at class 1, atten 1
-            const float duration = radius / phys::Settings::kineticFrontSpeed;
+            const float radius = classSpan(strength);
+            const float duration = radius / phys::Settings::Explosions::frontSpeed;
             return Flash::Effect{
-                .kinetic = {.strength = kineticPascal * strength, .radius = radius, .core = 0.01f * strength, .duration = seconds{duration}},
+                .kinetic = {.strength = phys::Settings::Explosions::kineticPascal * strength, .radius = radius, .core = phys::Settings::Explosions::kineticCore * strength, .duration = seconds{duration}},
                 .thermal = {.temperature = 0.0f, .energy = 0.0f, .radius = 0.0f, .duration = seconds{}},
                 .brisance = {.yield = 0.0f, .radius = 0.0f, .duration = seconds{}},
             };
@@ -344,7 +346,7 @@ namespace eltanin::locality {
         auto flashPlasma(float strength) -> Flash::Effect {
             return Flash::Effect{
                 .kinetic = {.strength = 0.0f, .radius = 0.0f, .core = 0.0f, .duration = seconds{}},
-                .thermal = {.temperature = 2800.0f + 200.0f * strength, .energy = 0.0f, .radius = 1.0f * strength, .duration = 1.0},
+                .thermal = {.temperature = phys::Settings::Explosions::thermalKelvin0 + phys::Settings::Explosions::thermalKelvinPer * strength, .energy = 0.0f, .radius = phys::Settings::Explosions::thermalMeters * strength, .duration = phys::Settings::Explosions::thermalDuration},
                 .brisance = {.yield = 0.0f, .radius = 0.0f, .duration = seconds{}},
             };
         }
@@ -353,7 +355,7 @@ namespace eltanin::locality {
             return Flash::Effect{
                 .kinetic = {.strength = 0.0f, .radius = 0.0f, .core = 0.0f, .duration = seconds{}},
                 .thermal = {.temperature = 0.0f, .energy = 0.0f, .radius = 0.0f, .duration = seconds{}},
-                .brisance = {.yield = 8.0f * strength, .radius = 12.0f * strength * 0.85f, .duration = 0.20},
+                .brisance = {.yield = phys::Settings::Explosions::brisanceYield * strength, .radius = classSpan(strength) * phys::Settings::Explosions::brisanceRadius, .duration = phys::Settings::Explosions::brisanceDuration},
             };
         }
 

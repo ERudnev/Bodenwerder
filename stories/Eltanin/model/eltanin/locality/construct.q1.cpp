@@ -59,7 +59,7 @@ namespace eltanin::locality {
             const auto found = hurt.find(id);
             if (found == hurt.end())
                 return false;
-            return found->second.cohesion <= 0.0f or found->second.temperature >= phys::Settings::hullShedKelvin;
+            return found->second.cohesion <= 0.0f or found->second.temperature >= phys::Settings::Heat::hullShedKelvin;
         }
 
         constexpr float minHalf = 0.25f;
@@ -312,7 +312,7 @@ namespace eltanin::locality {
             const auto hurt = hurtByPrimitive(construct.construction, crystal->particles);
             bool anyDead = false;
             for (const auto& [_, state] : hurt) {
-                if (state.cohesion <= 0.0f or state.temperature >= phys::Settings::hullShedKelvin) {
+                if (state.cohesion <= 0.0f or state.temperature >= phys::Settings::Heat::hullShedKelvin) {
                     anyDead = true;
                     break;
                 }
@@ -372,13 +372,13 @@ namespace eltanin::locality {
                     const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
                     const quat worldRot = glm::normalize(body.orientation * box.rotation);
                     const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
-                    if (chunk.temperature < phys::Settings::hullShedKelvin) {
+                    if (chunk.temperature < phys::Settings::Heat::hullShedKelvin) {
                         const int cuts = Scrap::Actions::cutCount(chunk.cohesion);
                         if (cuts < 0)
                             continue;
                         const bool volume = construct.construction.volumes.contains(primitiveId);
                         base::maybe<phys::Body::Id> cohort{};
-                        if (phys::Settings::debrisCohort == phys::DebrisCohort::unified)
+                        if (phys::Settings::debrisCohort == phys::Settings::DebrisCohort::unified)
                             cohort = body.compound;
                         if (volume or cuts == 0) {
                             const auto& constructResources = with<Construct>::get_global(context).resources;
@@ -489,7 +489,7 @@ namespace eltanin::locality {
         if (dt <= 0)
             return;
         const float sky = with<rmmr::scene::Root>::get(context, with<Thing>::get_global(context).scene).atmosphereTemperature;
-        const float remaining = glm::max(0.0f, 1.0f - float(dt) / float(phys::Settings::hullCool));
+        const float remaining = glm::max(0.0f, 1.0f - float(dt) / float(phys::Settings::Heat::hullCool));
         const float factor = remaining * remaining;
         auto crystals = context.direct<phys::rigid::Crystal>();
         for (auto [_, construct] : context.direct<Construct>().items) {

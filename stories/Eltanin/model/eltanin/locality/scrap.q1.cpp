@@ -42,6 +42,18 @@ namespace eltanin::locality {
             return vec3{(body.position - solid.center.prev) / phys::Settings::fixedStep};
         }
 
+        auto omegaOf(const phys::Body::Quantum& body, const phys::rigid::Solid::Quantum& solid) -> vec3 {
+            const float dt = float(phys::Settings::fixedStep);
+            const quat qRel = glm::normalize(body.orientation * glm::conjugate(solid.prevOri));
+            vec3 omega = (2.0f / dt) * vec3{qRel.x, qRel.y, qRel.z};
+            if (qRel.w < 0.0f)
+                omega = -omega;
+            const float inertia = 0.4f * body.totalMass * body.radius * body.radius;
+            if (inertia > 1.0e-12f)
+                omega += (solid.forceAngular / inertia) * dt;
+            return omega;
+        }
+
         struct Box {
             vec3 center;
             quat rotation;
@@ -157,11 +169,10 @@ namespace eltanin::locality {
             return unit(rng) < volumeKeep;
         }
 
-        void burstVolume(Writing context, const Box& seed, float mass, vec3 linear, phys::Kelvins temperature, base::maybe<phys::Body::Id> cohort) {
+        void burstVolume(Writing context, const Box& seed, float mass, vec3 linear, vec3 omega, phys::Kelvins temperature, base::maybe<phys::Body::Id> cohort) {
             const vec3 childHalf = seed.half / static_cast<float>(volumeLattice);
             const vec3 cell = childHalf * 2.0f;
             const float pieceMass = mass / static_cast<float>(volumeLattice * volumeLattice * volumeLattice);
-            const vec3 omega{0.0f, 0.0f, 0.0f};
             for (int ix = -1; ix <= 1; ++ix) {
                 for (int iy = -1; iy <= 1; ++iy) {
                     for (int iz = -1; iz <= 1; ++iz) {
@@ -176,13 +187,40 @@ namespace eltanin::locality {
             }
         }
 
-        void spawnKineticPair(Writing context, const Box& box, vec3 linear) {
+        void spawnKineticPair(Writing context, const Box& box, vec3 linear, vec3 omega) {
             Box first;
             Box second;
             cutUneven(box, first, second);
-            const vec3 omega{0.0f, 0.0f, 0.0f};
             decorations::Dust::Actions::spawnKinetic(context, Pose{.position = first.center, .rotation = first.rotation}, first.half, linear, omega);
             decorations::Dust::Actions::spawnKinetic(context, Pose{.position = second.center, .rotation = second.rotation}, second.half, linear, omega);
+        }
+
+        void splitScrap(Writing context, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, base::maybe<phys::Body::Id> cohort) {
+            if (temperature >= phys::Settings::Heat::scrapVaporKelvin)
+                return;
+            const int cuts = cutsOf(cohesion);
+            if (cuts < 0 or mass <= 0.0f)
+                return;
+            Box seed{.center = worldCenter, .rotation = glm::normalize(worldRot), .half = glm::max(halfExtents, vec3{0.08f, 0.08f, 0.08f})};
+            const int axis = longestAxis(seed.half);
+            const bool canCut = seed.half[axis] >= minHalf * 2.0f;
+            if (cuts <= maxScrapCuts and canCut) {
+                vector<Chunk> pieces;
+                dichotomy(seed, mass, cuts, pieces);
+                if (pieces.empty())
+                    return;
+                for (const Chunk& piece : pieces)
+                    Scrap::Actions::spawn(context, Pose{.position = piece.box.center, .rotation = piece.box.rotation}, piece.box.half, piece.mass, linear, omega, bornCohesion, temperature, Scrap::Lineage::common, cohort);
+                return;
+            }
+            if (cuts > maxScrapCuts and canCut) {
+                vector<Chunk> quarters;
+                dichotomy(seed, mass, maxScrapCuts, quarters);
+                for (const Chunk& quarter : quarters)
+                    spawnKineticPair(context, quarter.box, linear, omega);
+                return;
+            }
+            spawnKineticPair(context, seed, linear, omega);
         }
 
     }
@@ -222,7 +260,7 @@ namespace eltanin::locality {
                 continue;
             const auto& solid = with<phys::rigid::Solid>::get(context, scrap.body);
             const auto& body = with<phys::Body>::get(context, scrap.body);
-            if (solid.center.temperature >= phys::Settings::scrapVaporKelvin) {
+            if (solid.center.temperature >= phys::Settings::Heat::scrapVaporKelvin) {
                 with<Scrap>::kraken(context, id);
                 continue;
             }
@@ -235,17 +273,18 @@ namespace eltanin::locality {
             }
             const vec3 worldCenter{body.position};
             const vec3 linear = linearOf(body, solid);
+            const vec3 omega = omegaOf(body, solid);
             base::maybe<phys::Body::Id> cohort{};
-            if (phys::Settings::debrisCohort != phys::DebrisCohort::individual)
+            if (phys::Settings::debrisCohort != phys::Settings::DebrisCohort::individual)
                 cohort = body.compound;
             if (scrap.lineage == Lineage::volume) {
                 Box seed{.center = worldCenter, .rotation = glm::normalize(body.orientation), .half = glm::max(solid.halfExtents, vec3{0.08f, 0.08f, 0.08f})};
-                burstVolume(context, seed, body.totalMass, linear, solid.center.temperature, cohort);
+                burstVolume(context, seed, body.totalMass, linear, omega, solid.center.temperature, cohort);
             } else if (scrap.lineage == Lineage::terminal) {
                 Box seed{.center = worldCenter, .rotation = glm::normalize(body.orientation), .half = glm::max(solid.halfExtents, vec3{0.08f, 0.08f, 0.08f})};
-                spawnKineticPair(context, seed, linear);
+                spawnKineticPair(context, seed, linear, omega);
             } else {
-                breakOff(context, worldCenter, body.orientation, solid.halfExtents, body.totalMass, linear, solid.center.cohesion, solid.center.temperature, cohort);
+                splitScrap(context, worldCenter, body.orientation, solid.halfExtents, body.totalMass, linear, omega, solid.center.cohesion, solid.center.temperature, cohort);
             }
             with<Scrap>::kraken(context, id);
         }
@@ -308,32 +347,7 @@ namespace eltanin::locality {
     }
 
     void Scrap::Actions::breakOff(Writing context, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion, phys::Kelvins temperature, base::maybe<phys::Body::Id> cohort) {
-        if (temperature >= phys::Settings::scrapVaporKelvin)
-            return;
-        const int cuts = cutsOf(cohesion);
-        if (cuts < 0 or mass <= 0.0f)
-            return;
-        Box seed{.center = worldCenter, .rotation = glm::normalize(worldRot), .half = glm::max(halfExtents, vec3{0.08f, 0.08f, 0.08f})};
-        const int axis = longestAxis(seed.half);
-        const bool canCut = seed.half[axis] >= minHalf * 2.0f;
-        if (cuts <= maxScrapCuts and canCut) {
-            vector<Chunk> pieces;
-            dichotomy(seed, mass, cuts, pieces);
-            if (pieces.empty())
-                return;
-            const vec3 omega{0.0f, 0.0f, 0.0f};
-            for (const Chunk& piece : pieces)
-                spawn(context, Pose{.position = piece.box.center, .rotation = piece.box.rotation}, piece.box.half, piece.mass, linear, omega, bornCohesion, temperature, Lineage::common, cohort);
-            return;
-        }
-        if (cuts > maxScrapCuts and canCut) {
-            vector<Chunk> quarters;
-            dichotomy(seed, mass, maxScrapCuts, quarters);
-            for (const Chunk& quarter : quarters)
-                spawnKineticPair(context, quarter.box, linear);
-            return;
-        }
-        spawnKineticPair(context, seed, linear);
+        splitScrap(context, worldCenter, worldRot, halfExtents, mass, linear, vec3{0.0f, 0.0f, 0.0f}, cohesion, temperature, cohort);
     }
 
     void Scrap::Actions::radiate(Stewarding context, seconds dt) {

@@ -360,8 +360,7 @@ namespace eltanin::phys {
                     const char* cohortLabels[] = {"Individual", "Families", "Unified"};
                     int cohort = static_cast<int>(Settings::debrisCohort);
                     if (ImGui::Combo("Cohort", &cohort, cohortLabels, 3))
-                        Settings::debrisCohort = static_cast<DebrisCohort>(cohort);
-                    ImGui::SliderFloat("Kinetic spin", &Settings::kineticSpin, 0.0f, 8.0f, "%.2f");
+                        Settings::debrisCohort = static_cast<Settings::DebrisCohort>(cohort);
                 }
 
                 ImGui::Separator();

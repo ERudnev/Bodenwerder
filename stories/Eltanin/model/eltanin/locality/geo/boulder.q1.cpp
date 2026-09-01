@@ -218,7 +218,7 @@ namespace eltanin::locality::geo {
     void Boulder::Actions::radiate(Stewarding context, seconds dt) {
         if (dt <= 0)
             return;
-        const float sigma = phys::Settings::radiateSigma;
+        const float sigma = phys::Settings::Heat::radiateSigma;
         const float sky = with<rmmr::scene::Root>::get(context, with<Thing>::get_global(context).scene).atmosphereTemperature;
         auto solids = context.direct<phys::rigid::Solid>();
         for (auto [_, boulder] : context.direct<Boulder>().items) {

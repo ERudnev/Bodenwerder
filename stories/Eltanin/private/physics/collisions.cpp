@@ -214,7 +214,7 @@ namespace eltanin::phys::collision {
         }
 
         void scarFace(Crystal::Quantum& crystal, integer faceIndex, float impulseMag) {
-            if (impulseMag <= 0.0f or Settings::cohesionWound <= 0.0f or faceIndex < 0 or static_cast<std::size_t>(faceIndex) >= crystal.hull.faces.size())
+            if (impulseMag <= 0.0f or Settings::Cohesion::wound <= 0.0f or faceIndex < 0 or static_cast<std::size_t>(faceIndex) >= crystal.hull.faces.size())
                 return;
             const auto& face = crystal.hull.faces[static_cast<std::size_t>(faceIndex)];
             float clientMass = 0.0f;
@@ -227,7 +227,7 @@ namespace eltanin::phys::collision {
             }
             if (clientMass <= 0.0f)
                 return;
-            const float drop = Settings::cohesionWound * impulseMag / clientMass;
+            const float drop = Settings::Cohesion::wound * impulseMag / clientMass;
             for (const integer id : face.points) {
                 if (id < 0 or static_cast<std::size_t>(id) >= crystal.particles.size())
                     continue;
@@ -1218,7 +1218,7 @@ namespace eltanin::phys::collision {
                 if (solidBody and solid) {
                     kickSolid(*solidBody, *solid, arm, -normal * (j * float(Settings::fixedStep)));
                     if (solid->center.mass > 0.0f) {
-                        const float wound = solid->kind == Solid::Kind::box ? Settings::boxCohesionWound : Settings::cohesionWound;
+                        const float wound = solid->kind == Solid::Kind::box ? Settings::Cohesion::boxWound : Settings::Cohesion::wound;
                         solid->center.cohesion -= wound * glm::length(vec3{verletVelocity(ray.core) * double(ray.core.mass)}) / solid->center.mass;
                     }
                 }

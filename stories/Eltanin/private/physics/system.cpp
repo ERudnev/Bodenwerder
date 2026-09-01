@@ -43,11 +43,11 @@ namespace eltanin::phys {
         const float density = root.atmosphereDensity;
         if (density <= 0.0f)
             return;
-        const float densityRatio = density / Settings::isaAirDensity;
-        float factor = 1.0f - densityRatio * (float(Settings::fixedStep) / Settings::airDragTau);
+        const float densityRatio = density / Settings::Air::isaDensity;
+        float factor = 1.0f - densityRatio * (float(Settings::fixedStep) / Settings::Air::dragTau);
         if (factor < 0.0f)
             factor = 0.0f;
-        const float spinTau = Settings::airSpinHalfLife / 0.693147f;
+        const float spinTau = Settings::Air::spinHalfLife / 0.693147f;
         float spinFactor = 1.0f - densityRatio * (float(Settings::fixedStep) / spinTau);
         if (spinFactor < 0.0f)
             spinFactor = 0.0f;
