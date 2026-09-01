@@ -60,7 +60,7 @@ namespace rmmr::scene::actor {
         auto hullSharedLayers(Reading context, base::maybe<resource::texpack::Runtime::Id> texpack) -> std::pair<integer, integer> {
             if (not texpack) return {-1, -1};
             const auto& runtime = with<resource::texpack::Runtime>::get(context, *texpack);
-            const auto wrecked = runtime.layers.find("panel_tech_1.bmp");
+            const auto wrecked = runtime.layers.find("wreckage_experimental.jpg");
             const auto mask = runtime.layers.find("damage_mask.bmp");
             if (wrecked == runtime.layers.end() or mask == runtime.layers.end()) return {-1, -1};
             return {wrecked->second, mask->second};

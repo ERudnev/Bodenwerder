@@ -10,12 +10,12 @@ import "physics/rigid"
 namespace eltanin
   namespace locality
 
-    // Hull wreckage: Body + box Solid + Compound + Eltanin::scrap cube. Kinetic/cohesion only. Not geo, not Crystal.
+    // Dead hull scrap: Body + box Solid + Eltanin::wreck. Physics cohesion for split only. Not geo, not Crystal.
     feature Scrap of locality::Thing
       enum Lineage : common, volume, terminal
       struct Resources
         scrap: #rmmr::resource::geometry::Asset
-        hull: #rmmr::resource::material::Asset
+        wreck: #rmmr::resource::material::Asset
         mech: #rmmr::resource::texpack::Pack
       one
         body: custody<phys::rigid::Solid>

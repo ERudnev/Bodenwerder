@@ -89,9 +89,9 @@ namespace eltanin::phys::collision {
         };
 
         struct Item {
-            Compound::Id id;
+            Body::Id anchor;
             Occupant host;
-            bool hasMembers;
+            vector<Body::Id> cohort;
         };
 
         struct SphereHit {
@@ -820,14 +820,11 @@ namespace eltanin::phys::collision {
                 kickContactVertex(contact, remaining, crystals);
         }
 
-        auto collectOccupants(Compound::Id host, const Compound::Quantum& compound, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) -> vector<Occupant> {
+        auto collectOccupants(const vector<Body::Id>& cohort, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) -> vector<Occupant> {
             vector<Occupant> occupants;
-            addOccupant(occupants, host, bodies, solids, crystals);
-            for (const Body::Id member : compound.members) {
-                if (member == host)
-                    continue;
-                addOccupant(occupants, member, bodies, solids, crystals);
-            }
+            occupants.reserve(cohort.size());
+            for (const Body::Id id : cohort)
+                addOccupant(occupants, id, bodies, solids, crystals);
             return occupants;
         }
 
@@ -855,18 +852,9 @@ namespace eltanin::phys::collision {
             }
         }
 
-        void collideItems(State& state, const Item& first, const Item& second, fqsm::Direct<Compound> compounds, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
-            if (not first.hasMembers and not second.hasMembers) {
-                ++state.census.occupantTries;
-                pairOccupants(state, first.host, second.host, bodies, solids, crystals);
-                return;
-            }
-            auto* compoundA = compounds.items.find(first.id);
-            auto* compoundB = compounds.items.find(second.id);
-            if (not compoundA or not compoundB)
-                return;
-            const auto occupantsA = collectOccupants(first.id, *compoundA, bodies, solids, crystals);
-            const auto occupantsB = collectOccupants(second.id, *compoundB, bodies, solids, crystals);
+        void collideItems(State& state, const Item& first, const Item& second, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
+            const auto occupantsA = collectOccupants(first.cohort, bodies, solids, crystals);
+            const auto occupantsB = collectOccupants(second.cohort, bodies, solids, crystals);
             for (const Occupant& occupantA : occupantsA) {
                 for (const Occupant& occupantB : occupantsB) {
                     ++state.census.occupantTries;
@@ -946,7 +934,6 @@ namespace eltanin::phys::collision {
         auto bodies = context.direct<Body>();
         auto solids = context.direct<Solid>();
         auto crystals = context.direct<Crystal>();
-        auto compounds = context.direct<Compound>();
         auto rays = context.direct<Ray>();
         census.rays = static_cast<integer>(rays.items.size());
         for (auto [_, crystal] : crystals.items) {
@@ -962,36 +949,59 @@ namespace eltanin::phys::collision {
             else
                 ++census.spheres;
         }
+        std::unordered_map<Body::Id, vector<Body::Id>> cohorts;
+        for (auto [id, _] : solids.items) {
+            auto* body = bodies.items.find(id);
+            if (not body or body->radius <= 0.0f or body->totalMass <= 0.0f)
+                continue;
+            cohorts[body->compound].push_back(id);
+        }
+        for (auto [id, _] : crystals.items) {
+            auto* body = bodies.items.find(id);
+            if (not body or body->radius <= 0.0f or body->totalMass <= 0.0f)
+                continue;
+            cohorts[body->compound].push_back(id);
+        }
         vector<Sphere> spheres;
         vector<Obb> obbs;
         vector<Item> items;
-        spheres.reserve(compounds.items.size());
-        obbs.reserve(compounds.items.size());
-        items.reserve(compounds.items.size());
-        for (auto [id, compound] : compounds.items) {
+        spheres.reserve(cohorts.size());
+        obbs.reserve(cohorts.size());
+        items.reserve(cohorts.size());
+        for (auto& [anchor, cohort] : cohorts) {
             ++census.compounds;
-            Occupant host{Endpoint::Type::sphere, id, vec3{0.0f, 0.0f, 0.0f}, 0.0f};
-            if (not fillOccupant(host, id, bodies, solids, crystals))
-                continue;
+            Occupant host{Endpoint::Type::sphere, anchor, vec3{0.0f, 0.0f, 0.0f}, 0.0f};
+            if (not fillOccupant(host, anchor, bodies, solids, crystals)) {
+                bool found = false;
+                for (const Body::Id id : cohort) {
+                    if (id == anchor)
+                        continue;
+                    if (fillOccupant(host, id, bodies, solids, crystals)) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (not found)
+                    continue;
+            }
             Sphere sphere{host.center, host.radius};
-            const bool hasMembers = not compound.members.empty();
-            if (hasMembers) {
-                for (const Body::Id member : compound.members) {
-                    if (member == id)
+            const bool grouped = cohort.size() > 1;
+            if (grouped) {
+                for (const Body::Id id : cohort) {
+                    if (id == host.body)
                         continue;
-                    auto* body = bodies.items.find(member);
-                    if (not body or body->radius <= 0.0f or body->totalMass <= 0.0f)
+                    auto* member = bodies.items.find(id);
+                    if (not member or member->radius <= 0.0f or member->totalMass <= 0.0f)
                         continue;
-                    cover(sphere, vec3{body->position}, body->radius);
+                    cover(sphere, vec3{member->position}, member->radius);
                 }
             }
-            Obb obb = hasMembers ? Obb{sphere.center, quat{1.0f, 0.0f, 0.0f, 0.0f}, vec3{sphere.radius, sphere.radius, sphere.radius}} : obbOf(host, bodies, solids, crystals);
-            const integer occupants = 1 + static_cast<integer>(compound.members.size());
-            census.occupants += occupants;
-            census.maxOccupants = glm::max(census.maxOccupants, occupants);
+            Obb obb = grouped ? Obb{sphere.center, quat{1.0f, 0.0f, 0.0f, 0.0f}, vec3{sphere.radius, sphere.radius, sphere.radius}} : obbOf(host, bodies, solids, crystals);
+            census.occupants += static_cast<integer>(cohort.size());
+            census.maxOccupants = glm::max(census.maxOccupants, static_cast<integer>(cohort.size()));
             spheres.push_back(sphere);
             obbs.push_back(obb);
-            items.push_back(Item{id, host, hasMembers});
+            items.push_back(Item{anchor, host, std::move(cohort)});
         }
         census.cohorts = static_cast<integer>(spheres.size());
         vector<SphereHit> sphereHits;
@@ -1041,7 +1051,7 @@ namespace eltanin::phys::collision {
             if (not obbsOverlap(obbs[hit.first], obbs[hit.second]))
                 continue;
             ++census.obbHits;
-            collideItems(*this, items[hit.first], items[hit.second], compounds, bodies, solids, crystals);
+            collideItems(*this, items[hit.first], items[hit.second], bodies, solids, crystals);
         }
         census.candidates = static_cast<integer>(candidates.size());
         census.contacts = static_cast<integer>(contacts.size());

@@ -66,7 +66,6 @@ namespace eltanin::locality {
         constexpr float heatUploadStep = 10.0f;
         constexpr float cohesionUploadStep = 0.001f;
         constexpr float membraneScrapThickness = 0.05f;
-        constexpr float plateOutwardMeters = 0.40f;
         constexpr float plateCollisionHalf = 0.05f; // 10 cm slab
         constexpr float platePlaneTrim = 0.10f; // 20 cm off each in-plane half-axis
         constexpr float ribEndTrim = 0.20f;
@@ -256,7 +255,8 @@ namespace eltanin::locality {
                 auto box = boxOf(locals, plateCollisionHalf);
                 box.half.x = glm::max(box.half.x - platePlaneTrim, minHalf);
                 box.half.y = glm::max(box.half.y - platePlaneTrim, minHalf);
-                box.center += outward * plateOutwardMeters;
+                if (glm::length(outward) > 1.0e-8f)
+                    box.center += outward * plateCollisionHalf;
                 return box;
             }
             return boxOf(locals, glm::max(thickness * 0.5f, 0.08f));
@@ -384,10 +384,10 @@ namespace eltanin::locality {
                             const rmmr::Pose bodyPose{.position = worldCenter, .rotation = worldRot};
                             const rmmr::Pose actorPose = body.pose();
                             const auto lineage = volume ? Scrap::Lineage::volume : Scrap::Lineage::common;
-                            Scrap::Actions::spawnMesh(context, actorPose, bodyPose, box.half, chunk.mass, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.cohesion, chunk.temperature, std::move(occurrences), mech::space::local::edge2meters, lineage, construct.body);
+                            Scrap::Actions::spawnMesh(context, actorPose, bodyPose, box.half, chunk.mass, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.cohesion, chunk.temperature, std::move(occurrences), mech::space::local::edge2meters, lineage, body.compound);
                             continue;
                         }
-                        Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion, chunk.temperature, construct.body);
+                        Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion, chunk.temperature, body.compound);
                         continue;
                     }
                     const auto& constructResources = with<Construct>::get_global(context).resources;

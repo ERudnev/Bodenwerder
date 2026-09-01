@@ -9,7 +9,6 @@
 #include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
-#include <eltanin/physics/compound.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <eltanin/mech/blueprint.q1.h>
 #include <eltanin/mech/mount.q1.h>
@@ -48,7 +47,6 @@ namespace eltanin {
         return ask::schema::merge({
             ask::schema::aspect<World>(),
             ask::schema::aspect<phys::Body>(),
-            ask::schema::aspect<phys::Compound>(),
             ask::schema::aspect<phys::rigid::Crystal>(),
             ask::schema::aspect<phys::rigid::Solid>(),
             ask::schema::aspect<phys::rigid::Ray>(),
@@ -248,6 +246,17 @@ namespace eltanin {
             opaque->second.program = with<Unit>::remember(context, hullProgram);
             opaque->second.glowSpread = true;
             (void)with<Assets>::add_material(context, Name::from("Eltanin", "hull"), std::move(hull));
+        }
+        {
+            const auto wreckProgram = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "wreck"), item<shader::Loader>{.vertex = "shaders/wreck.vert.glsl", .fragment = "shaders/wreck.frag.glsl"});
+            auto wreck = with<Material>::get(context, *shared->material.litTextured);
+            const auto opaque = wreck.techniques.find(renderer::Pass::opaque);
+            if (opaque == wreck.techniques.end()) {
+                return (void)context.refuse("eltanin::Game::addAssets: lit_textured has no opaque pass");
+            }
+            opaque->second.program = with<Unit>::remember(context, wreckProgram);
+            opaque->second.glowSpread = true;
+            (void)with<Assets>::add_material(context, Name::from("Eltanin", "wreck"), std::move(wreck));
         }
         // Transparent: world cursor. Opaque: role-colored placeholder boxes (attachments).
         (void)with<Assets>::add_material(context, Name::from("Eltanin", "type"), with<Material>::get(context, *shared->material.litTransparent));

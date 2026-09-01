@@ -1,7 +1,7 @@
 #include <eltanin/locality/geo/rock.q1.h>
 
 #include <eltanin/locality/geo/minerals.q1.h>
-#include <eltanin/physics/compound.q1.h>
+#include <eltanin/physics/body.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -440,14 +440,13 @@ namespace eltanin::locality::geo {
                 shape.push_back(sample.local);
             }
 
-            const auto body = with<phys::Body>::create(context, phys::rigid::restoredBody(pose, particles, shape));
+            const auto body = phys::createBody(context, phys::rigid::restoredBody(pose, particles, shape), {});
             with<phys::rigid::Crystal>::extend(context, body, phys::rigid::Crystal::Quantum{
                 .particles = std::move(particles),
                 .shape = std::move(shape),
                 .com = massCom,
                 .hull = std::move(hull),
             });
-            with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
             const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
             with<Rock>::extend(context, thing, Rock::Quantum{.body = body, .actor = actor, .volume = std::move(volume)});
             return thing;

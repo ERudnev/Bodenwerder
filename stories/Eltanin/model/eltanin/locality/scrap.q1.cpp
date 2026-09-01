@@ -1,7 +1,7 @@
 #include <eltanin/locality/scrap.q1.h>
 
 #include <eltanin/decorations/dust.q1.h>
-#include <eltanin/physics/compound.q1.h>
+#include <eltanin/physics/body.q1.h>
 #include "physics/settings.h"
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
@@ -77,9 +77,9 @@ namespace eltanin::locality {
             return Pose{.position = bodyPose.position + bodyPose.rotation * meshFromBody.position, .rotation = glm::normalize(bodyPose.rotation * meshFromBody.rotation)};
         }
 
-        auto hangScrap(Writing context, scene::actor::Mesh::Id actor, Pose bodyPose, vec3 half, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, Pose meshFromBody, Scrap::Lineage lineage, base::maybe<phys::Body::Id> host) -> Scrap::Id {
+        auto hangScrap(Writing context, scene::actor::Mesh::Id actor, Pose bodyPose, vec3 half, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, Pose meshFromBody, Scrap::Lineage lineage, base::maybe<phys::Body::Id> cohort) -> Scrap::Id {
             const float radius = glm::length(half);
-            const auto body = with<phys::Body>::create(context, phys::Body::Quantum{.position = dvec3{bodyPose.position}, .orientation = bodyPose.rotation, .totalMass = mass, .radius = radius});
+            const auto body = phys::createBody(context, phys::Body::Quantum{.position = dvec3{bodyPose.position}, .orientation = bodyPose.rotation, .totalMass = mass, .radius = radius, .compound = phys::Body::Id::please_never_use_this_except_patch_rejection_mechanism()}, cohort);
             quat prevOri = bodyPose.rotation;
             const float omegaLen = glm::length(omega);
             if (omegaLen > 1.0e-12f) {
@@ -93,10 +93,6 @@ namespace eltanin::locality {
                 .kind = phys::rigid::Solid::Kind::box,
                 .halfExtents = half,
             });
-            if (host and with<phys::Compound>::exists(context, *host))
-                with<phys::Compound>::modify(context, *host)->members.push_back(body);
-            else
-                with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
             const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
             with<Scrap>::extend(context, thing, Scrap::Quantum{.body = body, .actor = actor, .gpuKelvin = temperature, .meshFromBody = meshFromBody, .lineage = lineage});
             return thing;
@@ -156,7 +152,7 @@ namespace eltanin::locality {
             return unit(rng) < volumeKeep;
         }
 
-        void burstVolume(Writing context, const Box& seed, float mass, vec3 linear, phys::Kelvins temperature) {
+        void burstVolume(Writing context, const Box& seed, float mass, vec3 linear, phys::Kelvins temperature, phys::Body::Id cohort) {
             const vec3 childHalf = seed.half / static_cast<float>(volumeLattice);
             const vec3 cell = childHalf * 2.0f;
             const float pieceMass = mass / static_cast<float>(volumeLattice * volumeLattice * volumeLattice);
@@ -167,7 +163,7 @@ namespace eltanin::locality {
                         const vec3 local{static_cast<float>(ix) * cell.x, static_cast<float>(iy) * cell.y, static_cast<float>(iz) * cell.z};
                         const Box piece{.center = seed.center + seed.rotation * local, .rotation = seed.rotation, .half = childHalf};
                         if (volumeKeepRoll())
-                            Scrap::Actions::spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear, omega, bornCohesion, temperature, Scrap::Lineage::terminal);
+                            Scrap::Actions::spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear, omega, bornCohesion, temperature, Scrap::Lineage::terminal, cohort);
                         else
                             decorations::Dust::Actions::spawnKinetic(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, linear, omega);
                     }
@@ -194,9 +190,9 @@ namespace eltanin::locality {
             context.refuse("eltanin::locality::Scrap::bindResources: scrap geometry missing");
             return;
         }
-        const auto hull = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "hull"));
-        if (not hull) {
-            context.refuse("eltanin::locality::Scrap::bindResources: hull material missing");
+        const auto wreck = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "wreck"));
+        if (not wreck) {
+            context.refuse("eltanin::locality::Scrap::bindResources: wreck material missing");
             return;
         }
         const auto mech = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "mech"));
@@ -204,7 +200,7 @@ namespace eltanin::locality {
             context.refuse("eltanin::locality::Scrap::bindResources: mech texpack missing");
             return;
         }
-        with<Scrap>::modify_global(context)->resources = Resources{.scrap = *scrap, .hull = *hull, .mech = *mech};
+        with<Scrap>::modify_global(context)->resources = Resources{.scrap = *scrap, .wreck = *wreck, .mech = *mech};
     }
 
     void Scrap::Actions::update(Writing context) {
@@ -234,20 +230,21 @@ namespace eltanin::locality {
             }
             const vec3 worldCenter{body.position};
             const vec3 linear = linearOf(body, solid);
+            const auto cohort = body.compound;
             if (scrap.lineage == Lineage::volume) {
                 Box seed{.center = worldCenter, .rotation = glm::normalize(body.orientation), .half = glm::max(solid.halfExtents, vec3{0.08f, 0.08f, 0.08f})};
-                burstVolume(context, seed, body.totalMass, linear, solid.center.temperature);
+                burstVolume(context, seed, body.totalMass, linear, solid.center.temperature, cohort);
             } else if (scrap.lineage == Lineage::terminal) {
                 Box seed{.center = worldCenter, .rotation = glm::normalize(body.orientation), .half = glm::max(solid.halfExtents, vec3{0.08f, 0.08f, 0.08f})};
                 spawnKineticPair(context, seed, linear);
             } else {
-                breakOff(context, worldCenter, body.orientation, solid.halfExtents, body.totalMass, linear, solid.center.cohesion, solid.center.temperature);
+                breakOff(context, worldCenter, body.orientation, solid.halfExtents, body.totalMass, linear, solid.center.cohesion, solid.center.temperature, cohort);
             }
             with<Scrap>::kraken(context, id);
         }
     }
 
-    auto Scrap::Actions::spawn(Writing context, Pose pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, Lineage lineage, base::maybe<phys::Body::Id> host) -> Id {
+    auto Scrap::Actions::spawn(Writing context, Pose pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, Lineage lineage, base::maybe<phys::Body::Id> cohort) -> Id {
         const auto scene = with<Thing>::get_global(context).scene;
         const vec3 half = glm::max(halfExtents, vec3{0.08f, 0.08f, 0.08f});
         if (mass <= 0.0f)
@@ -260,36 +257,31 @@ namespace eltanin::locality {
             return context.refuse("eltanin::locality::Scrap::spawn: scrap has no entry");
         const auto& catalog = geometry.surfaceCatalogs.front();
         umap<resource::geometry::SurfaceId, resource::material::Instance> surfaces;
-        for (const auto& [name, surface] : catalog) {
-            const auto albedo = name == "face" ? "panel_tech_1.bmp" : "STEEL4.JPG";
-            surfaces.emplace(surface, resource::material::Instance{.material = resources->hull, .textures = {{"albedoMap", albedo}}});
-        }
+        for (const auto& [_, surface] : catalog)
+            surfaces.emplace(surface, resource::material::Instance{.material = resources->wreck, .textures = {{"albedoMap", "wreckage_experimental.jpg"}}});
         auto meshQuantum = with<scene::actor::Mesh>::compose(context, resource::meshpack::Asset::Resolved{.geometry = resources->scrap, .entry = resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = resources->mech});
         if (not meshQuantum)
             return context.refuse("eltanin::locality::Scrap::spawn: mesh compose failed");
         const vec3 scale{half.x * 2.0f, half.y * 2.0f, half.z * 2.0f};
         const auto actor = with<scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, scale));
-        // Hull wreck-mix is actor-wide; cohesion 0 would paint the steel rims with panel_tech_1.
-        const float intact[] = {1.0f};
-        with<scene::actor::Mesh>::writeCohesions(context, actor, std::span<const float>{intact, 1});
         const float kelvin[] = {temperature};
         with<scene::actor::Mesh>::writeHeats(context, actor, std::span<const float>{kelvin, 1});
-        return hangScrap(context, actor, pose, half, mass, linear, omega, cohesion, temperature, identityPose(), lineage, host);
+        return hangScrap(context, actor, pose, half, mass, linear, omega, cohesion, temperature, identityPose(), lineage, cohort);
     }
 
-    auto Scrap::Actions::spawnMesh(Writing context, Pose actorPose, Pose bodyPose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, vector<scene::actor::Mesh::Occurrence> occurrences, float latticeStep, Lineage lineage, base::maybe<phys::Body::Id> host) -> Id {
+    auto Scrap::Actions::spawnMesh(Writing context, Pose actorPose, Pose bodyPose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, vector<scene::actor::Mesh::Occurrence> occurrences, float latticeStep, Lineage lineage, base::maybe<phys::Body::Id> cohort) -> Id {
         if (mass <= 0.0f)
             return context.refuse("eltanin::locality::Scrap::spawnMesh: mass must be positive");
         if (occurrences.empty())
-            return spawn(context, bodyPose, halfExtents, mass, linear, omega, cohesion, temperature, lineage, host);
+            return spawn(context, bodyPose, halfExtents, mass, linear, omega, cohesion, temperature, lineage, cohort);
         const auto& resources = with<Scrap>::get_global(context).resources;
         if (not resources)
             return context.refuse("eltanin::locality::Scrap::spawnMesh: resources not bound");
         for (auto& occurrence : occurrences) {
             occurrence.entry.texpack = resources->mech;
             for (auto& [_, instance] : occurrence.entry.surfaces) {
-                instance.material = resources->hull;
-                instance.textures = {{"albedoMap", "STEEL4.JPG"}};
+                instance.material = resources->wreck;
+                instance.textures = {{"albedoMap", "wreckage_experimental.jpg"}};
             }
         }
         auto meshQuantum = with<scene::actor::Mesh>::compose(context, occurrences);
@@ -299,21 +291,16 @@ namespace eltanin::locality {
         auto look = with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
         look.latticeStep = latticeStep;
         const auto actor = with<scene::Interface>::createMeshActor(context, scene, actorPose, std::move(*meshQuantum), std::move(look));
-        const auto count = with<scene::actor::Mesh>::get(context, actor).instanceCount;
-        if (count > 0) {
-            vector<float> intact(static_cast<std::size_t>(count), 1.0f);
-            with<scene::actor::Mesh>::writeCohesions(context, actor, std::span<const float>{intact});
-            paintScrapHeats(context, actor, temperature);
-        }
+        paintScrapHeats(context, actor, temperature);
         const vec3 half = glm::max(halfExtents, vec3{0.01f, 0.01f, 0.01f});
-        return hangScrap(context, actor, bodyPose, half, mass, linear, omega, cohesion, temperature, meshFromBodyOf(actorPose, bodyPose), lineage, host);
+        return hangScrap(context, actor, bodyPose, half, mass, linear, omega, cohesion, temperature, meshFromBodyOf(actorPose, bodyPose), lineage, cohort);
     }
 
     auto Scrap::Actions::cutCount(float cohesion) -> int {
         return cutsOf(cohesion);
     }
 
-    void Scrap::Actions::breakOff(Writing context, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion, phys::Kelvins temperature, base::maybe<phys::Body::Id> host) {
+    void Scrap::Actions::breakOff(Writing context, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion, phys::Kelvins temperature, base::maybe<phys::Body::Id> cohort) {
         if (temperature >= phys::Settings::scrapVaporKelvin)
             return;
         const int cuts = cutsOf(cohesion);
@@ -330,7 +317,7 @@ namespace eltanin::locality {
             const float pieceMass = mass / static_cast<float>(pieces.size());
             const vec3 omega{0.0f, 0.0f, 0.0f};
             for (const Box& piece : pieces)
-                spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear, omega, bornCohesion, temperature, Lineage::common, host);
+                spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear, omega, bornCohesion, temperature, Lineage::common, cohort);
             return;
         }
         if (cuts > maxScrapCuts and canCut) {

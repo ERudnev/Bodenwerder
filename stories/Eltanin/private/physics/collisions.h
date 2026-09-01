@@ -1,7 +1,6 @@
 #pragma once
 
 #include <eltanin/physics/body.q1.h>
-#include <eltanin/physics/compound.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 
 #include <vector>
@@ -12,7 +11,7 @@ namespace eltanin::phys::collision {
     using namespace rmmr;
 
     // Tick-local collision workspace (private physics, not Q1).
-    // Citizens are Compounds (usually one Body). Broad: spheres in a uniform grid (cell = 2×maxR, 27-neighbour), then OBB. Isolates never leave the sphere pass.
+    // Citizens are collision cohorts (Body::compound anchor + Solid/Crystal members). Broad: spheres in a uniform grid (cell = 2×maxR, 27-neighbour), then OBB. Isolates never leave the sphere pass.
     // Narrow: box/sphere SAT; solid vs frozen hull; Crystal vs Crystal is asymmetric — each side's live particles vs the other's pose*shape.
     // Each particle queries the rest-space hull BVH; depth is signed distance to that primitive (polygon slab or 2-vert capsule).
     // Solver once per tick: pull the tested point onto frozen pose*shape. Next iteration is the next physics tick.

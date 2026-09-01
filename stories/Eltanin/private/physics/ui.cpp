@@ -25,6 +25,7 @@
 
 #include <imgui.h>
 #include <string>
+#include <unordered_set>
 #include <utility>
 
 namespace eltanin::phys {
@@ -375,6 +376,21 @@ namespace eltanin::phys {
                 int hullFaces = 0;
                 int boxes = 0;
                 int spheres = 0;
+                std::unordered_set<Body::Id> cohorts;
+                for (const auto [id, _] : context->aspect<rigid::Solid>().items()) {
+                    if (not with<Body>::exists(context, id))
+                        continue;
+                    const auto& body = with<Body>::get(context, id);
+                    if (body.radius > 0.0f and body.totalMass > 0.0f)
+                        cohorts.insert(body.compound);
+                }
+                for (const auto [id, _] : context->aspect<rigid::Crystal>().items()) {
+                    if (not with<Body>::exists(context, id))
+                        continue;
+                    const auto& body = with<Body>::get(context, id);
+                    if (body.radius > 0.0f and body.totalMass > 0.0f)
+                        cohorts.insert(body.compound);
+                }
                 for (const auto [_, crystal] : context->aspect<rigid::Crystal>().items()) {
                     particles += static_cast<int>(crystal.particles.size());
                     hullFaces += static_cast<int>(crystal.hull.faces.size());
@@ -400,7 +416,7 @@ namespace eltanin::phys {
                     censusRow("  box", static_cast<std::size_t>(boxes));
                     censusRow("  sphere", static_cast<std::size_t>(spheres));
                     censusRow("ray", context->aspect<rigid::Ray>().items().size());
-                    censusRow("compound", context->aspect<Compound>().items().size());
+                    censusRow("cohort", cohorts.size());
                     censusRow("particle", static_cast<std::size_t>(particles));
                     censusRow("hull face", static_cast<std::size_t>(hullFaces));
                     ImGui::EndTable();

@@ -61,7 +61,7 @@ namespace eltanin::phys::rigid {
         float mass = 0.0f;
         for (const Particle& particle : particles)
             mass += particle.mass;
-        return Body::Quantum{.position = origin, .orientation = rotation, .totalMass = mass, .radius = radiusOf(particles, shape)};
+        return Body::Quantum{.position = origin, .orientation = rotation, .totalMass = mass, .radius = radiusOf(particles, shape), .compound = Body::Id::please_never_use_this_except_patch_rejection_mechanism()};
     }
 
     auto restoredBody(Pose pose, const vector<Particle>& particles, const vector<vec3>& shape) -> Body::Quantum {
@@ -69,7 +69,9 @@ namespace eltanin::phys::rigid {
     }
 
     void Crystal::Quantum::refreshMatter(Body::Quantum& body) {
+        const auto anchor = body.compound;
         body = restoredBody(body.position, body.orientation, particles, shape);
+        body.compound = anchor;
     }
 
     void Crystal::Actions::debugAddImpulse(Writing context, Id id, vec3 impulse) {
@@ -97,7 +99,9 @@ namespace eltanin::phys::rigid {
             particle.prev = particle.position - dvec3{(linear + spin) * float(Settings::fixedStep)};
             particle.force = vec3{0.0f, 0.0f, 0.0f};
         }
+        const auto anchor = body->compound;
         *body = restoredBody(origin, pose.rotation, crystal->particles, crystal->shape);
+        body->compound = anchor;
     }
 
     void Crystal::Actions::restore(Stewarding context) {

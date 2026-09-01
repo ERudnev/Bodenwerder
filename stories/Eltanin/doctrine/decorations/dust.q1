@@ -7,7 +7,7 @@ import "physics/body"
 namespace eltanin
   namespace decorations
 
-    // Lost-mass vis: no Body, no Solid, no Compound. Drifts. mass is for blast coupling only. Thermal: cools to 0 K over 4 s (hotter falls faster), plasma glow. Kinetic: opaque→clear fade, not salvage.
+    // Lost-mass vis: no Body, no Solid. Drifts. mass is for blast coupling only. Thermal: cools to 0 K over 4 s (hotter falls faster), plasma glow. Kinetic: opaque→clear fade, not salvage.
     feature Dust of rmmr::scene::actor::Mesh
       enum Kind : thermal, kinetic
       struct Resources

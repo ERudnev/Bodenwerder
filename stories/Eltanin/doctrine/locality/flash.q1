@@ -17,10 +17,10 @@ namespace eltanin
         brisance: #rmmr::resource::material::Asset
       struct Effect
         struct Kinetic
-          strength: float
+          strength: float // overpressure Pa at atten 1; spawn class is mapped in C++
           radius: float
           core: float // visual seed; 0.1 m at class 10
-          duration: seconds
+          duration: seconds // front speed = radius/duration; no extra class→speed curve
         struct Thermal
           temperature: Kelvins
           energy: float
@@ -44,7 +44,7 @@ namespace eltanin
         resources: Resources?
         >bindResources()
         >update()
-        >spawnAsExplosion(position: vec3, linear: vec3, strength: float)-># // kinetic only; 10 = anti-frigate bang
+        >spawnAsExplosion(position: vec3, linear: vec3, strength: float)-># // kinetic only; 1 = sailor at the navel, 10 = half a frigate if inside
         >spawnAsThermal(position: vec3, linear: vec3, strength: float)-># // heat only; 10 = same class, no shock
         >spawnAsBrisance(position: vec3, linear: vec3, strength: float)-># // cohesion only; 10 = same wound as the bang
         *apply(~phys::rigid::Crystal, ~phys::rigid::Solid) // kinetic and brisance also reach decorations::Dust during the wave

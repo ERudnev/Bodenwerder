@@ -3,7 +3,7 @@
 #include "mech/construction.h"
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/mech/mount.q1.h>
-#include <eltanin/physics/compound.q1.h>
+#include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
@@ -496,9 +496,8 @@ namespace eltanin::mech {
         const auto actor = with<scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), std::move(meshState));
 
         auto crystal = crystalFrom(construction, pose, velocity);
-        const auto body = with<phys::Body>::create(context, phys::rigid::restoredBody(pose, crystal.particles, crystal.shape));
+        const auto body = phys::createBody(context, phys::rigid::restoredBody(pose, crystal.particles, crystal.shape), {});
         with<phys::rigid::Crystal>::extend(context, body, std::move(crystal));
-        with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
 
         const auto thing = with<locality::Thing>::create(context, locality::Thing::Quantum{.bornAt = with<locality::Thing>::get_global(context).now});
         with<Construct>::extend(context, thing, Construct::Quantum{.body = body, .actor = actor, .fragments = std::move(fragments), .construction = std::move(construction), .visualOf = std::move(visualOf), .gpuCohesions = {}, .gpuHeats = {}});

@@ -18,11 +18,13 @@ namespace eltanin
       force: vec3
 
     // World-facing kinematics cache. Solid, Crystal and Ray are features of the same id.
+    // compound = collision cohort anchor; solo body points at itself.
     entity Body
       one
         position: dvec3
         orientation: quat
         totalMass: float
         radius: float
+        compound: #Body
         ?pose()->rmmr::Pose
         =pose(rmmr::Pose)

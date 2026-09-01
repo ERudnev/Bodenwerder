@@ -1,7 +1,7 @@
 #include <eltanin/locality/geo/boulder.q1.h>
 
 #include <eltanin/locality/geo/minerals.q1.h>
-#include <eltanin/physics/compound.q1.h>
+#include <eltanin/physics/body.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -154,12 +154,13 @@ namespace eltanin::locality::geo {
         meshState.heat = vec2{0.0f, 0.0f};
         const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), meshState);
 
-        const auto body = with<phys::Body>::create(context, phys::Body::Quantum{
+        const auto body = phys::createBody(context, phys::Body::Quantum{
             .position = dvec3{pose.position},
             .orientation = pose.rotation,
             .totalMass = mass,
             .radius = recipe.radius,
-        });
+            .compound = phys::Body::Id::please_never_use_this_except_patch_rejection_mechanism(),
+        }, {});
         quat prevOri = pose.rotation;
         const float omegaLen = glm::length(omega);
         if (omegaLen > 1.0e-12f) {
@@ -173,7 +174,6 @@ namespace eltanin::locality::geo {
             .kind = phys::rigid::Solid::Kind::sphere,
             .halfExtents = vec3{recipe.radius, recipe.radius, recipe.radius},
         });
-        with<phys::Compound>::extend(context, body, phys::Compound::Quantum{.members = {}});
         const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
         with<Boulder>::extend(context, thing, Boulder::Quantum{.body = body, .actor = actor, .recipe = recipe});
         return thing;

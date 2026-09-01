@@ -79,12 +79,13 @@ namespace eltanin::locality {
             return context.refuse("eltanin::locality::Bullet::spawnShell30mm: replica create failed");
         const vec3 nose = pose.rotation * vec3{0.0f, 0.0f, -1.0f};
         const vec3 velocity = nose * speed;
-        const auto body = with<phys::Body>::create(context, phys::Body::Quantum{
+        const auto body = phys::createBody(context, phys::Body::Quantum{
             .position = dvec3{pose.position},
             .orientation = pose.rotation,
             .totalMass = shellMass,
             .radius = shellRadius,
-        });
+            .compound = phys::Body::Id::please_never_use_this_except_patch_rejection_mechanism(),
+        }, {});
         with<phys::rigid::Ray>::extend(context, body, phys::rigid::Ray::Quantum{
             .core = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = shellMass, .temperature = shellHeat, .cohesion = 1.0f}, dvec3{pose.position} - dvec3{velocity * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}},
         });
