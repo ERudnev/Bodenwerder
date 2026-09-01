@@ -48,6 +48,11 @@ namespace eltanin::locality {
             vec3 half;
         };
 
+        struct Chunk {
+            Box box;
+            float mass;
+        };
+
         auto longestAxis(vec3 half) -> int {
             if (half.y > half.x and half.y >= half.z)
                 return 1;
@@ -108,42 +113,42 @@ namespace eltanin::locality {
             with<scene::actor::Mesh>::writeHeats(context, actor, std::span<const float>{heats});
         }
 
-        void dichotomy(const Box& box, int cuts, vector<Box>& out) {
+        auto cutUneven(const Box& box, Box& first, Box& second) -> float {
+            const int axis = longestAxis(box.half);
+            vec3 unit{0.0f, 0.0f, 0.0f};
+            unit[axis] = 1.0f;
+            const vec3 along = box.rotation * unit;
+            static thread_local std::mt19937 rng{std::random_device{}()};
+            std::uniform_real_distribution<float> minorShare{0.25f, 0.45f};
+            std::uniform_real_distribution<float> coin{0.0f, 1.0f};
+            const float firstShare = coin(rng) < 0.5f ? minorShare(rng) : 1.0f - minorShare(rng);
+            const float full = box.half[axis];
+            const float firstH = full * firstShare;
+            const float secondH = full - firstH;
+            first = box;
+            first.half[axis] = firstH;
+            first.center = box.center - along * secondH;
+            second = box;
+            second.half[axis] = secondH;
+            second.center = box.center + along * firstH;
+            return firstShare;
+        }
+
+        void dichotomy(const Box& box, float mass, int cuts, vector<Chunk>& out) {
             if (cuts <= 0) {
-                out.push_back(box);
+                out.push_back(Chunk{.box = box, .mass = mass});
                 return;
             }
             const int axis = longestAxis(box.half);
             if (box.half[axis] < minHalf * 2.0f) {
-                out.push_back(box);
+                out.push_back(Chunk{.box = box, .mass = mass});
                 return;
             }
-            vec3 unit{0.0f, 0.0f, 0.0f};
-            unit[axis] = 1.0f;
-            const vec3 along = box.rotation * unit;
-            const float h = box.half[axis] * 0.5f;
-            Box first = box;
-            first.half[axis] = h;
-            first.center = box.center - along * h;
-            Box second = box;
-            second.half[axis] = h;
-            second.center = box.center + along * h;
-            dichotomy(first, cuts - 1, out);
-            dichotomy(second, cuts - 1, out);
-        }
-
-        void bisect(const Box& box, Box& first, Box& second) {
-            const int axis = longestAxis(box.half);
-            vec3 unit{0.0f, 0.0f, 0.0f};
-            unit[axis] = 1.0f;
-            const vec3 along = box.rotation * unit;
-            const float h = box.half[axis] * 0.5f;
-            first = box;
-            first.half[axis] = h;
-            first.center = box.center - along * h;
-            second = box;
-            second.half[axis] = h;
-            second.center = box.center + along * h;
+            Box first;
+            Box second;
+            const float firstShare = cutUneven(box, first, second);
+            dichotomy(first, mass * firstShare, cuts - 1, out);
+            dichotomy(second, mass * (1.0f - firstShare), cuts - 1, out);
         }
 
         auto volumeKeepRoll() -> bool {
@@ -152,7 +157,7 @@ namespace eltanin::locality {
             return unit(rng) < volumeKeep;
         }
 
-        void burstVolume(Writing context, const Box& seed, float mass, vec3 linear, phys::Kelvins temperature, phys::Body::Id cohort) {
+        void burstVolume(Writing context, const Box& seed, float mass, vec3 linear, phys::Kelvins temperature, base::maybe<phys::Body::Id> cohort) {
             const vec3 childHalf = seed.half / static_cast<float>(volumeLattice);
             const vec3 cell = childHalf * 2.0f;
             const float pieceMass = mass / static_cast<float>(volumeLattice * volumeLattice * volumeLattice);
@@ -174,7 +179,7 @@ namespace eltanin::locality {
         void spawnKineticPair(Writing context, const Box& box, vec3 linear) {
             Box first;
             Box second;
-            bisect(box, first, second);
+            cutUneven(box, first, second);
             const vec3 omega{0.0f, 0.0f, 0.0f};
             decorations::Dust::Actions::spawnKinetic(context, Pose{.position = first.center, .rotation = first.rotation}, first.half, linear, omega);
             decorations::Dust::Actions::spawnKinetic(context, Pose{.position = second.center, .rotation = second.rotation}, second.half, linear, omega);
@@ -230,7 +235,9 @@ namespace eltanin::locality {
             }
             const vec3 worldCenter{body.position};
             const vec3 linear = linearOf(body, solid);
-            const auto cohort = body.compound;
+            base::maybe<phys::Body::Id> cohort{};
+            if (phys::Settings::debrisCohort != phys::DebrisCohort::individual)
+                cohort = body.compound;
             if (scrap.lineage == Lineage::volume) {
                 Box seed{.center = worldCenter, .rotation = glm::normalize(body.orientation), .half = glm::max(solid.halfExtents, vec3{0.08f, 0.08f, 0.08f})};
                 burstVolume(context, seed, body.totalMass, linear, solid.center.temperature, cohort);
@@ -310,21 +317,20 @@ namespace eltanin::locality {
         const int axis = longestAxis(seed.half);
         const bool canCut = seed.half[axis] >= minHalf * 2.0f;
         if (cuts <= maxScrapCuts and canCut) {
-            vector<Box> pieces;
-            dichotomy(seed, cuts, pieces);
+            vector<Chunk> pieces;
+            dichotomy(seed, mass, cuts, pieces);
             if (pieces.empty())
                 return;
-            const float pieceMass = mass / static_cast<float>(pieces.size());
             const vec3 omega{0.0f, 0.0f, 0.0f};
-            for (const Box& piece : pieces)
-                spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear, omega, bornCohesion, temperature, Lineage::common, cohort);
+            for (const Chunk& piece : pieces)
+                spawn(context, Pose{.position = piece.box.center, .rotation = piece.box.rotation}, piece.box.half, piece.mass, linear, omega, bornCohesion, temperature, Lineage::common, cohort);
             return;
         }
         if (cuts > maxScrapCuts and canCut) {
-            vector<Box> quarters;
-            dichotomy(seed, maxScrapCuts, quarters);
-            for (const Box& quarter : quarters)
-                spawnKineticPair(context, quarter, linear);
+            vector<Chunk> quarters;
+            dichotomy(seed, mass, maxScrapCuts, quarters);
+            for (const Chunk& quarter : quarters)
+                spawnKineticPair(context, quarter.box, linear);
             return;
         }
         spawnKineticPair(context, seed, linear);

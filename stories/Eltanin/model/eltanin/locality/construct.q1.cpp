@@ -377,6 +377,9 @@ namespace eltanin::locality {
                         if (cuts < 0)
                             continue;
                         const bool volume = construct.construction.volumes.contains(primitiveId);
+                        base::maybe<phys::Body::Id> cohort{};
+                        if (phys::Settings::debrisCohort == phys::DebrisCohort::unified)
+                            cohort = body.compound;
                         if (volume or cuts == 0) {
                             const auto& constructResources = with<Construct>::get_global(context).resources;
                             vector<mech::Construction::Primitive::Id> visualOf;
@@ -384,10 +387,10 @@ namespace eltanin::locality {
                             const rmmr::Pose bodyPose{.position = worldCenter, .rotation = worldRot};
                             const rmmr::Pose actorPose = body.pose();
                             const auto lineage = volume ? Scrap::Lineage::volume : Scrap::Lineage::common;
-                            Scrap::Actions::spawnMesh(context, actorPose, bodyPose, box.half, chunk.mass, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.cohesion, chunk.temperature, std::move(occurrences), mech::space::local::edge2meters, lineage, body.compound);
+                            Scrap::Actions::spawnMesh(context, actorPose, bodyPose, box.half, chunk.mass, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.cohesion, chunk.temperature, std::move(occurrences), mech::space::local::edge2meters, lineage, cohort);
                             continue;
                         }
-                        Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion, chunk.temperature, body.compound);
+                        Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion, chunk.temperature, cohort);
                         continue;
                     }
                     const auto& constructResources = with<Construct>::get_global(context).resources;

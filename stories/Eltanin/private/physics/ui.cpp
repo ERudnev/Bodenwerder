@@ -355,6 +355,16 @@ namespace eltanin::phys {
                 }
 
                 ImGui::Separator();
+                ImGui::TextUnformatted("Debris");
+                {
+                    const char* cohortLabels[] = {"Individual", "Families", "Unified"};
+                    int cohort = static_cast<int>(Settings::debrisCohort);
+                    if (ImGui::Combo("Cohort", &cohort, cohortLabels, 3))
+                        Settings::debrisCohort = static_cast<DebrisCohort>(cohort);
+                    ImGui::SliderFloat("Kinetic spin", &Settings::kineticSpin, 0.0f, 8.0f, "%.2f");
+                }
+
+                ImGui::Separator();
                 ImGui::TextUnformatted("Location");
                 if (with<rmmr::scene::Root>::exists(context, system.scene)) {
                     auto root = with<rmmr::scene::Root>::modify(context, system.scene);

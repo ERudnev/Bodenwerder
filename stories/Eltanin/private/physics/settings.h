@@ -6,6 +6,12 @@ namespace eltanin::phys {
 
     using namespace fqsm::api;
 
+    enum class DebrisCohort {
+        individual,
+        families,
+        unified,
+    };
+
     struct Settings {
         static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
         static constexpr float isaAirDensity = 1225.0f; // g/m³ ISA
@@ -22,6 +28,10 @@ namespace eltanin::phys {
         static constexpr seconds hullCool = 40; // Construct radiate; ~10× Dust. Each thermal step T *= (1 − dt/τ)²
         static constexpr float skyKelvin = 2.7f; // CMB default; live ambient is Root.atmosphereTemperature
         static constexpr float radiateSigma = 5.0e-13f; // parrot mass × kelvin; five times slower than the first lava-scale guess
+        static constexpr float kineticFrontSpeed = 100.0f; // m/s; kinetic area of effect expands at this speed
+        static constexpr float kineticVictimDuration = 0.70f; // victim speed cap = radius / this (old bang duration)
+        static inline DebrisCohort debrisCohort = DebrisCohort::unified;
+        static inline float kineticSpin = 3.0f;
     };
 
 }

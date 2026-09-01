@@ -12,6 +12,7 @@
 #include <rmmr/scene/root.q1.h>
 
 #include <cmath>
+#include <cstdint>
 #include <random>
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -107,11 +108,10 @@ namespace eltanin::locality {
             return glm::normalize(glm::cross(dir, hint));
         }
 
-        auto waveSpeedOf(const Flash::Effect& effect) -> float {
-            const float duration = float(effect.kinetic.duration);
-            if (duration <= 0.0f or effect.kinetic.radius <= 0.0f)
+        auto victimSpeedOf(const Flash::Effect& effect) -> float {
+            if (effect.kinetic.radius <= 0.0f)
                 return 0.0f;
-            return effect.kinetic.radius / duration;
+            return effect.kinetic.radius / phys::Settings::kineticVictimDuration;
         }
 
         auto projectedBoxArea(quat orientation, vec3 half, vec3 radial) -> float {
@@ -130,23 +130,86 @@ namespace eltanin::locality {
             return std::pow(volume, 2.0f / 3.0f);
         }
 
+        auto mixIds(std::uint64_t flashRaw, std::uint64_t bodyRaw, std::uint64_t extra) -> std::uint64_t {
+            std::uint64_t hash = flashRaw ^ (bodyRaw * 0x9E3779B97F4A7C15ull) ^ extra;
+            hash ^= hash >> 33;
+            hash *= 0xff51afd7ed558ccdull;
+            hash ^= hash >> 33;
+            hash *= 0xc4ceb9fe1a85ec53ull;
+            hash ^= hash >> 33;
+            return hash;
+        }
+
+        auto hashedCone(vec3 radial, std::uint64_t flashRaw, std::uint64_t bodyRaw, std::uint64_t extra) -> vec3 {
+            constexpr float cone = 0.22f;
+            const std::uint64_t hash = mixIds(flashRaw, bodyRaw, extra);
+            const float yaw = float(hash & 0xffffffu) * (6.28318530718f / 16777215.0f);
+            const float tilt = cone * std::sqrt(float((hash >> 24) & 0xffffffu) * (1.0f / 16777215.0f));
+            const vec3 binormal = anyPerpendicular(radial);
+            const vec3 tangent = glm::normalize(glm::cross(radial, binormal));
+            const vec3 offset = binormal * std::cos(yaw) + tangent * std::sin(yaw);
+            return glm::normalize(radial * std::cos(tilt) + offset * std::sin(tilt));
+        }
+
         auto kineticDeltaV(float mass, vec3 velocity, vec3 radial, float area, float pressure, float vWave, float dt) -> float {
             if (mass <= 0.0f or area <= 0.0f or pressure <= 0.0f or vWave <= 0.0f or dt <= 0.0f)
                 return 0.0f;
             const float room = vWave - glm::dot(velocity, radial);
             if (room <= 0.0f)
                 return 0.0f;
-            return glm::min(room, pressure * area / mass * dt);
+            return room * (1.0f - std::exp(-pressure * area * dt / (mass * vWave)));
         }
 
-        void fakeSpin(phys::rigid::Solid::Quantum& solid, const phys::Body::Quantum& body, vec3 radial, float deltaV, float vWave) {
+        auto spinFromCouple(vec3 axis, float couple, float mass, float deltaV, float vWave) -> vec3 {
             constexpr float massPivot = 8000.0f; // ~1 m³ steel
             constexpr float massPower = 0.4f;
             constexpr float massFloor = 0.28f;
-            constexpr float spinRef = 5.5f; // rad/s at pivot mass, full wave catch
-            constexpr float spinMax = 8.5f;
-            constexpr float omegaQuiet = 0.02f;
+            constexpr float spinRef = 55.0f; // rad/s at pivot mass, full wave catch
+            constexpr float spinMax = 85.0f;
+            if (deltaV <= 0.0f)
+                return vec3{0.0f, 0.0f, 0.0f};
+            const float bang = glm::clamp(deltaV / glm::max(vWave, 1.0f), 0.0f, 1.0f);
+            const float massScale = glm::max(massFloor, 1.0f / std::pow(mass / massPivot + 0.15f, massPower));
+            const float gain = glm::max(phys::Settings::kineticSpin, 0.0f);
+            const float cap = spinMax * glm::max(gain, 1.0e-4f);
+            const float raw = spinRef * gain * bang * massScale * couple;
+            return axis * (cap * std::tanh(raw / cap));
+        }
+
+        auto boxCheatOmega(quat orientation, vec3 halfExtents, float mass, vec3 radial, float deltaV, float vWave) -> vec3 {
             constexpr float boxMinCouple = 0.14f;
+            const quat ori = glm::normalize(orientation);
+            const vec3 localDir = glm::conjugate(ori) * radial;
+            const vec3 half = glm::max(halfExtents, vec3{0.05f, 0.05f, 0.05f});
+            const vec3 absDir = glm::abs(localDir);
+            int faceAxis = 0;
+            if (absDir.y > absDir.x and absDir.y >= absDir.z)
+                faceAxis = 1;
+            else if (absDir.z > absDir.x and absDir.z >= absDir.y)
+                faceAxis = 2;
+            vec3 localArm{0.0f, 0.0f, 0.0f};
+            localArm[faceAxis] = -std::copysign(half[faceAxis], localDir[faceAxis]);
+            if (faceAxis == 0) {
+                localArm.y = half.y * localDir.y;
+                localArm.z = half.z * localDir.z;
+            } else if (faceAxis == 1) {
+                localArm.x = half.x * localDir.x;
+                localArm.z = half.z * localDir.z;
+            } else {
+                localArm.x = half.x * localDir.x;
+                localArm.y = half.y * localDir.y;
+            }
+            const vec3 worldArm = ori * localArm;
+            const vec3 torqueAxis = glm::cross(worldArm, radial);
+            const float torqueLen = glm::length(torqueAxis);
+            if (torqueLen < 1.0e-8f)
+                return spinFromCouple(anyPerpendicular(radial), boxMinCouple, mass, deltaV, vWave);
+            const float couple = glm::clamp(torqueLen / glm::max(glm::length(worldArm), 1.0e-8f), boxMinCouple, 1.0f);
+            return spinFromCouple(torqueAxis / torqueLen, couple, mass, deltaV, vWave);
+        }
+
+        void fakeSpin(phys::rigid::Solid::Quantum& solid, const phys::Body::Quantum& body, vec3 radial, float deltaV, float vWave) {
+            constexpr float omegaQuiet = 0.02f;
             constexpr float sphereRestCouple = 0.55f;
 
             if (deltaV <= 0.0f or body.radius <= 1.0e-6f)
@@ -155,67 +218,28 @@ namespace eltanin::locality {
             if (inertia <= 1.0e-12f)
                 return;
 
-            vec3 axis;
-            float couple;
+            vec3 deltaOmega;
             if (solid.kind == phys::rigid::Solid::Kind::box) {
-                const quat ori = glm::normalize(body.orientation);
-                const vec3 localDir = glm::conjugate(ori) * radial;
-                const vec3 half = glm::max(solid.halfExtents, vec3{0.05f, 0.05f, 0.05f});
-                const vec3 absDir = glm::abs(localDir);
-                int faceAxis = 0;
-                if (absDir.y > absDir.x and absDir.y >= absDir.z)
-                    faceAxis = 1;
-                else if (absDir.z > absDir.x and absDir.z >= absDir.y)
-                    faceAxis = 2;
-                vec3 localArm{0.0f, 0.0f, 0.0f};
-                localArm[faceAxis] = -std::copysign(half[faceAxis], localDir[faceAxis]);
-                if (faceAxis == 0) {
-                    localArm.y = half.y * localDir.y;
-                    localArm.z = half.z * localDir.z;
-                } else if (faceAxis == 1) {
-                    localArm.x = half.x * localDir.x;
-                    localArm.z = half.z * localDir.z;
-                } else {
-                    localArm.x = half.x * localDir.x;
-                    localArm.y = half.y * localDir.y;
-                }
-                const vec3 worldArm = ori * localArm;
-                const vec3 torqueAxis = glm::cross(worldArm, radial);
-                const float torqueLen = glm::length(torqueAxis);
-                if (torqueLen < 1.0e-8f) {
-                    axis = anyPerpendicular(radial);
-                    couple = boxMinCouple;
-                } else {
-                    axis = torqueAxis / torqueLen;
-                    couple = glm::clamp(torqueLen / glm::max(glm::length(worldArm), 1.0e-8f), boxMinCouple, 1.0f);
-                }
+                deltaOmega = boxCheatOmega(body.orientation, solid.halfExtents, body.totalMass, radial, deltaV, vWave);
             } else {
                 const vec3 omega = solidOmega(body, solid);
                 const float omegaLen = glm::length(omega);
-                if (omegaLen < omegaQuiet) {
-                    axis = randomUnit();
-                    couple = sphereRestCouple;
-                } else {
-                    axis = omega / omegaLen;
-                    couple = 1.0f;
-                }
+                if (omegaLen < omegaQuiet)
+                    deltaOmega = spinFromCouple(randomUnit(), sphereRestCouple, body.totalMass, deltaV, vWave);
+                else
+                    deltaOmega = spinFromCouple(omega / omegaLen, 1.0f, body.totalMass, deltaV, vWave);
             }
-
-            const float bang = glm::clamp(deltaV / glm::max(vWave, 1.0f), 0.0f, 1.0f);
-            const float massScale = glm::max(massFloor, 1.0f / std::pow(body.totalMass / massPivot + 0.15f, massPower));
-            const float raw = spinRef * bang * massScale * couple;
-            const float deltaOmega = spinMax * std::tanh(raw / spinMax);
-            solid.forceAngular += axis * (deltaOmega * inertia / float(phys::Settings::fixedStep));
+            solid.forceAngular += deltaOmega * (inertia / float(phys::Settings::fixedStep));
         }
 
-        void strikeParticle(phys::Particle& particle, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float pulse, float ambient, float tick, float vWave, const Flash::Effect& effect) {
+        void strikeParticle(phys::Particle& particle, Flash::Id flashId, phys::Body::Id crystalId, std::uint64_t extra, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float pulse, float ambient, float tick, float vWave, const Flash::Effect& effect) {
             if (particle.mass <= 0.0f)
                 return;
             const vec3 offset = vec3{particle.position} - origin;
             const float distance = glm::length(offset);
             const float atten = falloff(distance);
             if (frontPasses(distance, effect.kinetic.radius, kineticInner, kineticOuter) and distance > 1.0e-4f) {
-                const vec3 radial = offset / distance;
+                const vec3 radial = hashedCone(offset / distance, flashId.raw(), crystalId.raw(), extra);
                 const vec3 velocity = vec3{(particle.position - particle.prev) / double(tick)};
                 const float deltaV = kineticDeltaV(particle.mass, velocity, radial, massArea(particle.mass), effect.kinetic.strength * atten, vWave, tick);
                 if (deltaV > 0.0f)
@@ -228,14 +252,14 @@ namespace eltanin::locality {
                 particle.cohesion -= effect.brisance.yield * atten;
         }
 
-        void strikeSolid(phys::rigid::Solid::Quantum& solid, const phys::Body::Quantum& body, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float pulse, float ambient, float tick, float vWave, const Flash::Effect& effect) {
+        void strikeSolid(phys::rigid::Solid::Quantum& solid, const phys::Body::Quantum& body, Flash::Id flashId, phys::Body::Id bodyId, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float pulse, float ambient, float tick, float vWave, const Flash::Effect& effect) {
             if (body.totalMass <= 0.0f)
                 return;
             const vec3 offset = vec3{body.position} - origin;
             const float distance = glm::length(offset);
             const float atten = falloff(distance);
             if (frontPasses(distance, effect.kinetic.radius, kineticInner, kineticOuter) and distance > 1.0e-4f) {
-                const vec3 radial = offset / distance;
+                const vec3 radial = hashedCone(offset / distance, flashId.raw(), bodyId.raw(), 0);
                 const vec3 velocity = vec3{(body.position - solid.center.prev) / double(tick)};
                 const float area = solid.kind == phys::rigid::Solid::Kind::box ? projectedBoxArea(body.orientation, solid.halfExtents, radial) : sphereArea(body.radius);
                 const float deltaV = kineticDeltaV(body.totalMass, velocity, radial, area, effect.kinetic.strength * atten, vWave, tick);
@@ -251,16 +275,17 @@ namespace eltanin::locality {
                 solid.center.cohesion -= effect.brisance.yield * atten;
         }
 
-        void strikeDust(decorations::Dust::Quantum& dust, vec3 position, quat rotation, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float tick, float vWave, const Flash::Effect& effect) {
+        void strikeDust(decorations::Dust::Quantum& dust, decorations::Dust::Id dustId, Flash::Id flashId, vec3 position, quat rotation, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float tick, float vWave, const Flash::Effect& effect) {
             if (dust.mass <= 0.0f)
                 return;
             const vec3 offset = position - origin;
             const float distance = glm::length(offset);
             const float atten = falloff(distance);
             if (frontPasses(distance, effect.kinetic.radius, kineticInner, kineticOuter) and distance > 1.0e-4f) {
-                const vec3 radial = offset / distance;
+                const vec3 radial = hashedCone(offset / distance, flashId.raw(), dustId.raw(), 0);
                 const float deltaV = kineticDeltaV(dust.mass, dust.linear, radial, projectedBoxArea(rotation, dust.half, radial), effect.kinetic.strength * atten, vWave, tick);
                 dust.linear += radial * deltaV;
+                dust.omega += boxCheatOmega(rotation, dust.half, dust.mass, radial, deltaV, vWave);
             }
             if (frontPasses(distance, effect.brisance.radius, brisanceInner, brisanceOuter))
                 dust.life -= seconds{effect.brisance.yield * atten * tick};
@@ -307,9 +332,10 @@ namespace eltanin::locality {
 
         auto flashWarhead(float strength) -> Flash::Effect {
             const float radius = 12.0f * strength;
-            constexpr float kineticPascal = 5.0e6f; // Pa at class 1, atten 1; duration fixed → front speed follows radius
+            constexpr float kineticPascal = 5.0e6f; // Pa at class 1, atten 1
+            const float duration = radius / phys::Settings::kineticFrontSpeed;
             return Flash::Effect{
-                .kinetic = {.strength = kineticPascal * strength, .radius = radius, .core = 0.01f * strength, .duration = 0.70},
+                .kinetic = {.strength = kineticPascal * strength, .radius = radius, .core = 0.01f * strength, .duration = seconds{duration}},
                 .thermal = {.temperature = 0.0f, .energy = 0.0f, .radius = 0.0f, .duration = seconds{}},
                 .brisance = {.yield = 0.0f, .radius = 0.0f, .duration = seconds{}},
             };
@@ -428,7 +454,7 @@ namespace eltanin::locality {
         auto bodies = context.direct<phys::Body>();
         const float tick = float(phys::Settings::fixedStep);
         const float ambient = ambientKelvin(context);
-        for (auto [_, flash] : context.direct<Flash>().items) {
+        for (auto [flashId, flash] : context.direct<Flash>().items) {
             const seconds life = flashLife(flash.effect);
             if (life <= 0)
                 continue;
@@ -457,22 +483,22 @@ namespace eltanin::locality {
             if (not node)
                 continue;
             const vec3 origin = node->pose.position;
-            const float vWave = waveSpeedOf(flash.effect);
-            for (auto [_, crystal] : crystals.items) {
-                for (phys::Particle& particle : crystal.particles)
-                    strikeParticle(particle, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, pulse, ambient, tick, vWave, flash.effect);
+            const float vWave = victimSpeedOf(flash.effect);
+            for (auto [crystalId, crystal] : crystals.items) {
+                for (std::uint64_t index = 0; index < crystal.particles.size(); ++index)
+                    strikeParticle(crystal.particles[index], flashId, crystalId, index + 1, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, pulse, ambient, tick, vWave, flash.effect);
             }
             for (auto [bodyId, solid] : solids.items) {
                 auto* body = bodies.items.find(bodyId);
                 if (not body)
                     continue;
-                strikeSolid(solid, *body, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, pulse, ambient, tick, vWave, flash.effect);
+                strikeSolid(solid, *body, flashId, bodyId, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, pulse, ambient, tick, vWave, flash.effect);
             }
             for (auto [dustId, dust] : context.direct<decorations::Dust>().items) {
                 auto* dustNode = nodes.items.find(dustId);
                 if (not dustNode)
                     continue;
-                strikeDust(dust, dustNode->pose.position, dustNode->pose.rotation, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, tick, vWave, flash.effect);
+                strikeDust(dust, dustId, flashId, dustNode->pose.position, dustNode->pose.rotation, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, tick, vWave, flash.effect);
             }
         }
     }
