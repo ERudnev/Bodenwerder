@@ -3,6 +3,7 @@
 
 #include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/flash.q1.h>
+#include <eltanin/locality/scrap.q1.h>
 #include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
 #include <eltanin/locality/thing.q1.h>
@@ -240,6 +241,7 @@ namespace eltanin::phys {
         with<::eltanin::locality::geo::Rock>::radiate(context, thermalDebt);
         with<::eltanin::locality::geo::Boulder>::radiate(context, thermalDebt);
         with<::eltanin::locality::Construct>::radiate(context, thermalDebt);
+        with<::eltanin::locality::Scrap>::radiate(context, thermalDebt);
         thermalDebt = 0;
     }
 

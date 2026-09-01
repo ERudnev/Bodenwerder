@@ -1,5 +1,6 @@
 #include <eltanin/locality/flash.q1.h>
 
+#include <eltanin/decorations/dust.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include "physics/settings.h"
 #include <rmmr/resources/geometry.q1.h>
@@ -106,6 +107,18 @@ namespace eltanin::locality {
                 solid.center.temperature = glm::max(solid.center.temperature, ambient + (effect.thermal.temperature - ambient) * pulse * soak);
             if (frontPasses(distance, effect.brisance.radius, brisanceInner, brisanceOuter))
                 solid.center.cohesion -= effect.brisance.yield * atten;
+        }
+
+        void strikeDust(decorations::Dust::Quantum& dust, vec3 position, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float tick, const Flash::Effect& effect) {
+            if (dust.mass <= 0.0f)
+                return;
+            const vec3 offset = position - origin;
+            const float distance = glm::length(offset);
+            const float atten = falloff(distance);
+            if (frontPasses(distance, effect.kinetic.radius, kineticInner, kineticOuter) and distance > 1.0e-4f)
+                dust.linear += (offset / distance) * (effect.kinetic.strength * atten * tick / dust.mass);
+            if (frontPasses(distance, effect.brisance.radius, brisanceInner, brisanceOuter))
+                dust.life -= seconds{effect.brisance.yield * atten * tick};
         }
 
         auto lookShock(const Flash::Effect& effect, seconds elapsed) -> scene::actor::MeshState::Quantum {
@@ -307,6 +320,12 @@ namespace eltanin::locality {
                 if (not body)
                     continue;
                 strikeSolid(solid, *body, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, pulse, ambient, flash.effect);
+            }
+            for (auto [dustId, dust] : context.direct<decorations::Dust>().items) {
+                auto* node = nodes.items.find(dustId);
+                if (not node)
+                    continue;
+                strikeDust(dust, node->pose.position, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, tick, flash.effect);
             }
         }
     }

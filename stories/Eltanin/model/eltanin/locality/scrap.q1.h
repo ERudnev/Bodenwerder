@@ -2,6 +2,7 @@
 
 #include <base/maybe.h>
 #include <eltanin/locality/thing.q1.h>
+#include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -39,10 +40,11 @@ namespace eltanin::locality {
         struct Actions : BaseActions {
             static void bindResources(Writing);
             static void update(Writing);
-            static auto spawn(Writing, rmmr::Pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, Lineage) -> Id;
-            static auto spawnMesh(Writing, rmmr::Pose actorPose, rmmr::Pose bodyPose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, vector<rmmr::scene::actor::Mesh::Occurrence>, float latticeStep, Lineage) -> Id;
+            static auto spawn(Writing, rmmr::Pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, Lineage, base::maybe<phys::Body::Id> host = {}) -> Id;
+            static auto spawnMesh(Writing, rmmr::Pose actorPose, rmmr::Pose bodyPose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, vector<rmmr::scene::actor::Mesh::Occurrence>, float latticeStep, Lineage, base::maybe<phys::Body::Id> host = {}) -> Id;
             static auto cutCount(float cohesion) -> int;
-            static void breakOff(Writing, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion, phys::Kelvins temperature);
+            static void breakOff(Writing, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, float cohesion, phys::Kelvins temperature, base::maybe<phys::Body::Id> host = {});
+            static void radiate(Stewarding, seconds dt);
             static void followBody(Stewarding);
         };
         struct Internals : DefaultInternals {};

@@ -67,7 +67,6 @@ namespace eltanin::locality::geo {
         constexpr float cutStep = 0.5f;
         constexpr int maxCuts = 3;
         constexpr float minRadius = 0.12f;
-        constexpr float splitPop = 2.0f;
         constexpr float bornCohesion = 0.5f;
 
         struct Pebble {
@@ -207,10 +206,7 @@ namespace eltanin::locality::geo {
                             child.radius = piece.radius;
                             child.seed = piece.seed;
                             child.spotMeters = piece.radius * 2.0f;
-                            const vec3 offset = piece.center - vec3{body.position};
-                            const float offsetLen = glm::length(offset);
-                            const vec3 pop = offsetLen > 1.0e-5f ? (offset / offsetLen) * splitPop : vec3{0.0f, 0.0f, 0.0f};
-                            spawnGenerated(context, device, Pose{.position = piece.center, .rotation = body.orientation}, child, linear + pop, vec3{0.0f, 0.0f, 0.0f});
+                            spawnGenerated(context, device, Pose{.position = piece.center, .rotation = body.orientation}, child, linear, vec3{0.0f, 0.0f, 0.0f});
                         }
                     }
                 }

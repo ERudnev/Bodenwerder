@@ -29,6 +29,7 @@ namespace eltanin::decorations {
             phys::Kelvins temperature;
             phys::Kelvins bornTemperature;
             vec3 half;
+            float mass;
             seconds life;
             seconds lifeBorn;
             Kind kind;

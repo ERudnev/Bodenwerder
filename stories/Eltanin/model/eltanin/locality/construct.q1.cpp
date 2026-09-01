@@ -67,6 +67,8 @@ namespace eltanin::locality {
         constexpr float cohesionUploadStep = 0.001f;
         constexpr float membraneScrapThickness = 0.05f;
         constexpr float plateOutwardMeters = 0.40f;
+        constexpr float plateCollisionHalf = 0.05f; // 10 cm slab
+        constexpr float platePlaneTrim = 0.10f; // 20 cm off each in-plane half-axis
         constexpr float ribEndTrim = 0.20f;
         constexpr float volumeFaceTrim = 0.50f;
 
@@ -251,7 +253,9 @@ namespace eltanin::locality {
             if (construction.membranes.contains(id))
                 return boxOf(locals, membraneScrapThickness * 0.5f);
             if (construction.plates.contains(id)) {
-                auto box = boxOf(locals, thickness * 0.25f);
+                auto box = boxOf(locals, plateCollisionHalf);
+                box.half.x = glm::max(box.half.x - platePlaneTrim, minHalf);
+                box.half.y = glm::max(box.half.y - platePlaneTrim, minHalf);
                 box.center += outward * plateOutwardMeters;
                 return box;
             }
@@ -377,13 +381,13 @@ namespace eltanin::locality {
                             const auto& constructResources = with<Construct>::get_global(context).resources;
                             vector<mech::Construction::Primitive::Id> visualOf;
                             auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construct.construction, fragmentsOf(construct.fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
-                            auto actorPose = body.pose();
-                            actorPose.position += body.orientation * chunk.outward * plateOutwardMeters;
+                            const rmmr::Pose bodyPose{.position = worldCenter, .rotation = worldRot};
+                            const rmmr::Pose actorPose = body.pose();
                             const auto lineage = volume ? Scrap::Lineage::volume : Scrap::Lineage::common;
-                            Scrap::Actions::spawnMesh(context, actorPose, rmmr::Pose{.position = worldCenter, .rotation = worldRot}, box.half, chunk.mass, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.cohesion, chunk.temperature, std::move(occurrences), mech::space::local::edge2meters, lineage);
+                            Scrap::Actions::spawnMesh(context, actorPose, bodyPose, box.half, chunk.mass, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.cohesion, chunk.temperature, std::move(occurrences), mech::space::local::edge2meters, lineage, construct.body);
                             continue;
                         }
-                        Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion, chunk.temperature);
+                        Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion, chunk.temperature, construct.body);
                         continue;
                     }
                     const auto& constructResources = with<Construct>::get_global(context).resources;

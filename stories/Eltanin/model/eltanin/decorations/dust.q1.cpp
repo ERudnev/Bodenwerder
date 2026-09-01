@@ -30,6 +30,12 @@ namespace eltanin::decorations {
         constexpr float kineticLifeJitter = 5.0f;
         constexpr float kineticFadeFrom = 1.0f;
         constexpr float kineticFadeTo = 0.0f;
+        constexpr float dustDensity = 7850.0f; // kg/m³; blast coupling only
+
+        auto massOf(vec3 half) -> float {
+            const vec3 size = glm::max(half, vec3{0.08f, 0.08f, 0.08f});
+            return 8.0f * size.x * size.y * size.z * dustDensity;
+        }
 
         auto kineticLifeBorn() -> seconds {
             static thread_local std::mt19937 rng{std::random_device{}()};
@@ -47,14 +53,14 @@ namespace eltanin::decorations {
                 with<rmmr::scene::actor::MeshState>::modify(context, actor)->opacity = opacity;
         }
 
-        auto hang(Writing context, rmmr::scene::actor::Mesh::Id actor, vec3 linear, vec3 omega, phys::Kelvins temperature, vec3 half, Dust::Kind kind, float fadeFrom, float fadeTo, seconds life) -> Dust::Id {
+        auto hang(Writing context, rmmr::scene::actor::Mesh::Id actor, vec3 linear, vec3 omega, phys::Kelvins temperature, vec3 half, float mass, Dust::Kind kind, float fadeFrom, float fadeTo, seconds life) -> Dust::Id {
             if (not with<rmmr::scene::Node>::exists(context, actor))
                 return actor;
             if (kind == Dust::Kind::thermal)
                 paintHeat(context, actor, temperature);
             else
                 paintOpacity(context, actor, fadeFrom);
-            with<Dust>::extend(context, actor, Dust::Quantum{.linear = linear, .omega = omega, .temperature = temperature, .bornTemperature = temperature, .half = half, .life = life, .lifeBorn = life, .kind = kind, .fadeFrom = fadeFrom, .fadeTo = fadeTo});
+            with<Dust>::extend(context, actor, Dust::Quantum{.linear = linear, .omega = omega, .temperature = temperature, .bornTemperature = temperature, .half = half, .mass = mass, .life = life, .lifeBorn = life, .kind = kind, .fadeFrom = fadeFrom, .fadeTo = fadeTo});
             return actor;
         }
 
@@ -138,12 +144,12 @@ namespace eltanin::decorations {
 
     auto Dust::Actions::spawn(Writing context, Pose pose, vec3 half, vec3 linear, vec3 omega, phys::Kelvins temperature) -> Id {
         const vec3 size = glm::max(half, vec3{0.08f, 0.08f, 0.08f});
-        return hang(context, composeBox(context, pose, size, Kind::thermal), linear, omega, temperature, size, Kind::thermal, 1.0f, 1.0f, thermalLife);
+        return hang(context, composeBox(context, pose, size, Kind::thermal), linear, omega, temperature, size, massOf(size), Kind::thermal, 1.0f, 1.0f, thermalLife);
     }
 
     auto Dust::Actions::spawnKinetic(Writing context, Pose pose, vec3 half, vec3 linear, vec3 omega) -> Id {
         const vec3 size = glm::max(half, vec3{0.08f, 0.08f, 0.08f});
-        return hang(context, composeBox(context, pose, size, Kind::kinetic), linear, omega, phys::Kelvins{0.0f}, size, Kind::kinetic, kineticFadeFrom, kineticFadeTo, kineticLifeBorn());
+        return hang(context, composeBox(context, pose, size, Kind::kinetic), linear, omega, phys::Kelvins{0.0f}, size, massOf(size), Kind::kinetic, kineticFadeFrom, kineticFadeTo, kineticLifeBorn());
     }
 
     auto Dust::Actions::spawnMesh(Writing context, Pose pose, vector<rmmr::scene::actor::Mesh::Occurrence> occurrences, vec3 linear, vec3 omega, phys::Kelvins temperature, vec3 half, float latticeStep) -> Id {
@@ -167,7 +173,8 @@ namespace eltanin::decorations {
         look.latticeStep = latticeStep;
         look.heat.x = temperature;
         const auto actor = with<rmmr::scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), std::move(look));
-        return hang(context, actor, linear, omega, temperature, glm::max(half, vec3{0.08f, 0.08f, 0.08f}), Kind::thermal, 1.0f, 1.0f, thermalLife);
+        const vec3 size = glm::max(half, vec3{0.08f, 0.08f, 0.08f});
+        return hang(context, actor, linear, omega, temperature, size, massOf(size), Kind::thermal, 1.0f, 1.0f, thermalLife);
     }
 
 }

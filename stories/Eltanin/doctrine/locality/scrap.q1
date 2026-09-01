@@ -29,4 +29,5 @@ namespace eltanin
         >update()
         >spawn(Pose, halfExtents: vec3, mass: float, linear: vec3, omega: vec3, cohesion: float, temperature: Kelvins, lineage: Lineage)->#
         >spawnMesh(actor: Pose, body: Pose, halfExtents: vec3, mass: float, linear: vec3, omega: vec3, cohesion: float, temperature: Kelvins, occurrences: vector<rmmr::scene::actor::Mesh::Occurrence>, latticeStep: float, lineage: Lineage)->#
+        *radiate(dt: seconds) // same 4 s remaining² as thermal Dust; floor at sky
         *followBody()
