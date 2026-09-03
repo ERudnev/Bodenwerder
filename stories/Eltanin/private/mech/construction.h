@@ -33,6 +33,9 @@ namespace eltanin::mech {
 
     void bindKnotWelds(Construction&);
     auto cookHull(const Construction&, const vector<vec3>& shape) -> phys::rigid::Hull;
+    auto connectedIslands(const Construction&) -> vector<vector<Construction::Primitive::Id>>;
+    auto islandSpans3d(const Construction&, const vector<Construction::Primitive::Id>&) -> bool;
+    auto islandIsConstruct(const Construction&, const vector<Construction::Primitive::Id>&) -> bool;
 
     inline void compileParticles(Construction& construction) {
         construction.evaluatedParticles.clear();

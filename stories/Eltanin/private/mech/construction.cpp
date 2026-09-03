@@ -2,7 +2,9 @@
 
 #include <map>
 #include <set>
+#include <utility>
 
+#include <glm/common.hpp>
 #include <glm/geometric.hpp>
 
 namespace eltanin::mech {
@@ -156,6 +158,145 @@ namespace eltanin::mech {
             pushPolygon(primitive, points);
         });
         return hull;
+    }
+
+    namespace {
+
+        auto farthestFrom(const vector<vec3>& points, vec3 origin) -> vec3 {
+            vec3 best = origin;
+            float bestSpan = -1.0f;
+            for (const vec3& point : points) {
+                const vec3 delta = point - origin;
+                const float span = glm::dot(delta, delta);
+                if (span > bestSpan) {
+                    bestSpan = span;
+                    best = point;
+                }
+            }
+            return best;
+        }
+
+        auto farthestFromLine(const vector<vec3>& points, vec3 origin, vec3 axis) -> vec3 {
+            vec3 best = origin;
+            float bestSpan = -1.0f;
+            const float axisLength = glm::length(axis);
+            if (axisLength < 1.0e-12f)
+                return origin;
+            for (const vec3& point : points) {
+                const float span = glm::length(glm::cross(point - origin, axis)) / axisLength;
+                if (span > bestSpan) {
+                    bestSpan = span;
+                    best = point;
+                }
+            }
+            return best;
+        }
+
+    }
+
+    auto connectedIslands(const Construction& construction) -> vector<vector<Construction::Primitive::Id>> {
+        using PrimitiveId = Construction::Primitive::Id;
+        umap<PrimitiveId, PrimitiveId> parent;
+        auto ensure = [&](PrimitiveId id) {
+            if (parent.find(id) == parent.end())
+                parent.emplace(id, id);
+        };
+        for (const auto& [id, _] : construction.knots)
+            ensure(id);
+        for (const auto& [id, _] : construction.ribs)
+            ensure(id);
+        for (const auto& [id, _] : construction.membranes)
+            ensure(id);
+        for (const auto& [id, _] : construction.plates)
+            ensure(id);
+        for (const auto& [id, _] : construction.volumes)
+            ensure(id);
+        if (parent.empty())
+            return {};
+
+        auto findRoot = [&](auto& findRoot, PrimitiveId id) -> PrimitiveId {
+            auto found = parent.find(id);
+            if (found->second != id)
+                found->second = findRoot(findRoot, found->second);
+            return found->second;
+        };
+        auto unite = [&](PrimitiveId left, PrimitiveId right) {
+            left = findRoot(findRoot, left);
+            right = findRoot(findRoot, right);
+            if (left != right)
+                parent.find(right)->second = left;
+        };
+
+        std::map<index3, vector<PrimitiveId>, LatticeLess> atGrid;
+        forEachPrimitiveLoop(construction, [&](PrimitiveId id, const Construction::Primitive& primitive) {
+            for (const auto& welded : primitive.loop)
+                atGrid[welded.gridPos].push_back(id);
+        });
+        for (const auto& [_, ids] : atGrid) {
+            if (ids.size() < 2)
+                continue;
+            for (std::size_t index = 1; index < ids.size(); ++index)
+                unite(ids[0], ids[index]);
+        }
+
+        umap<PrimitiveId, vector<PrimitiveId>> grouped;
+        for (const auto& [id, _] : parent) {
+            const auto root = findRoot(findRoot, id);
+            auto found = grouped.find(root);
+            if (found == grouped.end())
+                found = grouped.emplace(root, vector<PrimitiveId>{}).first;
+            found->second.push_back(id);
+        }
+        vector<vector<PrimitiveId>> islands;
+        islands.reserve(grouped.size());
+        for (auto& [_, members] : grouped)
+            islands.push_back(std::move(members));
+        return islands;
+    }
+
+    auto islandSpans3d(const Construction& construction, const vector<Construction::Primitive::Id>& island) -> bool {
+        using PrimitiveId = Construction::Primitive::Id;
+        umap<PrimitiveId, bool> keep;
+        for (const auto id : island)
+            keep.emplace(id, true);
+        std::map<index3, bool, LatticeLess> unique;
+        forEachPrimitiveLoop(construction, [&](PrimitiveId id, const Construction::Primitive& primitive) {
+            if (keep.find(id) == keep.end())
+                return;
+            for (const auto& welded : primitive.loop)
+                unique.emplace(welded.gridPos, true);
+        });
+        vector<vec3> points;
+        points.reserve(unique.size());
+        for (const auto& [grid, _] : unique)
+            points.push_back(vec3{static_cast<float>(grid.x), static_cast<float>(grid.y), static_cast<float>(grid.z)});
+        if (points.size() < 4)
+            return false;
+
+        constexpr float spanEps = 1.0e-3f;
+        const vec3 origin = farthestFrom(points, points[0]);
+        const vec3 farPoint = farthestFrom(points, origin);
+        const vec3 axis = farPoint - origin;
+        if (glm::length(axis) < spanEps)
+            return false;
+        const vec3 linePoint = farthestFromLine(points, origin, axis);
+        const float axisLength = glm::length(axis);
+        const float lineSpan = glm::length(glm::cross(linePoint - origin, axis)) / axisLength;
+        if (lineSpan < spanEps)
+            return false;
+        vec3 normal = glm::cross(axis, linePoint - origin);
+        const float normalLength = glm::length(normal);
+        if (normalLength < spanEps)
+            return false;
+        normal /= normalLength;
+        float planeSpan = 0.0f;
+        for (const vec3& point : points)
+            planeSpan = glm::max(planeSpan, glm::abs(glm::dot(point - origin, normal)));
+        return planeSpan > spanEps;
+    }
+
+    auto islandIsConstruct(const Construction& construction, const vector<Construction::Primitive::Id>& island) -> bool {
+        return island.size() >= 2 and islandSpans3d(construction, island);
     }
 
     void bindKnotWelds(Construction& construction) {
