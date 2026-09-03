@@ -13,22 +13,22 @@ namespace eltanin::phys {
             unified,
         };
 
-        // Class → world. spawnAsExplosion(1) = sailor at the navel; 10 = half a frigate if inside.
+        // Flash::Channels are meters (radii). Intensity still follows the old class law via ref spans below.
         struct Explosions {
-            static constexpr float kineticMeters = 12.0f; // kinetic radius at class 1; higher classes scale as sqrt
-            static constexpr float kineticCore = 0.01f; // visual shock seed; 0.1 m at class 10
-            static constexpr float kineticPascal = 5.0e6f; // Pa at class 1, atten 1
+            static constexpr float kineticMeters = 12.0f; // intensity ref: former class 1 kinetic radius
+            static constexpr float kineticCore = 0.01f; // visual shock seed × former class (~ (R/ref)^2)
+            static constexpr float kineticPascal = 5.0e6f; // Pa at former class 1, atten 1
             static constexpr float frontSpeed = 100.0f; // m/s; duration = radius / this
             static constexpr float victimDuration = 0.70f; // victim speed cap = radius / this
             static constexpr float kineticSpin = 3.0f; // cheat tumble gain on the kinetic front
             static constexpr float thermalKelvin0 = 2800.0f;
             static constexpr float thermalKelvinPer = 200.0f;
-            static constexpr float thermalMeters = 1.0f; // visual plasma radius at class 1
-            static constexpr seconds thermalDuration = 1.0;
-            static constexpr float thermalHalo = 2.5f; // soak in plasma radii; visual ball stays thermalMeters
-            static constexpr float brisanceYield = 8.0f; // cohesion wound at class 1
-            static constexpr float brisanceRadius = 0.85f; // vs kineticMeters
-            static constexpr seconds brisanceDuration = 1.0;
+            static constexpr float thermalMeters = 1.0f; // intensity ref: former class 1 plasma radius
+            static constexpr seconds thermalDuration = 2.0;
+            static constexpr float thermalHalo = 2.5f; // soak in plasma radii
+            static constexpr float brisanceYield = 8.0f; // cohesion wound at former class 1
+            static constexpr float brisanceRadius = 0.85f; // intensity ref = kineticMeters × this
+            static constexpr seconds brisanceDuration = 0.5;
         };
 
         struct Air {

@@ -43,6 +43,12 @@ namespace eltanin::locality {
             Thermal thermal;
             Brisance brisance;
         };
+        // Authoring radii in meters per channel; 0 = off. Intensity from Settings refs (old class law).
+        struct Channels {
+            float kinetic;
+            float thermal;
+            float brisance;
+        };
         struct Quantum {
             Effect effect;
             Custody<rmmr::scene::actor::Mesh> shock;
@@ -57,9 +63,7 @@ namespace eltanin::locality {
         struct Actions : BaseActions {
             static void bindResources(Writing);
             static void update(Writing);
-            static auto spawnAsExplosion(Writing, vec3 position, vec3 linear, float strength) -> Id;
-            static auto spawnAsThermal(Writing, vec3 position, vec3 linear, float strength) -> Id;
-            static auto spawnAsBrisance(Writing, vec3 position, vec3 linear, float strength) -> Id;
+            static auto spawn(Writing, vec3 position, vec3 linear, Channels) -> Id;
             static void apply(Stewarding);
         };
         struct Internals : DefaultInternals {};

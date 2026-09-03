@@ -175,7 +175,7 @@ namespace eltanin {
                     }},
                 },
                 .nearest = false,
-                .blend = renderer::BlendMode::additive,
+                .blend = renderer::BlendMode::alpha,
             });
         with<Assets>::add_material(
             context,
@@ -257,6 +257,18 @@ namespace eltanin {
             opaque->second.program = with<Unit>::remember(context, wreckProgram);
             opaque->second.glowSpread = true;
             (void)with<Assets>::add_material(context, Name::from("Eltanin", "wreck"), std::move(wreck));
+            if (not shared->material.litTexturedAlpha) {
+                return (void)context.refuse("eltanin::Game::addAssets: lit_textured_alpha missing");
+            }
+            auto dustWreck = with<Material>::get(context, *shared->material.litTexturedAlpha);
+            const auto transparent = dustWreck.techniques.find(renderer::Pass::transparent);
+            if (transparent == dustWreck.techniques.end()) {
+                return (void)context.refuse("eltanin::Game::addAssets: lit_textured_alpha has no transparent pass");
+            }
+            transparent->second.program = with<Unit>::remember(context, wreckProgram);
+            transparent->second.glowSpread = true;
+            dustWreck.blend = renderer::BlendMode::alpha;
+            (void)with<Assets>::add_material(context, Name::from("Eltanin", "dustWreck"), std::move(dustWreck));
         }
         // Transparent: world cursor. Opaque: role-colored placeholder boxes (attachments).
         (void)with<Assets>::add_material(context, Name::from("Eltanin", "type"), with<Material>::get(context, *shared->material.litTransparent));

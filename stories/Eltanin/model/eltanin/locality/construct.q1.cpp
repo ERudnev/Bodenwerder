@@ -34,7 +34,12 @@ namespace eltanin::locality {
         };
 
         auto hurtByPrimitive(const mech::Construction& construction, const vector<phys::Particle>& particles) -> umap<mech::Construction::Primitive::Id, PrimitiveHurt> {
-            umap<mech::Construction::Primitive::Id, PrimitiveHurt> hurt;
+            struct Acc {
+                float cohesion;
+                float temperature;
+                std::size_t count;
+            };
+            umap<mech::Construction::Primitive::Id, Acc> acc;
             integer cursor = 0;
             mech::forEachPrimitiveLoop(construction, [&](mech::Construction::Primitive::Id id, const mech::Construction::Primitive& primitive) {
                 const auto count = primitive.loop.size();
@@ -43,15 +48,21 @@ namespace eltanin::locality {
                         return;
                     const auto& particle = particles[static_cast<std::size_t>(cursor)];
                     ++cursor;
-                    auto found = hurt.find(id);
-                    if (found == hurt.end())
-                        hurt.emplace(id, PrimitiveHurt{.cohesion = particle.cohesion, .temperature = particle.temperature});
+                    auto found = acc.find(id);
+                    if (found == acc.end())
+                        acc.emplace(id, Acc{.cohesion = particle.cohesion, .temperature = particle.temperature, .count = 1});
                     else {
-                        found->second.cohesion = glm::min(found->second.cohesion, particle.cohesion);
-                        found->second.temperature = glm::max(found->second.temperature, particle.temperature);
+                        found->second.cohesion += particle.cohesion;
+                        found->second.temperature += particle.temperature;
+                        ++found->second.count;
                     }
                 }
             });
+            umap<mech::Construction::Primitive::Id, PrimitiveHurt> hurt;
+            for (const auto& [id, sum] : acc) {
+                const float n = static_cast<float>(sum.count);
+                hurt.emplace(id, PrimitiveHurt{.cohesion = sum.cohesion / n, .temperature = sum.temperature / n});
+            }
             return hurt;
         }
 

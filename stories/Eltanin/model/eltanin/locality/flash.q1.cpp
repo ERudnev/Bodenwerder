@@ -25,16 +25,23 @@ namespace eltanin::locality {
 
     namespace {
 
-        auto classSpan(float strength) -> float {
-            return phys::Settings::Explosions::kineticMeters * std::sqrt(glm::max(strength, 0.0f));
+        // Former class↔radius was R = ref·√c (kinetic/brisance) or R = ref·c (thermal). Channels are meters; intensity keeps that law.
+        auto classOfSpan(float meters, float metersAtClass1) -> float {
+            if (metersAtClass1 <= 0.0f)
+                return 0.0f;
+            const float u = glm::max(meters, 0.0f) / metersAtClass1;
+            return u * u;
+        }
+
+        auto classOfLinear(float meters, float metersAtClass1) -> float {
+            if (metersAtClass1 <= 0.0f)
+                return 0.0f;
+            return glm::max(meters, 0.0f) / metersAtClass1;
         }
 
         auto falloff(float distance) -> float {
             return 1.0f / (distance * distance + 1.0f);
         }
-
-        constexpr RGB brisanceTint{0.22f, 0.72f, 0.38f};
-        constexpr float brisanceFade = 0.10f;
 
         auto thermalSoak(float distance, float radius) -> float {
             if (radius <= 0.0f)
@@ -313,10 +320,12 @@ namespace eltanin::locality {
         }
 
         auto lookField(const Flash::Effect& effect, seconds elapsed) -> scene::actor::MeshState::Quantum {
+            constexpr float bornOpacity = 1.0f / 3.0f;
             const float duration = float(effect.brisance.duration);
             const float progress = duration > 0.0f ? glm::clamp(float(elapsed) / duration, 0.0f, 1.0f) : 1.0f;
-            const float radius = effect.brisance.radius;
-            return with<scene::actor::MeshState>::defaults(brisanceTint, brisanceFade * (1.0f - progress), vec3{radius, radius, radius});
+            const float remain = 1.0f - progress;
+            const float radius = glm::mix(effect.brisance.radius * 0.02f, effect.brisance.radius, progress);
+            return with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, bornOpacity * remain * remain, vec3{radius, radius, radius});
         }
 
         auto hiddenLook() -> scene::actor::MeshState::Quantum {
@@ -333,30 +342,42 @@ namespace eltanin::locality {
             state->heat.x = look.heat.x;
         }
 
-        auto flashWarhead(float strength) -> Flash::Effect {
-            const float radius = classSpan(strength);
-            const float duration = radius / phys::Settings::Explosions::frontSpeed;
-            return Flash::Effect{
-                .kinetic = {.strength = phys::Settings::Explosions::kineticPascal * strength, .radius = radius, .core = phys::Settings::Explosions::kineticCore * strength, .duration = seconds{duration}},
+        auto effectFromChannels(Flash::Channels channels) -> Flash::Effect {
+            Flash::Effect effect{
+                .kinetic = {.strength = 0.0f, .radius = 0.0f, .core = 0.0f, .duration = seconds{}},
                 .thermal = {.temperature = 0.0f, .energy = 0.0f, .radius = 0.0f, .duration = seconds{}},
                 .brisance = {.yield = 0.0f, .radius = 0.0f, .duration = seconds{}},
             };
-        }
-
-        auto flashPlasma(float strength) -> Flash::Effect {
-            return Flash::Effect{
-                .kinetic = {.strength = 0.0f, .radius = 0.0f, .core = 0.0f, .duration = seconds{}},
-                .thermal = {.temperature = phys::Settings::Explosions::thermalKelvin0 + phys::Settings::Explosions::thermalKelvinPer * strength, .energy = 0.0f, .radius = phys::Settings::Explosions::thermalMeters * strength, .duration = phys::Settings::Explosions::thermalDuration},
-                .brisance = {.yield = 0.0f, .radius = 0.0f, .duration = seconds{}},
-            };
-        }
-
-        auto flashBrisance(float strength) -> Flash::Effect {
-            return Flash::Effect{
-                .kinetic = {.strength = 0.0f, .radius = 0.0f, .core = 0.0f, .duration = seconds{}},
-                .thermal = {.temperature = 0.0f, .energy = 0.0f, .radius = 0.0f, .duration = seconds{}},
-                .brisance = {.yield = phys::Settings::Explosions::brisanceYield * strength, .radius = classSpan(strength) * phys::Settings::Explosions::brisanceRadius, .duration = phys::Settings::Explosions::brisanceDuration},
-            };
+            if (channels.kinetic > 0.0f) {
+                const float radius = channels.kinetic;
+                const float klass = classOfSpan(radius, phys::Settings::Explosions::kineticMeters);
+                effect.kinetic = {
+                    .strength = phys::Settings::Explosions::kineticPascal * klass,
+                    .radius = radius,
+                    .core = phys::Settings::Explosions::kineticCore * klass,
+                    .duration = seconds{radius / phys::Settings::Explosions::frontSpeed},
+                };
+            }
+            if (channels.thermal > 0.0f) {
+                const float radius = channels.thermal;
+                const float klass = classOfLinear(radius, phys::Settings::Explosions::thermalMeters);
+                effect.thermal = {
+                    .temperature = phys::Settings::Explosions::thermalKelvin0 + phys::Settings::Explosions::thermalKelvinPer * klass,
+                    .energy = 0.0f,
+                    .radius = radius,
+                    .duration = phys::Settings::Explosions::thermalDuration,
+                };
+            }
+            if (channels.brisance > 0.0f) {
+                const float radius = channels.brisance;
+                const float klass = classOfSpan(radius, phys::Settings::Explosions::kineticMeters * phys::Settings::Explosions::brisanceRadius);
+                effect.brisance = {
+                    .yield = phys::Settings::Explosions::brisanceYield * klass,
+                    .radius = radius,
+                    .duration = phys::Settings::Explosions::brisanceDuration,
+                };
+            }
+            return effect;
         }
 
         auto spawnSphere(Writing context, scene::Root::Id scene, vec3 position, resource::geometry::Asset::Id sphere, resource::material::Asset::Id material, scene::actor::MeshState::Quantum look) -> scene::actor::Mesh::Id {
@@ -411,22 +432,10 @@ namespace eltanin::locality {
         with<Flash>::modify_global(context)->resources = Resources{.sphere = *sphere, .flash = *flash, .flashGlow = *flashGlow, .brisance = *brisance};
     }
 
-    auto Flash::Actions::spawnAsExplosion(Writing context, vec3 position, vec3 linear, float strength) -> Id {
-        if (strength <= 0.0f)
-            return context.refuse("eltanin::locality::Flash::spawnAsExplosion: strength must be positive");
-        return spawnFlash(context, position, linear, flashWarhead(strength));
-    }
-
-    auto Flash::Actions::spawnAsThermal(Writing context, vec3 position, vec3 linear, float strength) -> Id {
-        if (strength <= 0.0f)
-            return context.refuse("eltanin::locality::Flash::spawnAsThermal: strength must be positive");
-        return spawnFlash(context, position, linear, flashPlasma(strength));
-    }
-
-    auto Flash::Actions::spawnAsBrisance(Writing context, vec3 position, vec3 linear, float strength) -> Id {
-        if (strength <= 0.0f)
-            return context.refuse("eltanin::locality::Flash::spawnAsBrisance: strength must be positive");
-        return spawnFlash(context, position, linear, flashBrisance(strength));
+    auto Flash::Actions::spawn(Writing context, vec3 position, vec3 linear, Channels channels) -> Id {
+        if (channels.kinetic <= 0.0f and channels.thermal <= 0.0f and channels.brisance <= 0.0f)
+            return context.refuse("eltanin::locality::Flash::spawn: at least one channel must be positive");
+        return spawnFlash(context, position, linear, effectFromChannels(channels));
     }
 
     void Flash::Actions::update(Writing context) {

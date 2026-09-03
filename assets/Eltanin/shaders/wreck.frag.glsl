@@ -95,6 +95,15 @@ void main() {
     uvec2 drawMetadata = metadata[v_drawId];
     uint surface = primitiveSurfaces[drawMetadata.x + uint(gl_PrimitiveID)];
     uint layer = surfacePalette[drawMetadata.y + surface];
+    // Life/opacity vs damage_mask: holes by level (like hull cohesion), survivors blend by life.
+    float keep = actorAlbedoOpacity.a;
+    if (actorHeat.w >= 0.0) {
+        float mask = texture(u_albedoMap, vec3(v_uv0, actorHeat.w)).r;
+        float edge = keep - mask;
+        if (edge <= 0.0)
+            discard;
+        keep *= smoothstep(0.0, 0.06, edge);
+    }
     vec3 baseColor = texture(u_albedoMap, vec3(v_uv0, float(layer))).rgb * actorAlbedoOpacity.rgb;
 
     float kelvin = max(v_heat, 0.0);
@@ -114,6 +123,6 @@ void main() {
     vec3 direct = baseColor * passPrimaryLightColorRange.rgb * ndotl * shadow * (lightGain / (1.0 + lightGain));
     vec3 emissive = hot * glow * (2.4 + 5.5 * melt);
 
-    FragColor = vec4(ambient + direct + emissive, 1.0);
-    BloomMask = glow * (0.35 + 0.65 * melt);
+    FragColor = vec4(ambient + direct + emissive, keep);
+    BloomMask = glow * (0.35 + 0.65 * melt) * keep;
 }

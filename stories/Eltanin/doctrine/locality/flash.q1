@@ -17,9 +17,9 @@ namespace eltanin
         brisance: #rmmr::resource::material::Asset
       struct Effect
         struct Kinetic
-          strength: float // overpressure Pa at atten 1; spawn class is mapped in C++
+          strength: float // overpressure Pa at atten 1; derived from channel meters
           radius: float
-          core: float // visual seed; 0.1 m at class 10
+          core: float // visual seed; scaled from channel meters
           duration: seconds // front speed = radius/duration; no extra class→speed curve
         struct Thermal
           temperature: Kelvins
@@ -27,12 +27,16 @@ namespace eltanin
           radius: float
           duration: seconds
         struct Brisance
-          yield: float // cohesion wound; class 10 matches the old kinetic cohesion shell
+          yield: float // cohesion wound; scaled from channel meters
           radius: float
-          duration: seconds // 0.2 s at class 10
+          duration: seconds
         kinetic: Kinetic
         thermal: Thermal
         brisance: Brisance
+      struct Channels
+        kinetic: float // meters of kinetic radius; 0 = off
+        thermal: float // meters of plasma radius; 0 = off
+        brisance: float // meters of brisance radius; 0 = off
       one
         effect: Effect
         shock: custody<rmmr::scene::actor::Mesh>
@@ -44,7 +48,5 @@ namespace eltanin
         resources: Resources?
         >bindResources()
         >update()
-        >spawnAsExplosion(position: vec3, linear: vec3, strength: float)-># // kinetic only; 1 = sailor at the navel, 10 = half a frigate if inside
-        >spawnAsThermal(position: vec3, linear: vec3, strength: float)-># // heat only; 10 = same class, no shock
-        >spawnAsBrisance(position: vec3, linear: vec3, strength: float)-># // cohesion only; 10 = same wound as the bang
+        >spawn(position: vec3, linear: vec3, channels: Channels)-># // one Flash; channel values are meters
         *apply(~phys::rigid::Crystal, ~phys::rigid::Solid) // kinetic and brisance also reach decorations::Dust during the wave

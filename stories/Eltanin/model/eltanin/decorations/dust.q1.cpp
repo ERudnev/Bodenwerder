@@ -5,7 +5,9 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -69,13 +71,25 @@ namespace eltanin::decorations {
             const auto& resources = with<Dust>::get_global(context).resources;
             if (not resources)
                 return context.refuse("eltanin::decorations::Dust::spawn: resources not bound");
-            const auto material = kind == Dust::Kind::kinetic ? resources->fade : resources->glow;
-            auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, resources->scrap, material);
+            if (kind == Dust::Kind::thermal) {
+                auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, resources->scrap, resources->glow);
+                if (not meshQuantum)
+                    return context.refuse("eltanin::decorations::Dust::spawn: mesh compose failed");
+                const vec3 scale{half.x * 2.0f, half.y * 2.0f, half.z * 2.0f};
+                return with<rmmr::scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, scale));
+            }
+            const auto& geometry = with<rmmr::resource::geometry::Asset>::get(context, resources->scrap);
+            if (geometry.entries.empty() or geometry.surfaceCatalogs.empty())
+                return context.refuse("eltanin::decorations::Dust::spawn: scrap has no entry");
+            const auto& catalog = geometry.surfaceCatalogs.front();
+            umap<rmmr::resource::geometry::SurfaceId, rmmr::resource::material::Instance> surfaces;
+            for (const auto& [_, surface] : catalog)
+                surfaces.emplace(surface, rmmr::resource::material::Instance{.material = resources->wreck, .textures = {{"albedoMap", "wreckage_experimental.jpg"}}});
+            auto meshQuantum = with<rmmr::scene::actor::Mesh>::compose(context, rmmr::resource::meshpack::Asset::Resolved{.geometry = resources->scrap, .entry = rmmr::resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = resources->mech});
             if (not meshQuantum)
                 return context.refuse("eltanin::decorations::Dust::spawn: mesh compose failed");
             const vec3 scale{half.x * 2.0f, half.y * 2.0f, half.z * 2.0f};
-            const RGB albedo = kind == Dust::Kind::kinetic ? RGB{0.55f, 0.52f, 0.48f} : RGB{1.0f, 1.0f, 1.0f};
-            return with<rmmr::scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), with<rmmr::scene::actor::MeshState>::defaults(albedo, 1.0f, scale));
+            return with<rmmr::scene::Interface>::createMeshActor(context, scene, pose, std::move(*meshQuantum), with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, scale));
         }
 
         void dropActor(Writing context, Dust::Id id) {
@@ -101,12 +115,17 @@ namespace eltanin::decorations {
             context.refuse("eltanin::decorations::Dust::bindResources: dust material missing");
             return;
         }
-        const auto fade = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "type"));
-        if (not fade) {
-            context.refuse("eltanin::decorations::Dust::bindResources: type material missing");
+        const auto wreck = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "dustWreck"));
+        if (not wreck) {
+            context.refuse("eltanin::decorations::Dust::bindResources: dustWreck material missing");
             return;
         }
-        with<Dust>::modify_global(context)->resources = Resources{.scrap = *scrap, .glow = *glow, .fade = *fade};
+        const auto mech = with<rmmr::resource::Assets>::find<rmmr::resource::texpack::Pack>(context, rmmr::resource::Unit::Name::from("Eltanin", "mech"));
+        if (not mech) {
+            context.refuse("eltanin::decorations::Dust::bindResources: mech texpack missing");
+            return;
+        }
+        with<Dust>::modify_global(context)->resources = Resources{.scrap = *scrap, .glow = *glow, .wreck = *wreck, .mech = *mech};
     }
 
     void Dust::Actions::update(Writing context, seconds dt) {

@@ -24,9 +24,12 @@ void main() {
     vec3 cam = vec3(inverse(passView)[3]);
     vec3 V = normalize(cam - v_worldPos);
     float chord = clamp(abs(dot(N, V)), 0.0, 1.0);
-    float density = chord * chord;
+    // Soft shell: bright limb of the expanding deformation front, faint face.
+    float shell = pow(max(1.0 - chord, 0.0), 1.35);
+    float face = chord * chord * 0.18;
+    float density = clamp(shell + face, 0.0, 1.0);
     float fade = clamp(v_fade, 0.0, 1.0);
-    vec3 rgb = v_albedo * density * fade;
-    FragColor = vec4(rgb, 1.0);
+    float alpha = density * fade;
+    FragColor = vec4(v_albedo, alpha);
     BloomMask = 0.0;
 }

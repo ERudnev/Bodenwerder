@@ -5,6 +5,7 @@
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -17,7 +18,8 @@ namespace eltanin::decorations {
         struct Resources {
             rmmr::resource::geometry::Asset::Id scrap;
             rmmr::resource::material::Asset::Id glow;
-            rmmr::resource::material::Asset::Id fade;
+            rmmr::resource::material::Asset::Id wreck;
+            rmmr::resource::texpack::Pack::Id mech;
         };
         enum class Kind {
             thermal,
