@@ -758,11 +758,9 @@ namespace eltanin::phys::collision {
             auto* solid = solids.items.find(contact.a.body);
             if (not body or not solid)
                 return;
-            body->position -= dvec3{contact.normal * remaining};
-            solid->center.position = body->position;
+            verlet::halfKick(solid->center, -contact.normal * remaining);
+            body->position = solid->center.position;
             const float live = solidCrystalLive(glm::max(0.0f, contact.relativeNormalSpeed));
-            const vec3 otherVelocity = velocityOf(contact.b.body, contact.b.type, bodies, solids, crystals);
-            bounceSolid(*body, *solid, contact.normal, glm::dot(otherVelocity, contact.normal) * float(Settings::fixedStep), live);
             frictionSolidCrystal(contact, remaining, live, *body, *solid, bodies, solids, crystals);
             auto* crystal = crystals.items.find(contact.b.body);
             auto* crystalBody = bodies.items.find(contact.b.body);
@@ -1226,7 +1224,6 @@ namespace eltanin::phys::collision {
                 auto* crystalBody = bodies.items.find(other);
                 if (crystal and crystalBody) {
                     kickFaceSupports(*crystal, *crystalBody, face, point, -normal * (j * float(Settings::fixedStep) / ray.core.mass), ray.core.mass);
-                    scarFace(*crystal, face, glm::length(vec3{verletVelocity(ray.core) * double(ray.core.mass)}));
                 }
             }
             const vec3 vNew = vRay + normal * (j * invRay);

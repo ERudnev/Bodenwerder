@@ -21,7 +21,10 @@ namespace eltanin::mech {
             vector<Welded> loop;
             float thickness;
         };
-        umap<Primitive::Id, Primitive> knots;
+        struct Knot : Primitive {
+            vector<integer> welded;
+        };
+        umap<Primitive::Id, Knot> knots;
         umap<Primitive::Id, Primitive> ribs;
         umap<Primitive::Id, Primitive> membranes;
         umap<Primitive::Id, Primitive> plates;

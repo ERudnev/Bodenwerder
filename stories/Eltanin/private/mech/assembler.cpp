@@ -255,7 +255,7 @@ namespace eltanin::mech {
                     auto found = knotsAt.find(grid);
                     if (found == knotsAt.end()) {
                         const auto id = takeId();
-                        construction.knots.emplace(id, primitiveOn({grid}, physical::knotQuarkMass.at(corner.kind), physical::knotShell, weldUnit));
+                        construction.knots.emplace(id, Construction::Knot{primitiveOn({grid}, physical::knotQuarkMass.at(corner.kind), physical::knotShell, weldUnit), {}});
                         found = knotsAt.emplace(grid, id).first;
                     } else {
                         addMass(construction.knots.at(found->second), physical::knotQuarkMass.at(corner.kind));

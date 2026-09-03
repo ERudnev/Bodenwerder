@@ -13,7 +13,9 @@ namespace eltanin
           strength: float
         loop: vector<Welded>
         thickness: float
-      knots: umap<Primitive::Id, Primitive>
+      struct Knot of Primitive
+        welded: vector<integer> // Crystal / evaluatedParticles indices at this gridPos; bound in compileParticles
+      knots: umap<Primitive::Id, Knot>
       ribs: umap<Primitive::Id, Primitive>
       membranes: umap<Primitive::Id, Primitive>
       plates: umap<Primitive::Id, Primitive>

@@ -1,5 +1,6 @@
 #include "physics/system.h"
 #include "physics/collisions.h"
+#include "physics/construct.h"
 
 #include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/flash.q1.h>
@@ -220,6 +221,16 @@ namespace eltanin::phys {
         collisions.traceRays(context);
     }
 
+    void System::applyConstructIntegrity(Stewarding context) {
+        auto crystals = context.direct<rigid::Crystal>();
+        for (auto [_, construct] : context.direct<locality::Construct>().items) {
+            auto* crystal = crystals.items.find(construct.body);
+            if (not crystal)
+                continue;
+            reconcile(construct.construction, *crystal);
+        }
+    }
+
     void System::applyConstraintWishes(Stewarding context) {
         with<rigid::Crystal>::applyRestored(context);
     }
@@ -231,6 +242,7 @@ namespace eltanin::phys {
         integrateRays(context.direct<Body>(), context.direct<rigid::Ray>());
         restoreBases(context);
         applyConnectivity(context);
+        applyConstructIntegrity(context);
         restoreBases(context);
         applyConstraintWishes(context);
     }

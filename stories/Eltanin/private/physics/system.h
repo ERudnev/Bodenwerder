@@ -16,7 +16,7 @@ namespace eltanin::phys {
 
     // Private physics subsystem (not Q1).
     // Fixed tick Settings::fixedStep; frame dt accumulates as seconds debt. Same clock as Thing.now.
-    // One pass: accumulate forces → Verlet → Horn (query pose) → connectivity → Horn (absorb kicks) → pull to shape.
+    // One pass: accumulate forces → Verlet → Horn → connectivity → Construction/Crystal reconcile → Horn → pull to shape.
     // After the last tick of this Dock: Thing::followBodies copies Body pose onto Node (missing ward → skip).
     // One Dock per tick; hot mutation via Stewarding::direct<Body>() and direct<rigid::Crystal>() / direct<rigid::Solid>().
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.
@@ -43,6 +43,7 @@ namespace eltanin::phys {
         void integrateRays(fqsm::Direct<Body>, fqsm::Direct<rigid::Ray>);
         void restoreBases(Stewarding);
         void applyConnectivity(Stewarding);
+        void applyConstructIntegrity(Stewarding);
         void applyConstraintWishes(Stewarding);
         void radiate(Stewarding);
     };

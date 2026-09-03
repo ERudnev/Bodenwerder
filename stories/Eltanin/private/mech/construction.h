@@ -31,14 +31,16 @@ namespace eltanin::mech {
         }
     }
 
+    void bindKnotWelds(Construction&);
+    auto cookHull(const Construction&, const vector<vec3>& shape) -> phys::rigid::Hull;
+
     inline void compileParticles(Construction& construction) {
         construction.evaluatedParticles.clear();
         forEachPrimitiveLoop(construction, [&](Construction::Primitive::Id, const Construction::Primitive& primitive) {
             for (const auto& welded : primitive.loop)
                 construction.evaluatedParticles.push_back(Construction::Primitive::Point{.gridPos = welded.gridPos, .mass = welded.mass});
         });
+        bindKnotWelds(construction);
     }
-
-    auto cookHull(const Construction&, const vector<vec3>& shape) -> phys::rigid::Hull;
 
 }

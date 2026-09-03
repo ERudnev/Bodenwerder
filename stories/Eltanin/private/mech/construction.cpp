@@ -1,5 +1,6 @@
 #include "mech/construction.h"
 
+#include <map>
 #include <set>
 
 #include <glm/geometric.hpp>
@@ -155,6 +156,22 @@ namespace eltanin::mech {
             pushPolygon(primitive, points);
         });
         return hull;
+    }
+
+    void bindKnotWelds(Construction& construction) {
+        std::map<index3, Construction::Knot*, LatticeLess> at;
+        for (auto& [_, knot] : construction.knots) {
+            knot.welded.clear();
+            if (knot.loop.empty())
+                continue;
+            at.emplace(knot.loop[0].gridPos, &knot);
+        }
+        for (std::size_t index = 0; index < construction.evaluatedParticles.size(); ++index) {
+            auto found = at.find(construction.evaluatedParticles[index].gridPos);
+            if (found == at.end())
+                continue;
+            found->second->welded.push_back(static_cast<integer>(index));
+        }
     }
 
 }
