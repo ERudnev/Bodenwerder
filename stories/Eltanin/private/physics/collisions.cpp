@@ -1,6 +1,7 @@
 #include "physics/collisions.h"
 #include "physics/hullBvh.h"
 #include "physics/system.h"
+#include "physics/verlet.h"
 
 #include <base/logging.h>
 
@@ -146,16 +147,6 @@ namespace eltanin::phys::collision {
             return mass > 0.0f ? 1.0f / mass : 0.0f;
         }
 
-        void moveParticle(Particle& particle, vec3 delta) {
-            particle.position += dvec3{delta};
-        }
-
-        void moveVertex(Crystal::Quantum& crystal, integer vertexIndex, vec3 delta) {
-            if (vertexIndex < 0 or static_cast<std::size_t>(vertexIndex) >= crystal.particles.size())
-                return;
-            moveParticle(crystal.particles[static_cast<std::size_t>(vertexIndex)], delta);
-        }
-
         auto triangleWeights(vec3 point, vec3 cornerA, vec3 cornerB, vec3 cornerC) -> vec3 {
             const vec3 n = glm::cross(cornerB - cornerA, cornerC - cornerA);
             const float area2 = glm::dot(n, n);
@@ -209,7 +200,7 @@ namespace eltanin::phys::collision {
                 return;
             for (std::size_t index = 0; index < used; ++index) {
                 Particle& particle = crystal.particles[static_cast<std::size_t>(ids[index])];
-                moveParticle(particle, recoil * (solidMass * (weights[index] / sum) / particle.mass));
+                verlet::kick(particle, recoil * (solidMass * (weights[index] / sum) / particle.mass));
             }
         }
 
@@ -807,7 +798,7 @@ namespace eltanin::phys::collision {
             if (contact.a.face < 0 or static_cast<std::size_t>(contact.a.face) >= particleCrystal->particles.size())
                 return;
             Particle& particle = particleCrystal->particles[static_cast<std::size_t>(contact.a.face)];
-            moveParticle(particle, -contact.normal * remaining);
+            verlet::halfKick(particle, -contact.normal * remaining);
             if (contact.relativeNormalSpeed <= 0.0f)
                 return;
             const float mass = particle.mass;
