@@ -358,8 +358,8 @@ namespace eltanin {
         };
         const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved);
 
-        const Pos cameraPos{0.0f, 55.0f, 200.0f};
-        const Pos cameraTarget{0.0f, 0.0f, 0.0f};
+        const Pos cameraTarget{0.0f, 0.0f, 50.0f};
+        const Pos cameraPos = cameraTarget + glm::normalize(vec3{0.0f, 0.35f, -1.0f}) * 100.0f; // above-behind (−Z → +Z), 100 m
         const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
         const auto camera = with<scene::Interface>::createCamera(context, root, cameraPose, 100.0f * std::numbers::pi_v<float> / 180.0f);
         {
@@ -373,6 +373,7 @@ namespace eltanin {
 
         bindGameEntities(context);
         scenario.populate(context, window);
+        ui.assembler.spawnVel = vec3{0.0f, 0.0f, 10.0f}; // temporary: +Z approach toward ice asteroid
 
         {
             auto world = with<World>::modify_global(context);

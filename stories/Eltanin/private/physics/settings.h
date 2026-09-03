@@ -55,7 +55,7 @@ namespace eltanin::phys {
         static constexpr float solidLiveSpeed = 0.1f; // m/s; Solid↔Crystal — soft fade of restitution and spin below this closing speed
         static constexpr seconds fixedStep = 0.01;
         static constexpr seconds thermalStep = 0.05; // 20 Hz; Construct heats already uploaded every fixedStep via followBody
-        static inline DebrisCohort debrisCohort = DebrisCohort::unified;
+        static inline DebrisCohort debrisCohort = DebrisCohort::individual;
     };
 
 }

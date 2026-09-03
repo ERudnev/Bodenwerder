@@ -1,6 +1,6 @@
 #include "scenarios/asterField.h"
 
-#include <eltanin/locality/flash.q1.h>
+#include <eltanin/locality/geo/rock.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -86,12 +86,18 @@ namespace eltanin::scenario {
         assets.crust = crustId;
     }
 
-    void AsterField::populate(Writing context, rmmr::system::Device::Id) {
-        with<locality::Flash>::spawn(context, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f}, locality::Flash::Channels{
-            .kinetic = 2.0f,
-            .thermal = 1.0f,
-            .brisance = 4.0f,
-        });
+    void AsterField::populate(Writing context, rmmr::system::Device::Id device) {
+        // Temporary: flash spawn parked.
+        // with<locality::Flash>::spawn(context, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f}, locality::Flash::Channels{.kinetic = 40.0f, .thermal = 20.0f, .brisance = 80.0f, });
+        const locality::geo::GeneralizedRecipe iceAsteroid{
+            .mix = locality::geo::GeneralizedRecipe::homogenous(0), // Ice
+            .radius = 40.0f,
+            .lump = 0.18f, // high sphericity, not a perfect ball
+            .seed = 77,
+            .spotMeters = 16.0f,
+            .spotContrast = 0.0f,
+        };
+        (void)with<locality::geo::Rock>::spawnGenerated(context, device, Pose::from(Pos{0.0f, 0.0f, 100.0f}, HPB{0.0f, 0.0f, 0.0f}), iceAsteroid, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
     }
 
 }
