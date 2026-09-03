@@ -413,6 +413,24 @@ namespace eltanin::phys::collision {
             localClosest = face.twoSided ? projected + side * shell : projected;
             return true;
         }
+        if (not face.twoSided) {
+            // Outside the triangle: still seal the solid (no tunnel through edges), but separate along face normal only — never slide onto the silhouette.
+            if (planeDistance >= 0.0f)
+                return false;
+            localClosest = closestOnSegment(localPoint, vertices[count - 1], vertices[0]);
+            float bestDist2 = glm::dot(localPoint - localClosest, localPoint - localClosest);
+            for (std::size_t index = 0; index + 1 < count; ++index) {
+                const vec3 candidate = closestOnSegment(localPoint, vertices[index], vertices[index + 1]);
+                const vec3 delta = localPoint - candidate;
+                const float dist2 = glm::dot(delta, delta);
+                if (dist2 >= bestDist2)
+                    continue;
+                bestDist2 = dist2;
+                localClosest = candidate;
+            }
+            localOutward = normal;
+            return true;
+        }
         localClosest = closestOnSegment(localPoint, vertices[count - 1], vertices[0]);
         float bestDist2 = glm::dot(localPoint - localClosest, localPoint - localClosest);
         for (std::size_t index = 0; index + 1 < count; ++index) {
@@ -424,9 +442,8 @@ namespace eltanin::phys::collision {
             bestDist2 = dist2;
             localClosest = candidate;
         }
-        localOutward = face.twoSided ? unitOrFallback(localPoint - localClosest, side) : normal;
-        if (face.twoSided)
-            localClosest += localOutward * shell;
+        localOutward = unitOrFallback(localPoint - localClosest, side);
+        localClosest += localOutward * shell;
         return true;
     }
 

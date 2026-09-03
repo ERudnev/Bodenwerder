@@ -56,6 +56,7 @@ namespace eltanin::phys {
         static constexpr seconds fixedStep = 0.01;
         static constexpr seconds thermalStep = 0.05; // 20 Hz; Construct heats already uploaded every fixedStep via followBody
         static inline DebrisCohort debrisCohort = DebrisCohort::individual;
+        static inline bool constructCollisionWounds = true; // scarFace → Construct cohesion / shed; Flash unchanged
     };
 
 }

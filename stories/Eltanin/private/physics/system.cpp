@@ -254,6 +254,9 @@ namespace eltanin::phys {
         if (not with<scene::Root>::exists(session, scene))
             return;
         bool ticked = false;
+        const seconds maxDebt = Settings::fixedStep * 10;
+        if (debt > maxDebt)
+            debt = maxDebt;
         while (debt >= Settings::fixedStep) {
             tick(session);
             debt -= Settings::fixedStep;

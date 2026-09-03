@@ -43,7 +43,7 @@ namespace eltanin::phys::rigid {
             return mass > 0.0 ? moment / mass : dvec3{0.0, 0.0, 0.0};
         }
 
-        // goal = origin + R·shape; position += k·(goal−position). Same delta on prev so projection does not invent Verlet velocity.
+        // goal = origin + R·shape; position += k·(goal−position). Experiment: current only (invents Verlet Δv toward the shape).
         void pullToShape(Crystal::Quantum& crystal, dvec3 origin, quat rotation) {
             const double k = double(Settings::constraintStiffness);
             for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
@@ -51,7 +51,6 @@ namespace eltanin::phys::rigid {
                 const dvec3 goal = origin + dvec3{rotation * crystal.shape[index]};
                 const dvec3 correction = (goal - particle.position) * k;
                 particle.position += correction;
-                particle.prev += correction;
             }
         }
 

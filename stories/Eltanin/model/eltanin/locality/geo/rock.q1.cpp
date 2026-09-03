@@ -251,6 +251,7 @@ namespace eltanin::locality::geo {
         }
 
         auto triangleFace(integer a, integer b, integer c, const vector<vec3>& shape, vec3 inside) -> phys::rigid::Hull::Face {
+            // Outer shell only: one-sided planes, normal away from volume interior (COM). thickness = far-wall reject slab, not a second surface.
             const vec3 ab = shape[static_cast<std::size_t>(b)] - shape[static_cast<std::size_t>(a)];
             const vec3 ac = shape[static_cast<std::size_t>(c)] - shape[static_cast<std::size_t>(a)];
             vec3 normal = glm::cross(ab, ac);

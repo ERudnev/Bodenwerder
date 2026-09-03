@@ -364,6 +364,10 @@ namespace eltanin::phys {
                 }
 
                 ImGui::Separator();
+                ImGui::TextUnformatted("Construct");
+                ImGui::Checkbox("Collision wounds", &Settings::constructCollisionWounds);
+
+                ImGui::Separator();
                 ImGui::TextUnformatted("Location");
                 if (with<rmmr::scene::Root>::exists(context, system.scene)) {
                     auto root = with<rmmr::scene::Root>::modify(context, system.scene);

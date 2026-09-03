@@ -22,7 +22,7 @@ namespace eltanin::phys::collision {
 
         constexpr float minLength = 1.0e-8f;
         constexpr float solidFriction = 0.8f;
-        constexpr float solidRestitution = 0.6f; // rigid primitives only; Crystal particles stay e≈0 positional kicks
+        constexpr float solidRestitution = 0.6f; // rigid primitives only; Crystal particles stay e≈0 positional moves
         constexpr float rayRestitution = 0.45f;
         constexpr float rayPierceBegin = 200.0f;
         constexpr float rayPierceFull = 800.0f;
@@ -146,14 +146,14 @@ namespace eltanin::phys::collision {
             return mass > 0.0f ? 1.0f / mass : 0.0f;
         }
 
-        void kickParticle(Particle& particle, vec3 delta) {
+        void moveParticle(Particle& particle, vec3 delta) {
             particle.position += dvec3{delta};
         }
 
-        void kickVertex(Crystal::Quantum& crystal, integer vertexIndex, vec3 delta) {
+        void moveVertex(Crystal::Quantum& crystal, integer vertexIndex, vec3 delta) {
             if (vertexIndex < 0 or static_cast<std::size_t>(vertexIndex) >= crystal.particles.size())
                 return;
-            kickParticle(crystal.particles[static_cast<std::size_t>(vertexIndex)], delta);
+            moveParticle(crystal.particles[static_cast<std::size_t>(vertexIndex)], delta);
         }
 
         auto triangleWeights(vec3 point, vec3 cornerA, vec3 cornerB, vec3 cornerC) -> vec3 {
@@ -209,11 +209,13 @@ namespace eltanin::phys::collision {
                 return;
             for (std::size_t index = 0; index < used; ++index) {
                 Particle& particle = crystal.particles[static_cast<std::size_t>(ids[index])];
-                kickParticle(particle, recoil * (solidMass * (weights[index] / sum) / particle.mass));
+                moveParticle(particle, recoil * (solidMass * (weights[index] / sum) / particle.mass));
             }
         }
 
         void scarFace(Crystal::Quantum& crystal, integer faceIndex, float impulseMag) {
+            if (not Settings::constructCollisionWounds)
+                return;
             if (impulseMag <= 0.0f or Settings::Cohesion::wound <= 0.0f or faceIndex < 0 or static_cast<std::size_t>(faceIndex) >= crystal.hull.faces.size())
                 return;
             const auto& face = crystal.hull.faces[static_cast<std::size_t>(faceIndex)];
@@ -600,11 +602,16 @@ namespace eltanin::phys::collision {
             if (particleCrystal->particles.empty() or particleCrystal->particles.size() != particleCrystal->shape.size())
                 return;
             const vec3 shapeVelocity = velocityOf(shapeSide.body, shapeSide.type, bodies, solids, crystals);
+            const float cull = shapeSide.radius;
+            const float cull2 = cull * cull;
             for (std::size_t vertexIndex = firstSurfaceVertex(*particleCrystal); vertexIndex < particleCrystal->particles.size(); ++vertexIndex) {
                 integer faceIndex = -1;
                 vec3 closest;
                 vec3 outward;
                 const vec3 vertex = vec3{particleCrystal->particles[vertexIndex].position};
+                const vec3 toShape = vertex - shapeSide.center;
+                if (glm::dot(toShape, toShape) > cull2)
+                    continue;
                 const float depth = nearestSurface(*shapeBody, *shapeCrystal, vertex, 0.0f, faceIndex, closest, outward);
                 if (depth <= 0.0f)
                     continue;
@@ -797,12 +804,13 @@ namespace eltanin::phys::collision {
             auto* particleCrystal = crystals.items.find(contact.a.body);
             if (not particleCrystal)
                 return;
-            kickVertex(*particleCrystal, contact.a.face, -contact.normal * remaining);
-            if (contact.relativeNormalSpeed <= 0.0f)
-                return;
             if (contact.a.face < 0 or static_cast<std::size_t>(contact.a.face) >= particleCrystal->particles.size())
                 return;
-            const float mass = particleCrystal->particles[static_cast<std::size_t>(contact.a.face)].mass;
+            Particle& particle = particleCrystal->particles[static_cast<std::size_t>(contact.a.face)];
+            moveParticle(particle, -contact.normal * remaining);
+            if (contact.relativeNormalSpeed <= 0.0f)
+                return;
+            const float mass = particle.mass;
             if (mass <= 0.0f)
                 return;
             auto* shapeCrystal = crystals.items.find(contact.b.body);
