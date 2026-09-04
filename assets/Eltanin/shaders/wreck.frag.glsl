@@ -95,8 +95,10 @@ void main() {
     uvec2 drawMetadata = metadata[v_drawId];
     uint surface = primitiveSurfaces[drawMetadata.x + uint(gl_PrimitiveID)];
     uint layer = surfacePalette[drawMetadata.y + surface];
-    // Life/opacity vs damage_mask: holes by level (like hull cohesion), survivors blend by life.
-    float keep = actorAlbedoOpacity.a;
+    float kelvin = max(v_heat, 0.0);
+    float melt = smoothstep(1700.0, 2100.0, kelvin);
+    // Keep = cohesion/life opacity; heat eats keep (glowing melt). Mask: below threshold discard, above fade.
+    float keep = actorAlbedoOpacity.a * (1.0 - 0.85 * smoothstep(1400.0, 2800.0, kelvin));
     if (actorHeat.w >= 0.0) {
         float mask = texture(u_albedoMap, vec3(v_uv0, actorHeat.w)).r;
         float edge = keep - mask;
@@ -106,10 +108,8 @@ void main() {
     }
     vec3 baseColor = texture(u_albedoMap, vec3(v_uv0, float(layer))).rgb * actorAlbedoOpacity.rgb;
 
-    float kelvin = max(v_heat, 0.0);
     float tint = smoothstep(800.0, 1400.0, kelvin);
     float glow = smoothstep(900.0, 1600.0, kelvin);
-    float melt = smoothstep(1700.0, 2100.0, kelvin);
     vec3 hot = blackbody(max(kelvin, 800.0));
     baseColor = mix(baseColor, mix(baseColor, hot, 0.55), tint);
 

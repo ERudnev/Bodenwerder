@@ -441,8 +441,15 @@ namespace eltanin::locality {
             const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
             const quat worldRot = glm::normalize(body.orientation * box.rotation);
             const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
+            const float keep = glm::max(chunk.cohesion, 0.25f);
             if (with<Construct>::get_global(context).debris == Construct::Debris::dust) {
-                decorations::Dust::Actions::spawnKinetic(context, rmmr::Pose{.position = worldCenter, .rotation = worldRot}, box.half, linear, vec3{0.0f, 0.0f, 0.0f});
+                const auto& constructResources = with<Construct>::get_global(context).resources;
+                vector<mech::Construction::Primitive::Id> visualOf;
+                auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construction, fragmentsOf(fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
+                if (not occurrences.empty())
+                    decorations::Dust::Actions::spawnMesh(context, body.pose(), std::move(occurrences), linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature, keep, box.half, mech::space::local::edge2meters);
+                else
+                    decorations::Dust::Actions::spawn(context, rmmr::Pose{.position = worldCenter, .rotation = worldRot}, box.half, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature, keep);
                 return;
             }
             if (chunk.temperature < phys::Settings::Heat::hullShedKelvin) {
@@ -469,9 +476,9 @@ namespace eltanin::locality {
             vector<mech::Construction::Primitive::Id> visualOf;
             auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construction, fragmentsOf(fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
             if (not occurrences.empty())
-                decorations::Dust::Actions::spawnMesh(context, body.pose(), std::move(occurrences), linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature, box.half, mech::space::local::edge2meters);
+                decorations::Dust::Actions::spawnMesh(context, body.pose(), std::move(occurrences), linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature, glm::max(chunk.cohesion, 0.25f), box.half, mech::space::local::edge2meters);
             else
-                decorations::Dust::Actions::spawn(context, rmmr::Pose{.position = worldCenter, .rotation = worldRot}, box.half, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature);
+                decorations::Dust::Actions::spawn(context, rmmr::Pose{.position = worldCenter, .rotation = worldRot}, box.half, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature, glm::max(chunk.cohesion, 0.25f));
         }
 
         auto budConstruct(Writing context, const phys::Body::Quantum& body, mech::Construction slice, Construct::ActorFragments fragments, vector<phys::Particle> particles, vector<vec3> shape) -> bool {

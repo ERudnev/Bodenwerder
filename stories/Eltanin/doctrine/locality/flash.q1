@@ -49,4 +49,4 @@ namespace eltanin
         >bindResources()
         >update()
         >spawn(position: vec3, linear: vec3, channels: Channels)-># // one Flash; channel values are meters
-        *apply(~phys::rigid::Crystal, ~phys::rigid::Solid) // kinetic and brisance also reach decorations::Dust during the wave
+        *apply(~phys::rigid::Crystal, ~phys::rigid::Solid) // kinetic, thermal, brisance also reach decorations::Dust during the wave

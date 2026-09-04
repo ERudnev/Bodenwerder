@@ -2,34 +2,31 @@ import "rmmr/math"
 import "rmmr/scene/actors/mesh"
 import "rmmr/resources/geometry"
 import "rmmr/resources/materials"
+import "rmmr/resources/texpack"
 import "physics/body"
 
 namespace eltanin
   namespace decorations
 
-    // Lost-mass vis: no Body, no Solid. Drifts. mass is for blast coupling only. Thermal: cools to 0 K over 4 s (hotter falls faster), plasma glow. Kinetic: opaque→clear fade, not salvage.
+    // Lost-mass vis: no Body, no Solid. Drifts. mass is for blast coupling only.
+    // Cohesion → wreck keep/holes (opacity vs damage_mask). Temperature → glow; heat also eats keep (melt).
     feature Dust of rmmr::scene::actor::Mesh
-      enum Kind : thermal, kinetic
       struct Resources
         scrap: #rmmr::resource::geometry::Asset
-        glow: #rmmr::resource::material::Asset
-        fade: #rmmr::resource::material::Asset
+        wreck: #rmmr::resource::material::Asset
+        mech: #rmmr::resource::texpack::Pack
       one
         linear: vec3
         omega: vec3
         temperature: Kelvins
-        bornTemperature: Kelvins
+        cohesion: float // 0..1; GPU keep; Flash brisance wounds this
         half: vec3
         mass: float // box volume × density; flash kinetic uses F/m like Solid
         life: seconds
         lifeBorn: seconds
-        kind: Kind
-        fadeFrom: float
-        fadeTo: float
       all
         resources: Resources?
         >bindResources()
         >update(dt: seconds)
-        >spawn(Pose, half: vec3, linear: vec3, omega: vec3, temperature: Kelvins)->#
-        >spawnKinetic(Pose, half: vec3, linear: vec3, omega: vec3)->#
-        >spawnMesh(Pose, vector<rmmr::scene::actor::Mesh::Occurrence>, linear: vec3, omega: vec3, temperature: Kelvins, half: vec3, latticeStep: float)->#
+        >spawn(Pose, half: vec3, linear: vec3, omega: vec3, temperature: Kelvins, cohesion: float)->#
+        >spawnMesh(Pose, vector<rmmr::scene::actor::Mesh::Occurrence>, linear: vec3, omega: vec3, temperature: Kelvins, cohesion: float, half: vec3, latticeStep: float)->#

@@ -181,18 +181,18 @@ namespace eltanin::locality {
                         if (volumeKeepRoll())
                             Scrap::Actions::spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, pieceMass, linear, omega, bornCohesion, temperature, Scrap::Lineage::terminal, cohort);
                         else
-                            decorations::Dust::Actions::spawnKinetic(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, linear, omega);
+                            decorations::Dust::Actions::spawn(context, Pose{.position = piece.center, .rotation = piece.rotation}, piece.half, linear, omega, temperature, 1.0f);
                     }
                 }
             }
         }
 
-        void spawnKineticPair(Writing context, const Box& box, vec3 linear, vec3 omega) {
+        void spawnDustPair(Writing context, const Box& box, vec3 linear, vec3 omega, phys::Kelvins temperature) {
             Box first;
             Box second;
             cutUneven(box, first, second);
-            decorations::Dust::Actions::spawnKinetic(context, Pose{.position = first.center, .rotation = first.rotation}, first.half, linear, omega);
-            decorations::Dust::Actions::spawnKinetic(context, Pose{.position = second.center, .rotation = second.rotation}, second.half, linear, omega);
+            decorations::Dust::Actions::spawn(context, Pose{.position = first.center, .rotation = first.rotation}, first.half, linear, omega, temperature, 1.0f);
+            decorations::Dust::Actions::spawn(context, Pose{.position = second.center, .rotation = second.rotation}, second.half, linear, omega, temperature, 1.0f);
         }
 
         void splitScrap(Writing context, vec3 worldCenter, quat worldRot, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, base::maybe<phys::Body::Id> cohort) {
@@ -217,10 +217,10 @@ namespace eltanin::locality {
                 vector<Chunk> quarters;
                 dichotomy(seed, mass, maxScrapCuts, quarters);
                 for (const Chunk& quarter : quarters)
-                    spawnKineticPair(context, quarter.box, linear, omega);
+                    spawnDustPair(context, quarter.box, linear, omega, temperature);
                 return;
             }
-            spawnKineticPair(context, seed, linear, omega);
+            spawnDustPair(context, seed, linear, omega, temperature);
         }
 
     }
@@ -282,7 +282,7 @@ namespace eltanin::locality {
                 burstVolume(context, seed, body.totalMass, linear, omega, solid.center.temperature, cohort);
             } else if (scrap.lineage == Lineage::terminal) {
                 Box seed{.center = worldCenter, .rotation = glm::normalize(body.orientation), .half = glm::max(solid.halfExtents, vec3{0.08f, 0.08f, 0.08f})};
-                spawnKineticPair(context, seed, linear, omega);
+                spawnDustPair(context, seed, linear, omega, solid.center.temperature);
             } else {
                 splitScrap(context, worldCenter, body.orientation, solid.halfExtents, body.totalMass, linear, omega, solid.center.cohesion, solid.center.temperature, cohort);
             }

@@ -294,7 +294,7 @@ namespace eltanin::locality {
                 solid.center.cohesion -= effect.brisance.yield * atten;
         }
 
-        void strikeDust(decorations::Dust::Quantum& dust, decorations::Dust::Id dustId, Flash::Id flashId, vec3 position, quat rotation, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float tick, float vWave, const Flash::Effect& effect) {
+        void strikeDust(decorations::Dust::Quantum& dust, decorations::Dust::Id dustId, Flash::Id flashId, vec3 position, quat rotation, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float pulse, float ambient, float tick, float vWave, const Flash::Effect& effect) {
             if (dust.mass <= 0.0f)
                 return;
             const vec3 offset = position - origin;
@@ -306,8 +306,11 @@ namespace eltanin::locality {
                 dust.linear += radial * deltaV;
                 dust.omega += boxCheatOmega(rotation, dust.half, dust.mass, radial, deltaV, vWave);
             }
+            const float soak = thermalSoak(distance, effect.thermal.radius);
+            if (soak > 0.0f)
+                dust.temperature = glm::max(dust.temperature, ambient + (effect.thermal.temperature - ambient) * pulse * soak);
             if (frontPasses(distance, effect.brisance.radius, brisanceInner, brisanceOuter))
-                dust.life -= seconds{effect.brisance.yield * atten * tick};
+                dust.cohesion = glm::max(0.0f, dust.cohesion - effect.brisance.yield * atten * tick);
         }
 
         auto lookShock(const Flash::Effect& effect, seconds elapsed) -> scene::actor::MeshState::Quantum {
@@ -523,7 +526,7 @@ namespace eltanin::locality {
                 auto* dustNode = nodes.items.find(dustId);
                 if (not dustNode)
                     continue;
-                strikeDust(dust, dustId, flashId, dustNode->pose.position, dustNode->pose.rotation, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, tick, vWave, flash.effect);
+                strikeDust(dust, dustId, flashId, dustNode->pose.position, dustNode->pose.rotation, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, pulse, ambient, tick, vWave, flash.effect);
             }
         }
     }

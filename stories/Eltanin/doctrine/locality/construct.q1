@@ -38,7 +38,7 @@ namespace eltanin
         ofVolume: vector<OfVolume>
       struct Resources
         interframe: #rmmr::resource::meshpack::Asset
-      enum Debris : scrap, dust // scrap = Solid salvage; dust = cold kinetic Dust
+      enum Debris : scrap, dust // scrap = Solid salvage; dust = wreck vis (cohesion holes + heat)
       always
         >assemble() -> all
       one
