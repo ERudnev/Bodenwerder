@@ -31,9 +31,14 @@ namespace eltanin::mech {
         }
     }
 
+    struct FrameIslands {
+        vector<vector<Construction::Primitive::Id>> islands;
+        vector<Construction::Primitive::Id> shedSkin;
+    };
+
     void bindKnotWelds(Construction&);
     auto cookHull(const Construction&, const vector<vec3>& shape) -> phys::rigid::Hull;
-    auto connectedIslands(const Construction&) -> vector<vector<Construction::Primitive::Id>>;
+    auto connectedIslands(const Construction&) -> FrameIslands;
     auto islandSpans3d(const Construction&, const vector<Construction::Primitive::Id>&) -> bool;
     auto islandIsConstruct(const Construction&, const vector<Construction::Primitive::Id>&) -> bool;
 

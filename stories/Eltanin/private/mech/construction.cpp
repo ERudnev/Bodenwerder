@@ -194,7 +194,7 @@ namespace eltanin::mech {
 
     }
 
-    auto connectedIslands(const Construction& construction) -> vector<vector<Construction::Primitive::Id>> {
+    auto connectedIslands(const Construction& construction) -> FrameIslands {
         using PrimitiveId = Construction::Primitive::Id;
         umap<PrimitiveId, PrimitiveId> parent;
         auto ensure = [&](PrimitiveId id) {
@@ -205,14 +205,6 @@ namespace eltanin::mech {
             ensure(id);
         for (const auto& [id, _] : construction.ribs)
             ensure(id);
-        for (const auto& [id, _] : construction.membranes)
-            ensure(id);
-        for (const auto& [id, _] : construction.plates)
-            ensure(id);
-        for (const auto& [id, _] : construction.volumes)
-            ensure(id);
-        if (parent.empty())
-            return {};
 
         auto findRoot = [&](auto& findRoot, PrimitiveId id) -> PrimitiveId {
             auto found = parent.find(id);
@@ -227,16 +219,23 @@ namespace eltanin::mech {
                 parent.find(right)->second = left;
         };
 
-        std::map<index3, vector<PrimitiveId>, LatticeLess> atGrid;
-        forEachPrimitiveLoop(construction, [&](PrimitiveId id, const Construction::Primitive& primitive) {
-            for (const auto& welded : primitive.loop)
-                atGrid[welded.gridPos].push_back(id);
-        });
-        for (const auto& [_, ids] : atGrid) {
-            if (ids.size() < 2)
+        std::map<index3, PrimitiveId, LatticeLess> knotAt;
+        for (const auto& [id, knot] : construction.knots) {
+            if (knot.loop.empty())
                 continue;
-            for (std::size_t index = 1; index < ids.size(); ++index)
-                unite(ids[0], ids[index]);
+            const auto grid = knot.loop[0].gridPos;
+            auto found = knotAt.find(grid);
+            if (found == knotAt.end())
+                knotAt.emplace(grid, id);
+            else
+                unite(found->second, id);
+        }
+        for (const auto& [id, rib] : construction.ribs) {
+            for (const auto& welded : rib.loop) {
+                auto found = knotAt.find(welded.gridPos);
+                if (found != knotAt.end())
+                    unite(id, found->second);
+            }
         }
 
         umap<PrimitiveId, vector<PrimitiveId>> grouped;
@@ -249,9 +248,56 @@ namespace eltanin::mech {
         }
         vector<vector<PrimitiveId>> islands;
         islands.reserve(grouped.size());
-        for (auto& [_, members] : grouped)
+        umap<PrimitiveId, std::size_t> islandOfRoot;
+        for (auto& [root, members] : grouped) {
+            islandOfRoot.emplace(root, islands.size());
             islands.push_back(std::move(members));
-        return islands;
+        }
+
+        auto hostOf = [&](const Construction::Primitive& primitive) -> integer {
+            if (primitive.loop.empty() or islandOfRoot.empty())
+                return -1;
+            integer host = -1;
+            for (const auto& welded : primitive.loop) {
+                auto knot = knotAt.find(welded.gridPos);
+                if (knot == knotAt.end())
+                    return -1;
+                auto island = islandOfRoot.find(findRoot(findRoot, knot->second));
+                if (island == islandOfRoot.end())
+                    return -1;
+                if (host < 0)
+                    host = static_cast<integer>(island->second);
+                else if (host != static_cast<integer>(island->second))
+                    return -1;
+            }
+            return host;
+        };
+        auto placeSkin = [&](PrimitiveId id, integer host, vector<PrimitiveId>& shedSkin) {
+            if (host < 0 or static_cast<std::size_t>(host) >= islands.size())
+                shedSkin.push_back(id);
+            else
+                islands[static_cast<std::size_t>(host)].push_back(id);
+        };
+
+        vector<PrimitiveId> shedSkin;
+        for (const auto& [id, primitive] : construction.membranes)
+            placeSkin(id, hostOf(primitive), shedSkin);
+        for (const auto& [id, primitive] : construction.plates)
+            placeSkin(id, hostOf(primitive), shedSkin);
+        for (const auto& [id, faces] : construction.volumes) {
+            integer host = faces.empty() ? -1 : hostOf(faces[0]);
+            if (host >= 0) {
+                for (std::size_t face = 1; face < faces.size(); ++face) {
+                    const auto other = hostOf(faces[face]);
+                    if (other != host) {
+                        host = -1;
+                        break;
+                    }
+                }
+            }
+            placeSkin(id, host, shedSkin);
+        }
+        return FrameIslands{.islands = std::move(islands), .shedSkin = std::move(shedSkin)};
     }
 
     auto islandSpans3d(const Construction& construction, const vector<Construction::Primitive::Id>& island) -> bool {

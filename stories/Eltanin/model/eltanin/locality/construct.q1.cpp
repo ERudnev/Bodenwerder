@@ -366,10 +366,10 @@ namespace eltanin::locality {
             items = std::move(live);
         }
 
-        void emitScrap(Writing context, const Construct::Quantum& construct, const phys::Body::Quantum& body, mech::Construction::Primitive::Id primitiveId, const DeadChunk& chunk) {
+        void emitScrap(Writing context, const mech::Construction& construction, const Construct::ActorFragments& fragments, const phys::Body::Quantum& body, mech::Construction::Primitive::Id primitiveId, const DeadChunk& chunk) {
             if (chunk.mass <= 0.0f or chunk.locals.empty())
                 return;
-            const auto box = scrapBox(construct.construction, primitiveId, chunk.locals, chunk.thickness, chunk.outward);
+            const auto box = scrapBox(construction, primitiveId, chunk.locals, chunk.thickness, chunk.outward);
             const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
             const quat worldRot = glm::normalize(body.orientation * box.rotation);
             const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
@@ -377,14 +377,14 @@ namespace eltanin::locality {
                 const int cuts = Scrap::Actions::cutCount(chunk.cohesion);
                 if (cuts < 0)
                     return;
-                const bool volume = construct.construction.volumes.contains(primitiveId);
+                const bool volume = construction.volumes.contains(primitiveId);
                 base::maybe<phys::Body::Id> cohort{};
                 if (phys::Settings::debrisCohort == phys::Settings::DebrisCohort::unified)
                     cohort = body.compound;
                 if (volume or cuts == 0) {
                     const auto& constructResources = with<Construct>::get_global(context).resources;
                     vector<mech::Construction::Primitive::Id> visualOf;
-                    auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construct.construction, fragmentsOf(construct.fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
+                    auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construction, fragmentsOf(fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
                     const rmmr::Pose bodyPose{.position = worldCenter, .rotation = worldRot};
                     const auto lineage = volume ? Scrap::Lineage::volume : Scrap::Lineage::common;
                     Scrap::Actions::spawnMesh(context, body.pose(), bodyPose, box.half, chunk.mass, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.cohesion, chunk.temperature, std::move(occurrences), mech::space::local::edge2meters, lineage, cohort);
@@ -395,7 +395,7 @@ namespace eltanin::locality {
             }
             const auto& constructResources = with<Construct>::get_global(context).resources;
             vector<mech::Construction::Primitive::Id> visualOf;
-            auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construct.construction, fragmentsOf(construct.fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
+            auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construction, fragmentsOf(fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
             if (not occurrences.empty())
                 decorations::Dust::Actions::spawnMesh(context, body.pose(), std::move(occurrences), linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature, box.half, mech::space::local::edge2meters);
             else
@@ -435,24 +435,34 @@ namespace eltanin::locality {
             return true;
         }
 
-        auto detachUnconnected(Writing context, Construct::Quantum& construct, phys::rigid::Crystal::Quantum& crystal) -> bool {
-            if (crystal.particles.size() != construct.construction.evaluatedParticles.size() or crystal.particles.size() != crystal.shape.size())
+        auto detachUnconnected(Writing context, Construct::Id id) -> bool {
+            if (not with<Construct>::exists(context, id))
                 return true;
-            const auto islands = mech::connectedIslands(construct.construction);
-            if (islands.empty())
+            auto construct = with<Construct>::modify(context, id);
+            if (not with<phys::rigid::Crystal>::exists(context, construct->body))
+                return true;
+            auto crystal = with<phys::rigid::Crystal>::modify(context, construct->body);
+            if (crystal->particles.size() != construct->construction.evaluatedParticles.size() or crystal->particles.size() != crystal->shape.size())
+                return true;
+            const auto frame = mech::connectedIslands(construct->construction);
+            const auto& islands = frame.islands;
+            if (islands.empty() and frame.shedSkin.empty())
                 return false;
-            if (islands.size() == 1 and mech::islandIsConstruct(construct.construction, islands[0]))
+            if (islands.size() == 1 and frame.shedSkin.empty() and mech::islandIsConstruct(construct->construction, islands[0]))
                 return true;
-            if (not with<phys::Body>::exists(context, construct.body))
+            if (not with<phys::Body>::exists(context, construct->body))
                 return true;
-            const auto& body = with<phys::Body>::get(context, construct.body);
-            const auto hurt = hurtByPrimitive(construct.construction, crystal.particles);
+            const auto construction = construct->construction;
+            const auto fragments = construct->fragments;
+            const auto body = with<phys::Body>::get(context, construct->body);
+            const auto hurt = hurtByPrimitive(construction, crystal->particles);
 
             umap<mech::Construction::Primitive::Id, std::size_t> islandOf;
             for (std::size_t index = 0; index < islands.size(); ++index) {
                 for (const auto id : islands[index])
                     islandOf.emplace(id, index);
             }
+            const auto shedOf = asKeep(frame.shedSkin);
             struct IslandMatter {
                 vector<phys::Particle> particles;
                 vector<vec3> shape;
@@ -464,48 +474,51 @@ namespace eltanin::locality {
             umap<mech::Construction::Primitive::Id, DeadChunk> pieces;
             integer cursor = 0;
             bool mismatch = false;
-            mech::forEachPrimitiveLoop(construct.construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
+            mech::forEachPrimitiveLoop(construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
                 if (mismatch)
                     return;
                 const auto islandFound = islandOf.find(primitiveId);
-                if (islandFound == islandOf.end()) {
+                const bool shed = shedOf.contains(primitiveId);
+                if (islandFound == islandOf.end() and not shed) {
                     mismatch = true;
                     return;
                 }
                 auto found = pieces.find(primitiveId);
                 if (found == pieces.end()) {
                     const auto state = hurt.find(primitiveId);
-                    const vec3 outward = construct.construction.plates.contains(primitiveId) ? plateOutward(primitive, construct.construction) : vec3{0.0f, 0.0f, 0.0f};
+                    const vec3 outward = construction.plates.contains(primitiveId) ? plateOutward(primitive, construction) : vec3{0.0f, 0.0f, 0.0f};
                     const float cohesion = state == hurt.end() ? 0.0f : state->second.cohesion;
                     const float temperature = state == hurt.end() ? 0.0f : state->second.temperature;
                     found = pieces.emplace(primitiveId, DeadChunk{.cohesion = cohesion, .temperature = temperature, .thickness = primitive.thickness, .mass = 0.0f, .momentum = dvec3{0.0, 0.0, 0.0}, .locals = {}, .outward = outward}).first;
                 }
                 found->second.thickness = glm::max(found->second.thickness, primitive.thickness);
                 auto& chunk = found->second;
-                auto& bin = matter[islandFound->second];
+                IslandMatter* bin = islandFound == islandOf.end() ? nullptr : &matter[islandFound->second];
                 for (std::size_t slot = 0; slot < primitive.loop.size(); ++slot) {
                     const auto index = static_cast<std::size_t>(cursor);
-                    if (index >= crystal.particles.size() or index >= crystal.shape.size()) {
+                    if (index >= crystal->particles.size() or index >= crystal->shape.size()) {
                         mismatch = true;
                         return;
                     }
-                    const auto& particle = crystal.particles[index];
-                    bin.particles.push_back(particle);
-                    bin.shape.push_back(crystal.shape[index]);
-                    chunk.locals.push_back(crystal.shape[index]);
+                    const auto& particle = crystal->particles[index];
+                    if (bin) {
+                        bin->particles.push_back(particle);
+                        bin->shape.push_back(crystal->shape[index]);
+                    }
+                    chunk.locals.push_back(crystal->shape[index]);
                     chunk.mass += particle.mass;
                     chunk.momentum += (particle.position - particle.prev) / phys::Settings::fixedStep * double(particle.mass);
                     ++cursor;
                 }
             });
-            if (mismatch or static_cast<std::size_t>(cursor) != crystal.particles.size())
+            if (mismatch or static_cast<std::size_t>(cursor) != crystal->particles.size())
                 return true;
 
             std::size_t keeper = islands.size();
             double bestMass = -1.0;
             std::size_t bestCount = 0;
             for (std::size_t index = 0; index < islands.size(); ++index) {
-                if (not mech::islandIsConstruct(construct.construction, islands[index]))
+                if (not mech::islandIsConstruct(construction, islands[index]))
                     continue;
                 double mass = 0.0;
                 for (const auto& particle : matter[index].particles)
@@ -518,20 +531,24 @@ namespace eltanin::locality {
                 }
             }
 
-            auto scrapIsland = [&](std::size_t index) {
-                for (const auto id : islands[index]) {
-                    auto found = pieces.find(id);
+            auto scrapIds = [&](const vector<mech::Construction::Primitive::Id>& ids) {
+                for (const auto primitiveId : ids) {
+                    auto found = pieces.find(primitiveId);
                     if (found == pieces.end())
                         continue;
-                    emitScrap(context, construct, body, id, found->second);
+                    emitScrap(context, construction, fragments, body, primitiveId, found->second);
                 }
             };
+            auto scrapIsland = [&](std::size_t index) {
+                scrapIds(islands[index]);
+            };
+            scrapIds(frame.shedSkin);
             for (std::size_t index = 0; index < islands.size(); ++index) {
                 if (index == keeper)
                     continue;
-                if (mech::islandIsConstruct(construct.construction, islands[index])) {
+                if (mech::islandIsConstruct(construction, islands[index])) {
                     const auto keep = asKeep(islands[index]);
-                    if (not budConstruct(context, body, takeConstruction(construct.construction, keep), takeFragments(construct.fragments, keep), std::move(matter[index].particles), std::move(matter[index].shape)))
+                    if (not budConstruct(context, body, takeConstruction(construction, keep), takeFragments(fragments, keep), std::move(matter[index].particles), std::move(matter[index].shape)))
                         scrapIsland(index);
                     continue;
                 }
@@ -549,36 +566,39 @@ namespace eltanin::locality {
                         it = items.erase(it);
                 }
             };
-            eraseUnkept(construct.construction.knots);
-            eraseUnkept(construct.construction.ribs);
-            eraseUnkept(construct.construction.membranes);
-            eraseUnkept(construct.construction.plates);
-            eraseUnkept(construct.construction.volumes);
-            keepMarked(construct.fragments.ofKnot, [](const auto& piece) { return piece.knot; }, keep);
-            keepMarked(construct.fragments.ofRib, [](const auto& piece) { return piece.rib; }, keep);
-            keepMarked(construct.fragments.ofMembrane, [](const auto& piece) { return piece.membrane; }, keep);
-            keepMarked(construct.fragments.ofPlate, [](const auto& piece) { return piece.plate; }, keep);
-            keepMarked(construct.fragments.ofVolume, [](const auto& piece) { return piece.volume; }, keep);
-            mech::compileParticles(construct.construction);
-            crystal.particles = std::move(matter[keeper].particles);
-            crystal.shape = std::move(matter[keeper].shape);
+            eraseUnkept(construct->construction.knots);
+            eraseUnkept(construct->construction.ribs);
+            eraseUnkept(construct->construction.membranes);
+            eraseUnkept(construct->construction.plates);
+            eraseUnkept(construct->construction.volumes);
+            keepMarked(construct->fragments.ofKnot, [](const auto& piece) { return piece.knot; }, keep);
+            keepMarked(construct->fragments.ofRib, [](const auto& piece) { return piece.rib; }, keep);
+            keepMarked(construct->fragments.ofMembrane, [](const auto& piece) { return piece.membrane; }, keep);
+            keepMarked(construct->fragments.ofPlate, [](const auto& piece) { return piece.plate; }, keep);
+            keepMarked(construct->fragments.ofVolume, [](const auto& piece) { return piece.volume; }, keep);
+            mech::compileParticles(construct->construction);
+            crystal->particles = std::move(matter[keeper].particles);
+            crystal->shape = std::move(matter[keeper].shape);
             glm::dvec3 moment{0.0, 0.0, 0.0};
             double mass = 0.0;
-            for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
-                moment += glm::dvec3{crystal.shape[index]} * static_cast<double>(crystal.particles[index].mass);
-                mass += static_cast<double>(crystal.particles[index].mass);
+            for (std::size_t index = 0; index < crystal->particles.size(); ++index) {
+                moment += glm::dvec3{crystal->shape[index]} * static_cast<double>(crystal->particles[index].mass);
+                mass += static_cast<double>(crystal->particles[index].mass);
             }
-            crystal.com = mass > 0.0 ? vec3{moment / mass} : vec3{0.0f, 0.0f, 0.0f};
-            return not crystal.particles.empty();
+            crystal->com = mass > 0.0 ? vec3{moment / mass} : vec3{0.0f, 0.0f, 0.0f};
+            return not crystal->particles.empty();
         }
 
-        auto shedOne(Writing context, Construct::Id id, Construct::Quantum& construct) -> bool {
-            if (not with<phys::rigid::Crystal>::exists(context, construct.body) or not with<rmmr::scene::actor::Mesh>::exists(context, construct.actor))
+        auto shedOne(Writing context, Construct::Id id) -> bool {
+            if (not with<Construct>::exists(context, id))
                 return true;
-            auto crystal = with<phys::rigid::Crystal>::modify(context, construct.body);
-            if (crystal->particles.size() != construct.construction.evaluatedParticles.size() or crystal->particles.size() != crystal->shape.size())
+            auto construct = with<Construct>::modify(context, id);
+            if (not with<phys::rigid::Crystal>::exists(context, construct->body) or not with<rmmr::scene::actor::Mesh>::exists(context, construct->actor))
                 return true;
-            const auto hurt = hurtByPrimitive(construct.construction, crystal->particles);
+            auto crystal = with<phys::rigid::Crystal>::modify(context, construct->body);
+            if (crystal->particles.size() != construct->construction.evaluatedParticles.size() or crystal->particles.size() != crystal->shape.size())
+                return true;
+            const auto hurt = hurtByPrimitive(construct->construction, crystal->particles);
             bool anyDead = false;
             for (const auto& [_, state] : hurt) {
                 if (state.cohesion <= 0.0f or state.temperature >= phys::Settings::Heat::hullShedKelvin) {
@@ -596,7 +616,7 @@ namespace eltanin::locality {
             umap<mech::Construction::Primitive::Id, DeadChunk> dead;
             integer cursor = 0;
             bool mismatch = false;
-            mech::forEachPrimitiveLoop(construct.construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
+            mech::forEachPrimitiveLoop(construct->construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
                 if (mismatch)
                     return;
                 const bool gone = dropPrimitive(hurt, primitiveId);
@@ -605,7 +625,7 @@ namespace eltanin::locality {
                     auto found = dead.find(primitiveId);
                     if (found == dead.end()) {
                         const auto state = hurt.find(primitiveId);
-                        const vec3 outward = construct.construction.plates.contains(primitiveId) ? plateOutward(primitive, construct.construction) : vec3{0.0f, 0.0f, 0.0f};
+                        const vec3 outward = construct->construction.plates.contains(primitiveId) ? plateOutward(primitive, construct->construction) : vec3{0.0f, 0.0f, 0.0f};
                         found = dead.emplace(primitiveId, DeadChunk{.cohesion = state->second.cohesion, .temperature = state->second.temperature, .thickness = primitive.thickness, .mass = 0.0f, .momentum = dvec3{0.0, 0.0, 0.0}, .locals = {}, .outward = outward}).first;
                     }
                     found->second.thickness = glm::max(found->second.thickness, primitive.thickness);
@@ -632,10 +652,10 @@ namespace eltanin::locality {
             if (mismatch or static_cast<std::size_t>(cursor) != crystal->particles.size())
                 return true;
 
-            if (with<phys::Body>::exists(context, construct.body)) {
-                const auto& body = with<phys::Body>::get(context, construct.body);
+            if (with<phys::Body>::exists(context, construct->body)) {
+                const auto& body = with<phys::Body>::get(context, construct->body);
                 for (const auto& [primitiveId, chunk] : dead)
-                    emitScrap(context, construct, body, primitiveId, chunk);
+                    emitScrap(context, construct->construction, construct->fragments, body, primitiveId, chunk);
             }
 
             if (particles.empty())
@@ -655,39 +675,39 @@ namespace eltanin::locality {
                         ++it;
                 }
             };
-            eraseDead(construct.construction.knots);
-            eraseDead(construct.construction.ribs);
-            eraseDead(construct.construction.membranes);
-            eraseDead(construct.construction.plates);
-            eraseDead(construct.construction.volumes);
-            keepLive(construct.fragments.ofKnot, [](const auto& piece) { return piece.knot; }, hurt);
-            keepLive(construct.fragments.ofRib, [](const auto& piece) { return piece.rib; }, hurt);
-            keepLive(construct.fragments.ofMembrane, [](const auto& piece) { return piece.membrane; }, hurt);
-            keepLive(construct.fragments.ofPlate, [](const auto& piece) { return piece.plate; }, hurt);
-            keepLive(construct.fragments.ofVolume, [](const auto& piece) { return piece.volume; }, hurt);
-            mech::compileParticles(construct.construction);
+            eraseDead(construct->construction.knots);
+            eraseDead(construct->construction.ribs);
+            eraseDead(construct->construction.membranes);
+            eraseDead(construct->construction.plates);
+            eraseDead(construct->construction.volumes);
+            keepLive(construct->fragments.ofKnot, [](const auto& piece) { return piece.knot; }, hurt);
+            keepLive(construct->fragments.ofRib, [](const auto& piece) { return piece.rib; }, hurt);
+            keepLive(construct->fragments.ofMembrane, [](const auto& piece) { return piece.membrane; }, hurt);
+            keepLive(construct->fragments.ofPlate, [](const auto& piece) { return piece.plate; }, hurt);
+            keepLive(construct->fragments.ofVolume, [](const auto& piece) { return piece.volume; }, hurt);
+            mech::compileParticles(construct->construction);
             crystal->particles = std::move(particles);
             crystal->shape = std::move(shape);
             crystal->com = mass > 0.0 ? vec3{moment / mass} : vec3{0.0f, 0.0f, 0.0f};
-            if (not detachUnconnected(context, construct, *crystal))
+            if (not detachUnconnected(context, id))
                 return false;
-            crystal->hull = mech::cookHull(construct.construction, crystal->shape);
+            crystal->hull = mech::cookHull(construct->construction, crystal->shape);
             phys::collision::cookHullBvh(crystal->hull, crystal->shape);
-            if (with<phys::Body>::exists(context, construct.body))
-                crystal->refreshMatter(*with<phys::Body>::modify(context, construct.body));
+            if (with<phys::Body>::exists(context, construct->body))
+                crystal->refreshMatter(*with<phys::Body>::modify(context, construct->body));
 
             const auto& resources = with<Construct>::get_global(context).resources;
             if (not resources)
                 return context.refuse("eltanin::locality::Construct::shedDead: resources not bound");
-            auto occurrences = mech::cookOccurrences(context, resources->interframe, construct.construction, construct.fragments, construct.visualOf);
+            auto occurrences = mech::cookOccurrences(context, resources->interframe, construct->construction, construct->fragments, construct->visualOf);
             if (not occurrences.empty()) {
                 auto meshQuantum = with<rmmr::scene::actor::Mesh>::compose(context, occurrences);
                 if (meshQuantum)
-                    with<rmmr::scene::actor::Mesh>::replace(context, construct.actor, std::move(*meshQuantum));
+                    with<rmmr::scene::actor::Mesh>::replace(context, construct->actor, std::move(*meshQuantum));
             }
-            construct.gpuCohesions.clear();
-            construct.gpuHeats.clear();
-            uploadVisual(context, construct);
+            construct->gpuCohesions.clear();
+            construct->gpuHeats.clear();
+            uploadVisual(context, *construct);
             return true;
         }
 
@@ -714,8 +734,7 @@ namespace eltanin::locality {
         for (auto [id, _] : context->aspect<Construct>().items())
             living.push_back(id);
         for (const auto id : living) {
-            auto construct = with<Construct>::modify(context, id);
-            if (not shedOne(context, id, *construct))
+            if (not shedOne(context, id))
                 gone.push_back(id);
         }
         for (const auto id : gone)
