@@ -65,6 +65,7 @@ namespace eltanin::phys::rigid {
             vector<vec3> shape;
             vec3 com;
             Hull hull;
+            bool visualHurtStale;
 
             void refreshMatter(Body::Quantum&);
         };

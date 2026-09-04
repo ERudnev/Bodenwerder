@@ -55,6 +55,6 @@ namespace eltanin
         >bindResources()
         >update()
         >shedDead()
-        *radiate(dt: seconds) // hull cool; hotter falls faster; GPU heats are write-only from followBody
-        *followBody()
+        *radiate(dt: seconds) // hull cool; hotter falls faster; sets Crystal.visualHurtStale
+        *followBody() // pose only; cohesion/heat GPU from update when visualHurtStale
         >syncVisualCohesion()

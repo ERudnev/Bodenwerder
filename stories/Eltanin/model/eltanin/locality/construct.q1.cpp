@@ -164,14 +164,14 @@ namespace eltanin::locality {
             return false;
         }
 
-        void uploadVisual(Reading context, Construct::Quantum& construct) {
+        auto uploadVisual(Reading context, Construct::Quantum& construct) -> bool {
             if (not with<rmmr::scene::actor::Mesh>::exists(context, construct.actor))
-                return;
+                return false;
             if (not with<phys::rigid::Crystal>::exists(context, construct.body))
-                return;
+                return false;
             const auto& crystal = with<phys::rigid::Crystal>::get(context, construct.body);
             if (crystal.particles.size() != construct.construction.evaluatedParticles.size())
-                return;
+                return false;
             const auto hurt = hurtByPrimitive(construct.construction, crystal.particles);
             vector<float> cohesions;
             vector<float> heats;
@@ -190,6 +190,7 @@ namespace eltanin::locality {
                 with<rmmr::scene::actor::Mesh>::writeHeats(context, construct.actor, std::span<const float>{heats});
                 construct.gpuHeats = std::move(heats);
             }
+            return true;
         }
 
         auto quatFromAxes(vec3 x, vec3 y, vec3 z) -> quat {
@@ -496,7 +497,7 @@ namespace eltanin::locality {
                 mass += static_cast<double>(particles[index].mass);
             }
             auto hull = mech::cookHull(slice, shape);
-            phys::rigid::Crystal::Quantum crystal{.particles = std::move(particles), .shape = std::move(shape), .com = mass > 0.0 ? vec3{moment / mass} : vec3{0.0f, 0.0f, 0.0f}, .hull = std::move(hull)};
+            phys::rigid::Crystal::Quantum crystal{.particles = std::move(particles), .shape = std::move(shape), .com = mass > 0.0 ? vec3{moment / mass} : vec3{0.0f, 0.0f, 0.0f}, .hull = std::move(hull), .visualHurtStale = false};
             phys::collision::cookHullBvh(crystal.hull, crystal.shape);
             const auto crystalBody = phys::createBody(context, phys::rigid::restoredBody(body.pose(), crystal.particles, crystal.shape), {});
             with<phys::rigid::Crystal>::extend(context, crystalBody, std::move(crystal));
@@ -669,6 +670,15 @@ namespace eltanin::locality {
             auto crystal = with<phys::rigid::Crystal>::modify(context, construct->body);
             if (crystal->particles.size() != construct->construction.evaluatedParticles.size() or crystal->particles.size() != crystal->shape.size())
                 return true;
+            bool dying = false;
+            for (const phys::Particle& particle : crystal->particles) {
+                if (particle.cohesion <= 0.0f or particle.temperature >= phys::Settings::Heat::hullShedKelvin) {
+                    dying = true;
+                    break;
+                }
+            }
+            if (not dying)
+                return true;
             const auto hurt = hurtByPrimitive(construct->construction, crystal->particles);
             const auto gone = collectGone(construct->construction, hurt);
             if (gone.empty())
@@ -774,14 +784,15 @@ namespace eltanin::locality {
             }
             construct->gpuCohesions.clear();
             construct->gpuHeats.clear();
-            uploadVisual(context, *construct);
+            if (uploadVisual(context, *construct))
+                crystal->visualHurtStale = false;
             return true;
         }
 
     }
 
     auto Construct::Always::assemble(SettingUp&) -> Construct::Global {
-        return Global{.resources = {}, .debris = Debris::scrap};
+        return Global{.resources = {}, .debris = Debris::dust};
     }
 
     void Construct::Actions::bindResources(Writing context) {
@@ -797,6 +808,21 @@ namespace eltanin::locality {
 
     void Construct::Actions::update(Writing context) {
         shedDead(context);
+        vector<Id> living;
+        for (auto [id, _] : context->aspect<Construct>().items())
+            living.push_back(id);
+        for (const auto id : living) {
+            if (not with<Construct>::exists(context, id))
+                continue;
+            auto construct = with<Construct>::modify(context, id);
+            if (not with<phys::rigid::Crystal>::exists(context, construct->body))
+                continue;
+            auto crystal = with<phys::rigid::Crystal>::modify(context, construct->body);
+            if (not crystal->visualHurtStale)
+                continue;
+            if (uploadVisual(context, *construct))
+                crystal->visualHurtStale = false;
+        }
     }
 
     void Construct::Actions::shedDead(Writing context) {
@@ -827,6 +853,7 @@ namespace eltanin::locality {
                 if (particle.temperature <= sky)
                     continue;
                 particle.temperature = glm::max(sky, particle.temperature * factor);
+                crystal->visualHurtStale = true;
             }
         }
     }
@@ -843,12 +870,15 @@ namespace eltanin::locality {
             if (not body)
                 continue;
             node->pose = body->pose();
-            uploadVisual(context, construct);
         }
     }
 
     void Construct::Actions::syncVisualCohesion(Writing context, Id id) {
-        uploadVisual(context, *with<Construct>::modify(context, id));
+        auto construct = with<Construct>::modify(context, id);
+        if (not uploadVisual(context, *construct))
+            return;
+        if (with<phys::rigid::Crystal>::exists(context, construct->body))
+            with<phys::rigid::Crystal>::modify(context, construct->body)->visualHurtStale = false;
     }
 
     auto Construct::customAspectReactions() -> const Behavior {

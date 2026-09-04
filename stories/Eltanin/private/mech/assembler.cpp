@@ -405,6 +405,7 @@ namespace eltanin::mech {
                 .shape = std::move(shape),
                 .com = mass > 0.0 ? vec3{moment / mass} : vec3{0.0f, 0.0f, 0.0f},
                 .hull = std::move(hull),
+                .visualHurtStale = false,
             };
         }
 

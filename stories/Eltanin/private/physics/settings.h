@@ -58,16 +58,18 @@ namespace eltanin::phys {
             static constexpr double pullToShape = 0.0; // Horn follow / Hitman pull
             static constexpr double faceSupport = 0.0; // solid/ray recoil onto crystal hull vertices
             static constexpr double solidContact = 0.5; // solid ↔ crystal positional remaining
+            static constexpr double solidSolid = 0.5; // solid ↔ solid positional remaining
             static constexpr double crystalContact = 0.5; // crystal particle vs frozen hull
         };
 
         static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
         static constexpr float restLinear = 1.0e-5f; // m/tick; below this (x−prev) is zeroed
         static constexpr float solidLiveSpeed = 0.1f; // m/s; Solid↔Crystal — soft fade of restitution and spin below this closing speed
-        static constexpr seconds fixedStep = 0.01; // TODO: consider 0.012 - 0.015 for better performance
-        static constexpr seconds thermalStep = 0.05; // 20 Hz; Construct heats already uploaded every fixedStep via followBody
+        static constexpr seconds fixedStep = 0.02; // TODO: consider 0.012 - 0.015 for better performance
+        static constexpr seconds thermalStep = 0.05; // 20 Hz; Construct heats uploaded from update when Crystal.visualHurtStale
         static inline DebrisCohort debrisCohort = DebrisCohort::individual;
         static inline bool constructCollisionWounds = false; // scarFace → Construct cohesion / shed; Flash unchanged
+        static inline bool knotWave = true; // spreadKnotWave along the frame; off = rib restore only
     };
 
 }

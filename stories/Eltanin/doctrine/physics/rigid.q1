@@ -36,6 +36,7 @@ namespace eltanin
           shape: vector<vec3> // Immutable particle locals in the body's frame; origin is not COM
           com: vec3 // restCOM = Σ(m·shape)/Σm, computed once for this shape
           hull: Hull
+          visualHurtStale: bool // Construct GPU cohesion/heat; Rocks ignore
           =debugAddImpulse(imp: vec3)
           =setMotion(pose: Pose, linear: vec3, omega: vec3) // Place shape by Pose; prev = position − (linear + ω×(position−currentCOM))·dt
           all *restore() // Horn → Pose into Body; particles untouched

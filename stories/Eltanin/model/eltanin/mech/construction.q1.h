@@ -24,11 +24,11 @@ namespace eltanin::mech {
         struct Knot : Primitive {
             vector<integer> welded;
         };
-        umap<Primitive::Id, Knot> knots;
-        umap<Primitive::Id, Primitive> ribs;
-        umap<Primitive::Id, Primitive> membranes;
-        umap<Primitive::Id, Primitive> plates;
-        umap<Primitive::Id, vector<Primitive>> volumes;
+        map<Primitive::Id, Knot> knots;
+        map<Primitive::Id, Primitive> ribs;
+        map<Primitive::Id, Primitive> membranes;
+        map<Primitive::Id, Primitive> plates;
+        map<Primitive::Id, vector<Primitive>> volumes;
         vector<Primitive::Point> evaluatedParticles;
     };
 

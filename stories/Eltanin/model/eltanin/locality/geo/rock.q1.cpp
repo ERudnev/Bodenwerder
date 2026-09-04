@@ -447,6 +447,7 @@ namespace eltanin::locality::geo {
                 .shape = std::move(shape),
                 .com = massCom,
                 .hull = std::move(hull),
+                .visualHurtStale = false,
             });
             const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
             with<Rock>::extend(context, thing, Rock::Quantum{.body = body, .actor = actor, .volume = std::move(volume)});

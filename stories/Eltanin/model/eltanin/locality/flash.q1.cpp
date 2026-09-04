@@ -242,9 +242,9 @@ namespace eltanin::locality {
             solid.forceAngular += deltaOmega * (inertia / float(phys::Settings::fixedStep));
         }
 
-        void strikeParticle(phys::Particle& particle, Flash::Id flashId, phys::Body::Id crystalId, std::uint64_t extra, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float pulse, float ambient, float tick, float vWave, const Flash::Effect& effect) {
+        auto strikeParticle(phys::Particle& particle, Flash::Id flashId, phys::Body::Id crystalId, std::uint64_t extra, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float pulse, float ambient, float tick, float vWave, const Flash::Effect& effect) -> bool {
             if (particle.mass <= 0.0f)
-                return;
+                return false;
             const vec3 offset = vec3{particle.position} - origin;
             const float distance = glm::length(offset);
             const float atten = falloff(distance);
@@ -255,11 +255,20 @@ namespace eltanin::locality {
                 if (deltaV > 0.0f)
                     particle.force += radial * (particle.mass * deltaV / tick);
             }
+            bool hurt = false;
             const float soak = thermalSoak(distance, effect.thermal.radius);
-            if (soak > 0.0f)
-                particle.temperature = glm::max(particle.temperature, ambient + (effect.thermal.temperature - ambient) * pulse * soak);
-            if (frontPasses(distance, effect.brisance.radius, brisanceInner, brisanceOuter))
+            if (soak > 0.0f) {
+                const float next = glm::max(particle.temperature, ambient + (effect.thermal.temperature - ambient) * pulse * soak);
+                if (next != particle.temperature) {
+                    particle.temperature = next;
+                    hurt = true;
+                }
+            }
+            if (frontPasses(distance, effect.brisance.radius, brisanceInner, brisanceOuter)) {
                 particle.cohesion -= effect.brisance.yield * atten;
+                hurt = true;
+            }
+            return hurt;
         }
 
         void strikeSolid(phys::rigid::Solid::Quantum& solid, const phys::Body::Quantum& body, Flash::Id flashId, phys::Body::Id bodyId, vec3 origin, float kineticInner, float kineticOuter, float brisanceInner, float brisanceOuter, float pulse, float ambient, float tick, float vWave, const Flash::Effect& effect) {
@@ -496,8 +505,13 @@ namespace eltanin::locality {
             const vec3 origin = node->pose.position;
             const float vWave = victimSpeedOf(flash.effect);
             for (auto [crystalId, crystal] : crystals.items) {
-                for (std::uint64_t index = 0; index < crystal.particles.size(); ++index)
-                    strikeParticle(crystal.particles[index], flashId, crystalId, index + 1, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, pulse, ambient, tick, vWave, flash.effect);
+                bool hurt = false;
+                for (std::uint64_t index = 0; index < crystal.particles.size(); ++index) {
+                    if (strikeParticle(crystal.particles[index], flashId, crystalId, index + 1, origin, kineticInner, kineticOuter, brisanceInner, brisanceOuter, pulse, ambient, tick, vWave, flash.effect))
+                        hurt = true;
+                }
+                if (hurt)
+                    crystal.visualHurtStale = true;
             }
             for (auto [bodyId, solid] : solids.items) {
                 auto* body = bodies.items.find(bodyId);

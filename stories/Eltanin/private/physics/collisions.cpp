@@ -229,6 +229,7 @@ namespace eltanin::phys::collision {
                     continue;
                 particle.cohesion -= drop;
             }
+            crystal.visualHurtStale = true;
         }
 
         auto fillOccupant(Occupant& occupant, Body::Id id, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) -> bool {
@@ -344,6 +345,11 @@ namespace eltanin::phys::collision {
             if (angle < minLength)
                 return;
             body.orientation = glm::normalize(glm::angleAxis(angle, delta / angle) * body.orientation);
+        }
+
+        void shiftSolid(Body::Quantum& body, Solid::Quantum& solid, dvec3 delta, double resilience) {
+            verlet::semiKick(solid.center, delta, resilience);
+            body.position = solid.center.position;
         }
 
         auto spheresOverlap(vec3 centerA, float radiusA, vec3 centerB, float radiusB) -> bool {
@@ -781,10 +787,9 @@ namespace eltanin::phys::collision {
             const float weightSum = weightA + weightB;
             if (weightSum <= 0.0f)
                 return;
-            bodyA->position -= dvec3{contact.normal} * (double(remaining) * double(weightA) / double(weightSum));
-            bodyB->position += dvec3{contact.normal} * (double(remaining) * double(weightB) / double(weightSum));
-            solidA->center.position = bodyA->position;
-            solidB->center.position = bodyB->position;
+            const dvec3 axis = dvec3{contact.normal};
+            shiftSolid(*bodyA, *solidA, -axis * (double(remaining) * double(weightA) / double(weightSum)), Settings::Resilience::solidSolid);
+            shiftSolid(*bodyB, *solidB, axis * (double(remaining) * double(weightB) / double(weightSum)), Settings::Resilience::solidSolid);
             bounceSolidSolid(*bodyA, *solidA, *bodyB, *solidB, contact.normal);
             frictionSolidSolid(contact, remaining, *bodyA, *solidA, *bodyB, *solidB);
         }

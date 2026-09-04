@@ -8,6 +8,8 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include <cmath>
+#include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 namespace eltanin::phys {
@@ -17,8 +19,21 @@ namespace eltanin::phys {
 
     namespace {
 
-        auto sameGrid(index3 left, index3 right) -> bool {
-            return left.x == right.x and left.y == right.y and left.z == right.z;
+        auto packGrid(index3 grid) -> uint64_t {
+            const auto axis = [](integer value) -> uint64_t {
+                return static_cast<uint64_t>(static_cast<uint32_t>(value) + 0x100000u) & 0x1FFFFFu;
+            };
+            return (axis(grid.x) << 42) | (axis(grid.y) << 21) | axis(grid.z);
+        }
+
+        auto particlesMoving(const Crystal::Quantum& crystal) -> bool {
+            const double rest2 = double(Settings::restLinear) * double(Settings::restLinear);
+            for (const Particle& particle : crystal.particles) {
+                const dvec3 step = particle.position - particle.prev;
+                if (glm::dot(step, step) > rest2)
+                    return true;
+            }
+            return false;
         }
 
         auto knotComs(const Crystal::Quantum& crystal, const vector<integer>& welded, dvec3 origin, quat rotation, dvec3& liveCom, dvec3& restWorld) -> bool {
@@ -86,12 +101,18 @@ namespace eltanin::phys {
                 cursor += primitive.loop.size();
             });
             vector<vector<std::size_t>> next(waves.size());
+            std::unordered_map<uint64_t, std::size_t> waveAtGrid;
+            waveAtGrid.reserve(waves.size());
+            for (std::size_t index = 0; index < waves.size(); ++index) {
+                if (waves[index].knot->loop.empty())
+                    continue;
+                waveAtGrid.emplace(packGrid(waves[index].knot->loop[0].gridPos), index);
+            }
             auto waveAt = [&](index3 grid) -> integer {
-                for (std::size_t index = 0; index < waves.size(); ++index) {
-                    if (not waves[index].knot->loop.empty() and sameGrid(waves[index].knot->loop[0].gridPos, grid))
-                        return static_cast<integer>(index);
-                }
-                return -1;
+                const auto found = waveAtGrid.find(packGrid(grid));
+                if (found == waveAtGrid.end())
+                    return -1;
+                return static_cast<integer>(found->second);
             };
             for (const auto& [_, rib] : construction.ribs) {
                 for (std::size_t slot = 1; slot < rib.loop.size(); ++slot) {
@@ -187,6 +208,7 @@ namespace eltanin::phys {
                 return;
             for (std::size_t slot = 0; slot < count; ++slot)
                 crystal.particles[cursor + slot].cohesion = 0.0f;
+            crystal.visualHurtStale = true;
         }
 
     }
@@ -194,7 +216,10 @@ namespace eltanin::phys {
     void reconcile(const mech::Construction& construction, Crystal::Quantum& crystal, const Body::Quantum& body) {
         if (crystal.particles.size() != construction.evaluatedParticles.size() or crystal.particles.size() != crystal.shape.size())
             return;
-        spreadKnotWave(construction, crystal, body);
+        if (not particlesMoving(crystal))
+            return;
+        if (Settings::knotWave)
+            spreadKnotWave(construction, crystal, body);
         const double stiff = double(Settings::constraintStiffness);
         std::size_t cursor = 0;
         mech::forEachPrimitiveLoop(construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
