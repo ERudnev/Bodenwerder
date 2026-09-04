@@ -56,6 +56,10 @@ namespace eltanin::phys::collision {
             return 1;
         }
 
+        auto particleCollides(const Particle& particle) -> bool {
+            return particle.mass > 0.0f and particle.cohesion > 0.0f and particle.temperature < Settings::Heat::hullShedKelvin;
+        }
+
         auto halfOf(const Solid::Quantum& solid, const Body::Quantum& body) -> vec3 {
             if (solid.kind == Solid::Kind::box)
                 return glm::max(solid.halfExtents, vec3{minLength, minLength, minLength});
@@ -498,36 +502,24 @@ namespace eltanin::phys::collision {
         }
 
         auto nearestSurfaceObb(const Body::Quantum& shapeBody, const Crystal::Quantum& shapeCrystal, const Body::Quantum& box, vec3 half, integer& faceIndex, vec3& closest, vec3& outward) -> float {
-            float best = 0.0f;
-            integer bestFace = -1;
-            vec3 bestClosest{0.0f, 0.0f, 0.0f};
-            vec3 bestOutward{0.0f, 1.0f, 0.0f};
-            auto consider = [&](vec3 world) {
-                integer face = -1;
-                vec3 hitClosest;
-                vec3 hitOutward;
-                const float depth = nearestSurface(shapeBody, shapeCrystal, world, 0.0f, face, hitClosest, hitOutward);
-                if (depth <= best)
-                    return;
-                best = depth;
-                bestFace = face;
-                bestClosest = hitClosest;
-                bestOutward = hitOutward;
-            };
-            consider(vec3{box.position});
-            for (int sx = -1; sx <= 1; sx += 2)
-                for (int sy = -1; sy <= 1; sy += 2)
-                    for (int sz = -1; sz <= 1; sz += 2)
-                        consider(fromBodyLocal(box, half * vec3{static_cast<float>(sx), static_cast<float>(sy), static_cast<float>(sz)}));
-            const SurfaceHit hullHit = closestOnHull(shapeCrystal.hull, shapeCrystal.shape, toLocal(shapeBody, vec3{box.position}));
-            if (hullHit.face >= 0)
-                consider(closestOnObb(box, half, worldOf(shapeBody, hullHit.localClosest)));
-            if (best <= 0.0f)
+            const vec3 probe = closestOnObb(box, half, worldOf(shapeBody, shapeCrystal.com));
+            const SurfaceHit hit = closestOnHull(shapeCrystal.hull, shapeCrystal.shape, toLocal(shapeBody, probe));
+            if (hit.face < 0)
                 return 0.0f;
-            faceIndex = bestFace;
-            closest = bestClosest;
-            outward = bestOutward;
-            return best;
+            vec3 away = shapeBody.orientation * hit.localOutward;
+            const float outLen = glm::length(away);
+            if (outLen < minLength)
+                return 0.0f;
+            away /= outLen;
+            const vec3 hullPoint = worldOf(shapeBody, hit.localClosest);
+            const vec3 boxPoint = closestOnObb(box, half, hullPoint);
+            const float along = glm::dot(away, boxPoint - hullPoint);
+            if (along >= 0.0f)
+                return 0.0f;
+            faceIndex = hit.face;
+            closest = hullPoint;
+            outward = away;
+            return -along;
         }
 
         auto overlapPointObb(vec3 point, const Body::Quantum& box, vec3 half) -> SimpleHit {
@@ -609,6 +601,8 @@ namespace eltanin::phys::collision {
                 const vec3 toShape = vertex - shapeSide.center;
                 if (glm::dot(toShape, toShape) > cull2)
                     continue;
+                if (not particleCollides(particleCrystal->particles[vertexIndex]))
+                    continue;
                 const float depth = nearestSurface(*shapeBody, *shapeCrystal, vertex, 0.0f, faceIndex, closest, outward);
                 if (depth <= 0.0f)
                     continue;
@@ -652,6 +646,8 @@ namespace eltanin::phys::collision {
                     return;
                 const vec3 half = halfOf(*boxSolid, *boxBody);
                 for (std::size_t vertexIndex = firstSurfaceVertex(*particleCrystal); vertexIndex < particleCrystal->particles.size(); ++vertexIndex) {
+                    if (not particleCollides(particleCrystal->particles[vertexIndex]))
+                        continue;
                     const vec3 vertex = vec3{particleCrystal->particles[vertexIndex].position};
                     const SimpleHit hit = overlapPointObb(vertex, *boxBody, half);
                     if (not hit.hit)
@@ -663,6 +659,8 @@ namespace eltanin::phys::collision {
             }
             const vec3 center = solid.center;
             for (std::size_t vertexIndex = firstSurfaceVertex(*particleCrystal); vertexIndex < particleCrystal->particles.size(); ++vertexIndex) {
+                if (not particleCollides(particleCrystal->particles[vertexIndex]))
+                    continue;
                 const vec3 vertex = vec3{particleCrystal->particles[vertexIndex].position};
                 const vec3 offset = vertex - center;
                 const float distance = glm::length(offset);
@@ -679,10 +677,10 @@ namespace eltanin::phys::collision {
             solid.prevOri = body.orientation;
         }
 
-        void frictionSolidCrystal(Contact& contact, float normalStep, float live, Body::Quantum& body, Solid::Quantum& solid, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
-            clearSolidSpin(body, solid);
-            if (live <= 0.0f)
+        void frictionSolidCrystal(Contact& contact, float normalStep, float grip, Body::Quantum& body, Solid::Quantum& solid, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
+            if (grip <= 0.0f)
                 return;
+            clearSolidSpin(body, solid);
             const vec3 arm = contact.point - vec3{body.position};
             const vec3 slideVec = velocityAt(body, solid, contact.point) - velocityOf(contact.b.body, contact.b.type, bodies, solids, crystals);
             const vec3 tangentVel = slideVec - contact.normal * glm::dot(slideVec, contact.normal);
@@ -694,7 +692,7 @@ namespace eltanin::phys::collision {
             if (weight <= 0.0f)
                 return;
             float impulse = slide * float(Settings::fixedStep) / weight;
-            const float limit = solidFriction * live * body.totalMass * normalStep;
+            const float limit = solidFriction * grip * body.totalMass * normalStep;
             if (impulse > limit)
                 impulse = limit;
             kickSolid(body, solid, arm, -tangent * impulse);
@@ -751,12 +749,22 @@ namespace eltanin::phys::collision {
         auto solidCrystalLive(float closingSpeed) -> float {
             if (Settings::solidLiveSpeed <= 0.0f)
                 return 1.0f;
-            const float t = closingSpeed / Settings::solidLiveSpeed;
-            if (t <= 0.0f)
+            if (closingSpeed <= 0.0f)
                 return 0.0f;
-            if (t >= 1.0f)
-                return 1.0f;
-            return t * t * (3.0f - 2.0f * t);
+            return closingSpeed / (closingSpeed + Settings::solidLiveSpeed);
+        }
+
+        auto contactResilience(float vn, float remaining, double impact) -> double {
+            const float live = solidCrystalLive(vn);
+            double resilience = 1.0 + (impact - 1.0) * double(live);
+            if (remaining > minLength)
+                resilience = glm::max(resilience, 1.0 - double(vn) * Settings::fixedStep / double(remaining));
+            return resilience;
+        }
+
+        void dampContactTangent(Particle& particle, vec3 normal, float live) {
+            const dvec3 step = particle.position - particle.prev;
+            particle.prev += (step - dvec3{normal} * glm::dot(step, dvec3{normal})) * double(1.0f - live);
         }
 
         void respondSolidCrystal(Contact& contact, float remaining, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
@@ -764,10 +772,13 @@ namespace eltanin::phys::collision {
             auto* solid = solids.items.find(contact.a.body);
             if (not body or not solid)
                 return;
-            verlet::semiKick(solid->center, -dvec3{contact.normal} * double(remaining), Settings::Resilience::solidContact);
+            const float vn = glm::max(0.0f, glm::dot(velocityAt(*body, *solid, contact.point) - velocityOf(contact.b.body, contact.b.type, bodies, solids, crystals), contact.normal));
+            const float live = solidCrystalLive(vn);
+            const double resilience = contactResilience(vn, remaining, Settings::Resilience::solidContact);
+            verlet::semiKick(solid->center, -dvec3{contact.normal} * double(remaining), resilience);
             body->position = solid->center.position;
-            const float live = solidCrystalLive(glm::max(0.0f, contact.relativeNormalSpeed));
-            frictionSolidCrystal(contact, remaining, live, *body, *solid, bodies, solids, crystals);
+            dampContactTangent(solid->center, contact.normal, live);
+            frictionSolidCrystal(contact, remaining, float(1.0 - resilience), *body, *solid, bodies, solids, crystals);
             auto* crystal = crystals.items.find(contact.b.body);
             auto* crystalBody = bodies.items.find(contact.b.body);
             if (not crystal or not crystalBody)
@@ -801,16 +812,21 @@ namespace eltanin::phys::collision {
             if (contact.a.face < 0 or static_cast<std::size_t>(contact.a.face) >= particleCrystal->particles.size())
                 return;
             Particle& particle = particleCrystal->particles[static_cast<std::size_t>(contact.a.face)];
-            verlet::semiKick(particle, -dvec3{contact.normal} * double(remaining), Settings::Resilience::crystalContact);
-            if (contact.relativeNormalSpeed <= 0.0f)
-                return;
-            const float mass = particle.mass;
-            if (mass <= 0.0f)
+            if (not particleCollides(particle))
                 return;
             auto* shapeCrystal = crystals.items.find(contact.b.body);
-            if (not shapeCrystal)
+            const bool oneSided = shapeCrystal and contact.b.face >= 0 and static_cast<std::size_t>(contact.b.face) < shapeCrystal->hull.faces.size() and not shapeCrystal->hull.faces[static_cast<std::size_t>(contact.b.face)].twoSided;
+            const float vn = glm::max(0.0f, contact.relativeNormalSpeed);
+            if (oneSided) {
+                verlet::semiKick(particle, dvec3{contact.point} - particle.position, 1.0);
+                particle.prev += dvec3{contact.normal} * double(vn) * Settings::fixedStep;
+                dampContactTangent(particle, contact.normal, solidCrystalLive(vn));
+            } else {
+                verlet::semiKick(particle, -dvec3{contact.normal} * double(remaining), Settings::Resilience::crystalContact);
+            }
+            if (vn <= 0.0f or not shapeCrystal)
                 return;
-            scarFace(*shapeCrystal, contact.b.face, mass * contact.relativeNormalSpeed);
+            scarFace(*shapeCrystal, contact.b.face, particle.mass * vn);
         }
 
         void solveContact(Contact& contact, float remaining, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
@@ -1090,6 +1106,14 @@ namespace eltanin::phys::collision {
         for (Contact& contact : contacts) {
             if (contact.penetration <= 0.0f)
                 continue;
+            if (isSimple(contact.a.type)) {
+                if (auto* solid = solids.items.find(contact.a.body))
+                    solid->collided = true;
+            }
+            if (isSimple(contact.b.type)) {
+                if (auto* solid = solids.items.find(contact.b.body))
+                    solid->collided = true;
+            }
             solveContact(contact, contact.penetration, bodies, solids, crystals);
             contact.correction = contact.penetration;
         }
@@ -1219,6 +1243,7 @@ namespace eltanin::phys::collision {
                 auto* solid = solids.items.find(other);
                 if (solidBody and solid) {
                     kickSolid(*solidBody, *solid, arm, -normal * (j * float(Settings::fixedStep)));
+                    solid->collided = true;
                     if (solid->center.mass > 0.0f) {
                         const float wound = solid->kind == Solid::Kind::box ? Settings::Cohesion::boxWound : Settings::Cohesion::wound;
                         solid->center.cohesion -= wound * glm::length(vec3{verletVelocity(ray.core) * double(ray.core.mass)}) / solid->center.mass;

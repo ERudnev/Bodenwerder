@@ -442,7 +442,7 @@ namespace eltanin::locality {
             const quat worldRot = glm::normalize(body.orientation * box.rotation);
             const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
             const float keep = glm::max(chunk.cohesion, 0.25f);
-            if (with<Construct>::get_global(context).debris == Construct::Debris::dust) {
+            if (phys::Settings::debris == phys::Settings::Debris::dust) {
                 const auto& constructResources = with<Construct>::get_global(context).resources;
                 vector<mech::Construction::Primitive::Id> visualOf;
                 auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construction, fragmentsOf(fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
@@ -799,7 +799,7 @@ namespace eltanin::locality {
     }
 
     auto Construct::Always::assemble(SettingUp&) -> Construct::Global {
-        return Global{.resources = {}, .debris = Debris::dust};
+        return Global{.resources = {}};
     }
 
     void Construct::Actions::bindResources(Writing context) {

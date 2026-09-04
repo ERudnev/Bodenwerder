@@ -38,7 +38,6 @@ namespace eltanin
         ofVolume: vector<OfVolume>
       struct Resources
         interframe: #rmmr::resource::meshpack::Asset
-      enum Debris : scrap, dust // scrap = Solid salvage; dust = wreck vis (cohesion holes + heat)
       always
         >assemble() -> all
       one
@@ -51,7 +50,6 @@ namespace eltanin
         gpuHeats: vector<float> // last writeHeats; never read back from GPU
       all
         resources: Resources?
-        debris: Debris
         >bindResources()
         >update()
         >shedDead()

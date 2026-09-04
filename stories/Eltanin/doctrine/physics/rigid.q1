@@ -24,6 +24,7 @@ namespace eltanin
           forceAngular: vec3
           kind: Kind
           halfExtents: vec3 // body-frame; sphere ignores this, Body.radius is the bound
+          collided: bool // set by contacts this phys tick; Scrap wears then clears
 
       // Death-ray kinematics: one Particle, Verlet prev→position. Not an Occupant; own CCD phase. Rays do not see each other.
       feature Ray of phys::Body

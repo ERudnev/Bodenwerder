@@ -173,6 +173,7 @@ namespace eltanin::locality::geo {
             .forceAngular = vec3{0.0f, 0.0f, 0.0f},
             .kind = phys::rigid::Solid::Kind::sphere,
             .halfExtents = vec3{recipe.radius, recipe.radius, recipe.radius},
+            .collided = false,
         });
         const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
         with<Boulder>::extend(context, thing, Boulder::Quantum{.body = body, .actor = actor, .recipe = recipe});

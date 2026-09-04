@@ -44,6 +44,7 @@ namespace eltanin::phys::rigid {
             vec3 forceAngular;
             Kind kind;
             vec3 halfExtents;
+            bool collided;
         };
         struct Actions : BaseActions {};
         struct Internals : DefaultInternals {};

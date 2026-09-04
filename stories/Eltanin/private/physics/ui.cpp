@@ -361,20 +361,17 @@ namespace eltanin::phys {
                     int cohort = static_cast<int>(Settings::debrisCohort);
                     if (ImGui::Combo("Cohort", &cohort, cohortLabels, 3))
                         Settings::debrisCohort = static_cast<Settings::DebrisCohort>(cohort);
+                    if (ImGui::RadioButton("Scrap", Settings::debris == Settings::Debris::scrap))
+                        Settings::debris = Settings::Debris::scrap;
+                    ImGui::SameLine();
+                    if (ImGui::RadioButton("Dust", Settings::debris == Settings::Debris::dust))
+                        Settings::debris = Settings::Debris::dust;
                 }
 
                 ImGui::Separator();
                 ImGui::TextUnformatted("Construct");
                 ImGui::Checkbox("Collision wounds", &Settings::constructCollisionWounds);
                 ImGui::Checkbox("Knot wave", &Settings::knotWave);
-                {
-                    auto construct = with<locality::Construct>::modify_global(context);
-                    if (ImGui::RadioButton("Scrap", construct->debris == locality::Construct::Debris::scrap))
-                        construct->debris = locality::Construct::Debris::scrap;
-                    ImGui::SameLine();
-                    if (ImGui::RadioButton("Dust", construct->debris == locality::Construct::Debris::dust))
-                        construct->debris = locality::Construct::Debris::dust;
-                }
 
                 ImGui::Separator();
                 ImGui::TextUnformatted("Location");

@@ -109,6 +109,7 @@ namespace eltanin::locality {
                 .forceAngular = vec3{0.0f, 0.0f, 0.0f},
                 .kind = phys::rigid::Solid::Kind::box,
                 .halfExtents = half,
+                .collided = false,
             });
             const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
             with<Scrap>::extend(context, thing, Scrap::Quantum{.body = body, .actor = actor, .gpuKelvin = temperature, .meshFromBody = meshFromBody, .lineage = lineage});
@@ -223,6 +224,10 @@ namespace eltanin::locality {
             spawnDustPair(context, seed, linear, omega, temperature);
         }
 
+        void emitEquivalentDust(Writing context, const phys::Body::Quantum& body, const phys::rigid::Solid::Quantum& solid) {
+            decorations::Dust::Actions::spawn(context, body.pose(), solid.halfExtents, linearOf(body, solid), omegaOf(body, solid), solid.center.temperature, 0.25f);
+        }
+
     }
 
     void Scrap::Actions::bindResources(Writing context) {
@@ -246,7 +251,7 @@ namespace eltanin::locality {
         with<Scrap>::modify_global(context)->resources = Resources{.scrap = *scrap, .wreck = *wreck, .mech = *mech};
     }
 
-    void Scrap::Actions::update(Writing context) {
+    void Scrap::Actions::update(Writing context, seconds dt) {
         vector<Id> living;
         for (auto [id, _] : context->aspect<Scrap>().items())
             living.push_back(id);
@@ -258,9 +263,21 @@ namespace eltanin::locality {
             const auto& scrap = with<Scrap>::get(context, id);
             if (not with<phys::rigid::Solid>::exists(context, scrap.body) or not with<phys::Body>::exists(context, scrap.body))
                 continue;
+            {
+                auto solid = with<phys::rigid::Solid>::modify(context, scrap.body);
+                if (solid->collided) {
+                    solid->center.cohesion -= phys::Settings::Cohesion::scrapWear * float(dt);
+                    solid->collided = false;
+                }
+            }
             const auto& solid = with<phys::rigid::Solid>::get(context, scrap.body);
             const auto& body = with<phys::Body>::get(context, scrap.body);
             if (solid.center.temperature >= phys::Settings::Heat::scrapVaporKelvin) {
+                with<Scrap>::kraken(context, id);
+                continue;
+            }
+            if (solid.center.cohesion < -phys::Settings::Cohesion::scrapDust) {
+                emitEquivalentDust(context, body, solid);
                 with<Scrap>::kraken(context, id);
                 continue;
             }

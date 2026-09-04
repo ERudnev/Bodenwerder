@@ -39,7 +39,7 @@ namespace eltanin::locality {
         };
         struct Actions : BaseActions {
             static void bindResources(Writing);
-            static void update(Writing);
+            static void update(Writing, seconds dt);
             static auto spawn(Writing, rmmr::Pose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, Lineage, base::maybe<phys::Body::Id> cohort = {}) -> Id;
             static auto spawnMesh(Writing, rmmr::Pose actorPose, rmmr::Pose bodyPose, vec3 halfExtents, float mass, vec3 linear, vec3 omega, float cohesion, phys::Kelvins temperature, vector<rmmr::scene::actor::Mesh::Occurrence>, float latticeStep, Lineage, base::maybe<phys::Body::Id> cohort = {}) -> Id;
             static auto cutCount(float cohesion) -> int;

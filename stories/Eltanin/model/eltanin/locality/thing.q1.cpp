@@ -25,7 +25,7 @@ namespace eltanin::locality {
         with<Flash>::update(context);
         with<Bullet>::update(context);
         with<Construct>::update(context);
-        with<Scrap>::update(context);
+        with<Scrap>::update(context, dt);
         with<decorations::Dust>::update(context, dt);
         with<geo::Rock>::update(context);
         with<geo::Boulder>::update(context);

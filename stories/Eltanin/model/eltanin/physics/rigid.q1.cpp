@@ -44,9 +44,9 @@ namespace eltanin::phys::rigid {
             return mass > 0.0 ? moment / mass : dvec3{0.0, 0.0, 0.0};
         }
 
-        // goal = origin + R·shape; semiKick toward goal (resilience 0 invents Verlet Δv).
+        // goal = origin + R·shape; k<1 leaves residual. Resilience 0 invents Verlet Δv.
         void pullToShape(Crystal::Quantum& crystal, dvec3 origin, quat rotation) {
-            const double k = double(Settings::constraintStiffness);
+            const double k = double(Settings::shapePull);
             for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
                 Particle& particle = crystal.particles[index];
                 const dvec3 goal = origin + dvec3{rotation * crystal.shape[index]};
