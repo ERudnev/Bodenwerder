@@ -1,6 +1,7 @@
 #include "scenarios/asterField.h"
 
 #include <eltanin/locality/geo/rock.q1.h>
+#include <eltanin/locality/flash.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
@@ -88,7 +89,7 @@ namespace eltanin::scenario {
 
     void AsterField::populate(Writing context, rmmr::system::Device::Id device) {
         // Temporary: flash spawn parked.
-        // with<locality::Flash>::spawn(context, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f}, locality::Flash::Channels{.kinetic = 40.0f, .thermal = 20.0f, .brisance = 80.0f, });
+        with<locality::Flash>::spawn(context, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f}, locality::Flash::Channels{.kinetic = 30.0f, .thermal = 10.0f, .brisance = 40.0f, });
         const locality::geo::GeneralizedRecipe iceAsteroid{
             .mix = locality::geo::GeneralizedRecipe::homogenous(0), // Ice
             .radius = 40.0f,

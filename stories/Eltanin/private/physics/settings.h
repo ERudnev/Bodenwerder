@@ -40,7 +40,7 @@ namespace eltanin::phys {
         struct Cohesion {
             static constexpr float wound = 2.5f; // Crystal faces: Δcohesion = wound · |p| / m_face; 30mm 0.4 kg × 200 m/s vs 4 t plate → 5%
             static constexpr float boxWound = 25.0f; // Solid boxes (scrap): same law on whole-body mass; 10× so a 24 t dummy cube splits like a 4 t plate
-            static constexpr float breakStrain = 0.005f; // |ΔL|/L0 on a Construction edge; above → primitive cohesion 0 this tick
+            static constexpr float breakStrain = 0.05f; // |ΔL|/L0 on a Construction edge; above → primitive cohesion 0 this tick
         };
 
         struct Heat {
@@ -54,7 +54,7 @@ namespace eltanin::phys {
         static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
         static constexpr float restLinear = 1.0e-5f; // m/tick; below this (x−prev) is zeroed
         static constexpr float solidLiveSpeed = 0.1f; // m/s; Solid↔Crystal — soft fade of restitution and spin below this closing speed
-        static constexpr seconds fixedStep = 0.01;
+        static constexpr seconds fixedStep = 0.01; // TODO: consider 0.012 - 0.015 for better performance
         static constexpr seconds thermalStep = 0.05; // 20 Hz; Construct heats already uploaded every fixedStep via followBody
         static inline DebrisCohort debrisCohort = DebrisCohort::individual;
         static inline bool constructCollisionWounds = false; // scarFace → Construct cohesion / shed; Flash unchanged

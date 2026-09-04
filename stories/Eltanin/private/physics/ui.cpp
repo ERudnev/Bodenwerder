@@ -366,6 +366,14 @@ namespace eltanin::phys {
                 ImGui::Separator();
                 ImGui::TextUnformatted("Construct");
                 ImGui::Checkbox("Collision wounds", &Settings::constructCollisionWounds);
+                {
+                    auto construct = with<locality::Construct>::modify_global(context);
+                    if (ImGui::RadioButton("Scrap", construct->debris == locality::Construct::Debris::scrap))
+                        construct->debris = locality::Construct::Debris::scrap;
+                    ImGui::SameLine();
+                    if (ImGui::RadioButton("Dust", construct->debris == locality::Construct::Debris::dust))
+                        construct->debris = locality::Construct::Debris::dust;
+                }
 
                 ImGui::Separator();
                 ImGui::TextUnformatted("Location");

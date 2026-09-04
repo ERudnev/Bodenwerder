@@ -50,6 +50,10 @@ namespace eltanin::locality {
         struct Resources {
             rmmr::resource::meshpack::Asset::Id interframe;
         };
+        enum class Debris {
+            scrap,
+            dust,
+        };
         struct Quantum {
             Custody<phys::rigid::Crystal> body;
             Custody<rmmr::scene::actor::Mesh> actor;
@@ -61,6 +65,10 @@ namespace eltanin::locality {
         };
         struct Global {
             base::maybe<Resources> resources;
+            Debris debris;
+        };
+        struct Always {
+            static auto assemble(SettingUp&) -> Global;
         };
         struct Actions : BaseActions {
             static void bindResources(Writing);

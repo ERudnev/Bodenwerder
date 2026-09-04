@@ -74,6 +74,77 @@ namespace eltanin::locality {
             return found->second.cohesion <= 0.0f or found->second.temperature >= phys::Settings::Heat::hullShedKelvin;
         }
 
+        auto sameGrid(const index3& left, const index3& right) -> bool {
+            return left.x == right.x and left.y == right.y and left.z == right.z;
+        }
+
+        auto collectGone(const mech::Construction& construction, const umap<mech::Construction::Primitive::Id, PrimitiveHurt>& hurt) -> umap<mech::Construction::Primitive::Id, bool> {
+            umap<mech::Construction::Primitive::Id, bool> gone;
+            for (const auto& [id, _] : construction.knots) {
+                if (dropPrimitive(hurt, id))
+                    gone.emplace(id, true);
+            }
+            for (const auto& [id, _] : construction.ribs) {
+                if (dropPrimitive(hurt, id))
+                    gone.emplace(id, true);
+            }
+            auto touches = [&](const mech::Construction::Primitive& rib, index3 grid) -> bool {
+                for (const auto& welded : rib.loop) {
+                    if (sameGrid(welded.gridPos, grid))
+                        return true;
+                }
+                return false;
+            };
+            for (const auto& [id, knot] : construction.knots) {
+                if (gone.contains(id) or knot.loop.empty())
+                    continue;
+                bool held = false;
+                for (const auto& [ribId, rib] : construction.ribs) {
+                    if (gone.contains(ribId))
+                        continue;
+                    if (touches(rib, knot.loop[0].gridPos)) {
+                        held = true;
+                        break;
+                    }
+                }
+                if (not held)
+                    gone.emplace(id, true);
+            }
+            auto lostKnot = [&](index3 grid) -> bool {
+                for (const auto& [id, knot] : construction.knots) {
+                    if (knot.loop.empty() or not sameGrid(knot.loop[0].gridPos, grid))
+                        continue;
+                    return gone.contains(id);
+                }
+                return true;
+            };
+            auto markHeld = [&](mech::Construction::Primitive::Id id, const mech::Construction::Primitive& primitive) {
+                if (gone.contains(id))
+                    return;
+                if (dropPrimitive(hurt, id)) {
+                    gone.emplace(id, true);
+                    return;
+                }
+                for (const auto& welded : primitive.loop) {
+                    if (lostKnot(welded.gridPos)) {
+                        gone.emplace(id, true);
+                        return;
+                    }
+                }
+            };
+            for (const auto& [id, primitive] : construction.ribs)
+                markHeld(id, primitive);
+            for (const auto& [id, primitive] : construction.membranes)
+                markHeld(id, primitive);
+            for (const auto& [id, primitive] : construction.plates)
+                markHeld(id, primitive);
+            for (const auto& [id, faces] : construction.volumes) {
+                for (const auto& face : faces)
+                    markHeld(id, face);
+            }
+            return gone;
+        }
+
         constexpr float minHalf = 0.25f;
         constexpr float heatUploadStep = 10.0f;
         constexpr float cohesionUploadStep = 0.001f;
@@ -203,10 +274,6 @@ namespace eltanin::locality {
             return LocalBox{.center = 0.5f * (boundMin + boundMax), .rotation = identity, .half = half};
         }
 
-        auto sameGrid(const index3& left, const index3& right) -> bool {
-            return left.x == right.x and left.y == right.y and left.z == right.z;
-        }
-
         auto hasKnotAt(const mech::Construction& construction, index3 grid) -> bool {
             for (const auto& [_, knot] : construction.knots) {
                 if (not knot.loop.empty() and sameGrid(knot.loop[0].gridPos, grid))
@@ -285,11 +352,11 @@ namespace eltanin::locality {
         };
 
         template<typename Piece, typename IdOf>
-        void keepLive(vector<Piece>& items, IdOf idOf, const umap<mech::Construction::Primitive::Id, PrimitiveHurt>& hurt) {
+        void keepLive(vector<Piece>& items, IdOf idOf, const umap<mech::Construction::Primitive::Id, bool>& gone) {
             vector<Piece> live;
             live.reserve(items.size());
             for (auto& piece : items) {
-                if (not dropPrimitive(hurt, idOf(piece)))
+                if (not gone.contains(idOf(piece)))
                     live.push_back(std::move(piece));
             }
             items = std::move(live);
@@ -373,6 +440,10 @@ namespace eltanin::locality {
             const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
             const quat worldRot = glm::normalize(body.orientation * box.rotation);
             const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
+            if (with<Construct>::get_global(context).debris == Construct::Debris::dust) {
+                decorations::Dust::Actions::spawnKinetic(context, rmmr::Pose{.position = worldCenter, .rotation = worldRot}, box.half, linear, vec3{0.0f, 0.0f, 0.0f});
+                return;
+            }
             if (chunk.temperature < phys::Settings::Heat::hullShedKelvin) {
                 const int cuts = Scrap::Actions::cutCount(chunk.cohesion);
                 if (cuts < 0)
@@ -599,14 +670,8 @@ namespace eltanin::locality {
             if (crystal->particles.size() != construct->construction.evaluatedParticles.size() or crystal->particles.size() != crystal->shape.size())
                 return true;
             const auto hurt = hurtByPrimitive(construct->construction, crystal->particles);
-            bool anyDead = false;
-            for (const auto& [_, state] : hurt) {
-                if (state.cohesion <= 0.0f or state.temperature >= phys::Settings::Heat::hullShedKelvin) {
-                    anyDead = true;
-                    break;
-                }
-            }
-            if (not anyDead)
+            const auto gone = collectGone(construct->construction, hurt);
+            if (gone.empty())
                 return true;
 
             vector<phys::Particle> particles;
@@ -619,14 +684,16 @@ namespace eltanin::locality {
             mech::forEachPrimitiveLoop(construct->construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
                 if (mismatch)
                     return;
-                const bool gone = dropPrimitive(hurt, primitiveId);
+                const bool shed = gone.contains(primitiveId);
                 DeadChunk* chunk = nullptr;
-                if (gone) {
+                if (shed) {
                     auto found = dead.find(primitiveId);
                     if (found == dead.end()) {
                         const auto state = hurt.find(primitiveId);
+                        const float cohesion = state == hurt.end() ? 1.0f : state->second.cohesion;
+                        const float temperature = state == hurt.end() ? 0.0f : state->second.temperature;
                         const vec3 outward = construct->construction.plates.contains(primitiveId) ? plateOutward(primitive, construct->construction) : vec3{0.0f, 0.0f, 0.0f};
-                        found = dead.emplace(primitiveId, DeadChunk{.cohesion = state->second.cohesion, .temperature = state->second.temperature, .thickness = primitive.thickness, .mass = 0.0f, .momentum = dvec3{0.0, 0.0, 0.0}, .locals = {}, .outward = outward}).first;
+                        found = dead.emplace(primitiveId, DeadChunk{.cohesion = cohesion, .temperature = temperature, .thickness = primitive.thickness, .mass = 0.0f, .momentum = dvec3{0.0, 0.0, 0.0}, .locals = {}, .outward = outward}).first;
                     }
                     found->second.thickness = glm::max(found->second.thickness, primitive.thickness);
                     chunk = &found->second;
@@ -637,7 +704,7 @@ namespace eltanin::locality {
                         mismatch = true;
                         return;
                     }
-                    if (gone) {
+                    if (shed) {
                         const auto& particle = crystal->particles[index];
                         chunk->locals.push_back(crystal->shape[index]);
                         chunk->mass += particle.mass;
@@ -669,7 +736,7 @@ namespace eltanin::locality {
             }
             auto eraseDead = [&](auto& items) {
                 for (auto it = items.begin(); it != items.end(); ) {
-                    if (dropPrimitive(hurt, it->first))
+                    if (gone.contains(it->first))
                         it = items.erase(it);
                     else
                         ++it;
@@ -680,11 +747,11 @@ namespace eltanin::locality {
             eraseDead(construct->construction.membranes);
             eraseDead(construct->construction.plates);
             eraseDead(construct->construction.volumes);
-            keepLive(construct->fragments.ofKnot, [](const auto& piece) { return piece.knot; }, hurt);
-            keepLive(construct->fragments.ofRib, [](const auto& piece) { return piece.rib; }, hurt);
-            keepLive(construct->fragments.ofMembrane, [](const auto& piece) { return piece.membrane; }, hurt);
-            keepLive(construct->fragments.ofPlate, [](const auto& piece) { return piece.plate; }, hurt);
-            keepLive(construct->fragments.ofVolume, [](const auto& piece) { return piece.volume; }, hurt);
+            keepLive(construct->fragments.ofKnot, [](const auto& piece) { return piece.knot; }, gone);
+            keepLive(construct->fragments.ofRib, [](const auto& piece) { return piece.rib; }, gone);
+            keepLive(construct->fragments.ofMembrane, [](const auto& piece) { return piece.membrane; }, gone);
+            keepLive(construct->fragments.ofPlate, [](const auto& piece) { return piece.plate; }, gone);
+            keepLive(construct->fragments.ofVolume, [](const auto& piece) { return piece.volume; }, gone);
             mech::compileParticles(construct->construction);
             crystal->particles = std::move(particles);
             crystal->shape = std::move(shape);
@@ -711,6 +778,10 @@ namespace eltanin::locality {
             return true;
         }
 
+    }
+
+    auto Construct::Always::assemble(SettingUp&) -> Construct::Global {
+        return Global{.resources = {}, .debris = Debris::scrap};
     }
 
     void Construct::Actions::bindResources(Writing context) {

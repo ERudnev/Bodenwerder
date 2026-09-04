@@ -38,6 +38,9 @@ namespace eltanin
         ofVolume: vector<OfVolume>
       struct Resources
         interframe: #rmmr::resource::meshpack::Asset
+      enum Debris : scrap, dust // scrap = Solid salvage; dust = cold kinetic Dust
+      always
+        >assemble() -> all
       one
         body: custody<phys::rigid::Crystal>
         actor: custody<rmmr::scene::actor::Mesh>
@@ -48,6 +51,7 @@ namespace eltanin
         gpuHeats: vector<float> // last writeHeats; never read back from GPU
       all
         resources: Resources?
+        debris: Debris
         >bindResources()
         >update()
         >shedDead()

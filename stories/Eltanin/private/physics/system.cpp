@@ -223,11 +223,13 @@ namespace eltanin::phys {
 
     void System::applyConstructIntegrity(Stewarding context) {
         auto crystals = context.direct<rigid::Crystal>();
+        auto bodies = context.direct<Body>();
         for (auto [_, construct] : context.direct<locality::Construct>().items) {
             auto* crystal = crystals.items.find(construct.body);
-            if (not crystal)
+            auto* body = bodies.items.find(construct.body);
+            if (not crystal or not body)
                 continue;
-            reconcile(construct.construction, *crystal);
+            reconcile(construct.construction, *crystal, *body);
         }
     }
 

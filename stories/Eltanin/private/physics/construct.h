@@ -5,7 +5,7 @@
 
 namespace eltanin::phys {
 
-    // After collisions, before final Horn. Restore Construction edge lengths on the Crystal vertex buffer.
-    void reconcile(const mech::Construction&, rigid::Crystal::Quantum&);
+    // After collisions, before final Horn. Frame wave along ribs, then rib edge restore (skin is not a load path).
+    void reconcile(const mech::Construction&, rigid::Crystal::Quantum&, const Body::Quantum&);
 
 }
