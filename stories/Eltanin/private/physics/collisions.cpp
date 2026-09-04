@@ -165,7 +165,7 @@ namespace eltanin::phys::collision {
             return weight / sum;
         }
 
-        void kickFaceSupports(Crystal::Quantum& crystal, const Body::Quantum& crystalBody, integer faceIndex, vec3 worldPoint, vec3 recoil, float solidMass) {
+        void kickFaceSupports(Crystal::Quantum& crystal, const Body::Quantum& crystalBody, integer faceIndex, vec3 worldPoint, dvec3 recoil, float solidMass) {
             if (solidMass <= 0.0f or faceIndex < 0 or static_cast<std::size_t>(faceIndex) >= crystal.hull.faces.size())
                 return;
             const auto& face = crystal.hull.faces[static_cast<std::size_t>(faceIndex)];
@@ -200,7 +200,7 @@ namespace eltanin::phys::collision {
                 return;
             for (std::size_t index = 0; index < used; ++index) {
                 Particle& particle = crystal.particles[static_cast<std::size_t>(ids[index])];
-                verlet::kick(particle, recoil * (solidMass * (weights[index] / sum) / particle.mass));
+                verlet::semiKick(particle, recoil * (double(solidMass) * double(weights[index]) / double(sum) / double(particle.mass)), Settings::Resilience::faceSupport);
             }
         }
 
@@ -334,7 +334,7 @@ namespace eltanin::phys::collision {
         void kickSolid(Body::Quantum& body, Solid::Quantum& solid, vec3 arm, vec3 impulse) {
             if (body.totalMass <= 0.0f)
                 return;
-            body.position += dvec3{impulse / body.totalMass};
+            body.position += dvec3{impulse} / double(body.totalMass);
             solid.center.position = body.position;
             const float inertia = sphereInertia(body);
             if (inertia <= 1.0e-12f)
@@ -722,10 +722,10 @@ namespace eltanin::phys::collision {
         // Reflect Verlet normal step via center.prev only — position already on the surface. Crystal particles do not use this.
         // `live` soft-scales restitution (0 → e=0 stick; 1 → full solidRestitution). Separation is unchanged.
         void bounceSolid(Body::Quantum& body, Solid::Quantum& solid, vec3 normal, float otherNormalStep, float live) {
-            const float vn = float(glm::dot(body.position - solid.center.prev, dvec3{normal})) - otherNormalStep;
-            if (vn <= 0.0f)
+            const double vn = glm::dot(body.position - solid.center.prev, dvec3{normal}) - double(otherNormalStep);
+            if (vn <= 0.0)
                 return;
-            solid.center.prev += dvec3{normal * ((1.0f + solidRestitution * live) * vn)};
+            solid.center.prev += dvec3{normal} * ((1.0 + double(solidRestitution) * double(live)) * vn);
         }
 
         void bounceSolidSolid(Body::Quantum& bodyA, Solid::Quantum& solidA, Body::Quantum& bodyB, Solid::Quantum& solidB, vec3 normal) {
@@ -734,12 +734,12 @@ namespace eltanin::phys::collision {
             const float weightSum = weightA + weightB;
             if (weightSum <= 0.0f)
                 return;
-            const float vn = float(glm::dot((bodyA.position - solidA.center.prev) - (bodyB.position - solidB.center.prev), dvec3{normal}));
-            if (vn <= 0.0f)
+            const double vn = glm::dot((bodyA.position - solidA.center.prev) - (bodyB.position - solidB.center.prev), dvec3{normal});
+            if (vn <= 0.0)
                 return;
-            const float jump = (1.0f + solidRestitution) * vn / weightSum;
-            solidA.center.prev += dvec3{normal * (jump * weightA)};
-            solidB.center.prev -= dvec3{normal * (jump * weightB)};
+            const double jump = (1.0 + double(solidRestitution)) * vn / double(weightSum);
+            solidA.center.prev += dvec3{normal} * (jump * double(weightA));
+            solidB.center.prev -= dvec3{normal} * (jump * double(weightB));
         }
 
         auto solidCrystalLive(float closingSpeed) -> float {
@@ -758,7 +758,7 @@ namespace eltanin::phys::collision {
             auto* solid = solids.items.find(contact.a.body);
             if (not body or not solid)
                 return;
-            verlet::halfKick(solid->center, -contact.normal * remaining);
+            verlet::semiKick(solid->center, -dvec3{contact.normal} * double(remaining), Settings::Resilience::solidContact);
             body->position = solid->center.position;
             const float live = solidCrystalLive(glm::max(0.0f, contact.relativeNormalSpeed));
             frictionSolidCrystal(contact, remaining, live, *body, *solid, bodies, solids, crystals);
@@ -766,7 +766,7 @@ namespace eltanin::phys::collision {
             auto* crystalBody = bodies.items.find(contact.b.body);
             if (not crystal or not crystalBody)
                 return;
-            kickFaceSupports(*crystal, *crystalBody, contact.b.face, contact.point, contact.normal * remaining, body->totalMass);
+            kickFaceSupports(*crystal, *crystalBody, contact.b.face, contact.point, dvec3{contact.normal} * double(remaining), body->totalMass);
         }
 
         void respondSolidSolid(Contact& contact, float remaining, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids) {
@@ -781,8 +781,8 @@ namespace eltanin::phys::collision {
             const float weightSum = weightA + weightB;
             if (weightSum <= 0.0f)
                 return;
-            bodyA->position -= dvec3{contact.normal * (remaining * (weightA / weightSum))};
-            bodyB->position += dvec3{contact.normal * (remaining * (weightB / weightSum))};
+            bodyA->position -= dvec3{contact.normal} * (double(remaining) * double(weightA) / double(weightSum));
+            bodyB->position += dvec3{contact.normal} * (double(remaining) * double(weightB) / double(weightSum));
             solidA->center.position = bodyA->position;
             solidB->center.position = bodyB->position;
             bounceSolidSolid(*bodyA, *solidA, *bodyB, *solidB, contact.normal);
@@ -796,7 +796,7 @@ namespace eltanin::phys::collision {
             if (contact.a.face < 0 or static_cast<std::size_t>(contact.a.face) >= particleCrystal->particles.size())
                 return;
             Particle& particle = particleCrystal->particles[static_cast<std::size_t>(contact.a.face)];
-            verlet::halfKick(particle, -contact.normal * remaining);
+            verlet::semiKick(particle, -dvec3{contact.normal} * double(remaining), Settings::Resilience::crystalContact);
             if (contact.relativeNormalSpeed <= 0.0f)
                 return;
             const float mass = particle.mass;
@@ -1223,7 +1223,7 @@ namespace eltanin::phys::collision {
                 auto* crystal = crystals.items.find(other);
                 auto* crystalBody = bodies.items.find(other);
                 if (crystal and crystalBody) {
-                    kickFaceSupports(*crystal, *crystalBody, face, point, -normal * (j * float(Settings::fixedStep) / ray.core.mass), ray.core.mass);
+                    kickFaceSupports(*crystal, *crystalBody, face, point, -dvec3{normal} * (double(j) * double(Settings::fixedStep) / double(ray.core.mass)), ray.core.mass);
                 }
             }
             const vec3 vNew = vRay + normal * (j * invRay);

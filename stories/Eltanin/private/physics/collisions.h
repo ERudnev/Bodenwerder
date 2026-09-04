@@ -15,7 +15,7 @@ namespace eltanin::phys::collision {
     // Narrow: box/sphere SAT; solid vs frozen hull; Crystal vs Crystal is asymmetric — each side's live particles vs the other's pose*shape.
     // Each particle queries the rest-space hull BVH; depth is signed distance to that primitive (polygon slab or 2-vert capsule).
     // Solver once per tick: one-sided hull faces place the tested point on the closest surface point (shortest exit); two-sided plates still separate along −normal×depth.
-    // Solid vs crystal: both queries detect; impulse is only solid-vs-shape — restitution+friction on the Solid (center.prev), kick face supports on Crystal.
+    // Solid vs crystal: both queries detect; impulse is only solid-vs-shape — restitution+friction on the Solid (center.prev), semiKick face supports on Crystal.
     // Contact = positional constraint + event payload — not a force into accumulateForces.
     // Rays are not Occupants. After solve, traceRays() CCD-tests each Ray segment (prev→position) against Solids and Crystal hulls. Rays do not see each other.
 

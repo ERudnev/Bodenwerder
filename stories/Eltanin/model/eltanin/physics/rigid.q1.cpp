@@ -44,13 +44,13 @@ namespace eltanin::phys::rigid {
             return mass > 0.0 ? moment / mass : dvec3{0.0, 0.0, 0.0};
         }
 
-        // goal = origin + R·shape; full kick toward goal (invents Verlet Δv). Experiment vs teleport.
+        // goal = origin + R·shape; semiKick toward goal (resilience 0 invents Verlet Δv).
         void pullToShape(Crystal::Quantum& crystal, dvec3 origin, quat rotation) {
             const double k = double(Settings::constraintStiffness);
             for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
                 Particle& particle = crystal.particles[index];
                 const dvec3 goal = origin + dvec3{rotation * crystal.shape[index]};
-                verlet::kick(particle, (goal - particle.position) * k);
+                verlet::semiKick(particle, (goal - particle.position) * k, Settings::Resilience::pullToShape);
             }
         }
 
@@ -94,8 +94,8 @@ namespace eltanin::phys::rigid {
         for (std::size_t index = 0; index < crystal->particles.size(); ++index) {
             Particle& particle = crystal->particles[index];
             particle.position = origin + dvec3{pose.rotation * crystal->shape[index]};
-            const vec3 spin = glm::cross(omega, vec3{particle.position - currentCom});
-            particle.prev = particle.position - dvec3{(linear + spin) * float(Settings::fixedStep)};
+            const dvec3 spin = glm::cross(dvec3{omega}, particle.position - currentCom);
+            particle.prev = particle.position - (dvec3{linear} + spin) * double(Settings::fixedStep);
             particle.force = vec3{0.0f, 0.0f, 0.0f};
         }
         const auto anchor = body->compound;

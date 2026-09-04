@@ -5,6 +5,7 @@
 #include "mech/semantics/space.h"
 
 #include <glm/geometric.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include <cmath>
 #include <vector>
@@ -38,7 +39,7 @@ namespace eltanin::phys {
             if (mass <= 0.0)
                 return false;
             liveCom = liveMoment / mass;
-            restWorld = origin + dvec3{rotation * vec3{restMoment / mass}};
+            restWorld = origin + glm::dquat{rotation} * (restMoment / mass);
             return true;
         }
 
@@ -133,7 +134,7 @@ namespace eltanin::phys {
                     const auto slot = static_cast<std::size_t>(particleIndex);
                     if (slot >= crystal.particles.size() or not onFrame[slot])
                         continue;
-                    verlet::halfKick(crystal.particles[slot], shift);
+                    verlet::semiKick(crystal.particles[slot], shift, Settings::Resilience::wave);
                 }
             }
         }
@@ -180,7 +181,7 @@ namespace eltanin::phys {
             for (std::size_t slot = 0; slot < count; ++slot) {
                 if (kickHits[slot] <= 0)
                     continue;
-                verlet::kick(crystal.particles[cursor + slot], kickSum[slot] / double(kickHits[slot]));
+                verlet::semiKick(crystal.particles[cursor + slot], kickSum[slot] / double(kickHits[slot]), Settings::Resilience::ribRestore);
             }
             if (peakStrain <= Settings::Cohesion::breakStrain)
                 return;

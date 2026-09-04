@@ -51,6 +51,16 @@ namespace eltanin::phys {
             static constexpr float radiateSigma = 5.0e-13f; // parrot mass × kelvin; five times slower than the first lava-scale guess
         };
 
+        // Verlet semiKick: 0 = only current (ball), 1 = current and previous (teleport), ½ = halfKick.
+        struct Resilience {
+            static constexpr double wave = 0.5; // knot wave along the frame
+            static constexpr double ribRestore = 0.0; // rib length restore
+            static constexpr double pullToShape = 0.0; // Horn follow / Hitman pull
+            static constexpr double faceSupport = 0.0; // solid/ray recoil onto crystal hull vertices
+            static constexpr double solidContact = 0.5; // solid ↔ crystal positional remaining
+            static constexpr double crystalContact = 0.5; // crystal particle vs frozen hull
+        };
+
         static constexpr float constraintStiffness = 1.0f;//0.75f; // Hitman-style goal pull (constraints)
         static constexpr float restLinear = 1.0e-5f; // m/tick; below this (x−prev) is zeroed
         static constexpr float solidLiveSpeed = 0.1f; // m/s; Solid↔Crystal — soft fade of restitution and spin below this closing speed
