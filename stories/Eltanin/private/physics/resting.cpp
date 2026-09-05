@@ -1,5 +1,6 @@
 #include "physics/resting.h"
 #include "physics/settings.h"
+#include "physics/verlet.h"
 
 #include <eltanin/physics/resting.q1.h>
 #include <eltanin/physics/rigid.q1.h>
@@ -218,9 +219,7 @@ namespace eltanin::phys::collision {
             return glm::length(vec3{slot.origin - slot.origin0}) > Settings::restLinear or rotationDistance(slot.orientation, slot.orientation0) > 1.0e-5f or glm::length(slot.linear - slot.linear0) * dt > Settings::restLinear or glm::length(slot.omega - slot.omega0) * dt > 1.0e-5f;
         }
 
-        void applySlot(Slot& slot, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
-            if (not slotMoved(slot))
-                return;
+        void writeSlot(Slot& slot, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
             auto* body = bodies.items.find(slot.id);
             if (not body)
                 return;
@@ -258,6 +257,49 @@ namespace eltanin::phys::collision {
             }
             body->position = slot.origin;
             body->orientation = slot.orientation;
+        }
+
+        void applySlot(Slot& slot, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
+            if (slotMoved(slot))
+                writeSlot(slot, bodies, solids, crystals);
+        }
+
+        void slerpToward(quat& orientation, quat target, float share) {
+            quat delta = glm::normalize(target * glm::conjugate(orientation));
+            if (delta.w < 0.0f)
+                delta = -delta;
+            const float angle = 2.0f * std::acos(glm::clamp(delta.w, 0.0f, 1.0f));
+            const float sine = glm::length(vec3{delta.x, delta.y, delta.z});
+            if (angle <= minLength or sine <= minLength)
+                return;
+            orientation = glm::normalize(glm::angleAxis(angle * share, vec3{delta.x, delta.y, delta.z} / sine) * orientation);
+        }
+
+        void pullToward(Body::Id id, dvec3 origin, quat rotation, float share, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
+            if (share <= 0.0f)
+                return;
+            const double resilience = double(Settings::Resting::dissipateResilience);
+            if (auto* crystal = crystals.items.find(id)) {
+                if (crystal->particles.size() != crystal->shape.size())
+                    return;
+                const double k = double(share);
+                for (std::size_t index = 0; index < crystal->particles.size(); ++index) {
+                    Particle& particle = crystal->particles[index];
+                    const dvec3 goal = origin + dvec3{rotation * crystal->shape[index]};
+                    verlet::semiKick(particle, (goal - particle.position) * k, resilience);
+                }
+                return;
+            }
+            auto* solid = solids.items.find(id);
+            auto* body = bodies.items.find(id);
+            if (not solid or not body)
+                return;
+            verlet::semiKick(solid->center, (origin - body->position) * double(share), resilience);
+            body->position = solid->center.position;
+            const quat oldOri = body->orientation;
+            slerpToward(body->orientation, rotation, share);
+            const quat turn = glm::normalize(body->orientation * glm::conjugate(oldOri));
+            solid->prevOri = glm::normalize(glm::slerp(solid->prevOri, glm::normalize(turn * solid->prevOri), float(resilience)));
         }
 
         void censusProbes(State& state) {
@@ -495,7 +537,9 @@ namespace eltanin::phys::collision {
                 continue;
             }
             const vec3 originOffset = glm::conjugate(first->orientation) * vec3{second->position - first->position};
-            with<Resting>::create(context, Resting::Quantum{.first = pair.first, .second = pair.second, .anchorFirst = localFirst, .anchorSecond = localSecond, .normalFirst = glm::conjugate(first->orientation) * normal, .relativeOffset = originOffset, .relativeOrientation = relativeOrientation, .normalLoad = 0.0f, .firstRadius = first->radius, .secondRadius = second->radius, .firstShape = firstShape, .secondShape = secondShape});
+            const vec3 inverseOffset = glm::conjugate(second->orientation) * vec3{first->position - second->position};
+            const quat inverseOrientation = glm::normalize(glm::conjugate(second->orientation) * first->orientation);
+            with<Resting>::create(context, Resting::Quantum{.first = pair.first, .second = pair.second, .anchorFirst = localFirst, .anchorSecond = localSecond, .normalFirst = glm::conjugate(first->orientation) * normal, .relativeOffset = originOffset, .relativeOrientation = relativeOrientation, .inverseOffset = inverseOffset, .inverseOrientation = inverseOrientation, .normalLoad = 0.0f, .firstRadius = first->radius, .secondRadius = second->radius, .firstShape = firstShape, .secondShape = secondShape});
             state.activeResting.insert(pair);
         }
         state.probes = std::move(nextProbes);
@@ -546,6 +590,40 @@ namespace eltanin::phys::collision {
                 }
             }
             solveIsland(island, context, bodies, solids, crystals);
+        }
+    }
+
+    void dissipateResting(State& state, Stewarding context) {
+        if (not Settings::Resting::enabled or Settings::Resting::dissipate <= 0.0f)
+            return;
+        const auto live = collectLive(state, context);
+        if (live.empty())
+            return;
+        auto bodies = context.direct<Body>();
+        auto solids = context.direct<Solid>();
+        auto crystals = context.direct<Crystal>();
+        auto restings = context.direct<Resting>();
+        for (const Resting::Id id : live) {
+            auto* rest = restings.items.find(id);
+            if (not rest)
+                continue;
+            auto* bodyA = bodies.items.find(rest->first);
+            auto* bodyB = bodies.items.find(rest->second);
+            if (not bodyA or not bodyB)
+                continue;
+            const float invA = inverseMass(bodyA->totalMass);
+            const float invB = inverseMass(bodyB->totalMass);
+            const float invSum = invA + invB;
+            if (invSum <= 0.0f)
+                continue;
+            const float shareA = Settings::Resting::dissipate * invA / invSum;
+            const float shareB = Settings::Resting::dissipate * invB / invSum;
+            const dvec3 originA = bodyB->position + dvec3{bodyB->orientation * rest->inverseOffset};
+            const quat oriA = glm::normalize(bodyB->orientation * rest->inverseOrientation);
+            const dvec3 originB = bodyA->position + dvec3{bodyA->orientation * rest->relativeOffset};
+            const quat oriB = glm::normalize(bodyA->orientation * rest->relativeOrientation);
+            pullToward(rest->first, originA, oriA, shareA, bodies, solids, crystals);
+            pullToward(rest->second, originB, oriB, shareB, bodies, solids, crystals);
         }
     }
 

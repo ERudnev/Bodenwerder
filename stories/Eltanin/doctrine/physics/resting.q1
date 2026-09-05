@@ -5,6 +5,7 @@ namespace eltanin
   namespace phys
 
     // Symmetric cached contact. first/second order is canonical for uniqueness only.
+    // relative* = second in first's space; inverse* = first in second's space. Frozen at capture.
     entity Resting
       one
         first: #Body
@@ -14,6 +15,8 @@ namespace eltanin
         normalFirst: vec3
         relativeOffset: vec3
         relativeOrientation: quat
+        inverseOffset: vec3
+        inverseOrientation: quat
         normalLoad: float
         firstRadius: float
         secondRadius: float

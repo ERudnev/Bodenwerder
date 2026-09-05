@@ -16,7 +16,7 @@ namespace eltanin::phys {
 
     // Private physics subsystem (not Q1).
     // Fixed tick Settings::fixedStep; frame dt accumulates as seconds debt. Same clock as Thing.now.
-    // One pass: accumulate forces → Verlet → Horn → connectivity → Construction/Crystal reconcile → Horn → pull to shape.
+    // One pass: accumulate forces → Verlet → Horn → connectivity → Construction/Crystal reconcile → Horn → pull to shape → dissipate resting.
     // After the last tick of this Dock: Thing::followBodies copies Body pose onto Node (missing ward → skip). Construct GPU cohesion/heat is not here.
     // One Dock per tick; hot mutation via Stewarding::direct<Body>() and direct<rigid::Crystal>() / direct<rigid::Solid>().
     // Orientation: Horn unit-quaternion method (symmetric N 4×4 + Jacobi), see physics/horn.h.

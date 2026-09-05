@@ -17,6 +17,8 @@ namespace eltanin::phys {
             vec3 normalFirst;
             vec3 relativeOffset;
             quat relativeOrientation;
+            vec3 inverseOffset;
+            quat inverseOrientation;
             float normalLoad;
             float firstRadius;
             float secondRadius;

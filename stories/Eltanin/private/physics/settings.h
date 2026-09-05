@@ -62,13 +62,15 @@ namespace eltanin::phys {
         struct Resting {
             static inline bool enabled = true;
             static inline float captureSeconds = 0.5f;
-            static inline float captureMeters = 0.05f; // local contact on each body vs the start of the probe, not Body origins
-            static inline float captureRadians = 0.02f;
+            static inline float captureMeters = 0.1f; // local contact on each body vs the start of the probe, not Body origins
+            static inline float captureRadians = 0.04f;
             static constexpr float tensileMeters = 0.25f;
             static constexpr float adhesiveSpeed = 0.5f; // extra grip as equivalent closing speed
             static constexpr float staticFriction = 1.2f;
             static constexpr float twistRadians = 0.35f;
             static constexpr integer solveIterations = 3;
+            static inline float dissipate = 0.35f; // pull toward the captured mutual shape; 0 = off, 1 = full step before mass split
+            static inline float dissipateResilience = 0.85f; // semiKick; 1 = teleport, 0 = invent Δv like pullToShape
         };
 
         // Verlet semiKick: 0 = only current (ball), 1 = current and previous (teleport), ½ = halfKick.

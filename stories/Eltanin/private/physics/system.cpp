@@ -1,6 +1,7 @@
 #include "physics/system.h"
 #include "physics/collisions.h"
 #include "physics/construct.h"
+#include "physics/resting.h"
 
 #include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/flash.q1.h>
@@ -247,6 +248,7 @@ namespace eltanin::phys {
         applyConstructIntegrity(context);
         restoreBases(context);
         applyConstraintWishes(context);
+        collision::dissipateResting(collisions, context);
     }
 
     void System::radiate(Stewarding context) {

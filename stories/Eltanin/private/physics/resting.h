@@ -9,5 +9,6 @@ namespace eltanin::phys::collision {
     void acquireResting(State&, Stewarding);
     void recheckResting(State&, Stewarding);
     void solveRestingIslands(State&, Stewarding);
+    void dissipateResting(State&, Stewarding);
 
 }

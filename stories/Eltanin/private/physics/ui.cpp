@@ -375,11 +375,16 @@ namespace eltanin::phys {
                 ImGui::Checkbox("Knot wave", &Settings::knotWave);
 
                 ImGui::Separator();
-                ImGui::TextUnformatted("Resting");
-                ImGui::Checkbox("Enable", &Settings::Resting::enabled);
-                ImGui::DragFloat("Capture s", &Settings::Resting::captureSeconds, 0.02f, 0.02f, 2.0f, "%.2f");
-                ImGui::DragFloat("Capture m", &Settings::Resting::captureMeters, 0.01f, 0.01f, 1.0f, "%.2f");
-                ImGui::DragFloat("Capture rad", &Settings::Resting::captureRadians, 0.005f, 0.005f, 0.5f, "%.3f");
+                if (ImGui::CollapsingHeader("Resting")) {
+                    ImGui::Checkbox("Enable", &Settings::Resting::enabled);
+                    ImGui::DragFloat("Capture s", &Settings::Resting::captureSeconds, 0.02f, 0.02f, 2.0f, "%.2f");
+                    ImGui::DragFloat("Capture m", &Settings::Resting::captureMeters, 0.01f, 0.01f, 1.0f, "%.2f");
+                    ImGui::DragFloat("Capture rad", &Settings::Resting::captureRadians, 0.005f, 0.005f, 0.5f, "%.3f");
+                    ImGui::DragFloat("Dissipate", &Settings::Resting::dissipate, 0.02f, 0.0f, 1.0f, "%.2f");
+                    ImGui::DragFloat("Dissipate res", &Settings::Resting::dissipateResilience, 0.02f, 0.0f, 1.0f, "%.2f");
+                    const auto& restCensus = system.collisionCensus();
+                    ImGui::Text("probes %d (%.2fs)  pairs %d  islands %d  skipped %d", restCensus.restProbes, float(restCensus.restProbeStable), restCensus.restingPairs, restCensus.restingIslands, restCensus.restingSkipped);
+                }
 
                 ImGui::Separator();
                 ImGui::TextUnformatted("Location");
@@ -455,7 +460,6 @@ namespace eltanin::phys {
                 const auto& census = system.collisionCensus();
                 ImGui::Text("broad  %d → %d pair tests, sphere %d → obb %d", census.cohorts, census.cohortPairs, census.cohortHits, census.obbHits);
                 ImGui::Text("occupants  %d (max %d)  tries %d → candidates %d → contacts %d", census.occupants, census.maxOccupants, census.occupantTries, census.candidates, census.contacts);
-                ImGui::Text("resting  probes %d (%.2fs)  pairs %d  islands %d  skipped %d", census.restProbes, float(census.restProbeStable), census.restingPairs, census.restingIslands, census.restingSkipped);
                 ImGui::Text("rays  %d tries %d, hits %d", census.rays, census.rayTries, census.rayHits);
 
                 ImGui::Separator();
@@ -469,10 +473,11 @@ namespace eltanin::phys {
                 }
                 if (not any) {
                     ImGui::TextDisabled("None.");
-                } else if (ImGui::BeginTable("constructs", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+                } else if (ImGui::BeginTable("constructs", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
                     ImGui::TableSetupColumn("Id", ImGuiTableColumnFlags_WidthFixed, 48.0f);
                     ImGui::TableSetupColumn("Mass");
                     ImGui::TableSetupColumn("Speed");
+                    ImGui::TableSetupColumn("Rested", ImGuiTableColumnFlags_WidthFixed, 56.0f);
                     ImGui::TableHeadersRow();
                     for (const auto [id, construct] : context->aspect<locality::Construct>().items()) {
                         if (not with<Body>::exists(context, construct.body))
@@ -481,6 +486,11 @@ namespace eltanin::phys {
                         float speed = 0.0f;
                         if (with<rigid::Crystal>::exists(context, construct.body))
                             speed = bodyLinearSpeed(with<rigid::Crystal>::get(context, construct.body));
+                        integer restLinks = 0;
+                        for (const auto [_, rest] : context->aspect<Resting>().items()) {
+                            if (rest.first == construct.body or rest.second == construct.body)
+                                ++restLinks;
+                        }
                         ImGui::TableNextRow();
                         ImGui::TableNextColumn();
                         ImGui::Text("%d", static_cast<int>(id.raw()));
@@ -488,6 +498,11 @@ namespace eltanin::phys {
                         ImGui::Text("%.2f t", body.totalMass / 1000.0f);
                         ImGui::TableNextColumn();
                         ImGui::Text("%.2f m/s", speed);
+                        ImGui::TableNextColumn();
+                        if (restLinks > 0)
+                            ImGui::Text("%d", static_cast<int>(restLinks));
+                        else
+                            ImGui::TextDisabled("—");
                     }
                     ImGui::EndTable();
                 }
