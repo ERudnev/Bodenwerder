@@ -1,0 +1,21 @@
+import "rmmr/math"
+import "physics/body"
+
+namespace eltanin
+  namespace phys
+
+    // Symmetric cached contact. first/second order is canonical for uniqueness only.
+    entity Resting
+      one
+        first: #Body
+        second: #Body
+        anchorFirst: vec3
+        anchorSecond: vec3
+        normalFirst: vec3
+        relativeOffset: vec3
+        relativeOrientation: quat
+        normalLoad: float
+        firstRadius: float
+        secondRadius: float
+        firstShape: integer
+        secondShape: integer

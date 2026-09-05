@@ -10,6 +10,7 @@
 #include <eltanin/locality/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
+#include <eltanin/physics/resting.q1.h>
 #include <eltanin/mech/blueprint.q1.h>
 #include <eltanin/mech/mount.q1.h>
 #include <eltanin/resources/assets.q1.h>
@@ -51,6 +52,7 @@ namespace eltanin {
             ask::schema::aspect<phys::rigid::Solid>(),
             ask::schema::aspect<phys::rigid::Ray>(),
             ask::schema::aspect<phys::rigid::CelestialGravity>(),
+            ask::schema::aspect<phys::Resting>(),
             ask::schema::aspect<locality::Thing>(),
             ask::schema::aspect<locality::Flash>(),
             ask::schema::aspect<locality::Bullet>(),

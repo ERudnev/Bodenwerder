@@ -10,6 +10,7 @@ set(Eltanin_Q1
     world.q1
     physics/body.q1
     physics/rigid.q1
+    physics/resting.q1
     resources/geometry.q1
     resources/assets.q1
     mech/semantics.q1

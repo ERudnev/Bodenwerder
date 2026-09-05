@@ -7,6 +7,7 @@
 #include <eltanin/locality/scrap.q1.h>
 #include <eltanin/locality/geo/boulder.q1.h>
 #include <eltanin/locality/geo/rock.q1.h>
+#include <eltanin/physics/resting.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/resources/builders/geometryGenerator.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -374,6 +375,13 @@ namespace eltanin::phys {
                 ImGui::Checkbox("Knot wave", &Settings::knotWave);
 
                 ImGui::Separator();
+                ImGui::TextUnformatted("Resting");
+                ImGui::Checkbox("Enable", &Settings::Resting::enabled);
+                ImGui::DragFloat("Capture s", &Settings::Resting::captureSeconds, 0.02f, 0.02f, 2.0f, "%.2f");
+                ImGui::DragFloat("Capture m", &Settings::Resting::captureMeters, 0.01f, 0.01f, 1.0f, "%.2f");
+                ImGui::DragFloat("Capture rad", &Settings::Resting::captureRadians, 0.005f, 0.005f, 0.5f, "%.3f");
+
+                ImGui::Separator();
                 ImGui::TextUnformatted("Location");
                 if (with<rmmr::scene::Root>::exists(context, system.scene)) {
                     auto root = with<rmmr::scene::Root>::modify(context, system.scene);
@@ -435,6 +443,7 @@ namespace eltanin::phys {
                     censusRow("  box", static_cast<std::size_t>(boxes));
                     censusRow("  sphere", static_cast<std::size_t>(spheres));
                     censusRow("ray", context->aspect<rigid::Ray>().items().size());
+                    censusRow("resting", context->aspect<Resting>().items().size());
                     censusRow("cohort", cohorts.size());
                     censusRow("particle", static_cast<std::size_t>(particles));
                     censusRow("hull face", static_cast<std::size_t>(hullFaces));
@@ -446,6 +455,7 @@ namespace eltanin::phys {
                 const auto& census = system.collisionCensus();
                 ImGui::Text("broad  %d → %d pair tests, sphere %d → obb %d", census.cohorts, census.cohortPairs, census.cohortHits, census.obbHits);
                 ImGui::Text("occupants  %d (max %d)  tries %d → candidates %d → contacts %d", census.occupants, census.maxOccupants, census.occupantTries, census.candidates, census.contacts);
+                ImGui::Text("resting  probes %d (%.2fs)  pairs %d  islands %d  skipped %d", census.restProbes, float(census.restProbeStable), census.restingPairs, census.restingIslands, census.restingSkipped);
                 ImGui::Text("rays  %d tries %d, hits %d", census.rays, census.rayTries, census.rayHits);
 
                 ImGui::Separator();

@@ -1,5 +1,6 @@
 #include "physics/collisions.h"
 #include "physics/hullBvh.h"
+#include "physics/resting.h"
 #include "physics/system.h"
 #include "physics/verlet.h"
 
@@ -849,6 +850,10 @@ namespace eltanin::phys::collision {
         void pairOccupants(State& state, const Occupant& first, const Occupant& second, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
             if (first.body == second.body)
                 return;
+            if (state.activeResting.contains(pairKey(first.body, second.body))) {
+                ++state.census.restingSkipped;
+                return;
+            }
             if (not spheresOverlap(first.center, first.radius, second.center, second.radius))
                 return;
             const integer candidate = static_cast<integer>(state.candidates.size());
@@ -949,6 +954,7 @@ namespace eltanin::phys::collision {
         candidates.clear();
         contacts.clear();
         census = Census{};
+        prepareResting(*this, context);
         auto bodies = context.direct<Body>();
         auto solids = context.direct<Solid>();
         auto crystals = context.direct<Crystal>();
@@ -1084,53 +1090,57 @@ namespace eltanin::phys::collision {
                 quiet = 0;
                 base::message("phys::hit end");
             }
-            return;
-        }
-        auto bodies = context.direct<Body>();
-        auto solids = context.direct<Solid>();
-        auto crystals = context.direct<Crystal>();
-        float maxPen = 0.0f;
-        float vn = 0.0f;
-        vec3 nrm{0.0f, 0.0f, 0.0f};
-        for (const Contact& contact : contacts) {
-            if (contact.penetration <= maxPen)
-                continue;
-            maxPen = contact.penetration;
-            vn = contact.relativeNormalSpeed;
-            nrm = contact.normal;
-        }
-        auto* bodyA = bodies.items.find(contacts.front().a.body);
-        auto* bodyB = bodies.items.find(contacts.front().b.body);
-        const dvec3 originA = bodyA ? bodyA->position : dvec3{0.0, 0.0, 0.0};
-        const dvec3 originB = bodyB ? bodyB->position : dvec3{0.0, 0.0, 0.0};
-        for (Contact& contact : contacts) {
-            if (contact.penetration <= 0.0f)
-                continue;
-            if (isSimple(contact.a.type)) {
-                if (auto* solid = solids.items.find(contact.a.body))
-                    solid->collided = true;
+        } else {
+            auto bodies = context.direct<Body>();
+            auto solids = context.direct<Solid>();
+            auto crystals = context.direct<Crystal>();
+            float maxPen = 0.0f;
+            float vn = 0.0f;
+            vec3 nrm{0.0f, 0.0f, 0.0f};
+            for (const Contact& contact : contacts) {
+                if (contact.penetration <= maxPen)
+                    continue;
+                maxPen = contact.penetration;
+                vn = contact.relativeNormalSpeed;
+                nrm = contact.normal;
             }
-            if (isSimple(contact.b.type)) {
-                if (auto* solid = solids.items.find(contact.b.body))
-                    solid->collided = true;
+            auto* bodyA = bodies.items.find(contacts.front().a.body);
+            auto* bodyB = bodies.items.find(contacts.front().b.body);
+            const dvec3 originA = bodyA ? bodyA->position : dvec3{0.0, 0.0, 0.0};
+            const dvec3 originB = bodyB ? bodyB->position : dvec3{0.0, 0.0, 0.0};
+            for (Contact& contact : contacts) {
+                if (contact.penetration <= 0.0f)
+                    continue;
+                if (isSimple(contact.a.type)) {
+                    if (auto* solid = solids.items.find(contact.a.body))
+                        solid->collided = true;
+                }
+                if (isSimple(contact.b.type)) {
+                    if (auto* solid = solids.items.find(contact.b.body))
+                        solid->collided = true;
+                }
+                solveContact(contact, contact.penetration, bodies, solids, crystals);
+                contact.correction = contact.penetration;
             }
-            solveContact(contact, contact.penetration, bodies, solids, crystals);
-            contact.correction = contact.penetration;
+            float corr = 0.0f;
+            int live = 0;
+            for (const Contact& contact : contacts) {
+                corr += contact.correction;
+                if (contact.correction > 0.0f)
+                    ++live;
+            }
+            const float dA = bodyA ? float(glm::length(bodyA->position - originA)) : 0.0f;
+            const float dB = bodyB ? float(glm::length(bodyB->position - originB)) : 0.0f;
+            const bool shout = not wasHit or quiet == 0;
+            wasHit = true;
+            quiet = (quiet + 1) % 10;
+            if (shout)
+                base::message("phys::hit n={} live={} pen={:.2f} vn={:.1f} corr={:.2f} dA={:.2f} dB={:.2f} nrm={:.2f},{:.2f},{:.2f}", contacts.size(), live, maxPen, vn, corr, dA, dB, nrm.x, nrm.y, nrm.z);
         }
-        float corr = 0.0f;
-        int live = 0;
-        for (const Contact& contact : contacts) {
-            corr += contact.correction;
-            if (contact.correction > 0.0f)
-                ++live;
-        }
-        const float dA = bodyA ? float(glm::length(bodyA->position - originA)) : 0.0f;
-        const float dB = bodyB ? float(glm::length(bodyB->position - originB)) : 0.0f;
-        const bool shout = not wasHit or quiet == 0;
-        wasHit = true;
-        quiet = (quiet + 1) % 10;
-        if (shout)
-            base::message("phys::hit n={} live={} pen={:.2f} vn={:.1f} corr={:.2f} dA={:.2f} dB={:.2f} nrm={:.2f},{:.2f},{:.2f}", contacts.size(), live, maxPen, vn, corr, dA, dB, nrm.x, nrm.y, nrm.z);
+        acquireResting(*this, context);
+        if (not contacts.empty())
+            recheckResting(*this, context);
+        solveRestingIslands(*this, context);
     }
 
     void State::traceRays(Stewarding context) {

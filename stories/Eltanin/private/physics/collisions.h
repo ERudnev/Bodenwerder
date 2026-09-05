@@ -2,7 +2,10 @@
 
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
+#include <eltanin/physics/resting.q1.h>
 
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace eltanin::phys::collision {
@@ -50,6 +53,30 @@ namespace eltanin::phys::collision {
         float relativeNormalSpeed; // closing (+) along normal at build; Commit may re-sample
     };
 
+    struct PairKey {
+        Body::Id first;
+        Body::Id second;
+
+        auto operator==(const PairKey&) const -> bool = default;
+    };
+
+    struct PairKeyHash {
+        auto operator()(const PairKey& pair) const -> std::size_t {
+            return std::hash<Body::Id>{}(pair.first) ^ (std::hash<Body::Id>{}(pair.second) + 0x9e3779b97f4a7c15ull + (std::hash<Body::Id>{}(pair.first) << 6) + (std::hash<Body::Id>{}(pair.first) >> 2));
+        }
+    };
+
+    // Cross-tick capture only. Established pairs are phys::Resting world entities.
+    // Local contacts, not originOffset: Body origins are a lever of the larger radius, so Horn jitter of 0.01 rad looks like meters.
+    struct RestProbe {
+        vec3 localFirst;
+        vec3 localSecond;
+        quat relativeOrientation;
+        integer firstShape;
+        integer secondShape;
+        seconds stable;
+    };
+
     // Last connectivity tick. Observational; not a profiler.
     struct Census {
         integer crystals;
@@ -69,15 +96,22 @@ namespace eltanin::phys::collision {
         integer occupantTries;
         integer candidates;
         integer contacts;
+        integer restProbes;
+        seconds restProbeStable;
+        integer restingPairs;
+        integer restingIslands;
+        integer restingSkipped;
         integer rayTries;
         integer rayHits;
     };
 
-    // Per-tick buffer: clear or reuse at start of build; discard after Commit.
+    // Tick-local contacts plus capture probes. Established resting pairs are world entities.
     struct State {
         vector<Candidate> candidates;
         vector<Contact> contacts;
         Census census;
+        std::unordered_map<PairKey, RestProbe, PairKeyHash> probes;
+        std::unordered_set<PairKey, PairKeyHash> activeResting;
 
         void build(Stewarding);
         void solve(Stewarding);

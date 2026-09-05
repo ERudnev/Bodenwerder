@@ -506,7 +506,9 @@ namespace eltanin::locality {
             auto hull = mech::cookHull(slice, shape);
             phys::rigid::Crystal::Quantum crystal{.particles = std::move(particles), .shape = std::move(shape), .com = mass > 0.0 ? vec3{moment / mass} : vec3{0.0f, 0.0f, 0.0f}, .hull = std::move(hull), .visualHurtStale = false};
             phys::collision::cookHullBvh(crystal.hull, crystal.shape);
-            const auto crystalBody = phys::createBody(context, phys::rigid::restoredBody(body.pose(), crystal.particles, crystal.shape), {});
+            // Construct islands are always their own collision dad. debrisCohort is scrap-only.
+            const auto crystalBody = phys::createBody(context, phys::rigid::restoredBody(body.pose(), crystal.particles, crystal.shape), std::nullopt);
+            phys::bindCohort(context, crystalBody, crystalBody);
             with<phys::rigid::Crystal>::extend(context, crystalBody, std::move(crystal));
             const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
             with<Construct>::extend(context, thing, Construct::Quantum{.body = crystalBody, .actor = actor, .fragments = std::move(fragments), .construction = std::move(slice), .visualOf = std::move(visualOf), .gpuCohesions = {}, .gpuHeats = {}});

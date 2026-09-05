@@ -12,6 +12,7 @@ namespace eltanin::phys {
             dust,
         };
 
+        // Scrap only. Construct islands after a break are always their own compound dad.
         enum class DebrisCohort {
             individual,
             families,
@@ -56,6 +57,18 @@ namespace eltanin::phys {
             static constexpr seconds hullCool = 40; // Construct radiate; ~10× Dust. Each thermal step T *= (1 − dt/τ)²
             static constexpr float skyKelvin = 2.7f; // CMB default; live ambient is Root.atmosphereTemperature
             static constexpr float radiateSigma = 5.0e-13f; // parrot mass × kelvin; five times slower than the first lava-scale guess
+        };
+
+        struct Resting {
+            static inline bool enabled = true;
+            static inline float captureSeconds = 0.5f;
+            static inline float captureMeters = 0.05f; // local contact on each body vs the start of the probe, not Body origins
+            static inline float captureRadians = 0.02f;
+            static constexpr float tensileMeters = 0.25f;
+            static constexpr float adhesiveSpeed = 0.5f; // extra grip as equivalent closing speed
+            static constexpr float staticFriction = 1.2f;
+            static constexpr float twistRadians = 0.35f;
+            static constexpr integer solveIterations = 3;
         };
 
         // Verlet semiKick: 0 = only current (ball), 1 = current and previous (teleport), ½ = halfKick.
