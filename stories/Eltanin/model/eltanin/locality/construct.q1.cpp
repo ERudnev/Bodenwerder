@@ -275,55 +275,6 @@ namespace eltanin::locality {
             return LocalBox{.center = 0.5f * (boundMin + boundMax), .rotation = identity, .half = half};
         }
 
-        auto hasKnotAt(const mech::Construction& construction, index3 grid) -> bool {
-            for (const auto& [_, knot] : construction.knots) {
-                if (not knot.loop.empty() and sameGrid(knot.loop[0].gridPos, grid))
-                    return true;
-            }
-            return false;
-        }
-
-        auto knotCountInCell(const mech::Construction& construction, index3 cell) -> int {
-            int count = 0;
-            for (int dx = 0; dx < 2; ++dx)
-                for (int dy = 0; dy < 2; ++dy)
-                    for (int dz = 0; dz < 2; ++dz)
-                        if (hasKnotAt(construction, index3{.x = cell.x + dx, .y = cell.y + dy, .z = cell.z + dz}))
-                            ++count;
-            return count;
-        }
-
-        auto cellOf(vec3 gridPoint) -> index3 {
-            const vec3 floored = glm::floor(gridPoint);
-            return index3{.x = static_cast<int>(floored.x), .y = static_cast<int>(floored.y), .z = static_cast<int>(floored.z)};
-        }
-
-        // Plate is glued to the outside of a cell. Occupied cell = more knots; outward goes through the face from that cell. Tie with knots on both sides → no shift. No skeleton → winding (CCW-out).
-        auto plateOutward(const mech::Construction::Primitive& plate, const mech::Construction& construction) -> vec3 {
-            if (plate.loop.size() < 3)
-                return vec3{0.0f, 0.0f, 0.0f};
-            vec3 sum{0.0f, 0.0f, 0.0f};
-            for (const auto& welded : plate.loop)
-                sum += vec3{static_cast<float>(welded.gridPos.x), static_cast<float>(welded.gridPos.y), static_cast<float>(welded.gridPos.z)};
-            const vec3 centroid = sum / static_cast<float>(plate.loop.size());
-            const vec3 ab = vec3{static_cast<float>(plate.loop[1].gridPos.x - plate.loop[0].gridPos.x), static_cast<float>(plate.loop[1].gridPos.y - plate.loop[0].gridPos.y), static_cast<float>(plate.loop[1].gridPos.z - plate.loop[0].gridPos.z)};
-            const vec3 ac = vec3{static_cast<float>(plate.loop[2].gridPos.x - plate.loop[0].gridPos.x), static_cast<float>(plate.loop[2].gridPos.y - plate.loop[0].gridPos.y), static_cast<float>(plate.loop[2].gridPos.z - plate.loop[0].gridPos.z)};
-            vec3 normal = glm::cross(ab, ac);
-            const float normalLen = glm::length(normal);
-            if (normalLen < 1.0e-8f)
-                return vec3{0.0f, 0.0f, 0.0f};
-            normal /= normalLen;
-            const index3 plusCell = cellOf(centroid + 0.5f * normal);
-            const index3 minusCell = cellOf(centroid - 0.5f * normal);
-            if (sameGrid(plusCell, minusCell))
-                return normal;
-            const int plusKnots = knotCountInCell(construction, plusCell);
-            const int minusKnots = knotCountInCell(construction, minusCell);
-            if (plusKnots == minusKnots)
-                return plusKnots > 0 ? vec3{0.0f, 0.0f, 0.0f} : normal;
-            return plusKnots > minusKnots ? -normal : normal;
-        }
-
         auto scrapBox(const mech::Construction& construction, mech::Construction::Primitive::Id id, const vector<vec3>& locals, float thickness, vec3 outward) -> LocalBox {
             if (construction.volumes.contains(id))
                 return boxOfVolume(locals);
@@ -441,7 +392,9 @@ namespace eltanin::locality {
             const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
             const quat worldRot = glm::normalize(body.orientation * box.rotation);
             const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
-            const float keep = glm::max(chunk.cohesion, 0.25f);
+            const bool unbolted = chunk.cohesion == 0.0f and (construction.plates.contains(primitiveId) or construction.volumes.contains(primitiveId));
+            const float born = unbolted ? 1.0f : chunk.cohesion;
+            const float keep = glm::max(born, 0.25f);
             if (phys::Settings::debris == phys::Settings::Debris::dust) {
                 const auto& constructResources = with<Construct>::get_global(context).resources;
                 vector<mech::Construction::Primitive::Id> visualOf;
@@ -453,7 +406,7 @@ namespace eltanin::locality {
                 return;
             }
             if (chunk.temperature < phys::Settings::Heat::hullShedKelvin) {
-                const int cuts = Scrap::Actions::cutCount(chunk.cohesion);
+                const int cuts = Scrap::Actions::cutCount(born);
                 if (cuts < 0)
                     return;
                 const bool volume = construction.volumes.contains(primitiveId);
@@ -466,19 +419,19 @@ namespace eltanin::locality {
                     auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construction, fragmentsOf(fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
                     const rmmr::Pose bodyPose{.position = worldCenter, .rotation = worldRot};
                     const auto lineage = volume ? Scrap::Lineage::volume : Scrap::Lineage::common;
-                    Scrap::Actions::spawnMesh(context, body.pose(), bodyPose, box.half, chunk.mass, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.cohesion, chunk.temperature, std::move(occurrences), mech::space::local::edge2meters, lineage, cohort);
+                    Scrap::Actions::spawnMesh(context, body.pose(), bodyPose, box.half, chunk.mass, linear, vec3{0.0f, 0.0f, 0.0f}, born, chunk.temperature, std::move(occurrences), mech::space::local::edge2meters, lineage, cohort);
                     return;
                 }
-                Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, chunk.cohesion, chunk.temperature, cohort);
+                Scrap::Actions::breakOff(context, worldCenter, worldRot, box.half, chunk.mass, linear, born, chunk.temperature, cohort);
                 return;
             }
             const auto& constructResources = with<Construct>::get_global(context).resources;
             vector<mech::Construction::Primitive::Id> visualOf;
             auto occurrences = constructResources ? mech::cookOccurrences(context, constructResources->interframe, construction, fragmentsOf(fragments, primitiveId), visualOf) : vector<rmmr::scene::actor::Mesh::Occurrence>{};
             if (not occurrences.empty())
-                decorations::Dust::Actions::spawnMesh(context, body.pose(), std::move(occurrences), linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature, glm::max(chunk.cohesion, 0.25f), box.half, mech::space::local::edge2meters);
+                decorations::Dust::Actions::spawnMesh(context, body.pose(), std::move(occurrences), linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature, glm::max(born, 0.25f), box.half, mech::space::local::edge2meters);
             else
-                decorations::Dust::Actions::spawn(context, rmmr::Pose{.position = worldCenter, .rotation = worldRot}, box.half, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature, glm::max(chunk.cohesion, 0.25f));
+                decorations::Dust::Actions::spawn(context, rmmr::Pose{.position = worldCenter, .rotation = worldRot}, box.half, linear, vec3{0.0f, 0.0f, 0.0f}, chunk.temperature, glm::max(born, 0.25f));
         }
 
         auto budConstruct(Writing context, const phys::Body::Quantum& body, mech::Construction slice, Construct::ActorFragments fragments, vector<phys::Particle> particles, vector<vec3> shape) -> bool {
@@ -567,7 +520,7 @@ namespace eltanin::locality {
                 auto found = pieces.find(primitiveId);
                 if (found == pieces.end()) {
                     const auto state = hurt.find(primitiveId);
-                    const vec3 outward = construction.plates.contains(primitiveId) ? plateOutward(primitive, construction) : vec3{0.0f, 0.0f, 0.0f};
+                    const vec3 outward = construction.plates.contains(primitiveId) ? mech::plateOutward(primitive, construction) : vec3{0.0f, 0.0f, 0.0f};
                     const float cohesion = state == hurt.end() ? 0.0f : state->second.cohesion;
                     const float temperature = state == hurt.end() ? 0.0f : state->second.temperature;
                     found = pieces.emplace(primitiveId, DeadChunk{.cohesion = cohesion, .temperature = temperature, .thickness = primitive.thickness, .mass = 0.0f, .momentum = dvec3{0.0, 0.0, 0.0}, .locals = {}, .outward = outward}).first;
@@ -711,7 +664,7 @@ namespace eltanin::locality {
                         const auto state = hurt.find(primitiveId);
                         const float cohesion = state == hurt.end() ? 1.0f : state->second.cohesion;
                         const float temperature = state == hurt.end() ? 0.0f : state->second.temperature;
-                        const vec3 outward = construct->construction.plates.contains(primitiveId) ? plateOutward(primitive, construct->construction) : vec3{0.0f, 0.0f, 0.0f};
+                        const vec3 outward = construct->construction.plates.contains(primitiveId) ? mech::plateOutward(primitive, construct->construction) : vec3{0.0f, 0.0f, 0.0f};
                         found = dead.emplace(primitiveId, DeadChunk{.cohesion = cohesion, .temperature = temperature, .thickness = primitive.thickness, .mass = 0.0f, .momentum = dvec3{0.0, 0.0, 0.0}, .locals = {}, .outward = outward}).first;
                     }
                     found->second.thickness = glm::max(found->second.thickness, primitive.thickness);

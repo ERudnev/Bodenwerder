@@ -5,7 +5,7 @@
 
 namespace eltanin::phys {
 
-    // After collisions, before final Horn. Frame wave along ribs, then rib edge restore (skin is not a load path).
+    // After collisions, before final Horn. Frame wave (knots+ribs+membranes), rib pin, then unbolt plates/volumes.
     void reconcile(const mech::Construction&, rigid::Crystal::Quantum&, const Body::Quantum&);
 
 }

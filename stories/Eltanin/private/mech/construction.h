@@ -27,6 +27,7 @@ namespace eltanin::mech {
     };
 
     void bindKnotWelds(Construction&);
+    auto plateOutward(const Construction::Primitive&, const Construction&) -> vec3; // grid-space; 0 if both sides of the face are occupied
     auto cookHull(const Construction&, const vector<vec3>& shape) -> phys::rigid::Hull;
     auto connectedIslands(const Construction&) -> FrameIslands;
     auto islandSpans3d(const Construction&, const vector<Construction::Primitive::Id>&) -> bool;

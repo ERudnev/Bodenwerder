@@ -46,7 +46,9 @@ namespace eltanin::phys {
         struct Cohesion {
             static constexpr float wound = 2.5f; // hit HP: Δcohesion = wound · |p| / m_face; 30mm 0.4 kg × 200 m/s vs 4 t plate → 5%. Live only if constructCollisionWounds
             static constexpr float boxWound = 25.0f; // Solid boxes (scrap): same law on whole-body mass; 10× so a 24 t dummy cube splits like a 4 t plate
-            static constexpr float breakStrain = 0.025f; // rib |ΔL|/L0 this tick before pin; above → that rib primitive cohesion 0. 0.25 = 1 m on a 4 m beam. Not hit HP.
+            static inline float breakStrain = 0.127f; // rib |ΔL|/L0 this tick before pin; above → that rib primitive cohesion 0. 0.25 = 1 m on a 4 m beam. Not hit HP.
+            static inline float peelPlate = 0.2f; // hull plate unbolt vs frame knot COM after the wave; cohesion 0 = unbolt (scrap born at 1)
+            static inline float peelMount = 0.4f; // volume mounts (engine / reactor / battery); twice the plate slack
             static constexpr float scrapWear = 0.2f; // /s; any Solid contact this locality update
             static constexpr float scrapDust = 1.0f; // cohesion < −this → Dust
         };
@@ -94,6 +96,7 @@ namespace eltanin::phys {
         static inline DebrisCohort debrisCohort = DebrisCohort::individual;
         static inline bool constructCollisionWounds = false; // scarFace → Construct cohesion / shed; Flash unchanged
         static inline bool knotWave = true; // spreadKnotWave along the frame; off = rib restore only
+        static inline bool peelSkin = true; // unbolt plates/volumes that lag the frame; membranes ride the wave
     };
 
 }

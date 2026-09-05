@@ -370,9 +370,14 @@ namespace eltanin::phys {
                 }
 
                 ImGui::Separator();
-                ImGui::TextUnformatted("Construct");
-                ImGui::Checkbox("Collision wounds", &Settings::constructCollisionWounds);
-                ImGui::Checkbox("Knot wave", &Settings::knotWave);
+                if (ImGui::CollapsingHeader("Construction properties", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    ImGui::Checkbox("Collision wounds", &Settings::constructCollisionWounds);
+                    ImGui::Checkbox("Knot wave", &Settings::knotWave);
+                    ImGui::Checkbox("Peel skin", &Settings::peelSkin);
+                    ImGui::DragFloat("Break strain", &Settings::Cohesion::breakStrain, 0.005f, 0.0f, 2.0f, "%.3f");
+                    ImGui::DragFloat("Peel plate m", &Settings::Cohesion::peelPlate, 0.01f, 0.01f, 2.0f, "%.2f");
+                    ImGui::DragFloat("Peel mount m", &Settings::Cohesion::peelMount, 0.01f, 0.01f, 2.0f, "%.2f");
+                }
 
                 ImGui::Separator();
                 if (ImGui::CollapsingHeader("Resting")) {

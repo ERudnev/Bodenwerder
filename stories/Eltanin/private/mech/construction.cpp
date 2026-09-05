@@ -345,6 +345,55 @@ namespace eltanin::mech {
         return island.size() >= 2 and islandSpans3d(construction, island);
     }
 
+    // Occupied cell = more knots; outward through that face. Tie on both sides → 0. No skeleton → winding (CCW-out).
+    auto plateOutward(const Construction::Primitive& plate, const Construction& construction) -> vec3 {
+        if (plate.loop.size() < 3)
+            return vec3{0.0f, 0.0f, 0.0f};
+        vec3 sum{0.0f, 0.0f, 0.0f};
+        for (const auto& welded : plate.loop)
+            sum += vec3{static_cast<float>(welded.gridPos.x), static_cast<float>(welded.gridPos.y), static_cast<float>(welded.gridPos.z)};
+        const vec3 centroid = sum / static_cast<float>(plate.loop.size());
+        const vec3 ab = vec3{static_cast<float>(plate.loop[1].gridPos.x - plate.loop[0].gridPos.x), static_cast<float>(plate.loop[1].gridPos.y - plate.loop[0].gridPos.y), static_cast<float>(plate.loop[1].gridPos.z - plate.loop[0].gridPos.z)};
+        const vec3 ac = vec3{static_cast<float>(plate.loop[2].gridPos.x - plate.loop[0].gridPos.x), static_cast<float>(plate.loop[2].gridPos.y - plate.loop[0].gridPos.y), static_cast<float>(plate.loop[2].gridPos.z - plate.loop[0].gridPos.z)};
+        vec3 normal = glm::cross(ab, ac);
+        const float normalLen = glm::length(normal);
+        if (normalLen < 1.0e-8f)
+            return vec3{0.0f, 0.0f, 0.0f};
+        normal /= normalLen;
+        auto samePos = [](const index3& left, const index3& right) -> bool {
+            return left.x == right.x and left.y == right.y and left.z == right.z;
+        };
+        auto cellOf = [](vec3 gridPoint) -> index3 {
+            const vec3 floored = glm::floor(gridPoint);
+            return index3{.x = static_cast<int>(floored.x), .y = static_cast<int>(floored.y), .z = static_cast<int>(floored.z)};
+        };
+        auto hasKnotAt = [&](index3 grid) -> bool {
+            for (const auto& [_, knot] : construction.knots) {
+                if (not knot.loop.empty() and samePos(knot.loop[0].gridPos, grid))
+                    return true;
+            }
+            return false;
+        };
+        auto knotCountInCell = [&](index3 cell) -> int {
+            int count = 0;
+            for (int dx = 0; dx < 2; ++dx)
+                for (int dy = 0; dy < 2; ++dy)
+                    for (int dz = 0; dz < 2; ++dz)
+                        if (hasKnotAt(index3{.x = cell.x + dx, .y = cell.y + dy, .z = cell.z + dz}))
+                            ++count;
+            return count;
+        };
+        const index3 plusCell = cellOf(centroid + 0.5f * normal);
+        const index3 minusCell = cellOf(centroid - 0.5f * normal);
+        if (samePos(plusCell, minusCell))
+            return normal;
+        const int plusKnots = knotCountInCell(plusCell);
+        const int minusKnots = knotCountInCell(minusCell);
+        if (plusKnots == minusKnots)
+            return plusKnots > 0 ? vec3{0.0f, 0.0f, 0.0f} : normal;
+        return plusKnots > minusKnots ? -normal : normal;
+    }
+
     void bindKnotWelds(Construction& construction) {
         std::map<index3, Construction::Knot*, LatticeLess> at;
         for (auto& [_, knot] : construction.knots) {

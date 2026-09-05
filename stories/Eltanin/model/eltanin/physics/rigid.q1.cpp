@@ -49,6 +49,8 @@ namespace eltanin::phys::rigid {
             const double k = double(Settings::shapePull);
             for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
                 Particle& particle = crystal.particles[index];
+                if (particle.cohesion <= 0.0f)
+                    continue;
                 const dvec3 goal = origin + dvec3{rotation * crystal.shape[index]};
                 verlet::semiKick(particle, (goal - particle.position) * k, Settings::Resilience::shapePull);
             }
@@ -116,24 +118,40 @@ namespace eltanin::phys::rigid {
             if (count == 0 or crystal.shape.size() != count)
                 continue;
 
-            const dvec3 currentCom = currentComOf(crystal.particles);
-            const vec3 restCom = crystal.com;
             restCentered.resize(count);
             worldCentered.resize(count);
             masses.resize(count);
-            float mass = 0.0f;
+            dvec3 worldMoment{0.0, 0.0, 0.0};
+            dvec3 restMoment{0.0, 0.0, 0.0};
+            double mass = 0.0;
+            std::size_t live = 0;
             for (std::size_t index = 0; index < count; ++index) {
-                restCentered[index] = crystal.shape[index] - restCom;
-                worldCentered[index] = vec3{crystal.particles[index].position - currentCom};
-                masses[index] = crystal.particles[index].mass;
-                mass += masses[index];
+                const Particle& particle = crystal.particles[index];
+                if (particle.mass <= 0.0f or particle.cohesion <= 0.0f)
+                    continue;
+                restCentered[live] = crystal.shape[index];
+                worldCentered[live] = vec3{particle.position};
+                masses[live] = particle.mass;
+                restMoment += dvec3{crystal.shape[index]} * double(particle.mass);
+                worldMoment += particle.position * double(particle.mass);
+                mass += double(particle.mass);
+                ++live;
             }
-            if (mass <= 0.0f)
+            if (live == 0 or mass <= 0.0)
                 continue;
+            restCentered.resize(live);
+            worldCentered.resize(live);
+            masses.resize(live);
+            const vec3 restCom = vec3{restMoment / mass};
+            const dvec3 worldCom = worldMoment / mass;
+            for (std::size_t index = 0; index < live; ++index) {
+                restCentered[index] -= restCom;
+                worldCentered[index] -= vec3{worldCom};
+            }
 
             const quat rotation = horn::orientation(restCentered, worldCentered, masses);
             body->orientation = rotation;
-            body->position = currentCom - dvec3{rotation * restCom};
+            body->position = worldCom - dvec3{rotation * restCom};
         }
     }
 

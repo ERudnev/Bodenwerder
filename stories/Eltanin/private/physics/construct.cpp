@@ -36,7 +36,23 @@ namespace eltanin::phys {
             return false;
         }
 
-        auto knotComs(const Crystal::Quantum& crystal, const vector<integer>& welded, dvec3 origin, quat rotation, dvec3& liveCom, dvec3& restWorld) -> bool {
+        auto markOnFrame(const mech::Construction& construction, std::size_t particleCount) -> vector<char> {
+            vector<char> onFrame(particleCount, 0);
+            std::size_t cursor = 0;
+            mech::forEachPrimitiveLoop(construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
+                if (construction.knots.contains(primitiveId) or construction.ribs.contains(primitiveId) or construction.membranes.contains(primitiveId)) {
+                    for (std::size_t slot = 0; slot < primitive.loop.size(); ++slot) {
+                        const auto particle = cursor + slot;
+                        if (particle < onFrame.size())
+                            onFrame[particle] = 1;
+                    }
+                }
+                cursor += primitive.loop.size();
+            });
+            return onFrame;
+        }
+
+        auto knotComs(const Crystal::Quantum& crystal, const vector<integer>& welded, const vector<char>& onFrame, dvec3 origin, quat rotation, dvec3& liveCom, dvec3& restWorld) -> bool {
             dvec3 liveMoment{0.0, 0.0, 0.0};
             dvec3 restMoment{0.0, 0.0, 0.0};
             double mass = 0.0;
@@ -44,6 +60,8 @@ namespace eltanin::phys {
                 const auto slot = static_cast<std::size_t>(index);
                 if (slot >= crystal.particles.size() or slot >= crystal.shape.size())
                     return false;
+                if (slot >= onFrame.size() or not onFrame[slot])
+                    continue;
                 const Particle& particle = crystal.particles[slot];
                 if (particle.mass <= 0.0f)
                     continue;
@@ -58,7 +76,7 @@ namespace eltanin::phys {
             return true;
         }
 
-        void spreadKnotWave(const mech::Construction& construction, Crystal::Quantum& crystal, const Body::Quantum& body) {
+        void spreadKnotWave(const mech::Construction& construction, Crystal::Quantum& crystal, const Body::Quantum& body, const vector<char>& onFrame) {
             struct KnotWave {
                 const mech::Construction::Knot* knot;
                 dvec3 restWorld;
@@ -71,7 +89,7 @@ namespace eltanin::phys {
                     continue;
                 dvec3 liveCom;
                 dvec3 restWorld;
-                if (not knotComs(crystal, knot.welded, body.position, body.orientation, liveCom, restWorld))
+                if (not knotComs(crystal, knot.welded, onFrame, body.position, body.orientation, liveCom, restWorld))
                     continue;
                 waves.push_back(KnotWave{.knot = &knot, .restWorld = restWorld, .delta = liveCom - restWorld});
             }
@@ -88,18 +106,6 @@ namespace eltanin::phys {
             }
             if (best <= double(Settings::restLinear) * double(Settings::restLinear))
                 return;
-            vector<char> onFrame(crystal.particles.size(), 0);
-            std::size_t cursor = 0;
-            mech::forEachPrimitiveLoop(construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
-                if (construction.knots.contains(primitiveId) or construction.ribs.contains(primitiveId)) {
-                    for (std::size_t slot = 0; slot < primitive.loop.size(); ++slot) {
-                        const auto particle = cursor + slot;
-                        if (particle < onFrame.size())
-                            onFrame[particle] = 1;
-                    }
-                }
-                cursor += primitive.loop.size();
-            });
             vector<vector<std::size_t>> next(waves.size());
             std::unordered_map<uint64_t, std::size_t> waveAtGrid;
             waveAtGrid.reserve(waves.size());
@@ -160,6 +166,74 @@ namespace eltanin::phys {
             }
         }
 
+        void peelSkin(const mech::Construction& construction, Crystal::Quantum& crystal, const Body::Quantum& body, const vector<char>& onFrame) {
+            std::unordered_map<uint64_t, dvec3> frameComAt;
+            frameComAt.reserve(construction.knots.size());
+            for (const auto& [_, knot] : construction.knots) {
+                if (knot.loop.empty() or knot.welded.empty())
+                    continue;
+                dvec3 liveCom;
+                dvec3 restWorld;
+                if (not knotComs(crystal, knot.welded, onFrame, body.position, body.orientation, liveCom, restWorld))
+                    continue;
+                frameComAt.emplace(packGrid(knot.loop[0].gridPos), liveCom);
+            }
+            if (frameComAt.empty())
+                return;
+            auto comAt = [&](index3 grid) -> const dvec3* {
+                const auto found = frameComAt.find(packGrid(grid));
+                if (found == frameComAt.end())
+                    return nullptr;
+                return &found->second;
+            };
+            std::unordered_map<mech::Construction::Primitive::Id, char> peeled;
+            std::size_t cursor = 0;
+            mech::forEachPrimitiveLoop(construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
+                const bool plate = construction.plates.contains(primitiveId);
+                const bool volume = construction.volumes.contains(primitiveId);
+                if (plate or volume) {
+                    dvec3 worldNail{0.0, 0.0, 0.0};
+                    if (plate) {
+                        const vec3 local = mech::plateOutward(primitive, construction);
+                        if (glm::dot(local, local) > 1.0e-8f)
+                            worldNail = glm::dquat{body.orientation} * dvec3{local};
+                    }
+                    const double nailLen = glm::length(worldNail);
+                    const dvec3 nail = nailLen > 1.0e-12 ? worldNail / nailLen : dvec3{0.0, 0.0, 0.0};
+                    for (std::size_t slot = 0; slot < primitive.loop.size(); ++slot) {
+                        const auto particle = cursor + slot;
+                        if (particle >= crystal.particles.size())
+                            break;
+                        const dvec3* liveCom = comAt(primitive.loop[slot].gridPos);
+                        if (not liveCom)
+                            continue;
+                        const dvec3 rel = crystal.particles[particle].position - *liveCom;
+                        const float slack = (plate ? Settings::Cohesion::peelPlate : Settings::Cohesion::peelMount) * primitive.loop[slot].strength;
+                        const double reach = nailLen > 1.0e-12 ? glm::dot(rel, nail) : glm::length(rel);
+                        if (reach > double(slack)) {
+                            peeled[primitiveId] = 1;
+                            break;
+                        }
+                    }
+                }
+                cursor += primitive.loop.size();
+            });
+            if (peeled.empty())
+                return;
+            cursor = 0;
+            mech::forEachPrimitiveLoop(construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
+                if (peeled.contains(primitiveId)) {
+                    for (std::size_t slot = 0; slot < primitive.loop.size(); ++slot) {
+                        const auto particle = cursor + slot;
+                        if (particle < crystal.particles.size())
+                            crystal.particles[particle].cohesion = 0.0f;
+                    }
+                    crystal.visualHurtStale = true;
+                }
+                cursor += primitive.loop.size();
+            });
+        }
+
         void restoreEdge(const Crystal::Quantum& crystal, std::size_t start, std::size_t end, std::size_t origin, double stiff, vector<dvec3>& kickSum, vector<integer>& kickHits, float& peakStrain) {
             if (start >= crystal.particles.size() or end >= crystal.particles.size())
                 return;
@@ -218,8 +292,9 @@ namespace eltanin::phys {
             return;
         if (not particlesMoving(crystal))
             return;
+        const auto onFrame = markOnFrame(construction, crystal.particles.size());
         if (Settings::knotWave)
-            spreadKnotWave(construction, crystal, body);
+            spreadKnotWave(construction, crystal, body, onFrame);
         const double stiff = double(Settings::constraintStiffness);
         std::size_t cursor = 0;
         mech::forEachPrimitiveLoop(construction, [&](mech::Construction::Primitive::Id primitiveId, const mech::Construction::Primitive& primitive) {
@@ -227,6 +302,8 @@ namespace eltanin::phys {
                 restorePrimitive(crystal, primitive, cursor, stiff);
             cursor += primitive.loop.size();
         });
+        if (Settings::peelSkin)
+            peelSkin(construction, crystal, body, onFrame);
     }
 
 }
