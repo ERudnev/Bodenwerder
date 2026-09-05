@@ -413,8 +413,6 @@ namespace eltanin::phys::collision {
             localClosest = face.twoSided ? projected + side * shell : projected;
             return true;
         }
-        if (not face.twoSided)
-            return false;
         localClosest = closestOnSegment(localPoint, vertices[count - 1], vertices[0]);
         float bestDist2 = glm::dot(localPoint - localClosest, localPoint - localClosest);
         for (std::size_t index = 0; index + 1 < count; ++index) {
@@ -426,8 +424,12 @@ namespace eltanin::phys::collision {
             bestDist2 = dist2;
             localClosest = candidate;
         }
-        localOutward = unitOrFallback(localPoint - localClosest, side);
-        localClosest += localOutward * shell;
+        if (face.twoSided) {
+            localOutward = unitOrFallback(localPoint - localClosest, side);
+            localClosest += localOutward * shell;
+            return true;
+        }
+        localOutward = side;
         return true;
     }
 

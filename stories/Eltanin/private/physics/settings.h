@@ -44,9 +44,9 @@ namespace eltanin::phys {
         };
 
         struct Cohesion {
-            static constexpr float wound = 2.5f; // Crystal faces: Δcohesion = wound · |p| / m_face; 30mm 0.4 kg × 200 m/s vs 4 t plate → 5%
+            static constexpr float wound = 2.5f; // hit HP: Δcohesion = wound · |p| / m_face; 30mm 0.4 kg × 200 m/s vs 4 t plate → 5%. Live only if constructCollisionWounds
             static constexpr float boxWound = 25.0f; // Solid boxes (scrap): same law on whole-body mass; 10× so a 24 t dummy cube splits like a 4 t plate
-            static constexpr float breakStrain = 0.5f; // |ΔL|/L0 on a Construction edge; above → primitive cohesion 0 this tick
+            static constexpr float breakStrain = 0.025f; // rib |ΔL|/L0 this tick before pin; above → that rib primitive cohesion 0. 0.25 = 1 m on a 4 m beam. Not hit HP.
             static constexpr float scrapWear = 0.2f; // /s; any Solid contact this locality update
             static constexpr float scrapDust = 1.0f; // cohesion < −this → Dust
         };
@@ -70,22 +70,22 @@ namespace eltanin::phys {
             static constexpr float twistRadians = 0.35f;
             static constexpr integer solveIterations = 3;
             static inline float dissipate = 0.35f; // pull toward the captured mutual shape; 0 = off, 1 = full step before mass split
-            static inline float dissipateResilience = 0.85f; // semiKick; 1 = teleport, 0 = invent Δv like pullToShape
+            static inline float dissipateResilience = 0.85f; // semiKick; 1 = teleport, 0 = invent Δv like Resilience::shapePull
         };
 
         // Verlet semiKick: 0 = only current (ball), 1 = current and previous (teleport), ½ = halfKick.
         struct Resilience {
             static constexpr double wave = 0.5; // knot wave along the frame
-            static constexpr double ribRestore = 0.0; // rib length restore
-            static constexpr double pullToShape = 0.0; // Horn follow / Hitman pull
+            static constexpr double ribRestore = 0.5; // semiKick of rib length restore; 0 invents Δv, 1 teleports
+            static constexpr double shapePull = 0.5; // semiKick of pullToShape; 0 invents Δv, 1 teleports
             static constexpr double faceSupport = 0.0; // solid/ray recoil onto crystal hull vertices
             static constexpr double solidContact = 0.5; // solid ↔ crystal impact end; rest blends toward 1 (teleport)
             static constexpr double solidSolid = 0.5; // solid ↔ solid positional remaining
             static constexpr double crystalContact = 0.5; // crystal particle vs frozen hull
         };
 
-        static constexpr float constraintStiffness = 1.0f; // rib length restore
-        static constexpr float shapePull = 0.8f; // applyRestored toward pose*shape; <1 leaves contact residual for the next tick
+        static constexpr float constraintStiffness = 1.0f; // k in rib length restore
+        static constexpr float shapePull = 0.8f; // k in pullToShape toward pose*shape; <1 leaves contact residual for the next tick
         static constexpr float restLinear = 1.0e-5f; // m/tick; below this (x−prev) is zeroed
         static constexpr float solidLiveSpeed = 0.1f; // m/s; Solid↔Crystal live = vn/(vn+this); semiKick 1→solidContact, friction
         static constexpr seconds fixedStep = 0.02; // TODO: consider 0.012 - 0.015 for better performance
