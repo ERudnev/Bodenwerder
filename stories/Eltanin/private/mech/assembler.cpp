@@ -106,6 +106,16 @@ namespace eltanin::mech {
             return asset.entries[resolved.entry].origin;
         }
 
+        auto firstTempMesh(Reading context, const Mount::Quantum& mount) -> base::maybe<resource::meshpack::Asset::Resolved> {
+            if (mount.tempMesh.empty())
+                return {};
+            const auto& part = mount.tempMesh.front();
+            const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, part.pack);
+            if (not packId)
+                return {};
+            return with<resource::meshpack::Asset>::resolve(context, *packId, part.entry);
+        }
+
         struct LoopLess {
             auto operator()(const vector<index3>& left, const vector<index3>& right) const -> bool {
                 if (left.size() != right.size())
@@ -444,11 +454,7 @@ namespace eltanin::mech {
             const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
             if (not mountId)
                 continue;
-            const auto& mount = with<Mount>::get(context, *mountId);
-            const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, mount.tempMesh.pack);
-            if (not packId)
-                continue;
-            const auto resolved = with<resource::meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
+            const auto resolved = firstTempMesh(context, with<Mount>::get(context, *mountId));
             if (not resolved)
                 continue;
             occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
@@ -458,11 +464,7 @@ namespace eltanin::mech {
             const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
             if (not mountId)
                 continue;
-            const auto& mount = with<Mount>::get(context, *mountId);
-            const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, mount.tempMesh.pack);
-            if (not packId)
-                continue;
-            const auto resolved = with<resource::meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
+            const auto resolved = firstTempMesh(context, with<Mount>::get(context, *mountId));
             if (not resolved)
                 continue;
             occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});

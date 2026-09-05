@@ -90,17 +90,17 @@ namespace eltanin::scenario {
 
     void AsterField::populate(Writing context, rmmr::system::Device::Id device) {
         // Temporary: flash spawn parked.
-        //with<locality::Flash>::spawn(context, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f}, locality::Flash::Channels{.kinetic = 50.0f, .thermal = 0.0f, .brisance = 0.0f, });
+        //with<locality::Flash>::spawn(context, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f}, locality::Flash::Channels{.kinetic = 20.0f, .thermal = 10.0f, .brisance = 30.0f, });
         const locality::geo::GeneralizedRecipe iceAsteroid{
             .mix = locality::geo::GeneralizedRecipe::homogenous(0), // Ice
-            .radius = 40.0f,
-            .lump = 0.18f, // high sphericity, not a perfect ball
+            .radius = 50.0f,
+            .lump = 0.05f, // high sphericity, not a perfect ball
             .seed = 77,
             .spotMeters = 16.0f,
-            .spotContrast = 0.0f,
+            .spotContrast = 0.5f,
         };
-        const auto asteroid = with<locality::geo::Rock>::spawnGenerated(context, device, Pose::from(Pos{0.0f, 0.0f, 100.0f}, HPB{0.0f, 0.0f, 0.0f}), iceAsteroid, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
-        //with<phys::rigid::CelestialGravity>::extend(context, with<locality::geo::Rock>::get(context, asteroid).body, phys::rigid::CelestialGravity::Quantum{.averageRadius = iceAsteroid.radius, .surfaceAcceleration = 1.0f});
+        const auto asteroid = with<locality::geo::Rock>::spawnGenerated(context, device, Pose::from(Pos{0.0f, -60.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), iceAsteroid, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        with<phys::rigid::CelestialGravity>::extend(context, with<locality::geo::Rock>::get(context, asteroid).body, phys::rigid::CelestialGravity::Quantum{.averageRadius = iceAsteroid.radius, .surfaceAcceleration = 2.0f});
     }
 
 }

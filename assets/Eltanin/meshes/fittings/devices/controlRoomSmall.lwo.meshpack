@@ -1,0 +1,13 @@
+{
+    "controlRoomSmall",
+    "Eltanin",
+    "meshes/fittings/devices/controlRoomSmall.lwo",
+    "Eltanin::mech",
+    [
+        {"chromium", {"Eltanin::hull", [{"albedoMap", "STEEL1.JPG"}]}},
+        {"deviceCover", {"Eltanin::hull", [{"albedoMap", "grabbed01.jpg"}]}},
+        {"display", {"Eltanin::hull", [{"albedoMap", "mtile02.jpg"}]}},
+        {"panelDecoration", {"Eltanin::hull", [{"albedoMap", "panel_tech_1.bmp"}]}},
+        {"plasticPanel", {"Eltanin::hull", [{"albedoMap", "panel_07.jfif"}]}}
+    ]
+}

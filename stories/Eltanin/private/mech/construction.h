@@ -28,6 +28,11 @@ namespace eltanin::mech {
 
     void bindKnotWelds(Construction&);
     auto plateOutward(const Construction::Primitive&, const Construction&) -> vec3; // grid-space; 0 if both sides of the face are occupied
+    struct LoopSail {
+        float area; // m²
+        vec3 normal; // unit, construction local
+    };
+    auto loopSail(const Construction::Primitive&) -> LoopSail;
     auto cookHull(const Construction&, const vector<vec3>& shape) -> phys::rigid::Hull;
     auto connectedIslands(const Construction&) -> FrameIslands;
     auto islandSpans3d(const Construction&, const vector<Construction::Primitive::Id>&) -> bool;

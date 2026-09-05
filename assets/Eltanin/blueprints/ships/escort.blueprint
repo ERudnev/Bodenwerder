@@ -953,7 +953,7 @@
         ["Eltanin::mounts.dummy_weaponry", [0, 0, 1], 0],
         ["Eltanin::mounts.dummy_living", [0, 1, 1], 0],
         ["Eltanin::mounts.dummy_cargo", [0, -1, 1], 0],
-        ["Eltanin::mounts.dummy_control", [0, 1, 2], 0],
+        ["Eltanin::internals.controlRoomBasic", [0, 1, 2], 0],
         ["Eltanin::mounts.dummy_cargo", [0, -1, 2], 0],
         ["Eltanin::mounts.dummy_custom", [-1, 0, -2], 0],
         ["Eltanin::mounts.dummy_gyros", [0, 0, -2], 0],

@@ -73,13 +73,31 @@ namespace eltanin::views::blueprints::selection {
         }
 
         auto findMountByAlias(Reading context, const std::vector<MountActor>& actors, renderer::Integer32 alias) -> base::maybe<MountActor> {
+            auto matches = [&](scene::actor::Mesh::Id id) -> bool {
+                if (not with<scene::actor::Identified>::exists(context, id))
+                    return false;
+                return with<scene::actor::Identified>::get(context, id).scenicAlias == alias;
+            };
             for (const auto& actor : actors) {
-                if (not with<scene::actor::Identified>::exists(context, actor.id))
-                    continue;
-                if (with<scene::actor::Identified>::get(context, actor.id).scenicAlias == alias)
+                if (matches(actor.id))
                     return actor;
+                for (const auto extra : actor.extras) {
+                    if (matches(extra))
+                        return actor;
+                }
             }
             return {};
+        }
+
+        void appendMountAliases(Reading context, const MountActor& actor, std::vector<renderer::Integer32>& aliases) {
+            auto append = [&](scene::actor::Mesh::Id id) {
+                if (not with<scene::actor::Identified>::exists(context, id))
+                    return;
+                aliases.push_back(with<scene::actor::Identified>::get(context, id).scenicAlias);
+            };
+            append(actor.id);
+            for (const auto extra : actor.extras)
+                append(extra);
         }
 
         auto quarkByAliasIndex(Reading context, const std::vector<QuarkActor>& actors) -> std::unordered_map<renderer::Integer32, const QuarkActor*> {
@@ -95,11 +113,16 @@ namespace eltanin::views::blueprints::selection {
 
         auto mountByAliasIndex(Reading context, const std::vector<MountActor>& actors) -> std::unordered_map<renderer::Integer32, const MountActor*> {
             std::unordered_map<renderer::Integer32, const MountActor*> out;
+            auto emplace = [&](scene::actor::Mesh::Id id, const MountActor* actor) {
+                if (not with<scene::actor::Identified>::exists(context, id))
+                    return;
+                out.emplace(with<scene::actor::Identified>::get(context, id).scenicAlias, actor);
+            };
             out.reserve(actors.size());
             for (const auto& actor : actors) {
-                if (not with<scene::actor::Identified>::exists(context, actor.id))
-                    continue;
-                out.emplace(with<scene::actor::Identified>::get(context, actor.id).scenicAlias, &actor);
+                emplace(actor.id, &actor);
+                for (const auto extra : actor.extras)
+                    emplace(extra, &actor);
             }
             return out;
         }
@@ -186,9 +209,7 @@ namespace eltanin::views::blueprints::selection {
                 for (const auto& actor : actors) {
                     if (actor.index != ref.index)
                         continue;
-                    if (not with<scene::actor::Identified>::exists(context, actor.id))
-                        break;
-                    aliases.push_back(with<scene::actor::Identified>::get(context, actor.id).scenicAlias);
+                    appendMountAliases(context, actor, aliases);
                     break;
                 }
             }
@@ -286,10 +307,8 @@ namespace eltanin::views::blueprints::selection {
             if (const auto alias = actorAlias(context, actor.id))
                 addAlias(store.aliases, *alias);
         }
-        for (const auto& actor : mounts) {
-            if (const auto alias = actorAlias(context, actor.id))
-                addAlias(store.aliases, *alias);
-        }
+        for (const auto& actor : mounts)
+            appendMountAliases(context, actor, store.aliases);
     }
 
     void resetClipboard(Store& store) {
@@ -619,6 +638,11 @@ namespace eltanin::views::blueprints::selection {
             if (quarkHit and shift) {
                 for (const auto alias : familyAliases(context, quarks, *quarkHit))
                     addAlias(store.aliases, alias);
+            } else if (mountHit) {
+                std::vector<renderer::Integer32> parts;
+                appendMountAliases(context, *mountHit, parts);
+                for (const auto alias : parts)
+                    addAlias(store.aliases, alias);
             } else {
                 addAlias(store.aliases, under);
             }
@@ -629,6 +653,11 @@ namespace eltanin::views::blueprints::selection {
             }
             if (quarkHit and shift) {
                 for (const auto alias : familyAliases(context, quarks, *quarkHit))
+                    removeAlias(store.aliases, alias);
+            } else if (mountHit) {
+                std::vector<renderer::Integer32> parts;
+                appendMountAliases(context, *mountHit, parts);
+                for (const auto alias : parts)
                     removeAlias(store.aliases, alias);
             } else {
                 removeAlias(store.aliases, under);

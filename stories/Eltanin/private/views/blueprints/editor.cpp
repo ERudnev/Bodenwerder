@@ -222,7 +222,7 @@ namespace eltanin::views {
 
         void dropSpacePreview(Writing context, Blueprints::State& state) {
             if (state.spaceMenu.preview.has_value() and state.mainScene.root.has_value())
-                blueprints::geometry::destroyMeshActor(context, *state.mainScene.root, *state.spaceMenu.preview);
+                blueprints::geometry::destroyMountVisual(context, *state.mainScene.root, *state.spaceMenu.preview);
             state.spaceMenu.preview.reset();
             state.spaceMenu.previewMount.reset();
             state.spaceMenu.previewTransform.reset();
@@ -277,7 +277,7 @@ namespace eltanin::views {
                 return;
             state.spaceMenu.previewTransform = *next;
             if (state.spaceMenu.preview.has_value())
-                blueprints::geometry::poseGhostMount(context, *state.spaceMenu.preview, *next);
+                blueprints::geometry::poseGhostMount(context, *state.spaceMenu.preview, *state.spaceMenu.previewMount, *next);
         }
 
     } // namespace

@@ -244,6 +244,30 @@ namespace eltanin::mech {
             };
         }
 
+        auto take_temp_meshes(Cursor& cursor) -> vector<Mount::TempMesh> {
+            if (peek(cursor) == '{')
+                return {take_temp_mesh(cursor)};
+            expect(cursor, '[');
+            vector<Mount::TempMesh> parts;
+            if (peek(cursor) != ']') {
+                for (;;) {
+                    parts.push_back(take_temp_mesh(cursor));
+                    if (peek(cursor) == ']')
+                        break;
+                    expect(cursor, ',');
+                }
+            }
+            expect(cursor, ']');
+            return parts;
+        }
+
+        void write_temp_mesh(std::ostringstream& out, const Mount::TempMesh& part, std::string_view indent) {
+            out << indent << "{\n";
+            out << indent << "  \"pack\": \"" << part.pack.text() << "\",\n";
+            out << indent << "  \"entry\": \"" << part.entry << "\"\n";
+            out << indent << "}";
+        }
+
         auto take_role(Cursor& cursor) -> Role {
             const auto text = take_string(cursor);
             if (text == "custom") return Role::custom;
@@ -294,7 +318,7 @@ namespace eltanin::mech {
             auto collision = take_collision(cursor);
             expect(cursor, ',');
             expect_key(cursor, "tempMesh");
-            auto tempMesh = take_temp_mesh(cursor);
+            auto tempMesh = take_temp_meshes(cursor);
             base::maybe<Role> role;
             if (peek(cursor) == ',') {
                 expect(cursor, ',');
@@ -340,10 +364,17 @@ namespace eltanin::mech {
             }
             out << "    ]\n";
             out << "  },\n";
-            out << "  \"tempMesh\": {\n";
-            out << "    \"pack\": \"" << data.tempMesh.pack.text() << "\",\n";
-            out << "    \"entry\": \"" << data.tempMesh.entry << "\"\n";
-            out << "  }";
+            if (data.tempMesh.size() == 1) {
+                out << "  \"tempMesh\": ";
+                write_temp_mesh(out, data.tempMesh.front(), "");
+            } else {
+                out << "  \"tempMesh\": [\n";
+                for (std::size_t i = 0; i < data.tempMesh.size(); ++i) {
+                    write_temp_mesh(out, data.tempMesh[i], "    ");
+                    out << (i + 1 < data.tempMesh.size() ? ",\n" : "\n");
+                }
+                out << "  ]";
+            }
             if (data.role.has_value())
                 out << ",\n  \"role\": \"" << role_text(*data.role) << "\"\n";
             else

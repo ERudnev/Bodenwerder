@@ -2,7 +2,7 @@
 """LWO3 meshpack helper (LightWave 2018+/2020).
 
 Agent workflow after LW edits — see lwo_meshpack_pipeline.md next to this file.
-Assimp skips SURF.BLOK Image Maps — this script reads CLIP/STIL + IMAP/IMAG and LAYR names/pivots.
+Assimp skips SURF.BLOK Image Maps — this script reads CLIP/STIL + IMAP/IMAG, LAYR names/pivots/parent, and vertex AABBs.
 
 Usage:
   python lwo_surf_textures.py <path.lwo>
@@ -122,31 +122,116 @@ def parse_surfaces(data: bytes, clips: dict[int, str]) -> list[dict]:
     return surfaces
 
 
+def _fmt_vec(vec: tuple[float, float, float]) -> str:
+    return f"({vec[0]:g}, {vec[1]:g}, {vec[2]:g})"
+
+
+def _iter_top_chunks(data: bytes):
+    """Yield (tag, payload) for chunks of the root LWO2/LWO3 FORM. Does not recurse into CLIP/SURF."""
+    if len(data) < 12 or data[0:4] != b"FORM":
+        return
+    end = min(len(data), 8 + _u4(data, 4))
+    off = 12
+    while off + 8 <= end:
+        tag = data[off : off + 4]
+        size = _u4(data, off + 4)
+        body = off + 8
+        payload_end = body + size
+        if payload_end > end:
+            break
+        yield tag, data[body:payload_end]
+        off = payload_end + (size % 2)
+
+
+def _bbox(points: list[tuple[float, float, float]]) -> dict | None:
+    if not points:
+        return None
+    mn = (min(point[0] for point in points), min(point[1] for point in points), min(point[2] for point in points))
+    mx = (max(point[0] for point in points), max(point[1] for point in points), max(point[2] for point in points))
+    return {"min": mn, "max": mx, "size": (mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2])}
+
+
+def _parse_layr(body: bytes) -> dict:
+    number = _u2(body, 0)
+    flags = _u2(body, 2)
+    pivot = (_f4(body, 4), _f4(body, 8), _f4(body, 12))
+    name, after = _padded_c_string(body, 16, len(body) - 16)
+    parent = None
+    if after + 2 <= len(body):
+        raw = _u2(body, after)
+        if raw != 0xFFFF:
+            parent = raw
+    return {
+        "name": name or f"Layer_{number}",
+        "number": number,
+        "flags": flags,
+        "pivot": pivot,
+        "parent": parent,
+        "verts": 0,
+        "bbox": None,
+    }
+
+
+def _parse_pnts(body: bytes) -> list[tuple[float, float, float]]:
+    count = len(body) // 12
+    return [(_f4(body, index * 12), _f4(body, index * 12 + 4), _f4(body, index * 12 + 8)) for index in range(count)]
+
+
 def parse_layers(data: bytes) -> list[dict]:
-    """Parse LAYR chunks: number, flags, pivot (VEC12), name. Unique by name, first wins."""
+    """Top-level LAYR + following PNTS: number, flags, pivot, name, parent, vertex AABB."""
     layers: list[dict] = []
-    seen: set[str] = set()
-    pos = 0
-    while True:
-        j = data.find(b"LAYR", pos)
-        if j < 0:
-            break
-        if j + 8 > len(data):
-            break
-        size = _u4(data, j + 4)
-        body = data[j + 8 : j + 8 + size]
-        if len(body) < 16:
-            pos = j + 4
+    current: dict | None = None
+    for tag, payload in _iter_top_chunks(data):
+        if tag == b"LAYR" and len(payload) >= 16:
+            current = _parse_layr(payload)
+            layers.append(current)
             continue
-        number = _u2(body, 0)
-        flags = _u2(body, 2)
-        pivot = (_f4(body, 4), _f4(body, 8), _f4(body, 12))
-        name, _ = _padded_c_string(body, 16, len(body) - 16)
-        if name and name not in seen:
-            seen.add(name)
-            layers.append({"name": name, "number": number, "flags": flags, "pivot": pivot})
-        pos = j + 4
+        if current is None:
+            continue
+        if tag == b"PNTS":
+            points = _parse_pnts(payload)
+            current["verts"] = len(points)
+            current["bbox"] = _bbox(points)
     return layers
+
+
+def _parent_label(layer: dict, by_number: dict[int, dict]) -> str:
+    parent = layer["parent"]
+    if parent is None:
+        return "-"
+    found = by_number.get(parent)
+    if found is None:
+        return f"#{parent}"
+    return found["name"]
+
+
+def print_layers(layers: list[dict]) -> None:
+    print(f"layers / meshes ({len(layers)}):")
+    by_number = {layer["number"]: layer for layer in layers}
+    children: dict[int, list[dict]] = {layer["number"]: [] for layer in layers}
+    roots: list[dict] = []
+    for layer in layers:
+        parent = layer["parent"]
+        if parent is None or parent not in by_number or parent == layer["number"]:
+            roots.append(layer)
+        else:
+            children[parent].append(layer)
+
+    def emit(layer: dict, depth: int) -> None:
+        pad = "  " * depth
+        print(f"{pad}{layer['name']}:")
+        print(f"{pad}  layr={layer['number']}  parent={_parent_label(layer, by_number)}")
+        print(f"{pad}  pivot={_fmt_vec(layer['pivot'])}")
+        box = layer["bbox"]
+        if box:
+            print(f"{pad}  verts={layer['verts']}  bbox {_fmt_vec(box['min'])} .. {_fmt_vec(box['max'])}  size={_fmt_vec(box['size'])}")
+        else:
+            print(f"{pad}  verts=0  bbox=(empty)")
+        for child in children[layer["number"]]:
+            emit(child, depth + 1)
+
+    for root in roots:
+        emit(root, 1)
 
 
 def meshpack_parts(surfaces: list[dict], material: str = "rmmr::lit_textured", albedo_fallback: str | None = None) -> list[list]:
@@ -243,7 +328,7 @@ def write_meshpack(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Inspect LWO3 surfaces, Color Image Map textures, and LAYR pivots.")
+    parser = argparse.ArgumentParser(description="Inspect LWO3 surfaces, Color Image Map textures, LAYR pivots/parent, and vertex AABBs.")
     parser.add_argument("lwo", type=Path, help="path to .lwo")
     parser.add_argument("--meshpack-snippet", action="store_true", help="print only the meshpack parts array JSON")
     parser.add_argument("--write-meshpack", action="store_true", help="write/update <lwo>.meshpack parts from surfaces")
@@ -300,10 +385,7 @@ def main() -> int:
             print(f"  {surface['name']}: {', '.join(surface['textures'])}")
         else:
             print(f"  {surface['name']}: (no Image Map textures)")
-    print(f"layers / meshes ({len(layers)}):")
-    for layer in layers:
-        px, py, pz = layer["pivot"]
-        print(f"  {layer['name']}: pivot=({px:g}, {py:g}, {pz:g})  layr={layer['number']}")
+    print_layers(layers)
     return 0
 
 

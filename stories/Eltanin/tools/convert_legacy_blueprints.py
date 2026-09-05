@@ -8,11 +8,11 @@ Legacy (classic):
 Current:
   { name, author, [cells], [mounts] }
   cell:   [[x,y,z], ori, shape, corners[], halfribs[], membranes[]]
-  mount:  [\"Eltanin::mounts.<stem>\", [gx,gy,gz], rotation]
+  mount:  [\"Eltanin::<shelf>.<stem>\", [gx,gy,gz], rotation]
 
 Policy:
   - k8/k7/k6/k4 volumetrics → seeded skeleton cell (recipes ≡ seedCorners/seedHalfribs)
-  - k8 with Role slot → also dummy_<Role> mount (internal module stand-in)
+  - k8 with Role slot → internal mount (control → internals.controlRoomBasic; else dummy_<Role>)
   - non-k8 → skeleton only (legacy internal modules dropped, frame kept)
   - hangar → skeleton only, no dummy (hand-fill later)
   - wings → flat skeleton cells (w1111→k4f1111, w121→k3f121, w2121→k4f2121, w321→k3f222); no dummy
@@ -238,7 +238,7 @@ WING_TO_SHAPE = {
     "w321": "k3f222",  # legacy tag; recipe labeled ex-w222
 }
 
-# Legacy volumetric slot → Role / dummy stem. hangar = skeleton only.
+# Legacy volumetric slot → Role. hangar = skeleton only.
 SLOT_TO_ROLE = {
     "multi": "custom",
     "engine": "propulsion",
@@ -419,7 +419,8 @@ def convert(name: str, author: str, volumetrics, wings, plates):
             continue
 
         grid, rotation = placement_to_transform(cell, ori)
-        mounts.append(f'        ["Eltanin::mounts.dummy_{role}", {fmt_index3(grid)}, {rotation}]')
+        unit = "Eltanin::internals.controlRoomBasic" if role == "control" else f"Eltanin::mounts.dummy_{role}"
+        mounts.append(f'        ["{unit}", {fmt_index3(grid)}, {rotation}]')
         stats["dummies"] += 1
 
     for cell, ori, wing, _role in wings:

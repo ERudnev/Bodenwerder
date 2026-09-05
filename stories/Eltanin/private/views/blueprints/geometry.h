@@ -84,8 +84,15 @@ namespace eltanin::views::blueprints {
         }
     };
 
+    // One editor visual: first mesh at the attachment, extras offset by LAYR pivots.
+    struct MountVisual {
+        rmmr::scene::actor::Mesh::Id id;
+        std::vector<rmmr::scene::actor::Mesh::Id> extras;
+    };
+
     struct MountActor {
         rmmr::scene::actor::Mesh::Id id;
+        std::vector<rmmr::scene::actor::Mesh::Id> extras;
         std::size_t index; // into Blueprint::mounts
         mech::Layer layer;
         int cellYMin; // cell-space AABB from mountBounds
@@ -95,6 +102,7 @@ namespace eltanin::views::blueprints {
     // Floor layout of library mounts (palette scene).
     struct PaletteMountActor {
         rmmr::scene::actor::Mesh::Id id;
+        std::vector<rmmr::scene::actor::Mesh::Id> extras;
         mech::Mount::Id mount;
         std::vector<rmmr::scene::actor::Mesh::Id> balls; // attachment points; [0] tinted green
     };
@@ -139,8 +147,9 @@ namespace eltanin::views::blueprints {
     auto refreshGhostMountActors(Writing, const Blueprint& blueprint, Display, std::vector<MountActor>& actors, rmmr::RGB albedo, float opacity) -> bool;
 
     void destroyMeshActor(Writing, rmmr::scene::Root::Id root, rmmr::scene::actor::Mesh::Id actor);
-    auto spawnGhostMount(Writing, rmmr::scene::Root::Id root, ::rmmr::resource::material::Asset::Id ghostMaterial, mech::Mount::Id, const mech::space::Transform&, rmmr::RGB albedo, float opacity) -> base::maybe<rmmr::scene::actor::Mesh::Id>;
-    void poseGhostMount(Writing, rmmr::scene::actor::Mesh::Id, const mech::space::Transform&);
+    void destroyMountVisual(Writing, rmmr::scene::Root::Id root, const MountVisual&);
+    auto spawnGhostMount(Writing, rmmr::scene::Root::Id root, ::rmmr::resource::material::Asset::Id ghostMaterial, mech::Mount::Id, const mech::space::Transform&, rmmr::RGB albedo, float opacity) -> base::maybe<MountVisual>;
+    void poseGhostMount(Writing, const MountVisual&, mech::Mount::Id, const mech::space::Transform&);
 
     } // namespace geometry
 

@@ -25,7 +25,7 @@ namespace rmmr::resource::texpack {
             for (char& ch : ext) {
                 ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
             }
-            return ext == ".jpg" or ext == ".jpeg" or ext == ".png" or ext == ".bmp" or ext == ".tga" or ext == ".gif";
+            return ext == ".jpg" or ext == ".jpeg" or ext == ".jfif" or ext == ".png" or ext == ".bmp" or ext == ".tga" or ext == ".gif";
         }
 
         void release_gl(Writing context, const Runtime::Quantum& last) {

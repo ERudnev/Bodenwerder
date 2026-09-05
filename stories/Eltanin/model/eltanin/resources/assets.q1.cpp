@@ -41,7 +41,7 @@ namespace eltanin::resource {
                 .mass = 0.0f,
                 .attachment = mech::Attachment{.points = {}},
                 .collision = mech::Collision{.thickness = 0.0f, .faces = {}},
-                .tempMesh = mech::Mount::TempMesh{.pack = {}, .entry = {}},
+                .tempMesh = {},
                 .role = {},
                 .file = {},
             });

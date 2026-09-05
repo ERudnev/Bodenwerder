@@ -23,7 +23,7 @@ Loader rules (see `meshpack.q1.cpp`):
 
 | script | role |
 |---|---|
-| `lwo_surf_textures.py` | Inspect LWO3 CLIP/STIL + SURF Image Maps + LAYR; print or **write** `.meshpack` parts |
+| `lwo_surf_textures.py` | Inspect LWO3 CLIP/STIL + SURF Image Maps + LAYR (name, pivot, parent, vertex AABB); print or **write** `.meshpack` parts |
 | `lwo_strip_envl.py` | If Assimp chokes on envelopes: strip ENVL/ENVS/ENVD from the LWO |
 
 Paths below assume repo root `DAQL/`.
@@ -34,7 +34,7 @@ Paths below assume repo root `DAQL/`.
    ```bat
    python modules/raidenmamare/tools/lwo_surf_textures.py assets/Eltanin/meshes/.../foo.lwo
    ```
-   Check: surfaces ↔ texture basenames; layers ↔ expected entry names; pivots if placement matters.
+   Check: surfaces ↔ texture basenames; layers ↔ expected entry names; parent tree, pivots, vertex AABBs.
 
 2. **Confirm textures are on the shelf**  
    Files must live under the texpack directory (for mech kits: `assets/Eltanin/textures/mech/`). Catalog loader indexes by **filename**; renaming a texture in LW without adding the file → runtime refuse.

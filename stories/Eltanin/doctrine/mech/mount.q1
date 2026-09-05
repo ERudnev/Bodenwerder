@@ -12,8 +12,9 @@ namespace eltanin
       thickness: float
       faces: vector<vector<integer>> // loops of indices into Attachment.points
 
-    // Library entry: placeable external equipment. Visual = soft meshpack link (placeholder).
-    // Disk: fittings/mounts/*.json (classic JSON).
+    // Library entry: placeable equipment.
+    // Disk: fittings/<shelf>/*.json; unit Eltanin::<shelf>.<stem>.
+    // tempMesh = editor visual recipe (one part or several LAYR entries). Assembler game recipe is later.
     feature Mount of rmmr::resource::Unit
       struct TempMesh
         pack: rmmr::resource::Unit::Name
@@ -24,8 +25,8 @@ namespace eltanin
         mass: float
         attachment: Attachment
         collision: Collision
-        tempMesh: TempMesh
+        tempMesh: vector<TempMesh>
         role: Role?
-        file: filename // kit-relative; under fittings/mounts/
+        file: filename // kit-relative; under fittings/<shelf>/
         >load()
         >save()

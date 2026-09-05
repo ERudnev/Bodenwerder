@@ -1,7 +1,7 @@
 {
-  "name": "Dummy control",
-  "author": "Eltanin",
-  "mass": 24000,
+  "name": "Control Room Basic",
+  "author": "CU Naval R&D",
+  "mass": 4000,
   "attachment": {
     "points": [
       [0, 0, 0],
@@ -25,9 +25,9 @@
       [0, 2, 3, 1]
     ]
   },
-  "tempMesh": {
-    "pack": "Eltanin::attachments",
-    "entry": "box"
-  },
+  "tempMesh": [
+    { "pack": "Eltanin::controlRoomSmall", "entry": "root" },
+    { "pack": "Eltanin::controlRoomSmall", "entry": "headUnit" }
+  ],
   "role": "control"
 }

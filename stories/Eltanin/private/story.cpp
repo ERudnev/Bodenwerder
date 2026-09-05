@@ -297,6 +297,10 @@ namespace eltanin {
             context,
             Name::from("Eltanin", "devices"),
             item<meshpack::LoaderLwo>{.file = "meshes/fittings/devices/cannon_temp_solid.lwo.meshpack", .geometry = {}, .pending = {}});
+        assets.controlRoomSmall = with<Assets>::add_meshpack_lwo_loader(
+            context,
+            Name::from("Eltanin", "controlRoomSmall"),
+            item<meshpack::LoaderLwo>{.file = "meshes/fittings/devices/controlRoomSmall.lwo.meshpack", .geometry = {}, .pending = {}});
         assets.projectiles = with<Assets>::add_meshpack_lwo_loader(
             context,
             Name::from("Eltanin", "projectiles"),
@@ -375,7 +379,7 @@ namespace eltanin {
 
         bindGameEntities(context);
         scenario.populate(context, window);
-        ui.assembler.spawnVel = vec3{0.0f, 0.0f, 10.0f}; // temporary: +Z approach toward ice asteroid
+        // TODO: use this for some scenarios as time-saver: ui.assembler.spawnVel = vec3{0.0f, 0.0f, 10.0f}; // temporary: +Z approach toward ice asteroid
 
         {
             auto world = with<World>::modify_global(context);
@@ -389,7 +393,7 @@ namespace eltanin {
 
         const auto manager = with<::rmmr::resource::Manager>::singleton(context);
         blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "blueprints");
-        mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings" / "mounts");
+        mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings");
         blueprints.create(context);
     }
 

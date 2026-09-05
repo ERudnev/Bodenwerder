@@ -23,8 +23,9 @@ namespace eltanin::mech {
         vector<vector<integer>> faces;
     };
 
-    // Library entry: placeable external equipment. Visual = soft meshpack link (placeholder).
-    // Files: assets/Eltanin/fittings/mounts/*.json
+    // Library entry: placeable equipment.
+    // Files: assets/Eltanin/fittings/<shelf>/*.json → Eltanin::<shelf>.<stem>
+    // tempMesh = editor visual recipe (one or more meshpack entries).
     struct Mount : Feature<Mount, rmmr::resource::Unit> {
         struct TempMesh {
             rmmr::resource::Unit::Name pack;
@@ -36,9 +37,9 @@ namespace eltanin::mech {
             float mass;
             Attachment attachment;
             Collision collision;
-            TempMesh tempMesh;
+            vector<TempMesh> tempMesh;
             base::maybe<Role> role;
-            filename file; // kit-relative; under fittings/mounts/
+            filename file; // kit-relative; under fittings/<shelf>/
         };
         struct Actions : BaseActions {
             static void load(Writing, Id);

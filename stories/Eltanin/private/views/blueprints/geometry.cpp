@@ -95,6 +95,88 @@ namespace eltanin::views::blueprints::geometry {
             return id;
         }
 
+        auto resolveTempPart(Reading context, const mech::Mount::TempMesh& part) -> base::maybe<meshpack::Asset::Resolved> {
+            const auto packId = with<::rmmr::resource::Assets>::find<meshpack::Asset>(context, part.pack);
+            if (not packId)
+                return {};
+            return with<meshpack::Asset>::resolve(context, *packId, part.entry);
+        }
+
+        auto mountPartPose(Pose base, Pos anchorOrigin, Pos partOrigin) -> Pose {
+            return Pose{.position = base.position + base.rotation * (partOrigin - anchorOrigin), .rotation = base.rotation};
+        }
+
+        auto partOrigin(Reading context, const meshpack::Asset::Resolved& resolved) -> Pos {
+            if (const auto origin = entryOrigin(context, resolved))
+                return *origin;
+            return Pos{0.0f, 0.0f, 0.0f};
+        }
+
+        template <typename Spawn>
+        auto spawnMountVisual(Writing context, Pose base, const mech::Mount::Quantum& mount, Spawn&& spawnOne) -> base::maybe<MountVisual> {
+            if (mount.tempMesh.empty())
+                return {};
+            const auto firstResolved = resolveTempPart(context, mount.tempMesh.front());
+            if (not firstResolved)
+                return {};
+            const auto firstId = spawnOne(base, *firstResolved);
+            if (not firstId)
+                return {};
+            MountVisual visual{.id = *firstId, .extras = {}};
+            const auto anchor = partOrigin(context, *firstResolved);
+            for (std::size_t i = 1; i < mount.tempMesh.size(); ++i) {
+                const auto resolved = resolveTempPart(context, mount.tempMesh[i]);
+                if (not resolved)
+                    continue;
+                if (const auto extra = spawnOne(mountPartPose(base, anchor, partOrigin(context, *resolved)), *resolved))
+                    visual.extras.push_back(*extra);
+            }
+            return visual;
+        }
+
+        void poseMountVisual(Writing context, const MountVisual& visual, const mech::Mount::Quantum& mount, Pose base) {
+            if (with<scene::Node>::exists(context, visual.id))
+                with<scene::Node>::modify(context, visual.id)->pose = base;
+            if (mount.tempMesh.empty())
+                return;
+            const auto firstResolved = resolveTempPart(context, mount.tempMesh.front());
+            const auto anchor = firstResolved ? partOrigin(context, *firstResolved) : Pos{0.0f, 0.0f, 0.0f};
+            std::size_t extraAt = 0;
+            for (std::size_t i = 1; i < mount.tempMesh.size() and extraAt < visual.extras.size(); ++i) {
+                const auto resolved = resolveTempPart(context, mount.tempMesh[i]);
+                if (not resolved)
+                    continue;
+                const auto extra = visual.extras[extraAt++];
+                if (with<scene::Node>::exists(context, extra))
+                    with<scene::Node>::modify(context, extra)->pose = mountPartPose(base, anchor, partOrigin(context, *resolved));
+            }
+        }
+
+        void destroyMountMeshes(Writing context, scene::Root::Id root, scene::actor::Mesh::Id id, const std::vector<scene::actor::Mesh::Id>& extras) {
+            destroyActor(context, root, id);
+            for (const auto extra : extras)
+                destroyActor(context, root, extra);
+        }
+
+        void setMountMeshesVisible(Writing context, scene::actor::Mesh::Id id, const std::vector<scene::actor::Mesh::Id>& extras, bool visible) {
+            auto set = [&](scene::actor::Mesh::Id mesh) {
+                if (with<scene::Node>::exists(context, mesh))
+                    scene::Node::Actions::setVisible(context, mesh, visible);
+            };
+            set(id);
+            for (const auto extra : extras)
+                set(extra);
+        }
+
+        void tintMesh(Writing context, scene::actor::Mesh::Id id, RGB albedo, float opacity) {
+            if (not with<scene::actor::MeshState>::exists(context, id))
+                return;
+            auto state = with<scene::actor::MeshState>::modify(context, id);
+            state->albedo = albedo;
+            state->opacity = opacity;
+            scene::Node::Actions::setVisible(context, id, true);
+        }
+
         void spawnBlueprintActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, const Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors, auto&& spawnOne, bool filterByDisplay) {
             for (std::size_t cellIndex = 0; cellIndex < blueprint.cells.size(); ++cellIndex) {
                 const auto& cell = blueprint.cells[cellIndex];
@@ -206,13 +288,13 @@ namespace eltanin::views::blueprints::geometry {
 
     void clearMountActors(Writing context, scene::Root::Id root, std::vector<MountActor>& actors) {
         for (const auto& actor : actors)
-            destroyActor(context, root, actor.id);
+            destroyMountMeshes(context, root, actor.id, actor.extras);
         actors.clear();
     }
 
     void clearPaletteActors(Writing context, scene::Root::Id root, std::vector<PaletteMountActor>& actors) {
         for (const auto& actor : actors) {
-            destroyActor(context, root, actor.id);
+            destroyMountMeshes(context, root, actor.id, actor.extras);
             for (const auto ball : actor.balls)
                 destroyActor(context, root, ball);
         }
@@ -226,9 +308,8 @@ namespace eltanin::views::blueprints::geometry {
             scene::Node::Actions::setVisible(context, actor.id, display.showsQuark(actor.kind, actor.cellY, currentFloor));
         }
         for (const auto& actor : mounts) {
-            if (not with<scene::Node>::exists(context, actor.id))
-                continue;
-            scene::Node::Actions::setVisible(context, actor.id, display.showsMount(actor.layer, actor.cellYMin, actor.cellYMax, currentFloor));
+            const bool show = display.showsMount(actor.layer, actor.cellYMin, actor.cellYMax, currentFloor);
+            setMountMeshesVisible(context, actor.id, actor.extras, show);
         }
     }
 
@@ -251,14 +332,12 @@ namespace eltanin::views::blueprints::geometry {
             mech::Layer layer = mount.attachment.flatMounted() ? mech::Layer::externals : mech::Layer::internals;
             if (const auto found = mountLayers.find(*mountId); found != mountLayers.end())
                 layer = found->second;
-            const auto packId = with<::rmmr::resource::Assets>::find<meshpack::Asset>(context, mount.tempMesh.pack);
-            if (not packId) {
-                base::message("eltanin blueprints geometry: mount '{}' pack '{}' missing", placed.mount.text(), mount.tempMesh.pack.text());
+            if (mount.tempMesh.empty()) {
+                base::message("eltanin blueprints geometry: mount '{}' tempMesh empty", placed.mount.text());
                 continue;
             }
-            const auto resolved = with<meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
-            if (not resolved) {
-                base::message("eltanin blueprints geometry: mount '{}' entry '{}' missing", placed.mount.text(), mount.tempMesh.entry);
+            if (not resolveTempPart(context, mount.tempMesh.front())) {
+                base::message("eltanin blueprints geometry: mount '{}' pack '{}' entry '{}' missing", placed.mount.text(), mount.tempMesh.front().pack.text(), mount.tempMesh.front().entry);
                 continue;
             }
             int cellYMin = placed.transform.grid.y;
@@ -267,8 +346,9 @@ namespace eltanin::views::blueprints::geometry {
                 cellYMin = box->min.y;
                 cellYMax = box->max.y;
             }
-            if (const auto id = spawnIdentified(context, root, gridActorPose(placed.transform), *resolved, mountAlbedo(mount)))
-                actors.push_back(MountActor{.id = *id, .index = index, .layer = layer, .cellYMin = cellYMin, .cellYMax = cellYMax});
+            const auto albedo = mountAlbedo(mount);
+            if (const auto visual = spawnMountVisual(context, gridActorPose(placed.transform), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved, albedo); }))
+                actors.push_back(MountActor{.id = visual->id, .extras = visual->extras, .index = index, .layer = layer, .cellYMin = cellYMin, .cellYMax = cellYMax});
         }
         applyDisplay(context, display, currentFloor, {}, actors);
     }
@@ -326,20 +406,20 @@ namespace eltanin::views::blueprints::geometry {
             if (not with<::eltanin::mech::Mount>::exists(context, mountId))
                 continue;
             const auto& mount = with<::eltanin::mech::Mount>::get(context, mountId);
-            const auto packId = with<::rmmr::resource::Assets>::find<meshpack::Asset>(context, mount.tempMesh.pack);
-            if (not packId) {
-                base::message("eltanin blueprints geometry: palette pack '{}' missing", mount.tempMesh.pack.text());
+            if (mount.tempMesh.empty()) {
+                base::message("eltanin blueprints geometry: palette tempMesh empty");
                 continue;
             }
-            const auto resolved = with<meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
-            if (not resolved) {
-                base::message("eltanin blueprints geometry: palette entry '{}' missing", mount.tempMesh.entry);
+            if (not resolveTempPart(context, mount.tempMesh.front())) {
+                base::message("eltanin blueprints geometry: palette pack '{}' entry '{}' missing", mount.tempMesh.front().pack.text(), mount.tempMesh.front().entry);
                 continue;
             }
             const auto col = static_cast<int>(index % static_cast<std::size_t>(columns));
             const auto row = static_cast<int>(index / static_cast<std::size_t>(columns));
             const auto transform = mech::space::Transform{.grid = base::common_types::index3{.x = col * cellStep, .y = 0, .z = row * cellStep}, .rotation = 0};
-            if (const auto id = spawnIdentified(context, root, gridActorPose(transform), *resolved, mountAlbedo(mount))) {
+            const auto albedo = mountAlbedo(mount);
+            const auto visual = spawnMountVisual(context, gridActorPose(transform), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved, albedo); });
+            if (visual) {
                 std::vector<scene::actor::Mesh::Id> balls;
                 balls.reserve(mount.attachment.points.size());
                 for (std::size_t pointIndex = 0; pointIndex < mount.attachment.points.size(); ++pointIndex) {
@@ -349,12 +429,12 @@ namespace eltanin::views::blueprints::geometry {
                         static_cast<float>(transform.grid.y + point.y) * edge,
                         static_cast<float>(transform.grid.z + point.z) * edge,
                     };
-                    const auto albedo = pointIndex == 0 ? firstBallAlbedo : otherBallAlbedo;
-                    const auto ballId = with<scene::Interface>::createMeshActor(context, root, Pose::from(world, HPB{0.0f, 0.0f, 0.0f}), ballResolved, with<scene::actor::MeshState>::defaults(albedo, ballOpacity, vec3{ballScale, ballScale, ballScale}));
+                    const auto ballAlbedo = pointIndex == 0 ? firstBallAlbedo : otherBallAlbedo;
+                    const auto ballId = with<scene::Interface>::createMeshActor(context, root, Pose::from(world, HPB{0.0f, 0.0f, 0.0f}), ballResolved, with<scene::actor::MeshState>::defaults(ballAlbedo, ballOpacity, vec3{ballScale, ballScale, ballScale}));
                     if (with<scene::actor::Mesh>::exists(context, ballId))
                         balls.push_back(ballId);
                 }
-                actors.push_back(PaletteMountActor{.id = *id, .mount = mountId, .balls = std::move(balls)});
+                actors.push_back(PaletteMountActor{.id = visual->id, .extras = visual->extras, .mount = mountId, .balls = std::move(balls)});
             }
         }
     }
@@ -430,20 +510,14 @@ namespace eltanin::views::blueprints::geometry {
             const auto layer = mount.attachment.flatMounted() ? mech::Layer::externals : mech::Layer::internals;
             if (not display.shows(layer))
                 continue;
-            const auto packId = with<::rmmr::resource::Assets>::find<meshpack::Asset>(context, mount.tempMesh.pack);
-            if (not packId)
-                continue;
-            const auto resolved = with<meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
-            if (not resolved)
-                continue;
             int cellYMin = placed.transform.grid.y;
             int cellYMax = cellYMin;
             if (const auto box = mountBounds::cellBox(mount.attachment, placed.transform)) {
                 cellYMin = box->min.y;
                 cellYMax = box->max.y;
             }
-            if (const auto id = spawnGhost(context, root, gridActorPose(placed.transform), *resolved, ghostMaterial, albedo, opacity))
-                actors.push_back(MountActor{.id = *id, .index = index, .layer = layer, .cellYMin = cellYMin, .cellYMax = cellYMax});
+            if (const auto visual = spawnMountVisual(context, gridActorPose(placed.transform), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnGhost(context, root, pose, resolved, ghostMaterial, albedo, opacity); }))
+                actors.push_back(MountActor{.id = visual->id, .extras = visual->extras, .index = index, .layer = layer, .cellYMin = cellYMin, .cellYMax = cellYMax});
         }
     }
 
@@ -465,11 +539,10 @@ namespace eltanin::views::blueprints::geometry {
                 return false;
             if (not with<scene::Node>::exists(context, slot.id) or not with<scene::actor::MeshState>::exists(context, slot.id))
                 return false;
-            with<scene::Node>::modify(context, slot.id)->pose = gridActorPose(placed.transform);
-            auto state = with<scene::actor::MeshState>::modify(context, slot.id);
-            state->albedo = albedo;
-            state->opacity = opacity;
-            scene::Node::Actions::setVisible(context, slot.id, true);
+            poseMountVisual(context, MountVisual{.id = slot.id, .extras = slot.extras}, mount, gridActorPose(placed.transform));
+            tintMesh(context, slot.id, albedo, opacity);
+            for (const auto extra : slot.extras)
+                tintMesh(context, extra, albedo, opacity);
             ++at;
         }
         return at == actors.size();
@@ -479,23 +552,25 @@ namespace eltanin::views::blueprints::geometry {
         destroyActor(context, root, actor);
     }
 
-    auto spawnGhostMount(Writing context, scene::Root::Id root, ::rmmr::resource::material::Asset::Id ghostMaterial, mech::Mount::Id mountId, const mech::space::Transform& transform, RGB albedo, float opacity) -> base::maybe<scene::actor::Mesh::Id> {
+    void destroyMountVisual(Writing context, scene::Root::Id root, const MountVisual& visual) {
+        destroyMountMeshes(context, root, visual.id, visual.extras);
+    }
+
+    auto spawnGhostMount(Writing context, scene::Root::Id root, ::rmmr::resource::material::Asset::Id ghostMaterial, mech::Mount::Id mountId, const mech::space::Transform& transform, RGB albedo, float opacity) -> base::maybe<MountVisual> {
         if (not with<::eltanin::mech::Mount>::exists(context, mountId))
             return {};
         const auto& mount = with<::eltanin::mech::Mount>::get(context, mountId);
-        const auto packId = with<::rmmr::resource::Assets>::find<meshpack::Asset>(context, mount.tempMesh.pack);
-        if (not packId)
-            return {};
-        const auto resolved = with<meshpack::Asset>::resolve(context, *packId, mount.tempMesh.entry);
-        if (not resolved)
-            return {};
-        return spawnGhost(context, root, gridActorPose(transform), *resolved, ghostMaterial, albedo, opacity);
+        return spawnMountVisual(context, gridActorPose(transform), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnGhost(context, root, pose, resolved, ghostMaterial, albedo, opacity); });
     }
 
-    void poseGhostMount(Writing context, scene::actor::Mesh::Id actor, const mech::space::Transform& transform) {
-        if (not with<scene::Node>::exists(context, actor))
+    void poseGhostMount(Writing context, const MountVisual& visual, mech::Mount::Id mountId, const mech::space::Transform& transform) {
+        const auto base = gridActorPose(transform);
+        if (not with<::eltanin::mech::Mount>::exists(context, mountId)) {
+            if (with<scene::Node>::exists(context, visual.id))
+                with<scene::Node>::modify(context, visual.id)->pose = base;
             return;
-        with<scene::Node>::modify(context, actor)->pose = gridActorPose(transform);
+        }
+        poseMountVisual(context, visual, with<::eltanin::mech::Mount>::get(context, mountId), base);
     }
 
 } // namespace eltanin::views::blueprints::geometry

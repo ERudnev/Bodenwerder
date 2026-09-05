@@ -1,4 +1,5 @@
 #include "mech/construction.h"
+#include "mech/semantics/space.h"
 
 #include <map>
 #include <set>
@@ -343,6 +344,22 @@ namespace eltanin::mech {
 
     auto islandIsConstruct(const Construction& construction, const vector<Construction::Primitive::Id>& island) -> bool {
         return island.size() >= 2 and islandSpans3d(construction, island);
+    }
+
+    auto loopSail(const Construction::Primitive& primitive) -> LoopSail {
+        if (primitive.loop.size() < 3)
+            return LoopSail{.area = 0.0f, .normal = vec3{0.0f, 1.0f, 0.0f}};
+        vec3 twice{0.0f, 0.0f, 0.0f};
+        const float meters = space::local::edge2meters;
+        for (std::size_t slot = 0; slot < primitive.loop.size(); ++slot) {
+            const auto& a = primitive.loop[slot].gridPos;
+            const auto& b = primitive.loop[(slot + 1) % primitive.loop.size()].gridPos;
+            twice += glm::cross(vec3{static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z)} * meters, vec3{static_cast<float>(b.x), static_cast<float>(b.y), static_cast<float>(b.z)} * meters);
+        }
+        const float mag = glm::length(twice);
+        if (mag < 1.0e-8f)
+            return LoopSail{.area = 0.0f, .normal = vec3{0.0f, 1.0f, 0.0f}};
+        return LoopSail{.area = 0.5f * mag, .normal = twice / mag};
     }
 
     // Occupied cell = more knots; outward through that face. Tie on both sides → 0. No skeleton → winding (CCW-out).

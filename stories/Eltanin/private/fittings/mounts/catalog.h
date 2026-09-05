@@ -13,7 +13,7 @@ namespace eltanin {
 
     using MountIds = std::vector<mech::Mount::Id>;
 
-    // Disk: assets/Eltanin/fittings/mounts/*.json
+    // Disk: assets/Eltanin/fittings/<shelf>/*.json → Eltanin::<shelf>.<stem>
     struct MountCatalog {
         filepath root;
         MountIds ids;
@@ -21,7 +21,7 @@ namespace eltanin {
 
         void bind(filepath);
         void loadFromDisk(establish::Realm&);
-        auto loadOne(Writing, string stem) -> base::maybe<mech::Mount::Id>;
+        auto loadOne(Writing, string shelf, string stem) -> base::maybe<mech::Mount::Id>;
     };
 
 }
