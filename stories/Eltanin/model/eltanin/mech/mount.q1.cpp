@@ -206,7 +206,7 @@ namespace eltanin::mech {
             return values;
         }
 
-        auto take_collision(Cursor& cursor) -> Collision {
+        auto take_lattice_hull(Cursor& cursor) -> LatticeHull {
             expect(cursor, '{');
             expect_key(cursor, "thickness");
             const auto thickness = take_number(cursor);
@@ -224,7 +224,91 @@ namespace eltanin::mech {
             }
             expect(cursor, ']');
             expect(cursor, '}');
-            return Collision{.thickness = thickness, .faces = std::move(faces)};
+            return LatticeHull{.thickness = thickness, .faces = std::move(faces)};
+        }
+
+        auto take_vec3(Cursor& cursor) -> vec3 {
+            expect(cursor, '[');
+            const auto x = take_number(cursor);
+            expect(cursor, ',');
+            const auto y = take_number(cursor);
+            expect(cursor, ',');
+            const auto z = take_number(cursor);
+            expect(cursor, ']');
+            return vec3{x, y, z};
+        }
+
+        auto take_box(Cursor& cursor) -> Box {
+            expect(cursor, '{');
+            expect_key(cursor, "min");
+            const auto min = take_vec3(cursor);
+            expect(cursor, ',');
+            expect_key(cursor, "max");
+            const auto max = take_vec3(cursor);
+            expect(cursor, '}');
+            return Box{.min = min, .max = max};
+        }
+
+        auto take_element(Cursor& cursor) -> Element {
+            expect(cursor, '{');
+            string name;
+            base::maybe<LatticeHull> hull;
+            base::maybe<Box> box;
+            for (;;) {
+                const auto key = take_key(cursor);
+                if (key == "name")
+                    name = take_string(cursor);
+                else if (key == "latticeHull")
+                    hull = take_lattice_hull(cursor);
+                else if (key == "box")
+                    box = take_box(cursor);
+                else
+                    throw std::runtime_error(std::format("mount: unknown element key '{}'", key));
+                if (peek(cursor) == '}')
+                    break;
+                expect(cursor, ',');
+            }
+            expect(cursor, '}');
+            if (not hull.has_value() and not box.has_value())
+                throw std::runtime_error("mount: element needs latticeHull or box");
+            return Element{.name = std::move(name), .latticeHull = std::move(hull), .box = std::move(box)};
+        }
+
+        auto take_elements(Cursor& cursor) -> vector<Element> {
+            expect(cursor, '[');
+            vector<Element> elements;
+            if (peek(cursor) != ']') {
+                for (;;) {
+                    elements.push_back(take_element(cursor));
+                    if (peek(cursor) == ']')
+                        break;
+                    expect(cursor, ',');
+                }
+            }
+            expect(cursor, ']');
+            return elements;
+        }
+
+        void write_lattice_hull(std::ostringstream& out, const LatticeHull& hull, std::string_view indent) {
+            out << indent << "{\n";
+            out << indent << "  \"thickness\": " << hull.thickness << ",\n";
+            out << indent << "  \"faces\": [\n";
+            for (std::size_t face = 0; face < hull.faces.size(); ++face) {
+                const auto& loop = hull.faces[face];
+                out << indent << "    [";
+                for (std::size_t index = 0; index < loop.size(); ++index)
+                    out << loop[index] << (index + 1 < loop.size() ? ", " : "");
+                out << "]" << (face + 1 < hull.faces.size() ? ",\n" : "\n");
+            }
+            out << indent << "  ]\n";
+            out << indent << "}";
+        }
+
+        void write_box(std::ostringstream& out, const Box& box, std::string_view indent) {
+            out << "{\n";
+            out << indent << "  \"min\": [" << box.min.x << ", " << box.min.y << ", " << box.min.z << "],\n";
+            out << indent << "  \"max\": [" << box.max.x << ", " << box.max.y << ", " << box.max.z << "]\n";
+            out << indent << "}";
         }
 
         auto take_presentation_geometry(Cursor& cursor) -> Mount::PresentationGeometry {
@@ -314,8 +398,8 @@ namespace eltanin::mech {
             expect_key(cursor, "attachment");
             auto attachment = take_attachment(cursor);
             expect(cursor, ',');
-            expect_key(cursor, "collision");
-            auto collision = take_collision(cursor);
+            expect_key(cursor, "elements");
+            auto elements = take_elements(cursor);
             expect(cursor, ',');
             expect_key(cursor, "presentationGeometry");
             auto presentationGeometry = take_presentation_geometries(cursor);
@@ -331,7 +415,7 @@ namespace eltanin::mech {
                 .author = std::move(author),
                 .mass = mass,
                 .attachment = std::move(attachment),
-                .collision = collision,
+                .elements = std::move(elements),
                 .presentationGeometry = std::move(presentationGeometry),
                 .role = role,
                 .file = {},
@@ -352,18 +436,24 @@ namespace eltanin::mech {
             }
             out << "    ]\n";
             out << "  },\n";
-            out << "  \"collision\": {\n";
-            out << "    \"thickness\": " << data.collision.thickness << ",\n";
-            out << "    \"faces\": [\n";
-            for (std::size_t face = 0; face < data.collision.faces.size(); ++face) {
-                const auto& loop = data.collision.faces[face];
-                out << "      [";
-                for (std::size_t index = 0; index < loop.size(); ++index)
-                    out << loop[index] << (index + 1 < loop.size() ? ", " : "");
-                out << "]" << (face + 1 < data.collision.faces.size() ? ",\n" : "\n");
+            out << "  \"elements\": [\n";
+            for (std::size_t i = 0; i < data.elements.size(); ++i) {
+                const auto& element = data.elements[i];
+                out << "    {\n";
+                if (not element.name.empty())
+                    out << "      \"name\": \"" << element.name << "\",\n";
+                if (element.latticeHull.has_value()) {
+                    out << "      \"latticeHull\": ";
+                    write_lattice_hull(out, *element.latticeHull, "      ");
+                    out << "\n";
+                } else if (element.box.has_value()) {
+                    out << "      \"box\": ";
+                    write_box(out, *element.box, "      ");
+                    out << "\n";
+                }
+                out << "    }" << (i + 1 < data.elements.size() ? ",\n" : "\n");
             }
-            out << "    ]\n";
-            out << "  },\n";
+            out << "  ],\n";
             if (data.presentationGeometry.size() == 1) {
                 out << "  \"presentationGeometry\": ";
                 write_presentation_geometry(out, data.presentationGeometry.front(), "");

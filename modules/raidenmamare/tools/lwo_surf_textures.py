@@ -191,7 +191,9 @@ def parse_layers(data: bytes) -> list[dict]:
         if tag == b"PNTS":
             points = _parse_pnts(payload)
             current["verts"] = len(points)
-            current["bbox"] = _bbox(points)
+            pivot = current["pivot"]
+            local = [(point[0] - pivot[0], point[1] - pivot[1], point[2] - pivot[2]) for point in points]
+            current["bbox"] = _bbox(local)
     return layers
 
 
@@ -224,7 +226,7 @@ def print_layers(layers: list[dict]) -> None:
         print(f"{pad}  pivot={_fmt_vec(layer['pivot'])}")
         box = layer["bbox"]
         if box:
-            print(f"{pad}  verts={layer['verts']}  bbox {_fmt_vec(box['min'])} .. {_fmt_vec(box['max'])}  size={_fmt_vec(box['size'])}")
+            print(f"{pad}  verts={layer['verts']}  bbox (pivot) {_fmt_vec(box['min'])} .. {_fmt_vec(box['max'])}  size={_fmt_vec(box['size'])}")
         else:
             print(f"{pad}  verts=0  bbox=(empty)")
         for child in children[layer["number"]]:

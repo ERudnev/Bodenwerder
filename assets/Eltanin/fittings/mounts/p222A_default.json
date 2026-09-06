@@ -9,14 +9,18 @@
       [1, 1, 1]
     ]
   },
-  "collision": {
-    "thickness": 0.2,
-    "faces": [
-      [0, 1, 2]
-    ]
-  },
+  "elements": [
+    {
+      "latticeHull": {
+        "thickness": 0.2,
+        "faces": [
+          [0, 1, 2]
+        ]
+      }
+    }
+  ],
   "presentationGeometry": {
     "pack": "Eltanin::armour",
-    "entry": "p222A_default"
+    "entry": "#p222A#default"
   }
 }

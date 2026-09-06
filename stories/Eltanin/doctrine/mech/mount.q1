@@ -1,3 +1,4 @@
+import "rmmr/math"
 import "rmmr/resources/manager"
 import "semantics"
 
@@ -8,13 +9,21 @@ namespace eltanin
       points: vector<index3> // just points in discrete local space
       ?flatMounted()->bool // true → one lattice plane (externals); false → volume (internals)
 
-    struct Collision
+    struct LatticeHull
       thickness: float
       faces: vector<vector<integer>> // loops of indices into Attachment.points
 
+    struct Box
+      min: vec3
+      max: vec3
+
+    struct Element
+      name: string
+      latticeHull: LatticeHull?
+      box: Box?
+
     // Library entry: placeable equipment.
     // Disk: fittings/<shelf>/*.json; unit Eltanin::<shelf>.<stem>.
-    // presentationGeometry = editor/viewer visual recipe (one part or several LAYR entries). Assembler game recipe is later.
     feature Mount of rmmr::resource::Unit
       struct PresentationGeometry
         pack: rmmr::resource::Unit::Name
@@ -24,7 +33,7 @@ namespace eltanin
         author: string
         mass: float
         attachment: Attachment
-        collision: Collision
+        elements: vector<Element>
         presentationGeometry: vector<PresentationGeometry>
         role: Role?
         file: filename // kit-relative; under fittings/<shelf>/

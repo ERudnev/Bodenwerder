@@ -10,14 +10,18 @@
       [0, 1, 0]
     ]
   },
-  "collision": {
-    "thickness": 0.2,
-    "faces": [
-      [0, 1, 2, 3]
-    ]
-  },
+  "elements": [
+    {
+      "latticeHull": {
+        "thickness": 0.2,
+        "faces": [
+          [0, 1, 2, 3]
+        ]
+      }
+    }
+  ],
   "presentationGeometry": {
     "pack": "Eltanin::armour",
-    "entry": "p1111_nose_big_side"
+    "entry": "#p1111#nose_big_side"
   }
 }

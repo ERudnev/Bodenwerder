@@ -40,7 +40,7 @@ namespace eltanin::resource {
                 .author = {},
                 .mass = 0.0f,
                 .attachment = mech::Attachment{.points = {}},
-                .collision = mech::Collision{.thickness = 0.0f, .faces = {}},
+                .elements = {},
                 .presentationGeometry = {},
                 .role = {},
                 .file = {},

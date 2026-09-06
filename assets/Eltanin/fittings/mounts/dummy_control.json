@@ -1,5 +1,5 @@
 {
-  "name": "Dummy living",
+  "name": "Dummy control",
   "author": "Eltanin",
   "mass": 24000,
   "attachment": {
@@ -19,5 +19,5 @@
     "pack": "Eltanin::attachments",
     "entry": "box"
   },
-  "role": "living"
+  "role": "control"
 }

@@ -12,7 +12,7 @@ Current:
 
 Policy:
   - k8/k7/k6/k4 volumetrics → seeded skeleton cell (recipes ≡ seedCorners/seedHalfribs)
-  - k8 with Role slot → internal mount (control → internals.controlRoomBasic; else dummy_<Role>)
+  - k8 with Role slot → internal dummy_<Role>
   - non-k8 → skeleton only (legacy internal modules dropped, frame kept)
   - hangar → skeleton only, no dummy (hand-fill later)
   - wings → flat skeleton cells (w1111→k4f1111, w121→k3f121, w2121→k4f2121, w321→k3f222); no dummy
@@ -419,7 +419,7 @@ def convert(name: str, author: str, volumetrics, wings, plates):
             continue
 
         grid, rotation = placement_to_transform(cell, ori)
-        unit = "Eltanin::internals.controlRoomBasic" if role == "control" else f"Eltanin::mounts.dummy_{role}"
+        unit = f"Eltanin::mounts.dummy_{role}"
         mounts.append(f'        ["{unit}", {fmt_index3(grid)}, {rotation}]')
         stats["dummies"] += 1
 

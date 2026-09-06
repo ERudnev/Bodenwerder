@@ -2,6 +2,7 @@
 
 #include <base/maybe.h>
 #include <eltanin/mech/semantics.q1.h>
+#include <rmmr/math.q1.h>
 #include <rmmr/resources/manager.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -18,14 +19,24 @@ namespace eltanin::mech {
         auto flatMounted() const -> bool;
     };
 
-    struct Collision {
+    struct LatticeHull {
         float thickness;
         vector<vector<integer>> faces;
     };
 
+    struct Box {
+        vec3 min;
+        vec3 max;
+    };
+
+    struct Element {
+        std::string name;
+        base::maybe<LatticeHull> latticeHull;
+        base::maybe<Box> box;
+    };
+
     // Library entry: placeable equipment.
     // Files: assets/Eltanin/fittings/<shelf>/*.json → Eltanin::<shelf>.<stem>
-    // presentationGeometry = editor/viewer visual recipe (one or more meshpack entries).
     struct Mount : Feature<Mount, rmmr::resource::Unit> {
         struct PresentationGeometry {
             rmmr::resource::Unit::Name pack;
@@ -36,7 +47,7 @@ namespace eltanin::mech {
             std::string author;
             float mass;
             Attachment attachment;
-            Collision collision;
+            vector<Element> elements;
             vector<PresentationGeometry> presentationGeometry;
             base::maybe<Role> role;
             filename file; // kit-relative; under fittings/<shelf>/

@@ -106,6 +106,14 @@ namespace eltanin::mech {
             return asset.entries[resolved.entry].origin;
         }
 
+        auto firstLatticeHull(const Mount::Quantum& mount) -> const LatticeHull* {
+            for (const auto& element : mount.elements) {
+                if (element.latticeHull.has_value())
+                    return &*element.latticeHull;
+            }
+            return nullptr;
+        }
+
         auto firstPresentationGeometry(Reading context, const Mount::Quantum& mount) -> base::maybe<resource::meshpack::Asset::Resolved> {
             if (mount.presentationGeometry.empty())
                 return {};
@@ -124,20 +132,6 @@ namespace eltanin::mech {
                     if (LatticeLess{}(left[i], right[i]))
                         return true;
                     if (LatticeLess{}(right[i], left[i]))
-                        return false;
-                }
-                return false;
-            }
-        };
-
-        struct ShellLess {
-            auto operator()(const vector<vector<index3>>& left, const vector<vector<index3>>& right) const -> bool {
-                if (left.size() != right.size())
-                    return left.size() < right.size();
-                for (std::size_t index = 0; index < left.size(); ++index) {
-                    if (LoopLess{}(left[index], right[index]))
-                        return true;
-                    if (LoopLess{}(right[index], left[index]))
                         return false;
                 }
                 return false;
@@ -171,15 +165,6 @@ namespace eltanin::mech {
             if (LatticeLess{}(rotated.back(), rotated[1]))
                 std::reverse(rotated.begin() + 1, rotated.end());
             return rotated;
-        }
-
-        auto shellKey(const vector<vector<index3>>& worldFaces) -> vector<vector<index3>> {
-            vector<vector<index3>> keys;
-            keys.reserve(worldFaces.size());
-            for (const auto& loop : worldFaces)
-                keys.push_back(cycleKey(loop));
-            std::sort(keys.begin(), keys.end(), LoopLess{});
-            return keys;
         }
 
         auto worldLoop(const space::cell::Placement& world, skeleton::Membrane::Kind kind) -> vector<index3> {
@@ -248,7 +233,6 @@ namespace eltanin::mech {
             std::map<EdgeKey, PrimitiveId, EdgeLess> ribsAt;
             std::map<vector<index3>, PrimitiveId, LoopLess> membranesAt;
             std::map<vector<index3>, PrimitiveId, LoopLess> platesAt;
-            std::map<vector<vector<index3>>, PrimitiveId, ShellLess> volumesAt;
 
             for (const auto& cell : blueprint.cells) {
                 for (const auto& corner : cell.corners) {
@@ -340,53 +324,25 @@ namespace eltanin::mech {
                     continue;
                 }
                 const auto& mount = with<Mount>::get(context, *mountId);
-                vector<vector<index3>> worldFaces;
-                worldFaces.reserve(mount.collision.faces.size());
-                for (const auto& indices : mount.collision.faces) {
-                    auto loop = worldFace(placed.transform, mount.attachment, indices);
-                    if (loop.size() < 2 or hasDuplicateVertex(loop))
-                        continue;
-                    worldFaces.push_back(std::move(loop));
-                }
-                if (worldFaces.size() == 1) {
-                    auto loop = std::move(worldFaces.front());
-                    const auto key = cycleKey(loop);
-                    auto found = platesAt.find(key);
-                    if (found == platesAt.end()) {
-                        const auto id = takeId();
-                        construction.plates.emplace(id, primitiveOn(loop, mount.mass, mount.collision.thickness, weldUnit));
-                        found = platesAt.emplace(key, id).first;
-                    } else {
-                        auto& plate = construction.plates.at(found->second);
-                        addMass(plate, mount.mass);
-                        if (mount.collision.thickness > plate.thickness)
-                            plate.thickness = mount.collision.thickness;
-                    }
-                    fragments.ofPlate.push_back(Construct::ActorFragments::OfPlate{.plate = found->second, .mount = placed.mount, .transform = placed.transform});
+                const auto* hull = firstLatticeHull(mount);
+                if (not hull or hull->faces.size() != 1)
                     continue;
-                }
-                if (worldFaces.empty())
+                auto loop = worldFace(placed.transform, mount.attachment, hull->faces.front());
+                if (loop.size() < 2 or hasDuplicateVertex(loop))
                     continue;
-                const auto key = shellKey(worldFaces);
-                auto found = volumesAt.find(key);
-                if (found == volumesAt.end()) {
+                const auto key = cycleKey(loop);
+                auto found = platesAt.find(key);
+                if (found == platesAt.end()) {
                     const auto id = takeId();
-                    vector<Primitive> faces;
-                    faces.reserve(worldFaces.size());
-                    const float faceMass = mount.mass / static_cast<float>(worldFaces.size());
-                    for (const auto& loop : worldFaces)
-                        faces.push_back(primitiveOn(loop, faceMass, mount.collision.thickness, weldUnit));
-                    construction.volumes.emplace(id, std::move(faces));
-                    found = volumesAt.emplace(key, id).first;
+                    construction.plates.emplace(id, primitiveOn(loop, mount.mass, hull->thickness, weldUnit));
+                    found = platesAt.emplace(key, id).first;
                 } else {
-                    const float faceMass = mount.mass / static_cast<float>(worldFaces.size());
-                    for (auto& face : construction.volumes.at(found->second)) {
-                        addMass(face, faceMass);
-                        if (mount.collision.thickness > face.thickness)
-                            face.thickness = mount.collision.thickness;
-                    }
+                    auto& plate = construction.plates.at(found->second);
+                    addMass(plate, mount.mass);
+                    if (hull->thickness > plate.thickness)
+                        plate.thickness = hull->thickness;
                 }
-                fragments.ofVolume.push_back(Construct::ActorFragments::OfVolume{.volume = found->second, .mount = placed.mount, .transform = placed.transform});
+                fragments.ofPlate.push_back(Construct::ActorFragments::OfPlate{.plate = found->second, .mount = placed.mount, .transform = placed.transform});
             }
 
             compileParticles(construction);
