@@ -25,7 +25,7 @@
       [0, 2, 3, 1]
     ]
   },
-  "tempMesh": [
+  "presentationGeometry": [
     { "pack": "Eltanin::controlRoomSmall", "entry": "root" },
     { "pack": "Eltanin::controlRoomSmall", "entry": "headUnit" }
   ],

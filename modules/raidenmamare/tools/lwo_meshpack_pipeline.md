@@ -17,7 +17,7 @@ Loader rules (see `meshpack.q1.cpp`):
 
 - Parts keys must cover **all** Assimp surface names from the LWO (and must not invent extras that never appear).
 - Default lit material is `rmmr::lit_textured` with one `albedoMap` = **basename** of a file that exists in that texpack directory.
-- LAYR names become meshpack **entries** (e.g. `p1111_nose_decor`); mounts JSON `tempMesh.entry` points at those names.
+- LAYR names become meshpack **entries** (e.g. `p1111_nose_decor`); mounts JSON `presentationGeometry.entry` points at those names.
 
 ## Tools
 

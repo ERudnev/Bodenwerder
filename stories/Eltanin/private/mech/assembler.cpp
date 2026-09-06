@@ -106,10 +106,10 @@ namespace eltanin::mech {
             return asset.entries[resolved.entry].origin;
         }
 
-        auto firstTempMesh(Reading context, const Mount::Quantum& mount) -> base::maybe<resource::meshpack::Asset::Resolved> {
-            if (mount.tempMesh.empty())
+        auto firstPresentationGeometry(Reading context, const Mount::Quantum& mount) -> base::maybe<resource::meshpack::Asset::Resolved> {
+            if (mount.presentationGeometry.empty())
                 return {};
-            const auto& part = mount.tempMesh.front();
+            const auto& part = mount.presentationGeometry.front();
             const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, part.pack);
             if (not packId)
                 return {};
@@ -454,7 +454,7 @@ namespace eltanin::mech {
             const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
             if (not mountId)
                 continue;
-            const auto resolved = firstTempMesh(context, with<Mount>::get(context, *mountId));
+            const auto resolved = firstPresentationGeometry(context, with<Mount>::get(context, *mountId));
             if (not resolved)
                 continue;
             occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
@@ -464,7 +464,7 @@ namespace eltanin::mech {
             const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
             if (not mountId)
                 continue;
-            const auto resolved = firstTempMesh(context, with<Mount>::get(context, *mountId));
+            const auto resolved = firstPresentationGeometry(context, with<Mount>::get(context, *mountId));
             if (not resolved)
                 continue;
             occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});

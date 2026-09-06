@@ -16,7 +16,7 @@
       [0, 1, 2, 3]
     ]
   },
-  "tempMesh": {
+  "presentationGeometry": {
     "pack": "Eltanin::armour",
     "entry": "p1111_to_rounded"
   }

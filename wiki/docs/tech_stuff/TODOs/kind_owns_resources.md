@@ -9,7 +9,7 @@
 ## Что уже намекает на это
 
 - `Bullet`: Global держит Family; `bind` сам находит `Eltanin::projectiles` / `shell_30mm`; сценарий зовёт `spawnShell30mm`.
-- `MountCatalog` / `BlueprintCatalog` — киты с диска; каждый Mount в JSON сам указывает `tempMesh.pack` + `entry`.
+- `MountCatalog` / `BlueprintCatalog` — киты с диска; каждый Mount в JSON сам указывает `presentationGeometry.pack` + `entry`.
 - Три сценария до сих пор копируют rock/boulder/crust shaders — след «сценарий владеет ресурсами».
 
 ## Слои (не смешивать)

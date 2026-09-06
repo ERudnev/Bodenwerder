@@ -227,7 +227,7 @@ namespace eltanin::mech {
             return Collision{.thickness = thickness, .faces = std::move(faces)};
         }
 
-        auto take_temp_mesh(Cursor& cursor) -> Mount::TempMesh {
+        auto take_presentation_geometry(Cursor& cursor) -> Mount::PresentationGeometry {
             expect(cursor, '{');
             expect_key(cursor, "pack");
             const auto packText = take_string(cursor);
@@ -238,20 +238,20 @@ namespace eltanin::mech {
             expect_key(cursor, "entry");
             const auto entry = take_string(cursor);
             expect(cursor, '}');
-            return Mount::TempMesh{
+            return Mount::PresentationGeometry{
                 .pack = rmmr::resource::Unit::Name::from(parsed->library, parsed->own),
                 .entry = entry,
             };
         }
 
-        auto take_temp_meshes(Cursor& cursor) -> vector<Mount::TempMesh> {
+        auto take_presentation_geometries(Cursor& cursor) -> vector<Mount::PresentationGeometry> {
             if (peek(cursor) == '{')
-                return {take_temp_mesh(cursor)};
+                return {take_presentation_geometry(cursor)};
             expect(cursor, '[');
-            vector<Mount::TempMesh> parts;
+            vector<Mount::PresentationGeometry> parts;
             if (peek(cursor) != ']') {
                 for (;;) {
-                    parts.push_back(take_temp_mesh(cursor));
+                    parts.push_back(take_presentation_geometry(cursor));
                     if (peek(cursor) == ']')
                         break;
                     expect(cursor, ',');
@@ -261,7 +261,7 @@ namespace eltanin::mech {
             return parts;
         }
 
-        void write_temp_mesh(std::ostringstream& out, const Mount::TempMesh& part, std::string_view indent) {
+        void write_presentation_geometry(std::ostringstream& out, const Mount::PresentationGeometry& part, std::string_view indent) {
             out << indent << "{\n";
             out << indent << "  \"pack\": \"" << part.pack.text() << "\",\n";
             out << indent << "  \"entry\": \"" << part.entry << "\"\n";
@@ -317,8 +317,8 @@ namespace eltanin::mech {
             expect_key(cursor, "collision");
             auto collision = take_collision(cursor);
             expect(cursor, ',');
-            expect_key(cursor, "tempMesh");
-            auto tempMesh = take_temp_meshes(cursor);
+            expect_key(cursor, "presentationGeometry");
+            auto presentationGeometry = take_presentation_geometries(cursor);
             base::maybe<Role> role;
             if (peek(cursor) == ',') {
                 expect(cursor, ',');
@@ -332,7 +332,7 @@ namespace eltanin::mech {
                 .mass = mass,
                 .attachment = std::move(attachment),
                 .collision = collision,
-                .tempMesh = std::move(tempMesh),
+                .presentationGeometry = std::move(presentationGeometry),
                 .role = role,
                 .file = {},
             };
@@ -364,14 +364,14 @@ namespace eltanin::mech {
             }
             out << "    ]\n";
             out << "  },\n";
-            if (data.tempMesh.size() == 1) {
-                out << "  \"tempMesh\": ";
-                write_temp_mesh(out, data.tempMesh.front(), "");
+            if (data.presentationGeometry.size() == 1) {
+                out << "  \"presentationGeometry\": ";
+                write_presentation_geometry(out, data.presentationGeometry.front(), "");
             } else {
-                out << "  \"tempMesh\": [\n";
-                for (std::size_t i = 0; i < data.tempMesh.size(); ++i) {
-                    write_temp_mesh(out, data.tempMesh[i], "    ");
-                    out << (i + 1 < data.tempMesh.size() ? ",\n" : "\n");
+                out << "  \"presentationGeometry\": [\n";
+                for (std::size_t i = 0; i < data.presentationGeometry.size(); ++i) {
+                    write_presentation_geometry(out, data.presentationGeometry[i], "    ");
+                    out << (i + 1 < data.presentationGeometry.size() ? ",\n" : "\n");
                 }
                 out << "  ]";
             }

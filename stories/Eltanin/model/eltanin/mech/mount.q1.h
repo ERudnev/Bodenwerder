@@ -25,9 +25,9 @@ namespace eltanin::mech {
 
     // Library entry: placeable equipment.
     // Files: assets/Eltanin/fittings/<shelf>/*.json → Eltanin::<shelf>.<stem>
-    // tempMesh = editor visual recipe (one or more meshpack entries).
+    // presentationGeometry = editor/viewer visual recipe (one or more meshpack entries).
     struct Mount : Feature<Mount, rmmr::resource::Unit> {
-        struct TempMesh {
+        struct PresentationGeometry {
             rmmr::resource::Unit::Name pack;
             std::string entry;
         };
@@ -37,7 +37,7 @@ namespace eltanin::mech {
             float mass;
             Attachment attachment;
             Collision collision;
-            vector<TempMesh> tempMesh;
+            vector<PresentationGeometry> presentationGeometry;
             base::maybe<Role> role;
             filename file; // kit-relative; under fittings/<shelf>/
         };

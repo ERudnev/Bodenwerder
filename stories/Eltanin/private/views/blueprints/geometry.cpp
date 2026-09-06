@@ -95,7 +95,7 @@ namespace eltanin::views::blueprints::geometry {
             return id;
         }
 
-        auto resolveTempPart(Reading context, const mech::Mount::TempMesh& part) -> base::maybe<meshpack::Asset::Resolved> {
+        auto resolvePresentationPart(Reading context, const mech::Mount::PresentationGeometry& part) -> base::maybe<meshpack::Asset::Resolved> {
             const auto packId = with<::rmmr::resource::Assets>::find<meshpack::Asset>(context, part.pack);
             if (not packId)
                 return {};
@@ -114,9 +114,9 @@ namespace eltanin::views::blueprints::geometry {
 
         template <typename Spawn>
         auto spawnMountVisual(Writing context, Pose base, const mech::Mount::Quantum& mount, Spawn&& spawnOne) -> base::maybe<MountVisual> {
-            if (mount.tempMesh.empty())
+            if (mount.presentationGeometry.empty())
                 return {};
-            const auto firstResolved = resolveTempPart(context, mount.tempMesh.front());
+            const auto firstResolved = resolvePresentationPart(context, mount.presentationGeometry.front());
             if (not firstResolved)
                 return {};
             const auto firstId = spawnOne(base, *firstResolved);
@@ -124,8 +124,8 @@ namespace eltanin::views::blueprints::geometry {
                 return {};
             MountVisual visual{.id = *firstId, .extras = {}};
             const auto anchor = partOrigin(context, *firstResolved);
-            for (std::size_t i = 1; i < mount.tempMesh.size(); ++i) {
-                const auto resolved = resolveTempPart(context, mount.tempMesh[i]);
+            for (std::size_t i = 1; i < mount.presentationGeometry.size(); ++i) {
+                const auto resolved = resolvePresentationPart(context, mount.presentationGeometry[i]);
                 if (not resolved)
                     continue;
                 if (const auto extra = spawnOne(mountPartPose(base, anchor, partOrigin(context, *resolved)), *resolved))
@@ -137,13 +137,13 @@ namespace eltanin::views::blueprints::geometry {
         void poseMountVisual(Writing context, const MountVisual& visual, const mech::Mount::Quantum& mount, Pose base) {
             if (with<scene::Node>::exists(context, visual.id))
                 with<scene::Node>::modify(context, visual.id)->pose = base;
-            if (mount.tempMesh.empty())
+            if (mount.presentationGeometry.empty())
                 return;
-            const auto firstResolved = resolveTempPart(context, mount.tempMesh.front());
+            const auto firstResolved = resolvePresentationPart(context, mount.presentationGeometry.front());
             const auto anchor = firstResolved ? partOrigin(context, *firstResolved) : Pos{0.0f, 0.0f, 0.0f};
             std::size_t extraAt = 0;
-            for (std::size_t i = 1; i < mount.tempMesh.size() and extraAt < visual.extras.size(); ++i) {
-                const auto resolved = resolveTempPart(context, mount.tempMesh[i]);
+            for (std::size_t i = 1; i < mount.presentationGeometry.size() and extraAt < visual.extras.size(); ++i) {
+                const auto resolved = resolvePresentationPart(context, mount.presentationGeometry[i]);
                 if (not resolved)
                     continue;
                 const auto extra = visual.extras[extraAt++];
@@ -332,12 +332,12 @@ namespace eltanin::views::blueprints::geometry {
             mech::Layer layer = mount.attachment.flatMounted() ? mech::Layer::externals : mech::Layer::internals;
             if (const auto found = mountLayers.find(*mountId); found != mountLayers.end())
                 layer = found->second;
-            if (mount.tempMesh.empty()) {
-                base::message("eltanin blueprints geometry: mount '{}' tempMesh empty", placed.mount.text());
+            if (mount.presentationGeometry.empty()) {
+                base::message("eltanin blueprints geometry: mount '{}' presentationGeometry empty", placed.mount.text());
                 continue;
             }
-            if (not resolveTempPart(context, mount.tempMesh.front())) {
-                base::message("eltanin blueprints geometry: mount '{}' pack '{}' entry '{}' missing", placed.mount.text(), mount.tempMesh.front().pack.text(), mount.tempMesh.front().entry);
+            if (not resolvePresentationPart(context, mount.presentationGeometry.front())) {
+                base::message("eltanin blueprints geometry: mount '{}' pack '{}' entry '{}' missing", placed.mount.text(), mount.presentationGeometry.front().pack.text(), mount.presentationGeometry.front().entry);
                 continue;
             }
             int cellYMin = placed.transform.grid.y;
@@ -406,12 +406,12 @@ namespace eltanin::views::blueprints::geometry {
             if (not with<::eltanin::mech::Mount>::exists(context, mountId))
                 continue;
             const auto& mount = with<::eltanin::mech::Mount>::get(context, mountId);
-            if (mount.tempMesh.empty()) {
-                base::message("eltanin blueprints geometry: palette tempMesh empty");
+            if (mount.presentationGeometry.empty()) {
+                base::message("eltanin blueprints geometry: palette presentationGeometry empty");
                 continue;
             }
-            if (not resolveTempPart(context, mount.tempMesh.front())) {
-                base::message("eltanin blueprints geometry: palette pack '{}' entry '{}' missing", mount.tempMesh.front().pack.text(), mount.tempMesh.front().entry);
+            if (not resolvePresentationPart(context, mount.presentationGeometry.front())) {
+                base::message("eltanin blueprints geometry: palette pack '{}' entry '{}' missing", mount.presentationGeometry.front().pack.text(), mount.presentationGeometry.front().entry);
                 continue;
             }
             const auto col = static_cast<int>(index % static_cast<std::size_t>(columns));

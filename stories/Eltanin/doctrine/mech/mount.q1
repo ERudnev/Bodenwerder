@@ -14,9 +14,9 @@ namespace eltanin
 
     // Library entry: placeable equipment.
     // Disk: fittings/<shelf>/*.json; unit Eltanin::<shelf>.<stem>.
-    // tempMesh = editor visual recipe (one part or several LAYR entries). Assembler game recipe is later.
+    // presentationGeometry = editor/viewer visual recipe (one part or several LAYR entries). Assembler game recipe is later.
     feature Mount of rmmr::resource::Unit
-      struct TempMesh
+      struct PresentationGeometry
         pack: rmmr::resource::Unit::Name
         entry: string
       one
@@ -25,7 +25,7 @@ namespace eltanin
         mass: float
         attachment: Attachment
         collision: Collision
-        tempMesh: vector<TempMesh>
+        presentationGeometry: vector<PresentationGeometry>
         role: Role?
         file: filename // kit-relative; under fittings/<shelf>/
         >load()
