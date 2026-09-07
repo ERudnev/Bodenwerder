@@ -207,14 +207,19 @@ namespace eltanin::views::blueprints::mountEditor {
         return out;
     }
 
-    auto applyOri(const mech::space::Transform& current, const Spins& spins, mech::space::orient::key bodyAuto) -> base::maybe<mech::space::Transform> {
+    auto applyOri(const mech::space::Transform& current, const mech::Attachment& attachment, const Spins& spins, mech::space::orient::key bodyAuto) -> base::maybe<mech::space::Transform> {
         const auto found = spins.find(bodyAuto);
         if (found == spins.end())
             return {};
         if (bodyAuto == 0)
             return {};
-        const auto& composeRow = mech::space::orient::compose[static_cast<std::size_t>(current.rotation)];
-        return mech::space::Transform{.grid = current.grid, .rotation = composeRow[static_cast<std::size_t>(bodyAuto)]};
+        const auto rotation = mech::space::orient::compose[static_cast<std::size_t>(current.rotation)][static_cast<std::size_t>(bodyAuto)];
+        auto grid = current.grid;
+        if (attachment.flatMounted()) {
+            const auto delta = mech::space::orient::matrix[static_cast<std::size_t>(current.rotation)] * found->second.shift;
+            grid = base::common_types::index3{.x = grid.x + delta.x, .y = grid.y + delta.y, .z = grid.z + delta.z};
+        }
+        return mech::space::Transform{.grid = grid, .rotation = rotation};
     }
 
     namespace {

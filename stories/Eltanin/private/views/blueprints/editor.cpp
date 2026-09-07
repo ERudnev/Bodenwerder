@@ -272,7 +272,9 @@ namespace eltanin::views {
             const auto found = state.mountSpins.find(*state.spaceMenu.previewMount);
             if (found == state.mountSpins.end())
                 return;
-            const auto next = blueprints::mountEditor::applyOri(*state.spaceMenu.previewTransform, found->second, mech::space::orient::turn(*axis)[0]);
+            if (not with<::eltanin::mech::Mount>::exists(context, *state.spaceMenu.previewMount))
+                return;
+            const auto next = blueprints::mountEditor::applyOri(*state.spaceMenu.previewTransform, with<::eltanin::mech::Mount>::get(context, *state.spaceMenu.previewMount).attachment, found->second, mech::space::orient::turn(*axis)[0]);
             if (not next)
                 return;
             state.spaceMenu.previewTransform = *next;
@@ -888,7 +890,7 @@ namespace eltanin::views {
                             bool visualsDirty = false;
                             if (const auto found = state.mountSpins.find(*mountId); found != state.mountSpins.end()) {
                                 if (const auto chosen = blueprints::mountEditor::drawOriMenu(placed.transform.rotation, found->second)) {
-                                    if (const auto next = blueprints::mountEditor::applyOri(placed.transform, found->second, *chosen)) {
+                                    if (const auto next = blueprints::mountEditor::applyOri(placed.transform, with<::eltanin::mech::Mount>::get(context, *mountId).attachment, found->second, *chosen)) {
                                         if (blueprints::selection::setSoleMountTransform(context, state.selection, state.history, *state.hovered, state.mainScene.mountActors, *next))
                                             visualsDirty = true;
                                     }

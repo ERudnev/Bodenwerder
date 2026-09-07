@@ -41,8 +41,8 @@ namespace eltanin::views::blueprints::mountEditor {
     // Attachment points in absolute grid after Transform.
     auto worldPoints(const mech::Attachment&, const mech::space::Transform&) -> std::vector<base::common_types::index3>;
 
-    // Body-local spin: R_new = compose(current, auto). Leaves transform.grid (pivot lives in worldLattice). Empty if auto is identity.
-    auto applyOri(const mech::space::Transform& current, const Spins&, mech::space::orient::key bodyAuto) -> base::maybe<mech::space::Transform>;
+    // Body-local spin: R_new = compose(current, auto). Volume: grid stays. Flat: grid += R · spin.shift so the face stays. Empty if auto is identity.
+    auto applyOri(const mech::space::Transform& current, const mech::Attachment&, const Spins&, mech::space::orient::key bodyAuto) -> base::maybe<mech::space::Transform>;
 
     // Near-cursor list: spins as body-local autos (identity = current). Full cube (24) → 6 turn/bank/tilt ±90°.
     auto drawOriMenu(mech::space::orient::key currentAbs, const Spins&) -> base::maybe<mech::space::orient::key>;
