@@ -1,7 +1,6 @@
 {
-    "attachments",
-    "Eltanin",
-    "meshes/editor/attachments.lwo",
+    "editor/attachments",
+    "Eltanin/meshes/editor/attachments.lwo",
     "-",
     [
         {"color", {"Eltanin::typeSolid", []}}

@@ -29,7 +29,7 @@ namespace eltanin::locality {
             const auto familyMaterial = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("rmmr", "familyTracer"));
             if (not familyMaterial)
                 return {};
-            const auto pack = with<resource::Assets>::find<resource::meshpack::Asset>(context, resource::Unit::Name::from("Eltanin", "projectiles"));
+            const auto pack = with<resource::Assets>::find<resource::meshpack::Asset>(context, resource::Unit::Name::from("", "misc/projectiles"));
             if (not pack)
                 return {};
             auto resolved = with<resource::meshpack::Asset>::resolve(context, *pack, "shell_30mm");

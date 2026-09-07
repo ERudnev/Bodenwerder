@@ -1,7 +1,6 @@
 {
-    "controlRoomSmall",
-    "Eltanin",
-    "meshes/fittings/devices/controlRoomSmall.lwo",
+    "fittings/devices/controlRoomSmall",
+    "Eltanin/meshes/fittings/devices/controlRoomSmall.lwo",
     "Eltanin::mech",
     [
         {"chromium", {"Eltanin::hull", [{"albedoMap", "STEEL1.JPG"}]}},

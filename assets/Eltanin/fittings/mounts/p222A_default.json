@@ -19,8 +19,5 @@
       }
     }
   ],
-  "presentationGeometry": {
-    "pack": "Eltanin::armour",
-    "entry": "#p222A#default"
-  }
+  "presentationGeometry": "fittings/mounts/armour::#p222A#default"
 }

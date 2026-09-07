@@ -260,11 +260,15 @@ namespace eltanin::views::blueprints::geometry {
         return Pose{.position = position, .rotation = glm::normalize(glm::quat_cast(rotation))};
     }
 
-    auto gridActorPose(const mech::space::Transform& transform) -> Pose {
+    auto gridActorPose(const mech::space::Transform& transform, const mech::Attachment& attachment) -> Pose {
         const auto rotationKey = static_cast<mech::space::orient::key>(transform.rotation);
         const mat3 rotation = mat3(mech::space::orient::matrix[static_cast<std::size_t>(rotationKey)]);
         const float edge = mech::space::local::edge2meters;
-        const Pos position{static_cast<float>(transform.grid.x) * edge, static_cast<float>(transform.grid.y) * edge, static_cast<float>(transform.grid.z) * edge};
+        const auto doubled = mech::space::doubledCenter(attachment.points);
+        mech::space::ivec3 shift{0, 0, 0};
+        if (const auto found = mech::space::centerShift(rotationKey, doubled))
+            shift = *found;
+        const Pos position{static_cast<float>(transform.grid.x + shift.x) * edge, static_cast<float>(transform.grid.y + shift.y) * edge, static_cast<float>(transform.grid.z + shift.z) * edge};
         return Pose{.position = position, .rotation = glm::normalize(glm::quat_cast(rotation))};
     }
 
@@ -347,7 +351,7 @@ namespace eltanin::views::blueprints::geometry {
                 cellYMax = box->max.y;
             }
             const auto albedo = mountAlbedo(mount);
-            if (const auto visual = spawnMountVisual(context, gridActorPose(placed.transform), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved, albedo); }))
+            if (const auto visual = spawnMountVisual(context, gridActorPose(placed.transform, mount.attachment), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved, albedo); }))
                 actors.push_back(MountActor{.id = visual->id, .extras = visual->extras, .index = index, .layer = layer, .cellYMin = cellYMin, .cellYMax = cellYMax});
         }
         applyDisplay(context, display, currentFloor, {}, actors);
@@ -418,7 +422,7 @@ namespace eltanin::views::blueprints::geometry {
             const auto row = static_cast<int>(index / static_cast<std::size_t>(columns));
             const auto transform = mech::space::Transform{.grid = base::common_types::index3{.x = col * cellStep, .y = 0, .z = row * cellStep}, .rotation = 0};
             const auto albedo = mountAlbedo(mount);
-            const auto visual = spawnMountVisual(context, gridActorPose(transform), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved, albedo); });
+            const auto visual = spawnMountVisual(context, gridActorPose(transform, mount.attachment), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved, albedo); });
             if (visual) {
                 std::vector<scene::actor::Mesh::Id> balls;
                 balls.reserve(mount.attachment.points.size());
@@ -516,7 +520,7 @@ namespace eltanin::views::blueprints::geometry {
                 cellYMin = box->min.y;
                 cellYMax = box->max.y;
             }
-            if (const auto visual = spawnMountVisual(context, gridActorPose(placed.transform), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnGhost(context, root, pose, resolved, ghostMaterial, albedo, opacity); }))
+            if (const auto visual = spawnMountVisual(context, gridActorPose(placed.transform, mount.attachment), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnGhost(context, root, pose, resolved, ghostMaterial, albedo, opacity); }))
                 actors.push_back(MountActor{.id = visual->id, .extras = visual->extras, .index = index, .layer = layer, .cellYMin = cellYMin, .cellYMax = cellYMax});
         }
     }
@@ -539,7 +543,7 @@ namespace eltanin::views::blueprints::geometry {
                 return false;
             if (not with<scene::Node>::exists(context, slot.id) or not with<scene::actor::MeshState>::exists(context, slot.id))
                 return false;
-            poseMountVisual(context, MountVisual{.id = slot.id, .extras = slot.extras}, mount, gridActorPose(placed.transform));
+            poseMountVisual(context, MountVisual{.id = slot.id, .extras = slot.extras}, mount, gridActorPose(placed.transform, mount.attachment));
             tintMesh(context, slot.id, albedo, opacity);
             for (const auto extra : slot.extras)
                 tintMesh(context, extra, albedo, opacity);
@@ -560,17 +564,18 @@ namespace eltanin::views::blueprints::geometry {
         if (not with<::eltanin::mech::Mount>::exists(context, mountId))
             return {};
         const auto& mount = with<::eltanin::mech::Mount>::get(context, mountId);
-        return spawnMountVisual(context, gridActorPose(transform), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnGhost(context, root, pose, resolved, ghostMaterial, albedo, opacity); });
+        return spawnMountVisual(context, gridActorPose(transform, mount.attachment), mount, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnGhost(context, root, pose, resolved, ghostMaterial, albedo, opacity); });
     }
 
     void poseGhostMount(Writing context, const MountVisual& visual, mech::Mount::Id mountId, const mech::space::Transform& transform) {
-        const auto base = gridActorPose(transform);
         if (not with<::eltanin::mech::Mount>::exists(context, mountId)) {
+            const auto base = gridActorPose(transform, mech::Attachment{.points = {}});
             if (with<scene::Node>::exists(context, visual.id))
                 with<scene::Node>::modify(context, visual.id)->pose = base;
             return;
         }
-        poseMountVisual(context, visual, with<::eltanin::mech::Mount>::get(context, mountId), base);
+        const auto& mount = with<::eltanin::mech::Mount>::get(context, mountId);
+        poseMountVisual(context, visual, mount, gridActorPose(transform, mount.attachment));
     }
 
 } // namespace eltanin::views::blueprints::geometry

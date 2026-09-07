@@ -164,13 +164,12 @@ namespace eltanin::views::blueprints::selection {
             return std::format("?  #{}", hash);
         }
 
-        auto mountRowLabel(const Blueprint* data, const base::maybe<MountActor>& actor, renderer::Integer32 alias) -> std::string {
-            const auto hash = fqsm::internal::id::info_hash(static_cast<fqsm::internal::id::BaseType>(alias));
-            if (not actor or not data or actor->index >= data->mounts.size())
-                return std::format("mount?  #{}", hash);
-            const auto& placed = data->mounts[actor->index];
+        auto mountRowLabel(const Blueprint* data, const MountActor& actor) -> std::string {
+            if (not data or actor.index >= data->mounts.size())
+                return std::format("mount[{}]", actor.index);
+            const auto& placed = data->mounts[actor.index];
             const auto& grid = placed.transform.grid;
-            return std::format("mount[{}] {}  grid[{},{},{}] ori={}  #{}", actor->index, placed.mount.text(), grid.x, grid.y, grid.z, placed.transform.rotation, hash);
+            return std::format("mount[{}] {}  grid[{},{},{}] ori={}", actor.index, placed.mount.text(), grid.x, grid.y, grid.z, placed.transform.rotation);
         }
 
         auto selectionQuarkRefs(Reading context, const std::vector<QuarkActor>& actors, const std::vector<renderer::Integer32>& aliases) -> std::vector<QuarkRef> {
@@ -183,10 +182,13 @@ namespace eltanin::views::blueprints::selection {
         }
 
         auto selectionMountRefs(Reading context, const std::vector<MountActor>& actors, const std::vector<renderer::Integer32>& aliases) -> std::vector<MountRef> {
+            std::set<std::size_t> seen;
             std::vector<MountRef> refs;
             for (const auto alias : aliases) {
-                if (const auto actor = findMountByAlias(context, actors, alias))
-                    refs.push_back(MountRef{.index = actor->index});
+                const auto actor = findMountByAlias(context, actors, alias);
+                if (not actor or not seen.insert(actor->index).second)
+                    continue;
+                refs.push_back(MountRef{.index = actor->index});
             }
             return refs;
         }
@@ -205,7 +207,10 @@ namespace eltanin::views::blueprints::selection {
         }
 
         void restoreMountAliases(Reading context, const std::vector<MountActor>& actors, const std::vector<MountRef>& refs, std::vector<renderer::Integer32>& aliases) {
+            std::set<std::size_t> seen;
             for (const auto& ref : refs) {
+                if (not seen.insert(ref.index).second)
+                    continue;
                 for (const auto& actor : actors) {
                     if (actor.index != ref.index)
                         continue;
@@ -230,6 +235,13 @@ namespace eltanin::views::blueprints::selection {
 
         void removeAlias(std::vector<renderer::Integer32>& aliases, renderer::Integer32 alias) {
             aliases.erase(std::remove(aliases.begin(), aliases.end(), alias), aliases.end());
+        }
+
+        void dropMountAliases(Reading context, const MountActor& actor, std::vector<renderer::Integer32>& aliases) {
+            std::vector<renderer::Integer32> parts;
+            appendMountAliases(context, actor, parts);
+            for (const auto alias : parts)
+                removeAlias(aliases, alias);
         }
 
         auto familyAliases(Reading context, const std::vector<QuarkActor>& actors, const QuarkActor& hit) -> std::vector<renderer::Integer32> {
@@ -655,10 +667,7 @@ namespace eltanin::views::blueprints::selection {
                 for (const auto alias : familyAliases(context, quarks, *quarkHit))
                     removeAlias(store.aliases, alias);
             } else if (mountHit) {
-                std::vector<renderer::Integer32> parts;
-                appendMountAliases(context, *mountHit, parts);
-                for (const auto alias : parts)
-                    removeAlias(store.aliases, alias);
+                dropMountAliases(context, *mountHit, store.aliases);
             } else {
                 removeAlias(store.aliases, under);
             }
@@ -797,15 +806,17 @@ namespace eltanin::views::blueprints::selection {
                 const auto quarksByAlias = quarkByAliasIndex(context, quarks);
                 const auto mountsByAlias = mountByAliasIndex(context, mounts);
                 std::map<index3, std::vector<renderer::Integer32>, CellPosLess> byCell;
-                std::vector<renderer::Integer32> mountAliases;
+                std::vector<const MountActor*> selectedMounts;
+                std::set<std::size_t> seenMounts;
                 std::vector<renderer::Integer32> orphans;
                 for (const auto alias : store.aliases) {
                     if (const auto found = quarksByAlias.find(alias); blueprintData and found != quarksByAlias.end() and found->second->cell < blueprintData->cells.size()) {
                         byCell[blueprintData->cells[found->second->cell].placement.cell].push_back(alias);
                         continue;
                     }
-                    if (mountsByAlias.contains(alias)) {
-                        mountAliases.push_back(alias);
+                    if (const auto found = mountsByAlias.find(alias); found != mountsByAlias.end()) {
+                        if (seenMounts.insert(found->second->index).second)
+                            selectedMounts.push_back(found->second);
                         continue;
                     }
                     orphans.push_back(alias);
@@ -848,21 +859,18 @@ namespace eltanin::views::blueprints::selection {
                     ImGui::PopID();
                 }
 
-                if (not mountAliases.empty()) {
-                    const bool open = ImGui::TreeNode("mounts", "Mounts (%zu)", mountAliases.size());
+                if (not selectedMounts.empty()) {
+                    const bool open = ImGui::TreeNode("mounts", "Mounts (%zu)", selectedMounts.size());
                     if (open) {
-                        for (const auto alias : mountAliases) {
-                            base::maybe<MountActor> actor;
-                            if (const auto found = mountsByAlias.find(alias); found != mountsByAlias.end())
-                                actor = *found->second;
-                            const auto row = mountRowLabel(blueprintData, actor, alias);
-                            ImGui::PushID(static_cast<int>(static_cast<fqsm::internal::id::BaseType>(alias)));
+                        for (const auto* actor : selectedMounts) {
+                            const auto row = mountRowLabel(blueprintData, *actor);
+                            ImGui::PushID(static_cast<int>(actor->index));
                             ImGui::TextUnformatted(row.c_str());
                             ImGui::SameLine();
                             const bool remove = ImGui::SmallButton("x");
                             ImGui::PopID();
                             if (remove)
-                                removeAlias(store.aliases, alias);
+                                dropMountAliases(context, *actor, store.aliases);
                         }
                         ImGui::TreePop();
                     }

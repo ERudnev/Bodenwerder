@@ -34,6 +34,7 @@ namespace eltanin::locality {
             struct OfPlate {
                 mech::Construction::Primitive::Id plate;
                 rmmr::resource::Unit::Name mount;
+                string entry;
                 mech::space::Transform transform;
             };
             struct OfVolume {

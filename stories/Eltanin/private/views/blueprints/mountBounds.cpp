@@ -9,17 +9,6 @@ namespace eltanin::views::blueprints::mountBounds {
 
     namespace {
 
-        auto rotateLocal(mech::space::orient::key rotation, base::common_types::index3 local) -> base::common_types::index3 {
-            const auto& matrix = mech::space::orient::matrix[static_cast<std::size_t>(rotation)];
-            const auto rotated = matrix * mech::space::ivec3{local.x, local.y, local.z};
-            return base::common_types::index3{.x = rotated.x, .y = rotated.y, .z = rotated.z};
-        }
-
-        auto worldPoint(const mech::space::Transform& transform, base::common_types::index3 local) -> base::common_types::index3 {
-            const auto rotated = rotateLocal(transform.rotation, local);
-            return base::common_types::index3{.x = transform.grid.x + rotated.x, .y = transform.grid.y + rotated.y, .z = transform.grid.z + rotated.z};
-        }
-
         auto axisCellRange(int gmin, int gmax, bool flatAxis) -> std::pair<int, int> {
             if (flatAxis or gmin == gmax)
                 return {gmin, gmin};
@@ -46,10 +35,11 @@ namespace eltanin::views::blueprints::mountBounds {
         if (attachment.points.empty())
             return {};
 
-        auto gmin = worldPoint(transform, attachment.points.front());
+        const auto doubled = mech::space::doubledCenter(attachment.points);
+        auto gmin = mech::space::worldLattice(transform, doubled, attachment.points.front());
         auto gmax = gmin;
         for (std::size_t i = 1; i < attachment.points.size(); ++i) {
-            const auto world = worldPoint(transform, attachment.points[i]);
+            const auto world = mech::space::worldLattice(transform, doubled, attachment.points[i]);
             gmin.x = std::min(gmin.x, world.x);
             gmin.y = std::min(gmin.y, world.y);
             gmin.z = std::min(gmin.z, world.z);

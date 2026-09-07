@@ -19,8 +19,5 @@
       }
     }
   ],
-  "presentationGeometry": {
-    "pack": "Eltanin::armour",
-    "entry": "#p121#deco_steepline_L"
-  }
+  "presentationGeometry": "fittings/mounts/armour::#p121#deco_steepline_L"
 }

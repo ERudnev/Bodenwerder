@@ -10,6 +10,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 
 namespace eltanin::mech {
@@ -312,24 +313,22 @@ namespace eltanin::mech {
         }
 
         auto take_presentation_geometry(Cursor& cursor) -> Mount::PresentationGeometry {
-            expect(cursor, '{');
-            expect_key(cursor, "pack");
-            const auto packText = take_string(cursor);
+            const auto text = take_string(cursor);
+            const auto sep = text.find("::");
+            if (sep == string::npos or sep == 0 or sep + 2 >= text.size())
+                throw std::runtime_error(std::format("mount: presentationGeometry '{}' needs pack::entry", text));
+            const auto packText = text.substr(0, sep);
             const auto parsed = rmmr::system::content::UnitName::parse(packText);
             if (not parsed)
-                throw std::runtime_error(std::format("mount: bad pack Unit::Name '{}'", packText));
-            expect(cursor, ',');
-            expect_key(cursor, "entry");
-            const auto entry = take_string(cursor);
-            expect(cursor, '}');
+                throw std::runtime_error(std::format("mount: bad pack '{}'", packText));
             return Mount::PresentationGeometry{
                 .pack = rmmr::resource::Unit::Name::from(parsed->library, parsed->own),
-                .entry = entry,
+                .entry = text.substr(sep + 2),
             };
         }
 
         auto take_presentation_geometries(Cursor& cursor) -> vector<Mount::PresentationGeometry> {
-            if (peek(cursor) == '{')
+            if (peek(cursor) == '"')
                 return {take_presentation_geometry(cursor)};
             expect(cursor, '[');
             vector<Mount::PresentationGeometry> parts;
@@ -345,11 +344,12 @@ namespace eltanin::mech {
             return parts;
         }
 
+        auto mesh_ref_text(const Mount::PresentationGeometry& part) -> string {
+            return part.pack.text() + "::" + part.entry;
+        }
+
         void write_presentation_geometry(std::ostringstream& out, const Mount::PresentationGeometry& part, std::string_view indent) {
-            out << indent << "{\n";
-            out << indent << "  \"pack\": \"" << part.pack.text() << "\",\n";
-            out << indent << "  \"entry\": \"" << part.entry << "\"\n";
-            out << indent << "}";
+            out << indent << "\"" << mesh_ref_text(part) << "\"";
         }
 
         auto take_role(Cursor& cursor) -> Role {

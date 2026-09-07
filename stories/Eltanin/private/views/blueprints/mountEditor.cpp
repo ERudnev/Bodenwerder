@@ -40,20 +40,7 @@ namespace eltanin::views::blueprints::mountEditor {
             return true;
         }
 
-        // Lattice rotation about doubled center d=min+max: p' = R·p + (d−R·d)/2. Also returns that additive shift.
-        auto rotateAboutDoubledCenter(const base::common_types::index3& point, mech::space::orient::key rotation, const base::common_types::ivec3& doubledCenter) -> base::maybe<std::pair<base::common_types::index3, base::common_types::ivec3>> {
-            const auto& matrix = mech::space::orient::matrix[static_cast<std::size_t>(rotation)];
-            const auto rotatedPoint = matrix * mech::space::ivec3{point.x, point.y, point.z};
-            const auto rotatedCenter = matrix * doubledCenter;
-            const auto delta = doubledCenter - rotatedCenter;
-            if ((delta.x & 1) != 0 or (delta.y & 1) != 0 or (delta.z & 1) != 0)
-                return {};
-            const base::common_types::ivec3 shift{delta.x / 2, delta.y / 2, delta.z / 2};
-            return std::pair{
-                base::common_types::index3{.x = rotatedPoint.x + shift.x, .y = rotatedPoint.y + shift.y, .z = rotatedPoint.z + shift.z},
-                shift,
-            };
-        }
+        // Lattice rotation about doubled center d=min+max: p' = R·p + (d−R·d)/2.
 
         auto lexMin(const std::vector<base::common_types::index3>& points) -> base::common_types::index3 {
             auto origin = points.front();
@@ -149,48 +136,29 @@ namespace eltanin::views::blueprints::mountEditor {
         if (attachment.points.empty())
             return out;
 
-        auto min = attachment.points.front();
-        auto max = min;
-        for (const auto& point : attachment.points) {
-            min.x = std::min(min.x, point.x);
-            min.y = std::min(min.y, point.y);
-            min.z = std::min(min.z, point.z);
-            max.x = std::max(max.x, point.x);
-            max.y = std::max(max.y, point.y);
-            max.z = std::max(max.z, point.z);
-        }
-        const base::common_types::ivec3 doubledCenter{min.x + max.x, min.y + max.y, min.z + max.z};
+        const auto doubled = mech::space::doubledCenter(attachment.points);
         const auto normal = planeNormal(attachment.points);
         base::maybe<std::pair<mech::space::orient::key, Spin>> flipKeep;
 
         for (mech::space::orient::key rotation = 0; rotation < 24; ++rotation) {
+            const auto shift = mech::space::centerShift(rotation, doubled);
+            if (not shift)
+                continue;
             std::vector<base::common_types::index3> rotated;
             rotated.reserve(attachment.points.size());
-            base::common_types::ivec3 shift{};
-            bool ok = true;
-            bool haveShift = false;
+            const auto& matrix = mech::space::orient::matrix[static_cast<std::size_t>(rotation)];
             for (const auto& point : attachment.points) {
-                const auto image = rotateAboutDoubledCenter(point, rotation, doubledCenter);
-                if (not image) {
-                    ok = false;
-                    break;
-                }
-                if (not haveShift) {
-                    shift = image->second;
-                    haveShift = true;
-                }
-                rotated.push_back(image->first);
+                const auto image = matrix * mech::space::ivec3{point.x, point.y, point.z};
+                rotated.push_back(base::common_types::index3{.x = image.x + shift->x, .y = image.y + shift->y, .z = image.z + shift->z});
             }
-            if (not ok)
-                continue;
             if (not samePointSet(attachment.points, rotated))
                 continue;
             if (normal and not sameDir(mapDir(rotation, *normal), *normal)) {
                 if (not flipKeep)
-                    flipKeep = std::pair{rotation, Spin{.shift = shift, .points = std::move(rotated), .flip = true}};
+                    flipKeep = std::pair{rotation, Spin{.shift = *shift, .points = std::move(rotated), .flip = true}};
                 continue;
             }
-            out.emplace(rotation, Spin{.shift = shift, .points = std::move(rotated), .flip = false});
+            out.emplace(rotation, Spin{.shift = *shift, .points = std::move(rotated), .flip = false});
         }
         if (flipKeep)
             out.emplace(flipKeep->first, std::move(flipKeep->second));
@@ -218,7 +186,12 @@ namespace eltanin::views::blueprints::mountEditor {
         const auto found = fits.find(orderedShape(cursor));
         if (found == fits.end())
             return {};
-        const auto rotated = rotateLocal(attachment.points, found->second);
+        const auto doubled = mech::space::doubledCenter(attachment.points);
+        const auto identity = mech::space::Transform{.grid = base::common_types::index3{.x = 0, .y = 0, .z = 0}, .rotation = found->second};
+        std::vector<base::common_types::index3> rotated;
+        rotated.reserve(attachment.points.size());
+        for (const auto& point : attachment.points)
+            rotated.push_back(mech::space::worldLattice(identity, doubled, point));
         const auto localOrigin = lexMin(rotated);
         const auto cursorOrigin = lexMin(cursor);
         return mech::space::Transform{
@@ -228,13 +201,11 @@ namespace eltanin::views::blueprints::mountEditor {
     }
 
     auto worldPoints(const mech::Attachment& attachment, const mech::space::Transform& transform) -> std::vector<base::common_types::index3> {
-        const auto& matrix = mech::space::orient::matrix[static_cast<std::size_t>(transform.rotation)];
+        const auto doubled = mech::space::doubledCenter(attachment.points);
         std::vector<base::common_types::index3> out;
         out.reserve(attachment.points.size());
-        for (const auto& point : attachment.points) {
-            const auto rotated = matrix * mech::space::ivec3{point.x, point.y, point.z};
-            out.push_back(base::common_types::index3{.x = transform.grid.x + rotated.x, .y = transform.grid.y + rotated.y, .z = transform.grid.z + rotated.z});
-        }
+        for (const auto& point : attachment.points)
+            out.push_back(mech::space::worldLattice(transform, doubled, point));
         return out;
     }
 
@@ -245,12 +216,7 @@ namespace eltanin::views::blueprints::mountEditor {
         if (bodyAuto == 0)
             return {};
         const auto& composeRow = mech::space::orient::compose[static_cast<std::size_t>(current.rotation)];
-        const auto nextRotation = composeRow[static_cast<std::size_t>(bodyAuto)];
-        const auto worldShift = mech::space::orient::matrix[static_cast<std::size_t>(current.rotation)] * found->second.shift;
-        return mech::space::Transform{
-            .grid = base::common_types::index3{.x = current.grid.x + worldShift.x, .y = current.grid.y + worldShift.y, .z = current.grid.z + worldShift.z},
-            .rotation = nextRotation,
-        };
+        return mech::space::Transform{.grid = current.grid, .rotation = composeRow[static_cast<std::size_t>(bodyAuto)]};
     }
 
     namespace {

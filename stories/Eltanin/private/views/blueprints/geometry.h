@@ -113,8 +113,8 @@ namespace eltanin::views::blueprints {
     // Continuous actor pose for skeleton quarks: mesh local 0 at the cell corner selected by ori + Entry.origin.
     auto actorPose(const mech::space::cell::Placement& quarkPose, rmmr::Pos entryOrigin) -> rmmr::Pose;
 
-    // Mount actor pose: LW contract — mesh pivot at attachment; transform.grid is that lattice point (meters = grid * edge), rotation = orient key.
-    auto gridActorPose(const mech::space::Transform& transform) -> rmmr::Pose;
+    // Occupancy seating: transform.grid stays the home cell; pose rotates about the attachment AABB center.
+    auto gridActorPose(const mech::space::Transform& transform, const mech::Attachment&) -> rmmr::Pose;
 
     auto resolveKnot(Reading, rmmr::resource::meshpack::Asset::Id pack, mech::skeleton::Corner::Kind) -> base::maybe<rmmr::resource::meshpack::Asset::Resolved>;
     auto resolveHalfChord(Reading, rmmr::resource::meshpack::Asset::Id pack, mech::skeleton::Halfrib::Kind, mech::skeleton::Halfrib::Pole) -> base::maybe<rmmr::resource::meshpack::Asset::Resolved>;

@@ -1,5 +1,7 @@
 #include "mech/semantics/space.h"
 
+#include <algorithm>
+
 namespace eltanin::mech::space::orient {
 
     namespace {
@@ -101,3 +103,40 @@ namespace eltanin::mech::space::orient {
     }
 
 } // namespace eltanin::mech::space::orient
+
+namespace eltanin::mech::space {
+
+    auto doubledCenter(const std::vector<index3>& points) -> ivec3 {
+        if (points.empty())
+            return ivec3{0, 0, 0};
+        auto min = points.front();
+        auto max = min;
+        for (const auto& point : points) {
+            min.x = std::min(min.x, point.x);
+            min.y = std::min(min.y, point.y);
+            min.z = std::min(min.z, point.z);
+            max.x = std::max(max.x, point.x);
+            max.y = std::max(max.y, point.y);
+            max.z = std::max(max.z, point.z);
+        }
+        return ivec3{min.x + max.x, min.y + max.y, min.z + max.z};
+    }
+
+    auto centerShift(orient::key orientation, ivec3 doubled) -> base::maybe<ivec3> {
+        const auto rotated = orient::matrix[static_cast<std::size_t>(orientation)] * doubled;
+        const ivec3 delta{doubled.x - rotated.x, doubled.y - rotated.y, doubled.z - rotated.z};
+        if ((delta.x & 1) != 0 or (delta.y & 1) != 0 or (delta.z & 1) != 0)
+            return {};
+        return ivec3{delta.x / 2, delta.y / 2, delta.z / 2};
+    }
+
+    auto worldLattice(const Transform& transform, ivec3 doubled, index3 local) -> index3 {
+        const auto& matrix = orient::matrix[static_cast<std::size_t>(transform.rotation)];
+        const auto rotated = matrix * ivec3{local.x, local.y, local.z};
+        ivec3 shift{0, 0, 0};
+        if (const auto found = centerShift(transform.rotation, doubled))
+            shift = *found;
+        return index3{.x = transform.grid.x + rotated.x + shift.x, .y = transform.grid.y + rotated.y + shift.y, .z = transform.grid.z + rotated.z + shift.z};
+    }
+
+} // namespace eltanin::mech::space

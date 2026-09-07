@@ -255,8 +255,8 @@ def _quote(text: str) -> str:
     return f'"{escaped}"'
 
 
-def format_meshpack(name: str, library: str, lwo_file: str, texpack: str, parts: list[list]) -> str:
-    lines = ["{", f"    {_quote(name)},", f"    {_quote(library)},", f"    {_quote(lwo_file)},", f"    {_quote(texpack)},", "    ["]
+def format_meshpack(name: str, lwo_file: str, texpack: str, parts: list[list]) -> str:
+    lines = ["{", f"    {_quote(name)},", f"    {_quote(lwo_file)},", f"    {_quote(texpack)},", "    ["]
     for index, part in enumerate(parts):
         surf, body = part[0], part[1]
         material, textures = body[0], body[1]
@@ -269,34 +269,43 @@ def format_meshpack(name: str, library: str, lwo_file: str, texpack: str, parts:
     return "\n".join(lines)
 
 
+def _unescape(text: str) -> str:
+    return text.encode("utf-8").decode("unicode_escape")
+
+
 def read_existing_header(meshpack: Path) -> dict[str, str] | None:
     if not meshpack.is_file():
         return None
     text = meshpack.read_text(encoding="utf-8")
     strings = re.findall(r'"((?:\\.|[^"\\])*)"', text)
+    if len(strings) < 3:
+        return None
+    name = _unescape(strings[0])
+    second = _unescape(strings[1])
+    if "/" in second or "\\" in second or second.endswith(".lwo"):
+        return {"name": name, "lwo_file": second, "texpack": _unescape(strings[2])}
     if len(strings) < 4:
         return None
-    return {
-        "name": strings[0].encode("utf-8").decode("unicode_escape"),
-        "library": strings[1].encode("utf-8").decode("unicode_escape"),
-        "lwo_file": strings[2].encode("utf-8").decode("unicode_escape"),
-        "texpack": strings[3].encode("utf-8").decode("unicode_escape"),
-    }
+    return {"name": name, "lwo_file": _unescape(strings[2]), "texpack": _unescape(strings[3])}
 
 
-def default_identity(lwo: Path) -> tuple[str, str, str]:
-    """name, library, kit-relative lwo path (best-effort from .../assets/<lib>/...)."""
+def default_identity(lwo: Path) -> tuple[str, str]:
+    """identity after meshes/ minus last extension; kit-relative lwo path from assets/."""
     parts = list(lwo.resolve().parts)
-    library = "Eltanin"
-    rel = lwo.name
+    rel = lwo.name.replace("\\", "/")
     if "assets" in parts:
         i = parts.index("assets")
         if i + 1 < len(parts):
-            library = parts[i + 1]
-        if i + 2 < len(parts):
-            rel = "/".join(parts[i + 2 :])
-    name = lwo.stem
-    return name, library, rel.replace("\\", "/")
+            rel = "/".join(parts[i + 1 :]).replace("\\", "/")
+    identity = rel
+    marker = "/meshes/"
+    if marker in identity:
+        identity = identity.split(marker, 1)[1]
+    elif identity.startswith("meshes/"):
+        identity = identity[len("meshes/") :]
+    if "." in identity:
+        identity = identity.rsplit(".", 1)[0]
+    return identity, rel
 
 
 def write_meshpack(
@@ -319,13 +328,13 @@ def write_meshpack(
     out = meshpack_path if meshpack_path is not None else Path(str(lwo) + ".meshpack")
     header = read_existing_header(out)
     if header:
-        name, library, lwo_file = header["name"], header["library"], header["lwo_file"]
+        name, lwo_file = header["name"], header["lwo_file"]
         pack = header["texpack"] if texpack is None else texpack
     else:
-        name, library, lwo_file = default_identity(lwo)
+        name, lwo_file = default_identity(lwo)
         pack = "Eltanin::mech" if texpack is None else texpack
     parts = meshpack_parts(surfaces, material, albedo_fallback)
-    out.write_text(format_meshpack(name, library, lwo_file, pack, parts), encoding="utf-8", newline="\n")
+    out.write_text(format_meshpack(name, lwo_file, pack, parts), encoding="utf-8", newline="\n")
     return out
 
 

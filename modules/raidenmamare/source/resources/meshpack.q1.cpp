@@ -50,7 +50,6 @@ namespace rmmr::resource::meshpack {
 
         struct LwoPackPayload {
             string name;
-            string library;
             string lwo_file;
             string texpack;
             umap<string, FileInstance> parts;
@@ -60,8 +59,6 @@ namespace rmmr::resource::meshpack {
             LwoPackPayload out{};
             base::serialization::detail::expect(in, '{');
             out.name = base::serialization::detail::read<string>(in);
-            base::serialization::detail::expect(in, ',');
-            out.library = base::serialization::detail::read<string>(in);
             base::serialization::detail::expect(in, ',');
             out.lwo_file = base::serialization::detail::read<string>(in);
             base::serialization::detail::expect(in, ',');
@@ -342,7 +339,10 @@ namespace rmmr::resource::meshpack {
             return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: parse '{}': {}", pack_path.string(), error.what()));
         }
 
-        const auto file_name = Unit::Name{.library = payload.library, .own = payload.name};
+        const auto parsedName = system::content::UnitName::parse(payload.name);
+        if (not parsedName)
+            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: bad identity '{}'", payload.name));
+        const auto file_name = Unit::Name{.library = parsedName->library, .own = parsedName->own};
         if (file_name != unit.name) {
             return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: file identity '{}' != unit '{}'", file_name.text(), unit.name.text()));
         }

@@ -11,13 +11,13 @@
 | Кто читает | Вопрос | Сегодня |
 |---|---|---|
 | **Редактор чертежей** | как прикрепить *вот это* *вот сюда* | `attachment` + визуал `presentationGeometry` |
-| **Ассемблер (игра)** | какой механизм здесь живёт | `elements`: пока только `latticeHull` (одна грань → плитка). Нет hull — маунт в мир не идёт |
+| **Ассемблер (игра)** | какой механизм здесь живёт | `elements`: `latticeHull` → плитка в Crystal; `box` → независимый объект (пока не в мире) |
 
 Редактору не нужно знать, что внутри кабины руль и кресло. Ему нужно: решётка якорей, ориентация, картинка на полке.
 
 Игре (Ассемблеру) блюпринт говорит только «сюда `Eltanin::mounts.dummy_control`» (флот) или «сюда `Eltanin::internals.controlRoomBasic`» (Abagy). Дальше колупаем маунт: из каких кусков собрать отсек, какие игровые сущности в рецепте.
 
-Кабина — первый настоящий рецепт. Геометрию уже разрезали на два LAYR (`root` / `headUnit`), чтобы это отразить в JSON. Игровые сущности внутри ещё не описаны.
+Кабина — рецепт с `box` на слоях. В Crystal они ещё не идут; плита в комплекте с пушкой — уже hull.
 
 ## Что такое маунт на диске
 
@@ -36,9 +36,9 @@
 |---|---|
 | `name`, `author`, `mass` | карточка в UI / масса тела |
 | `attachment.points` | якоря в дискретной локальной решётке (куб 8 точек, плитка 4, …) |
-| `elements` | рецепт Ассемблера. Сейчас один вид тела: `latticeHull` (толщина + грани по индексам якорей). Пустой список — сознательный skip |
+| `elements` | рецепт Ассемблера. Два семейства: `latticeHull` (плита в корпус) и `box` (отдельное тело, позже). Пустой список — skip |
 | `role` | опционально: `control`, `power`, … — цвет плейсхолдера и смысл слота |
-| `presentationGeometry` | **визуал редактора и вьюверов**: один `{pack, entry}` или список таких частей |
+| `presentationGeometry` | **визуал редактора и вьюверов**: строка `pack::entry` или список таких строк |
 
 `flatMounted()` считается из точек: одна плоскость → обшивка, объём → внутренности.
 
@@ -48,53 +48,72 @@
 
 1. Авторство в LightWave: один `.lwo`, слои = будущие **entry** meshpack (имя LAYR).
 2. Смотреть файл: `python modules/raidenmamare/tools/lwo_surf_textures.py <path.lwo>` — поверхности↔текстуры, дерево слоёв (parent), пивоты, AABB по вершинам.
-3. Sidecar `<file.lwo>.meshpack`: identity полки + `parts` (SURF → `Eltanin::hull` + albedo из Image Map). Писать скриптом `--write-meshpack --material Eltanin::hull`.
+3. Sidecar `<file.lwo>.meshpack`: identity = путь после `meshes/` без последнего расширения; `lwo_file` = `Eltanin/meshes/…`. Писать скриптом `--write-meshpack --material Eltanin::hull`.
 4. Текстуры — файлы в `assets/Eltanin/textures/mech/` (каталог `Eltanin::mech`; `.jfif` уже в списке расширений).
-5. Регистрация полки в `Game::addAssets`: `add_meshpack_lwo_loader` с тем же Unit, что в sidecar.
-6. JSON маунта указывает `pack` + `entry` (имя слоя, не имя файла).
+5. Регистрация полки в `Game::addAssets`: `add_meshpack_lwo_loader` с тем же Unit, что в sidecar (`library` пустой, `own` = identity).
+6. JSON маунта: `presentationGeometry` + `elements`. Префикс LAYR **обязан** породить элемент (см. ниже), а не только строку визуала.
 
-Один meshpack = один LWO. Новая геометрия в другом `.lwo` → новая полка (как `Eltanin::controlRoomSmall` рядом с `Eltanin::devices`).
+Один meshpack = один LWO. Новая геометрия в другом `.lwo` → новый identity (`fittings/devices/controlRoomSmall` рядом с `fittings/devices/cannon_temp_solid`).
 
 Пивот слоя после импорта — локальный ноль меша. В редакторе актёр маунта сажает **пивот первой части** на точку `transform.grid` (`gridActorPose`).
 
 ## Визуал редактора — рецепт из частей
 
-Пушка до сих пор один кусок:
-
-```json
-"presentationGeometry": {
-  "pack": "Eltanin::devices",
-  "entry": "cannon_temp_solid"
-}
-```
-
-Кабина — тот же формат, но список: основа + механизм, один маунт в блюпринте, оба меша на сцене редактора.
+Пушка — дерево слоёв одной сборки:
 
 ```json
 "presentationGeometry": [
-  { "pack": "Eltanin::controlRoomSmall", "entry": "root" },
-  { "pack": "Eltanin::controlRoomSmall", "entry": "headUnit" }
+  "fittings/devices/cannon_temp_solid::#k8#main",
+  "fittings/devices/cannon_temp_solid::tower",
+  "fittings/devices/cannon_temp_solid::gun",
+  "fittings/devices/cannon_temp_solid::barrel",
+  "fittings/devices/cannon_temp_solid::#p1111#armour"
 ]
 ```
 
-Парсер принимает и объект, и массив. Одна часть — как пушка. Несколько — редактор ставит каждую entry отдельным мешем: первая на якоре, остальные сдвинуты на разницу `geometry.Entry.origin` (пивоты LAYR). Так `headUnit` остаётся внутри `root`, а не прилипает к углу клетки.
+Кабина — тот же формат, список: основа + механизм, один маунт в блюпринте, меши на сцене редактора.
 
-Это ещё не игровой рецепт объёма. Ассемблер берёт `latticeHull` с **одной** гранью и кладёт плитку в Crystal. Dummy, кабина и пушка сейчас с `"elements": []` — в мире нет ни физики, ни меша; в редакторе `presentationGeometry` живёт. Гвозди / AABB / когорта — следующий шаг.
+```json
+"presentationGeometry": [
+  "fittings/devices/controlRoomSmall::#K8#root",
+  "fittings/devices/controlRoomSmall::headUnit"
+]
+```
+
+Парсер принимает строку или массив строк. Первый `::` режет pack (путь файла) от entry. Entry — имя LAYR как есть (`#k8#main`, `#p1111#armour`, `tower`). `::` внутри файла — на потом, не для префикса. Несколько частей — редактор ставит каждую entry отдельным мешем: первая на якоре, остальные сдвинуты на разницу `geometry.Entry.origin` (пивоты LAYR). Так `headUnit` остаётся внутри `root`, а не прилипает к углу клетки.
+
+Это ещё не игровой рецепт объёма. Ассемблер вваривает **каждый** `latticeHull` с одной гранью — плитка в Crystal, меш по `element.name` = LAYR (`#p1111#armour`, не первый попавшийся). Dummy — `"elements": []`. `box` на элементах в Crystal пока не идёт. Гвозди / AABB как тела / когорта — следующий шаг.
 
 `DiscretePose` у `Mesh::Occurrence` — решётка (целые клетки). Смещение пивота кабины не целое в метрах, поэтому визуал редактора пока не склеивается в один GPU-меш «как корпус корабля», а в набор мешей с одним смыслом «этот маунт».
 
+## Два семейства элементов
+
+Префикс `#kind#` в имени LAYR — не украшение. Техпроцесс JSON на него реагирует. Петля/посадка **в JSON**, не в имени (`#p222A#417#` — нет).
+
+| Префикс | Семейство | В JSON | Ассемблер |
+|---|---|---|---|
+| `#p1111#` `#p121#` `#p2121#` `#p222A#` `#p222V#` | плита брони | `latticeHull`: thickness + `faces` (индексы в `attachment.points`) | вваривает в корпус |
+| `#k8#` `#k7#` `#k6#` `#k4#` и плоские k*f* | объём / occupancy | `box` (AABB, pivot-local из анализатора) | скоро отдельное тело; сейчас skip |
+| без `#kind#` | как сосед по смыслу | `box`, если это деталь механизма (`tower`, `headUnit`) | skip, как box |
+
+Честная плитка (`p1111_default.json`) — маунт *есть* плита: один безымянный `latticeHull`, attachment уже контур грани.
+
+Пушка — другой маунт: *я пушка, в комплекте плита*. Occupancy `#k8#main` + башня (`box`), и `#p1111#armour` с `latticeHull`. Attachment — куб на 8 точек (как `#k8#`). Петля плиты выбирает грань, на которой сидит обшивка; у пушки это Y+ (`cube::faces` Yp: `[2, 6, 7, 3]`), не кодировать это в имени слоя.
+
+Слой с префиксом плиты, который есть в LWO / `presentationGeometry`, **нельзя** оставлять только визуалом.
+
 ## Как завести ещё один маунт
 
-1. LWO в `meshes/fittings/…`. Слои назвать так, как будут entry.
-2. Прогнать анализатор: имена, parent, пивоты, боксы, текстуры на полке `mech`.
+1. LWO в `meshes/fittings/…`. Слои назвать так, как будут entry (`#p1111#armour`, `tower`).
+2. Прогнать анализатор: имена, parent, пивоты, боксы, текстуры на полке `mech`. По префиксам сразу видно, какие элементы обязательны.
 3. `--write-meshpack --material Eltanin::hull`. Зарегистрировать loader, если это новый pack.
 4. JSON на нужной полке (`mounts` / `internals`). Unit получится из пути.
-5. `attachment` — якоря. Для плитки — один `latticeHull` с одной гранью. Для объёма пока `elements: []` (Ассемблер скипнет).
-6. `presentationGeometry` — entry слоёв, которые редактор и вьюверы должны показать.
+5. `attachment` — якоря. Плита-маунт: точки = контур, один `latticeHull` с одной гранью. Объём: куб/решётка; у каждого `#p…#` слоя — свой `latticeHull` с петлёй по этим точкам; у `#k…#` и деталей — `box`.
+6. `presentationGeometry` — entry слоёв для редактора (имя LAYR как есть). Ассемблер плитки ищет меш по `element.name`.
 7. Если это замена dummy — обновить ссылки в блюпринтах (`Eltanin::mounts.dummy_*` → новый unit).
 
 ## Что намеренно пусто
 
-- Рецепт Ассемблера для объёмов: AABB/сфера, когорта корабля, гвозди (джойнты). Dummy и кабина сейчас специально без `latticeHull`.
+- Рецепт Ассемблера для объёмов: AABB как тела, когорта корабля, гвозди. `box` на кабине и пушке пока не в Crystal; плита `#p1111#armour` на пушке — уже hull.
 - Parent LAYR как игровой граф (пока только визуальный сдвиг по пивотам).
 - Общая полка `devices` на много LWO — сейчас один файл на pack.

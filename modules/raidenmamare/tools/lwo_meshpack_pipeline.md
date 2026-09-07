@@ -8,7 +8,7 @@ Sidecar `*.lwo.meshpack` tells the engine:
 
 | field | meaning |
 |---|---|
-| unit name / library | shelf identity (`Eltanin::armourDecor`, …) — must match `add_meshpack_lwo_loader` |
+| unit identity | путь после `meshes/`, без последнего расширения (`fittings/mounts/armour`) — must match `add_meshpack_lwo_loader` |
 | `.lwo` path | kit-relative geometry file |
 | texpack | usually `Eltanin::mech` (folder `assets/.../textures/mech`); `-` = no albedo array |
 | **parts** | every **geometry surface name** → material + texture **layer filename** |
@@ -17,7 +17,8 @@ Loader rules (see `meshpack.q1.cpp`):
 
 - Parts keys must cover **all** Assimp surface names from the LWO (and must not invent extras that never appear).
 - Default lit material is `rmmr::lit_textured` with one `albedoMap` = **basename** of a file that exists in that texpack directory.
-- LAYR names become meshpack **entries** (e.g. `p1111_nose_decor`); mounts JSON `presentationGeometry.entry` points at those names.
+- LAYR names become meshpack **entries** as authored (`#p1111#default`, `tower`). Mounts JSON `presentationGeometry` is `"pack::entry"` (first `::` splits pack from entry).
+- Plate prefixes (`#p1111#`, `#p121#`, …) in a LAYR **must** become a `latticeHull` element in the mount JSON (loop in `faces`, not in the layer name). See [mounts.md](../../../wiki/docs/Eltanin/mounts.md).
 
 ## Tools
 
@@ -44,8 +45,8 @@ Paths below assume repo root `DAQL/`.
    python modules/raidenmamare/tools/lwo_surf_textures.py assets/Eltanin/meshes/.../foo.lwo --write-meshpack
    ```
    - Rewrites only the **parts** list from LWO surfaces (first Color Image Map → `albedoMap`).
-   - Keeps existing header (`name`, `library`, `lwo` path, `texpack`) when the `.meshpack` already exists.
-   - New file: defaults `name`/`library` from path heuristics; texpack `Eltanin::mech` unless `--texpack` / `--no-texpack`.
+   - Keeps existing header (`name`, `lwo` path, `texpack`) when the `.meshpack` already exists.
+   - New file: identity from path after `meshes/` minus last extension; `lwo_file` is kit-relative `Eltanin/meshes/…`; texpack `Eltanin::mech` unless `--texpack` / `--no-texpack`.
 
 4. **Surfaces with no Image Map**  
    Script prints a warning and leaves `MISSING_TEXTURE` (or refuses `--write-meshpack` unless `--allow-missing`). Fix in LW (add map) or edit that one part by hand / pass `--albedo-fallback pewter2.bmp`.

@@ -283,28 +283,28 @@ namespace eltanin {
 
         assets.interframe = with<Assets>::add_meshpack_lwo_loader(
             context,
-            Name::from("Eltanin", "interframe"),
-            item<meshpack::LoaderLwo>{.file = "meshes/editor/interframe.lwo.meshpack", .geometry = {}, .pending = {}});
+            Name::from("", "editor/interframe"),
+            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/editor/interframe.lwo.meshpack", .geometry = {}, .pending = {}});
         assets.attachments = with<Assets>::add_meshpack_lwo_loader(
             context,
-            Name::from("Eltanin", "attachments"),
-            item<meshpack::LoaderLwo>{.file = "meshes/editor/attachments.lwo.meshpack", .geometry = {}, .pending = {}});
+            Name::from("", "editor/attachments"),
+            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/editor/attachments.lwo.meshpack", .geometry = {}, .pending = {}});
         assets.armour = with<Assets>::add_meshpack_lwo_loader(
             context,
-            Name::from("Eltanin", "armour"),
-            item<meshpack::LoaderLwo>{.file = "meshes/fittings/mounts/armour.lwo.meshpack", .geometry = {}, .pending = {}});
+            Name::from("", "fittings/mounts/armour"),
+            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/fittings/mounts/armour.lwo.meshpack", .geometry = {}, .pending = {}});
         assets.devices = with<Assets>::add_meshpack_lwo_loader(
             context,
-            Name::from("Eltanin", "devices"),
-            item<meshpack::LoaderLwo>{.file = "meshes/fittings/devices/cannon_temp_solid.lwo.meshpack", .geometry = {}, .pending = {}});
+            Name::from("", "fittings/devices/cannon_temp_solid"),
+            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/fittings/devices/cannon_temp_solid.lwo.meshpack", .geometry = {}, .pending = {}});
         assets.controlRoomSmall = with<Assets>::add_meshpack_lwo_loader(
             context,
-            Name::from("Eltanin", "controlRoomSmall"),
-            item<meshpack::LoaderLwo>{.file = "meshes/fittings/devices/controlRoomSmall.lwo.meshpack", .geometry = {}, .pending = {}});
+            Name::from("", "fittings/devices/controlRoomSmall"),
+            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/fittings/devices/controlRoomSmall.lwo.meshpack", .geometry = {}, .pending = {}});
         assets.projectiles = with<Assets>::add_meshpack_lwo_loader(
             context,
-            Name::from("Eltanin", "projectiles"),
-            item<meshpack::LoaderLwo>{.file = "meshes/misc/projectiles.lwo.meshpack", .geometry = {}, .pending = {}});
+            Name::from("", "misc/projectiles"),
+            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/misc/projectiles.lwo.meshpack", .geometry = {}, .pending = {}});
 
         const auto manager = with<Manager>::singleton(context);
         const auto sky_geometry_id = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "skySphere")});

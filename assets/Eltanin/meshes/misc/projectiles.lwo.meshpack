@@ -1,7 +1,6 @@
 {
-    "projectiles",
-    "Eltanin",
-    "meshes/misc/projectiles.lwo",
+    "misc/projectiles",
+    "Eltanin/meshes/misc/projectiles.lwo",
     "Eltanin::mech",
     [
         {"emitter", {"rmmr::lit_textured", [{"albedoMap", "STEEL1.JPG"}]}},

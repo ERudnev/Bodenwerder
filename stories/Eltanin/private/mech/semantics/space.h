@@ -4,6 +4,7 @@
 
 #include <vector>
 
+#include <base/maybe.h>
 #include <base/types/common_types.h>
 #include <eltanin/mech/semantics.q1.h>
 #include <rmmr/renderer/types.q1.h>
@@ -63,5 +64,16 @@ namespace eltanin::mech::space {
         auto cornerIndex(key orientation, cube::Corner corner) -> cube::Corner;
 
     } // namespace orient
+
+    using index3 = base::common_types::index3;
+
+    // Attachment AABB doubled center d = min+max. Empty set → (0,0,0).
+    auto doubledCenter(const std::vector<index3>& points) -> ivec3;
+
+    // Lattice shift so R·p + shift is rotation about d/2. Empty if the image is off-lattice (odd d−R·d).
+    auto centerShift(orient::key orientation, ivec3 doubledCenter) -> base::maybe<ivec3>;
+
+    // World lattice of a local attachment point. transform.grid is identity seating (does not chase local 0).
+    auto worldLattice(const Transform& transform, ivec3 doubledCenter, index3 local) -> index3;
 
 } // namespace eltanin::mech::space

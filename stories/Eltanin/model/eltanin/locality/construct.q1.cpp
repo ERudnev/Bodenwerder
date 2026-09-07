@@ -760,7 +760,7 @@ namespace eltanin::locality {
     void Construct::Actions::bindResources(Writing context) {
         if (with<Construct>::get_global(context).resources)
             return;
-        const auto interframe = with<rmmr::resource::Assets>::find<rmmr::resource::meshpack::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "interframe"));
+        const auto interframe = with<rmmr::resource::Assets>::find<rmmr::resource::meshpack::Asset>(context, rmmr::resource::Unit::Name::from("", "editor/interframe"));
         if (not interframe) {
             context.refuse("eltanin::locality::Construct::bindResources: interframe meshpack missing");
             return;

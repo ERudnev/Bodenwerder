@@ -258,6 +258,8 @@
         ]
     ],
     [
-        ["Eltanin::internals.controlRoomBasic", [-1, 0, -1], 0]
+        ["Eltanin::internals.controlRoomBasic", [-1, 0, -1], 0],
+        ["Eltanin::mounts.cannon_temp_solid", [-1, 0, 0], 12],
+        ["Eltanin::mounts.cannon_temp_solid", [-1, 0, 1], 3]
     ]
 }

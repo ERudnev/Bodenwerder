@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <format>
+#include <string>
 #include <vector>
 
 namespace rmmr::resource::geometry {

@@ -20,8 +20,5 @@
       }
     }
   ],
-  "presentationGeometry": {
-    "pack": "Eltanin::armour",
-    "entry": "#p1111#window_two_rows"
-  }
+  "presentationGeometry": "fittings/mounts/armour::#p1111#window_two_rows"
 }

@@ -1,7 +1,6 @@
 {
-    "devices",
-    "Eltanin",
-    "meshes/fittings/devices/cannon_temp_solid.lwo",
+    "fittings/devices/cannon_temp_solid",
+    "Eltanin/meshes/fittings/devices/cannon_temp_solid.lwo",
     "Eltanin::mech",
     [
         {"armor_light", {"Eltanin::hull", [{"albedoMap", "gray_plated_steel.png"}]}},

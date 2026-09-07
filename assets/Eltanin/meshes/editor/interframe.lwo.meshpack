@@ -1,7 +1,6 @@
 {
-    "interframe",
-    "Eltanin",
-    "meshes/editor/interframe.lwo",
+    "editor/interframe",
+    "Eltanin/meshes/editor/interframe.lwo",
     "Eltanin::mech",
     [
         {"metal_cut", {"Eltanin::hull", [{"albedoMap", "pewter2.bmp"}]}},

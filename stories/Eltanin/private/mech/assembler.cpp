@@ -21,6 +21,7 @@
 #include <base/logging.h>
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <map>
 #include <utility>
@@ -106,22 +107,16 @@ namespace eltanin::mech {
             return asset.entries[resolved.entry].origin;
         }
 
-        auto firstLatticeHull(const Mount::Quantum& mount) -> const LatticeHull* {
-            for (const auto& element : mount.elements) {
-                if (element.latticeHull.has_value())
-                    return &*element.latticeHull;
+        auto resolvePresentation(Reading context, const Mount::Quantum& mount, const string& entry) -> base::maybe<resource::meshpack::Asset::Resolved> {
+            for (const auto& part : mount.presentationGeometry) {
+                if (entry.empty() or part.entry == entry) {
+                    const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, part.pack);
+                    if (not packId)
+                        return {};
+                    return with<resource::meshpack::Asset>::resolve(context, *packId, part.entry);
+                }
             }
-            return nullptr;
-        }
-
-        auto firstPresentationGeometry(Reading context, const Mount::Quantum& mount) -> base::maybe<resource::meshpack::Asset::Resolved> {
-            if (mount.presentationGeometry.empty())
-                return {};
-            const auto& part = mount.presentationGeometry.front();
-            const auto packId = with<resource::Assets>::find<resource::meshpack::Asset>(context, part.pack);
-            if (not packId)
-                return {};
-            return with<resource::meshpack::Asset>::resolve(context, *packId, part.entry);
+            return {};
         }
 
         struct LoopLess {
@@ -176,26 +171,44 @@ namespace eltanin::mech {
             return loop;
         }
 
-        auto rotateLocal(space::orient::key rotation, index3 local) -> index3 {
-            const auto& matrix = space::orient::matrix[static_cast<std::size_t>(rotation)];
-            const auto rotated = matrix * space::ivec3{local.x, local.y, local.z};
-            return index3{.x = rotated.x, .y = rotated.y, .z = rotated.z};
-        }
-
-        auto worldPoint(const space::Transform& transform, index3 local) -> index3 {
-            const auto rotated = rotateLocal(transform.rotation, local);
-            return index3{.x = transform.grid.x + rotated.x, .y = transform.grid.y + rotated.y, .z = transform.grid.z + rotated.z};
+        auto worldPoint(const space::Transform& transform, ivec3 doubled, index3 local) -> index3 {
+            return space::worldLattice(transform, doubled, local);
         }
 
         auto worldFace(const space::Transform& transform, const Attachment& attachment, const vector<integer>& indices) -> vector<index3> {
+            const auto doubled = space::doubledCenter(attachment.points);
             vector<index3> loop;
             loop.reserve(indices.size());
             for (const auto index : indices) {
                 if (index < 0 or static_cast<std::size_t>(index) >= attachment.points.size())
                     return {};
-                loop.push_back(worldPoint(transform, attachment.points[static_cast<std::size_t>(index)]));
+                loop.push_back(worldPoint(transform, doubled, attachment.points[static_cast<std::size_t>(index)]));
             }
             return loop;
+        }
+
+        // Same seating as the editor: DiscretePose at world(local 0) + R·(plateOrigin − first presentation origin).
+        auto latticeFromMeters(vec3 meters) -> index3 {
+            const float edge = space::local::edge2meters;
+            return index3{
+                .x = static_cast<int>(std::lround(static_cast<double>(meters.x) / static_cast<double>(edge))),
+                .y = static_cast<int>(std::lround(static_cast<double>(meters.y) / static_cast<double>(edge))),
+                .z = static_cast<int>(std::lround(static_cast<double>(meters.z) / static_cast<double>(edge))),
+            };
+        }
+
+        auto plateVisualGrid(Reading context, const Mount::Quantum& mount, const resource::meshpack::Asset::Resolved& plate, const space::Transform& transform) -> index3 {
+            const auto doubled = space::doubledCenter(mount.attachment.points);
+            const auto part = entryOrigin(context, plate);
+            const auto partLocal = part ? latticeFromMeters(*part) : index3{.x = 0, .y = 0, .z = 0};
+            index3 anchorLocal{.x = 0, .y = 0, .z = 0};
+            if (not mount.presentationGeometry.empty()) {
+                if (const auto first = resolvePresentation(context, mount, mount.presentationGeometry.front().entry)) {
+                    if (const auto origin = entryOrigin(context, *first))
+                        anchorLocal = latticeFromMeters(*origin);
+                }
+            }
+            return worldPoint(transform, doubled, index3{.x = partLocal.x - anchorLocal.x, .y = partLocal.y - anchorLocal.y, .z = partLocal.z - anchorLocal.z});
         }
 
         using Primitive = Construction::Primitive;
@@ -324,25 +337,32 @@ namespace eltanin::mech {
                     continue;
                 }
                 const auto& mount = with<Mount>::get(context, *mountId);
-                const auto* hull = firstLatticeHull(mount);
-                if (not hull or hull->faces.size() != 1)
-                    continue;
-                auto loop = worldFace(placed.transform, mount.attachment, hull->faces.front());
-                if (loop.size() < 2 or hasDuplicateVertex(loop))
-                    continue;
-                const auto key = cycleKey(loop);
-                auto found = platesAt.find(key);
-                if (found == platesAt.end()) {
-                    const auto id = takeId();
-                    construction.plates.emplace(id, primitiveOn(loop, mount.mass, hull->thickness, weldUnit));
-                    found = platesAt.emplace(key, id).first;
-                } else {
-                    auto& plate = construction.plates.at(found->second);
-                    addMass(plate, mount.mass);
-                    if (hull->thickness > plate.thickness)
-                        plate.thickness = hull->thickness;
+                for (const auto& element : mount.elements) {
+                    if (not element.latticeHull.has_value())
+                        continue;
+                    const auto& hull = *element.latticeHull;
+                    if (hull.faces.size() != 1)
+                        continue;
+                    auto loop = worldFace(placed.transform, mount.attachment, hull.faces.front());
+                    if (loop.size() < 2 or hasDuplicateVertex(loop))
+                        continue;
+                    const auto key = cycleKey(loop);
+                    auto found = platesAt.find(key);
+                    if (found == platesAt.end()) {
+                        const auto id = takeId();
+                        construction.plates.emplace(id, primitiveOn(loop, mount.mass, hull.thickness, weldUnit));
+                        found = platesAt.emplace(key, id).first;
+                    } else {
+                        auto& plate = construction.plates.at(found->second);
+                        addMass(plate, mount.mass);
+                        if (hull.thickness > plate.thickness)
+                            plate.thickness = hull.thickness;
+                    }
+                    auto entry = element.name;
+                    if (entry.empty() and not mount.presentationGeometry.empty())
+                        entry = mount.presentationGeometry.front().entry;
+                    fragments.ofPlate.push_back(Construct::ActorFragments::OfPlate{.plate = found->second, .mount = placed.mount, .entry = std::move(entry), .transform = placed.transform});
                 }
-                fragments.ofPlate.push_back(Construct::ActorFragments::OfPlate{.plate = found->second, .mount = placed.mount, .transform = placed.transform});
             }
 
             compileParticles(construction);
@@ -410,17 +430,18 @@ namespace eltanin::mech {
             const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
             if (not mountId)
                 continue;
-            const auto resolved = firstPresentationGeometry(context, with<Mount>::get(context, *mountId));
+            const auto& mount = with<Mount>::get(context, *mountId);
+            const auto resolved = resolvePresentation(context, mount, piece.entry);
             if (not resolved)
                 continue;
-            occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});
+            occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = plateVisualGrid(context, mount, *resolved, piece.transform), .ori = piece.transform.rotation}});
             visualOf.push_back(piece.plate);
         }
         for (const auto& piece : fragments.ofVolume) {
             const auto mountId = with<resource::Assets>::find<Mount>(context, piece.mount);
             if (not mountId)
                 continue;
-            const auto resolved = firstPresentationGeometry(context, with<Mount>::get(context, *mountId));
+            const auto resolved = resolvePresentation(context, with<Mount>::get(context, *mountId), {});
             if (not resolved)
                 continue;
             occurrences.push_back(scene::actor::Mesh::Occurrence{.entry = *resolved, .pose = renderer::DiscretePose{.pos = piece.transform.grid, .ori = piece.transform.rotation}});

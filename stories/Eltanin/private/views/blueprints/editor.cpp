@@ -325,7 +325,7 @@ namespace eltanin::views {
 
         state.mainScene.root = root;
         state.mainScene.camera = camera;
-        state.interframe = with<Assets>::find<meshpack::Asset>(context, Unit::Name::from("Eltanin", "interframe"));
+        state.interframe = with<Assets>::find<meshpack::Asset>(context, Unit::Name::from("", "editor/interframe"));
         state.ghostMaterial = with<Assets>::find<::rmmr::resource::material::Asset>(context, Unit::Name::from("Eltanin", "clipboardGhost"));
         if (not state.ghostMaterial)
             return (void)context.refuse("eltanin::views::Blueprints::create: clipboardGhost material missing");

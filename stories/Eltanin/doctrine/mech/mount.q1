@@ -22,12 +22,11 @@ namespace eltanin
       latticeHull: LatticeHull?
       box: Box?
 
-    // Library entry: placeable equipment.
-    // Disk: fittings/<shelf>/*.json; unit Eltanin::<shelf>.<stem>.
+    // Disk: fittings/<dir>/*.json
     feature Mount of rmmr::resource::Unit
       struct PresentationGeometry
         pack: rmmr::resource::Unit::Name
-        entry: string
+        entry: string // JSON: "pack::entry" (first :: splits)
       one
         name: string
         author: string
@@ -36,6 +35,6 @@ namespace eltanin
         elements: vector<Element>
         presentationGeometry: vector<PresentationGeometry>
         role: Role?
-        file: filename // kit-relative; under fittings/<shelf>/
+        file: filename // kit-relative; under fittings/
         >load()
         >save()

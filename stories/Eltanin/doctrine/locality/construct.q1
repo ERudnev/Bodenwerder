@@ -26,6 +26,7 @@ namespace eltanin
         struct OfPlate
           plate: mech::Construction::Primitive::Id
           mount: rmmr::resource::Unit::Name
+          entry: string // meshpack entry; LAYR name when the plate is a named element
           transform: mech::space::Transform
         struct OfVolume
           volume: mech::Construction::Primitive::Id

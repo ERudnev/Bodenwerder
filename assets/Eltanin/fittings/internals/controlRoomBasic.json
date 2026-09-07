@@ -45,10 +45,10 @@
     }
   ],
   "presentationGeometry": [
-    { "pack": "Eltanin::controlRoomSmall", "entry": "#K8#root" },
-    { "pack": "Eltanin::controlRoomSmall", "entry": "headUnit" },
-    { "pack": "Eltanin::controlRoomSmall", "entry": "pilotSeat" },
-    { "pack": "Eltanin::controlRoomSmall", "entry": "specialDevice" }
+    "fittings/devices/controlRoomSmall::#K8#root",
+    "fittings/devices/controlRoomSmall::headUnit",
+    "fittings/devices/controlRoomSmall::pilotSeat",
+    "fittings/devices/controlRoomSmall::specialDevice"
   ],
   "role": "control"
 }

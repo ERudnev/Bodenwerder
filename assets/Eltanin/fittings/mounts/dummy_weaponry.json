@@ -15,9 +15,6 @@
     ]
   },
   "elements": [],
-  "presentationGeometry": {
-    "pack": "Eltanin::attachments",
-    "entry": "box"
-  },
+  "presentationGeometry": "editor/attachments::box",
   "role": "weaponry"
 }

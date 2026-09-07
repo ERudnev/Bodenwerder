@@ -23,6 +23,15 @@
       }
     },
     {
+      "name": "#p1111#armour",
+      "latticeHull": {
+        "thickness": 0.2,
+        "faces": [
+          [2, 6, 7, 3]
+        ]
+      }
+    },
+    {
       "name": "tower",
       "box": {
         "min": [-1.32, -1.02, -1.22],
@@ -45,10 +54,10 @@
     }
   ],
   "presentationGeometry": [
-    { "pack": "Eltanin::devices", "entry": "#k8#main" },
-    { "pack": "Eltanin::devices", "entry": "tower" },
-    { "pack": "Eltanin::devices", "entry": "gun" },
-    { "pack": "Eltanin::devices", "entry": "barrel" },
-    { "pack": "Eltanin::devices", "entry": "#p1111#armour" }
+    "fittings/devices/cannon_temp_solid::#k8#main",
+    "fittings/devices/cannon_temp_solid::tower",
+    "fittings/devices/cannon_temp_solid::gun",
+    "fittings/devices/cannon_temp_solid::barrel",
+    "fittings/devices/cannon_temp_solid::#p1111#armour"
   ]
 }

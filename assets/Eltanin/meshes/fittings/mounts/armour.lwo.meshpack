@@ -1,7 +1,6 @@
 {
-    "armour",
-    "Eltanin",
-    "meshes/fittings/mounts/armour.lwo",
+    "fittings/mounts/armour",
+    "Eltanin/meshes/fittings/mounts/armour.lwo",
     "Eltanin::mech",
     [
         {"armor", {"Eltanin::hull", [{"albedoMap", "gray_plated_steel.png"}]}},
