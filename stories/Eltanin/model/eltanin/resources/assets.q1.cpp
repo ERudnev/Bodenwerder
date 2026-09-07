@@ -38,7 +38,6 @@ namespace eltanin::resource {
             mech::Mount::Quantum{
                 .name = {},
                 .author = {},
-                .mass = 0.0f,
                 .attachment = mech::Attachment{.points = {}},
                 .elements = {},
                 .presentationGeometry = {},

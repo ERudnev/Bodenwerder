@@ -19,6 +19,7 @@ namespace eltanin
 
     struct Element
       name: string
+      mass: float // authored kg; not derived from box volume
       latticeHull: LatticeHull?
       box: Box?
 
@@ -30,11 +31,11 @@ namespace eltanin
       one
         name: string
         author: string
-        mass: float
         attachment: Attachment
         elements: vector<Element>
         presentationGeometry: vector<PresentationGeometry>
         role: Role?
         file: filename // kit-relative; under fittings/
+        ?mass()->float // sum of element masses; no root mass on disk
         >load()
         >save()

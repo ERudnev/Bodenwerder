@@ -67,6 +67,13 @@ namespace eltanin::mech {
         return true;
     }
 
+    auto Mount::Quantum::mass() const -> float {
+        float total = 0.0f;
+        for (const auto& element : elements)
+            total += element.mass;
+        return total;
+    }
+
     namespace {
 
         struct Cursor {
@@ -253,12 +260,15 @@ namespace eltanin::mech {
         auto take_element(Cursor& cursor) -> Element {
             expect(cursor, '{');
             string name;
+            base::maybe<float> mass;
             base::maybe<LatticeHull> hull;
             base::maybe<Box> box;
             for (;;) {
                 const auto key = take_key(cursor);
                 if (key == "name")
                     name = take_string(cursor);
+                else if (key == "mass")
+                    mass = take_number(cursor);
                 else if (key == "latticeHull")
                     hull = take_lattice_hull(cursor);
                 else if (key == "box")
@@ -270,9 +280,11 @@ namespace eltanin::mech {
                 expect(cursor, ',');
             }
             expect(cursor, '}');
+            if (not mass.has_value())
+                throw std::runtime_error("mount: element needs mass");
             if (not hull.has_value() and not box.has_value())
                 throw std::runtime_error("mount: element needs latticeHull or box");
-            return Element{.name = std::move(name), .latticeHull = std::move(hull), .box = std::move(box)};
+            return Element{.name = std::move(name), .mass = *mass, .latticeHull = std::move(hull), .box = std::move(box)};
         }
 
         auto take_elements(Cursor& cursor) -> vector<Element> {
@@ -392,9 +404,6 @@ namespace eltanin::mech {
             expect_key(cursor, "author");
             auto author = take_string(cursor);
             expect(cursor, ',');
-            expect_key(cursor, "mass");
-            const auto mass = take_number(cursor);
-            expect(cursor, ',');
             expect_key(cursor, "attachment");
             auto attachment = take_attachment(cursor);
             expect(cursor, ',');
@@ -413,7 +422,6 @@ namespace eltanin::mech {
             return Mount::Quantum{
                 .name = std::move(name),
                 .author = std::move(author),
-                .mass = mass,
                 .attachment = std::move(attachment),
                 .elements = std::move(elements),
                 .presentationGeometry = std::move(presentationGeometry),
@@ -427,7 +435,6 @@ namespace eltanin::mech {
             out << "{\n";
             out << "  \"name\": \"" << data.name << "\",\n";
             out << "  \"author\": \"" << data.author << "\",\n";
-            out << "  \"mass\": " << data.mass << ",\n";
             out << "  \"attachment\": {\n";
             out << "    \"points\": [\n";
             for (std::size_t i = 0; i < data.attachment.points.size(); ++i) {
@@ -442,6 +449,7 @@ namespace eltanin::mech {
                 out << "    {\n";
                 if (not element.name.empty())
                     out << "      \"name\": \"" << element.name << "\",\n";
+                out << "      \"mass\": " << element.mass << ",\n";
                 if (element.latticeHull.has_value()) {
                     out << "      \"latticeHull\": ";
                     write_lattice_hull(out, *element.latticeHull, "      ");

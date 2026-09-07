@@ -1,5 +1,7 @@
 #include "mech/semantics/space.h"
 
+#include <eltanin/mech/mount.q1.h>
+
 #include <algorithm>
 
 namespace eltanin::mech::space::orient {
@@ -130,12 +132,13 @@ namespace eltanin::mech::space {
         return ivec3{delta.x / 2, delta.y / 2, delta.z / 2};
     }
 
-    auto worldLattice(const Transform& transform, ivec3 doubled, index3 local) -> index3 {
-        const auto& matrix = orient::matrix[static_cast<std::size_t>(transform.rotation)];
-        const auto rotated = matrix * ivec3{local.x, local.y, local.z};
+    auto worldLattice(const Transform& transform, const Attachment& attachment, index3 local) -> index3 {
+        const auto rotated = orient::matrix[static_cast<std::size_t>(transform.rotation)] * ivec3{local.x, local.y, local.z};
         ivec3 shift{0, 0, 0};
-        if (const auto found = centerShift(transform.rotation, doubled))
-            shift = *found;
+        if (not attachment.flatMounted()) {
+            if (const auto found = centerShift(transform.rotation, doubledCenter(attachment.points)))
+                shift = *found;
+        }
         return index3{.x = transform.grid.x + rotated.x + shift.x, .y = transform.grid.y + rotated.y + shift.y, .z = transform.grid.z + rotated.z + shift.z};
     }
 

@@ -11,6 +11,10 @@
 
 #include <glm/common.hpp>
 
+namespace eltanin::mech {
+    struct Attachment;
+}
+
 namespace eltanin::mech::space {
 
     using base::common_types::ivec3;
@@ -73,7 +77,8 @@ namespace eltanin::mech::space {
     // Lattice shift so R·p + shift is rotation about d/2. Empty if the image is off-lattice (odd d−R·d).
     auto centerShift(orient::key orientation, ivec3 doubledCenter) -> base::maybe<ivec3>;
 
-    // World lattice of a local attachment point. transform.grid is identity seating (does not chase local 0).
-    auto worldLattice(const Transform& transform, ivec3 doubledCenter, index3 local) -> index3;
+    // Two pivots, one map: flat attachment → R·local + grid (plates, authored about corner 0).
+    // Volume → same plus centerShift about AABB (cannons sit in the cell).
+    auto worldLattice(const Transform& transform, const ::eltanin::mech::Attachment& attachment, index3 local) -> index3;
 
 } // namespace eltanin::mech::space

@@ -1,7 +1,6 @@
 {
   "name": "Armour p121 deco steepline R",
   "author": "Eltanin",
-  "mass": 2000,
   "attachment": {
     "points": [
       [0, 0, 0],
@@ -11,6 +10,7 @@
   },
   "elements": [
     {
+      "mass": 2000,
       "latticeHull": {
         "thickness": 0.2,
         "faces": [

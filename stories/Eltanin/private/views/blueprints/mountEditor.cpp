@@ -186,12 +186,11 @@ namespace eltanin::views::blueprints::mountEditor {
         const auto found = fits.find(orderedShape(cursor));
         if (found == fits.end())
             return {};
-        const auto doubled = mech::space::doubledCenter(attachment.points);
         const auto identity = mech::space::Transform{.grid = base::common_types::index3{.x = 0, .y = 0, .z = 0}, .rotation = found->second};
         std::vector<base::common_types::index3> rotated;
         rotated.reserve(attachment.points.size());
         for (const auto& point : attachment.points)
-            rotated.push_back(mech::space::worldLattice(identity, doubled, point));
+            rotated.push_back(mech::space::worldLattice(identity, attachment, point));
         const auto localOrigin = lexMin(rotated);
         const auto cursorOrigin = lexMin(cursor);
         return mech::space::Transform{
@@ -201,11 +200,10 @@ namespace eltanin::views::blueprints::mountEditor {
     }
 
     auto worldPoints(const mech::Attachment& attachment, const mech::space::Transform& transform) -> std::vector<base::common_types::index3> {
-        const auto doubled = mech::space::doubledCenter(attachment.points);
         std::vector<base::common_types::index3> out;
         out.reserve(attachment.points.size());
         for (const auto& point : attachment.points)
-            out.push_back(mech::space::worldLattice(transform, doubled, point));
+            out.push_back(mech::space::worldLattice(transform, attachment, point));
         return out;
     }
 

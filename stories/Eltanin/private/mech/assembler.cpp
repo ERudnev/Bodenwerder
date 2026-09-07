@@ -171,18 +171,13 @@ namespace eltanin::mech {
             return loop;
         }
 
-        auto worldPoint(const space::Transform& transform, ivec3 doubled, index3 local) -> index3 {
-            return space::worldLattice(transform, doubled, local);
-        }
-
         auto worldFace(const space::Transform& transform, const Attachment& attachment, const vector<integer>& indices) -> vector<index3> {
-            const auto doubled = space::doubledCenter(attachment.points);
             vector<index3> loop;
             loop.reserve(indices.size());
             for (const auto index : indices) {
                 if (index < 0 or static_cast<std::size_t>(index) >= attachment.points.size())
                     return {};
-                loop.push_back(worldPoint(transform, doubled, attachment.points[static_cast<std::size_t>(index)]));
+                loop.push_back(space::worldLattice(transform, attachment, attachment.points[static_cast<std::size_t>(index)]));
             }
             return loop;
         }
@@ -198,7 +193,6 @@ namespace eltanin::mech {
         }
 
         auto plateVisualGrid(Reading context, const Mount::Quantum& mount, const resource::meshpack::Asset::Resolved& plate, const space::Transform& transform) -> index3 {
-            const auto doubled = space::doubledCenter(mount.attachment.points);
             const auto part = entryOrigin(context, plate);
             const auto partLocal = part ? latticeFromMeters(*part) : index3{.x = 0, .y = 0, .z = 0};
             index3 anchorLocal{.x = 0, .y = 0, .z = 0};
@@ -208,7 +202,7 @@ namespace eltanin::mech {
                         anchorLocal = latticeFromMeters(*origin);
                 }
             }
-            return worldPoint(transform, doubled, index3{.x = partLocal.x - anchorLocal.x, .y = partLocal.y - anchorLocal.y, .z = partLocal.z - anchorLocal.z});
+            return space::worldLattice(transform, mount.attachment, index3{.x = partLocal.x - anchorLocal.x, .y = partLocal.y - anchorLocal.y, .z = partLocal.z - anchorLocal.z});
         }
 
         using Primitive = Construction::Primitive;
@@ -350,11 +344,11 @@ namespace eltanin::mech {
                     auto found = platesAt.find(key);
                     if (found == platesAt.end()) {
                         const auto id = takeId();
-                        construction.plates.emplace(id, primitiveOn(loop, mount.mass, hull.thickness, weldUnit));
+                        construction.plates.emplace(id, primitiveOn(loop, element.mass, hull.thickness, weldUnit));
                         found = platesAt.emplace(key, id).first;
                     } else {
                         auto& plate = construction.plates.at(found->second);
-                        addMass(plate, mount.mass);
+                        addMass(plate, element.mass);
                         if (hull.thickness > plate.thickness)
                             plate.thickness = hull.thickness;
                     }

@@ -261,14 +261,11 @@ namespace eltanin::views::blueprints::geometry {
     }
 
     auto gridActorPose(const mech::space::Transform& transform, const mech::Attachment& attachment) -> Pose {
+        const auto plant = mech::space::worldLattice(transform, attachment, mech::space::index3{.x = 0, .y = 0, .z = 0});
         const auto rotationKey = static_cast<mech::space::orient::key>(transform.rotation);
         const mat3 rotation = mat3(mech::space::orient::matrix[static_cast<std::size_t>(rotationKey)]);
         const float edge = mech::space::local::edge2meters;
-        const auto doubled = mech::space::doubledCenter(attachment.points);
-        mech::space::ivec3 shift{0, 0, 0};
-        if (const auto found = mech::space::centerShift(rotationKey, doubled))
-            shift = *found;
-        const Pos position{static_cast<float>(transform.grid.x + shift.x) * edge, static_cast<float>(transform.grid.y + shift.y) * edge, static_cast<float>(transform.grid.z + shift.z) * edge};
+        const Pos position{static_cast<float>(plant.x) * edge, static_cast<float>(plant.y) * edge, static_cast<float>(plant.z) * edge};
         return Pose{.position = position, .rotation = glm::normalize(glm::quat_cast(rotation))};
     }
 

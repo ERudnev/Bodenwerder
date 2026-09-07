@@ -35,11 +35,10 @@ namespace eltanin::views::blueprints::mountBounds {
         if (attachment.points.empty())
             return {};
 
-        const auto doubled = mech::space::doubledCenter(attachment.points);
-        auto gmin = mech::space::worldLattice(transform, doubled, attachment.points.front());
+        auto gmin = mech::space::worldLattice(transform, attachment, attachment.points.front());
         auto gmax = gmin;
         for (std::size_t i = 1; i < attachment.points.size(); ++i) {
-            const auto world = mech::space::worldLattice(transform, doubled, attachment.points[i]);
+            const auto world = mech::space::worldLattice(transform, attachment, attachment.points[i]);
             gmin.x = std::min(gmin.x, world.x);
             gmin.y = std::min(gmin.y, world.y);
             gmin.z = std::min(gmin.z, world.z);

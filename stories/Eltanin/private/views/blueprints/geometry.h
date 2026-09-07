@@ -113,7 +113,7 @@ namespace eltanin::views::blueprints {
     // Continuous actor pose for skeleton quarks: mesh local 0 at the cell corner selected by ori + Entry.origin.
     auto actorPose(const mech::space::cell::Placement& quarkPose, rmmr::Pos entryOrigin) -> rmmr::Pose;
 
-    // Occupancy seating: transform.grid stays the home cell; pose rotates about the attachment AABB center.
+    // First-presentation pivot: plates at transform.grid; volumes at grid + AABB-center shift.
     auto gridActorPose(const mech::space::Transform& transform, const mech::Attachment&) -> rmmr::Pose;
 
     auto resolveKnot(Reading, rmmr::resource::meshpack::Asset::Id pack, mech::skeleton::Corner::Kind) -> base::maybe<rmmr::resource::meshpack::Asset::Resolved>;

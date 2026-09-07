@@ -31,6 +31,7 @@ namespace eltanin::mech {
 
     struct Element {
         std::string name;
+        float mass;
         base::maybe<LatticeHull> latticeHull;
         base::maybe<Box> box;
     };
@@ -45,12 +46,13 @@ namespace eltanin::mech {
         struct Quantum {
             std::string name;
             std::string author;
-            float mass;
             Attachment attachment;
             vector<Element> elements;
             vector<PresentationGeometry> presentationGeometry;
             base::maybe<Role> role;
             filename file; // kit-relative; under fittings/<shelf>/
+
+            auto mass() const -> float; // sum of element masses
         };
         struct Actions : BaseActions {
             static void load(Writing, Id);

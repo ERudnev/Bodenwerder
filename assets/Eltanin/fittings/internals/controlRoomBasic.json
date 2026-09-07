@@ -1,7 +1,6 @@
 {
   "name": "Control Room Basic",
   "author": "CU Naval R&D",
-  "mass": 4000,
   "attachment": {
     "points": [
       [0, 0, 0],
@@ -17,6 +16,7 @@
   "elements": [
     {
       "name": "#K8#root",
+      "mass": 1800,
       "box": {
         "min": [0.2, 0.2, -3.8],
         "max": [3.8, 0.3, -0.2]
@@ -24,6 +24,7 @@
     },
     {
       "name": "headUnit",
+      "mass": 900,
       "box": {
         "min": [-0.3, -0.5, -0.62],
         "max": [0.3, 0.6, 0.6]
@@ -31,6 +32,7 @@
     },
     {
       "name": "pilotSeat",
+      "mass": 400,
       "box": {
         "min": [-0.22, -0.2799, -0.3722],
         "max": [0.2, 0.5272, 0.3784]
@@ -38,6 +40,7 @@
     },
     {
       "name": "specialDevice",
+      "mass": 900,
       "box": {
         "min": [-0.8, -0.8, -0.8],
         "max": [0.8, 0.8, 0.8]

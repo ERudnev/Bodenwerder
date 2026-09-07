@@ -1,7 +1,6 @@
 {
   "name": "Armour p1111",
   "author": "Eltanin",
-  "mass": 4000,
   "attachment": {
     "points": [
       [0, 0, 0],
@@ -12,6 +11,7 @@
   },
   "elements": [
     {
+      "mass": 4000,
       "latticeHull": {
         "thickness": 0.2,
         "faces": [
