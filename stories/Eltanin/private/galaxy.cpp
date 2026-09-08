@@ -18,7 +18,7 @@ namespace eltanin::resource {
         constexpr float k_disk_plateau_ly = 2.0f * k_kpc_ly;     // ~2 kpc plateau
         constexpr float k_disk_sigma_ly = 4.0f * k_kpc_ly;       // falloff width
         constexpr float k_disk_radius_max_ly = 15.0f * k_kpc_ly; // stellar disk ~15 kpc
-        constexpr float k_disk_height_ly = 0.3f * k_kpc_ly;      // thin disk ~300 pc
+        constexpr float k_disk_height_ly = 0.6f * k_kpc_ly;      // pancake ~600 pc (2× Y)
         constexpr float k_halo_scale_ly = 30.0f * k_kpc_ly;      // big round stellar halo
         constexpr float k_arm_count = 4.0f;
         constexpr float k_arm_tightness = 0.18f;

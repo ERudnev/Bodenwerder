@@ -119,8 +119,10 @@ namespace eltanin::locality::geo {
         cpu.layers.resize(static_cast<std::size_t>(mixChannels));
         const std::size_t voxelCount = static_cast<std::size_t>(cubeEdge * cubeEdge * cubeEdge);
         for (int channel = 0; channel < mixChannels; ++channel) {
-            const vec3 albedo = channel < static_cast<int>(table.size()) ? table[static_cast<std::size_t>(channel)].albedo : vec3{1.0f, 1.0f, 1.0f};
-            const float roughness = channel < static_cast<int>(table.size()) ? table[static_cast<std::size_t>(channel)].roughness : 0.5f;
+            const bool known = channel < static_cast<int>(table.size());
+            const vec3 albedo = known ? table[static_cast<std::size_t>(channel)].albedo : vec3{1.0f, 1.0f, 1.0f};
+            const float roughness = known ? table[static_cast<std::size_t>(channel)].roughness : 0.5f;
+            const float metalness = known ? table[static_cast<std::size_t>(channel)].metalness : 0.0f;
             auto& layer = cpu.layers[static_cast<std::size_t>(channel)];
             layer.resize(voxelCount * 4u);
             const int grainCells = 3 + channel % 4;
@@ -133,12 +135,18 @@ namespace eltanin::locality::geo {
                         const float w = static_cast<float>(z) / static_cast<float>(cubeEdge);
                         const float grain = fbmWrap(u, v, w, grainCells, channel * 131);
                         const float vein = fbmVein(u, v, w, veinAxis, 900 + channel);
-                        const float mix = 0.62f + 0.28f * grain + 0.10f * (vein - 0.5f) * roughness;
+                        const float lift = (metalness > 0.5f or channel == 6) ? 0.92f + 0.20f * grain : 0.62f + 0.28f * grain;
+                        const float mix = lift + 0.10f * (vein - 0.5f) * roughness;
                         const float height = glm::clamp(0.42f + 0.50f * grain + 0.16f * (vein - 0.5f), 0.0f, 1.0f);
+                        vec3 color{albedo.x * mix, albedo.y * mix, albedo.z * mix};
+                        if (channel == 6) {
+                            const float veinMask = glm::smoothstep(0.28f, 0.62f, vein);
+                            color = glm::mix(color, vec3{1.00f, 0.56f, 0.12f}, veinMask);
+                        }
                         const std::size_t index = static_cast<std::size_t>(x + cubeEdge * (y + cubeEdge * z)) * 4u;
-                        layer[index] = toByte(albedo.x * mix);
-                        layer[index + 1] = toByte(albedo.y * mix);
-                        layer[index + 2] = toByte(albedo.z * mix);
+                        layer[index] = toByte(color.x);
+                        layer[index + 1] = toByte(color.y);
+                        layer[index + 2] = toByte(color.z);
                         layer[index + 3] = toByte(height);
                     }
                 }

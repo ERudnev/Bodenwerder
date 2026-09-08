@@ -26,6 +26,7 @@
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/shaders.q1.h>
 #include <rmmr/resources/texpack.q1.h>
+#include <rmmr/resources/texture3array.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -35,9 +36,6 @@
 
 #include <numbers>
 #include <utility>
-
-#include <glm/geometric.hpp>
-#include <glm/gtc/quaternion.hpp>
 
 namespace eltanin {
 
@@ -220,6 +218,33 @@ namespace eltanin {
                     .blend = renderer::BlendMode::inherit,
                 });
         }
+        {
+            const auto& litQuantum = with<Material>::get(context, *shared->material.lit);
+            const auto shadowTechnique = litQuantum.techniques.find(renderer::Pass::shadow);
+            if (shadowTechnique == litQuantum.techniques.end())
+                return (void)context.refuse("eltanin::Game::addAssets: lit shadow technique missing");
+            const auto rockShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "rock"), item<shader::Loader>{.vertex = "shaders/rock.vert.glsl", .fragment = "shaders/rock.frag.glsl"});
+            with<Assets>::add_material(context, Name::from("Eltanin", "rock"), Material::Quantum{
+                .techniques = {
+                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, rockShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}), .glowSpread = true}},
+                    {renderer::Pass::shadow, Material::Technique{.program = shadowTechnique->second.program, .uniforms = {}, .glowSpread = false}},
+                },
+                .nearest = false,
+                .blend = renderer::BlendMode::inherit,
+            });
+            const auto boulderShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "boulder"), item<shader::Loader>{.vertex = "shaders/boulder.vert.glsl", .fragment = "shaders/boulder.frag.glsl"});
+            with<Assets>::add_material(context, Name::from("Eltanin", "boulder"), Material::Quantum{
+                .techniques = {
+                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, boulderShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}), .glowSpread = true}},
+                    {renderer::Pass::shadow, Material::Technique{.program = shadowTechnique->second.program, .uniforms = {}, .glowSpread = false}},
+                },
+                .nearest = false,
+                .blend = renderer::BlendMode::inherit,
+            });
+            const auto manager = with<Manager>::singleton(context);
+            const auto crustId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "crust")});
+            with<texture3array::Asset>::extend(context, crustId, texture3array::Asset::Quantum{.layerSize = index3{0, 0, 0}, .capacity = 0});
+        }
         scenario.loadResources(context, *shared);
 
         // Mech albedo catalog; editor meshpacks under meshes/editor.
@@ -350,7 +375,7 @@ namespace eltanin {
         }
 
         with<scene::Interface>::createGrid(context, root, window,
-            Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}),
+            Pose::from(scenario::Planeliod::origin, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .patternScale = 1.0f});
 
         if (not assets.sprites) {
@@ -364,10 +389,7 @@ namespace eltanin {
         };
         const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved);
 
-        const Pos cameraTarget{0.0f, 0.0f, 50.0f};
-        const Pos cameraPos = cameraTarget + glm::normalize(vec3{0.0f, 0.35f, -1.0f}) * 100.0f; // above-behind (−Z → +Z), 100 m
-        const Pose cameraPose{.position = cameraPos, .rotation = glm::quatLookAt(glm::normalize(cameraTarget - cameraPos), vec3{0.0f, 1.0f, 0.0f})};
-        const auto camera = with<scene::Interface>::createCamera(context, root, cameraPose, 100.0f * std::numbers::pi_v<float> / 180.0f);
+        const auto camera = with<scene::Interface>::createCamera(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), 100.0f * std::numbers::pi_v<float> / 180.0f);
         {
             // Local frame ~8192 m; 24-bit depth, no reverse-Z → near stays ≥1 m (far/near ≈ 16k).
             auto quantum = with<scene::Camera>::modify(context, camera);
@@ -378,14 +400,15 @@ namespace eltanin {
         with<scene::Interface>::createLight(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{-25.0f, -30.0f, 0.0f}), item<scene::Light>{.kind = scene::Light::Kind::directional, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 8.0f, .range = 0.0f});
 
         bindGameEntities(context);
-        scenario.populate(context, window);
-        // TODO: use this for some scenarios as time-saver: ui.assembler.spawnVel = vec3{0.0f, 0.0f, 10.0f}; // temporary: +Z approach toward ice asteroid
-
+        ui.assembler.spawnPos = scenario::Planeliod::origin;
         {
             auto world = with<World>::modify_global(context);
             world->sky = sky;
             world->camera = camera;
         }
+        scenario.populate(context, window);
+        // TODO: use this for some scenarios as time-saver: ui.assembler.spawnVel = vec3{0.0f, 0.0f, 10.0f}; // temporary: +Z approach toward ice asteroid
+
         with<World>::tetherEnvironment(context);
 
         world_view = View{.viewport = viewport, .scene = root, .camera = camera};

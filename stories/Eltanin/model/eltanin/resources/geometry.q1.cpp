@@ -14,6 +14,7 @@
 #include <numbers>
 #include <vector>
 
+#include <glm/common.hpp>
 #include <glm/geometric.hpp>
 
 namespace eltanin::resource {
@@ -25,10 +26,8 @@ namespace eltanin::resource {
     namespace {
 
         constexpr float k_mesh_radius = 100.0f;
-        constexpr float polarAngularDeg = 0.5f;
+        constexpr float polarAngularDeg = 2.5f; // ~5× old 0.5°; Lorentz core ≈ 10–15 px at FOV 100 / 5k (half-moon)
         constexpr float polarRadius = k_mesh_radius * 0.98f;
-        constexpr float k_ly_per_pc = 3.261563777f;
-        constexpr float k_m_sun_abs = 4.83f;
         // Sun: R≈8.2 kpc, z≈+20 pc (in the mid-plane — not lifted above the disk).
         constexpr float k_kpc_ly = 3261.56f;
         constexpr float k_pc_ly = 3.26156f;
@@ -77,10 +76,9 @@ namespace eltanin::resource {
             return vec3{r, g, b};
         }
 
-        auto apparent_magnitude_from_luminosity(float luminosity_sun, float distance_ly) -> float {
-            const float distance_pc = std::max(distance_ly / k_ly_per_pc, 1.0e-3f);
-            const float absolute = k_m_sun_abs - 2.5f * std::log10(std::max(luminosity_sun, 1.0e-8f));
-            return absolute + 5.0f * std::log10(distance_pc) - 5.0f;
+        auto punchTint(vec3 rgb) -> vec3 {
+            const float luma = glm::dot(rgb, vec3{0.2126f, 0.7152f, 0.0722f});
+            return glm::max(vec3{0.0f, 0.0f, 0.0f}, vec3{luma} + (rgb - vec3{luma}) * 1.85f);
         }
 
         auto direction_and_distance(const glm::vec3& position_ly) -> std::pair<glm::vec3, float> {
@@ -89,7 +87,9 @@ namespace eltanin::resource {
             if (distance < 1.0f) {
                 return {glm::vec3{0.0f, 1.0f, 0.0f}, 1.0f};
             }
-            return {offset / distance, distance};
+            const glm::vec3 galactic = offset / distance;
+            // Galaxy: Sol at +X, GC at origin. Local frame looks at GC along −Z: (x,y,z) → (z,y,x).
+            return {glm::vec3{galactic.z, galactic.y, galactic.x}, distance};
         }
 
         void emit_billboard(CpuPresentation& cpu, const PendingBillboard& billboard) {
@@ -138,27 +138,17 @@ namespace eltanin::resource {
 
             for (const Star& star : galaxy) {
                 const auto [direction, distance] = direction_and_distance(star.position_ly);
-                const float magnitude = apparent_magnitude_from_luminosity(star.luminosity_sun, distance);
-                // Near-field pop: ~50–100 local stars should read as bright neighbors (not just one).
-                // Soft 1/√d relative to ~250 ly, saturating so the very closest don't blow out alone.
-                constexpr float k_near_ly = 250.0f;
-                const float near_boost = std::clamp(
-                    std::sqrt(k_near_ly / std::max(distance, 25.0f)),
-                    0.55f,
-                    3.2f);
-                const float size_scale = std::clamp(
-                    std::pow(10.0f, -0.20f * (magnitude - 1.5f)) * near_boost,
-                    0.28f,
-                    7.0f);
-                const float brightness = std::clamp(
-                    std::pow(10.0f, -0.28f * (magnitude - 5.0f)) * near_boost,
-                    0.30f,
-                    7.0f);
-                const vec3 rgb = temperature_rgb(star.temperature_K) * brightness;
+                constexpr float distancePower = 1.25f;
+                constexpr float distanceRef = 400.0f;
+                constexpr float sizeFloor = 0.55f;
+                const float relative = std::max(star.luminosity_sun, 1.0e-8f) * std::pow(distanceRef / std::max(distance, 25.0f), distancePower);
+                const float sizeScale = std::clamp(sizeFloor * std::pow(std::max(relative, 1.0f), 0.15f), sizeFloor, sizeFloor * 2.8f);
+                const float brightness = std::clamp(2.2f * std::pow(std::max(relative, 1.0f), 0.10f), 2.2f, 3.8f);
+                const vec3 rgb = punchTint(temperature_rgb(star.temperature_K)) * brightness;
                 emit_billboard(cpu, PendingBillboard{
                     .direction = direction,
                     .radius = k_mesh_radius,
-                    .half = star_half * size_scale,
+                    .half = star_half * sizeScale,
                     .color = vec4{rgb, 1.0f},
                     .uv = starUv,
                 });
@@ -177,7 +167,7 @@ namespace eltanin::resource {
                     .direction = polar.direction,
                     .radius = polarRadius,
                     .half = polarHalf,
-                    .color = vec4{polar.rgb, 1.0f},
+                    .color = vec4{polar.rgb * 2.4f, 1.0f},
                     .uv = starUv,
                 });
             }

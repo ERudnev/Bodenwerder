@@ -5,6 +5,7 @@
 #include <rmmr/semantics/geometry.h>
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <utility>
 
@@ -324,10 +325,12 @@ namespace eltanin::locality::geo {
             return packMix(lerpWeights(c0, c1, frac.z));
         };
         cpu.mix0.resize(cpu.positions.size(), Mix{0});
-        cpu.cohesion.assign(cpu.positions.size(), 0.0f);
+        cpu.cohesion.resize(cpu.positions.size());
         for (std::size_t vertex = 0; vertex < cpu.positions.size(); ++vertex) {
             const vec3 inward = cpu.positions[vertex] - cpu.normals[vertex] * (0.25f * meters);
             cpu.mix0[vertex] = mixAt(inward);
+            const float speck = glm::clamp(0.5f + 0.5f * std::sin(glm::dot(cpu.positions[vertex], vec3{0.19f, 0.11f, 0.17f})), 0.0f, 1.0f);
+            cpu.cohesion[vertex] = glm::mix(0.40f, 0.96f, speck);
         }
         return cpu;
     }

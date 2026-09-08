@@ -49,7 +49,7 @@ namespace eltanin::phys::rigid {
             const double k = double(Settings::shapePull);
             for (std::size_t index = 0; index < crystal.particles.size(); ++index) {
                 Particle& particle = crystal.particles[index];
-                if (particle.cohesion <= 0.0f)
+                if (particle.mass <= 0.0f)
                     continue;
                 const dvec3 goal = origin + dvec3{rotation * crystal.shape[index]};
                 verlet::semiKick(particle, (goal - particle.position) * k, Settings::Resilience::shapePull);
@@ -127,7 +127,7 @@ namespace eltanin::phys::rigid {
             std::size_t live = 0;
             for (std::size_t index = 0; index < count; ++index) {
                 const Particle& particle = crystal.particles[index];
-                if (particle.mass <= 0.0f or particle.cohesion <= 0.0f)
+                if (particle.mass <= 0.0f)
                     continue;
                 restCentered[live] = crystal.shape[index];
                 worldCentered[live] = vec3{particle.position};

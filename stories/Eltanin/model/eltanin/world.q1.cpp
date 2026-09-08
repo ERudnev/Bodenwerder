@@ -31,6 +31,13 @@ namespace eltanin {
         with<World>::modify_global(context)->step += static_cast<integer>(dt_us / k_us_per_step);
     }
 
+    void World::Actions::placeCamera(Writing context, rmmr::Pose pose) {
+        const auto camera = with<World>::get_global(context).camera;
+        if (not camera)
+            return (void)context.refuse("eltanin::World::placeCamera: camera missing");
+        with<rmmr::scene::Node>::modify(context, *camera)->pose = pose;
+    }
+
     void World::Actions::tetherEnvironment(Writing context) {
         const auto& global = with<World>::get_global(context);
         if (not global.sky || not global.camera) {

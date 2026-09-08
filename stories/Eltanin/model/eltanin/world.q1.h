@@ -21,6 +21,7 @@ namespace eltanin {
         };
         struct Actions : BaseActions {
             static void advance(Writing, int64 dt_us);
+            static void placeCamera(Writing, rmmr::Pose);
             static void tetherEnvironment(Writing);
         };
         struct Internals;

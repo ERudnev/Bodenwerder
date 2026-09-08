@@ -32,19 +32,19 @@ layout(binding = 3) uniform sampler3D u_minerals[16];
 // Must match Mineral::table()
 const float mineralScale[16] = float[](
     0.08, 0.25, 0.28, 0.22,
-    0.45, 0.35, 0.55, 0.55,
+    0.45, 0.35, 0.32, 0.55,
     0.40, 0.38, 0.50, 0.70,
     0.42, 0.48, 0.20, 0.90
 );
 const float mineralRoughness[16] = float[](
     0.25, 0.72, 0.75, 0.68,
-    0.88, 0.92, 0.32, 0.30,
+    0.88, 0.92, 0.40, 0.30,
     0.48, 0.62, 0.38, 0.22,
     0.55, 0.45, 0.40, 0.12
 );
 const float mineralMetalness[16] = float[](
     0.00, 0.00, 0.00, 0.00,
-    0.00, 0.00, 1.00, 1.00,
+    0.00, 0.00, 0.55, 1.00,
     0.55, 0.20, 1.00, 1.00,
     0.35, 0.70, 0.00, 0.80
 );
@@ -68,7 +68,7 @@ const float mineralGlowK[16] = float[](
 );
 const vec3 mineralSinter[16] = vec3[](
     vec3(0.220, 0.659, 1.000), vec3(0.165, 0.227, 0.098), vec3(0.141, 0.118, 0.098), vec3(0.541, 0.518, 0.486),
-    vec3(0.384, 0.290, 0.188), vec3(0.063, 0.055, 0.047), vec3(0.769, 0.729, 0.690), vec3(0.824, 0.800, 0.729),
+    vec3(0.384, 0.290, 0.188), vec3(0.063, 0.055, 0.047), vec3(1.000, 0.659, 0.251), vec3(0.824, 0.800, 0.729),
     vec3(0.659, 0.518, 0.227), vec3(0.251, 0.125, 0.086), vec3(0.910, 0.604, 0.306), vec3(0.769, 0.784, 0.824),
     vec3(0.290, 0.329, 0.275), vec3(0.204, 0.220, 0.157), vec3(0.973, 0.980, 0.988), vec3(0.659, 0.251, 1.000)
 );
@@ -77,7 +77,7 @@ const float k_shadow_bias = 0.0005;
 const float pi = 3.14159265;
 const float bumpHeightMeters = 0.018;
 const float gritWeight = 0.30;
-const float sinterStart = 0.8;
+const float sinterStart = 0.45;
 
 float sample_shadow(vec2 uv, float current_depth) {
     float closest = texture(u_shadowMap, uv).r;
@@ -204,7 +204,7 @@ void applyHeat(int channel, float weight, float kelvin, inout vec3 albedo, inout
 
 vec3 glazeAlbedo(vec3 albedo, vec3 sinterTint, float sinter) {
     float luma = max(dot(albedo, vec3(0.2126, 0.7152, 0.0722)), 0.001);
-    vec3 glaze = sinterTint * mix(vec3(1.0), albedo / luma, 0.35);
+    vec3 glaze = sinterTint * mix(vec3(1.0), albedo / luma, 0.18);
     return mix(albedo, glaze, sinter);
 }
 
@@ -253,7 +253,7 @@ void main() {
     vec3 kD = (vec3(1.0) - F) * (1.0 - metalness);
     vec3 diffuse = kD * albedo;
 
-    float cavity = mix(0.58, 1.0, height);
+    float cavity = mix(mix(0.58, 1.0, height), mix(0.78, 1.0, height), sinter);
     float slope = 1.0 - max(dot(geometric, L), 0.0);
     float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos + geometric * (0.4 + 1.2 * slope), 1.0), slope);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);
