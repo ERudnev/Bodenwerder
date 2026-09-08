@@ -3,7 +3,8 @@
 in vec2 v_uv0;
 in vec4 v_color0;
 flat in uint v_drawId;
-out vec4 FragColor;
+layout(location = 0) out vec4 FragColor;
+layout(location = 1) out float BloomMask;
 
 layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     mat4 actorModel;
@@ -34,5 +35,7 @@ void main() {
     if (dot(rgb, rgb) < 1e-8) {
         discard;
     }
+    float star = dot(v_color0.rgb, vec3(0.2126, 0.7152, 0.0722));
     FragColor = vec4(rgb, 1.0);
+    BloomMask = texel.a * texel.a * mix(0.35, 1.0, smoothstep(0.32, 1.6, star));
 }

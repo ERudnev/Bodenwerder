@@ -124,7 +124,7 @@ namespace eltanin {
                     {renderer::Pass::environment, Material::Technique{
                         .program = with<Unit>::remember(context, sky_sphere_shader),
                         .uniforms = ::rmmr::material::Semantics::ids_of({"albedoMap"}),
-                        .glowSpread = false,
+                        .glowSpread = true,
                     }},
                 },
                 .nearest = false,
