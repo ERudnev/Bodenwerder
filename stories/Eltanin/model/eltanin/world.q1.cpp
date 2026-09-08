@@ -1,5 +1,6 @@
 #include <eltanin/world.q1.h>
 
+#include "geo/celestial/sun.h"
 #include <rmmr/scene/node.q1.h>
 
 #include <GLFW/glfw3.h>
@@ -54,6 +55,7 @@ namespace eltanin {
         if (global.skyBackdrop and with<rmmr::scene::Node>::exists(context, *global.skyBackdrop))
             with<rmmr::scene::Node>::modify(context, *global.skyBackdrop)->pose.position =
                 with<rmmr::scene::Node>::get(context, *global.camera).pose.position;
+        locality::geo::Sun::tether(context, with<rmmr::scene::Node>::get(context, *global.camera).pose.position);
     }
 
     struct World::Internals : World::DefaultInternals {

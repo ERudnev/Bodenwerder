@@ -1,3 +1,4 @@
 #pragma once
 
-namespace eltanin::
+namespace eltanin::locality::geo {
+}

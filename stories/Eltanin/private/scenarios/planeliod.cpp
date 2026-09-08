@@ -1,5 +1,6 @@
 #include "scenarios/planeliod.h"
 
+#include "geo/celestial/sun.h"
 #include <eltanin/world.q1.h>
 
 namespace eltanin::scenario {
@@ -11,6 +12,7 @@ namespace eltanin::scenario {
 
     void Planeliod::populate(Writing context, rmmr::system::Device::Id) {
         with<World>::placeCamera(context, Pose::from(origin + Pos{0.0f, 2135.0f, 100.0f}, HPB{0.0f, -20.0f, 0.0f}));
+        locality::geo::Sun::place(context, locality::geo::Sun::sol());
     }
 
 }

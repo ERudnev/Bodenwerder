@@ -16,6 +16,7 @@
 #include <eltanin/resources/assets.q1.h>
 #include <eltanin/resources/geometry.q1.h>
 #include <eltanin/world.q1.h>
+#include "geo/celestial/sun.h"
 #include <rmmr/api/_interface.h>
 #include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -132,6 +133,12 @@ namespace eltanin {
         const auto skyBackdropShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "skyBackdrop"), item<shader::Loader>{.vertex = "shaders/skyBackdrop.vert.glsl", .fragment = "shaders/skyBackdrop.frag.glsl"});
         assets.skyBackdropMaterial = with<Assets>::add_material(context, Name::from("Eltanin", "skyBackdrop"), Material::Quantum{
             .techniques = {{renderer::Pass::environment, Material::Technique{.program = with<Unit>::remember(context, skyBackdropShader), .uniforms = {}, .glowSpread = false}}},
+            .nearest = false,
+            .blend = renderer::BlendMode::additive,
+        });
+        const auto skySunShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "skySun"), item<shader::Loader>{.vertex = "shaders/skyBackdrop.vert.glsl", .fragment = "shaders/skySun.frag.glsl"});
+        with<Assets>::add_material(context, Name::from("Eltanin", "skySun"), Material::Quantum{
+            .techniques = {{renderer::Pass::environment, Material::Technique{.program = with<Unit>::remember(context, skySunShader), .uniforms = {}, .glowSpread = true}}},
             .nearest = false,
             .blend = renderer::BlendMode::additive,
         });
@@ -412,7 +419,6 @@ namespace eltanin {
             quantum->z_far = 16384.0f;
         }
         with<controller::Camera3d>::create(context, camera);
-        with<scene::Interface>::createLight(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{-25.0f, -30.0f, 0.0f}), item<scene::Light>{.kind = scene::Light::Kind::directional, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 8.0f, .range = 0.0f});
 
         bindGameEntities(context);
         ui.assembler.spawnPos = scenario::Planeliod::origin;
@@ -423,6 +429,8 @@ namespace eltanin {
             world->camera = camera;
         }
         scenario.populate(context, window);
+        if (not locality::geo::Sun::placed())
+            locality::geo::Sun::place(context, locality::geo::Sun::sol());
         // TODO: use this for some scenarios as time-saver: ui.assembler.spawnVel = vec3{0.0f, 0.0f, 10.0f}; // temporary: +Z approach toward ice asteroid
 
         with<World>::tetherEnvironment(context);
