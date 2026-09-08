@@ -33,6 +33,7 @@ namespace eltanin {
             base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
             base::maybe<rmmr::resource::geometry::Asset::Id> scrap;
             base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
+            base::maybe<rmmr::resource::material::Asset::Id> skyBackdropMaterial;
             base::maybe<rmmr::resource::texpack::Pack::Id> sprites;
             base::maybe<rmmr::resource::texpack::Pack::Id> mech;
             base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;

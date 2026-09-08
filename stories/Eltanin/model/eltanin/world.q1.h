@@ -17,6 +17,7 @@ namespace eltanin {
             bool paused = false;
             optional<rmmr::system::Window::Id> window{};
             optional<rmmr::scene::Node::Id> sky{};
+            optional<rmmr::scene::Node::Id> skyBackdrop{};
             optional<rmmr::scene::Camera::Id> camera{};
         };
         struct Actions : BaseActions {

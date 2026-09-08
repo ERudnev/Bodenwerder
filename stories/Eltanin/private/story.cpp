@@ -129,6 +129,12 @@ namespace eltanin {
                 .nearest = false,
                 .blend = renderer::BlendMode::additive,
             });
+        const auto skyBackdropShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "skyBackdrop"), item<shader::Loader>{.vertex = "shaders/skyBackdrop.vert.glsl", .fragment = "shaders/skyBackdrop.frag.glsl"});
+        assets.skyBackdropMaterial = with<Assets>::add_material(context, Name::from("Eltanin", "skyBackdrop"), Material::Quantum{
+            .techniques = {{renderer::Pass::environment, Material::Technique{.program = with<Unit>::remember(context, skyBackdropShader), .uniforms = {}, .glowSpread = false}}},
+            .nearest = false,
+            .blend = renderer::BlendMode::additive,
+        });
 
         const auto flashShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "flash"), item<shader::Loader>{.vertex = "shaders/flash.vert.glsl", .fragment = "shaders/flash.frag.glsl"});
         const auto flashGlowShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "flashGlow"), item<shader::Loader>{.vertex = "shaders/flash.vert.glsl", .fragment = "shaders/flashGlow.frag.glsl"});
@@ -388,6 +394,15 @@ namespace eltanin {
             .texpack = assets.sprites,
         };
         const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved);
+        if (not assets.primitive.sphere or not assets.skyBackdropMaterial)
+            return (void)context.refuse("eltanin::Game::populateWorld: sky backdrop missing");
+        const auto backdropResolved = ::rmmr::resource::meshpack::Asset::Resolved{
+            .geometry = *assets.primitive.sphere,
+            .entry = ::rmmr::resource::geometry::EntryId{0},
+            .surfaces = {{::rmmr::resource::geometry::SurfaceId{0}, ::rmmr::resource::material::Instance{.material = *assets.skyBackdropMaterial, .textures = {}}}},
+            .texpack = {},
+        };
+        const auto skyBackdrop = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), backdropResolved, with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{-110.0f, -110.0f, -110.0f}));
 
         const auto camera = with<scene::Interface>::createCamera(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), 100.0f * std::numbers::pi_v<float> / 180.0f);
         {
@@ -404,6 +419,7 @@ namespace eltanin {
         {
             auto world = with<World>::modify_global(context);
             world->sky = sky;
+            world->skyBackdrop = skyBackdrop;
             world->camera = camera;
         }
         scenario.populate(context, window);

@@ -51,6 +51,9 @@ namespace eltanin {
         }
         with<rmmr::scene::Node>::modify(context, *global.sky)->pose.position =
             with<rmmr::scene::Node>::get(context, *global.camera).pose.position;
+        if (global.skyBackdrop and with<rmmr::scene::Node>::exists(context, *global.skyBackdrop))
+            with<rmmr::scene::Node>::modify(context, *global.skyBackdrop)->pose.position =
+                with<rmmr::scene::Node>::get(context, *global.camera).pose.position;
     }
 
     struct World::Internals : World::DefaultInternals {

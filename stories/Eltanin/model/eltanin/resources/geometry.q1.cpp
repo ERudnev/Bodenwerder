@@ -54,31 +54,30 @@ namespace eltanin::resource {
             return 2.0f * mesh_radius * std::tan(0.5f * theta);
         }
 
-        auto temperature_rgb(float temperature_K) -> vec3 {
-            const float t = std::clamp(temperature_K, 1000.0f, 40000.0f) / 100.0f;
-            float r = 0.0f;
-            float g = 0.0f;
-            float b = 0.0f;
-            if (t <= 66.0f) {
-                r = 1.0f;
-                g = std::clamp(0.39008157876f * std::log(t) - 0.63184144378f, 0.0f, 1.0f);
-            } else {
-                r = std::clamp(1.29293618606f * std::pow(t - 60.0f, -0.1332047592f), 0.0f, 1.0f);
-                g = std::clamp(1.12989086089f * std::pow(t - 60.0f, -0.0755148492f), 0.0f, 1.0f);
-            }
-            if (t >= 66.0f) {
-                b = 1.0f;
-            } else if (t <= 19.0f) {
-                b = 0.0f;
-            } else {
-                b = std::clamp(0.54320678911f * std::log(t - 10.0f) - 1.19625408914f, 0.0f, 1.0f);
-            }
-            return vec3{r, g, b};
+        auto unitHash(vec3 p) -> float {
+            vec3 q = glm::fract(p * vec3{0.0143f, 0.0271f, 0.0097f});
+            q += glm::dot(q, vec3{q.y, q.z, q.x} + 33.33f);
+            return glm::fract((q.x + q.y) * q.z);
         }
 
-        auto punchTint(vec3 rgb) -> vec3 {
-            const float luma = glm::dot(rgb, vec3{0.2126f, 0.7152f, 0.0722f});
-            return glm::max(vec3{0.0f, 0.0f, 0.0f}, vec3{luma} + (rgb - vec3{luma}) * 1.85f);
+        auto fieldTemperature(vec3 positionLy) -> float {
+            const float warm = std::pow(unitHash(positionLy), 0.70f);
+            return 2900.0f + warm * 3600.0f;
+        }
+
+        auto starTint(float temperatureK) -> vec3 {
+            const float t = std::clamp((temperatureK - 2500.0f) / 9500.0f, 0.0f, 1.0f);
+            const vec3 amber{1.00f, 0.56f, 0.30f};
+            const vec3 peach{1.00f, 0.84f, 0.66f};
+            const vec3 ice{0.70f, 0.78f, 1.00f};
+            return t < 0.40f ? glm::mix(amber, peach, t / 0.40f) : glm::mix(peach, ice, (t - 0.40f) / 0.60f);
+        }
+
+        auto tintedBrightness(vec3 tint, float brightness) -> vec3 {
+            const float luma = glm::dot(tint, vec3{0.2126f, 0.7152f, 0.0722f});
+            const float near = std::clamp((brightness - 0.32f) / 2.68f, 0.0f, 1.0f);
+            const float punch = 1.15f + 1.25f * near;
+            return glm::max(vec3{0.0f, 0.0f, 0.0f}, vec3{luma} + (tint - vec3{luma}) * punch) * brightness;
         }
 
         auto direction_and_distance(const glm::vec3& position_ly) -> std::pair<glm::vec3, float> {
@@ -138,13 +137,15 @@ namespace eltanin::resource {
 
             for (const Star& star : galaxy) {
                 const auto [direction, distance] = direction_and_distance(star.position_ly);
-                constexpr float distancePower = 1.25f;
-                constexpr float distanceRef = 400.0f;
+                constexpr float distancePower = 1.15f;
+                constexpr float distanceRef = 4000.0f;
                 constexpr float sizeFloor = 0.55f;
                 const float relative = std::max(star.luminosity_sun, 1.0e-8f) * std::pow(distanceRef / std::max(distance, 25.0f), distancePower);
-                const float sizeScale = std::clamp(sizeFloor * std::pow(std::max(relative, 1.0f), 0.15f), sizeFloor, sizeFloor * 2.8f);
-                const float brightness = std::clamp(2.2f * std::pow(std::max(relative, 1.0f), 0.10f), 2.2f, 3.8f);
-                const vec3 rgb = punchTint(temperature_rgb(star.temperature_K)) * brightness;
+                const float sizeScale = std::clamp(sizeFloor * std::pow(std::max(relative, 1.0f), 0.005f), sizeFloor, sizeFloor * 2.8f);
+                const float brightness = std::clamp(0.85f * std::pow(std::max(relative, 1.0e-4f), 0.30f), 0.32f, 3.0f);
+                const float near = std::clamp((brightness - 0.32f) / 2.68f, 0.0f, 1.0f);
+                const float visualK = glm::mix(star.temperature_K, fieldTemperature(star.position_ly), near);
+                const vec3 rgb = tintedBrightness(starTint(visualK), brightness);
                 emit_billboard(cpu, PendingBillboard{
                     .direction = direction,
                     .radius = k_mesh_radius,
