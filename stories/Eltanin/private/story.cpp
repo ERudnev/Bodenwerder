@@ -263,6 +263,13 @@ namespace eltanin {
                 .nearest = false,
                 .blend = renderer::BlendMode::inherit,
             });
+            const auto atmosphereShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "atmosphere"), item<shader::Loader>{.vertex = "shaders/atmosphere.vert.glsl", .fragment = "shaders/atmosphere.frag.glsl"});
+            with<Assets>::add_geometry_generator(context, Name::from("Eltanin", "atmosphereSphere"), item<Generator>{.type = Generator::Type::sphere, .subdivisions = 4});
+            with<Assets>::add_material(context, Name::from("Eltanin", "atmosphere"), Material::Quantum{
+                .techniques = {{renderer::Pass::atmosphere, Material::Technique{.program = with<Unit>::remember(context, atmosphereShader), .uniforms = ::rmmr::material::Semantics::ids_of({"sceneDepth"}), .glowSpread = true}}},
+                .nearest = false,
+                .blend = renderer::BlendMode::premultiplied,
+            });
             const auto manager = with<Manager>::singleton(context);
             const auto crustId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "crust")});
             with<texture3array::Asset>::extend(context, crustId, texture3array::Asset::Quantum{.layerSize = index3{0, 0, 0}, .capacity = 0});

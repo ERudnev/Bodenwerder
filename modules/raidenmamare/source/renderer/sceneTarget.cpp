@@ -9,6 +9,7 @@ namespace rmmr {
         releaseTexture(hdr);
         releaseTexture(bloomMask);
         releaseTexture(depth);
+        releaseTexture(depthCopy);
         size = index2{0, 0};
     }
 
@@ -19,12 +20,21 @@ namespace rmmr {
         hdr = makeTexture2D(targetSize, GL_RGBA16F, GL_LINEAR, GL_LINEAR);
         bloomMask = makeTexture2D(targetSize, GL_R16F, GL_NEAREST, GL_NEAREST);
         depth = makeTexture2D(targetSize, GL_DEPTH_COMPONENT24, GL_NEAREST, GL_NEAREST);
+        depthCopy = makeTexture2D(targetSize, GL_DEPTH_COMPONENT24, GL_NEAREST, GL_NEAREST);
+        glTextureParameteri(depthCopy, GL_TEXTURE_COMPARE_MODE, GL_NONE);
         fbo = makeFramebuffer();
         attachColor(fbo, 0, hdr);
         attachColor(fbo, 1, bloomMask);
         attachDepth(fbo, depth);
         finishFramebuffer(fbo, 2, "scene HDR");
         size = targetSize;
+    }
+
+    void SceneTarget::snapshotDepth() {
+        if (not depth or not depthCopy)
+            return;
+        const auto wh = extent(size);
+        glCopyImageSubData(depth, GL_TEXTURE_2D, 0, 0, 0, 0, depthCopy, GL_TEXTURE_2D, 0, 0, 0, 0, wh.x, wh.y, 1);
     }
 
     void SceneTarget::setGlowWrite(bool on) {

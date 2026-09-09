@@ -16,6 +16,7 @@ namespace rmmr::renderer {
         gizmo,
         sprite,
         environment, // sky / backdrop; main FB, before opaque
+        atmosphere, // spherical fog/limb over HDR + depth; before identity
         identitySelected, // selected Identified → selected-ID buffer (before identity; shared depth)
         identity, // keep last: bounds SeparateBuffers
     };
@@ -59,6 +60,7 @@ namespace rmmr::renderer {
         inline const Passes environment_only{Pass::environment};
         inline const Passes identity_only{Pass::identity};
         inline const Passes identity_selected_only{Pass::identitySelected};
+        inline const Passes atmosphere_only{Pass::atmosphere};
 
     }
 

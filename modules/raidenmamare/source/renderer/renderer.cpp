@@ -34,7 +34,7 @@ namespace rmmr {
     using namespace api_for_internals;
 
     Renderer::Renderer()
-        : sceneTarget{.fbo = 0, .hdr = 0, .bloomMask = 0, .depth = 0, .size = index2{0, 0}}
+        : sceneTarget{.fbo = 0, .hdr = 0, .bloomMask = 0, .depth = 0, .depthCopy = 0, .size = index2{0, 0}}
         , bloom{.sourceFbo = 0, .scratchFbo = 0, .source = 0, .scratch = 0, .size = index2{0, 0}, .downsampleProgram = 0, .blurProgram = 0, .tonemapProgram = 0}
         , identity{.allFbo = 0, .selectedFbo = 0, .color = 0, .selected = 0, .depth = 0, .size = index2{0, 0}}
         , overlay{.sceneColor = {.fbo = 0, .color = 0, .size = index2{0, 0}}, .overlayColor = {.fbo = 0, .color = 0, .size = index2{0, 0}}, .composeProgram = 0}
@@ -61,7 +61,7 @@ namespace rmmr {
         }
 
         auto isSceneColorPass(renderer::Pass pass) -> bool {
-            return pass == renderer::Pass::environment or pass == renderer::Pass::opaque or pass == renderer::Pass::transparent or pass == renderer::Pass::sprite or pass == renderer::Pass::gizmo;
+            return pass == renderer::Pass::environment or pass == renderer::Pass::opaque or pass == renderer::Pass::transparent or pass == renderer::Pass::sprite or pass == renderer::Pass::gizmo or pass == renderer::Pass::atmosphere;
         }
 
         void publishIdentity(Writing world, system::Window::Id window, integer draws, renderer::Integer32 under) {
@@ -78,6 +78,7 @@ namespace rmmr {
             Id atlasTexture = material::Semantics::id_of("atlasTexture");
             Id atlasEntries = material::Semantics::id_of("atlasEntries");
             Id inverseAtlasSize = material::Semantics::id_of("inverseAtlasSize");
+            Id sceneDepth = material::Semantics::id_of("sceneDepth");
         } semantic{};
 
         struct ShadowCaster {
@@ -236,6 +237,14 @@ namespace rmmr {
                 glDepthMask(GL_FALSE);
                 return;
             }
+            if (pass == renderer::Pass::atmosphere) {
+                glDisable(GL_CULL_FACE);
+                glDisable(GL_DEPTH_TEST);
+                glDepthMask(GL_FALSE);
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+                return;
+            }
             glDepthMask(GL_TRUE);
         }
 
@@ -251,15 +260,23 @@ namespace rmmr {
                 glDepthMask(GL_TRUE);
                 glDepthFunc(GL_LESS);
             }
+            if (pass == renderer::Pass::atmosphere) {
+                glEnable(GL_CULL_FACE);
+                glEnable(GL_DEPTH_TEST);
+                glDisable(GL_BLEND);
+                glDepthMask(GL_TRUE);
+                glDepthFunc(GL_LESS);
+            }
         }
 
-        constexpr std::array<renderer::Pass, 8> render_queue_passes{
+        constexpr std::array<renderer::Pass, 9> render_queue_passes{
             renderer::Pass::shadow,
             renderer::Pass::environment,
             renderer::Pass::opaque,
             renderer::Pass::transparent,
             renderer::Pass::sprite,
             renderer::Pass::gizmo,
+            renderer::Pass::atmosphere,
             renderer::Pass::identitySelected,
             renderer::Pass::identity,
         };
@@ -267,7 +284,7 @@ namespace rmmr {
         void apply_blend(renderer::Pass pass, renderer::BlendMode blend) {
             const bool identityPass = pass == renderer::Pass::identitySelected or pass == renderer::Pass::identity;
             if (blend == renderer::BlendMode::inherit) {
-                if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo) {
+                if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo || pass == renderer::Pass::atmosphere) {
                     blend = renderer::BlendMode::alpha;
                 } else {
                     if (not identityPass)
@@ -373,9 +390,15 @@ namespace rmmr {
         const auto& materialQuantum = with<resource::material::Runtime>::get(args.world, material);
         const auto& technique = technique_for(materialQuantum, pass);
         for (const auto& binding : technique.bindings) {
-            if (binding.id != semantic.shadowMap) continue;
-            if (not shadow) throw std::runtime_error("Renderer: material expects shadowMap but no shadow-casting light");
-            setUniformSampler(binding, with<resource::shadow::Runtime>::get(args.world, *shadow).depth);
+            if (binding.id == semantic.shadowMap) {
+                if (not shadow) throw std::runtime_error("Renderer: material expects shadowMap but no shadow-casting light");
+                setUniformSampler(binding, with<resource::shadow::Runtime>::get(args.world, *shadow).depth);
+            } else if (binding.id == semantic.sceneDepth) {
+                if (not sceneTarget.depthCopy)
+                    throw std::runtime_error("Renderer: material expects sceneDepth but depth copy is missing");
+                glTextureParameteri(sceneTarget.depthCopy, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+                setUniformSampler(binding, sceneTarget.depthCopy);
+            }
         }
     }
 
@@ -462,6 +485,8 @@ namespace rmmr {
                 continue;
             if (pass == renderer::Pass::identitySelected && passEmpty)
                 continue;
+            if (pass == renderer::Pass::atmosphere && passEmpty)
+                continue;
             if (pass == renderer::Pass::identity && passEmpty) {
                 if (not identityCleared) {
                     identity.clear(viewport.size);
@@ -472,7 +497,7 @@ namespace rmmr {
                 identity.end(args.world, args.view.viewport);
                 continue;
             }
-            const bool unlitPass = pass == renderer::Pass::sprite or pass == renderer::Pass::gizmo or pass == renderer::Pass::environment or pass == renderer::Pass::identitySelected or pass == renderer::Pass::identity;
+            const bool unlitPass = pass == renderer::Pass::sprite or pass == renderer::Pass::gizmo or pass == renderer::Pass::environment or pass == renderer::Pass::atmosphere or pass == renderer::Pass::identitySelected or pass == renderer::Pass::identity;
             if (not lighting.primary && not unlitPass) {
                 if (not passEmpty)
                     base::message("Renderer: no primary light; skipping draws for pass");
@@ -497,6 +522,8 @@ namespace rmmr {
                 }
                 identity.beginAll(viewport.size);
             } else {
+                if (pass == renderer::Pass::atmosphere)
+                    sceneTarget.snapshotDepth();
                 begin_pass(pass, args, lighting.shadow);
             }
             PassDrawState passState{};

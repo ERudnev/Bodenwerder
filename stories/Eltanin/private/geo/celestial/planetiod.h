@@ -1,5 +1,6 @@
 #pragma once
 
+#include <base/maybe.h>
 #include <eltanin/physics/body.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -25,6 +26,8 @@ namespace eltanin::locality::geo {
             float maxRelief;
             float surfaceAcceleration;
             float tectonic;
+            float atmosphereRadius;
+            float seaDensity;
         };
 
         struct PatchKey {
@@ -55,6 +58,7 @@ namespace eltanin::locality::geo {
         rmmr::resource::material::Asset::Id material;
         rmmr::resource::texpack::Pack::Id crust;
         std::unordered_map<PatchKey, Patch, PatchKeyHash> patches;
+        base::maybe<rmmr::scene::actor::Mesh::Id> atmosphere;
     };
 
     struct Planetoid {
@@ -75,6 +79,8 @@ namespace eltanin::locality::geo {
         static auto height(Reading, rmmr::vec3 dir) -> float;
         static auto altitudeAt(Reading, rmmr::Pos worldPos) -> float;
         static auto gravityAt(Reading, rmmr::Pos worldPos) -> rmmr::vec3;
+        static auto atmosphereRadius(Reading) -> float;
+        static auto seaDensity(Reading) -> float;
         static auto surfaceInfo(Reading, rmmr::vec3 dir) -> Surface;
     };
 

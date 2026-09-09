@@ -59,7 +59,7 @@ namespace rmmr::material {
         // - 3..18: minerals[16] (GL_TEXTURE_3D layers)
         // SSBO binding points:
         // - 0: atlasEntries
-        static constexpr auto vocabulary = std::array<Entry, 14>{{
+        static constexpr auto vocabulary = std::array<Entry, 15>{{
             Entry{0, Type::i32, "_undefined", -1},
 
             Entry{109, Type::sampler2d, "shadowMap", 1},
@@ -77,6 +77,7 @@ namespace rmmr::material {
             Entry{2004, Type::i32, "selectedCount", -1},
             Entry{2005, Type::i32, "selected", -1}, // uniform array base; upload via glUniform1uiv
             Entry{2006, Type::sampler2d, "selectedMap", 2},
+            Entry{2007, Type::sampler2d, "sceneDepth", 1},
         }};
 
         static constexpr auto isBoundResource(Type type) -> bool {

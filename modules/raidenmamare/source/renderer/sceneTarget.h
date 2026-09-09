@@ -13,10 +13,12 @@ namespace rmmr {
         renderer::Texture hdr;
         renderer::Texture bloomMask;
         renderer::Texture depth;
+        renderer::Texture depthCopy;
         index2 size;
 
         void destroy();
         void ensure(index2 size);
+        void snapshotDepth();
         void bind(index2 size);
         void begin(index2 size, vec4 clearColor);
         static void setGlowWrite(bool on);
