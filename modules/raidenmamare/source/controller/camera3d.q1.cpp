@@ -47,17 +47,17 @@ namespace rmmr::controller {
             if (key_down(keys, GLFW_KEY_Q)) roll += 1.0f;
             if (key_down(keys, GLFW_KEY_E)) roll -= 1.0f;
             if (roll == 0.0f) return;
-            const float angle = roll * glm::radians(k_roll_deg_per_sec) * keyBoost(keys) * static_cast<float>(deltaSec);
+            const float angle = roll * glm::radians(k_roll_deg_per_sec) * static_cast<float>(deltaSec);
             rotation = glm::normalize(rotation * glm::angleAxis(angle, glm::vec3{0.0f, 0.0f, 1.0f}));
         }
 
-        void applyMove(scene::Node::Quantum& node, glm::quat rotation, const vector<bool>& keys, seconds deltaSec) {
+        void applyMove(scene::Node::Quantum& node, glm::quat rotation, const vector<bool>& keys, seconds deltaSec, float moveScale) {
             if (deltaSec <= 0.0) return;
             rotation = glm::normalize(rotation);
             const glm::vec3 forward = glm::normalize(rotation * glm::vec3{0.0f, 0.0f, -1.0f});
             const glm::vec3 right = glm::normalize(rotation * glm::vec3{1.0f, 0.0f, 0.0f});
             const glm::vec3 up = glm::normalize(rotation * glm::vec3{0.0f, 1.0f, 0.0f});
-            const float step = k_move_units_per_sec * keyBoost(keys) * static_cast<float>(deltaSec);
+            const float step = k_move_units_per_sec * moveScale * keyBoost(keys) * static_cast<float>(deltaSec);
             glm::vec3 delta{0.0f};
             if (key_down(keys, GLFW_KEY_W)) delta += forward * step;
             if (key_down(keys, GLFW_KEY_S)) delta -= forward * step;
@@ -79,13 +79,13 @@ namespace rmmr::controller {
             if (button_down(input.current, GLFW_MOUSE_BUTTON_RIGHT))
                 applyMouseLook(rotation, with<system::Window>::mouseShift(context, window));
             node->pose.rotation = rotation;
-            applyMove(*node, rotation, input.current.keys, deltaSec);
+            applyMove(*node, rotation, input.current.keys, deltaSec, with<Camera3d>::get(context, self).moveScale);
         }
 
     } // namespace
 
     auto Camera3d::Actions::create(Writing context, scene::Camera::Id anchor) -> Id {
-        with<Camera3d>::extend(context, anchor, Camera3d::Quantum{});
+        with<Camera3d>::extend(context, anchor, Camera3d::Quantum{.moveScale = 1.0f});
         return anchor;
     }
 

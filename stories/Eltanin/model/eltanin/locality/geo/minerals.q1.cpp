@@ -7,7 +7,8 @@ namespace eltanin::locality::geo {
 using base::common_types::rgb;
 
 const vector<Mineral>& Mineral::table() {
-    // .scale / meltKelvin / tintKelvin / glowKelvin / sinter must match rock.frag.glsl and boulder.frag.glsl
+    // .scale / roughness / metalness / sinter must match rock.frag.glsl, boulder.frag.glsl and planetoid.frag.glsl
+    // .meltKelvin / tintKelvin / glowKelvin must match rock.frag.glsl and boulder.frag.glsl
     static const vector<Mineral> table{
         Mineral{.name = "Ice", .density = 0.92f, .scale = 0.08f, .albedo = rgb(217, 235, 242), .sinter = rgb(56, 168, 255), .roughness = 0.25f, .metalness = 0.0f, .hardness = 1.5f, .meltKelvin = 273.0f, .tintKelvin = 220.0f, .glowKelvin = 900.0f, .sootMul = 0.85f},
         Mineral{.name = "Olivine", .density = 3.32f, .scale = 0.25f, .albedo = rgb(64, 89, 38), .sinter = rgb(42, 58, 25), .roughness = 0.72f, .metalness = 0.0f, .hardness = 6.5f, .meltKelvin = 2160.0f, .tintKelvin = 850.0f, .glowKelvin = 1400.0f, .sootMul = 0.08f},

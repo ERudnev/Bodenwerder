@@ -18,6 +18,7 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/textures.q1.h>
+#include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/node.q1.h>
@@ -260,6 +261,16 @@ namespace eltanin {
                 }
                 ImGui::DragFloat("Near", &quantum->z_near, 0.1f, 1.0f, quantum->z_far - 1.0f, "%.1f");
                 ImGui::DragFloat("Far", &quantum->z_far, 16.0f, quantum->z_near + 1.0f, 32768.0f, "%.0f");
+                if (with<controller::Camera3d>::exists(world, camera)) {
+                    static constexpr float moveScales[4] = {0.1f, 1.0f, 10.0f, 100.0f};
+                    auto fly = with<controller::Camera3d>::modify(world, camera);
+                    int speed = 1;
+                    for (int index = 0; index < 4; ++index)
+                        if (fly->moveScale == moveScales[index])
+                            speed = index;
+                    if (ImGui::Combo("Move speed", &speed, "×0.1\0×1\0×10\0×100\0"))
+                        fly->moveScale = moveScales[speed];
+                }
             }
         }
         ImGui::End();

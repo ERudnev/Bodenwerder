@@ -1,5 +1,6 @@
 #include <eltanin/world.q1.h>
 
+#include "geo/celestial/planetiod.h"
 #include "geo/celestial/sun.h"
 #include <rmmr/scene/node.q1.h>
 
@@ -56,6 +57,8 @@ namespace eltanin {
             with<rmmr::scene::Node>::modify(context, *global.skyBackdrop)->pose.position =
                 with<rmmr::scene::Node>::get(context, *global.camera).pose.position;
         locality::geo::Sun::tether(context, with<rmmr::scene::Node>::get(context, *global.camera).pose.position);
+        if (locality::geo::Planetoid::placed())
+            locality::geo::Planetoid::update(context, with<rmmr::scene::Node>::get(context, *global.camera).pose.position);
     }
 
     struct World::Internals : World::DefaultInternals {

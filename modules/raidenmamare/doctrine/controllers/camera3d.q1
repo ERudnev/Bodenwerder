@@ -9,6 +9,7 @@ namespace rmmr
     // Time from system::Clock deltas (change.old / change.now); input from Window.
     attribute Camera3d of scene::Camera
       one
+        moveScale: float
         >create()-> #
       all
-        !update(~system::Clock) // RMB look in camera space; WASD+RF move; QE roll around view; Shift ×10
+        !update(~system::Clock) // RMB look in camera space; WASD+RF move; QE roll around view; Shift ×10 move only
