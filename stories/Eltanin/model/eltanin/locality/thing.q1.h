@@ -1,5 +1,7 @@
 #pragma once
 
+#include <base/maybe.h>
+#include <geo/celestial/planetiod.h>
 #include <rmmr/scene/root.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -7,6 +9,8 @@
 namespace eltanin::locality {
 
     using namespace fqsm::api;
+
+    using Landscape = geo::Landscape;
 
     struct Thing : Entity<Thing> {
         struct Quantum {
@@ -16,6 +20,7 @@ namespace eltanin::locality {
             seconds now;
             float timeScale;
             rmmr::scene::Root::Id scene;
+            base::maybe<Landscape> landscape;
         };
         struct Always {
             static auto assemble(SettingUp&) -> Global;

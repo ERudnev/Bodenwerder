@@ -15,8 +15,6 @@
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/semantics/geometry.h>
 
-#include <base/maybe.h>
-
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -26,7 +24,6 @@
 #include <cstdint>
 #include <numbers>
 #include <string>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -49,45 +46,14 @@ namespace eltanin::locality::geo {
         constexpr int mineralIce = 0;
         constexpr int mineralOlivine = 1;
         constexpr int mineralPyroxene = 2;
-        constexpr int mineralFeldspar = 3;
-        constexpr int mineralCarbonaceous = 5;
         constexpr int mineralIron = 6;
-        constexpr int mineralOxides = 9;
-        constexpr int mineralSalts = 14;
+        // Fixed demo palette for Surface.mix packing (same order as planetoid.frag).
+        constexpr int planetPalette[4] = {mineralIce, mineralOlivine, mineralPyroxene, mineralIron};
         constexpr bool flipWinding[faceCount] = {false, true, true, false, false, true};
 
-        struct PatchKey {
-            std::uint8_t face;
-            std::uint8_t level;
-            std::uint16_t iu;
-            std::uint16_t iv;
-
-            auto operator==(const PatchKey&) const -> bool = default;
-        };
-
-        struct PatchKeyHash {
-            auto operator()(const PatchKey& key) const noexcept -> std::size_t {
-                return (static_cast<std::size_t>(key.face) << 40) ^ (static_cast<std::size_t>(key.level) << 32) ^ (static_cast<std::size_t>(key.iu) << 16) ^ static_cast<std::size_t>(key.iv);
-            }
-        };
-
-        struct Patch {
-            scene::actor::Mesh::Id actor;
-            resource::geometry::Asset::Id geometry;
-            std::uint8_t coarserEdges;
-        };
-
-        struct Runtime {
-            Planetoid::Look look;
-            Pose pose;
-            system::Device::Id device;
-            phys::Body::Id well;
-            resource::material::Asset::Id material;
-            resource::texture3array::Asset::Id crust;
-            std::unordered_map<PatchKey, Patch, PatchKeyHash> patches;
-        };
-
-        base::maybe<Runtime> runtime;
+        using PatchKey = Landscape::PatchKey;
+        using PatchKeyHash = Landscape::PatchKeyHash;
+        using Patch = Landscape::Patch;
 
         auto hash31(int x, int y, int z, int seed) -> float {
             auto mix = [](std::uint32_t value) -> std::uint32_t {
@@ -297,81 +263,52 @@ namespace eltanin::locality::geo {
             return reliefOf(dir, look).height;
         }
 
-        auto packMix(const std::array<float, mixChannels>& weights) -> Mix {
-            std::array<int, 4> best{-1, -1, -1, -1};
-            std::array<float, 4> bestW{0.0f, 0.0f, 0.0f, 0.0f};
-            for (int channel = 0; channel < mixChannels; ++channel) {
-                const float weight = weights[static_cast<std::size_t>(channel)];
-                if (weight <= bestW[3])
-                    continue;
-                int slot = 3;
-                while (slot > 0 and weight > bestW[static_cast<std::size_t>(slot - 1)]) {
-                    best[static_cast<std::size_t>(slot)] = best[static_cast<std::size_t>(slot - 1)];
-                    bestW[static_cast<std::size_t>(slot)] = bestW[static_cast<std::size_t>(slot - 1)];
-                    --slot;
-                }
-                best[static_cast<std::size_t>(slot)] = channel;
-                bestW[static_cast<std::size_t>(slot)] = weight;
-            }
-            float mass = 0.0f;
-            for (float weight : bestW)
-                mass += weight;
-            if (mass <= 1.0e-6f)
-                return Mix{15} << (mineralOlivine * 4);
-            Mix packed = 0;
-            int used = 0;
-            int lastLive = -1;
-            for (int slot = 0; slot < 4; ++slot) {
-                if (best[static_cast<std::size_t>(slot)] < 0 or bestW[static_cast<std::size_t>(slot)] <= 0.0f)
-                    continue;
-                const int nibble = static_cast<int>(bestW[static_cast<std::size_t>(slot)] / mass * 15.0f + 0.5f);
-                packed |= Mix{static_cast<std::uint64_t>(glm::clamp(nibble, 0, 15))} << (best[static_cast<std::size_t>(slot)] * 4);
-                used += nibble;
-                lastLive = best[static_cast<std::size_t>(slot)];
-            }
-            if (used == 0)
-                return Mix{15} << (mineralOlivine * 4);
-            if (used != 15 and lastLive >= 0) {
-                const int current = static_cast<int>((packed >> (lastLive * 4)) & 15);
-                const int adjusted = glm::clamp(current + (15 - used), 0, 15);
-                packed &= ~(Mix{15} << (lastLive * 4));
-                packed |= Mix{static_cast<std::uint64_t>(adjusted)} << (lastLive * 4);
-            }
-            return packed;
+        // Demo crust: Ice / Olivine / Pyroxene / Iron only (matches planetoid.frag).
+        auto materialWeights(vec3 dir, float height, float slope, float crater, const Planetoid::Look& look) -> std::array<float, mixChannels> {
+            const float polar = std::abs(dir.y);
+            const float altitude = look.maxRelief > 1.0e-4f ? height / look.maxRelief : 0.0f;
+            const float bowl = glm::smoothstep(0.05f, 0.85f, glm::clamp(-crater, 0.0f, 1.4f) / 1.4f);
+            const float flats = 1.0f - slope;
+            const float midLat = 1.0f - glm::smoothstep(0.45f, 0.82f, polar);
+            const float highland = glm::smoothstep(0.05f, 0.55f, altitude);
+            std::array<float, mixChannels> weights{};
+            weights[mineralIce] = 0.85f * glm::smoothstep(0.52f, 0.88f, polar);
+            weights[mineralOlivine] = 0.55f * flats * midLat * (0.55f + 0.45f * (1.0f - highland));
+            weights[mineralPyroxene] = 0.48f * (0.35f + 0.65f * highland) * (0.55f + 0.45f * midLat);
+            weights[mineralIron] = 0.70f * bowl * (0.45f + 0.55f * midLat);
+            return weights;
         }
 
         auto materialMix(vec3 dir, float height, float slope, float crater, const Planetoid::Look& look) -> Mix {
-            const int seed = static_cast<int>(look.seed);
-            const float polar = std::abs(dir.y);
-            const float altitude = look.maxRelief > 1.0e-4f ? height / look.maxRelief : 0.0f;
-            const float speckle = signedNoise(dir * 18.0f, seed + 29);
-            const float bowl = glm::clamp(-crater, 0.0f, 1.0f);
-            std::array<float, mixChannels> weights{};
-            weights[mineralOlivine] = 0.50f * (1.0f - slope * 0.65f) * (1.0f - polar * 0.35f);
-            weights[mineralPyroxene] = 0.42f * (0.45f + 0.55f * (0.5f + 0.5f * altitude));
-            weights[mineralFeldspar] = 0.38f * glm::max(0.0f, altitude) * (1.0f - slope) * (0.7f + 0.3f * speckle);
-            weights[mineralIce] = 0.62f * glm::smoothstep(0.58f, 0.90f, polar) + 0.22f * glm::max(0.0f, -altitude) * polar;
-            weights[mineralIron] = 0.55f * bowl * (1.0f - polar * 0.5f);
-            weights[mineralOxides] = 0.28f * slope;
-            weights[mineralCarbonaceous] = 0.22f * glm::max(0.0f, -altitude) * (1.0f - polar);
-            weights[mineralSalts] = 0.16f * glm::max(0.0f, -altitude) * (1.0f - slope) * glm::smoothstep(0.35f, 0.75f, polar);
-            return packMix(weights);
-        }
-
-        auto cohesionOf(vec3 dir, float height, float slope, float crater, const Planetoid::Look& look) -> float {
-            const int seed = static_cast<int>(look.seed);
-            const float polar = std::abs(dir.y);
-            const float altitude = look.maxRelief > 1.0e-4f ? height / look.maxRelief : 0.0f;
-            const float dust = 0.5f + 0.5f * signedNoise(dir * 14.0f, seed + 47);
-            const float bowl = glm::clamp(-crater, 0.0f, 1.0f);
-            const float ice = glm::smoothstep(0.58f, 0.90f, polar);
-            float packed = 0.22f * glm::max(0.0f, altitude) * (1.0f - slope);
-            packed += 0.18f * slope;
-            packed += 0.28f * bowl;
-            packed += 0.20f * ice;
-            packed = glm::clamp(packed, 0.0f, 1.0f);
-            const float loose = 0.02f + 0.14f * dust;
-            return glm::clamp(loose + 0.54f * packed * packed, 0.0f, 0.7f);
+            const auto weights = materialWeights(dir, height, slope, crater, look);
+            float mass = 0.0f;
+            for (int channel : planetPalette)
+                mass += weights[static_cast<std::size_t>(channel)];
+            if (mass <= 1.0e-6f)
+                return Mix{255u} | (Mix{static_cast<std::uint32_t>(mineralOlivine)} << 32);
+            std::uint32_t weightBits = 0;
+            std::uint32_t indexBits = 0;
+            int used = 0;
+            int lastLive = -1;
+            for (int slot = 0; slot < 4; ++slot) {
+                const int channel = planetPalette[slot];
+                const int byte = static_cast<int>(weights[static_cast<std::size_t>(channel)] / mass * 255.0f + 0.5f);
+                const int clamped = glm::clamp(byte, 0, 255);
+                weightBits |= static_cast<std::uint32_t>(clamped) << (slot * 8);
+                indexBits |= static_cast<std::uint32_t>(channel) << (slot * 8);
+                used += clamped;
+                if (clamped > 0)
+                    lastLive = slot;
+            }
+            if (used == 0)
+                return Mix{255u} | (Mix{static_cast<std::uint32_t>(mineralOlivine)} << 32);
+            if (used != 255 and lastLive >= 0) {
+                const int shift = lastLive * 8;
+                const int current = static_cast<int>((weightBits >> shift) & 255u);
+                const int adjusted = glm::clamp(current + (255 - used), 0, 255);
+                weightBits = (weightBits & ~(255u << shift)) | (static_cast<std::uint32_t>(adjusted) << shift);
+            }
+            return Mix{weightBits} | (Mix{indexBits} << 32);
         }
 
         auto surfacePoint(vec3 dir, const Planetoid::Look& look) -> vec3 {
@@ -402,7 +339,7 @@ namespace eltanin::locality::geo {
             return normal;
         }
 
-        auto toLocal(const Runtime& state, Pos worldPos) -> vec3 {
+        auto toLocal(const Landscape& state, Pos worldPos) -> vec3 {
             return glm::inverse(state.pose.rotation) * (worldPos - state.pose.position);
         }
 
@@ -410,7 +347,7 @@ namespace eltanin::locality::geo {
             return -1.0f + static_cast<float>(index) * (2.0f / static_cast<float>(1 << level));
         }
 
-        auto patchCenter(const Runtime& state, const PatchKey& key) -> vec3 {
+        auto patchCenter(const Landscape& state, const PatchKey& key) -> vec3 {
             const float tileSize = 2.0f / static_cast<float>(1 << key.level);
             const float faceU = tileRange(key.level, key.iu) + tileSize * 0.5f;
             const float faceV = tileRange(key.level, key.iv) + tileSize * 0.5f;
@@ -425,7 +362,7 @@ namespace eltanin::locality::geo {
 
         auto buildPatch(const Planetoid::Look& look, const PatchKey& key, std::uint8_t coarserEdges) -> resource::builders::geometry::CpuPresentation {
             resource::builders::geometry::CpuPresentation cpu{
-                .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "mix0", "cohesion"}),
+                .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"}),
                 .positions = {},
                 .normals = {},
                 .uv0 = {},
@@ -438,28 +375,21 @@ namespace eltanin::locality::geo {
             const float originU = tileRange(key.level, key.iu);
             const float originV = tileRange(key.level, key.iv);
             const int mainCount = grid * grid;
+            const float reliefScale = look.maxRelief > 1.0e-4f ? 1.0f / look.maxRelief : 0.0f;
             cpu.positions.reserve(static_cast<std::size_t>(mainCount));
             cpu.normals.reserve(cpu.positions.capacity());
-            cpu.mix0.reserve(cpu.positions.capacity());
-            cpu.cohesion.reserve(cpu.positions.capacity());
+            cpu.uv0.reserve(cpu.positions.capacity());
             cpu.indices.reserve(static_cast<std::size_t>(cells * cells * 6));
 
-            vector<float> heights;
-            vector<float> craters;
-            heights.reserve(static_cast<std::size_t>(mainCount));
-            craters.reserve(static_cast<std::size_t>(mainCount));
             for (int row = 0; row < grid; ++row) {
                 const float faceV = originV + tileSize * (static_cast<float>(row) / static_cast<float>(cells));
                 for (int column = 0; column < grid; ++column) {
                     const float faceU = originU + tileSize * (static_cast<float>(column) / static_cast<float>(cells));
                     const vec3 dir = cubeDir(key.face, faceU, faceV);
                     const Relief relief = reliefOf(dir, look);
-                    heights.push_back(relief.height);
-                    craters.push_back(relief.crater);
                     cpu.positions.push_back(dir * (look.radius + relief.height));
                     cpu.normals.push_back(dir);
-                    cpu.mix0.push_back(0);
-                    cpu.cohesion.push_back(0.0f);
+                    cpu.uv0.push_back(UV{relief.height * reliefScale, relief.crater});
                 }
             }
 
@@ -485,9 +415,6 @@ namespace eltanin::locality::geo {
                     if (glm::dot(normal, dir) < 0.0f)
                         normal = -normal;
                     cpu.normals[index] = normal;
-                    const float slope = 1.0f - glm::clamp(glm::dot(normal, dir), 0.0f, 1.0f);
-                    cpu.mix0[index] = materialMix(dir, heights[index], slope, craters[index], look);
-                    cpu.cohesion[index] = cohesionOf(dir, heights[index], slope, craters[index], look);
                 }
             }
 
@@ -500,7 +427,7 @@ namespace eltanin::locality::geo {
                     vec3 normal = cpu.normals[static_cast<std::size_t>(prev)] + cpu.normals[static_cast<std::size_t>(next)];
                     const float normalLen = glm::length(normal);
                     cpu.normals[static_cast<std::size_t>(mid)] = normalLen > 1.0e-8f ? normal / normalLen : cpu.normals[static_cast<std::size_t>(prev)];
-                    cpu.cohesion[static_cast<std::size_t>(mid)] = 0.5f * (cpu.cohesion[static_cast<std::size_t>(prev)] + cpu.cohesion[static_cast<std::size_t>(next)]);
+                    cpu.uv0[static_cast<std::size_t>(mid)] = 0.5f * (cpu.uv0[static_cast<std::size_t>(prev)] + cpu.uv0[static_cast<std::size_t>(next)]);
                 }
             };
             if (coarserEdges & 1u)
@@ -535,7 +462,7 @@ namespace eltanin::locality::geo {
             return PatchKey{.face = key.face, .level = static_cast<std::uint8_t>(key.level + 1), .iu = static_cast<std::uint16_t>(key.iu * 2 + childU), .iv = static_cast<std::uint16_t>(key.iv * 2 + childV)};
         }
 
-        auto hasChild(const Runtime& state, const PatchKey& key) -> bool {
+        auto hasChild(const Landscape& state, const PatchKey& key) -> bool {
             return state.patches.contains(childKey(key, 0, 0)) or state.patches.contains(childKey(key, 1, 0)) or state.patches.contains(childKey(key, 0, 1)) or state.patches.contains(childKey(key, 1, 1));
         }
 
@@ -663,7 +590,7 @@ namespace eltanin::locality::geo {
             return flags;
         }
 
-        void collectLeaves(const Runtime& state, Pos camera, PatchKey key, vector<PatchKey>& wanted) {
+        void collectLeaves(const Landscape& state, Pos camera, PatchKey key, vector<PatchKey>& wanted) {
             const float tileSize = 2.0f / static_cast<float>(1 << key.level);
             const float dist = glm::length(camera - patchCenter(state, key));
             const float span = state.look.radius * tileSize;
@@ -704,7 +631,7 @@ namespace eltanin::locality::geo {
                 with<scene::Node>::remove(context, patch.actor);
         }
 
-        auto spawnPatch(Writing context, Runtime& state, const PatchKey& key, std::uint8_t coarserEdges) -> bool {
+        auto spawnPatch(Writing context, Landscape& state, const PatchKey& key, std::uint8_t coarserEdges) -> bool {
             const auto scene = with<Thing>::get_global(context).scene;
             auto cpu = buildPatch(state.look, key, coarserEdges);
             if (cpu.positions.empty())
@@ -757,8 +684,8 @@ namespace eltanin::locality::geo {
 
     }
 
-    auto Planetoid::placed() -> bool {
-        return runtime.has_value();
+    auto Planetoid::placed(Reading context) -> bool {
+        return with<Thing>::get_global(context).landscape.has_value();
     }
 
     void Planetoid::place(Writing context, system::Device::Id device, Pose pose, Look look) {
@@ -768,22 +695,24 @@ namespace eltanin::locality::geo {
         const auto crust = with<resource::Assets>::find<resource::texture3array::Asset>(context, resource::Unit::Name::from("Eltanin", "crust"));
         if (not crust)
             return (void)context.refuse("eltanin::locality::geo::Planetoid::place: crust pack missing");
-        if (runtime) {
-            for (const auto& entry : runtime->patches)
+        auto& landscape = with<Thing>::modify_global(context)->landscape;
+        if (landscape) {
+            for (const auto& entry : landscape->patches)
                 dropPatch(context, entry.second);
-            runtime->patches.clear();
+            landscape->patches.clear();
         }
-        const auto well = runtime ? runtime->well : makeWell(context, pose, look);
-        runtime = Runtime{.look = look, .pose = pose, .device = device, .well = well, .material = *material, .crust = *crust, .patches = {}};
+        const auto well = landscape ? landscape->well : makeWell(context, pose, look);
+        landscape = Landscape{.look = look, .pose = pose, .device = device, .well = well, .material = *material, .crust = *crust, .patches = {}};
     }
 
     void Planetoid::update(Writing context, Pos camera) {
-        if (not runtime)
+        auto& landscape = with<Thing>::modify_global(context)->landscape;
+        if (not landscape)
             return;
         vector<PatchKey> wanted;
         wanted.reserve(96);
         for (int face = 0; face < faceCount; ++face)
-            collectLeaves(*runtime, camera, PatchKey{.face = static_cast<std::uint8_t>(face), .level = 0, .iu = 0, .iv = 0}, wanted);
+            collectLeaves(*landscape, camera, PatchKey{.face = static_cast<std::uint8_t>(face), .level = 0, .iu = 0, .iv = 0}, wanted);
         LeafSet keep;
         keep.reserve(wanted.size());
         for (const PatchKey& key : wanted)
@@ -795,64 +724,68 @@ namespace eltanin::locality::geo {
         for (const PatchKey& key : keep)
             wanted.push_back(key);
         vector<PatchKey> stale;
-        for (const auto& entry : runtime->patches) {
+        for (const auto& entry : landscape->patches) {
             if (not keep.contains(entry.first) or entry.second.coarserEdges != edgeFlags(keep, entry.first))
                 stale.push_back(entry.first);
         }
         for (const PatchKey& key : stale) {
-            const auto found = runtime->patches.find(key);
-            if (found == runtime->patches.end())
+            const auto found = landscape->patches.find(key);
+            if (found == landscape->patches.end())
                 continue;
             dropPatch(context, found->second);
-            runtime->patches.erase(found);
+            landscape->patches.erase(found);
         }
         for (const PatchKey& key : wanted) {
-            if (not runtime->patches.contains(key))
-                spawnPatch(context, *runtime, key, edgeFlags(keep, key));
+            if (not landscape->patches.contains(key))
+                spawnPatch(context, *landscape, key, edgeFlags(keep, key));
         }
     }
 
-    auto Planetoid::height(vec3 dir) -> float {
-        if (not runtime)
+    auto Planetoid::height(Reading context, vec3 dir) -> float {
+        const auto& landscape = with<Thing>::get_global(context).landscape;
+        if (not landscape)
             return 0.0f;
-        return heightOf(dir, runtime->look);
+        return heightOf(dir, landscape->look);
     }
 
-    auto Planetoid::altitudeAt(Pos worldPos) -> float {
-        if (not runtime)
+    auto Planetoid::altitudeAt(Reading context, Pos worldPos) -> float {
+        const auto& landscape = with<Thing>::get_global(context).landscape;
+        if (not landscape)
             return 0.0f;
-        const vec3 local = toLocal(*runtime, worldPos);
+        const vec3 local = toLocal(*landscape, worldPos);
         const float radial = glm::length(local);
         if (radial < 1.0e-6f)
-            return -runtime->look.radius;
+            return -landscape->look.radius;
         const vec3 dir = local / radial;
-        return radial - (runtime->look.radius + heightOf(dir, runtime->look));
+        return radial - (landscape->look.radius + heightOf(dir, landscape->look));
     }
 
-    auto Planetoid::gravityAt(Pos worldPos) -> vec3 {
-        if (not runtime)
+    auto Planetoid::gravityAt(Reading context, Pos worldPos) -> vec3 {
+        const auto& landscape = with<Thing>::get_global(context).landscape;
+        if (not landscape)
             return vec3{0.0f, 0.0f, 0.0f};
-        const vec3 offset = worldPos - runtime->pose.position;
+        const vec3 offset = worldPos - landscape->pose.position;
         const float distance = glm::length(offset);
         if (distance < 1.0e-6f)
             return vec3{0.0f, 0.0f, 0.0f};
-        const float radius = runtime->look.radius;
-        const float surface = runtime->look.surfaceAcceleration;
+        const float radius = landscape->look.radius;
+        const float surface = landscape->look.surfaceAcceleration;
         const float accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance * distance * distance);
         return offset * accelScale;
     }
 
-    auto Planetoid::surfaceInfo(vec3 dir) -> Surface {
-        if (not runtime)
+    auto Planetoid::surfaceInfo(Reading context, vec3 dir) -> Surface {
+        const auto& landscape = with<Thing>::get_global(context).landscape;
+        if (not landscape)
             return Surface{.height = 0.0f, .position = vec3{0.0f, 0.0f, 0.0f}, .normal = vec3{0.0f, 1.0f, 0.0f}, .mix = 0, .slope = 0.0f};
         const float len = glm::length(dir);
         if (len < 1.0e-6f)
             return Surface{.height = 0.0f, .position = vec3{0.0f, 0.0f, 0.0f}, .normal = vec3{0.0f, 1.0f, 0.0f}, .mix = 0, .slope = 0.0f};
         dir /= len;
-        const Relief relief = reliefOf(dir, runtime->look);
-        const vec3 normal = gradientNormal(dir, runtime->look);
+        const Relief relief = reliefOf(dir, landscape->look);
+        const vec3 normal = gradientNormal(dir, landscape->look);
         const float slope = 1.0f - glm::clamp(glm::dot(normal, dir), 0.0f, 1.0f);
-        return Surface{.height = relief.height, .position = dir * (runtime->look.radius + relief.height), .normal = normal, .mix = materialMix(dir, relief.height, slope, relief.crater, runtime->look), .slope = slope};
+        return Surface{.height = relief.height, .position = dir * (landscape->look.radius + relief.height), .normal = normal, .mix = materialMix(dir, relief.height, slope, relief.crater, landscape->look), .slope = slope};
     }
 
 }

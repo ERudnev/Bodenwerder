@@ -7,6 +7,8 @@ namespace eltanin
     //   Product::onFrame wall dt → locality dt (paused, timeScale), then physics and >update share that dt.
     // Quantum.bornAt snapshots now at create.
     // scene — the one gameplay Root; born with the Realm (always >assemble).
+    // landscape — optional locality heightfield (C++ bag in planetiod.h; not a domain entity).
+    using Landscape as @external(locality heightfield + gravity well; not a domain entity)
     entity Thing
       always
         >assemble() -> all
@@ -16,5 +18,6 @@ namespace eltanin
         now: seconds
         timeScale: float // wall dt → locality dt
         scene: #rmmr::scene::Root
+        landscape: Landscape?
         >update(dt: seconds)
         *followBodies() // after phys ticks: Node.pose ← Body; missing ward → skip (lock). lifetime = custody pact.

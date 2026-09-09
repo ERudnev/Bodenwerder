@@ -8,10 +8,11 @@ using base::common_types::rgb;
 
 const vector<Mineral>& Mineral::table() {
     // .scale / roughness / metalness / sinter must match rock.frag.glsl, boulder.frag.glsl and planetoid.frag.glsl
+    // Rock/boulder pack mix as 16×4-bit; planetoid demo uses fixed Ice/Olivine/Pyroxene/Iron only.
     // .meltKelvin / tintKelvin / glowKelvin must match rock.frag.glsl and boulder.frag.glsl
     static const vector<Mineral> table{
         Mineral{.name = "Ice", .density = 0.92f, .scale = 0.08f, .albedo = rgb(217, 235, 242), .sinter = rgb(56, 168, 255), .roughness = 0.25f, .metalness = 0.0f, .hardness = 1.5f, .meltKelvin = 273.0f, .tintKelvin = 220.0f, .glowKelvin = 900.0f, .sootMul = 0.85f},
-        Mineral{.name = "Olivine", .density = 3.32f, .scale = 0.25f, .albedo = rgb(64, 89, 38), .sinter = rgb(42, 58, 25), .roughness = 0.72f, .metalness = 0.0f, .hardness = 6.5f, .meltKelvin = 2160.0f, .tintKelvin = 850.0f, .glowKelvin = 1400.0f, .sootMul = 0.08f},
+        Mineral{.name = "Olivine", .density = 3.32f, .scale = 0.25f, .albedo = rgb(74, 80, 52), .sinter = rgb(50, 54, 36), .roughness = 0.72f, .metalness = 0.0f, .hardness = 6.5f, .meltKelvin = 2160.0f, .tintKelvin = 850.0f, .glowKelvin = 1400.0f, .sootMul = 0.08f},
         Mineral{.name = "Pyroxene", .density = 3.28f, .scale = 0.28f, .albedo = rgb(56, 46, 38), .sinter = rgb(36, 30, 25), .roughness = 0.75f, .metalness = 0.0f, .hardness = 6.0f, .meltKelvin = 1850.0f, .tintKelvin = 850.0f, .glowKelvin = 1350.0f, .sootMul = 0.08f},
         Mineral{.name = "Feldspar", .density = 2.62f, .scale = 0.22f, .albedo = rgb(191, 184, 173), .sinter = rgb(138, 132, 124), .roughness = 0.68f, .metalness = 0.0f, .hardness = 6.0f, .meltKelvin = 1470.0f, .tintKelvin = 780.0f, .glowKelvin = 1200.0f, .sootMul = 0.10f},
         Mineral{.name = "Clay", .density = 2.20f, .scale = 0.45f, .albedo = rgb(140, 107, 71), .sinter = rgb(98, 74, 48), .roughness = 0.88f, .metalness = 0.0f, .hardness = 2.0f, .meltKelvin = 1780.0f, .tintKelvin = 700.0f, .glowKelvin = 1100.0f, .sootMul = 0.10f},

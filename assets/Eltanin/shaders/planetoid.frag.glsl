@@ -3,11 +3,8 @@
 in vec3 v_worldPos;
 in vec3 v_worldNormal;
 in vec3 v_objectPos;
-in vec4 v_mix0;
-in vec4 v_mix1;
-in vec4 v_mix2;
-in vec4 v_mix3;
-in float v_cohesion;
+in vec3 v_objectNormal;
+in vec2 v_drivers;
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out float BloomMask;
@@ -33,30 +30,23 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 layout(binding = 1) uniform sampler2D u_shadowMap;
 layout(binding = 3) uniform sampler3D u_minerals[16];
 
-const float mineralScale[16] = float[](
-    0.08, 0.25, 0.28, 0.22,
-    0.45, 0.35, 0.32, 0.55,
-    0.40, 0.38, 0.50, 0.70,
-    0.42, 0.48, 0.20, 0.90
-);
-const float mineralRoughness[16] = float[](
-    0.25, 0.72, 0.75, 0.68,
-    0.88, 0.92, 0.40, 0.30,
-    0.48, 0.62, 0.38, 0.22,
-    0.55, 0.45, 0.40, 0.12
-);
-const float mineralMetalness[16] = float[](
-    0.00, 0.00, 0.00, 0.00,
-    0.00, 0.00, 0.55, 1.00,
-    0.55, 0.20, 1.00, 1.00,
-    0.35, 0.70, 0.00, 0.80
-);
-const vec3 mineralSinter[16] = vec3[](
-    vec3(0.220, 0.659, 1.000), vec3(0.165, 0.227, 0.098), vec3(0.141, 0.118, 0.098), vec3(0.541, 0.518, 0.486),
-    vec3(0.384, 0.290, 0.188), vec3(0.063, 0.055, 0.047), vec3(1.000, 0.659, 0.251), vec3(0.824, 0.800, 0.729),
-    vec3(0.659, 0.518, 0.227), vec3(0.251, 0.125, 0.086), vec3(0.910, 0.604, 0.306), vec3(0.769, 0.784, 0.824),
-    vec3(0.290, 0.329, 0.275), vec3(0.204, 0.220, 0.157), vec3(0.973, 0.980, 0.988), vec3(0.659, 0.251, 1.000)
-);
+// Fixed planetoid demo palette: Ice, Olivine, Pyroxene, Iron (Mineral::table indices).
+const float scaleIce = 0.08;
+const float scaleOlivine = 0.25;
+const float scalePyroxene = 0.28;
+const float scaleIron = 0.32;
+const float roughIce = 0.25;
+const float roughOlivine = 0.72;
+const float roughPyroxene = 0.75;
+const float roughIron = 0.40;
+const float metalIce = 0.00;
+const float metalOlivine = 0.00;
+const float metalPyroxene = 0.00;
+const float metalIron = 0.55;
+const vec3 sinterIce = vec3(0.220, 0.659, 1.000);
+const vec3 sinterOlivine = vec3(0.196, 0.212, 0.141);
+const vec3 sinterPyroxene = vec3(0.141, 0.118, 0.098);
+const vec3 sinterIron = vec3(1.000, 0.659, 0.251);
 
 const float k_shadow_bias = 0.0005;
 const float pi = 3.14159265;
@@ -80,11 +70,6 @@ float fetch_shadow(vec4 light_space_pos, float slope) {
             shadow += sample_shadow(proj.xy + vec2(float(x), float(y)) * texel, current_depth);
     }
     return shadow / 9.0;
-}
-
-float channelWeight(int channel) {
-    vec4 groups[4] = vec4[4](v_mix0, v_mix1, v_mix2, v_mix3);
-    return groups[channel / 4][channel - (channel / 4) * 4];
 }
 
 vec3 cameraWorldPos() {
@@ -125,34 +110,44 @@ vec3 glazeF0(vec3 albedo, vec3 sinterTint, float metalness, float sinter) {
 void main() {
     vec3 camera = cameraWorldPos();
     float lod = crustLod(camera);
-    vec3 albedo = vec3(0.0);
-    vec3 sinterTint = vec3(0.0);
-    float height = 0.0;
-    float roughness = 0.0;
-    float metalness = 0.0;
-    float mass = 0.0;
-    for (int channel = 0; channel < 16; ++channel) {
-        float weight = channelWeight(channel);
-        if (weight <= 0.0)
-            continue;
-        vec4 crust = textureLod(u_minerals[channel], fract(v_objectPos * mineralScale[channel]), lod);
-        albedo += weight * crust.rgb;
-        sinterTint += weight * mineralSinter[channel];
-        height += weight * crust.a;
-        roughness += weight * mineralRoughness[channel];
-        metalness += weight * mineralMetalness[channel];
-        mass += weight;
+    vec3 dir = normalize(v_objectPos);
+    float altitude = v_drivers.x;
+    float crater = v_drivers.y;
+    float slope = 1.0 - clamp(dot(normalize(v_objectNormal), dir), 0.0, 1.0);
+    float polar = abs(dir.y);
+    float bowl = smoothstep(0.05, 0.85, clamp(-crater, 0.0, 1.4) / 1.4);
+    float flats = 1.0 - slope;
+    float midLat = 1.0 - smoothstep(0.45, 0.82, polar);
+    float highland = smoothstep(0.05, 0.55, altitude);
+
+    float wIce = 0.85 * smoothstep(0.52, 0.88, polar);
+    float wOlivine = 0.55 * flats * midLat * (0.55 + 0.45 * (1.0 - highland));
+    float wPyroxene = 0.48 * (0.35 + 0.65 * highland) * (0.55 + 0.45 * midLat);
+    float wIron = 0.70 * bowl * (0.45 + 0.55 * midLat);
+    float mass = wIce + wOlivine + wPyroxene + wIron;
+    if (mass < 1.0e-5) {
+        wOlivine = 1.0;
+        mass = 1.0;
     }
-    if (mass > 0.0) {
-        albedo /= mass;
-        sinterTint /= mass;
-        height /= mass;
-        roughness /= mass;
-        metalness /= mass;
-    }
+    wIce /= mass;
+    wOlivine /= mass;
+    wPyroxene /= mass;
+    wIron /= mass;
+
+    vec4 cIce = textureLod(u_minerals[0], fract(v_objectPos * scaleIce), lod);
+    vec4 cOlivine = textureLod(u_minerals[1], fract(v_objectPos * scaleOlivine), lod);
+    vec4 cPyroxene = textureLod(u_minerals[2], fract(v_objectPos * scalePyroxene), lod);
+    vec4 cIron = textureLod(u_minerals[6], fract(v_objectPos * scaleIron), lod);
+
+    vec3 albedo = wIce * cIce.rgb + wOlivine * cOlivine.rgb + wPyroxene * cPyroxene.rgb + wIron * cIron.rgb;
+    vec3 sinterTint = wIce * sinterIce + wOlivine * sinterOlivine + wPyroxene * sinterPyroxene + wIron * sinterIron;
+    float height = wIce * cIce.a + wOlivine * cOlivine.a + wPyroxene * cPyroxene.a + wIron * cIron.a;
+    float roughness = wIce * roughIce + wOlivine * roughOlivine + wPyroxene * roughPyroxene + wIron * roughIron;
+    float metalness = wIce * metalIce + wOlivine * metalOlivine + wPyroxene * metalPyroxene + wIron * metalIron;
+
     albedo *= actorAlbedoOpacity.rgb;
     height = clamp(height, 0.0, 1.0);
-    float cohesion = clamp(v_cohesion, 0.0, 1.0);
+    float cohesion = clamp(0.08 + 0.35 * highland * flats + 0.40 * bowl + 0.25 * wIce, 0.0, 0.7);
     float sinter = smoothstep(sinterStart, 1.0, cohesion);
     albedo = glazeAlbedo(albedo, sinterTint, sinter);
     roughness = mix(roughness, 0.08, sinter);
@@ -173,8 +168,8 @@ void main() {
     vec3 specular = D * G * F / max(4.0 * NdotV * NdotL, 0.001);
     vec3 kD = (vec3(1.0) - F) * (1.0 - metalness);
     float cavity = mix(mix(0.58, 1.0, height), mix(0.78, 1.0, height), sinter);
-    float slope = 1.0 - max(dot(N, L), 0.0);
-    float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos + N * (0.4 + 1.2 * slope), 1.0), slope);
+    float lightSlope = 1.0 - max(dot(N, L), 0.0);
+    float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos + N * (0.4 + 1.2 * lightSlope), 1.0), lightSlope);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);
     float lightGain = max(passPrimaryLightPositionIntensity.w, 0.0);
     vec3 ambient = (kD * albedo + F0 * 0.22) * passAmbientColorIntensity.rgb * (ambientGain / (1.0 + ambientGain)) * cavity;

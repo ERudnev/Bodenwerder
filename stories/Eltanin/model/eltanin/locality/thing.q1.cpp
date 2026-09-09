@@ -15,7 +15,7 @@ namespace eltanin::locality {
     auto Thing::Always::assemble(SettingUp& setup) -> Thing::Global {
         auto world = setup.writing();
         const auto root = with<rmmr::scene::Interface>::createScene(world);
-        return Global{.now = seconds{}, .timeScale = 1.0f, .scene = root};
+        return Global{.now = seconds{}, .timeScale = 1.0f, .scene = root, .landscape = {}};
     }
 
     void Thing::Actions::update(Writing context, seconds dt) {

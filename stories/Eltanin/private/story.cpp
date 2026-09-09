@@ -418,14 +418,14 @@ namespace eltanin {
             .surfaces = {{::rmmr::resource::geometry::SurfaceId{0}, ::rmmr::resource::material::Instance{.material = *assets.skyBackdropMaterial, .textures = {}}}},
             .texpack = {},
         };
-        const auto skyBackdrop = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), backdropResolved, with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{-110.0f, -110.0f, -110.0f}));
+        const auto skyBackdrop = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), backdropResolved, with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{-400.0f, -400.0f, -400.0f}));
 
         const auto camera = with<scene::Interface>::createCamera(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), 100.0f * std::numbers::pi_v<float> / 180.0f);
         {
-            // Local frame ~8192 m; 24-bit depth, no reverse-Z → near stays ≥1 m (far/near ≈ 16k).
+            // Planetoid-scale locality: near 4 m, far 40 km (24-bit depth, no reverse-Z).
             auto quantum = with<scene::Camera>::modify(context, camera);
-            quantum->z_near = 1.0f;
-            quantum->z_far = 16384.0f;
+            quantum->z_near = 4.0f;
+            quantum->z_far = 40000.0f;
         }
         with<controller::Camera3d>::create(context, camera);
 

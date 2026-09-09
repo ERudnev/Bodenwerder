@@ -57,7 +57,7 @@ namespace eltanin {
             with<rmmr::scene::Node>::modify(context, *global.skyBackdrop)->pose.position =
                 with<rmmr::scene::Node>::get(context, *global.camera).pose.position;
         locality::geo::Sun::tether(context, with<rmmr::scene::Node>::get(context, *global.camera).pose.position);
-        if (locality::geo::Planetoid::placed())
+        if (locality::geo::Planetoid::placed(context))
             locality::geo::Planetoid::update(context, with<rmmr::scene::Node>::get(context, *global.camera).pose.position);
     }
 

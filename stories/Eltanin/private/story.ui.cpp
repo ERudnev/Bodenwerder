@@ -13,12 +13,14 @@
 
 #include <base/logging.h>
 #include <eltanin/mech/blueprint.q1.h>
+#include <eltanin/locality/thing.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/controller/camera3d.q1.h>
+#include "geo/celestial/planetiod.h"
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/node.q1.h>
@@ -26,6 +28,10 @@
 #include <rmmr/semantics.q1.h>
 #include <rmmr/system/viewport.q1.h>
 #include <rmmr/wrapper/ui.h>
+
+#include <glm/common.hpp>
+#include <glm/geometric.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 namespace eltanin {
 
@@ -185,7 +191,19 @@ namespace eltanin {
             return;
         }
         auto& panel = ui.assembler;
-        ImGui::DragFloat3("Spawn pos", &panel.spawnPos.x, 0.1f, 0.0f, 0.0f, "%.2f");
+        if (ImGui::RadioButton("Manual pos", not panel.spawnAtCamera))
+            panel.spawnAtCamera = false;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("At camera", panel.spawnAtCamera))
+            panel.spawnAtCamera = true;
+        if (not panel.spawnAtCamera) {
+            ImGui::DragFloat3("Spawn pos", &panel.spawnPos.x, 0.1f, 0.0f, 0.0f, "%.2f");
+        } else if (world_view.has_value() and with<scene::Camera>::exists(world, world_view->camera)) {
+            const auto& cameraPose = with<scene::Node>::get(world, world_view->camera).pose;
+            ImGui::TextDisabled("Spawn pos: camera (%.2f, %.2f, %.2f)", cameraPose.position.x, cameraPose.position.y, cameraPose.position.z);
+        } else {
+            ImGui::TextDisabled("Spawn pos: camera (no view)");
+        }
         ImGui::DragFloat3("Spawn HPB", &panel.spawnHpb.x, 0.1f, -180.0f, 180.0f, "%.1f°");
         ImGui::DragFloat3("Spawn vel", &panel.spawnVel.x, 0.1f, 0.0f, 0.0f, "%.2f");
         if (panel.blueprint.has_value() and not with<::eltanin::mech::Blueprint>::exists(world, *panel.blueprint))
@@ -223,11 +241,14 @@ namespace eltanin {
             pickShelf("Prefabs", blueprintPack.prefabs);
             ImGui::EndCombo();
         }
-        const bool canCreate = panel.blueprint.has_value() and world_view.has_value();
+        const bool cameraReady = not panel.spawnAtCamera or (world_view.has_value() and with<scene::Camera>::exists(world, world_view->camera));
+        const bool canCreate = panel.blueprint.has_value() and world_view.has_value() and cameraReady;
         if (not canCreate)
             ImGui::BeginDisabled();
-        if (ImGui::Button("Create", ImVec2{-1.0f, 0.0f}) and canCreate)
-            mech::Assembler::spawn(world, Pose::from(panel.spawnPos, panel.spawnHpb), *panel.blueprint, panel.spawnVel);
+        if (ImGui::Button("Create", ImVec2{-1.0f, 0.0f}) and canCreate) {
+            const Pos spawnPos = panel.spawnAtCamera ? with<scene::Node>::get(world, world_view->camera).pose.position : panel.spawnPos;
+            mech::Assembler::spawn(world, Pose::from(spawnPos, panel.spawnHpb), *panel.blueprint, panel.spawnVel);
+        }
         if (not canCreate)
             ImGui::EndDisabled();
         ImGui::End();
@@ -259,8 +280,8 @@ namespace eltanin {
                 } else {
                     ImGui::TextDisabled("Parallel projection (reserved).");
                 }
-                ImGui::DragFloat("Near", &quantum->z_near, 0.1f, 1.0f, quantum->z_far - 1.0f, "%.1f");
-                ImGui::DragFloat("Far", &quantum->z_far, 16.0f, quantum->z_near + 1.0f, 32768.0f, "%.0f");
+                ImGui::DragFloat("Near", &quantum->z_near, 0.1f, 0.5f, quantum->z_far - 1.0f, "%.1f");
+                ImGui::DragFloat("Far", &quantum->z_far, 100.0f, quantum->z_near + 1.0f, 100000.0f, "%.0f");
                 if (with<controller::Camera3d>::exists(world, camera)) {
                     static constexpr float moveScales[4] = {0.1f, 1.0f, 10.0f, 100.0f};
                     auto fly = with<controller::Camera3d>::modify(world, camera);
@@ -270,6 +291,21 @@ namespace eltanin {
                             speed = index;
                     if (ImGui::Combo("Move speed", &speed, "×0.1\0×1\0×10\0×100\0"))
                         fly->moveScale = moveScales[speed];
+                }
+                const auto& landscape = with<locality::Thing>::get_global(world).landscape;
+                if (landscape) {
+                    ImGui::Separator();
+                    ImGui::TextUnformatted("Landscape");
+                    const Pos cameraPos = node.pose.position;
+                    const vec3 local = glm::inverse(landscape->pose.rotation) * (cameraPos - landscape->pose.position);
+                    const float range = glm::length(local);
+                    const float altitude = locality::geo::Planetoid::altitudeAt(world, cameraPos);
+                    const float gravity = glm::length(locality::geo::Planetoid::gravityAt(world, cameraPos));
+                    const float latDeg = range > 1.0e-3f ? glm::degrees(std::asin(glm::clamp(local.y / range, -1.0f, 1.0f))) : 0.0f;
+                    const float lonDeg = range > 1.0e-3f ? glm::degrees(std::atan2(local.x, local.z)) : 0.0f;
+                    ImGui::Text("Altitude: %.1f m (g %.3f m/s²)", altitude, gravity);
+                    ImGui::Text("Range to center: %.1f m (%.2f km)", range, range * 0.001f);
+                    ImGui::Text("Lat / Lon: %.3f°, %.3f°", latDeg, lonDeg);
                 }
             }
         }

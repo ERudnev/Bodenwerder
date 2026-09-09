@@ -43,6 +43,7 @@ namespace eltanin {
             rmmr::Pos spawnPos;
             rmmr::HPB spawnHpb;
             rmmr::vec3 spawnVel;
+            bool spawnAtCamera;
         };
         Assembler assembler{};
     };
