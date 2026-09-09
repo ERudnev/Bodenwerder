@@ -17,6 +17,7 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -130,13 +131,15 @@ namespace eltanin::locality::geo {
             float v;
         };
 
-        auto faceUv(vec3 dir) -> FaceUv {
-            const vec3 extent = glm::abs(dir);
-            if (extent.x >= extent.y and extent.x >= extent.z)
-                return FaceUv{.face = dir.x >= 0.0f ? 0 : 1, .u = dir.y / extent.x, .v = dir.z / extent.x};
-            if (extent.y >= extent.x and extent.y >= extent.z)
-                return FaceUv{.face = dir.y >= 0.0f ? 2 : 3, .u = dir.x / extent.y, .v = dir.z / extent.y};
-            return FaceUv{.face = dir.z >= 0.0f ? 4 : 5, .u = dir.x / extent.z, .v = dir.y / extent.z};
+        auto uvOnFace(int face, vec3 cube) -> FaceUv {
+            switch (face) {
+                case 0: return FaceUv{.face = 0, .u = cube.y, .v = cube.z};
+                case 1: return FaceUv{.face = 1, .u = cube.y, .v = cube.z};
+                case 2: return FaceUv{.face = 2, .u = cube.x, .v = cube.z};
+                case 3: return FaceUv{.face = 3, .u = cube.x, .v = cube.z};
+                case 4: return FaceUv{.face = 4, .u = cube.x, .v = cube.y};
+                default: return FaceUv{.face = 5, .u = cube.x, .v = cube.y};
+            }
         }
 
         struct FaceCell {
@@ -196,51 +199,80 @@ namespace eltanin::locality::geo {
         auto craterField(vec3 dir, integer seed, float planetRadius) -> CraterHit {
             constexpr int faceCells = 8;
             constexpr float cellSize = 2.0f / static_cast<float>(faceCells);
-            const FaceUv coord = faceUv(dir);
-            const int originU = static_cast<int>(std::floor((coord.u + 1.0f) / cellSize));
-            const int originV = static_cast<int>(std::floor((coord.v + 1.0f) / cellSize));
+            constexpr float nearEdge = 1.0f - 2.0f * cellSize;
+            const vec3 extent = glm::abs(dir);
+            const vec3 cube = dir / glm::max(extent.x, glm::max(extent.y, extent.z));
             const int craterSeed = static_cast<int>(seed) + 40;
+            FaceCell seen[75];
+            int packedKeys[75];
+            int seenCount = 0;
+            std::uint64_t used[6];
+            used[0] = 0;
+            used[1] = 0;
+            used[2] = 0;
+            used[3] = 0;
+            used[4] = 0;
+            used[5] = 0;
+            auto gatherFace = [&](int face) {
+                const FaceUv coord = uvOnFace(face, cube);
+                const int originU = glm::clamp(static_cast<int>(std::floor((coord.u + 1.0f) / cellSize)), 0, faceCells - 1);
+                const int originV = glm::clamp(static_cast<int>(std::floor((coord.v + 1.0f) / cellSize)), 0, faceCells - 1);
+                for (int offsetV = -2; offsetV <= 2; ++offsetV) {
+                    for (int offsetU = -2; offsetU <= 2; ++offsetU) {
+                        const FaceCell cellId = wrapFaceCell(face, originU + offsetU, originV + offsetV, faceCells);
+                        const std::uint64_t bit = 1ull << (cellId.iu * faceCells + cellId.iv);
+                        if ((used[cellId.face] & bit) != 0 or seenCount >= 75)
+                            continue;
+                        used[cellId.face] |= bit;
+                        const int packed = (cellId.face << 16) ^ (cellId.iu << 8) ^ cellId.iv;
+                        packedKeys[seenCount] = packed;
+                        seen[seenCount] = cellId;
+                        ++seenCount;
+                    }
+                }
+            };
+            if (std::abs(cube.x) >= nearEdge)
+                gatherFace(dir.x >= 0.0f ? 0 : 1);
+            if (std::abs(cube.y) >= nearEdge)
+                gatherFace(dir.y >= 0.0f ? 2 : 3);
+            if (std::abs(cube.z) >= nearEdge)
+                gatherFace(dir.z >= 0.0f ? 4 : 5);
+            int order[75];
+            for (int index = 0; index < seenCount; ++index)
+                order[index] = index;
+            std::sort(order, order + seenCount, [&](int left, int right) { return packedKeys[left] < packedKeys[right]; });
             float field = 0.0f;
             float meters = 0.0f;
             float cover = 0.0f;
-            int seen[25];
-            int seenCount = 0;
-            for (int offsetV = -2; offsetV <= 2; ++offsetV) {
-                for (int offsetU = -2; offsetU <= 2; ++offsetU) {
-                    const FaceCell cellId = wrapFaceCell(coord.face, originU + offsetU, originV + offsetV, faceCells);
-                    const int packed = (cellId.face << 16) ^ (cellId.iu << 8) ^ cellId.iv;
-                    bool duplicate = false;
-                    for (int index = 0; index < seenCount; ++index)
-                        duplicate = duplicate or seen[index] == packed;
-                    if (duplicate)
-                        continue;
-                    seen[seenCount++] = packed;
-                    const float jitterU = (hash31(cellId.face, cellId.iu, cellId.iv, craterSeed + 1) * 2.0f - 1.0f) * 0.28f * cellSize;
-                    const float jitterV = (hash31(cellId.face, cellId.iu, cellId.iv, craterSeed + 2) * 2.0f - 1.0f) * 0.28f * cellSize;
-                    const float craterU = -1.0f + (static_cast<float>(cellId.iu) + 0.5f) * cellSize + jitterU;
-                    const float craterV = -1.0f + (static_cast<float>(cellId.iv) + 0.5f) * cellSize + jitterV;
-                    const vec3 crater = cubeDir(cellId.face, craterU, craterV);
-                    const float ang = std::sqrt(glm::max(0.0f, 2.0f - 2.0f * glm::clamp(glm::dot(dir, crater), -1.0f, 1.0f)));
-                    const float radius = craterRadius(cellId.face, cellId.iu, cellId.iv, craterSeed);
-                    const float bowlT = ang / radius;
-                    if (bowlT > 1.55f)
-                        continue;
-                    const float roll = hash31(cellId.face, cellId.iu, cellId.iv, craterSeed + 5);
-                    const float depthUnit = 0.35f + 0.80f * roll;
-                    const float depthMeters = (0.20f + 0.20f * roll) * planetRadius * radius / 1.5f;
-                    const float bowl = bowlT < 1.0f ? (bowlT * bowlT - 1.0f) : 0.0f;
-                    const float rimT = (bowlT - 1.02f) / 0.14f;
-                    const float n0 = valueNoise(dir.x * 36.0f, dir.y * 36.0f, dir.z * 36.0f, craterSeed + packed);
-                    const float n1 = valueNoise(dir.x * 67.0f, dir.y * 67.0f, dir.z * 67.0f, craterSeed + packed + 11);
-                    const float rimAmp = glm::mix(0.5f, 1.0f, n0 * 0.72f + n1 * 0.28f);
-                    const float rim = std::exp(-rimT * rimT) * rimAmp;
-                    const float expose = glm::smoothstep(0.058f, 0.105f, radius);
-                    const float damp = 1.0f / (1.0f + 1.7f * cover);
-                    field += (bowl * depthUnit + rim * 0.30f * depthUnit) * expose * damp;
-                    meters += (bowl * depthMeters + rim * 0.08f * depthMeters) * damp;
-                    if (bowlT < 1.0f)
-                        cover = glm::max(cover, 1.0f - bowlT * bowlT);
-                }
+            for (int slot = 0; slot < seenCount; ++slot) {
+                const int index = order[slot];
+                const FaceCell cellId = seen[index];
+                const int packed = packedKeys[index];
+                const float jitterU = (hash31(cellId.face, cellId.iu, cellId.iv, craterSeed + 1) * 2.0f - 1.0f) * 0.28f * cellSize;
+                const float jitterV = (hash31(cellId.face, cellId.iu, cellId.iv, craterSeed + 2) * 2.0f - 1.0f) * 0.28f * cellSize;
+                const float craterU = -1.0f + (static_cast<float>(cellId.iu) + 0.5f) * cellSize + jitterU;
+                const float craterV = -1.0f + (static_cast<float>(cellId.iv) + 0.5f) * cellSize + jitterV;
+                const vec3 crater = cubeDir(cellId.face, craterU, craterV);
+                const float ang = std::sqrt(glm::max(0.0f, 2.0f - 2.0f * glm::clamp(glm::dot(dir, crater), -1.0f, 1.0f)));
+                const float radius = craterRadius(cellId.face, cellId.iu, cellId.iv, craterSeed);
+                const float bowlT = ang / radius;
+                if (bowlT > 1.55f)
+                    continue;
+                const float roll = hash31(cellId.face, cellId.iu, cellId.iv, craterSeed + 5);
+                const float depthUnit = 0.35f + 0.80f * roll;
+                const float depthMeters = (0.20f + 0.20f * roll) * planetRadius * radius / 1.5f;
+                const float bowl = bowlT < 1.0f ? (bowlT * bowlT - 1.0f) : 0.0f;
+                const float rimT = (bowlT - 1.02f) / 0.14f;
+                const float n0 = valueNoise(dir.x * 36.0f, dir.y * 36.0f, dir.z * 36.0f, craterSeed + packed);
+                const float n1 = valueNoise(dir.x * 67.0f, dir.y * 67.0f, dir.z * 67.0f, craterSeed + packed + 11);
+                const float rimAmp = glm::mix(0.5f, 1.0f, n0 * 0.72f + n1 * 0.28f);
+                const float rim = std::exp(-rimT * rimT) * rimAmp;
+                const float expose = glm::smoothstep(0.058f, 0.105f, radius);
+                const float damp = 1.0f / (1.0f + 1.7f * cover);
+                field += (bowl * depthUnit + rim * 0.30f * depthUnit) * expose * damp;
+                meters += (bowl * depthMeters + rim * 0.08f * depthMeters) * damp;
+                if (bowlT < 1.0f)
+                    cover = glm::max(cover, 1.0f - bowlT * bowlT);
             }
             return CraterHit{.field = glm::clamp(field, -1.4f, 0.55f), .meters = meters, .cover = cover};
         }
