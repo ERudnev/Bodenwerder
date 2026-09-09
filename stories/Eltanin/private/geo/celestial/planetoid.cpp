@@ -190,6 +190,7 @@ namespace eltanin::locality::geo {
         struct CraterHit {
             float field;
             float meters;
+            float cover;
         };
 
         auto craterField(vec3 dir, integer seed, float planetRadius) -> CraterHit {
@@ -201,6 +202,7 @@ namespace eltanin::locality::geo {
             const int craterSeed = static_cast<int>(seed) + 40;
             float field = 0.0f;
             float meters = 0.0f;
+            float cover = 0.0f;
             int seen[25];
             int seenCount = 0;
             for (int offsetV = -2; offsetV <= 2; ++offsetV) {
@@ -228,13 +230,19 @@ namespace eltanin::locality::geo {
                     const float depthMeters = (0.20f + 0.20f * roll) * planetRadius * radius / 1.5f;
                     const float bowl = bowlT < 1.0f ? (bowlT * bowlT - 1.0f) : 0.0f;
                     const float rimT = (bowlT - 1.02f) / 0.14f;
-                    const float rim = std::exp(-rimT * rimT);
+                    const float n0 = valueNoise(dir.x * 36.0f, dir.y * 36.0f, dir.z * 36.0f, craterSeed + packed);
+                    const float n1 = valueNoise(dir.x * 67.0f, dir.y * 67.0f, dir.z * 67.0f, craterSeed + packed + 11);
+                    const float rimAmp = glm::mix(0.5f, 1.0f, n0 * 0.72f + n1 * 0.28f);
+                    const float rim = std::exp(-rimT * rimT) * rimAmp;
                     const float expose = glm::smoothstep(0.058f, 0.105f, radius);
-                    field += (bowl * depthUnit + rim * 0.30f * depthUnit) * expose;
-                    meters += bowl * depthMeters + rim * 0.08f * depthMeters;
+                    const float damp = 1.0f / (1.0f + 1.7f * cover);
+                    field += (bowl * depthUnit + rim * 0.30f * depthUnit) * expose * damp;
+                    meters += (bowl * depthMeters + rim * 0.08f * depthMeters) * damp;
+                    if (bowlT < 1.0f)
+                        cover = glm::max(cover, 1.0f - bowlT * bowlT);
                 }
             }
-            return CraterHit{.field = glm::clamp(field, -1.4f, 0.55f), .meters = meters};
+            return CraterHit{.field = glm::clamp(field, -1.4f, 0.55f), .meters = meters, .cover = cover};
         }
 
         struct Relief {
@@ -250,16 +258,18 @@ namespace eltanin::locality::geo {
             const int seed = static_cast<int>(look.seed);
             const vec3 warp = vec3{signedNoise(dir * 2.1f, seed + 3), signedNoise(vec3{dir.y, dir.z, dir.x} * 2.1f, seed + 7), signedNoise(vec3{dir.z, dir.x, dir.y} * 2.1f, seed + 11)};
             const vec3 warped = glm::normalize(dir + warp * 0.14f);
+            const vec3 fold = vec3{signedNoise(warped * 1.7f, seed + 19), signedNoise(vec3{warped.y, warped.z, warped.x} * 1.7f, seed + 23), signedNoise(vec3{warped.z, warped.x, warped.y} * 1.7f, seed + 29)};
+            const vec3 folded = glm::normalize(warped + fold * 0.24f);
             const float shape = fbm(warped * 2.4f, seed) * 0.55f + signedNoise(warped * 8.0f, seed + 13) * 0.18f;
-            float ridged = 1.0f - std::abs(signedNoise(warped * 5.4f, seed + 19));
-            ridged = ridged * ridged;
+            const float massif = fbm(folded * 1.35f, seed + 37);
             const CraterHit pits = craterField(dir, look.seed, look.radius);
-            const float combined = 0.48f * shape + look.ridge * (ridged * 2.0f - 1.0f);
-            const float base = glm::clamp(combined, -1.0f, 1.0f) * look.maxRelief;
+            const float ground = 0.48f * shape * look.maxRelief;
+            const float tectonic = massif * look.tectonic * look.radius;
+            const float base = glm::mix(tectonic + ground, glm::min(tectonic, 0.0f) + ground, pits.cover);
             const float bowlDamp = glm::smoothstep(0.0f, 0.85f, glm::clamp(-pits.field, 0.0f, 1.4f) / 1.4f);
             const float rimBoost = glm::smoothstep(0.04f, 0.40f, glm::clamp(pits.field, 0.0f, 0.55f));
-            const float heightBoost = glm::smoothstep(-0.25f, 0.55f, combined);
-            float gritAmp = 0.55f * (1.0f - 0.88f * bowlDamp) * (1.0f + 2.0f * rimBoost) * (1.0f + 1.35f * ridged * ridged) * (0.40f + 0.60f * heightBoost);
+            const float heightBoost = glm::smoothstep(-0.25f, 0.55f, shape);
+            float gritAmp = 0.55f * (1.0f - 0.88f * bowlDamp) * (1.0f + 2.0f * rimBoost) * (0.40f + 0.60f * heightBoost);
             const float grit = 0.62f * signedNoise(dir * (look.radius / 8.0f), seed + 53) + 0.38f * signedNoise(dir * (look.radius / 4.0f), seed + 59);
             return Relief{.height = base + pits.meters + grit * gritAmp, .crater = pits.field};
         }

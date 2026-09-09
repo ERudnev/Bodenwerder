@@ -187,9 +187,9 @@ void main() {
     float closeAmt = 1.0 - smoothstep(1.2, 5.0, pixelMeters);
 
     vec3 aIce = sampleAlbedo(u_albedoMap, uvClose, 0.0, closeDx, closeDy);
-    vec3 aOlivine = sampleAlbedo(u_albedoMap, uvClose, 2.0, closeDx, closeDy);
-    vec3 aPyroxene = sampleAlbedo(u_albedoMap, uvClose, 4.0, closeDx, closeDy);
-    vec3 aIron = sampleAlbedo(u_albedoMap, uvClose, 12.0, closeDx, closeDy);
+    vec3 aOlivine = sampleAlbedo(u_albedoMap, uvClose, 1.0, closeDx, closeDy);
+    vec3 aPyroxene = sampleAlbedo(u_albedoMap, uvClose, 2.0, closeDx, closeDy);
+    vec3 aIron = sampleAlbedo(u_albedoMap, uvClose, 6.0, closeDx, closeDy);
     vec3 albedo = wIce * aIce + wOlivine * aOlivine + wPyroxene * aPyroxene + wIron * aIron;
     albedo *= mix(0.74, 1.18, surfaceMottle(v_objectPos));
 

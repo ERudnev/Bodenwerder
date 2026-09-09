@@ -24,7 +24,7 @@ namespace eltanin::locality::geo {
             float radius;
             float maxRelief;
             float surfaceAcceleration;
-            float ridge;
+            float tectonic;
         };
 
         struct PatchKey {
