@@ -1,7 +1,5 @@
 #include "geo/celestial/planetiod.h"
 
-#include "geo/stones/crust.h"
-
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
@@ -9,7 +7,7 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
-#include <rmmr/resources/texture3array.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -179,27 +177,30 @@ namespace eltanin::locality::geo {
             return FaceCell{.face = face, .iu = glm::clamp(iu, 0, last), .iv = glm::clamp(iv, 0, last)};
         }
 
-        auto unitGauss(float first, float second) -> float {
-            return std::sqrt(-2.0f * std::log(glm::max(first, 1.0e-6f))) * std::cos(second * 2.0f * std::numbers::pi_v<float>);
-        }
-
         auto craterRadius(int face, int iu, int iv, int seed) -> float {
-            constexpr float radiusMin = 0.10f;
+            constexpr float radiusMin = 0.042f;
             constexpr float radiusMax = 0.30f;
-            constexpr float radiusMean = 0.136f;
-            constexpr float radiusSigma = 0.055f;
-            const float sample = unitGauss(hash31(face, iu, iv, seed + 4), hash31(face, iu, iv, seed + 6));
-            return glm::clamp(radiusMean + radiusSigma * sample, radiusMin, radiusMax);
+            constexpr float alpha = 1.65f;
+            const float u = hash31(face, iu, iv, seed + 4);
+            const float minPow = std::pow(radiusMin, 1.0f - alpha);
+            const float maxPow = std::pow(radiusMax, 1.0f - alpha);
+            return std::pow(minPow + u * (maxPow - minPow), 1.0f / (1.0f - alpha));
         }
 
-        auto craterField(vec3 dir, integer seed) -> float {
+        struct CraterHit {
+            float field;
+            float meters;
+        };
+
+        auto craterField(vec3 dir, integer seed, float planetRadius) -> CraterHit {
             constexpr int faceCells = 8;
             constexpr float cellSize = 2.0f / static_cast<float>(faceCells);
             const FaceUv coord = faceUv(dir);
             const int originU = static_cast<int>(std::floor((coord.u + 1.0f) / cellSize));
             const int originV = static_cast<int>(std::floor((coord.v + 1.0f) / cellSize));
             const int craterSeed = static_cast<int>(seed) + 40;
-            float height = 0.0f;
+            float field = 0.0f;
+            float meters = 0.0f;
             int seen[25];
             int seenCount = 0;
             for (int offsetV = -2; offsetV <= 2; ++offsetV) {
@@ -222,14 +223,18 @@ namespace eltanin::locality::geo {
                     const float bowlT = ang / radius;
                     if (bowlT > 1.55f)
                         continue;
-                    const float depth = 0.35f + 0.80f * hash31(cellId.face, cellId.iu, cellId.iv, craterSeed + 5);
-                    const float bowl = bowlT < 1.0f ? (bowlT * bowlT - 1.0f) * depth : 0.0f;
+                    const float roll = hash31(cellId.face, cellId.iu, cellId.iv, craterSeed + 5);
+                    const float depthUnit = 0.35f + 0.80f * roll;
+                    const float depthMeters = (0.20f + 0.20f * roll) * planetRadius * radius / 1.5f;
+                    const float bowl = bowlT < 1.0f ? (bowlT * bowlT - 1.0f) : 0.0f;
                     const float rimT = (bowlT - 1.02f) / 0.14f;
-                    const float rim = std::exp(-rimT * rimT) * 0.30f * depth;
-                    height += bowl + rim;
+                    const float rim = std::exp(-rimT * rimT);
+                    const float expose = glm::smoothstep(0.058f, 0.105f, radius);
+                    field += (bowl * depthUnit + rim * 0.30f * depthUnit) * expose;
+                    meters += bowl * depthMeters + rim * 0.08f * depthMeters;
                 }
             }
-            return glm::clamp(height, -1.4f, 0.55f);
+            return CraterHit{.field = glm::clamp(field, -1.4f, 0.55f), .meters = meters};
         }
 
         struct Relief {
@@ -248,15 +253,15 @@ namespace eltanin::locality::geo {
             const float shape = fbm(warped * 2.4f, seed) * 0.55f + signedNoise(warped * 8.0f, seed + 13) * 0.18f;
             float ridged = 1.0f - std::abs(signedNoise(warped * 5.4f, seed + 19));
             ridged = ridged * ridged;
-            const float craters = craterField(dir, look.seed);
-            const float combined = 0.48f * shape + look.ridge * (ridged * 2.0f - 1.0f) + 0.34f * craters;
+            const CraterHit pits = craterField(dir, look.seed, look.radius);
+            const float combined = 0.48f * shape + look.ridge * (ridged * 2.0f - 1.0f);
             const float base = glm::clamp(combined, -1.0f, 1.0f) * look.maxRelief;
-            const float bowlDamp = glm::smoothstep(0.0f, 0.85f, glm::clamp(-craters, 0.0f, 1.4f) / 1.4f);
-            const float rimBoost = glm::smoothstep(0.04f, 0.40f, glm::clamp(craters, 0.0f, 0.55f));
+            const float bowlDamp = glm::smoothstep(0.0f, 0.85f, glm::clamp(-pits.field, 0.0f, 1.4f) / 1.4f);
+            const float rimBoost = glm::smoothstep(0.04f, 0.40f, glm::clamp(pits.field, 0.0f, 0.55f));
             const float heightBoost = glm::smoothstep(-0.25f, 0.55f, combined);
             float gritAmp = 0.55f * (1.0f - 0.88f * bowlDamp) * (1.0f + 2.0f * rimBoost) * (1.0f + 1.35f * ridged * ridged) * (0.40f + 0.60f * heightBoost);
             const float grit = 0.62f * signedNoise(dir * (look.radius / 8.0f), seed + 53) + 0.38f * signedNoise(dir * (look.radius / 4.0f), seed + 59);
-            return Relief{.height = base + grit * gritAmp, .crater = craters};
+            return Relief{.height = base + pits.meters + grit * gritAmp, .crater = pits.field};
         }
 
         auto heightOf(vec3 dir, const Planetoid::Look& look) -> float {
@@ -277,6 +282,16 @@ namespace eltanin::locality::geo {
             weights[mineralPyroxene] = 0.48f * (0.35f + 0.65f * highland) * (0.55f + 0.45f * midLat);
             weights[mineralIron] = 0.70f * bowl * (0.45f + 0.55f * midLat);
             return weights;
+        }
+
+        auto cohesionOf(vec3 dir, float height, float slope, float crater, const Planetoid::Look& look) -> float {
+            const float polar = std::abs(dir.y);
+            const float altitude = look.maxRelief > 1.0e-4f ? height / look.maxRelief : 0.0f;
+            const float bowl = glm::smoothstep(0.05f, 0.85f, glm::clamp(-crater, 0.0f, 1.4f) / 1.4f);
+            const float highland = glm::smoothstep(0.05f, 0.55f, altitude);
+            const float ice = glm::smoothstep(0.52f, 0.88f, polar);
+            const float packed = 0.74f + 0.16f * ice + 0.08f * highland - 0.18f * bowl - 0.12f * slope;
+            return glm::clamp(packed, 0.62f, 0.95f);
         }
 
         auto materialMix(vec3 dir, float height, float slope, float crater, const Planetoid::Look& look) -> Mix {
@@ -362,7 +377,7 @@ namespace eltanin::locality::geo {
 
         auto buildPatch(const Planetoid::Look& look, const PatchKey& key, std::uint8_t coarserEdges) -> resource::builders::geometry::CpuPresentation {
             resource::builders::geometry::CpuPresentation cpu{
-                .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"}),
+                .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0", "cohesion"}),
                 .positions = {},
                 .normals = {},
                 .uv0 = {},
@@ -379,6 +394,7 @@ namespace eltanin::locality::geo {
             cpu.positions.reserve(static_cast<std::size_t>(mainCount));
             cpu.normals.reserve(cpu.positions.capacity());
             cpu.uv0.reserve(cpu.positions.capacity());
+            cpu.cohesion.reserve(cpu.positions.capacity());
             cpu.indices.reserve(static_cast<std::size_t>(cells * cells * 6));
 
             for (int row = 0; row < grid; ++row) {
@@ -390,6 +406,7 @@ namespace eltanin::locality::geo {
                     cpu.positions.push_back(dir * (look.radius + relief.height));
                     cpu.normals.push_back(dir);
                     cpu.uv0.push_back(UV{relief.height * reliefScale, relief.crater});
+                    cpu.cohesion.push_back(0.0f);
                 }
             }
 
@@ -415,6 +432,8 @@ namespace eltanin::locality::geo {
                     if (glm::dot(normal, dir) < 0.0f)
                         normal = -normal;
                     cpu.normals[index] = normal;
+                    const float slope = 1.0f - glm::clamp(glm::dot(normal, dir), 0.0f, 1.0f);
+                    cpu.cohesion[index] = cohesionOf(dir, cpu.uv0[index].x * look.maxRelief, slope, cpu.uv0[index].y, look);
                 }
             }
 
@@ -428,6 +447,7 @@ namespace eltanin::locality::geo {
                     const float normalLen = glm::length(normal);
                     cpu.normals[static_cast<std::size_t>(mid)] = normalLen > 1.0e-8f ? normal / normalLen : cpu.normals[static_cast<std::size_t>(prev)];
                     cpu.uv0[static_cast<std::size_t>(mid)] = 0.5f * (cpu.uv0[static_cast<std::size_t>(prev)] + cpu.uv0[static_cast<std::size_t>(next)]);
+                    cpu.cohesion[static_cast<std::size_t>(mid)] = 0.5f * (cpu.cohesion[static_cast<std::size_t>(prev)] + cpu.cohesion[static_cast<std::size_t>(next)]);
                 }
             };
             if (coarserEdges & 1u)
@@ -644,14 +664,7 @@ namespace eltanin::locality::geo {
                 context.refuse("eltanin::locality::geo::Planetoid: geometry install failed");
                 return false;
             }
-            const auto& runtimes = with<resource::Runtimes>::get(context, state.device);
-            if (runtimes.texture3arrays_id_mapping.find(state.crust) == runtimes.texture3arrays_id_mapping.end()) {
-                if (not with<resource::texture3array::Asset>::install(context, state.crust, state.device, generateCrust())) {
-                    context.refuse("eltanin::locality::geo::Planetoid: crust install failed");
-                    return false;
-                }
-            }
-            auto meshQuantum = with<scene::actor::Mesh>::composeOne(context, geometryId, state.material, state.crust);
+            auto meshQuantum = with<scene::actor::Mesh>::composeWithTexpack(context, geometryId, state.material, state.crust);
             if (not meshQuantum) {
                 context.refuse("eltanin::locality::geo::Planetoid: mesh compose failed");
                 return false;
@@ -692,7 +705,7 @@ namespace eltanin::locality::geo {
         const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "planetoid"));
         if (not material)
             return (void)context.refuse("eltanin::locality::geo::Planetoid::place: planetoid material missing");
-        const auto crust = with<resource::Assets>::find<resource::texture3array::Asset>(context, resource::Unit::Name::from("Eltanin", "crust"));
+        const auto crust = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "crust"));
         if (not crust)
             return (void)context.refuse("eltanin::locality::geo::Planetoid::place: crust pack missing");
         auto& landscape = with<Thing>::modify_global(context)->landscape;

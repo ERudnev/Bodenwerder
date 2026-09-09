@@ -144,7 +144,7 @@ namespace eltanin::locality::geo {
             if (not with<rmmr::resource::texture3array::Asset>::install(context, resources->crust, device, generateCrust()))
                 return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: crust install failed");
         }
-        auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeOne(context, geometryId, resources->material, resources->crust);
+        auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeWith3DTexture(context, geometryId, resources->material, resources->crust);
         if (not meshQuantum)
             return context.refuse("eltanin::locality::geo::Boulder::spawnGenerated: mesh compose failed");
         meshQuantum->spriteIndex = dominantMineral(recipe.mix);

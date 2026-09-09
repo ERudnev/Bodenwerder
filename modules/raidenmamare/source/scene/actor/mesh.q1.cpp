@@ -280,17 +280,32 @@ namespace rmmr::scene::actor {
         return compose(context, resource::meshpack::Asset::Resolved{.geometry = geometryId, .entry = resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = {}});
     }
 
-    auto Mesh::Actions::composeOne(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id material, resource::texture3array::Asset::Id crust) -> optional<Quantum> {
+    auto Mesh::Actions::composeWith3DTexture(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id material, resource::texture3array::Asset::Id array) -> optional<Quantum> {
         auto quantum = composeOne(context, geometryId, material);
         if (not quantum)
             return {};
         const auto& runtimes = with<resource::Runtimes>::get(context, quantum->device);
-        const auto found = runtimes.texture3arrays_id_mapping.find(crust);
+        const auto found = runtimes.texture3arrays_id_mapping.find(array);
         if (found == runtimes.texture3arrays_id_mapping.end() or not with<resource::texture3array::Runtime>::exists(context, found->second))
             return {};
         for (auto& bucket : quantum->buckets)
             bucket.texture3array = found->second;
         return quantum;
+    }
+
+    auto Mesh::Actions::composeWithTexpack(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id material, resource::texpack::Pack::Id pack) -> optional<Quantum> {
+        if (not with<resource::geometry::Asset>::exists(context, geometryId))
+            return {};
+        const auto& geometry = with<resource::geometry::Asset>::get(context, geometryId);
+        if (geometry.entries.empty())
+            return {};
+        const auto& entry = geometry.entries.front();
+        umap<resource::geometry::SurfaceId, resource::material::Instance> surfaces;
+        for (renderer::Count offset = 0; offset < entry.surfaces.count; ++offset) {
+            const auto surface = static_cast<resource::geometry::SurfaceId>(entry.surfaces.first + offset);
+            surfaces.emplace(surface, resource::material::Instance{.material = material, .textures = {}});
+        }
+        return compose(context, resource::meshpack::Asset::Resolved{.geometry = geometryId, .entry = resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = pack});
     }
 
     void Mesh::Actions::writeCohesions(Reading context, Id node, std::span<const float> values) {

@@ -257,7 +257,7 @@ namespace eltanin {
             const auto planetoidShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "planetoid"), item<shader::Loader>{.vertex = "shaders/planetoid.vert.glsl", .fragment = "shaders/planetoid.frag.glsl"});
             with<Assets>::add_material(context, Name::from("Eltanin", "planetoid"), Material::Quantum{
                 .techniques = {
-                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetoidShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}), .glowSpread = false}},
+                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetoidShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap"}), .glowSpread = false}},
                     {renderer::Pass::shadow, Material::Technique{.program = shadowTechnique->second.program, .uniforms = {}, .glowSpread = false}},
                 },
                 .nearest = false,
@@ -266,6 +266,8 @@ namespace eltanin {
             const auto manager = with<Manager>::singleton(context);
             const auto crustId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "crust")});
             with<texture3array::Asset>::extend(context, crustId, texture3array::Asset::Quantum{.layerSize = index3{0, 0, 0}, .capacity = 0});
+            with<texpack::Pack>::extend(context, crustId, texpack::Pack::Quantum{.layerSize = index2{1024, 1024}, .capacity = 32, .layers = {}});
+            with<texpack::LoaderCatalog>::extend(context, crustId, texpack::LoaderCatalog::Quantum{.directory = "textures/crust"});
         }
         scenario.loadResources(context, *shared);
 

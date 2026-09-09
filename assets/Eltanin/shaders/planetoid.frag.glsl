@@ -5,6 +5,7 @@ in vec3 v_worldNormal;
 in vec3 v_objectPos;
 in vec3 v_objectNormal;
 in vec2 v_drivers;
+in float v_cohesion;
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out float BloomMask;
@@ -28,13 +29,8 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 };
 
 layout(binding = 1) uniform sampler2D u_shadowMap;
-layout(binding = 3) uniform sampler3D u_minerals[16];
+layout(binding = 0) uniform sampler2DArray u_albedoMap;
 
-// Fixed planetoid demo palette: Ice, Olivine, Pyroxene, Iron (Mineral::table indices).
-const float scaleIce = 0.08;
-const float scaleOlivine = 0.25;
-const float scalePyroxene = 0.28;
-const float scaleIron = 0.32;
 const float roughIce = 0.25;
 const float roughOlivine = 0.72;
 const float roughPyroxene = 0.75;
@@ -57,12 +53,14 @@ float sample_shadow(vec2 uv, float current_depth) {
     return current_depth > closest ? 0.0 : 1.0;
 }
 
-float fetch_shadow(vec4 light_space_pos, float slope) {
+float fetch_shadow(vec4 light_space_pos, float slope, float filterAmt) {
     vec3 proj = light_space_pos.xyz / light_space_pos.w;
     proj = proj * 0.5 + 0.5;
     if (proj.z > 1.0 || proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0)
         return 1.0;
     float current_depth = proj.z - (k_shadow_bias + 0.012 * slope);
+    if (filterAmt <= 0.02)
+        return sample_shadow(proj.xy, current_depth);
     vec2 texel = 1.0 / vec2(textureSize(u_shadowMap, 0));
     float shadow = 0.0;
     for (int x = -1; x <= 1; ++x) {
@@ -77,8 +75,22 @@ vec3 cameraWorldPos() {
     return -vec3(dot(passView[0].xyz, translation), dot(passView[1].xyz, translation), dot(passView[2].xyz, translation));
 }
 
-float crustLod(vec3 camera) {
-    return clamp(log2(max(length(v_worldPos - camera) * 0.012, 1.0)), 0.0, 5.0);
+vec2 wrapGrad(vec2 d) {
+    float m2 = dot(d, d);
+    return m2 > 16.0 ? d * sqrt(16.0 / m2) : d;
+}
+
+vec3 sampleAlbedo(sampler2DArray pack, vec2 uv, float layer, vec2 dx, vec2 dy) {
+    return textureGrad(pack, vec3(uv, layer), dx, dy).rgb;
+}
+
+vec2 cubeFaceUv(vec3 dir) {
+    vec3 extent = abs(dir);
+    if (extent.x >= extent.y && extent.x >= extent.z)
+        return vec2(dir.y, dir.z) / extent.x;
+    if (extent.y >= extent.x && extent.y >= extent.z)
+        return vec2(dir.x, dir.z) / extent.y;
+    return vec2(dir.x, dir.y) / extent.z;
 }
 
 float distributionGgx(float NdotH, float roughness) {
@@ -107,9 +119,40 @@ vec3 glazeF0(vec3 albedo, vec3 sinterTint, float metalness, float sinter) {
     return mix(mix(vec3(0.04), sinterTint * 0.55, sinter), mix(albedo, sinterTint, sinter), metalness);
 }
 
+float hash13(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.yzx + 33.33);
+    return fract((p.x + p.y) * p.z);
+}
+
+float valueNoise(vec3 x) {
+    vec3 i = floor(x);
+    vec3 f = fract(x);
+    f = f * f * (3.0 - 2.0 * f);
+    float n000 = hash13(i);
+    float n100 = hash13(i + vec3(1.0, 0.0, 0.0));
+    float n010 = hash13(i + vec3(0.0, 1.0, 0.0));
+    float n110 = hash13(i + vec3(1.0, 1.0, 0.0));
+    float n001 = hash13(i + vec3(0.0, 0.0, 1.0));
+    float n101 = hash13(i + vec3(1.0, 0.0, 1.0));
+    float n011 = hash13(i + vec3(0.0, 1.0, 1.0));
+    float n111 = hash13(i + vec3(1.0, 1.0, 1.0));
+    float nx00 = mix(n000, n100, f.x);
+    float nx10 = mix(n010, n110, f.x);
+    float nx01 = mix(n001, n101, f.x);
+    float nx11 = mix(n011, n111, f.x);
+    return mix(mix(nx00, nx10, f.y), mix(nx01, nx11, f.y), f.z);
+}
+
+float surfaceMottle(vec3 pos) {
+    float coarse = valueNoise(pos * (1.0 / 80.0));
+    float mid = valueNoise(pos * (1.0 / 28.0) + 19.0);
+    float fine = valueNoise(pos * (1.0 / 28.0) * 5.3 + 41.0);
+    return coarse * 0.50 + mid * 0.31 + fine * 0.19;
+}
+
 void main() {
     vec3 camera = cameraWorldPos();
-    float lod = crustLod(camera);
     vec3 dir = normalize(v_objectPos);
     float altitude = v_drivers.x;
     float crater = v_drivers.y;
@@ -134,46 +177,62 @@ void main() {
     wPyroxene /= mass;
     wIron /= mass;
 
-    vec4 cIce = textureLod(u_minerals[0], fract(v_objectPos * scaleIce), lod);
-    vec4 cOlivine = textureLod(u_minerals[1], fract(v_objectPos * scaleOlivine), lod);
-    vec4 cPyroxene = textureLod(u_minerals[2], fract(v_objectPos * scalePyroxene), lod);
-    vec4 cIron = textureLod(u_minerals[6], fract(v_objectPos * scaleIron), lod);
+    float radius = actorLatticePattern.y * 0.5;
+    vec2 faceUv = cubeFaceUv(dir);
+    vec2 uvCloseRaw = faceUv * (radius / 40.0);
+    vec2 closeDx = wrapGrad(dFdx(uvCloseRaw));
+    vec2 closeDy = wrapGrad(dFdy(uvCloseRaw));
+    vec2 uvClose = fract(uvCloseRaw);
+    float pixelMeters = 0.5 * (length(dFdx(v_worldPos)) + length(dFdy(v_worldPos)));
+    float closeAmt = 1.0 - smoothstep(1.2, 5.0, pixelMeters);
 
-    vec3 albedo = wIce * cIce.rgb + wOlivine * cOlivine.rgb + wPyroxene * cPyroxene.rgb + wIron * cIron.rgb;
+    vec3 aIce = sampleAlbedo(u_albedoMap, uvClose, 0.0, closeDx, closeDy);
+    vec3 aOlivine = sampleAlbedo(u_albedoMap, uvClose, 2.0, closeDx, closeDy);
+    vec3 aPyroxene = sampleAlbedo(u_albedoMap, uvClose, 4.0, closeDx, closeDy);
+    vec3 aIron = sampleAlbedo(u_albedoMap, uvClose, 12.0, closeDx, closeDy);
+    vec3 albedo = wIce * aIce + wOlivine * aOlivine + wPyroxene * aPyroxene + wIron * aIron;
+    albedo *= mix(0.74, 1.18, surfaceMottle(v_objectPos));
+
     vec3 sinterTint = wIce * sinterIce + wOlivine * sinterOlivine + wPyroxene * sinterPyroxene + wIron * sinterIron;
-    float height = wIce * cIce.a + wOlivine * cOlivine.a + wPyroxene * cPyroxene.a + wIron * cIron.a;
     float roughness = wIce * roughIce + wOlivine * roughOlivine + wPyroxene * roughPyroxene + wIron * roughIron;
     float metalness = wIce * metalIce + wOlivine * metalOlivine + wPyroxene * metalPyroxene + wIron * metalIron;
 
     albedo *= actorAlbedoOpacity.rgb;
-    height = clamp(height, 0.0, 1.0);
-    float cohesion = clamp(0.08 + 0.35 * highland * flats + 0.40 * bowl + 0.25 * wIce, 0.0, 0.7);
+    float cohesion = clamp(v_cohesion, 0.0, 1.0);
+    float looseness = 1.0 - cohesion;
     float sinter = smoothstep(sinterStart, 1.0, cohesion);
     albedo = glazeAlbedo(albedo, sinterTint, sinter);
+    albedo *= mix(1.0, 0.82, looseness);
     roughness = mix(roughness, 0.08, sinter);
-    roughness = clamp(roughness + 0.12 * (1.0 - height) * (1.0 - cohesion), 0.06, 1.0);
+    roughness = clamp(roughness + 0.22 * looseness, 0.06, 1.0);
+    metalness *= mix(1.0, 0.12, looseness);
 
     vec3 N = normalize(v_worldNormal);
     vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
     vec3 V = normalize(camera - v_worldPos);
     vec3 H = normalize(V + L);
-    float NdotL = max(dot(N, L), 0.0);
-    float NdotV = max(dot(N, V), 0.001);
+    float mu0 = max(dot(N, L), 0.0);
+    float mu = max(dot(N, V), 0.0);
+    float NdotL = mu0;
+    float NdotV = max(mu, 0.001);
     float NdotH = max(dot(N, H), 0.0);
     float VdotH = max(dot(V, H), 0.0);
+    float lunarK = 0.90 * looseness * looseness;
+    float lunarLambert = (1.0 - lunarK) * mu0 + lunarK * (2.0 * mu0 / (mu0 + mu + 1.0e-4));
     vec3 F0 = glazeF0(albedo, sinterTint, metalness, sinter);
     vec3 F = fresnelSchlick(VdotH, F0);
     float D = distributionGgx(NdotH, roughness);
     float G = geometrySchlick(NdotV, roughness) * geometrySchlick(NdotL, roughness);
     vec3 specular = D * G * F / max(4.0 * NdotV * NdotL, 0.001);
+    specular *= mix(1.0, 0.05, looseness);
     vec3 kD = (vec3(1.0) - F) * (1.0 - metalness);
-    float cavity = mix(mix(0.58, 1.0, height), mix(0.78, 1.0, height), sinter);
-    float lightSlope = 1.0 - max(dot(N, L), 0.0);
-    float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos + N * (0.4 + 1.2 * lightSlope), 1.0), lightSlope);
+    float cavity = mix(1.0, 0.92, sinter);
+    float lightSlope = 1.0 - mu0;
+    float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos + N * (0.4 + 1.2 * lightSlope), 1.0), lightSlope, closeAmt);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);
     float lightGain = max(passPrimaryLightPositionIntensity.w, 0.0);
     vec3 ambient = (kD * albedo + F0 * 0.22) * passAmbientColorIntensity.rgb * (ambientGain / (1.0 + ambientGain)) * cavity;
-    vec3 direct = (kD * albedo + specular) * passPrimaryLightColorRange.rgb * NdotL * shadow * (lightGain / (1.0 + lightGain)) * cavity;
+    vec3 direct = (kD * albedo * lunarLambert + specular) * passPrimaryLightColorRange.rgb * shadow * (lightGain / (1.0 + lightGain)) * cavity;
     FragColor = vec4(ambient + direct, 1.0);
     BloomMask = 0.0;
 }

@@ -3,6 +3,7 @@
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aUv0;
+layout (location = 3) in float aCohesion;
 
 layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     mat4 actorModel;
@@ -31,6 +32,7 @@ out vec3 v_worldNormal;
 out vec3 v_objectPos;
 out vec3 v_objectNormal;
 out vec2 v_drivers;
+out float v_cohesion;
 
 const ivec3 orientationRow0[24] = ivec3[24](
     ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0),
@@ -67,6 +69,7 @@ void main() {
     v_objectNormal = normalize(localRotation * aNormal);
     // uv0.x = altitude / maxRelief, uv0.y = crater field.
     v_drivers = aUv0;
+    v_cohesion = aCohesion;
 
     mat3 normalMat = mat3(transpose(inverse(actorModel)));
     v_worldNormal = normalize(normalMat * v_objectNormal);

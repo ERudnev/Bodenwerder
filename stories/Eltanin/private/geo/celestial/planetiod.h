@@ -4,7 +4,7 @@
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
-#include <rmmr/resources/texture3array.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/system/core.q1.h>
 
@@ -53,7 +53,7 @@ namespace eltanin::locality::geo {
         rmmr::system::Device::Id device;
         phys::Body::Id well;
         rmmr::resource::material::Asset::Id material;
-        rmmr::resource::texture3array::Asset::Id crust;
+        rmmr::resource::texpack::Pack::Id crust;
         std::unordered_map<PatchKey, Patch, PatchKeyHash> patches;
     };
 

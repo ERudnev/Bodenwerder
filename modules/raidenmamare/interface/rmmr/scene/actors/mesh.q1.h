@@ -51,7 +51,8 @@ namespace rmmr::scene::actor {
             static auto compose(Reading, const vector<Occurrence>&) -> optional<Quantum>;
             static auto compose(Reading, resource::meshpack::Asset::Resolved) -> optional<Quantum>;
             static auto composeOne(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id) -> optional<Quantum>;
-            static auto composeOne(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texture3array::Asset::Id) -> optional<Quantum>;
+            static auto composeWith3DTexture(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texture3array::Asset::Id) -> optional<Quantum>;
+            static auto composeWithTexpack(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texpack::Pack::Id) -> optional<Quantum>;
             static void writeCohesions(Reading, Id, std::span<const float>);
             static void writeHeats(Reading, Id, std::span<const float>);
             static void replace(Writing, Id, Quantum);
