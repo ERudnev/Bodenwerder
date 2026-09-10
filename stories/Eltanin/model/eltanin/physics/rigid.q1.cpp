@@ -118,9 +118,6 @@ namespace eltanin::phys::rigid {
             if (count == 0 or crystal.shape.size() != count)
                 continue;
 
-            restCentered.resize(count);
-            worldCentered.resize(count);
-            masses.resize(count);
             dvec3 worldMoment{0.0, 0.0, 0.0};
             dvec3 restMoment{0.0, 0.0, 0.0};
             double mass = 0.0;
@@ -129,9 +126,6 @@ namespace eltanin::phys::rigid {
                 const Particle& particle = crystal.particles[index];
                 if (particle.mass <= 0.0f)
                     continue;
-                restCentered[live] = crystal.shape[index];
-                worldCentered[live] = vec3{particle.position};
-                masses[live] = particle.mass;
                 restMoment += dvec3{crystal.shape[index]} * double(particle.mass);
                 worldMoment += particle.position * double(particle.mass);
                 mass += double(particle.mass);
@@ -144,9 +138,15 @@ namespace eltanin::phys::rigid {
             masses.resize(live);
             const vec3 restCom = vec3{restMoment / mass};
             const dvec3 worldCom = worldMoment / mass;
-            for (std::size_t index = 0; index < live; ++index) {
-                restCentered[index] -= restCom;
-                worldCentered[index] -= vec3{worldCom};
+            live = 0;
+            for (std::size_t index = 0; index < count; ++index) {
+                const Particle& particle = crystal.particles[index];
+                if (particle.mass <= 0.0f)
+                    continue;
+                restCentered[live] = crystal.shape[index] - restCom;
+                worldCentered[live] = vec3{particle.position - worldCom};
+                masses[live] = particle.mass;
+                ++live;
             }
 
             const quat rotation = horn::orientation(restCentered, worldCentered, masses);
