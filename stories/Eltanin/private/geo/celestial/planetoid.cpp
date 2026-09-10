@@ -697,8 +697,17 @@ namespace eltanin::locality::geo {
             dropActor(context, patch.actor);
         }
 
+        void bindAtmosphereMesh(scene::actor::MeshState::Quantum& mesh, const Landscape& state) {
+            const auto& atmosphere = state.look.atmosphere;
+            mesh.albedo = atmosphere.day;
+            mesh.opacity = atmosphere.seaDensity;
+            mesh.heat = vec2{state.look.radius, atmosphere.radius};
+            mesh.scale = vec3{atmosphere.radius * 1.08f};
+            mesh.latticeStep = 0.0f;
+        }
+
         void spawnAtmosphere(Writing context, Landscape& state) {
-            if (state.look.atmosphereRadius <= state.look.radius)
+            if (state.look.atmosphere.radius <= state.look.radius)
                 return;
             const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "atmosphere"));
             if (not material)
@@ -709,9 +718,8 @@ namespace eltanin::locality::geo {
             auto meshQuantum = with<scene::actor::Mesh>::composeOne(context, *sphere, *material);
             if (not meshQuantum)
                 return (void)context.refuse("eltanin::locality::geo::Planetoid::place: atmosphere mesh compose failed");
-            auto meshState = with<scene::actor::MeshState>::defaults(RGB{0.45f, 0.62f, 0.95f}, state.look.seaDensity, vec3{state.look.atmosphereRadius * 1.08f});
-            meshState.latticeStep = 0.0f;
-            meshState.heat = vec2{state.look.radius, state.look.atmosphereRadius};
+            auto meshState = with<scene::actor::MeshState>::defaults(state.look.atmosphere.day, state.look.atmosphere.seaDensity, vec3{1.0f});
+            bindAtmosphereMesh(meshState, state);
             const auto scene = with<Thing>::get_global(context).scene;
             state.atmosphere = with<scene::Interface>::createMeshActor(context, scene, state.pose, std::move(*meshQuantum), meshState);
         }
@@ -783,7 +791,7 @@ namespace eltanin::locality::geo {
         }
         const auto well = landscape ? landscape->well : makeWell(context, pose, look);
         landscape = Landscape{.look = look, .pose = pose, .device = device, .well = well, .material = *material, .crust = *crust, .patches = {}, .atmosphere = {}};
-        with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereDensity = look.seaDensity;
+        with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereDensity = look.atmosphere.seaDensity;
         spawnAtmosphere(context, *landscape);
     }
 
@@ -792,13 +800,9 @@ namespace eltanin::locality::geo {
         if (not landscape)
             return;
         const auto scene = with<Thing>::get_global(context).scene;
-        landscape->look.seaDensity = with<scene::Root>::get(context, scene).atmosphereDensity;
-        if (landscape->atmosphere and with<scene::actor::MeshState>::exists(context, *landscape->atmosphere)) {
-            auto meshState = with<scene::actor::MeshState>::modify(context, *landscape->atmosphere);
-            meshState->opacity = landscape->look.seaDensity;
-            meshState->heat = vec2{landscape->look.radius, landscape->look.atmosphereRadius};
-            meshState->scale = vec3{landscape->look.atmosphereRadius * 1.08f};
-        }
+        landscape->look.atmosphere.seaDensity = with<scene::Root>::get(context, scene).atmosphereDensity;
+        if (landscape->atmosphere and with<scene::actor::MeshState>::exists(context, *landscape->atmosphere))
+            bindAtmosphereMesh(*with<scene::actor::MeshState>::modify(context, *landscape->atmosphere), *landscape);
         vector<PatchKey> wanted;
         wanted.reserve(96);
         for (int face = 0; face < faceCount; ++face)
@@ -868,14 +872,14 @@ namespace eltanin::locality::geo {
         const auto& landscape = with<Thing>::get_global(context).landscape;
         if (not landscape)
             return 0.0f;
-        return landscape->look.atmosphereRadius;
+        return landscape->look.atmosphere.radius;
     }
 
     auto Planetoid::seaDensity(Reading context) -> float {
         const auto& landscape = with<Thing>::get_global(context).landscape;
         if (not landscape)
             return 0.0f;
-        return landscape->look.seaDensity;
+        return landscape->look.atmosphere.seaDensity;
     }
 
     auto Planetoid::surfaceInfo(Reading context, vec3 dir) -> Surface {

@@ -26,8 +26,11 @@ namespace eltanin::locality::geo {
             float maxRelief;
             float surfaceAcceleration;
             float tectonic;
-            float atmosphereRadius;
-            float seaDensity;
+            struct Atmosphere {
+                float radius;
+                float seaDensity;
+                rmmr::RGB day;
+            } atmosphere;
         };
 
         struct PatchKey {

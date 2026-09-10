@@ -25,8 +25,9 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 layout(binding = 1) uniform sampler2D u_sceneDepth;
 
 const int densitySamples = 4;
+const int sunSamples = 2;
 const float visualExtinction = 5.0e-8;
-const float earthSeaDensity = 1200.0;
+const vec3 scatterBeta = vec3(0.45, 1.00, 2.55);
 
 bool intersectSphere(vec3 origin, vec3 dir, vec3 center, float radius, out float tEnter, out float tExit) {
     vec3 offset = origin - center;
@@ -62,6 +63,30 @@ float sceneDistance(vec3 camPos, mat4 invViewProj) {
     return length(world.xyz - camPos);
 }
 
+float densityAt(vec3 pos, vec3 planetCenter, float planetRadius, float scaleHeight, float seaDensity) {
+    float altitude = length(pos - planetCenter) - planetRadius;
+    return seaDensity * exp(-max(altitude, 0.0) / scaleHeight);
+}
+
+float opticalAlong(vec3 origin, vec3 dir, float tEnter, float tExit, vec3 planetCenter, float planetRadius, float scaleHeight, float seaDensity) {
+    tEnter = max(tEnter, 0.0);
+    if (tExit <= tEnter)
+        return 0.0;
+    float stepLength = (tExit - tEnter) / float(sunSamples);
+    float optical = 0.0;
+    for (int i = 0; i < sunSamples; ++i) {
+        float t = tEnter + stepLength * (float(i) + 0.5);
+        optical += densityAt(origin + dir * t, planetCenter, planetRadius, scaleHeight, seaDensity);
+    }
+    return optical * stepLength * visualExtinction;
+}
+
+float sunLight(vec3 pos, vec3 sunDir, vec3 planetCenter) {
+    vec3 radial = pos - planetCenter;
+    float mu = dot(radial / max(length(radial), 1.0e-6), sunDir);
+    return smoothstep(-0.42, 0.18, mu);
+}
+
 void main() {
     if (gl_FrontFacing)
         discard;
@@ -79,41 +104,55 @@ void main() {
     vec3 planetCenter = actorModel[3].xyz / max(actorModel[3].w, 1.0e-6);
 
     float tEnter;
-    float tExit;
-    if (!intersectSphere(camPos, rayDir, planetCenter, atmosphereRadius, tEnter, tExit))
+    float tAtmoExit;
+    if (!intersectSphere(camPos, rayDir, planetCenter, atmosphereRadius, tEnter, tAtmoExit))
         discard;
 
+    float hitDist = sceneDistance(camPos, invViewProj);
     tEnter = max(tEnter, 0.0);
-    tExit = min(tExit, sceneDistance(camPos, invViewProj));
+    float tExit = min(tAtmoExit, hitDist);
+    bool hitGround = hitDist < tAtmoExit;
     if (tExit <= tEnter)
         discard;
 
     float shell = max(atmosphereRadius - planetRadius, 1.0);
     float scaleHeight = shell * 0.25;
-    float optical = 0.0;
+    vec3 sunPos = passPrimaryLightPositionIntensity.xyz;
+    bool pointSun = passPrimaryLightColorRange.w > 0.0;
+    vec3 sunColor = passPrimaryLightColorRange.rgb * max(passPrimaryLightPositionIntensity.w, 0.0);
+    vec3 toCam = camPos - planetCenter;
+    float tLit = clamp(-dot(toCam, rayDir), tEnter, tExit);
+    vec3 posLit = camPos + rayDir * tLit;
+    vec3 sunDir = pointSun ? sunPos - posLit : sunPos;
+    float sunLen = length(sunDir);
+    sunDir = sunLen > 1.0e-6 ? sunDir / sunLen : vec3(0.0, 1.0, 0.0);
+    float shadow = sunLight(posLit, sunDir, planetCenter);
+    float sunEnter;
+    float sunLeave;
+    float sunTau = 0.0;
+    if (intersectSphere(posLit, sunDir, planetCenter, atmosphereRadius, sunEnter, sunLeave))
+        sunTau = opticalAlong(posLit, sunDir, sunEnter, sunLeave, planetCenter, planetRadius, scaleHeight, seaDensity);
+    vec3 transSun = exp(-scatterBeta * sunTau) * shadow;
+    vec3 scatter = vec3(0.0);
+    float viewOptical = 0.0;
     float stepLength = (tExit - tEnter) / float(densitySamples);
     for (int i = 0; i < densitySamples; ++i) {
         float t = tEnter + stepLength * (float(i) + 0.5);
-        float altitude = length(camPos + rayDir * t - planetCenter) - planetRadius;
-        optical += seaDensity * exp(-max(altitude, 0.0) / scaleHeight);
+        vec3 pos = camPos + rayDir * t;
+        float rho = densityAt(pos, planetCenter, planetRadius, scaleHeight, seaDensity);
+        vec3 transView = exp(-scatterBeta * viewOptical);
+        float mu = dot(rayDir, sunDir);
+        float phase = 0.75 + 0.75 * mu * mu;
+        scatter += rho * visualExtinction * stepLength * transSun * transView * sunColor * phase * actorAlbedoOpacity.rgb;
+        viewOptical += rho * visualExtinction * stepLength;
     }
-    optical *= stepLength * visualExtinction;
-    optical = min(optical, 1.6);
 
-    float absorb = 1.0 - exp(-optical);
-    if (absorb < 0.001)
+    float absorb = 1.0 - exp(-viewOptical);
+    if (hitGround)
+        absorb *= mix(0.2, 1.0, sunLight(camPos + rayDir * tExit, sunDir, planetCenter));
+    if (absorb < 0.001 && dot(scatter, vec3(1.0)) < 0.001)
         discard;
 
-    vec3 sunDir = passPrimaryLightPositionIntensity.xyz;
-    float sunLen = length(sunDir);
-    sunDir = sunLen > 1.0e-6 ? sunDir / sunLen : vec3(0.0, 1.0, 0.0);
-    float sunAlong = max(dot(rayDir, sunDir), 0.0);
-    float limb = pow(sunAlong, 4.0);
-    vec3 scatterColor = actorAlbedoOpacity.rgb;
-    vec3 sunColor = passPrimaryLightColorRange.rgb * max(passPrimaryLightPositionIntensity.w, 0.0);
-    vec3 glow = scatterColor * (sunColor * (0.18 + 1.35 * limb) + passAmbientColorIntensity.rgb * 0.35 + vec3(0.12, 0.16, 0.22));
-    glow *= (seaDensity / max(earthSeaDensity, 1.0)) * (optical / max(absorb, 1.0e-4));
-
-    FragColor = vec4(glow * absorb, absorb);
-    BloomMask = absorb * (0.12 + 0.55 * limb);
+    FragColor = vec4(scatter, absorb);
+    BloomMask = max(scatter.r, max(scatter.g, scatter.b)) * 0.22;
 }
