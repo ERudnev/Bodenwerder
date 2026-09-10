@@ -211,7 +211,9 @@ void main() {
     vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
     vec3 V = normalize(camera - v_worldPos);
     vec3 H = normalize(V + L);
-    float mu0 = max(dot(N, L), 0.0);
+    float nDotL = max(dot(N, L), 0.0);
+    float fade = sin(radians(15.0));
+    float mu0 = nDotL * smoothstep(0.0, fade, nDotL);
     float mu = max(dot(N, V), 0.0);
     float NdotL = mu0;
     float NdotV = max(mu, 0.001);

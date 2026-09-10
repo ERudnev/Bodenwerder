@@ -155,6 +155,8 @@ void main() {
     float impact = sqrt(max(dot(toPlanet, toPlanet) - alongView * alongView, 0.0));
     float rimFade = 1.0 - smoothstep(atmosphereRadius - scaleHeight * 3.7, atmosphereRadius, impact);
     float aureole = pow(towardSun, mix(1850.0, 370.0, longPath)) * longPath * rimFade;
+    if (hitDist < actorLatticePattern.y)
+        aureole = 0.0;
     scatter += transSun * sunColor * actorAlbedoOpacity.rgb * aureole * 0.55;
     scatter *= rimFade;
 

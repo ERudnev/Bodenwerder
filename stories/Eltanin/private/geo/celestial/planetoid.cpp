@@ -1,4 +1,5 @@
 #include "geo/celestial/planetiod.h"
+#include "geo/celestial/horizon.h"
 
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/physics/body.q1.h>
@@ -704,6 +705,7 @@ namespace eltanin::locality::geo {
             mesh.heat = vec2{state.look.radius, atmosphere.radius};
             mesh.scale = vec3{atmosphere.radius * 1.08f};
             mesh.latticeStep = 0.0f;
+            mesh.patternScale = Horizon::locality;
         }
 
         void spawnAtmosphere(Writing context, Landscape& state) {
