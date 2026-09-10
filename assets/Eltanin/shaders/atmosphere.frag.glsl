@@ -147,12 +147,23 @@ void main() {
         viewOptical += rho * visualExtinction * stepLength;
     }
 
-    float absorb = 1.0 - exp(-viewOptical);
+    float towardSun = max(dot(rayDir, sunDir), 0.0);
+    float chord = tExit - tEnter;
+    float longPath = 1.0 - exp(-chord / (scaleHeight * 33.0));
+    vec3 toPlanet = planetCenter - camPos;
+    float alongView = dot(toPlanet, rayDir);
+    float impact = sqrt(max(dot(toPlanet, toPlanet) - alongView * alongView, 0.0));
+    float rimFade = 1.0 - smoothstep(atmosphereRadius - scaleHeight * 3.7, atmosphereRadius, impact);
+    float aureole = pow(towardSun, mix(1850.0, 370.0, longPath)) * longPath * rimFade;
+    scatter += transSun * sunColor * actorAlbedoOpacity.rgb * aureole * 0.55;
+    scatter *= rimFade;
+
+    float absorb = (1.0 - exp(-viewOptical)) * rimFade;
     if (hitGround)
         absorb *= mix(0.2, 1.0, sunLight(camPos + rayDir * tExit, sunDir, planetCenter));
     if (absorb < 0.001 && dot(scatter, vec3(1.0)) < 0.001)
         discard;
 
     FragColor = vec4(scatter, absorb);
-    BloomMask = max(scatter.r, max(scatter.g, scatter.b)) * 0.22;
+    BloomMask = max(scatter.r, max(scatter.g, scatter.b)) * 0.22 + aureole * 0.85;
 }
