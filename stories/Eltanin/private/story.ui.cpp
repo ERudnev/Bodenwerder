@@ -21,6 +21,7 @@
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/controller/camera3d.q1.h>
 #include "geo/celestial/planetiod.h"
+#include "physics/settings.h"
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/node.q1.h>
@@ -301,10 +302,13 @@ namespace eltanin {
                     const vec3 local = glm::inverse(landscape->pose.rotation) * (cameraPos - landscape->pose.position);
                     const float range = glm::length(local);
                     const float altitude = locality::geo::Planetoid::altitudeAt(world, cameraPos);
-                    const float gravity = glm::length(locality::geo::Planetoid::gravityAt(world, cameraPos));
+                    const float gravity = float(glm::length(locality::geo::Planetoid::gravityAt(world, dvec3{cameraPos})));
                     const float latDeg = range > 1.0e-3f ? glm::degrees(std::asin(glm::clamp(local.y / range, -1.0f, 1.0f))) : 0.0f;
                     const float lonDeg = range > 1.0e-3f ? glm::degrees(std::atan2(local.x, local.z)) : 0.0f;
-                    ImGui::Text("Altitude: %.1f m (g %.3f m/s²)", altitude, gravity);
+                    ImGui::Text("Altitude: %.1f m", altitude);
+                    ImGui::Text("g: %.3f m/s²", gravity);
+                    const float air = locality::geo::Planetoid::airDensity(world, cameraPos);
+                    ImGui::Text("Air: %.0f g/m³ (%.0f%% ISA)", air, 100.0f * air / phys::Settings::Air::isaDensity);
                     ImGui::Text("Range to center: %.1f m (%.2f km)", range, range * 0.001f);
                     ImGui::Text("Lat / Lon: %.3f°, %.3f°", latDeg, lonDeg);
                 }
@@ -332,9 +336,6 @@ namespace eltanin {
                 ImGui::TextUnformatted("Bloom");
                 ImGui::DragFloat("Bloom radius", &root->bloom.radius, 0.05f, 0.0f, 8.0f, "%.2f");
                 ImGui::DragFloat("Bloom intensity", &root->bloom.intensity, 0.05f, 0.0f, 8.0f, "%.2f");
-                ImGui::DragFloat3("Gravity", &root->gravity.x, 0.01f, 0.0f, 0.0f, "%.3f");
-                ImGui::DragFloat("Atmosphere density", &root->atmosphereDensity, 1.0f, 0.0f, 0.0f, "%.0f g/m³");
-                ImGui::DragFloat("Atmosphere temperature", &root->atmosphereTemperature, 0.1f, 0.0f, 0.0f, "%.1f K");
 
                 if (not root->primaryLight) {
                     ImGui::Separator();

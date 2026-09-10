@@ -366,7 +366,7 @@ namespace eltanin::mech {
         auto crystalFrom(const Construction& construction, Pose pose, vec3 velocity) -> phys::rigid::Crystal::Quantum {
             const auto count = construction.evaluatedParticles.size();
             vector<vec3> shape(count, vec3{0.0f, 0.0f, 0.0f});
-            vector<phys::Particle> particles(count, phys::Particle{phys::Matter{.position = dvec3{0.0, 0.0, 0.0}, .mass = 1.0f, .temperature = 0.0f, .cohesion = 0.5f}, dvec3{0.0, 0.0, 0.0}, vec3{0.0f, 0.0f, 0.0f}});
+            vector<phys::Particle> particles(count, phys::Particle{phys::Matter{.position = dvec3{0.0, 0.0, 0.0}, .mass = 1.0f, .temperature = 0.0f, .cohesion = 0.5f}, dvec3{0.0, 0.0, 0.0}, dvec3{0.0, 0.0, 0.0}});
             glm::dvec3 moment{0.0, 0.0, 0.0};
             double mass = 0.0;
             for (std::size_t index = 0; index < count; ++index) {
@@ -375,7 +375,7 @@ namespace eltanin::mech {
                 const vec3 meters = local * space::local::edge2meters;
                 const vec3 world = pose.position + pose.rotation * meters;
                 shape[index] = meters;
-                particles[index] = phys::Particle{phys::Matter{.position = dvec3{world}, .mass = point.mass, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{world} - dvec3{velocity * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}};
+                particles[index] = phys::Particle{phys::Matter{.position = dvec3{world}, .mass = point.mass, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{world} - dvec3{velocity * float(phys::Settings::fixedStep)}, dvec3{0.0, 0.0, 0.0}};
                 moment += glm::dvec3{meters} * double(point.mass);
                 mass += double(point.mass);
             }

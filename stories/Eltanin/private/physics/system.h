@@ -37,7 +37,7 @@ namespace eltanin::phys {
         void tick(Stewarding);
         void accumulateForces(Stewarding);
         void applyAerodynamics(Stewarding);
-        void applyLinearGravity(Stewarding);
+        void applyPlanetGravity(Stewarding);
         void integrate(fqsm::Direct<rigid::Crystal>);
         void integrateSolids(fqsm::Direct<Body>, fqsm::Direct<rigid::Solid>);
         void integrateRays(fqsm::Direct<Body>, fqsm::Direct<rigid::Ray>);

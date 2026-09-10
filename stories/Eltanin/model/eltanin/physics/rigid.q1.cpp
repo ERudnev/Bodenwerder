@@ -98,7 +98,7 @@ namespace eltanin::phys::rigid {
             particle.position = origin + dvec3{pose.rotation * crystal->shape[index]};
             const dvec3 spin = glm::cross(dvec3{omega}, particle.position - currentCom);
             particle.prev = particle.position - (dvec3{linear} + spin) * double(Settings::fixedStep);
-            particle.force = vec3{0.0f, 0.0f, 0.0f};
+            particle.force = dvec3{0.0, 0.0, 0.0};
         }
         const auto anchor = body->compound;
         *body = restoredBody(origin, pose.rotation, crystal->particles, crystal->shape);
@@ -200,7 +200,7 @@ namespace eltanin::phys::rigid {
                     const double distance = std::sqrt(distance2);
                     const double accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
                     const dvec3 force = offset * (accelScale * double(particle.mass));
-                    particle.force += vec3{force};
+                    particle.force += force;
                     recoil -= force;
                 }
             }
@@ -215,7 +215,7 @@ namespace eltanin::phys::rigid {
                 const double distance = std::sqrt(distance2);
                 const double accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
                 const dvec3 force = offset * (accelScale * double(body->totalMass));
-                solid.center.force += vec3{force};
+                solid.center.force += force;
                 recoil -= force;
             }
             for (auto [_, ray] : context.direct<Ray>().items) {
@@ -228,7 +228,7 @@ namespace eltanin::phys::rigid {
                 const double distance = std::sqrt(distance2);
                 const double accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance2 * distance);
                 const dvec3 force = offset * (accelScale * double(ray.core.mass));
-                ray.core.force += vec3{force};
+                ray.core.force += force;
                 recoil -= force;
             }
             double sourceMass = 0.0;
@@ -239,7 +239,7 @@ namespace eltanin::phys::rigid {
             for (Particle& particle : source->particles) {
                 if (particle.mass <= 0.0f)
                     continue;
-                particle.force += vec3{recoil * (double(particle.mass) / sourceMass)};
+                particle.force += recoil * (double(particle.mass) / sourceMass);
             }
         }
     }

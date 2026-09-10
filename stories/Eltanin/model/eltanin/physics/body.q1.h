@@ -22,7 +22,7 @@ namespace eltanin::phys {
 
     struct Particle : Matter {
         dvec3 prev;
-        vec3 force;
+        dvec3 force;
     };
 
     struct Body : Entity<Body> {

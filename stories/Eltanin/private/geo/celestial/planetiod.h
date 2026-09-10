@@ -29,6 +29,7 @@ namespace eltanin::locality::geo {
             struct Atmosphere {
                 float radius;
                 float seaDensity;
+                float kerman;
                 rmmr::RGB day;
             } atmosphere;
         };
@@ -81,9 +82,11 @@ namespace eltanin::locality::geo {
 
         static auto height(Reading, rmmr::vec3 dir) -> float;
         static auto altitudeAt(Reading, rmmr::Pos worldPos) -> float;
-        static auto gravityAt(Reading, rmmr::Pos worldPos) -> rmmr::vec3;
+        static auto gravityAt(Reading, dvec3 worldPos) -> dvec3;
         static auto atmosphereRadius(Reading) -> float;
         static auto seaDensity(Reading) -> float;
+        static auto airDensity(Reading, rmmr::Pos) -> float;
+        static auto windAt(Reading, dvec3) -> dvec3;
         static auto surfaceInfo(Reading, rmmr::vec3 dir) -> Surface;
     };
 

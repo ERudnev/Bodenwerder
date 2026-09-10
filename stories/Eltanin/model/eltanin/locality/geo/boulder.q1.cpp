@@ -168,7 +168,7 @@ namespace eltanin::locality::geo {
             prevOri = glm::normalize(step * pose.rotation);
         }
         with<phys::rigid::Solid>::extend(context, body, phys::rigid::Solid::Quantum{
-            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = bornCohesion}, dvec3{pose.position} - dvec3{velocity * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}},
+            .center = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = bornCohesion}, dvec3{pose.position} - dvec3{velocity * float(phys::Settings::fixedStep)}, dvec3{0.0, 0.0, 0.0}},
             .prevOri = prevOri,
             .forceAngular = vec3{0.0f, 0.0f, 0.0f},
             .kind = phys::rigid::Solid::Kind::sphere,

@@ -15,7 +15,7 @@ namespace eltanin
 
     struct Particle of Matter
       prev: dvec3
-      force: vec3
+      force: dvec3
 
     // World-facing kinematics cache. Solid, Crystal and Ray are features of the same id.
     // compound = collision cohort anchor; solo body points at itself.

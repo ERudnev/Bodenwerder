@@ -1,9 +1,9 @@
 #include "geo/celestial/planetiod.h"
 #include "geo/celestial/horizon.h"
+#include "physics/settings.h"
 
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/physics/body.q1.h>
-#include <eltanin/physics/rigid.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -751,23 +751,27 @@ namespace eltanin::locality::geo {
             return true;
         }
 
-        auto makeWell(Writing context, Pose pose, const Planetoid::Look& look) -> phys::Body::Id {
+        auto wellQuantum(Pose pose, const Planetoid::Look& look) -> phys::Body::Quantum {
             const float volume = (4.0f / 3.0f) * std::numbers::pi_v<float> * look.radius * look.radius * look.radius;
-            const float mass = volume * 3000.0f;
-            vector<phys::Particle> particles;
-            particles.push_back(phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = mass, .temperature = 0.0f, .cohesion = 1.0f}, dvec3{pose.position}, vec3{0.0f, 0.0f, 0.0f}});
-            vector<vec3> shape;
-            shape.push_back(vec3{0.0f, 0.0f, 0.0f});
-            const auto body = phys::createBody(context, phys::rigid::restoredBody(pose, particles, shape), {});
-            with<phys::rigid::Crystal>::extend(context, body, phys::rigid::Crystal::Quantum{
-                .particles = std::move(particles),
-                .shape = std::move(shape),
-                .com = vec3{0.0f, 0.0f, 0.0f},
-                .hull = phys::rigid::Hull{.faces = {}, .bvh = {.nodes = {}, .root = -1}},
-                .visualHurtStale = false,
-            });
-            with<phys::rigid::CelestialGravity>::extend(context, body, phys::rigid::CelestialGravity::Quantum{.averageRadius = look.radius, .surfaceAcceleration = look.surfaceAcceleration});
-            return body;
+            return phys::Body::Quantum{
+                .position = dvec3{pose.position},
+                .orientation = pose.rotation,
+                .totalMass = volume * 3000.0f,
+                .radius = look.radius + look.maxRelief,
+                .compound = phys::Body::Id::please_never_use_this_except_patch_rejection_mechanism(),
+            };
+        }
+
+        auto makeWell(Writing context, Pose pose, const Planetoid::Look& look) -> phys::Body::Id {
+            return phys::createBody(context, wellQuantum(pose, look), {});
+        }
+
+        void bindWell(phys::Body::Quantum& body, Pose pose, const Planetoid::Look& look) {
+            const auto next = wellQuantum(pose, look);
+            body.position = next.position;
+            body.orientation = next.orientation;
+            body.totalMass = next.totalMass;
+            body.radius = next.radius;
         }
 
     }
@@ -792,8 +796,10 @@ namespace eltanin::locality::geo {
                 dropActor(context, *landscape->atmosphere);
         }
         const auto well = landscape ? landscape->well : makeWell(context, pose, look);
+        bindWell(*with<phys::Body>::modify(context, well), pose, look);
         landscape = Landscape{.look = look, .pose = pose, .device = device, .well = well, .material = *material, .crust = *crust, .patches = {}, .atmosphere = {}};
         with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereDensity = look.atmosphere.seaDensity;
+        with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereKerman = look.atmosphere.kerman;
         spawnAtmosphere(context, *landscape);
     }
 
@@ -803,6 +809,7 @@ namespace eltanin::locality::geo {
             return;
         const auto scene = with<Thing>::get_global(context).scene;
         landscape->look.atmosphere.seaDensity = with<scene::Root>::get(context, scene).atmosphereDensity;
+        landscape->look.atmosphere.kerman = with<scene::Root>::get(context, scene).atmosphereKerman;
         if (landscape->atmosphere and with<scene::actor::MeshState>::exists(context, *landscape->atmosphere))
             bindAtmosphereMesh(*with<scene::actor::MeshState>::modify(context, *landscape->atmosphere), *landscape);
         vector<PatchKey> wanted;
@@ -856,17 +863,17 @@ namespace eltanin::locality::geo {
         return radial - (landscape->look.radius + heightOf(dir, landscape->look));
     }
 
-    auto Planetoid::gravityAt(Reading context, Pos worldPos) -> vec3 {
+    auto Planetoid::gravityAt(Reading context, dvec3 worldPos) -> dvec3 {
         const auto& landscape = with<Thing>::get_global(context).landscape;
         if (not landscape)
-            return vec3{0.0f, 0.0f, 0.0f};
-        const vec3 offset = worldPos - landscape->pose.position;
-        const float distance = glm::length(offset);
-        if (distance < 1.0e-6f)
-            return vec3{0.0f, 0.0f, 0.0f};
-        const float radius = landscape->look.radius;
-        const float surface = landscape->look.surfaceAcceleration;
-        const float accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance * distance * distance);
+            return dvec3{0.0, 0.0, 0.0};
+        const dvec3 offset = worldPos - dvec3{landscape->pose.position};
+        const double distance = glm::length(offset);
+        if (distance < 1.0e-12)
+            return dvec3{0.0, 0.0, 0.0};
+        const double radius = double(landscape->look.radius);
+        const double surface = double(landscape->look.surfaceAcceleration);
+        const double accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance * distance * distance);
         return offset * accelScale;
     }
 
@@ -882,6 +889,17 @@ namespace eltanin::locality::geo {
         if (not landscape)
             return 0.0f;
         return landscape->look.atmosphere.seaDensity;
+    }
+
+    auto Planetoid::airDensity(Reading context, Pos worldPos) -> float {
+        const auto& landscape = with<Thing>::get_global(context).landscape;
+        if (not landscape)
+            return 0.0f;
+        return phys::Settings::Air::density(glm::length(worldPos) - landscape->look.radius, landscape->look.atmosphere.seaDensity, landscape->look.atmosphere.kerman);
+    }
+
+    auto Planetoid::windAt(Reading, dvec3) -> dvec3 {
+        return dvec3{0.0, 0.0, 0.0};
     }
 
     auto Planetoid::surfaceInfo(Reading context, vec3 dir) -> Surface {

@@ -437,7 +437,7 @@ namespace eltanin::locality::geo {
                 const Sample& sample = samples[index];
                 const vec3 world = pose.position + pose.rotation * sample.local;
                 const vec3 spin = glm::cross(omega, pose.rotation * (sample.local - massCom));
-                particles.push_back(phys::Particle{phys::Matter{.position = dvec3{world}, .mass = sample.mass, .temperature = temperature, .cohesion = sampleCohesion[index]}, dvec3{world} - dvec3{(velocity + spin) * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}});
+                particles.push_back(phys::Particle{phys::Matter{.position = dvec3{world}, .mass = sample.mass, .temperature = temperature, .cohesion = sampleCohesion[index]}, dvec3{world} - dvec3{(velocity + spin) * float(phys::Settings::fixedStep)}, dvec3{0.0, 0.0, 0.0}});
                 shape.push_back(sample.local);
             }
 

@@ -41,6 +41,8 @@ namespace eltanin::phys {
             static constexpr float isaDensity = 1225.0f; // g/m³ ISA
             static constexpr float dragTau = 1.0f; // seconds to e-fold linear speed at isaDensity
             static constexpr float spinHalfLife = 3.0f; // Solid ω halves in this many seconds at isaDensity
+            static constexpr float kermanPower = 39.1f; // so ρ(H)=0.01 ρ0; designer never sees this
+            static auto density(float altitude, float seaDensity, float kerman) -> float;
         };
 
         struct Cohesion {

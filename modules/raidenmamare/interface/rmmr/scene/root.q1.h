@@ -25,8 +25,8 @@ namespace rmmr::scene {
             RGB ambient;
             float ambient_intensity;
             Bloom bloom;
-            vec3 gravity;
             float atmosphereDensity;
+            float atmosphereKerman;
             float atmosphereTemperature;
             float shutter;
             base::maybe<Light::Id> primaryLight;

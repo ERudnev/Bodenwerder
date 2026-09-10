@@ -21,8 +21,8 @@ namespace rmmr
         ambient: RGB
         ambient_intensity: float
         bloom: Bloom
-        gravity: vec3
-        atmosphereDensity: float // g/m³ = kg/m³ × 1000
+        atmosphereDensity: float // g/m³ at sea; height law is engine-side
+        atmosphereKerman: float // m; altitude where ρ = 1% of sea; 0 = no air
         atmosphereTemperature: float // K; default CMB
         shutter: float // seconds; smear metres = speed × shutter
         primaryLight: #Light?

@@ -87,7 +87,7 @@ namespace eltanin::locality {
             .compound = phys::Body::Id::please_never_use_this_except_patch_rejection_mechanism(),
         }, {});
         with<phys::rigid::Ray>::extend(context, body, phys::rigid::Ray::Quantum{
-            .core = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = shellMass, .temperature = shellHeat, .cohesion = 1.0f}, dvec3{pose.position} - dvec3{velocity * float(phys::Settings::fixedStep)}, vec3{0.0f, 0.0f, 0.0f}},
+            .core = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = shellMass, .temperature = shellHeat, .cohesion = 1.0f}, dvec3{pose.position} - dvec3{velocity * float(phys::Settings::fixedStep)}, dvec3{0.0, 0.0, 0.0}},
         });
         const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
         with<Bullet>::extend(context, thing, Bullet::Quantum{.actor = replica, .body = body, .speed = speed});

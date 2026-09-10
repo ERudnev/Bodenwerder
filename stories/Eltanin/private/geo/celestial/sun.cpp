@@ -44,7 +44,7 @@ namespace eltanin::locality::geo {
     }
 
     auto Sun::sol() -> Look {
-        return Look{.heading = HPB{-25.0f, -30.0f, 0.0f}, .color = RGB{1.0f, 0.94f, 0.86f}, .brightness = 8.0f, .angularDiameterDeg = 0.53f};
+        return Look{.heading = HPB{-60.0f, 10.0f, 0.0f}, .color = RGB{1.0f, 0.94f, 0.86f}, .brightness = 8.0f, .angularDiameterDeg = 0.53f};
     }
 
     auto Sun::redGiant() -> Look {

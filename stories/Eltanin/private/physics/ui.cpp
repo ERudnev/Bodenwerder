@@ -9,6 +9,7 @@
 #include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/physics/resting.q1.h>
 #include <eltanin/world.q1.h>
+#include "geo/celestial/planetiod.h"
 #include <rmmr/resources/builders/geometryGenerator.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
@@ -392,14 +393,18 @@ namespace eltanin::phys {
                 }
 
                 ImGui::Separator();
-                ImGui::TextUnformatted("Location");
-                if (with<rmmr::scene::Root>::exists(context, system.scene)) {
-                    auto root = with<rmmr::scene::Root>::modify(context, system.scene);
-                    ImGui::DragFloat3("Gravity", &root->gravity.x, 0.01f, 0.0f, 0.0f, "%.3f m/s²");
-                    ImGui::DragFloat("Atmosphere density", &root->atmosphereDensity, 1.0f, 0.0f, 0.0f, "%.0f g/m³");
-                    ImGui::DragFloat("Atmosphere temperature", &root->atmosphereTemperature, 0.1f, 0.0f, 0.0f, "%.1f K");
-                } else {
-                    ImGui::TextDisabled("No scene Root.");
+                if (ImGui::CollapsingHeader("Location", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    if (with<rmmr::scene::Root>::exists(context, system.scene)) {
+                        auto root = with<rmmr::scene::Root>::modify(context, system.scene);
+                        if (locality::geo::Planetoid::placed(context)) {
+                            auto& landscape = *with<locality::Thing>::modify_global(context)->landscape;
+                            ImGui::DragFloat("Surface g", &landscape.look.surfaceAcceleration, 0.01f, 0.0f, 0.0f, "%.3f m/s²");
+                        }
+                        ImGui::DragFloat("Air density MSL", &root->atmosphereDensity, 1.0f, 0.0f, 0.0f, "%.0f g/m³");
+                        ImGui::DragFloat("Kerman line", &root->atmosphereKerman, 100.0f, 0.0f, 0.0f, "%.0f m");
+                    } else {
+                        ImGui::TextDisabled("No scene Root.");
+                    }
                 }
 
                 ImGui::Separator();
