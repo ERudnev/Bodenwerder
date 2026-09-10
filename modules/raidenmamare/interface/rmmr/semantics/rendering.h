@@ -15,7 +15,7 @@ namespace rmmr::renderer {
         shadow,
         gizmo,
         sprite,
-        environment, // sky / backdrop; main FB, before opaque
+        environment, // sky / celestial; after opaque so far mesh Z can fail against locality
         atmosphere, // spherical fog/limb over HDR + depth; before identity
         identitySelected, // selected Identified → selected-ID buffer (before identity; shared depth)
         identity, // keep last: bounds SeparateBuffers

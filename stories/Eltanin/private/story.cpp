@@ -17,6 +17,7 @@
 #include <eltanin/resources/geometry.q1.h>
 #include <eltanin/world.q1.h>
 #include "geo/celestial/sun.h"
+#include "geo/celestial/horizon.h"
 #include <rmmr/api/_interface.h>
 #include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -418,7 +419,8 @@ namespace eltanin {
             .surfaces = {{::rmmr::resource::geometry::SurfaceId{0}, ::rmmr::resource::material::Instance{.material = *assets.skySphereMaterial, .textures = {{"albedoMap", "skySphere.png"}}}}},
             .texpack = assets.sprites,
         };
-        const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved);
+        const auto skyScale = locality::geo::Horizon::stars / locality::geo::Horizon::skyMesh;
+        const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved, with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{skyScale, skyScale, skyScale}));
         if (not assets.primitive.sphere or not assets.skyBackdropMaterial)
             return (void)context.refuse("eltanin::Game::populateWorld: sky backdrop missing");
         const auto backdropResolved = ::rmmr::resource::meshpack::Asset::Resolved{
@@ -427,14 +429,13 @@ namespace eltanin {
             .surfaces = {{::rmmr::resource::geometry::SurfaceId{0}, ::rmmr::resource::material::Instance{.material = *assets.skyBackdropMaterial, .textures = {}}}},
             .texpack = {},
         };
-        const auto skyBackdrop = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), backdropResolved, with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{-400.0f, -400.0f, -400.0f}));
+        const auto skyBackdrop = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), backdropResolved, with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{-locality::geo::Horizon::backdrop, -locality::geo::Horizon::backdrop, -locality::geo::Horizon::backdrop}));
 
         const auto camera = with<scene::Interface>::createCamera(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), 100.0f * std::numbers::pi_v<float> / 180.0f);
         {
-            // Planetoid-scale locality: near 4 m, far 40 km (24-bit depth, no reverse-Z).
             auto quantum = with<scene::Camera>::modify(context, camera);
-            quantum->z_near = 4.0f;
-            quantum->z_far = 40000.0f;
+            quantum->z_near = locality::geo::Horizon::near;
+            quantum->z_far = locality::geo::Horizon::far;
         }
         with<controller::Camera3d>::create(context, camera);
 

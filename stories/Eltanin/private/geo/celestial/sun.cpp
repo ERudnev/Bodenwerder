@@ -1,4 +1,5 @@
 #include "geo/celestial/sun.h"
+#include "geo/celestial/horizon.h"
 
 #include <eltanin/locality/thing.q1.h>
 #include <rmmr/api/_interface.h>
@@ -71,7 +72,7 @@ namespace eltanin::locality::geo {
         }
         with<rmmr::scene::Root>::modify(context, scene)->primaryLight = *light;
         if (not disk) {
-            auto state = with<rmmr::scene::actor::MeshState>::defaults(look.color, 1.0f, vec3{-100.0f, -100.0f, -100.0f});
+            auto state = with<rmmr::scene::actor::MeshState>::defaults(look.color, 1.0f, vec3{-Horizon::system, -Horizon::system, -Horizon::system});
             state.patternScale = look.angularDiameterDeg;
             const auto resolved = rmmr::resource::meshpack::Asset::Resolved{.geometry = *sphere, .entry = rmmr::resource::geometry::EntryId{0}, .surfaces = {{rmmr::resource::geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = *material, .textures = {}}}}, .texpack = {}};
             disk = with<rmmr::scene::Interface>::createMeshActor(context, scene, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), resolved, state);
@@ -80,7 +81,7 @@ namespace eltanin::locality::geo {
             return (void)context.refuse("eltanin::locality::geo::Sun::place: disk missing");
         auto meshState = with<rmmr::scene::actor::MeshState>::modify(context, *disk);
         meshState->albedo = look.color;
-        meshState->scale = vec3{-100.0f, -100.0f, -100.0f};
+        meshState->scale = vec3{-Horizon::system, -Horizon::system, -Horizon::system};
         meshState->patternScale = look.angularDiameterDeg;
         meshState->opacity = 1.0f;
     }

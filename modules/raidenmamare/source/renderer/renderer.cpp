@@ -271,8 +271,8 @@ namespace rmmr {
 
         constexpr std::array<renderer::Pass, 9> render_queue_passes{
             renderer::Pass::shadow,
-            renderer::Pass::environment,
             renderer::Pass::opaque,
+            renderer::Pass::environment,
             renderer::Pass::transparent,
             renderer::Pass::sprite,
             renderer::Pass::gizmo,
