@@ -14,17 +14,27 @@
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/semantics/geometry.h>
 
+#include <base/logging.h>
+
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
+#include <condition_variable>
 #include <cstdint>
+#include <limits>
+#include <memory>
+#include <mutex>
 #include <numbers>
+#include <optional>
 #include <string>
+#include <thread>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace eltanin::locality::geo {
@@ -34,13 +44,76 @@ namespace eltanin::locality::geo {
 
     using Mix = std::uint64_t;
 
+    struct TerrainAsync {
+        enum class Lifecycle : std::uint8_t { pending, generating, completed, resident };
+
+        struct Desired {
+            Landscape::PatchKey key;
+            std::uint8_t coarserEdges;
+            bool wireframe;
+            bool residentMatches;
+            double priority;
+        };
+
+        struct Completed {
+            Landscape::PatchKey key;
+            std::uint8_t coarserEdges;
+            bool wireframe;
+            resource::builders::geometry::CpuPresentation cpu;
+        };
+
+        struct Snapshot {
+            std::uint32_t pending = 0;
+            std::uint32_t generating = 0;
+            std::uint32_t completed = 0;
+            std::uint32_t resident = 0;
+            std::uint64_t startedTotal = 0;
+            std::uint64_t committedTotal = 0;
+            std::uint64_t discardedTotal = 0;
+            double latencyAverageMs = 0.0;
+            double latencyP95Ms = 0.0;
+            double latencyMaxMs = 0.0;
+        };
+
+        explicit TerrainAsync(Landscape::Look look);
+        ~TerrainAsync();
+        TerrainAsync(const TerrainAsync&) = delete;
+        auto operator=(const TerrainAsync&) -> TerrainAsync& = delete;
+
+        void reconcile(const std::vector<Desired>& desired);
+        auto takeCompleted(std::size_t limit) -> std::vector<Completed>;
+        void markResident(const Landscape::PatchKey& key, std::uint8_t coarserEdges, bool wireframe);
+        void noteCommitted();
+        auto takeStartedSinceFrame() -> std::uint32_t;
+        auto snapshot() const -> Snapshot;
+        void invalidate(Landscape::Look look);
+
+    private:
+        struct State;
+        std::unique_ptr<State> state;
+    };
+
     namespace {
+
+        auto terrainAsyncState() -> std::shared_ptr<TerrainAsync>& {
+            static std::shared_ptr<TerrainAsync> state;
+            return state;
+        }
 
         constexpr int mixChannels = 16;
         constexpr int grid = 33;
         constexpr int cells = 32;
         constexpr int faceCount = 6;
         constexpr int maxLevel = 5;
+        constexpr float craterDepthMultiplier = 1.5f;
+        constexpr float rareBasinDepthMultiplier = 3.0f;
+        constexpr float heroBasinMorphologyStrength = 1.0f;
+        constexpr float lesserBasinMorphologyStrength = 0.45f;
+        constexpr int basinMacroFeatureCount = 4;
+        constexpr int basinSecondaryImpactCount = 3;
+        constexpr int maxMegaRiftCount = 2;
+        constexpr float secondMegaRiftChance = 0.18f;
+        constexpr float megaRiftMorphologyStrength = 1.0f;
         constexpr float splitNear = 2.8f;
         constexpr float splitKeep = 3.7f;
         constexpr int mineralIce = 0;
@@ -54,6 +127,12 @@ namespace eltanin::locality::geo {
         using PatchKey = Landscape::PatchKey;
         using PatchKeyHash = Landscape::PatchKeyHash;
         using Patch = Landscape::Patch;
+        using PatchMap = std::unordered_map<PatchKey, Patch, PatchKeyHash>;
+
+        auto terrainStagingPatches() -> PatchMap& {
+            static PatchMap patches;
+            return patches;
+        }
 
         auto hash31(int x, int y, int z, int seed) -> float {
             auto mix = [](std::uint32_t value) -> std::uint32_t {
@@ -126,68 +205,25 @@ namespace eltanin::locality::geo {
             return glm::normalize(cubePoint(face, faceU, faceV));
         }
 
-        struct FaceUv {
-            int face;
-            float u;
-            float v;
-        };
-
-        auto uvOnFace(int face, vec3 cube) -> FaceUv {
-            switch (face) {
-                case 0: return FaceUv{.face = 0, .u = cube.y, .v = cube.z};
-                case 1: return FaceUv{.face = 1, .u = cube.y, .v = cube.z};
-                case 2: return FaceUv{.face = 2, .u = cube.x, .v = cube.z};
-                case 3: return FaceUv{.face = 3, .u = cube.x, .v = cube.z};
-                case 4: return FaceUv{.face = 4, .u = cube.x, .v = cube.y};
-                default: return FaceUv{.face = 5, .u = cube.x, .v = cube.y};
-            }
-        }
-
-        struct FaceCell {
-            int face;
-            int iu;
-            int iv;
-        };
-
-        auto wrapFaceCell(int face, int iu, int iv, int cells) -> FaceCell {
-            const int last = cells - 1;
-            for (int pass = 0; pass < 2; ++pass) {
-                if (iu >= 0 and iu < cells and iv >= 0 and iv < cells)
-                    return FaceCell{.face = face, .iu = iu, .iv = iv};
-                if (iu < 0 or iu >= cells) {
-                    const bool high = iu >= cells;
-                    const int into = high ? iu - cells : -1 - iu;
-                    switch (face) {
-                        case 0: face = high ? 2 : 3; iu = last - into; break;
-                        case 1: face = high ? 2 : 3; iu = into; break;
-                        case 2: face = high ? 0 : 1; iu = last - into; break;
-                        case 3: face = high ? 0 : 1; iu = into; break;
-                        case 4: { const int along = iv; face = high ? 0 : 1; iu = along; iv = last - into; break; }
-                        default: { const int along = iv; face = high ? 0 : 1; iu = along; iv = into; break; }
-                    }
-                    continue;
-                }
-                const bool high = iv >= cells;
-                const int into = high ? iv - cells : -1 - iv;
-                switch (face) {
-                    case 0: { const int along = iu; face = high ? 4 : 5; iu = last - into; iv = along; break; }
-                    case 1: { const int along = iu; face = high ? 4 : 5; iu = into; iv = along; break; }
-                    case 2: face = high ? 4 : 5; iv = last - into; break;
-                    case 3: face = high ? 4 : 5; iv = into; break;
-                    case 4: face = high ? 2 : 3; iv = last - into; break;
-                    default: face = high ? 2 : 3; iv = into; break;
-                }
-            }
-            return FaceCell{.face = face, .iu = glm::clamp(iu, 0, last), .iv = glm::clamp(iv, 0, last)};
-        }
-
+        constexpr float craterRadiusMax = 0.16f;
+        constexpr float craterSupport = 1.55f;
+        constexpr float contourBroad = 0.04f;
+        constexpr float contourFine = 0.015f;
+        constexpr float sculptedBroad = 0.12f;
+        constexpr float sculptedFine = 0.035f;
+        constexpr float sculptedReach = craterSupport * (1.0f + sculptedBroad + sculptedFine);
+        // Catalog craters always trim the largest .155 radial lobe by .035.
+        // The trim is monotone, so 1.12 bounds its largest radius (plus roundoff).
+        constexpr float craterReach = craterSupport * (1.0f + sculptedBroad + 0.000001f);
+        constexpr int craterCells = 10;
+        constexpr int craterCount = faceCount * craterCells * craterCells;
+        constexpr float craterCellSize = 2.0f / craterCells;
         auto craterRadius(int face, int iu, int iv, int seed) -> float {
-            constexpr float radiusMin = 0.042f;
-            constexpr float radiusMax = 0.30f;
-            constexpr float alpha = 1.65f;
+            constexpr float radiusMin = 0.015f;
+            constexpr float alpha = 2.10f;
             const float u = hash31(face, iu, iv, seed + 4);
             const float minPow = std::pow(radiusMin, 1.0f - alpha);
-            const float maxPow = std::pow(radiusMax, 1.0f - alpha);
+            const float maxPow = std::pow(craterRadiusMax, 1.0f - alpha);
             return std::pow(minPow + u * (maxPow - minPow), 1.0f / (1.0f - alpha));
         }
 
@@ -197,85 +233,805 @@ namespace eltanin::locality::geo {
             float cover;
         };
 
-        auto craterField(vec3 dir, integer seed, float planetRadius) -> CraterHit {
-            constexpr int faceCells = 8;
-            constexpr float cellSize = 2.0f / static_cast<float>(faceCells);
-            constexpr float nearEdge = 1.0f - 2.0f * cellSize;
-            const vec3 extent = glm::abs(dir);
-            const vec3 cube = dir / glm::max(extent.x, glm::max(extent.y, extent.z));
-            const int craterSeed = static_cast<int>(seed) + 40;
-            FaceCell seen[75];
-            int packedKeys[75];
-            int seenCount = 0;
-            std::uint64_t used[6];
-            used[0] = 0;
-            used[1] = 0;
-            used[2] = 0;
-            used[3] = 0;
-            used[4] = 0;
-            used[5] = 0;
-            auto gatherFace = [&](int face) {
-                const FaceUv coord = uvOnFace(face, cube);
-                const int originU = glm::clamp(static_cast<int>(std::floor((coord.u + 1.0f) / cellSize)), 0, faceCells - 1);
-                const int originV = glm::clamp(static_cast<int>(std::floor((coord.v + 1.0f) / cellSize)), 0, faceCells - 1);
-                for (int offsetV = -2; offsetV <= 2; ++offsetV) {
-                    for (int offsetU = -2; offsetU <= 2; ++offsetU) {
-                        const FaceCell cellId = wrapFaceCell(face, originU + offsetU, originV + offsetV, faceCells);
-                        const std::uint64_t bit = 1ull << (cellId.iu * faceCells + cellId.iv);
-                        if ((used[cellId.face] & bit) != 0 or seenCount >= 75)
-                            continue;
-                        used[cellId.face] |= bit;
-                        const int packed = (cellId.face << 16) ^ (cellId.iu << 8) ^ cellId.iv;
-                        packedKeys[seenCount] = packed;
-                        seen[seenCount] = cellId;
-                        ++seenCount;
-                    }
-                }
+        struct Crater {
+            struct Profile {
+                float floorRadius;
+                float rounding;
+                float rimInnerWidth;
+                float rimScale;
+                float breach;
             };
-            if (std::abs(cube.x) >= nearEdge)
-                gatherFace(dir.x >= 0.0f ? 0 : 1);
-            if (std::abs(cube.y) >= nearEdge)
-                gatherFace(dir.y >= 0.0f ? 2 : 3);
-            if (std::abs(cube.z) >= nearEdge)
-                gatherFace(dir.z >= 0.0f ? 4 : 5);
-            int order[75];
-            for (int index = 0; index < seenCount; ++index)
-                order[index] = index;
-            std::sort(order, order + seenCount, [&](int left, int right) { return packedKeys[left] < packedKeys[right]; });
-            float field = 0.0f;
-            float meters = 0.0f;
-            float cover = 0.0f;
-            for (int slot = 0; slot < seenCount; ++slot) {
-                const int index = order[slot];
-                const FaceCell cellId = seen[index];
-                const int packed = packedKeys[index];
-                const float jitterU = (hash31(cellId.face, cellId.iu, cellId.iv, craterSeed + 1) * 2.0f - 1.0f) * 0.28f * cellSize;
-                const float jitterV = (hash31(cellId.face, cellId.iu, cellId.iv, craterSeed + 2) * 2.0f - 1.0f) * 0.28f * cellSize;
-                const float craterU = -1.0f + (static_cast<float>(cellId.iu) + 0.5f) * cellSize + jitterU;
-                const float craterV = -1.0f + (static_cast<float>(cellId.iv) + 0.5f) * cellSize + jitterV;
-                const vec3 crater = cubeDir(cellId.face, craterU, craterV);
-                const float ang = std::sqrt(glm::max(0.0f, 2.0f - 2.0f * glm::clamp(glm::dot(dir, crater), -1.0f, 1.0f)));
-                const float radius = craterRadius(cellId.face, cellId.iu, cellId.iv, craterSeed);
-                const float bowlT = ang / radius;
-                if (bowlT > 1.55f)
-                    continue;
-                const float roll = hash31(cellId.face, cellId.iu, cellId.iv, craterSeed + 5);
-                const float depthUnit = 0.35f + 0.80f * roll;
-                const float depthMeters = (0.20f + 0.20f * roll) * planetRadius * radius / 1.5f;
-                const float bowl = bowlT < 1.0f ? (bowlT * bowlT - 1.0f) : 0.0f;
-                const float rimT = (bowlT - 1.02f) / 0.14f;
-                const float n0 = valueNoise(dir.x * 36.0f, dir.y * 36.0f, dir.z * 36.0f, craterSeed + packed);
-                const float n1 = valueNoise(dir.x * 67.0f, dir.y * 67.0f, dir.z * 67.0f, craterSeed + packed + 11);
-                const float rimAmp = glm::mix(0.5f, 1.0f, n0 * 0.72f + n1 * 0.28f);
-                const float rim = std::exp(-rimT * rimT) * rimAmp;
-                const float expose = glm::smoothstep(0.058f, 0.105f, radius);
-                const float damp = 1.0f / (1.0f + 1.7f * cover);
-                field += (bowl * depthUnit + rim * 0.30f * depthUnit) * expose * damp;
-                meters += (bowl * depthMeters + rim * 0.08f * depthMeters) * damp;
-                if (bowlT < 1.0f)
-                    cover = glm::max(cover, 1.0f - bowlT * bowlT);
+            struct Shape {
+                std::array<vec3, 3> fanDirections;
+                float wallScale;
+                float talusScale;
+            };
+            struct BasinMorphology {
+                struct MacroFeature {
+                    vec2 center;
+                    vec2 axis;
+                    vec2 extent;
+                    float height;
+                };
+                struct SecondaryImpact {
+                    vec2 center;
+                    float radius;
+                    float depth;
+                    float rim;
+                };
+
+                float strength = 0.0f;
+                vec3 axisU{};
+                vec3 axisV{};
+                vec2 asymmetry{};
+                std::array<MacroFeature, basinMacroFeatureCount> macroFeatures{};
+                std::array<SecondaryImpact, basinSecondaryImpactCount> secondaryImpacts{};
+                float collapseStrength = 0.0f;
+                float terraceBreakup = 0.0f;
+            };
+
+            vec3 center;
+            float radius;
+            float depthUnit;
+            float depthScale;
+            int noiseSeed;
+            Profile profile;
+            Shape shape;
+            BasinMorphology basin;
+        };
+
+        auto craterFanDirections(vec3 center, float phase = 0.0f) -> std::array<vec3, 3>;
+
+        auto craterProfile(float weathering, float floorVariation) -> Crater::Profile {
+            // Art-directed erosion, not an impact-age simulation. Parameters are
+            // cached per crater; no profile selection or random rolls per vertex.
+            return Crater::Profile{
+                .floorRadius = glm::mix(0.08f, 0.46f, floorVariation) * (1.0f - 0.30f * weathering),
+                .rounding = glm::mix(0.065f, 0.20f, weathering),
+                .rimInnerWidth = glm::mix(0.14f, 0.32f, weathering),
+                .rimScale = glm::mix(1.0f, 0.15f, weathering),
+                .breach = glm::smoothstep(0.20f, 0.85f, weathering),
+            };
+        }
+
+        constexpr int maxBasinCount = 4;
+
+        struct BasinCatalog {
+            std::array<Crater, maxBasinCount> craters;
+            int count;
+        };
+
+        auto makeBasins(integer seed) -> BasinCatalog {
+            const int basinSeed = static_cast<int>(seed) + 1700;
+            const int count = 2 + glm::clamp(static_cast<int>(hash31(basinSeed, 0, 0, basinSeed + 1) * 3.0f), 0, maxBasinCount - 2);
+            std::array<Crater, maxBasinCount> result;
+            for (int index = 0; index < count; ++index) {
+                const float rank = count > 1 ? static_cast<float>(index) / static_cast<float>(count - 1) : 0.0f;
+                float radius = glm::mix(0.39f, 0.22f, rank) * glm::mix(0.92f, 1.06f, hash31(index, basinSeed, 0, basinSeed + 2));
+                if (index > 0)
+                    radius = glm::min(radius, result[static_cast<std::size_t>(index - 1)].radius * 0.88f);
+
+                vec3 center{0.0f, 0.0f, 1.0f};
+                for (int attempt = 0; attempt < 12; ++attempt) {
+                    const float vertical = hash31(index, attempt, basinSeed, basinSeed + 11) * 2.0f - 1.0f;
+                    const float azimuth = hash31(index, attempt, basinSeed, basinSeed + 17) * 2.0f * std::numbers::pi_v<float>;
+                    const float radial = std::sqrt(glm::max(0.0f, 1.0f - vertical * vertical));
+                    center = vec3{radial * std::cos(azimuth), vertical, radial * std::sin(azimuth)};
+                    bool separated = true;
+                    for (int previous = 0; previous < index; ++previous) {
+                        const vec3 offset = center - result[static_cast<std::size_t>(previous)].center;
+                        const float required = 0.78f * (radius + result[static_cast<std::size_t>(previous)].radius);
+                        if (glm::dot(offset, offset) < required * required) {
+                            separated = false;
+                            break;
+                        }
+                    }
+                    if (separated)
+                        break;
+                }
+
+                const float weathering = hash31(index, basinSeed, 1, basinSeed + 23);
+                const float phase = hash31(index, basinSeed, 2, basinSeed + 29) * 2.0f * std::numbers::pi_v<float>;
+                const vec3 axisU = glm::normalize(glm::cross(center, std::abs(center.y) < 0.86f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f}));
+                const vec3 axisV = glm::cross(center, axisU);
+                Crater::BasinMorphology basin;
+                basin.strength = index == 0 ? heroBasinMorphologyStrength : lesserBasinMorphologyStrength;
+                basin.axisU = axisU;
+                basin.axisV = axisV;
+                const float asymmetryAngle = hash31(index, basinSeed, 5, basinSeed + 41) * 2.0f * std::numbers::pi_v<float>;
+                basin.asymmetry = vec2{std::cos(asymmetryAngle), std::sin(asymmetryAngle)} * 0.13f;
+                constexpr std::array<float, basinMacroFeatureCount> macroHeights{0.42f, -0.24f, 0.28f, -0.17f};
+                for (int feature = 0; feature < basinMacroFeatureCount; ++feature) {
+                    const float azimuth = hash31(index, feature, basinSeed, basinSeed + 43) * 2.0f * std::numbers::pi_v<float>;
+                    const float radial = glm::mix(0.10f, 0.48f, hash31(index, feature, basinSeed, basinSeed + 47));
+                    const float orientation = hash31(index, feature, basinSeed, basinSeed + 53) * 2.0f * std::numbers::pi_v<float>;
+                    basin.macroFeatures[static_cast<std::size_t>(feature)] = Crater::BasinMorphology::MacroFeature{
+                        .center = vec2{std::cos(azimuth), std::sin(azimuth)} * radial,
+                        .axis = vec2{std::cos(orientation), std::sin(orientation)},
+                        .extent = vec2{
+                            glm::mix(0.30f, 0.46f, hash31(index, feature, basinSeed, basinSeed + 59)),
+                            glm::mix(0.20f, 0.32f, hash31(index, feature, basinSeed, basinSeed + 61)),
+                        },
+                        .height = macroHeights[static_cast<std::size_t>(feature)] * glm::mix(0.78f, 1.18f, hash31(index, feature, basinSeed, basinSeed + 67)),
+                    };
+                }
+                for (int impact = 0; impact < basinSecondaryImpactCount; ++impact) {
+                    const float azimuth = hash31(index, impact, basinSeed, basinSeed + 71) * 2.0f * std::numbers::pi_v<float>;
+                    const float radial = glm::mix(0.18f, 0.56f, hash31(index, impact, basinSeed, basinSeed + 73));
+                    basin.secondaryImpacts[static_cast<std::size_t>(impact)] = Crater::BasinMorphology::SecondaryImpact{
+                        .center = vec2{std::cos(azimuth), std::sin(azimuth)} * radial,
+                        .radius = glm::mix(0.050f, 0.095f, hash31(index, impact, basinSeed, basinSeed + 79)),
+                        .depth = glm::mix(0.035f, 0.070f, hash31(index, impact, basinSeed, basinSeed + 83)),
+                        .rim = glm::mix(0.010f, 0.024f, hash31(index, impact, basinSeed, basinSeed + 89)),
+                    };
+                }
+                basin.collapseStrength = glm::mix(0.72f, 0.96f, hash31(index, basinSeed, 6, basinSeed + 97));
+                basin.terraceBreakup = glm::mix(0.65f, 0.88f, hash31(index, basinSeed, 7, basinSeed + 101));
+                result[static_cast<std::size_t>(index)] = Crater{
+                    .center = center,
+                    .radius = radius,
+                    .depthUnit = glm::mix(0.86f, 1.02f, 1.0f - weathering),
+                    .depthScale = radius * glm::mix(0.074f, 0.098f, hash31(index, basinSeed, 3, basinSeed + 31)) * glm::mix(0.82f, 1.0f, 1.0f - weathering) * rareBasinDepthMultiplier,
+                    .noiseSeed = basinSeed + index * 53,
+                    .profile = Crater::Profile{
+                        .floorRadius = glm::mix(0.27f, 0.40f, hash31(index, basinSeed, 4, basinSeed + 37)),
+                        .rounding = glm::mix(0.050f, 0.080f, weathering),
+                        .rimInnerWidth = glm::mix(0.18f, 0.27f, weathering),
+                        .rimScale = glm::mix(0.88f, 0.52f, weathering),
+                        .breach = glm::mix(0.10f, 0.42f, weathering),
+                    },
+                    .shape = Crater::Shape{
+                        .fanDirections = craterFanDirections(center, phase),
+                        .wallScale = glm::mix(0.58f, 0.38f, weathering),
+                        .talusScale = glm::mix(0.78f, 0.58f, weathering),
+                    },
+                    .basin = basin,
+                };
             }
-            return CraterHit{.field = glm::clamp(field, -1.4f, 0.55f), .meters = meters, .cover = cover};
+            return BasinCatalog{.craters = result, .count = count};
+        }
+
+        constexpr int lineamentTrunkCount = 10;
+        constexpr int lineamentBranchCount = 12;
+        constexpr int lineamentCount = lineamentTrunkCount + lineamentBranchCount;
+
+        struct Lineament {
+            vec3 center;
+            vec3 along;
+            vec3 across;
+            float halfLength;
+            float halfWidth;
+            float heightScale;
+            bool canyon;
+        };
+
+        auto makeLineaments(integer seed) -> std::array<Lineament, lineamentCount> {
+            const int structureSeed = static_cast<int>(seed) + 2900;
+            const BasinCatalog basins = makeBasins(seed);
+            std::array<Lineament, lineamentCount> result;
+            for (int index = 0; index < lineamentTrunkCount; ++index) {
+                const bool canyon = index % 3 == 2;
+                const float halfLength = glm::mix(0.18f, 0.42f, hash31(index, structureSeed, 3, structureSeed + 7));
+                vec3 center{0.0f, 0.0f, 1.0f};
+                vec3 along{1.0f, 0.0f, 0.0f};
+                if (canyon) {
+                    // Major canyons are impact-linked: start at a generated basin
+                    // rim and run away from it. Repeating the largest basin when
+                    // fewer than three exist keeps the count deterministic.
+                    const int basinIndex = (index / 3) % basins.count;
+                    const Crater& basin = basins.craters[static_cast<std::size_t>(basinIndex)];
+                    const vec3 reference = std::abs(basin.center.y) < 0.86f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f};
+                    const vec3 tangent0 = glm::normalize(glm::cross(reference, basin.center));
+                    const vec3 tangent1 = glm::normalize(glm::cross(basin.center, tangent0));
+                    const float phase = hash31(index, structureSeed, 2, structureSeed + 5) * 2.0f * std::numbers::pi_v<float>;
+                    const vec3 outward = glm::normalize(tangent0 * std::cos(phase) + tangent1 * std::sin(phase));
+                    const vec3 junction = glm::normalize(basin.center + outward * basin.radius * 1.08f);
+                    center = glm::normalize(junction + outward * halfLength * 0.80f);
+                    along = glm::normalize(outward - center * glm::dot(outward, center));
+                } else {
+                    // Mountain chains predate the visible large impacts. Reject
+                    // candidates whose trunk would visibly emerge from a basin.
+                    for (int attempt = 0; attempt < 12; ++attempt) {
+                        const float vertical = hash31(index, attempt, structureSeed, structureSeed + 1) * 2.0f - 1.0f;
+                        const float azimuth = hash31(index, attempt, structureSeed, structureSeed + 3) * 2.0f * std::numbers::pi_v<float>;
+                        const float radial = std::sqrt(glm::max(0.0f, 1.0f - vertical * vertical));
+                        center = vec3{radial * std::cos(azimuth), vertical, radial * std::sin(azimuth)};
+                        bool outsideBasins = true;
+                        for (int basinIndex = 0; basinIndex < basins.count; ++basinIndex) {
+                            const Crater& basin = basins.craters[static_cast<std::size_t>(basinIndex)];
+                            const float required = basin.radius * 1.30f + halfLength;
+                            const vec3 offset = center - basin.center;
+                            if (glm::dot(offset, offset) < required * required) {
+                                outsideBasins = false;
+                                break;
+                            }
+                        }
+                        if (outsideBasins)
+                            break;
+                    }
+                    const vec3 reference = std::abs(center.y) < 0.86f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f};
+                    const vec3 tangent0 = glm::normalize(glm::cross(reference, center));
+                    const vec3 tangent1 = glm::normalize(glm::cross(center, tangent0));
+                    const float phase = hash31(index, structureSeed, 2, structureSeed + 5) * 2.0f * std::numbers::pi_v<float>;
+                    along = glm::normalize(tangent0 * std::cos(phase) + tangent1 * std::sin(phase));
+                }
+                const vec3 across = glm::normalize(glm::cross(center, along));
+                result[static_cast<std::size_t>(index)] = Lineament{
+                    .center = center,
+                    .along = along,
+                    .across = across,
+                    .halfLength = halfLength,
+                    .halfWidth = canyon
+                        ? glm::mix(0.025f, 0.050f, hash31(index, structureSeed, 4, structureSeed + 11))
+                        : glm::mix(0.032f, 0.072f, hash31(index, structureSeed, 4, structureSeed + 11)),
+                    .heightScale = canyon
+                        ? glm::mix(0.65f, 1.25f, hash31(index, structureSeed, 5, structureSeed + 13))
+                        : glm::mix(1.35f, 2.80f, hash31(index, structureSeed, 5, structureSeed + 13)),
+                    .canyon = canyon,
+                };
+            }
+
+            // Branches inherit the type of a trunk and start close to it. Canyon
+            // trunks receive two tributaries; six mountain trunks receive one
+            // spur. All choices are seed-only and cached with the trunk catalog.
+            constexpr std::array<int, lineamentBranchCount> parents{2, 2, 5, 5, 8, 8, 0, 1, 3, 4, 6, 7};
+            for (int branchIndex = 0; branchIndex < lineamentBranchCount; ++branchIndex) {
+                const int index = lineamentTrunkCount + branchIndex;
+                const Lineament& parent = result[static_cast<std::size_t>(parents[static_cast<std::size_t>(branchIndex)])];
+                const float joinOffset = glm::mix(-0.56f, 0.56f, hash31(branchIndex, structureSeed, 6, structureSeed + 17)) * parent.halfLength;
+                const vec3 junction = glm::normalize(parent.center + parent.along * joinOffset);
+                const vec3 parentAlong = glm::normalize(parent.along - junction * glm::dot(parent.along, junction));
+                const vec3 parentAcross = glm::normalize(glm::cross(junction, parentAlong));
+                const float side = hash31(branchIndex, structureSeed, 7, structureSeed + 19) < 0.5f ? -1.0f : 1.0f;
+                const float branchAngle = side * glm::mix(0.48f, 0.92f, hash31(branchIndex, structureSeed, 8, structureSeed + 23));
+                const vec3 branchAlongAtJunction = glm::normalize(parentAlong * std::cos(branchAngle) + parentAcross * std::sin(branchAngle));
+                const float halfLength = parent.halfLength * glm::mix(0.42f, 0.68f, hash31(branchIndex, structureSeed, 9, structureSeed + 29));
+                // Offset the branch centre so one tapered end joins its parent,
+                // instead of producing an X-shaped crossing through the trunk.
+                const vec3 center = glm::normalize(junction + branchAlongAtJunction * halfLength * 0.52f);
+                const vec3 along = glm::normalize(branchAlongAtJunction - center * glm::dot(branchAlongAtJunction, center));
+                const vec3 across = glm::normalize(glm::cross(center, along));
+                result[static_cast<std::size_t>(index)] = Lineament{
+                    .center = center,
+                    .along = along,
+                    .across = across,
+                    .halfLength = halfLength,
+                    .halfWidth = parent.halfWidth * glm::mix(0.46f, 0.68f, hash31(branchIndex, structureSeed, 10, structureSeed + 31)),
+                    .heightScale = parent.heightScale * glm::mix(0.52f, 0.78f, hash31(branchIndex, structureSeed, 11, structureSeed + 37)),
+                    .canyon = parent.canyon,
+                };
+            }
+            return result;
+        }
+
+        auto lineamentField(vec3 dir, integer seed, float reliefScale, float detail, vec3 broadBend) -> float {
+            struct Cache {
+                integer seed;
+                std::array<Lineament, lineamentCount> lineaments;
+            };
+            auto createCache = [](integer seed) {
+                return Cache{seed, makeLineaments(seed)};
+            };
+            thread_local Cache cache = createCache(seed);
+            if (cache.seed != seed)
+                cache = createCache(seed);
+
+            float height = 0.0f;
+            for (const auto& lineament : cache.lineaments) {
+                const float front = glm::dot(dir, lineament.center);
+                const float local = glm::smoothstep(0.72f, 0.88f, front);
+                if (local <= 0.0f)
+                    continue;
+                const float alongT = std::abs(glm::dot(dir, lineament.along)) / lineament.halfLength;
+                const float alongEnvelope = 1.0f - glm::smoothstep(0.68f, 1.0f, alongT);
+                if (alongEnvelope <= 0.0f)
+                    continue;
+                const float taper = glm::mix(0.42f, 1.0f, 1.0f - glm::clamp(alongT * alongT, 0.0f, 1.0f));
+                const float effectiveWidth = lineament.halfWidth * taper;
+                const float bend = glm::dot(broadBend, lineament.across);
+                const float bentAcross = glm::dot(dir, lineament.across) + bend * lineament.halfWidth * 0.42f + detail * lineament.halfWidth * 0.16f;
+                const float acrossT = std::abs(bentAcross) / effectiveWidth;
+                const float modulation = glm::mix(0.72f, 1.25f, glm::clamp(detail * 0.5f + 0.5f, 0.0f, 1.0f));
+                if (lineament.canyon) {
+                    const float trench = 1.0f - glm::smoothstep(0.12f, 1.0f, acrossT);
+                    const float shoulder = glm::smoothstep(0.72f, 1.02f, acrossT) * (1.0f - glm::smoothstep(1.02f, 1.65f, acrossT));
+                    height += (-trench + shoulder * 0.17f) * lineament.heightScale * reliefScale * alongEnvelope * local * modulation;
+                } else {
+                    const float crest = 1.0f - glm::smoothstep(0.08f, 1.0f, acrossT);
+                    const float brokenCrest = glm::mix(0.70f, 1.18f, glm::clamp(detail * 0.5f + 0.5f, 0.0f, 1.0f));
+                    height += crest * lineament.heightScale * reliefScale * alongEnvelope * local * brokenCrest;
+                }
+            }
+            return height;
+        }
+
+        struct MegaRiftSegment {
+            vec3 center{};
+            vec3 along{};
+            vec3 across{};
+            float halfLength = 0.0f;
+            float halfWidth = 0.0f;
+            float depthScale = 0.0f;
+            float bend = 0.0f;
+            float widthVariation = 0.0f;
+            float phase = 0.0f;
+            float startT = -2.0f;
+            float strength = 0.0f;
+        };
+
+        struct MegaRift {
+            MegaRiftSegment trunk;
+            MegaRiftSegment branch;
+        };
+
+        struct MegaRiftCatalog {
+            std::array<MegaRift, maxMegaRiftCount> rifts{};
+            int count = 0;
+        };
+
+        auto makeMegaRifts(integer seed) -> MegaRiftCatalog {
+            const int riftSeed = static_cast<int>(seed) + 4700;
+            const BasinCatalog basins = makeBasins(seed);
+            MegaRiftCatalog catalog;
+            // A planet gets one signature scar, with a low deterministic chance
+            // of a second. Each scar may have at most one tributary branch.
+            catalog.count = 1 + (hash31(riftSeed, 0, 0, riftSeed + 1) < secondMegaRiftChance ? 1 : 0);
+            for (int index = 0; index < catalog.count; ++index) {
+                const float halfLength = glm::mix(0.52f, 0.70f, hash31(index, riftSeed, 3, riftSeed + 7));
+                const bool linkedToBasin = hash31(index, riftSeed, 1, riftSeed + 4) < 0.62f;
+                vec3 center{};
+                vec3 along{};
+                vec3 linkedJunction{};
+                if (linkedToBasin) {
+                    const int basinIndex = index == 0 ? 0 : glm::clamp(static_cast<int>(hash31(index, riftSeed, 5, riftSeed + 9) * basins.count), 0, basins.count - 1);
+                    const Crater& basin = basins.craters[static_cast<std::size_t>(basinIndex)];
+                    const vec3 reference = std::abs(basin.center.y) < 0.86f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f};
+                    const vec3 tangent0 = glm::normalize(glm::cross(reference, basin.center));
+                    const vec3 tangent1 = glm::normalize(glm::cross(basin.center, tangent0));
+                    const float azimuth = hash31(index, riftSeed, 6, riftSeed + 11) * 2.0f * std::numbers::pi_v<float>
+                        + std::numbers::pi_v<float>;
+                    const vec3 outward = glm::normalize(tangent0 * std::cos(azimuth) + tangent1 * std::sin(azimuth));
+                    const vec3 junction = glm::normalize(basin.center + outward * basin.radius * 0.94f);
+                    linkedJunction = junction;
+                    center = glm::normalize(junction + outward * halfLength * 0.68f);
+                    along = glm::normalize(outward - center * glm::dot(outward, center));
+                } else {
+                    const float vertical = hash31(index, riftSeed, 7, riftSeed + 13) * 2.0f - 1.0f;
+                    const float azimuth = hash31(index, riftSeed, 8, riftSeed + 17) * 2.0f * std::numbers::pi_v<float>;
+                    const float radial = std::sqrt(glm::max(0.0f, 1.0f - vertical * vertical));
+                    center = vec3{radial * std::cos(azimuth), vertical, radial * std::sin(azimuth)};
+                    const vec3 reference = std::abs(center.y) < 0.86f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f};
+                    const vec3 tangent0 = glm::normalize(glm::cross(reference, center));
+                    const vec3 tangent1 = glm::normalize(glm::cross(center, tangent0));
+                    const float heading = hash31(index, riftSeed, 9, riftSeed + 19) * 2.0f * std::numbers::pi_v<float>;
+                    along = glm::normalize(tangent0 * std::cos(heading) + tangent1 * std::sin(heading));
+                }
+                const vec3 across = glm::normalize(glm::cross(center, along));
+                MegaRiftSegment trunk{
+                    .center = center,
+                    .along = along,
+                    .across = across,
+                    .halfLength = halfLength,
+                    .halfWidth = glm::mix(0.055f, 0.085f, hash31(index, riftSeed, 10, riftSeed + 23)),
+                    .depthScale = glm::mix(2.15f, 3.15f, hash31(index, riftSeed, 11, riftSeed + 29)),
+                    .bend = glm::mix(0.78f, 1.24f, hash31(index, riftSeed, 12, riftSeed + 31)),
+                    .widthVariation = glm::mix(0.38f, 0.58f, hash31(index, riftSeed, 13, riftSeed + 37)),
+                    .phase = hash31(index, riftSeed, 14, riftSeed + 41) * 2.0f * std::numbers::pi_v<float>,
+                    .startT = linkedToBasin ? glm::dot(linkedJunction, along) / halfLength : -2.0f,
+                    .strength = megaRiftMorphologyStrength,
+                };
+
+                MegaRiftSegment branch{};
+                if (hash31(index, riftSeed, 2, riftSeed + 6) < 0.68f) {
+                    const float joinT = glm::mix(-0.28f, 0.42f, hash31(index, riftSeed, 15, riftSeed + 43));
+                    const float curve = trunk.halfWidth * trunk.bend * (0.72f * std::sin(trunk.phase + joinT * 2.35f) + 0.35f * joinT);
+                    const vec3 junction = glm::normalize(trunk.center + trunk.along * (joinT * trunk.halfLength) + trunk.across * curve);
+                    const vec3 parentAlong = glm::normalize(trunk.along - junction * glm::dot(trunk.along, junction));
+                    const vec3 parentAcross = glm::normalize(glm::cross(junction, parentAlong));
+                    const float side = hash31(index, riftSeed, 16, riftSeed + 47) < 0.5f ? -1.0f : 1.0f;
+                    const float angle = side * glm::mix(0.68f, 0.98f, hash31(index, riftSeed, 17, riftSeed + 53));
+                    const vec3 branchDirection = glm::normalize(parentAlong * std::cos(angle) + parentAcross * std::sin(angle));
+                    const float branchHalfLength = trunk.halfLength * glm::mix(0.34f, 0.48f, hash31(index, riftSeed, 18, riftSeed + 59));
+                    const vec3 branchCenter = glm::normalize(junction + branchDirection * branchHalfLength * 0.68f);
+                    const vec3 branchAlong = glm::normalize(branchDirection - branchCenter * glm::dot(branchDirection, branchCenter));
+                    branch = MegaRiftSegment{
+                        .center = branchCenter,
+                        .along = branchAlong,
+                        .across = glm::normalize(glm::cross(branchCenter, branchAlong)),
+                        .halfLength = branchHalfLength,
+                        .halfWidth = trunk.halfWidth * glm::mix(0.55f, 0.72f, hash31(index, riftSeed, 19, riftSeed + 61)),
+                        .depthScale = trunk.depthScale * glm::mix(0.70f, 0.88f, hash31(index, riftSeed, 20, riftSeed + 67)),
+                        .bend = trunk.bend * 0.55f,
+                        .widthVariation = trunk.widthVariation,
+                        .phase = trunk.phase + side * 1.37f,
+                        .startT = glm::dot(junction, branchAlong) / branchHalfLength,
+                        .strength = megaRiftMorphologyStrength,
+                    };
+                }
+                catalog.rifts[static_cast<std::size_t>(index)] = MegaRift{.trunk = trunk, .branch = branch};
+            }
+            return catalog;
+        }
+
+        auto sampleMegaRiftSegment(vec3 dir, const MegaRiftSegment& segment, float reliefScale, float detail, vec3 broadBend) -> float {
+            if (segment.strength <= 0.0f)
+                return 0.0f;
+            const float front = glm::dot(dir, segment.center);
+            const float local = glm::smoothstep(0.48f, 0.72f, front);
+            if (local <= 0.0f)
+                return 0.0f;
+            const float along = glm::dot(dir, segment.along) / segment.halfLength;
+            const float alongAbs = std::abs(along);
+            float alongEnvelope = 1.0f - glm::smoothstep(0.76f, 1.0f, alongAbs);
+            if (segment.startT > -1.5f)
+                alongEnvelope *= glm::smoothstep(segment.startT, segment.startT + 0.16f, along);
+            if (alongEnvelope <= 0.0f)
+                return 0.0f;
+
+            // Two broad longitudinal waves vary the path and width without
+            // introducing the high-frequency crack network of a noise mask.
+            const float curve = segment.halfWidth * segment.bend * (
+                0.72f * std::sin(segment.phase + along * 2.35f) + 0.35f * along)
+                + glm::dot(broadBend, segment.across) * segment.halfWidth * 0.52f;
+            const float widthWave = 0.58f * std::sin(segment.phase * 0.73f + along * 3.1f)
+                + 0.42f * std::sin(segment.phase * 1.31f - along * 6.0f);
+            const float effectiveWidth = segment.halfWidth * glm::clamp(1.0f + segment.widthVariation * widthWave, 0.54f, 1.46f);
+            const float signedAcross = (glm::dot(dir, segment.across) - curve) / effectiveWidth;
+            const float across = std::abs(signedAcross);
+            const float trench = 1.0f - glm::smoothstep(0.08f, 1.0f, across);
+            const float deepSlot = 1.0f - glm::smoothstep(0.0f, 0.24f, across);
+            const float shoulder = glm::smoothstep(0.72f, 1.02f, across) * (1.0f - glm::smoothstep(1.02f, 1.58f, across));
+            const float collapseSide = glm::smoothstep(0.25f, 0.82f, detail * (signedAcross > 0.0f ? 1.0f : -1.0f) * 0.5f + 0.5f);
+            const float collapsedWall = glm::smoothstep(0.38f, 0.82f, across) * (1.0f - glm::smoothstep(0.82f, 1.12f, across)) * collapseSide;
+            const float depthVariation = glm::clamp(
+                0.82f + 0.18f * std::sin(segment.phase + along * 4.4f) + detail * 0.10f,
+                0.58f, 1.18f);
+            return (-0.78f * trench - 0.22f * deepSlot + 0.07f * collapsedWall + 0.13f * shoulder)
+                * segment.depthScale * reliefScale * alongEnvelope * local * depthVariation * segment.strength;
+        }
+
+        auto megaRiftField(vec3 dir, integer seed, float reliefScale, float detail, vec3 broadBend) -> float {
+            struct Cache {
+                integer seed;
+                MegaRiftCatalog catalog;
+            };
+            auto createCache = [](integer seed) {
+                return Cache{seed, makeMegaRifts(seed)};
+            };
+            thread_local Cache cache = createCache(seed);
+            if (cache.seed != seed)
+                cache = createCache(seed);
+
+            float height = 0.0f;
+            for (int index = 0; index < cache.catalog.count; ++index) {
+                const MegaRift& rift = cache.catalog.rifts[static_cast<std::size_t>(index)];
+                height += sampleMegaRiftSegment(dir, rift.trunk, reliefScale, detail, broadBend);
+                height += sampleMegaRiftSegment(dir, rift.branch, reliefScale, detail, broadBend);
+            }
+            return height;
+        }
+
+        auto makeCraters(integer seed) -> std::array<Crater, craterCount> {
+            constexpr int faceCells = craterCells;
+            constexpr float cellSize = craterCellSize;
+            constexpr float jitter = 0.28f * cellSize;
+            const int craterSeed = static_cast<int>(seed) + 40;
+            std::array<Crater, faceCount * faceCells * faceCells> result;
+            for (int index = 0; index < static_cast<int>(result.size()); ++index) {
+                const int face = index / (faceCells * faceCells);
+                const int iu = (index / faceCells) % faceCells;
+                const int iv = index % faceCells;
+                const int packed = (face << 16) ^ (iu << 8) ^ iv;
+                const float jitterU = (hash31(face, iu, iv, craterSeed + 1) * 2.0f - 1.0f) * jitter;
+                const float jitterV = (hash31(face, iu, iv, craterSeed + 2) * 2.0f - 1.0f) * jitter;
+                const float craterU = -1.0f + (iu + 0.5f) * cellSize + jitterU;
+                const float craterV = -1.0f + (iv + 0.5f) * cellSize + jitterV;
+                const float radius = craterRadius(face, iu, iv, craterSeed);
+                const float roll = hash31(face, iu, iv, craterSeed + 5);
+                const float weathering = hash31(face, iu, iv, craterSeed + 6);
+                const float depthRetention = glm::mix(1.0f, 0.25f, weathering);
+                result[index] = Crater{.center = cubeDir(face, craterU, craterV), .radius = radius, .depthUnit = (0.35f + 0.80f * roll) * depthRetention, .depthScale = (0.20f + 0.20f * roll) * radius * depthRetention / 1.5f, .noiseSeed = craterSeed + packed, .profile = craterProfile(weathering, hash31(face, iu, iv, craterSeed + 7))};
+                auto& crater = result[index];
+                // Keep a readable floor, but reserve more of the radius for the
+                // inner wall. Shorter rounded joins make the wall/floor break
+                // visible without introducing a discontinuity in height or slope.
+                crater.profile.floorRadius = glm::mix(0.42f, 0.58f, hash31(face, iu, iv, craterSeed + 7)) - 0.05f * weathering;
+                crater.profile.rounding = glm::mix(0.060f, 0.105f, weathering);
+                const float phase = hash31(face, iu, iv, craterSeed + 8) * 2.0f * std::numbers::pi_v<float>;
+                crater.shape = Crater::Shape{
+                    .fanDirections = craterFanDirections(crater.center, phase),
+                    .wallScale = glm::mix(0.60f, 0.25f, weathering) * glm::mix(0.85f, 1.10f, hash31(face, iu, iv, craterSeed + 9)),
+                    .talusScale = glm::mix(0.75f, 1.0f, weathering) * glm::mix(0.65f, 1.0f, hash31(face, iu, iv, craterSeed + 10)),
+                };
+            }
+
+            // Rare basins are generated from the same seed and replace ordinary
+            // slots, retaining the common buckets, LOD, material and physics path.
+            const auto basins = makeBasins(seed);
+            for (int index = 0; index < basins.count; ++index)
+                result[static_cast<std::size_t>(index)] = basins.craters[static_cast<std::size_t>(index)];
+            return result;
+        }
+
+        auto craterBuckets(const std::array<Crater, craterCount>& craters) -> std::array<vector<std::uint16_t>, craterCount> {
+            std::array<vector<std::uint16_t>, craterCount> buckets;
+            // On a cube face normalization cannot expand distances. Half the cell
+            // diagonal bounds every query direction, also beside cube edges/corners.
+            constexpr float cellReach = 0.707107f * craterCellSize;
+            for (int cell = 0; cell < craterCount; ++cell) {
+                const int face = cell / (craterCells * craterCells);
+                const int iu = (cell / craterCells) % craterCells;
+                const int iv = cell % craterCells;
+                const vec3 center = cubeDir(face, -1.0f + (iu + 0.5f) * craterCellSize, -1.0f + (iv + 0.5f) * craterCellSize);
+                for (int index = 0; index < craterCount; ++index) {
+                    const vec3 offset = center - craters[index].center;
+                    const float reach = cellReach + craters[index].radius * craterReach;
+                    if (glm::dot(offset, offset) <= reach * reach)
+                        buckets[cell].push_back(static_cast<std::uint16_t>(index));
+                }
+            }
+            return buckets;
+        }
+
+        auto craterCell(vec3 dir) -> int {
+            const vec3 extent = glm::abs(dir);
+            int face;
+            vec2 uv;
+            if (extent.x >= extent.y and extent.x >= extent.z) {
+                face = dir.x >= 0.0f ? 0 : 1;
+                uv = vec2{dir.y, dir.z} / extent.x;
+            } else if (extent.y >= extent.z) {
+                face = dir.y >= 0.0f ? 2 : 3;
+                uv = vec2{dir.x, dir.z} / extent.y;
+            } else {
+                face = dir.z >= 0.0f ? 4 : 5;
+                uv = vec2{dir.x, dir.y} / extent.z;
+            }
+            const int iu = glm::clamp(static_cast<int>((uv.x + 1.0f) / craterCellSize), 0, craterCells - 1);
+            const int iv = glm::clamp(static_cast<int>((uv.y + 1.0f) / craterCellSize), 0, craterCells - 1);
+            return face * craterCells * craterCells + iu * craterCells + iv;
+        }
+
+        struct CraterSample {
+            float distance;
+            float rimAmp;
+            float wallBias;
+            float apronScale;
+            float talus;
+            float terraceOffset;
+            float terraceIntegrity;
+        };
+
+        auto craterFanDirections(vec3 center, float phase) -> std::array<vec3, 3> {
+            const vec3 base = glm::normalize(glm::cross(center, std::abs(center.y) < 0.9f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f}));
+            const vec3 axis = base * std::cos(phase) + glm::cross(center, base) * std::sin(phase);
+            const vec3 across = glm::cross(center, axis);
+            // Cached per preview crater, 120 degrees apart; no per-sample trig.
+            return {axis, -0.5f * axis + 0.8660254f * across, -0.5f * axis - 0.8660254f * across};
+        }
+
+        auto sampleCrater(vec3 offset, float distanceSquared, const Crater& crater, bool sculpted = false, const std::array<vec3, 3>* fanDirections = nullptr) -> CraterSample {
+            // Crater-local coordinates keep feature size proportional to its radius.
+            // Reuse the two rim-noise samples for the contour: no extra noise octaves.
+            const vec3 craterLocal = offset / crater.radius;
+            const vec3 tangentLocal = craterLocal - crater.center * glm::dot(craterLocal, crater.center);
+            vec3 local = craterLocal;
+            if (sculpted) {
+                // Sample sectors, not radial noise: each wall keeps a monotone
+                // descent instead of developing isolated bumps. The center is
+                // regularized inside the flat floor, where angular detail is hidden.
+                local = tangentLocal / std::sqrt(glm::max(glm::dot(tangentLocal, tangentLocal), 0.0001f));
+            }
+            const float broad = valueNoise(local.x * 1.7f, local.y * 1.7f, local.z * 1.7f, crater.noiseSeed);
+            // Sub-300 m bowls do not project enough contour detail to justify a
+            // second 3D noise sample. Reusing broad keeps their cost bounded as
+            // the catalog becomes denser.
+            const float fine = crater.radius < 0.030f
+                ? broad
+                : valueNoise(local.x * 4.3f, local.y * 4.3f, local.z * 4.3f, crater.noiseSeed + 11);
+            const float sector = sculpted ? glm::smoothstep(0.20f, 0.80f, broad) : broad;
+            float radiusScale = 1.0f + (sculpted ? sculptedBroad : contourBroad) * (2.0f * sector - 1.0f) + (sculpted ? sculptedFine : contourFine) * (2.0f * fine - 1.0f);
+            // Trim only the strongest outward lobes; retain the inward cuts and
+            // the large-scale outline rather than blurring the complete crater.
+            if (fanDirections) radiusScale -= 0.035f * glm::smoothstep(0.04f, 0.155f, radiusScale - 1.0f);
+            // Broad, smoothly bounded gaps reuse the contour noise. At maximum
+            // weathering low-noise sectors lose the rim, without moving the floor up.
+            const float integrity = 1.0f - crater.profile.breach * (1.0f - glm::smoothstep(0.32f, 0.62f, broad));
+            const float wallBias = sculpted ? 0.18f * (2.0f * sector - 1.0f) + 0.04f * (2.0f * fine - 1.0f) : 0.0f;
+            const float apronScale = sculpted ? glm::mix(0.55f, 1.0f, sector) : 1.0f;
+            const float distance = std::sqrt(distanceSquared) / (crater.radius * radiusScale);
+            float talus = 0.0f;
+            // Outside the bowl both toe profiles are exactly zero: no fan work.
+            if (fanDirections and distance < 1.0f) {
+                constexpr std::array<float, 3> edges{0.55f, 0.60f, 0.65f};
+                constexpr std::array<float, 3> amplitudes{0.38f, 0.30f, 0.42f};
+                for (std::size_t fan = 0; fan < fanDirections->size(); ++fan) {
+                    const float alignment = glm::dot(local, (*fanDirections)[fan]);
+                    const float weight = glm::smoothstep(edges[fan], 1.0f, alignment);
+                    // Supports are narrower than their 120-degree separation,
+                    // so max meets at zero without overlapping ridges or creases.
+                    talus = glm::max(talus, amplitudes[fan] * weight);
+                }
+            }
+            const float terraceOffset = sculpted ? 0.10f * (broad - 0.5f) + 0.04f * (fine - 0.5f) : 0.0f;
+            const float terraceIntegrity = sculpted ? glm::smoothstep(0.24f, 0.72f, broad) * glm::mix(0.65f, 1.0f, fine) : 1.0f;
+            return CraterSample{
+                .distance = distance,
+                .rimAmp = glm::mix(0.5f, 1.0f, broad * 0.72f + fine * 0.28f) * integrity,
+                .wallBias = wallBias,
+                .apronScale = apronScale,
+                .talus = talus,
+                .terraceOffset = terraceOffset,
+                .terraceIntegrity = terraceIntegrity,
+            };
+        }
+
+        struct BasinSample {
+            float floorOffset = 0.0f;
+            float wallBias = 0.0f;
+            float talus = 0.0f;
+            float terraceIntegrity = 1.0f;
+        };
+
+        auto sampleBasinMorphology(vec3 offset, float distance, const Crater& crater) -> BasinSample {
+            const auto& basin = crater.basin;
+            if (basin.strength <= 0.0f or distance >= 1.05f)
+                return {};
+
+            const vec3 tangent = offset - crater.center * glm::dot(offset, crater.center);
+            const vec2 local{
+                glm::dot(tangent, basin.axisU) / crater.radius,
+                glm::dot(tangent, basin.axisV) / crater.radius,
+            };
+            const float floorFade = 1.0f - glm::smoothstep(0.64f, 0.88f, distance);
+            float floorOffset = glm::dot(local, basin.asymmetry);
+            for (const auto& feature : basin.macroFeatures) {
+                const vec2 delta = local - feature.center;
+                const vec2 across{-feature.axis.y, feature.axis.x};
+                const vec2 elliptical{
+                    glm::dot(delta, feature.axis) / feature.extent.x,
+                    glm::dot(delta, across) / feature.extent.y,
+                };
+                const float radius = glm::length(elliptical);
+                const float weight = 1.0f - glm::smoothstep(0.18f, 1.0f, radius);
+                floorOffset += feature.height * weight * (0.65f + 0.35f * weight);
+            }
+            for (const auto& impact : basin.secondaryImpacts) {
+                const float radius = glm::length(local - impact.center) / impact.radius;
+                const float bowl = 1.0f - glm::smoothstep(0.18f, 1.0f, radius);
+                const float rim = glm::smoothstep(0.68f, 1.0f, radius) * (1.0f - glm::smoothstep(1.0f, 1.32f, radius));
+                floorOffset += impact.rim * rim - impact.depth * bowl;
+            }
+
+            float sector = 0.0f;
+            const float tangentLength = glm::length(tangent);
+            if (tangentLength > 1.0e-5f) {
+                const vec3 direction = tangent / tangentLength;
+                constexpr std::array<float, 3> sectorWidths{0.38f, 0.52f, 0.44f};
+                for (std::size_t index = 0; index < crater.shape.fanDirections.size(); ++index)
+                    sector = glm::max(sector, glm::smoothstep(sectorWidths[index], 0.90f, glm::dot(direction, crater.shape.fanDirections[index])));
+            }
+            const float wallBand = glm::smoothstep(0.34f, 0.56f, distance) * (1.0f - glm::smoothstep(0.88f, 1.02f, distance));
+            const float collapse = basin.strength * basin.collapseStrength * sector * wallBand;
+            return BasinSample{
+                .floorOffset = basin.strength * floorFade * floorOffset,
+                .wallBias = 0.075f * collapse,
+                .talus = collapse,
+                .terraceIntegrity = 1.0f - basin.strength * basin.terraceBreakup * sector,
+            };
+        }
+
+        struct CraterBlend {
+            vec2 bowlsSquared;
+            vec2 rims;
+            float cover;
+        };
+
+        auto finishCraters(const CraterBlend& blend) -> CraterHit {
+            // A root-sum-square union stays between the deepest bowl and the sum,
+            // without max() creases or order-dependent attenuation of excavations.
+            const vec2 surface = blend.rims * (1.0f - blend.cover) - glm::sqrt(blend.bowlsSquared);
+            return CraterHit{.field = glm::clamp(surface.x, -1.4f, 0.55f), .meters = surface.y, .cover = blend.cover};
+        }
+
+        auto craterBowl(float distance, const Crater::Profile& profile) -> float {
+            const float floorRadius = profile.floorRadius;
+            const float rounding = profile.rounding;
+            const float rise = 1.0f - floorRadius - rounding;
+            if (distance <= floorRadius) return -1.0f;
+            if (distance >= 1.0f) return 0.0f;
+            // Integrating smoothstep gives a flat floor, a straight wall and short
+            // rounded joins. Both height and slope meet the surrounding ground.
+            if (distance < floorRadius + rounding) {
+                const float blend = (distance - floorRadius) / rounding;
+                return -1.0f + rounding * blend * blend * blend * (1.0f - 0.5f * blend) / rise;
+            }
+            if (distance > 1.0f - rounding) {
+                const float blend = (1.0f - distance) / rounding;
+                return -rounding * blend * blend * blend * (1.0f - 0.5f * blend) / rise;
+            }
+            return -1.0f + (distance - floorRadius - 0.5f * rounding) / rise;
+        }
+
+        void addCrater(CraterBlend& blend, const Crater& crater, float bowlT, float planetRadius, float rimAmp, float wallBias = 0.0f, float apronScale = 1.0f, float talus = 0.0f, float terraceOffset = 0.0f, float terraceIntegrity = 1.0f, float floorOffset = 0.0f) {
+            // |wallBias| <= .22 keeps this radial map strictly increasing.
+            // It changes wall steepness and the foot of each sector, not depth.
+            const float wallT = bowlT < 1.0f ? bowlT + wallBias * 4.0f * bowlT * (1.0f - bowlT) : bowlT;
+            float bowl = craterBowl(wallT, crater.profile);
+            if (talus > 0.0f) {
+                auto toeProfile = crater.profile;
+                toeProfile.floorRadius = glm::max(0.10f, toeProfile.floorRadius - 0.16f);
+                toeProfile.rounding = glm::min(0.14f, 0.5f * (1.0f - toeProfile.floorRadius));
+                // Convex blending of monotone profiles adds a shallow foot, not
+                // a detached positive mound. Center depth and ground level agree.
+                bowl = glm::mix(bowl, craterBowl(wallT, toeProfile), talus);
+            }
+            if (crater.radius >= 0.14f) {
+                // Large impacts expose broad, broken terraces. Per-sector phase
+                // and integrity stop the bands reading as concentric contour lines.
+                const float terraceStrength = 0.48f * glm::smoothstep(0.14f, 0.32f, crater.radius) * terraceIntegrity;
+                const float bands = crater.radius >= 0.30f ? 3.0f : 2.0f;
+                const float wallHeight = glm::clamp(bowl + 1.0f, 0.0f, 1.0f);
+                const float phaseFade = glm::smoothstep(0.04f, 0.28f, wallHeight) * (1.0f - glm::smoothstep(0.82f, 0.98f, wallHeight));
+                const float shiftedHeight = glm::clamp(wallHeight + terraceOffset * phaseFade, 0.0f, 1.0f);
+                const float bandHeight = shiftedHeight * bands;
+                const float terracedHeight =
+                    (glm::floor(bandHeight) + glm::smoothstep(0.32f, 0.68f, glm::fract(bandHeight))) / bands - terraceOffset * phaseFade;
+                bowl = glm::mix(bowl, glm::clamp(terracedHeight, 0.0f, 1.0f) - 1.0f, terraceStrength);
+
+            }
+            // Basin-only macro relief is applied after the wall terraces, so the
+            // floor can undulate without turning its broad forms into contour bands.
+            bowl = glm::clamp(bowl + floorOffset, -1.24f, 0.0f);
+            const float rimT = (bowlT - 1.02f) / ((bowlT < 1.02f ? crater.profile.rimInnerWidth : craterSupport - 1.02f) * apronScale);
+            const float rimFoot = glm::max(0.0f, 1.0f - rimT * rimT);
+            const float rim = rimFoot * rimFoot * rimAmp * crater.profile.rimScale;
+            const float expose = glm::smoothstep(0.012f, 0.032f, crater.radius);
+            const vec2 depth{crater.depthUnit * expose, planetRadius * crater.depthScale};
+            // Deepen geometry only; retain the rim height and material-field scale.
+            const vec2 depression = bowl * depth * vec2{1.0f, craterDepthMultiplier};
+            blend.bowlsSquared += depression * depression;
+            // Excavated areas suppress rim ridges, never the bowls themselves.
+            blend.rims += rim * depth * vec2{0.30f, 0.08f};
+            // Smooth union avoids the crease of max(coverA, coverB) on overlaps.
+            blend.cover += (-bowl) * (1.0f - blend.cover);
+        }
+
+        auto craterField(vec3 dir, integer seed, float planetRadius) -> CraterHit {
+            // Bounded per-thread memoization of seed-only coefficients, never terrain
+            // state. Reused by mesh generation and physics; no per-vertex allocation.
+            struct Cache {
+                integer seed;
+                std::array<Crater, craterCount> craters;
+                std::array<vector<std::uint16_t>, craterCount> buckets;
+            };
+            auto createCache = [](integer seed) {
+                auto craters = makeCraters(seed);
+                return Cache{seed, craters, craterBuckets(craters)};
+            };
+            thread_local Cache cache = createCache(seed);
+            if (cache.seed != seed)
+                cache = createCache(seed);
+            CraterBlend blend{.bowlsSquared = vec2{0.0f}, .rims = vec2{0.0f}, .cover = 0.0f};
+            // Stable face/iu/iv order also keeps floating-point sums independent of
+            // the tile and of the query's position within a crater-distribution cell.
+            for (std::uint16_t index : cache.buckets[craterCell(dir)]) {
+                const Crater& crater = cache.craters[index];
+                const vec3 offset = dir - crater.center;
+                const float distanceSquared = glm::dot(offset, offset);
+                const float reach = crater.radius * craterReach;
+                if (distanceSquared > reach * reach)
+                    continue;
+                const auto sample = sampleCrater(offset, distanceSquared, crater, true, &crater.shape.fanDirections);
+                const auto basin = sampleBasinMorphology(offset, sample.distance, crater);
+                addCrater(
+                    blend, crater, sample.distance, planetRadius, sample.rimAmp,
+                    sample.wallBias * crater.shape.wallScale + basin.wallBias,
+                    sample.apronScale, glm::max(sample.talus * crater.shape.talusScale, basin.talus),
+                    sample.terraceOffset, sample.terraceIntegrity * basin.terraceIntegrity,
+                    basin.floorOffset);
+            }
+            return finishCraters(blend);
         }
 
         struct Relief {
@@ -283,11 +1039,103 @@ namespace eltanin::locality::geo {
             float crater;
         };
 
+        using TerrainClock = std::chrono::steady_clock;
+
+        struct TerrainTelemetry {
+            std::uint64_t heightSamples = 0;
+            std::uint64_t heightNanoseconds = 0;
+            std::uint64_t heightMaxNanoseconds = 0;
+            std::uint64_t physicalHeightQueries = 0;
+            std::uint64_t altitudeQueries = 0;
+            std::uint64_t frames = 0;
+            std::uint64_t patchBuilds = 0;
+            std::size_t cpuTransientPeakBytes = 0;
+            vector<std::uint64_t> patchBuildNanoseconds;
+            vector<std::uint32_t> patchSamples;
+            vector<std::uint32_t> createdPerFrame;
+            vector<std::uint32_t> rebuiltPerFrame;
+            vector<std::uint32_t> jobsStartedPerFrame;
+            vector<std::uint32_t> jobsCommittedPerFrame;
+        };
+
+        auto terrainTelemetry() -> TerrainTelemetry& {
+            static TerrainTelemetry telemetry;
+            return telemetry;
+        }
+
+        auto terrainTelemetryMutex() -> std::mutex& {
+            static std::mutex mutex;
+            return mutex;
+        }
+
+        struct HeightSampleBatch {
+            std::uint64_t samples = 0;
+            std::uint64_t nanoseconds = 0;
+            std::uint64_t maxNanoseconds = 0;
+        };
+
+        thread_local HeightSampleBatch* activeHeightSampleBatch = nullptr;
+
+        struct HeightSampleTimer {
+            TerrainClock::time_point started = TerrainClock::now();
+
+            ~HeightSampleTimer() {
+                const auto elapsed = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(TerrainClock::now() - started).count());
+                if (activeHeightSampleBatch) {
+                    ++activeHeightSampleBatch->samples;
+                    activeHeightSampleBatch->nanoseconds += elapsed;
+                    activeHeightSampleBatch->maxNanoseconds = std::max(activeHeightSampleBatch->maxNanoseconds, elapsed);
+                    return;
+                }
+                const std::scoped_lock lock(terrainTelemetryMutex());
+                auto& telemetry = terrainTelemetry();
+                ++telemetry.heightSamples;
+                telemetry.heightNanoseconds += elapsed;
+                telemetry.heightMaxNanoseconds = std::max(telemetry.heightMaxNanoseconds, elapsed);
+            }
+        };
+
+        auto testCraterField(vec3 dir, const Planetoid::Look& look) -> CraterHit {
+            // Preview sector-shaped walls here before enabling them in the catalog.
+            static const auto sharpProfile = [] {
+                auto profile = craterProfile(0.05f, 0.20f);
+                // Widen this preview's floor without changing its depth or outer rim.
+                profile.floorRadius = 0.65f;
+                profile.rounding = 0.085f;
+                return profile;
+            }();
+            static const std::array<Crater, 2> pair{
+                Crater{.center = glm::normalize(vec3{-0.045f, 0.0f, 1.0f}), .radius = 0.075f, .depthUnit = 0.7f, .depthScale = 0.012f, .noiseSeed = 47, .profile = sharpProfile},
+                Crater{.center = glm::normalize(vec3{0.045f, 0.01f, 1.0f}), .radius = 0.055f, .depthUnit = 0.7f, .depthScale = 0.008f, .noiseSeed = 71, .profile = craterProfile(0.90f, 0.90f)},
+            };
+            static const auto fanDirections = craterFanDirections(pair[0].center);
+            CraterBlend blend{.bowlsSquared = vec2{0.0f}, .rims = vec2{0.0f}, .cover = 0.0f};
+            for (std::size_t index = 0; index < pair.size(); ++index) {
+                if (look.terrainTest == Landscape::TerrainTest::off or (look.terrainTest == Landscape::TerrainTest::first and index != 0) or (look.terrainTest == Landscape::TerrainTest::second and index != 1)) continue;
+                const auto& crater = pair[index];
+                const vec3 offset = dir - crater.center;
+                const float distanceSquared = glm::dot(offset, offset);
+                const float reach = crater.radius * sculptedReach;
+                if (distanceSquared > reach * reach) continue;
+                const auto sample = sampleCrater(offset, distanceSquared, crater, true, index == 0 ? &fanDirections : nullptr);
+                // Soften radial folds in the sharp preview, keeping its irregular
+                // outer contour and broad floor instead of smoothing the whole bowl.
+                const float wallBias = sample.wallBias * (index == 0 ? 0.60f : 1.0f);
+                addCrater(blend, crater, sample.distance, look.radius, look.testRims ? sample.rimAmp : 0.0f, wallBias, sample.apronScale, sample.talus, sample.terraceOffset, sample.terraceIntegrity);
+            }
+            return finishCraters(blend);
+        }
+
         auto reliefOf(vec3 dir, const Planetoid::Look& look) -> Relief {
+            const HeightSampleTimer sampleTimer;
             const float len = glm::length(dir);
             if (len < 1.0e-6f)
                 return Relief{.height = 0.0f, .crater = 0.0f};
             dir /= len;
+            if (look.terrainTest != Landscape::TerrainTest::off) {
+                const auto pits = testCraterField(dir, look);
+                return Relief{.height = pits.meters, .crater = pits.field};
+            }
             const int seed = static_cast<int>(look.seed);
             const vec3 warp = vec3{signedNoise(dir * 2.1f, seed + 3), signedNoise(vec3{dir.y, dir.z, dir.x} * 2.1f, seed + 7), signedNoise(vec3{dir.z, dir.x, dir.y} * 2.1f, seed + 11)};
             const vec3 warped = glm::normalize(dir + warp * 0.14f);
@@ -297,14 +1145,31 @@ namespace eltanin::locality::geo {
             const float massif = fbm(folded * 1.35f, seed + 37);
             const CraterHit pits = craterField(dir, look.seed, look.radius);
             const float ground = 0.48f * shape * look.maxRelief;
-            const float tectonic = massif * look.tectonic * look.radius;
-            const float base = glm::mix(tectonic + ground, glm::min(tectonic, 0.0f) + ground, pits.cover);
+            const float massifAbs = std::abs(massif);
+            const float plateau = std::copysign(glm::smoothstep(0.10f, 0.70f, massifAbs), massif);
+            const float boundaryRidge = glm::smoothstep(0.84f, 0.97f, 1.0f - massifAbs);
+            const float tectonic = (glm::mix(massif, plateau, 0.45f) + 0.28f * boundaryRidge) * look.tectonic * look.radius;
+            // A shared middle-frequency sample bends and breaks the generated
+            // mountain chains and canyons, then also drives local erosion below.
+            const vec3 eroded = warped + fold * 0.085f;
+            const float erosionNoise = 0.68f * signedNoise(eroded * 22.0f, seed + 71) + 0.32f * signedNoise(eroded * 51.0f, seed + 79);
+            const float structures = lineamentField(dir, look.seed, look.maxRelief, erosionNoise, fold)
+                + megaRiftField(dir, look.seed, look.maxRelief, erosionNoise, fold);
+            // Later impacts erase positive ranges inside their bowls. Negative
+            // fractures remain as floor relief and can themselves be overprinted.
+            const float excavatedStructures = glm::min(structures, 0.0f);
+            const float base = glm::mix(tectonic + ground + structures, glm::min(tectonic, 0.0f) + ground + excavatedStructures, pits.cover);
             const float bowlDamp = glm::smoothstep(0.0f, 0.85f, glm::clamp(-pits.field, 0.0f, 1.4f) / 1.4f);
             const float rimBoost = glm::smoothstep(0.04f, 0.40f, glm::clamp(pits.field, 0.0f, 0.55f));
             const float heightBoost = glm::smoothstep(-0.25f, 0.55f, shape);
+            // A middle band of warped, sharpened relief bridges broad tectonics
+            // and sub-metre grit. It is strongest on exposed rims and restrained
+            // on crater floors, so large bowls remain legible instead of noisy.
+            const float erosion = std::copysign(glm::smoothstep(0.12f, 0.78f, std::abs(erosionNoise)), erosionNoise);
+            const float erosionAmp = 34.0f * (1.0f - 0.58f * bowlDamp) * (1.0f + 1.65f * rimBoost);
             float gritAmp = 0.55f * (1.0f - 0.88f * bowlDamp) * (1.0f + 2.0f * rimBoost) * (0.40f + 0.60f * heightBoost);
             const float grit = 0.62f * signedNoise(dir * (look.radius / 8.0f), seed + 53) + 0.38f * signedNoise(dir * (look.radius / 4.0f), seed + 59);
-            return Relief{.height = base + pits.meters + grit * gritAmp, .crater = pits.field};
+            return Relief{.height = base + pits.meters + erosion * erosionAmp + grit * gritAmp, .crater = pits.field};
         }
 
         auto heightOf(vec3 dir, const Planetoid::Look& look) -> float {
@@ -316,14 +1181,19 @@ namespace eltanin::locality::geo {
             const float polar = std::abs(dir.y);
             const float altitude = look.maxRelief > 1.0e-4f ? height / look.maxRelief : 0.0f;
             const float bowl = glm::smoothstep(0.05f, 0.85f, glm::clamp(-crater, 0.0f, 1.4f) / 1.4f);
+            const float lowland = glm::smoothstep(0.25f, 1.50f, glm::max(-altitude, 0.0f));
+            const float basinExposure = bowl * lowland;
             const float flats = 1.0f - slope;
             const float midLat = 1.0f - glm::smoothstep(0.45f, 0.82f, polar);
             const float highland = glm::smoothstep(0.05f, 0.55f, altitude);
             std::array<float, mixChannels> weights{};
-            weights[mineralIce] = 0.85f * glm::smoothstep(0.52f, 0.88f, polar);
+            weights[mineralIce] =
+                0.78f * glm::smoothstep(0.52f, 0.88f, polar) +
+                0.34f * glm::smoothstep(0.18f, 0.68f, slope) * (0.35f + 0.65f * highland);
             weights[mineralOlivine] = 0.55f * flats * midLat * (0.55f + 0.45f * (1.0f - highland));
             weights[mineralPyroxene] = 0.48f * (0.35f + 0.65f * highland) * (0.55f + 0.45f * midLat);
-            weights[mineralIron] = 0.70f * bowl * (0.45f + 0.55f * midLat);
+            weights[mineralIron] =
+                (0.20f * bowl + 1.80f * basinExposure) * (0.45f + 0.55f * midLat);
             return weights;
         }
 
@@ -373,7 +1243,7 @@ namespace eltanin::locality::geo {
             return dir * (look.radius + heightOf(dir, look));
         }
 
-        auto gradientNormal(vec3 dir, const Planetoid::Look& look) -> vec3 {
+        auto gradientNormal(vec3 dir, vec3 origin, const Planetoid::Look& look) -> vec3 {
             const float len = glm::length(dir);
             if (len < 1.0e-6f)
                 return vec3{0.0f, 1.0f, 0.0f};
@@ -384,7 +1254,8 @@ namespace eltanin::locality::geo {
             tangentU = glm::normalize(tangentU);
             const vec3 tangentV = glm::cross(dir, tangentU);
             constexpr float eps = 0.0024f;
-            const vec3 origin = surfacePoint(dir, look);
+            // A fixed angular stencil makes shared normals independent of patch/LOD.
+            // Reuse the sampled origin: only two additional height queries per vertex.
             const vec3 alongU = surfacePoint(glm::normalize(dir + tangentU * eps), look) - origin;
             const vec3 alongV = surfacePoint(glm::normalize(dir + tangentV * eps), look) - origin;
             vec3 normal = glm::cross(alongU, alongV);
@@ -413,14 +1284,67 @@ namespace eltanin::locality::geo {
         }
 
         void emitTri(resource::builders::geometry::CpuPresentation& cpu, integer first, integer second, integer third) {
+            if (first == second or second == third or first == third)
+                return;
             cpu.indices.push_back(first);
             cpu.indices.push_back(second);
             cpu.indices.push_back(third);
         }
 
+        auto cpuAllocatedBytes(const resource::builders::geometry::CpuPresentation& cpu) -> std::size_t {
+            return cpu.positions.capacity() * sizeof(decltype(cpu.positions)::value_type) +
+                cpu.normals.capacity() * sizeof(decltype(cpu.normals)::value_type) +
+                cpu.uv0.capacity() * sizeof(decltype(cpu.uv0)::value_type) +
+                cpu.color0.capacity() * sizeof(decltype(cpu.color0)::value_type) +
+                cpu.indices.capacity() * sizeof(decltype(cpu.indices)::value_type) +
+                cpu.mix0.capacity() * sizeof(decltype(cpu.mix0)::value_type) +
+                cpu.cohesion.capacity() * sizeof(decltype(cpu.cohesion)::value_type);
+        }
+
+        auto activePatchGpuBytes(std::uint8_t coarserEdges, bool wireframe) -> std::size_t {
+            auto stitchedIndex = [&](int column, int row) -> integer {
+                if ((column == 0 and (coarserEdges & 1u)) or (column == cells and (coarserEdges & 2u)))
+                    row -= row % 2;
+                if ((row == 0 and (coarserEdges & 4u)) or (row == cells and (coarserEdges & 8u)))
+                    column -= column % 2;
+                return row * grid + column;
+            };
+            std::size_t indexCount = 0;
+            auto countTri = [&](integer first, integer second, integer third) {
+                if (first != second and second != third and first != third)
+                    indexCount += 3;
+            };
+            for (int row = 0; row < cells; ++row) {
+                for (int column = 0; column < cells; ++column) {
+                    const integer indexA = stitchedIndex(column, row);
+                    const integer indexB = stitchedIndex(column + 1, row);
+                    const integer indexC = stitchedIndex(column, row + 1);
+                    const integer indexD = stitchedIndex(column + 1, row + 1);
+                    countTri(indexA, indexB, indexD);
+                    countTri(indexA, indexD, indexC);
+                }
+            }
+            const std::size_t vertexCount = wireframe ? indexCount : static_cast<std::size_t>(grid * grid);
+            constexpr std::size_t vertexStride = 9 * sizeof(float);
+            return vertexCount * vertexStride + indexCount * sizeof(std::uint32_t) +
+                (indexCount / 3) * sizeof(resource::geometry::SurfaceId);
+        }
+
+        auto terrainGeometryLayout() -> const decltype(resource::builders::geometry::CpuPresentation::layout)& {
+            static const auto layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0", "cohesion"});
+            return layout;
+        }
+
         auto buildPatch(const Planetoid::Look& look, const PatchKey& key, std::uint8_t coarserEdges) -> resource::builders::geometry::CpuPresentation {
+            const auto buildStarted = TerrainClock::now();
+            HeightSampleBatch sampleBatch;
+            struct SampleBatchScope {
+                HeightSampleBatch* previous;
+                explicit SampleBatchScope(HeightSampleBatch& batch) : previous(activeHeightSampleBatch) { activeHeightSampleBatch = &batch; }
+                ~SampleBatchScope() { activeHeightSampleBatch = previous; }
+            } sampleBatchScope(sampleBatch);
             resource::builders::geometry::CpuPresentation cpu{
-                .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0", "cohesion"}),
+                .layout = terrainGeometryLayout(),
                 .positions = {},
                 .normals = {},
                 .uv0 = {},
@@ -446,69 +1370,33 @@ namespace eltanin::locality::geo {
                     const float faceU = originU + tileSize * (static_cast<float>(column) / static_cast<float>(cells));
                     const vec3 dir = cubeDir(key.face, faceU, faceV);
                     const Relief relief = reliefOf(dir, look);
-                    cpu.positions.push_back(dir * (look.radius + relief.height));
-                    cpu.normals.push_back(dir);
-                    cpu.uv0.push_back(UV{relief.height * reliefScale, relief.crater});
-                    cpu.cohesion.push_back(0.0f);
-                }
-            }
-
-            auto gridIndex = [&](int column, int row) -> std::size_t {
-                return static_cast<std::size_t>(row * grid + column);
-            };
-            for (int row = 0; row < grid; ++row) {
-                for (int column = 0; column < grid; ++column) {
-                    const std::size_t index = gridIndex(column, row);
-                    const int columnPrev = column > 0 ? column - 1 : column;
-                    const int columnNext = column < cells ? column + 1 : column;
-                    const int rowPrev = row > 0 ? row - 1 : row;
-                    const int rowNext = row < cells ? row + 1 : row;
-                    const vec3 alongU = cpu.positions[gridIndex(columnNext, row)] - cpu.positions[gridIndex(columnPrev, row)];
-                    const vec3 alongV = cpu.positions[gridIndex(column, rowNext)] - cpu.positions[gridIndex(column, rowPrev)];
-                    vec3 normal = glm::cross(alongU, alongV);
-                    const float normalLen = glm::length(normal);
-                    const vec3 dir = glm::normalize(cpu.positions[index]);
-                    if (normalLen > 1.0e-8f)
-                        normal /= normalLen;
-                    else
-                        normal = dir;
-                    if (glm::dot(normal, dir) < 0.0f)
-                        normal = -normal;
-                    cpu.normals[index] = normal;
+                    const vec3 position = dir * (look.radius + relief.height);
+                    const vec3 normal = gradientNormal(dir, position, look);
                     const float slope = 1.0f - glm::clamp(glm::dot(normal, dir), 0.0f, 1.0f);
-                    cpu.cohesion[index] = cohesionOf(dir, cpu.uv0[index].x * look.maxRelief, slope, cpu.uv0[index].y, look);
+                    cpu.positions.push_back(position);
+                    cpu.normals.push_back(normal);
+                    cpu.uv0.push_back(UV{relief.height * reliefScale, relief.crater});
+                    cpu.cohesion.push_back(cohesionOf(dir, relief.height, slope, relief.crater, look));
                 }
             }
 
-            auto snapOdd = [&](int origin, int stride) {
-                for (int step = 1; step < grid; step += 2) {
-                    const int mid = origin + step * stride;
-                    const int prev = origin + (step - 1) * stride;
-                    const int next = origin + (step + 1) * stride;
-                    cpu.positions[static_cast<std::size_t>(mid)] = 0.5f * (cpu.positions[static_cast<std::size_t>(prev)] + cpu.positions[static_cast<std::size_t>(next)]);
-                    vec3 normal = cpu.normals[static_cast<std::size_t>(prev)] + cpu.normals[static_cast<std::size_t>(next)];
-                    const float normalLen = glm::length(normal);
-                    cpu.normals[static_cast<std::size_t>(mid)] = normalLen > 1.0e-8f ? normal / normalLen : cpu.normals[static_cast<std::size_t>(prev)];
-                    cpu.uv0[static_cast<std::size_t>(mid)] = 0.5f * (cpu.uv0[static_cast<std::size_t>(prev)] + cpu.uv0[static_cast<std::size_t>(next)]);
-                    cpu.cohesion[static_cast<std::size_t>(mid)] = 0.5f * (cpu.cohesion[static_cast<std::size_t>(prev)] + cpu.cohesion[static_cast<std::size_t>(next)]);
-                }
+            // Use the coarse edge's endpoints directly, so raster interpolation of
+            // positions, normals and material drivers agrees on both sides.
+            auto stitchedIndex = [&](int column, int row) -> integer {
+                if ((column == 0 and (coarserEdges & 1u)) or (column == cells and (coarserEdges & 2u)))
+                    row -= row % 2;
+                if ((row == 0 and (coarserEdges & 4u)) or (row == cells and (coarserEdges & 8u)))
+                    column -= column % 2;
+                return row * grid + column;
             };
-            if (coarserEdges & 1u)
-                snapOdd(0, grid);
-            if (coarserEdges & 2u)
-                snapOdd(cells, grid);
-            if (coarserEdges & 4u)
-                snapOdd(0, 1);
-            if (coarserEdges & 8u)
-                snapOdd(cells * grid, 1);
 
             const bool flip = flipWinding[key.face];
             for (int row = 0; row < cells; ++row) {
                 for (int column = 0; column < cells; ++column) {
-                    const integer indexA = row * grid + column;
-                    const integer indexB = indexA + 1;
-                    const integer indexC = indexA + grid;
-                    const integer indexD = indexC + 1;
+                    const integer indexA = stitchedIndex(column, row);
+                    const integer indexB = stitchedIndex(column + 1, row);
+                    const integer indexC = stitchedIndex(column, row + 1);
+                    const integer indexD = stitchedIndex(column + 1, row + 1);
                     if (flip) {
                         emitTri(cpu, indexA, indexC, indexD);
                         emitTri(cpu, indexA, indexD, indexB);
@@ -518,7 +1406,43 @@ namespace eltanin::locality::geo {
                     }
                 }
             }
+            const auto buildNanoseconds = static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(TerrainClock::now() - buildStarted).count());
+            const std::scoped_lock lock(terrainTelemetryMutex());
+            auto& telemetry = terrainTelemetry();
+            telemetry.heightSamples += sampleBatch.samples;
+            telemetry.heightNanoseconds += sampleBatch.nanoseconds;
+            telemetry.heightMaxNanoseconds = std::max(telemetry.heightMaxNanoseconds, sampleBatch.maxNanoseconds);
+            ++telemetry.patchBuilds;
+            telemetry.patchBuildNanoseconds.push_back(buildNanoseconds);
+            telemetry.patchSamples.push_back(static_cast<std::uint32_t>(sampleBatch.samples));
+            telemetry.cpuTransientPeakBytes = std::max(telemetry.cpuTransientPeakBytes, cpuAllocatedBytes(cpu));
             return cpu;
+        }
+
+        void addWireframe(resource::builders::geometry::CpuPresentation& cpu) {
+            auto indexed = std::move(cpu);
+            cpu = resource::builders::geometry::CpuPresentation{
+                .layout = terrainGeometryLayout(),
+                .positions = {}, .normals = {}, .uv0 = {}, .color0 = {}, .indices = {}, .mix0 = {}, .cohesion = {},
+            };
+            const auto count = indexed.indices.size();
+            cpu.positions.reserve(count);
+            cpu.normals.reserve(count);
+            cpu.uv0.reserve(count);
+            cpu.cohesion.reserve(count);
+            cpu.indices.reserve(count);
+            // Debug-only barycentrics describe the actual stitched triangles.
+            // Reinstalling the regular grid when leaving this view releases the buffers.
+            for (std::size_t corner = 0; corner < count; ++corner) {
+                const auto index = static_cast<std::size_t>(indexed.indices[corner]);
+                cpu.positions.push_back(indexed.positions[index]);
+                cpu.normals.push_back(indexed.normals[index]);
+                cpu.cohesion.push_back(indexed.cohesion[index]);
+                // This material does not use terrain drivers; reuse uv0 for two
+                // barycentric components and derive the third in the shader.
+                cpu.uv0.push_back(corner % 3 == 0 ? vec2{1.0f, 0.0f} : corner % 3 == 1 ? vec2{0.0f, 1.0f} : vec2{0.0f});
+                cpu.indices.push_back(static_cast<integer>(corner));
+            }
         }
 
         auto childKey(const PatchKey& key, int childU, int childV) -> PatchKey {
@@ -726,12 +1650,22 @@ namespace eltanin::locality::geo {
             state.atmosphere = with<scene::Interface>::createMeshActor(context, scene, state.pose, std::move(*meshQuantum), meshState);
         }
 
-        auto spawnPatch(Writing context, Landscape& state, const PatchKey& key, std::uint8_t coarserEdges) -> bool {
+        auto commitPatch(Writing context, Landscape& state, PatchMap& destination, const PatchKey& key, std::uint8_t coarserEdges, bool wireframe, bool visible, resource::builders::geometry::CpuPresentation cpu) -> bool {
             const auto scene = with<Thing>::get_global(context).scene;
-            auto cpu = buildPatch(state.look, key, coarserEdges);
             if (cpu.positions.empty())
                 return false;
-            const string own = "planetoid-" + std::to_string(key.face) + "-" + std::to_string(key.level) + "-" + std::to_string(key.iu) + "-" + std::to_string(key.iv);
+            const auto existing = destination.find(key);
+            if (existing != destination.end()) {
+                if (not with<resource::geometry::Asset>::install(context, existing->second.geometry, state.device, cpu)) {
+                    context.refuse("eltanin::locality::geo::Planetoid: geometry reinstall failed");
+                    return false;
+                }
+                existing->second.coarserEdges = coarserEdges;
+                existing->second.wireframe = wireframe;
+                return true;
+            }
+            static std::uint64_t geometrySerial = 0;
+            const string own = "planetoid-" + std::to_string(key.face) + "-" + std::to_string(key.level) + "-" + std::to_string(key.iu) + "-" + std::to_string(key.iv) + "-" + std::to_string(++geometrySerial);
             const auto manager = with<resource::Manager>::singleton(context);
             const auto geometryId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", own)});
             with<resource::geometry::Asset>::extend(context, geometryId, resource::geometry::Asset::Quantum{});
@@ -739,16 +1673,105 @@ namespace eltanin::locality::geo {
                 context.refuse("eltanin::locality::geo::Planetoid: geometry install failed");
                 return false;
             }
-            auto meshQuantum = with<scene::actor::Mesh>::composeWithTexpack(context, geometryId, state.material, state.crust);
+            const auto material = state.debugView == Landscape::DebugView::normal ? base::maybe<resource::material::Asset::Id>{state.material} : with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "terrainDebug"));
+            if (not material) {
+                context.refuse("Planetoid: diagnostic material missing");
+                return false;
+            }
+            auto meshQuantum = with<scene::actor::Mesh>::composeWithTexpack(context, geometryId, *material, state.crust);
             if (not meshQuantum) {
                 context.refuse("eltanin::locality::geo::Planetoid: mesh compose failed");
                 return false;
             }
             auto meshState = with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
             meshState.patternScale = glm::max(0.5f, state.look.radius * 2.0f);
+            meshState.heat.x = static_cast<float>(state.debugView);
             const auto actor = with<scene::Interface>::createMeshActor(context, scene, state.pose, std::move(*meshQuantum), meshState);
-            state.patches.emplace(key, Patch{.actor = actor, .geometry = geometryId, .coarserEdges = coarserEdges});
+            if (not visible and with<scene::Node>::exists(context, actor))
+                with<scene::Node>::modify(context, actor)->visible = false;
+            destination.emplace(key, Patch{.actor = actor, .geometry = geometryId, .coarserEdges = coarserEdges, .wireframe = wireframe});
             return true;
+        }
+
+        template <class T>
+        auto telemetryAverage(const vector<T>& values) -> double {
+            if (values.empty())
+                return 0.0;
+            long double sum = 0.0;
+            for (const T value : values)
+                sum += static_cast<long double>(value);
+            return static_cast<double>(sum / static_cast<long double>(values.size()));
+        }
+
+        template <class T>
+        auto telemetryP95(const vector<T>& values) -> T {
+            if (values.empty())
+                return T{};
+            vector<T> sorted = values;
+            std::sort(sorted.begin(), sorted.end());
+            const std::size_t index = static_cast<std::size_t>(std::ceil(static_cast<double>(sorted.size()) * 0.95)) - 1;
+            return sorted[std::min(index, sorted.size() - 1)];
+        }
+
+        void reportTerrainTelemetry(const Landscape& state) {
+            TerrainTelemetry telemetry;
+            {
+                const std::scoped_lock lock(terrainTelemetryMutex());
+                telemetry = terrainTelemetry();
+            }
+            if (telemetry.frames == 0 or telemetry.frames % 60 != 0)
+                return;
+
+            const double heightAverageUs = telemetry.heightSamples > 0
+                ? static_cast<double>(telemetry.heightNanoseconds) / static_cast<double>(telemetry.heightSamples) / 1000.0
+                : 0.0;
+            const double patchAverageMs = telemetryAverage(telemetry.patchBuildNanoseconds) / 1.0e6;
+            const double patchP95Ms = static_cast<double>(telemetryP95(telemetry.patchBuildNanoseconds)) / 1.0e6;
+            const double patchMaxMs = telemetry.patchBuildNanoseconds.empty()
+                ? 0.0
+                : static_cast<double>(*std::max_element(telemetry.patchBuildNanoseconds.begin(), telemetry.patchBuildNanoseconds.end())) / 1.0e6;
+            const auto createdMax = telemetry.createdPerFrame.empty() ? 0u : *std::max_element(telemetry.createdPerFrame.begin(), telemetry.createdPerFrame.end());
+            const auto rebuiltMax = telemetry.rebuiltPerFrame.empty() ? 0u : *std::max_element(telemetry.rebuiltPerFrame.begin(), telemetry.rebuiltPerFrame.end());
+
+            std::array<std::uint32_t, maxLevel + 1> lodCounts{};
+            std::size_t gpuBytes = 0;
+            for (const auto& [key, patch] : state.patches) {
+                ++lodCounts[std::min<int>(key.level, maxLevel)];
+                gpuBytes += activePatchGpuBytes(patch.coarserEdges, patch.wireframe);
+            }
+
+            const auto& asyncState = terrainAsyncState();
+            const auto async = asyncState ? asyncState->snapshot() : TerrainAsync::Snapshot{};
+
+            base::message(
+                "terrain.telemetry frame={} height_samples={} height_us(avg/max)={:.3f}/{:.3f} physical_queries={} altitude_queries={}",
+                telemetry.frames, telemetry.heightSamples, heightAverageUs,
+                static_cast<double>(telemetry.heightMaxNanoseconds) / 1000.0,
+                telemetry.physicalHeightQueries, telemetry.altitudeQueries);
+            base::message(
+                "terrain.telemetry patch_builds={} samples_per_patch(avg/p95/max)={:.1f}/{}/{} generation_ms(avg/p95/max)={:.3f}/{:.3f}/{:.3f}",
+                telemetry.patchBuilds, telemetryAverage(telemetry.patchSamples), telemetryP95(telemetry.patchSamples),
+                telemetry.patchSamples.empty() ? 0u : *std::max_element(telemetry.patchSamples.begin(), telemetry.patchSamples.end()),
+                patchAverageMs, patchP95Ms, patchMaxMs);
+            base::message(
+                "terrain.telemetry patches_per_frame created(avg/p95/max)={:.2f}/{}/{} rebuilt(avg/p95/max)={:.2f}/{}/{} active={} lod=[{},{},{},{},{},{}]",
+                telemetryAverage(telemetry.createdPerFrame), telemetryP95(telemetry.createdPerFrame), createdMax,
+                telemetryAverage(telemetry.rebuiltPerFrame), telemetryP95(telemetry.rebuiltPerFrame), rebuiltMax,
+                state.patches.size(), lodCounts[0], lodCounts[1], lodCounts[2], lodCounts[3], lodCounts[4], lodCounts[5]);
+            base::message(
+                "terrain.telemetry mesh_bytes cpu_active=0 cpu_transient_peak={} gpu_payload_estimate={} (driver overhead excluded)",
+                telemetry.cpuTransientPeakBytes, gpuBytes);
+            base::message(
+                "terrain.telemetry jobs queued={} generating={} completed_waiting={} resident={} started_total={} committed_total={} stale_discarded={}",
+                async.pending, async.generating, async.completed, async.resident,
+                async.startedTotal, async.committedTotal, async.discardedTotal);
+            base::message(
+                "terrain.telemetry jobs_per_frame started(avg/p95/max)={:.2f}/{}/{} committed(avg/p95/max)={:.2f}/{}/{} latency_ms(avg/p95/max)={:.3f}/{:.3f}/{:.3f}",
+                telemetryAverage(telemetry.jobsStartedPerFrame), telemetryP95(telemetry.jobsStartedPerFrame),
+                telemetry.jobsStartedPerFrame.empty() ? 0u : *std::max_element(telemetry.jobsStartedPerFrame.begin(), telemetry.jobsStartedPerFrame.end()),
+                telemetryAverage(telemetry.jobsCommittedPerFrame), telemetryP95(telemetry.jobsCommittedPerFrame),
+                telemetry.jobsCommittedPerFrame.empty() ? 0u : *std::max_element(telemetry.jobsCommittedPerFrame.begin(), telemetry.jobsCommittedPerFrame.end()),
+                async.latencyAverageMs, async.latencyP95Ms, async.latencyMaxMs);
         }
 
         auto wellQuantum(Pose pose, const Planetoid::Look& look) -> phys::Body::Quantum {
@@ -776,11 +1799,277 @@ namespace eltanin::locality::geo {
 
     }
 
+    struct TerrainAsync::State {
+        struct Record {
+            Lifecycle lifecycle = Lifecycle::pending;
+            std::uint8_t coarserEdges = 0;
+            bool wireframe = false;
+            bool desired = true;
+            double priority = 0.0;
+            std::uint64_t revision = 0;
+            TerrainClock::time_point queuedAt{};
+            std::optional<resource::builders::geometry::CpuPresentation> cpu;
+        };
+
+        mutable std::mutex mutex;
+        std::condition_variable wake;
+        bool stopping = false;
+        Landscape::Look look;
+        std::unordered_map<PatchKey, Record, PatchKeyHash> records;
+        std::vector<std::thread> workers;
+        std::uint64_t nextRevision = 1;
+        std::uint64_t startedTotal = 0;
+        std::uint64_t committedTotal = 0;
+        std::uint64_t discardedTotal = 0;
+        std::uint32_t startedSinceFrame = 0;
+        std::uint32_t generating = 0;
+        std::vector<std::uint64_t> latencyNanoseconds;
+
+        explicit State(Landscape::Look initialLook) : look(std::move(initialLook)) {
+            constexpr unsigned workerCount = 2;
+            workers.reserve(workerCount);
+            for (unsigned index = 0; index < workerCount; ++index)
+                workers.emplace_back([this] { work(); });
+        }
+
+        ~State() {
+            {
+                const std::scoped_lock lock(mutex);
+                stopping = true;
+            }
+            wake.notify_all();
+            for (auto& worker : workers)
+                if (worker.joinable())
+                    worker.join();
+        }
+
+        auto hasPending() const -> bool {
+            for (const auto& [key, record] : records)
+                if (record.lifecycle == Lifecycle::pending and record.desired)
+                    return true;
+            return false;
+        }
+
+        void work() {
+            while (true) {
+                PatchKey key{};
+                std::uint8_t coarserEdges = 0;
+                bool wireframe = false;
+                std::uint64_t revision = 0;
+                double bestPriority = std::numeric_limits<double>::infinity();
+                TerrainClock::time_point queuedAt{};
+                Landscape::Look jobLook{};
+                {
+                    std::unique_lock lock(mutex);
+                    wake.wait(lock, [this] { return stopping or hasPending(); });
+                    if (stopping)
+                        return;
+                    auto selected = records.end();
+                    for (auto candidate = records.begin(); candidate != records.end(); ++candidate) {
+                        const auto& record = candidate->second;
+                        if (record.lifecycle == Lifecycle::pending and record.desired and record.priority < bestPriority) {
+                            selected = candidate;
+                            bestPriority = record.priority;
+                        }
+                    }
+                    if (selected == records.end())
+                        continue;
+                    selected->second.lifecycle = Lifecycle::generating;
+                    key = selected->first;
+                    coarserEdges = selected->second.coarserEdges;
+                    wireframe = selected->second.wireframe;
+                    revision = selected->second.revision;
+                    queuedAt = selected->second.queuedAt;
+                    jobLook = look;
+                    ++generating;
+                    ++startedTotal;
+                    ++startedSinceFrame;
+                }
+
+                auto cpu = buildPatch(jobLook, key, coarserEdges);
+                if (wireframe)
+                    addWireframe(cpu);
+                const auto finishedAt = TerrainClock::now();
+
+                {
+                    const std::scoped_lock lock(mutex);
+                    --generating;
+                    const auto found = records.find(key);
+                    if (found == records.end() or found->second.revision != revision or not found->second.desired) {
+                        ++discardedTotal;
+                        continue;
+                    }
+                    found->second.cpu = std::move(cpu);
+                    found->second.lifecycle = Lifecycle::completed;
+                    latencyNanoseconds.push_back(static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(finishedAt - queuedAt).count()));
+                }
+            }
+        }
+    };
+
+    TerrainAsync::TerrainAsync(Landscape::Look look) {
+        // Geometry semantic lookup belongs to the established renderer/resource
+        // setup and is not assumed to be thread-safe. Cache it before workers start.
+        (void)terrainGeometryLayout();
+        state = std::make_unique<State>(std::move(look));
+    }
+    TerrainAsync::~TerrainAsync() = default;
+
+    void TerrainAsync::reconcile(const std::vector<Desired>& desired) {
+        const std::scoped_lock lock(state->mutex);
+        for (auto& [key, record] : state->records)
+            record.desired = false;
+
+        for (const auto& item : desired) {
+            auto found = state->records.find(item.key);
+            const bool samePayload = found != state->records.end() and found->second.coarserEdges == item.coarserEdges and found->second.wireframe == item.wireframe;
+            if (item.residentMatches) {
+                if (found != state->records.end() and found->second.lifecycle != Lifecycle::resident) {
+                    if (found->second.lifecycle != Lifecycle::generating)
+                        ++state->discardedTotal;
+                    state->records.erase(found);
+                }
+                auto& resident = state->records[item.key];
+                resident.lifecycle = Lifecycle::resident;
+                resident.coarserEdges = item.coarserEdges;
+                resident.wireframe = item.wireframe;
+                resident.desired = true;
+                resident.priority = item.priority;
+                resident.revision = state->nextRevision++;
+                continue;
+            }
+            if (samePayload and found->second.lifecycle != Lifecycle::resident) {
+                found->second.desired = true;
+                found->second.priority = item.priority;
+                continue;
+            }
+            if (found != state->records.end()) {
+                if (found->second.lifecycle != Lifecycle::resident and found->second.lifecycle != Lifecycle::generating)
+                    ++state->discardedTotal;
+                state->records.erase(found);
+            }
+            state->records.emplace(item.key, State::Record{
+                .lifecycle = Lifecycle::pending,
+                .coarserEdges = item.coarserEdges,
+                .wireframe = item.wireframe,
+                .desired = true,
+                .priority = item.priority,
+                .revision = state->nextRevision++,
+                .queuedAt = TerrainClock::now(),
+            });
+        }
+
+        for (auto it = state->records.begin(); it != state->records.end();) {
+            if (it->second.desired) {
+                ++it;
+                continue;
+            }
+            if (it->second.lifecycle != Lifecycle::resident and it->second.lifecycle != Lifecycle::generating)
+                ++state->discardedTotal;
+            it = state->records.erase(it);
+        }
+        state->wake.notify_all();
+    }
+
+    auto TerrainAsync::takeCompleted(std::size_t limit) -> std::vector<Completed> {
+        std::vector<Completed> result;
+        result.reserve(limit);
+        const std::scoped_lock lock(state->mutex);
+        while (result.size() < limit) {
+            auto selected = state->records.end();
+            double bestPriority = std::numeric_limits<double>::infinity();
+            for (auto candidate = state->records.begin(); candidate != state->records.end(); ++candidate) {
+                if (candidate->second.lifecycle == Lifecycle::completed and candidate->second.desired and candidate->second.priority < bestPriority) {
+                    selected = candidate;
+                    bestPriority = candidate->second.priority;
+                }
+            }
+            if (selected == state->records.end())
+                break;
+            result.push_back(Completed{
+                .key = selected->first,
+                .coarserEdges = selected->second.coarserEdges,
+                .wireframe = selected->second.wireframe,
+                .cpu = std::move(*selected->second.cpu),
+            });
+            state->records.erase(selected);
+        }
+        return result;
+    }
+
+    void TerrainAsync::markResident(const PatchKey& key, std::uint8_t coarserEdges, bool wireframe) {
+        const std::scoped_lock lock(state->mutex);
+        auto& record = state->records[key];
+        record.lifecycle = Lifecycle::resident;
+        record.coarserEdges = coarserEdges;
+        record.wireframe = wireframe;
+        record.desired = true;
+        record.revision = state->nextRevision++;
+    }
+
+    void TerrainAsync::noteCommitted() {
+        const std::scoped_lock lock(state->mutex);
+        ++state->committedTotal;
+    }
+
+    auto TerrainAsync::takeStartedSinceFrame() -> std::uint32_t {
+        const std::scoped_lock lock(state->mutex);
+        return std::exchange(state->startedSinceFrame, 0u);
+    }
+
+    auto TerrainAsync::snapshot() const -> Snapshot {
+        const std::scoped_lock lock(state->mutex);
+        Snapshot result{
+            .generating = state->generating,
+            .startedTotal = state->startedTotal,
+            .committedTotal = state->committedTotal,
+            .discardedTotal = state->discardedTotal,
+        };
+        for (const auto& [key, record] : state->records) {
+            switch (record.lifecycle) {
+                case Lifecycle::pending: ++result.pending; break;
+                case Lifecycle::generating: break;
+                case Lifecycle::completed: ++result.completed; break;
+                case Lifecycle::resident: ++result.resident; break;
+            }
+        }
+        if (not state->latencyNanoseconds.empty()) {
+            auto sorted = state->latencyNanoseconds;
+            std::sort(sorted.begin(), sorted.end());
+            long double sum = 0.0;
+            for (const auto value : sorted)
+                sum += static_cast<long double>(value);
+            result.latencyAverageMs = static_cast<double>(sum / sorted.size()) / 1.0e6;
+            const std::size_t p95 = std::min(sorted.size() - 1, static_cast<std::size_t>(std::ceil(sorted.size() * 0.95)) - 1);
+            result.latencyP95Ms = static_cast<double>(sorted[p95]) / 1.0e6;
+            result.latencyMaxMs = static_cast<double>(sorted.back()) / 1.0e6;
+        }
+        return result;
+    }
+
+    void TerrainAsync::invalidate(Landscape::Look look) {
+        const std::scoped_lock lock(state->mutex);
+        state->look = std::move(look);
+        for (const auto& [key, record] : state->records)
+            if (record.lifecycle != Lifecycle::resident and record.lifecycle != Lifecycle::generating)
+                ++state->discardedTotal;
+        state->records.clear();
+        state->wake.notify_all();
+    }
+
+    auto Planetoid::largestBasinDirection(const Look& look) -> vec3 {
+        return makeBasins(look.seed).craters[0].center;
+    }
+
     auto Planetoid::placed(Reading context) -> bool {
         return with<Thing>::get_global(context).landscape.has_value();
     }
 
     void Planetoid::place(Writing context, system::Device::Id device, Pose pose, Look look) {
+        {
+            const std::scoped_lock lock(terrainTelemetryMutex());
+            terrainTelemetry() = TerrainTelemetry{};
+        }
         const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "planetoid"));
         if (not material)
             return (void)context.refuse("eltanin::locality::geo::Planetoid::place: planetoid material missing");
@@ -788,6 +2077,10 @@ namespace eltanin::locality::geo {
         if (not crust)
             return (void)context.refuse("eltanin::locality::geo::Planetoid::place: crust pack missing");
         auto& landscape = with<Thing>::modify_global(context)->landscape;
+        terrainAsyncState().reset();
+        for (const auto& entry : terrainStagingPatches())
+            dropPatch(context, entry.second);
+        terrainStagingPatches().clear();
         if (landscape) {
             for (const auto& entry : landscape->patches)
                 dropPatch(context, entry.second);
@@ -797,16 +2090,64 @@ namespace eltanin::locality::geo {
         }
         const auto well = landscape ? landscape->well : makeWell(context, pose, look);
         bindWell(*with<phys::Body>::modify(context, well), pose, look);
-        landscape = Landscape{.look = look, .pose = pose, .device = device, .well = well, .material = *material, .crust = *crust, .patches = {}, .atmosphere = {}};
+        landscape = Landscape{.look = look, .pose = pose, .device = device, .well = well, .material = *material, .crust = *crust, .patches = {}, .atmosphere = {}, .debugView = Landscape::DebugView::normal};
+        terrainAsyncState() = std::make_shared<TerrainAsync>(look);
         with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereDensity = look.atmosphere.seaDensity;
         with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereKerman = look.atmosphere.kerman;
         spawnAtmosphere(context, *landscape);
+    }
+
+    void Planetoid::setDebugView(Writing context, Landscape::DebugView view) {
+        auto& landscape = with<Thing>::modify_global(context)->landscape;
+        if (not landscape or landscape->debugView == view)
+            return;
+        const auto material = view == Landscape::DebugView::normal ? base::maybe<resource::material::Asset::Id>{landscape->material} : with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "terrainDebug"));
+        if (not material)
+            return (void)context.refuse("Planetoid: diagnostic material missing");
+        const bool rebuild = (view == Landscape::DebugView::wireframe) != (landscape->debugView == Landscape::DebugView::wireframe);
+        auto applyView = [&](PatchMap& patches) {
+            for (auto& [key, patch] : patches) {
+                auto mesh = with<scene::actor::Mesh>::composeWithTexpack(context, patch.geometry, *material, landscape->crust);
+                if (not mesh)
+                    return false;
+                with<scene::actor::Mesh>::replace(context, patch.actor, std::move(*mesh));
+                with<scene::actor::MeshState>::modify(context, patch.actor)->heat.x = static_cast<float>(view);
+            }
+            return true;
+        };
+        if (not applyView(landscape->patches) or not applyView(terrainStagingPatches()))
+            return (void)context.refuse("Planetoid: diagnostic mesh compose failed");
+        landscape->debugView = view;
+        if (rebuild and terrainAsyncState())
+            terrainAsyncState()->invalidate(landscape->look);
+        if (landscape->atmosphere and with<scene::Node>::exists(context, *landscape->atmosphere))
+            with<scene::Node>::modify(context, *landscape->atmosphere)->visible = view == Landscape::DebugView::normal and landscape->look.terrainTest == Landscape::TerrainTest::off;
+    }
+
+    void Planetoid::setTerrainTest(Writing context, Landscape::TerrainTest test, bool rims) {
+        auto& landscape = with<Thing>::modify_global(context)->landscape;
+        if (not landscape or (landscape->look.terrainTest == test and landscape->look.testRims == rims)) return;
+        landscape->look.terrainTest = test;
+        landscape->look.testRims = rims;
+        if (terrainAsyncState())
+            terrainAsyncState()->invalidate(landscape->look);
+        // The next regular update rebuilds only the currently needed LOD leaves.
+        for (const auto& entry : landscape->patches) dropPatch(context, entry.second);
+        landscape->patches.clear();
+        for (const auto& entry : terrainStagingPatches()) dropPatch(context, entry.second);
+        terrainStagingPatches().clear();
+        if (landscape->atmosphere and with<scene::Node>::exists(context, *landscape->atmosphere))
+            with<scene::Node>::modify(context, *landscape->atmosphere)->visible = test == Landscape::TerrainTest::off and landscape->debugView == Landscape::DebugView::normal;
     }
 
     void Planetoid::update(Writing context, Pos camera) {
         auto& landscape = with<Thing>::modify_global(context)->landscape;
         if (not landscape)
             return;
+        {
+            const std::scoped_lock lock(terrainTelemetryMutex());
+            ++terrainTelemetry().frames;
+        }
         const auto scene = with<Thing>::get_global(context).scene;
         landscape->look.atmosphere.seaDensity = with<scene::Root>::get(context, scene).atmosphereDensity;
         landscape->look.atmosphere.kerman = with<scene::Root>::get(context, scene).atmosphereKerman;
@@ -826,28 +2167,102 @@ namespace eltanin::locality::geo {
         wanted.reserve(keep.size());
         for (const PatchKey& key : keep)
             wanted.push_back(key);
-        vector<PatchKey> stale;
-        for (const auto& entry : landscape->patches) {
-            if (not keep.contains(entry.first) or entry.second.coarserEdges != edgeFlags(keep, entry.first))
-                stale.push_back(entry.first);
+        if (not terrainAsyncState())
+            terrainAsyncState() = std::make_shared<TerrainAsync>(landscape->look);
+        const bool wireframe = landscape->debugView == Landscape::DebugView::wireframe;
+        auto& staging = terrainStagingPatches();
+        auto matches = [&](const PatchMap& patches, const PatchKey& key, std::uint8_t edges) {
+            const auto found = patches.find(key);
+            return found != patches.end() and found->second.coarserEdges == edges and found->second.wireframe == wireframe;
+        };
+
+        for (auto it = staging.begin(); it != staging.end();) {
+            const auto edges = keep.contains(it->first) ? edgeFlags(keep, it->first) : std::uint8_t{0};
+            if (not keep.contains(it->first) or it->second.coarserEdges != edges or it->second.wireframe != wireframe or matches(landscape->patches, it->first, edges)) {
+                dropPatch(context, it->second);
+                it = staging.erase(it);
+            } else {
+                ++it;
+            }
         }
-        for (const PatchKey& key : stale) {
-            const auto found = landscape->patches.find(key);
-            if (found == landscape->patches.end())
-                continue;
-            dropPatch(context, found->second);
-            landscape->patches.erase(found);
-        }
+
+        vector<TerrainAsync::Desired> desired;
+        desired.reserve(wanted.size());
         for (const PatchKey& key : wanted) {
-            if (not landscape->patches.contains(key))
-                spawnPatch(context, *landscape, key, edgeFlags(keep, key));
+            const auto edges = edgeFlags(keep, key);
+            const bool residentMatches = matches(landscape->patches, key, edges) or matches(staging, key, edges);
+            const double distance = static_cast<double>(glm::length(camera - patchCenter(*landscape, key)));
+            const double detailPenalty = static_cast<double>(key.level) * static_cast<double>(landscape->look.radius) * 0.20;
+            desired.push_back(TerrainAsync::Desired{.key = key, .coarserEdges = edges, .wireframe = wireframe, .residentMatches = residentMatches, .priority = distance + detailPenalty});
         }
+        terrainAsyncState()->reconcile(desired);
+
+        constexpr std::size_t maxCommitsPerFrame = 4;
+        std::uint32_t created = 0;
+        std::uint32_t rebuilt = 0;
+        for (auto& completed : terrainAsyncState()->takeCompleted(maxCommitsPerFrame)) {
+            const bool wasResident = landscape->patches.contains(completed.key);
+            if (commitPatch(context, *landscape, staging, completed.key, completed.coarserEdges, completed.wireframe, false, std::move(completed.cpu))) {
+                terrainAsyncState()->markResident(completed.key, completed.coarserEdges, completed.wireframe);
+                terrainAsyncState()->noteCommitted();
+                if (wasResident)
+                    ++rebuilt;
+                else
+                    ++created;
+            }
+        }
+
+        bool ready = true;
+        for (const PatchKey& key : wanted) {
+            const auto edges = edgeFlags(keep, key);
+            if (not matches(landscape->patches, key, edges) and not matches(staging, key, edges)) {
+                ready = false;
+                break;
+            }
+        }
+        bool transitionNeeded = not staging.empty();
+        for (const auto& [key, patch] : landscape->patches) {
+            if (not keep.contains(key) or patch.coarserEdges != edgeFlags(keep, key) or patch.wireframe != wireframe) {
+                transitionNeeded = true;
+                break;
+            }
+        }
+        if (ready and transitionNeeded) {
+            for (auto it = landscape->patches.begin(); it != landscape->patches.end();) {
+                if (keep.contains(it->first) and it->second.coarserEdges == edgeFlags(keep, it->first) and it->second.wireframe == wireframe) {
+                    ++it;
+                    continue;
+                }
+                dropPatch(context, it->second);
+                it = landscape->patches.erase(it);
+            }
+            for (auto& [key, patch] : staging) {
+                if (with<scene::Node>::exists(context, patch.actor))
+                    with<scene::Node>::modify(context, patch.actor)->visible = true;
+                landscape->patches.emplace(key, std::move(patch));
+            }
+            staging.clear();
+        }
+        const auto started = terrainAsyncState()->takeStartedSinceFrame();
+        {
+            const std::scoped_lock lock(terrainTelemetryMutex());
+            auto& telemetry = terrainTelemetry();
+            telemetry.createdPerFrame.push_back(created);
+            telemetry.rebuiltPerFrame.push_back(rebuilt);
+            telemetry.jobsStartedPerFrame.push_back(started);
+            telemetry.jobsCommittedPerFrame.push_back(created + rebuilt);
+        }
+        reportTerrainTelemetry(*landscape);
     }
 
     auto Planetoid::height(Reading context, vec3 dir) -> float {
         const auto& landscape = with<Thing>::get_global(context).landscape;
         if (not landscape)
             return 0.0f;
+        {
+            const std::scoped_lock lock(terrainTelemetryMutex());
+            ++terrainTelemetry().physicalHeightQueries;
+        }
         return heightOf(dir, landscape->look);
     }
 
@@ -855,6 +2270,10 @@ namespace eltanin::locality::geo {
         const auto& landscape = with<Thing>::get_global(context).landscape;
         if (not landscape)
             return 0.0f;
+        {
+            const std::scoped_lock lock(terrainTelemetryMutex());
+            ++terrainTelemetry().altitudeQueries;
+        }
         const vec3 local = toLocal(*landscape, worldPos);
         const float radial = glm::length(local);
         if (radial < 1.0e-6f)
@@ -906,14 +2325,19 @@ namespace eltanin::locality::geo {
         const auto& landscape = with<Thing>::get_global(context).landscape;
         if (not landscape)
             return Surface{.height = 0.0f, .position = vec3{0.0f, 0.0f, 0.0f}, .normal = vec3{0.0f, 1.0f, 0.0f}, .mix = 0, .slope = 0.0f};
+        {
+            const std::scoped_lock lock(terrainTelemetryMutex());
+            ++terrainTelemetry().physicalHeightQueries;
+        }
         const float len = glm::length(dir);
         if (len < 1.0e-6f)
             return Surface{.height = 0.0f, .position = vec3{0.0f, 0.0f, 0.0f}, .normal = vec3{0.0f, 1.0f, 0.0f}, .mix = 0, .slope = 0.0f};
         dir /= len;
         const Relief relief = reliefOf(dir, landscape->look);
-        const vec3 normal = gradientNormal(dir, landscape->look);
+        const vec3 position = dir * (landscape->look.radius + relief.height);
+        const vec3 normal = gradientNormal(dir, position, landscape->look);
         const float slope = 1.0f - glm::clamp(glm::dot(normal, dir), 0.0f, 1.0f);
-        return Surface{.height = relief.height, .position = dir * (landscape->look.radius + relief.height), .normal = normal, .mix = materialMix(dir, relief.height, slope, relief.crater, landscape->look), .slope = slope};
+        return Surface{.height = relief.height, .position = position, .normal = normal, .mix = materialMix(dir, relief.height, slope, relief.crater, landscape->look), .slope = slope};
     }
 
 }

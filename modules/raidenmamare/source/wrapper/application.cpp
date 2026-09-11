@@ -6,6 +6,7 @@
 #include <rmmr/wrapper/library.h>
 #include <rmmr/wrapper/ui.h>
 
+#include <algorithm>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -145,6 +146,9 @@ namespace rmmr::wrapper {
             return 1;
         }
 
+        integer rendered_frames = 0;
+        bool capture_pending = settings.capture.has_value();
+        bool capture_failed = false;
         while (engine and not engine->shouldClose(state->world)) {
             engine->beginFrame(state->world);
             const int64 now_us = engine->monotonicUs();
@@ -156,12 +160,28 @@ namespace rmmr::wrapper {
             engine->setActiveOverlay(product->activeOverlay());
             engine->setOverlaySelection(product->overlaySelection());
             engine->render(state->world);
+            ++rendered_frames;
+
+            bool close_after_frame = false;
+            if (capture_pending and rendered_frames >= std::max<integer>(settings.capture->after_frames, 1)) {
+                const auto destination = settings.capture->destination;
+                const bool saved = engine->captureFrame(state->world, destination);
+                capture_failed = not saved;
+                if (saved)
+                    base::message("app: control frame saved to {}", destination.string());
+                else
+                    base::message("app: failed to save control frame to {}", destination.string());
+                close_after_frame = settings.capture->close_after;
+                capture_pending = false;
+            }
             engine->endFrame(state->world);
+            if (close_after_frame)
+                break;
         }
 
         if (engine)
             engine->shutdown(state->world);
-        return 0;
+        return capture_failed ? 2 : 0;
     }
 
 }

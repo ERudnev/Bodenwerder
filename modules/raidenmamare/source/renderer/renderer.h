@@ -5,6 +5,7 @@
 #include "identity.h"
 #include "overlayCompose.h"
 #include "sceneTarget.h"
+#include "nearShadow.h"
 
 #include <rmmr/engine.h>
 #include <rmmr/math.q1.h>
@@ -60,11 +61,13 @@ namespace rmmr {
         Bloom bloom;
         Identity identity;
         OverlayCompose overlay;
+        NearShadow nearShadow;
+        NearShadow mediumShadow;
         gl::Triangle fullscreen;
         renderer::UniformBuffer passStateBuffer;
         Stats lastStats;
 
-        void uploadPassState(FrameContext args, maybe<scene::Light::Id> primaryLight);
+        auto uploadPassState(FrameContext args, maybe<scene::Light::Id> primaryLight) -> mat4;
         void ensure_material(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, PassDrawState& state, maybe<resource::shadow::Runtime::Id> shadow);
         void bindPassResources(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, maybe<resource::shadow::Runtime::Id> shadow);
         void drawGpuBatch(FrameContext args, renderer::Pass pass, const renderer::GpuBatch& batch);

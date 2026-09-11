@@ -3,6 +3,7 @@
 #include <base/logging.h>
 #include <base/maybe.h>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include <rmmr/controller/camera2d.q1.h>
@@ -21,6 +22,7 @@
 #include <rmmr/system/interface.q1.h>
 #include <rmmr/system/viewport.q1.h>
 
+#include "renderer/frameCapture.h"
 #include "renderer/renderer.h"
 
 #include <GLFW/glfw3.h>
@@ -268,6 +270,10 @@ namespace rmmr {
                 .selection = state->handles.overlaySelection,
             });
         }
+    }
+
+    bool Engine::captureFrame(Reading context, filepath destination) const {
+        return renderer::captureBackBuffer(context, *state->handles.device, std::move(destination));
     }
 
     void Engine::endFrame(Writing context) {

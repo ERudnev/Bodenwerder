@@ -55,6 +55,7 @@ namespace rmmr {
         auto monotonicUs() const -> int64;
         void beginFrame(Writing);
         void render(Writing);
+        bool captureFrame(Reading, filepath destination) const;
         void endFrame(Writing);
         void shutdown(Writing) noexcept;
 
