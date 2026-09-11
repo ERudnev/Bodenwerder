@@ -107,6 +107,10 @@ namespace eltanin::locality::geo {
         constexpr int maxLevel = 5;
         constexpr float craterDepthMultiplier = 1.5f;
         constexpr float rareBasinDepthMultiplier = 3.0f;
+        constexpr float heroBasinMorphologyStrength = 1.0f;
+        constexpr float lesserBasinMorphologyStrength = 0.45f;
+        constexpr int basinMacroFeatureCount = 4;
+        constexpr int basinSecondaryImpactCount = 3;
         constexpr float splitNear = 2.8f;
         constexpr float splitKeep = 3.7f;
         constexpr int mineralIce = 0;
@@ -239,6 +243,29 @@ namespace eltanin::locality::geo {
                 float wallScale;
                 float talusScale;
             };
+            struct BasinMorphology {
+                struct MacroFeature {
+                    vec2 center;
+                    vec2 axis;
+                    vec2 extent;
+                    float height;
+                };
+                struct SecondaryImpact {
+                    vec2 center;
+                    float radius;
+                    float depth;
+                    float rim;
+                };
+
+                float strength = 0.0f;
+                vec3 axisU{};
+                vec3 axisV{};
+                vec2 asymmetry{};
+                std::array<MacroFeature, basinMacroFeatureCount> macroFeatures{};
+                std::array<SecondaryImpact, basinSecondaryImpactCount> secondaryImpacts{};
+                float collapseStrength = 0.0f;
+                float terraceBreakup = 0.0f;
+            };
 
             vec3 center;
             float radius;
@@ -247,6 +274,7 @@ namespace eltanin::locality::geo {
             int noiseSeed;
             Profile profile;
             Shape shape;
+            BasinMorphology basin;
         };
 
         auto craterFanDirections(vec3 center, float phase = 0.0f) -> std::array<vec3, 3>;
@@ -301,6 +329,41 @@ namespace eltanin::locality::geo {
 
                 const float weathering = hash31(index, basinSeed, 1, basinSeed + 23);
                 const float phase = hash31(index, basinSeed, 2, basinSeed + 29) * 2.0f * std::numbers::pi_v<float>;
+                const vec3 axisU = glm::normalize(glm::cross(center, std::abs(center.y) < 0.86f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f}));
+                const vec3 axisV = glm::cross(center, axisU);
+                Crater::BasinMorphology basin;
+                basin.strength = index == 0 ? heroBasinMorphologyStrength : lesserBasinMorphologyStrength;
+                basin.axisU = axisU;
+                basin.axisV = axisV;
+                const float asymmetryAngle = hash31(index, basinSeed, 5, basinSeed + 41) * 2.0f * std::numbers::pi_v<float>;
+                basin.asymmetry = vec2{std::cos(asymmetryAngle), std::sin(asymmetryAngle)} * 0.13f;
+                constexpr std::array<float, basinMacroFeatureCount> macroHeights{0.42f, -0.24f, 0.28f, -0.17f};
+                for (int feature = 0; feature < basinMacroFeatureCount; ++feature) {
+                    const float azimuth = hash31(index, feature, basinSeed, basinSeed + 43) * 2.0f * std::numbers::pi_v<float>;
+                    const float radial = glm::mix(0.10f, 0.48f, hash31(index, feature, basinSeed, basinSeed + 47));
+                    const float orientation = hash31(index, feature, basinSeed, basinSeed + 53) * 2.0f * std::numbers::pi_v<float>;
+                    basin.macroFeatures[static_cast<std::size_t>(feature)] = Crater::BasinMorphology::MacroFeature{
+                        .center = vec2{std::cos(azimuth), std::sin(azimuth)} * radial,
+                        .axis = vec2{std::cos(orientation), std::sin(orientation)},
+                        .extent = vec2{
+                            glm::mix(0.30f, 0.46f, hash31(index, feature, basinSeed, basinSeed + 59)),
+                            glm::mix(0.20f, 0.32f, hash31(index, feature, basinSeed, basinSeed + 61)),
+                        },
+                        .height = macroHeights[static_cast<std::size_t>(feature)] * glm::mix(0.78f, 1.18f, hash31(index, feature, basinSeed, basinSeed + 67)),
+                    };
+                }
+                for (int impact = 0; impact < basinSecondaryImpactCount; ++impact) {
+                    const float azimuth = hash31(index, impact, basinSeed, basinSeed + 71) * 2.0f * std::numbers::pi_v<float>;
+                    const float radial = glm::mix(0.18f, 0.56f, hash31(index, impact, basinSeed, basinSeed + 73));
+                    basin.secondaryImpacts[static_cast<std::size_t>(impact)] = Crater::BasinMorphology::SecondaryImpact{
+                        .center = vec2{std::cos(azimuth), std::sin(azimuth)} * radial,
+                        .radius = glm::mix(0.050f, 0.095f, hash31(index, impact, basinSeed, basinSeed + 79)),
+                        .depth = glm::mix(0.035f, 0.070f, hash31(index, impact, basinSeed, basinSeed + 83)),
+                        .rim = glm::mix(0.010f, 0.024f, hash31(index, impact, basinSeed, basinSeed + 89)),
+                    };
+                }
+                basin.collapseStrength = glm::mix(0.72f, 0.96f, hash31(index, basinSeed, 6, basinSeed + 97));
+                basin.terraceBreakup = glm::mix(0.65f, 0.88f, hash31(index, basinSeed, 7, basinSeed + 101));
                 result[static_cast<std::size_t>(index)] = Crater{
                     .center = center,
                     .radius = radius,
@@ -319,6 +382,7 @@ namespace eltanin::locality::geo {
                         .wallScale = glm::mix(0.58f, 0.38f, weathering),
                         .talusScale = glm::mix(0.78f, 0.58f, weathering),
                     },
+                    .basin = basin,
                 };
             }
             return BasinCatalog{.craters = result, .count = count};
@@ -633,6 +697,61 @@ namespace eltanin::locality::geo {
             };
         }
 
+        struct BasinSample {
+            float floorOffset = 0.0f;
+            float wallBias = 0.0f;
+            float talus = 0.0f;
+            float terraceIntegrity = 1.0f;
+        };
+
+        auto sampleBasinMorphology(vec3 offset, float distance, const Crater& crater) -> BasinSample {
+            const auto& basin = crater.basin;
+            if (basin.strength <= 0.0f or distance >= 1.05f)
+                return {};
+
+            const vec3 tangent = offset - crater.center * glm::dot(offset, crater.center);
+            const vec2 local{
+                glm::dot(tangent, basin.axisU) / crater.radius,
+                glm::dot(tangent, basin.axisV) / crater.radius,
+            };
+            const float floorFade = 1.0f - glm::smoothstep(0.64f, 0.88f, distance);
+            float floorOffset = glm::dot(local, basin.asymmetry);
+            for (const auto& feature : basin.macroFeatures) {
+                const vec2 delta = local - feature.center;
+                const vec2 across{-feature.axis.y, feature.axis.x};
+                const vec2 elliptical{
+                    glm::dot(delta, feature.axis) / feature.extent.x,
+                    glm::dot(delta, across) / feature.extent.y,
+                };
+                const float radius = glm::length(elliptical);
+                const float weight = 1.0f - glm::smoothstep(0.18f, 1.0f, radius);
+                floorOffset += feature.height * weight * (0.65f + 0.35f * weight);
+            }
+            for (const auto& impact : basin.secondaryImpacts) {
+                const float radius = glm::length(local - impact.center) / impact.radius;
+                const float bowl = 1.0f - glm::smoothstep(0.18f, 1.0f, radius);
+                const float rim = glm::smoothstep(0.68f, 1.0f, radius) * (1.0f - glm::smoothstep(1.0f, 1.32f, radius));
+                floorOffset += impact.rim * rim - impact.depth * bowl;
+            }
+
+            float sector = 0.0f;
+            const float tangentLength = glm::length(tangent);
+            if (tangentLength > 1.0e-5f) {
+                const vec3 direction = tangent / tangentLength;
+                constexpr std::array<float, 3> sectorWidths{0.38f, 0.52f, 0.44f};
+                for (std::size_t index = 0; index < crater.shape.fanDirections.size(); ++index)
+                    sector = glm::max(sector, glm::smoothstep(sectorWidths[index], 0.90f, glm::dot(direction, crater.shape.fanDirections[index])));
+            }
+            const float wallBand = glm::smoothstep(0.34f, 0.56f, distance) * (1.0f - glm::smoothstep(0.88f, 1.02f, distance));
+            const float collapse = basin.strength * basin.collapseStrength * sector * wallBand;
+            return BasinSample{
+                .floorOffset = basin.strength * floorFade * floorOffset,
+                .wallBias = 0.075f * collapse,
+                .talus = collapse,
+                .terraceIntegrity = 1.0f - basin.strength * basin.terraceBreakup * sector,
+            };
+        }
+
         struct CraterBlend {
             vec2 bowlsSquared;
             vec2 rims;
@@ -665,7 +784,7 @@ namespace eltanin::locality::geo {
             return -1.0f + (distance - floorRadius - 0.5f * rounding) / rise;
         }
 
-        void addCrater(CraterBlend& blend, const Crater& crater, float bowlT, float planetRadius, float rimAmp, float wallBias = 0.0f, float apronScale = 1.0f, float talus = 0.0f, float terraceOffset = 0.0f, float terraceIntegrity = 1.0f) {
+        void addCrater(CraterBlend& blend, const Crater& crater, float bowlT, float planetRadius, float rimAmp, float wallBias = 0.0f, float apronScale = 1.0f, float talus = 0.0f, float terraceOffset = 0.0f, float terraceIntegrity = 1.0f, float floorOffset = 0.0f) {
             // |wallBias| <= .22 keeps this radial map strictly increasing.
             // It changes wall steepness and the foot of each sector, not depth.
             const float wallT = bowlT < 1.0f ? bowlT + wallBias * 4.0f * bowlT * (1.0f - bowlT) : bowlT;
@@ -692,6 +811,9 @@ namespace eltanin::locality::geo {
                 bowl = glm::mix(bowl, glm::clamp(terracedHeight, 0.0f, 1.0f) - 1.0f, terraceStrength);
 
             }
+            // Basin-only macro relief is applied after the wall terraces, so the
+            // floor can undulate without turning its broad forms into contour bands.
+            bowl = glm::clamp(bowl + floorOffset, -1.24f, 0.0f);
             const float rimT = (bowlT - 1.02f) / ((bowlT < 1.02f ? crater.profile.rimInnerWidth : craterSupport - 1.02f) * apronScale);
             const float rimFoot = glm::max(0.0f, 1.0f - rimT * rimT);
             const float rim = rimFoot * rimFoot * rimAmp * crater.profile.rimScale;
@@ -732,7 +854,13 @@ namespace eltanin::locality::geo {
                 if (distanceSquared > reach * reach)
                     continue;
                 const auto sample = sampleCrater(offset, distanceSquared, crater, true, &crater.shape.fanDirections);
-                addCrater(blend, crater, sample.distance, planetRadius, sample.rimAmp, sample.wallBias * crater.shape.wallScale, sample.apronScale, sample.talus * crater.shape.talusScale, sample.terraceOffset, sample.terraceIntegrity);
+                const auto basin = sampleBasinMorphology(offset, sample.distance, crater);
+                addCrater(
+                    blend, crater, sample.distance, planetRadius, sample.rimAmp,
+                    sample.wallBias * crater.shape.wallScale + basin.wallBias,
+                    sample.apronScale, glm::max(sample.talus * crater.shape.talusScale, basin.talus),
+                    sample.terraceOffset, sample.terraceIntegrity * basin.terraceIntegrity,
+                    basin.floorOffset);
             }
             return finishCraters(blend);
         }
