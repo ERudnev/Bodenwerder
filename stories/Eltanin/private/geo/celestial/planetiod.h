@@ -20,6 +20,8 @@ namespace eltanin::locality::geo {
 
     // Locality heightfield bag (not a domain entity). Lives on Thing::Global.landscape.
     struct Landscape {
+        enum class DebugView : int { normal, matte, shadows, faces, normals, wireframe, shadowCoverage };
+        enum class TerrainTest : int { off, first, second, pair };
         struct Look {
             integer seed;
             float radius;
@@ -32,6 +34,8 @@ namespace eltanin::locality::geo {
                 float kerman;
                 rmmr::RGB day;
             } atmosphere;
+            TerrainTest terrainTest;
+            bool testRims;
         };
 
         struct PatchKey {
@@ -53,6 +57,7 @@ namespace eltanin::locality::geo {
             rmmr::scene::actor::Mesh::Id actor;
             rmmr::resource::geometry::Asset::Id geometry;
             std::uint8_t coarserEdges;
+            bool wireframe;
         };
 
         Look look;
@@ -63,6 +68,7 @@ namespace eltanin::locality::geo {
         rmmr::resource::texpack::Pack::Id crust;
         std::unordered_map<PatchKey, Patch, PatchKeyHash> patches;
         base::maybe<rmmr::scene::actor::Mesh::Id> atmosphere;
+        DebugView debugView;
     };
 
     struct Planetoid {
@@ -77,8 +83,11 @@ namespace eltanin::locality::geo {
         };
 
         static auto placed(Reading) -> bool;
+        static auto largestBasinDirection(const Look&) -> rmmr::vec3;
         static void place(Writing, rmmr::system::Device::Id, rmmr::Pose, Look);
         static void update(Writing, rmmr::Pos camera);
+        static void setDebugView(Writing, Landscape::DebugView);
+        static void setTerrainTest(Writing, Landscape::TerrainTest, bool rims);
 
         static auto height(Reading, rmmr::vec3 dir) -> float;
         static auto altitudeAt(Reading, rmmr::Pos worldPos) -> float;

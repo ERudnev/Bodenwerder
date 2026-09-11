@@ -256,6 +256,64 @@ namespace eltanin {
         ImGui::End();
     }
 
+    void Game::drawCraterTest(Writing world, scene::Node::Id camera) {
+        using Landscape = locality::geo::Landscape;
+        using Planetoid = locality::geo::Planetoid;
+        const auto& landscape = with<locality::Thing>::get_global(world).landscape;
+        if (not landscape) return;
+        ImGui::Separator();
+        const auto light = with<scene::Root>::get(world, with<locality::Thing>::get_global(world).scene).primaryLight;
+        const bool hasLight = light and with<scene::Light>::exists(world, *light) and with<scene::Node>::exists(world, *light);
+        if (not ui.craterTest) {
+            ImGui::BeginDisabled(not hasLight);
+            if (ImGui::Button("Two-crater test")) {
+                ui.craterTest = Ui::CraterTest{.camera = camera, .cameraPose = with<scene::Node>::get(world, camera).pose, .light = *light, .lightPose = with<scene::Node>::get(world, *light).pose, .lighting = with<scene::Light>::get(world, *light), .surfaceView = static_cast<int>(landscape->debugView)};
+                auto cameraPose = landscape->pose;
+                cameraPose.position += cameraPose.rotation * Pos{0.0f, 0.0f, landscape->look.radius * 1.22f};
+                with<scene::Node>::modify(world, camera)->pose = cameraPose;
+                auto lightPose = Pose::from(Pos{0.0f}, HPB{65.0f, -15.0f, 0.0f});
+                lightPose.rotation = landscape->pose.rotation * lightPose.rotation;
+                with<scene::Node>::modify(world, *light)->pose = lightPose;
+                *with<scene::Light>::modify(world, *light) = scene::Light::Quantum{.kind = scene::Light::Kind::directional, .color = RGB{1.0f}, .intensity = 2.0f, .range = 0.0f};
+                Planetoid::setTerrainTest(world, Landscape::TerrainTest::first, false);
+                Planetoid::setDebugView(world, Landscape::DebugView::matte);
+            }
+            ImGui::EndDisabled();
+        } else {
+            ImGui::TextUnformatted("Two craters / sculpted walls / side light");
+            int test = static_cast<int>(landscape->look.terrainTest) - 1;
+            bool rims = landscape->look.testRims;
+            bool changed = ImGui::Combo("Test craters", &test, "First: sharp\0Second: worn\0Both\0");
+            changed = ImGui::Checkbox("Crater rims", &rims) or changed;
+            if (changed) Planetoid::setTerrainTest(world, static_cast<Landscape::TerrainTest>(test + 1), rims);
+            if (ImGui::Button("Top view")) {
+                auto pose = landscape->pose;
+                pose.position += pose.rotation * Pos{0.0f, 0.0f, landscape->look.radius * 1.22f};
+                with<scene::Node>::modify(world, camera)->pose = pose;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Oblique view")) {
+                const Pos center = test == 0 ? Pos{-0.045f, 0.0f, 1.0f} : (test == 1 ? Pos{0.045f, 0.01f, 1.0f} : Pos{0.0f, 0.0f, 1.0f});
+                const Pos target = glm::normalize(center) * landscape->look.radius;
+                const Pos offset = Pos{0.0f, -0.16f, 0.16f} * landscape->look.radius;
+                // Keep the same light and relief: only the camera moves, about
+                // 45 degrees above the local surface, aimed at the selected bowl.
+                const auto& planetPose = landscape->pose;
+                const Pose pose{.position = planetPose.position + planetPose.rotation * (target + offset), .rotation = planetPose.rotation * glm::quatLookAtRH(glm::normalize(-offset), Pos{0.0f, 1.0f, 0.0f})};
+                with<scene::Node>::modify(world, camera)->pose = pose;
+            }
+            if (ImGui::Button("Return to planet")) {
+                const auto saved = *ui.craterTest;
+                if (with<scene::Node>::exists(world, saved.camera)) with<scene::Node>::modify(world, saved.camera)->pose = saved.cameraPose;
+                if (with<scene::Node>::exists(world, saved.light)) with<scene::Node>::modify(world, saved.light)->pose = saved.lightPose;
+                if (with<scene::Light>::exists(world, saved.light)) *with<scene::Light>::modify(world, saved.light) = saved.lighting;
+                Planetoid::setTerrainTest(world, Landscape::TerrainTest::off, true);
+                Planetoid::setDebugView(world, static_cast<Landscape::DebugView>(saved.surfaceView));
+                ui.craterTest.reset();
+            }
+        }
+    }
+
     void Game::drawCameraWindow(Writing world) {
         if (not ui.camera.has_value() or views.empty())
             return;
@@ -311,6 +369,17 @@ namespace eltanin {
                     ImGui::Text("Air: %.0f g/m³ (%.0f%% ISA)", air, 100.0f * air / phys::Settings::Air::isaDensity);
                     ImGui::Text("Range to center: %.1f m (%.2f km)", range, range * 0.001f);
                     ImGui::Text("Lat / Lon: %.3f°, %.3f°", latDeg, lonDeg);
+                    int debugView = static_cast<int>(landscape->debugView);
+                    if (ImGui::Combo("Surface view", &debugView, "Normal\0Matte (no shadows)\0Matte + shadows\0Triangle faces\0Normals\0Triangle wireframe\0Shadow coverage\0"))
+                        locality::geo::Planetoid::setDebugView(world, static_cast<locality::geo::Landscape::DebugView>(debugView));
+                    ImGui::TextDisabled(landscape->look.terrainTest == locality::geo::Landscape::TerrainTest::off ? "Diagnostics hide atmosphere; Normal restores it." : "Atmosphere is hidden during the two-crater test.");
+                    if (debugView == static_cast<int>(locality::geo::Landscape::DebugView::wireframe))
+                        ImGui::TextDisabled("Wireframe uses extra vertices only while enabled.");
+                    if (debugView == static_cast<int>(locality::geo::Landscape::DebugView::shadowCoverage)) {
+                        ImGui::TextUnformatted("Green: near / Cyan: medium / Blue: global");
+                        ImGui::TextDisabled("Orange: blend / Gray: local maps inactive. Coverage, not shadow darkness.");
+                    }
+                    drawCraterTest(world, camera);
                 }
             }
         }

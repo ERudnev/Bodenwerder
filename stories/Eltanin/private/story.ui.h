@@ -7,6 +7,7 @@
 #include <eltanin/mech/blueprint.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/scene/light.q1.h>
 
 #include "physics/ui.h"
 
@@ -16,6 +17,16 @@ namespace eltanin {
     struct Ui {
         struct Camera {};
         base::maybe<Camera> camera;
+
+        struct CraterTest {
+            rmmr::scene::Node::Id camera;
+            rmmr::Pose cameraPose;
+            rmmr::scene::Light::Id light;
+            rmmr::Pose lightPose;
+            rmmr::scene::Light::Quantum lighting;
+            int surfaceView;
+        };
+        base::maybe<CraterTest> craterTest;
 
         struct Lighting {};
         base::maybe<Lighting> lighting;

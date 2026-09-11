@@ -71,6 +71,7 @@ namespace eltanin {
         void bindGameEntities(Writing);
         void advanceSim(Writing, seconds dt);
         void drawCameraWindow(Writing);
+        void drawCraterTest(Writing, rmmr::scene::Node::Id camera);
         void drawLightingWindow(Writing);
         void drawMaterialsWindow(Writing);
         void drawMaterialInspector(Writing, rmmr::resource::material::Asset::Id);

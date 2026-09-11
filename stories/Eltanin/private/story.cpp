@@ -264,6 +264,15 @@ namespace eltanin {
                 .nearest = false,
                 .blend = renderer::BlendMode::inherit,
             });
+            const auto terrainDebugShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "terrainDebug"), item<shader::Loader>{.vertex = "shaders/terrainDebug.vert.glsl", .fragment = "shaders/terrainDebug.frag.glsl"});
+            with<Assets>::add_material(context, Name::from("Eltanin", "terrainDebug"), Material::Quantum{
+                .techniques = {
+                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, terrainDebugShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap"}), .glowSpread = false}},
+                    {renderer::Pass::shadow, Material::Technique{.program = shadowTechnique->second.program, .uniforms = {}, .glowSpread = false}},
+                },
+                .nearest = false,
+                .blend = renderer::BlendMode::inherit,
+            });
             const auto atmosphereShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "atmosphere"), item<shader::Loader>{.vertex = "shaders/atmosphere.vert.glsl", .fragment = "shaders/atmosphere.frag.glsl"});
             with<Assets>::add_geometry_generator(context, Name::from("Eltanin", "atmosphereSphere"), item<Generator>{.type = Generator::Type::sphere, .subdivisions = 4});
             with<Assets>::add_material(context, Name::from("Eltanin", "atmosphere"), Material::Quantum{
@@ -406,10 +415,6 @@ namespace eltanin {
             return (void)context.refuse("eltanin::Game::populateWorld: scrap geometry materialization failed");
         }
 
-        with<scene::Interface>::createGrid(context, root, window,
-            Pose::from(scenario::Planeliod::origin, HPB{0.0f, 0.0f, 0.0f}),
-            item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .patternScale = 1.0f});
-
         if (not assets.sprites) {
             return (void)context.refuse("eltanin::Game::populateWorld: sprites texpack missing");
         }
@@ -448,6 +453,8 @@ namespace eltanin {
             world->camera = camera;
         }
         scenario.populate(context, window);
+        if (not with<locality::Thing>::get_global(context).landscape)
+            with<scene::Interface>::createGrid(context, root, window, Pose::from(scenario::Planeliod::origin, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .patternScale = 1.0f});
         if (not locality::geo::Sun::placed())
             locality::geo::Sun::place(context, locality::geo::Sun::sol());
         // TODO: use this for some scenarios as time-saver: ui.assembler.spawnVel = vec3{0.0f, 0.0f, 10.0f}; // temporary: +Z approach toward ice asteroid

@@ -29,6 +29,16 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 };
 
 layout(binding = 1) uniform sampler2D u_shadowMap;
+layout(binding = 2) uniform sampler2D u_nearShadowMap;
+layout(std140, binding = 1) uniform NearShadowState {
+    mat4 nearLightSpace;
+    vec4 nearCameraRange;
+};
+layout(binding = 19) uniform sampler2D u_mediumShadowMap;
+layout(std140, binding = 2) uniform MediumShadowState {
+    mat4 mediumLightSpace;
+    vec4 mediumCameraRange;
+};
 layout(binding = 0) uniform sampler2DArray u_albedoMap;
 
 const float roughIce = 0.25;
@@ -44,30 +54,73 @@ const vec3 sinterOlivine = vec3(0.196, 0.212, 0.141);
 const vec3 sinterPyroxene = vec3(0.141, 0.118, 0.098);
 const vec3 sinterIron = vec3(1.000, 0.659, 0.251);
 
-const float k_shadow_bias = 0.0005;
 const float pi = 3.14159265;
-const float sinterStart = 0.45;
+// Compacted soil is not automatically a dark, glossy fused surface.
+const float sinterStart = 0.88;
 
-float sample_shadow(vec2 uv, float current_depth) {
-    float closest = texture(u_shadowMap, uv).r;
+float sample_shadow(sampler2D map, vec2 uv, float current_depth) {
+    float closest = texture(map, uv).r;
     return current_depth > closest ? 0.0 : 1.0;
 }
 
-float fetch_shadow(vec4 light_space_pos, float slope, float filterAmt) {
+float fetch_shadow(sampler2D map, mat4 lightSpace, vec3 normal, float slope) {
+    // Bias follows a shadow texel in world units, not a fraction of the whole
+    // planet's depth range (the former 0.012 slope term could erase 100s of m).
+    vec2 mapSize = vec2(textureSize(map, 0));
+    vec3 lightX = vec3(lightSpace[0].x, lightSpace[1].x, lightSpace[2].x);
+    vec3 lightY = vec3(lightSpace[0].y, lightSpace[1].y, lightSpace[2].y);
+    vec3 lightZ = vec3(lightSpace[0].z, lightSpace[1].z, lightSpace[2].z);
+    float texelMeters = max(2.0 / (mapSize.x * length(lightX)), 2.0 / (mapSize.y * length(lightY)));
+    vec4 light_space_pos = lightSpace * vec4(v_worldPos + normal * texelMeters * (0.5 + slope), 1.0);
     vec3 proj = light_space_pos.xyz / light_space_pos.w;
     proj = proj * 0.5 + 0.5;
-    if (proj.z > 1.0 || proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0)
+    if (proj.z < 0.0 || proj.z > 1.0 || proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0)
         return 1.0;
-    float current_depth = proj.z - (k_shadow_bias + 0.012 * slope);
-    if (filterAmt <= 0.02)
-        return sample_shadow(proj.xy, current_depth);
-    vec2 texel = 1.0 / vec2(textureSize(u_shadowMap, 0));
+    float current_depth = proj.z - max(0.0000002, texelMeters * length(lightZ) * 0.05);
+    // Continuous 3x3 comparison filtering, also at orbital distance. Weights
+    // follow the sub-texel position so the edge does not jump between cells.
+    vec2 phase = fract(proj.xy * mapSize) - 0.5;
+    vec2 lower = 0.5 * (0.5 - phase) * (0.5 - phase);
+    vec2 upper = 0.5 * (0.5 + phase) * (0.5 + phase);
+    vec3 weightsX = vec3(lower.x, 0.75 - phase.x * phase.x, upper.x);
+    vec3 weightsY = vec3(lower.y, 0.75 - phase.y * phase.y, upper.y);
+    vec2 center = floor(proj.xy * mapSize) + 0.5;
     float shadow = 0.0;
-    for (int x = -1; x <= 1; ++x) {
-        for (int y = -1; y <= 1; ++y)
-            shadow += sample_shadow(proj.xy + vec2(float(x), float(y)) * texel, current_depth);
+    for (int x = 0; x < 3; ++x) {
+        for (int y = 0; y < 3; ++y)
+            shadow += weightsX[x] * weightsY[y] * sample_shadow(map, (center + vec2(x - 1, y - 1)) / mapSize, current_depth);
     }
-    return shadow / 9.0;
+    return shadow;
+}
+
+float shadowLevelWeight(mat4 lightSpace, vec4 cameraRange) {
+    float weight = 0.0;
+    if (cameraRange.w > 0.0) {
+        vec4 local = lightSpace * vec4(v_worldPos, 1.0);
+        vec3 clip = local.xyz / local.w;
+        float edge = max(abs(clip.x), abs(clip.y));
+        float distance = length(v_worldPos - cameraRange.xyz);
+        if (abs(clip.z) < 1.0)
+            weight = (1.0 - smoothstep(0.80, 0.96, edge)) * (1.0 - smoothstep(cameraRange.w * 0.75, cameraRange.w, distance));
+    }
+    return weight;
+}
+
+float terrainShadow(vec3 normal, float slope) {
+    float weight = shadowLevelWeight(nearLightSpace, nearCameraRange);
+    if (weight >= 1.0)
+        return fetch_shadow(u_nearShadowMap, nearLightSpace, normal, slope);
+    float mediumWeight = shadowLevelWeight(mediumLightSpace, mediumCameraRange);
+    float wider;
+    if (mediumWeight <= 0.0)
+        wider = fetch_shadow(u_shadowMap, passLightSpace, normal, slope);
+    else if (mediumWeight >= 1.0)
+        wider = fetch_shadow(u_mediumShadowMap, mediumLightSpace, normal, slope);
+    else
+        wider = mix(fetch_shadow(u_shadowMap, passLightSpace, normal, slope), fetch_shadow(u_mediumShadowMap, mediumLightSpace, normal, slope), mediumWeight);
+    if (weight <= 0.0)
+        return wider;
+    return mix(wider, fetch_shadow(u_nearShadowMap, nearLightSpace, normal, slope), weight);
 }
 
 vec3 cameraWorldPos() {
@@ -80,8 +133,13 @@ vec2 wrapGrad(vec2 d) {
     return m2 > 16.0 ? d * sqrt(16.0 / m2) : d;
 }
 
-vec3 sampleAlbedo(sampler2DArray pack, vec2 uv, float layer, vec2 dx, vec2 dy) {
-    return textureGrad(pack, vec3(uv, layer), dx, dy).rgb;
+vec3 sampleAlbedo(sampler2DArray pack, vec2 uv, float layer, vec2 dx, vec2 dy, float tileBlend) {
+    // Two continuous mappings: no per-tile random jumps or derivative seams.
+    // The second scale/rotation breaks alignment with the primary 40 m repeat.
+    const mat2 alternate = mat2(0.7986355, 0.6018150, -0.6018150, 0.7986355) * 1.37;
+    vec3 first = textureGrad(pack, vec3(fract(uv), layer), dx, dy).rgb;
+    vec3 second = textureGrad(pack, vec3(fract(alternate * uv + vec2(0.37, 0.61)), layer), alternate * dx, alternate * dy).rgb;
+    return mix(first, second, tileBlend);
 }
 
 vec2 cubeFaceUv(vec3 dir) {
@@ -144,11 +202,15 @@ float valueNoise(vec3 x) {
     return mix(mix(nx00, nx10, f.y), mix(nx01, nx11, f.y), f.z);
 }
 
-float surfaceMottle(vec3 pos) {
-    float coarse = valueNoise(pos * (1.0 / 80.0));
-    float mid = valueNoise(pos * (1.0 / 28.0) + 19.0);
-    float fine = valueNoise(pos * (1.0 / 28.0) * 5.3 + 41.0);
-    return coarse * 0.50 + mid * 0.31 + fine * 0.19;
+float surfaceMottle(vec3 pos, float detailAmt, out float tileBlend) {
+    float coarse = valueNoise(pos * (1.0 / 360.0));
+    float mid = valueNoise(pos * (1.0 / 120.0) + 19.0);
+    // Fine variation is retained only when screen resolution can support it.
+    tileBlend = smoothstep(0.22, 0.78, mid);
+    float fine = 0.5;
+    if (detailAmt > 0.0)
+        fine = mix(0.5, valueNoise(pos * (1.0 / 28.0) * 5.3 + 41.0), detailAmt);
+    return coarse * 0.54 + mid * 0.31 + fine * 0.15;
 }
 
 void main() {
@@ -159,14 +221,18 @@ void main() {
     float slope = 1.0 - clamp(dot(normalize(v_objectNormal), dir), 0.0, 1.0);
     float polar = abs(dir.y);
     float bowl = smoothstep(0.05, 0.85, clamp(-crater, 0.0, 1.4) / 1.4);
+    float lowland = smoothstep(0.25, 1.50, max(-altitude, 0.0));
+    float basinExposure = bowl * lowland;
     float flats = 1.0 - slope;
     float midLat = 1.0 - smoothstep(0.45, 0.82, polar);
     float highland = smoothstep(0.05, 0.55, altitude);
 
-    float wIce = 0.85 * smoothstep(0.52, 0.88, polar);
+    float wIce =
+        0.78 * smoothstep(0.52, 0.88, polar) +
+        0.34 * smoothstep(0.18, 0.68, slope) * (0.35 + 0.65 * highland);
     float wOlivine = 0.55 * flats * midLat * (0.55 + 0.45 * (1.0 - highland));
     float wPyroxene = 0.48 * (0.35 + 0.65 * highland) * (0.55 + 0.45 * midLat);
-    float wIron = 0.70 * bowl * (0.45 + 0.55 * midLat);
+    float wIron = (0.20 * bowl + 1.80 * basinExposure) * (0.45 + 0.55 * midLat);
     float mass = wIce + wOlivine + wPyroxene + wIron;
     if (mass < 1.0e-5) {
         wOlivine = 1.0;
@@ -182,16 +248,29 @@ void main() {
     vec2 uvCloseRaw = faceUv * (radius / 40.0);
     vec2 closeDx = wrapGrad(dFdx(uvCloseRaw));
     vec2 closeDy = wrapGrad(dFdy(uvCloseRaw));
-    vec2 uvClose = fract(uvCloseRaw);
     float pixelMeters = 0.5 * (length(dFdx(v_worldPos)) + length(dFdy(v_worldPos)));
-    float closeAmt = 1.0 - smoothstep(1.2, 5.0, pixelMeters);
 
-    vec3 aIce = sampleAlbedo(u_albedoMap, uvClose, 0.0, closeDx, closeDy);
-    vec3 aOlivine = sampleAlbedo(u_albedoMap, uvClose, 1.0, closeDx, closeDy);
-    vec3 aPyroxene = sampleAlbedo(u_albedoMap, uvClose, 2.0, closeDx, closeDy);
-    vec3 aIron = sampleAlbedo(u_albedoMap, uvClose, 6.0, closeDx, closeDy);
+    // Mean colors of the current crust BMPs in the existing GL_RGBA8 pipeline.
+    // Fade resolved rock detail into its mean instead of showing repeated 40 m
+    // tiles across the entire crater. Shadow filtering is independent of this fade.
+    float detailAmt = 1.0 - smoothstep(0.35, 2.5, pixelMeters);
+    float tileBlend;
+    float mottle = surfaceMottle(v_objectPos, detailAmt, tileBlend);
+    vec3 aIce = vec3(0.88, 0.90, 0.92);
+    vec3 aOlivine = vec3(0.24, 0.25, 0.22);
+    vec3 aPyroxene = vec3(0.28, 0.20, 0.16);
+    vec3 aIron = vec3(0.54, 0.24, 0.09);
+    if (detailAmt > 0.0) {
+        aIce = mix(aIce, sampleAlbedo(u_albedoMap, uvCloseRaw, 0.0, closeDx, closeDy, tileBlend), detailAmt);
+        aOlivine = mix(aOlivine, sampleAlbedo(u_albedoMap, uvCloseRaw, 1.0, closeDx, closeDy, tileBlend), detailAmt);
+        aPyroxene = mix(aPyroxene, sampleAlbedo(u_albedoMap, uvCloseRaw, 2.0, closeDx, closeDy, tileBlend), detailAmt);
+        aIron = mix(aIron, sampleAlbedo(u_albedoMap, uvCloseRaw, 6.0, closeDx, closeDy, tileBlend), detailAmt);
+    }
     vec3 albedo = wIce * aIce + wOlivine * aOlivine + wPyroxene * aPyroxene + wIron * aIron;
-    albedo *= mix(0.74, 1.18, surfaceMottle(v_objectPos));
+    albedo *= mix(0.82, 1.22, smoothstep(0.16, 0.84, mottle)) * 1.14;
+    // A restrained lift on inclined crater walls keeps their geometry readable
+    // while direct light and the shadow maps still determine light direction.
+    albedo *= mix(1.0, 1.12, smoothstep(0.12, 0.62, slope));
 
     vec3 sinterTint = wIce * sinterIce + wOlivine * sinterOlivine + wPyroxene * sinterPyroxene + wIron * sinterIron;
     float roughness = wIce * roughIce + wOlivine * roughOlivine + wPyroxene * roughPyroxene + wIron * roughIron;
@@ -208,6 +287,18 @@ void main() {
     metalness *= mix(1.0, 0.12, looseness);
 
     vec3 N = normalize(v_worldNormal);
+    // Convert the already sampled broad material pattern into resolved lighting
+    // detail. Screen-space derivatives avoid extra noise or texture reads and
+    // naturally disappear when a feature projects below a pixel.
+    vec3 positionDx = dFdx(v_worldPos);
+    vec3 positionDy = dFdy(v_worldPos);
+    vec3 gradientAcross = cross(positionDy, N);
+    vec3 gradientDown = cross(N, positionDx);
+    float determinant = dot(positionDx, gradientAcross);
+    vec3 surfaceGradient = sign(determinant) *
+        (dFdx(mottle) * gradientAcross + dFdy(mottle) * gradientDown);
+    float bumpMeters = mix(46.0, 8.0, detailAmt);
+    N = normalize(abs(determinant) * N - bumpMeters * surfaceGradient);
     vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
     vec3 V = normalize(camera - v_worldPos);
     vec3 H = normalize(V + L);
@@ -230,7 +321,7 @@ void main() {
     vec3 kD = (vec3(1.0) - F) * (1.0 - metalness);
     float cavity = mix(1.0, 0.92, sinter);
     float lightSlope = 1.0 - mu0;
-    float shadow = fetch_shadow(passLightSpace * vec4(v_worldPos + N * (0.4 + 1.2 * lightSlope), 1.0), lightSlope, closeAmt);
+    float shadow = terrainShadow(N, lightSlope);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);
     float lightGain = max(passPrimaryLightPositionIntensity.w, 0.0);
     vec3 ambient = (kD * albedo + F0 * 0.22) * passAmbientColorIntensity.rgb * (ambientGain / (1.0 + ambientGain)) * cavity;
