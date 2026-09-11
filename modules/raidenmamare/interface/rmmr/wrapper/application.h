@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include <base/maybe.h>
 #include <fQSM/api/interface.h>
 #include <rmmr/engine.h>
 
@@ -13,6 +14,12 @@ namespace rmmr::wrapper {
 
     class Application : public establish::Module {
     public:
+        struct FrameCapture {
+            filepath destination;
+            integer after_frames = 180;
+            bool close_after = true;
+        };
+
         struct Settings {
             filepath assets_root;
             string title;
@@ -22,6 +29,7 @@ namespace rmmr::wrapper {
                 integer major;
                 integer minor;
             } glVersion;
+            base::maybe<FrameCapture> capture;
         };
 
         explicit Application(Settings settings);
