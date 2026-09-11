@@ -111,6 +111,9 @@ namespace eltanin::locality::geo {
         constexpr float lesserBasinMorphologyStrength = 0.45f;
         constexpr int basinMacroFeatureCount = 4;
         constexpr int basinSecondaryImpactCount = 3;
+        constexpr int maxMegaRiftCount = 2;
+        constexpr float secondMegaRiftChance = 0.18f;
+        constexpr float megaRiftMorphologyStrength = 1.0f;
         constexpr float splitNear = 2.8f;
         constexpr float splitKeep = 3.7f;
         constexpr int mineralIce = 0;
@@ -538,6 +541,172 @@ namespace eltanin::locality::geo {
                     const float brokenCrest = glm::mix(0.70f, 1.18f, glm::clamp(detail * 0.5f + 0.5f, 0.0f, 1.0f));
                     height += crest * lineament.heightScale * reliefScale * alongEnvelope * local * brokenCrest;
                 }
+            }
+            return height;
+        }
+
+        struct MegaRiftSegment {
+            vec3 center{};
+            vec3 along{};
+            vec3 across{};
+            float halfLength = 0.0f;
+            float halfWidth = 0.0f;
+            float depthScale = 0.0f;
+            float bend = 0.0f;
+            float widthVariation = 0.0f;
+            float phase = 0.0f;
+            float startT = -2.0f;
+            float strength = 0.0f;
+        };
+
+        struct MegaRift {
+            MegaRiftSegment trunk;
+            MegaRiftSegment branch;
+        };
+
+        struct MegaRiftCatalog {
+            std::array<MegaRift, maxMegaRiftCount> rifts{};
+            int count = 0;
+        };
+
+        auto makeMegaRifts(integer seed) -> MegaRiftCatalog {
+            const int riftSeed = static_cast<int>(seed) + 4700;
+            const BasinCatalog basins = makeBasins(seed);
+            MegaRiftCatalog catalog;
+            // A planet gets one signature scar, with a low deterministic chance
+            // of a second. Each scar may have at most one tributary branch.
+            catalog.count = 1 + (hash31(riftSeed, 0, 0, riftSeed + 1) < secondMegaRiftChance ? 1 : 0);
+            for (int index = 0; index < catalog.count; ++index) {
+                const float halfLength = glm::mix(0.52f, 0.70f, hash31(index, riftSeed, 3, riftSeed + 7));
+                const bool linkedToBasin = hash31(index, riftSeed, 1, riftSeed + 4) < 0.62f;
+                vec3 center{};
+                vec3 along{};
+                vec3 linkedJunction{};
+                if (linkedToBasin) {
+                    const int basinIndex = index == 0 ? 0 : glm::clamp(static_cast<int>(hash31(index, riftSeed, 5, riftSeed + 9) * basins.count), 0, basins.count - 1);
+                    const Crater& basin = basins.craters[static_cast<std::size_t>(basinIndex)];
+                    const vec3 reference = std::abs(basin.center.y) < 0.86f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f};
+                    const vec3 tangent0 = glm::normalize(glm::cross(reference, basin.center));
+                    const vec3 tangent1 = glm::normalize(glm::cross(basin.center, tangent0));
+                    const float azimuth = hash31(index, riftSeed, 6, riftSeed + 11) * 2.0f * std::numbers::pi_v<float>
+                        + std::numbers::pi_v<float>;
+                    const vec3 outward = glm::normalize(tangent0 * std::cos(azimuth) + tangent1 * std::sin(azimuth));
+                    const vec3 junction = glm::normalize(basin.center + outward * basin.radius * 0.94f);
+                    linkedJunction = junction;
+                    center = glm::normalize(junction + outward * halfLength * 0.68f);
+                    along = glm::normalize(outward - center * glm::dot(outward, center));
+                } else {
+                    const float vertical = hash31(index, riftSeed, 7, riftSeed + 13) * 2.0f - 1.0f;
+                    const float azimuth = hash31(index, riftSeed, 8, riftSeed + 17) * 2.0f * std::numbers::pi_v<float>;
+                    const float radial = std::sqrt(glm::max(0.0f, 1.0f - vertical * vertical));
+                    center = vec3{radial * std::cos(azimuth), vertical, radial * std::sin(azimuth)};
+                    const vec3 reference = std::abs(center.y) < 0.86f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f};
+                    const vec3 tangent0 = glm::normalize(glm::cross(reference, center));
+                    const vec3 tangent1 = glm::normalize(glm::cross(center, tangent0));
+                    const float heading = hash31(index, riftSeed, 9, riftSeed + 19) * 2.0f * std::numbers::pi_v<float>;
+                    along = glm::normalize(tangent0 * std::cos(heading) + tangent1 * std::sin(heading));
+                }
+                const vec3 across = glm::normalize(glm::cross(center, along));
+                MegaRiftSegment trunk{
+                    .center = center,
+                    .along = along,
+                    .across = across,
+                    .halfLength = halfLength,
+                    .halfWidth = glm::mix(0.055f, 0.085f, hash31(index, riftSeed, 10, riftSeed + 23)),
+                    .depthScale = glm::mix(2.15f, 3.15f, hash31(index, riftSeed, 11, riftSeed + 29)),
+                    .bend = glm::mix(0.78f, 1.24f, hash31(index, riftSeed, 12, riftSeed + 31)),
+                    .widthVariation = glm::mix(0.38f, 0.58f, hash31(index, riftSeed, 13, riftSeed + 37)),
+                    .phase = hash31(index, riftSeed, 14, riftSeed + 41) * 2.0f * std::numbers::pi_v<float>,
+                    .startT = linkedToBasin ? glm::dot(linkedJunction, along) / halfLength : -2.0f,
+                    .strength = megaRiftMorphologyStrength,
+                };
+
+                MegaRiftSegment branch{};
+                if (hash31(index, riftSeed, 2, riftSeed + 6) < 0.68f) {
+                    const float joinT = glm::mix(-0.28f, 0.42f, hash31(index, riftSeed, 15, riftSeed + 43));
+                    const float curve = trunk.halfWidth * trunk.bend * (0.72f * std::sin(trunk.phase + joinT * 2.35f) + 0.35f * joinT);
+                    const vec3 junction = glm::normalize(trunk.center + trunk.along * (joinT * trunk.halfLength) + trunk.across * curve);
+                    const vec3 parentAlong = glm::normalize(trunk.along - junction * glm::dot(trunk.along, junction));
+                    const vec3 parentAcross = glm::normalize(glm::cross(junction, parentAlong));
+                    const float side = hash31(index, riftSeed, 16, riftSeed + 47) < 0.5f ? -1.0f : 1.0f;
+                    const float angle = side * glm::mix(0.68f, 0.98f, hash31(index, riftSeed, 17, riftSeed + 53));
+                    const vec3 branchDirection = glm::normalize(parentAlong * std::cos(angle) + parentAcross * std::sin(angle));
+                    const float branchHalfLength = trunk.halfLength * glm::mix(0.34f, 0.48f, hash31(index, riftSeed, 18, riftSeed + 59));
+                    const vec3 branchCenter = glm::normalize(junction + branchDirection * branchHalfLength * 0.68f);
+                    const vec3 branchAlong = glm::normalize(branchDirection - branchCenter * glm::dot(branchDirection, branchCenter));
+                    branch = MegaRiftSegment{
+                        .center = branchCenter,
+                        .along = branchAlong,
+                        .across = glm::normalize(glm::cross(branchCenter, branchAlong)),
+                        .halfLength = branchHalfLength,
+                        .halfWidth = trunk.halfWidth * glm::mix(0.55f, 0.72f, hash31(index, riftSeed, 19, riftSeed + 61)),
+                        .depthScale = trunk.depthScale * glm::mix(0.70f, 0.88f, hash31(index, riftSeed, 20, riftSeed + 67)),
+                        .bend = trunk.bend * 0.55f,
+                        .widthVariation = trunk.widthVariation,
+                        .phase = trunk.phase + side * 1.37f,
+                        .startT = glm::dot(junction, branchAlong) / branchHalfLength,
+                        .strength = megaRiftMorphologyStrength,
+                    };
+                }
+                catalog.rifts[static_cast<std::size_t>(index)] = MegaRift{.trunk = trunk, .branch = branch};
+            }
+            return catalog;
+        }
+
+        auto sampleMegaRiftSegment(vec3 dir, const MegaRiftSegment& segment, float reliefScale, float detail, vec3 broadBend) -> float {
+            if (segment.strength <= 0.0f)
+                return 0.0f;
+            const float front = glm::dot(dir, segment.center);
+            const float local = glm::smoothstep(0.48f, 0.72f, front);
+            if (local <= 0.0f)
+                return 0.0f;
+            const float along = glm::dot(dir, segment.along) / segment.halfLength;
+            const float alongAbs = std::abs(along);
+            float alongEnvelope = 1.0f - glm::smoothstep(0.76f, 1.0f, alongAbs);
+            if (segment.startT > -1.5f)
+                alongEnvelope *= glm::smoothstep(segment.startT, segment.startT + 0.16f, along);
+            if (alongEnvelope <= 0.0f)
+                return 0.0f;
+
+            // Two broad longitudinal waves vary the path and width without
+            // introducing the high-frequency crack network of a noise mask.
+            const float curve = segment.halfWidth * segment.bend * (
+                0.72f * std::sin(segment.phase + along * 2.35f) + 0.35f * along)
+                + glm::dot(broadBend, segment.across) * segment.halfWidth * 0.52f;
+            const float widthWave = 0.58f * std::sin(segment.phase * 0.73f + along * 3.1f)
+                + 0.42f * std::sin(segment.phase * 1.31f - along * 6.0f);
+            const float effectiveWidth = segment.halfWidth * glm::clamp(1.0f + segment.widthVariation * widthWave, 0.54f, 1.46f);
+            const float signedAcross = (glm::dot(dir, segment.across) - curve) / effectiveWidth;
+            const float across = std::abs(signedAcross);
+            const float trench = 1.0f - glm::smoothstep(0.08f, 1.0f, across);
+            const float deepSlot = 1.0f - glm::smoothstep(0.0f, 0.24f, across);
+            const float shoulder = glm::smoothstep(0.72f, 1.02f, across) * (1.0f - glm::smoothstep(1.02f, 1.58f, across));
+            const float collapseSide = glm::smoothstep(0.25f, 0.82f, detail * (signedAcross > 0.0f ? 1.0f : -1.0f) * 0.5f + 0.5f);
+            const float collapsedWall = glm::smoothstep(0.38f, 0.82f, across) * (1.0f - glm::smoothstep(0.82f, 1.12f, across)) * collapseSide;
+            const float depthVariation = glm::clamp(
+                0.82f + 0.18f * std::sin(segment.phase + along * 4.4f) + detail * 0.10f,
+                0.58f, 1.18f);
+            return (-0.78f * trench - 0.22f * deepSlot + 0.07f * collapsedWall + 0.13f * shoulder)
+                * segment.depthScale * reliefScale * alongEnvelope * local * depthVariation * segment.strength;
+        }
+
+        auto megaRiftField(vec3 dir, integer seed, float reliefScale, float detail, vec3 broadBend) -> float {
+            struct Cache {
+                integer seed;
+                MegaRiftCatalog catalog;
+            };
+            auto createCache = [](integer seed) {
+                return Cache{seed, makeMegaRifts(seed)};
+            };
+            thread_local Cache cache = createCache(seed);
+            if (cache.seed != seed)
+                cache = createCache(seed);
+
+            float height = 0.0f;
+            for (int index = 0; index < cache.catalog.count; ++index) {
+                const MegaRift& rift = cache.catalog.rifts[static_cast<std::size_t>(index)];
+                height += sampleMegaRiftSegment(dir, rift.trunk, reliefScale, detail, broadBend);
+                height += sampleMegaRiftSegment(dir, rift.branch, reliefScale, detail, broadBend);
             }
             return height;
         }
@@ -984,7 +1153,8 @@ namespace eltanin::locality::geo {
             // mountain chains and canyons, then also drives local erosion below.
             const vec3 eroded = warped + fold * 0.085f;
             const float erosionNoise = 0.68f * signedNoise(eroded * 22.0f, seed + 71) + 0.32f * signedNoise(eroded * 51.0f, seed + 79);
-            const float structures = lineamentField(dir, look.seed, look.maxRelief, erosionNoise, fold);
+            const float structures = lineamentField(dir, look.seed, look.maxRelief, erosionNoise, fold)
+                + megaRiftField(dir, look.seed, look.maxRelief, erosionNoise, fold);
             // Later impacts erase positive ranges inside their bowls. Negative
             // fractures remain as floor relief and can themselves be overprinted.
             const float excavatedStructures = glm::min(structures, 0.0f);
