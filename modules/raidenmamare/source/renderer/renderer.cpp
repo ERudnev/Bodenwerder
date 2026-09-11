@@ -38,6 +38,8 @@ namespace rmmr {
         , bloom{.sourceFbo = 0, .scratchFbo = 0, .source = 0, .scratch = 0, .size = index2{0, 0}, .downsampleProgram = 0, .blurProgram = 0, .tonemapProgram = 0}
         , identity{.allFbo = 0, .selectedFbo = 0, .color = 0, .selected = 0, .depth = 0, .size = index2{0, 0}}
         , overlay{.sceneColor = {.fbo = 0, .color = 0, .size = index2{0, 0}}, .overlayColor = {.fbo = 0, .color = 0, .size = index2{0, 0}}, .composeProgram = 0}
+        , nearShadow{.format = {2048, 1, 2}, .fbo = 0, .depth = 0, .stateBuffer = 0, .frame = {mat4{1.0f}, vec4{0.0f}}}
+        , mediumShadow{.format = {4096, 2, 19}, .fbo = 0, .depth = 0, .stateBuffer = 0, .frame = {mat4{1.0f}, vec4{0.0f}}}
         , fullscreen{.vao = 0}
         , passStateBuffer{0}
         , lastStats{.mdiCalls = 0, .indirectDraws = 0}
@@ -51,6 +53,8 @@ namespace rmmr {
         bloom.destroy();
         identity.destroy();
         overlay.destroy();
+        nearShadow.destroy();
+        mediumShadow.destroy();
     }
 
     namespace {
@@ -163,29 +167,86 @@ namespace rmmr {
             return false;
         }
 
-        auto shadowCubeHalf(Reading context, scene::Root::Id root) -> float {
-            constexpr float minHalf = 150.0f;
-            constexpr float maxHalf = 1000.0f;
+        auto shadowBounds(Reading context, scene::Root::Id root) -> std::array<vec3, 2> {
             constexpr float shell = 50.0f;
-            float contentHalf = 0.0f;
+            vec3 lo{}, hi{};
+            bool any = false;
             for (const auto node : with<scene::Node_group>::get(context, root)) {
-                if (not with<scene::actor::Mesh>::exists(context, node))
+                if (not with<scene::actor::Mesh>::exists(context, node) or not with<scene::Node>::get(context, node).visible)
                     continue;
-                if (not meshCastsShadow(context, with<scene::actor::Mesh>::get(context, node)))
+                const auto& mesh = with<scene::actor::Mesh>::get(context, node);
+                if (not meshCastsShadow(context, mesh))
                     continue;
-                const vec3 a = glm::abs(with<scene::Node>::get(context, node).pose.position);
-                contentHalf = glm::max(contentHalf, glm::max(a.x, glm::max(a.y, a.z)));
+                auto model = scene::Node::Actions::transform(context, node);
+                // Keep the existing allowance for assemblies around their actor origin.
+                includePoint(lo, hi, any, vec3{model[3]} - vec3{shell});
+                includePoint(lo, hi, any, vec3{model[3]} + vec3{shell});
+                if (with<scene::actor::MeshState>::exists(context, node))
+                    model = glm::scale(model, with<scene::actor::MeshState>::get(context, node).scale);
+                // Terrain patches share the planet origin; their vertex bounds, not
+                // the node position, describe the surface that must enter the map.
+                for (const auto& bucket : mesh.buckets) {
+                    if (not with<resource::geometry::Runtime>::exists(context, bucket.geometry))
+                        continue;
+                    const auto& geometry = with<resource::geometry::Runtime>::get(context, bucket.geometry);
+                    for (int corner = 0; corner < 8; ++corner) {
+                        const vec3 local{(corner & 1) ? geometry.boundMax.x : geometry.boundMin.x, (corner & 2) ? geometry.boundMax.y : geometry.boundMin.y, (corner & 4) ? geometry.boundMax.z : geometry.boundMin.z};
+                        includePoint(lo, hi, any, vec3{model * vec4{local, 1.0f}});
+                    }
+                }
             }
-            return glm::min(maxHalf, glm::max(minHalf, contentHalf + shell));
+            if (not any)
+                return {vec3{-150.0f}, vec3{150.0f}};
+            const vec3 center = (lo + hi) * 0.5f;
+            const vec3 extent = glm::max((hi - lo) * 0.5f + vec3{shell}, vec3{150.0f});
+            return {center - extent, center + extent};
         }
 
-        auto worldCubeOrtho(vec3 toLight, float half) -> mat4 {
-            const vec3 lo{-half, -half, -half};
-            const vec3 hi{half, half, half};
-            const float radius = half * std::sqrt(3.0f);
+        auto nearShadowFocus(Reading context, scene::Root::Id root, const mat4& camera) -> maybe<vec3> {
+            constexpr float limit = 20000.0f;
+            const vec3 origin{camera[3]};
+            const auto directions = nearShadowRays(camera);
+            std::array<float, 3> distances{limit, limit, limit};
+            umap<resource::material::Runtime::Id, bool> receivers;
+            for (const auto node : with<scene::Node_group>::get(context, root)) {
+                if (not with<scene::actor::Mesh>::exists(context, node) or not with<scene::Node>::get(context, node).visible) continue;
+                const auto& mesh = with<scene::actor::Mesh>::get(context, node);
+                auto model = scene::Node::Actions::transform(context, node);
+                if (with<scene::actor::MeshState>::exists(context, node))
+                    model = glm::scale(model, with<scene::actor::MeshState>::get(context, node).scale);
+                if (glm::abs(glm::determinant(mat3{model})) < 1.0e-12f) continue;
+                const auto inverseModel = glm::inverse(model);
+                const vec3 localOrigin{inverseModel * vec4{origin, 1.0f}};
+                for (const auto& bucket : mesh.buckets) {
+                    if (not with<resource::geometry::Runtime>::exists(context, bucket.geometry) or not with<resource::material::Runtime>::exists(context, bucket.material)) continue;
+                    const auto [receiver, inserted] = receivers.try_emplace(bucket.material, false);
+                    if (inserted) {
+                        const auto& techniques = with<resource::material::Runtime>::get(context, bucket.material).techniques;
+                        const auto opaque = techniques.find(renderer::Pass::opaque);
+                        if (opaque != techniques.end()) {
+                            const auto& shader = with<resource::shader::Runtime>::get(context, opaque->second.shader);
+                            receiver->second = glGetUniformBlockIndex(shader.handle, "NearShadowState") != GL_INVALID_INDEX;
+                        }
+                    }
+                    if (not receiver->second) continue;
+                    const auto& geometry = with<resource::geometry::Runtime>::get(context, bucket.geometry);
+                    for (int ray = 0; ray < 3; ++ray)
+                        distances[ray] = nearShadowRayHit(localOrigin, vec3{inverseModel * vec4{directions[ray], 0.0f}}, geometry.boundMin, geometry.boundMax, distances[ray]);
+                }
+            }
+            // Patch bounds give an inexpensive surface estimate without GPU
+            // readback. Rays above/at/below center prefer visible ground ahead.
+            for (int ray = 0; ray < 3; ++ray)
+                if (distances[ray] < limit) return origin + directions[ray] * distances[ray];
+            return {};
+        }
+
+        auto worldBoundsOrtho(vec3 toLight, vec3 lo, vec3 hi) -> mat4 {
+            const vec3 center = (lo + hi) * 0.5f;
+            const float radius = glm::length((hi - lo) * 0.5f);
             const float pad = 1.0f;
             const vec3 up = std::abs(glm::dot(toLight, vec3{0.0f, 1.0f, 0.0f})) > 0.99f ? vec3{0.0f, 0.0f, 1.0f} : vec3{0.0f, 1.0f, 0.0f};
-            const mat4 view = glm::lookAt(toLight * (radius + pad), vec3{0.0f, 0.0f, 0.0f}, up);
+            const mat4 view = glm::lookAt(center + toLight * (radius + pad), center, up);
             vec3 viewLo{};
             vec3 viewHi{};
             bool any = false;
@@ -204,7 +265,8 @@ namespace rmmr {
             const auto& light = with<scene::Light>::get(context, light_node);
             if (light.kind == scene::Light::Kind::directional) {
                 const vec3 toLight = directional_to_light(scene::Node::Actions::transform(context, light_node));
-                return worldCubeOrtho(toLight, shadowCubeHalf(context, root));
+                const auto bounds = shadowBounds(context, root);
+                return worldBoundsOrtho(toLight, bounds[0], bounds[1]);
             }
             const mat4 light_transform = scene::Node::Actions::transform(context, light_node);
             const glm::vec3 light_position{light_transform[3]};
@@ -347,7 +409,7 @@ namespace rmmr {
         SceneTarget::setGlowWrite(glowSpread);
     }
 
-    void Renderer::uploadPassState(FrameContext args, base::maybe<scene::Light::Id> primaryLight) {
+    auto Renderer::uploadPassState(FrameContext args, base::maybe<scene::Light::Id> primaryLight) -> mat4 {
         const auto& root = with<scene::Root>::get(args.world, args.view.scene);
         const auto aspectRatio = viewport_aspect_ratio(args.world, args.view.viewport);
         auto lightSpace = mat4{1.0f};
@@ -384,6 +446,7 @@ namespace rmmr {
             glNamedBufferSubData(passStateBuffer, 0, sizeof(renderer::PassState), &state);
         }
         glBindBufferBase(GL_UNIFORM_BUFFER, 0, passStateBuffer);
+        return lightSpace;
     }
 
     void Renderer::bindPassResources(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, base::maybe<resource::shadow::Runtime::Id> shadow) {
@@ -464,10 +527,19 @@ namespace rmmr {
         base::maybe<resource::shadow::Runtime::Id> shadow{};
         if (lighting.shadow)
             shadow = lighting.shadow->runtime;
-        uploadPassState(args, lighting.primary);
+        const auto globalLightSpace = uploadPassState(args, lighting.primary);
 
         renderer::CommandBuffer commands{};
         scene::Interface::render(args.world, args.view.scene, args.window, commands);
+
+        const auto cameraTransform = scene::Node::Actions::transform(args.world, args.view.camera);
+        maybe<vec3> nearFocus{};
+        if (shadow and lighting.primary and not commands.gpu[renderer::Pass::shadow].empty() and with<scene::Light>::get(args.world, *lighting.primary).kind == scene::Light::Kind::directional) {
+            nearFocus = nearShadowFocus(args.world, args.view.scene, cameraTransform);
+        }
+        const bool nearEnabled = nearFocus.has_value();
+        nearShadow.prepare(nearShadowFrame(globalLightSpace, cameraTransform, nearFocus.value_or(vec3{cameraTransform[3]}), nearEnabled));
+        mediumShadow.prepare(nearShadowFrame(globalLightSpace, cameraTransform, nearFocus.value_or(vec3{cameraTransform[3]}), nearEnabled, 6000.0f, 4096.0f));
 
         GLboolean depthWritePrev{};
         glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWritePrev);
@@ -542,6 +614,23 @@ namespace rmmr {
                 drawGpuBatch(args, pass, batch);
                 if (pass == renderer::Pass::identity)
                     identityDraws += batch.drawCount;
+            }
+
+            if (pass == renderer::Pass::shadow and nearEnabled) {
+                for (auto* level : {&nearShadow, &mediumShadow}) {
+                    level->begin();
+                    glNamedBufferSubData(passStateBuffer, offsetof(renderer::PassState, lightSpace), sizeof(mat4), &level->frame.lightSpace);
+                    PassDrawState levelState{};
+                    for (const auto& batch : gpuBatches) {
+                        if (batch.drawCount <= renderer::Count{0} or not with<resource::geometry::Runtime>::exists(args.world, batch.geometry))
+                            continue;
+                        ensure_material(args, pass, batch.material, batch.shader, levelState, shadow);
+                        drawGpuBatch(args, pass, batch);
+                    }
+                }
+                glNamedBufferSubData(passStateBuffer, offsetof(renderer::PassState, lightSpace), sizeof(mat4), &globalLightSpace);
+                nearShadow.bind();
+                mediumShadow.bind();
             }
 
             if (pass == renderer::Pass::identity) {
