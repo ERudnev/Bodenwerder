@@ -226,7 +226,6 @@ namespace rmmr::resource::meshpack {
         const auto& loader = with<LoaderObjs>::get(context, pack_id);
         const auto& unit = with<Unit>::get(context, pack_id);
         const auto path = with<Manager>::resolve(context, unit, loader.file);
-        base::whisper("rmmr: meshpack::LoaderObjs '{}' ← {}", unit.name.text(), path.string());
 
         std::ifstream in{path};
         if (not in) {
@@ -275,7 +274,6 @@ namespace rmmr::resource::meshpack {
                 .geometry = geometryId,
                 .surfaces = std::move(surfaces),
             });
-            base::message("rmmr: meshpack '{}' pending entry '{}' ← geometry '{}' ({})", unit.name.text(), entryName, Unit::Name{.library = unit.name.library, .own = entryName}.text(), body.geometry_file);
         }
 
         if (pending.empty()) {
@@ -286,7 +284,7 @@ namespace rmmr::resource::meshpack {
         asset->texpack = texpack_id;
         asset->entries.clear();
         with<LoaderObjs>::modify(context, pack_id)->pending = std::move(pending);
-        base::message("rmmr: meshpack '{}' declaration loaded ({} pending entries)", unit.name.text(), declarationCount);
+        base::whisper("rmmr: meshpack::LoaderObjs '{}' ← {} ({} entries)", unit.name.text(), path.string(), declarationCount);
     }
 
     void LoaderObjs::Actions::finalize(Writing context, Id packId) {
@@ -325,7 +323,6 @@ namespace rmmr::resource::meshpack {
         const auto& unit = with<Unit>::get(context, pack_id);
 
         const auto pack_path = with<Manager>::resolve(context, unit, loader.file);
-        base::whisper("rmmr: meshpack::LoaderLwo '{}' ← {}", unit.name.text(), pack_path.string());
 
         std::ifstream in{pack_path};
         if (not in) {
@@ -370,7 +367,7 @@ namespace rmmr::resource::meshpack {
         auto state = with<LoaderLwo>::modify(context, pack_id);
         state->geometry = geometryId;
         state->pending = std::move(pending);
-        base::message("rmmr: meshpack '{}' declaration loaded ({} pending LWO surfaces)", unit.name.text(), declarationCount);
+        base::whisper("rmmr: meshpack::LoaderLwo '{}' ← {} ({} surfaces)", unit.name.text(), pack_path.string(), declarationCount);
     }
 
     void LoaderLwo::Actions::finalize(Writing context, Id packId) {

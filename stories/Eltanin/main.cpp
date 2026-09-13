@@ -11,7 +11,7 @@ using namespace base;
 using namespace fqsm::api;
 
 int main() {
-    message("[{}] Test app is started...", now());
+    message("[{}] Eltanin is started...", now());
 
     try {
         auto application = std::make_shared<rmmr::api::Application>(rmmr::api::Application::Settings{

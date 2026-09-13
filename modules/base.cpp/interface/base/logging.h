@@ -70,6 +70,25 @@ namespace base {
         whisper(std::format(fmt, std::forward<Args>(args)...));
     }
 
+    // Warning (ANSI yellow). Same surface as message.
+    inline void warning(std::string_view msg) {
+        std::cout << "\033[33m" << msg << "\033[0m" << std::endl;
+    }
+
+    inline void warning(const char* msg) {
+        warning(std::string_view{msg});
+    }
+
+    inline void warning(const std::string& msg) {
+        warning(std::string_view{msg});
+    }
+
+    template <typename... Args>
+    requires (sizeof...(Args) > 0)
+    inline void warning(std::format_string<Args...> fmt, Args&&... args) {
+        warning(std::format(fmt, std::forward<Args>(args)...));
+    }
+
     // --- Report helpers (handy for diagnostics)
     template<typename T>
     concept has_ostream_operator = requires(std::ostream& s, T value) {

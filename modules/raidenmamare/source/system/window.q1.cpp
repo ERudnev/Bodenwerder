@@ -23,9 +23,8 @@ namespace rmmr::system {
         constexpr integer k_glfw_button_capacity = GLFW_MOUSE_BUTTON_LAST + 1;
 
         void APIENTRY debugMessage(GLenum, GLenum, GLuint, GLenum severity, GLsizei, const GLchar* message, const void*) {
-            if (severity == GL_DEBUG_SEVERITY_HIGH or severity == GL_DEBUG_SEVERITY_MEDIUM) {
-                base::message("OpenGL: {}", message);
-            }
+            if (severity == GL_DEBUG_SEVERITY_HIGH or severity == GL_DEBUG_SEVERITY_MEDIUM)
+                base::warning("OpenGL: {}", message);
         }
 
         auto empty_input_state() -> Window::InputState {

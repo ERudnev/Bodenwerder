@@ -27,8 +27,6 @@ namespace rmmr::wrapper::assets {
     void Manager::addHardcoded(Writing context) {
         using namespace resource;
 
-        base::message("toy: adding hardcoded assets...");
-
         // Catalog dir name = pack own name; layer names = filenames (debug02.jpg, …).
         handles.texture.debug = with<Assets>::add_texpack_catalog(
             context,
@@ -78,12 +76,10 @@ namespace rmmr::wrapper::assets {
         });
 
         handles.primitives = with<Assets>::add_meshpack_objs_loader(context, Unit::Name::from("rmmr", "primitives"), item<meshpack::LoaderObjs>{.file = "meshes/primitives/primitives.meshpack", .pending = {}});
-
-        base::message("toy: hardcoded assets added");
     }
 
     bool Manager::loadFrom(Stewarding, Location) {
-        base::message("toy: assets catalogue load archived (Retrospection offline)");
+        base::warning("rmmr: assets catalogue load archived (Retrospection offline)");
         return false;
     }
 
