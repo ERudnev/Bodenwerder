@@ -2,7 +2,11 @@
 
 #include "geo/details/icosaPack.h"
 
+#include <glm/geometric.hpp>
+
+#include <cmath>
 #include <map>
+#include <type_traits>
 
 namespace eltanin::locality::geo {
 
@@ -18,7 +22,7 @@ namespace eltanin::locality::geo {
         auto at(IcosaPack::Slot) -> T&;
         auto at(IcosaPack::Slot) const -> const T&;
         auto at(vec3 direction) const -> T;
-        void stitch();
+        auto stitch() -> float;
     };
 
 }
@@ -47,12 +51,12 @@ namespace eltanin::locality::geo {
         return tri.bary.x * at(tri.a) + tri.bary.y * at(tri.b) + tri.bary.z * at(tri.c);
     }
 
-    // Last-resort weld: average every stored copy of the same geometric vertex (seams and poles).
+    // Last-resort weld: average stored copies of the same geometric vertex. Returns the total |stored - mean| moved.
     template<typename T>
-    void IcosaMap<T>::stitch() {
+    auto IcosaMap<T>::stitch() -> float {
         const integer last = pack.edgeSegments();
         if (last < 1)
-            return;
+            return 0.0f;
         struct Key {
             integer first;
             integer second;
@@ -129,11 +133,18 @@ namespace eltanin::locality::geo {
                 consider(IcosaPack::Slot{.diamond = diamond, .iu = last, .iv = iv});
             }
         }
+        float correction = 0.0f;
         for (const auto& entry : groups) {
             const T mean = entry.second.sum * (1.0f / float(entry.second.count));
-            for (const auto slot : entry.second.slots)
+            for (const auto slot : entry.second.slots) {
+                if constexpr (std::is_floating_point_v<T>)
+                    correction += std::abs(at(slot) - mean);
+                else
+                    correction += glm::length(at(slot) - mean);
                 at(slot) = mean;
+            }
         }
+        return correction;
     }
 
 }

@@ -3,6 +3,7 @@
 in vec3 v_worldPos;
 in vec3 v_worldNormal;
 flat in vec4 v_color0;
+flat in vec3 v_seed;
 in vec3 v_bary;
 
 layout(location = 0) out vec4 FragColor;
@@ -29,6 +30,30 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 layout(binding = 1) uniform sampler2D u_shadowMap;
 
 const float shadowBias = 0.0005;
+const float warpAmp = 0.28;
+const float warpFreq = 12.0;
+const float gouraudBand = 0.05;
+
+vec3 hash33(vec3 p) {
+    p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+    p += dot(p, p.yxz + 33.33);
+    return fract((p.xxy + p.yxx) * p.zyx);
+}
+
+float jagged(float t, float channel) {
+    float n = 0.0;
+    float amp = 1.0;
+    for (int o = 0; o < 2; ++o) {
+        float i = floor(t);
+        float f = fract(t);
+        float a = hash33(v_seed + vec3(i, channel, float(o))).x;
+        float b = hash33(v_seed + vec3(i + 1.0, channel, float(o))).x;
+        n += amp * mix(a, b, f);
+        t = t * 2.27 + 3.1;
+        amp *= 0.5;
+    }
+    return n * (2.0 / 1.5) - 1.0;
+}
 
 vec3 unpackRgb(float encoded) {
     uint bits = floatBitsToUint(encoded);
@@ -60,12 +85,23 @@ float fetchShadow(vec3 worldPos, vec3 N, vec3 L) {
 void main() {
     vec3 N = normalize(v_worldNormal);
     vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
-    float encoded = v_color0.z;
-    if (v_bary.x > v_bary.y && v_bary.x > v_bary.z)
-        encoded = v_color0.x;
-    else if (v_bary.y > v_bary.z)
-        encoded = v_color0.y;
-    vec3 albedo = actorAlbedoOpacity.rgb * unpackRgb(encoded);
+    vec3 c0 = unpackRgb(v_color0.x);
+    vec3 c1 = unpackRgb(v_color0.y);
+    vec3 c2 = unpackRgb(v_color0.z);
+    vec3 gouraud = v_bary.x * c0 + v_bary.y * c1 + v_bary.z * c2;
+    vec3 wave = vec3(jagged(dot(v_bary.yz, vec2(warpFreq)), 0.0), jagged(dot(v_bary.zx, vec2(warpFreq)), 1.0), jagged(dot(v_bary.xy, vec2(warpFreq)), 2.0));
+    wave -= (wave.x + wave.y + wave.z) * (1.0 / 3.0);
+    float interior = 27.0 * v_bary.x * v_bary.y * v_bary.z;
+    vec3 warped = v_bary + wave * (warpAmp * interior);
+    vec3 nearest = c2;
+    if (warped.x > warped.y && warped.x > warped.z)
+        nearest = c0;
+    else if (warped.y > warped.z)
+        nearest = c1;
+    float top = max(warped.x, max(warped.y, warped.z));
+    float low = min(warped.x, min(warped.y, warped.z));
+    float gap = top - (warped.x + warped.y + warped.z - top - low);
+    vec3 albedo = actorAlbedoOpacity.rgb * mix(nearest, gouraud, 1.0 - smoothstep(0.0, gouraudBand, gap));
     float lambert = max(dot(N, L), 0.0);
     float shadow = fetchShadow(v_worldPos, N, L);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);

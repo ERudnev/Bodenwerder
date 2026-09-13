@@ -29,6 +29,7 @@ layout(std430, binding = 8) readonly buffer PoseBuffer {
 out vec3 v_worldPos;
 out vec3 v_worldNormal;
 flat out vec4 v_color0;
+flat out vec3 v_seed;
 out vec3 v_bary;
 
 const ivec3 orientationRow0[24] = ivec3[24](
@@ -65,6 +66,7 @@ void main() {
     mat3 normalMat = mat3(transpose(inverse(actorModel)));
     v_worldNormal = normalize(normalMat * localRotation * aNormal);
     v_color0 = aColor0;
+    v_seed = aPos;
     int corner = gl_VertexID % 3;
     v_bary = vec3(corner == 0, corner == 1, corner == 2);
     gl_Position = passProjection * passView * worldPos;

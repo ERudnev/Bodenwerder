@@ -1,6 +1,8 @@
 #include "geo/details/generator.h"
 #include "geo/celestial/planet.h"
 
+#include <base/logging.h>
+
 #include <cstdint>
 
 namespace eltanin::locality::geo {
@@ -26,6 +28,19 @@ namespace eltanin::locality::geo {
                 const auto slot = planet.heights.pack.slotOf(index);
                 planet.heights.at(slot) = planet.passport.radius + (float(hash32(slot.diamond, slot.iu, slot.iv, planet.passport.seed) >> 8) * (1.0f / 16777215.0f) * 2.0f - 1.0f) * 5.0f;
             }
+            const integer last = planet.heights.pack.edgeSegments();
+            const float sea = planet.passport.radius;
+            for (integer diamond = 0; diamond < IcosaPack::diamondCount; ++diamond) {
+                for (integer iu = 0; iu <= last; ++iu) {
+                    planet.heights.at(IcosaPack::Slot{.diamond = diamond, .iu = iu, .iv = 0}) = sea;
+                    planet.heights.at(IcosaPack::Slot{.diamond = diamond, .iu = iu, .iv = last}) = sea;
+                }
+                for (integer iv = 1; iv < last; ++iv) {
+                    planet.heights.at(IcosaPack::Slot{.diamond = diamond, .iu = 0, .iv = iv}) = sea;
+                    planet.heights.at(IcosaPack::Slot{.diamond = diamond, .iu = last, .iv = iv}) = sea;
+                }
+            }
+            //temp disabled: base::warning("eltanin::locality::geo::generate: height stitch {}", planet.heights.stitch());
         }
 
         void generateColors(planet::Planet& planet) {
@@ -42,7 +57,7 @@ namespace eltanin::locality::geo {
                 const auto slot = planet.colors.pack.slotOf(index);
                 planet.colors.at(slot) = palette[hash32(slot.diamond, slot.iu, slot.iv, planet.passport.seed ^ 0x9e3779b9) % 6u];
             }
-            planet.colors.stitch();
+            base::warning("eltanin::locality::geo::generate: color stitch {}", planet.colors.stitch());
         }
 
     }
