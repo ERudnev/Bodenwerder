@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -31,6 +32,7 @@ namespace rmmr::primitive {
             PersistentId id;
             Type type;
             Name name;
+            bool live;
         };
 
         // Persistent geometry channel semantics vocabulary.
@@ -38,21 +40,20 @@ namespace rmmr::primitive {
         // ID convention:
         // - 1..99: primary vertex attributes
         // - 100..: auxiliary / optional attributes
+        // `live` — own VBO (Runtime::channels), not interleaved.
         static constexpr auto vocabulary = std::array<Entry, 7>{{
-            Entry{0, Type::f32, "_undefined"},
+            Entry{0, Type::f32, "_undefined", false},
 
-            Entry{1, Type::v3f, "position"},
-            Entry{2, Type::v3f, "normal"},
-            Entry{3, Type::v2f, "uv0"},
-            Entry{100, Type::v4f, "color0"},
-            Entry{101, Type::uvec2, "mix0"},
-            Entry{102, Type::f32, "cohesion"},
+            Entry{1, Type::v3f, "position", false},
+            Entry{2, Type::v3f, "normal", false},
+            Entry{3, Type::v2f, "uv0", false},
+            Entry{100, Type::v4f, "color0", false},
+            Entry{101, Type::uvec2, "mix0", false},
+            Entry{102, Type::f32, "cohesion", true},
         }};
 
         static constexpr auto name_of(PersistentId id) -> Name {
-            for (const auto& e : vocabulary) {
-                if (e.id == id) return e.name;
-            }
+            if (const auto* e = find(id)) return e->name;
             throw std::runtime_error("GeometrySemantics::name_of: unknown geometry semantic id");
         }
 
@@ -76,11 +77,42 @@ namespace rmmr::primitive {
             return out;
         }
 
-        static constexpr auto type_of(PersistentId id) -> Type {
+        static constexpr auto find(PersistentId id) -> const Entry* {
             for (const auto& e : vocabulary) {
-                if (e.id == id) return e.type;
+                if (e.id == id) return &e;
             }
+            return nullptr;
+        }
+
+        static constexpr auto type_of(PersistentId id) -> Type {
+            if (const auto* e = find(id)) return e->type;
             throw std::runtime_error("GeometrySemantics::type_of: unknown geometry semantic id");
+        }
+
+        static constexpr auto byteSize(Type type) -> std::size_t {
+            switch (type) {
+                case Type::f32: return 4;
+                case Type::v2f: return 8;
+                case Type::v3f: return 12;
+                case Type::v4f: return 16;
+                case Type::uvec2: return 8;
+            }
+            throw std::runtime_error("GeometrySemantics::byteSize: unknown geometry type");
+        }
+
+        static constexpr auto componentCount(Type type) -> integer {
+            switch (type) {
+                case Type::f32: return 1;
+                case Type::v2f: return 2;
+                case Type::v3f: return 3;
+                case Type::v4f: return 4;
+                case Type::uvec2: return 2;
+            }
+            throw std::runtime_error("GeometrySemantics::componentCount: unknown geometry type");
+        }
+
+        static constexpr auto integerPacked(Type type) -> bool {
+            return type == Type::uvec2;
         }
     };
 }

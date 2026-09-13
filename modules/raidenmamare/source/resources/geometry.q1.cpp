@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <format>
 #include <string>
@@ -235,382 +236,157 @@ namespace rmmr::resource::geometry {
             return out;
         }
 
+        struct CpuChannel {
+            const std::byte* data;
+            std::size_t count;
+            std::size_t stride;
+        };
+
+        auto cpuChannel(const CpuPresentation& cpu, primitive::GeometrySemantics::PersistentId id) -> CpuChannel {
+            const auto view = []<typename Value>(const vector<Value>& values) {
+                return CpuChannel{reinterpret_cast<const std::byte*>(values.data()), values.size(), sizeof(Value)};
+            };
+            using Semantics = primitive::GeometrySemantics;
+            if (id == Semantics::id_of("position")) return view(cpu.positions);
+            if (id == Semantics::id_of("normal")) return view(cpu.normals);
+            if (id == Semantics::id_of("uv0")) return view(cpu.uv0);
+            if (id == Semantics::id_of("color0")) return view(cpu.color0);
+            if (id == Semantics::id_of("mix0")) return view(cpu.mix0);
+            if (id == Semantics::id_of("cohesion")) return view(cpu.cohesion);
+            return CpuChannel{nullptr, 0, 0};
+        }
+
         auto bake(Writing context, system::Device::Id device, const CpuPresentation& cpu, const vector<SurfaceId>& sourcePrimitiveSurfaces) -> Runtime::Quantum {
-            if (cpu.positions.empty()) {
-                return context.refuse("resource::geometry::bake: positions are empty");
+            using Semantics = primitive::GeometrySemantics;
+            if (cpu.positions.empty()) return context.refuse("resource::geometry::bake: positions are empty");
+            if (cpu.layout.empty() or cpu.layout.front() != Semantics::id_of("position")) return context.refuse("resource::geometry::bake: layout must start with position");
+
+            const auto vertexCount = cpu.positions.size();
+            struct Attrib {
+                GLuint location;
+                Semantics::PersistentId id;
+                Semantics::Type type;
+                bool live;
+                const std::byte* data;
+                std::size_t stride;
+            };
+            vector<Attrib> attribs;
+            attribs.reserve(cpu.layout.size());
+            for (std::size_t index = 0; index < cpu.layout.size(); ++index) {
+                const auto id = cpu.layout[index];
+                const auto* entry = Semantics::find(id);
+                if (entry == nullptr or entry->id == Semantics::PersistentId{0}) return context.refuse("resource::geometry::bake: unknown vertex attribute");
+                for (const auto& attrib : attribs) {
+                    if (attrib.id == id) return context.refuse(std::format("resource::geometry::bake: duplicate vertex attribute '{}'", entry->name));
+                }
+                const auto channel = cpuChannel(cpu, id);
+                if (channel.count != vertexCount) return context.refuse(std::format("resource::geometry::bake: {} count must match positions", entry->name));
+                if (channel.stride != Semantics::byteSize(entry->type)) return context.refuse(std::format("resource::geometry::bake: {} storage does not match semantic type", entry->name));
+                attribs.push_back(Attrib{.location = static_cast<GLuint>(index), .id = id, .type = entry->type, .live = entry->live, .data = channel.data, .stride = channel.stride});
+            }
+            for (const auto& entry : Semantics::vocabulary) {
+                if (entry.id == Semantics::PersistentId{0}) continue;
+                bool used = false;
+                for (const auto& attrib : attribs) {
+                    if (attrib.id == entry.id) {
+                        used = true;
+                        break;
+                    }
+                }
+                if (used) continue;
+                if (cpuChannel(cpu, entry.id).count != 0) return context.refuse(std::format("resource::geometry::bake: {} must be empty for this layout", entry.name));
             }
 
-            const auto pos_id = primitive::GeometrySemantics::id_of("position");
-            const auto normal_id = primitive::GeometrySemantics::id_of("normal");
-            const auto uv0_id = primitive::GeometrySemantics::id_of("uv0");
-            const auto color0_id = primitive::GeometrySemantics::id_of("color0");
-            const auto mix0_id = primitive::GeometrySemantics::id_of("mix0");
-            const auto cohesion_id = primitive::GeometrySemantics::id_of("cohesion");
-
-            auto attribs = cpu.layout;
-            const bool liveCohesion = not attribs.empty() and attribs.back() == cohesion_id;
-            const GLuint cohesionLocation = liveCohesion ? static_cast<GLuint>(attribs.size() - 1) : 0;
-            if (liveCohesion)
-                attribs.pop_back();
-
-            const bool position_only = attribs.size() == std::size_t{1} && attribs[0] == pos_id;
-            const bool position_normal = attribs.size() == std::size_t{2} && attribs[0] == pos_id && attribs[1] == normal_id;
-            const bool position_uv0 = attribs.size() == std::size_t{2} && attribs[0] == pos_id && attribs[1] == uv0_id;
-            const bool position_color0 = attribs.size() == std::size_t{2} && attribs[0] == pos_id && attribs[1] == color0_id;
-            const bool position_uv0_color0 = attribs.size() == std::size_t{3} && attribs[0] == pos_id && attribs[1] == uv0_id && attribs[2] == color0_id;
-            const bool position_normal_uv0 = attribs.size() == std::size_t{3} && attribs[0] == pos_id && attribs[1] == normal_id && attribs[2] == uv0_id;
-            const bool position_normal_mix0 = attribs.size() == std::size_t{3} && attribs[0] == pos_id && attribs[1] == normal_id && attribs[2] == mix0_id;
-            const bool position_normal_color0 = attribs.size() == std::size_t{3} && attribs[0] == pos_id && attribs[1] == normal_id && attribs[2] == color0_id;
-
-            if (not position_only && not position_normal && not position_uv0 && not position_color0 && not position_uv0_color0 && not position_normal_uv0 && not position_normal_mix0 && not position_normal_color0) {
-                return context.refuse("resource::geometry::bake: unsupported vertex layout");
-            }
-            if (not position_normal_mix0 and not cpu.mix0.empty()) {
-                return context.refuse("resource::geometry::bake: mix0 must be empty for this layout");
-            }
-            if (liveCohesion and cpu.cohesion.size() != cpu.positions.size()) {
-                return context.refuse("resource::geometry::bake: cohesion count must match positions");
-            }
-            if (not liveCohesion and not cpu.cohesion.empty()) {
-                return context.refuse("resource::geometry::bake: cohesion must be empty for this layout");
-            }
-
-            if (position_only) {
-                if (not cpu.normals.empty()) {
-                    return context.refuse("resource::geometry::bake: normals must be empty for position-only layout");
-                }
-                if (not cpu.uv0.empty()) {
-                    return context.refuse("resource::geometry::bake: uv0 must be empty for position-only layout");
-                }
-                if (not cpu.color0.empty()) {
-                    return context.refuse("resource::geometry::bake: color0 must be empty for position-only layout");
-                }
-            } else if (position_uv0) {
-                if (not cpu.normals.empty()) {
-                    return context.refuse("resource::geometry::bake: normals must be empty for position+uv0 layout");
-                }
-                if (not cpu.color0.empty()) {
-                    return context.refuse("resource::geometry::bake: color0 must be empty for position+uv0 layout");
-                }
-                if (cpu.uv0.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: uv0 count must match positions");
-                }
-            } else if (position_color0) {
-                if (not cpu.normals.empty()) {
-                    return context.refuse("resource::geometry::bake: normals must be empty for position+color0 layout");
-                }
-                if (not cpu.uv0.empty()) {
-                    return context.refuse("resource::geometry::bake: uv0 must be empty for position+color0 layout");
-                }
-                if (cpu.color0.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: color0 count must match positions");
-                }
-            } else if (position_uv0_color0) {
-                if (not cpu.normals.empty()) {
-                    return context.refuse("resource::geometry::bake: normals must be empty for position+uv0+color0 layout");
-                }
-                if (cpu.uv0.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: uv0 count must match positions");
-                }
-                if (cpu.color0.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: color0 count must match positions");
-                }
-            } else if (position_normal_mix0) {
-                if (cpu.normals.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: normals count must match positions");
-                }
-                if (cpu.mix0.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: mix0 count must match positions");
-                }
-                if (not cpu.uv0.empty()) {
-                    return context.refuse("resource::geometry::bake: uv0 must be empty for this layout");
-                }
-                if (not cpu.color0.empty()) {
-                    return context.refuse("resource::geometry::bake: color0 must be empty for this layout");
-                }
-            } else if (position_normal_color0) {
-                if (cpu.normals.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: normals count must match positions");
-                }
-                if (cpu.color0.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: color0 count must match positions");
-                }
-                if (not cpu.uv0.empty()) {
-                    return context.refuse("resource::geometry::bake: uv0 must be empty for this layout");
+            vector<GLuint> indexData;
+            if (not cpu.indices.empty()) {
+                indexData.reserve(cpu.indices.size());
+                for (const auto index : cpu.indices) {
+                    if (index < 0 or static_cast<std::size_t>(index) >= vertexCount) return context.refuse("resource::geometry::bake: index out of positions range");
+                    indexData.push_back(static_cast<GLuint>(index));
                 }
             } else {
-                if (cpu.normals.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: normals count must match positions");
-                }
-                if (not cpu.color0.empty()) {
-                    return context.refuse("resource::geometry::bake: color0 must be empty for this layout");
-                }
-                if (position_normal) {
-                    if (not cpu.uv0.empty()) {
-                        return context.refuse("resource::geometry::bake: uv0 must be empty for position+normal layout");
-                    }
-                } else if (cpu.uv0.size() != cpu.positions.size()) {
-                    return context.refuse("resource::geometry::bake: uv0 count must match positions");
+                indexData.reserve(vertexCount);
+                for (std::size_t index = 0; index < vertexCount; ++index) indexData.push_back(static_cast<GLuint>(index));
+            }
+
+            const auto primitiveCount = indexData.size() / 3;
+            vector<SurfaceId> primitiveSurfaceData = sourcePrimitiveSurfaces;
+            if (primitiveSurfaceData.empty()) primitiveSurfaceData.resize(primitiveCount, SurfaceId{0});
+            if (primitiveSurfaceData.size() != primitiveCount) return context.refuse("resource::geometry::bake: primitive surface count does not match triangle count");
+
+            std::size_t packedStride = 0;
+            for (const auto& attrib : attribs) {
+                if (not attrib.live) packedStride += attrib.stride;
+            }
+            vector<std::byte> packed(vertexCount * packedStride);
+            for (std::size_t vertex = 0; vertex < vertexCount; ++vertex) {
+                auto* dest = packed.data() + vertex * packedStride;
+                std::size_t offset = 0;
+                for (const auto& attrib : attribs) {
+                    if (attrib.live) continue;
+                    std::memcpy(dest + offset, attrib.data + vertex * attrib.stride, attrib.stride);
+                    offset += attrib.stride;
                 }
             }
 
-            const auto& device_quantum = with<system::Device>::get(context, device);
-            glfwMakeContextCurrent(device_quantum.handle);
-
-            const std::size_t vertex_count = cpu.positions.size();
-            const bool sourceIndexed = not cpu.indices.empty();
-            const bool indexed = true;
-
+            glfwMakeContextCurrent(with<system::Device>::get(context, device).handle);
             renderer::VertexArray vao{};
             renderer::VertexBuffer vbo{};
             renderer::ElementBuffer ebo{};
             renderer::StorageBuffer primitiveSurfaces{};
-            glCreateVertexArrays(1, &vao);
-            glCreateBuffers(1, &vbo);
-            glCreateBuffers(1, &primitiveSurfaces);
-
-            if (not vao || not vbo || not primitiveSurfaces) {
+            umap<Semantics::PersistentId, renderer::VertexBuffer> channels;
+            auto release = [&] {
                 if (vao) glDeleteVertexArrays(1, &vao);
                 if (vbo) glDeleteBuffers(1, &vbo);
-                if (primitiveSurfaces) glDeleteBuffers(1, &primitiveSurfaces);
-                return context.refuse("resource::geometry::bake: failed to allocate VAO/VBO/primitive-surface SSBO");
-            }
-
-            std::vector<GLuint> index_data;
-            if (sourceIndexed) {
-                index_data.reserve(cpu.indices.size());
-                for (const auto index : cpu.indices) {
-                    if (index < 0 || static_cast<std::size_t>(index) >= vertex_count) {
-                        glDeleteVertexArrays(1, &vao);
-                        glDeleteBuffers(1, &vbo);
-                        glDeleteBuffers(1, &primitiveSurfaces);
-                        return context.refuse("resource::geometry::bake: index out of positions range");
-                    }
-                    index_data.push_back(static_cast<GLuint>(index));
-                }
-
-            } else {
-                index_data.reserve(vertex_count);
-                for (std::size_t index = 0; index < vertex_count; ++index) index_data.push_back(static_cast<GLuint>(index));
-            }
-            glCreateBuffers(1, &ebo);
-            if (not ebo) {
-                glDeleteVertexArrays(1, &vao);
-                glDeleteBuffers(1, &vbo);
-                glDeleteBuffers(1, &primitiveSurfaces);
-                return context.refuse("resource::geometry::bake: failed to allocate EBO");
-            }
-
-            auto setupAttrib = [&](GLuint index, GLint components, GLuint relativeOffset) {
-                glEnableVertexArrayAttrib(vao, index);
-                glVertexArrayAttribFormat(vao, index, components, GL_FLOAT, GL_FALSE, relativeOffset);
-                glVertexArrayAttribBinding(vao, index, 0);
-            };
-            auto setupAttribI = [&](GLuint index, GLint components, GLenum type, GLuint relativeOffset) {
-                glEnableVertexArrayAttrib(vao, index);
-                glVertexArrayAttribIFormat(vao, index, components, type, relativeOffset);
-                glVertexArrayAttribBinding(vao, index, 0);
-            };
-
-            std::vector<float> interleaved;
-
-            if (position_only) {
-                interleaved.reserve(vertex_count * 3);
-                for (std::size_t i = 0; i < vertex_count; ++i) {
-                    const auto& p = cpu.positions[i];
-                    interleaved.push_back(p.x);
-                    interleaved.push_back(p.y);
-                    interleaved.push_back(p.z);
-                }
-
-                constexpr renderer::Count stride = renderer::Count(3 * sizeof(float));
-                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
-                setupAttrib(0, 3, 0);
-            } else if (position_uv0) {
-                interleaved.reserve(vertex_count * 5);
-                for (std::size_t i = 0; i < vertex_count; ++i) {
-                    const auto& p = cpu.positions[i];
-                    const auto& uv = cpu.uv0[i];
-                    interleaved.push_back(p.x);
-                    interleaved.push_back(p.y);
-                    interleaved.push_back(p.z);
-                    interleaved.push_back(uv.x);
-                    interleaved.push_back(uv.y);
-                }
-
-                constexpr renderer::Count stride = renderer::Count(5 * sizeof(float));
-                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
-                setupAttrib(0, 3, 0);
-                setupAttrib(1, 2, renderer::Count(3 * sizeof(float)));
-            } else if (position_color0) {
-                interleaved.reserve(vertex_count * 7);
-                for (std::size_t i = 0; i < vertex_count; ++i) {
-                    const auto& p = cpu.positions[i];
-                    const auto& color = cpu.color0[i];
-                    interleaved.push_back(p.x);
-                    interleaved.push_back(p.y);
-                    interleaved.push_back(p.z);
-                    interleaved.push_back(color.x);
-                    interleaved.push_back(color.y);
-                    interleaved.push_back(color.z);
-                    interleaved.push_back(color.w);
-                }
-
-                constexpr renderer::Count stride = renderer::Count(7 * sizeof(float));
-                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
-                setupAttrib(0, 3, 0);
-                setupAttrib(1, 4, renderer::Count(3 * sizeof(float)));
-            } else if (position_uv0_color0) {
-                interleaved.reserve(vertex_count * 9);
-                for (std::size_t i = 0; i < vertex_count; ++i) {
-                    const auto& p = cpu.positions[i];
-                    const auto& uv = cpu.uv0[i];
-                    const auto& color = cpu.color0[i];
-                    interleaved.push_back(p.x);
-                    interleaved.push_back(p.y);
-                    interleaved.push_back(p.z);
-                    interleaved.push_back(uv.x);
-                    interleaved.push_back(uv.y);
-                    interleaved.push_back(color.x);
-                    interleaved.push_back(color.y);
-                    interleaved.push_back(color.z);
-                    interleaved.push_back(color.w);
-                }
-
-                constexpr renderer::Count stride = renderer::Count(9 * sizeof(float));
-                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
-                setupAttrib(0, 3, 0);
-                setupAttrib(1, 2, renderer::Count(3 * sizeof(float)));
-                setupAttrib(2, 4, renderer::Count(5 * sizeof(float)));
-            } else if (position_normal) {
-                interleaved.reserve(vertex_count * 6);
-                for (std::size_t i = 0; i < vertex_count; ++i) {
-                    const auto& p = cpu.positions[i];
-                    const auto& n = cpu.normals[i];
-                    interleaved.push_back(p.x);
-                    interleaved.push_back(p.y);
-                    interleaved.push_back(p.z);
-                    interleaved.push_back(n.x);
-                    interleaved.push_back(n.y);
-                    interleaved.push_back(n.z);
-                }
-
-                constexpr renderer::Count stride = renderer::Count(6 * sizeof(float));
-                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
-                setupAttrib(0, 3, 0);
-                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
-            } else if (position_normal_color0) {
-                interleaved.reserve(vertex_count * 10);
-                for (std::size_t i = 0; i < vertex_count; ++i) {
-                    const auto& p = cpu.positions[i];
-                    const auto& n = cpu.normals[i];
-                    const auto& color = cpu.color0[i];
-                    interleaved.push_back(p.x);
-                    interleaved.push_back(p.y);
-                    interleaved.push_back(p.z);
-                    interleaved.push_back(n.x);
-                    interleaved.push_back(n.y);
-                    interleaved.push_back(n.z);
-                    interleaved.push_back(color.x);
-                    interleaved.push_back(color.y);
-                    interleaved.push_back(color.z);
-                    interleaved.push_back(color.w);
-                }
-
-                constexpr renderer::Count stride = renderer::Count(10 * sizeof(float));
-                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
-                setupAttrib(0, 3, 0);
-                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
-                setupAttrib(2, 4, renderer::Count(6 * sizeof(float)));
-            } else if (position_normal_mix0) {
-                struct Packed {
-                    float px;
-                    float py;
-                    float pz;
-                    float nx;
-                    float ny;
-                    float nz;
-                    std::uint32_t mixLo;
-                    std::uint32_t mixHi;
-                };
-                static_assert(sizeof(Packed) == 32);
-                std::vector<Packed> packed;
-                packed.reserve(vertex_count);
-                for (std::size_t i = 0; i < vertex_count; ++i) {
-                    const auto& p = cpu.positions[i];
-                    const auto& n = cpu.normals[i];
-                    packed.push_back(Packed{.px = p.x, .py = p.y, .pz = p.z, .nx = n.x, .ny = n.y, .nz = n.z, .mixLo = static_cast<std::uint32_t>(cpu.mix0[i]), .mixHi = static_cast<std::uint32_t>(cpu.mix0[i] >> 32)});
-                }
-                constexpr renderer::Count stride = renderer::Count(sizeof(Packed));
-                glNamedBufferData(vbo, renderer::SizePtr(packed.size() * sizeof(Packed)), packed.data(), GL_STATIC_DRAW);
-                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
-                setupAttrib(0, 3, 0);
-                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
-                setupAttribI(2, 2, GL_UNSIGNED_INT, renderer::Count(6 * sizeof(float)));
-            } else {
-                interleaved.reserve(vertex_count * 8);
-                for (std::size_t i = 0; i < vertex_count; ++i) {
-                    const auto& p = cpu.positions[i];
-                    const auto& n = cpu.normals[i];
-                    const auto& uv = cpu.uv0[i];
-                    interleaved.push_back(p.x);
-                    interleaved.push_back(p.y);
-                    interleaved.push_back(p.z);
-                    interleaved.push_back(n.x);
-                    interleaved.push_back(n.y);
-                    interleaved.push_back(n.z);
-                    interleaved.push_back(uv.x);
-                    interleaved.push_back(uv.y);
-                }
-
-                constexpr renderer::Count stride = renderer::Count(8 * sizeof(float));
-                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
-                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
-                setupAttrib(0, 3, 0);
-                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
-                setupAttrib(2, 2, renderer::Count(6 * sizeof(float)));
-            }
-
-            if (indexed) {
-                glNamedBufferData(ebo, renderer::SizePtr(index_data.size() * sizeof(GLuint)), index_data.data(), GL_STATIC_DRAW);
-                glVertexArrayElementBuffer(vao, ebo);
-            }
-            const auto primitiveCount = index_data.size() / 3;
-            vector<SurfaceId> primitiveSurfaceData = sourcePrimitiveSurfaces;
-            if (primitiveSurfaceData.empty()) primitiveSurfaceData.resize(primitiveCount, SurfaceId{0});
-            if (primitiveSurfaceData.size() != primitiveCount) {
-                glDeleteVertexArrays(1, &vao);
-                glDeleteBuffers(1, &vbo);
                 if (ebo) glDeleteBuffers(1, &ebo);
-                glDeleteBuffers(1, &primitiveSurfaces);
-                return context.refuse("resource::geometry::bake: primitive surface count does not match triangle count");
+                if (primitiveSurfaces) glDeleteBuffers(1, &primitiveSurfaces);
+                for (auto& pair : channels) {
+                    if (pair.second) glDeleteBuffers(1, &pair.second);
+                }
+            };
+            glCreateVertexArrays(1, &vao);
+            glCreateBuffers(1, &vbo);
+            glCreateBuffers(1, &ebo);
+            glCreateBuffers(1, &primitiveSurfaces);
+            if (not vao or not vbo or not ebo or not primitiveSurfaces) {
+                release();
+                return context.refuse("resource::geometry::bake: failed to allocate VAO/VBO/EBO/primitive-surface SSBO");
             }
+
+            auto bindAttrib = [&](const Attrib& attrib, GLuint binding, GLuint relativeOffset) {
+                glEnableVertexArrayAttrib(vao, attrib.location);
+                const auto components = static_cast<GLint>(Semantics::componentCount(attrib.type));
+                if (Semantics::integerPacked(attrib.type)) glVertexArrayAttribIFormat(vao, attrib.location, components, GL_UNSIGNED_INT, relativeOffset);
+                else glVertexArrayAttribFormat(vao, attrib.location, components, GL_FLOAT, GL_FALSE, relativeOffset);
+                glVertexArrayAttribBinding(vao, attrib.location, binding);
+            };
+
+            glNamedBufferData(vbo, renderer::SizePtr(packed.size()), packed.data(), GL_STATIC_DRAW);
+            glVertexArrayVertexBuffer(vao, 0, vbo, 0, renderer::Count(packedStride));
+            std::size_t packedOffset = 0;
+            for (const auto& attrib : attribs) {
+                if (attrib.live) continue;
+                bindAttrib(attrib, 0, static_cast<GLuint>(packedOffset));
+                packedOffset += attrib.stride;
+            }
+            glNamedBufferData(ebo, renderer::SizePtr(indexData.size() * sizeof(GLuint)), indexData.data(), GL_STATIC_DRAW);
+            glVertexArrayElementBuffer(vao, ebo);
             glNamedBufferData(primitiveSurfaces, renderer::SizePtr(primitiveSurfaceData.size() * sizeof(SurfaceId)), primitiveSurfaceData.data(), GL_STATIC_DRAW);
 
-            umap<primitive::GeometrySemantics::PersistentId, renderer::VertexBuffer> channels;
-            if (liveCohesion) {
+            GLuint liveBinding = 1;
+            for (const auto& attrib : attribs) {
+                if (not attrib.live) continue;
                 renderer::VertexBuffer buffer{0};
                 glCreateBuffers(1, &buffer);
                 if (not buffer) {
-                    glDeleteVertexArrays(1, &vao);
-                    glDeleteBuffers(1, &vbo);
-                    if (ebo)
-                        glDeleteBuffers(1, &ebo);
-                    glDeleteBuffers(1, &primitiveSurfaces);
+                    release();
                     return context.refuse("resource::geometry::bake: failed to allocate attrib channel");
                 }
-                glNamedBufferData(buffer, static_cast<renderer::SizePtr>(cpu.cohesion.size() * sizeof(float)), cpu.cohesion.data(), GL_STATIC_DRAW);
-                glEnableVertexArrayAttrib(vao, cohesionLocation);
-                glVertexArrayAttribFormat(vao, cohesionLocation, 1, GL_FLOAT, GL_FALSE, 0);
-                glVertexArrayAttribBinding(vao, cohesionLocation, 1);
-                glVertexArrayVertexBuffer(vao, 1, buffer, 0, renderer::Count(sizeof(float)));
-                channels.insert_or_assign(cohesion_id, buffer);
+                glNamedBufferData(buffer, renderer::SizePtr(vertexCount * attrib.stride), attrib.data, GL_STATIC_DRAW);
+                bindAttrib(attrib, liveBinding, 0);
+                glVertexArrayVertexBuffer(vao, liveBinding, buffer, 0, renderer::Count(attrib.stride));
+                channels.insert_or_assign(attrib.id, buffer);
+                liveBinding += 1;
             }
 
             vec3 boundMin = cpu.positions.front();
@@ -626,8 +402,8 @@ namespace rmmr::resource::geometry {
                 .channels = std::move(channels),
                 .ebo = ebo,
                 .primitiveSurfaces = primitiveSurfaces,
-                .vertex_count = renderer::Count(vertex_count),
-                .index_count = renderer::Count(index_data.size()),
+                .vertex_count = renderer::Count(vertexCount),
+                .index_count = renderer::Count(indexData.size()),
                 .boundMin = boundMin,
                 .boundMax = boundMax,
             };
