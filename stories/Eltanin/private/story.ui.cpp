@@ -312,6 +312,14 @@ namespace eltanin {
                     ImGui::Text("Air: %.0f g/m³ (%.0f%% ISA)", air, 100.0f * air / phys::Settings::Air::isaDensity);
                     ImGui::Text("Range to center: %.1f m (%.2f km)", range, range * 0.001f);
                     ImGui::Text("Lat / Lon: %.3f°, %.3f°", latDeg, lonDeg);
+                    const auto hit = planet->probe(local);
+                    ImGui::Separator();
+                    ImGui::TextUnformatted("Probe");
+                    ImGui::Text("height %.2f m", hit.height);
+                    ImGui::Text("position %.2f, %.2f, %.2f", hit.position.x, hit.position.y, hit.position.z);
+                    ImGui::Text("normal %.3f, %.3f, %.3f", hit.normal.x, hit.normal.y, hit.normal.z);
+                    ImGui::Text("slope %.3f", hit.slope);
+                    ImGui::Text("mix %016llx", static_cast<unsigned long long>(hit.mix));
                 }
             }
         }

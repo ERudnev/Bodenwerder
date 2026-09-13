@@ -38,25 +38,50 @@ namespace eltanin::locality::planet {
             return packed;
         }
 
-        void emitFace(resource::builders::geometry::CpuPresentation& cpu, vec3 first, vec3 second, vec3 third, RGB colorA, RGB colorB, RGB colorC) {
-            vec3 normal = glm::cross(second - first, third - first);
-            if (glm::dot(normal, first + second + third) < 0.0f) {
+        auto heightNormal(const geo::IcosaMap<float>& heights, vec3 dir) -> vec3 {
+            const float len = glm::length(dir);
+            if (len < 1.0e-6f)
+                return vec3{0.0f, 1.0f, 0.0f};
+            dir /= len;
+            vec3 tangentU = glm::cross(vec3{0.0f, 1.0f, 0.0f}, dir);
+            if (glm::dot(tangentU, tangentU) < 1.0e-8f)
+                tangentU = glm::cross(vec3{1.0f, 0.0f, 0.0f}, dir);
+            tangentU = glm::normalize(tangentU);
+            const vec3 tangentV = glm::cross(dir, tangentU);
+            const float eps = 1.0f / float(std::max(heights.pack.edgeSegments(), integer{1}));
+            auto surface = [&](vec3 sample) -> vec3 {
+                sample = glm::normalize(sample);
+                return sample * heights.at(sample);
+            };
+            vec3 normal = glm::cross(surface(dir + tangentU * eps) - surface(dir - tangentU * eps), surface(dir + tangentV * eps) - surface(dir - tangentV * eps));
+            const float mag = glm::length(normal);
+            if (mag < 1.0e-8f)
+                return dir;
+            normal /= mag;
+            if (glm::dot(normal, dir) < 0.0f)
+                return -normal;
+            return normal;
+        }
+
+        void emitFace(resource::builders::geometry::CpuPresentation& cpu, vec3 first, vec3 second, vec3 third, vec3 normalA, vec3 normalB, vec3 normalC, RGB colorA, RGB colorB, RGB colorC) {
+            if (glm::dot(glm::cross(second - first, third - first), first + second + third) < 0.0f) {
                 const vec3 swap = second;
                 second = third;
                 third = swap;
+                const vec3 swapNormal = normalB;
+                normalB = normalC;
+                normalC = swapNormal;
                 const RGB swapColor = colorB;
                 colorB = colorC;
                 colorC = swapColor;
-                normal = -normal;
             }
-            normal = glm::normalize(normal);
             const vec4 packed{packRgb(colorA), packRgb(colorB), packRgb(colorC), 1.0f};
             cpu.positions.push_back(first);
             cpu.positions.push_back(second);
             cpu.positions.push_back(third);
-            cpu.normals.push_back(normal);
-            cpu.normals.push_back(normal);
-            cpu.normals.push_back(normal);
+            cpu.normals.push_back(normalA);
+            cpu.normals.push_back(normalB);
+            cpu.normals.push_back(normalC);
             cpu.color0.push_back(packed);
             cpu.color0.push_back(packed);
             cpu.color0.push_back(packed);
@@ -86,8 +111,8 @@ namespace eltanin::locality::planet {
                     for (integer iu = 0; iu < last; ++iu) {
                         const auto up = heights.pack.upper(diamond, iu, iv);
                         const auto down = heights.pack.lower(diamond, iu, iv);
-                        emitFace(cpu, vertexAt(heights, up[0]), vertexAt(heights, up[1]), vertexAt(heights, up[2]), colors.at(up[0]), colors.at(up[1]), colors.at(up[2]));
-                        emitFace(cpu, vertexAt(heights, down[0]), vertexAt(heights, down[1]), vertexAt(heights, down[2]), colors.at(down[0]), colors.at(down[1]), colors.at(down[2]));
+                        emitFace(cpu, vertexAt(heights, up[0]), vertexAt(heights, up[1]), vertexAt(heights, up[2]), heightNormal(heights, heights.pack.direction(up[0])), heightNormal(heights, heights.pack.direction(up[1])), heightNormal(heights, heights.pack.direction(up[2])), colors.at(up[0]), colors.at(up[1]), colors.at(up[2]));
+                        emitFace(cpu, vertexAt(heights, down[0]), vertexAt(heights, down[1]), vertexAt(heights, down[2]), heightNormal(heights, heights.pack.direction(down[0])), heightNormal(heights, heights.pack.direction(down[1])), heightNormal(heights, heights.pack.direction(down[2])), colors.at(down[0]), colors.at(down[1]), colors.at(down[2]));
                     }
                 }
             }
@@ -270,12 +295,19 @@ namespace eltanin::locality::planet {
 
     auto Planet::probe(vec3 dir) const -> Probe {
         const float len = glm::length(dir);
+        const glm::dquat rotation{pose.rotation};
         if (len < 1.0e-6f)
-            return Probe{.height = passport.radius, .position = dvec3{pose.position}, .normal = glm::dquat{pose.rotation} * dvec3{0.0, 1.0, 0.0}, .mix = passport.geology.mix, .slope = 0.0f};
+            return Probe{.height = passport.radius, .position = dvec3{pose.position}, .normal = rotation * dvec3{0.0, 1.0, 0.0}, .mix = passport.geology.mix, .slope = 0.0f};
         dir /= len;
         const float radial = height(dir);
-        const glm::dquat rotation{pose.rotation};
-        return Probe{.height = radial, .position = dvec3{pose.position} + rotation * (dvec3{dir} * double(radial)), .normal = glm::normalize(rotation * dvec3{dir}), .mix = passport.geology.mix, .slope = 0.0f};
+        const vec3 localNormal = heightNormal(heights, dir);
+        return Probe{
+            .height = radial,
+            .position = dvec3{pose.position} + rotation * (dvec3{dir} * double(radial)),
+            .normal = glm::normalize(rotation * dvec3{localNormal}),
+            .mix = passport.geology.mix,
+            .slope = 1.0f - glm::clamp(glm::dot(localNormal, dir), 0.0f, 1.0f),
+        };
     }
 
 }

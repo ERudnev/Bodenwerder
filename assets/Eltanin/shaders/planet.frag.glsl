@@ -32,7 +32,6 @@ layout(binding = 1) uniform sampler2D u_shadowMap;
 const float shadowBias = 0.0005;
 const float warpAmp = 0.28;
 const float warpFreq = 12.0;
-const float gouraudBand = 0.05;
 
 vec3 hash33(vec3 p) {
     p = fract(p * vec3(0.1031, 0.1030, 0.0973));
@@ -88,7 +87,6 @@ void main() {
     vec3 c0 = unpackRgb(v_color0.x);
     vec3 c1 = unpackRgb(v_color0.y);
     vec3 c2 = unpackRgb(v_color0.z);
-    vec3 gouraud = v_bary.x * c0 + v_bary.y * c1 + v_bary.z * c2;
     vec3 wave = vec3(jagged(dot(v_bary.yz, vec2(warpFreq)), 0.0), jagged(dot(v_bary.zx, vec2(warpFreq)), 1.0), jagged(dot(v_bary.xy, vec2(warpFreq)), 2.0));
     wave -= (wave.x + wave.y + wave.z) * (1.0 / 3.0);
     float interior = 27.0 * v_bary.x * v_bary.y * v_bary.z;
@@ -98,10 +96,7 @@ void main() {
         nearest = c0;
     else if (warped.y > warped.z)
         nearest = c1;
-    float top = max(warped.x, max(warped.y, warped.z));
-    float low = min(warped.x, min(warped.y, warped.z));
-    float gap = top - (warped.x + warped.y + warped.z - top - low);
-    vec3 albedo = actorAlbedoOpacity.rgb * mix(nearest, gouraud, 1.0 - smoothstep(0.0, gouraudBand, gap));
+    vec3 albedo = actorAlbedoOpacity.rgb * nearest;
     float lambert = max(dot(N, L), 0.0);
     float shadow = fetchShadow(v_worldPos, N, L);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);
