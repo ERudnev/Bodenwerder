@@ -35,7 +35,7 @@ namespace eltanin::locality::geo {
             return 1 << scale;
         }
 
-        void stampOccupied(vector<std::uint8_t>& occupied, vector<Mix>& cellMix, index3 rootOrigin, integer extent, const Volume& node) {
+        void stampOccupied(vector<std::uint8_t>& occupied, vector<Mineral::Mix>& cellMix, index3 rootOrigin, integer extent, const Volume& node) {
             if (not node.children.empty()) {
                 for (const auto& child : node.children)
                     stampOccupied(occupied, cellMix, rootOrigin, extent, child);
@@ -202,7 +202,7 @@ namespace eltanin::locality::geo {
             return cpu;
         const integer extent = edgeCells(root.scale);
         vector<std::uint8_t> occupied(static_cast<std::size_t>(extent * extent * extent), 0);
-        vector<Mix> cellMix(static_cast<std::size_t>(extent * extent * extent), Mix{0});
+        vector<Mineral::Mix> cellMix(static_cast<std::size_t>(extent * extent * extent), Mineral::Mix{0});
         stampOccupied(occupied, cellMix, root.origin, extent, root);
 
         const float meters = mech::space::local::edge2meters;
@@ -279,22 +279,22 @@ namespace eltanin::locality::geo {
 
         using MixWeights = std::array<float, 16>;
 
-        auto unpackMix = [](Mix mix) -> MixWeights {
+        auto unpackMix = [](Mineral::Mix mix) -> MixWeights {
             MixWeights weights{};
             for (int channel = 0; channel < 16; ++channel)
                 weights[static_cast<std::size_t>(channel)] = static_cast<float>((mix >> (channel * 4)) & 0xF) / 15.0f;
             return weights;
         };
-        auto packMix = [](const MixWeights& weights) -> Mix {
+        auto packMix = [](const MixWeights& weights) -> Mineral::Mix {
             float mass = 0.0f;
             for (float weight : weights)
                 mass += weight;
             if (mass <= 0.0f)
-                return Mix{0};
-            Mix packed = 0;
+                return Mineral::Mix{0};
+            Mineral::Mix packed = 0;
             for (int channel = 0; channel < 16; ++channel) {
                 const int nibble = static_cast<int>(glm::clamp(weights[static_cast<std::size_t>(channel)] / mass, 0.0f, 1.0f) * 15.0f + 0.5f);
-                packed |= Mix{static_cast<std::uint64_t>(nibble)} << (channel * 4);
+                packed |= Mineral::Mix{static_cast<std::uint64_t>(nibble)} << (channel * 4);
             }
             return packed;
         };
@@ -304,7 +304,7 @@ namespace eltanin::locality::geo {
                 out[static_cast<std::size_t>(channel)] = glm::mix(a[static_cast<std::size_t>(channel)], b[static_cast<std::size_t>(channel)], t);
             return out;
         };
-        auto mixAt = [&](vec3 world) -> Mix {
+        auto mixAt = [&](vec3 world) -> Mineral::Mix {
             vec3 grid = world / meters - vec3{static_cast<float>(root.origin.x), static_cast<float>(root.origin.y), static_cast<float>(root.origin.z)};
             const vec3 p = grid - vec3{0.5f, 0.5f, 0.5f};
             const vec3 originCell = glm::floor(p);
@@ -324,7 +324,7 @@ namespace eltanin::locality::geo {
             const MixWeights c1 = lerpWeights(lerpWeights(sample(x0, y0, z0 + 1), sample(x0 + 1, y0, z0 + 1), frac.x), lerpWeights(sample(x0, y0 + 1, z0 + 1), sample(x0 + 1, y0 + 1, z0 + 1), frac.x), frac.y);
             return packMix(lerpWeights(c0, c1, frac.z));
         };
-        cpu.mix0.resize(cpu.positions.size(), Mix{0});
+        cpu.mix0.resize(cpu.positions.size(), Mineral::Mix{0});
         cpu.cohesion.resize(cpu.positions.size());
         for (std::size_t vertex = 0; vertex < cpu.positions.size(); ++vertex) {
             const vec3 inward = cpu.positions[vertex] - cpu.normals[vertex] * (0.25f * meters);

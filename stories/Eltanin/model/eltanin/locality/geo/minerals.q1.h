@@ -2,12 +2,15 @@
 
 #include <fQSM/api/interface.h>
 
+#include <cstdint>
+
 namespace eltanin::locality::geo {
 
     using namespace fqsm::api;
 
     struct Mineral {
         using Index = integer;
+        using Mix = std::uint64_t;
         string name;
         float density;
         float scale;

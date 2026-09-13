@@ -8,10 +8,12 @@
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/texpack.q1.h>
+#include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/wrapper/product.h>
 
 #include "blueprints/catalog.h"
 #include "fittings/mounts/catalog.h"
+#include "geo/celestial/planet.h"
 #include "physics/system.h"
 #include "scenarios/planeliod.h"
 #include "story.ui.h"
@@ -49,7 +51,9 @@ namespace eltanin {
         Handles assets;
         Ui ui;
         base::maybe<View> world_view;
+        base::maybe<rmmr::scene::Grid::Id> grid;
         base::maybe<phys::System> physics;
+        base::maybe<locality::planet::Planet> planet;
         scenario::Planeliod scenario;
         BlueprintCatalog blueprintPack;
         MountCatalog mountPack;
@@ -71,6 +75,7 @@ namespace eltanin {
         void bindGameEntities(Writing);
         void advanceSim(Writing, seconds dt);
         void drawCameraWindow(Writing);
+        void drawSpaceWindow(Writing);
         void drawLightingWindow(Writing);
         void drawMaterialsWindow(Writing);
         void drawMaterialInspector(Writing, rmmr::resource::material::Asset::Id);

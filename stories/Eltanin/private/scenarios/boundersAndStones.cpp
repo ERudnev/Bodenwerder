@@ -32,11 +32,11 @@ namespace eltanin::scenario {
         constexpr int pebbleCount = 100;
         constexpr int hornCount = 4;
 
-        auto nibble(int channel, int fill) -> locality::geo::Mix {
-            return locality::geo::Mix{static_cast<std::uint64_t>(fill)} << (channel * 4);
+        auto nibble(int channel, int fill) -> locality::geo::Mineral::Mix {
+            return locality::geo::Mineral::Mix{static_cast<std::uint64_t>(fill)} << (channel * 4);
         }
 
-        auto mixDensity(locality::geo::Mix mix) -> float {
+        auto mixDensity(locality::geo::Mineral::Mix mix) -> float {
             const auto& table = locality::geo::Mineral::table();
             float density = 0.0f;
             const auto channels = table.size() < static_cast<std::size_t>(mixChannels) ? table.size() : static_cast<std::size_t>(mixChannels);
@@ -81,7 +81,7 @@ namespace eltanin::scenario {
 
     void BoundersAndStones::populate(Writing context, rmmr::system::Device::Id device) {
         with<World>::placeCamera(context, Pose::from(Pos{0.0f, 50.0f, 250.0f}, HPB{0.0f, -20.0f, 0.0f}));
-        const locality::geo::Mix palettes[hornCount]{
+        const locality::geo::Mineral::Mix palettes[hornCount]{
             nibble(1, 8) | nibble(2, 4) | nibble(3, 3),
             nibble(0, 15),
             nibble(6, 9) | nibble(7, 6),

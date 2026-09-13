@@ -20,9 +20,9 @@
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/controller/camera3d.q1.h>
-#include "geo/celestial/planetiod.h"
 #include "physics/settings.h"
 #include <rmmr/scene/camera.q1.h>
+#include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -64,6 +64,16 @@ namespace eltanin {
                 panel = Panel{};
             else
                 panel.reset();
+        }
+
+        constexpr float spaceScales[4] = {0.1f, 1.0f, 10.0f, 100.0f};
+
+        auto spaceScaleIndex(float scale) -> int {
+            int picked = 1;
+            for (int index = 0; index < 4; ++index)
+                if (scale == spaceScales[index])
+                    picked = index;
+            return picked;
         }
 
         auto passName(renderer::Pass pass) -> const char* {
@@ -131,6 +141,7 @@ namespace eltanin {
         if (paused != with<World>::get_global(world).paused)
             with<World>::modify_global(world)->paused = paused;
         togglePanel("Camera", ui.camera);
+        togglePanel("Space", ui.space);
         togglePanel("Lighting", ui.lighting);
         togglePanel("Materials", ui.materials);
         {
@@ -168,6 +179,7 @@ namespace eltanin {
 
     void Game::drawUi(Writing world) {
         drawCameraWindow(world);
+        drawSpaceWindow(world);
         drawLightingWindow(world);
         drawMaterialsWindow(world);
         drawAssemblerWindow(world);
@@ -284,30 +296,19 @@ namespace eltanin {
                 }
                 ImGui::DragFloat("Near", &quantum->z_near, 0.1f, 0.5f, quantum->z_far - 1.0f, "%.1f");
                 ImGui::DragFloat("Far", &quantum->z_far, 100.0f, quantum->z_near + 1.0f, 100000.0f, "%.0f");
-                if (with<controller::Camera3d>::exists(world, camera)) {
-                    static constexpr float moveScales[4] = {0.1f, 1.0f, 10.0f, 100.0f};
-                    auto fly = with<controller::Camera3d>::modify(world, camera);
-                    int speed = 1;
-                    for (int index = 0; index < 4; ++index)
-                        if (fly->moveScale == moveScales[index])
-                            speed = index;
-                    if (ImGui::Combo("Move speed", &speed, "×0.1\0×1\0×10\0×100\0"))
-                        fly->moveScale = moveScales[speed];
-                }
-                const auto& landscape = with<locality::Thing>::get_global(world).landscape;
-                if (landscape) {
+                if (planet) {
                     ImGui::Separator();
-                    ImGui::TextUnformatted("Landscape");
+                    ImGui::TextUnformatted("Planet");
                     const Pos cameraPos = node.pose.position;
-                    const vec3 local = glm::inverse(landscape->pose.rotation) * (cameraPos - landscape->pose.position);
+                    const vec3 local = glm::inverse(planet->pose.rotation) * (cameraPos - planet->pose.position);
                     const float range = glm::length(local);
-                    const float altitude = locality::geo::Planetoid::altitudeAt(world, cameraPos);
-                    const float gravity = float(glm::length(locality::geo::Planetoid::gravityAt(world, dvec3{cameraPos})));
+                    const float altitude = planet->altitudeAt(cameraPos);
+                    const float gravity = float(glm::length(planet->gravityAt(dvec3{cameraPos})));
                     const float latDeg = range > 1.0e-3f ? glm::degrees(std::asin(glm::clamp(local.y / range, -1.0f, 1.0f))) : 0.0f;
                     const float lonDeg = range > 1.0e-3f ? glm::degrees(std::atan2(local.x, local.z)) : 0.0f;
                     ImGui::Text("Altitude: %.1f m", altitude);
                     ImGui::Text("g: %.3f m/s²", gravity);
-                    const float air = locality::geo::Planetoid::airDensity(world, cameraPos);
+                    const float air = planet->airDensity(cameraPos);
                     ImGui::Text("Air: %.0f g/m³ (%.0f%% ISA)", air, 100.0f * air / phys::Settings::Air::isaDensity);
                     ImGui::Text("Range to center: %.1f m (%.2f km)", range, range * 0.001f);
                     ImGui::Text("Lat / Lon: %.3f°, %.3f°", latDeg, lonDeg);
@@ -317,6 +318,55 @@ namespace eltanin {
         ImGui::End();
         if (not open)
             ui.camera.reset();
+    }
+
+    void Game::drawSpaceWindow(Writing world) {
+        if (not ui.space.has_value())
+            return;
+
+        bool open = true;
+        if (ImGui::Begin("Space", &open)) {
+            float current = 1.0f;
+            const bool hasCamera = not views.empty() and with<controller::Camera3d>::exists(world, views.front().camera);
+            if (hasCamera)
+                current = with<controller::Camera3d>::get(world, views.front().camera).moveScale;
+            else if (grid.has_value() and with<scene::actor::MeshState>::exists(world, *grid))
+                current = with<scene::actor::MeshState>::get(world, *grid).scale.x;
+            int scale = spaceScaleIndex(current);
+            if (ImGui::Combo("Scale", &scale, "×0.1\0×1\0×10\0×100\0")) {
+                const float next = spaceScales[scale];
+                if (hasCamera)
+                    with<controller::Camera3d>::modify(world, views.front().camera)->moveScale = next;
+                if (grid.has_value() and with<scene::actor::MeshState>::exists(world, *grid)) {
+                    auto mesh = with<scene::actor::MeshState>::modify(world, *grid);
+                    auto gizmo = with<scene::Grid>::modify(world, *grid);
+                    mesh->scale = vec3{next};
+                    mesh->patternScale = 1.0f;
+                    gizmo->patternScale = 1.0f;
+                }
+            }
+            if (not grid.has_value() or not with<scene::Grid>::exists(world, *grid)) {
+                ImGui::TextDisabled("No grid in scene.");
+            } else {
+                auto node = with<scene::Node>::modify(world, *grid);
+                bool visible = node->visible;
+                if (ImGui::Checkbox("Grid", &visible))
+                    node->visible = visible;
+                ImGui::DragFloat3("Position", &node->pose.position.x, 0.1f, 0.0f, 0.0f, "%.2f");
+                HPB hpb = node->pose.hpb();
+                if (ImGui::DragFloat3("HPB", &hpb.x, 0.1f, -180.0f, 180.0f, "%.1f°"))
+                    node->pose.hpb(hpb);
+                if (with<scene::actor::MeshState>::exists(world, *grid)) {
+                    auto mesh = with<scene::actor::MeshState>::modify(world, *grid);
+                    auto gizmo = with<scene::Grid>::modify(world, *grid);
+                    ImGui::SliderFloat("Opacity", &mesh->opacity, 0.0f, 1.0f, "%.2f");
+                    gizmo->opacity = mesh->opacity;
+                }
+            }
+        }
+        ImGui::End();
+        if (not open)
+            ui.space.reset();
     }
 
     void Game::drawLightingWindow(Writing world) {

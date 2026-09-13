@@ -1,17 +1,16 @@
 #pragma once
 
+#include "geo/celestial/planet.h"
 #include "scenario.h"
 
-#include <rmmr/math.q1.h>
+#include <base/maybe.h>
 
 namespace eltanin::scenario {
 
     struct Planeliod : Scenario {
-        // Surface reference above planetoid at origin with radius 10 km (north pole).
-        static constexpr rmmr::Pos origin{10000.0f, 0.0f, 0.0f};
-
         void loadResources(Writing, const rmmr::wrapper::assets::Handles& shared) override;
         void populate(Writing, rmmr::system::Device::Id) override;
+        void placePlanet(Writing, rmmr::system::Device::Id, base::maybe<locality::planet::Planet>&);
     };
 
 }

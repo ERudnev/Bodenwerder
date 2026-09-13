@@ -157,10 +157,10 @@ namespace rmmr::resource::builders::geometry {
     }
 
     auto GeometryGenerator::gridPlane() -> CpuPresentation {
-        // Half-extent in local meters. With patternScale = 1/cell (cell=4m) → lattice lines −50…+50.
+        // Half-extent in local meters. Actor scale stretches the plane; patternScale 1 → one cell per local metre.
         constexpr float half = 200.0f;
 
-        // CCW when viewed from +Y (front faces the sky); required for GL_CULL_FACE.
+        // Both windings: front from +Y and from −Y, so GL_CULL_FACE does not hide the underside.
         return CpuPresentation{
             .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position"}),
             .positions = vector<Pos>{
@@ -171,7 +171,7 @@ namespace rmmr::resource::builders::geometry {
             },
             .normals = {},
             .uv0 = {},
-            .indices = {0, 2, 1, 0, 3, 2},
+            .indices = {0, 2, 1, 0, 3, 2, 0, 1, 2, 0, 2, 3},
         };
     }
 

@@ -12,30 +12,26 @@
 
 #include <fQSM/api/interface.h>
 
-#include <cstdint>
-
 namespace eltanin::locality::geo {
 
     using namespace fqsm::api;
 
-    using Mix = std::uint64_t;
-
     struct Volume {
         index3 origin;
         integer scale;
-        Mix mix;
+        Mineral::Mix mix;
         vector<Volume> children;
     };
 
     struct GeneralizedRecipe {
-        Mix mix;
+        Mineral::Mix mix;
         float radius;
         float lump;
         integer seed;
         float spotMeters;
         float spotContrast;
 
-        static auto homogenous(Mineral::Index) -> Mix;
+        static auto homogenous(Mineral::Index) -> Mineral::Mix;
     };
 
     struct Rock : Feature<Rock, Thing> {

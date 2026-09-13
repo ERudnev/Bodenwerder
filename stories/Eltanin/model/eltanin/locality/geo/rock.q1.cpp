@@ -33,13 +33,13 @@ namespace eltanin::locality::geo {
     namespace {
 
         constexpr int mixChannels = 16;
-        constexpr Mix iceMix = 15;
+        constexpr Mineral::Mix iceMix = 15;
         constexpr integer iceSphereScale = 3;
         constexpr integer maxScale = 16;
         constexpr float particleSnapMeters = 0.1f;
         constexpr float octreeResolutionRadius = mech::space::local::edge2meters * 2.0f;
 
-        auto mixDensity(Mix mix) -> float {
+        auto mixDensity(Mineral::Mix mix) -> float {
             if (mix == 0)
                 return 0.0f;
             const auto& table = Mineral::table();
@@ -110,7 +110,7 @@ namespace eltanin::locality::geo {
             if (node.children.empty())
                 return {};
             if (node.children.size() == 8) {
-                const Mix mix = node.children[0].mix;
+                const Mineral::Mix mix = node.children[0].mix;
                 bool collapse = mix != 0 and node.children[0].children.empty();
                 for (const auto& child : node.children) {
                     if (not child.children.empty() or child.mix != mix)
@@ -135,8 +135,8 @@ namespace eltanin::locality::geo {
         constexpr float torusMajorCells = 8.0f;
         constexpr float torusMinorCells = 4.0f;
 
-        auto pureMix(int channel) -> Mix {
-            return Mix{15} << (channel * 4);
+        auto pureMix(int channel) -> Mineral::Mix {
+            return Mineral::Mix{15} << (channel * 4);
         }
 
         auto torusInside(vec3 localMeters, float majorMeters, float minorMeters) -> bool {
@@ -205,7 +205,7 @@ namespace eltanin::locality::geo {
             if (node.children.empty())
                 return {};
             if (node.children.size() == 8) {
-                const Mix mix = node.children[0].mix;
+                const Mineral::Mix mix = node.children[0].mix;
                 bool collapse = mix != 0 and node.children[0].children.empty();
                 for (const auto& child : node.children) {
                     if (not child.children.empty() or child.mix != mix)
@@ -527,10 +527,10 @@ namespace eltanin::locality::geo {
         // Volume rocks: thermal / conduction later (destruction path). Boulder handles small-body radiate.
     }
 
-    auto GeneralizedRecipe::homogenous(Mineral::Index mineral) -> Mix {
+    auto GeneralizedRecipe::homogenous(Mineral::Index mineral) -> Mineral::Mix {
         if (mineral < 0 or mineral >= mixChannels)
             return 0;
-        return Mix{15} << (mineral * 4);
+        return Mineral::Mix{15} << (mineral * 4);
     }
 
     void Rock::Actions::followBody(Stewarding context) {

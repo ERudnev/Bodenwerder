@@ -31,7 +31,7 @@ namespace eltanin::locality::geo {
 
         constexpr int mixChannels = 16;
 
-        auto mixDensity(Mix mix) -> float {
+        auto mixDensity(Mineral::Mix mix) -> float {
             if (mix == 0)
                 return 0.0f;
             const auto& table = Mineral::table();
@@ -44,11 +44,11 @@ namespace eltanin::locality::geo {
             return density;
         }
 
-        auto dominantMineral(Mix mix) -> integer {
+        auto dominantMineral(Mineral::Mix mix) -> integer {
             integer dominant = 0;
-            Mix weight = 0;
+            Mineral::Mix weight = 0;
             for (integer channel = 0; channel < mixChannels; ++channel) {
-                const Mix candidate = (mix >> (channel * 4)) & 0xF;
+                const Mineral::Mix candidate = (mix >> (channel * 4)) & 0xF;
                 if (candidate > weight) {
                     dominant = channel;
                     weight = candidate;

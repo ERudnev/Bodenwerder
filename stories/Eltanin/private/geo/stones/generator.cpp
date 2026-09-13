@@ -92,23 +92,23 @@ namespace eltanin::locality::geo {
             return 1 << scale;
         }
 
-        auto unpackMix(Mix mix) -> MixWeights {
+        auto unpackMix(Mineral::Mix mix) -> MixWeights {
             MixWeights weights{};
             for (int channel = 0; channel < mixChannels; ++channel)
                 weights[static_cast<std::size_t>(channel)] = static_cast<float>((mix >> (channel * 4)) & 0xF) / 15.0f;
             return weights;
         }
 
-        auto packMix(const MixWeights& weights) -> Mix {
+        auto packMix(const MixWeights& weights) -> Mineral::Mix {
             float mass = 0.0f;
             for (float weight : weights)
                 mass += weight;
             if (mass <= 0.0f)
-                return Mix{0};
-            Mix packed = 0;
+                return Mineral::Mix{0};
+            Mineral::Mix packed = 0;
             for (int channel = 0; channel < mixChannels; ++channel) {
                 const int nibble = static_cast<int>(glm::clamp(weights[static_cast<std::size_t>(channel)] / mass, 0.0f, 1.0f) * 15.0f + 0.5f);
-                packed |= Mix{static_cast<std::uint64_t>(nibble)} << (channel * 4);
+                packed |= Mineral::Mix{static_cast<std::uint64_t>(nibble)} << (channel * 4);
             }
             return packed;
         }
@@ -221,7 +221,7 @@ namespace eltanin::locality::geo {
         };
 
         auto toVolume(const BuildNode& node) -> Volume {
-            Volume volume{.origin = node.origin, .scale = node.scale, .mix = node.children.empty() ? packMix(node.weights) : Mix{0}, .children = {}};
+            Volume volume{.origin = node.origin, .scale = node.scale, .mix = node.children.empty() ? packMix(node.weights) : Mineral::Mix{0}, .children = {}};
             volume.children.reserve(node.children.size());
             for (const auto& child : node.children)
                 volume.children.push_back(toVolume(child));
@@ -376,7 +376,7 @@ namespace eltanin::locality::geo {
             return glm::clamp((cellY + lavaHeightHalf) / lavaLayerCells, integer{0}, integer{mixChannels - 1});
         }
 
-        auto lavaMixForLayer(integer channel) -> Mix {
+        auto lavaMixForLayer(integer channel) -> Mineral::Mix {
             MixWeights weights{};
             weights[static_cast<std::size_t>(channel)] = 1.0f;
             return packMix(weights);
@@ -409,7 +409,7 @@ namespace eltanin::locality::geo {
                 return {};
             if ((occ == Occupancy::solid and lavaOneLayer(origin, scale)) or scale == 0)
                 return Volume{.origin = origin, .scale = scale, .mix = lavaMixForLayer(lavaLayer(origin.y)), .children = {}};
-            Volume node{.origin = origin, .scale = scale, .mix = Mix{0}, .children = {}};
+            Volume node{.origin = origin, .scale = scale, .mix = Mineral::Mix{0}, .children = {}};
             const integer childScale = scale - 1;
             const integer half = edgeCells(childScale);
             for (const auto& octant : mech::cube::corners) {
@@ -420,7 +420,7 @@ namespace eltanin::locality::geo {
             if (node.children.empty())
                 return {};
             if (node.children.size() == 8) {
-                const Mix leafMix = node.children[0].mix;
+                const Mineral::Mix leafMix = node.children[0].mix;
                 bool collapse = node.children[0].children.empty();
                 for (const auto& child : node.children) {
                     if (not child.children.empty() or child.mix != leafMix)

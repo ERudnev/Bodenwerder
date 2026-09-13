@@ -17,6 +17,9 @@ namespace eltanin {
         struct Camera {};
         base::maybe<Camera> camera;
 
+        struct Space {};
+        base::maybe<Space> space;
+
         struct Lighting {};
         base::maybe<Lighting> lighting;
 

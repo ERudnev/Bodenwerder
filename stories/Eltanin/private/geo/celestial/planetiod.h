@@ -18,7 +18,8 @@ namespace eltanin::locality::geo {
 
     using namespace fqsm::api;
 
-    // Locality heightfield bag (not a domain entity). Lives on Thing::Global.landscape.
+    // Landscape + Planetoid are one type that split: the bag and the static queries over it.
+    // Reference cube-sphere; locality uses planet::Planet.
     struct Landscape {
         struct Look {
             integer seed;

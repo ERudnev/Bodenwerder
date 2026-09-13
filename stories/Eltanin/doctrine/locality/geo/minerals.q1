@@ -6,6 +6,7 @@ namespace eltanin
     // Wider than OpenGL or physics need today.
     struct Mineral
       using Index as integer
+      using Mix as @external(C++ uint64_t; 16x4-bit voxel word)
       one
         name: string
         density: float // g/cm3; physics mass uses kgPerCubicMeter (×1000 → kg/m³)

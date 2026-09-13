@@ -11,27 +11,25 @@ namespace eltanin
   namespace locality
     namespace geo
 
-    using Mix as @external(C++ uint64_t; 16x4-bit voxel word)
-
     // Octree node on the 4 m lattice. scale is log2(edge in cells): 0 = one cell.
     // Empty children: homogeneous leaf. mix 0 = vacuum (omitted). Sparse: missing child = empty octant.
     struct Volume
       origin: index3
       scale: integer
-      mix: Mix
+      mix: Mineral::Mix
       children: vector<Volume>
 
     // Mean mix names the minerals; zeros stay zero. Domains are geological patches, not grain noise.
     // spotMeters — clean-zone width (≈ 10–50% of diameter). spotContrast 0 = alloy, 1 = sharp contacts.
     // lump 0 = sphere, 1 = triaxial potato with knobs and pits.
     struct GeneralizedRecipe
-      mix: Mix
+      mix: Mineral::Mix
       radius: float
       lump: float
       seed: integer
       spotMeters: float
       spotContrast: float
-      always ?homogenous(Mineral::Index)->Mix
+      always ?homogenous(Mineral::Index)->Mineral::Mix
 
     // Large rock: Body + Crystal + octree Volume. Small debris → Boulder.
     feature Rock of locality::Thing

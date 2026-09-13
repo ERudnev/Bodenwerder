@@ -1,5 +1,6 @@
 file(GLOB_RECURSE MODULE_SOURCES CONFIGURE_DEPENDS "*.cpp")
 list(FILTER MODULE_SOURCES EXCLUDE REGEX "[/\\\\]test[/\\\\]")
+list(FILTER MODULE_SOURCES EXCLUDE REGEX "[/\\\\]geo[/\\\\]celestial[/\\\\]planetoid\\.cpp$")
 
 project("Eltanin"
     DESCRIPTION "Game project. Space"

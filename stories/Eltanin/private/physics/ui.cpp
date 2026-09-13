@@ -1,4 +1,5 @@
 #include "physics/ui.h"
+#include "geo/celestial/planet.h"
 
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/locality/construct.q1.h>
@@ -9,7 +10,6 @@
 #include <eltanin/locality/geo/rock.q1.h>
 #include <eltanin/physics/resting.q1.h>
 #include <eltanin/world.q1.h>
-#include "geo/celestial/planetiod.h"
 #include <rmmr/resources/builders/geometryGenerator.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
@@ -24,6 +24,7 @@
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
+#include <glm/trigonometric.hpp>
 
 #include <imgui.h>
 #include <string>
@@ -396,9 +397,17 @@ namespace eltanin::phys {
                 if (ImGui::CollapsingHeader("Location", ImGuiTreeNodeFlags_DefaultOpen)) {
                     if (with<rmmr::scene::Root>::exists(context, system.scene)) {
                         auto root = with<rmmr::scene::Root>::modify(context, system.scene);
-                        if (locality::geo::Planetoid::placed(context)) {
-                            auto& landscape = *with<locality::Thing>::modify_global(context)->landscape;
-                            ImGui::DragFloat("Surface g", &landscape.look.surfaceAcceleration, 0.01f, 0.0f, 0.0f, "%.3f m/s²");
+                        if (system.planet) {
+                            const auto& passport = system.planet->passport;
+                            ImGui::Text("Radius %.0f m", passport.radius);
+                            ImGui::Text("Surface g %.3f m/s²", passport.surfaceAcceleration);
+                            ImGui::Text("Air MSL %.0f g/m³", passport.atmosphere.seaDensity);
+                            ImGui::Text("Kerman %.0f m", passport.atmosphere.kerman);
+                            float spinDeg = glm::degrees(system.planet->spin);
+                            if (ImGui::DragFloat("Spin", &spinDeg, 0.5f, 0.0f, 0.0f, "%.1f°")) {
+                                system.planet->spin = glm::radians(spinDeg);
+                                system.planet->sync(context);
+                            }
                         }
                         ImGui::DragFloat("Air density MSL", &root->atmosphereDensity, 1.0f, 0.0f, 0.0f, "%.0f g/m³");
                         ImGui::DragFloat("Kerman line", &root->atmosphereKerman, 100.0f, 0.0f, 0.0f, "%.0f m");
