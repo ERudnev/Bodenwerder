@@ -25,6 +25,7 @@ namespace rmmr::primitive {
             v2f,
             v3f,
             v4f,
+            u32,
             uvec2,
         };
 
@@ -41,7 +42,7 @@ namespace rmmr::primitive {
         // - 1..99: primary vertex attributes
         // - 100..: auxiliary / optional attributes
         // `live` — own VBO (Runtime::channels), not interleaved.
-        static constexpr auto vocabulary = std::array<Entry, 7>{{
+        static constexpr auto vocabulary = std::array<Entry, 9>{{
             Entry{0, Type::f32, "_undefined", false},
 
             Entry{1, Type::v3f, "position", false},
@@ -50,6 +51,8 @@ namespace rmmr::primitive {
             Entry{100, Type::v4f, "color0", false},
             Entry{101, Type::uvec2, "mix0", false},
             Entry{102, Type::f32, "cohesion", true},
+            Entry{103, Type::u32, "palette", false},
+            Entry{104, Type::uvec2, "weights", false},
         }};
 
         static constexpr auto name_of(PersistentId id) -> Name {
@@ -95,6 +98,7 @@ namespace rmmr::primitive {
                 case Type::v2f: return 8;
                 case Type::v3f: return 12;
                 case Type::v4f: return 16;
+                case Type::u32: return 4;
                 case Type::uvec2: return 8;
             }
             throw std::runtime_error("GeometrySemantics::byteSize: unknown geometry type");
@@ -106,13 +110,14 @@ namespace rmmr::primitive {
                 case Type::v2f: return 2;
                 case Type::v3f: return 3;
                 case Type::v4f: return 4;
+                case Type::u32: return 1;
                 case Type::uvec2: return 2;
             }
             throw std::runtime_error("GeometrySemantics::componentCount: unknown geometry type");
         }
 
         static constexpr auto integerPacked(Type type) -> bool {
-            return type == Type::uvec2;
+            return type == Type::u32 or type == Type::uvec2;
         }
     };
 }

@@ -26,6 +26,8 @@ namespace rmmr::resource::builders::geometry {
         vector<integer> indices;
         vector<std::uint64_t> mix0;
         vector<float> cohesion;
+        vector<std::uint32_t> palette;
+        vector<std::uint64_t> weights;
     };
 
     struct GeometryGenerator final {

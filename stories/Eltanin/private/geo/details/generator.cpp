@@ -62,9 +62,13 @@ namespace eltanin::locality::geo {
 
     }
 
+    void generateSurfaceWeights(planet::Planet&) {
+    }
+
     void generate(planet::Planet& planet) {
         generateHeights(planet);
         generateColors(planet);
+        generateSurfaceWeights(planet);
     }
 
 }

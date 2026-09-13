@@ -267,7 +267,7 @@ namespace eltanin {
             const auto planetShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "planet"), item<shader::Loader>{.vertex = "shaders/planet.vert.glsl", .fragment = "shaders/planet.frag.glsl"});
             with<Assets>::add_material(context, Name::from("Eltanin", "planet"), Material::Quantum{
                 .techniques = {
-                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap"}), .glowSpread = false}},
+                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap"}), .glowSpread = false}},
                 },
                 .nearest = false,
                 .blend = renderer::BlendMode::inherit,

@@ -3,6 +3,8 @@
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec4 aColor0;
+layout (location = 3) in uint aPalette;
+layout (location = 4) in uvec2 aWeights;
 
 layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     mat4 actorModel;
@@ -28,9 +30,10 @@ layout(std430, binding = 8) readonly buffer PoseBuffer {
 
 out vec3 v_worldPos;
 out vec3 v_worldNormal;
-flat out vec4 v_color0;
-flat out vec3 v_seed;
-out vec3 v_bary;
+out vec3 v_objectPos;
+out vec4 v_color0;
+flat out uint v_palette;
+out vec4 v_weights;
 
 const ivec3 orientationRow0[24] = ivec3[24](
     ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0),
@@ -63,11 +66,11 @@ void main() {
     vec3 localPosition = localRotation * aPos + vec3(pose.xyz) * actorLatticePattern.x;
     vec4 worldPos = actorModel * vec4(localPosition, 1.0);
     v_worldPos = worldPos.xyz;
+    v_objectPos = localPosition;
     mat3 normalMat = mat3(transpose(inverse(actorModel)));
     v_worldNormal = normalize(normalMat * localRotation * aNormal);
     v_color0 = aColor0;
-    v_seed = aPos;
-    int corner = gl_VertexID % 3;
-    v_bary = vec3(corner == 0, corner == 1, corner == 2);
+    v_palette = aPalette;
+    v_weights = vec4(float(aWeights.x & 255u), float((aWeights.x >> 8) & 255u), float((aWeights.x >> 16) & 255u), float((aWeights.x >> 24) & 255u)) / 255.0;
     gl_Position = passProjection * passView * worldPos;
 }

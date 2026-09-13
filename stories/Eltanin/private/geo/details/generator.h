@@ -7,5 +7,6 @@ namespace eltanin::locality::planet {
 namespace eltanin::locality::geo {
 
     void generate(planet::Planet&);
+    void generateSurfaceWeights(planet::Planet&);
 
 }

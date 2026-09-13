@@ -253,6 +253,8 @@ namespace rmmr::resource::geometry {
             if (id == Semantics::id_of("color0")) return view(cpu.color0);
             if (id == Semantics::id_of("mix0")) return view(cpu.mix0);
             if (id == Semantics::id_of("cohesion")) return view(cpu.cohesion);
+            if (id == Semantics::id_of("palette")) return view(cpu.palette);
+            if (id == Semantics::id_of("weights")) return view(cpu.weights);
             return CpuChannel{nullptr, 0, 0};
         }
 

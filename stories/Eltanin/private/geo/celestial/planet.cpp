@@ -9,6 +9,7 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
@@ -21,7 +22,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <cstring>
 #include <numbers>
 
 namespace eltanin::locality::planet {
@@ -31,11 +31,16 @@ namespace eltanin::locality::planet {
 
     namespace {
 
-        auto packRgb(RGB color) -> float {
-            const std::uint32_t bits = std::uint32_t(glm::clamp(color.r, 0.0f, 1.0f) * 255.0f + 0.5f) | (std::uint32_t(glm::clamp(color.g, 0.0f, 1.0f) * 255.0f + 0.5f) << 8) | (std::uint32_t(glm::clamp(color.b, 0.0f, 1.0f) * 255.0f + 0.5f) << 16);
-            float packed;
-            std::memcpy(&packed, &bits, sizeof(packed));
-            return packed;
+        auto packByte(float channel) -> std::uint32_t {
+            return std::uint32_t(glm::clamp(channel, 0.0f, 1.0f) * 255.0f + 0.5f);
+        }
+
+        auto placeholderPalette() -> std::uint32_t {
+            return 0u | (1u << 4) | (2u << 8) | (3u << 12);
+        }
+
+        auto placeholderWeights(RGB color) -> std::uint64_t {
+            return std::uint64_t(packByte(color.r) | (packByte(color.g) << 8) | (packByte(color.b) << 16));
         }
 
         auto heightNormal(const geo::IcosaMap<float>& heights, vec3 dir) -> vec3 {
@@ -75,16 +80,23 @@ namespace eltanin::locality::planet {
                 colorB = colorC;
                 colorC = swapColor;
             }
-            const vec4 packed{packRgb(colorA), packRgb(colorB), packRgb(colorC), 1.0f};
+            const std::uint32_t palette = placeholderPalette();
+            const vec4 neutral{1.0f, 1.0f, 1.0f, 1.0f};
             cpu.positions.push_back(first);
             cpu.positions.push_back(second);
             cpu.positions.push_back(third);
             cpu.normals.push_back(normalA);
             cpu.normals.push_back(normalB);
             cpu.normals.push_back(normalC);
-            cpu.color0.push_back(packed);
-            cpu.color0.push_back(packed);
-            cpu.color0.push_back(packed);
+            cpu.color0.push_back(neutral);
+            cpu.color0.push_back(neutral);
+            cpu.color0.push_back(neutral);
+            cpu.palette.push_back(palette);
+            cpu.palette.push_back(palette);
+            cpu.palette.push_back(palette);
+            cpu.weights.push_back(placeholderWeights(colorA));
+            cpu.weights.push_back(placeholderWeights(colorB));
+            cpu.weights.push_back(placeholderWeights(colorC));
         }
 
         auto vertexAt(const geo::IcosaMap<float>& heights, geo::IcosaPack::Slot slot) -> vec3 {
@@ -94,7 +106,7 @@ namespace eltanin::locality::planet {
         auto shellMesh(const geo::IcosaMap<float>& heights, const geo::IcosaMap<RGB>& colors) -> resource::builders::geometry::CpuPresentation {
             const integer last = heights.pack.edgeSegments();
             resource::builders::geometry::CpuPresentation cpu{
-                .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "color0"}),
+                .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "color0", "palette", "weights"}),
                 .positions = {},
                 .normals = {},
                 .uv0 = {},
@@ -102,10 +114,14 @@ namespace eltanin::locality::planet {
                 .indices = {},
                 .mix0 = {},
                 .cohesion = {},
+                .palette = {},
+                .weights = {},
             };
             cpu.positions.reserve(static_cast<std::size_t>(geo::IcosaPack::diamondCount * last * last * 6));
             cpu.normals.reserve(cpu.positions.capacity());
             cpu.color0.reserve(cpu.positions.capacity());
+            cpu.palette.reserve(cpu.positions.capacity());
+            cpu.weights.reserve(cpu.positions.capacity());
             for (integer diamond = 0; diamond < geo::IcosaPack::diamondCount; ++diamond) {
                 for (integer iv = 0; iv < last; ++iv) {
                     for (integer iu = 0; iu < last; ++iu) {
@@ -228,13 +244,19 @@ namespace eltanin::locality::planet {
             context.refuse("eltanin::locality::planet::Planet::place: geometry install failed");
             return;
         }
-        auto meshQuantum = with<scene::actor::Mesh>::composeOne(context, geometryId, *material);
+        const auto crust = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "crust"));
+        if (not crust) {
+            context.refuse("eltanin::locality::planet::Planet::place: crust texpack missing");
+            return;
+        }
+        auto meshQuantum = with<scene::actor::Mesh>::composeWithTexpack(context, geometryId, *material, *crust);
         if (not meshQuantum) {
             context.refuse("eltanin::locality::planet::Planet::place: mesh compose failed");
             return;
         }
         auto meshState = with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
         meshState.latticeStep = 0.0f;
+        meshState.patternScale = glm::max(0.5f, passport.radius * 2.0f);
         shell = with<scene::Interface>::createMeshActor(context, with<Thing>::get_global(context).scene, this->pose, std::move(*meshQuantum), meshState);
         with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereDensity = passport.atmosphere.seaDensity;
         with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereKerman = passport.atmosphere.kerman;
