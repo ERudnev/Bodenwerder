@@ -2,6 +2,8 @@
 
 in vec3 v_worldPos;
 in vec3 v_worldNormal;
+flat in vec4 v_color0;
+in vec3 v_bary;
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out float BloomMask;
@@ -28,6 +30,11 @@ layout(binding = 1) uniform sampler2D u_shadowMap;
 
 const float shadowBias = 0.0005;
 
+vec3 unpackRgb(float encoded) {
+    uint bits = floatBitsToUint(encoded);
+    return vec3(float(bits & 255u), float((bits >> 8) & 255u), float((bits >> 16) & 255u)) / 255.0;
+}
+
 float sampleShadow(vec2 uv, float currentDepth) {
     float closest = texture(u_shadowMap, uv).r;
     return currentDepth > closest ? 0.0 : 1.0;
@@ -53,7 +60,12 @@ float fetchShadow(vec3 worldPos, vec3 N, vec3 L) {
 void main() {
     vec3 N = normalize(v_worldNormal);
     vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
-    vec3 albedo = actorAlbedoOpacity.rgb;
+    float encoded = v_color0.z;
+    if (v_bary.x > v_bary.y && v_bary.x > v_bary.z)
+        encoded = v_color0.x;
+    else if (v_bary.y > v_bary.z)
+        encoded = v_color0.y;
+    vec3 albedo = actorAlbedoOpacity.rgb * unpackRgb(encoded);
     float lambert = max(dot(N, L), 0.0);
     float shadow = fetchShadow(v_worldPos, N, L);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);

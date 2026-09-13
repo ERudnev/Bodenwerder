@@ -29,18 +29,40 @@ namespace rmmr::resource::shader {
             };
         }
 
-        auto compile_shader_stage(GLenum shader_type, const std::string& source) -> maybe<GLuint> {
+        auto shaderInfoLog(GLuint shader) -> std::string {
+            GLint length = 0;
+            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &length);
+            if (length <= 1)
+                return {};
+            std::string log(static_cast<std::size_t>(length), '\0');
+            glGetShaderInfoLog(shader, length, nullptr, log.data());
+            while (not log.empty() and log.back() == '\0')
+                log.pop_back();
+            return log;
+        }
+
+        auto programInfoLog(GLuint program) -> std::string {
+            GLint length = 0;
+            glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+            if (length <= 1)
+                return {};
+            std::string log(static_cast<std::size_t>(length), '\0');
+            glGetProgramInfoLog(program, length, nullptr, log.data());
+            while (not log.empty() and log.back() == '\0')
+                log.pop_back();
+            return log;
+        }
+
+        auto compile_shader_stage(GLenum shader_type, const std::string& source, std::string& log) -> maybe<GLuint> {
             const GLuint shader = glCreateShader(shader_type);
             const char* source_ptr = source.c_str();
             glShaderSource(shader, 1, &source_ptr, nullptr);
             glCompileShader(shader);
-
             int success = 0;
             glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-            if (success) {
+            if (success)
                 return shader;
-            }
-
+            log = shaderInfoLog(shader);
             glDeleteShader(shader);
             return {};
         }
@@ -87,14 +109,16 @@ namespace rmmr::resource::shader {
         if (not fragment_source or fragment_source->empty())
             return context.refuse("resource::shader::Loader::materialize: fragment shader unreadable: " + fragment_path.string());
 
-        const auto vertex_shader = compile_shader_stage(GL_VERTEX_SHADER, *vertex_source);
+        std::string vertexLog;
+        const auto vertex_shader = compile_shader_stage(GL_VERTEX_SHADER, *vertex_source, vertexLog);
         if (not vertex_shader)
-            return context.refuse("resource::shader::Loader::materialize: vertex shader compile failed: " + std::string(loader.vertex));
+            return context.refuse("resource::shader::Loader::materialize: vertex shader compile failed: " + std::string(loader.vertex) + "\n" + vertexLog);
 
-        const auto fragment_shader = compile_shader_stage(GL_FRAGMENT_SHADER, *fragment_source);
+        std::string fragmentLog;
+        const auto fragment_shader = compile_shader_stage(GL_FRAGMENT_SHADER, *fragment_source, fragmentLog);
         if (not fragment_shader) {
             glDeleteShader(*vertex_shader);
-            return context.refuse("resource::shader::Loader::materialize: fragment shader compile failed: " + std::string(loader.fragment));
+            return context.refuse("resource::shader::Loader::materialize: fragment shader compile failed: " + std::string(loader.fragment) + "\n" + fragmentLog);
         }
 
         const GLuint program = glCreateProgram();
@@ -114,10 +138,9 @@ namespace rmmr::resource::shader {
         glDeleteShader(*fragment_shader);
 
         if (not link_ok) {
-            char info_log[2048];
-            glGetProgramInfoLog(program, sizeof(info_log), nullptr, info_log);
+            const std::string log = programInfoLog(program);
             glDeleteProgram(program);
-            return context.refuse(std::string("resource::shader::Loader::materialize: program link failed: ") + info_log);
+            return context.refuse("resource::shader::Loader::materialize: program link failed:\n" + log);
         }
 
         return install_runtime(context, device, asset_id, Runtime::Quantum{

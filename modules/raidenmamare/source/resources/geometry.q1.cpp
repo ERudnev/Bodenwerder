@@ -257,23 +257,12 @@ namespace rmmr::resource::geometry {
             const bool position_normal = attribs.size() == std::size_t{2} && attribs[0] == pos_id && attribs[1] == normal_id;
             const bool position_uv0 = attribs.size() == std::size_t{2} && attribs[0] == pos_id && attribs[1] == uv0_id;
             const bool position_color0 = attribs.size() == std::size_t{2} && attribs[0] == pos_id && attribs[1] == color0_id;
-            const bool position_uv0_color0 =
-                attribs.size() == std::size_t{3}
-                && attribs[0] == pos_id
-                && attribs[1] == uv0_id
-                && attribs[2] == color0_id;
-            const bool position_normal_uv0 =
-                attribs.size() == std::size_t{3}
-                && attribs[0] == pos_id
-                && attribs[1] == normal_id
-                && attribs[2] == uv0_id;
-            const bool position_normal_mix0 =
-                attribs.size() == std::size_t{3}
-                && attribs[0] == pos_id
-                && attribs[1] == normal_id
-                && attribs[2] == mix0_id;
+            const bool position_uv0_color0 = attribs.size() == std::size_t{3} && attribs[0] == pos_id && attribs[1] == uv0_id && attribs[2] == color0_id;
+            const bool position_normal_uv0 = attribs.size() == std::size_t{3} && attribs[0] == pos_id && attribs[1] == normal_id && attribs[2] == uv0_id;
+            const bool position_normal_mix0 = attribs.size() == std::size_t{3} && attribs[0] == pos_id && attribs[1] == normal_id && attribs[2] == mix0_id;
+            const bool position_normal_color0 = attribs.size() == std::size_t{3} && attribs[0] == pos_id && attribs[1] == normal_id && attribs[2] == color0_id;
 
-            if (not position_only && not position_normal && not position_uv0 && not position_color0 && not position_uv0_color0 && not position_normal_uv0 && not position_normal_mix0) {
+            if (not position_only && not position_normal && not position_uv0 && not position_color0 && not position_uv0_color0 && not position_normal_uv0 && not position_normal_mix0 && not position_normal_color0) {
                 return context.refuse("resource::geometry::bake: unsupported vertex layout");
             }
             if (not position_normal_mix0 and not cpu.mix0.empty()) {
@@ -338,6 +327,16 @@ namespace rmmr::resource::geometry {
                 }
                 if (not cpu.color0.empty()) {
                     return context.refuse("resource::geometry::bake: color0 must be empty for this layout");
+                }
+            } else if (position_normal_color0) {
+                if (cpu.normals.size() != cpu.positions.size()) {
+                    return context.refuse("resource::geometry::bake: normals count must match positions");
+                }
+                if (cpu.color0.size() != cpu.positions.size()) {
+                    return context.refuse("resource::geometry::bake: color0 count must match positions");
+                }
+                if (not cpu.uv0.empty()) {
+                    return context.refuse("resource::geometry::bake: uv0 must be empty for this layout");
                 }
             } else {
                 if (cpu.normals.size() != cpu.positions.size()) {
@@ -505,6 +504,30 @@ namespace rmmr::resource::geometry {
                 glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
                 setupAttrib(0, 3, 0);
                 setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
+            } else if (position_normal_color0) {
+                interleaved.reserve(vertex_count * 10);
+                for (std::size_t i = 0; i < vertex_count; ++i) {
+                    const auto& p = cpu.positions[i];
+                    const auto& n = cpu.normals[i];
+                    const auto& color = cpu.color0[i];
+                    interleaved.push_back(p.x);
+                    interleaved.push_back(p.y);
+                    interleaved.push_back(p.z);
+                    interleaved.push_back(n.x);
+                    interleaved.push_back(n.y);
+                    interleaved.push_back(n.z);
+                    interleaved.push_back(color.x);
+                    interleaved.push_back(color.y);
+                    interleaved.push_back(color.z);
+                    interleaved.push_back(color.w);
+                }
+
+                constexpr renderer::Count stride = renderer::Count(10 * sizeof(float));
+                glNamedBufferData(vbo, renderer::SizePtr(interleaved.size() * sizeof(float)), interleaved.data(), GL_STATIC_DRAW);
+                glVertexArrayVertexBuffer(vao, 0, vbo, 0, stride);
+                setupAttrib(0, 3, 0);
+                setupAttrib(1, 3, renderer::Count(3 * sizeof(float)));
+                setupAttrib(2, 4, renderer::Count(6 * sizeof(float)));
             } else if (position_normal_mix0) {
                 struct Packed {
                     float px;

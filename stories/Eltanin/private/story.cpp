@@ -268,7 +268,6 @@ namespace eltanin {
             with<Assets>::add_material(context, Name::from("Eltanin", "planet"), Material::Quantum{
                 .techniques = {
                     {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap"}), .glowSpread = false}},
-                    {renderer::Pass::shadow, Material::Technique{.program = shadowTechnique->second.program, .uniforms = {}, .glowSpread = false}},
                 },
                 .nearest = false,
                 .blend = renderer::BlendMode::inherit,

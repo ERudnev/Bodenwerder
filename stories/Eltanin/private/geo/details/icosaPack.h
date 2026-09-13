@@ -12,6 +12,7 @@ namespace eltanin::locality::geo {
 
     // Sphere surface packed as 10 diamonds of a regular icosahedron.
     // Each diamond is two triangles sharing the (right, left) edge; local (iu, iv) is a square vertex grid.
+    // Every cell of that grid is cut on u+v = 1, same diagonal as the two icosa faces.
     struct IcosaPack {
         static constexpr integer diamondCount = 10;
         static constexpr integer faceCount = 20;
@@ -37,6 +38,20 @@ namespace eltanin::locality::geo {
             float v;
         };
 
+        // One cell of the (u, v) square, cut on u+v = 1 — the icosa edge (right, left).
+        // Upper bary is (top, right, left); lower is (right, bottom, left).
+        struct Split {
+            bool lower;
+            vec3 bary;
+        };
+
+        struct Tri {
+            Slot a;
+            Slot b;
+            Slot c;
+            vec3 bary;
+        };
+
         integer edgeBase;
         integer tessellation;
 
@@ -50,7 +65,11 @@ namespace eltanin::locality::geo {
         auto atlasCoord(Slot) const -> index2;
         auto sampleOf(Slot) const -> Sample;
         auto direction(Slot) const -> vec3;
+        auto triangle(Sample) const -> Tri;
+        auto upper(integer diamond, integer iu, integer iv) const -> std::array<Slot, 3>;
+        auto lower(integer diamond, integer iu, integer iv) const -> std::array<Slot, 3>;
 
+        static auto split(float u, float v) -> Split;
         static auto vertices() -> const std::array<vec3, shellCount>&;
         static auto diamonds() -> const std::array<Diamond, diamondCount>&;
         static auto locate(vec3 direction) -> Sample;
@@ -109,6 +128,20 @@ namespace eltanin::locality::geo {
 
     inline auto IcosaPack::direction(Slot slot) const -> vec3 {
         return direction(sampleOf(slot));
+    }
+
+    inline auto IcosaPack::split(float u, float v) -> Split {
+        if (u + v <= 1.0f)
+            return Split{.lower = false, .bary = vec3{1.0f - u - v, u, v}};
+        return Split{.lower = true, .bary = vec3{1.0f - v, u + v - 1.0f, 1.0f - u}};
+    }
+
+    inline auto IcosaPack::upper(integer diamond, integer iu, integer iv) const -> std::array<Slot, 3> {
+        return {Slot{.diamond = diamond, .iu = iu, .iv = iv}, Slot{.diamond = diamond, .iu = iu + 1, .iv = iv}, Slot{.diamond = diamond, .iu = iu, .iv = iv + 1}};
+    }
+
+    inline auto IcosaPack::lower(integer diamond, integer iu, integer iv) const -> std::array<Slot, 3> {
+        return {Slot{.diamond = diamond, .iu = iu + 1, .iv = iv}, Slot{.diamond = diamond, .iu = iu + 1, .iv = iv + 1}, Slot{.diamond = diamond, .iu = iu, .iv = iv + 1}};
     }
 
 }

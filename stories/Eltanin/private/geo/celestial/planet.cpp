@@ -1,5 +1,6 @@
 #include "geo/celestial/planet.h"
 #include "geo/celestial/horizon.h"
+#include "geo/details/generator.h"
 #include "physics/settings.h"
 
 #include <eltanin/locality/thing.q1.h>
@@ -19,6 +20,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <cstring>
 #include <numbers>
 
 namespace eltanin::locality::planet {
@@ -28,35 +31,45 @@ namespace eltanin::locality::planet {
 
     namespace {
 
-        void emitFace(resource::builders::geometry::CpuPresentation& cpu, vec3 first, vec3 second, vec3 third) {
+        auto packRgb(RGB color) -> float {
+            const std::uint32_t bits = std::uint32_t(glm::clamp(color.r, 0.0f, 1.0f) * 255.0f + 0.5f) | (std::uint32_t(glm::clamp(color.g, 0.0f, 1.0f) * 255.0f + 0.5f) << 8) | (std::uint32_t(glm::clamp(color.b, 0.0f, 1.0f) * 255.0f + 0.5f) << 16);
+            float packed;
+            std::memcpy(&packed, &bits, sizeof(packed));
+            return packed;
+        }
+
+        void emitFace(resource::builders::geometry::CpuPresentation& cpu, vec3 first, vec3 second, vec3 third, RGB colorA, RGB colorB, RGB colorC) {
             vec3 normal = glm::cross(second - first, third - first);
             if (glm::dot(normal, first + second + third) < 0.0f) {
                 const vec3 swap = second;
                 second = third;
                 third = swap;
+                const RGB swapColor = colorB;
+                colorB = colorC;
+                colorC = swapColor;
                 normal = -normal;
             }
             normal = glm::normalize(normal);
+            const vec4 packed{packRgb(colorA), packRgb(colorB), packRgb(colorC), 1.0f};
             cpu.positions.push_back(first);
             cpu.positions.push_back(second);
             cpu.positions.push_back(third);
             cpu.normals.push_back(normal);
             cpu.normals.push_back(normal);
             cpu.normals.push_back(normal);
+            cpu.color0.push_back(packed);
+            cpu.color0.push_back(packed);
+            cpu.color0.push_back(packed);
         }
 
-        auto atHeight(const geo::IcosaPack& pack, const vector<float>& heights, geo::IcosaPack::Slot slot) -> float {
-            return heights[static_cast<std::size_t>(pack.index(slot))];
+        auto vertexAt(const geo::IcosaMap<float>& heights, geo::IcosaPack::Slot slot) -> vec3 {
+            return heights.pack.direction(slot) * heights.at(slot);
         }
 
-        auto vertexAt(const geo::IcosaPack& pack, const vector<float>& heights, geo::IcosaPack::Slot slot) -> vec3 {
-            return pack.direction(slot) * atHeight(pack, heights, slot);
-        }
-
-        auto shellMesh(const geo::IcosaPack& pack, const vector<float>& heights) -> resource::builders::geometry::CpuPresentation {
-            const integer span = pack.edgeSegments();
+        auto shellMesh(const geo::IcosaMap<float>& heights, const geo::IcosaMap<RGB>& colors) -> resource::builders::geometry::CpuPresentation {
+            const integer last = heights.pack.edgeSegments();
             resource::builders::geometry::CpuPresentation cpu{
-                .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal"}),
+                .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "color0"}),
                 .positions = {},
                 .normals = {},
                 .uv0 = {},
@@ -65,15 +78,18 @@ namespace eltanin::locality::planet {
                 .mix0 = {},
                 .cohesion = {},
             };
-            cpu.positions.reserve(static_cast<std::size_t>(geo::IcosaPack::faceCount * 3));
+            cpu.positions.reserve(static_cast<std::size_t>(geo::IcosaPack::diamondCount * last * last * 6));
             cpu.normals.reserve(cpu.positions.capacity());
+            cpu.color0.reserve(cpu.positions.capacity());
             for (integer diamond = 0; diamond < geo::IcosaPack::diamondCount; ++diamond) {
-                const vec3 top = vertexAt(pack, heights, geo::IcosaPack::Slot{.diamond = diamond, .iu = 0, .iv = 0});
-                const vec3 right = vertexAt(pack, heights, geo::IcosaPack::Slot{.diamond = diamond, .iu = span, .iv = 0});
-                const vec3 left = vertexAt(pack, heights, geo::IcosaPack::Slot{.diamond = diamond, .iu = 0, .iv = span});
-                const vec3 bottom = vertexAt(pack, heights, geo::IcosaPack::Slot{.diamond = diamond, .iu = span, .iv = span});
-                emitFace(cpu, top, right, left);
-                emitFace(cpu, right, bottom, left);
+                for (integer iv = 0; iv < last; ++iv) {
+                    for (integer iu = 0; iu < last; ++iu) {
+                        const auto up = heights.pack.upper(diamond, iu, iv);
+                        const auto down = heights.pack.lower(diamond, iu, iv);
+                        emitFace(cpu, vertexAt(heights, up[0]), vertexAt(heights, up[1]), vertexAt(heights, up[2]), colors.at(up[0]), colors.at(up[1]), colors.at(up[2]));
+                        emitFace(cpu, vertexAt(heights, down[0]), vertexAt(heights, down[1]), vertexAt(heights, down[2]), colors.at(down[0]), colors.at(down[1]), colors.at(down[2]));
+                    }
+                }
             }
             return cpu;
         }
@@ -140,16 +156,35 @@ namespace eltanin::locality::planet {
 
     }
 
-    Planet::Planet(Passport passport)
+    auto Planet::recommendedDetail(float radius, float edge) -> Detail {
+        constexpr integer maxShellTriangles = 20 * 512 * 512; // full-resolution shell budget; N = edgeBase * 2^t
+        const integer cap = static_cast<integer>(std::sqrt(static_cast<double>(maxShellTriangles) / 20.0));
+        const float want = edge > 0.0f ? edge : constructionEdge;
+        const double arc = std::max(0.0, double(radius)) * std::acos(1.0 / std::sqrt(5.0));
+        integer segments = want > 0.0f ? static_cast<integer>(std::lround(arc / double(want))) : cap;
+        if (segments < 1)
+            segments = 1;
+        if (segments > cap)
+            segments = cap;
+        integer tessellation = 0;
+        integer edgeBase = segments;
+        while (edgeBase % 2 == 0) {
+            edgeBase /= 2;
+            tessellation += 1;
+        }
+        return Detail{.edgeBase = edgeBase, .tessellation = tessellation};
+    }
+
+    Planet::Planet(Passport passport, Detail detail)
         : passport{passport}
         , pose{.position = Pos{0.0f, 0.0f, 0.0f}, .rotation = passport.orientation}
         , spin{0.0f}
         , well{}
-        , pack{.edgeBase = 1, .tessellation = 0}
-        , heights{}
+        , heights{geo::IcosaPack{.edgeBase = detail.edgeBase, .tessellation = detail.tessellation}, passport.radius}
+        , colors{heights.pack, RGB{1.0f, 1.0f, 1.0f}}
         , shell{}
         , atmosphere{} {
-        heights.assign(static_cast<std::size_t>(pack.storedCount()), this->passport.radius);
+        geo::generate(*this);
         applySpin(*this);
     }
 
@@ -164,7 +199,7 @@ namespace eltanin::locality::planet {
         const auto manager = with<resource::Manager>::singleton(context);
         const auto geometryId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-shell")});
         with<resource::geometry::Asset>::extend(context, geometryId, resource::geometry::Asset::Quantum{});
-        if (not with<resource::geometry::Asset>::install(context, geometryId, device, shellMesh(pack, heights))) {
+        if (not with<resource::geometry::Asset>::install(context, geometryId, device, shellMesh(heights, colors))) {
             context.refuse("eltanin::locality::planet::Planet::place: geometry install failed");
             return;
         }
@@ -173,7 +208,7 @@ namespace eltanin::locality::planet {
             context.refuse("eltanin::locality::planet::Planet::place: mesh compose failed");
             return;
         }
-        auto meshState = with<scene::actor::MeshState>::defaults(RGB{0.29f, 0.31f, 0.20f}, 1.0f);
+        auto meshState = with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
         meshState.latticeStep = 0.0f;
         shell = with<scene::Interface>::createMeshActor(context, with<Thing>::get_global(context).scene, this->pose, std::move(*meshQuantum), meshState);
         with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereDensity = passport.atmosphere.seaDensity;
@@ -203,19 +238,7 @@ namespace eltanin::locality::planet {
         const float len = glm::length(dir);
         if (len < 1.0e-6f)
             return passport.radius;
-        const auto sample = pack.locate(dir);
-        const integer last = pack.edgeSegments();
-        const float fu = sample.u * static_cast<float>(last);
-        const float fv = sample.v * static_cast<float>(last);
-        const integer iu0 = std::clamp(static_cast<integer>(std::floor(fu)), integer{0}, last);
-        const integer iv0 = std::clamp(static_cast<integer>(std::floor(fv)), integer{0}, last);
-        const integer iu1 = std::min(iu0 + 1, last);
-        const integer iv1 = std::min(iv0 + 1, last);
-        const float tu = fu - static_cast<float>(iu0);
-        const float tv = fv - static_cast<float>(iv0);
-        const float top = glm::mix(atHeight(pack, heights, geo::IcosaPack::Slot{.diamond = sample.diamond, .iu = iu0, .iv = iv0}), atHeight(pack, heights, geo::IcosaPack::Slot{.diamond = sample.diamond, .iu = iu1, .iv = iv0}), tu);
-        const float bottom = glm::mix(atHeight(pack, heights, geo::IcosaPack::Slot{.diamond = sample.diamond, .iu = iu0, .iv = iv1}), atHeight(pack, heights, geo::IcosaPack::Slot{.diamond = sample.diamond, .iu = iu1, .iv = iv1}), tu);
-        return glm::mix(top, bottom, tv);
+        return heights.at(dir);
     }
 
     auto Planet::altitudeAt(Pos worldPos) const -> float {

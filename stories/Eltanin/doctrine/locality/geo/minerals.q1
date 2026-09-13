@@ -5,6 +5,7 @@ namespace eltanin
     // Table order is the 16-channel basis (nibble index in a voxel). Palettes inside a channel are Rock's business.
     // Wider than OpenGL or physics need today.
     struct Mineral
+      enum Kind : Ice, Olivine, Pyroxene, Feldspar, Clay, Carbonaceous, Iron, Nickel, Sulfides, Oxides, BaseMetals, PGM, RareEarths, Actinides, Salts, Exotic
       using Index as integer
       using Mix as @external(C++ uint64_t; 16x4-bit voxel word)
       one

@@ -3,6 +3,7 @@
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 
@@ -33,9 +34,10 @@ namespace eltanin::locality::geo {
         }
 
         auto onDiamond(float u, float v, vec3 top, vec3 right, vec3 bottom, vec3 left) -> vec3 {
-            if (u + v <= 1.0f)
-                return (1.0f - u - v) * top + u * right + v * left;
-            return (u + v - 1.0f) * bottom + (1.0f - v) * right + (1.0f - u) * left;
+            const IcosaPack::Split cut = IcosaPack::split(u, v);
+            if (not cut.lower)
+                return cut.bary.x * top + cut.bary.y * right + cut.bary.z * left;
+            return cut.bary.x * right + cut.bary.y * bottom + cut.bary.z * left;
         }
 
         auto barycentric(vec3 dir, vec3 a, vec3 b, vec3 c, vec3 normal) -> vec3 {
@@ -138,6 +140,25 @@ namespace eltanin::locality::geo {
         const auto& built = topology();
         const Diamond& diamond = built.diamonds[sample.diamond];
         return glm::normalize(onDiamond(sample.u, sample.v, built.vertices[diamond.top], built.vertices[diamond.right], built.vertices[diamond.bottom], built.vertices[diamond.left]));
+    }
+
+    auto IcosaPack::triangle(Sample sample) const -> Tri {
+        const integer last = edgeSegments();
+        const Slot origin{.diamond = sample.diamond, .iu = 0, .iv = 0};
+        if (last <= 0)
+            return Tri{.a = origin, .b = origin, .c = origin, .bary = vec3{1.0f, 0.0f, 0.0f}};
+        const float fu = glm::clamp(sample.u, 0.0f, 1.0f) * static_cast<float>(last);
+        const float fv = glm::clamp(sample.v, 0.0f, 1.0f) * static_cast<float>(last);
+        const integer iu0 = std::min(static_cast<integer>(std::floor(fu)), last - 1);
+        const integer iv0 = std::min(static_cast<integer>(std::floor(fv)), last - 1);
+        const Split cut = split(fu - static_cast<float>(iu0), fv - static_cast<float>(iv0));
+        const Slot top{.diamond = sample.diamond, .iu = iu0, .iv = iv0};
+        const Slot right{.diamond = sample.diamond, .iu = iu0 + 1, .iv = iv0};
+        const Slot left{.diamond = sample.diamond, .iu = iu0, .iv = iv0 + 1};
+        const Slot bottom{.diamond = sample.diamond, .iu = iu0 + 1, .iv = iv0 + 1};
+        if (not cut.lower)
+            return Tri{.a = top, .b = right, .c = left, .bary = cut.bary};
+        return Tri{.a = right, .b = bottom, .c = left, .bary = cut.bary};
     }
 
 }

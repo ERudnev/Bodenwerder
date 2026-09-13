@@ -2,6 +2,7 @@
 
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec4 aColor0;
 
 layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     mat4 actorModel;
@@ -27,6 +28,8 @@ layout(std430, binding = 8) readonly buffer PoseBuffer {
 
 out vec3 v_worldPos;
 out vec3 v_worldNormal;
+flat out vec4 v_color0;
+out vec3 v_bary;
 
 const ivec3 orientationRow0[24] = ivec3[24](
     ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0),
@@ -61,5 +64,8 @@ void main() {
     v_worldPos = worldPos.xyz;
     mat3 normalMat = mat3(transpose(inverse(actorModel)));
     v_worldNormal = normalize(normalMat * localRotation * aNormal);
+    v_color0 = aColor0;
+    int corner = gl_VertexID % 3;
+    v_bary = vec3(corner == 0, corner == 1, corner == 2);
     gl_Position = passProjection * passView * worldPos;
 }

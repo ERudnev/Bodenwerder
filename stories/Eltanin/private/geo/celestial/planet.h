@@ -1,6 +1,6 @@
 #pragma once
 
-#include "geo/details/icosaPack.h"
+#include "geo/details/icosaMap.h"
 
 #include <base/maybe.h>
 #include <eltanin/locality/geo/minerals.q1.h>
@@ -46,19 +46,28 @@ namespace eltanin::locality::planet {
             float slope;
         };
 
+        struct Detail {
+            integer edgeBase;
+            integer tessellation;
+        };
+
         const Passport passport;
         rmmr::Pose pose;
         float spin; // radians around local +Y
         base::maybe<phys::Body::Id> well;
+        geo::IcosaMap<float> heights;
+        geo::IcosaMap<rmmr::RGB> colors;
 
     private:
-        geo::IcosaPack pack;
-        vector<float> heights;
         base::maybe<rmmr::scene::actor::Mesh::Id> shell;
         base::maybe<rmmr::scene::actor::Mesh::Id> atmosphere;
 
     public:
-        Planet(Passport);
+        static constexpr float constructionEdge = 4.0f; // construct cubes, metres
+
+        static auto recommendedDetail(float radius, float edge) -> Detail;
+
+        Planet(Passport, Detail);
 
         void place(Writing, rmmr::system::Device::Id, rmmr::Pose);
         void update(Writing, rmmr::Pos camera);

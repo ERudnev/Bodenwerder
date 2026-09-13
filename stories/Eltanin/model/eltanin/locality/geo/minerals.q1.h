@@ -9,6 +9,24 @@ namespace eltanin::locality::geo {
     using namespace fqsm::api;
 
     struct Mineral {
+        enum class Kind : integer {
+            Ice,
+            Olivine,
+            Pyroxene,
+            Feldspar,
+            Clay,
+            Carbonaceous,
+            Iron,
+            Nickel,
+            Sulfides,
+            Oxides,
+            BaseMetals,
+            PGM,
+            RareEarths,
+            Actinides,
+            Salts,
+            Exotic,
+        };
         using Index = integer;
         using Mix = std::uint64_t;
         string name;
