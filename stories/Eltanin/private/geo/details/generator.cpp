@@ -2,8 +2,6 @@
 #include "geo/details/facies.h"
 #include "geo/celestial/planet.h"
 
-#include <base/logging.h>
-
 #include <cmath>
 #include <cstdint>
 
@@ -77,41 +75,23 @@ namespace eltanin::locality::geo {
         void generateHeights(planet::Planet& planet) {
             const integer count = planet.heights.pack.storedCount();
             const integer seed = planet.passport.seed;
-            const float relief = planet.passport.geology.maxRelief;
-            const float radius = planet.passport.radius;
+            const float amplitude = planet.passport.geology.amplitude;
             for (integer index = 0; index < count; ++index) {
                 const auto slot = planet.heights.pack.slotOf(index);
                 const vec3 dir = planet.heights.pack.direction(slot);
-                float height = radius + (fbm(dir * 4.0f, seed) * 2.0f - 1.0f) * relief;
-                height += canyon(dir, vec3{1.0f, 0.18f, 0.0f}, 0.11f, radius * 0.22f);
-                height += canyon(dir, vec3{0.22f, 1.0f, 0.0f}, 0.09f, radius * 0.18f);
-                planet.heights.at(slot) = height;
+                float delta = (fbm(dir * 4.0f, seed) * 2.0f - 1.0f) * amplitude;
+                delta += canyon(dir, vec3{1.0f, 0.18f, 0.0f}, 0.11f, amplitude * 0.55f);
+                delta += canyon(dir, vec3{0.22f, 1.0f, 0.0f}, 0.09f, amplitude * 0.4f);
+                planet.heights.at(slot) = planet.encodeRelief(delta);
             }
-        }
-
-        void generateColors(planet::Planet& planet) {
-            const RGB palette[6] = {
-                RGB{1.0f, 0.0f, 0.0f},
-                RGB{0.0f, 1.0f, 0.0f},
-                RGB{0.0f, 0.0f, 1.0f},
-                RGB{1.0f, 1.0f, 0.0f},
-                RGB{1.0f, 0.0f, 1.0f},
-                RGB{0.0f, 1.0f, 1.0f},
-            };
-            const integer count = planet.colors.pack.storedCount();
-            for (integer index = 0; index < count; ++index) {
-                const auto slot = planet.colors.pack.slotOf(index);
-                planet.colors.at(slot) = palette[hash32(slot.diamond, slot.iu, slot.iv, planet.passport.seed ^ 0x9e3779b9) % 6u];
-            }
-            base::warning("eltanin::locality::geo::generate: color stitch {}", planet.colors.stitch());
         }
 
         void fillCovers(planet::Planet& planet) {
-            const auto packLayers = [](Facies surface, Facies below) -> std::uint32_t {
-                return std::uint32_t(surface) | (std::uint32_t(below) << 8);
+            const auto packLayers = [](Facies surface, Facies below) -> std::uint16_t {
+                return std::uint16_t(std::uint32_t(surface) | (std::uint32_t(below) << 8));
             };
-            const std::uint32_t polar = packLayers(Facies::Snow, Facies::Dunite);
-            const std::uint32_t tropics = packLayers(Facies::Granite, Facies::ClayPan);
+            const std::uint16_t polar = packLayers(Facies::Snow, Facies::Dunite);
+            const std::uint16_t tropics = packLayers(Facies::Granite, Facies::ClayPan);
             const integer count = planet.covers.pack.storedCount();
             for (integer index = 0; index < count; ++index) {
                 const auto slot = planet.covers.pack.slotOf(index);
@@ -128,7 +108,6 @@ namespace eltanin::locality::geo {
 
     void generate(planet::Planet& planet) {
         generateHeights(planet);
-        generateColors(planet);
         generateSurfaceWeights(planet);
     }
 

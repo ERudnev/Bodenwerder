@@ -29,7 +29,7 @@ namespace eltanin::locality::planet {
             float cohesion; // 0 crumbling, 1 fused monolith
             float grain;
             float tectonic;
-            float maxRelief; // guaranteed, may be used as rough collision sphere radius
+            float amplitude; // metres from sea, both ways; ±int16 full scale; collision sphere is radius + amplitude
         } geology;
         struct Atmosphere {
             float outerRadius;
@@ -57,9 +57,8 @@ namespace eltanin::locality::planet {
         rmmr::Pose pose;
         float spin; // radians around local +Y
         base::maybe<phys::Body::Id> well;
-        geo::IcosaMap<float> heights;
-        geo::IcosaMap<rmmr::RGB> colors;
-        geo::IcosaMap<std::uint32_t> covers; // 2×8bit facies: surface, then just below
+        geo::IcosaMap<std::int16_t> heights; // 0 = sea; ±reliefPeak maps to ±amplitude metres
+        geo::IcosaMap<std::uint16_t> covers; // two u8 facies: surface, then just below
 
     private:
         base::maybe<rmmr::scene::actor::Mesh::Id> shell;
@@ -67,6 +66,7 @@ namespace eltanin::locality::planet {
 
     public:
         static constexpr float constructionEdge = 4.0f; // construct cubes, metres
+        static constexpr std::int16_t reliefPeak = 32767;
 
         static auto recommendedDetail(float radius, float edge) -> Detail;
 
@@ -76,6 +76,9 @@ namespace eltanin::locality::planet {
         void update(Writing, rmmr::Pos camera);
         void sync(Writing);
 
+        auto reliefScale() const -> float; // metres per int16 step
+        auto surfaceRadius(std::int16_t quantum) const -> float;
+        auto encodeRelief(float deltaMeters) const -> std::int16_t;
         auto height(rmmr::vec3 dir) const -> float; // radial surface, not relief above sea
         auto altitudeAt(rmmr::Pos worldPos) const -> float;
         auto gravityAt(dvec3 worldPos) const -> dvec3;

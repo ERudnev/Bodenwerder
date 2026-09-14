@@ -21,7 +21,7 @@ namespace eltanin::locality::geo {
 
         auto at(IcosaPack::Slot) -> T&;
         auto at(IcosaPack::Slot) const -> const T&;
-        auto at(vec3 direction) const -> T;
+        auto at(vec3 direction) const -> T requires (not std::is_integral_v<T>);
         auto stitch() -> float;
     };
 
@@ -46,7 +46,7 @@ namespace eltanin::locality::geo {
     }
 
     template<typename T>
-    auto IcosaMap<T>::at(vec3 direction) const -> T {
+    auto IcosaMap<T>::at(vec3 direction) const -> T requires (not std::is_integral_v<T>) {
         const IcosaPack::Tri tri = pack.triangle(IcosaPack::locate(direction));
         return tri.bary.x * at(tri.a) + tri.bary.y * at(tri.b) + tri.bary.z * at(tri.c);
     }

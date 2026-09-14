@@ -46,7 +46,7 @@ namespace eltanin::scenario {
                     .cohesion = 0.72f,
                     .grain = 0.4f,
                     .tectonic = 0.015f,
-                    .maxRelief = 5.0f,
+                    .amplitude = 5.0f,
                 },
                 .atmosphere = {
                     .outerRadius = radius,
@@ -56,7 +56,7 @@ namespace eltanin::scenario {
                 },
             },
             //locality::planet::Planet::recommendedDetail(radius, 25.0f));
-            locality::planet::Planet::recommendedDetail(radius, 4.0f));
+            locality::planet::Planet::recommendedDetail(radius, 1.0f));
         planet->place(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
     }
 

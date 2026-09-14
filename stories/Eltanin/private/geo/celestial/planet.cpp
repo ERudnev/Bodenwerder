@@ -31,7 +31,7 @@ namespace eltanin::locality::planet {
 
     namespace {
 
-        auto heightNormal(const geo::IcosaMap<float>& heights, vec3 dir) -> vec3 {
+        auto heightNormal(const Planet& planet, vec3 dir) -> vec3 {
             const float len = glm::length(dir);
             if (len < 1.0e-6f)
                 return vec3{0.0f, 1.0f, 0.0f};
@@ -41,10 +41,10 @@ namespace eltanin::locality::planet {
                 tangentU = glm::cross(vec3{1.0f, 0.0f, 0.0f}, dir);
             tangentU = glm::normalize(tangentU);
             const vec3 tangentV = glm::cross(dir, tangentU);
-            const float eps = 1.0f / float(std::max(heights.pack.edgeSegments(), integer{1}));
+            const float eps = 1.0f / float(std::max(planet.heights.pack.edgeSegments(), integer{1}));
             auto surface = [&](vec3 sample) -> vec3 {
                 sample = glm::normalize(sample);
-                return sample * heights.at(sample);
+                return sample * planet.height(sample);
             };
             vec3 normal = glm::cross(surface(dir + tangentU * eps) - surface(dir - tangentU * eps), surface(dir + tangentV * eps) - surface(dir - tangentV * eps));
             const float mag = glm::length(normal);
@@ -56,7 +56,7 @@ namespace eltanin::locality::planet {
             return normal;
         }
 
-        void emitFace(resource::builders::geometry::CpuPresentation& cpu, vec3 first, vec3 second, vec3 third, vec3 normalA, vec3 normalB, vec3 normalC, std::uint32_t coverA, std::uint32_t coverB, std::uint32_t coverC) {
+        void emitFace(resource::builders::geometry::CpuPresentation& cpu, vec3 first, vec3 second, vec3 third, vec3 normalA, vec3 normalB, vec3 normalC, std::uint16_t coverA, std::uint16_t coverB, std::uint16_t coverC) {
             if (glm::dot(glm::cross(second - first, third - first), first + second + third) < 0.0f) {
                 const vec3 swap = second;
                 second = third;
@@ -64,12 +64,12 @@ namespace eltanin::locality::planet {
                 const vec3 swapNormal = normalB;
                 normalB = normalC;
                 normalC = swapNormal;
-                const std::uint32_t swapCover = coverB;
+                const std::uint16_t swapCover = coverB;
                 coverB = coverC;
                 coverC = swapCover;
             }
-            const std::uint32_t packLo = (coverA & 0xFFFFu) | ((coverB & 0xFFFFu) << 16);
-            const std::uint64_t pack = std::uint64_t(packLo) | (std::uint64_t(coverC & 0xFFFFu) << 32);
+            const std::uint32_t packLo = std::uint32_t(coverA) | (std::uint32_t(coverB) << 16);
+            const std::uint64_t pack = std::uint64_t(packLo) | (std::uint64_t(coverC) << 32);
             const vec4 neutral{1.0f, 1.0f, 1.0f, 1.0f};
             cpu.positions.push_back(first);
             cpu.positions.push_back(second);
@@ -88,11 +88,13 @@ namespace eltanin::locality::planet {
             cpu.weights.push_back(pack);
         }
 
-        auto vertexAt(const geo::IcosaMap<float>& heights, geo::IcosaPack::Slot slot) -> vec3 {
-            return heights.pack.direction(slot) * heights.at(slot);
+        auto vertexAt(const Planet& planet, geo::IcosaPack::Slot slot) -> vec3 {
+            return planet.heights.pack.direction(slot) * planet.surfaceRadius(planet.heights.at(slot));
         }
 
-        auto shellMesh(const geo::IcosaMap<float>& heights, const geo::IcosaMap<std::uint32_t>& covers) -> resource::builders::geometry::CpuPresentation {
+        auto shellMesh(const Planet& planet) -> resource::builders::geometry::CpuPresentation {
+            const auto& heights = planet.heights;
+            const auto& covers = planet.covers;
             const integer last = heights.pack.edgeSegments();
             resource::builders::geometry::CpuPresentation cpu{
                 .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "color0", "palette", "weights"}),
@@ -116,8 +118,8 @@ namespace eltanin::locality::planet {
                     for (integer iu = 0; iu < last; ++iu) {
                         const auto up = heights.pack.upper(diamond, iu, iv);
                         const auto down = heights.pack.lower(diamond, iu, iv);
-                        emitFace(cpu, vertexAt(heights, up[0]), vertexAt(heights, up[1]), vertexAt(heights, up[2]), heightNormal(heights, heights.pack.direction(up[0])), heightNormal(heights, heights.pack.direction(up[1])), heightNormal(heights, heights.pack.direction(up[2])), covers.at(up[0]), covers.at(up[1]), covers.at(up[2]));
-                        emitFace(cpu, vertexAt(heights, down[0]), vertexAt(heights, down[1]), vertexAt(heights, down[2]), heightNormal(heights, heights.pack.direction(down[0])), heightNormal(heights, heights.pack.direction(down[1])), heightNormal(heights, heights.pack.direction(down[2])), covers.at(down[0]), covers.at(down[1]), covers.at(down[2]));
+                        emitFace(cpu, vertexAt(planet, up[0]), vertexAt(planet, up[1]), vertexAt(planet, up[2]), heightNormal(planet, heights.pack.direction(up[0])), heightNormal(planet, heights.pack.direction(up[1])), heightNormal(planet, heights.pack.direction(up[2])), covers.at(up[0]), covers.at(up[1]), covers.at(up[2]));
+                        emitFace(cpu, vertexAt(planet, down[0]), vertexAt(planet, down[1]), vertexAt(planet, down[2]), heightNormal(planet, heights.pack.direction(down[0])), heightNormal(planet, heights.pack.direction(down[1])), heightNormal(planet, heights.pack.direction(down[2])), covers.at(down[0]), covers.at(down[1]), covers.at(down[2]));
                     }
                 }
             }
@@ -171,7 +173,7 @@ namespace eltanin::locality::planet {
                 .position = dvec3{planet.pose.position},
                 .orientation = planet.pose.rotation,
                 .totalMass = volume * 3000.0f,
-                .radius = radius + planet.passport.geology.maxRelief,
+                .radius = radius + planet.passport.geology.amplitude,
                 .compound = phys::Body::Id::please_never_use_this_except_patch_rejection_mechanism(),
             };
         }
@@ -210,9 +212,8 @@ namespace eltanin::locality::planet {
         , pose{.position = Pos{0.0f, 0.0f, 0.0f}, .rotation = passport.orientation}
         , spin{0.0f}
         , well{}
-        , heights{geo::IcosaPack{.edgeBase = detail.edgeBase, .tessellation = detail.tessellation}, passport.radius}
-        , colors{heights.pack, RGB{1.0f, 1.0f, 1.0f}}
-        , covers{heights.pack, std::uint32_t{0}}
+        , heights{geo::IcosaPack{.edgeBase = detail.edgeBase, .tessellation = detail.tessellation}, std::int16_t{0}}
+        , covers{heights.pack, std::uint16_t{0}}
         , shell{}
         , atmosphere{} {
         geo::generate(*this);
@@ -230,7 +231,7 @@ namespace eltanin::locality::planet {
         const auto manager = with<resource::Manager>::singleton(context);
         const auto geometryId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-shell")});
         with<resource::geometry::Asset>::extend(context, geometryId, resource::geometry::Asset::Quantum{});
-        if (not with<resource::geometry::Asset>::install(context, geometryId, device, shellMesh(heights, covers))) {
+        if (not with<resource::geometry::Asset>::install(context, geometryId, device, shellMesh(*this))) {
             context.refuse("eltanin::locality::planet::Planet::place: geometry install failed");
             return;
         }
@@ -271,11 +272,28 @@ namespace eltanin::locality::planet {
             bindWell(*with<phys::Body>::modify(context, *well), *this);
     }
 
+    auto Planet::reliefScale() const -> float {
+        return passport.geology.amplitude / float(reliefPeak);
+    }
+
+    auto Planet::surfaceRadius(std::int16_t quantum) const -> float {
+        return passport.radius + float(quantum) * reliefScale();
+    }
+
+    auto Planet::encodeRelief(float deltaMeters) const -> std::int16_t {
+        const float scale = reliefScale();
+        if (scale <= 0.0f)
+            return 0;
+        return static_cast<std::int16_t>(std::clamp(std::lround(deltaMeters / scale), -long(reliefPeak), long(reliefPeak)));
+    }
+
     auto Planet::height(vec3 dir) const -> float {
         const float len = glm::length(dir);
         if (len < 1.0e-6f)
             return passport.radius;
-        return heights.at(dir);
+        dir /= len;
+        const auto tri = heights.pack.triangle(geo::IcosaPack::locate(dir));
+        return tri.bary.x * surfaceRadius(heights.at(tri.a)) + tri.bary.y * surfaceRadius(heights.at(tri.b)) + tri.bary.z * surfaceRadius(heights.at(tri.c));
     }
 
     auto Planet::altitudeAt(Pos worldPos) const -> float {
@@ -312,7 +330,7 @@ namespace eltanin::locality::planet {
             return Probe{.height = passport.radius, .position = dvec3{pose.position}, .normal = rotation * dvec3{0.0, 1.0, 0.0}, .mix = passport.geology.mix, .slope = 0.0f};
         dir /= len;
         const float radial = height(dir);
-        const vec3 localNormal = heightNormal(heights, dir);
+        const vec3 localNormal = heightNormal(*this, dir);
         return Probe{
             .height = radial,
             .position = dvec3{pose.position} + rotation * (dvec3{dir} * double(radial)),
