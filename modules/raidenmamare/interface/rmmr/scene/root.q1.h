@@ -4,6 +4,7 @@
 #include <rmmr/renderer/types.q1.h>
 #include <rmmr/scene/actors/family.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
+#include <rmmr/scene/actors/patchGrid.q1.h>
 #include <rmmr/scene/actors/sprite.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
@@ -71,6 +72,7 @@ namespace rmmr::scene {
         static auto createFamily(Writing, Root::Id, Meshes::Resolved, actor::Family::Layout) -> actor::Family::Id;
         static auto createFamily(Writing, Root::Id, Meshes::Id, string entry, actor::Family::Layout) -> actor::Family::Id;
         static auto createReplica(Writing, Root::Id, actor::Family::Id, Pose, actor::Replica::Quantum) -> actor::Replica::Id;
+        static auto createPatchGridActor(Writing, Root::Id, Pose, actor::PatchGrid::Quantum) -> actor::PatchGrid::Id;
         static void render(Reading, Root::Id, system::Device::Id, renderer::CommandBuffer& where);
     };
 

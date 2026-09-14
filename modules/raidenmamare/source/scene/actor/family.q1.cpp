@@ -189,6 +189,8 @@ namespace rmmr::scene::actor {
                 .shader = shader,
                 .texpack = texpack,
                 .texture3array = {},
+                .heightField = {},
+                .coverField = {},
                 .sprite = {},
                 .actorState = family.actorState,
                 .poses = family.instances,

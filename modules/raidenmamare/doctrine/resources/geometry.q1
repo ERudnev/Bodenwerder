@@ -55,7 +55,7 @@ namespace rmmr
         >materialize(#system::Device) -> #Runtime?
 
     feature Generator of Asset
-      enum Type : triangle, kube, bagel, gridPlane, unitQuad, sphere, diamond
+      enum Type : triangle, kube, bagel, gridPlane, unitQuad, sphere, diamond, patchGrid
       one
         type: Type
         subdivisions: integer // icosphere frequency; 1 = 80 tris; unused unless sphere

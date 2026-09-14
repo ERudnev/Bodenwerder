@@ -1,0 +1,37 @@
+import "resources/geometry"
+import "resources/materials"
+import "resources/texpack"
+import "resources/textures"
+import "renderer/types"
+import "system/core"
+import "math"
+import "scene/node"
+
+namespace rmmr
+  namespace scene
+    namespace actor
+
+      feature PatchGrid of Node
+        struct Patch
+          diamond: integer
+          originU: integer
+          originV: integer
+          step: integer
+        one
+          device: #system::Device
+          actorState: renderer::StorageBuffer
+          patches: renderer::StorageBuffer
+          dummy: renderer::StorageBuffer
+          patchCount: integer
+          radius: float
+          amplitude: float
+          span: integer
+          cells: integer
+          geometry: #resource::geometry::Runtime
+          material: #resource::material::Runtime
+          texpack: #resource::texpack::Runtime?
+          heightField: #resource::texture::Runtime
+          coverField: #resource::texture::Runtime
+          indirect: renderer::IndirectBuffer
+          drawCount: renderer::Count
+          ?submit(#system::Device, >where: renderer::CommandBuffer)

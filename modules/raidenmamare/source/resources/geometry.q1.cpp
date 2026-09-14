@@ -420,6 +420,7 @@ namespace rmmr::resource::geometry {
                 case Generator::Type::unitQuad: return GeometryGenerator::unitQuad();
                 case Generator::Type::sphere: return GeometryGenerator::sphere(generator.subdivisions);
                 case Generator::Type::diamond: return GeometryGenerator::diamond();
+                case Generator::Type::patchGrid: return GeometryGenerator::patchGrid(generator.subdivisions);
             }
         }
 

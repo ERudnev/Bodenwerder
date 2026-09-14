@@ -98,6 +98,8 @@ namespace rmmr::renderer {
         resource::shader::Runtime::Id shader;
         base::maybe<resource::texpack::Runtime::Id> texpack;
         base::maybe<resource::texture3array::Runtime::Id> texture3array;
+        base::maybe<resource::texture::Runtime::Id> heightField;
+        base::maybe<resource::texture::Runtime::Id> coverField;
         base::maybe<resource::sprite::Runtime::Id> sprite;
         StorageBuffer actorState;
         StorageBuffer poses;

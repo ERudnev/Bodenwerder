@@ -7,6 +7,7 @@
 #include <eltanin/physics/body.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
+#include <rmmr/scene/actors/patchGrid.q1.h>
 #include <rmmr/system/core.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -61,7 +62,7 @@ namespace eltanin::locality::planet {
         geo::IcosaMap<std::uint16_t> covers; // two u8 facies: surface, then just below
 
     private:
-        base::maybe<rmmr::scene::actor::Mesh::Id> shell;
+        base::maybe<rmmr::scene::actor::PatchGrid::Id> shell;
         base::maybe<rmmr::scene::actor::Mesh::Id> atmosphere;
 
     public:

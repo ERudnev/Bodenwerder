@@ -55,11 +55,12 @@ namespace rmmr::material {
         // Texture units (contexts mutually exclusive per draw):
         // - 0: albedoMap / atlasTexture / sceneColor / compose overlay
         // - 1: shadowMap / identiffyMap
-        // - 2: selectedMap
+        // - 2: selectedMap / heightMap
         // - 3..18: minerals[16] (GL_TEXTURE_3D layers)
+        // - 5: coverMap (planet field; exclusive with minerals on that unit)
         // SSBO binding points:
         // - 0: atlasEntries
-        static constexpr auto vocabulary = std::array<Entry, 16>{{
+        static constexpr auto vocabulary = std::array<Entry, 18>{{
             Entry{0, Type::i32, "_undefined", -1},
 
             Entry{109, Type::sampler2d, "shadowMap", 1},
@@ -69,6 +70,8 @@ namespace rmmr::material {
             Entry{112, Type::ssbo, "atlasEntries", 0},
             Entry{114, Type::v2f, "inverseAtlasSize", -1},
             Entry{115, Type::sampler3d, "minerals", 3},
+            Entry{116, Type::sampler2d, "heightMap", 2},
+            Entry{117, Type::sampler2d, "coverMap", 5},
 
             // Overlay / screen-space (gap after world materials — start at 2000)
             Entry{2000, Type::sampler2d, "sceneColor", 0},

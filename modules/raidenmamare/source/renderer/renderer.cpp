@@ -79,6 +79,8 @@ namespace rmmr {
             Id atlasEntries = material::Semantics::id_of("atlasEntries");
             Id inverseAtlasSize = material::Semantics::id_of("inverseAtlasSize");
             Id sceneDepth = material::Semantics::id_of("sceneDepth");
+            Id heightMap = material::Semantics::id_of("heightMap");
+            Id coverMap = material::Semantics::id_of("coverMap");
         } semantic{};
 
         struct ShadowCaster {
@@ -435,6 +437,12 @@ namespace rmmr {
                 const float inverseWidth = texture.size.x > 0 ? 1.0f / static_cast<float>(texture.size.x) : 0.0f;
                 const float inverseHeight = texture.size.y > 0 ? 1.0f / static_cast<float>(texture.size.y) : 0.0f;
                 setUniform(binding, vec2{inverseWidth, inverseHeight});
+            } else if (binding.id == semantic.heightMap) {
+                if (not batch.heightField or not with<resource::texture::Runtime>::exists(args.world, *batch.heightField)) throw std::runtime_error("Renderer: GPU batch missing heightField");
+                setUniformSampler(binding, with<resource::texture::Runtime>::get(args.world, *batch.heightField).handle);
+            } else if (binding.id == semantic.coverMap) {
+                if (not batch.coverField or not with<resource::texture::Runtime>::exists(args.world, *batch.coverField)) throw std::runtime_error("Renderer: GPU batch missing coverField");
+                setUniformSampler(binding, with<resource::texture::Runtime>::get(args.world, *batch.coverField).handle);
             }
         }
 

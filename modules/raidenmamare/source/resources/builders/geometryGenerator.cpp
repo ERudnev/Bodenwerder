@@ -358,4 +358,40 @@ namespace rmmr::resource::builders::geometry {
         };
     }
 
+    auto GeometryGenerator::patchGrid(integer cells) -> CpuPresentation {
+        if (cells < 1)
+            cells = 32;
+        const integer verts = cells + 1;
+        vector<Pos> positions;
+        vector<integer> indices;
+        positions.reserve(static_cast<std::size_t>(verts * verts));
+        indices.reserve(static_cast<std::size_t>(cells * cells * 6));
+        for (integer iv = 0; iv < verts; ++iv) {
+            for (integer iu = 0; iu < verts; ++iu)
+                positions.push_back(Pos{static_cast<float>(iu), static_cast<float>(iv), 0.0f});
+        }
+        auto indexAt = [verts](integer iu, integer iv) -> integer { return iv * verts + iu; };
+        for (integer iv = 0; iv < cells; ++iv) {
+            for (integer iu = 0; iu < cells; ++iu) {
+                const integer a = indexAt(iu, iv);
+                const integer b = indexAt(iu + 1, iv);
+                const integer c = indexAt(iu, iv + 1);
+                const integer d = indexAt(iu + 1, iv + 1);
+                indices.push_back(a);
+                indices.push_back(b);
+                indices.push_back(c);
+                indices.push_back(b);
+                indices.push_back(d);
+                indices.push_back(c);
+            }
+        }
+        return CpuPresentation{
+            .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position"}),
+            .positions = std::move(positions),
+            .normals = {},
+            .uv0 = {},
+            .indices = std::move(indices),
+        };
+    }
+
 }

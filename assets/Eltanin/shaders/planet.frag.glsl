@@ -3,10 +3,7 @@
 in vec3 v_worldPos;
 in vec3 v_worldNormal;
 in vec3 v_objectPos;
-in vec4 v_color0;
-flat in uvec2 v_layerPack;
-flat in vec3 v_seed;
-in vec3 v_bary;
+in vec2 v_atlas;
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out float BloomMask;
@@ -14,10 +11,12 @@ layout(location = 1) out float BloomMask;
 layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     mat4 actorModel;
     vec4 actorAlbedoOpacity;
-    vec2 actorLatticePattern;
-    uint actorScenicAlias;
-    uint actorSpriteIndex;
-    vec4 actorHeat;
+    float fieldRadius;
+    float fieldAmplitude;
+    int fieldSpan;
+    int fieldCells;
+    vec4 shell[12];
+    ivec4 diamonds[10];
 };
 
 layout(std140, binding = 0) uniform PassStateBuffer {
@@ -31,12 +30,10 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 
 layout(binding = 0) uniform sampler2DArray u_albedoMap;
 layout(binding = 1) uniform sampler2D u_shadowMap;
+layout(binding = 5) uniform sampler2D u_coverMap;
 
 const float shadowBias = 0.0005;
 const float crustFreq = 1.0 / 28.0;
-const float warpAmp = 0.28;
-const float warpFreq = 12.0;
-const float heightWarp = 0.04;
 const float slope5 = 0.0038;
 const float slope15 = 0.034;
 const float gouraudBand = 0.1;
@@ -63,27 +60,6 @@ float fetchShadow(vec3 worldPos, vec3 N, vec3 L) {
     return shadow / 9.0;
 }
 
-vec3 hash33(vec3 p) {
-    p = fract(p * vec3(0.1031, 0.1030, 0.0973));
-    p += dot(p, p.yxz + 33.33);
-    return fract((p.xxy + p.yxx) * p.zyx);
-}
-
-float jagged(float t, float channel) {
-    float n = 0.0;
-    float amp = 1.0;
-    for (int o = 0; o < 2; ++o) {
-        float i = floor(t);
-        float f = fract(t);
-        float a = hash33(v_seed + vec3(i, channel, float(o))).x;
-        float b = hash33(v_seed + vec3(i + 1.0, channel, float(o))).x;
-        n += amp * mix(a, b, f);
-        t = t * 2.27 + 3.1;
-        amp *= 0.5;
-    }
-    return n * (2.0 / 1.5) - 1.0;
-}
-
 vec3 sampleCrust(float layer, vec3 axis) {
     vec3 alongX = texture(u_albedoMap, vec3(v_objectPos.yz * crustFreq, layer)).rgb;
     vec3 alongY = texture(u_albedoMap, vec3(v_objectPos.xz * crustFreq, layer)).rgb;
@@ -98,16 +74,10 @@ float sampleRoughness(float layer, vec3 axis) {
     return alongX * axis.x + alongY * axis.y + alongZ * axis.z;
 }
 
-float layerOf(uint palette, uint index) {
-    return float((palette >> (index * 8u)) & 255u);
-}
-
-vec3 crustOf(uint palette, float blend, vec3 axis) {
-    return mix(sampleCrust(layerOf(palette, 0u), axis), sampleCrust(layerOf(palette, 1u), axis), blend);
-}
-
-float roughnessOf(uint palette, float blend, vec3 axis) {
-    return mix(sampleRoughness(layerOf(palette, 0u), axis), sampleRoughness(layerOf(palette, 1u), axis), blend);
+vec4 faciesOf(vec2 cover, vec3 axis, float blend) {
+    float surface = float(uint(cover.r * 255.0 + 0.5));
+    float below = float(uint(cover.g * 255.0 + 0.5));
+    return vec4(mix(sampleCrust(surface, axis), sampleCrust(below, axis), blend), mix(sampleRoughness(surface, axis), sampleRoughness(below, axis), blend));
 }
 
 void main() {
@@ -116,44 +86,41 @@ void main() {
     vec3 dir = normalize(v_objectPos);
     vec3 axis = pow(abs(dir), vec3(4.0));
     axis /= max(axis.x + axis.y + axis.z, 1.0e-5);
-    vec3 wave = vec3(jagged(dot(v_bary.yz, vec2(warpFreq)), 0.0), jagged(dot(v_bary.zx, vec2(warpFreq)), 1.0), jagged(dot(v_bary.xy, vec2(warpFreq)), 2.0));
-    wave -= (wave.x + wave.y + wave.z) * (1.0 / 3.0);
-    float interior = 27.0 * v_bary.x * v_bary.y * v_bary.z;
-    float radius = actorLatticePattern.y * 0.5;
-    float relief = length(v_objectPos) - radius;
-    vec3 warped = v_bary + wave * (warpAmp * interior) + (v_bary - vec3(1.0 / 3.0)) * (relief * heightWarp);
-    uint paletteA = v_layerPack.x & 65535u;
-    uint paletteB = v_layerPack.x >> 16;
-    uint paletteC = v_layerPack.y & 65535u;
     float slope = 1.0 - clamp(dot(N, dir), 0.0, 1.0);
     float blend = smoothstep(slope5, slope15, slope);
-    vec3 crustA = crustOf(paletteA, blend, axis);
-    vec3 crustB = crustOf(paletteB, blend, axis);
-    vec3 crustC = crustOf(paletteC, blend, axis);
-    float roughA = roughnessOf(paletteA, blend, axis);
-    float roughB = roughnessOf(paletteB, blend, axis);
-    float roughC = roughnessOf(paletteC, blend, axis);
-    vec3 nearest = crustC;
-    float nearestRough = roughC;
-    float lead = warped.z;
-    float chase = max(warped.x, warped.y);
-    if (warped.x >= warped.y && warped.x >= warped.z) {
-        nearest = crustA;
-        nearestRough = roughA;
-        lead = warped.x;
-        chase = max(warped.y, warped.z);
-    } else if (warped.y >= warped.z) {
-        nearest = crustB;
-        nearestRough = roughB;
-        lead = warped.y;
-        chase = max(warped.x, warped.z);
+    vec2 cellF = floor(v_atlas);
+    vec2 frac = v_atlas - cellF;
+    ivec2 cell = ivec2(cellF);
+    ivec2 i0 = cell;
+    ivec2 i1 = cell + ivec2(1, 0);
+    ivec2 i2 = cell + ivec2(0, 1);
+    vec3 bary = vec3(1.0 - frac.x - frac.y, frac.x, frac.y);
+    if (frac.x + frac.y > 1.0) {
+        i0 = cell + ivec2(1, 0);
+        i1 = cell + ivec2(1, 1);
+        i2 = cell + ivec2(0, 1);
+        bary = vec3(1.0 - frac.y, frac.x + frac.y - 1.0, 1.0 - frac.x);
     }
-    vec3 gouraud = v_bary.x * crustA + v_bary.y * crustB + v_bary.z * crustC;
-    float gouraudRough = v_bary.x * roughA + v_bary.y * roughB + v_bary.z * roughC;
-    float rim = 1.0 - smoothstep(0.0, gouraudBand, lead - chase);
-    vec3 albedo = mix(nearest, gouraud, rim);
-    float roughness = mix(nearestRough, gouraudRough, rim);
-    albedo *= actorAlbedoOpacity.rgb * v_color0.rgb;
+    ivec2 last = textureSize(u_coverMap, 0) - 1;
+    vec4 f0 = faciesOf(texelFetch(u_coverMap, clamp(i0, ivec2(0), last), 0).rg, axis, blend);
+    vec4 f1 = faciesOf(texelFetch(u_coverMap, clamp(i1, ivec2(0), last), 0).rg, axis, blend);
+    vec4 f2 = faciesOf(texelFetch(u_coverMap, clamp(i2, ivec2(0), last), 0).rg, axis, blend);
+    vec4 gouraud = bary.x * f0 + bary.y * f1 + bary.z * f2;
+    vec4 nearest = f2;
+    float dominance = bary.z;
+    float second = max(bary.x, bary.y);
+    if (bary.x > bary.y && bary.x > bary.z) {
+        nearest = f0;
+        dominance = bary.x;
+        second = max(bary.y, bary.z);
+    } else if (bary.y > bary.z) {
+        nearest = f1;
+        dominance = bary.y;
+        second = max(bary.x, bary.z);
+    }
+    vec4 crust = mix(nearest, gouraud, 1.0 - smoothstep(0.0, gouraudBand, dominance - second));
+    vec3 albedo = crust.rgb * actorAlbedoOpacity.rgb;
+    float roughness = crust.a;
     float lambert = max(dot(N, L), 0.0);
     float shadow = fetchShadow(v_worldPos, N, L);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);

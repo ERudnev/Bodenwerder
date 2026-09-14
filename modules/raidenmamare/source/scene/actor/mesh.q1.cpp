@@ -88,6 +88,8 @@ namespace rmmr::scene::actor {
                 .shader = shader,
                 .texpack = texpack,
                 .texture3array = bucket.texture3array,
+                .heightField = {},
+                .coverField = {},
                 .sprite = mesh.sprite,
                 .actorState = mesh.actorState,
                 .poses = mesh.poses,

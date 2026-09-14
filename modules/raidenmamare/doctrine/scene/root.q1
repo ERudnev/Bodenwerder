@@ -5,6 +5,7 @@ import "resources/meshpack"
 import "scene/actors/mesh"
 import "scene/actors/sprite"
 import "scene/actors/family"
+import "scene/actors/patchGrid"
 import "scene/camera"
 import "scene/gizmos"
 import "scene/light"
@@ -47,6 +48,7 @@ namespace rmmr
       >createFamily(#, Meshes::Resolved, actor::Family::Layout)->#actor::Family
       >createFamily(#, #Meshes, entry: string, actor::Family::Layout)->#actor::Family
       >createReplica(#, #actor::Family, Pose, one<actor::Replica>)->#actor::Replica
+      >createPatchGridActor(#, Pose, one<actor::PatchGrid>)->#actor::PatchGrid
       ?render(#, #system::Device, >where: renderer::CommandBuffer)
 
     // Ortho/2D layer on a scene root — sprite actors created here.

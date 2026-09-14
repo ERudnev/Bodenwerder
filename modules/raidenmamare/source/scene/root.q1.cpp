@@ -86,6 +86,12 @@ namespace rmmr::scene {
         return createMeshActor(context, root, pose, pack, std::move(entry), with<actor::MeshState>::defaults());
     }
 
+    auto Interface::createPatchGridActor(Writing context, Root::Id root, Pose pose, actor::PatchGrid::Quantum actorQuantum) -> actor::PatchGrid::Id {
+        const auto node = with<Node_group>::addElement(context, root, Node::Quantum{.pose = pose, .visible = true});
+        with<actor::PatchGrid>::extend(context, node, std::move(actorQuantum));
+        return node;
+    }
+
     auto Interface::createGrid(Writing context, Root::Id root, system::Device::Id, Pose pose, Grid::Quantum gridQuantum) -> Grid::Id {
         auto mesh = with<actor::Mesh>::composeOne(context, gridQuantum.geometry, gridQuantum.material);
         if (not mesh) return context.refuse("scene::Interface::createGrid: mesh composition failed");
@@ -138,6 +144,10 @@ namespace rmmr::scene {
                 with<actor::Mesh>::submit(context, node, device, where);
                 if (with<actor::Identified>::exists(context, node))
                     with<actor::Identified>::submit(context, node, device, where);
+                continue;
+            }
+            if (with<actor::PatchGrid>::exists(context, node)) {
+                with<actor::PatchGrid>::submit(context, node, device, where);
                 continue;
             }
         }

@@ -10,19 +10,24 @@
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/resources/texpack.q1.h>
+#include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
+#include <rmmr/scene/actors/patchGrid.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
-#include <rmmr/semantics/geometry.h>
 
 #include <glm/common.hpp>
+#include <glm/ext/vector_int4.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <numbers>
+#include <span>
+#include <vector>
 
 namespace eltanin::locality::planet {
 
@@ -56,74 +61,56 @@ namespace eltanin::locality::planet {
             return normal;
         }
 
-        void emitFace(resource::builders::geometry::CpuPresentation& cpu, vec3 first, vec3 second, vec3 third, vec3 normalA, vec3 normalB, vec3 normalC, std::uint16_t coverA, std::uint16_t coverB, std::uint16_t coverC) {
-            if (glm::dot(glm::cross(second - first, third - first), first + second + third) < 0.0f) {
-                const vec3 swap = second;
-                second = third;
-                third = swap;
-                const vec3 swapNormal = normalB;
-                normalB = normalC;
-                normalC = swapNormal;
-                const std::uint16_t swapCover = coverB;
-                coverB = coverC;
-                coverC = swapCover;
+        auto heightAtlas(const geo::IcosaMap<std::int16_t>& heights) -> vector<std::int16_t> {
+            const auto size = heights.pack.atlasSize();
+            vector<std::int16_t> pixels(static_cast<std::size_t>(size.x * size.y), std::int16_t{0});
+            const integer count = heights.pack.storedCount();
+            for (integer index = 0; index < count; ++index) {
+                const auto slot = heights.pack.slotOf(index);
+                const auto coord = heights.pack.atlasCoord(slot);
+                pixels[static_cast<std::size_t>(coord.y * size.x + coord.x)] = heights.at(slot);
             }
-            const std::uint32_t packLo = std::uint32_t(coverA) | (std::uint32_t(coverB) << 16);
-            const std::uint64_t pack = std::uint64_t(packLo) | (std::uint64_t(coverC) << 32);
-            const vec4 neutral{1.0f, 1.0f, 1.0f, 1.0f};
-            cpu.positions.push_back(first);
-            cpu.positions.push_back(second);
-            cpu.positions.push_back(third);
-            cpu.normals.push_back(normalA);
-            cpu.normals.push_back(normalB);
-            cpu.normals.push_back(normalC);
-            cpu.color0.push_back(neutral);
-            cpu.color0.push_back(neutral);
-            cpu.color0.push_back(neutral);
-            cpu.palette.push_back(coverA);
-            cpu.palette.push_back(coverB);
-            cpu.palette.push_back(coverC);
-            cpu.weights.push_back(pack);
-            cpu.weights.push_back(pack);
-            cpu.weights.push_back(pack);
+            return pixels;
         }
 
-        auto vertexAt(const Planet& planet, geo::IcosaPack::Slot slot) -> vec3 {
-            return planet.heights.pack.direction(slot) * planet.surfaceRadius(planet.heights.at(slot));
+        auto coverAtlas(const geo::IcosaMap<std::uint16_t>& covers) -> vector<std::uint8_t> {
+            const auto size = covers.pack.atlasSize();
+            vector<std::uint8_t> pixels(static_cast<std::size_t>(size.x * size.y * 2), std::uint8_t{0});
+            const integer count = covers.pack.storedCount();
+            for (integer index = 0; index < count; ++index) {
+                const auto slot = covers.pack.slotOf(index);
+                const auto coord = covers.pack.atlasCoord(slot);
+                const std::uint16_t packed = covers.at(slot);
+                const std::size_t pixel = static_cast<std::size_t>(coord.y * size.x + coord.x) * 2u;
+                pixels[pixel] = static_cast<std::uint8_t>(packed & 255u);
+                pixels[pixel + 1] = static_cast<std::uint8_t>(packed >> 8);
+            }
+            return pixels;
         }
 
-        auto shellMesh(const Planet& planet) -> resource::builders::geometry::CpuPresentation {
-            const auto& heights = planet.heights;
-            const auto& covers = planet.covers;
-            const integer last = heights.pack.edgeSegments();
-            resource::builders::geometry::CpuPresentation cpu{
-                .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "color0", "palette", "weights"}),
-                .positions = {},
-                .normals = {},
-                .uv0 = {},
-                .color0 = {},
-                .indices = {},
-                .mix0 = {},
-                .cohesion = {},
-                .palette = {},
-                .weights = {},
-            };
-            cpu.positions.reserve(static_cast<std::size_t>(geo::IcosaPack::diamondCount * last * last * 6));
-            cpu.normals.reserve(cpu.positions.capacity());
-            cpu.color0.reserve(cpu.positions.capacity());
-            cpu.palette.reserve(cpu.positions.capacity());
-            cpu.weights.reserve(cpu.positions.capacity());
+        auto icosaShell() -> scene::actor::PatchGrid::Shell {
+            scene::actor::PatchGrid::Shell shell;
+            const auto& vertices = geo::IcosaPack::vertices();
+            const auto& diamonds = geo::IcosaPack::diamonds();
+            for (integer index = 0; index < geo::IcosaPack::shellCount; ++index)
+                shell.vertices[static_cast<std::size_t>(index)] = vec4{vertices[static_cast<std::size_t>(index)], 0.0f};
+            for (integer index = 0; index < geo::IcosaPack::diamondCount; ++index) {
+                const auto& diamond = diamonds[static_cast<std::size_t>(index)];
+                shell.diamonds[static_cast<std::size_t>(index)] = glm::ivec4{static_cast<int>(diamond.top), static_cast<int>(diamond.right), static_cast<int>(diamond.bottom), static_cast<int>(diamond.left)};
+            }
+            return shell;
+        }
+
+        auto patchDescriptors(const geo::IcosaPack& pack, integer cells) -> vector<scene::actor::PatchGrid::Patch> {
+            vector<scene::actor::PatchGrid::Patch> patches;
+            const integer segments = pack.edgeSegments();
             for (integer diamond = 0; diamond < geo::IcosaPack::diamondCount; ++diamond) {
-                for (integer iv = 0; iv < last; ++iv) {
-                    for (integer iu = 0; iu < last; ++iu) {
-                        const auto up = heights.pack.upper(diamond, iu, iv);
-                        const auto down = heights.pack.lower(diamond, iu, iv);
-                        emitFace(cpu, vertexAt(planet, up[0]), vertexAt(planet, up[1]), vertexAt(planet, up[2]), heightNormal(planet, heights.pack.direction(up[0])), heightNormal(planet, heights.pack.direction(up[1])), heightNormal(planet, heights.pack.direction(up[2])), covers.at(up[0]), covers.at(up[1]), covers.at(up[2]));
-                        emitFace(cpu, vertexAt(planet, down[0]), vertexAt(planet, down[1]), vertexAt(planet, down[2]), heightNormal(planet, heights.pack.direction(down[0])), heightNormal(planet, heights.pack.direction(down[1])), heightNormal(planet, heights.pack.direction(down[2])), covers.at(down[0]), covers.at(down[1]), covers.at(down[2]));
-                    }
+                for (integer originV = 0; originV < segments; originV += cells) {
+                    for (integer originU = 0; originU < segments; originU += cells)
+                        patches.push_back(scene::actor::PatchGrid::Patch{.diamond = diamond, .originU = originU, .originV = originV, .step = 1});
                 }
             }
-            return cpu;
+            return patches;
         }
 
         void bindAtmosphereMesh(scene::actor::MeshState::Quantum& mesh, const Passport& passport) {
@@ -228,11 +215,9 @@ namespace eltanin::locality::planet {
             context.refuse("eltanin::locality::planet::Planet::place: planet material missing");
             return;
         }
-        const auto manager = with<resource::Manager>::singleton(context);
-        const auto geometryId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-shell")});
-        with<resource::geometry::Asset>::extend(context, geometryId, resource::geometry::Asset::Quantum{});
-        if (not with<resource::geometry::Asset>::install(context, geometryId, device, shellMesh(*this))) {
-            context.refuse("eltanin::locality::planet::Planet::place: geometry install failed");
+        const auto grid = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("Eltanin", "patchGrid"));
+        if (not grid) {
+            context.refuse("eltanin::locality::planet::Planet::place: patchGrid geometry missing");
             return;
         }
         const auto facies = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "facies"));
@@ -240,15 +225,32 @@ namespace eltanin::locality::planet {
             context.refuse("eltanin::locality::planet::Planet::place: facies texpack missing");
             return;
         }
-        auto meshQuantum = with<scene::actor::Mesh>::composeWithTexpack(context, geometryId, *material, *facies);
-        if (not meshQuantum) {
-            context.refuse("eltanin::locality::planet::Planet::place: mesh compose failed");
+        const auto manager = with<resource::Manager>::singleton(context);
+        const auto atlas = heights.pack.atlasSize();
+        const auto heightPixels = heightAtlas(heights);
+        const auto coverPixels = coverAtlas(covers);
+        const auto heightId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-height")});
+        with<resource::texture::Asset>::extend(context, heightId, resource::texture::Asset::Quantum{});
+        const auto heightBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(heightPixels.data()), heightPixels.size() * sizeof(std::int16_t));
+        if (not with<resource::texture::Asset>::install(context, heightId, device, resource::texture::Asset::Format::r16Snorm, atlas, heightBytes)) {
+            context.refuse("eltanin::locality::planet::Planet::place: height atlas install failed");
             return;
         }
-        auto meshState = with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
-        meshState.latticeStep = 0.0f;
-        meshState.patternScale = glm::max(0.5f, passport.radius * 2.0f);
-        shell = with<scene::Interface>::createMeshActor(context, with<Thing>::get_global(context).scene, this->pose, std::move(*meshQuantum), meshState);
+        const auto coverId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-cover")});
+        with<resource::texture::Asset>::extend(context, coverId, resource::texture::Asset::Quantum{});
+        const auto coverBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(coverPixels.data()), coverPixels.size());
+        if (not with<resource::texture::Asset>::install(context, coverId, device, resource::texture::Asset::Format::rg8, atlas, coverBytes)) {
+            context.refuse("eltanin::locality::planet::Planet::place: cover atlas install failed");
+            return;
+        }
+        constexpr integer cells = 32;
+        const auto patches = patchDescriptors(heights.pack, cells);
+        auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *facies, heightId, coverId, icosaShell(), patches, passport.radius, passport.geology.amplitude, heights.pack.edgeVertices(), cells);
+        if (not gridQuantum) {
+            context.refuse("eltanin::locality::planet::Planet::place: patch grid compose failed");
+            return;
+        }
+        shell = with<scene::Interface>::createPatchGridActor(context, with<Thing>::get_global(context).scene, this->pose, std::move(*gridQuantum));
         with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereDensity = passport.atmosphere.seaDensity;
         with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereKerman = passport.atmosphere.kerman;
         atmosphere = spawnAtmosphere(context, this->pose, passport);

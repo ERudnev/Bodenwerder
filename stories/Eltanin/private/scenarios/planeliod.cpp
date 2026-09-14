@@ -56,7 +56,7 @@ namespace eltanin::scenario {
                 },
             },
             //locality::planet::Planet::recommendedDetail(radius, 25.0f));
-            locality::planet::Planet::recommendedDetail(radius, 1.0f));
+            locality::planet::Planet::recommendedDetail(radius, 2.0f));
         planet->place(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
     }
 

@@ -19,6 +19,7 @@ set(Raidenmamare_Q1
     scene/actors/mesh.q1
     scene/actors/sprite.q1
     scene/actors/family.q1
+    scene/actors/patchGrid.q1
     scene/gizmos.q1
     resources/manager.q1
     semantics.q1

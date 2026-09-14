@@ -4,6 +4,8 @@
 #include <rmmr/resources/manager.q1.h>
 
 #include <cstdint>
+#include <cstddef>
+#include <span>
 
 #include <fQSM/api/interface.h>
 
@@ -24,7 +26,14 @@ namespace rmmr::resource::texture {
     };
 
     struct Asset : Feature<Asset, resource::Unit> {
+        enum class Format : std::uint8_t {
+            r16Snorm,
+            rg8,
+        };
         struct Quantum {};
+        struct Actions : BaseActions {
+            static auto install(Writing, Id, system::Device::Id, Format, index2 size, std::span<const std::byte>) -> optional<Runtime::Id>;
+        };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }
     };

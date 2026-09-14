@@ -38,6 +38,7 @@ namespace rmmr::resource::builders::geometry {
         static CpuPresentation unitQuad();
         static CpuPresentation sphere(integer subdivisions);
         static CpuPresentation diamond();
+        static CpuPresentation patchGrid(integer cells);
     };
 
 }

@@ -267,13 +267,14 @@ namespace eltanin {
             const auto planetShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "planet"), item<shader::Loader>{.vertex = "shaders/planet.vert.glsl", .fragment = "shaders/planet.frag.glsl"});
             with<Assets>::add_material(context, Name::from("Eltanin", "planet"), Material::Quantum{
                 .techniques = {
-                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap"}), .glowSpread = false}},
+                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap", "heightMap", "coverMap"}), .glowSpread = false}},
                 },
                 .nearest = false,
                 .blend = renderer::BlendMode::inherit,
             });
             const auto atmosphereShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "atmosphere"), item<shader::Loader>{.vertex = "shaders/atmosphere.vert.glsl", .fragment = "shaders/atmosphere.frag.glsl"});
             with<Assets>::add_geometry_generator(context, Name::from("Eltanin", "atmosphereSphere"), item<Generator>{.type = Generator::Type::sphere, .subdivisions = 4});
+            with<Assets>::add_geometry_generator(context, Name::from("Eltanin", "patchGrid"), item<Generator>{.type = Generator::Type::patchGrid, .subdivisions = 32});
             with<Assets>::add_material(context, Name::from("Eltanin", "atmosphere"), Material::Quantum{
                 .techniques = {{renderer::Pass::atmosphere, Material::Technique{.program = with<Unit>::remember(context, atmosphereShader), .uniforms = ::rmmr::material::Semantics::ids_of({"sceneDepth"}), .glowSpread = true}}},
                 .nearest = false,

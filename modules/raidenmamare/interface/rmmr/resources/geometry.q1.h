@@ -93,6 +93,7 @@ namespace rmmr::resource::geometry {
             unitQuad,
             sphere, // icosahedron; `subdivisions` frequency (1 = 80 tris)
             diamond, // regular octahedron; split verts; position+color0 (no UV/normals)
+            patchGrid, // N×N diamond cells; position.xy = grid (iu, iv), not world XYZ
         };
         struct Quantum {
             Type type;

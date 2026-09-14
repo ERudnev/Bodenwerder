@@ -15,6 +15,7 @@
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/scene/actors/family.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
+#include <rmmr/scene/actors/patchGrid.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/imgui.q1.h>
@@ -100,6 +101,7 @@ namespace rmmr {
                 ask::schema::aspect<scene::actor::Family>(),
                 ask::schema::aspect<scene::actor::Replica>(),
                 ask::schema::aspect<scene::actor::Replica_group>(),
+                ask::schema::aspect<scene::actor::PatchGrid>(),
                 ask::schema::aspect<scene::Family_group>(),
                 ask::schema::aspect<scene::Flat2d>(),
                 ask::schema::aspect<scene::Grid>(),

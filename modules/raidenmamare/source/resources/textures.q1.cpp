@@ -9,6 +9,8 @@
 
 #include <cmath>
 #include <algorithm>
+#include <cstdint>
+#include <cstddef>
 #include <filesystem>
 #include <vector>
 
@@ -148,6 +150,37 @@ namespace rmmr::resource::texture {
             .handle = handle,
             .size = generator.size,
         });
+    }
+
+    auto Asset::Actions::install(Writing context, Id asset_id, system::Device::Id device, Format format, index2 size, std::span<const std::byte> pixels) -> optional<Runtime::Id> {
+        const int width = static_cast<int>(size.x);
+        const int height = static_cast<int>(size.y);
+        if (width <= 0 or height <= 0)
+            return context.refuse("resource::texture::Asset::install: size must be positive");
+        const std::size_t expected = format == Format::r16Snorm
+            ? static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * sizeof(std::int16_t)
+            : static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 2u;
+        if (pixels.size() != expected)
+            return context.refuse("resource::texture::Asset::install: pixel bytes do not match format and size");
+        glfwMakeContextCurrent(with<system::Device>::get(context, device).handle);
+        renderer::Texture handle{};
+        glCreateTextures(GL_TEXTURE_2D, 1, &handle);
+        if (not handle)
+            return context.refuse("resource::texture::Asset::install: glCreateTextures failed");
+        if (format == Format::r16Snorm) {
+            glTextureStorage2D(handle, 1, GL_R16_SNORM, width, height);
+            glTextureSubImage2D(handle, 0, 0, 0, width, height, GL_RED, GL_SHORT, pixels.data());
+        } else {
+            glTextureStorage2D(handle, 1, GL_RG8, width, height);
+            glTextureSubImage2D(handle, 0, 0, 0, width, height, GL_RG, GL_UNSIGNED_BYTE, pixels.data());
+        }
+        glTextureParameteri(handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTextureParameteri(handle, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        const auto runtimeId = install_runtime(context, device, asset_id, Runtime::Quantum{.device = device, .handle = handle, .size = size});
+        with<Runtimes>::modify(context, device)->textures_id_mapping.insert_or_assign(asset_id, runtimeId);
+        return runtimeId;
     }
 
     struct Runtime::Internals : Runtime::DefaultInternals {
