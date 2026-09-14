@@ -112,14 +112,14 @@ namespace rmmr::resource::texpack {
             out[7] = static_cast<unsigned char>((indices >> 24) & 255u);
         }
 
-        void compressBc4Block(const unsigned char* rgba, int stride, unsigned char* out) {
+        void compressBc4Block(const unsigned char* rgba, int stride, unsigned char* out, int channel) {
             float values[16];
             float minValue = 1.0f;
             float maxValue = 0.0f;
             for (int row = 0; row < 4; ++row) {
                 for (int col = 0; col < 4; ++col) {
                     const unsigned char* pixel = rgba + static_cast<std::size_t>(row) * static_cast<std::size_t>(stride) * 4u + static_cast<std::size_t>(col) * 4u;
-                    const float value = static_cast<float>(pixel[0]) / 255.0f;
+                    const float value = static_cast<float>(pixel[channel]) / 255.0f;
                     values[row * 4 + col] = value;
                     minValue = std::min(minValue, value);
                     maxValue = std::max(maxValue, value);
@@ -163,16 +163,18 @@ namespace rmmr::resource::texpack {
         auto compressRgba(const unsigned char* rgba, int width, int height, bool grayscale) -> vector<unsigned char> {
             const int blocksX = width / 4;
             const int blocksY = height / 4;
-            const std::size_t blockBytes = 8u;
+            const std::size_t blockBytes = grayscale ? 8u : 16u;
             vector<unsigned char> out(static_cast<std::size_t>(blocksX * blocksY) * blockBytes);
-            vector<unsigned char> block(8);
+            vector<unsigned char> block(blockBytes);
             for (int blockY = 0; blockY < blocksY; ++blockY) {
                 for (int blockX = 0; blockX < blocksX; ++blockX) {
                     const unsigned char* source = rgba + (static_cast<std::size_t>(blockY * 4) * static_cast<std::size_t>(width) + static_cast<std::size_t>(blockX * 4)) * 4u;
                     if (grayscale)
-                        compressBc4Block(source, width, block.data());
-                    else
-                        compressBc1Block(source, width, block.data());
+                        compressBc4Block(source, width, block.data(), 0);
+                    else {
+                        compressBc4Block(source, width, block.data(), 3);
+                        compressBc1Block(source, width, block.data() + 8);
+                    }
                     const std::size_t offset = (static_cast<std::size_t>(blockY * blocksX + blockX)) * blockBytes;
                     for (std::size_t byte = 0; byte < blockBytes; ++byte)
                         out[offset + byte] = block[byte];
@@ -185,7 +187,7 @@ namespace rmmr::resource::texpack {
             if (grayscale)
                 return GL_COMPRESSED_RED_RGTC1;
             if (GLEW_EXT_texture_compression_s3tc)
-                return GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+                return GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
             return GL_RGBA8;
         }
 
@@ -355,7 +357,7 @@ namespace rmmr::resource::texpack {
         }
         glGenerateTextureMipmap(handle);
 
-        base::message("rmmr: texpack '{}' materialize {} layers ({}x{}, capacity {}, {})", unit.name.text(), layer_index, layer_w, layer_h, pack.capacity, useCompression ? (pack.grayscale ? "BC4" : "BC1") : "RGBA8");
+        base::message("rmmr: texpack '{}' materialize {} layers ({}x{}, capacity {}, {})", unit.name.text(), layer_index, layer_w, layer_h, pack.capacity, useCompression ? (pack.grayscale ? "BC4" : "BC3") : "RGBA8");
         return install_runtime(context, device, pack_id, Runtime::Quantum{
             .device = device,
             .handle = handle,

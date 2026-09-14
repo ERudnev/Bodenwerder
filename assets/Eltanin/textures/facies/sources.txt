@@ -1,0 +1,51 @@
+# Facies texpack sources
+# RGB albedo + A roughness. ambientCG materials are CC0. Legacy = previous crust close maps.
+
+00_Snow.png	legacy crust/00_ice_close
+01_Glacier.png	ambientCG Ice002
+02_DirtyIce.png	ambientCG Snow003 + grade
+03_VolatileFrost.png	ambientCG Snow001 + grade
+04_Hydrate.png	ambientCG Ice004 + grade
+05_Dunite.png	legacy crust/01_olivine_close
+06_Peridotite.png	ambientCG Rock023 + grade
+07_Pyroxenite.png	legacy crust/02_pyroxene_close
+08_Komatiite.png	ambientCG Rock035 + grade
+09_Basalt.png	ambientCG Rock028 + grade
+10_Gabbro.png	ambientCG Rock020
+11_Andesite.png	ambientCG Rock025 + grade
+12_Granite.png	legacy crust/03_feldspar_close
+13_Rhyolite.png	ambientCG Rock032 + grade
+14_Obsidian.png	ambientCG Rock022 + grade
+15_Anorthosite.png	ambientCG Rock008 + grade
+16_ClayPan.png	legacy crust/04_clay_close
+17_Laterite.png	ambientCG Ground037 + grade
+18_Arenite.png	ambientCG Ground054
+19_Evaporite.png	legacy crust/14_salts_close
+20_Carbonate.png	ambientCG Marble001 + grade
+21_Chondrite.png	legacy crust/05_carbonaceous_close
+22_Tholin.png	ambientCG Ground013 + grade
+23_Bitumen.png	ambientCG Asphalt012 + grade
+24_IronMetal.png	legacy crust/06_iron_close
+25_NickelMetal.png	legacy crust/07_nickel_close
+26_Sulfide.png	legacy crust/08_sulfides_close
+27_SulfurPlains.png	ambientCG Rock006 + grade
+28_SO2Frost.png	ambientCG Snow006 + grade
+29_Fumarole.png	ambientCG Ground032 + grade
+30_Hematite.png	legacy crust/09_oxides_close
+31_Magnetite.png	ambientCG Rock022 + grade
+32_DesertVarnish.png	ambientCG Rock029 + grade
+33_BaseMetal.png	legacy crust/10_basemetals_close
+34_Porphyry.png	ambientCG Rock036
+35_PGMLag.png	legacy crust/11_pgm_close
+36_REELaterite.png	legacy crust/12_rareearths_close
+37_Actinide.png	legacy crust/13_actinides_close
+38_Pahoehoe.png	ambientCG Lava001
+39_Scoria.png	ambientCG Lava002 + grade
+40_Pumice.png	ambientCG Rock013 + grade
+41_SilicaSinter.png	ambientCG Travertine002
+42_RegolithMafic.png	ambientCG Ground042 + grade
+43_RegolithFelsic.png	ambientCG Ground048 + grade
+44_Breccia.png	ambientCG Rock029
+45_Pegmatite.png	ambientCG Granite002A + grade
+46_Exotic.png	legacy crust/15_exotic_close
+47_Caliche.png	ambientCG Ground033 + grade

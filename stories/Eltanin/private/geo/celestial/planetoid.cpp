@@ -784,7 +784,7 @@ namespace eltanin::locality::geo {
         const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "planetoid"));
         if (not material)
             return (void)context.refuse("eltanin::locality::geo::Planetoid::place: planetoid material missing");
-        const auto crust = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "albedo"));
+        const auto crust = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "facies"));
         if (not crust)
             return (void)context.refuse("eltanin::locality::geo::Planetoid::place: crust pack missing");
         auto& landscape = with<Thing>::modify_global(context)->landscape;

@@ -4,7 +4,7 @@ in vec3 v_worldPos;
 in vec3 v_worldNormal;
 in vec3 v_objectPos;
 in vec4 v_color0;
-flat in uvec2 v_layerPack;
+flat in uvec3 v_layerPack;
 flat in vec3 v_seed;
 in vec3 v_bary;
 
@@ -31,7 +31,6 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 
 layout(binding = 0) uniform sampler2DArray u_albedoMap;
 layout(binding = 1) uniform sampler2D u_shadowMap;
-layout(binding = 4) uniform sampler2DArray u_roughnessMap;
 
 const float shadowBias = 0.0005;
 const float crustFreq = 1.0 / 28.0;
@@ -95,14 +94,14 @@ vec3 sampleCrust(float layer, vec3 axis) {
 }
 
 float sampleRoughness(float layer, vec3 axis) {
-    float alongX = texture(u_roughnessMap, vec3(v_objectPos.yz * crustFreq, layer)).r;
-    float alongY = texture(u_roughnessMap, vec3(v_objectPos.xz * crustFreq, layer)).r;
-    float alongZ = texture(u_roughnessMap, vec3(v_objectPos.xy * crustFreq, layer)).r;
+    float alongX = texture(u_albedoMap, vec3(v_objectPos.yz * crustFreq, layer)).a;
+    float alongY = texture(u_albedoMap, vec3(v_objectPos.xz * crustFreq, layer)).a;
+    float alongZ = texture(u_albedoMap, vec3(v_objectPos.xy * crustFreq, layer)).a;
     return alongX * axis.x + alongY * axis.y + alongZ * axis.z;
 }
 
 float layerOf(uint palette, uint index) {
-    return float((palette >> (index * 4u)) & 15u);
+    return float((palette >> (index * 8u)) & 255u);
 }
 
 vec3 crustOf(uint palette, uint shallow, uint deep, float blend, vec3 axis) {
@@ -125,9 +124,9 @@ void main() {
     float radius = actorLatticePattern.y * 0.5;
     float relief = length(v_objectPos) - radius;
     vec3 warped = v_bary + wave * (warpAmp * interior) + (v_bary - vec3(1.0 / 3.0)) * (relief * heightWarp);
-    uint paletteA = v_layerPack.x & 65535u;
-    uint paletteB = v_layerPack.x >> 16;
-    uint paletteC = v_layerPack.y & 65535u;
+    uint paletteA = v_layerPack.x;
+    uint paletteB = v_layerPack.y;
+    uint paletteC = v_layerPack.z;
     float slope = 1.0 - clamp(dot(N, dir), 0.0, 1.0);
     float depth = 0.0;
     depth += smoothstep(slope5, slope15, slope);

@@ -57,7 +57,6 @@ namespace rmmr::material {
         // - 1: shadowMap / identiffyMap
         // - 2: selectedMap
         // - 3..18: minerals[16] (GL_TEXTURE_3D layers)
-        // - 4: roughnessMap (paired crust texpack)
         // SSBO binding points:
         // - 0: atlasEntries
         static constexpr auto vocabulary = std::array<Entry, 16>{{

@@ -1,4 +1,5 @@
 #include "geo/details/generator.h"
+#include "geo/details/facies.h"
 #include "geo/celestial/planet.h"
 
 #include <base/logging.h>
@@ -106,12 +107,11 @@ namespace eltanin::locality::geo {
         }
 
         void fillCovers(planet::Planet& planet) {
-            using Kind = Mineral::Kind;
-            const auto packLayers = [](Kind a, Kind b, Kind c, Kind d) -> std::uint32_t {
-                return std::uint32_t(a) | (std::uint32_t(b) << 4) | (std::uint32_t(c) << 8) | (std::uint32_t(d) << 12);
+            const auto packLayers = [](Facies a, Facies b, Facies c, Facies d) -> std::uint32_t {
+                return std::uint32_t(a) | (std::uint32_t(b) << 8) | (std::uint32_t(c) << 16) | (std::uint32_t(d) << 24);
             };
-            const std::uint32_t polar = packLayers(Kind::Ice, Kind::Olivine, Kind::Pyroxene, Kind::Iron);
-            const std::uint32_t tropics = packLayers(Kind::Feldspar, Kind::Clay, Kind::Carbonaceous, Kind::Oxides);
+            const std::uint32_t polar = packLayers(Facies::Snow, Facies::Dunite, Facies::Pyroxenite, Facies::IronMetal);
+            const std::uint32_t tropics = packLayers(Facies::Granite, Facies::ClayPan, Facies::Chondrite, Facies::Hematite);
             const integer count = planet.covers.pack.storedCount();
             for (integer index = 0; index < count; ++index) {
                 const auto slot = planet.covers.pack.slotOf(index);

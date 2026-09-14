@@ -1,0 +1,61 @@
+#pragma once
+
+#include <fQSM/api/interface.h>
+
+namespace eltanin::locality::geo {
+
+    using namespace fqsm::api;
+
+    // Face catalog; ids = texpack layer index. Order matches doctrine/locality/geo/facies.md.
+    enum class Facies : integer {
+        Snow,
+        Glacier,
+        DirtyIce,
+        VolatileFrost,
+        Hydrate,
+        Dunite,
+        Peridotite,
+        Pyroxenite,
+        Komatiite,
+        Basalt,
+        Gabbro,
+        Andesite,
+        Granite,
+        Rhyolite,
+        Obsidian,
+        Anorthosite,
+        ClayPan,
+        Laterite,
+        Arenite,
+        Evaporite,
+        Carbonate,
+        Chondrite,
+        Tholin,
+        Bitumen,
+        IronMetal,
+        NickelMetal,
+        Sulfide,
+        SulfurPlains,
+        SO2Frost,
+        Fumarole,
+        Hematite,
+        Magnetite,
+        DesertVarnish,
+        BaseMetal,
+        Porphyry,
+        PGMLag,
+        REELaterite,
+        Actinide,
+        Pahoehoe,
+        Scoria,
+        Pumice,
+        SilicaSinter,
+        RegolithMafic,
+        RegolithFelsic,
+        Breccia,
+        Pegmatite,
+        Exotic,
+        Caliche,
+    };
+
+}

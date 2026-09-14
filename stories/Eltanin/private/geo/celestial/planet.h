@@ -59,7 +59,7 @@ namespace eltanin::locality::planet {
         base::maybe<phys::Body::Id> well;
         geo::IcosaMap<float> heights;
         geo::IcosaMap<rmmr::RGB> colors;
-        geo::IcosaMap<std::uint32_t> covers; // 4×4bit soil layers, shallow → deep
+        geo::IcosaMap<std::uint32_t> covers; // 4×8bit facies layers, shallow → deep
 
     private:
         base::maybe<rmmr::scene::actor::Mesh::Id> shell;

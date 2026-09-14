@@ -267,7 +267,7 @@ namespace eltanin {
             const auto planetShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "planet"), item<shader::Loader>{.vertex = "shaders/planet.vert.glsl", .fragment = "shaders/planet.frag.glsl"});
             with<Assets>::add_material(context, Name::from("Eltanin", "planet"), Material::Quantum{
                 .techniques = {
-                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap", "roughnessMap"}), .glowSpread = false}},
+                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap"}), .glowSpread = false}},
                 },
                 .nearest = false,
                 .blend = renderer::BlendMode::inherit,
@@ -282,12 +282,9 @@ namespace eltanin {
             const auto manager = with<Manager>::singleton(context);
             const auto crustId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "crust")});
             with<texture3array::Asset>::extend(context, crustId, texture3array::Asset::Quantum{.layerSize = index3{0, 0, 0}, .capacity = 0});
-            const auto albedoId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "albedo")});
-            with<texpack::Pack>::extend(context, albedoId, texpack::Pack::Quantum{.layerSize = index2{1024, 1024}, .capacity = 16, .layers = {}, .compressed = true, .grayscale = false});
-            with<texpack::LoaderCatalog>::extend(context, albedoId, texpack::LoaderCatalog::Quantum{.directory = "textures/crust/albedo"});
-            const auto roughnessId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "roughness")});
-            with<texpack::Pack>::extend(context, roughnessId, texpack::Pack::Quantum{.layerSize = index2{1024, 1024}, .capacity = 16, .layers = {}, .compressed = true, .grayscale = true});
-            with<texpack::LoaderCatalog>::extend(context, roughnessId, texpack::LoaderCatalog::Quantum{.directory = "textures/crust/roughness"});
+            const auto faciesId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "facies")});
+            with<texpack::Pack>::extend(context, faciesId, texpack::Pack::Quantum{.layerSize = index2{1024, 1024}, .capacity = 48, .layers = {}, .compressed = true, .grayscale = false});
+            with<texpack::LoaderCatalog>::extend(context, faciesId, texpack::LoaderCatalog::Quantum{.directory = "textures/facies"});
         }
         scenario.loadResources(context, *shared);
 

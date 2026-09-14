@@ -74,7 +74,6 @@ namespace rmmr {
             using Id = material::Semantics::PersistentId;
             Id shadowMap = material::Semantics::id_of("shadowMap");
             Id albedoMap = material::Semantics::id_of("albedoMap");
-            Id roughnessMap = material::Semantics::id_of("roughnessMap");
             Id minerals = material::Semantics::id_of("minerals");
             Id atlasTexture = material::Semantics::id_of("atlasTexture");
             Id atlasEntries = material::Semantics::id_of("atlasEntries");
@@ -416,9 +415,6 @@ namespace rmmr {
             if (binding.id == semantic.albedoMap) {
                 if (not batch.texpack or not with<resource::texpack::Runtime>::exists(args.world, *batch.texpack)) throw std::runtime_error("Renderer: GPU batch missing texpack");
                 setUniformSampler(binding, with<resource::texpack::Runtime>::get(args.world, *batch.texpack).handle, material.nearest);
-            } else if (binding.id == semantic.roughnessMap) {
-                if (not batch.roughnessTexpack or not with<resource::texpack::Runtime>::exists(args.world, *batch.roughnessTexpack)) throw std::runtime_error("Renderer: GPU batch missing roughness texpack");
-                setUniformSampler(binding, with<resource::texpack::Runtime>::get(args.world, *batch.roughnessTexpack).handle, material.nearest);
             } else if (binding.id == semantic.minerals) {
                 if (not batch.texture3array or not with<resource::texture3array::Runtime>::exists(args.world, *batch.texture3array)) throw std::runtime_error("Renderer: GPU batch missing texture3array");
                 const auto& pack = with<resource::texture3array::Runtime>::get(args.world, *batch.texture3array);
