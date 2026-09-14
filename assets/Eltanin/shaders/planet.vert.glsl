@@ -32,8 +32,9 @@ out vec3 v_worldPos;
 out vec3 v_worldNormal;
 out vec3 v_objectPos;
 out vec4 v_color0;
-flat out uint v_palette;
-out vec4 v_weights;
+flat out uvec2 v_layerPack;
+flat out vec3 v_seed;
+out vec3 v_bary;
 
 const ivec3 orientationRow0[24] = ivec3[24](
     ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0), ivec3(1, 0, 0),
@@ -70,7 +71,9 @@ void main() {
     mat3 normalMat = mat3(transpose(inverse(actorModel)));
     v_worldNormal = normalize(normalMat * localRotation * aNormal);
     v_color0 = aColor0;
-    v_palette = aPalette;
-    v_weights = vec4(float(aWeights.x & 255u), float((aWeights.x >> 8) & 255u), float((aWeights.x >> 16) & 255u), float((aWeights.x >> 24) & 255u)) / 255.0;
+    v_layerPack = aWeights;
+    v_seed = aPos;
+    int corner = gl_VertexID % 3;
+    v_bary = vec3(corner == 0, corner == 1, corner == 2);
     gl_Position = passProjection * passView * worldPos;
 }

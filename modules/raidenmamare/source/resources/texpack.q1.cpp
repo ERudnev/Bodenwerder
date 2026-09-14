@@ -7,9 +7,13 @@
 
 #include <base/logging.h>
 
+#include <glm/common.hpp>
+#include <glm/geometric.hpp>
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <format>
 #include <vector>
@@ -48,6 +52,141 @@ namespace rmmr::resource::texpack {
                 }
             }
             return with<TexpackRuntime_group>::addElement(context, device, std::move(quantum));
+        }
+
+        auto rgb565(vec3 color) -> std::uint16_t {
+            const int red = static_cast<int>(color.r * 31.0f + 0.5f);
+            const int green = static_cast<int>(color.g * 63.0f + 0.5f);
+            const int blue = static_cast<int>(color.b * 31.0f + 0.5f);
+            return static_cast<std::uint16_t>((red << 11) | (green << 5) | blue);
+        }
+
+        auto rgb565ToVec3(std::uint16_t packed) -> vec3 {
+            const float red = static_cast<float>((packed >> 11) & 31) / 31.0f;
+            const float green = static_cast<float>((packed >> 5) & 63) / 63.0f;
+            const float blue = static_cast<float>(packed & 31) / 31.0f;
+            return vec3{red, green, blue};
+        }
+
+        void compressBc1Block(const unsigned char* rgba, int stride, unsigned char* out) {
+            vec3 colors[16];
+            for (int row = 0; row < 4; ++row) {
+                for (int col = 0; col < 4; ++col) {
+                    const unsigned char* pixel = rgba + static_cast<std::size_t>(row) * static_cast<std::size_t>(stride) * 4u + static_cast<std::size_t>(col) * 4u;
+                    colors[row * 4 + col] = vec3{static_cast<float>(pixel[0]) / 255.0f, static_cast<float>(pixel[1]) / 255.0f, static_cast<float>(pixel[2]) / 255.0f};
+                }
+            }
+            vec3 minColor = colors[0];
+            vec3 maxColor = colors[0];
+            for (int index = 1; index < 16; ++index) {
+                minColor = glm::min(minColor, colors[index]);
+                maxColor = glm::max(maxColor, colors[index]);
+            }
+            const std::uint16_t c0 = rgb565(maxColor);
+            const std::uint16_t c1 = rgb565(minColor);
+            out[0] = static_cast<unsigned char>(c0 & 255u);
+            out[1] = static_cast<unsigned char>(c0 >> 8);
+            out[2] = static_cast<unsigned char>(c1 & 255u);
+            out[3] = static_cast<unsigned char>(c1 >> 8);
+            vec3 palette[4];
+            palette[0] = rgb565ToVec3(c0);
+            palette[1] = rgb565ToVec3(c1);
+            palette[2] = palette[0] * (2.0f / 3.0f) + palette[1] * (1.0f / 3.0f);
+            palette[3] = palette[0] * (1.0f / 3.0f) + palette[1] * (2.0f / 3.0f);
+            std::uint32_t indices = 0;
+            for (int index = 0; index < 16; ++index) {
+                float best = glm::length(colors[index] - palette[0]);
+                int pick = 0;
+                for (int candidate = 1; candidate < 4; ++candidate) {
+                    const float distance = glm::length(colors[index] - palette[candidate]);
+                    if (distance < best) {
+                        best = distance;
+                        pick = candidate;
+                    }
+                }
+                indices |= static_cast<std::uint32_t>(pick) << (index * 2);
+            }
+            out[4] = static_cast<unsigned char>(indices & 255u);
+            out[5] = static_cast<unsigned char>((indices >> 8) & 255u);
+            out[6] = static_cast<unsigned char>((indices >> 16) & 255u);
+            out[7] = static_cast<unsigned char>((indices >> 24) & 255u);
+        }
+
+        void compressBc4Block(const unsigned char* rgba, int stride, unsigned char* out) {
+            float values[16];
+            float minValue = 1.0f;
+            float maxValue = 0.0f;
+            for (int row = 0; row < 4; ++row) {
+                for (int col = 0; col < 4; ++col) {
+                    const unsigned char* pixel = rgba + static_cast<std::size_t>(row) * static_cast<std::size_t>(stride) * 4u + static_cast<std::size_t>(col) * 4u;
+                    const float value = static_cast<float>(pixel[0]) / 255.0f;
+                    values[row * 4 + col] = value;
+                    minValue = std::min(minValue, value);
+                    maxValue = std::max(maxValue, value);
+                }
+            }
+            const auto end0 = static_cast<unsigned char>(maxValue * 255.0f + 0.5f);
+            const auto end1 = static_cast<unsigned char>(minValue * 255.0f + 0.5f);
+            out[0] = end0;
+            out[1] = end1;
+            float palette[8];
+            palette[0] = static_cast<float>(end0) / 255.0f;
+            palette[1] = static_cast<float>(end1) / 255.0f;
+            if (end0 > end1) {
+                for (int step = 2; step < 8; ++step)
+                    palette[step] = palette[0] + (palette[1] - palette[0]) * (static_cast<float>(step - 1) / 7.0f);
+            } else {
+                palette[2] = (palette[0] + palette[1]) * 0.5f;
+                palette[3] = palette[2];
+                palette[4] = 0.0f;
+                palette[5] = 1.0f;
+                palette[6] = 0.0f;
+                palette[7] = 1.0f;
+            }
+            std::uint64_t indices = 0;
+            for (int index = 0; index < 16; ++index) {
+                float best = std::abs(values[index] - palette[0]);
+                int pick = 0;
+                for (int candidate = 1; candidate < 8; ++candidate) {
+                    const float distance = std::abs(values[index] - palette[candidate]);
+                    if (distance < best) {
+                        best = distance;
+                        pick = candidate;
+                    }
+                }
+                indices |= static_cast<std::uint64_t>(pick) << (index * 3);
+            }
+            for (int byte = 0; byte < 6; ++byte)
+                out[2 + byte] = static_cast<unsigned char>((indices >> (byte * 8)) & 255u);
+        }
+
+        auto compressRgba(const unsigned char* rgba, int width, int height, bool grayscale) -> vector<unsigned char> {
+            const int blocksX = width / 4;
+            const int blocksY = height / 4;
+            const std::size_t blockBytes = 8u;
+            vector<unsigned char> out(static_cast<std::size_t>(blocksX * blocksY) * blockBytes);
+            vector<unsigned char> block(8);
+            for (int blockY = 0; blockY < blocksY; ++blockY) {
+                for (int blockX = 0; blockX < blocksX; ++blockX) {
+                    const unsigned char* source = rgba + (static_cast<std::size_t>(blockY * 4) * static_cast<std::size_t>(width) + static_cast<std::size_t>(blockX * 4)) * 4u;
+                    if (grayscale)
+                        compressBc4Block(source, width, block.data());
+                    else
+                        compressBc1Block(source, width, block.data());
+                    const std::size_t offset = (static_cast<std::size_t>(blockY * blocksX + blockX)) * blockBytes;
+                    for (std::size_t byte = 0; byte < blockBytes; ++byte)
+                        out[offset + byte] = block[byte];
+                }
+            }
+            return out;
+        }
+
+        auto compressedFormat(bool grayscale) -> GLenum {
+            if (grayscale)
+                return GL_COMPRESSED_RED_RGTC1;
+            if (GLEW_EXT_texture_compression_s3tc)
+                return GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
+            return GL_RGBA8;
         }
 
         void resample_rgba(
@@ -177,8 +316,12 @@ namespace rmmr::resource::texpack {
             return context.refuse("resource::texpack::Pack::materialize: glCreateTextures failed");
         }
 
+        const bool useCompression = pack.compressed and (layer_w % 4 == 0) and (layer_h % 4 == 0) and (pack.grayscale or GLEW_EXT_texture_compression_s3tc);
+        const GLenum internalFormat = useCompression ? compressedFormat(pack.grayscale) : GL_RGBA8;
+        if (pack.compressed and not useCompression)
+            base::warning("rmmr: texpack '{}' compression unavailable, storing RGBA8", unit.name.text());
         const int levels = 1 + static_cast<int>(std::floor(std::log2(std::max(layer_w, layer_h))));
-        glTextureStorage3D(handle, levels, GL_RGBA8, layer_w, layer_h, static_cast<GLsizei>(pack.capacity));
+        glTextureStorage3D(handle, levels, internalFormat, layer_w, layer_h, static_cast<GLsizei>(pack.capacity));
         glTextureParameteri(handle, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTextureParameteri(handle, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTextureParameteri(handle, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
@@ -201,13 +344,18 @@ namespace rmmr::resource::texpack {
             }
             resample_rgba(pixels, src_w, src_h, dst.data(), layer_w, layer_h);
             stbi_image_free(pixels);
-            glTextureSubImage3D(handle, 0, 0, 0, static_cast<GLint>(layer_index), layer_w, layer_h, 1, GL_RGBA, GL_UNSIGNED_BYTE, dst.data());
+            if (useCompression) {
+                const auto blocks = compressRgba(dst.data(), layer_w, layer_h, pack.grayscale);
+                glCompressedTextureSubImage3D(handle, 0, 0, 0, static_cast<GLint>(layer_index), layer_w, layer_h, 1, internalFormat, static_cast<GLsizei>(blocks.size()), blocks.data());
+            } else {
+                glTextureSubImage3D(handle, 0, 0, 0, static_cast<GLint>(layer_index), layer_w, layer_h, 1, GL_RGBA, GL_UNSIGNED_BYTE, dst.data());
+            }
             layer_map.emplace(layer_name, layer_index);
             ++layer_index;
         }
         glGenerateTextureMipmap(handle);
 
-        base::message("rmmr: texpack '{}' materialize {} layers ({}x{}, capacity {})", unit.name.text(), layer_index, layer_w, layer_h, pack.capacity);
+        base::message("rmmr: texpack '{}' materialize {} layers ({}x{}, capacity {}, {})", unit.name.text(), layer_index, layer_w, layer_h, pack.capacity, useCompression ? (pack.grayscale ? "BC4" : "BC1") : "RGBA8");
         return install_runtime(context, device, pack_id, Runtime::Quantum{
             .device = device,
             .handle = handle,

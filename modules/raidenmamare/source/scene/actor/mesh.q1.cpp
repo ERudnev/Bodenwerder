@@ -81,12 +81,13 @@ namespace rmmr::scene::actor {
             }
         }
 
-        auto gpuBatch(const Mesh::Quantum& mesh, const Mesh::Bucket& bucket, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, base::maybe<resource::texpack::Runtime::Id> texpack, renderer::BlendMode blend) -> renderer::GpuBatch {
+        auto gpuBatch(const Mesh::Quantum& mesh, const Mesh::Bucket& bucket, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, base::maybe<resource::texpack::Runtime::Id> texpack, base::maybe<resource::texpack::Runtime::Id> roughnessTexpack, renderer::BlendMode blend) -> renderer::GpuBatch {
             return renderer::GpuBatch{
                 .geometry = bucket.geometry,
                 .material = material,
                 .shader = shader,
                 .texpack = texpack,
+                .roughnessTexpack = roughnessTexpack,
                 .texture3array = bucket.texture3array,
                 .sprite = mesh.sprite,
                 .actorState = mesh.actorState,
@@ -308,6 +309,19 @@ namespace rmmr::scene::actor {
         return compose(context, resource::meshpack::Asset::Resolved{.geometry = geometryId, .entry = resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = pack});
     }
 
+    auto Mesh::Actions::composeWithTexpacks(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id material, resource::texpack::Pack::Id albedo, resource::texpack::Pack::Id roughness) -> optional<Quantum> {
+        auto quantum = composeWithTexpack(context, geometryId, material, albedo);
+        if (not quantum)
+            return {};
+        const auto& runtimes = with<resource::Runtimes>::get(context, quantum->device);
+        const auto found = runtimes.texpacks_id_mapping.find(roughness);
+        if (found == runtimes.texpacks_id_mapping.end() or not with<resource::texpack::Runtime>::exists(context, found->second))
+            return {};
+        for (auto& bucket : quantum->buckets)
+            bucket.roughnessTexpack = found->second;
+        return quantum;
+    }
+
     void Mesh::Actions::writeCohesions(Reading context, Id node, std::span<const float> values) {
         const auto& mesh = with<Mesh>::get(context, node);
         if (not mesh.cohesions or values.size() != static_cast<std::size_t>(mesh.instanceCount)) return;
@@ -345,7 +359,7 @@ namespace rmmr::scene::actor {
         for (const auto& bucket : mesh.buckets) {
             const auto& material = with<resource::material::Runtime>::get(context, bucket.material);
             for (const auto& [pass, technique] : material.techniques) {
-                where.gpu[pass].push_back(gpuBatch(mesh, bucket, bucket.material, technique.shader, bucket.texpack, material.blend));
+                where.gpu[pass].push_back(gpuBatch(mesh, bucket, bucket.material, technique.shader, bucket.texpack, bucket.roughnessTexpack, material.blend));
             }
         }
     }
@@ -395,7 +409,7 @@ namespace rmmr::scene::actor {
         if (technique == material.techniques.end()) throw std::runtime_error("scene::actor::Identified: identity technique missing");
         const auto& identified = with<Identified>::get(context, node);
         for (const auto& bucket : mesh.buckets) {
-            const auto batch = gpuBatch(mesh, bucket, materialFound->second, technique->second.shader, {}, material.blend);
+            const auto batch = gpuBatch(mesh, bucket, materialFound->second, technique->second.shader, {}, {}, material.blend);
             if (identified.selected) where.gpu[renderer::Pass::identitySelected].push_back(batch);
             where.gpu[renderer::Pass::identity].push_back(batch);
         }

@@ -57,13 +57,15 @@ namespace rmmr::material {
         // - 1: shadowMap / identiffyMap
         // - 2: selectedMap
         // - 3..18: minerals[16] (GL_TEXTURE_3D layers)
+        // - 4: roughnessMap (paired crust texpack)
         // SSBO binding points:
         // - 0: atlasEntries
-        static constexpr auto vocabulary = std::array<Entry, 15>{{
+        static constexpr auto vocabulary = std::array<Entry, 16>{{
             Entry{0, Type::i32, "_undefined", -1},
 
             Entry{109, Type::sampler2d, "shadowMap", 1},
             Entry{110, Type::sampler2dArray, "albedoMap", 0},
+            Entry{113, Type::sampler2dArray, "roughnessMap", 4},
             Entry{111, Type::sampler2d, "atlasTexture", 0},
             Entry{112, Type::ssbo, "atlasEntries", 0},
             Entry{114, Type::v2f, "inverseAtlasSize", -1},

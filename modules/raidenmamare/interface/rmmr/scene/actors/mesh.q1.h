@@ -26,6 +26,7 @@ namespace rmmr::scene::actor {
             resource::geometry::Runtime::Id geometry;
             resource::material::Runtime::Id material;
             base::maybe<resource::texpack::Runtime::Id> texpack;
+            base::maybe<resource::texpack::Runtime::Id> roughnessTexpack;
             base::maybe<resource::texture3array::Runtime::Id> texture3array;
             renderer::IndirectBuffer indirect;
             renderer::Count drawCount;
@@ -53,6 +54,7 @@ namespace rmmr::scene::actor {
             static auto composeOne(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id) -> optional<Quantum>;
             static auto composeWith3DTexture(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texture3array::Asset::Id) -> optional<Quantum>;
             static auto composeWithTexpack(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texpack::Pack::Id) -> optional<Quantum>;
+            static auto composeWithTexpacks(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texpack::Pack::Id albedo, resource::texpack::Pack::Id roughness) -> optional<Quantum>;
             static void writeCohesions(Reading, Id, std::span<const float>);
             static void writeHeats(Reading, Id, std::span<const float>);
             static void replace(Writing, Id, Quantum);

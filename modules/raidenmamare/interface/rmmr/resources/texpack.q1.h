@@ -28,6 +28,8 @@ namespace rmmr::resource::texpack {
             index2 layerSize;
             integer capacity;
             vector<string> layers;
+            bool compressed;
+            bool grayscale;
         };
         struct Actions : BaseActions {
             static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;

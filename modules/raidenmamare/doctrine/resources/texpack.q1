@@ -22,6 +22,8 @@ namespace rmmr
         layerSize: index2
         capacity: integer
         layers: vector<string>
+        compressed: bool
+        grayscale: bool
         >materialize(#system::Device) -> #Runtime?
 
     // Scan a directory under the library root; every image file becomes a layer.

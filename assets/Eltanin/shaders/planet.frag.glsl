@@ -4,8 +4,9 @@ in vec3 v_worldPos;
 in vec3 v_worldNormal;
 in vec3 v_objectPos;
 in vec4 v_color0;
-flat in uint v_palette;
-in vec4 v_weights;
+flat in uvec2 v_layerPack;
+flat in vec3 v_seed;
+in vec3 v_bary;
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out float BloomMask;
@@ -30,8 +31,18 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 
 layout(binding = 0) uniform sampler2DArray u_albedoMap;
 layout(binding = 1) uniform sampler2D u_shadowMap;
+layout(binding = 4) uniform sampler2DArray u_roughnessMap;
 
 const float shadowBias = 0.0005;
+const float crustFreq = 1.0 / 28.0;
+const float warpAmp = 0.28;
+const float warpFreq = 12.0;
+const float heightWarp = 0.04;
+const float slope5 = 0.0038;
+const float slope15 = 0.034;
+const float slope30 = 0.134;
+const float slope45 = 0.293;
+const float gouraudBand = 0.1;
 
 float sampleShadow(vec2 uv, float currentDepth) {
     float closest = texture(u_shadowMap, uv).r;
@@ -55,50 +66,109 @@ float fetchShadow(vec3 worldPos, vec3 N, vec3 L) {
     return shadow / 9.0;
 }
 
-vec2 wrapGrad(vec2 d) {
-    float mag2 = dot(d, d);
-    return mag2 > 16.0 ? d * sqrt(16.0 / mag2) : d;
+vec3 hash33(vec3 p) {
+    p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+    p += dot(p, p.yxz + 33.33);
+    return fract((p.xxy + p.yxx) * p.zyx);
 }
 
-vec2 cubeFaceUv(vec3 dir) {
-    vec3 extent = abs(dir);
-    if (extent.x >= extent.y && extent.x >= extent.z)
-        return vec2(dir.y, dir.z) / extent.x;
-    if (extent.y >= extent.x && extent.y >= extent.z)
-        return vec2(dir.x, dir.z) / extent.y;
-    return vec2(dir.x, dir.y) / extent.z;
+float jagged(float t, float channel) {
+    float n = 0.0;
+    float amp = 1.0;
+    for (int o = 0; o < 2; ++o) {
+        float i = floor(t);
+        float f = fract(t);
+        float a = hash33(v_seed + vec3(i, channel, float(o))).x;
+        float b = hash33(v_seed + vec3(i + 1.0, channel, float(o))).x;
+        n += amp * mix(a, b, f);
+        t = t * 2.27 + 3.1;
+        amp *= 0.5;
+    }
+    return n * (2.0 / 1.5) - 1.0;
 }
 
-vec3 sampleLayer(vec2 uv, float layer, vec2 dx, vec2 dy) {
-    return textureGrad(u_albedoMap, vec3(uv, layer), dx, dy).rgb;
+vec3 sampleCrust(float layer, vec3 axis) {
+    vec3 alongX = texture(u_albedoMap, vec3(v_objectPos.yz * crustFreq, layer)).rgb;
+    vec3 alongY = texture(u_albedoMap, vec3(v_objectPos.xz * crustFreq, layer)).rgb;
+    vec3 alongZ = texture(u_albedoMap, vec3(v_objectPos.xy * crustFreq, layer)).rgb;
+    return alongX * axis.x + alongY * axis.y + alongZ * axis.z;
+}
+
+float sampleRoughness(float layer, vec3 axis) {
+    float alongX = texture(u_roughnessMap, vec3(v_objectPos.yz * crustFreq, layer)).r;
+    float alongY = texture(u_roughnessMap, vec3(v_objectPos.xz * crustFreq, layer)).r;
+    float alongZ = texture(u_roughnessMap, vec3(v_objectPos.xy * crustFreq, layer)).r;
+    return alongX * axis.x + alongY * axis.y + alongZ * axis.z;
+}
+
+float layerOf(uint palette, uint index) {
+    return float((palette >> (index * 4u)) & 15u);
+}
+
+vec3 crustOf(uint palette, uint shallow, uint deep, float blend, vec3 axis) {
+    return mix(sampleCrust(layerOf(palette, shallow), axis), sampleCrust(layerOf(palette, deep), axis), blend);
+}
+
+float roughnessOf(uint palette, uint shallow, uint deep, float blend, vec3 axis) {
+    return mix(sampleRoughness(layerOf(palette, shallow), axis), sampleRoughness(layerOf(palette, deep), axis), blend);
 }
 
 void main() {
     vec3 N = normalize(v_worldNormal);
     vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
     vec3 dir = normalize(v_objectPos);
+    vec3 axis = pow(abs(dir), vec3(4.0));
+    axis /= max(axis.x + axis.y + axis.z, 1.0e-5);
+    vec3 wave = vec3(jagged(dot(v_bary.yz, vec2(warpFreq)), 0.0), jagged(dot(v_bary.zx, vec2(warpFreq)), 1.0), jagged(dot(v_bary.xy, vec2(warpFreq)), 2.0));
+    wave -= (wave.x + wave.y + wave.z) * (1.0 / 3.0);
+    float interior = 27.0 * v_bary.x * v_bary.y * v_bary.z;
     float radius = actorLatticePattern.y * 0.5;
-    vec2 uvRaw = cubeFaceUv(dir) * (radius / 40.0);
-    vec2 dx = wrapGrad(dFdx(uvRaw));
-    vec2 dy = wrapGrad(dFdy(uvRaw));
-    vec2 uv = fract(uvRaw);
-    vec4 w = v_weights;
-    float mass = w.x + w.y + w.z + w.w;
-    if (mass < 1.0e-5)
-        w = vec4(1.0, 0.0, 0.0, 0.0);
-    else
-        w /= mass;
-    vec3 albedo = w.x * sampleLayer(uv, float(v_palette & 15u), dx, dy);
-    albedo += w.y * sampleLayer(uv, float((v_palette >> 4) & 15u), dx, dy);
-    albedo += w.z * sampleLayer(uv, float((v_palette >> 8) & 15u), dx, dy);
-    albedo += w.w * sampleLayer(uv, float((v_palette >> 12) & 15u), dx, dy);
+    float relief = length(v_objectPos) - radius;
+    vec3 warped = v_bary + wave * (warpAmp * interior) + (v_bary - vec3(1.0 / 3.0)) * (relief * heightWarp);
+    uint paletteA = v_layerPack.x & 65535u;
+    uint paletteB = v_layerPack.x >> 16;
+    uint paletteC = v_layerPack.y & 65535u;
+    float slope = 1.0 - clamp(dot(N, dir), 0.0, 1.0);
+    float depth = 0.0;
+    depth += smoothstep(slope5, slope15, slope);
+    depth += smoothstep(slope15, slope30, slope);
+    depth += smoothstep(slope30, slope45, slope);
+    uint shallow = uint(clamp(floor(depth), 0.0, 3.0));
+    uint deep = min(shallow + 1u, 3u);
+    float blend = fract(depth);
+    vec3 crustA = crustOf(paletteA, shallow, deep, blend, axis);
+    vec3 crustB = crustOf(paletteB, shallow, deep, blend, axis);
+    vec3 crustC = crustOf(paletteC, shallow, deep, blend, axis);
+    float roughA = roughnessOf(paletteA, shallow, deep, blend, axis);
+    float roughB = roughnessOf(paletteB, shallow, deep, blend, axis);
+    float roughC = roughnessOf(paletteC, shallow, deep, blend, axis);
+    vec3 nearest = crustC;
+    float nearestRough = roughC;
+    float lead = warped.z;
+    float chase = max(warped.x, warped.y);
+    if (warped.x >= warped.y && warped.x >= warped.z) {
+        nearest = crustA;
+        nearestRough = roughA;
+        lead = warped.x;
+        chase = max(warped.y, warped.z);
+    } else if (warped.y >= warped.z) {
+        nearest = crustB;
+        nearestRough = roughB;
+        lead = warped.y;
+        chase = max(warped.x, warped.z);
+    }
+    vec3 gouraud = v_bary.x * crustA + v_bary.y * crustB + v_bary.z * crustC;
+    float gouraudRough = v_bary.x * roughA + v_bary.y * roughB + v_bary.z * roughC;
+    float rim = 1.0 - smoothstep(0.0, gouraudBand, lead - chase);
+    vec3 albedo = mix(nearest, gouraud, rim);
+    float roughness = mix(nearestRough, gouraudRough, rim);
     albedo *= actorAlbedoOpacity.rgb * v_color0.rgb;
     float lambert = max(dot(N, L), 0.0);
     float shadow = fetchShadow(v_worldPos, N, L);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);
     float lightGain = max(passPrimaryLightPositionIntensity.w, 0.0);
-    vec3 ambient = albedo * passAmbientColorIntensity.rgb * (ambientGain / (1.0 + ambientGain));
-    vec3 direct = albedo * lambert * passPrimaryLightColorRange.rgb * shadow * (lightGain / (1.0 + lightGain));
+    vec3 ambient = albedo * passAmbientColorIntensity.rgb * (ambientGain / (1.0 + ambientGain)) * mix(1.0, 0.82, roughness);
+    vec3 direct = albedo * lambert * passPrimaryLightColorRange.rgb * shadow * (lightGain / (1.0 + lightGain)) * mix(1.0, 0.55, roughness);
     FragColor = vec4(ambient + direct, 1.0);
     BloomMask = 0.0;
 }

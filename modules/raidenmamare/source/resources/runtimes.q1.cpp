@@ -140,6 +140,8 @@ namespace rmmr::resource {
                 .layerSize = layerSize,
                 .capacity = capacity,
                 .layers = {},
+                .compressed = false,
+                .grayscale = false,
             },
             std::move(loader));
     }

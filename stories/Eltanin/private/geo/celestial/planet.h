@@ -11,6 +11,8 @@
 
 #include <fQSM/api/interface.h>
 
+#include <cstdint>
+
 namespace eltanin::locality::planet {
 
     using namespace fqsm::api;
@@ -57,6 +59,7 @@ namespace eltanin::locality::planet {
         base::maybe<phys::Body::Id> well;
         geo::IcosaMap<float> heights;
         geo::IcosaMap<rmmr::RGB> colors;
+        geo::IcosaMap<std::uint32_t> covers; // 4×4bit soil layers, shallow → deep
 
     private:
         base::maybe<rmmr::scene::actor::Mesh::Id> shell;
