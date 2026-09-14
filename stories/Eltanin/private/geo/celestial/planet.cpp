@@ -68,7 +68,8 @@ namespace eltanin::locality::planet {
                 coverB = coverC;
                 coverC = swapCover;
             }
-            const std::uint64_t pack = std::uint64_t(coverA) | (std::uint64_t(coverB) << 32);
+            const std::uint32_t packLo = (coverA & 0xFFFFu) | ((coverB & 0xFFFFu) << 16);
+            const std::uint64_t pack = std::uint64_t(packLo) | (std::uint64_t(coverC & 0xFFFFu) << 32);
             const vec4 neutral{1.0f, 1.0f, 1.0f, 1.0f};
             cpu.positions.push_back(first);
             cpu.positions.push_back(second);
@@ -79,8 +80,8 @@ namespace eltanin::locality::planet {
             cpu.color0.push_back(neutral);
             cpu.color0.push_back(neutral);
             cpu.color0.push_back(neutral);
-            cpu.palette.push_back(coverC);
-            cpu.palette.push_back(coverC);
+            cpu.palette.push_back(coverA);
+            cpu.palette.push_back(coverB);
             cpu.palette.push_back(coverC);
             cpu.weights.push_back(pack);
             cpu.weights.push_back(pack);

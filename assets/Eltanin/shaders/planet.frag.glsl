@@ -4,7 +4,7 @@ in vec3 v_worldPos;
 in vec3 v_worldNormal;
 in vec3 v_objectPos;
 in vec4 v_color0;
-flat in uvec3 v_layerPack;
+flat in uvec2 v_layerPack;
 flat in vec3 v_seed;
 in vec3 v_bary;
 
@@ -39,8 +39,6 @@ const float warpFreq = 12.0;
 const float heightWarp = 0.04;
 const float slope5 = 0.0038;
 const float slope15 = 0.034;
-const float slope30 = 0.134;
-const float slope45 = 0.293;
 const float gouraudBand = 0.1;
 
 float sampleShadow(vec2 uv, float currentDepth) {
@@ -104,12 +102,12 @@ float layerOf(uint palette, uint index) {
     return float((palette >> (index * 8u)) & 255u);
 }
 
-vec3 crustOf(uint palette, uint shallow, uint deep, float blend, vec3 axis) {
-    return mix(sampleCrust(layerOf(palette, shallow), axis), sampleCrust(layerOf(palette, deep), axis), blend);
+vec3 crustOf(uint palette, float blend, vec3 axis) {
+    return mix(sampleCrust(layerOf(palette, 0u), axis), sampleCrust(layerOf(palette, 1u), axis), blend);
 }
 
-float roughnessOf(uint palette, uint shallow, uint deep, float blend, vec3 axis) {
-    return mix(sampleRoughness(layerOf(palette, shallow), axis), sampleRoughness(layerOf(palette, deep), axis), blend);
+float roughnessOf(uint palette, float blend, vec3 axis) {
+    return mix(sampleRoughness(layerOf(palette, 0u), axis), sampleRoughness(layerOf(palette, 1u), axis), blend);
 }
 
 void main() {
@@ -124,23 +122,17 @@ void main() {
     float radius = actorLatticePattern.y * 0.5;
     float relief = length(v_objectPos) - radius;
     vec3 warped = v_bary + wave * (warpAmp * interior) + (v_bary - vec3(1.0 / 3.0)) * (relief * heightWarp);
-    uint paletteA = v_layerPack.x;
-    uint paletteB = v_layerPack.y;
-    uint paletteC = v_layerPack.z;
+    uint paletteA = v_layerPack.x & 65535u;
+    uint paletteB = v_layerPack.x >> 16;
+    uint paletteC = v_layerPack.y & 65535u;
     float slope = 1.0 - clamp(dot(N, dir), 0.0, 1.0);
-    float depth = 0.0;
-    depth += smoothstep(slope5, slope15, slope);
-    depth += smoothstep(slope15, slope30, slope);
-    depth += smoothstep(slope30, slope45, slope);
-    uint shallow = uint(clamp(floor(depth), 0.0, 3.0));
-    uint deep = min(shallow + 1u, 3u);
-    float blend = fract(depth);
-    vec3 crustA = crustOf(paletteA, shallow, deep, blend, axis);
-    vec3 crustB = crustOf(paletteB, shallow, deep, blend, axis);
-    vec3 crustC = crustOf(paletteC, shallow, deep, blend, axis);
-    float roughA = roughnessOf(paletteA, shallow, deep, blend, axis);
-    float roughB = roughnessOf(paletteB, shallow, deep, blend, axis);
-    float roughC = roughnessOf(paletteC, shallow, deep, blend, axis);
+    float blend = smoothstep(slope5, slope15, slope);
+    vec3 crustA = crustOf(paletteA, blend, axis);
+    vec3 crustB = crustOf(paletteB, blend, axis);
+    vec3 crustC = crustOf(paletteC, blend, axis);
+    float roughA = roughnessOf(paletteA, blend, axis);
+    float roughB = roughnessOf(paletteB, blend, axis);
+    float roughC = roughnessOf(paletteC, blend, axis);
     vec3 nearest = crustC;
     float nearestRough = roughC;
     float lead = warped.z;

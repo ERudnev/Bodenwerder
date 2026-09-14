@@ -107,11 +107,11 @@ namespace eltanin::locality::geo {
         }
 
         void fillCovers(planet::Planet& planet) {
-            const auto packLayers = [](Facies a, Facies b, Facies c, Facies d) -> std::uint32_t {
-                return std::uint32_t(a) | (std::uint32_t(b) << 8) | (std::uint32_t(c) << 16) | (std::uint32_t(d) << 24);
+            const auto packLayers = [](Facies surface, Facies below) -> std::uint32_t {
+                return std::uint32_t(surface) | (std::uint32_t(below) << 8);
             };
-            const std::uint32_t polar = packLayers(Facies::Snow, Facies::Dunite, Facies::Pyroxenite, Facies::IronMetal);
-            const std::uint32_t tropics = packLayers(Facies::Granite, Facies::ClayPan, Facies::Chondrite, Facies::Hematite);
+            const std::uint32_t polar = packLayers(Facies::Snow, Facies::Dunite);
+            const std::uint32_t tropics = packLayers(Facies::Granite, Facies::ClayPan);
             const integer count = planet.covers.pack.storedCount();
             for (integer index = 0; index < count; ++index) {
                 const auto slot = planet.covers.pack.slotOf(index);
