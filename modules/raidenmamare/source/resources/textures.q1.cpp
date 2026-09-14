@@ -159,7 +159,9 @@ namespace rmmr::resource::texture {
             return context.refuse("resource::texture::Asset::install: size must be positive");
         const std::size_t expected = format == Format::r16Snorm
             ? static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * sizeof(std::int16_t)
-            : static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 2u;
+            : format == Format::rgba8
+                ? static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4u
+                : static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 2u;
         if (pixels.size() != expected)
             return context.refuse("resource::texture::Asset::install: pixel bytes do not match format and size");
         glfwMakeContextCurrent(with<system::Device>::get(context, device).handle);
@@ -170,6 +172,9 @@ namespace rmmr::resource::texture {
         if (format == Format::r16Snorm) {
             glTextureStorage2D(handle, 1, GL_R16_SNORM, width, height);
             glTextureSubImage2D(handle, 0, 0, 0, width, height, GL_RED, GL_SHORT, pixels.data());
+        } else if (format == Format::rgba8) {
+            glTextureStorage2D(handle, 1, GL_RGBA8, width, height);
+            glTextureSubImage2D(handle, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
         } else {
             glTextureStorage2D(handle, 1, GL_RG8, width, height);
             glTextureSubImage2D(handle, 0, 0, 0, width, height, GL_RG, GL_UNSIGNED_BYTE, pixels.data());
@@ -177,6 +182,57 @@ namespace rmmr::resource::texture {
         glTextureParameteri(handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTextureParameteri(handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTextureParameteri(handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTextureParameteri(handle, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        const auto runtimeId = install_runtime(context, device, asset_id, Runtime::Quantum{.device = device, .handle = handle, .size = size});
+        with<Runtimes>::modify(context, device)->textures_id_mapping.insert_or_assign(asset_id, runtimeId);
+        return runtimeId;
+    }
+
+    auto Asset::Actions::install(Writing context, Id asset_id, system::Device::Id device, Format format, index2 size, integer layers, integer levels, std::span<const std::byte> pixels) -> optional<Runtime::Id> {
+        const int width = static_cast<int>(size.x);
+        const int height = static_cast<int>(size.y);
+        const int layerCount = static_cast<int>(layers);
+        const int levelCount = static_cast<int>(levels);
+        if (width <= 0 or height <= 0 or layerCount < 1 or levelCount < 1)
+            return context.refuse("resource::texture::Asset::install: size, layers and levels must be positive");
+        auto mipSpan = [](int base, int lod) -> int {
+            int span = std::max(base, 1);
+            for (int i = 0; i < lod; ++i)
+                span = std::max(span / 2, 1);
+            return span;
+        };
+        const std::size_t texel = format == Format::r16Snorm ? sizeof(std::int16_t) : format == Format::rgba8 ? std::size_t{4} : std::size_t{2};
+        std::size_t expected = 0;
+        for (int lod = 0; lod < levelCount; ++lod)
+            expected += static_cast<std::size_t>(mipSpan(width, lod)) * static_cast<std::size_t>(mipSpan(height, lod)) * static_cast<std::size_t>(layerCount) * texel;
+        if (pixels.size() != expected)
+            return context.refuse("resource::texture::Asset::install: pixel bytes do not match array format, size and mips");
+        glfwMakeContextCurrent(with<system::Device>::get(context, device).handle);
+        renderer::Texture handle{};
+        glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &handle);
+        if (not handle)
+            return context.refuse("resource::texture::Asset::install: glCreateTextures failed");
+        const GLenum internal = format == Format::r16Snorm ? GL_R16_SNORM : format == Format::rgba8 ? GL_RGBA8 : GL_RG8;
+        const GLenum external = format == Format::r16Snorm ? GL_RED : format == Format::rgba8 ? GL_RGBA : GL_RG;
+        const GLenum type = format == Format::r16Snorm ? GL_SHORT : GL_UNSIGNED_BYTE;
+        glGetError();
+        glTextureStorage3D(handle, levelCount, internal, width, height, layerCount);
+        if (glGetError() != GL_NO_ERROR) {
+            glDeleteTextures(1, &handle);
+            return context.refuse("resource::texture::Asset::install: glTextureStorage3D failed");
+        }
+        const std::byte* cursor = pixels.data();
+        for (int lod = 0; lod < levelCount; ++lod) {
+            const int lodWidth = mipSpan(width, lod);
+            const int lodHeight = mipSpan(height, lod);
+            const std::size_t bytes = static_cast<std::size_t>(lodWidth) * static_cast<std::size_t>(lodHeight) * static_cast<std::size_t>(layerCount) * texel;
+            glTextureSubImage3D(handle, lod, 0, 0, 0, lodWidth, lodHeight, layerCount, external, type, cursor);
+            cursor += bytes;
+        }
+        glTextureParameteri(handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(handle, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glTextureParameteri(handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
         glTextureParameteri(handle, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         const auto runtimeId = install_runtime(context, device, asset_id, Runtime::Quantum{.device = device, .handle = handle, .size = size});
         with<Runtimes>::modify(context, device)->textures_id_mapping.insert_or_assign(asset_id, runtimeId);

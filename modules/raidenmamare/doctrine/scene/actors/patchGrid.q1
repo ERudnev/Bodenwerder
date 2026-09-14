@@ -17,12 +17,17 @@ namespace rmmr
           originU: integer
           originV: integer
           step: integer
+          stepNegU: integer
+          stepPosU: integer
+          stepNegV: integer
+          stepPosV: integer
         one
           device: #system::Device
           actorState: renderer::StorageBuffer
           patches: renderer::StorageBuffer
           dummy: renderer::StorageBuffer
           patchCount: integer
+          patchCapacity: integer
           radius: float
           amplitude: float
           span: integer
@@ -34,4 +39,5 @@ namespace rmmr
           coverField: #resource::texture::Runtime
           indirect: renderer::IndirectBuffer
           drawCount: renderer::Count
+          ?setPatches
           ?submit(#system::Device, >where: renderer::CommandBuffer)

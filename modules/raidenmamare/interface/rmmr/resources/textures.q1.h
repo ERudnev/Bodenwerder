@@ -29,10 +29,12 @@ namespace rmmr::resource::texture {
         enum class Format : std::uint8_t {
             r16Snorm,
             rg8,
+            rgba8,
         };
         struct Quantum {};
         struct Actions : BaseActions {
             static auto install(Writing, Id, system::Device::Id, Format, index2 size, std::span<const std::byte>) -> optional<Runtime::Id>;
+            static auto install(Writing, Id, system::Device::Id, Format, index2 size, integer layers, integer levels, std::span<const std::byte>) -> optional<Runtime::Id>;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

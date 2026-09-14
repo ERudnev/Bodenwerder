@@ -69,12 +69,19 @@ namespace eltanin::locality::geo {
                 return along < other.along;
             }
         };
+        using Acc = std::conditional_t<std::is_integral_v<T>, double, T>;
         struct Group {
-            T sum;
+            Acc sum;
             integer count;
             vector<IcosaPack::Slot> slots;
         };
         std::map<Key, Group> groups;
+        auto asAcc = [](const T& value) -> Acc {
+            if constexpr (std::is_integral_v<T>)
+                return double(value);
+            else
+                return value;
+        };
         auto keyOf = [&](IcosaPack::Slot slot) -> Key {
             const auto& corners = IcosaPack::diamonds()[slot.diamond];
             const bool west = slot.iu == 0;
@@ -116,12 +123,12 @@ namespace eltanin::locality::geo {
         auto consider = [&](IcosaPack::Slot slot) {
             const Key key = keyOf(slot);
             if (auto found = groups.find(key); found != groups.end()) {
-                found->second.sum = found->second.sum + at(slot);
+                found->second.sum = found->second.sum + asAcc(at(slot));
                 found->second.count += 1;
                 found->second.slots.push_back(slot);
                 return;
             }
-            groups.emplace(key, Group{.sum = at(slot), .count = 1, .slots = {slot}});
+            groups.emplace(key, Group{.sum = asAcc(at(slot)), .count = 1, .slots = {slot}});
         };
         for (integer diamond = 0; diamond < IcosaPack::diamondCount; ++diamond) {
             for (integer iu = 0; iu <= last; ++iu) {
@@ -135,13 +142,21 @@ namespace eltanin::locality::geo {
         }
         float correction = 0.0f;
         for (const auto& entry : groups) {
-            const T mean = entry.second.sum * (1.0f / float(entry.second.count));
-            for (const auto slot : entry.second.slots) {
-                if constexpr (std::is_floating_point_v<T>)
-                    correction += std::abs(at(slot) - mean);
-                else
-                    correction += glm::length(at(slot) - mean);
-                at(slot) = mean;
+            if constexpr (std::is_integral_v<T>) {
+                const auto mean = static_cast<T>(std::lround(double(entry.second.sum) / double(entry.second.count)));
+                for (const auto slot : entry.second.slots) {
+                    correction += float(std::abs(double(at(slot)) - double(mean)));
+                    at(slot) = mean;
+                }
+            } else {
+                const T mean = entry.second.sum * (1.0f / float(entry.second.count));
+                for (const auto slot : entry.second.slots) {
+                    if constexpr (std::is_floating_point_v<T>)
+                        correction += std::abs(at(slot) - mean);
+                    else
+                        correction += glm::length(at(slot) - mean);
+                    at(slot) = mean;
+                }
             }
         }
         return correction;

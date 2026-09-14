@@ -27,6 +27,14 @@ namespace rmmr::scene::actor {
             integer originU;
             integer originV;
             integer step;
+            integer stepNegU;
+            integer stepPosU;
+            integer stepNegV;
+            integer stepPosV;
+        };
+        struct GpuTile {
+            glm::ivec4 loc;
+            glm::ivec4 neighbors;
         };
         struct Shell {
             std::array<vec4, 12> vertices;
@@ -48,6 +56,7 @@ namespace rmmr::scene::actor {
             renderer::StorageBuffer patches;
             renderer::StorageBuffer dummy;
             integer patchCount;
+            integer patchCapacity;
             float radius;
             float amplitude;
             integer span;
@@ -63,6 +72,7 @@ namespace rmmr::scene::actor {
         };
         struct Actions : BaseActions {
             static auto compose(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texpack::Pack::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, const Shell&, std::span<const Patch>, float radius, float amplitude, integer span, integer cells) -> optional<Quantum>;
+            static void setPatches(Writing, Id, std::span<const Patch>);
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };
         struct Internals;

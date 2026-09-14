@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <numbers>
 #include <span>
+#include <utility>
 #include <vector>
 
 namespace eltanin::locality::planet {
@@ -61,31 +62,146 @@ namespace eltanin::locality::planet {
             return normal;
         }
 
-        auto heightAtlas(const geo::IcosaMap<std::int16_t>& heights) -> vector<std::int16_t> {
-            const auto size = heights.pack.atlasSize();
-            vector<std::int16_t> pixels(static_cast<std::size_t>(size.x * size.y), std::int16_t{0});
-            const integer count = heights.pack.storedCount();
-            for (integer index = 0; index < count; ++index) {
-                const auto slot = heights.pack.slotOf(index);
-                const auto coord = heights.pack.atlasCoord(slot);
-                pixels[static_cast<std::size_t>(coord.y * size.x + coord.x)] = heights.at(slot);
-            }
-            return pixels;
+        constexpr integer patchCells = 32;
+
+        auto rootStepOf(integer segments) -> integer {
+            integer step = 1;
+            while (patchCells * step < segments)
+                step *= 2;
+            return step;
         }
 
-        auto coverAtlas(const geo::IcosaMap<std::uint16_t>& covers) -> vector<std::uint8_t> {
-            const auto size = covers.pack.atlasSize();
-            vector<std::uint8_t> pixels(static_cast<std::size_t>(size.x * size.y * 2), std::uint8_t{0});
-            const integer count = covers.pack.storedCount();
-            for (integer index = 0; index < count; ++index) {
-                const auto slot = covers.pack.slotOf(index);
-                const auto coord = covers.pack.atlasCoord(slot);
-                const std::uint16_t packed = covers.at(slot);
-                const std::size_t pixel = static_cast<std::size_t>(coord.y * size.x + coord.x) * 2u;
-                pixels[pixel] = static_cast<std::uint8_t>(packed & 255u);
-                pixels[pixel + 1] = static_cast<std::uint8_t>(packed >> 8);
+        auto glMipSpan(integer base, integer lod) -> integer {
+            integer span = std::max(base, integer{1});
+            for (integer i = 0; i < lod; ++i)
+                span = std::max(span / 2, integer{1});
+            return span;
+        }
+
+        auto glMipLevels(integer base) -> integer {
+            integer levels = 1;
+            integer span = std::max(base, integer{1});
+            while (span > 1) {
+                span /= 2;
+                levels += 1;
             }
-            return pixels;
+            return levels;
+        }
+
+        auto coverMode(std::uint32_t a, std::uint32_t b, std::uint32_t c, std::uint32_t d) -> std::uint32_t {
+            const std::uint32_t values[4]{a, b, c, d};
+            integer best = 0;
+            integer bestCount = 0;
+            for (integer i = 0; i < 4; ++i) {
+                integer count = 0;
+                for (integer j = 0; j < 4; ++j)
+                    if (values[j] == values[i])
+                        count += 1;
+                if (count > bestCount) {
+                    bestCount = count;
+                    best = i;
+                }
+            }
+            return values[best];
+        }
+
+        auto heightArrayMips(const Planet& planet) -> vector<std::int16_t> {
+            const auto& pack = planet.heights.pack;
+            const integer span0 = pack.edgeVertices();
+            const integer layers = geo::IcosaPack::diamondCount;
+            const integer levels = glMipLevels(span0);
+            std::size_t total = 0;
+            for (integer lod = 0; lod < levels; ++lod)
+                total += static_cast<std::size_t>(layers) * static_cast<std::size_t>(glMipSpan(span0, lod)) * static_cast<std::size_t>(glMipSpan(span0, lod));
+            vector<std::int16_t> packed(total, std::int16_t{0});
+            vector<std::int16_t> prev(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span0) * static_cast<std::size_t>(span0), std::int16_t{0});
+            const integer count0 = pack.storedCount();
+            for (integer index = 0; index < count0; ++index) {
+                const auto slot = pack.slotOf(index);
+                prev[static_cast<std::size_t>((slot.diamond * span0 + slot.iv) * span0 + slot.iu)] = planet.heights.at(slot);
+            }
+            auto atPrev = [&](integer span, integer diamond, integer iu, integer iv) -> std::int16_t {
+                iu = std::clamp(iu, integer{0}, span - 1);
+                iv = std::clamp(iv, integer{0}, span - 1);
+                return prev[static_cast<std::size_t>((diamond * span + iv) * span + iu)];
+            };
+            std::size_t offset = 0;
+            for (integer lod = 0; lod < levels; ++lod) {
+                const integer span = glMipSpan(span0, lod);
+                if (lod > 0) {
+                    const integer spanPrev = glMipSpan(span0, lod - 1);
+                    vector<std::int16_t> next(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span), std::int16_t{0});
+                    for (integer diamond = 0; diamond < layers; ++diamond) {
+                        for (integer iv = 0; iv < span; ++iv) {
+                            for (integer iu = 0; iu < span; ++iu) {
+                                const auto a = atPrev(spanPrev, diamond, iu * 2, iv * 2);
+                                const auto b = atPrev(spanPrev, diamond, iu * 2 + 1, iv * 2);
+                                const auto c = atPrev(spanPrev, diamond, iu * 2, iv * 2 + 1);
+                                const auto d = atPrev(spanPrev, diamond, iu * 2 + 1, iv * 2 + 1);
+                                const float metres = 0.25f * planet.reliefScale() * (float(a) + float(b) + float(c) + float(d));
+                                next[static_cast<std::size_t>((diamond * span + iv) * span + iu)] = planet.encodeRelief(metres);
+                            }
+                        }
+                    }
+                    prev = std::move(next);
+                }
+                const std::size_t count = static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span);
+                std::copy(prev.begin(), prev.begin() + static_cast<std::ptrdiff_t>(count), packed.begin() + static_cast<std::ptrdiff_t>(offset));
+                offset += count;
+            }
+            return packed;
+        }
+
+        auto coverArrayMips(const Planet& planet) -> vector<std::uint8_t> {
+            const auto& pack = planet.covers.pack;
+            const integer span0 = pack.edgeVertices();
+            const integer layers = geo::IcosaPack::diamondCount;
+            const integer levels = glMipLevels(span0);
+            std::size_t total = 0;
+            for (integer lod = 0; lod < levels; ++lod)
+                total += static_cast<std::size_t>(layers) * static_cast<std::size_t>(glMipSpan(span0, lod)) * static_cast<std::size_t>(glMipSpan(span0, lod)) * 4u;
+            vector<std::uint8_t> packed(total, std::uint8_t{0});
+            vector<std::uint32_t> prev(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span0) * static_cast<std::size_t>(span0), std::uint32_t{0});
+            const integer count0 = pack.storedCount();
+            for (integer index = 0; index < count0; ++index) {
+                const auto slot = pack.slotOf(index);
+                prev[static_cast<std::size_t>((slot.diamond * span0 + slot.iv) * span0 + slot.iu)] = planet.covers.at(slot);
+            }
+            auto atPrev = [&](integer span, integer diamond, integer iu, integer iv) -> std::uint32_t {
+                iu = std::clamp(iu, integer{0}, span - 1);
+                iv = std::clamp(iv, integer{0}, span - 1);
+                return prev[static_cast<std::size_t>((diamond * span + iv) * span + iu)];
+            };
+            std::size_t offset = 0;
+            for (integer lod = 0; lod < levels; ++lod) {
+                const integer span = glMipSpan(span0, lod);
+                if (lod > 0) {
+                    const integer spanPrev = glMipSpan(span0, lod - 1);
+                    vector<std::uint32_t> next(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span), std::uint32_t{0});
+                    for (integer diamond = 0; diamond < layers; ++diamond) {
+                        for (integer iv = 0; iv < span; ++iv) {
+                            for (integer iu = 0; iu < span; ++iu) {
+                                const auto a = atPrev(spanPrev, diamond, iu * 2, iv * 2);
+                                const auto b = atPrev(spanPrev, diamond, iu * 2 + 1, iv * 2);
+                                const auto c = atPrev(spanPrev, diamond, iu * 2, iv * 2 + 1);
+                                const auto d = atPrev(spanPrev, diamond, iu * 2 + 1, iv * 2 + 1);
+                                next[static_cast<std::size_t>((diamond * span + iv) * span + iu)] = coverMode(a, b, c, d);
+                            }
+                        }
+                    }
+                    prev = std::move(next);
+                }
+                const integer count = layers * span * span;
+                for (integer index = 0; index < count; ++index) {
+                    const std::uint32_t packedCover = prev[static_cast<std::size_t>(index)];
+                    packed[offset] = static_cast<std::uint8_t>(packedCover & 255u);
+                    packed[offset + 1] = static_cast<std::uint8_t>((packedCover >> 8) & 255u);
+                    packed[offset + 2] = static_cast<std::uint8_t>((packedCover >> 16) & 255u);
+                    packed[offset + 3] = static_cast<std::uint8_t>((packedCover >> 24) & 255u);
+                    offset += 4;
+                }
+            }
+            return packed;
         }
 
         auto icosaShell() -> scene::actor::PatchGrid::Shell {
@@ -101,15 +217,151 @@ namespace eltanin::locality::planet {
             return shell;
         }
 
-        auto patchDescriptors(const geo::IcosaPack& pack, integer cells) -> vector<scene::actor::PatchGrid::Patch> {
-            vector<scene::actor::PatchGrid::Patch> patches;
-            const integer segments = pack.edgeSegments();
-            for (integer diamond = 0; diamond < geo::IcosaPack::diamondCount; ++diamond) {
-                for (integer originV = 0; originV < segments; originV += cells) {
-                    for (integer originU = 0; originU < segments; originU += cells)
-                        patches.push_back(scene::actor::PatchGrid::Patch{.diamond = diamond, .originU = originU, .originV = originV, .step = 1});
+        void fillNeighborSteps(vector<scene::actor::PatchGrid::Patch>& patches, integer segments) {
+            const integer buckets = std::max((segments + patchCells - 1) / patchCells, integer{1});
+            vector<integer> stepMap(static_cast<std::size_t>(geo::IcosaPack::diamondCount * buckets * buckets), integer{1});
+            auto bucketOf = [&](integer diamond, integer bu, integer bv) -> integer {
+                bu = std::clamp(bu, integer{0}, buckets - 1);
+                bv = std::clamp(bv, integer{0}, buckets - 1);
+                return (diamond * buckets + bv) * buckets + bu;
+            };
+            for (const auto& patch : patches) {
+                const integer bu0 = patch.originU / patchCells;
+                const integer bv0 = patch.originV / patchCells;
+                for (integer bv = 0; bv < patch.step; ++bv) {
+                    for (integer bu = 0; bu < patch.step; ++bu) {
+                        const integer u = bu0 + bu;
+                        const integer v = bv0 + bv;
+                        if (u >= 0 and u < buckets and v >= 0 and v < buckets)
+                            stepMap[static_cast<std::size_t>(bucketOf(patch.diamond, u, v))] = patch.step;
+                    }
                 }
             }
+            auto neighborStep = [&](integer diamond, integer bu, integer bv, integer own) -> integer {
+                if (bu < 0 or bv < 0 or bu >= buckets or bv >= buckets)
+                    return own;
+                return stepMap[static_cast<std::size_t>(bucketOf(diamond, bu, bv))];
+            };
+            for (auto& patch : patches) {
+                const integer bu0 = patch.originU / patchCells;
+                const integer bv0 = patch.originV / patchCells;
+                const integer mid = std::max(patch.step / 2, integer{0});
+                patch.stepNegU = neighborStep(patch.diamond, bu0 - 1, bv0 + mid, patch.step);
+                patch.stepPosU = neighborStep(patch.diamond, bu0 + patch.step, bv0 + mid, patch.step);
+                patch.stepNegV = neighborStep(patch.diamond, bu0 + mid, bv0 - 1, patch.step);
+                patch.stepPosV = neighborStep(patch.diamond, bu0 + mid, bv0 + patch.step, patch.step);
+            }
+        }
+
+        auto coarsePatches(const geo::IcosaPack& pack) -> vector<scene::actor::PatchGrid::Patch> {
+            vector<scene::actor::PatchGrid::Patch> patches;
+            const integer segments = pack.edgeSegments();
+            const integer step = rootStepOf(segments);
+            for (integer diamond = 0; diamond < geo::IcosaPack::diamondCount; ++diamond)
+                patches.push_back(scene::actor::PatchGrid::Patch{.diamond = diamond, .originU = 0, .originV = 0, .step = step, .stepNegU = step, .stepPosU = step, .stepNegV = step, .stepPosV = step});
+            return patches;
+        }
+
+        auto lodPatches(const geo::IcosaPack& pack, float radius, vec3 localCamera) -> vector<scene::actor::PatchGrid::Patch> {
+            const integer segments = pack.edgeSegments();
+            const integer rootStep = rootStepOf(segments);
+            const double arc = std::max(0.0, double(radius)) * std::acos(1.0 / std::sqrt(5.0));
+            const float texelMeters = float(arc / double(std::max(segments, integer{1})));
+            const float metresPerCell = float(patchCells) * std::max(texelMeters, 1.0e-4f);
+            constexpr float lodK = 0.18f;
+            auto wantStepAt = [&](vec3 surface) -> integer {
+                const float dist = std::max(glm::length(localCamera - surface), metresPerCell);
+                const float raw = dist * lodK / metresPerCell;
+                integer want = static_cast<integer>(std::lround(std::exp2(std::round(std::log2(std::max(raw, 1.0f))))));
+                if (want < 1)
+                    want = 1;
+                if (want > rootStep)
+                    want = rootStep;
+                return want;
+            };
+            struct Tile {
+                integer diamond;
+                integer originU;
+                integer originV;
+                integer step;
+            };
+            vector<Tile> tiles;
+            auto visit = [&](auto& self, integer diamond, integer originU, integer originV, integer step) -> void {
+                if (originU >= segments or originV >= segments)
+                    return;
+                const integer midU = std::clamp(originU + (patchCells * step) / 2, integer{0}, segments);
+                const integer midV = std::clamp(originV + (patchCells * step) / 2, integer{0}, segments);
+                const vec3 center = pack.direction(geo::IcosaPack::Slot{.diamond = diamond, .iu = midU, .iv = midV}) * radius;
+                const integer want = wantStepAt(center);
+                if (step > want and step > 1) {
+                    const integer half = step / 2;
+                    const integer span = patchCells * half;
+                    self(self, diamond, originU, originV, half);
+                    self(self, diamond, originU + span, originV, half);
+                    self(self, diamond, originU, originV + span, half);
+                    self(self, diamond, originU + span, originV + span, half);
+                    return;
+                }
+                tiles.push_back(Tile{.diamond = diamond, .originU = originU, .originV = originV, .step = step});
+            };
+            for (integer diamond = 0; diamond < geo::IcosaPack::diamondCount; ++diamond)
+                visit(visit, diamond, 0, 0, rootStep);
+            const integer buckets = std::max((segments + patchCells - 1) / patchCells, integer{1});
+            auto paint = [&](vector<integer>& stepMap) {
+                std::fill(stepMap.begin(), stepMap.end(), rootStep);
+                for (const auto& tile : tiles) {
+                    const integer bu0 = tile.originU / patchCells;
+                    const integer bv0 = tile.originV / patchCells;
+                    for (integer bv = 0; bv < tile.step; ++bv) {
+                        for (integer bu = 0; bu < tile.step; ++bu) {
+                            const integer u = bu0 + bu;
+                            const integer v = bv0 + bv;
+                            if (u >= 0 and u < buckets and v >= 0 and v < buckets)
+                                stepMap[static_cast<std::size_t>((tile.diamond * buckets + v) * buckets + u)] = tile.step;
+                        }
+                    }
+                }
+            };
+            vector<integer> stepMap(static_cast<std::size_t>(geo::IcosaPack::diamondCount * buckets * buckets), rootStep);
+            for (integer pass = 0; pass < 8; ++pass) {
+                paint(stepMap);
+                vector<Tile> next;
+                bool split = false;
+                for (const auto& tile : tiles) {
+                    const integer bu0 = tile.originU / patchCells;
+                    const integer bv0 = tile.originV / patchCells;
+                    const integer mid = std::max(tile.step / 2, integer{0});
+                    auto sample = [&](integer bu, integer bv) -> integer {
+                        if (bu < 0 or bv < 0 or bu >= buckets or bv >= buckets)
+                            return tile.step;
+                        return stepMap[static_cast<std::size_t>((tile.diamond * buckets + bv) * buckets + bu)];
+                    };
+                    const integer nmin = std::min(std::min(sample(bu0 - 1, bv0 + mid), sample(bu0 + tile.step, bv0 + mid)), std::min(sample(bu0 + mid, bv0 - 1), sample(bu0 + mid, bv0 + tile.step)));
+                    if (tile.step > nmin * 2 and tile.step > 1) {
+                        split = true;
+                        const integer half = tile.step / 2;
+                        const integer span = patchCells * half;
+                        auto push = [&](integer ou, integer ov) {
+                            if (ou < segments and ov < segments)
+                                next.push_back(Tile{.diamond = tile.diamond, .originU = ou, .originV = ov, .step = half});
+                        };
+                        push(tile.originU, tile.originV);
+                        push(tile.originU + span, tile.originV);
+                        push(tile.originU, tile.originV + span);
+                        push(tile.originU + span, tile.originV + span);
+                    } else {
+                        next.push_back(tile);
+                    }
+                }
+                tiles = std::move(next);
+                if (not split)
+                    break;
+            }
+            vector<scene::actor::PatchGrid::Patch> patches;
+            patches.reserve(tiles.size());
+            for (const auto& tile : tiles)
+                patches.push_back(scene::actor::PatchGrid::Patch{.diamond = tile.diamond, .originU = tile.originU, .originV = tile.originV, .step = tile.step, .stepNegU = tile.step, .stepPosU = tile.step, .stepNegV = tile.step, .stepPosV = tile.step});
+            fillNeighborSteps(patches, segments);
             return patches;
         }
 
@@ -176,8 +428,8 @@ namespace eltanin::locality::planet {
     }
 
     auto Planet::recommendedDetail(float radius, float edge) -> Detail {
-        constexpr integer maxShellTriangles = 20 * 512 * 512; // full-resolution shell budget; N = edgeBase * 2^t
-        const integer cap = static_cast<integer>(std::sqrt(static_cast<double>(maxShellTriangles) / 20.0));
+        constexpr integer maxEdgeSegments = 2048; // GPU height/cover field; N = edgeBase * 2^t
+        const integer cap = maxEdgeSegments;
         const float want = edge > 0.0f ? edge : constructionEdge;
         const double arc = std::max(0.0, double(radius)) * std::acos(1.0 / std::sqrt(5.0));
         integer segments = want > 0.0f ? static_cast<integer>(std::lround(arc / double(want))) : cap;
@@ -200,7 +452,7 @@ namespace eltanin::locality::planet {
         , spin{0.0f}
         , well{}
         , heights{geo::IcosaPack{.edgeBase = detail.edgeBase, .tessellation = detail.tessellation}, std::int16_t{0}}
-        , covers{heights.pack, std::uint16_t{0}}
+        , covers{heights.pack, std::uint32_t{0}}
         , shell{}
         , atmosphere{} {
         geo::generate(*this);
@@ -226,26 +478,27 @@ namespace eltanin::locality::planet {
             return;
         }
         const auto manager = with<resource::Manager>::singleton(context);
-        const auto atlas = heights.pack.atlasSize();
-        const auto heightPixels = heightAtlas(heights);
-        const auto coverPixels = coverAtlas(covers);
+        const integer span = heights.pack.edgeVertices();
+        const integer layers = geo::IcosaPack::diamondCount;
+        const integer levels = glMipLevels(span);
+        const auto heightPixels = heightArrayMips(*this);
+        const auto coverPixels = coverArrayMips(*this);
         const auto heightId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-height")});
         with<resource::texture::Asset>::extend(context, heightId, resource::texture::Asset::Quantum{});
         const auto heightBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(heightPixels.data()), heightPixels.size() * sizeof(std::int16_t));
-        if (not with<resource::texture::Asset>::install(context, heightId, device, resource::texture::Asset::Format::r16Snorm, atlas, heightBytes)) {
+        if (not with<resource::texture::Asset>::install(context, heightId, device, resource::texture::Asset::Format::r16Snorm, index2{.x = span, .y = span}, layers, levels, heightBytes)) {
             context.refuse("eltanin::locality::planet::Planet::place: height atlas install failed");
             return;
         }
         const auto coverId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-cover")});
         with<resource::texture::Asset>::extend(context, coverId, resource::texture::Asset::Quantum{});
         const auto coverBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(coverPixels.data()), coverPixels.size());
-        if (not with<resource::texture::Asset>::install(context, coverId, device, resource::texture::Asset::Format::rg8, atlas, coverBytes)) {
+        if (not with<resource::texture::Asset>::install(context, coverId, device, resource::texture::Asset::Format::rgba8, index2{.x = span, .y = span}, layers, levels, coverBytes)) {
             context.refuse("eltanin::locality::planet::Planet::place: cover atlas install failed");
             return;
         }
-        constexpr integer cells = 32;
-        const auto patches = patchDescriptors(heights.pack, cells);
-        auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *facies, heightId, coverId, icosaShell(), patches, passport.radius, passport.geology.amplitude, heights.pack.edgeVertices(), cells);
+        const auto patches = coarsePatches(heights.pack);
+        auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *facies, heightId, coverId, icosaShell(), patches, passport.radius, passport.geology.amplitude, heights.pack.edgeVertices(), patchCells);
         if (not gridQuantum) {
             context.refuse("eltanin::locality::planet::Planet::place: patch grid compose failed");
             return;
@@ -261,7 +514,13 @@ namespace eltanin::locality::planet {
         sync(context);
     }
 
-    void Planet::update(Writing, Pos) {
+    void Planet::update(Writing context, Pos camera) {
+        applySpin(*this);
+        if (not shell or not with<scene::actor::PatchGrid>::exists(context, *shell))
+            return;
+        const vec3 localCamera{glm::inverse(glm::dquat{pose.rotation}) * (dvec3{camera} - dvec3{pose.position})};
+        const auto patches = lodPatches(heights.pack, passport.radius, localCamera);
+        with<scene::actor::PatchGrid>::setPatches(context, *shell, patches);
     }
 
     void Planet::sync(Writing context) {

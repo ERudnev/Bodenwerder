@@ -15,9 +15,9 @@ namespace eltanin::scenario {
     }
 
     void Planeliod::populate(Writing context, rmmr::system::Device::Id) {
-        with<World>::placeCamera(context, Pose::from(Pos{0.0f, 0.0f, 250.0f}, HPB{0.0f, 0.0f, 0.0f}));
+        with<World>::placeCamera(context, Pose::from(Pos{0.0f, 0.0f, 26000.0f}, HPB{0.0f, 0.0f, 0.0f}));
         if (const auto camera = with<World>::get_global(context).camera)
-            with<controller::Camera3d>::modify(context, *camera)->moveScale = 1.0f;
+            with<controller::Camera3d>::modify(context, *camera)->moveScale = 25.0f;
         for (auto [gridId, _] : context->aspect<scene::Grid>().items()) {
             auto mesh = with<scene::actor::MeshState>::modify(context, gridId);
             mesh->scale = vec3{1.0f};
@@ -28,7 +28,7 @@ namespace eltanin::scenario {
     }
 
     void Planeliod::placePlanet(Writing context, rmmr::system::Device::Id device, base::maybe<locality::planet::Planet>& planet) {
-        constexpr float radius = 100.0f;
+        constexpr float radius = 10000.0f;
         using Mineral = locality::geo::Mineral::Kind;
         auto nibble = [](Mineral channel, integer fill) -> locality::geo::Mineral::Mix {
             return locality::geo::Mineral::Mix{static_cast<std::uint64_t>(fill)} << (static_cast<integer>(channel) * 4);
@@ -37,26 +37,25 @@ namespace eltanin::scenario {
             locality::planet::Passport{
                 .seed = 7,
                 .radius = radius,
-                .surfaceAcceleration = 9.81f,
+                .surfaceAcceleration = 3.71f,
                 .orientation = quat{1.0f, 0.0f, 0.0f, 0.0f},
                 .geology = {
-                    .mix = nibble(Mineral::Ice, 8) | nibble(Mineral::Olivine, 10) | nibble(Mineral::Pyroxene, 8) | nibble(Mineral::Iron, 4),
-                    .differentiation = 0.35f,
-                    .surfaceAge = 0.7f,
-                    .cohesion = 0.72f,
-                    .grain = 0.4f,
-                    .tectonic = 0.015f,
-                    .amplitude = 5.0f,
+                    .mix = nibble(Mineral::Pyroxene, 12) | nibble(Mineral::Olivine, 8) | nibble(Mineral::Feldspar, 6) | nibble(Mineral::Oxides, 11) | nibble(Mineral::Clay, 7) | nibble(Mineral::Ice, 6) | nibble(Mineral::Salts, 4) | nibble(Mineral::Iron, 5) | nibble(Mineral::Carbonaceous, 3),
+                    .differentiation = 0.62f,
+                    .surfaceAge = 0.78f,
+                    .cohesion = 0.48f,
+                    .grain = 0.55f,
+                    .tectonic = 0.22f,
+                    .amplitude = 200.0f,
                 },
                 .atmosphere = {
-                    .outerRadius = radius,
-                    .seaDensity = 0.0f,
-                    .kerman = 1000.0f,
-                    .day = RGB{0.42f, 0.62f, 1.00f},
+                    .outerRadius = radius + 350.0f,
+                    .seaDensity = 0.03f,
+                    .kerman = 800.0f,
+                    .day = RGB{0.78f, 0.52f, 0.36f},
                 },
             },
-            //locality::planet::Planet::recommendedDetail(radius, 25.0f));
-            locality::planet::Planet::recommendedDetail(radius, 2.0f));
+            locality::planet::Planet::recommendedDetail(radius, 8.0f));
         planet->place(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
     }
 

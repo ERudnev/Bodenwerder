@@ -70,8 +70,8 @@ namespace rmmr::material {
             Entry{112, Type::ssbo, "atlasEntries", 0},
             Entry{114, Type::v2f, "inverseAtlasSize", -1},
             Entry{115, Type::sampler3d, "minerals", 3},
-            Entry{116, Type::sampler2d, "heightMap", 2},
-            Entry{117, Type::sampler2d, "coverMap", 5},
+            Entry{116, Type::sampler2dArray, "heightMap", 2},
+            Entry{117, Type::sampler2dArray, "coverMap", 5},
 
             // Overlay / screen-space (gap after world materials — start at 2000)
             Entry{2000, Type::sampler2d, "sceneColor", 0},

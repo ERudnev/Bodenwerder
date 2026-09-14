@@ -361,28 +361,22 @@ namespace rmmr::resource::builders::geometry {
     auto GeometryGenerator::patchGrid(integer cells) -> CpuPresentation {
         if (cells < 1)
             cells = 32;
-        const integer verts = cells + 1;
         vector<Pos> positions;
         vector<integer> indices;
-        positions.reserve(static_cast<std::size_t>(verts * verts));
+        positions.reserve(static_cast<std::size_t>(cells * cells * 6));
         indices.reserve(static_cast<std::size_t>(cells * cells * 6));
-        for (integer iv = 0; iv < verts; ++iv) {
-            for (integer iu = 0; iu < verts; ++iu)
-                positions.push_back(Pos{static_cast<float>(iu), static_cast<float>(iv), 0.0f});
-        }
-        auto indexAt = [verts](integer iu, integer iv) -> integer { return iv * verts + iu; };
+        auto emit = [&](integer iu, integer iv, float corner) {
+            indices.push_back(static_cast<integer>(positions.size()));
+            positions.push_back(Pos{static_cast<float>(iu), static_cast<float>(iv), corner});
+        };
         for (integer iv = 0; iv < cells; ++iv) {
             for (integer iu = 0; iu < cells; ++iu) {
-                const integer a = indexAt(iu, iv);
-                const integer b = indexAt(iu + 1, iv);
-                const integer c = indexAt(iu, iv + 1);
-                const integer d = indexAt(iu + 1, iv + 1);
-                indices.push_back(a);
-                indices.push_back(b);
-                indices.push_back(c);
-                indices.push_back(b);
-                indices.push_back(d);
-                indices.push_back(c);
+                emit(iu, iv, 0.0f);
+                emit(iu + 1, iv, 1.0f);
+                emit(iu, iv + 1, 2.0f);
+                emit(iu + 1, iv, 3.0f);
+                emit(iu + 1, iv + 1, 4.0f);
+                emit(iu, iv + 1, 5.0f);
             }
         }
         return CpuPresentation{

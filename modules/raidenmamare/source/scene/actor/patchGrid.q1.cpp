@@ -5,7 +5,9 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-#include <stdexcept>
+#include <algorithm>
+#include <cstdint>
+#include <span>
 #include <vector>
 
 #include <glm/ext/vector_int4.hpp>
@@ -17,6 +19,24 @@ namespace rmmr::scene::actor {
     namespace {
 
         static_assert(sizeof(PatchGrid::FieldState) == 448);
+        static_assert(sizeof(PatchGrid::GpuTile) == 32);
+
+        auto packTiles(std::span<const PatchGrid::Patch> patches) -> vector<PatchGrid::GpuTile> {
+            vector<PatchGrid::GpuTile> packed;
+            packed.reserve(patches.size());
+            for (const auto& patch : patches)
+                packed.push_back(PatchGrid::GpuTile{
+                    .loc = glm::ivec4{static_cast<int>(patch.diamond), static_cast<int>(patch.originU), static_cast<int>(patch.originV), static_cast<int>(patch.step)},
+                    .neighbors = glm::ivec4{static_cast<int>(patch.stepNegU), static_cast<int>(patch.stepPosU), static_cast<int>(patch.stepNegV), static_cast<int>(patch.stepPosV)},
+                });
+            return packed;
+        }
+
+        auto maxPatchCapacity(integer span, integer cells) -> integer {
+            const integer segments = std::max(span - 1, integer{1});
+            const integer buckets = std::max((segments + cells - 1) / std::max(cells, integer{1}), integer{1});
+            return 10 * buckets * buckets;
+        }
 
         auto gpuBatch(const PatchGrid::Quantum& grid, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, renderer::BlendMode blend) -> renderer::GpuBatch {
             return renderer::GpuBatch{
@@ -85,7 +105,7 @@ namespace rmmr::scene::actor {
 
     auto PatchGrid::Actions::compose(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id materialId, resource::texpack::Pack::Id packId, resource::texture::Asset::Id heightId, resource::texture::Asset::Id coverId, const Shell& shell, std::span<const Patch> patches, float radius, float amplitude, integer span, integer cells) -> optional<Quantum> {
         const auto device = primaryDevice(context);
-        if (not device or patches.empty() or span < 2 or cells < 1 or not with<resource::Runtimes>::exists(context, *device))
+        if (not device or span < 2 or cells < 1 or not with<resource::Runtimes>::exists(context, *device))
             return {};
         const auto& runtimes = with<resource::Runtimes>::get(context, *device);
         const auto geometryFound = runtimes.geometries_id_mapping.find(geometryId);
@@ -100,10 +120,8 @@ namespace rmmr::scene::actor {
         const auto& geometry = with<resource::geometry::Runtime>::get(context, geometryFound->second);
         if (not geometry.ebo or geometry.index_count <= renderer::Count{0})
             return {};
-        vector<glm::ivec4> packed;
-        packed.reserve(patches.size());
-        for (const auto& patch : patches)
-            packed.push_back(glm::ivec4{static_cast<int>(patch.diamond), static_cast<int>(patch.originU), static_cast<int>(patch.originV), static_cast<int>(patch.step)});
+        const integer capacity = std::max(maxPatchCapacity(span, cells), integer{1});
+        auto packed = packTiles(patches.size() > static_cast<std::size_t>(capacity) ? patches.first(static_cast<std::size_t>(capacity)) : patches);
         glfwMakeContextCurrent(with<system::Device>::get(context, *device).handle);
         renderer::StorageBuffer actorState{0};
         renderer::StorageBuffer patchBuffer{0};
@@ -140,15 +158,18 @@ namespace rmmr::scene::actor {
         };
         std::uint32_t dummyBytes[4]{0, 0, 0, 0};
         glNamedBufferStorage(actorState, sizeof(FieldState), &initial, GL_DYNAMIC_STORAGE_BIT);
-        glNamedBufferStorage(patchBuffer, static_cast<renderer::SizePtr>(packed.size() * sizeof(glm::ivec4)), packed.data(), 0);
+        glNamedBufferStorage(patchBuffer, static_cast<renderer::SizePtr>(capacity) * static_cast<renderer::SizePtr>(sizeof(GpuTile)), nullptr, GL_DYNAMIC_STORAGE_BIT);
+        if (not packed.empty())
+            glNamedBufferSubData(patchBuffer, 0, static_cast<renderer::SizePtr>(packed.size() * sizeof(GpuTile)), packed.data());
         glNamedBufferStorage(dummy, sizeof(dummyBytes), dummyBytes, 0);
-        glNamedBufferStorage(indirect, sizeof(command), &command, 0);
+        glNamedBufferStorage(indirect, sizeof(command), &command, GL_DYNAMIC_STORAGE_BIT);
         return Quantum{
             .device = *device,
             .actorState = actorState,
             .patches = patchBuffer,
             .dummy = dummy,
             .patchCount = static_cast<integer>(packed.size()),
+            .patchCapacity = capacity,
             .radius = radius,
             .amplitude = amplitude,
             .span = span,
@@ -162,6 +183,29 @@ namespace rmmr::scene::actor {
             .indirect = indirect,
             .drawCount = renderer::Count{1},
         };
+    }
+
+    void PatchGrid::Actions::setPatches(Writing context, Id node, std::span<const Patch> patches) {
+        if (not with<PatchGrid>::exists(context, node))
+            return;
+        auto grid = with<PatchGrid>::modify(context, node);
+        if (grid->patchCapacity < 1 or not with<system::Device>::exists(context, grid->device) or not with<resource::geometry::Runtime>::exists(context, grid->geometry))
+            return;
+        const auto& geometry = with<resource::geometry::Runtime>::get(context, grid->geometry);
+        const auto limited = patches.size() > static_cast<std::size_t>(grid->patchCapacity) ? patches.first(static_cast<std::size_t>(grid->patchCapacity)) : patches;
+        const auto packed = packTiles(limited);
+        glfwMakeContextCurrent(with<system::Device>::get(context, grid->device).handle);
+        if (not packed.empty())
+            glNamedBufferSubData(grid->patches, 0, static_cast<renderer::SizePtr>(packed.size() * sizeof(GpuTile)), packed.data());
+        const renderer::DrawElementsIndirect command{
+            .count = static_cast<renderer::Integer32>(geometry.index_count),
+            .instanceCount = static_cast<renderer::Integer32>(packed.size()),
+            .firstIndex = renderer::Integer32{0},
+            .baseVertex = renderer::Signed32{0},
+            .baseInstance = renderer::Integer32{0},
+        };
+        glNamedBufferSubData(grid->indirect, 0, sizeof(command), &command);
+        grid->patchCount = static_cast<integer>(packed.size());
     }
 
     void PatchGrid::Actions::submit(Reading context, Id node, system::Device::Id device, renderer::CommandBuffer& where) {
