@@ -169,6 +169,9 @@ namespace rmmr::resource::texture {
         glCreateTextures(GL_TEXTURE_2D, 1, &handle);
         if (not handle)
             return context.refuse("resource::texture::Asset::install: glCreateTextures failed");
+        GLint unpackAlignment = 4;
+        glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         if (format == Format::r16Snorm) {
             glTextureStorage2D(handle, 1, GL_R16_SNORM, width, height);
             glTextureSubImage2D(handle, 0, 0, 0, width, height, GL_RED, GL_SHORT, pixels.data());
@@ -179,6 +182,7 @@ namespace rmmr::resource::texture {
             glTextureStorage2D(handle, 1, GL_RG8, width, height);
             glTextureSubImage2D(handle, 0, 0, 0, width, height, GL_RG, GL_UNSIGNED_BYTE, pixels.data());
         }
+        glPixelStorei(GL_UNPACK_ALIGNMENT, unpackAlignment);
         glTextureParameteri(handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTextureParameteri(handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTextureParameteri(handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -221,6 +225,9 @@ namespace rmmr::resource::texture {
             glDeleteTextures(1, &handle);
             return context.refuse("resource::texture::Asset::install: glTextureStorage3D failed");
         }
+        GLint unpackAlignment = 4;
+        glGetIntegerv(GL_UNPACK_ALIGNMENT, &unpackAlignment);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         const std::byte* cursor = pixels.data();
         for (int lod = 0; lod < levelCount; ++lod) {
             const int lodWidth = mipSpan(width, lod);
@@ -229,6 +236,7 @@ namespace rmmr::resource::texture {
             glTextureSubImage3D(handle, lod, 0, 0, 0, lodWidth, lodHeight, layerCount, external, type, cursor);
             cursor += bytes;
         }
+        glPixelStorei(GL_UNPACK_ALIGNMENT, unpackAlignment);
         glTextureParameteri(handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTextureParameteri(handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTextureParameteri(handle, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);

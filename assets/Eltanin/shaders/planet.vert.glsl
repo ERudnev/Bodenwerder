@@ -54,29 +54,22 @@ int mipSpan(int lod) {
     return span;
 }
 
-int snapCoord(int value, int neighborStep, int selfStep) {
-    int s = max(neighborStep, 1);
-    if (s <= selfStep)
-        return value;
-    return (value / s) * s;
-}
-
-ivec3 fieldOf(int diamond, ivec2 local, int lod) {
+ivec3 coverOf(int diamond, ivec2 local, int lod) {
     int spanL = mipSpan(lod);
     ivec2 coarse = clamp(local >> lod, ivec2(0), ivec2(spanL - 1));
     return ivec3(coarse, diamond);
 }
 
-vec3 pointAt(int diamond, ivec2 local, int lod) {
+vec3 pointAt(int diamond, ivec2 local) {
     local = clamp(local, ivec2(0), ivec2(fieldSpan - 1));
     ivec4 corners = diamonds[diamond];
     float segments = float(max(fieldSpan - 1, 1));
     vec3 dir = normalize(onDiamond(float(local.x) / segments, float(local.y) / segments, shell[corners.x].xyz, shell[corners.y].xyz, shell[corners.z].xyz, shell[corners.w].xyz));
-    return dir * (fieldRadius + texelFetch(u_heightMap, fieldOf(diamond, local, lod), lod).r * fieldAmplitude);
+    return dir * (fieldRadius + texelFetch(u_heightMap, ivec3(local, diamond), 0).r * fieldAmplitude);
 }
 
 uint paletteAt(int diamond, ivec2 local, int lod) {
-    vec4 cover = texelFetch(u_coverMap, fieldOf(diamond, local, lod), lod);
+    vec4 cover = texelFetch(u_coverMap, coverOf(diamond, local, lod), lod);
     return uint(cover.r * 255.0 + 0.5) | (uint(cover.g * 255.0 + 0.5) << 8) | (uint(cover.b * 255.0 + 0.5) << 16) | (uint(cover.a * 255.0 + 0.5) << 24);
 }
 
@@ -86,25 +79,7 @@ void main() {
     int lod = findMSB(selfStep);
     int corner = int(aPos.z + 0.5);
     ivec2 idx = ivec2(aPos.xy + 0.5);
-    ivec2 local = tile.loc.yz + idx * selfStep;
-    if (idx.x == 0)
-        local.y = snapCoord(local.y, tile.neighbors.x, selfStep);
-    if (idx.x == fieldCells)
-        local.y = snapCoord(local.y, tile.neighbors.y, selfStep);
-    if (idx.y == 0)
-        local.x = snapCoord(local.x, tile.neighbors.z, selfStep);
-    if (idx.y == fieldCells)
-        local.x = snapCoord(local.x, tile.neighbors.w, selfStep);
-    local = clamp(local, ivec2(0), ivec2(fieldSpan - 1));
-    int fetchLod = lod;
-    if (idx.x == 0)
-        fetchLod = max(fetchLod, findMSB(max(tile.neighbors.x, 1)));
-    if (idx.x == fieldCells)
-        fetchLod = max(fetchLod, findMSB(max(tile.neighbors.y, 1)));
-    if (idx.y == 0)
-        fetchLod = max(fetchLod, findMSB(max(tile.neighbors.z, 1)));
-    if (idx.y == fieldCells)
-        fetchLod = max(fetchLod, findMSB(max(tile.neighbors.w, 1)));
+    ivec2 local = clamp(tile.loc.yz + idx * selfStep, ivec2(0), ivec2(fieldSpan - 1));
     ivec2 slotA = local;
     ivec2 slotB = local;
     ivec2 slotC = local;
@@ -134,9 +109,9 @@ void main() {
         v_bary = vec3(0.0, 0.0, 1.0);
     }
     int normalStep = max(selfStep, 1);
-    vec3 objectPos = pointAt(tile.loc.x, local, fetchLod);
-    vec3 tangentU = pointAt(tile.loc.x, local + ivec2(normalStep, 0), lod) - pointAt(tile.loc.x, local - ivec2(normalStep, 0), lod);
-    vec3 tangentV = pointAt(tile.loc.x, local + ivec2(0, normalStep), lod) - pointAt(tile.loc.x, local - ivec2(0, normalStep), lod);
+    vec3 objectPos = pointAt(tile.loc.x, local);
+    vec3 tangentU = pointAt(tile.loc.x, local + ivec2(normalStep, 0)) - pointAt(tile.loc.x, local - ivec2(normalStep, 0));
+    vec3 tangentV = pointAt(tile.loc.x, local + ivec2(0, normalStep)) - pointAt(tile.loc.x, local - ivec2(0, normalStep));
     vec3 normal = cross(tangentU, tangentV);
     float mag = length(normal);
     vec3 radial = normalize(objectPos);

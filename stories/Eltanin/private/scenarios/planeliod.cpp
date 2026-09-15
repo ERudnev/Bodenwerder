@@ -28,7 +28,7 @@ namespace eltanin::scenario {
     }
 
     void Planeliod::placePlanet(Writing context, rmmr::system::Device::Id device, base::maybe<locality::planet::Planet>& planet) {
-        constexpr float radius = 10000.0f;
+        constexpr float radius = 1000.0f;
         using Mineral = locality::geo::Mineral::Kind;
         auto nibble = [](Mineral channel, integer fill) -> locality::geo::Mineral::Mix {
             return locality::geo::Mineral::Mix{static_cast<std::uint64_t>(fill)} << (static_cast<integer>(channel) * 4);

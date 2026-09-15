@@ -105,49 +105,15 @@ namespace eltanin::locality::planet {
             return values[best];
         }
 
-        auto heightArrayMips(const Planet& planet) -> vector<std::int16_t> {
+        auto heightArray(const Planet& planet) -> vector<std::int16_t> {
             const auto& pack = planet.heights.pack;
-            const integer span0 = pack.edgeVertices();
+            const integer span = pack.edgeVertices();
             const integer layers = geo::IcosaPack::diamondCount;
-            const integer levels = glMipLevels(span0);
-            std::size_t total = 0;
-            for (integer lod = 0; lod < levels; ++lod)
-                total += static_cast<std::size_t>(layers) * static_cast<std::size_t>(glMipSpan(span0, lod)) * static_cast<std::size_t>(glMipSpan(span0, lod));
-            vector<std::int16_t> packed(total, std::int16_t{0});
-            vector<std::int16_t> prev(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span0) * static_cast<std::size_t>(span0), std::int16_t{0});
-            const integer count0 = pack.storedCount();
-            for (integer index = 0; index < count0; ++index) {
+            vector<std::int16_t> packed(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span), std::int16_t{0});
+            const integer count = pack.storedCount();
+            for (integer index = 0; index < count; ++index) {
                 const auto slot = pack.slotOf(index);
-                prev[static_cast<std::size_t>((slot.diamond * span0 + slot.iv) * span0 + slot.iu)] = planet.heights.at(slot);
-            }
-            auto atPrev = [&](integer span, integer diamond, integer iu, integer iv) -> std::int16_t {
-                iu = std::clamp(iu, integer{0}, span - 1);
-                iv = std::clamp(iv, integer{0}, span - 1);
-                return prev[static_cast<std::size_t>((diamond * span + iv) * span + iu)];
-            };
-            std::size_t offset = 0;
-            for (integer lod = 0; lod < levels; ++lod) {
-                const integer span = glMipSpan(span0, lod);
-                if (lod > 0) {
-                    const integer spanPrev = glMipSpan(span0, lod - 1);
-                    vector<std::int16_t> next(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span), std::int16_t{0});
-                    for (integer diamond = 0; diamond < layers; ++diamond) {
-                        for (integer iv = 0; iv < span; ++iv) {
-                            for (integer iu = 0; iu < span; ++iu) {
-                                const auto a = atPrev(spanPrev, diamond, iu * 2, iv * 2);
-                                const auto b = atPrev(spanPrev, diamond, iu * 2 + 1, iv * 2);
-                                const auto c = atPrev(spanPrev, diamond, iu * 2, iv * 2 + 1);
-                                const auto d = atPrev(spanPrev, diamond, iu * 2 + 1, iv * 2 + 1);
-                                const float metres = 0.25f * planet.reliefScale() * (float(a) + float(b) + float(c) + float(d));
-                                next[static_cast<std::size_t>((diamond * span + iv) * span + iu)] = planet.encodeRelief(metres);
-                            }
-                        }
-                    }
-                    prev = std::move(next);
-                }
-                const std::size_t count = static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span);
-                std::copy(prev.begin(), prev.begin() + static_cast<std::ptrdiff_t>(count), packed.begin() + static_cast<std::ptrdiff_t>(offset));
-                offset += count;
+                packed[static_cast<std::size_t>((slot.diamond * span + slot.iv) * span + slot.iu)] = planet.heights.at(slot);
             }
             return packed;
         }
@@ -215,42 +181,6 @@ namespace eltanin::locality::planet {
                 shell.diamonds[static_cast<std::size_t>(index)] = glm::ivec4{static_cast<int>(diamond.top), static_cast<int>(diamond.right), static_cast<int>(diamond.bottom), static_cast<int>(diamond.left)};
             }
             return shell;
-        }
-
-        void fillNeighborSteps(vector<scene::actor::PatchGrid::Patch>& patches, integer segments) {
-            const integer buckets = std::max((segments + patchCells - 1) / patchCells, integer{1});
-            vector<integer> stepMap(static_cast<std::size_t>(geo::IcosaPack::diamondCount * buckets * buckets), integer{1});
-            auto bucketOf = [&](integer diamond, integer bu, integer bv) -> integer {
-                bu = std::clamp(bu, integer{0}, buckets - 1);
-                bv = std::clamp(bv, integer{0}, buckets - 1);
-                return (diamond * buckets + bv) * buckets + bu;
-            };
-            for (const auto& patch : patches) {
-                const integer bu0 = patch.originU / patchCells;
-                const integer bv0 = patch.originV / patchCells;
-                for (integer bv = 0; bv < patch.step; ++bv) {
-                    for (integer bu = 0; bu < patch.step; ++bu) {
-                        const integer u = bu0 + bu;
-                        const integer v = bv0 + bv;
-                        if (u >= 0 and u < buckets and v >= 0 and v < buckets)
-                            stepMap[static_cast<std::size_t>(bucketOf(patch.diamond, u, v))] = patch.step;
-                    }
-                }
-            }
-            auto neighborStep = [&](integer diamond, integer bu, integer bv, integer own) -> integer {
-                if (bu < 0 or bv < 0 or bu >= buckets or bv >= buckets)
-                    return own;
-                return stepMap[static_cast<std::size_t>(bucketOf(diamond, bu, bv))];
-            };
-            for (auto& patch : patches) {
-                const integer bu0 = patch.originU / patchCells;
-                const integer bv0 = patch.originV / patchCells;
-                const integer mid = std::max(patch.step / 2, integer{0});
-                patch.stepNegU = neighborStep(patch.diamond, bu0 - 1, bv0 + mid, patch.step);
-                patch.stepPosU = neighborStep(patch.diamond, bu0 + patch.step, bv0 + mid, patch.step);
-                patch.stepNegV = neighborStep(patch.diamond, bu0 + mid, bv0 - 1, patch.step);
-                patch.stepPosV = neighborStep(patch.diamond, bu0 + mid, bv0 + patch.step, patch.step);
-            }
         }
 
         auto coarsePatches(const geo::IcosaPack& pack) -> vector<scene::actor::PatchGrid::Patch> {
@@ -361,7 +291,6 @@ namespace eltanin::locality::planet {
             patches.reserve(tiles.size());
             for (const auto& tile : tiles)
                 patches.push_back(scene::actor::PatchGrid::Patch{.diamond = tile.diamond, .originU = tile.originU, .originV = tile.originV, .step = tile.step, .stepNegU = tile.step, .stepPosU = tile.step, .stepNegV = tile.step, .stepPosV = tile.step});
-            fillNeighborSteps(patches, segments);
             return patches;
         }
 
@@ -480,20 +409,20 @@ namespace eltanin::locality::planet {
         const auto manager = with<resource::Manager>::singleton(context);
         const integer span = heights.pack.edgeVertices();
         const integer layers = geo::IcosaPack::diamondCount;
-        const integer levels = glMipLevels(span);
-        const auto heightPixels = heightArrayMips(*this);
+        const integer coverLevels = glMipLevels(span);
+        const auto heightPixels = heightArray(*this);
         const auto coverPixels = coverArrayMips(*this);
         const auto heightId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-height")});
         with<resource::texture::Asset>::extend(context, heightId, resource::texture::Asset::Quantum{});
         const auto heightBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(heightPixels.data()), heightPixels.size() * sizeof(std::int16_t));
-        if (not with<resource::texture::Asset>::install(context, heightId, device, resource::texture::Asset::Format::r16Snorm, index2{.x = span, .y = span}, layers, levels, heightBytes)) {
+        if (not with<resource::texture::Asset>::install(context, heightId, device, resource::texture::Asset::Format::r16Snorm, index2{.x = span, .y = span}, layers, 1, heightBytes)) {
             context.refuse("eltanin::locality::planet::Planet::place: height atlas install failed");
             return;
         }
         const auto coverId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-cover")});
         with<resource::texture::Asset>::extend(context, coverId, resource::texture::Asset::Quantum{});
         const auto coverBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(coverPixels.data()), coverPixels.size());
-        if (not with<resource::texture::Asset>::install(context, coverId, device, resource::texture::Asset::Format::rgba8, index2{.x = span, .y = span}, layers, levels, coverBytes)) {
+        if (not with<resource::texture::Asset>::install(context, coverId, device, resource::texture::Asset::Format::rgba8, index2{.x = span, .y = span}, layers, coverLevels, coverBytes)) {
             context.refuse("eltanin::locality::planet::Planet::place: cover atlas install failed");
             return;
         }
