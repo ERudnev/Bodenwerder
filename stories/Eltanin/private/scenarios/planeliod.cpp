@@ -28,7 +28,7 @@ namespace eltanin::scenario {
     }
 
     void Planeliod::placePlanet(Writing context, rmmr::system::Device::Id device, base::maybe<locality::planet::Planet>& planet) {
-        constexpr float radius = 1000.0f;
+        constexpr float radius = 33895.0f; // real Mars, divided by 100
         using Mineral = locality::geo::Mineral::Kind;
         auto nibble = [](Mineral channel, integer fill) -> locality::geo::Mineral::Mix {
             return locality::geo::Mineral::Mix{static_cast<std::uint64_t>(fill)} << (static_cast<integer>(channel) * 4);
@@ -46,7 +46,7 @@ namespace eltanin::scenario {
                     .cohesion = 0.48f,
                     .grain = 0.55f,
                     .tectonic = 0.22f,
-                    .amplitude = 200.0f,
+                    .amplitude = 2000.0f,
                 },
                 .atmosphere = {
                     .outerRadius = radius + 350.0f,
@@ -55,7 +55,7 @@ namespace eltanin::scenario {
                     .day = RGB{0.78f, 0.52f, 0.36f},
                 },
             },
-            locality::planet::Planet::recommendedDetail(radius, 8.0f));
+            locality::planet::Planet::recommendedDetail(radius, 64.0f));
         planet->place(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
     }
 

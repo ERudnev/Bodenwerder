@@ -47,19 +47,6 @@ vec3 onDiamond(float u, float v, vec3 top, vec3 right, vec3 bottom, vec3 left) {
     return (1.0 - v) * right + (u + v - 1.0) * bottom + (1.0 - u) * left;
 }
 
-int mipSpan(int lod) {
-    int span = fieldSpan;
-    for (int i = 0; i < lod; ++i)
-        span = max(span / 2, 1);
-    return span;
-}
-
-ivec3 coverOf(int diamond, ivec2 local, int lod) {
-    int spanL = mipSpan(lod);
-    ivec2 coarse = clamp(local >> lod, ivec2(0), ivec2(spanL - 1));
-    return ivec3(coarse, diamond);
-}
-
 vec3 pointAt(int diamond, ivec2 local) {
     local = clamp(local, ivec2(0), ivec2(fieldSpan - 1));
     ivec4 corners = diamonds[diamond];
@@ -68,18 +55,18 @@ vec3 pointAt(int diamond, ivec2 local) {
     return dir * (fieldRadius + texelFetch(u_heightMap, ivec3(local, diamond), 0).r * fieldAmplitude);
 }
 
-uint paletteAt(int diamond, ivec2 local, int lod) {
-    vec4 cover = texelFetch(u_coverMap, coverOf(diamond, local, lod), lod);
+uint paletteAt(int diamond, ivec2 local) {
+    local = clamp(local, ivec2(0), ivec2(fieldSpan - 1));
+    vec4 cover = texelFetch(u_coverMap, ivec3(local, diamond), 0);
     return uint(cover.r * 255.0 + 0.5) | (uint(cover.g * 255.0 + 0.5) << 8) | (uint(cover.b * 255.0 + 0.5) << 16) | (uint(cover.a * 255.0 + 0.5) << 24);
 }
 
 void main() {
     GpuTile tile = tiles[gl_InstanceID];
     int selfStep = max(tile.loc.w, 1);
-    int lod = findMSB(selfStep);
     int corner = int(aPos.z + 0.5);
     ivec2 idx = ivec2(aPos.xy + 0.5);
-    ivec2 local = clamp(tile.loc.yz + idx * selfStep, ivec2(0), ivec2(fieldSpan - 1));
+    ivec2 local = tile.loc.yz + idx * selfStep;
     ivec2 slotA = local;
     ivec2 slotB = local;
     ivec2 slotC = local;
@@ -126,7 +113,7 @@ void main() {
     v_worldPos = worldPos.xyz;
     v_objectPos = objectPos;
     v_worldNormal = normalize(mat3(transpose(inverse(actorModel))) * normal);
-    v_layerPack = uvec3(paletteAt(tile.loc.x, slotA, lod), paletteAt(tile.loc.x, slotB, lod), paletteAt(tile.loc.x, slotC, lod));
+    v_layerPack = uvec3(paletteAt(tile.loc.x, slotA), paletteAt(tile.loc.x, slotB), paletteAt(tile.loc.x, slotC));
     v_seed = objectPos;
     gl_Position = passProjection * passView * worldPos;
 }

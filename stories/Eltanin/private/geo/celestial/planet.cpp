@@ -71,40 +71,6 @@ namespace eltanin::locality::planet {
             return step;
         }
 
-        auto glMipSpan(integer base, integer lod) -> integer {
-            integer span = std::max(base, integer{1});
-            for (integer i = 0; i < lod; ++i)
-                span = std::max(span / 2, integer{1});
-            return span;
-        }
-
-        auto glMipLevels(integer base) -> integer {
-            integer levels = 1;
-            integer span = std::max(base, integer{1});
-            while (span > 1) {
-                span /= 2;
-                levels += 1;
-            }
-            return levels;
-        }
-
-        auto coverMode(std::uint32_t a, std::uint32_t b, std::uint32_t c, std::uint32_t d) -> std::uint32_t {
-            const std::uint32_t values[4]{a, b, c, d};
-            integer best = 0;
-            integer bestCount = 0;
-            for (integer i = 0; i < 4; ++i) {
-                integer count = 0;
-                for (integer j = 0; j < 4; ++j)
-                    if (values[j] == values[i])
-                        count += 1;
-                if (count > bestCount) {
-                    bestCount = count;
-                    best = i;
-                }
-            }
-            return values[best];
-        }
-
         auto heightArray(const Planet& planet) -> vector<std::int16_t> {
             const auto& pack = planet.heights.pack;
             const integer span = pack.edgeVertices();
@@ -118,54 +84,20 @@ namespace eltanin::locality::planet {
             return packed;
         }
 
-        auto coverArrayMips(const Planet& planet) -> vector<std::uint8_t> {
+        auto coverArray(const Planet& planet) -> vector<std::uint8_t> {
             const auto& pack = planet.covers.pack;
-            const integer span0 = pack.edgeVertices();
+            const integer span = pack.edgeVertices();
             const integer layers = geo::IcosaPack::diamondCount;
-            const integer levels = glMipLevels(span0);
-            std::size_t total = 0;
-            for (integer lod = 0; lod < levels; ++lod)
-                total += static_cast<std::size_t>(layers) * static_cast<std::size_t>(glMipSpan(span0, lod)) * static_cast<std::size_t>(glMipSpan(span0, lod)) * 4u;
-            vector<std::uint8_t> packed(total, std::uint8_t{0});
-            vector<std::uint32_t> prev(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span0) * static_cast<std::size_t>(span0), std::uint32_t{0});
-            const integer count0 = pack.storedCount();
-            for (integer index = 0; index < count0; ++index) {
+            const integer count = pack.storedCount();
+            vector<std::uint8_t> packed(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span) * 4u, std::uint8_t{0});
+            for (integer index = 0; index < count; ++index) {
                 const auto slot = pack.slotOf(index);
-                prev[static_cast<std::size_t>((slot.diamond * span0 + slot.iv) * span0 + slot.iu)] = planet.covers.at(slot);
-            }
-            auto atPrev = [&](integer span, integer diamond, integer iu, integer iv) -> std::uint32_t {
-                iu = std::clamp(iu, integer{0}, span - 1);
-                iv = std::clamp(iv, integer{0}, span - 1);
-                return prev[static_cast<std::size_t>((diamond * span + iv) * span + iu)];
-            };
-            std::size_t offset = 0;
-            for (integer lod = 0; lod < levels; ++lod) {
-                const integer span = glMipSpan(span0, lod);
-                if (lod > 0) {
-                    const integer spanPrev = glMipSpan(span0, lod - 1);
-                    vector<std::uint32_t> next(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span), std::uint32_t{0});
-                    for (integer diamond = 0; diamond < layers; ++diamond) {
-                        for (integer iv = 0; iv < span; ++iv) {
-                            for (integer iu = 0; iu < span; ++iu) {
-                                const auto a = atPrev(spanPrev, diamond, iu * 2, iv * 2);
-                                const auto b = atPrev(spanPrev, diamond, iu * 2 + 1, iv * 2);
-                                const auto c = atPrev(spanPrev, diamond, iu * 2, iv * 2 + 1);
-                                const auto d = atPrev(spanPrev, diamond, iu * 2 + 1, iv * 2 + 1);
-                                next[static_cast<std::size_t>((diamond * span + iv) * span + iu)] = coverMode(a, b, c, d);
-                            }
-                        }
-                    }
-                    prev = std::move(next);
-                }
-                const integer count = layers * span * span;
-                for (integer index = 0; index < count; ++index) {
-                    const std::uint32_t packedCover = prev[static_cast<std::size_t>(index)];
-                    packed[offset] = static_cast<std::uint8_t>(packedCover & 255u);
-                    packed[offset + 1] = static_cast<std::uint8_t>((packedCover >> 8) & 255u);
-                    packed[offset + 2] = static_cast<std::uint8_t>((packedCover >> 16) & 255u);
-                    packed[offset + 3] = static_cast<std::uint8_t>((packedCover >> 24) & 255u);
-                    offset += 4;
-                }
+                const std::uint32_t packedCover = planet.covers.at(slot);
+                const std::size_t offset = static_cast<std::size_t>((slot.diamond * span + slot.iv) * span + slot.iu) * 4u;
+                packed[offset] = static_cast<std::uint8_t>(packedCover & 255u);
+                packed[offset + 1] = static_cast<std::uint8_t>((packedCover >> 8) & 255u);
+                packed[offset + 2] = static_cast<std::uint8_t>((packedCover >> 16) & 255u);
+                packed[offset + 3] = static_cast<std::uint8_t>((packedCover >> 24) & 255u);
             }
             return packed;
         }
@@ -409,9 +341,8 @@ namespace eltanin::locality::planet {
         const auto manager = with<resource::Manager>::singleton(context);
         const integer span = heights.pack.edgeVertices();
         const integer layers = geo::IcosaPack::diamondCount;
-        const integer coverLevels = glMipLevels(span);
         const auto heightPixels = heightArray(*this);
-        const auto coverPixels = coverArrayMips(*this);
+        const auto coverPixels = coverArray(*this);
         const auto heightId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-height")});
         with<resource::texture::Asset>::extend(context, heightId, resource::texture::Asset::Quantum{});
         const auto heightBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(heightPixels.data()), heightPixels.size() * sizeof(std::int16_t));
@@ -422,7 +353,7 @@ namespace eltanin::locality::planet {
         const auto coverId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-cover")});
         with<resource::texture::Asset>::extend(context, coverId, resource::texture::Asset::Quantum{});
         const auto coverBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(coverPixels.data()), coverPixels.size());
-        if (not with<resource::texture::Asset>::install(context, coverId, device, resource::texture::Asset::Format::rgba8, index2{.x = span, .y = span}, layers, coverLevels, coverBytes)) {
+        if (not with<resource::texture::Asset>::install(context, coverId, device, resource::texture::Asset::Format::rgba8, index2{.x = span, .y = span}, layers, 1, coverBytes)) {
             context.refuse("eltanin::locality::planet::Planet::place: cover atlas install failed");
             return;
         }

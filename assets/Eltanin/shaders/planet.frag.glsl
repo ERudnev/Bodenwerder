@@ -122,7 +122,7 @@ void main() {
     vec3 wave = vec3(jagged(dot(v_bary.yz, vec2(warpFreq)), 0.0), jagged(dot(v_bary.zx, vec2(warpFreq)), 1.0), jagged(dot(v_bary.xy, vec2(warpFreq)), 2.0));
     wave -= (wave.x + wave.y + wave.z) * (1.0 / 3.0);
     float interior = 27.0 * v_bary.x * v_bary.y * v_bary.z;
-    float relief = length(v_objectPos) - fieldRadius;
+    float relief = (length(v_objectPos) - fieldRadius) / max(fieldAmplitude, 1.0);
     vec3 warped = v_bary + wave * (warpAmp * interior) + (v_bary - vec3(1.0 / 3.0)) * (relief * heightWarp);
     uint paletteA = v_layerPack.x;
     uint paletteB = v_layerPack.y;
