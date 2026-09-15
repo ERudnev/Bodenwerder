@@ -15,12 +15,12 @@ namespace eltanin::scenario {
     }
 
     void Planeliod::populate(Writing context, rmmr::system::Device::Id) {
-        with<World>::placeCamera(context, Pose::from(Pos{0.0f, 0.0f, 26000.0f}, HPB{0.0f, 0.0f, 0.0f}));
+        with<World>::placeCamera(context, Pose::from(Pos{0.0f, 0.0f, 65000.0f}, HPB{0.0f, 0.0f, 0.0f}));
         if (const auto camera = with<World>::get_global(context).camera)
-            with<controller::Camera3d>::modify(context, *camera)->moveScale = 25.0f;
+            with<controller::Camera3d>::modify(context, *camera)->moveScale = 100.0f;
         for (auto [gridId, _] : context->aspect<scene::Grid>().items()) {
             auto mesh = with<scene::actor::MeshState>::modify(context, gridId);
-            mesh->scale = vec3{1.0f};
+            mesh->scale = vec3{100.0f};
             mesh->patternScale = 1.0f;
             with<scene::Grid>::modify(context, gridId)->patternScale = 1.0f;
         }
@@ -28,7 +28,7 @@ namespace eltanin::scenario {
     }
 
     void Planeliod::placePlanet(Writing context, rmmr::system::Device::Id device, base::maybe<locality::planet::Planet>& planet) {
-        constexpr float radius = 33895.0f; // real Mars, divided by 100
+        constexpr float radius = 34000.0f; // close to real Mars, divided by 100
         using Mineral = locality::geo::Mineral::Kind;
         auto nibble = [](Mineral channel, integer fill) -> locality::geo::Mineral::Mix {
             return locality::geo::Mineral::Mix{static_cast<std::uint64_t>(fill)} << (static_cast<integer>(channel) * 4);
@@ -39,6 +39,7 @@ namespace eltanin::scenario {
                 .radius = radius,
                 .surfaceAcceleration = 3.71f,
                 .orientation = quat{1.0f, 0.0f, 0.0f, 0.0f},
+                .spinPeriod = 88200.0f, // Mars sidereal day, seconds
                 .geology = {
                     .mix = nibble(Mineral::Pyroxene, 12) | nibble(Mineral::Olivine, 8) | nibble(Mineral::Feldspar, 6) | nibble(Mineral::Oxides, 11) | nibble(Mineral::Clay, 7) | nibble(Mineral::Ice, 6) | nibble(Mineral::Salts, 4) | nibble(Mineral::Iron, 5) | nibble(Mineral::Carbonaceous, 3),
                     .differentiation = 0.62f,
@@ -55,7 +56,7 @@ namespace eltanin::scenario {
                     .day = RGB{0.78f, 0.52f, 0.36f},
                 },
             },
-            locality::planet::Planet::recommendedDetail(radius, 64.0f));
+            locality::planet::Planet::recommendedDetail(radius, 48.0f));
         planet->place(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
     }
 

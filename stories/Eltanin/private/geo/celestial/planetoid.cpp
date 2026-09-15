@@ -704,7 +704,7 @@ namespace eltanin::locality::geo {
             mesh.opacity = atmosphere.seaDensity;
             mesh.heat = vec2{state.look.radius, atmosphere.radius};
             mesh.scale = vec3{atmosphere.radius * 1.08f};
-            mesh.latticeStep = 0.0f;
+            mesh.latticeStep = atmosphere.kerman;
             mesh.patternScale = Horizon::locality;
         }
 

@@ -231,7 +231,7 @@ namespace eltanin::locality::planet {
             mesh.opacity = passport.atmosphere.seaDensity;
             mesh.heat = vec2{passport.radius, passport.atmosphere.outerRadius};
             mesh.scale = vec3{passport.atmosphere.outerRadius * 1.08f};
-            mesh.latticeStep = 0.0f;
+            mesh.latticeStep = passport.atmosphere.kerman;
             mesh.patternScale = geo::Horizon::locality;
         }
 
@@ -264,6 +264,12 @@ namespace eltanin::locality::planet {
 
         void applySpin(Planet& planet) {
             planet.pose.rotation = planet.passport.orientation * glm::angleAxis(planet.spin, vec3{0.0f, 1.0f, 0.0f});
+            if (planet.passport.spinPeriod > 0.0f) {
+                const double spinRate = 2.0 * std::numbers::pi / double(planet.passport.spinPeriod);
+                const dvec3 axis = glm::dquat{planet.pose.rotation} * dvec3{0.0, 1.0, 0.0};
+                planet.spinOmega = axis * spinRate;
+            } else
+                planet.spinOmega = dvec3{0.0, 0.0, 0.0};
         }
 
         auto wellQuantum(const Planet& planet) -> phys::Body::Quantum {
@@ -311,6 +317,7 @@ namespace eltanin::locality::planet {
         : passport{passport}
         , pose{.position = Pos{0.0f, 0.0f, 0.0f}, .rotation = passport.orientation}
         , spin{0.0f}
+        , spinOmega{0.0, 0.0, 0.0}
         , well{}
         , heights{geo::IcosaPack{.edgeBase = detail.edgeBase, .tessellation = detail.tessellation}, std::int16_t{0}}
         , covers{heights.pack, std::uint32_t{0}}
@@ -374,13 +381,16 @@ namespace eltanin::locality::planet {
         sync(context);
     }
 
-    void Planet::update(Writing context, Pos camera) {
+    void Planet::update(Writing context, Pos camera, seconds dt) {
+        if (passport.spinPeriod > 0.0f)
+            spin += (2.0f * std::numbers::pi_v<float> / passport.spinPeriod) * float(dt);
         applySpin(*this);
-        if (not shell or not with<scene::actor::PatchGrid>::exists(context, *shell))
-            return;
-        const vec3 localCamera{glm::inverse(glm::dquat{pose.rotation}) * (dvec3{camera} - dvec3{pose.position})};
-        const auto patches = lodPatches(heights.pack, passport.radius, localCamera);
-        with<scene::actor::PatchGrid>::setPatches(context, *shell, patches);
+        if (shell and with<scene::actor::PatchGrid>::exists(context, *shell)) {
+            const vec3 localCamera{glm::inverse(glm::dquat{pose.rotation}) * (dvec3{camera} - dvec3{pose.position})};
+            const auto patches = lodPatches(heights.pack, passport.radius, localCamera);
+            with<scene::actor::PatchGrid>::setPatches(context, *shell, patches);
+        }
+        sync(context);
     }
 
     void Planet::sync(Writing context) {
@@ -440,8 +450,8 @@ namespace eltanin::locality::planet {
         return phys::Settings::Air::density(float(glm::length(toLocal(*this, dvec3{worldPos}))) - passport.radius, passport.atmosphere.seaDensity, passport.atmosphere.kerman);
     }
 
-    auto Planet::windAt(dvec3) const -> dvec3 {
-        return dvec3{0.0, 0.0, 0.0};
+    auto Planet::windAt(dvec3 worldPos) const -> dvec3 {
+        return glm::cross(spinOmega, worldPos - dvec3{pose.position});
     }
 
     auto Planet::probe(vec3 dir) const -> Probe {

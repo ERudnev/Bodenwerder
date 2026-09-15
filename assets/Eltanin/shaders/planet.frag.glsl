@@ -2,6 +2,7 @@
 
 in vec3 v_worldPos;
 in vec3 v_worldNormal;
+in vec3 v_objectNormal;
 in vec3 v_objectPos;
 flat in uvec3 v_layerPack;
 flat in vec3 v_seed;
@@ -116,8 +117,8 @@ float roughnessOf(uint palette, uint shallow, uint deep, float blend, vec3 axis)
 void main() {
     vec3 N = normalize(v_worldNormal);
     vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
-    vec3 dir = normalize(v_objectPos);
-    vec3 axis = pow(abs(dir), vec3(4.0));
+    vec3 radial = normalize(v_objectPos);
+    vec3 axis = pow(abs(radial), vec3(4.0));
     axis /= max(axis.x + axis.y + axis.z, 1.0e-5);
     vec3 wave = vec3(jagged(dot(v_bary.yz, vec2(warpFreq)), 0.0), jagged(dot(v_bary.zx, vec2(warpFreq)), 1.0), jagged(dot(v_bary.xy, vec2(warpFreq)), 2.0));
     wave -= (wave.x + wave.y + wave.z) * (1.0 / 3.0);
@@ -127,7 +128,7 @@ void main() {
     uint paletteA = v_layerPack.x;
     uint paletteB = v_layerPack.y;
     uint paletteC = v_layerPack.z;
-    float slope = 1.0 - clamp(dot(N, dir), 0.0, 1.0);
+    float slope = 1.0 - clamp(dot(v_objectNormal, radial), 0.0, 1.0);
     float depth = 0.0;
     depth += smoothstep(slope5, slope15, slope);
     depth += smoothstep(slope15, slope30, slope);

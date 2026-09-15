@@ -36,6 +36,7 @@ layout(binding = 5) uniform sampler2DArray u_coverMap;
 
 out vec3 v_worldPos;
 out vec3 v_worldNormal;
+out vec3 v_objectNormal;
 out vec3 v_objectPos;
 flat out uvec3 v_layerPack;
 flat out vec3 v_seed;
@@ -112,6 +113,7 @@ void main() {
     vec4 worldPos = actorModel * vec4(objectPos, 1.0);
     v_worldPos = worldPos.xyz;
     v_objectPos = objectPos;
+    v_objectNormal = normal;
     v_worldNormal = normalize(mat3(transpose(inverse(actorModel))) * normal);
     v_layerPack = uvec3(paletteAt(tile.loc.x, slotA), paletteAt(tile.loc.x, slotB), paletteAt(tile.loc.x, slotC));
     v_seed = objectPos;

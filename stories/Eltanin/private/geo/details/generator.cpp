@@ -2,9 +2,12 @@
 #include "geo/details/facies.h"
 #include "geo/celestial/planet.h"
 
+#include <base/logging.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstddef>
 #include <numbers>
 #include <vector>
 
@@ -275,9 +278,27 @@ namespace eltanin::locality::geo {
         fillCovers(planet);
     }
 
+    void logFieldSummary(const planet::Planet& planet) {
+        const auto& pack = planet.heights.pack;
+        const integer segments = pack.edgeSegments();
+        const integer span = pack.edgeVertices();
+        const integer stored = pack.storedCount();
+        const integer unique = pack.uniqueCount();
+        const double arc = std::max(0.0, double(planet.passport.radius)) * std::acos(1.0 / std::sqrt(5.0));
+        const float texelMeters = float(arc / double(std::max(segments, integer{1})));
+        const auto atlas = pack.atlasSize();
+        const std::size_t heightBytes = static_cast<std::size_t>(stored) * sizeof(std::int16_t);
+        const std::size_t coverBytes = static_cast<std::size_t>(stored) * sizeof(std::uint32_t);
+        const std::size_t fieldBytes = heightBytes + coverBytes;
+        const double fieldMiB = double(fieldBytes) / (1024.0 * 1024.0);
+        base::message("eltanin::geo::generate: icosa edgeBase={} tessellation={} → {} segments/edge, {} verts/diamond side, {:.1f} m/texel (R={:.0f} m, arc={:.0f} m)", pack.edgeBase, pack.tessellation, segments, span, texelMeters, planet.passport.radius, arc);
+        base::message("eltanin::geo::generate: field matrices {} stored slots ({} unique), diamond {}×{}, atlas {}×{}, 10 layers → heights {} B, cover {} B, total {} B ({:.2f} MiB)", stored, unique, span, span, atlas.x, atlas.y, heightBytes, coverBytes, fieldBytes, fieldMiB);
+    }
+
     void generate(planet::Planet& planet) {
         generateHeights(planet);
         generateSurfaceWeights(planet);
+        logFieldSummary(planet);
     }
 
 }

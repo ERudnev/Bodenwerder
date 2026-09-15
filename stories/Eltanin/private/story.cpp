@@ -505,12 +505,12 @@ namespace eltanin {
                 world.branch([&](Writing context) { blueprints.show(context, *blueprintPack.unnamed); });
         }
         with<World>::tetherEnvironment(world);
-        if (planet) {
-            if (const auto camera = with<World>::get_global(world).camera; camera and with<scene::Node>::exists(world, *camera))
-                planet->update(world, with<scene::Node>::get(world, *camera).pose.position);
-        }
         const seconds wallDt = static_cast<seconds>(dt_us) / 1'000'000.0;
         const seconds simDt = with<World>::get_global(world).paused ? seconds{0} : wallDt * static_cast<seconds>(with<locality::Thing>::get_global(world).timeScale);
+        if (planet) {
+            if (const auto camera = with<World>::get_global(world).camera; camera and with<scene::Node>::exists(world, *camera))
+                planet->update(world, with<scene::Node>::get(world, *camera).pose.position, simDt);
+        }
         if (physics)
             physics->step(world, simDt);
         advanceSim(world, simDt);

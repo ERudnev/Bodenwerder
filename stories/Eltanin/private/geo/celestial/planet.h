@@ -22,7 +22,8 @@ namespace eltanin::locality::planet {
         integer seed;
         float radius;
         float surfaceAcceleration;
-        quat orientation; // body frame at epoch; local +Y is the spin pole
+        quat orientation; // idle attitude in solar-system space; local +Y is the spin pole
+        float spinPeriod; // seconds per revolution; 0 = no automatic spin
         struct Geology {
             geo::Mineral::Mix mix;
             float differentiation; // 0 unsorted boulder, 1 heavies sank to core
@@ -57,6 +58,7 @@ namespace eltanin::locality::planet {
         const Passport passport;
         rmmr::Pose pose;
         float spin; // radians around local +Y
+        dvec3 spinOmega; // co-rotating air ω in locality; refreshed in applySpin
         base::maybe<phys::Body::Id> well;
         geo::IcosaMap<std::int16_t> heights; // 0 = sea; ±reliefPeak maps to ±amplitude metres
         geo::IcosaMap<std::uint32_t> covers; // four u8 facies, shallow to deep
@@ -74,7 +76,7 @@ namespace eltanin::locality::planet {
         Planet(Passport, Detail);
 
         void place(Writing, rmmr::system::Device::Id, rmmr::Pose);
-        void update(Writing, rmmr::Pos camera);
+        void update(Writing, rmmr::Pos camera, seconds dt);
         void sync(Writing);
 
         auto reliefScale() const -> float; // metres per int16 step

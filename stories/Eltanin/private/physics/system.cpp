@@ -65,7 +65,7 @@ namespace eltanin::phys {
         if (altitude >= kerman * 3.0f)
             return 0.0f;
         if (altitude <= 0.0f)
-            return seaDensity;
+            return 0.0f;
         const float u = altitude / (kerman * 3.0f);
         return seaDensity * std::pow(1.0f - u * u, kermanPower);
     }
