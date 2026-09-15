@@ -20,8 +20,8 @@ namespace eltanin
         enum Kind : sphere, box
         one
           center: Particle
-          prevOri: quat
-          forceAngular: vec3
+          prevOri: dquat
+          forceAngular: dvec3
           kind: Kind
           halfExtents: vec3 // body-frame; sphere ignores this, Body.radius is the bound
           collided: bool // set by contacts this phys tick; Scrap wears then clears

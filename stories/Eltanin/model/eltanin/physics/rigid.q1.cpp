@@ -58,7 +58,7 @@ namespace eltanin::phys::rigid {
 
     }
 
-    auto restoredBody(dvec3 origin, quat rotation, const vector<Particle>& particles, const vector<vec3>& shape) -> Body::Quantum {
+    auto restoredBody(dvec3 origin, dquat rotation, const vector<Particle>& particles, const vector<vec3>& shape) -> Body::Quantum {
         float mass = 0.0f;
         for (const Particle& particle : particles)
             mass += particle.mass;
@@ -66,7 +66,7 @@ namespace eltanin::phys::rigid {
     }
 
     auto restoredBody(Pose pose, const vector<Particle>& particles, const vector<vec3>& shape) -> Body::Quantum {
-        return restoredBody(dvec3{pose.position}, pose.rotation, particles, shape);
+        return restoredBody(dvec3{pose.position}, dquat{pose.rotation}, particles, shape);
     }
 
     void Crystal::Quantum::refreshMatter(Body::Quantum& body) {
@@ -149,9 +149,9 @@ namespace eltanin::phys::rigid {
                 ++live;
             }
 
-            const quat rotation = horn::orientation(restCentered, worldCentered, masses);
+            const dquat rotation{horn::orientation(restCentered, worldCentered, masses)};
             body->orientation = rotation;
-            body->position = worldCom - dvec3{rotation * restCom};
+            body->position = worldCom - rotation * dvec3{restCom};
         }
     }
 

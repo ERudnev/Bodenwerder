@@ -43,15 +43,15 @@ namespace eltanin::locality {
         }
 
         auto omegaOf(const phys::Body::Quantum& body, const phys::rigid::Solid::Quantum& solid) -> vec3 {
-            const float dt = float(phys::Settings::fixedStep);
-            const quat qRel = glm::normalize(body.orientation * glm::conjugate(solid.prevOri));
-            vec3 omega = (2.0f / dt) * vec3{qRel.x, qRel.y, qRel.z};
-            if (qRel.w < 0.0f)
+            const double dt = double(phys::Settings::fixedStep);
+            const dquat qRel = glm::normalize(body.orientation * glm::conjugate(solid.prevOri));
+            dvec3 omega = (2.0 / dt) * dvec3{qRel.x, qRel.y, qRel.z};
+            if (qRel.w < 0.0)
                 omega = -omega;
             const float inertia = 0.4f * body.totalMass * body.radius * body.radius;
             if (inertia > 1.0e-12f)
-                omega += (solid.forceAngular / inertia) * dt;
-            return omega;
+                omega += (solid.forceAngular / double(inertia)) * dt;
+            return vec3{omega};
         }
 
         struct Box {

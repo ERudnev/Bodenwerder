@@ -22,7 +22,7 @@ namespace eltanin
     entity Body
       one
         position: dvec3
-        orientation: quat
+        orientation: dquat
         totalMass: float
         radius: float
         compound: #Body

@@ -43,7 +43,7 @@ namespace eltanin::locality::planet {
 
     struct Planet {
         struct Probe {
-            float height;
+            double height;
             dvec3 position;
             dvec3 normal;
             geo::Mineral::Mix mix;
@@ -74,16 +74,17 @@ namespace eltanin::locality::planet {
         Planet(Passport, Detail);
 
         void place(Writing, rmmr::system::Device::Id, rmmr::Pose);
-        void update(Writing, rmmr::Pos camera, seconds dt);
+        void update(Writing, rmmr::Pos camera);
+        void advancePhysics(Writing, seconds dt);
         void sync(Writing);
 
         auto spin(const phys::Body::Quantum&) const -> float;
         void spin(phys::Body::Quantum&, float) const;
         auto reliefScale() const -> float; // metres per int16 step
-        auto surfaceRadius(std::int16_t quantum) const -> float;
+        auto surfaceRadius(std::int16_t quantum) const -> double;
         auto encodeRelief(float deltaMeters) const -> std::int16_t;
-        auto height(rmmr::vec3 dir) const -> float; // radial surface, not relief above sea
-        auto altitudeAt(const phys::Body::Quantum&, dvec3 worldPos) const -> float;
+        auto height(rmmr::vec3 dir) const -> double; // radial surface, not relief above sea
+        auto altitudeAt(const phys::Body::Quantum&, dvec3 worldPos) const -> double;
         auto gravityAt(const phys::Body::Quantum&, dvec3 worldPos) const -> dvec3;
         auto airDensity(const phys::Body::Quantum&, dvec3 worldPos) const -> float;
         auto windAt(const phys::Body::Quantum&, dvec3 worldPos) const -> dvec3;

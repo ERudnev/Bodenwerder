@@ -78,7 +78,7 @@ namespace eltanin::phys::collision {
     struct RestProbe {
         dvec3 localFirst;
         dvec3 localSecond;
-        quat relativeOrientation;
+        dquat relativeOrientation;
         integer firstShape;
         integer secondShape;
         seconds stable;

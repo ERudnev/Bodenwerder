@@ -80,6 +80,7 @@ namespace base::common_types {
     using vec4 = glm::vec4;
     using ivec3 = glm::ivec3;
     using quat = glm::quat;
+    using dquat = glm::dquat;
 }
 
 // sweet sugar:

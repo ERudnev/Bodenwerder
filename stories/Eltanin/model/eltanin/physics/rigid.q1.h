@@ -40,8 +40,8 @@ namespace eltanin::phys::rigid {
         };
         struct Quantum {
             Particle center;
-            quat prevOri;
-            vec3 forceAngular;
+            dquat prevOri;
+            dvec3 forceAngular;
             Kind kind;
             vec3 halfExtents;
             bool collided;
@@ -94,7 +94,7 @@ namespace eltanin::phys::rigid {
         static const Behavior customAspectReactions() { return {}; }
     };
 
-    auto restoredBody(dvec3 origin, quat rotation, const vector<Particle>&, const vector<vec3>&) -> Body::Quantum;
+    auto restoredBody(dvec3 origin, dquat rotation, const vector<Particle>&, const vector<vec3>&) -> Body::Quantum;
     auto restoredBody(rmmr::Pose, const vector<Particle>&, const vector<vec3>&) -> Body::Quantum;
 
 }

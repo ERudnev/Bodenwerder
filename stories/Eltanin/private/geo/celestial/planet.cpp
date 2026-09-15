@@ -37,10 +37,10 @@ namespace eltanin::locality::planet {
 
     namespace {
 
-        auto heightNormal(const Planet& planet, vec3 dir) -> vec3 {
+        auto heightNormal(const Planet& planet, vec3 dir) -> dvec3 {
             const float len = glm::length(dir);
             if (len < 1.0e-6f)
-                return vec3{0.0f, 1.0f, 0.0f};
+                return dvec3{0.0, 1.0, 0.0};
             dir /= len;
             vec3 tangentU = glm::cross(vec3{0.0f, 1.0f, 0.0f}, dir);
             if (glm::dot(tangentU, tangentU) < 1.0e-8f)
@@ -48,16 +48,16 @@ namespace eltanin::locality::planet {
             tangentU = glm::normalize(tangentU);
             const vec3 tangentV = glm::cross(dir, tangentU);
             const float eps = 1.0f / float(std::max(planet.heights.pack.edgeSegments(), integer{1}));
-            auto surface = [&](vec3 sample) -> vec3 {
+            auto surface = [&](vec3 sample) -> dvec3 {
                 sample = glm::normalize(sample);
-                return sample * planet.height(sample);
+                return dvec3{sample} * planet.height(sample);
             };
-            vec3 normal = glm::cross(surface(dir + tangentU * eps) - surface(dir - tangentU * eps), surface(dir + tangentV * eps) - surface(dir - tangentV * eps));
-            const float mag = glm::length(normal);
-            if (mag < 1.0e-8f)
-                return dir;
+            dvec3 normal = glm::cross(surface(dir + tangentU * eps) - surface(dir - tangentU * eps), surface(dir + tangentV * eps) - surface(dir - tangentV * eps));
+            const double mag = glm::length(normal);
+            if (mag < 1.0e-12)
+                return dvec3{dir};
             normal /= mag;
-            if (glm::dot(normal, dir) < 0.0f)
+            if (glm::dot(normal, dvec3{dir}) < 0.0)
                 return -normal;
             return normal;
         }
@@ -259,7 +259,7 @@ namespace eltanin::locality::planet {
         }
 
         auto toLocal(const phys::Body::Quantum& body, dvec3 worldPos) -> dvec3 {
-            return glm::inverse(glm::dquat{body.orientation}) * (worldPos - body.position);
+            return glm::inverse(body.orientation) * (worldPos - body.position);
         }
 
         auto spinRate(const Planet& planet) -> double {
@@ -267,7 +267,7 @@ namespace eltanin::locality::planet {
         }
 
         auto spinAxis(const Planet& planet) -> dvec3 {
-            return glm::dquat{planet.passport.orientation} * dvec3{0.0, 1.0, 0.0};
+            return dquat{planet.passport.orientation} * dvec3{0.0, 1.0, 0.0};
         }
 
         auto wellQuantum(const Planet& planet, Pose pose) -> phys::Body::Quantum {
@@ -275,7 +275,7 @@ namespace eltanin::locality::planet {
             const float volume = (4.0f / 3.0f) * std::numbers::pi_v<float> * radius * radius * radius;
             return phys::Body::Quantum{
                 .position = dvec3{pose.position},
-                .orientation = planet.passport.orientation,
+                .orientation = dquat{planet.passport.orientation},
                 .totalMass = volume * 3000.0f,
                 .radius = radius + planet.passport.geology.amplitude,
                 .compound = phys::Body::Id::please_never_use_this_except_patch_rejection_mechanism(),
@@ -313,7 +313,7 @@ namespace eltanin::locality::planet {
 
     Planet::Planet(Passport passport, Detail detail)
         : passport{passport}
-        , spinOmega{glm::dquat{passport.orientation} * dvec3{0.0, 1.0, 0.0} * (passport.spinPeriod > 0.0f ? 2.0 * std::numbers::pi / double(passport.spinPeriod) : 0.0)}
+        , spinOmega{dquat{passport.orientation} * dvec3{0.0, 1.0, 0.0} * (passport.spinPeriod > 0.0f ? 2.0 * std::numbers::pi / double(passport.spinPeriod) : 0.0)}
         , well{}
         , heights{geo::IcosaPack{.edgeBase = detail.edgeBase, .tessellation = detail.tessellation}, std::int16_t{0}}
         , covers{heights.pack, std::uint32_t{0}}
@@ -375,20 +375,26 @@ namespace eltanin::locality::planet {
         sync(context);
     }
 
-    void Planet::update(Writing context, Pos camera, seconds dt) {
+    void Planet::update(Writing context, Pos camera) {
+        if (not well or not with<phys::Body>::exists(context, *well))
+            return;
+        const auto& body = with<phys::Body>::get(context, *well);
+        if (shell and with<scene::actor::PatchGrid>::exists(context, *shell)) {
+            const vec3 localCamera{toLocal(body, dvec3{camera})};
+            const auto patches = lodPatches(heights.pack, passport.radius, localCamera);
+            with<scene::actor::PatchGrid>::setPatches(context, *shell, patches);
+        }
+        sync(context);
+    }
+
+    void Planet::advancePhysics(Writing context, seconds dt) {
         if (not well or not with<phys::Body>::exists(context, *well))
             return;
         auto body = with<phys::Body>::modify(context, *well);
         const double rate = spinRate(*this);
         spinOmega = spinAxis(*this) * rate;
         if (rate != 0.0)
-            body->orientation = glm::normalize(glm::angleAxis(float(rate * double(dt)), vec3{glm::normalize(spinOmega)}) * body->orientation);
-        if (shell and with<scene::actor::PatchGrid>::exists(context, *shell)) {
-            const vec3 localCamera{toLocal(*body, dvec3{camera})};
-            const auto patches = lodPatches(heights.pack, passport.radius, localCamera);
-            with<scene::actor::PatchGrid>::setPatches(context, *shell, patches);
-        }
-        sync(context);
+            body->orientation = glm::normalize(glm::angleAxis(rate * double(dt), glm::normalize(spinOmega)) * body->orientation);
     }
 
     void Planet::sync(Writing context) {
@@ -402,21 +408,21 @@ namespace eltanin::locality::planet {
     }
 
     auto Planet::spin(const phys::Body::Quantum& body) const -> float {
-        const quat relative = glm::normalize(glm::conjugate(passport.orientation) * body.orientation);
-        const float angle = 2.0f * std::atan2(relative.y, relative.w);
-        return angle < 0.0f ? angle + 2.0f * std::numbers::pi_v<float> : angle;
+        const dquat relative = glm::normalize(glm::conjugate(dquat{passport.orientation}) * body.orientation);
+        const double angle = 2.0 * std::atan2(relative.y, relative.w);
+        return float(angle < 0.0 ? angle + 2.0 * std::numbers::pi : angle);
     }
 
     void Planet::spin(phys::Body::Quantum& body, float value) const {
-        body.orientation = glm::normalize(passport.orientation * glm::angleAxis(value, vec3{0.0f, 1.0f, 0.0f}));
+        body.orientation = glm::normalize(dquat{passport.orientation} * glm::angleAxis(double(value), dvec3{0.0, 1.0, 0.0}));
     }
 
     auto Planet::reliefScale() const -> float {
         return passport.geology.amplitude / float(reliefPeak);
     }
 
-    auto Planet::surfaceRadius(std::int16_t quantum) const -> float {
-        return passport.radius + float(quantum) * reliefScale();
+    auto Planet::surfaceRadius(std::int16_t quantum) const -> double {
+        return double(passport.radius) + double(quantum) * double(reliefScale());
     }
 
     auto Planet::encodeRelief(float deltaMeters) const -> std::int16_t {
@@ -426,21 +432,21 @@ namespace eltanin::locality::planet {
         return static_cast<std::int16_t>(std::clamp(std::lround(deltaMeters / scale), -long(reliefPeak), long(reliefPeak)));
     }
 
-    auto Planet::height(vec3 dir) const -> float {
+    auto Planet::height(vec3 dir) const -> double {
         const float len = glm::length(dir);
         if (len < 1.0e-6f)
-            return passport.radius;
+            return double(passport.radius);
         dir /= len;
         const auto tri = heights.pack.triangle(geo::IcosaPack::locate(dir));
-        return tri.bary.x * surfaceRadius(heights.at(tri.a)) + tri.bary.y * surfaceRadius(heights.at(tri.b)) + tri.bary.z * surfaceRadius(heights.at(tri.c));
+        return double(tri.bary.x) * surfaceRadius(heights.at(tri.a)) + double(tri.bary.y) * surfaceRadius(heights.at(tri.b)) + double(tri.bary.z) * surfaceRadius(heights.at(tri.c));
     }
 
-    auto Planet::altitudeAt(const phys::Body::Quantum& body, dvec3 worldPos) const -> float {
+    auto Planet::altitudeAt(const phys::Body::Quantum& body, dvec3 worldPos) const -> double {
         const dvec3 local = toLocal(body, worldPos);
         const double radial = glm::length(local);
         if (radial < 1.0e-12)
             return -height(vec3{0.0f, 1.0f, 0.0f});
-        return float(radial - double(height(vec3{glm::normalize(local)})));
+        return radial - height(vec3{glm::normalize(local)});
     }
 
     auto Planet::gravityAt(const phys::Body::Quantum& body, dvec3 worldPos) const -> dvec3 {
@@ -464,37 +470,37 @@ namespace eltanin::locality::planet {
 
     auto Planet::probe(const phys::Body::Quantum& body, vec3 dir) const -> Probe {
         const float len = glm::length(dir);
-        const glm::dquat rotation{body.orientation};
+        const dquat rotation = body.orientation;
         if (len < 1.0e-6f)
             return Probe{.height = passport.radius, .position = body.position, .normal = rotation * dvec3{0.0, 1.0, 0.0}, .mix = passport.geology.mix, .slope = 0.0f};
         dir /= len;
-        const float radial = height(dir);
-        const vec3 localNormal = heightNormal(*this, dir);
+        const double radial = height(dir);
+        const dvec3 localNormal = heightNormal(*this, dir);
         return Probe{
             .height = radial,
             .position = body.position + rotation * (dvec3{dir} * double(radial)),
             .normal = glm::normalize(rotation * dvec3{localNormal}),
             .mix = passport.geology.mix,
-            .slope = 1.0f - glm::clamp(glm::dot(localNormal, dir), 0.0f, 1.0f),
+            .slope = float(1.0 - glm::clamp(glm::dot(localNormal, dvec3{dir}), 0.0, 1.0)),
         };
     }
 
     auto Planet::surfaceAt(const phys::Body::Quantum& body, dvec3 worldPos) const -> Probe {
         const dvec3 local = toLocal(body, worldPos);
         const double radial = glm::length(local);
-        const glm::dquat rotation{body.orientation};
+        const dquat rotation = body.orientation;
         if (radial < 1.0e-12)
             return probe(body, vec3{0.0f, 1.0f, 0.0f});
         const dvec3 dir = local / radial;
         const vec3 dirF{dir};
-        const float h = height(dirF);
-        const vec3 localNormal = heightNormal(*this, dirF);
+        const double h = height(dirF);
+        const dvec3 localNormal = heightNormal(*this, dirF);
         return Probe{
             .height = h,
             .position = body.position + rotation * (dir * double(h)),
             .normal = glm::normalize(rotation * dvec3{localNormal}),
             .mix = passport.geology.mix,
-            .slope = 1.0f - glm::clamp(glm::dot(localNormal, dirF), 0.0f, 1.0f),
+            .slope = float(1.0 - glm::clamp(glm::dot(localNormal, dir), 0.0, 1.0)),
         };
     }
 

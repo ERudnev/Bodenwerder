@@ -28,15 +28,15 @@ namespace eltanin::phys {
     struct Body : Entity<Body> {
         struct Quantum {
             dvec3 position;
-            quat orientation;
+            dquat orientation;
             float totalMass;
             float radius;
             Id compound;
 
-            auto pose() const -> rmmr::Pose { return rmmr::Pose{.position = vec3{position}, .rotation = orientation}; }
+            auto pose() const -> rmmr::Pose { return rmmr::Pose{.position = vec3{position}, .rotation = quat{orientation}}; }
             void pose(rmmr::Pose value) {
                 position = dvec3{value.position};
-                orientation = value.rotation;
+                orientation = dquat{value.rotation};
             }
         };
         struct Actions : BaseActions {};

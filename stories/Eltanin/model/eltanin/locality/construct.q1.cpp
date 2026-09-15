@@ -389,8 +389,8 @@ namespace eltanin::locality {
             if (chunk.mass <= 0.0f or chunk.locals.empty())
                 return;
             const auto box = scrapBox(construction, primitiveId, chunk.locals, chunk.thickness, chunk.outward);
-            const vec3 worldCenter = vec3{body.position} + body.orientation * box.center;
-            const quat worldRot = glm::normalize(body.orientation * box.rotation);
+            const vec3 worldCenter = vec3{body.position + body.orientation * dvec3{box.center}};
+            const quat worldRot{glm::normalize(body.orientation * dquat{box.rotation})};
             const vec3 linear = vec3{chunk.momentum / double(chunk.mass)};
             const bool unbolted = chunk.cohesion == 0.0f and (construction.plates.contains(primitiveId) or construction.volumes.contains(primitiveId));
             const float born = unbolted ? 1.0f : chunk.cohesion;

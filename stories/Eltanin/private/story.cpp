@@ -509,7 +509,7 @@ namespace eltanin {
         const seconds simDt = with<World>::get_global(world).paused ? seconds{0} : wallDt * static_cast<seconds>(with<locality::Thing>::get_global(world).timeScale);
         if (planet) {
             if (const auto camera = with<World>::get_global(world).camera; camera and with<scene::Node>::exists(world, *camera))
-                planet->update(world, with<scene::Node>::get(world, *camera).pose.position, simDt);
+                planet->update(world, with<scene::Node>::get(world, *camera).pose.position);
         }
         if (physics)
             physics->step(world, simDt);

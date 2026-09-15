@@ -24,9 +24,9 @@ namespace eltanin::phys::collision {
 
         constexpr float minLength = 1.0e-8f;
 
-        auto rotationDistance(quat first, quat second) -> float {
-            const quat delta = glm::normalize(first * glm::conjugate(second));
-            return 2.0f * std::acos(glm::clamp(glm::abs(delta.w), 0.0f, 1.0f));
+        auto rotationDistance(dquat first, dquat second) -> double {
+            const dquat delta = glm::normalize(first * glm::conjugate(second));
+            return 2.0 * std::acos(glm::clamp(glm::abs(delta.w), 0.0, 1.0));
         }
 
         auto inverseMass(float mass) -> float {
@@ -41,11 +41,10 @@ namespace eltanin::phys::collision {
             return 0.4f * body.totalMass * body.radius * body.radius;
         }
 
-        auto omegaOfSolid(const Body::Quantum& body, const Solid::Quantum& solid) -> vec3 {
-            const float dt = float(Settings::fixedStep);
-            const quat qRel = glm::normalize(body.orientation * glm::conjugate(solid.prevOri));
-            vec3 omega = (2.0f / dt) * vec3{qRel.x, qRel.y, qRel.z};
-            if (qRel.w < 0.0f)
+        auto omegaOfSolid(const Body::Quantum& body, const Solid::Quantum& solid) -> dvec3 {
+            const dquat qRel = glm::normalize(body.orientation * glm::conjugate(solid.prevOri));
+            dvec3 omega = (2.0 / double(Settings::fixedStep)) * dvec3{qRel.x, qRel.y, qRel.z};
+            if (qRel.w < 0.0)
                 omega = -omega;
             return omega;
         }
@@ -60,14 +59,14 @@ namespace eltanin::phys::collision {
             return 0;
         }
 
-        auto worldOf(const dvec3& origin, quat orientation, dvec3 local) -> dvec3 {
-            return origin + glm::dquat{orientation} * local;
+        auto worldOf(const dvec3& origin, dquat orientation, dvec3 local) -> dvec3 {
+            return origin + orientation * local;
         }
 
         struct Slot {
             Body::Id id;
             dvec3 origin;
-            quat orientation;
+            dquat orientation;
             dvec3 com;
             vec3 localCom;
             dvec3 linear;
@@ -75,7 +74,7 @@ namespace eltanin::phys::collision {
             float invMass;
             float invInertia;
             dvec3 origin0;
-            quat orientation0;
+            dquat orientation0;
             dvec3 linear0;
             dvec3 omega0;
         };
@@ -115,7 +114,7 @@ namespace eltanin::phys::collision {
             if (not crystal or crystal->particles.empty() or body.totalMass <= 0.0f)
                 return slot;
             slot.localCom = crystal->com;
-            slot.com = body.position + dvec3{body.orientation * crystal->com};
+            slot.com = body.position + body.orientation * dvec3{crystal->com};
             dvec3 linear{0.0, 0.0, 0.0};
             dvec3 angular{0.0, 0.0, 0.0};
             for (const Particle& particle : crystal->particles) {
@@ -133,20 +132,20 @@ namespace eltanin::phys::collision {
         }
 
         void refreshCom(Slot& slot) {
-            slot.com = slot.origin + dvec3{slot.orientation * slot.localCom};
+            slot.com = slot.origin + slot.orientation * dvec3{slot.localCom};
         }
 
         struct RestError {
             dvec3 normal;
             dvec3 tangent;
             double stretch;
-            float twist;
+            double twist;
             double reducedMass;
             double compressionImpulse;
         };
 
-        auto restError(const Resting::Quantum& rest, const dvec3& originA, quat oriA, const dvec3& originB, quat oriB, float invMassA, float invMassB) -> RestError {
-            dvec3 normal = glm::dquat{oriA} * dvec3{rest.normalFirst};
+        auto restError(const Resting::Quantum& rest, const dvec3& originA, dquat oriA, const dvec3& originB, dquat oriB, float invMassA, float invMassB) -> RestError {
+            dvec3 normal = oriA * rest.normalFirst;
             const double normalLength = glm::length(normal);
             normal = normalLength > double(minLength) ? normal / normalLength : dvec3{0.0, 1.0, 0.0};
             const dvec3 delta = worldOf(originB, oriB, rest.anchorSecond) - worldOf(originA, oriA, rest.anchorFirst);
@@ -177,19 +176,19 @@ namespace eltanin::phys::collision {
             const dvec3 error = second.origin - worldOf(first.origin, first.orientation, rest.relativeOffset);
             first.origin += error * double(first.invMass / invSum);
             second.origin -= error * double(second.invMass / invSum);
-            quat delta = glm::normalize(second.orientation * glm::conjugate(glm::normalize(first.orientation * rest.relativeOrientation)));
-            if (delta.w < 0.0f)
+            dquat delta = glm::normalize(second.orientation * glm::conjugate(glm::normalize(first.orientation * rest.relativeOrientation)));
+            if (delta.w < 0.0)
                 delta = -delta;
-            const float angle = 2.0f * std::acos(glm::clamp(delta.w, 0.0f, 1.0f));
-            const float sine = glm::length(vec3{delta.x, delta.y, delta.z});
-            if (angle <= minLength or sine <= minLength)
+            const double angle = 2.0 * std::acos(glm::clamp(delta.w, 0.0, 1.0));
+            const double sine = glm::length(dvec3{delta.x, delta.y, delta.z});
+            if (angle <= double(minLength) or sine <= double(minLength))
                 return;
-            const vec3 axis = vec3{delta.x, delta.y, delta.z} / sine;
+            const dvec3 axis = dvec3{delta.x, delta.y, delta.z} / sine;
             const float angularSum = first.invInertia + second.invInertia;
             if (angularSum <= 0.0f)
                 return;
-            first.orientation = glm::normalize(glm::angleAxis(angle * first.invInertia / angularSum, axis) * first.orientation);
-            second.orientation = glm::normalize(glm::angleAxis(-angle * second.invInertia / angularSum, axis) * second.orientation);
+            first.orientation = glm::normalize(glm::angleAxis(angle * double(first.invInertia / angularSum), axis) * first.orientation);
+            second.orientation = glm::normalize(glm::angleAxis(-angle * double(second.invInertia / angularSum), axis) * second.orientation);
             refreshCom(first);
             refreshCom(second);
         }
@@ -211,7 +210,7 @@ namespace eltanin::phys::collision {
         }
 
         void correctVelocity(Slot& first, Slot& second, const Resting::Quantum& rest) {
-            dvec3 normal = glm::dquat{first.orientation} * dvec3{rest.normalFirst};
+            dvec3 normal = first.orientation * rest.normalFirst;
             const double normalLength = glm::length(normal);
             normal = normalLength > double(minLength) ? normal / normalLength : dvec3{0.0, 1.0, 0.0};
             const dvec3 guide = glm::abs(normal.x) < 0.8 ? dvec3{1.0, 0.0, 0.0} : dvec3{0.0, 1.0, 0.0};
@@ -236,15 +235,15 @@ namespace eltanin::phys::collision {
             auto* body = bodies.items.find(slot.id);
             if (not body)
                 return;
-            const quat turn = glm::normalize(slot.orientation * glm::conjugate(slot.orientation0));
+            const dquat turn = glm::normalize(slot.orientation * glm::conjugate(slot.orientation0));
             const dvec3 move = slot.origin - slot.origin0;
             if (auto* solid = solids.items.find(slot.id)) {
                 body->position = slot.origin;
                 body->orientation = slot.orientation;
                 solid->center.position = slot.origin;
                 solid->center.prev = slot.origin - slot.linear * Settings::fixedStep;
-                const float angle = float(glm::length(slot.omega) * double(Settings::fixedStep));
-                const quat qRel = angle > minLength ? glm::angleAxis(angle, vec3{slot.omega / glm::length(slot.omega)}) : quat{1.0f, 0.0f, 0.0f, 0.0f};
+                const double angle = glm::length(slot.omega) * double(Settings::fixedStep);
+                const dquat qRel = angle > double(minLength) ? glm::angleAxis(angle, slot.omega / glm::length(slot.omega)) : dquat{1.0, 0.0, 0.0, 0.0};
                 solid->prevOri = glm::normalize(glm::conjugate(qRel) * slot.orientation);
                 return;
             }
@@ -252,15 +251,14 @@ namespace eltanin::phys::collision {
             if (not crystal)
                 return;
             const bool turned = rotationDistance(slot.orientation, slot.orientation0) > 1.0e-8f;
-            const glm::dquat turn64{turn};
-            const dvec3 com = slot.origin + dvec3{slot.orientation * slot.localCom};
+            const dvec3 com = slot.origin + slot.orientation * dvec3{slot.localCom};
             const dvec3 dLinear = slot.linear - slot.linear0;
             const dvec3 dOmega = slot.omega - slot.omega0;
             const bool kickVelocity = glm::dot(dLinear, dLinear) + glm::dot(dOmega, dOmega) > minLength;
             for (Particle& particle : crystal->particles) {
                 if (turned) {
-                    particle.position = slot.origin + turn64 * (particle.position - slot.origin0);
-                    particle.prev = slot.origin + turn64 * (particle.prev - slot.origin0);
+                    particle.position = slot.origin + turn * (particle.position - slot.origin0);
+                    particle.prev = slot.origin + turn * (particle.prev - slot.origin0);
                 } else {
                     particle.position += move;
                     particle.prev += move;
@@ -277,18 +275,18 @@ namespace eltanin::phys::collision {
                 writeSlot(slot, bodies, solids, crystals);
         }
 
-        void slerpToward(quat& orientation, quat target, float share) {
-            quat delta = glm::normalize(target * glm::conjugate(orientation));
-            if (delta.w < 0.0f)
+        void slerpToward(dquat& orientation, dquat target, float share) {
+            dquat delta = glm::normalize(target * glm::conjugate(orientation));
+            if (delta.w < 0.0)
                 delta = -delta;
-            const float angle = 2.0f * std::acos(glm::clamp(delta.w, 0.0f, 1.0f));
-            const float sine = glm::length(vec3{delta.x, delta.y, delta.z});
-            if (angle <= minLength or sine <= minLength)
+            const double angle = 2.0 * std::acos(glm::clamp(delta.w, 0.0, 1.0));
+            const double sine = glm::length(dvec3{delta.x, delta.y, delta.z});
+            if (angle <= double(minLength) or sine <= double(minLength))
                 return;
-            orientation = glm::normalize(glm::angleAxis(angle * share, vec3{delta.x, delta.y, delta.z} / sine) * orientation);
+            orientation = glm::normalize(glm::angleAxis(angle * double(share), dvec3{delta.x, delta.y, delta.z} / sine) * orientation);
         }
 
-        void pullToward(Body::Id id, dvec3 origin, quat rotation, float share, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
+        void pullToward(Body::Id id, dvec3 origin, dquat rotation, float share, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
             if (share <= 0.0f)
                 return;
             const double resilience = double(Settings::Resting::dissipateResilience);
@@ -298,7 +296,7 @@ namespace eltanin::phys::collision {
                 const double k = double(share);
                 for (std::size_t index = 0; index < crystal->particles.size(); ++index) {
                     Particle& particle = crystal->particles[index];
-                    const dvec3 goal = origin + dvec3{rotation * crystal->shape[index]};
+                    const dvec3 goal = origin + rotation * dvec3{crystal->shape[index]};
                     verlet::semiKick(particle, (goal - particle.position) * k, resilience);
                 }
                 return;
@@ -309,10 +307,10 @@ namespace eltanin::phys::collision {
                 return;
             verlet::semiKick(solid->center, (origin - body->position) * double(share), resilience);
             body->position = solid->center.position;
-            const quat oldOri = body->orientation;
+            const dquat oldOri = body->orientation;
             slerpToward(body->orientation, rotation, share);
-            const quat turn = glm::normalize(body->orientation * glm::conjugate(oldOri));
-            solid->prevOri = glm::normalize(glm::slerp(solid->prevOri, glm::normalize(turn * solid->prevOri), float(resilience)));
+            const dquat turn = glm::normalize(body->orientation * glm::conjugate(oldOri));
+            solid->prevOri = glm::normalize(glm::slerp(solid->prevOri, glm::normalize(turn * solid->prevOri), double(resilience)));
         }
 
         void censusProbes(State& state) {
@@ -533,9 +531,9 @@ namespace eltanin::phys::collision {
             if (normalLength <= minLength)
                 continue;
             const vec3 normal = aggregate.normal / normalLength;
-            const dvec3 localFirst = glm::conjugate(glm::dquat{first->orientation}) * (point - first->position);
-            const dvec3 localSecond = glm::conjugate(glm::dquat{second->orientation}) * (point - second->position);
-            const quat relativeOrientation = glm::normalize(glm::conjugate(first->orientation) * second->orientation);
+            const dvec3 localFirst = glm::inverse(first->orientation) * (point - first->position);
+            const dvec3 localSecond = glm::inverse(second->orientation) * (point - second->position);
+            const dquat relativeOrientation = glm::normalize(glm::inverse(first->orientation) * second->orientation);
             auto previous = state.probes.find(pair);
             const bool continuing = previous != state.probes.end() and previous->second.firstShape == firstShape and previous->second.secondShape == secondShape and glm::length(localFirst - previous->second.localFirst) <= Settings::Resting::captureMeters and glm::length(localSecond - previous->second.localSecond) <= Settings::Resting::captureMeters and rotationDistance(relativeOrientation, previous->second.relativeOrientation) <= Settings::Resting::captureRadians;
             const RestProbe probe{
@@ -550,10 +548,10 @@ namespace eltanin::phys::collision {
                 nextProbes.emplace(pair, probe);
                 continue;
             }
-            const dvec3 originOffset = glm::conjugate(glm::dquat{first->orientation}) * (second->position - first->position);
-            const dvec3 inverseOffset = glm::conjugate(glm::dquat{second->orientation}) * (first->position - second->position);
-            const quat inverseOrientation = glm::normalize(glm::conjugate(second->orientation) * first->orientation);
-            with<Resting>::create(context, Resting::Quantum{.first = pair.first, .second = pair.second, .anchorFirst = localFirst, .anchorSecond = localSecond, .normalFirst = glm::conjugate(first->orientation) * normal, .relativeOffset = originOffset, .relativeOrientation = relativeOrientation, .inverseOffset = inverseOffset, .inverseOrientation = inverseOrientation, .normalLoad = 0.0f, .firstRadius = first->radius, .secondRadius = second->radius, .firstShape = firstShape, .secondShape = secondShape});
+            const dvec3 originOffset = glm::inverse(first->orientation) * (second->position - first->position);
+            const dvec3 inverseOffset = glm::inverse(second->orientation) * (first->position - second->position);
+            const dquat inverseOrientation = glm::normalize(glm::inverse(second->orientation) * first->orientation);
+            with<Resting>::create(context, Resting::Quantum{.first = pair.first, .second = pair.second, .anchorFirst = localFirst, .anchorSecond = localSecond, .normalFirst = glm::inverse(first->orientation) * dvec3{normal}, .relativeOffset = originOffset, .relativeOrientation = relativeOrientation, .inverseOffset = inverseOffset, .inverseOrientation = inverseOrientation, .normalLoad = 0.0f, .firstRadius = first->radius, .secondRadius = second->radius, .firstShape = firstShape, .secondShape = secondShape});
             state.activeResting.insert(pair);
         }
         state.probes = std::move(nextProbes);
@@ -633,9 +631,9 @@ namespace eltanin::phys::collision {
             const float shareA = Settings::Resting::dissipate * invA / invSum;
             const float shareB = Settings::Resting::dissipate * invB / invSum;
             const dvec3 originA = worldOf(bodyB->position, bodyB->orientation, rest->inverseOffset);
-            const quat oriA = glm::normalize(bodyB->orientation * rest->inverseOrientation);
+            const dquat oriA = glm::normalize(bodyB->orientation * rest->inverseOrientation);
             const dvec3 originB = worldOf(bodyA->position, bodyA->orientation, rest->relativeOffset);
-            const quat oriB = glm::normalize(bodyA->orientation * rest->relativeOrientation);
+            const dquat oriB = glm::normalize(bodyA->orientation * rest->relativeOrientation);
             pullToward(rest->first, originA, oriA, shareA, bodies, solids, crystals);
             pullToward(rest->second, originB, oriB, shareB, bodies, solids, crystals);
         }

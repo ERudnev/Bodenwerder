@@ -86,6 +86,7 @@ namespace eltanin::phys {
             static constexpr double solidContact = 0.5; // solid ↔ crystal impact end; rest blends toward 1 (teleport)
             static constexpr double solidSolid = 0.5; // solid ↔ solid positional remaining
             static constexpr double crystalContact = 0.5; // crystal particle vs frozen hull
+            static constexpr double planetSolid = 0.5; // Solid ↔ planet rock; positional correction retains half-step impact
         };
 
         static constexpr float constraintStiffness = 1.0f; // k in rib length restore

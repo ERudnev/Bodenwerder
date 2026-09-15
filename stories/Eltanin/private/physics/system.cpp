@@ -137,11 +137,11 @@ namespace eltanin::phys {
             const float inertia = 0.4f * body->totalMass * body->radius * body->radius;
             if (inertia <= 1.0e-12f)
                 continue;
-            const quat qRel = glm::normalize(body->orientation * glm::conjugate(solid.prevOri));
-            vec3 omega = (2.0f / spinDt) * vec3{qRel.x, qRel.y, qRel.z};
-            if (qRel.w < 0.0f)
+            const dquat qRel = glm::normalize(body->orientation * glm::conjugate(solid.prevOri));
+            dvec3 omega = (2.0 / double(spinDt)) * dvec3{qRel.x, qRel.y, qRel.z};
+            if (qRel.w < 0.0)
                 omega = -omega;
-            solid.forceAngular += inertia * spin * omega;
+            solid.forceAngular += double(inertia * spin) * omega;
         }
     }
 
@@ -152,7 +152,7 @@ namespace eltanin::phys {
         }
         for (auto [_, solid] : context.direct<rigid::Solid>().items) {
             solid.center.force = dvec3{0.0, 0.0, 0.0};
-            solid.forceAngular = vec3{0.0f, 0.0f, 0.0f};
+            solid.forceAngular = dvec3{0.0, 0.0, 0.0};
         }
         for (auto [_, ray] : context.direct<rigid::Ray>().items)
             ray.core.force = dvec3{0.0, 0.0, 0.0};
@@ -235,18 +235,18 @@ namespace eltanin::phys {
             if (inertia <= 1.0e-12f)
                 continue;
 
-            const quat qRel = glm::normalize(body->orientation * glm::conjugate(solid.prevOri));
-            vec3 omega = (2.0f / spinDt) * vec3{qRel.x, qRel.y, qRel.z};
-            if (qRel.w < 0.0f)
+            const dquat qRel = glm::normalize(body->orientation * glm::conjugate(solid.prevOri));
+            dvec3 omega = (2.0 / double(spinDt)) * dvec3{qRel.x, qRel.y, qRel.z};
+            if (qRel.w < 0.0)
                 omega = -omega;
-            omega += (solid.forceAngular / inertia) * spinDt;
-            if (glm::length(omega) * spinDt < Settings::restLinear)
-                omega = vec3{0.0f, 0.0f, 0.0f};
+            omega += (solid.forceAngular / double(inertia)) * double(spinDt);
+            if (glm::length(omega) * double(spinDt) < double(Settings::restLinear))
+                omega = dvec3{0.0, 0.0, 0.0};
 
-            const quat previousOri = body->orientation;
-            const float omegaLen = glm::length(omega);
-            if (omegaLen > 1.0e-12f) {
-                const quat stepOri = glm::angleAxis(omegaLen * spinDt, omega / omegaLen);
+            const dquat previousOri = body->orientation;
+            const double omegaLen = glm::length(omega);
+            if (omegaLen > 1.0e-12) {
+                const dquat stepOri = glm::angleAxis(omegaLen * double(spinDt), omega / omegaLen);
                 body->orientation = glm::normalize(stepOri * body->orientation);
             }
             solid.prevOri = previousOri;
@@ -269,7 +269,7 @@ namespace eltanin::phys {
             ray.core.prev = previous;
             body->position = ray.core.position;
             body->totalMass = ray.core.mass;
-            body->orientation = lookAlong(vec3{(ray.core.position - ray.core.prev) / Settings::fixedStep}, body->orientation);
+            body->orientation = dquat{lookAlong(vec3{(ray.core.position - ray.core.prev) / Settings::fixedStep}, quat{body->orientation})};
         }
     }
 
@@ -309,6 +309,8 @@ namespace eltanin::phys {
     }
 
     void System::tick(Stewarding context) {
+        if (planet)
+            planet->advancePhysics(context, Settings::fixedStep);
         accumulateForces(context);
         integrate(context.direct<rigid::Crystal>());
         integrateSolids(context.direct<Body>(), context.direct<rigid::Solid>());
@@ -349,8 +351,11 @@ namespace eltanin::phys {
             ticked = true;
         }
         radiate(session);
-        if (ticked)
+        if (ticked) {
             with<locality::Thing>::followBodies(session);
+            if (planet)
+                planet->sync(session);
+        }
     }
 
 }

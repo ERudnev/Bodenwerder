@@ -14,11 +14,11 @@ namespace eltanin::phys {
             Body::Id second;
             dvec3 anchorFirst;
             dvec3 anchorSecond;
-            vec3 normalFirst;
+            dvec3 normalFirst;
             dvec3 relativeOffset;
-            quat relativeOrientation;
+            dquat relativeOrientation;
             dvec3 inverseOffset;
-            quat inverseOrientation;
+            dquat inverseOrientation;
             float normalLoad;
             float firstRadius;
             float secondRadius;
