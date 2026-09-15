@@ -12,12 +12,12 @@ namespace eltanin::phys {
         struct Quantum {
             Body::Id first;
             Body::Id second;
-            vec3 anchorFirst;
-            vec3 anchorSecond;
+            dvec3 anchorFirst;
+            dvec3 anchorSecond;
             vec3 normalFirst;
-            vec3 relativeOffset;
+            dvec3 relativeOffset;
             quat relativeOrientation;
-            vec3 inverseOffset;
+            dvec3 inverseOffset;
             quat inverseOrientation;
             float normalLoad;
             float firstRadius;

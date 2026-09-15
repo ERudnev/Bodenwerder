@@ -1,5 +1,6 @@
 #pragma once
 
+#include <base/maybe.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <eltanin/physics/resting.q1.h>
@@ -7,6 +8,10 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+namespace eltanin::locality::planet {
+    struct Planet;
+}
 
 namespace eltanin::phys::collision {
 
@@ -21,14 +26,16 @@ namespace eltanin::phys::collision {
     // Solid vs crystal: both queries detect; impulse is only solid-vs-shape — restitution+friction on the Solid (center.prev), semiKick face supports on Crystal.
     // Contact = positional constraint + event payload — not a force into accumulateForces.
     // Rays are not Occupants. After solve, traceRays() CCD-tests each Ray segment (prev→position) against Solids and Crystal hulls. Rays do not see each other.
+    // Planet well is a Body, not an Occupant. Own phase after the cohort grid: Solid (Stone/Scrap) and Crystal particles vs the heightfield. Same one-sided push as Rock; Resting captures against the well.
 
-    // One side of a candidate or contact. Solid and Crystal share Body::Id; type is sphere, box, or crystal.
+    // One side of a candidate or contact. Solid and Crystal share Body::Id; type is sphere, box, crystal, or planet.
     struct Endpoint {
         enum class Type {
             crystal, // Particle (tested point) or hull face (frozen shape), selected by `face`
             sphere,
             box,
             ray, // segment prev→position; own phase, not Occupant
+            planet, // heightfield well Body; own phase, not Occupant
         };
         Type type;
         Body::Id body;
@@ -45,8 +52,8 @@ namespace eltanin::phys::collision {
     struct Contact {
         Endpoint a;
         Endpoint b;
-        vec3 point; // world closest on frozen shape
-        vec3 normal; // unit, from a toward b (shape outward ≈ −normal for one-sided solids)
+        dvec3 point; // world closest on frozen shape
+        dvec3 normal; // unit, from a toward b (shape outward ≈ −normal for one-sided solids)
         float penetration; // > 0 overlapping depth at build
         integer candidate; // index into State.candidates
         float correction; // separation this tick (m), written by solver
@@ -69,8 +76,8 @@ namespace eltanin::phys::collision {
     // Cross-tick capture only. Established pairs are phys::Resting world entities.
     // Local contacts, not originOffset: Body origins are a lever of the larger radius, so Horn jitter of 0.01 rad looks like meters.
     struct RestProbe {
-        vec3 localFirst;
-        vec3 localSecond;
+        dvec3 localFirst;
+        dvec3 localSecond;
         quat relativeOrientation;
         integer firstShape;
         integer secondShape;
@@ -103,6 +110,8 @@ namespace eltanin::phys::collision {
         integer restingSkipped;
         integer rayTries;
         integer rayHits;
+        integer planetTries;
+        integer planetHits;
     };
 
     // Tick-local contacts plus capture probes. Established resting pairs are world entities.
@@ -112,8 +121,13 @@ namespace eltanin::phys::collision {
         Census census;
         std::unordered_map<PairKey, RestProbe, PairKeyHash> probes;
         std::unordered_set<PairKey, PairKeyHash> activeResting;
+        struct {
+            base::maybe<Body::Id> id;
+            locality::planet::Planet* planet;
+        } well;
 
         void build(Stewarding);
+        void collidePlanet(Stewarding, locality::planet::Planet&);
         void solve(Stewarding);
         void traceRays(Stewarding); // CCD segment vs frozen Solid / Crystal; one hit per ray per tick
     };

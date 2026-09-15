@@ -17,7 +17,7 @@ namespace eltanin
       prev: dvec3
       force: dvec3
 
-    // World-facing kinematics cache. Solid, Crystal and Ray are features of the same id.
+    // Pose only: position and orientation. Velocities live on Solid, Crystal, Ray and Planet — not here.
     // compound = collision cohort anchor; solo body points at itself.
     entity Body
       one

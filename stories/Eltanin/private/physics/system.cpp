@@ -79,7 +79,11 @@ namespace eltanin::phys {
     }
 
     void System::applyAerodynamics(Stewarding context) {
-        if (not planet)
+        if (not planet or not planet->well)
+            return;
+        auto bodies = context.direct<Body>();
+        auto* wellBody = bodies.items.find(*planet->well);
+        if (not wellBody)
             return;
         const double dt = Settings::fixedStep;
         const double dt2 = dt * dt;
@@ -105,32 +109,28 @@ namespace eltanin::phys {
             for (Particle& particle : crystal.particles) {
                 if (particle.mass <= 0.0f)
                     continue;
-                const vec3 pos = vec3{particle.position};
-                const double scale = dragScale(planet->airDensity(pos));
+                const double scale = dragScale(planet->airDensity(*wellBody, particle.position));
                 if (scale == 0.0)
                     continue;
-                particle.force += double(particle.mass) * scale * (particle.position - particle.prev - planet->windAt(particle.position) * dt);
+                particle.force += double(particle.mass) * scale * (particle.position - particle.prev - planet->windAt(*wellBody, particle.position) * dt);
             }
         }
         for (auto [_, ray] : context.direct<rigid::Ray>().items) {
             if (ray.core.mass <= 0.0f)
                 continue;
-            const vec3 pos = vec3{ray.core.position};
-            const double scale = dragScale(planet->airDensity(pos));
+            const double scale = dragScale(planet->airDensity(*wellBody, ray.core.position));
             if (scale == 0.0)
                 continue;
-            ray.core.force += double(ray.core.mass) * scale * (ray.core.position - ray.core.prev - planet->windAt(ray.core.position) * dt);
+            ray.core.force += double(ray.core.mass) * scale * (ray.core.position - ray.core.prev - planet->windAt(*wellBody, ray.core.position) * dt);
         }
-        auto bodies = context.direct<Body>();
         for (auto [id, solid] : context.direct<rigid::Solid>().items) {
             auto* body = bodies.items.find(id);
             if (not body or body->totalMass <= 0.0f)
                 continue;
-            const vec3 pos = vec3{body->position};
-            const float density = planet->airDensity(pos);
+            const float density = planet->airDensity(*wellBody, body->position);
             const double linear = dragScale(density);
             if (linear != 0.0)
-                solid.center.force += double(body->totalMass) * linear * (body->position - solid.center.prev - planet->windAt(body->position) * dt);
+                solid.center.force += double(body->totalMass) * linear * (body->position - solid.center.prev - planet->windAt(*wellBody, body->position) * dt);
             const float spin = spinGain(density);
             if (spin == 0.0f)
                 continue;
@@ -166,6 +166,10 @@ namespace eltanin::phys {
         if (not planet or not planet->well)
             return;
         const auto well = *planet->well;
+        auto bodies = context.direct<Body>();
+        auto* wellBody = bodies.items.find(well);
+        if (not wellBody)
+            return;
         const auto asleep = asleepOnWell(context, well);
         for (auto [id, crystal] : context.direct<rigid::Crystal>().items) {
             if (asleep.contains(id))
@@ -173,22 +177,21 @@ namespace eltanin::phys {
             for (Particle& particle : crystal.particles) {
                 if (particle.mass <= 0.0f)
                     continue;
-                particle.force += double(particle.mass) * planet->gravityAt(particle.position);
+                particle.force += double(particle.mass) * planet->gravityAt(*wellBody, particle.position);
             }
         }
-        auto bodies = context.direct<Body>();
         for (auto [id, solid] : context.direct<rigid::Solid>().items) {
             if (asleep.contains(id))
                 continue;
             auto* body = bodies.items.find(id);
             if (not body or body->totalMass <= 0.0f)
                 continue;
-            solid.center.force += double(body->totalMass) * planet->gravityAt(body->position);
+            solid.center.force += double(body->totalMass) * planet->gravityAt(*wellBody, body->position);
         }
         for (auto [id, ray] : context.direct<rigid::Ray>().items) {
             if (asleep.contains(id) or ray.core.mass <= 0.0f)
                 continue;
-            ray.core.force += double(ray.core.mass) * planet->gravityAt(ray.core.position);
+            ray.core.force += double(ray.core.mass) * planet->gravityAt(*wellBody, ray.core.position);
         }
     }
 
@@ -275,7 +278,16 @@ namespace eltanin::phys {
     }
 
     void System::applyConnectivity(Stewarding context) {
+        if (planet and planet->well) {
+            collisions.well.id = planet->well;
+            collisions.well.planet = planet;
+        } else {
+            collisions.well.id.reset();
+            collisions.well.planet = nullptr;
+        }
         collisions.build(context);
+        if (planet)
+            collisions.collidePlanet(context, *planet);
         collisions.solve(context);
         collisions.traceRays(context);
     }

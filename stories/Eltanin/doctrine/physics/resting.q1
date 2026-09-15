@@ -10,12 +10,12 @@ namespace eltanin
       one
         first: #Body
         second: #Body
-        anchorFirst: vec3
-        anchorSecond: vec3
+        anchorFirst: dvec3
+        anchorSecond: dvec3
         normalFirst: vec3
-        relativeOffset: vec3
+        relativeOffset: dvec3
         relativeOrientation: quat
-        inverseOffset: vec3
+        inverseOffset: dvec3
         inverseOrientation: quat
         normalLoad: float
         firstRadius: float

@@ -397,15 +397,16 @@ namespace eltanin::phys {
                 if (ImGui::CollapsingHeader("Location", ImGuiTreeNodeFlags_DefaultOpen)) {
                     if (with<rmmr::scene::Root>::exists(context, system.scene)) {
                         auto root = with<rmmr::scene::Root>::modify(context, system.scene);
-                        if (system.planet) {
+                        if (system.planet and system.planet->well and with<Body>::exists(context, *system.planet->well)) {
                             const auto& passport = system.planet->passport;
+                            auto planetBody = with<Body>::modify(context, *system.planet->well);
                             ImGui::Text("Radius %.0f m", passport.radius);
                             ImGui::Text("Surface g %.3f m/s²", passport.surfaceAcceleration);
                             ImGui::Text("Air MSL %.0f g/m³", passport.atmosphere.seaDensity);
                             ImGui::Text("Kerman %.0f m", passport.atmosphere.kerman);
-                            float spinDeg = glm::degrees(system.planet->spin);
+                            float spinDeg = glm::degrees(system.planet->spin(*planetBody));
                             if (ImGui::DragFloat("Spin", &spinDeg, 0.5f, 0.0f, 0.0f, "%.1f°")) {
-                                system.planet->spin = glm::radians(spinDeg);
+                                system.planet->spin(*planetBody, glm::radians(spinDeg));
                                 system.planet->sync(context);
                             }
                         }
@@ -479,6 +480,7 @@ namespace eltanin::phys {
                 const auto& census = system.collisionCensus();
                 ImGui::Text("broad  %d → %d pair tests, sphere %d → obb %d", census.cohorts, census.cohortPairs, census.cohortHits, census.obbHits);
                 ImGui::Text("occupants  %d (max %d)  tries %d → candidates %d → contacts %d", census.occupants, census.maxOccupants, census.occupantTries, census.candidates, census.contacts);
+                ImGui::Text("planet  tries %d, hits %d", census.planetTries, census.planetHits);
                 ImGui::Text("rays  %d tries %d, hits %d", census.rays, census.rayTries, census.rayHits);
 
                 ImGui::Separator();

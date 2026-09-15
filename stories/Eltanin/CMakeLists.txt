@@ -72,10 +72,14 @@ add_executable(Eltanin_horn_tests
 )
 target_include_directories(Eltanin_horn_tests
     PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/model
         ${CMAKE_CURRENT_SOURCE_DIR}/private
+        ${CMAKE_SOURCE_DIR}/modules/raidenmamare/interface
+        ${CMAKE_SOURCE_DIR}/modules/fQSM.cpp/interface
 )
 target_link_libraries(Eltanin_horn_tests
     PRIVATE
         glm
         base
+        libglew_static
 )

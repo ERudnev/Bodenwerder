@@ -56,9 +56,7 @@ namespace eltanin::locality::planet {
         };
 
         const Passport passport;
-        rmmr::Pose pose;
-        float spin; // radians around local +Y
-        dvec3 spinOmega; // co-rotating air ω in locality; refreshed in applySpin
+        dvec3 spinOmega; // world angular velocity; the planet is translationally fixed
         base::maybe<phys::Body::Id> well;
         geo::IcosaMap<std::int16_t> heights; // 0 = sea; ±reliefPeak maps to ±amplitude metres
         geo::IcosaMap<std::uint32_t> covers; // four u8 facies, shallow to deep
@@ -79,15 +77,18 @@ namespace eltanin::locality::planet {
         void update(Writing, rmmr::Pos camera, seconds dt);
         void sync(Writing);
 
+        auto spin(const phys::Body::Quantum&) const -> float;
+        void spin(phys::Body::Quantum&, float) const;
         auto reliefScale() const -> float; // metres per int16 step
         auto surfaceRadius(std::int16_t quantum) const -> float;
         auto encodeRelief(float deltaMeters) const -> std::int16_t;
         auto height(rmmr::vec3 dir) const -> float; // radial surface, not relief above sea
-        auto altitudeAt(rmmr::Pos worldPos) const -> float;
-        auto gravityAt(dvec3 worldPos) const -> dvec3;
-        auto airDensity(rmmr::Pos) const -> float;
-        auto windAt(dvec3) const -> dvec3;
-        auto probe(rmmr::vec3 dir) const -> Probe;
+        auto altitudeAt(const phys::Body::Quantum&, dvec3 worldPos) const -> float;
+        auto gravityAt(const phys::Body::Quantum&, dvec3 worldPos) const -> dvec3;
+        auto airDensity(const phys::Body::Quantum&, dvec3 worldPos) const -> float;
+        auto windAt(const phys::Body::Quantum&, dvec3 worldPos) const -> dvec3;
+        auto probe(const phys::Body::Quantum&, rmmr::vec3 dir) const -> Probe;
+        auto surfaceAt(const phys::Body::Quantum&, dvec3 worldPos) const -> Probe;
     };
 
 }

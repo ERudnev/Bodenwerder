@@ -91,18 +91,18 @@ namespace base {
 
     // --- Report helpers (handy for diagnostics)
     template<typename T>
+    concept has_to_string_external = requires(T value) {
+        { to_string(value) } -> std::convertible_to<std::string>;
+    };
+
+    template<typename T>
     concept has_ostream_operator = requires(std::ostream& s, T value) {
         { s << value } -> std::convertible_to<std::ostream&>;
-    };
+    } and not has_to_string_external<T>;
 
     template<typename T>
     concept has_to_string_method = requires(T value) {
         { value.to_string() } -> std::convertible_to<std::string>;
-    };
-
-    template<typename T>
-    concept has_to_string_external = requires(T value) {
-        { to_string(value) } -> std::convertible_to<std::string>;
     };
 
     template<typename T>

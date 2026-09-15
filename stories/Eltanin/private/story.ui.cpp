@@ -296,23 +296,24 @@ namespace eltanin {
                 }
                 ImGui::DragFloat("Near", &quantum->z_near, 0.1f, 0.5f, quantum->z_far - 1.0f, "%.1f");
                 ImGui::DragFloat("Far", &quantum->z_far, 100.0f, quantum->z_near + 1.0f, 100000.0f, "%.0f");
-                if (planet) {
+                if (planet and planet->well and with<phys::Body>::exists(world, *planet->well)) {
                     ImGui::Separator();
                     ImGui::TextUnformatted("Planet");
+                    const auto& planetBody = with<phys::Body>::get(world, *planet->well);
                     const Pos cameraPos = node.pose.position;
-                    const vec3 local = glm::inverse(planet->pose.rotation) * (cameraPos - planet->pose.position);
+                    const vec3 local = vec3{glm::inverse(glm::dquat{planetBody.orientation}) * (dvec3{cameraPos} - planetBody.position)};
                     const float range = glm::length(local);
-                    const float altitude = planet->altitudeAt(cameraPos);
-                    const float gravity = float(glm::length(planet->gravityAt(dvec3{cameraPos})));
+                    const float altitude = planet->altitudeAt(planetBody, dvec3{cameraPos});
+                    const float gravity = float(glm::length(planet->gravityAt(planetBody, dvec3{cameraPos})));
                     const float latDeg = range > 1.0e-3f ? glm::degrees(std::asin(glm::clamp(local.y / range, -1.0f, 1.0f))) : 0.0f;
                     const float lonDeg = range > 1.0e-3f ? glm::degrees(std::atan2(local.x, local.z)) : 0.0f;
                     ImGui::Text("Altitude: %.1f m", altitude);
                     ImGui::Text("g: %.3f m/s²", gravity);
-                    const float air = planet->airDensity(cameraPos);
+                    const float air = planet->airDensity(planetBody, dvec3{cameraPos});
                     ImGui::Text("Air: %.0f g/m³ (%.0f%% ISA)", air, 100.0f * air / phys::Settings::Air::isaDensity);
                     ImGui::Text("Range to center: %.1f m (%.2f km)", range, range * 0.001f);
                     ImGui::Text("Lat / Lon: %.3f°, %.3f°", latDeg, lonDeg);
-                    const auto hit = planet->probe(local);
+                    const auto hit = planet->probe(planetBody, local);
                     ImGui::Separator();
                     ImGui::TextUnformatted("Probe");
                     ImGui::Text("height %.2f m", hit.height);
