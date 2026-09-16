@@ -348,6 +348,26 @@ namespace eltanin::locality::geo {
             return glm::mix(means[static_cast<std::size_t>(cover & 255u)], means[static_cast<std::size_t>((cover >> 8) & 255u)], below);
         }
 
+        auto heightQuantum(const planet::Planet& planet, integer diamond, integer iu, integer iv) -> float {
+            const integer last = planet.heights.pack.edgeSegments();
+            return float(planet.heights.at(IcosaPack::Slot{.diamond = diamond, .iu = std::clamp(iu, integer{0}, last), .iv = std::clamp(iv, integer{0}, last)}));
+        }
+
+        auto reliefGain(const planet::Planet& planet, integer diamond, integer iu, integer iv) -> float {
+            const float height = heightQuantum(planet, diamond, iu, iv);
+            float mean = 0.0f;
+            float spread = 1.0f;
+            for (integer dv = -2; dv <= 2; ++dv) {
+                for (integer du = -2; du <= 2; ++du) {
+                    const float neighbor = heightQuantum(planet, diamond, iu + du, iv + dv);
+                    mean += neighbor;
+                    spread = std::max(spread, std::abs(height - neighbor));
+                }
+            }
+            mean /= 25.0f;
+            return 1.0f + glm::clamp((height - mean) / spread, -0.38f, 0.22f);
+        }
+
         auto toByte(float value) -> std::uint8_t {
             return static_cast<std::uint8_t>(std::lround(glm::clamp(value, 0.0f, 1.0f) * 255.0f));
         }
@@ -453,7 +473,84 @@ namespace eltanin::locality::geo {
             planet.farAlbedo.stitch();
             blurFarAlbedo(planet);
             planet.farAlbedo.stitch();
+            for (integer index = 0; index < planet.farAlbedo.pack.storedCount(); ++index) {
+                const auto target = planet.farAlbedo.pack.slotOf(index);
+                const integer centerU = static_cast<integer>(std::lround(double(target.iu) * double(sourceLast) / double(targetLast)));
+                const integer centerV = static_cast<integer>(std::lround(double(target.iv) * double(sourceLast) / double(targetLast)));
+                const float gain = reliefGain(planet, target.diamond, centerU, centerV);
+                vec4 color = planet.farAlbedo.at(target);
+                planet.farAlbedo.at(target) = vec4{color.x * gain, color.y * gain, color.z * gain, color.w};
+            }
+            planet.farAlbedo.stitch();
             writeFarAlbedo(planet);
+        }
+
+        auto reliefNormal(const planet::Planet& planet, vec3 dir) -> vec3 {
+            dir = glm::normalize(dir);
+            vec3 tangentU = glm::cross(vec3{0.0f, 1.0f, 0.0f}, dir);
+            if (glm::dot(tangentU, tangentU) < 1.0e-8f)
+                tangentU = glm::cross(vec3{1.0f, 0.0f, 0.0f}, dir);
+            tangentU = glm::normalize(tangentU);
+            const vec3 tangentV = glm::cross(dir, tangentU);
+            const float eps = 1.0f / float(std::max(planet.farAlbedo.pack.edgeSegments(), integer{1}));
+            auto surface = [&](vec3 sample) -> vec3 {
+                sample = glm::normalize(sample);
+                return sample * float(planet.height(sample));
+            };
+            vec3 normal = glm::cross(surface(dir + tangentU * eps) - surface(dir - tangentU * eps), surface(dir + tangentV * eps) - surface(dir - tangentV * eps));
+            const float magnitude = glm::length(normal);
+            if (magnitude < 1.0e-8f)
+                return dir;
+            normal /= magnitude;
+            if (glm::dot(normal, dir) < 0.0f)
+                normal = -normal;
+            const vec3 tilt = normal - dir * glm::dot(normal, dir);
+            return glm::normalize(dir + tilt * 2.0f);
+        }
+
+        void blurFarNormal(planet::Planet& planet) {
+            auto& map = planet.farNormal;
+            const integer last = map.pack.edgeSegments();
+            constexpr float sigmaSpace = 1.0f;
+            const integer radius = 2;
+            auto sample = [&](const vector<vec3>& field, integer diamond, integer iu, integer iv) -> vec3 {
+                return field[static_cast<std::size_t>(map.pack.index(IcosaPack::Slot{.diamond = diamond, .iu = std::clamp(iu, integer{0}, last), .iv = std::clamp(iv, integer{0}, last)}))];
+            };
+            const vector<vec3> source = map.values;
+            const float spaceScale = 1.0f / (2.0f * sigmaSpace * sigmaSpace);
+            for (integer diamond = 0; diamond < IcosaPack::diamondCount; ++diamond) {
+                for (integer iv = 0; iv <= last; ++iv) {
+                    for (integer iu = 0; iu <= last; ++iu) {
+                        vec3 sum{0.0f};
+                        float weightSum = 0.0f;
+                        for (integer dv = -radius; dv <= radius; ++dv) {
+                            for (integer du = -radius; du <= radius; ++du) {
+                                const float weight = std::exp(-float(du * du + dv * dv) * spaceScale);
+                                sum += sample(source, diamond, iu + du, iv + dv) * weight;
+                                weightSum += weight;
+                            }
+                        }
+                        const vec3 blurred = sum / std::max(weightSum, 1.0e-6f);
+                        const float magnitude = glm::length(blurred);
+                        map.at(IcosaPack::Slot{.diamond = diamond, .iu = iu, .iv = iv}) = magnitude < 1.0e-8f ? sample(source, diamond, iu, iv) : blurred / magnitude;
+                    }
+                }
+            }
+        }
+
+        void generateFarNormal(planet::Planet& planet) {
+            for (integer index = 0; index < planet.farNormal.pack.storedCount(); ++index) {
+                const auto slot = planet.farNormal.pack.slotOf(index);
+                planet.farNormal.at(slot) = reliefNormal(planet, planet.farNormal.pack.direction(slot));
+            }
+            planet.farNormal.stitch();
+            blurFarNormal(planet);
+            planet.farNormal.stitch();
+            for (auto& normal : planet.farNormal.values) {
+                const float magnitude = glm::length(normal);
+                if (magnitude > 1.0e-8f)
+                    normal /= magnitude;
+            }
         }
 
     }
@@ -474,16 +571,18 @@ namespace eltanin::locality::geo {
         const std::size_t heightBytes = static_cast<std::size_t>(stored) * sizeof(std::int16_t);
         const std::size_t coverBytes = static_cast<std::size_t>(stored) * sizeof(std::uint16_t);
         const std::size_t farBytes = static_cast<std::size_t>(planet.farAlbedo.pack.storedCount()) * 4u;
-        const std::size_t fieldBytes = heightBytes + coverBytes + farBytes;
+        const std::size_t farNormalBytes = static_cast<std::size_t>(planet.farNormal.pack.storedCount()) * 4u;
+        const std::size_t fieldBytes = heightBytes + coverBytes + farBytes + farNormalBytes;
         const double fieldMiB = double(fieldBytes) / (1024.0 * 1024.0);
         base::message("eltanin::geo::generate: icosa edgeBase={} tessellation={} → {} segments/edge, {} verts/diamond side, {:.1f} m/texel (R={:.0f} m, arc={:.0f} m)", pack.edgeBase, pack.tessellation, segments, span, texelMeters, planet.passport.radius, arc);
-        base::message("eltanin::geo::generate: field matrices {} stored slots ({} unique), diamond {}×{}, atlas {}×{}, 10 layers → heights {} B, cover {} B, far {} B, total {} B ({:.2f} MiB)", stored, unique, span, span, atlas.x, atlas.y, heightBytes, coverBytes, farBytes, fieldBytes, fieldMiB);
+        base::message("eltanin::geo::generate: field matrices {} stored slots ({} unique), diamond {}×{}, atlas {}×{}, 10 layers → heights {} B, cover {} B, far {} B, farN {} B, total {} B ({:.2f} MiB)", stored, unique, span, span, atlas.x, atlas.y, heightBytes, coverBytes, farBytes, farNormalBytes, fieldBytes, fieldMiB);
     }
 
     void generate(planet::Planet& planet) {
         generateHeights(planet);
         generateSurfaceWeights(planet);
         generateFarAlbedo(planet);
+        generateFarNormal(planet);
         logFieldSummary(planet);
     }
 

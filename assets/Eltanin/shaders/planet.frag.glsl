@@ -39,18 +39,21 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 layout(binding = 0) uniform sampler2DArray u_albedoMap;
 layout(binding = 1) uniform sampler2D u_shadowMap;
 layout(binding = 6) uniform sampler2DArray u_farAlbedoMap;
+layout(binding = 7) uniform sampler2DArray u_farNormalMap;
 
 const float shadowBias = 0.0005;
-const float crustFreq = 1.0 / 28.0;
+const float crustFreq = 0.1 / 28.0;
 const float warpAmp = 0.28;
 const float warpFreq = 12.0;
 const float heightWarp = 0.04;
 const float slope5 = 0.0038;
 const float slope15 = 0.034;
 const float gouraudBand = 0.1;
-const float hillWidth = 6.0;
+const float hillWidth = 12.0;
 const float hillFadeStart = 500.0;
 const float hillFadeEnd = 2000.0;
+const float farSlopeGain = 2.2;
+const float wrapAmount = 0.42;
 
 float sampleShadow(vec2 uv, float currentDepth) {
     float closest = texture(u_shadowMap, uv).r;
@@ -216,8 +219,8 @@ void main() {
     vec3 nearWeights = mix(voronoi, v_bary, rim);
     float classicT = clamp((v_viewDistance - 100.0) / 1900.0, 0.0, 1.0);
     vec2 farTexel = 1.0 / vec2(textureSize(u_farAlbedoMap, 0).xy);
-    vec2 farWarp = vec2(jagged(dot(v_objectPos.yz, vec2(0.04)), 3.0, v_seed), jagged(dot(v_objectPos.xz, vec2(0.04)), 4.0, v_seed));
-    vec4 farSurface = texture(u_farAlbedoMap, vec3(clamp(v_fieldUv + farWarp * farTexel * 0.45, farTexel, 1.0 - farTexel), float(v_fieldDiamond)));
+    vec2 farUv = clamp(v_fieldUv + vec2(jagged(dot(v_objectPos.yz, vec2(0.04)), 3.0, v_seed), jagged(dot(v_objectPos.xz, vec2(0.04)), 4.0, v_seed)) * farTexel * 0.45, farTexel, 1.0 - farTexel);
+    vec4 farSurface = texture(u_farAlbedoMap, vec3(farUv, float(v_fieldDiamond)));
     vec3 nearAlbedo = nearWeights.x * crustA + nearWeights.y * crustB + nearWeights.z * crustC;
     vec3 gouraudAlbedo = v_bary.x * crustA + v_bary.y * crustB + v_bary.z * crustC;
     vec3 classicAlbedo = pow(max(gouraudAlbedo, vec3(1.0e-5)), vec3(0.8)) * pow(max(farSurface.rgb, vec3(1.0e-5)), vec3(0.2));
@@ -230,13 +233,22 @@ void main() {
     float farBlend = v_geometryStep > 1 ? 1.0 : pow(farT, 0.75);
     albedo = pow(max(albedo, vec3(1.0e-5)), vec3(1.0 - farBlend)) * pow(max(farSurface.rgb, vec3(1.0e-5)), vec3(farBlend));
     roughness = pow(max(roughness, 1.0e-5), 1.0 - farBlend) * pow(max(farSurface.a, 1.0e-5), farBlend);
+    vec3 bakedObj = normalize(texture(u_farNormalMap, vec3(farUv, float(v_fieldDiamond))).xyz * 2.0 - 1.0);
+    vec3 tilt = bakedObj - radial * dot(bakedObj, radial);
+    vec3 steep = normalize(radial + tilt * farSlopeGain);
+    N = normalize(mix(N, normalize(mat3(actorModel) * steep), farBlend));
     albedo *= actorAlbedoOpacity.rgb;
-    float lambert = max(dot(N, L), 0.0);
+    float ndl = dot(N, L);
+    float hard = max(ndl, 0.0);
+    float wrapped = clamp((ndl + wrapAmount) / (1.0 + wrapAmount), 0.0, 1.0);
+    wrapped *= wrapped;
+    float lambert = mix(hard, wrapped, mix(0.2, 0.82, farBlend));
     float shadow = fetchShadow(v_worldPos, N, L);
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);
     float lightGain = max(passPrimaryLightPositionIntensity.w, 0.0);
+    float roughShade = mix(mix(1.0, 0.55, roughness), mix(1.0, 0.88, roughness), farBlend);
     vec3 ambient = albedo * passAmbientColorIntensity.rgb * (ambientGain / (1.0 + ambientGain)) * mix(1.0, 0.82, roughness);
-    vec3 direct = albedo * lambert * passPrimaryLightColorRange.rgb * shadow * (lightGain / (1.0 + lightGain)) * mix(1.0, 0.55, roughness);
+    vec3 direct = albedo * lambert * passPrimaryLightColorRange.rgb * shadow * (lightGain / (1.0 + lightGain)) * roughShade;
     FragColor = vec4(ambient + direct, 1.0);
     BloomMask = 0.0;
 }

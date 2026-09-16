@@ -59,9 +59,10 @@ namespace rmmr::material {
         // - 3..18: minerals[16] (GL_TEXTURE_3D layers)
         // - 5: coverMap (planet field; exclusive with minerals on that unit)
         // - 6: farAlbedoMap (planet field; exclusive with minerals on that unit)
+        // - 7: farNormalMap (planet field; exclusive with minerals on that unit)
         // SSBO binding points:
         // - 0: atlasEntries
-        static constexpr auto vocabulary = std::array<Entry, 19>{{
+        static constexpr auto vocabulary = std::array<Entry, 20>{{
             Entry{0, Type::i32, "_undefined", -1},
 
             Entry{109, Type::sampler2d, "shadowMap", 1},
@@ -74,6 +75,7 @@ namespace rmmr::material {
             Entry{116, Type::sampler2dArray, "heightMap", 2},
             Entry{117, Type::sampler2dArray, "coverMap", 5},
             Entry{118, Type::sampler2dArray, "farAlbedoMap", 6},
+            Entry{119, Type::sampler2dArray, "farNormalMap", 7},
 
             // Overlay / screen-space (gap after world materials — start at 2000)
             Entry{2000, Type::sampler2d, "sceneColor", 0},

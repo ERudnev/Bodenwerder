@@ -70,11 +70,12 @@ namespace rmmr::scene::actor {
             resource::texture::Runtime::Id heightField;
             resource::texture::Runtime::Id coverField;
             resource::texture::Runtime::Id farAlbedoField;
+            resource::texture::Runtime::Id farNormalField;
             renderer::IndirectBuffer indirect;
             renderer::Count drawCount;
         };
         struct Actions : BaseActions {
-            static auto compose(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texpack::Pack::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, const Shell&, std::span<const Patch>, float radius, float amplitude, float firstLodDistance, integer span, integer cells) -> optional<Quantum>;
+            static auto compose(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texpack::Pack::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, const Shell&, std::span<const Patch>, float radius, float amplitude, float firstLodDistance, integer span, integer cells) -> optional<Quantum>;
             static void setPatches(Writing, Id, std::span<const Patch>);
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };

@@ -107,6 +107,23 @@ namespace eltanin::locality::planet {
             return packed;
         }
 
+        auto farNormalArray(const Planet& planet) -> vector<std::uint8_t> {
+            const auto& pack = planet.farNormal.pack;
+            const integer span = pack.edgeVertices();
+            const integer layers = geo::IcosaPack::diamondCount;
+            vector<std::uint8_t> packed(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span) * 4u, std::uint8_t{0});
+            for (integer index = 0; index < pack.storedCount(); ++index) {
+                const auto slot = pack.slotOf(index);
+                const vec3 encoded = glm::clamp(planet.farNormal.at(slot) * 0.5f + 0.5f, vec3{0.0f}, vec3{1.0f});
+                const std::size_t offset = static_cast<std::size_t>((slot.diamond * span + slot.iv) * span + slot.iu) * 4u;
+                packed[offset] = static_cast<std::uint8_t>(std::lround(encoded.x * 255.0f));
+                packed[offset + 1] = static_cast<std::uint8_t>(std::lround(encoded.y * 255.0f));
+                packed[offset + 2] = static_cast<std::uint8_t>(std::lround(encoded.z * 255.0f));
+                packed[offset + 3] = std::uint8_t{255};
+            }
+            return packed;
+        }
+
         auto farAlbedoArray(const Planet& planet) -> vector<std::uint8_t> {
             const auto& pack = planet.farAlbedo.pack;
             const integer span = pack.edgeVertices();
@@ -339,6 +356,7 @@ namespace eltanin::locality::planet {
         , heights{geo::IcosaPack{.edgeBase = detail.edgeBase, .tessellation = detail.tessellation}, std::int16_t{0}}
         , covers{heights.pack, std::uint16_t{0}}
         , farAlbedo{geo::IcosaPack{.edgeBase = std::max(heights.pack.edgeSegments() / 2, integer{1}), .tessellation = 0}, vec4{0.0f}}
+        , farNormal{farAlbedo.pack, vec3{0.0f, 1.0f, 0.0f}}
         , shell{}
         , atmosphere{} {
         geo::generate(*this);
@@ -367,6 +385,7 @@ namespace eltanin::locality::planet {
         const auto heightPixels = heightArray(*this);
         const auto coverPixels = coverArray(*this);
         const auto farPixels = farAlbedoArray(*this);
+        const auto farNormalPixels = farNormalArray(*this);
         const auto heightId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-height")});
         with<resource::texture::Asset>::extend(context, heightId, resource::texture::Asset::Quantum{});
         const auto heightBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(heightPixels.data()), heightPixels.size() * sizeof(std::int16_t));
@@ -389,8 +408,15 @@ namespace eltanin::locality::planet {
             context.refuse("eltanin::locality::planet::Planet::place: far albedo atlas install failed");
             return;
         }
+        const auto farNormalId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-far-normal")});
+        with<resource::texture::Asset>::extend(context, farNormalId, resource::texture::Asset::Quantum{});
+        const auto farNormalBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(farNormalPixels.data()), farNormalPixels.size());
+        if (not with<resource::texture::Asset>::install(context, farNormalId, device, resource::texture::Asset::Format::rgba8, resource::texture::Asset::Sampling::linear, index2{.x = farSpan, .y = farSpan}, layers, 1, farNormalBytes)) {
+            context.refuse("eltanin::locality::planet::Planet::place: far normal atlas install failed");
+            return;
+        }
         const auto patches = coarsePatches(heights.pack);
-        auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *facies, heightId, coverId, farAlbedoId, icosaShell(), patches, passport.radius, passport.geology.amplitude, firstLodDistance(heights.pack, passport.radius), heights.pack.edgeVertices(), patchCells);
+        auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *facies, heightId, coverId, farAlbedoId, farNormalId, icosaShell(), patches, passport.radius, passport.geology.amplitude, firstLodDistance(heights.pack, passport.radius), heights.pack.edgeVertices(), patchCells);
         if (not gridQuantum) {
             context.refuse("eltanin::locality::planet::Planet::place: patch grid compose failed");
             return;

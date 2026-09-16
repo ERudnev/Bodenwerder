@@ -192,6 +192,7 @@ namespace rmmr::scene::actor {
                 .heightField = {},
                 .coverField = {},
                 .farAlbedoField = {},
+                .farNormalField = {},
                 .sprite = {},
                 .actorState = family.actorState,
                 .poses = family.instances,

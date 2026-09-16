@@ -101,6 +101,7 @@ namespace rmmr::renderer {
         base::maybe<resource::texture::Runtime::Id> heightField;
         base::maybe<resource::texture::Runtime::Id> coverField;
         base::maybe<resource::texture::Runtime::Id> farAlbedoField;
+        base::maybe<resource::texture::Runtime::Id> farNormalField;
         base::maybe<resource::sprite::Runtime::Id> sprite;
         StorageBuffer actorState;
         StorageBuffer poses;
