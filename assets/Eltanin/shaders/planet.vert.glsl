@@ -2,6 +2,9 @@
 
 layout (location = 0) in vec3 aPos;
 
+const float slope5 = 0.0038;
+const float slope15 = 0.034;
+
 layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     mat4 actorModel;
     vec4 actorAlbedoOpacity;
@@ -37,8 +40,8 @@ layout(binding = 5) uniform sampler2DArray u_coverMap;
 
 out vec3 v_worldPos;
 out vec3 v_worldNormal;
-out vec3 v_objectNormal;
 out vec3 v_objectPos;
+out float v_geoBelow;
 flat out uvec3 v_layerPack;
 flat out vec3 v_seed;
 out vec3 v_bary;
@@ -118,7 +121,7 @@ void main() {
     vec4 worldPos = actorModel * vec4(objectPos, 1.0);
     v_worldPos = worldPos.xyz;
     v_objectPos = objectPos;
-    v_objectNormal = normal;
+    v_geoBelow = smoothstep(slope5, slope15, 1.0 - clamp(dot(normal, radial), 0.0, 1.0));
     v_worldNormal = normalize(mat3(transpose(inverse(actorModel))) * normal);
     v_layerPack = uvec3(paletteAt(tile.loc.x, slotA), paletteAt(tile.loc.x, slotB), paletteAt(tile.loc.x, slotC));
     v_seed = objectPos;

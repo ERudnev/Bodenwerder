@@ -2,8 +2,8 @@
 
 in vec3 v_worldPos;
 in vec3 v_worldNormal;
-in vec3 v_objectNormal;
 in vec3 v_objectPos;
+in float v_geoBelow;
 flat in uvec3 v_layerPack;
 flat in vec3 v_seed;
 in vec3 v_bary;
@@ -48,6 +48,9 @@ const float heightWarp = 0.04;
 const float slope5 = 0.0038;
 const float slope15 = 0.034;
 const float gouraudBand = 0.1;
+const float hillWidth = 6.0;
+const float hillFadeStart = 500.0;
+const float hillFadeEnd = 2000.0;
 
 float sampleShadow(vec2 uv, float currentDepth) {
     float closest = texture(u_shadowMap, uv).r;
@@ -77,14 +80,46 @@ vec3 hash33(vec3 p) {
     return fract((p.xxy + p.yxx) * p.zyx);
 }
 
-float jagged(float t, float channel) {
+float hash13(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.yzx + 33.33);
+    return fract((p.x + p.y) * p.z);
+}
+
+vec4 valueNoiseGrad(vec3 x) {
+    vec3 cell = floor(x);
+    vec3 f = fract(x);
+    vec3 u = f * f * (3.0 - 2.0 * f);
+    vec3 du = 6.0 * f * (1.0 - f);
+    float n000 = hash13(cell);
+    float n100 = hash13(cell + vec3(1.0, 0.0, 0.0));
+    float n010 = hash13(cell + vec3(0.0, 1.0, 0.0));
+    float n110 = hash13(cell + vec3(1.0, 1.0, 0.0));
+    float n001 = hash13(cell + vec3(0.0, 0.0, 1.0));
+    float n101 = hash13(cell + vec3(1.0, 0.0, 1.0));
+    float n011 = hash13(cell + vec3(0.0, 1.0, 1.0));
+    float n111 = hash13(cell + vec3(1.0, 1.0, 1.0));
+    float x00 = mix(n000, n100, u.x);
+    float x10 = mix(n010, n110, u.x);
+    float x01 = mix(n001, n101, u.x);
+    float x11 = mix(n011, n111, u.x);
+    float y0 = mix(x00, x10, u.y);
+    float y1 = mix(x01, x11, u.y);
+    float n = mix(y0, y1, u.z);
+    float dnx = mix(mix(n100 - n000, n110 - n010, u.y), mix(n101 - n001, n111 - n011, u.y), u.z) * du.x;
+    float dny = mix(x10 - x00, x11 - x01, u.z) * du.y;
+    float dnz = (y1 - y0) * du.z;
+    return vec4(n, dnx, dny, dnz);
+}
+
+float jagged(float t, float channel, vec3 seed) {
     float n = 0.0;
     float amp = 1.0;
     for (int o = 0; o < 2; ++o) {
         float i = floor(t);
         float f = fract(t);
-        float a = hash33(v_seed + vec3(i, channel, float(o))).x;
-        float b = hash33(v_seed + vec3(i + 1.0, channel, float(o))).x;
+        float a = hash33(seed + vec3(i, channel, float(o))).x;
+        float b = hash33(seed + vec3(i + 1.0, channel, float(o))).x;
         n += amp * mix(a, b, f);
         t = t * 2.27 + 3.1;
         amp *= 0.5;
@@ -119,12 +154,12 @@ float roughnessOf(uint palette, float below, vec3 axis) {
 }
 
 void main() {
-    vec3 N = normalize(v_worldNormal);
+    vec3 geoN = normalize(v_worldNormal);
     vec3 L = normalize(passPrimaryLightPositionIntensity.xyz - v_worldPos * float(passPrimaryLightColorRange.w > 0.0));
     vec3 radial = normalize(v_objectPos);
     vec3 axis = pow(abs(radial), vec3(4.0));
     axis /= max(axis.x + axis.y + axis.z, 1.0e-5);
-    vec3 wave = vec3(jagged(dot(v_bary.yz, vec2(warpFreq)), 0.0), jagged(dot(v_bary.zx, vec2(warpFreq)), 1.0), jagged(dot(v_bary.xy, vec2(warpFreq)), 2.0));
+    vec3 wave = vec3(jagged(dot(v_bary.yz, vec2(warpFreq)), 0.0, v_seed), jagged(dot(v_bary.zx, vec2(warpFreq)), 1.0, v_seed), jagged(dot(v_bary.xy, vec2(warpFreq)), 2.0, v_seed));
     wave -= (wave.x + wave.y + wave.z) * (1.0 / 3.0);
     float interior = 27.0 * v_bary.x * v_bary.y * v_bary.z;
     float relief = (length(v_objectPos) - fieldRadius) / max(fieldAmplitude, 1.0);
@@ -132,37 +167,65 @@ void main() {
     uint paletteA = v_layerPack.x;
     uint paletteB = v_layerPack.y;
     uint paletteC = v_layerPack.z;
-    float slope = 1.0 - clamp(dot(v_objectNormal, radial), 0.0, 1.0);
-    float below = smoothstep(slope5, slope15, slope);
+    vec3 N = geoN;
+    float below = v_geoBelow;
+    float hillFade = 1.0 - smoothstep(hillFadeStart, hillFadeEnd, v_viewDistance);
+    if (v_geometryStep <= 1 && hillFade > 0.0) {
+        float gritA = sampleRoughness(layerOf(paletteA, 0u), axis);
+        float gritB = sampleRoughness(layerOf(paletteB, 0u), axis);
+        float gritC = sampleRoughness(layerOf(paletteC, 0u), axis);
+        float grit = v_bary.x * gritA + v_bary.y * gritB + v_bary.z * gritC;
+        vec3 hillUnit = v_objectPos * (1.0 / hillWidth);
+        vec4 noise0 = valueNoiseGrad(hillUnit);
+        vec4 noise1 = valueNoiseGrad(hillUnit * 6.283185 + vec3(19.0, 7.0, 13.0));
+        float bump = max(noise0.x * 2.0 - 1.0, 0.0);
+        float fine = max(noise1.x * 2.0 - 1.0, 0.0);
+        float mound = bump + fine;
+        vec3 gradObj = vec3(0.0);
+        if (bump > 0.0)
+            gradObj += 2.0 * noise0.yzw / hillWidth;
+        if (fine > 0.0)
+            gradObj += 2.0 * noise1.yzw * (6.283185 / hillWidth);
+        vec3 gradH = mat3(actorModel) * (gradObj * 2.2);
+        vec3 tilt = gradH - geoN * dot(gradH, geoN);
+        vec3 bumpN = normalize(geoN - tilt);
+        float hill = mound * grit * hillFade;
+        N = normalize(mix(geoN, bumpN, min(hill, 1.0)));
+        float hillTilt = 1.0 - clamp(dot(bumpN, geoN), 0.0, 1.0);
+        below = clamp(v_geoBelow + smoothstep(slope5, slope15, hillTilt) * hill, 0.0, 1.0);
+    }
     vec3 crustA = crustOf(paletteA, below, axis);
     vec3 crustB = crustOf(paletteB, below, axis);
     vec3 crustC = crustOf(paletteC, below, axis);
     float roughA = roughnessOf(paletteA, below, axis);
     float roughB = roughnessOf(paletteB, below, axis);
     float roughC = roughnessOf(paletteC, below, axis);
-    vec3 nearest = crustC;
-    float nearestRough = roughC;
+    vec3 voronoi = vec3(0.0, 0.0, 1.0);
     float lead = warped.z;
     float chase = max(warped.x, warped.y);
     if (warped.x >= warped.y && warped.x >= warped.z) {
-        nearest = crustA;
-        nearestRough = roughA;
+        voronoi = vec3(1.0, 0.0, 0.0);
         lead = warped.x;
         chase = max(warped.y, warped.z);
     } else if (warped.y >= warped.z) {
-        nearest = crustB;
-        nearestRough = roughB;
+        voronoi = vec3(0.0, 1.0, 0.0);
         lead = warped.y;
         chase = max(warped.x, warped.z);
     }
-    vec3 gouraud = v_bary.x * crustA + v_bary.y * crustB + v_bary.z * crustC;
-    float gouraudRough = v_bary.x * roughA + v_bary.y * roughB + v_bary.z * roughC;
     float rim = 1.0 - smoothstep(0.0, gouraudBand, lead - chase);
-    vec3 albedo = mix(nearest, gouraud, rim);
-    float roughness = mix(nearestRough, gouraudRough, rim);
+    vec3 nearWeights = mix(voronoi, v_bary, rim);
+    float classicT = clamp((v_viewDistance - 100.0) / 1900.0, 0.0, 1.0);
     vec2 farTexel = 1.0 / vec2(textureSize(u_farAlbedoMap, 0).xy);
-    vec2 farWarp = vec2(jagged(dot(v_objectPos.yz, vec2(0.04)), 3.0), jagged(dot(v_objectPos.xz, vec2(0.04)), 4.0));
+    vec2 farWarp = vec2(jagged(dot(v_objectPos.yz, vec2(0.04)), 3.0, v_seed), jagged(dot(v_objectPos.xz, vec2(0.04)), 4.0, v_seed));
     vec4 farSurface = texture(u_farAlbedoMap, vec3(clamp(v_fieldUv + farWarp * farTexel * 0.45, farTexel, 1.0 - farTexel), float(v_fieldDiamond)));
+    vec3 nearAlbedo = nearWeights.x * crustA + nearWeights.y * crustB + nearWeights.z * crustC;
+    vec3 gouraudAlbedo = v_bary.x * crustA + v_bary.y * crustB + v_bary.z * crustC;
+    vec3 classicAlbedo = pow(max(gouraudAlbedo, vec3(1.0e-5)), vec3(0.8)) * pow(max(farSurface.rgb, vec3(1.0e-5)), vec3(0.2));
+    vec3 albedo = mix(nearAlbedo, classicAlbedo, classicT);
+    float nearRough = nearWeights.x * roughA + nearWeights.y * roughB + nearWeights.z * roughC;
+    float gouraudRough = v_bary.x * roughA + v_bary.y * roughB + v_bary.z * roughC;
+    float classicRough = pow(max(gouraudRough, 1.0e-5), 0.8) * pow(max(farSurface.a, 1.0e-5), 0.2);
+    float roughness = mix(nearRough, classicRough, classicT);
     float farT = clamp(v_viewDistance / max(fieldLod.x * 0.8, 1.0), 0.0, 1.0);
     float farBlend = v_geometryStep > 1 ? 1.0 : pow(farT, 0.75);
     albedo = pow(max(albedo, vec3(1.0e-5)), vec3(1.0 - farBlend)) * pow(max(farSurface.rgb, vec3(1.0e-5)), vec3(farBlend));
