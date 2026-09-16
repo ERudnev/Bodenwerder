@@ -5,10 +5,15 @@
 #include <base/logging.h>
 
 #include <algorithm>
+#include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstddef>
+#include <filesystem>
+#include <fstream>
 #include <numbers>
+#include <string>
 #include <vector>
 
 #include <glm/common.hpp>
@@ -76,8 +81,62 @@ namespace eltanin::locality::geo {
             return integer((mix >> (static_cast<integer>(kind) * 4)) & 15u);
         }
 
-        auto packLayers(Facies a, Facies b, Facies c, Facies d) -> std::uint32_t {
-            return std::uint32_t(a) | (std::uint32_t(b) << 8) | (std::uint32_t(c) << 16) | (std::uint32_t(d) << 24);
+        auto packLayers(Facies surface, Facies below) -> std::uint16_t {
+            return std::uint16_t(std::uint16_t(surface) | (std::uint16_t(below) << 8));
+        }
+
+        auto faciesMeans() -> const std::array<vec4, 48>& {
+            static const std::array<vec4, 48> means{
+                vec4{0.88f, 0.91f, 0.94f, 0.78f}, // Snow
+                vec4{0.50f, 0.68f, 0.78f, 0.42f}, // Glacier
+                vec4{0.48f, 0.50f, 0.46f, 0.76f}, // DirtyIce
+                vec4{0.82f, 0.87f, 0.94f, 0.48f}, // VolatileFrost
+                vec4{0.52f, 0.58f, 0.56f, 0.72f}, // Hydrate
+                vec4{0.34f, 0.40f, 0.20f, 0.72f}, // Dunite
+                vec4{0.28f, 0.32f, 0.20f, 0.76f}, // Peridotite
+                vec4{0.22f, 0.24f, 0.20f, 0.78f}, // Pyroxenite
+                vec4{0.20f, 0.24f, 0.15f, 0.66f}, // Komatiite
+                vec4{0.16f, 0.15f, 0.14f, 0.82f}, // Basalt
+                vec4{0.28f, 0.28f, 0.27f, 0.76f}, // Gabbro
+                vec4{0.42f, 0.39f, 0.36f, 0.74f}, // Andesite
+                vec4{0.60f, 0.53f, 0.46f, 0.70f}, // Granite
+                vec4{0.68f, 0.62f, 0.56f, 0.68f}, // Rhyolite
+                vec4{0.035f, 0.030f, 0.040f, 0.22f}, // Obsidian
+                vec4{0.78f, 0.76f, 0.72f, 0.66f}, // Anorthosite
+                vec4{0.46f, 0.30f, 0.20f, 0.88f}, // ClayPan
+                vec4{0.52f, 0.22f, 0.12f, 0.84f}, // Laterite
+                vec4{0.58f, 0.45f, 0.30f, 0.84f}, // Arenite
+                vec4{0.72f, 0.68f, 0.56f, 0.78f}, // Evaporite
+                vec4{0.64f, 0.62f, 0.56f, 0.62f}, // Carbonate
+                vec4{0.12f, 0.11f, 0.10f, 0.86f}, // Chondrite
+                vec4{0.42f, 0.15f, 0.08f, 0.72f}, // Tholin
+                vec4{0.045f, 0.035f, 0.030f, 0.55f}, // Bitumen
+                vec4{0.42f, 0.43f, 0.40f, 0.38f}, // IronMetal
+                vec4{0.48f, 0.49f, 0.46f, 0.34f}, // NickelMetal
+                vec4{0.38f, 0.29f, 0.12f, 0.48f}, // Sulfide
+                vec4{0.78f, 0.67f, 0.10f, 0.82f}, // SulfurPlains
+                vec4{0.88f, 0.90f, 0.94f, 0.40f}, // SO2Frost
+                vec4{0.58f, 0.48f, 0.16f, 0.78f}, // Fumarole
+                vec4{0.52f, 0.18f, 0.10f, 0.82f}, // Hematite
+                vec4{0.10f, 0.10f, 0.11f, 0.48f}, // Magnetite
+                vec4{0.20f, 0.14f, 0.09f, 0.72f}, // DesertVarnish
+                vec4{0.50f, 0.30f, 0.15f, 0.38f}, // BaseMetal
+                vec4{0.45f, 0.32f, 0.28f, 0.68f}, // Porphyry
+                vec4{0.56f, 0.55f, 0.50f, 0.34f}, // PGMLag
+                vec4{0.48f, 0.27f, 0.20f, 0.82f}, // REELaterite
+                vec4{0.30f, 0.30f, 0.24f, 0.76f}, // Actinide
+                vec4{0.08f, 0.075f, 0.070f, 0.58f}, // Pahoehoe
+                vec4{0.13f, 0.10f, 0.085f, 0.88f}, // Scoria
+                vec4{0.66f, 0.64f, 0.58f, 0.92f}, // Pumice
+                vec4{0.72f, 0.67f, 0.56f, 0.72f}, // SilicaSinter
+                vec4{0.25f, 0.20f, 0.16f, 0.92f}, // RegolithMafic
+                vec4{0.55f, 0.49f, 0.42f, 0.90f}, // RegolithFelsic
+                vec4{0.36f, 0.27f, 0.22f, 0.82f}, // Breccia
+                vec4{0.70f, 0.58f, 0.52f, 0.62f}, // Pegmatite
+                vec4{0.35f, 0.16f, 0.48f, 0.44f}, // Exotic
+                vec4{0.76f, 0.69f, 0.55f, 0.86f}, // Caliche
+            };
+            return means;
         }
 
         auto angular(vec3 a, vec3 b) -> float {
@@ -219,43 +278,32 @@ namespace eltanin::locality::geo {
                 const bool inCanyon = acrossCanyon < 0.09f and alongCanyon < 0.55f and relief < 0.0f;
                 const bool inCrater = relief < -0.12f * float(planet::Planet::reliefPeak) and shield < 0.35f;
                 Facies surface = Facies::RegolithMafic;
-                Facies shallow = Facies::Basalt;
-                Facies deep = Facies::Gabbro;
-                Facies mantle = Facies::Peridotite;
+                Facies below = Facies::Basalt;
                 if (oxides > 0)
                     surface = cohesion < 0.45f ? Facies::Hematite : Facies::DesertVarnish;
                 if (clay > oxides and clay > 0)
                     surface = Facies::ClayPan;
                 if (pyroxene > 0)
-                    shallow = cohesion < 0.4f ? Facies::RegolithMafic : Facies::Basalt;
+                    below = cohesion < 0.4f ? Facies::RegolithMafic : Facies::Basalt;
                 if (feldspar > pyroxene and feldspar > 0)
-                    shallow = Facies::RegolithFelsic;
-                if (olivine > 0 and differentiation > 0.4f)
-                    mantle = Facies::Peridotite;
-                else if (pyroxene > 0)
-                    mantle = Facies::Pyroxenite;
+                    below = Facies::RegolithFelsic;
                 if (carbonaceous > 6 and polar < 0.4f)
                     surface = Facies::Chondrite;
                 if (salts > 0 and relief < -0.05f * float(planet::Planet::reliefPeak))
                     surface = cohesion < 0.5f ? Facies::Evaporite : Facies::Caliche;
                 if (iron > 8 and inCrater)
-                    deep = Facies::IronMetal;
+                    below = Facies::IronMetal;
                 if (shield > 0.55f and pyroxene > 0) {
                     surface = age < 0.35f ? Facies::Pahoehoe : Facies::Scoria;
-                    shallow = Facies::Basalt;
-                    deep = Facies::Gabbro;
+                    below = Facies::Basalt;
                 }
                 if (inCanyon) {
                     surface = slope > 0.08f ? Facies::Gabbro : Facies::Basalt;
-                    shallow = Facies::Gabbro;
-                    deep = differentiation > 0.35f ? Facies::Peridotite : Facies::Gabbro;
-                    mantle = Facies::Peridotite;
-                    if (olivine == 0)
-                        mantle = Facies::Pyroxenite;
+                    below = differentiation > 0.35f and olivine > 0 ? Facies::Peridotite : Facies::Gabbro;
                 }
                 if (inCrater and feldspar + pyroxene > 0) {
                     surface = Facies::Breccia;
-                    shallow = Facies::RegolithMafic;
+                    below = iron > 8 ? Facies::IronMetal : Facies::RegolithMafic;
                 }
                 if (ice > 0 and polar > cap) {
                     if (age > 0.65f and cohesion > 0.55f)
@@ -264,12 +312,148 @@ namespace eltanin::locality::geo {
                         surface = Facies::Snow;
                     else
                         surface = Facies::DirtyIce;
-                    shallow = Facies::DirtyIce;
-                    deep = Facies::Glacier;
-                    mantle = olivine > 0 ? Facies::Dunite : Facies::Pyroxenite;
+                    below = Facies::DirtyIce;
                 }
-                planet.covers.at(slot) = packLayers(surface, shallow, deep, mantle);
+                planet.covers.at(slot) = packLayers(surface, below);
             }
+        }
+
+        auto surfacePoint(const planet::Planet& planet, IcosaPack::Slot slot) -> vec3 {
+            const integer last = planet.heights.pack.edgeSegments();
+            slot.iu = std::clamp(slot.iu, integer{0}, last);
+            slot.iv = std::clamp(slot.iv, integer{0}, last);
+            const vec3 dir = planet.heights.pack.direction(slot);
+            return dir * float(planet.surfaceRadius(planet.heights.at(slot)));
+        }
+
+        auto meanSurface(const planet::Planet& planet, IcosaPack::Slot slot) -> vec4 {
+            const integer last = planet.heights.pack.edgeSegments();
+            slot.iu = std::clamp(slot.iu, integer{0}, last);
+            slot.iv = std::clamp(slot.iv, integer{0}, last);
+            const vec3 point = surfacePoint(planet, slot);
+            const vec3 radial = glm::normalize(point);
+            vec3 normal = glm::cross(surfacePoint(planet, IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu + 1, .iv = slot.iv}) - surfacePoint(planet, IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu - 1, .iv = slot.iv}), surfacePoint(planet, IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu, .iv = slot.iv + 1}) - surfacePoint(planet, IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu, .iv = slot.iv - 1}));
+            const float magnitude = glm::length(normal);
+            if (magnitude < 1.0e-8f)
+                normal = radial;
+            else {
+                normal /= magnitude;
+                if (glm::dot(normal, radial) < 0.0f)
+                    normal = -normal;
+            }
+            const float slope = 1.0f - glm::clamp(glm::dot(normal, radial), 0.0f, 1.0f);
+            const float below = glm::smoothstep(0.0038f, 0.034f, slope);
+            const std::uint16_t cover = planet.covers.at(slot);
+            const auto& means = faciesMeans();
+            return glm::mix(means[static_cast<std::size_t>(cover & 255u)], means[static_cast<std::size_t>((cover >> 8) & 255u)], below);
+        }
+
+        auto toByte(float value) -> std::uint8_t {
+            return static_cast<std::uint8_t>(std::lround(glm::clamp(value, 0.0f, 1.0f) * 255.0f));
+        }
+
+        void writeFarAlbedo(const planet::Planet& planet) {
+            const auto& map = planet.farAlbedo;
+            const index2 atlasSize = map.pack.atlasSize();
+            vector<std::uint8_t> pixels(static_cast<std::size_t>(atlasSize.x * atlasSize.y) * 4u, std::uint8_t{0});
+            for (integer index = 0; index < map.pack.storedCount(); ++index) {
+                const auto slot = map.pack.slotOf(index);
+                const index2 coord = map.pack.atlasCoord(slot);
+                const vec4 color = map.at(slot);
+                const std::size_t pixel = static_cast<std::size_t>(coord.y * atlasSize.x + coord.x) * 4u;
+                pixels[pixel] = toByte(color.z);
+                pixels[pixel + 1] = toByte(color.y);
+                pixels[pixel + 2] = toByte(color.x);
+                pixels[pixel + 3] = toByte(color.w);
+            }
+            const std::filesystem::path directory = std::filesystem::path{DAQL_ASSETS_DIR} / "Eltanin" / "planetsCache";
+            std::error_code error;
+            std::filesystem::create_directories(directory, error);
+            if (error) {
+                base::warning("eltanin::geo::generate: cannot create '{}': {}", directory.string(), error.message());
+                return;
+            }
+            const auto stamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            const std::string stem = "planet-" + std::to_string(planet.passport.seed) + "-" + std::to_string(stamp);
+            std::filesystem::path file = directory / (stem + ".tga");
+            integer collision = 1;
+            while (std::filesystem::exists(file))
+                file = directory / (stem + "-" + std::to_string(collision++) + ".tga");
+            std::array<std::uint8_t, 18> header{};
+            header[2] = 2;
+            header[12] = static_cast<std::uint8_t>(atlasSize.x & 255);
+            header[13] = static_cast<std::uint8_t>((atlasSize.x >> 8) & 255);
+            header[14] = static_cast<std::uint8_t>(atlasSize.y & 255);
+            header[15] = static_cast<std::uint8_t>((atlasSize.y >> 8) & 255);
+            header[16] = 32;
+            header[17] = 0x28;
+            std::ofstream output{file, std::ios::binary};
+            output.write(reinterpret_cast<const char*>(header.data()), static_cast<std::streamsize>(header.size()));
+            output.write(reinterpret_cast<const char*>(pixels.data()), static_cast<std::streamsize>(pixels.size()));
+            if (not output)
+                base::warning("eltanin::geo::generate: cannot write '{}'", file.string());
+            else
+                base::message("eltanin::geo::generate: far albedo cache → {}", file.string());
+        }
+
+        void blurFarAlbedo(planet::Planet& planet) {
+            auto& map = planet.farAlbedo;
+            const integer last = map.pack.edgeSegments();
+            constexpr float sigmaSpace = 1.1f;
+            constexpr float sigmaColor = 0.16f;
+            const integer radius = 4;
+            auto sample = [&](const vector<vec4>& field, integer diamond, integer iu, integer iv) -> vec4 {
+                return field[static_cast<std::size_t>(map.pack.index(IcosaPack::Slot{.diamond = diamond, .iu = std::clamp(iu, integer{0}, last), .iv = std::clamp(iv, integer{0}, last)}))];
+            };
+            const vector<vec4> source = map.values;
+            const float spaceScale = 1.0f / (2.0f * sigmaSpace * sigmaSpace);
+            const float colorScale = 1.0f / (2.0f * sigmaColor * sigmaColor);
+            for (integer diamond = 0; diamond < IcosaPack::diamondCount; ++diamond) {
+                for (integer iv = 0; iv <= last; ++iv) {
+                    for (integer iu = 0; iu <= last; ++iu) {
+                        const vec4 center = sample(source, diamond, iu, iv);
+                        vec4 sum{0.0f};
+                        float weightSum = 0.0f;
+                        for (integer dv = -radius; dv <= radius; ++dv) {
+                            for (integer du = -radius; du <= radius; ++du) {
+                                const vec4 neighbor = sample(source, diamond, iu + du, iv + dv);
+                                const float space = std::exp(-float(du * du + dv * dv) * spaceScale);
+                                const float color = std::exp(-glm::dot(vec3(neighbor - center), vec3(neighbor - center)) * colorScale);
+                                const float weight = space * color;
+                                sum += neighbor * weight;
+                                weightSum += weight;
+                            }
+                        }
+                        map.at(IcosaPack::Slot{.diamond = diamond, .iu = iu, .iv = iv}) = sum / std::max(weightSum, 1.0e-6f);
+                    }
+                }
+            }
+        }
+
+        void generateFarAlbedo(planet::Planet& planet) {
+            const integer sourceLast = planet.heights.pack.edgeSegments();
+            const integer targetLast = planet.farAlbedo.pack.edgeSegments();
+            const integer sampleWidth = std::max(sourceLast / std::max(targetLast, integer{1}), integer{1});
+            for (integer index = 0; index < planet.farAlbedo.pack.storedCount(); ++index) {
+                const auto target = planet.farAlbedo.pack.slotOf(index);
+                const integer centerU = static_cast<integer>(std::lround(double(target.iu) * double(sourceLast) / double(targetLast)));
+                const integer centerV = static_cast<integer>(std::lround(double(target.iv) * double(sourceLast) / double(targetLast)));
+                vec4 sum{0.0f};
+                integer samples = 0;
+                for (integer iv = 0; iv < sampleWidth; ++iv) {
+                    for (integer iu = 0; iu < sampleWidth; ++iu) {
+                        const integer sourceU = std::clamp(centerU + iu - sampleWidth / 2, integer{0}, sourceLast);
+                        const integer sourceV = std::clamp(centerV + iv - sampleWidth / 2, integer{0}, sourceLast);
+                        sum += meanSurface(planet, IcosaPack::Slot{.diamond = target.diamond, .iu = sourceU, .iv = sourceV});
+                        samples += 1;
+                    }
+                }
+                planet.farAlbedo.at(target) = sum / float(std::max(samples, integer{1}));
+            }
+            planet.farAlbedo.stitch();
+            blurFarAlbedo(planet);
+            planet.farAlbedo.stitch();
+            writeFarAlbedo(planet);
         }
 
     }
@@ -288,16 +472,18 @@ namespace eltanin::locality::geo {
         const float texelMeters = float(arc / double(std::max(segments, integer{1})));
         const auto atlas = pack.atlasSize();
         const std::size_t heightBytes = static_cast<std::size_t>(stored) * sizeof(std::int16_t);
-        const std::size_t coverBytes = static_cast<std::size_t>(stored) * sizeof(std::uint32_t);
-        const std::size_t fieldBytes = heightBytes + coverBytes;
+        const std::size_t coverBytes = static_cast<std::size_t>(stored) * sizeof(std::uint16_t);
+        const std::size_t farBytes = static_cast<std::size_t>(planet.farAlbedo.pack.storedCount()) * 4u;
+        const std::size_t fieldBytes = heightBytes + coverBytes + farBytes;
         const double fieldMiB = double(fieldBytes) / (1024.0 * 1024.0);
         base::message("eltanin::geo::generate: icosa edgeBase={} tessellation={} → {} segments/edge, {} verts/diamond side, {:.1f} m/texel (R={:.0f} m, arc={:.0f} m)", pack.edgeBase, pack.tessellation, segments, span, texelMeters, planet.passport.radius, arc);
-        base::message("eltanin::geo::generate: field matrices {} stored slots ({} unique), diamond {}×{}, atlas {}×{}, 10 layers → heights {} B, cover {} B, total {} B ({:.2f} MiB)", stored, unique, span, span, atlas.x, atlas.y, heightBytes, coverBytes, fieldBytes, fieldMiB);
+        base::message("eltanin::geo::generate: field matrices {} stored slots ({} unique), diamond {}×{}, atlas {}×{}, 10 layers → heights {} B, cover {} B, far {} B, total {} B ({:.2f} MiB)", stored, unique, span, span, atlas.x, atlas.y, heightBytes, coverBytes, farBytes, fieldBytes, fieldMiB);
     }
 
     void generate(planet::Planet& planet) {
         generateHeights(planet);
         generateSurfaceWeights(planet);
+        generateFarAlbedo(planet);
         logFieldSummary(planet);
     }
 

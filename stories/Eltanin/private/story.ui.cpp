@@ -140,7 +140,7 @@ namespace eltanin {
         rmmr::wrapper::ui::viewToggle("Pause", &paused);
         if (paused != with<World>::get_global(world).paused)
             with<World>::modify_global(world)->paused = paused;
-        togglePanel("Camera", ui.camera);
+        togglePanel("Inspector", ui.inspector);
         togglePanel("Space", ui.space);
         togglePanel("Lighting", ui.lighting);
         togglePanel("Materials", ui.materials);
@@ -178,7 +178,7 @@ namespace eltanin {
     }
 
     void Game::drawUi(Writing world) {
-        drawCameraWindow(world);
+        drawInspectorWindow(world);
         drawSpaceWindow(world);
         drawLightingWindow(world);
         drawMaterialsWindow(world);
@@ -268,65 +268,95 @@ namespace eltanin {
         ImGui::End();
     }
 
-    void Game::drawCameraWindow(Writing world) {
-        if (not ui.camera.has_value() or views.empty())
+    void Game::drawInspectorWindow(Writing world) {
+        if (not ui.inspector.has_value())
             return;
 
         bool open = true;
-        if (ImGui::Begin("Camera", &open)) {
-            const auto& view = views.front();
-            const auto camera = view.camera;
-            if (not with<scene::Camera>::exists(world, camera)) {
-                ImGui::TextDisabled("No camera selected.");
-            } else {
-                const auto& node = with<scene::Node>::get(world, camera);
-                ImGui::Text("Pos: %.2f, %.2f, %.2f", node.pose.position.x, node.pose.position.y, node.pose.position.z);
-
-                HPB hpb = node.pose.hpb();
-                if (ImGui::DragFloat3("HPB", &hpb.x, 0.1f, -180.0f, 180.0f, "%.1f°"))
-                    with<scene::Node>::modify(world, camera)->pose.hpb(hpb);
-
-                auto quantum = with<scene::Camera>::modify(world, camera);
-                if (quantum->mode == scene::Camera::Mode::perspective) {
-                    ImGui::SliderAngle("FoV H", &quantum->fov_x, 10.0f, 160.0f);
-                } else if (quantum->mode == scene::Camera::Mode::orthographic) {
-                    ImGui::Text("Ortho size: %d x %d", quantum->ortho_size.x, quantum->ortho_size.y);
+        if (ImGui::Begin("Inspector", &open)) {
+            if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (not cameras) {
+                    ImGui::TextDisabled("Cameras are not ready.");
                 } else {
-                    ImGui::TextDisabled("Parallel projection (reserved).");
-                }
-                ImGui::DragFloat("Near", &quantum->z_near, 0.1f, 0.5f, quantum->z_far - 1.0f, "%.1f");
-                ImGui::DragFloat("Far", &quantum->z_far, 100.0f, quantum->z_near + 1.0f, 100000.0f, "%.0f");
-                if (planet and planet->well and with<phys::Body>::exists(world, *planet->well)) {
+                    const int mode = cameras->kind == Cameras::Kind::spectator ? 1 : 0;
+                    const char* labels[] = { "Free", "Spectator" };
+                    const bool canSpectator = not focus.things.empty();
+                    if (ImGui::BeginCombo("Mode", labels[mode])) {
+                        if (ImGui::Selectable("Free", mode == 0))
+                            setCameraKind(world, Cameras::Kind::free);
+                        if (not canSpectator)
+                            ImGui::BeginDisabled();
+                        if (ImGui::Selectable("Spectator", mode == 1) and canSpectator)
+                            setCameraKind(world, Cameras::Kind::spectator);
+                        if (not canSpectator)
+                            ImGui::EndDisabled();
+                        ImGui::EndCombo();
+                    }
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("V");
+                    if (not canSpectator)
+                        ImGui::TextDisabled("Spectator needs a Focus.");
+
+                    const auto camera = with<World>::get_global(world).camera;
+                    if (not camera or not with<scene::Camera>::exists(world, *camera)) {
+                        ImGui::TextDisabled("No camera selected.");
+                    } else {
+                        const auto& node = with<scene::Node>::get(world, *camera);
+                        ImGui::Text("Pos: %.2f, %.2f, %.2f", node.pose.position.x, node.pose.position.y, node.pose.position.z);
+                        if (planet and planet->well and with<phys::Body>::exists(world, *planet->well)) {
+                            ImGui::Separator();
+                            ImGui::TextUnformatted("Planet");
+                            const auto& planetBody = with<phys::Body>::get(world, *planet->well);
+                            const Pos cameraPos = node.pose.position;
+                            const vec3 local = vec3{glm::inverse(glm::dquat{planetBody.orientation}) * (dvec3{cameraPos} - planetBody.position)};
+                            const float range = glm::length(local);
+                            const float altitude = planet->altitudeAt(planetBody, dvec3{cameraPos});
+                            const float gravity = float(glm::length(planet->gravityAt(planetBody, dvec3{cameraPos})));
+                            const float latDeg = range > 1.0e-3f ? glm::degrees(std::asin(glm::clamp(local.y / range, -1.0f, 1.0f))) : 0.0f;
+                            const float lonDeg = range > 1.0e-3f ? glm::degrees(std::atan2(local.x, local.z)) : 0.0f;
+                            ImGui::Text("Altitude: %.1f m", altitude);
+                            ImGui::Text("g: %.3f m/s²", gravity);
+                            const float air = planet->airDensity(planetBody, dvec3{cameraPos});
+                            ImGui::Text("Air: %.0f g/m³ (%.0f%% ISA)", air, 100.0f * air / phys::Settings::Air::isaDensity);
+                            ImGui::Text("Range to center: %.1f m (%.2f km)", range, range * 0.001f);
+                            ImGui::Text("Lat / Lon: %.3f°, %.3f°", latDeg, lonDeg);
+                            const auto hit = planet->probe(planetBody, local);
+                            ImGui::Separator();
+                            ImGui::TextUnformatted("Probe");
+                            ImGui::Text("height %.2f m", hit.height);
+                            ImGui::Text("position %.2f, %.2f, %.2f", hit.position.x, hit.position.y, hit.position.z);
+                            ImGui::Text("normal %.3f, %.3f, %.3f", hit.normal.x, hit.normal.y, hit.normal.z);
+                            ImGui::Text("slope %.3f", hit.slope);
+                            ImGui::Text("mix %016llx", static_cast<unsigned long long>(hit.mix));
+                        }
+                    }
+
                     ImGui::Separator();
-                    ImGui::TextUnformatted("Planet");
-                    const auto& planetBody = with<phys::Body>::get(world, *planet->well);
-                    const Pos cameraPos = node.pose.position;
-                    const vec3 local = vec3{glm::inverse(glm::dquat{planetBody.orientation}) * (dvec3{cameraPos} - planetBody.position)};
-                    const float range = glm::length(local);
-                    const float altitude = planet->altitudeAt(planetBody, dvec3{cameraPos});
-                    const float gravity = float(glm::length(planet->gravityAt(planetBody, dvec3{cameraPos})));
-                    const float latDeg = range > 1.0e-3f ? glm::degrees(std::asin(glm::clamp(local.y / range, -1.0f, 1.0f))) : 0.0f;
-                    const float lonDeg = range > 1.0e-3f ? glm::degrees(std::atan2(local.x, local.z)) : 0.0f;
-                    ImGui::Text("Altitude: %.1f m", altitude);
-                    ImGui::Text("g: %.3f m/s²", gravity);
-                    const float air = planet->airDensity(planetBody, dvec3{cameraPos});
-                    ImGui::Text("Air: %.0f g/m³ (%.0f%% ISA)", air, 100.0f * air / phys::Settings::Air::isaDensity);
-                    ImGui::Text("Range to center: %.1f m (%.2f km)", range, range * 0.001f);
-                    ImGui::Text("Lat / Lon: %.3f°, %.3f°", latDeg, lonDeg);
-                    const auto hit = planet->probe(planetBody, local);
-                    ImGui::Separator();
-                    ImGui::TextUnformatted("Probe");
-                    ImGui::Text("height %.2f m", hit.height);
-                    ImGui::Text("position %.2f, %.2f, %.2f", hit.position.x, hit.position.y, hit.position.z);
-                    ImGui::Text("normal %.3f, %.3f, %.3f", hit.normal.x, hit.normal.y, hit.normal.z);
-                    ImGui::Text("slope %.3f", hit.slope);
-                    ImGui::Text("mix %016llx", static_cast<unsigned long long>(hit.mix));
+                    ImGui::TextUnformatted("Free");
+                    if (not with<scene::Camera>::exists(world, cameras->free)) {
+                        ImGui::TextDisabled("Free camera missing.");
+                    } else {
+                        auto node = with<scene::Node>::modify(world, cameras->free);
+                        HPB hpb = node->pose.hpb();
+                        if (ImGui::DragFloat3("HPB", &hpb.x, 0.1f, -180.0f, 180.0f, "%.1f°"))
+                            node->pose.hpb(hpb);
+                        auto quantum = with<scene::Camera>::modify(world, cameras->free);
+                        if (quantum->mode == scene::Camera::Mode::perspective) {
+                            ImGui::SliderAngle("FoV H", &quantum->fov_x, 10.0f, 160.0f);
+                        } else if (quantum->mode == scene::Camera::Mode::orthographic) {
+                            ImGui::Text("Ortho size: %d x %d", quantum->ortho_size.x, quantum->ortho_size.y);
+                        } else {
+                            ImGui::TextDisabled("Parallel projection (reserved).");
+                        }
+                        ImGui::DragFloat("Near", &quantum->z_near, 0.1f, 0.5f, quantum->z_far - 1.0f, "%.1f");
+                        ImGui::DragFloat("Far", &quantum->z_far, 100.0f, quantum->z_near + 1.0f, 100000.0f, "%.0f");
+                    }
                 }
             }
         }
         ImGui::End();
         if (not open)
-            ui.camera.reset();
+            ui.inspector.reset();
     }
 
     void Game::drawSpaceWindow(Writing world) {
@@ -336,16 +366,16 @@ namespace eltanin {
         bool open = true;
         if (ImGui::Begin("Space", &open)) {
             float current = 1.0f;
-            const bool hasCamera = not views.empty() and with<controller::Camera3d>::exists(world, views.front().camera);
+            const bool hasCamera = cameras.has_value() and with<controller::Camera3d>::exists(world, cameras->free);
             if (hasCamera)
-                current = with<controller::Camera3d>::get(world, views.front().camera).moveScale;
+                current = with<controller::Camera3d>::get(world, cameras->free).moveScale;
             else if (grid.has_value() and with<scene::actor::MeshState>::exists(world, *grid))
                 current = with<scene::actor::MeshState>::get(world, *grid).scale.x;
             int scale = spaceScaleIndex(current);
             if (ImGui::Combo("Scale", &scale, "×0.1\0×1\0×10\0×100\0")) {
                 const float next = spaceScales[scale];
                 if (hasCamera)
-                    with<controller::Camera3d>::modify(world, views.front().camera)->moveScale = next;
+                    with<controller::Camera3d>::modify(world, cameras->free)->moveScale = next;
                 if (grid.has_value() and with<scene::actor::MeshState>::exists(world, *grid)) {
                     auto mesh = with<scene::actor::MeshState>::modify(world, *grid);
                     auto gizmo = with<scene::Grid>::modify(world, *grid);

@@ -18,7 +18,7 @@ namespace rmmr::scene::actor {
 
     namespace {
 
-        static_assert(sizeof(PatchGrid::FieldState) == 448);
+        static_assert(sizeof(PatchGrid::FieldState) == 464);
         static_assert(sizeof(PatchGrid::GpuTile) == 32);
 
         auto packTiles(std::span<const PatchGrid::Patch> patches) -> vector<PatchGrid::GpuTile> {
@@ -47,6 +47,7 @@ namespace rmmr::scene::actor {
                 .texture3array = {},
                 .heightField = grid.heightField,
                 .coverField = grid.coverField,
+                .farAlbedoField = grid.farAlbedoField,
                 .sprite = {},
                 .actorState = grid.actorState,
                 .poses = grid.patches,
@@ -70,6 +71,7 @@ namespace rmmr::scene::actor {
             state.amplitude = grid.amplitude;
             state.span = static_cast<std::int32_t>(grid.span);
             state.cells = static_cast<std::int32_t>(grid.cells);
+            state.lod = vec4{grid.firstLodDistance, 0.0f, 0.0f, 0.0f};
             for (integer index = 0; index < 12; ++index)
                 state.shell[index] = grid.shell.vertices[static_cast<std::size_t>(index)];
             for (integer index = 0; index < 10; ++index)
@@ -103,7 +105,7 @@ namespace rmmr::scene::actor {
 
     }
 
-    auto PatchGrid::Actions::compose(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id materialId, resource::texpack::Pack::Id packId, resource::texture::Asset::Id heightId, resource::texture::Asset::Id coverId, const Shell& shell, std::span<const Patch> patches, float radius, float amplitude, integer span, integer cells) -> optional<Quantum> {
+    auto PatchGrid::Actions::compose(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id materialId, resource::texpack::Pack::Id packId, resource::texture::Asset::Id heightId, resource::texture::Asset::Id coverId, resource::texture::Asset::Id farAlbedoId, const Shell& shell, std::span<const Patch> patches, float radius, float amplitude, float firstLodDistance, integer span, integer cells) -> optional<Quantum> {
         const auto device = primaryDevice(context);
         if (not device or span < 2 or cells < 1 or not with<resource::Runtimes>::exists(context, *device))
             return {};
@@ -113,9 +115,10 @@ namespace rmmr::scene::actor {
         const auto packFound = runtimes.texpacks_id_mapping.find(packId);
         const auto heightFound = runtimes.textures_id_mapping.find(heightId);
         const auto coverFound = runtimes.textures_id_mapping.find(coverId);
-        if (geometryFound == runtimes.geometries_id_mapping.end() or materialFound == runtimes.materials_id_mapping.end() or packFound == runtimes.texpacks_id_mapping.end() or heightFound == runtimes.textures_id_mapping.end() or coverFound == runtimes.textures_id_mapping.end())
+        const auto farAlbedoFound = runtimes.textures_id_mapping.find(farAlbedoId);
+        if (geometryFound == runtimes.geometries_id_mapping.end() or materialFound == runtimes.materials_id_mapping.end() or packFound == runtimes.texpacks_id_mapping.end() or heightFound == runtimes.textures_id_mapping.end() or coverFound == runtimes.textures_id_mapping.end() or farAlbedoFound == runtimes.textures_id_mapping.end())
             return {};
-        if (not with<resource::geometry::Runtime>::exists(context, geometryFound->second) or not with<resource::material::Runtime>::exists(context, materialFound->second) or not with<resource::texpack::Runtime>::exists(context, packFound->second) or not with<resource::texture::Runtime>::exists(context, heightFound->second) or not with<resource::texture::Runtime>::exists(context, coverFound->second))
+        if (not with<resource::geometry::Runtime>::exists(context, geometryFound->second) or not with<resource::material::Runtime>::exists(context, materialFound->second) or not with<resource::texpack::Runtime>::exists(context, packFound->second) or not with<resource::texture::Runtime>::exists(context, heightFound->second) or not with<resource::texture::Runtime>::exists(context, coverFound->second) or not with<resource::texture::Runtime>::exists(context, farAlbedoFound->second))
             return {};
         const auto& geometry = with<resource::geometry::Runtime>::get(context, geometryFound->second);
         if (not geometry.ebo or geometry.index_count <= renderer::Count{0})
@@ -145,6 +148,7 @@ namespace rmmr::scene::actor {
         initial.amplitude = amplitude;
         initial.span = static_cast<std::int32_t>(span);
         initial.cells = static_cast<std::int32_t>(cells);
+        initial.lod = vec4{firstLodDistance, 0.0f, 0.0f, 0.0f};
         for (integer index = 0; index < 12; ++index)
             initial.shell[index] = shell.vertices[static_cast<std::size_t>(index)];
         for (integer index = 0; index < 10; ++index)
@@ -172,6 +176,7 @@ namespace rmmr::scene::actor {
             .patchCapacity = capacity,
             .radius = radius,
             .amplitude = amplitude,
+            .firstLodDistance = firstLodDistance,
             .span = span,
             .cells = cells,
             .shell = shell,
@@ -180,6 +185,7 @@ namespace rmmr::scene::actor {
             .texpack = packFound->second,
             .heightField = heightFound->second,
             .coverField = coverFound->second,
+            .farAlbedoField = farAlbedoFound->second,
             .indirect = indirect,
             .drawCount = renderer::Count{1},
         };

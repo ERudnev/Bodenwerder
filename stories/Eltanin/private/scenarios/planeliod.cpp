@@ -56,7 +56,7 @@ namespace eltanin::scenario {
                     .day = RGB{0.78f, 0.52f, 0.36f},
                 },
             },
-            locality::planet::Planet::recommendedDetail(radius, 48.0f));
+            locality::planet::Planet::recommendedDetail(radius, 32.0f));
         planet->place(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
     }
 

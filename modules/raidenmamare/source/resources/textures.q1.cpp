@@ -192,7 +192,7 @@ namespace rmmr::resource::texture {
         return runtimeId;
     }
 
-    auto Asset::Actions::install(Writing context, Id asset_id, system::Device::Id device, Format format, index2 size, integer layers, integer levels, std::span<const std::byte> pixels) -> optional<Runtime::Id> {
+    auto Asset::Actions::install(Writing context, Id asset_id, system::Device::Id device, Format format, Sampling sampling, index2 size, integer layers, integer levels, std::span<const std::byte> pixels) -> optional<Runtime::Id> {
         const int width = static_cast<int>(size.x);
         const int height = static_cast<int>(size.y);
         const int layerCount = static_cast<int>(layers);
@@ -240,8 +240,10 @@ namespace rmmr::resource::texture {
         glTextureParameteri(handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTextureParameteri(handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTextureParameteri(handle, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-        glTextureParameteri(handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
-        glTextureParameteri(handle, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTextureParameteri(handle, GL_TEXTURE_MIN_FILTER, sampling == Sampling::linear ? (levelCount > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR) : (levelCount > 1 ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST));
+        glTextureParameteri(handle, GL_TEXTURE_MAG_FILTER, sampling == Sampling::linear ? GL_LINEAR : GL_NEAREST);
+        if (levelCount == 1)
+            glTextureParameteri(handle, GL_TEXTURE_MAX_LEVEL, 0);
         const auto runtimeId = install_runtime(context, device, asset_id, Runtime::Quantum{.device = device, .handle = handle, .size = size});
         with<Runtimes>::modify(context, device)->textures_id_mapping.insert_or_assign(asset_id, runtimeId);
         return runtimeId;

@@ -81,6 +81,7 @@ namespace rmmr {
             Id sceneDepth = material::Semantics::id_of("sceneDepth");
             Id heightMap = material::Semantics::id_of("heightMap");
             Id coverMap = material::Semantics::id_of("coverMap");
+            Id farAlbedoMap = material::Semantics::id_of("farAlbedoMap");
         } semantic{};
 
         struct ShadowCaster {
@@ -443,6 +444,9 @@ namespace rmmr {
             } else if (binding.id == semantic.coverMap) {
                 if (not batch.coverField or not with<resource::texture::Runtime>::exists(args.world, *batch.coverField)) throw std::runtime_error("Renderer: GPU batch missing coverField");
                 setUniformSampler(binding, with<resource::texture::Runtime>::get(args.world, *batch.coverField).handle);
+            } else if (binding.id == semantic.farAlbedoMap) {
+                if (not batch.farAlbedoField or not with<resource::texture::Runtime>::exists(args.world, *batch.farAlbedoField)) throw std::runtime_error("Renderer: GPU batch missing farAlbedoField");
+                setUniformSampler(binding, with<resource::texture::Runtime>::get(args.world, *batch.farAlbedoField).handle);
             }
         }
 

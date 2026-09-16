@@ -9,6 +9,7 @@ layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     float fieldAmplitude;
     int fieldSpan;
     int fieldCells;
+    vec4 fieldLod;
     vec4 shell[12];
     ivec4 diamonds[10];
 };
@@ -41,6 +42,10 @@ out vec3 v_objectPos;
 flat out uvec3 v_layerPack;
 flat out vec3 v_seed;
 out vec3 v_bary;
+out vec2 v_fieldUv;
+flat out int v_fieldDiamond;
+flat out int v_geometryStep;
+out float v_viewDistance;
 
 vec3 onDiamond(float u, float v, vec3 top, vec3 right, vec3 bottom, vec3 left) {
     if (u + v <= 1.0)
@@ -59,7 +64,7 @@ vec3 pointAt(int diamond, ivec2 local) {
 uint paletteAt(int diamond, ivec2 local) {
     local = clamp(local, ivec2(0), ivec2(fieldSpan - 1));
     vec4 cover = texelFetch(u_coverMap, ivec3(local, diamond), 0);
-    return uint(cover.r * 255.0 + 0.5) | (uint(cover.g * 255.0 + 0.5) << 8) | (uint(cover.b * 255.0 + 0.5) << 16) | (uint(cover.a * 255.0 + 0.5) << 24);
+    return uint(cover.r * 255.0 + 0.5) | (uint(cover.g * 255.0 + 0.5) << 8);
 }
 
 void main() {
@@ -117,5 +122,10 @@ void main() {
     v_worldNormal = normalize(mat3(transpose(inverse(actorModel))) * normal);
     v_layerPack = uvec3(paletteAt(tile.loc.x, slotA), paletteAt(tile.loc.x, slotB), paletteAt(tile.loc.x, slotC));
     v_seed = objectPos;
-    gl_Position = passProjection * passView * worldPos;
+    v_fieldUv = vec2(local) / float(max(fieldSpan - 1, 1));
+    v_fieldDiamond = tile.loc.x;
+    v_geometryStep = selfStep;
+    vec4 viewPos = passView * worldPos;
+    v_viewDistance = length(viewPos.xyz);
+    gl_Position = passProjection * viewPos;
 }

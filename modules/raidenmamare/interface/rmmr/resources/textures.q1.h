@@ -31,10 +31,14 @@ namespace rmmr::resource::texture {
             rg8,
             rgba8,
         };
+        enum class Sampling : std::uint8_t {
+            nearest,
+            linear,
+        };
         struct Quantum {};
         struct Actions : BaseActions {
             static auto install(Writing, Id, system::Device::Id, Format, index2 size, std::span<const std::byte>) -> optional<Runtime::Id>;
-            static auto install(Writing, Id, system::Device::Id, Format, index2 size, integer layers, integer levels, std::span<const std::byte>) -> optional<Runtime::Id>;
+            static auto install(Writing, Id, system::Device::Id, Format, Sampling, index2 size, integer layers, integer levels, std::span<const std::byte>) -> optional<Runtime::Id>;
         };
         struct Internals : DefaultInternals{};
         static const Behavior customAspectReactions() { return {}; }

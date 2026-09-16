@@ -90,6 +90,7 @@ namespace rmmr::scene::actor {
                 .texture3array = bucket.texture3array,
                 .heightField = {},
                 .coverField = {},
+                .farAlbedoField = {},
                 .sprite = mesh.sprite,
                 .actorState = mesh.actorState,
                 .poses = mesh.poses,

@@ -59,7 +59,8 @@ namespace eltanin::locality::planet {
         dvec3 spinOmega; // world angular velocity; the planet is translationally fixed
         base::maybe<phys::Body::Id> well;
         geo::IcosaMap<std::int16_t> heights; // 0 = sea; ±reliefPeak maps to ±amplitude metres
-        geo::IcosaMap<std::uint32_t> covers; // four u8 facies, shallow to deep
+        geo::IcosaMap<std::uint16_t> covers; // two u8 facies: surface, then just below
+        geo::IcosaMap<rmmr::vec4> farAlbedo; // filtered RGBA: mean albedo + roughness
 
     private:
         base::maybe<rmmr::scene::actor::PatchGrid::Id> shell;

@@ -47,6 +47,7 @@ namespace rmmr::scene::actor {
             float amplitude;
             std::int32_t span;
             std::int32_t cells;
+            vec4 lod;
             vec4 shell[12];
             glm::ivec4 diamonds[10];
         };
@@ -59,6 +60,7 @@ namespace rmmr::scene::actor {
             integer patchCapacity;
             float radius;
             float amplitude;
+            float firstLodDistance;
             integer span;
             integer cells;
             Shell shell;
@@ -67,11 +69,12 @@ namespace rmmr::scene::actor {
             base::maybe<resource::texpack::Runtime::Id> texpack;
             resource::texture::Runtime::Id heightField;
             resource::texture::Runtime::Id coverField;
+            resource::texture::Runtime::Id farAlbedoField;
             renderer::IndirectBuffer indirect;
             renderer::Count drawCount;
         };
         struct Actions : BaseActions {
-            static auto compose(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texpack::Pack::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, const Shell&, std::span<const Patch>, float radius, float amplitude, integer span, integer cells) -> optional<Quantum>;
+            static auto compose(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texpack::Pack::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, const Shell&, std::span<const Patch>, float radius, float amplitude, float firstLodDistance, integer span, integer cells) -> optional<Quantum>;
             static void setPatches(Writing, Id, std::span<const Patch>);
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };

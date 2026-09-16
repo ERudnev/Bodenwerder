@@ -63,6 +63,13 @@ namespace eltanin::locality::planet {
         }
 
         constexpr integer patchCells = 32;
+        constexpr float lodK = 0.18f;
+
+        auto firstLodDistance(const geo::IcosaPack& pack, float radius) -> float {
+            const double arc = std::max(0.0, double(radius)) * std::acos(1.0 / std::sqrt(5.0));
+            const float texelMeters = float(arc / double(std::max(pack.edgeSegments(), integer{1})));
+            return std::sqrt(2.0f) * float(patchCells) * std::max(texelMeters, 1.0e-4f) / lodK;
+        }
 
         auto rootStepOf(integer segments) -> integer {
             integer step = 1;
@@ -89,15 +96,30 @@ namespace eltanin::locality::planet {
             const integer span = pack.edgeVertices();
             const integer layers = geo::IcosaPack::diamondCount;
             const integer count = pack.storedCount();
-            vector<std::uint8_t> packed(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span) * 4u, std::uint8_t{0});
+            vector<std::uint8_t> packed(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span) * 2u, std::uint8_t{0});
             for (integer index = 0; index < count; ++index) {
                 const auto slot = pack.slotOf(index);
-                const std::uint32_t packedCover = planet.covers.at(slot);
-                const std::size_t offset = static_cast<std::size_t>((slot.diamond * span + slot.iv) * span + slot.iu) * 4u;
+                const std::uint16_t packedCover = planet.covers.at(slot);
+                const std::size_t offset = static_cast<std::size_t>((slot.diamond * span + slot.iv) * span + slot.iu) * 2u;
                 packed[offset] = static_cast<std::uint8_t>(packedCover & 255u);
                 packed[offset + 1] = static_cast<std::uint8_t>((packedCover >> 8) & 255u);
-                packed[offset + 2] = static_cast<std::uint8_t>((packedCover >> 16) & 255u);
-                packed[offset + 3] = static_cast<std::uint8_t>((packedCover >> 24) & 255u);
+            }
+            return packed;
+        }
+
+        auto farAlbedoArray(const Planet& planet) -> vector<std::uint8_t> {
+            const auto& pack = planet.farAlbedo.pack;
+            const integer span = pack.edgeVertices();
+            const integer layers = geo::IcosaPack::diamondCount;
+            vector<std::uint8_t> packed(static_cast<std::size_t>(layers) * static_cast<std::size_t>(span) * static_cast<std::size_t>(span) * 4u, std::uint8_t{0});
+            for (integer index = 0; index < pack.storedCount(); ++index) {
+                const auto slot = pack.slotOf(index);
+                const vec4 color = glm::clamp(planet.farAlbedo.at(slot), vec4{0.0f}, vec4{1.0f});
+                const std::size_t offset = static_cast<std::size_t>((slot.diamond * span + slot.iv) * span + slot.iu) * 4u;
+                packed[offset] = static_cast<std::uint8_t>(std::lround(color.x * 255.0f));
+                packed[offset + 1] = static_cast<std::uint8_t>(std::lround(color.y * 255.0f));
+                packed[offset + 2] = static_cast<std::uint8_t>(std::lround(color.z * 255.0f));
+                packed[offset + 3] = static_cast<std::uint8_t>(std::lround(color.w * 255.0f));
             }
             return packed;
         }
@@ -130,7 +152,6 @@ namespace eltanin::locality::planet {
             const double arc = std::max(0.0, double(radius)) * std::acos(1.0 / std::sqrt(5.0));
             const float texelMeters = float(arc / double(std::max(segments, integer{1})));
             const float metresPerCell = float(patchCells) * std::max(texelMeters, 1.0e-4f);
-            constexpr float lodK = 0.18f;
             auto wantStepAt = [&](vec3 surface) -> integer {
                 const float dist = std::max(glm::length(localCamera - surface), metresPerCell);
                 const float raw = dist * lodK / metresPerCell;
@@ -316,7 +337,8 @@ namespace eltanin::locality::planet {
         , spinOmega{dquat{passport.orientation} * dvec3{0.0, 1.0, 0.0} * (passport.spinPeriod > 0.0f ? 2.0 * std::numbers::pi / double(passport.spinPeriod) : 0.0)}
         , well{}
         , heights{geo::IcosaPack{.edgeBase = detail.edgeBase, .tessellation = detail.tessellation}, std::int16_t{0}}
-        , covers{heights.pack, std::uint32_t{0}}
+        , covers{heights.pack, std::uint16_t{0}}
+        , farAlbedo{geo::IcosaPack{.edgeBase = std::max(heights.pack.edgeSegments() / 2, integer{1}), .tessellation = 0}, vec4{0.0f}}
         , shell{}
         , atmosphere{} {
         geo::generate(*this);
@@ -344,22 +366,31 @@ namespace eltanin::locality::planet {
         const integer layers = geo::IcosaPack::diamondCount;
         const auto heightPixels = heightArray(*this);
         const auto coverPixels = coverArray(*this);
+        const auto farPixels = farAlbedoArray(*this);
         const auto heightId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-height")});
         with<resource::texture::Asset>::extend(context, heightId, resource::texture::Asset::Quantum{});
         const auto heightBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(heightPixels.data()), heightPixels.size() * sizeof(std::int16_t));
-        if (not with<resource::texture::Asset>::install(context, heightId, device, resource::texture::Asset::Format::r16Snorm, index2{.x = span, .y = span}, layers, 1, heightBytes)) {
+        if (not with<resource::texture::Asset>::install(context, heightId, device, resource::texture::Asset::Format::r16Snorm, resource::texture::Asset::Sampling::nearest, index2{.x = span, .y = span}, layers, 1, heightBytes)) {
             context.refuse("eltanin::locality::planet::Planet::place: height atlas install failed");
             return;
         }
         const auto coverId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-cover")});
         with<resource::texture::Asset>::extend(context, coverId, resource::texture::Asset::Quantum{});
         const auto coverBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(coverPixels.data()), coverPixels.size());
-        if (not with<resource::texture::Asset>::install(context, coverId, device, resource::texture::Asset::Format::rgba8, index2{.x = span, .y = span}, layers, 1, coverBytes)) {
+        if (not with<resource::texture::Asset>::install(context, coverId, device, resource::texture::Asset::Format::rg8, resource::texture::Asset::Sampling::nearest, index2{.x = span, .y = span}, layers, 1, coverBytes)) {
             context.refuse("eltanin::locality::planet::Planet::place: cover atlas install failed");
             return;
         }
+        const integer farSpan = farAlbedo.pack.edgeVertices();
+        const auto farAlbedoId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-far-albedo")});
+        with<resource::texture::Asset>::extend(context, farAlbedoId, resource::texture::Asset::Quantum{});
+        const auto farBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(farPixels.data()), farPixels.size());
+        if (not with<resource::texture::Asset>::install(context, farAlbedoId, device, resource::texture::Asset::Format::rgba8, resource::texture::Asset::Sampling::linear, index2{.x = farSpan, .y = farSpan}, layers, 1, farBytes)) {
+            context.refuse("eltanin::locality::planet::Planet::place: far albedo atlas install failed");
+            return;
+        }
         const auto patches = coarsePatches(heights.pack);
-        auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *facies, heightId, coverId, icosaShell(), patches, passport.radius, passport.geology.amplitude, heights.pack.edgeVertices(), patchCells);
+        auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *facies, heightId, coverId, farAlbedoId, icosaShell(), patches, passport.radius, passport.geology.amplitude, firstLodDistance(heights.pack, passport.radius), heights.pack.edgeVertices(), patchCells);
         if (not gridQuantum) {
             context.refuse("eltanin::locality::planet::Planet::place: patch grid compose failed");
             return;

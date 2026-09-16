@@ -7,6 +7,10 @@ in vec3 v_objectPos;
 flat in uvec3 v_layerPack;
 flat in vec3 v_seed;
 in vec3 v_bary;
+in vec2 v_fieldUv;
+flat in int v_fieldDiamond;
+flat in int v_geometryStep;
+in float v_viewDistance;
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 1) out float BloomMask;
@@ -18,6 +22,7 @@ layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     float fieldAmplitude;
     int fieldSpan;
     int fieldCells;
+    vec4 fieldLod;
     vec4 shell[12];
     ivec4 diamonds[10];
 };
@@ -33,6 +38,7 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 
 layout(binding = 0) uniform sampler2DArray u_albedoMap;
 layout(binding = 1) uniform sampler2D u_shadowMap;
+layout(binding = 6) uniform sampler2DArray u_farAlbedoMap;
 
 const float shadowBias = 0.0005;
 const float crustFreq = 1.0 / 28.0;
@@ -41,8 +47,6 @@ const float warpFreq = 12.0;
 const float heightWarp = 0.04;
 const float slope5 = 0.0038;
 const float slope15 = 0.034;
-const float slope30 = 0.134;
-const float slope45 = 0.293;
 const float gouraudBand = 0.1;
 
 float sampleShadow(vec2 uv, float currentDepth) {
@@ -106,12 +110,12 @@ float layerOf(uint palette, uint index) {
     return float((palette >> (index * 8u)) & 255u);
 }
 
-vec3 crustOf(uint palette, uint shallow, uint deep, float blend, vec3 axis) {
-    return mix(sampleCrust(layerOf(palette, shallow), axis), sampleCrust(layerOf(palette, deep), axis), blend);
+vec3 crustOf(uint palette, float below, vec3 axis) {
+    return mix(sampleCrust(layerOf(palette, 0u), axis), sampleCrust(layerOf(palette, 1u), axis), below);
 }
 
-float roughnessOf(uint palette, uint shallow, uint deep, float blend, vec3 axis) {
-    return mix(sampleRoughness(layerOf(palette, shallow), axis), sampleRoughness(layerOf(palette, deep), axis), blend);
+float roughnessOf(uint palette, float below, vec3 axis) {
+    return mix(sampleRoughness(layerOf(palette, 0u), axis), sampleRoughness(layerOf(palette, 1u), axis), below);
 }
 
 void main() {
@@ -129,19 +133,13 @@ void main() {
     uint paletteB = v_layerPack.y;
     uint paletteC = v_layerPack.z;
     float slope = 1.0 - clamp(dot(v_objectNormal, radial), 0.0, 1.0);
-    float depth = 0.0;
-    depth += smoothstep(slope5, slope15, slope);
-    depth += smoothstep(slope15, slope30, slope);
-    depth += smoothstep(slope30, slope45, slope);
-    uint shallow = uint(clamp(floor(depth), 0.0, 3.0));
-    uint deep = min(shallow + 1u, 3u);
-    float blend = fract(depth);
-    vec3 crustA = crustOf(paletteA, shallow, deep, blend, axis);
-    vec3 crustB = crustOf(paletteB, shallow, deep, blend, axis);
-    vec3 crustC = crustOf(paletteC, shallow, deep, blend, axis);
-    float roughA = roughnessOf(paletteA, shallow, deep, blend, axis);
-    float roughB = roughnessOf(paletteB, shallow, deep, blend, axis);
-    float roughC = roughnessOf(paletteC, shallow, deep, blend, axis);
+    float below = smoothstep(slope5, slope15, slope);
+    vec3 crustA = crustOf(paletteA, below, axis);
+    vec3 crustB = crustOf(paletteB, below, axis);
+    vec3 crustC = crustOf(paletteC, below, axis);
+    float roughA = roughnessOf(paletteA, below, axis);
+    float roughB = roughnessOf(paletteB, below, axis);
+    float roughC = roughnessOf(paletteC, below, axis);
     vec3 nearest = crustC;
     float nearestRough = roughC;
     float lead = warped.z;
@@ -162,6 +160,13 @@ void main() {
     float rim = 1.0 - smoothstep(0.0, gouraudBand, lead - chase);
     vec3 albedo = mix(nearest, gouraud, rim);
     float roughness = mix(nearestRough, gouraudRough, rim);
+    vec2 farTexel = 1.0 / vec2(textureSize(u_farAlbedoMap, 0).xy);
+    vec2 farWarp = vec2(jagged(dot(v_objectPos.yz, vec2(0.04)), 3.0), jagged(dot(v_objectPos.xz, vec2(0.04)), 4.0));
+    vec4 farSurface = texture(u_farAlbedoMap, vec3(clamp(v_fieldUv + farWarp * farTexel * 0.45, farTexel, 1.0 - farTexel), float(v_fieldDiamond)));
+    float farT = clamp(v_viewDistance / max(fieldLod.x * 0.8, 1.0), 0.0, 1.0);
+    float farBlend = v_geometryStep > 1 ? 1.0 : pow(farT, 0.75);
+    albedo = pow(max(albedo, vec3(1.0e-5)), vec3(1.0 - farBlend)) * pow(max(farSurface.rgb, vec3(1.0e-5)), vec3(farBlend));
+    roughness = pow(max(roughness, 1.0e-5), 1.0 - farBlend) * pow(max(farSurface.a, 1.0e-5), farBlend);
     albedo *= actorAlbedoOpacity.rgb;
     float lambert = max(dot(N, L), 0.0);
     float shadow = fetchShadow(v_worldPos, N, L);

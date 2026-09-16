@@ -1,13 +1,17 @@
 #pragma once
 
 #include <span>
+#include <vector>
 
 #include <base/maybe.h>
+#include <eltanin/locality/thing.q1.h>
+#include <rmmr/math.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/texpack.q1.h>
+#include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/wrapper/product.h>
 
@@ -22,6 +26,10 @@
 namespace eltanin {
 
     using namespace fqsm::api;
+
+    struct Focus {
+        vector<locality::Thing::Id> things;
+    };
 
     class Game : public rmmr::wrapper::Product {
     public:
@@ -48,6 +56,14 @@ namespace eltanin {
             base::maybe<rmmr::resource::material::Asset::Id> collisionDebugMaterial;
         };
 
+        struct Cameras {
+            enum class Kind { free, spectator };
+            Kind kind;
+            rmmr::scene::Camera::Id free;
+            rmmr::scene::Camera::Id spectator;
+            bool hotkeyDown;
+        };
+
         Handles assets;
         Ui ui;
         base::maybe<View> world_view;
@@ -55,6 +71,8 @@ namespace eltanin {
         base::maybe<phys::System> physics;
         base::maybe<locality::planet::Planet> planet;
         scenario::Planeliod scenario;
+        Focus focus;
+        base::maybe<Cameras> cameras;
         BlueprintCatalog blueprintPack;
         MountCatalog mountPack;
         ::eltanin::views::Blueprints blueprints;
@@ -74,7 +92,12 @@ namespace eltanin {
         void populateWorld(Writing, rmmr::system::Window::Id);
         void bindGameEntities(Writing);
         void advanceSim(Writing, seconds dt);
-        void drawCameraWindow(Writing);
+        void presentCamera(Writing, rmmr::scene::Camera::Id);
+        void setCameraKind(Writing, Cameras::Kind);
+        void handleCameraHotkey(Writing);
+        void trackSpectator(Writing);
+        auto focusCenter(Reading) const -> base::maybe<dvec3>;
+        void drawInspectorWindow(Writing);
         void drawSpaceWindow(Writing);
         void drawLightingWindow(Writing);
         void drawMaterialsWindow(Writing);

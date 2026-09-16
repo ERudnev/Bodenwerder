@@ -20,6 +20,7 @@
 #include "geo/celestial/horizon.h"
 #include <rmmr/api/_interface.h>
 #include <rmmr/controller/camera3d.q1.h>
+#include <rmmr/controller/cameraOrbit.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -36,7 +37,13 @@
 #include <rmmr/semantics/rendering.h>
 #include <rmmr/semantics/uniform.h>
 #include <rmmr/system/viewport.q1.h>
+#include <rmmr/system/window.q1.h>
 
+#include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/geometric.hpp>
+#include <algorithm>
+#include <cmath>
 #include <numbers>
 #include <utility>
 
@@ -44,6 +51,69 @@ namespace eltanin {
 
     using namespace fqsm::api;
     using namespace rmmr;
+
+    namespace {
+
+        constexpr float spectatorFov = 60.0f * std::numbers::pi_v<float> / 180.0f;
+        constexpr float orbitDistanceMin = 0.5f;
+        constexpr float orbitDistanceMax = 500.0f;
+
+        auto keyDown(const vector<bool>& keys, int key) -> bool {
+            return static_cast<std::size_t>(key) < keys.size() and keys[static_cast<std::size_t>(key)];
+        }
+
+        auto bodyOfThing(Reading context, locality::Thing::Id id) -> base::maybe<phys::Body::Id> {
+            if (with<locality::Construct>::exists(context, id))
+                return with<locality::Construct>::get(context, id).body;
+            if (with<locality::Scrap>::exists(context, id))
+                return with<locality::Scrap>::get(context, id).body;
+            if (with<locality::geo::Rock>::exists(context, id))
+                return with<locality::geo::Rock>::get(context, id).body;
+            if (with<locality::geo::Boulder>::exists(context, id))
+                return with<locality::geo::Boulder>::get(context, id).body;
+            if (with<locality::Bullet>::exists(context, id))
+                return with<locality::Bullet>::get(context, id).body;
+            return {};
+        }
+
+        auto worldPosOfThing(Reading context, locality::Thing::Id id) -> base::maybe<dvec3> {
+            const auto body = bodyOfThing(context, id);
+            if (not body or not with<phys::Body>::exists(context, *body))
+                return {};
+            return with<phys::Body>::get(context, *body).position;
+        }
+
+        void applyOrbitPose(Writing context, scene::Camera::Id camera, const controller::CameraOrbit::Quantum& orbit) {
+            HPB hpb = orbit.hpb;
+            hpb.z = 0.0f;
+            const quat rotation = Pose::from(Pos{0.0f, 0.0f, 0.0f}, hpb).rotation;
+            const vec3 forward = glm::normalize(rotation * vec3{0.0f, 0.0f, -1.0f});
+            auto node = with<scene::Node>::modify(context, camera);
+            node->pose.rotation = rotation;
+            node->pose.position = orbit.pivot - forward * orbit.distance;
+        }
+
+        void aimOrbitAt(Writing context, scene::Camera::Id camera, Pos pivot) {
+            auto orbit = with<controller::CameraOrbit>::modify(context, camera);
+            const auto& node = with<scene::Node>::get(context, camera);
+            HPB hpb = node.pose.hpb();
+            hpb.z = 0.0f;
+            float distance = orbit->distance;
+            const vec3 toCamera = node.pose.position - pivot;
+            if (glm::dot(toCamera, toCamera) > 1e-8f) {
+                distance = std::clamp(glm::length(toCamera), orbitDistanceMin, orbitDistanceMax);
+                const vec3 forward = glm::normalize(-toCamera);
+                const float pitch = std::asin(std::clamp(forward.y, -1.0f, 1.0f));
+                const float heading = std::atan2(forward.x, -forward.z);
+                hpb = HPB{glm::degrees(heading), glm::degrees(pitch), 0.0f};
+            }
+            orbit->pivot = pivot;
+            orbit->hpb = hpb;
+            orbit->distance = distance;
+            applyOrbitPose(context, camera, *orbit);
+        }
+
+    } // namespace
 
     Schema Game::schema() const {
         return ask::schema::merge({
@@ -268,7 +338,7 @@ namespace eltanin {
             const auto planetShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "planet"), item<shader::Loader>{.vertex = "shaders/planet.vert.glsl", .fragment = "shaders/planet.frag.glsl"});
             with<Assets>::add_material(context, Name::from("Eltanin", "planet"), Material::Quantum{
                 .techniques = {
-                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap", "heightMap", "coverMap"}), .glowSpread = false}},
+                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap", "heightMap", "coverMap", "farAlbedoMap"}), .glowSpread = false}},
                 },
                 .nearest = false,
                 .blend = renderer::BlendMode::inherit,
@@ -472,6 +542,18 @@ namespace eltanin {
         world_view = View{.viewport = viewport, .scene = root, .camera = camera};
         views = {*world_view};
 
+        {
+            const auto& freePose = with<scene::Node>::get(context, camera).pose;
+            const auto spectator = with<scene::Interface>::createCamera(context, root, freePose, spectatorFov);
+            {
+                auto quantum = with<scene::Camera>::modify(context, spectator);
+                quantum->z_near = locality::geo::Horizon::near;
+                quantum->z_far = locality::geo::Horizon::far;
+            }
+            with<controller::CameraOrbit>::create(context, spectator, freePose.position, 24.0f);
+            cameras.emplace(Cameras{.kind = Cameras::Kind::free, .free = camera, .spectator = spectator, .hotkeyDown = false});
+        }
+
         const auto manager = with<::rmmr::resource::Manager>::singleton(context);
         blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "blueprints");
         mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings");
@@ -504,16 +586,90 @@ namespace eltanin {
             if (blueprintPack.unnamed)
                 world.branch([&](Writing context) { blueprints.show(context, *blueprintPack.unnamed); });
         }
-        with<World>::tetherEnvironment(world);
         const seconds wallDt = static_cast<seconds>(dt_us) / 1'000'000.0;
         const seconds simDt = with<World>::get_global(world).paused ? seconds{0} : wallDt * static_cast<seconds>(with<locality::Thing>::get_global(world).timeScale);
+        if (physics)
+            physics->step(world, simDt);
+        advanceSim(world, simDt);
+        handleCameraHotkey(world);
+        trackSpectator(world);
+        with<World>::tetherEnvironment(world);
         if (planet) {
             if (const auto camera = with<World>::get_global(world).camera; camera and with<scene::Node>::exists(world, *camera))
                 planet->update(world, with<scene::Node>::get(world, *camera).pose.position);
         }
-        if (physics)
-            physics->step(world, simDt);
-        advanceSim(world, simDt);
+    }
+
+    void Game::presentCamera(Writing context, scene::Camera::Id camera) {
+        with<World>::modify_global(context)->camera = camera;
+        if (not world_view)
+            return;
+        world_view->camera = camera;
+        views = {*world_view};
+    }
+
+    auto Game::focusCenter(Reading context) const -> base::maybe<dvec3> {
+        dvec3 sum{0.0, 0.0, 0.0};
+        integer count = 0;
+        for (const auto id : focus.things) {
+            const auto pos = worldPosOfThing(context, id);
+            if (not pos)
+                continue;
+            sum += *pos;
+            ++count;
+        }
+        if (count == 0)
+            return {};
+        return sum / static_cast<double>(count);
+    }
+
+    void Game::setCameraKind(Writing context, Cameras::Kind kind) {
+        if (not cameras or kind == cameras->kind)
+            return;
+        if (kind == Cameras::Kind::spectator) {
+            const auto center = focusCenter(context);
+            if (not center or not with<controller::CameraOrbit>::exists(context, cameras->spectator))
+                return;
+            with<scene::Node>::modify(context, cameras->spectator)->pose = with<scene::Node>::get(context, cameras->free).pose;
+            aimOrbitAt(context, cameras->spectator, vec3{*center});
+            cameras->kind = Cameras::Kind::spectator;
+            presentCamera(context, cameras->spectator);
+            return;
+        }
+        with<scene::Node>::modify(context, cameras->free)->pose = with<scene::Node>::get(context, cameras->spectator).pose;
+        cameras->kind = Cameras::Kind::free;
+        presentCamera(context, cameras->free);
+    }
+
+    void Game::handleCameraHotkey(Writing context) {
+        if (not cameras)
+            return;
+        const auto bound = with<World>::get_global(context).window;
+        if (not bound)
+            return;
+        const bool down = keyDown(with<system::Window>::get(context, *bound).current.keys, GLFW_KEY_V);
+        if (down and not cameras->hotkeyDown) {
+            if (cameras->kind == Cameras::Kind::free)
+                setCameraKind(context, Cameras::Kind::spectator);
+            else
+                setCameraKind(context, Cameras::Kind::free);
+        }
+        cameras->hotkeyDown = down;
+    }
+
+    void Game::trackSpectator(Writing context) {
+        if (not cameras or cameras->kind != Cameras::Kind::spectator)
+            return;
+        const auto center = focusCenter(context);
+        if (not center) {
+            setCameraKind(context, Cameras::Kind::free);
+            return;
+        }
+        if (not with<controller::CameraOrbit>::exists(context, cameras->spectator))
+            return;
+        auto orbit = with<controller::CameraOrbit>::modify(context, cameras->spectator);
+        orbit->pivot = vec3{*center};
+        applyOrbitPose(context, cameras->spectator, *orbit);
     }
 
 }
