@@ -802,6 +802,11 @@ namespace eltanin::planet {
             slot.iv = std::clamp(slot.iv, integer{0}, last);
             return formation.relief.at(slot);
         };
+        auto pointAt = [&](IcosaPack::Slot sample) -> vec3 {
+            sample.iu = std::clamp(sample.iu, integer{0}, last);
+            sample.iv = std::clamp(sample.iv, integer{0}, last);
+            return planet.covers.pack.direction(sample) * (planet.passport.radius + heightAt(sample));
+        };
         for (integer index = 0; index < planet.covers.pack.storedCount(); ++index) {
             const auto slot = planet.covers.pack.slotOf(index);
             const vec3 direction = planet.covers.pack.direction(slot);
@@ -852,13 +857,38 @@ namespace eltanin::planet {
                 else
                     surface = Facies::Arenite;
             }
-            const float polar = std::abs(direction.y) + 0.055f * fractal(warpedDirection(direction, planet.passport.seed + 7001, 2.0f, 0.08f) * 5.0f, planet.passport.seed + 7013, 5, 0.56f);
-            const float localTemperature = geology.climate.temperature - 68.0f * std::pow(glm::clamp(polar, 0.0f, 1.0f), 1.65f) - relief / std::max(geology.history.reliefAmplitude, 1.0f) * 18.0f;
-            const float waterFrost = float(waterInventory) / 15.0f * (1.0f - glm::smoothstep(205.0f, 273.0f, localTemperature));
-            const float carbonFrost = float(carbonDioxide) / 15.0f * (1.0f - glm::smoothstep(150.0f, 210.0f, localTemperature));
+            const float polar = std::abs(direction.y);
+            float surround = relief;
+            const integer rings[3] = {3, 11, 29};
+            for (integer ring : rings) {
+                for (integer spoke = 0; spoke < 8; ++spoke) {
+                    const float angle = float(spoke) * 0.78539816f;
+                    surround = std::max(surround, heightAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu + static_cast<integer>(std::lround(float(ring) * std::cos(angle))), .iv = slot.iv + static_cast<integer>(std::lround(float(ring) * std::sin(angle)))}));
+                }
+            }
+            const float amplitude = std::max(geology.history.reliefAmplitude, 1.0f);
+            const float bowl = glm::clamp((surround - relief) / amplitude, 0.0f, 1.2f);
+            const vec3 east = pointAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu + 1, .iv = slot.iv}) - pointAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu - 1, .iv = slot.iv});
+            const vec3 north = pointAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu, .iv = slot.iv + 1}) - pointAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu, .iv = slot.iv - 1});
+            vec3 slopeNormal = glm::cross(east, north);
+            const float slopeLength = glm::length(slopeNormal);
+            if (slopeLength > 1.0e-8f) {
+                slopeNormal /= slopeLength;
+                if (glm::dot(slopeNormal, direction) < 0.0f)
+                    slopeNormal = -slopeNormal;
+            } else {
+                slopeNormal = direction;
+            }
+            vec3 localNorth = vec3{0.0f, 1.0f, 0.0f} - direction * direction.y;
+            const float northLength = glm::length(localNorth);
+            localNorth = northLength > 1.0e-5f ? localNorth / northLength : vec3{1.0f, 0.0f, 0.0f};
+            const vec3 tilt = slopeNormal - direction * glm::dot(slopeNormal, direction);
+            const float northFacing = glm::dot(tilt, localNorth);
+            const float localTemperature = geology.climate.temperature - 95.0f * polar * polar + 24.0f * (relief / amplitude) - 48.0f * bowl - 26.0f * northFacing;
+            const float waterFrost = float(waterInventory) / 15.0f * (1.0f - glm::smoothstep(176.0f, 208.0f, localTemperature));
+            const float carbonFrost = float(carbonDioxide) / 15.0f * (1.0f - glm::smoothstep(148.0f, 198.0f, localTemperature));
             const float methaneFrost = float(methane) / 15.0f * (1.0f - glm::smoothstep(72.0f, 112.0f, localTemperature));
-            const float capEdge = 0.74f - geology.climate.ice * 0.10f - float(carbonDioxide) / 15.0f * 0.035f;
-            if (polar > capEdge and waterFrost + carbonFrost + methaneFrost > 0.055f) {
+            if (waterFrost + carbonFrost + methaneFrost > 0.48f) {
                 if (carbonFrost + methaneFrost > waterFrost * 1.15f)
                     surface = Facies::VolatileFrost;
                 else
