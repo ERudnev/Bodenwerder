@@ -4,10 +4,10 @@
 
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstddef>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -15,6 +15,9 @@
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
+
+#include <stb_image.h>
+#include <stb_image_write.h>
 
 namespace eltanin::planet {
 
@@ -133,7 +136,116 @@ namespace eltanin::planet {
             return static_cast<std::uint8_t>(std::lround(glm::clamp(value, 0.0f, 1.0f) * 255.0f));
         }
 
-        void writeFarAlbedo(const Planet& planet) {
+        auto fromByte(std::uint8_t value) -> float {
+            return float(value) / 255.0f;
+        }
+
+        constexpr std::uint32_t cacheEpoch = 1;
+        constexpr char cacheMagic[8] = {'E', 'L', 'T', 'N', 'M', 'A', 'P', '1'};
+
+#pragma pack(push, 1)
+        struct MapHeader {
+            char magic[8];
+            std::uint32_t epoch;
+            std::int32_t seed;
+            std::int32_t edgeBase;
+            std::int32_t tessellation;
+            std::int32_t heightCount;
+            std::int32_t farCount;
+            std::uint64_t mix;
+            float radius;
+            float differentiation;
+            float surfaceAge;
+            float cohesion;
+            float grain;
+            float tectonic;
+            float amplitude;
+        };
+#pragma pack(pop)
+
+        struct CacheFiles {
+            std::filesystem::path directory;
+            std::filesystem::path map;
+            std::filesystem::path view;
+        };
+
+        auto mixHash(std::uint64_t hash, std::uint64_t value) -> std::uint64_t {
+            hash ^= value;
+            hash *= 1099511628211ull;
+            return hash;
+        }
+
+        auto mixFloat(std::uint64_t hash, float value) -> std::uint64_t {
+            std::uint32_t bits = 0;
+            std::memcpy(&bits, &value, sizeof(bits));
+            return mixHash(hash, bits);
+        }
+
+        auto cacheKey(const Planet& planet) -> std::uint64_t {
+            const auto& geology = planet.passport.geology;
+            std::uint64_t hash = 14695981039346656037ull;
+            hash = mixHash(hash, cacheEpoch);
+            hash = mixHash(hash, static_cast<std::uint64_t>(static_cast<std::uint32_t>(planet.passport.seed)));
+            hash = mixHash(hash, static_cast<std::uint64_t>(static_cast<std::uint32_t>(planet.heights.pack.edgeBase)));
+            hash = mixHash(hash, static_cast<std::uint64_t>(static_cast<std::uint32_t>(planet.heights.pack.tessellation)));
+            hash = mixHash(hash, geology.mix);
+            hash = mixFloat(hash, planet.passport.radius);
+            hash = mixFloat(hash, geology.differentiation);
+            hash = mixFloat(hash, geology.surfaceAge);
+            hash = mixFloat(hash, geology.cohesion);
+            hash = mixFloat(hash, geology.grain);
+            hash = mixFloat(hash, geology.tectonic);
+            hash = mixFloat(hash, geology.amplitude);
+            return hash;
+        }
+
+        auto hashStem(std::uint64_t hash) -> std::string {
+            constexpr char alphabet[] = "0123456789abcdefghjkmnpqrstvwxyz";
+            std::string stem(12, '0');
+            for (integer index = 11; index >= 0; --index) {
+                stem[static_cast<std::size_t>(index)] = alphabet[hash & 31u];
+                hash >>= 5;
+            }
+            return stem;
+        }
+
+        auto cacheFiles(const Planet& planet) -> CacheFiles {
+            const integer kilometres = std::max(integer{1}, static_cast<integer>(std::lround(double(planet.passport.radius) / 1000.0)));
+            const std::string key = std::to_string(kilometres) + "_" + hashStem(cacheKey(planet));
+            CacheFiles files;
+            files.directory = std::filesystem::path{DAQL_ASSETS_DIR} / "Eltanin" / "planetsCache";
+            files.map = files.directory / ("planet_map_" + key + ".bin");
+            files.view = files.directory / ("planet_view_" + key + ".png");
+            return files;
+        }
+
+        auto makeHeader(const Planet& planet) -> MapHeader {
+            const auto& geology = planet.passport.geology;
+            MapHeader header;
+            std::memcpy(header.magic, cacheMagic, sizeof(header.magic));
+            header.epoch = cacheEpoch;
+            header.seed = planet.passport.seed;
+            header.edgeBase = planet.heights.pack.edgeBase;
+            header.tessellation = planet.heights.pack.tessellation;
+            header.heightCount = planet.heights.pack.storedCount();
+            header.farCount = planet.farAlbedo.pack.storedCount();
+            header.mix = geology.mix;
+            header.radius = planet.passport.radius;
+            header.differentiation = geology.differentiation;
+            header.surfaceAge = geology.surfaceAge;
+            header.cohesion = geology.cohesion;
+            header.grain = geology.grain;
+            header.tectonic = geology.tectonic;
+            header.amplitude = geology.amplitude;
+            return header;
+        }
+
+        auto headerMatches(const MapHeader& header, const Planet& planet) -> bool {
+            const MapHeader expected = makeHeader(planet);
+            return std::memcmp(&header, &expected, sizeof(MapHeader)) == 0;
+        }
+
+        auto packView(const Planet& planet) -> vector<std::uint8_t> {
             const auto& map = planet.farAlbedo;
             const index2 atlasSize = map.pack.atlasSize();
             vector<std::uint8_t> pixels(static_cast<std::size_t>(atlasSize.x * atlasSize.y) * 4u, std::uint8_t{0});
@@ -142,39 +254,82 @@ namespace eltanin::planet {
                 const index2 coord = map.pack.atlasCoord(slot);
                 const vec4 color = map.at(slot);
                 const std::size_t pixel = static_cast<std::size_t>(coord.y * atlasSize.x + coord.x) * 4u;
-                pixels[pixel] = toByte(color.z);
+                pixels[pixel] = toByte(color.x);
                 pixels[pixel + 1] = toByte(color.y);
-                pixels[pixel + 2] = toByte(color.x);
+                pixels[pixel + 2] = toByte(color.z);
                 pixels[pixel + 3] = toByte(color.w);
             }
-            const std::filesystem::path directory = std::filesystem::path{DAQL_ASSETS_DIR} / "Eltanin" / "planetsCache";
+            return pixels;
+        }
+
+        auto unpackView(Planet& planet, const std::uint8_t* pixels, integer width, integer height) -> bool {
+            const index2 atlasSize = planet.farAlbedo.pack.atlasSize();
+            if (width != atlasSize.x or height != atlasSize.y)
+                return false;
+            for (integer index = 0; index < planet.farAlbedo.pack.storedCount(); ++index) {
+                const auto slot = planet.farAlbedo.pack.slotOf(index);
+                const index2 coord = planet.farAlbedo.pack.atlasCoord(slot);
+                const std::size_t pixel = static_cast<std::size_t>(coord.y * atlasSize.x + coord.x) * 4u;
+                planet.farAlbedo.at(slot) = vec4{fromByte(pixels[pixel]), fromByte(pixels[pixel + 1]), fromByte(pixels[pixel + 2]), fromByte(pixels[pixel + 3])};
+            }
+            planet.farAlbedo.stitch();
+            return true;
+        }
+
+        auto loadCache(Planet& planet, const CacheFiles& files) -> bool {
+            if (not std::filesystem::exists(files.map) or not std::filesystem::exists(files.view))
+                return false;
+            std::ifstream input{files.map, std::ios::binary};
+            MapHeader header;
+            input.read(reinterpret_cast<char*>(&header), static_cast<std::streamsize>(sizeof(header)));
+            if (not input or not headerMatches(header, planet))
+                return false;
+            const std::size_t heightBytes = planet.heights.values.size() * sizeof(std::int16_t);
+            const std::size_t coverBytes = planet.covers.values.size() * sizeof(std::uint16_t);
+            input.read(reinterpret_cast<char*>(planet.heights.values.data()), static_cast<std::streamsize>(heightBytes));
+            input.read(reinterpret_cast<char*>(planet.covers.values.data()), static_cast<std::streamsize>(coverBytes));
+            if (not input)
+                return false;
+            int width = 0;
+            int height = 0;
+            int components = 0;
+            stbi_uc* pixels = stbi_load(files.view.string().c_str(), &width, &height, &components, STBI_rgb_alpha);
+            if (pixels == nullptr)
+                return false;
+            const bool unpacked = unpackView(planet, pixels, width, height);
+            stbi_image_free(pixels);
+            if (not unpacked)
+                return false;
+            planet.heights.stitch();
+            planet.covers.stitch();
+            base::message("eltanin::planet::Generator: cache hit {} + {}", files.map.string(), files.view.string());
+            return true;
+        }
+
+        void saveCache(const Planet& planet, const CacheFiles& files) {
             std::error_code error;
-            std::filesystem::create_directories(directory, error);
+            std::filesystem::create_directories(files.directory, error);
             if (error) {
-                base::warning("eltanin::planet::Generator: cannot create '{}': {}", directory.string(), error.message());
+                base::warning("eltanin::planet::Generator: cannot create '{}': {}", files.directory.string(), error.message());
                 return;
             }
-            const auto stamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-            const std::string stem = "planet-" + std::to_string(planet.passport.seed) + "-" + std::to_string(stamp);
-            std::filesystem::path file = directory / (stem + ".tga");
-            integer collision = 1;
-            while (std::filesystem::exists(file))
-                file = directory / (stem + "-" + std::to_string(collision++) + ".tga");
-            std::array<std::uint8_t, 18> header{};
-            header[2] = 2;
-            header[12] = static_cast<std::uint8_t>(atlasSize.x & 255);
-            header[13] = static_cast<std::uint8_t>((atlasSize.x >> 8) & 255);
-            header[14] = static_cast<std::uint8_t>(atlasSize.y & 255);
-            header[15] = static_cast<std::uint8_t>((atlasSize.y >> 8) & 255);
-            header[16] = 32;
-            header[17] = 0x28;
-            std::ofstream output{file, std::ios::binary};
-            output.write(reinterpret_cast<const char*>(header.data()), static_cast<std::streamsize>(header.size()));
-            output.write(reinterpret_cast<const char*>(pixels.data()), static_cast<std::streamsize>(pixels.size()));
-            if (not output)
-                base::warning("eltanin::planet::Generator: cannot write '{}'", file.string());
-            else
-                base::message("eltanin::planet::Generator: far albedo cache → {}", file.string());
+            const MapHeader header = makeHeader(planet);
+            std::ofstream output{files.map, std::ios::binary | std::ios::trunc};
+            output.write(reinterpret_cast<const char*>(&header), static_cast<std::streamsize>(sizeof(header)));
+            output.write(reinterpret_cast<const char*>(planet.heights.values.data()), static_cast<std::streamsize>(planet.heights.values.size() * sizeof(std::int16_t)));
+            output.write(reinterpret_cast<const char*>(planet.covers.values.data()), static_cast<std::streamsize>(planet.covers.values.size() * sizeof(std::uint16_t)));
+            if (not output) {
+                base::warning("eltanin::planet::Generator: cannot write '{}'", files.map.string());
+                return;
+            }
+            output.close();
+            const vector<std::uint8_t> pixels = packView(planet);
+            const index2 atlasSize = planet.farAlbedo.pack.atlasSize();
+            if (stbi_write_png(files.view.string().c_str(), atlasSize.x, atlasSize.y, 4, pixels.data(), atlasSize.x * 4) == 0) {
+                base::warning("eltanin::planet::Generator: cannot write '{}'", files.view.string());
+                return;
+            }
+            base::message("eltanin::planet::Generator: cache bake {} + {}", files.map.string(), files.view.string());
         }
 
         void blurFarAlbedo(Planet& planet) {
@@ -243,7 +398,6 @@ namespace eltanin::planet {
                 planet.farAlbedo.at(target) = vec4{color.x * gain, color.y * gain, color.z * gain, color.w};
             }
             planet.farAlbedo.stitch();
-            writeFarAlbedo(planet);
         }
 
         auto reliefNormal(const Planet& planet, vec3 dir) -> vec3 {
@@ -340,9 +494,16 @@ namespace eltanin::planet {
     }
 
     void Generator::generate(Planet& planet) {
+        const CacheFiles files = cacheFiles(planet);
+        if (loadCache(planet, files)) {
+            generateFarNormal(planet);
+            logFieldSummary(planet);
+            return;
+        }
         mars(planet);
         generateFarAlbedo(planet);
         generateFarNormal(planet);
+        saveCache(planet, files);
         logFieldSummary(planet);
     }
 

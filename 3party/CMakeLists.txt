@@ -16,7 +16,7 @@ add_library(pfr INTERFACE)
 target_include_directories(pfr INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/pfr/include)
 
 add_library(stb_image STATIC stb_image/stb_image.cpp)
-target_include_directories(stb_image PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/stb_image)
+target_include_directories(stb_image PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/stb_image ${CMAKE_CURRENT_SOURCE_DIR}/glfw/deps)
 
 add_library(imgui STATIC
     imgui/imgui.cpp
