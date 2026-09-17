@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
 

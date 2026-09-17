@@ -9,7 +9,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace eltanin::locality::planet {
+namespace eltanin::planet {
     struct Planet;
 }
 
@@ -123,11 +123,11 @@ namespace eltanin::phys::collision {
         std::unordered_set<PairKey, PairKeyHash> activeResting;
         struct {
             base::maybe<Body::Id> id;
-            locality::planet::Planet* planet;
+            planet::Planet* planet;
         } well;
 
         void build(Stewarding);
-        void collidePlanet(Stewarding, locality::planet::Planet&);
+        void collidePlanet(Stewarding, planet::Planet&);
         void solve(Stewarding);
         void traceRays(Stewarding); // CCD segment vs frozen Solid / Crystal; one hit per ray per tick
     };

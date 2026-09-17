@@ -24,9 +24,9 @@ set(Eltanin_Q1
     locality/construct.q1
     locality/scrap.q1
     decorations/dust.q1
-    locality/geo/minerals.q1
-    locality/geo/rock.q1
-    locality/geo/boulder.q1
+    geo/minerals.q1
+    geo/rock.q1
+    geo/boulder.q1
 )
 
 add_executable(${PROJECT_NAME})

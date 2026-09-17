@@ -7,7 +7,7 @@ namespace eltanin
   // `paused` freezes step (frames still arrive; Global.step does not).
   // Pause input: only Global.window (bound in Product::setup).
   // Environment sky: own Node; =tetherEnvironment copies camera position only (rotation untouched).
-  // Also tethers skyBackdrop and locality::geo::Sun disk.
+  // Also tethers skyBackdrop and geo::Sun disk.
   entity World
     all
       step: integer // discrete ticks; 1 step = 1000 μs of wall dt

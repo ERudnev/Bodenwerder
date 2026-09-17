@@ -6,8 +6,8 @@
 #include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/scrap.q1.h>
 #include <eltanin/decorations/dust.q1.h>
-#include <eltanin/locality/geo/rock.q1.h>
-#include <eltanin/locality/geo/boulder.q1.h>
+#include <eltanin/geo/rock.q1.h>
+#include <eltanin/geo/boulder.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <eltanin/physics/resting.q1.h>
@@ -67,10 +67,10 @@ namespace eltanin {
                 return with<locality::Construct>::get(context, id).body;
             if (with<locality::Scrap>::exists(context, id))
                 return with<locality::Scrap>::get(context, id).body;
-            if (with<locality::geo::Rock>::exists(context, id))
-                return with<locality::geo::Rock>::get(context, id).body;
-            if (with<locality::geo::Boulder>::exists(context, id))
-                return with<locality::geo::Boulder>::get(context, id).body;
+            if (with<geo::Rock>::exists(context, id))
+                return with<geo::Rock>::get(context, id).body;
+            if (with<geo::Boulder>::exists(context, id))
+                return with<geo::Boulder>::get(context, id).body;
             if (with<locality::Bullet>::exists(context, id))
                 return with<locality::Bullet>::get(context, id).body;
             return {};
@@ -130,8 +130,8 @@ namespace eltanin {
             ask::schema::aspect<locality::Construct>(),
             ask::schema::aspect<locality::Scrap>(),
             ask::schema::aspect<decorations::Dust>(),
-            ask::schema::aspect<locality::geo::Rock>(),
-            ask::schema::aspect<locality::geo::Boulder>(),
+            ask::schema::aspect<geo::Rock>(),
+            ask::schema::aspect<geo::Boulder>(),
             ask::schema::aspect<resource::Assets>(),
             ask::schema::aspect<mech::Blueprint>(),
             ask::schema::aspect<mech::Mount>(),
@@ -502,7 +502,7 @@ namespace eltanin {
             .surfaces = {{::rmmr::resource::geometry::SurfaceId{0}, ::rmmr::resource::material::Instance{.material = *assets.skySphereMaterial, .textures = {{"albedoMap", "skySphere.png"}}}}},
             .texpack = assets.sprites,
         };
-        const auto skyScale = locality::geo::Horizon::stars / locality::geo::Horizon::skyMesh;
+        const auto skyScale = geo::Horizon::stars / geo::Horizon::skyMesh;
         const auto sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), skyResolved, with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{skyScale, skyScale, skyScale}));
         if (not assets.primitive.sphere or not assets.skyBackdropMaterial)
             return (void)context.refuse("eltanin::Game::populateWorld: sky backdrop missing");
@@ -512,13 +512,13 @@ namespace eltanin {
             .surfaces = {{::rmmr::resource::geometry::SurfaceId{0}, ::rmmr::resource::material::Instance{.material = *assets.skyBackdropMaterial, .textures = {}}}},
             .texpack = {},
         };
-        const auto skyBackdrop = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), backdropResolved, with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{-locality::geo::Horizon::backdrop, -locality::geo::Horizon::backdrop, -locality::geo::Horizon::backdrop}));
+        const auto skyBackdrop = with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), backdropResolved, with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{-geo::Horizon::backdrop, -geo::Horizon::backdrop, -geo::Horizon::backdrop}));
 
         const auto camera = with<scene::Interface>::createCamera(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), 100.0f * std::numbers::pi_v<float> / 180.0f);
         {
             auto quantum = with<scene::Camera>::modify(context, camera);
-            quantum->z_near = locality::geo::Horizon::near;
-            quantum->z_far = locality::geo::Horizon::far;
+            quantum->z_near = geo::Horizon::near;
+            quantum->z_far = geo::Horizon::far;
         }
         with<controller::Camera3d>::create(context, camera);
 
@@ -533,8 +533,8 @@ namespace eltanin {
         scenario.placePlanet(context, window, planet);
         if (physics)
             physics->planet = planet ? &*planet : nullptr;
-        if (not locality::geo::Sun::placed())
-            locality::geo::Sun::place(context, locality::geo::Sun::sol());
+        if (not geo::Sun::placed())
+            geo::Sun::place(context, geo::Sun::sol());
         // TODO: use this for some scenarios as time-saver: ui.assembler.spawnVel = vec3{0.0f, 0.0f, 10.0f}; // temporary: +Z approach toward ice asteroid
 
         with<World>::tetherEnvironment(context);
@@ -547,8 +547,8 @@ namespace eltanin {
             const auto spectator = with<scene::Interface>::createCamera(context, root, freePose, spectatorFov);
             {
                 auto quantum = with<scene::Camera>::modify(context, spectator);
-                quantum->z_near = locality::geo::Horizon::near;
-                quantum->z_far = locality::geo::Horizon::far;
+                quantum->z_near = geo::Horizon::near;
+                quantum->z_far = geo::Horizon::far;
             }
             with<controller::CameraOrbit>::create(context, spectator, freePose.position, 24.0f);
             cameras.emplace(Cameras{.kind = Cameras::Kind::free, .free = camera, .spectator = spectator, .hotkeyDown = false});
@@ -566,8 +566,8 @@ namespace eltanin {
         with<locality::Scrap>::bindResources(context);
         with<locality::Flash>::bindResources(context);
         with<locality::Construct>::bindResources(context);
-        with<locality::geo::Rock>::bindResources(context);
-        with<locality::geo::Boulder>::bindResources(context);
+        with<geo::Rock>::bindResources(context);
+        with<geo::Boulder>::bindResources(context);
     }
 
     void Game::setup(Writing context, system::Window::Id window) {

@@ -6,7 +6,7 @@
 
 #include <array>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
 
@@ -78,7 +78,7 @@ namespace eltanin::locality::geo {
 
 }
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     inline auto IcosaPack::edgeSegments() const -> integer {
         return edgeBase * (integer{1} << tessellation);

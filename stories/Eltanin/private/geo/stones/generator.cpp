@@ -9,7 +9,7 @@
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
 

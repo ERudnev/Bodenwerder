@@ -6,8 +6,8 @@
 #include <eltanin/locality/flash.q1.h>
 #include <eltanin/locality/bullet.q1.h>
 #include <eltanin/locality/scrap.q1.h>
-#include <eltanin/locality/geo/boulder.q1.h>
-#include <eltanin/locality/geo/rock.q1.h>
+#include <eltanin/geo/boulder.q1.h>
+#include <eltanin/geo/rock.q1.h>
 #include <eltanin/physics/resting.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/resources/builders/geometryGenerator.h>
@@ -85,7 +85,7 @@ namespace eltanin::phys {
         }
 
         auto productionActorOf(Reading context, Body::Id body) -> base::maybe<rmmr::scene::actor::Mesh::Id> {
-            for (const auto [_, rock] : context->aspect<locality::geo::Rock>().items()) {
+            for (const auto [_, rock] : context->aspect<geo::Rock>().items()) {
                 if (rock.body == body)
                     return rock.actor;
             }
@@ -93,7 +93,7 @@ namespace eltanin::phys {
                 if (construct.body == body)
                     return construct.actor;
             }
-            for (const auto [_, boulder] : context->aspect<locality::geo::Boulder>().items()) {
+            for (const auto [_, boulder] : context->aspect<geo::Boulder>().items()) {
                 if (boulder.body == body)
                     return boulder.actor;
             }
@@ -459,8 +459,8 @@ namespace eltanin::phys {
                     ImGui::TableHeadersRow();
                     censusRow("construct", context->aspect<locality::Construct>().items().size());
                     censusRow("scrap", context->aspect<locality::Scrap>().items().size());
-                    censusRow("rock", context->aspect<locality::geo::Rock>().items().size());
-                    censusRow("boulder", context->aspect<locality::geo::Boulder>().items().size());
+                    censusRow("rock", context->aspect<geo::Rock>().items().size());
+                    censusRow("boulder", context->aspect<geo::Boulder>().items().size());
                     censusRow("bullet", context->aspect<locality::Bullet>().items().size());
                     censusRow("flash", context->aspect<locality::Flash>().items().size());
                     censusRow("crystal", context->aspect<rigid::Crystal>().items().size());

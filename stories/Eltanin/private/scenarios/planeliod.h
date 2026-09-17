@@ -10,7 +10,7 @@ namespace eltanin::scenario {
     struct Planeliod : Scenario {
         void loadResources(Writing, const rmmr::wrapper::assets::Handles& shared) override;
         void populate(Writing, rmmr::system::Device::Id) override;
-        void placePlanet(Writing, rmmr::system::Device::Id, base::maybe<locality::planet::Planet>&);
+        void placePlanet(Writing, rmmr::system::Device::Id, base::maybe<planet::Planet>&);
     };
 
 }

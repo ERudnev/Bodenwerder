@@ -14,12 +14,12 @@
 #include <cstdint>
 #include <unordered_map>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
 
     // Landscape + Planetoid are one type that split: the bag and the static queries over it.
-    // Reference cube-sphere; locality uses planet::Planet.
+    // Reference cube-sphere; planet::Planet is the live world body.
     struct Landscape {
         struct Look {
             integer seed;

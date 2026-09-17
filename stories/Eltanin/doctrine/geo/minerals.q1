@@ -1,6 +1,5 @@
 namespace eltanin
-  namespace locality
-    namespace geo
+  namespace geo
 
     // Table order is the 16-channel basis (nibble index in a voxel). Palettes inside a channel are Rock's business.
     // Wider than OpenGL or physics need today.

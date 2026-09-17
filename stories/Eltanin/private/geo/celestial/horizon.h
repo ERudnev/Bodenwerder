@@ -1,6 +1,6 @@
 #pragma once
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     struct Horizon {
         static constexpr float near = 2.0f;

@@ -2,14 +2,13 @@ import "rmmr/math"
 import "rmmr/scene/actors/mesh"
 import "rmmr/system/core"
 import "rmmr/resources/texture3array"
-import "locality/geo/minerals"
+import "geo/minerals"
 import "locality/thing"
 import "physics/body"
 import "physics/rigid"
 
 namespace eltanin
-  namespace locality
-    namespace geo
+  namespace geo
 
     // Octree node on the 4 m lattice. scale is log2(edge in cells): 0 = one cell.
     // Empty children: homogeneous leaf. mix 0 = vacuum (omitted). Sparse: missing child = empty octant.

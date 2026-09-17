@@ -8,7 +8,7 @@
 #include <map>
 #include <type_traits>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
 
@@ -27,7 +27,7 @@ namespace eltanin::locality::geo {
 
 }
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     template<typename T>
     IcosaMap<T>::IcosaMap(IcosaPack pack, T fill)

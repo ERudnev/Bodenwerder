@@ -1,8 +1,8 @@
-#include <eltanin/locality/geo/minerals.q1.h>
+#include <eltanin/geo/minerals.q1.h>
 
 #include <base/types/common_types.h>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
 using base::common_types::rgb;
 

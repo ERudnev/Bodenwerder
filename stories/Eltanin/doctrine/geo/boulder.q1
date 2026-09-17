@@ -3,14 +3,13 @@ import "rmmr/scene/actors/mesh"
 import "rmmr/system/core"
 import "rmmr/resources/materials"
 import "rmmr/resources/texture3array"
-import "locality/geo/rock"
+import "geo/rock"
 import "locality/thing"
 import "physics/body"
 import "physics/rigid"
 
 namespace eltanin
-  namespace locality
-    namespace geo
+  namespace geo
 
     // Small debris: Body + Solid + debris mesh. No Volume / Crystal.
     // Splits like scrap when cohesion hits 0. Recipe stays so children can remesh.

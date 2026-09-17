@@ -1,9 +1,9 @@
 #pragma once
 
-#include <eltanin/locality/geo/rock.q1.h>
+#include <eltanin/geo/rock.q1.h>
 #include <rmmr/resources/builders/geometryGenerator.h>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     auto generateRockVolume(const GeneralizedRecipe&) -> Volume;
     auto rockSdf(const GeneralizedRecipe&, vec3) -> float;

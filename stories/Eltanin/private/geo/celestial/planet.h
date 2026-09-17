@@ -3,7 +3,7 @@
 #include "geo/details/icosaMap.h"
 
 #include <base/maybe.h>
-#include <eltanin/locality/geo/minerals.q1.h>
+#include <eltanin/geo/minerals.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
@@ -14,7 +14,7 @@
 
 #include <cstdint>
 
-namespace eltanin::locality::planet {
+namespace eltanin::planet {
 
     using namespace fqsm::api;
 

@@ -7,7 +7,7 @@
 #include <cmath>
 #include <numbers>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
 

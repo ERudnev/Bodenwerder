@@ -1,6 +1,6 @@
-#include <eltanin/locality/geo/rock.q1.h>
+#include <eltanin/geo/rock.q1.h>
 
-#include <eltanin/locality/geo/minerals.q1.h>
+#include <eltanin/geo/minerals.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
@@ -25,10 +25,11 @@
 #include <numbers>
 #include <unordered_map>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
     using namespace rmmr;
+    using locality::Thing;
 
     namespace {
 
@@ -378,9 +379,9 @@ namespace eltanin::locality::geo {
         auto assembleRock(Writing context, rmmr::system::Device::Id device, Pose pose, Volume volume, rmmr::resource::builders::geometry::CpuPresentation cpu, vector<Sample> samples, phys::rigid::Hull hull, rmmr::resource::Unit::Name materialName, integer spriteIndex, float temperature, float cohesion, vec3 velocity, vec3 omega) -> Rock::Id {
             const auto scene = with<Thing>::get_global(context).scene;
             if (cpu.positions.empty())
-                return context.refuse("eltanin::locality::geo::Rock::spawn: no surface");
+                return context.refuse("eltanin::geo::Rock::spawn: no surface");
             if (samples.empty())
-                return context.refuse("eltanin::locality::geo::Rock::spawn: no mass in volume");
+                return context.refuse("eltanin::geo::Rock::spawn: no mass in volume");
 
             glm::dvec3 massMoment{0.0, 0.0, 0.0};
             double massTotal = 0.0;
@@ -389,7 +390,7 @@ namespace eltanin::locality::geo {
                 massTotal += static_cast<double>(sample.mass);
             }
             if (massTotal <= 0.0)
-                return context.refuse("eltanin::locality::geo::Rock::spawn: mass must be positive");
+                return context.refuse("eltanin::geo::Rock::spawn: mass must be positive");
             const vec3 massCom{massMoment / massTotal};
             const float massSum = static_cast<float>(massTotal);
 
@@ -406,22 +407,22 @@ namespace eltanin::locality::geo {
             const auto geometryId = with<rmmr::resource::Unit_group>::addElement(context, manager, rmmr::resource::Unit::Quantum{.name = rmmr::resource::Unit::Name::from("Eltanin", "rock")});
             with<rmmr::resource::geometry::Asset>::extend(context, geometryId, rmmr::resource::geometry::Asset::Quantum{});
             if (not with<rmmr::resource::geometry::Asset>::install(context, geometryId, device, cpu))
-                return context.refuse("eltanin::locality::geo::Rock::spawn: geometry install failed");
+                return context.refuse("eltanin::geo::Rock::spawn: geometry install failed");
 
             const auto& resources = with<Rock>::get_global(context).resources;
             if (not resources)
-                return context.refuse("eltanin::locality::geo::Rock::spawn: resources not bound");
+                return context.refuse("eltanin::geo::Rock::spawn: resources not bound");
             const auto rockMaterial = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, materialName);
             if (not rockMaterial)
-                return context.refuse("eltanin::locality::geo::Rock::spawn: rock material missing");
+                return context.refuse("eltanin::geo::Rock::spawn: rock material missing");
             const auto& runtimes = with<rmmr::resource::Runtimes>::get(context, device);
             if (runtimes.texture3arrays_id_mapping.find(resources->crust) == runtimes.texture3arrays_id_mapping.end()) {
                 if (not with<rmmr::resource::texture3array::Asset>::install(context, resources->crust, device, generateCrust()))
-                    return context.refuse("eltanin::locality::geo::Rock::spawn: crust install failed");
+                    return context.refuse("eltanin::geo::Rock::spawn: crust install failed");
             }
             auto meshQuantum = with<rmmr::scene::actor::Mesh>::composeWith3DTexture(context, geometryId, *rockMaterial, resources->crust);
             if (not meshQuantum)
-                return context.refuse("eltanin::locality::geo::Rock::spawn: mesh compose failed");
+                return context.refuse("eltanin::geo::Rock::spawn: mesh compose failed");
             meshQuantum->spriteIndex = spriteIndex;
 
             auto meshState = with<rmmr::scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
@@ -461,7 +462,7 @@ namespace eltanin::locality::geo {
             return;
         const auto crust = with<resource::Assets>::find<resource::texture3array::Asset>(context, resource::Unit::Name::from("Eltanin", "crust"));
         if (not crust) {
-            context.refuse("eltanin::locality::geo::Rock::bindResources: crust pack missing");
+            context.refuse("eltanin::geo::Rock::bindResources: crust pack missing");
             return;
         }
         with<Rock>::modify_global(context)->resources = Resources{.crust = *crust};
@@ -469,7 +470,7 @@ namespace eltanin::locality::geo {
 
     auto Rock::Actions::spawn(Writing context, rmmr::system::Device::Id device, Pose pose, Volume volume, vec3 velocity, vec3 omega) -> Id {
         if (not scaleInRange(volume))
-            return context.refuse("eltanin::locality::geo::Rock::spawn: volume scale out of range");
+            return context.refuse("eltanin::geo::Rock::spawn: volume scale out of range");
         auto cpu = meshVolume(volume);
         auto surface = surfaceFromMesh(volume, cpu);
         return assembleRock(context, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 0.0f, 0.0f, velocity, omega);
@@ -477,14 +478,14 @@ namespace eltanin::locality::geo {
 
     auto Rock::Actions::spawnGenerated(Writing context, rmmr::system::Device::Id device, Pose pose, GeneralizedRecipe recipe, vec3 velocity, vec3 omega) -> Id {
         if (recipe.radius <= 0.0f)
-            return context.refuse("eltanin::locality::geo::Rock::spawnGenerated: radius must be positive");
+            return context.refuse("eltanin::geo::Rock::spawnGenerated: radius must be positive");
         if (recipe.mix == 0)
-            return context.refuse("eltanin::locality::geo::Rock::spawnGenerated: mix is vacuum");
+            return context.refuse("eltanin::geo::Rock::spawnGenerated: mix is vacuum");
         if (recipe.radius <= octreeResolutionRadius)
-            return context.refuse("eltanin::locality::geo::Rock::spawnGenerated: radius too small for Crystal; use Boulder");
+            return context.refuse("eltanin::geo::Rock::spawnGenerated: radius too small for Crystal; use Boulder");
         auto volume = generateRockVolume(recipe);
         if (not scaleInRange(volume))
-            return context.refuse("eltanin::locality::geo::Rock::spawnGenerated: volume scale out of range");
+            return context.refuse("eltanin::geo::Rock::spawnGenerated: volume scale out of range");
         auto cpu = meshVolume(volume);
         auto surface = surfaceFromMesh(volume, cpu);
         return assembleRock(context, device, pose, std::move(volume), std::move(cpu), std::move(surface.samples), std::move(surface.hull), rmmr::resource::Unit::Name::from("Eltanin", "rock"), 0, 0.0f, 0.0f, velocity, omega);
@@ -501,7 +502,7 @@ namespace eltanin::locality::geo {
     auto Rock::Actions::spawnLavaBrick(Writing context, rmmr::system::Device::Id device, Pose pose) -> Id {
         auto volume = generateLavaBrickVolume();
         if (not scaleInRange(volume))
-            return context.refuse("eltanin::locality::geo::Rock::spawnLavaBrick: volume scale out of range");
+            return context.refuse("eltanin::geo::Rock::spawnLavaBrick: volume scale out of range");
         auto cpu = meshVolume(volume);
         applyLavaBrickHeat(cpu);
         auto surface = surfaceFromMesh(volume, cpu);
@@ -511,7 +512,7 @@ namespace eltanin::locality::geo {
     auto Rock::Actions::spawnIceBlob(Writing context, rmmr::system::Device::Id device, Pose pose) -> Id {
         auto volume = generateIceBlobVolume();
         if (not scaleInRange(volume))
-            return context.refuse("eltanin::locality::geo::Rock::spawnIceBlob: volume scale out of range");
+            return context.refuse("eltanin::geo::Rock::spawnIceBlob: volume scale out of range");
         auto cpu = meshVolume(volume);
         applyIceBlobSinter(cpu);
         auto surface = surfaceFromMesh(volume, cpu);

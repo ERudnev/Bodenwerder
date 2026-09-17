@@ -2,11 +2,11 @@
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
 
-    // Face catalog; ids = texpack layer index. Order matches doctrine/locality/geo/facies.md.
+    // Face catalog; ids = texpack layer index. Order matches doctrine/geo/facies.md.
     enum class Facies : integer {
         Snow,
         Glacier,

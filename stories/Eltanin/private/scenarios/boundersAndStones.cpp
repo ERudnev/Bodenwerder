@@ -1,7 +1,7 @@
 #include "scenarios/boundersAndStones.h"
 
-#include <eltanin/locality/geo/boulder.q1.h>
-#include <eltanin/locality/geo/minerals.q1.h>
+#include <eltanin/geo/boulder.q1.h>
+#include <eltanin/geo/minerals.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <eltanin/world.q1.h>
@@ -32,12 +32,12 @@ namespace eltanin::scenario {
         constexpr int pebbleCount = 100;
         constexpr int hornCount = 4;
 
-        auto nibble(int channel, int fill) -> locality::geo::Mineral::Mix {
-            return locality::geo::Mineral::Mix{static_cast<std::uint64_t>(fill)} << (channel * 4);
+        auto nibble(int channel, int fill) -> geo::Mineral::Mix {
+            return geo::Mineral::Mix{static_cast<std::uint64_t>(fill)} << (channel * 4);
         }
 
-        auto mixDensity(locality::geo::Mineral::Mix mix) -> float {
-            const auto& table = locality::geo::Mineral::table();
+        auto mixDensity(geo::Mineral::Mix mix) -> float {
+            const auto& table = geo::Mineral::table();
             float density = 0.0f;
             const auto channels = table.size() < static_cast<std::size_t>(mixChannels) ? table.size() : static_cast<std::size_t>(mixChannels);
             for (std::size_t channel = 0; channel < channels; ++channel) {
@@ -81,7 +81,7 @@ namespace eltanin::scenario {
 
     void BoundersAndStones::populate(Writing context, rmmr::system::Device::Id device) {
         with<World>::placeCamera(context, Pose::from(Pos{0.0f, 50.0f, 250.0f}, HPB{0.0f, -20.0f, 0.0f}));
-        const locality::geo::Mineral::Mix palettes[hornCount]{
+        const geo::Mineral::Mix palettes[hornCount]{
             nibble(1, 8) | nibble(2, 4) | nibble(3, 3),
             nibble(0, 15),
             nibble(6, 9) | nibble(7, 6),
@@ -93,7 +93,7 @@ namespace eltanin::scenario {
         std::uniform_real_distribution<float> unit{0.0f, 1.0f};
         const float twoPi = 2.0f * std::numbers::pi_v<float>;
         const phys::rigid::CelestialGravity::Quantum coreGravity{.averageRadius = coreRadius, .surfaceAcceleration = coreSurfaceAccel};
-        const float spinK = (twoPi / 180.0f) * sphereMass(coreRadius * 2.0f, locality::geo::Mineral::table()[static_cast<std::size_t>(ironMineral)].kgPerCubicMeter());
+        const float spinK = (twoPi / 180.0f) * sphereMass(coreRadius * 2.0f, geo::Mineral::table()[static_cast<std::size_t>(ironMineral)].kgPerCubicMeter());
 
         auto orbitVelocity = [&](vec3 position) -> vec3 {
             const float distance = glm::length(position);
@@ -105,17 +105,17 @@ namespace eltanin::scenario {
         rocks.reserve(static_cast<std::size_t>(1 + hornCount));
         boulders.reserve(static_cast<std::size_t>(pebbleCount));
         {
-            const locality::geo::GeneralizedRecipe recipe{
-                .mix = locality::geo::GeneralizedRecipe::homogenous(ironMineral),
+            const geo::GeneralizedRecipe recipe{
+                .mix = geo::GeneralizedRecipe::homogenous(ironMineral),
                 .radius = coreRadius,
                 .lump = 0.0f,
                 .seed = 1,
                 .spotMeters = 8.0f,
                 .spotContrast = 0.0f,
             };
-            const auto id = with<locality::geo::Rock>::spawnGenerated(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.08f, 0.0f});
+            const auto id = with<geo::Rock>::spawnGenerated(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), recipe, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.08f, 0.0f});
             rocks.push_back(id);
-            const auto& rock = with<locality::geo::Rock>::get(context, id);
+            const auto& rock = with<geo::Rock>::get(context, id);
             with<phys::rigid::CelestialGravity>::extend(context, rock.body, coreGravity);
             auto crystal = with<phys::rigid::Crystal>::modify(context, rock.body);
             for (phys::Particle& particle : crystal->particles) {
@@ -131,7 +131,7 @@ namespace eltanin::scenario {
             const float diameter = potatoDiameters[index];
             const float azim = twoPi * static_cast<float>(index) / static_cast<float>(hornCount);
             const Pose pose = ringPose(azim, rng);
-            const locality::geo::GeneralizedRecipe recipe{
+            const geo::GeneralizedRecipe recipe{
                 .mix = palettes[index],
                 .radius = diameter * 0.5f,
                 .lump = glm::clamp(0.78f + 0.22f * unit(rng), 0.72f, 1.0f),
@@ -140,7 +140,7 @@ namespace eltanin::scenario {
                 .spotContrast = glm::clamp(0.78f + 0.14f * unit(rng), 0.70f, 1.0f),
             };
             occupied[index] = Occupied{.position = pose.position, .radius = diameter * 0.5f};
-            rocks.push_back(with<locality::geo::Rock>::spawnGenerated(context, device, pose, recipe, orbitVelocity(pose.position), spinOmega(sphereMass(diameter, mixDensity(recipe.mix)), spinK, 1.0f, rng)));
+            rocks.push_back(with<geo::Rock>::spawnGenerated(context, device, pose, recipe, orbitVelocity(pose.position), spinOmega(sphereMass(diameter, mixDensity(recipe.mix)), spinK, 1.0f, rng)));
         }
 
         for (int slot = 0; slot < pebbleCount; ++slot) {
@@ -157,16 +157,16 @@ namespace eltanin::scenario {
             if (blocked)
                 continue;
             const integer mineral = static_cast<integer>(slot % 16);
-            const locality::geo::GeneralizedRecipe recipe{
-                .mix = locality::geo::GeneralizedRecipe::homogenous(mineral),
+            const geo::GeneralizedRecipe recipe{
+                .mix = geo::GeneralizedRecipe::homogenous(mineral),
                 .radius = diameter * 0.5f,
                 .lump = glm::clamp(0.40f + 0.25f * gauss(rng), 0.15f, 1.0f),
                 .seed = 4100 + slot,
                 .spotMeters = diameter,
                 .spotContrast = 0.0f,
             };
-            const float mass = sphereMass(diameter, locality::geo::Mineral::table()[static_cast<std::size_t>(mineral)].kgPerCubicMeter());
-            boulders.push_back(with<locality::geo::Boulder>::spawnGenerated(context, device, pose, recipe, orbitVelocity(pose.position), spinOmega(mass, spinK, unit(rng), rng)));
+            const float mass = sphereMass(diameter, geo::Mineral::table()[static_cast<std::size_t>(mineral)].kgPerCubicMeter());
+            boulders.push_back(with<geo::Boulder>::spawnGenerated(context, device, pose, recipe, orbitVelocity(pose.position), spinOmega(mass, spinK, unit(rng), rng)));
         }
     }
 

@@ -14,10 +14,11 @@
 
 #include <base/maybe.h>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
     using rmmr::HPB;
+    using locality::Thing;
     using rmmr::Pose;
     using rmmr::Pos;
     using rmmr::RGB;
@@ -35,10 +36,10 @@ namespace eltanin::locality::geo {
                 return;
             sphere = with<rmmr::resource::Assets>::find<rmmr::resource::geometry::Asset>(context, rmmr::resource::Unit::Name::from("rmmr", "sphere"));
             if (not sphere)
-                return (void)context.refuse("eltanin::locality::geo::Sun: sphere geometry missing");
+                return (void)context.refuse("eltanin::geo::Sun: sphere geometry missing");
             material = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "skySun"));
             if (not material)
-                return (void)context.refuse("eltanin::locality::geo::Sun: skySun material missing");
+                return (void)context.refuse("eltanin::geo::Sun: skySun material missing");
         }
 
     }
@@ -58,7 +59,7 @@ namespace eltanin::locality::geo {
     void Sun::place(Writing context, Look look) {
         bind(context);
         if (not sphere or not material)
-            return (void)context.refuse("eltanin::locality::geo::Sun::place: assets missing");
+            return (void)context.refuse("eltanin::geo::Sun::place: assets missing");
         const auto scene = with<Thing>::get_global(context).scene;
         if (not light) {
             light = with<rmmr::scene::Interface>::createLight(context, scene, Pose::from(Pos{0.0f, 0.0f, 0.0f}, look.heading), item<rmmr::scene::Light>{.kind = rmmr::scene::Light::Kind::directional, .color = look.color, .intensity = look.brightness, .range = 0.0f});
@@ -78,7 +79,7 @@ namespace eltanin::locality::geo {
             disk = with<rmmr::scene::Interface>::createMeshActor(context, scene, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), resolved, state);
         }
         if (not disk or not with<rmmr::scene::actor::MeshState>::exists(context, *disk))
-            return (void)context.refuse("eltanin::locality::geo::Sun::place: disk missing");
+            return (void)context.refuse("eltanin::geo::Sun::place: disk missing");
         auto meshState = with<rmmr::scene::actor::MeshState>::modify(context, *disk);
         meshState->albedo = look.color;
         meshState->scale = vec3{-Horizon::system, -Horizon::system, -Horizon::system};

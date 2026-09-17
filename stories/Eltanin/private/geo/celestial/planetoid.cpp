@@ -27,10 +27,11 @@
 #include <unordered_set>
 #include <vector>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
     using namespace rmmr;
+    using locality::Thing;
 
     using Mix = std::uint64_t;
 
@@ -713,13 +714,13 @@ namespace eltanin::locality::geo {
                 return;
             const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "atmosphere"));
             if (not material)
-                return (void)context.refuse("eltanin::locality::geo::Planetoid::place: atmosphere material missing");
+                return (void)context.refuse("eltanin::geo::Planetoid::place: atmosphere material missing");
             const auto sphere = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("Eltanin", "atmosphereSphere"));
             if (not sphere)
-                return (void)context.refuse("eltanin::locality::geo::Planetoid::place: atmosphereSphere geometry missing");
+                return (void)context.refuse("eltanin::geo::Planetoid::place: atmosphereSphere geometry missing");
             auto meshQuantum = with<scene::actor::Mesh>::composeOne(context, *sphere, *material);
             if (not meshQuantum)
-                return (void)context.refuse("eltanin::locality::geo::Planetoid::place: atmosphere mesh compose failed");
+                return (void)context.refuse("eltanin::geo::Planetoid::place: atmosphere mesh compose failed");
             auto meshState = with<scene::actor::MeshState>::defaults(state.look.atmosphere.day, state.look.atmosphere.seaDensity, vec3{1.0f});
             bindAtmosphereMesh(meshState, state);
             const auto scene = with<Thing>::get_global(context).scene;
@@ -736,12 +737,12 @@ namespace eltanin::locality::geo {
             const auto geometryId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", own)});
             with<resource::geometry::Asset>::extend(context, geometryId, resource::geometry::Asset::Quantum{});
             if (not with<resource::geometry::Asset>::install(context, geometryId, state.device, cpu)) {
-                context.refuse("eltanin::locality::geo::Planetoid: geometry install failed");
+                context.refuse("eltanin::geo::Planetoid: geometry install failed");
                 return false;
             }
             auto meshQuantum = with<scene::actor::Mesh>::composeWithTexpack(context, geometryId, state.material, state.crust);
             if (not meshQuantum) {
-                context.refuse("eltanin::locality::geo::Planetoid: mesh compose failed");
+                context.refuse("eltanin::geo::Planetoid: mesh compose failed");
                 return false;
             }
             auto meshState = with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f);
@@ -783,10 +784,10 @@ namespace eltanin::locality::geo {
     void Planetoid::place(Writing context, system::Device::Id device, Pose pose, Look look) {
         const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "planetoid"));
         if (not material)
-            return (void)context.refuse("eltanin::locality::geo::Planetoid::place: planetoid material missing");
+            return (void)context.refuse("eltanin::geo::Planetoid::place: planetoid material missing");
         const auto crust = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "facies"));
         if (not crust)
-            return (void)context.refuse("eltanin::locality::geo::Planetoid::place: crust pack missing");
+            return (void)context.refuse("eltanin::geo::Planetoid::place: crust pack missing");
         auto& landscape = with<Thing>::modify_global(context)->landscape;
         if (landscape) {
             for (const auto& entry : landscape->patches)

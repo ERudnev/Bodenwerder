@@ -954,11 +954,11 @@ namespace eltanin::phys::collision {
             return PlanetHit{.hit = false, .depth = 0.0f, .closest = dvec3{0.0, 0.0, 0.0}, .outward = dvec3{0.0, 1.0, 0.0}};
         }
 
-        auto overlapsPlanet(const locality::planet::Planet& planet, const Body::Quantum& planetBody, dvec3 worldPoint, double radius) -> bool {
+        auto overlapsPlanet(const planet::Planet& planet, const Body::Quantum& planetBody, dvec3 worldPoint, double radius) -> bool {
             return radius - planet.altitudeAt(planetBody, worldPoint) > 0.0;
         }
 
-        auto hitPlanet(const locality::planet::Planet& planet, const Body::Quantum& planetBody, dvec3 worldPoint, double radius) -> PlanetHit {
+        auto hitPlanet(const planet::Planet& planet, const Body::Quantum& planetBody, dvec3 worldPoint, double radius) -> PlanetHit {
             if (not overlapsPlanet(planet, planetBody, worldPoint, radius))
                 return missPlanet();
             const auto surface = planet.surfaceAt(planetBody, worldPoint);
@@ -972,7 +972,7 @@ namespace eltanin::phys::collision {
             return PlanetHit{.hit = true, .depth = float(depth), .closest = surface.position, .outward = outward};
         }
 
-        void contactSolidVsPlanet(State& state, integer candidate, const Occupant& solid, const locality::planet::Planet& planet, Body::Id well, const Body::Quantum& wellBody, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
+        void contactSolidVsPlanet(State& state, integer candidate, const Occupant& solid, const planet::Planet& planet, Body::Id well, const Body::Quantum& wellBody, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
             auto* body = bodies.items.find(solid.body);
             if (not body)
                 return;
@@ -991,7 +991,7 @@ namespace eltanin::phys::collision {
             pushContact(state, candidate, Endpoint{solid.type, solid.body, 0}, Endpoint{Endpoint::Type::planet, well, 0}, hit.closest, -hit.outward, hit.depth, dvec3{velocityOf(solid.body, solid.type, bodies, solids, crystals)}, wellVelocityAt(state, wellBody, hit.closest));
         }
 
-        void contactParticlesVsPlanet(State& state, integer candidate, const Occupant& particleSide, const locality::planet::Planet& planet, Body::Id well, const Body::Quantum& wellBody, fqsm::Direct<Crystal> crystals) {
+        void contactParticlesVsPlanet(State& state, integer candidate, const Occupant& particleSide, const planet::Planet& planet, Body::Id well, const Body::Quantum& wellBody, fqsm::Direct<Crystal> crystals) {
             auto* particleCrystal = crystals.items.find(particleSide.body);
             if (not particleCrystal or particleCrystal->particles.empty())
                 return;
@@ -1011,7 +1011,7 @@ namespace eltanin::phys::collision {
             }
         }
 
-        void collideOccupantWithPlanet(State& state, const Occupant& occupant, const locality::planet::Planet& planet, Body::Id well, const Body::Quantum& wellBody, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
+        void collideOccupantWithPlanet(State& state, const Occupant& occupant, const planet::Planet& planet, Body::Id well, const Body::Quantum& wellBody, fqsm::Direct<Body> bodies, fqsm::Direct<Solid> solids, fqsm::Direct<Crystal> crystals) {
             if (occupant.body == well)
                 return;
             if (state.activeResting.contains(pairKey(occupant.body, well))) {
@@ -1226,7 +1226,7 @@ namespace eltanin::phys::collision {
         census.contacts = static_cast<integer>(contacts.size());
     }
 
-    void State::collidePlanet(Stewarding context, locality::planet::Planet& planet) {
+    void State::collidePlanet(Stewarding context, planet::Planet& planet) {
         if (not well.id or not planet.well or *well.id != *planet.well)
             return;
         auto bodies = context.direct<Body>();

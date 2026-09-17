@@ -9,7 +9,7 @@
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::locality::planet {
+namespace eltanin::planet {
     struct Planet;
 }
 
@@ -28,7 +28,7 @@ namespace eltanin::phys {
 
     struct System {
         scene::Root::Id scene;
-        locality::planet::Planet* planet;
+        planet::Planet* planet;
 
         System(scene::Root::Id);
         void step(establish::Realm&, seconds dt);

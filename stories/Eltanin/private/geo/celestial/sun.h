@@ -4,7 +4,7 @@
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
 

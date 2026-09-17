@@ -1,6 +1,6 @@
 #include "scenarios/asterField.h"
 
-#include <eltanin/locality/geo/rock.q1.h>
+#include <eltanin/geo/rock.q1.h>
 #include <eltanin/locality/flash.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <eltanin/world.q1.h>
@@ -18,16 +18,16 @@ namespace eltanin::scenario {
         with<World>::placeCamera(context, Pose::from(Pos{0.0f, 35.0f, 100.0f}, HPB{0.0f, -20.0f, 0.0f}));
         // Temporary: flash spawn parked.
         //with<locality::Flash>::spawn(context, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f}, locality::Flash::Channels{.kinetic = 50.0f, .thermal = 0.0f, .brisance = 0.0f, });
-        const locality::geo::GeneralizedRecipe iceAsteroid{
-            .mix = locality::geo::GeneralizedRecipe::homogenous(0), // Ice
+        const geo::GeneralizedRecipe iceAsteroid{
+            .mix = geo::GeneralizedRecipe::homogenous(0), // Ice
             .radius = 50.0f,
             .lump = 0.05f, // high sphericity, not a perfect ball
             .seed = 77,
             .spotMeters = 16.0f,
             .spotContrast = 0.5f,
         };
-        const locality::geo::GeneralizedRecipe ironAsteroid{
-            .mix = locality::geo::GeneralizedRecipe::homogenous(6), // Iron
+        const geo::GeneralizedRecipe ironAsteroid{
+            .mix = geo::GeneralizedRecipe::homogenous(6), // Iron
             .radius = 16.0f, // ~¼ ice mass: iron ~8.5× denser
             .lump = 0.5f,
             .seed = 91,
@@ -44,10 +44,10 @@ namespace eltanin::scenario {
         const float mu = iceGravity.surfaceAcceleration * iceGravity.averageRadius * iceGravity.averageRadius + ironGravity.surfaceAcceleration * ironGravity.averageRadius * ironGravity.averageRadius;
         //const vec3 ironVel{0.0f, 0.0f, std::sqrt(mu * (2.0f / apoapsis - 1.0f / semiMajor))};
         const vec3 ironVel{0.0f, 0.0f, 0};
-        const auto asteroid = with<locality::geo::Rock>::spawnGenerated(context, device, Pose::from(iceOffset, HPB{0.0f, 0.0f, 0.0f}), iceAsteroid, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
-        with<phys::rigid::CelestialGravity>::extend(context, with<locality::geo::Rock>::get(context, asteroid).body, iceGravity);
-        const auto companion = with<locality::geo::Rock>::spawnGenerated(context, device, Pose::from(ironOffset, HPB{0.0f, 0.0f, 0.0f}), ironAsteroid, ironVel, vec3{0.0f, 0.0f, 0.0f});
-        with<phys::rigid::CelestialGravity>::extend(context, with<locality::geo::Rock>::get(context, companion).body, ironGravity);
+        const auto asteroid = with<geo::Rock>::spawnGenerated(context, device, Pose::from(iceOffset, HPB{0.0f, 0.0f, 0.0f}), iceAsteroid, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
+        with<phys::rigid::CelestialGravity>::extend(context, with<geo::Rock>::get(context, asteroid).body, iceGravity);
+        const auto companion = with<geo::Rock>::spawnGenerated(context, device, Pose::from(ironOffset, HPB{0.0f, 0.0f, 0.0f}), ironAsteroid, ironVel, vec3{0.0f, 0.0f, 0.0f});
+        with<phys::rigid::CelestialGravity>::extend(context, with<geo::Rock>::get(context, companion).body, ironGravity);
     }
 
 }

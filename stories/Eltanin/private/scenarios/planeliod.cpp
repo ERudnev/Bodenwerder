@@ -1,7 +1,7 @@
 #include "scenarios/planeliod.h"
 
 #include "geo/celestial/sun.h"
-#include <eltanin/locality/geo/minerals.q1.h>
+#include <eltanin/geo/minerals.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
@@ -24,17 +24,17 @@ namespace eltanin::scenario {
             mesh->patternScale = 1.0f;
             with<scene::Grid>::modify(context, gridId)->patternScale = 1.0f;
         }
-        locality::geo::Sun::place(context, locality::geo::Sun::sol());
+        geo::Sun::place(context, geo::Sun::sol());
     }
 
-    void Planeliod::placePlanet(Writing context, rmmr::system::Device::Id device, base::maybe<locality::planet::Planet>& planet) {
+    void Planeliod::placePlanet(Writing context, rmmr::system::Device::Id device, base::maybe<planet::Planet>& planet) {
         constexpr float radius = 34000.0f; // close to real Mars, divided by 100
-        using Mineral = locality::geo::Mineral::Kind;
-        auto nibble = [](Mineral channel, integer fill) -> locality::geo::Mineral::Mix {
-            return locality::geo::Mineral::Mix{static_cast<std::uint64_t>(fill)} << (static_cast<integer>(channel) * 4);
+        using Mineral = geo::Mineral::Kind;
+        auto nibble = [](Mineral channel, integer fill) -> geo::Mineral::Mix {
+            return geo::Mineral::Mix{static_cast<std::uint64_t>(fill)} << (static_cast<integer>(channel) * 4);
         };
         planet.emplace(
-            locality::planet::Passport{
+            planet::Passport{
                 .seed = 7,
                 .radius = radius,
                 .surfaceAcceleration = 3.71f,
@@ -56,7 +56,7 @@ namespace eltanin::scenario {
                     .day = RGB{0.78f, 0.52f, 0.36f},
                 },
             },
-            locality::planet::Planet::recommendedDetail(radius, 32.0f));
+            planet::Planet::recommendedDetail(radius, 32.0f));
         planet->place(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
     }
 

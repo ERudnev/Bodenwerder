@@ -1,6 +1,6 @@
 #include "geo/celestial/planet.h"
 #include "geo/celestial/horizon.h"
-#include "geo/details/generator.h"
+#include "geo/celestial/generator.h"
 #include "physics/settings.h"
 
 #include <eltanin/locality/thing.q1.h>
@@ -30,10 +30,11 @@
 #include <utility>
 #include <vector>
 
-namespace eltanin::locality::planet {
+namespace eltanin::planet {
 
     using namespace fqsm::api;
     using namespace rmmr;
+    using locality::Thing;
 
     namespace {
 
@@ -288,17 +289,17 @@ namespace eltanin::locality::planet {
                 return {};
             const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "atmosphere"));
             if (not material) {
-                context.refuse("eltanin::locality::planet::Planet::place: atmosphere material missing");
+                context.refuse("eltanin::planet::Planet::place: atmosphere material missing");
                 return {};
             }
             const auto sphere = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("Eltanin", "atmosphereSphere"));
             if (not sphere) {
-                context.refuse("eltanin::locality::planet::Planet::place: atmosphereSphere geometry missing");
+                context.refuse("eltanin::planet::Planet::place: atmosphereSphere geometry missing");
                 return {};
             }
             auto meshQuantum = with<scene::actor::Mesh>::composeOne(context, *sphere, *material);
             if (not meshQuantum) {
-                context.refuse("eltanin::locality::planet::Planet::place: atmosphere mesh compose failed");
+                context.refuse("eltanin::planet::Planet::place: atmosphere mesh compose failed");
                 return {};
             }
             auto meshState = with<scene::actor::MeshState>::defaults(passport.atmosphere.day, passport.atmosphere.seaDensity, vec3{1.0f});
@@ -369,24 +370,24 @@ namespace eltanin::locality::planet {
         , farNormal{farAlbedo.pack, vec3{0.0f, 1.0f, 0.0f}}
         , shell{}
         , atmosphere{} {
-        geo::generate(*this);
+        Generator::generate(*this);
     }
 
     void Planet::place(Writing context, system::Device::Id device, Pose pose) {
         pose.rotation = passport.orientation;
         const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "planet"));
         if (not material) {
-            context.refuse("eltanin::locality::planet::Planet::place: planet material missing");
+            context.refuse("eltanin::planet::Planet::place: planet material missing");
             return;
         }
         const auto grid = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("Eltanin", "patchGrid"));
         if (not grid) {
-            context.refuse("eltanin::locality::planet::Planet::place: patchGrid geometry missing");
+            context.refuse("eltanin::planet::Planet::place: patchGrid geometry missing");
             return;
         }
         const auto facies = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "facies"));
         if (not facies) {
-            context.refuse("eltanin::locality::planet::Planet::place: facies texpack missing");
+            context.refuse("eltanin::planet::Planet::place: facies texpack missing");
             return;
         }
         const auto manager = with<resource::Manager>::singleton(context);
@@ -400,14 +401,14 @@ namespace eltanin::locality::planet {
         with<resource::texture::Asset>::extend(context, heightId, resource::texture::Asset::Quantum{});
         const auto heightBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(heightPixels.data()), heightPixels.size() * sizeof(std::int16_t));
         if (not with<resource::texture::Asset>::install(context, heightId, device, resource::texture::Asset::Format::r16Snorm, resource::texture::Asset::Sampling::nearest, index2{.x = span, .y = span}, layers, 1, heightBytes)) {
-            context.refuse("eltanin::locality::planet::Planet::place: height atlas install failed");
+            context.refuse("eltanin::planet::Planet::place: height atlas install failed");
             return;
         }
         const auto coverId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-cover")});
         with<resource::texture::Asset>::extend(context, coverId, resource::texture::Asset::Quantum{});
         const auto coverBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(coverPixels.data()), coverPixels.size());
         if (not with<resource::texture::Asset>::install(context, coverId, device, resource::texture::Asset::Format::rg8, resource::texture::Asset::Sampling::nearest, index2{.x = span, .y = span}, layers, 1, coverBytes)) {
-            context.refuse("eltanin::locality::planet::Planet::place: cover atlas install failed");
+            context.refuse("eltanin::planet::Planet::place: cover atlas install failed");
             return;
         }
         const integer farSpan = farAlbedo.pack.edgeVertices();
@@ -415,20 +416,20 @@ namespace eltanin::locality::planet {
         with<resource::texture::Asset>::extend(context, farAlbedoId, resource::texture::Asset::Quantum{});
         const auto farBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(farPixels.data()), farPixels.size());
         if (not with<resource::texture::Asset>::install(context, farAlbedoId, device, resource::texture::Asset::Format::rgba8, resource::texture::Asset::Sampling::linear, index2{.x = farSpan, .y = farSpan}, layers, 1, farBytes)) {
-            context.refuse("eltanin::locality::planet::Planet::place: far albedo atlas install failed");
+            context.refuse("eltanin::planet::Planet::place: far albedo atlas install failed");
             return;
         }
         const auto farNormalId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-far-normal")});
         with<resource::texture::Asset>::extend(context, farNormalId, resource::texture::Asset::Quantum{});
         const auto farNormalBytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(farNormalPixels.data()), farNormalPixels.size());
         if (not with<resource::texture::Asset>::install(context, farNormalId, device, resource::texture::Asset::Format::rgba8, resource::texture::Asset::Sampling::linear, index2{.x = farSpan, .y = farSpan}, layers, 1, farNormalBytes)) {
-            context.refuse("eltanin::locality::planet::Planet::place: far normal atlas install failed");
+            context.refuse("eltanin::planet::Planet::place: far normal atlas install failed");
             return;
         }
         const auto patches = coarsePatches(heights.pack);
         auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *facies, heightId, coverId, farAlbedoId, farNormalId, icosaShell(), patches, passport.radius, passport.geology.amplitude, firstLodDistance(heights.pack, passport.radius), heights.pack.edgeVertices(), patchCells);
         if (not gridQuantum) {
-            context.refuse("eltanin::locality::planet::Planet::place: patch grid compose failed");
+            context.refuse("eltanin::planet::Planet::place: patch grid compose failed");
             return;
         }
         shell = with<scene::Interface>::createPatchGridActor(context, with<Thing>::get_global(context).scene, pose, std::move(*gridQuantum));

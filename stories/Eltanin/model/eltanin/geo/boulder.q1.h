@@ -1,7 +1,7 @@
 #pragma once
 
 #include <base/maybe.h>
-#include <eltanin/locality/geo/rock.q1.h>
+#include <eltanin/geo/rock.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -11,9 +11,10 @@
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
+    using locality::Thing;
 
     struct Boulder : Feature<Boulder, Thing> {
         struct Resources {

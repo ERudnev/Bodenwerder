@@ -69,7 +69,7 @@ namespace eltanin {
         base::maybe<View> world_view;
         base::maybe<rmmr::scene::Grid::Id> grid;
         base::maybe<phys::System> physics;
-        base::maybe<locality::planet::Planet> planet;
+        base::maybe<planet::Planet> planet;
         scenario::Planeliod scenario;
         Focus focus;
         base::maybe<Cameras> cameras;

@@ -4,8 +4,8 @@
 #include <eltanin/locality/flash.q1.h>
 #include <eltanin/locality/bullet.q1.h>
 #include <eltanin/locality/scrap.q1.h>
-#include <eltanin/locality/geo/rock.q1.h>
-#include <eltanin/locality/geo/boulder.q1.h>
+#include <eltanin/geo/rock.q1.h>
+#include <eltanin/geo/boulder.q1.h>
 #include <eltanin/decorations/dust.q1.h>
 
 namespace eltanin::locality {

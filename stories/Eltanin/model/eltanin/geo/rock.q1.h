@@ -1,7 +1,7 @@
 #pragma once
 
 #include <base/maybe.h>
-#include <eltanin/locality/geo/minerals.q1.h>
+#include <eltanin/geo/minerals.q1.h>
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
@@ -12,9 +12,10 @@
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::locality::geo {
+namespace eltanin::geo {
 
     using namespace fqsm::api;
+    using locality::Thing;
 
     struct Volume {
         index3 origin;
