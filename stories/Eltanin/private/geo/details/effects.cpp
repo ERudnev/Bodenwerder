@@ -2,6 +2,7 @@
 #include "geo/details/facies.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <numbers>
@@ -18,6 +19,34 @@ namespace eltanin::planet {
     using geo::IcosaPack;
 
     namespace {
+
+        constexpr integer spatialSpan = 32;
+
+        struct SpatialCell {
+            integer x;
+            integer y;
+            integer z;
+        };
+
+        struct ChannelPoint {
+            vec3 direction;
+            float width;
+            float depth;
+        };
+
+        struct DrainageSource {
+            vec3 direction;
+            float height;
+        };
+
+        auto spatialCell(vec3 direction) -> SpatialCell {
+            auto coordinate = [](float value) -> integer { return std::clamp(static_cast<integer>((value * 0.5f + 0.5f) * float(spatialSpan)), integer{0}, spatialSpan - 1); };
+            return SpatialCell{.x = coordinate(direction.x), .y = coordinate(direction.y), .z = coordinate(direction.z)};
+        }
+
+        auto spatialIndex(integer x, integer y, integer z) -> std::size_t {
+            return static_cast<std::size_t>((z * spatialSpan + y) * spatialSpan + x);
+        }
 
         auto hash32(integer x, integer y, integer z, integer salt) -> std::uint32_t {
             std::uint32_t value = std::uint32_t(x) * 73856093u ^ std::uint32_t(y) * 19349663u ^ std::uint32_t(z) * 83492791u ^ std::uint32_t(salt) * 2654435761u;
@@ -131,10 +160,11 @@ namespace eltanin::planet {
             if (glm::dot(dir, axis) < std::cos(radius * 2.8f))
                 return 0.0f;
             const vec3 warped = warpedDirection(dir, burst.seed, 2.4f, radius * 0.42f);
-            const float boundary = 1.0f + 0.22f * fractal(dir * 13.0f, burst.seed + 31, 4, 0.54f);
+            const float detailFrequency = std::min(std::max(13.0f, 1.8f / radius), 280.0f);
+            const float boundary = 1.0f + 0.22f * fractal(dir * detailFrequency, burst.seed + 31, 4, 0.54f);
             const float t = angular(warped, axis) / (radius * boundary);
-            const float coarse = fractal(dir * 9.0f, burst.seed + 47, 4, 0.55f);
-            const float ridges = ridgedFractal(dir * 26.0f, burst.seed + 71, 5);
+            const float coarse = fractal(dir * std::min(std::max(9.0f, 0.9f / radius), 180.0f), burst.seed + 47, 4, 0.55f);
+            const float ridges = ridgedFractal(dir * std::min(std::max(26.0f, 2.7f / radius), 360.0f), burst.seed + 71, 5);
             if (burst.lift < 0.0f) {
                 const float interior = 1.0f - glm::smoothstep(0.08f, 1.0f, t);
                 const float floorBreakup = interior * glm::smoothstep(0.18f, 0.86f, t) * coarse;
@@ -317,6 +347,142 @@ namespace eltanin::planet {
             for (integer index = 0; index < count; ++index)
                 relief.values[static_cast<std::size_t>(index)] = source.values[static_cast<std::size_t>(index)] + moved.values[static_cast<std::size_t>(index)];
             relief.stitch();
+        }
+    }
+
+    void Generator::applyDrainage(IcosaMap<float>& relief, const Drainage& params) {
+        if (params.sources <= 0 or params.steps <= 0 or params.stepLength <= 0.0f or params.width <= 0.0f or params.depth <= 0.0f)
+            return;
+        vector<DrainageSource> candidates;
+        candidates.reserve(static_cast<std::size_t>(params.sources * 24));
+        for (integer candidate = 0; candidate < params.sources * 24; ++candidate) {
+            const vec3 direction = sphereSite(candidate, params.seed);
+            if (std::abs(direction.y) < 0.82f)
+                candidates.push_back(DrainageSource{.direction = direction, .height = relief.at(direction)});
+        }
+        std::sort(candidates.begin(), candidates.end(), [](const DrainageSource& a, const DrainageSource& b) { return a.height > b.height; });
+        vector<vec3> sources;
+        vector<ChannelPoint> channels;
+        sources.reserve(static_cast<std::size_t>(params.sources));
+        channels.reserve(static_cast<std::size_t>(params.sources * params.steps));
+        for (const DrainageSource& candidate : candidates) {
+            if (static_cast<integer>(sources.size()) >= params.sources)
+                break;
+            bool separated = true;
+            for (vec3 source : sources) {
+                if (glm::dot(source, candidate.direction) > std::cos(0.16f)) {
+                    separated = false;
+                    break;
+                }
+            }
+            if (not separated)
+                continue;
+            sources.push_back(candidate.direction);
+            vec3 direction = candidate.direction;
+            vec3 momentum{0.0f};
+            for (integer stepIndex = 0; stepIndex < params.steps; ++stepIndex) {
+                vec3 tangentA = glm::cross(vec3{0.0f, 1.0f, 0.0f}, direction);
+                if (glm::dot(tangentA, tangentA) < 1.0e-8f)
+                    tangentA = glm::cross(vec3{1.0f, 0.0f, 0.0f}, direction);
+                tangentA = glm::normalize(tangentA);
+                const vec3 tangentB = glm::cross(direction, tangentA);
+                const float diagonal = params.stepLength * 0.70710678f;
+                const std::array<vec3, 8> probes{
+                    glm::normalize(direction + tangentA * params.stepLength), glm::normalize(direction - tangentA * params.stepLength),
+                    glm::normalize(direction + tangentB * params.stepLength), glm::normalize(direction - tangentB * params.stepLength),
+                    glm::normalize(direction + (tangentA + tangentB) * diagonal), glm::normalize(direction + (tangentA - tangentB) * diagonal),
+                    glm::normalize(direction + (-tangentA + tangentB) * diagonal), glm::normalize(direction - (tangentA + tangentB) * diagonal),
+                };
+                const float currentHeight = relief.at(direction);
+                float lowest = currentHeight;
+                vec3 next = direction;
+                for (vec3 probe : probes) {
+                    const float height = relief.at(probe);
+                    if (height < lowest) {
+                        lowest = height;
+                        next = probe;
+                    }
+                }
+                if (lowest >= currentHeight - 0.01f)
+                    break;
+                vec3 heading = glm::normalize(next - direction * glm::dot(next, direction));
+                if (glm::dot(momentum, momentum) > 1.0e-8f)
+                    heading = glm::normalize(heading * 0.76f + momentum * 0.24f);
+                const vec3 lateral = glm::normalize(glm::cross(direction, heading));
+                heading = glm::normalize(heading + lateral * signedNoise(direction * 37.0f, params.seed + stepIndex * 13 + static_cast<integer>(sources.size()) * 101) * 0.14f);
+                const float maturity = std::sqrt(float(stepIndex + 1) / float(params.steps));
+                channels.push_back(ChannelPoint{.direction = direction, .width = params.width * (0.62f + 0.76f * maturity), .depth = params.depth * (0.42f + 0.72f * maturity)});
+                momentum = heading;
+                direction = glm::normalize(direction + heading * params.stepLength);
+            }
+        }
+        vector<vector<integer>> bins(static_cast<std::size_t>(spatialSpan * spatialSpan * spatialSpan));
+        for (integer point = 0; point < static_cast<integer>(channels.size()); ++point) {
+            const SpatialCell cell = spatialCell(channels[static_cast<std::size_t>(point)].direction);
+            bins[spatialIndex(cell.x, cell.y, cell.z)].push_back(point);
+        }
+        const float reach = params.width * 3.5f;
+        for (integer index = 0; index < relief.pack.storedCount(); ++index) {
+            const auto slot = relief.pack.slotOf(index);
+            const vec3 direction = relief.pack.direction(slot);
+            const SpatialCell first = spatialCell(direction - vec3{reach});
+            const SpatialCell last = spatialCell(direction + vec3{reach});
+            float cut = 0.0f;
+            for (integer z = first.z; z <= last.z; ++z) {
+                for (integer y = first.y; y <= last.y; ++y) {
+                    for (integer x = first.x; x <= last.x; ++x) {
+                        for (integer point : bins[spatialIndex(x, y, z)]) {
+                            const ChannelPoint& channel = channels[static_cast<std::size_t>(point)];
+                            const float distance = std::sqrt(std::max(0.0f, 2.0f - 2.0f * glm::dot(direction, channel.direction)));
+                            const float trough = 1.0f - glm::smoothstep(channel.width * 0.22f, channel.width * 1.18f, distance);
+                            const float fracture = glm::clamp(0.82f + 0.24f * fractal(direction * 170.0f, params.seed + point * 7, 3, 0.55f), 0.55f, 1.12f);
+                            cut = std::max(cut, channel.depth * trough * trough * fracture);
+                        }
+                    }
+                }
+            }
+            relief.at(slot) -= cut;
+        }
+    }
+
+    void Generator::applyBombardment(IcosaMap<float>& relief, const Bombardment& params) {
+        if (params.count <= 0 or params.radiusMin <= 0.0f or params.radiusMax < params.radiusMin or params.depth <= 0.0f)
+            return;
+        vector<Burst> impacts;
+        impacts.reserve(static_cast<std::size_t>(params.count));
+        for (integer candidate = 0; candidate < params.count * 12 and static_cast<integer>(impacts.size()) < params.count; ++candidate) {
+            const vec3 axis = sphereSite(candidate, params.seed);
+            const float north = glm::smoothstep(-0.16f, 0.42f, axis.y);
+            const float density = glm::mix(1.0f, glm::clamp(params.northDensity, 0.0f, 1.0f), north);
+            if (hash01(candidate, params.seed, 401, 23) > density)
+                continue;
+            const float radiusRoll = std::pow(hash01(candidate, params.seed, 409, 29), 3.6f);
+            const float radius = glm::mix(params.radiusMin, params.radiusMax, radiusRoll);
+            const float size = std::sqrt(radius / params.radiusMax);
+            const float depth = params.depth * size * (0.38f + 0.62f * hash01(candidate, params.seed, 419, 31));
+            impacts.push_back(Burst{.axis = axis, .radius = radius, .lift = -depth, .rim = depth * 0.14f, .seed = params.seed + candidate * 43});
+        }
+        vector<vector<integer>> bins(static_cast<std::size_t>(spatialSpan * spatialSpan * spatialSpan));
+        for (integer impact = 0; impact < static_cast<integer>(impacts.size()); ++impact) {
+            const SpatialCell cell = spatialCell(impacts[static_cast<std::size_t>(impact)].axis);
+            bins[spatialIndex(cell.x, cell.y, cell.z)].push_back(impact);
+        }
+        const float reach = params.radiusMax * 2.8f;
+        for (integer index = 0; index < relief.pack.storedCount(); ++index) {
+            const auto slot = relief.pack.slotOf(index);
+            const vec3 direction = relief.pack.direction(slot);
+            const SpatialCell first = spatialCell(direction - vec3{reach});
+            const SpatialCell last = spatialCell(direction + vec3{reach});
+            float delta = 0.0f;
+            for (integer z = first.z; z <= last.z; ++z) {
+                for (integer y = first.y; y <= last.y; ++y) {
+                    for (integer x = first.x; x <= last.x; ++x) {
+                        for (integer impact : bins[spatialIndex(x, y, z)])
+                            delta += burstDelta(direction, impacts[static_cast<std::size_t>(impact)]);
+                    }
+                }
+            }
+            relief.at(slot) += delta;
         }
     }
 

@@ -115,6 +115,7 @@ namespace eltanin::planet {
         const vec3 ascrea = glm::normalize(tharsis + vec3{0.05f, 0.04f, 0.12f});
         const vec3 canyonCenter = glm::normalize(tharsis + vec3{0.35f, -0.08f, -0.22f});
         const vec3 canyonAlong = glm::normalize(glm::cross(vec3{0.0f, 1.0f, 0.0f}, canyonCenter));
+        const vec3 canyonAcross = glm::normalize(glm::cross(canyonCenter, canyonAlong));
         const vec3 hellas = glm::normalize(vec3{0.18f, -0.72f, 0.52f});
         const vec3 argyre = glm::normalize(vec3{-0.48f, -0.68f, 0.22f});
         const vec3 isidis = glm::normalize(vec3{0.58f, 0.04f, -0.52f});
@@ -139,8 +140,18 @@ namespace eltanin::planet {
             eruptionBurst(ascrea, 0.095f, amplitude * 0.17f, seed + 389),
         });
         applyRift(relief, Rift{.center = canyonCenter, .along = canyonAlong, .halfWidth = 0.04f + 0.02f * differentiation, .halfLength = 0.46f, .depth = amplitude * (0.24f + 0.22f * differentiation), .seed = seed + 401});
+        const vector<Rift> minorRifts{
+            Rift{.center = glm::normalize(canyonCenter - canyonAlong * 0.25f + canyonAcross * 0.08f), .along = glm::normalize(canyonAlong + canyonAcross * 0.26f), .halfWidth = 0.014f, .halfLength = 0.17f, .depth = amplitude * 0.095f, .seed = seed + 431},
+            Rift{.center = glm::normalize(canyonCenter + canyonAlong * 0.22f - canyonAcross * 0.07f), .along = glm::normalize(canyonAlong - canyonAcross * 0.31f), .halfWidth = 0.011f, .halfLength = 0.14f, .depth = amplitude * 0.075f, .seed = seed + 439},
+            Rift{.center = glm::normalize(canyonCenter + canyonAcross * 0.13f), .along = glm::normalize(canyonAlong + canyonAcross * 0.12f), .halfWidth = 0.009f, .halfLength = 0.11f, .depth = amplitude * 0.062f, .seed = seed + 443},
+            Rift{.center = glm::normalize(canyonCenter - canyonAcross * 0.15f - canyonAlong * 0.06f), .along = glm::normalize(canyonAlong - canyonAcross * 0.18f), .halfWidth = 0.008f, .halfLength = 0.09f, .depth = amplitude * 0.052f, .seed = seed + 449},
+        };
+        for (const Rift& rift : minorRifts)
+            applyRift(relief, rift);
+        applyDrainage(relief, Drainage{.seed = seed + 601, .sources = 10 + integer(12.0f * grain), .steps = 90, .stepLength = 0.0035f, .width = 0.0015f + 0.0005f * grain, .depth = amplitude * (0.014f + 0.008f * age)});
 
         applyBursts(relief, craterEpoch(seed, 41, 20 + integer(28.0f * grain), 0.014f, 0.045f, amplitude * 0.035f, amplitude * 0.075f, 1.0f, olympus, 0.92f));
+        applyBombardment(relief, Bombardment{.seed = seed + 701, .count = 1200 + integer(1000.0f * grain * age), .radiusMin = 0.0018f, .radiusMax = 0.010f, .depth = amplitude * (0.012f + 0.008f * grain), .northDensity = 0.34f + 0.18f * (1.0f - age)});
         applyErode(relief, Erode{.years = 0.32f + 0.28f * age, .strength = 0.28f, .north = 0.35f, .iterations = 3, .seed = seed + 457});
 
         const integer count = planet.heights.pack.storedCount();

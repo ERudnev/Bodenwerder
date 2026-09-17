@@ -46,6 +46,24 @@ namespace eltanin::planet {
             integer seed;
         };
 
+        struct Drainage {
+            integer seed;
+            integer sources;
+            integer steps;
+            float stepLength;
+            float width;
+            float depth;
+        };
+
+        struct Bombardment {
+            integer seed;
+            integer count;
+            float radiusMin;
+            float radiusMax;
+            float depth;
+            float northDensity;
+        };
+
         struct Rub {
             vec3 a;
             vec3 b;
@@ -93,6 +111,8 @@ namespace eltanin::planet {
         static void applySwell(geo::IcosaMap<float>&, const Swell&);
         static void applyRift(geo::IcosaMap<float>&, const Rift&);
         static void applyErode(geo::IcosaMap<float>&, const Erode&);
+        static void applyDrainage(geo::IcosaMap<float>&, const Drainage&);
+        static void applyBombardment(geo::IcosaMap<float>&, const Bombardment&);
         static void applyRub(geo::IcosaMap<float>&, const Rub&);
         static void applyWhisper(geo::IcosaMap<float>&, const Whisper&);
         static void paintCover(Planet&, const PaintCover&);
