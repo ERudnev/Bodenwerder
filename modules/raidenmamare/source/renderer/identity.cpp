@@ -26,7 +26,7 @@ namespace rmmr {
         destroy();
         color = makeTexture2D(targetSize, GL_R32UI, GL_NEAREST, GL_NEAREST);
         selected = makeTexture2D(targetSize, GL_R32UI, GL_NEAREST, GL_NEAREST);
-        depth = makeTexture2D(targetSize, GL_DEPTH_COMPONENT24, GL_NEAREST, GL_NEAREST);
+        depth = makeTexture2D(targetSize, GL_DEPTH_COMPONENT32F, GL_NEAREST, GL_NEAREST);
         allFbo = makeFramebuffer();
         attachColor(allFbo, 0, color);
         attachDepth(allFbo, depth);
@@ -44,9 +44,10 @@ namespace rmmr {
         glViewport(0, 0, wh.x, wh.y);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LEQUAL);
+        glDepthFunc(GL_GEQUAL);
         glDepthMask(GL_TRUE);
         const GLuint clearAlias[]{0u};
+        glClearDepth(0.0);
         glBindFramebuffer(GL_FRAMEBUFFER, selectedFbo);
         glClearBufferuiv(GL_COLOR, 0, clearAlias);
         glClear(GL_DEPTH_BUFFER_BIT);
@@ -61,7 +62,7 @@ namespace rmmr {
         glViewport(0, 0, wh.x, wh.y);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LEQUAL);
+        glDepthFunc(GL_GEQUAL);
         glDepthMask(GL_TRUE);
     }
 
@@ -72,12 +73,12 @@ namespace rmmr {
         glViewport(0, 0, wh.x, wh.y);
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LEQUAL);
+        glDepthFunc(GL_GEQUAL);
         glDepthMask(GL_TRUE);
     }
 
     void Identity::end(Writing world, system::Viewport::Id viewport) {
-        glDepthFunc(GL_LESS);
+        glDepthFunc(GL_GREATER);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         system::Viewport::Actions::activate(world, viewport);
     }

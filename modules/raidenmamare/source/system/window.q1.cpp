@@ -81,7 +81,18 @@ namespace rmmr::system {
                 throw std::runtime_error("system::Window::create: OpenGL 4.6 core context unavailable");
             }
 
+            using ClipControlFn = void(APIENTRY*)(GLenum, GLenum);
+            const auto clipControl = reinterpret_cast<ClipControlFn>(glfwGetProcAddress("glClipControl"));
+            if (not clipControl) {
+                glfwDestroyWindow(window);
+                throw std::runtime_error("system::Window::create: glClipControl missing");
+            }
+            constexpr GLenum clipOriginLowerLeft = 0x8CA1;
+            constexpr GLenum clipDepthZeroToOne = 0x935F;
+            clipControl(clipOriginLowerLeft, clipDepthZeroToOne);
             glEnable(GL_DEPTH_TEST);
+            glDepthFunc(GL_GREATER);
+            glClearDepth(0.0);
             glEnable(GL_CULL_FACE);
             glEnable(GL_DEBUG_OUTPUT);
             glDebugMessageCallback(debugMessage, nullptr);

@@ -4,6 +4,7 @@
 
 #include <cmath>
 
+#include <glm/ext/matrix_clip_space.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -20,12 +21,12 @@ namespace rmmr::scene {
             if (quantum.mode == Camera::Mode::perspective) {
                 const float aspect = std::max(aspect_ratio, 1.0e-6f);
                 const float fov_y = 2.0f * std::atan(std::tan(quantum.fov_x * 0.5f) / aspect);
-                return glm::perspective(fov_y, aspect, quantum.z_near, quantum.z_far);
+                return glm::perspectiveRH_ZO(fov_y, aspect, quantum.z_far, quantum.z_near); // reverse-Z, clip 0..1: near→1, far→0
             }
             if (quantum.mode == Camera::Mode::orthographic) {
                 const float half_w = 0.5f * static_cast<float>(quantum.ortho_size.x);
                 const float half_h = 0.5f * static_cast<float>(quantum.ortho_size.y);
-                return glm::ortho(-half_w, half_w, -half_h, half_h, quantum.z_near, quantum.z_far);
+                return glm::orthoRH_ZO(-half_w, half_w, -half_h, half_h, quantum.z_far, quantum.z_near);
             }
             _INCOMPLETE_;
         }

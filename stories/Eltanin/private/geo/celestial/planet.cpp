@@ -257,10 +257,20 @@ namespace eltanin::locality::planet {
                 if (not split)
                     break;
             }
+            paint(stepMap);
             vector<scene::actor::PatchGrid::Patch> patches;
             patches.reserve(tiles.size());
-            for (const auto& tile : tiles)
-                patches.push_back(scene::actor::PatchGrid::Patch{.diamond = tile.diamond, .originU = tile.originU, .originV = tile.originV, .step = tile.step, .stepNegU = tile.step, .stepPosU = tile.step, .stepNegV = tile.step, .stepPosV = tile.step});
+            for (const auto& tile : tiles) {
+                const integer bu0 = tile.originU / patchCells;
+                const integer bv0 = tile.originV / patchCells;
+                const integer mid = std::max(tile.step / 2, integer{0});
+                auto sample = [&](integer bu, integer bv) -> integer {
+                    if (bu < 0 or bv < 0 or bu >= buckets or bv >= buckets)
+                        return tile.step;
+                    return stepMap[static_cast<std::size_t>((tile.diamond * buckets + bv) * buckets + bu)];
+                };
+                patches.push_back(scene::actor::PatchGrid::Patch{.diamond = tile.diamond, .originU = tile.originU, .originV = tile.originV, .step = tile.step, .stepNegU = sample(bu0 - 1, bv0 + mid), .stepPosU = sample(bu0 + tile.step, bv0 + mid), .stepNegV = sample(bu0 + mid, bv0 - 1), .stepPosV = sample(bu0 + mid, bv0 + tile.step)});
+            }
             return patches;
         }
 

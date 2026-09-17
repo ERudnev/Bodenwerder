@@ -220,6 +220,8 @@ namespace rmmr {
         void begin_pass(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
             if (pass == renderer::Pass::shadow) {
                 resource::shadow::Runtime::Actions::bind(args.world, shadow->runtime);
+                glDepthFunc(GL_LESS);
+                glClearDepth(1.0);
                 resource::shadow::Runtime::Actions::clear(args.world, shadow->runtime);
                 glEnable(GL_POLYGON_OFFSET_FILL);
                 glPolygonOffset(2.0f, 8.0f);
@@ -244,6 +246,7 @@ namespace rmmr {
             if (pass == renderer::Pass::atmosphere) {
                 glDisable(GL_CULL_FACE);
                 glDisable(GL_DEPTH_TEST);
+                glEnable(GL_DEPTH_CLAMP);
                 glDepthMask(GL_FALSE);
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -255,6 +258,8 @@ namespace rmmr {
         void end_pass(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
             if (pass == renderer::Pass::shadow) {
                 glDisable(GL_POLYGON_OFFSET_FILL);
+                glDepthFunc(GL_GREATER);
+                glClearDepth(0.0);
                 resource::shadow::Runtime::Actions::unbind(args.world, shadow->runtime);
                 system::Viewport::Actions::activate(args.world, args.view.viewport);
                 return;
@@ -262,14 +267,15 @@ namespace rmmr {
             if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::environment || pass == renderer::Pass::gizmo) {
                 glDisable(GL_BLEND);
                 glDepthMask(GL_TRUE);
-                glDepthFunc(GL_LESS);
+                glDepthFunc(GL_GREATER);
             }
             if (pass == renderer::Pass::atmosphere) {
+                glDisable(GL_DEPTH_CLAMP);
                 glEnable(GL_CULL_FACE);
                 glEnable(GL_DEPTH_TEST);
                 glDisable(GL_BLEND);
                 glDepthMask(GL_TRUE);
-                glDepthFunc(GL_LESS);
+                glDepthFunc(GL_GREATER);
             }
         }
 
@@ -292,18 +298,18 @@ namespace rmmr {
                     blend = renderer::BlendMode::alpha;
                 } else {
                     if (not identityPass)
-                        glDepthFunc(GL_LESS);
+                        glDepthFunc(GL_GREATER);
                     return;
                 }
             }
             if (blend == renderer::BlendMode::additive) {
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_ONE, GL_ONE);
-                glDepthFunc(GL_LEQUAL);
+                glDepthFunc(GL_GEQUAL);
                 return;
             }
             if (not identityPass)
-                glDepthFunc(GL_LESS);
+                glDepthFunc(GL_GREATER);
             if (blend == renderer::BlendMode::alpha) {
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

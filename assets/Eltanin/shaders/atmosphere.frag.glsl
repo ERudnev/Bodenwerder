@@ -27,7 +27,6 @@ layout(binding = 1) uniform sampler2D u_sceneDepth;
 const int densitySamples = 4;
 const int sunSamples = 2;
 const float visualExtinction = 5.0e-8;
-const float kermanPower = 39.1;
 const vec3 scatterBeta = vec3(0.45, 1.00, 2.55);
 
 bool intersectSphere(vec3 origin, vec3 dir, vec3 center, float radius, out float tEnter, out float tExit) {
@@ -50,7 +49,7 @@ vec3 cameraWorld(mat4 invView) {
 vec3 pixelRayDir(vec3 camPos, mat4 invViewProj) {
     ivec2 size = textureSize(u_sceneDepth, 0);
     vec2 ndc = gl_FragCoord.xy / vec2(size) * 2.0 - 1.0;
-    vec4 worldFar = invViewProj * vec4(ndc, 1.0, 1.0);
+    vec4 worldFar = invViewProj * vec4(ndc, 0.0, 1.0);
     worldFar /= max(worldFar.w, 1.0e-6);
     return normalize(worldFar.xyz - camPos);
 }
@@ -59,21 +58,17 @@ float sceneDistance(vec3 camPos, mat4 invViewProj) {
     ivec2 size = textureSize(u_sceneDepth, 0);
     vec2 uv = gl_FragCoord.xy / vec2(size);
     float depth = texture(u_sceneDepth, uv).r;
-    vec4 world = invViewProj * vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+    vec4 world = invViewProj * vec4(uv * 2.0 - 1.0, depth, 1.0);
     world /= max(world.w, 1.0e-6);
     return length(world.xyz - camPos);
 }
 
-float densityAt(float altitude, float seaDensity, float kerman) {
-    if (seaDensity <= 0.0 || kerman <= 0.0)
-        return 0.0;
-    if (altitude <= 0.0 || altitude >= kerman * 3.0)
-        return 0.0;
-    float u = altitude / (kerman * 3.0);
-    return seaDensity * pow(1.0 - u * u, kermanPower);
+float densityAt(vec3 pos, vec3 planetCenter, float planetRadius, float scaleHeight, float seaDensity) {
+    float altitude = length(pos - planetCenter) - planetRadius;
+    return seaDensity * exp(-max(altitude, 0.0) / scaleHeight);
 }
 
-float opticalAlong(vec3 origin, vec3 dir, float tEnter, float tExit, vec3 planetCenter, float planetRadius, float seaDensity, float kerman) {
+float opticalAlong(vec3 origin, vec3 dir, float tEnter, float tExit, vec3 planetCenter, float planetRadius, float scaleHeight, float seaDensity) {
     tEnter = max(tEnter, 0.0);
     if (tExit <= tEnter)
         return 0.0;
@@ -81,8 +76,7 @@ float opticalAlong(vec3 origin, vec3 dir, float tEnter, float tExit, vec3 planet
     float optical = 0.0;
     for (int i = 0; i < sunSamples; ++i) {
         float t = tEnter + stepLength * (float(i) + 0.5);
-        float altitude = length(origin + dir * t - planetCenter) - planetRadius;
-        optical += densityAt(altitude, seaDensity, kerman);
+        optical += densityAt(origin + dir * t, planetCenter, planetRadius, scaleHeight, seaDensity);
     }
     return optical * stepLength * visualExtinction;
 }
@@ -100,8 +94,7 @@ void main() {
     float planetRadius = actorHeat.x;
     float atmosphereRadius = actorHeat.y;
     float seaDensity = actorAlbedoOpacity.a;
-    float kerman = actorLatticePattern.x;
-    if (atmosphereRadius <= planetRadius || seaDensity <= 0.0 || kerman <= 0.0)
+    if (atmosphereRadius <= planetRadius || seaDensity <= 0.0)
         discard;
 
     mat4 invView = inverse(passView);
@@ -109,8 +102,6 @@ void main() {
     vec3 camPos = cameraWorld(invView);
     vec3 rayDir = pixelRayDir(camPos, invViewProj);
     vec3 planetCenter = actorModel[3].xyz / max(actorModel[3].w, 1.0e-6);
-    if (length(camPos - planetCenter) < planetRadius)
-        discard;
 
     float tEnter;
     float tAtmoExit;
@@ -125,6 +116,7 @@ void main() {
         discard;
 
     float shell = max(atmosphereRadius - planetRadius, 1.0);
+    float scaleHeight = shell * 0.25;
     vec3 sunPos = passPrimaryLightPositionIntensity.xyz;
     bool pointSun = passPrimaryLightColorRange.w > 0.0;
     vec3 sunColor = passPrimaryLightColorRange.rgb * max(passPrimaryLightPositionIntensity.w, 0.0);
@@ -139,7 +131,7 @@ void main() {
     float sunLeave;
     float sunTau = 0.0;
     if (intersectSphere(posLit, sunDir, planetCenter, atmosphereRadius, sunEnter, sunLeave))
-        sunTau = opticalAlong(posLit, sunDir, sunEnter, sunLeave, planetCenter, planetRadius, seaDensity, kerman);
+        sunTau = opticalAlong(posLit, sunDir, sunEnter, sunLeave, planetCenter, planetRadius, scaleHeight, seaDensity);
     vec3 transSun = exp(-scatterBeta * sunTau) * shadow;
     vec3 scatter = vec3(0.0);
     float viewOptical = 0.0;
@@ -147,7 +139,7 @@ void main() {
     for (int i = 0; i < densitySamples; ++i) {
         float t = tEnter + stepLength * (float(i) + 0.5);
         vec3 pos = camPos + rayDir * t;
-        float rho = densityAt(length(pos - planetCenter) - planetRadius, seaDensity, kerman);
+        float rho = densityAt(pos, planetCenter, planetRadius, scaleHeight, seaDensity);
         vec3 transView = exp(-scatterBeta * viewOptical);
         float mu = dot(rayDir, sunDir);
         float phase = 0.75 + 0.75 * mu * mu;
@@ -157,14 +149,12 @@ void main() {
 
     float towardSun = max(dot(rayDir, sunDir), 0.0);
     float chord = tExit - tEnter;
-    float longPath = 1.0 - exp(-chord / (kerman * 33.0));
+    float longPath = 1.0 - exp(-chord / (scaleHeight * 33.0));
     vec3 toPlanet = planetCenter - camPos;
     float alongView = dot(toPlanet, rayDir);
     float impact = sqrt(max(dot(toPlanet, toPlanet) - alongView * alongView, 0.0));
-    float rimFade = 1.0 - smoothstep(atmosphereRadius - kerman * 3.7, atmosphereRadius, impact);
-    float litAlt = length(posLit - planetCenter) - planetRadius;
-    float litRho = densityAt(litAlt, seaDensity, kerman);
-    float aureole = pow(towardSun, mix(1850.0, 370.0, longPath)) * longPath * rimFade * (litRho / seaDensity);
+    float rimFade = 1.0 - smoothstep(atmosphereRadius - scaleHeight * 3.7, atmosphereRadius, impact);
+    float aureole = pow(towardSun, mix(1850.0, 370.0, longPath)) * longPath * rimFade;
     if (hitDist < actorLatticePattern.y)
         aureole = 0.0;
     scatter += transSun * sunColor * actorAlbedoOpacity.rgb * aureole * 0.55;

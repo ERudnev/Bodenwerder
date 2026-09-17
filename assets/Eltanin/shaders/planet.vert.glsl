@@ -64,6 +64,22 @@ vec3 pointAt(int diamond, ivec2 local) {
     return dir * (fieldRadius + texelFetch(u_heightMap, ivec3(local, diamond), 0).r * fieldAmplitude);
 }
 
+vec3 pointOnCoarseEdge(int diamond, ivec2 local, int along, int originAlong, int coarseStep, bool alongV) {
+    int delta = along - originAlong;
+    int baseAlong = originAlong + (delta / coarseStep) * coarseStep;
+    float t = float(along - baseAlong) / float(coarseStep);
+    ivec2 a = local;
+    ivec2 b = local;
+    if (alongV) {
+        a.y = baseAlong;
+        b.y = baseAlong + coarseStep;
+    } else {
+        a.x = baseAlong;
+        b.x = baseAlong + coarseStep;
+    }
+    return mix(pointAt(diamond, a), pointAt(diamond, b), t);
+}
+
 uint paletteAt(int diamond, ivec2 local) {
     local = clamp(local, ivec2(0), ivec2(fieldSpan - 1));
     vec4 cover = texelFetch(u_coverMap, ivec3(local, diamond), 0);
@@ -106,6 +122,14 @@ void main() {
     }
     int normalStep = max(selfStep, 1);
     vec3 objectPos = pointAt(tile.loc.x, local);
+    if (idx.x == 0 && tile.neighbors.x > selfStep)
+        objectPos = pointOnCoarseEdge(tile.loc.x, local, local.y, tile.loc.z, tile.neighbors.x, true);
+    else if (idx.x == fieldCells && tile.neighbors.y > selfStep)
+        objectPos = pointOnCoarseEdge(tile.loc.x, local, local.y, tile.loc.z, tile.neighbors.y, true);
+    if (idx.y == 0 && tile.neighbors.z > selfStep)
+        objectPos = pointOnCoarseEdge(tile.loc.x, local, local.x, tile.loc.y, tile.neighbors.z, false);
+    else if (idx.y == fieldCells && tile.neighbors.w > selfStep)
+        objectPos = pointOnCoarseEdge(tile.loc.x, local, local.x, tile.loc.y, tile.neighbors.w, false);
     vec3 tangentU = pointAt(tile.loc.x, local + ivec2(normalStep, 0)) - pointAt(tile.loc.x, local - ivec2(normalStep, 0));
     vec3 tangentV = pointAt(tile.loc.x, local + ivec2(0, normalStep)) - pointAt(tile.loc.x, local - ivec2(0, normalStep));
     vec3 normal = cross(tangentU, tangentV);

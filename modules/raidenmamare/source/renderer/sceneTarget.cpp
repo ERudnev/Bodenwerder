@@ -19,8 +19,8 @@ namespace rmmr {
         destroy();
         hdr = makeTexture2D(targetSize, GL_RGBA16F, GL_LINEAR, GL_LINEAR);
         bloomMask = makeTexture2D(targetSize, GL_R16F, GL_NEAREST, GL_NEAREST);
-        depth = makeTexture2D(targetSize, GL_DEPTH_COMPONENT24, GL_NEAREST, GL_NEAREST);
-        depthCopy = makeTexture2D(targetSize, GL_DEPTH_COMPONENT24, GL_NEAREST, GL_NEAREST);
+        depth = makeTexture2D(targetSize, GL_DEPTH_COMPONENT32F, GL_NEAREST, GL_NEAREST);
+        depthCopy = makeTexture2D(targetSize, GL_DEPTH_COMPONENT32F, GL_NEAREST, GL_NEAREST);
         glTextureParameteri(depthCopy, GL_TEXTURE_COMPARE_MODE, GL_NONE);
         fbo = makeFramebuffer();
         attachColor(fbo, 0, hdr);
@@ -61,7 +61,8 @@ namespace rmmr {
         bind(size);
         glEnable(GL_DEPTH_TEST);
         glDepthMask(GL_TRUE);
-        glDepthFunc(GL_LESS);
+        glDepthFunc(GL_GREATER);
+        glClearDepth(0.0);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         const float hdrClear[]{clearColor.x, clearColor.y, clearColor.z, clearColor.w};
         const float maskClear[]{0.0f, 0.0f, 0.0f, 0.0f};

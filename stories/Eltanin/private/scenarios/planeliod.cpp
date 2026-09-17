@@ -50,9 +50,9 @@ namespace eltanin::scenario {
                     .amplitude = 2000.0f,
                 },
                 .atmosphere = {
-                    .outerRadius = radius + 350.0f,
-                    .seaDensity = 0.03f,
-                    .kerman = 800.0f,
+                    .outerRadius = radius + 1500.0f,
+                    .seaDensity = 300.0f,
+                    .kerman = 500.0f,
                     .day = RGB{0.78f, 0.52f, 0.36f},
                 },
             },
