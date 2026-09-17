@@ -165,11 +165,11 @@ namespace eltanin::planet {
         };
 
         auto samplePlate(vec3 direction, const Generator::PlateField& params) -> PlateSample {
-            const vec3 warped = warpedDirection(direction, params.seed, 1.65f, 0.16f);
+            const vec3 warped = warpedDirection(direction, params.seed, 2.6f, 0.34f);
             PlateSample sample{.first = 0, .second = 0, .firstScore = -2.0f, .secondScore = -2.0f, .normal = vec3{1.0f, 0.0f, 0.0f}, .along = vec3{0.0f, 0.0f, 1.0f}, .divergence = 0.0f, .shear = 0.0f};
             for (integer index = 0; index < static_cast<integer>(params.sites.size()); ++index) {
                 const auto& site = params.sites[static_cast<std::size_t>(index)];
-                const float score = glm::dot(warped, site.center) + 0.028f * fractal(direction * (3.1f + float(index) * 0.17f), params.seed + 101 + index * 67, 4, 0.54f);
+                const float score = glm::dot(warped, site.center) + 0.09f * fractal(direction * 3.6f, params.seed + 101 + index * 67, 5, 0.56f) + 0.045f * fractal(direction * 10.0f, params.seed + 131 + index * 67, 4, 0.54f) + 0.018f * fractal(direction * 24.0f, params.seed + 157 + index * 67, 3, 0.52f);
                 if (score > sample.firstScore) {
                     sample.second = sample.first;
                     sample.secondScore = sample.firstScore;
@@ -225,9 +225,18 @@ namespace eltanin::planet {
                 const float apron = burst.rim * 0.26f * glm::clamp(1.0f - (t - 1.0f) / 0.72f, 0.0f, 1.0f) * glm::smoothstep(0.92f, 1.06f, t) * ridges;
                 return burst.lift * std::pow(interior, 0.72f) + std::abs(burst.lift) * 0.12f * floorBreakup + brokenRim + apron;
             }
-            const float shield = std::max(std::exp(-2.3f * t * t) - std::exp(-2.3f * 2.25f), 0.0f);
+            vec3 tangent = glm::cross(axis, vec3{0.0f, 1.0f, 0.0f});
+            if (glm::dot(tangent, tangent) < 1.0e-8f)
+                tangent = glm::cross(axis, vec3{1.0f, 0.0f, 0.0f});
+            tangent = glm::normalize(tangent);
+            const vec3 across = glm::normalize(glm::cross(axis, tangent));
+            const float azimuth = std::atan2(glm::dot(warped, tangent), glm::dot(warped, across));
+            const float lobe = 0.62f + 0.48f * fractal(vec3{std::cos(azimuth) * 2.2f, std::sin(azimuth) * 2.2f, 0.41f}, burst.seed + 91, 4, 0.56f) + 0.22f * fractal(vec3{std::cos(azimuth * 3.0f), std::sin(azimuth * 3.0f), 1.17f}, burst.seed + 97, 3, 0.52f);
+            const float apron = glm::clamp(0.55f + 0.70f * ridges, 0.28f, 1.35f);
+            const float radial = t / std::max(lobe * apron, 0.18f);
+            const float shield = std::max(std::exp(-2.05f * radial * radial) - std::exp(-2.05f * 2.35f), 0.0f);
             const float massif = glm::clamp(0.76f + 0.22f * coarse + 0.20f * (ridges - 0.45f), 0.42f, 1.30f);
-            const float ravines = std::pow(glm::clamp(ridges, 0.0f, 1.0f), 3.0f) * glm::smoothstep(0.12f, 0.82f, t) * glm::clamp(1.15f - t, 0.0f, 1.0f);
+            const float ravines = std::pow(glm::clamp(ridges, 0.0f, 1.0f), 3.0f) * glm::smoothstep(0.12f, 0.82f, radial) * glm::clamp(1.15f - radial, 0.0f, 1.0f);
             const float caldera = std::exp(-std::pow(t / 0.13f, 4.0f)) * (0.11f + 0.05f * coarse);
             return burst.lift * (shield * massif - 0.16f * ravines - caldera);
         }
@@ -291,7 +300,7 @@ namespace eltanin::planet {
             const auto slot = formation.boundary.pack.slotOf(index);
             const vec3 direction = formation.boundary.pack.direction(slot);
             const PlateSample sample = samplePlate(direction, params);
-            const float gap = sample.firstScore - sample.secondScore;
+            const float gap = (sample.firstScore - sample.secondScore) + width * (0.18f * fractal(direction * 8.5f, params.seed + 401, 5, 0.55f) + 0.08f * fractal(direction * 21.0f, params.seed + 419, 4, 0.52f));
             const float edge = params.sites.size() > 1 ? 1.0f - glm::smoothstep(width * 0.12f, width, gap) : 0.0f;
             const auto& first = params.sites[static_cast<std::size_t>(sample.first)];
             const auto& second = params.sites[static_cast<std::size_t>(sample.second)];
@@ -311,7 +320,7 @@ namespace eltanin::planet {
             const auto slot = formation.relief.pack.slotOf(index);
             const vec3 direction = formation.relief.pack.direction(slot);
             const PlateSample sample = samplePlate(direction, params);
-            const float gap = sample.firstScore - sample.secondScore;
+            const float gap = (sample.firstScore - sample.secondScore) + width * (0.18f * fractal(direction * 8.5f, params.seed + 401, 5, 0.55f) + 0.08f * fractal(direction * 21.0f, params.seed + 419, 4, 0.52f));
             const float edge = params.sites.size() > 1 ? 1.0f - glm::smoothstep(width * 0.12f, width, gap) : 0.0f;
             const float interior = glm::smoothstep(0.0f, width, gap);
             const auto& first = params.sites[static_cast<std::size_t>(sample.first)];
@@ -378,6 +387,34 @@ namespace eltanin::planet {
         formation.exogenic.stitch();
     }
 
+    void Generator::stampVolcanic(IcosaMap<float>& field, vec3 axis, float radius, float amount, integer seed) {
+        axis = glm::normalize(axis);
+        const float safeRadius = std::max(radius, 1.0e-4f);
+        vec3 tangent = glm::cross(axis, vec3{0.0f, 1.0f, 0.0f});
+        if (glm::dot(tangent, tangent) < 1.0e-8f)
+            tangent = glm::cross(axis, vec3{1.0f, 0.0f, 0.0f});
+        tangent = glm::normalize(tangent);
+        const vec3 across = glm::normalize(glm::cross(axis, tangent));
+        for (integer index = 0; index < field.pack.storedCount(); ++index) {
+            const auto slot = field.pack.slotOf(index);
+            const vec3 direction = field.pack.direction(slot);
+            if (glm::dot(direction, axis) < std::cos(safeRadius * 3.2f))
+                continue;
+            const vec3 warped = warpedDirection(direction, seed, 2.7f, safeRadius * 0.55f);
+            const float azimuth = std::atan2(glm::dot(warped, tangent), glm::dot(warped, across));
+            const float reach = angular(warped, axis) / safeRadius;
+            const float lobe = 0.42f + 0.72f * (0.5f + 0.5f * fractal(vec3{std::cos(azimuth) * 2.4f, std::sin(azimuth) * 2.4f, 0.51f}, seed + 11, 5, 0.56f)) + 0.28f * fractal(vec3{std::cos(azimuth * 5.0f), std::sin(azimuth * 5.0f), 1.23f}, seed + 19, 3, 0.52f);
+            const float fingers = ridgedFractal(warped * 7.5f, seed + 29, 5);
+            const float apron = glm::clamp(lobe * (0.55f + 0.70f * fingers), 0.22f, 1.55f);
+            const float mask = 1.0f - glm::smoothstep(0.18f, 1.12f, reach / apron);
+            if (mask <= 1.0e-4f)
+                continue;
+            const float core = std::exp(-2.8f * std::pow(reach / std::max(lobe, 0.18f), 2.0f));
+            field.at(slot) = std::max(field.at(slot), amount * glm::max(core, mask * (0.22f + 0.78f * fingers)));
+        }
+        field.stitch();
+    }
+
     void Generator::applyBurst(IcosaMap<float>& relief, const Burst& params) {
         applyBursts(relief, vector<Burst>{params});
     }
@@ -401,8 +438,15 @@ namespace eltanin::planet {
         for (integer index = 0; index < count; ++index) {
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
-            const vec3 warped = warpedDirection(dir, params.seed, 1.8f, params.sigma * 0.20f);
-            const float base = gaussian(angular(warped, params.axis), params.sigma);
+            const vec3 warped = warpedDirection(dir, params.seed, 2.2f, params.sigma * 0.42f);
+            vec3 tangent = glm::cross(glm::normalize(params.axis), vec3{0.0f, 1.0f, 0.0f});
+            if (glm::dot(tangent, tangent) < 1.0e-8f)
+                tangent = glm::cross(glm::normalize(params.axis), vec3{1.0f, 0.0f, 0.0f});
+            tangent = glm::normalize(tangent);
+            const vec3 across = glm::normalize(glm::cross(glm::normalize(params.axis), tangent));
+            const float azimuth = std::atan2(glm::dot(warped, tangent), glm::dot(warped, across));
+            const float lobe = 0.70f + 0.48f * fractal(vec3{std::cos(azimuth) * 1.8f, std::sin(azimuth) * 1.8f, 0.33f}, params.seed + 19, 4, 0.56f) + 0.18f * ridgedFractal(warped * 6.5f, params.seed + 29, 4);
+            const float base = gaussian(angular(warped, params.axis), params.sigma * lobe);
             const float massif = 0.68f * fractal(dir * 4.2f, params.seed + 37, 5, 0.56f) + 0.32f * (ridgedFractal(dir * 9.0f, params.seed + 53, 5) - 0.45f);
             relief.at(slot) += params.amplitude * base * glm::clamp(0.88f + 0.34f * massif, 0.55f, 1.25f);
         }
@@ -413,28 +457,38 @@ namespace eltanin::planet {
         const vec3 center = glm::normalize(params.center);
         const vec3 along = glm::normalize(params.along - center * glm::dot(params.along, center));
         const vec3 across = glm::normalize(glm::cross(center, along));
+        const float halfLength = std::max(params.halfLength, 1.0e-4f);
+        const float halfWidth = std::max(params.halfWidth, 1.0e-4f);
         for (integer index = 0; index < count; ++index) {
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
-            const float x = std::atan2(glm::dot(dir, along), glm::dot(dir, center));
-            const float y = std::asin(glm::clamp(glm::dot(dir, across), -1.0f, 1.0f));
-            if (std::abs(x) > params.halfLength * 1.25f or std::abs(y) > params.halfWidth * 4.0f)
+            const float x0 = std::atan2(glm::dot(dir, along), glm::dot(dir, center));
+            const float y0 = std::asin(glm::clamp(glm::dot(dir, across), -1.0f, 1.0f));
+            if (std::abs(x0) > halfLength * 1.55f or std::abs(y0) > halfWidth * 7.5f)
                 continue;
-            const vec3 pathPoint{x * 7.0f / std::max(params.halfLength, 1.0e-4f), 0.37f, 1.91f};
-            const float meander = params.halfWidth * 0.82f * fractal(pathPoint, params.seed, 5, 0.58f);
-            const float widthNoise = 0.72f + 0.58f * (0.5f + 0.5f * fractal(pathPoint * 1.7f, params.seed + 29, 4, 0.55f));
-            const float width = params.halfWidth * widthNoise;
-            const float raggedEnd = params.halfLength * (0.82f + 0.24f * fractal(dir * 8.0f, params.seed + 43, 4, 0.53f));
-            const float reach = 1.0f - glm::smoothstep(raggedEnd * 0.72f, raggedEnd, std::abs(x));
-            const float mainDistance = std::abs(y - meander);
-            const float mainTrough = 1.0f - glm::smoothstep(width * 0.42f, width * 1.18f, mainDistance);
-            const float branchGate = glm::smoothstep(-params.halfLength * 0.20f, params.halfLength * 0.18f, x) * (1.0f - glm::smoothstep(params.halfLength * 0.62f, params.halfLength * 0.92f, x));
-            const float branchCenter = meander + width * (1.35f + 0.75f * fractal(pathPoint * 0.8f, params.seed + 61, 3, 0.56f)) * branchGate;
-            const float branchTrough = (1.0f - glm::smoothstep(width * 0.28f, width * 0.72f, std::abs(y - branchCenter))) * branchGate;
-            const float fracture = glm::clamp(0.78f + 0.30f * fractal(dir * 31.0f, params.seed + 83, 4, 0.57f), 0.42f, 1.18f);
-            const float trough = std::max(mainTrough, branchTrough * 0.68f);
+            const float alongCoord = x0 / halfLength;
+            const vec3 pathLow{alongCoord * 2.2f, 0.21f, 1.07f};
+            const vec3 pathMid{alongCoord * 8.4f, 0.73f, 2.41f};
+            const vec3 pathHigh{alongCoord * 21.0f, 1.19f, 3.83f};
+            const float fold = halfLength * 0.22f * fractal(pathLow, params.seed + 7, 4, 0.62f) + halfLength * 0.08f * fractal(pathMid, params.seed + 13, 3, 0.55f);
+            const float x = x0 + fold;
+            const vec3 pathNow{x / halfLength * 8.4f, 0.73f, 2.41f};
+            const float meander = halfWidth * (1.55f * fractal(pathLow, params.seed, 5, 0.62f) + 0.95f * fractal(pathNow, params.seed + 17, 5, 0.58f) + 0.32f * fractal(pathHigh, params.seed + 23, 4, 0.52f));
+            const float widthNoise = 0.58f + 0.72f * (0.5f + 0.5f * fractal(pathNow * 1.35f, params.seed + 29, 5, 0.55f));
+            const float width = halfWidth * widthNoise;
+            const float raggedEnd = halfLength * (0.78f + 0.28f * fractal(dir * 8.0f, params.seed + 43, 4, 0.53f));
+            const float reach = 1.0f - glm::smoothstep(raggedEnd * 0.62f, raggedEnd, std::abs(x));
+            const float mainDistance = std::abs(y0 - meander);
+            const float mainTrough = 1.0f - glm::smoothstep(width * 0.38f, width * 1.22f, mainDistance);
+            const float branchGate = glm::smoothstep(-halfLength * 0.28f, halfLength * 0.08f, x) * (1.0f - glm::smoothstep(halfLength * 0.55f, halfLength * 0.92f, x)) * glm::smoothstep(0.12f, 0.42f, fractal(pathLow * 0.9f, params.seed + 61, 3, 0.56f));
+            const float branchCenter = meander + width * (1.15f + 1.35f * fractal(pathNow * 0.7f, params.seed + 67, 4, 0.56f)) * (fractal(pathLow, params.seed + 71, 3, 0.6f) >= 0.0f ? 1.0f : -1.0f);
+            const float branchTrough = (1.0f - glm::smoothstep(width * 0.24f, width * 0.78f, std::abs(y0 - branchCenter))) * branchGate;
+            const float fracture = glm::clamp(0.72f + 0.38f * fractal(dir * 31.0f, params.seed + 83, 4, 0.57f), 0.38f, 1.22f);
+            const float trough = std::max(mainTrough, branchTrough * 0.72f);
+            const float longDepth = glm::clamp(0.38f + 0.62f * (0.5f + 0.5f * fractal(vec3{alongCoord * 1.55f, 0.47f, 2.13f}, params.seed + 97, 4, 0.66f)), 0.16f, 1.28f);
+            const float sills = 0.78f + 0.22f * fractal(vec3{alongCoord * 6.2f, 1.31f, 0.91f}, params.seed + 103, 3, 0.55f);
             const float shoulder = std::exp(-std::pow((mainDistance - width * 1.25f) / std::max(width * 0.42f, 1.0e-4f), 2.0f));
-            relief.at(slot) += reach * (-params.depth * std::pow(trough, 0.58f) * fracture + params.depth * 0.08f * shoulder);
+            relief.at(slot) += reach * (-params.depth * longDepth * sills * std::pow(trough, 0.58f) * fracture + params.depth * 0.08f * shoulder);
         }
     }
 
@@ -776,11 +830,13 @@ namespace eltanin::planet {
                 surface = Facies::ClayPan;
             if ((carbonaceous > pyroxene + feldspar and volcanic < 0.2f) or (carbonaceous > 0 and provinceTexture > 0.48f))
                 surface = geology.climate.temperature < 220.0f ? Facies::Tholin : Facies::Chondrite;
-            if (volcanic > 0.18f) {
-                surface = age < 0.32f ? Facies::Pahoehoe : volcanic > 0.68f ? Facies::Scoria : Facies::RegolithMafic;
+            if (volcanic > 0.28f) {
+                surface = age < 0.32f ? Facies::Pahoehoe : volcanic > 0.62f ? Facies::Scoria : Facies::RegolithMafic;
                 below = geology.mantle.heat > 0.72f and olivine > pyroxene ? Facies::Komatiite : Facies::Basalt;
                 if (sulfurDioxide + sulfides > 8 and volcanic > 0.52f)
                     surface = geology.climate.temperature < 215.0f ? Facies::SO2Frost : Facies::SulfurPlains;
+            } else if (volcanic > 0.12f) {
+                below = Facies::Basalt;
             }
             if (fracture > 0.42f and slope > 0.025f)
                 below = geology.crust.differentiation > 0.45f and olivine > 0 ? Facies::Peridotite : Facies::Gabbro;

@@ -102,19 +102,6 @@ namespace eltanin::planet {
             return hit;
         }
 
-        void markField(geo::IcosaMap<float>& field, vec3 axis, float radius, float amount) {
-            const float safeRadius = std::max(radius, 1.0e-4f);
-            axis = glm::normalize(axis);
-            for (integer index = 0; index < field.pack.storedCount(); ++index) {
-                const auto slot = field.pack.slotOf(index);
-                const float angle = std::acos(glm::clamp(glm::dot(field.pack.direction(slot), axis), -1.0f, 1.0f));
-                if (angle > safeRadius * 2.4f)
-                    continue;
-                const float t = angle / safeRadius;
-                field.at(slot) = std::max(field.at(slot), amount * std::exp(-1.8f * t * t));
-            }
-        }
-
     }
 
     auto Generator::derive(const Passport& passport) -> Geology {
@@ -245,7 +232,6 @@ namespace eltanin::planet {
             usedBoundaries.push_back(candidate.center);
             const float scale = glm::clamp(std::abs(candidate.divergence) * 0.75f + candidate.shear * 0.45f + geology.crust.fragmentation * 0.35f, 0.18f, 1.0f);
             applyRift(formation.relief, Rift{.center = candidate.center, .along = candidate.along, .halfWidth = 0.012f + 0.030f * scale, .halfLength = 0.24f + 0.34f * scale, .depth = amplitude * (0.12f + 0.24f * scale), .seed = seed + 1201 + static_cast<integer>(usedBoundaries.size()) * 31});
-            markField(formation.fracture, candidate.center, 0.24f + 0.30f * scale, 0.65f + 0.35f * scale);
         }
 
         const integer basinCount = std::clamp(static_cast<integer>(std::lround(geology.bombardment.largeBodyTail * 5.0f)), integer{0}, integer{6});
@@ -276,7 +262,7 @@ namespace eltanin::planet {
                 const float travel = geology.crust.mobility * 0.06f * float(volcano);
                 const vec3 vent = glm::normalize(axis + tangent * travel);
                 applyBurst(formation.relief, eruptionBurst(vent, radius * (1.0f - 0.11f * float(volcano)), amplitude * (0.28f + 0.48f * power) / (1.0f + 0.24f * float(volcano)), seed + 3109 + plume * 101 + volcano * 17));
-                markField(formation.volcanic, vent, radius * 1.8f, power);
+                stampVolcanic(formation.volcanic, vent, radius * 1.15f, power, seed + 3203 + plume * 101 + volcano * 17);
             }
         }
 

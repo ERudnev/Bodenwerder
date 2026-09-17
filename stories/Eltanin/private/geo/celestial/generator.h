@@ -202,6 +202,7 @@ namespace eltanin::planet {
         static void form(Planet&, const Geology&);
         static void applyPlateField(Formation&, const PlateField&);
         static void applyBasin(Formation&, const Basin&);
+        static void stampVolcanic(geo::IcosaMap<float>&, vec3 axis, float radius, float amount, integer seed);
         static void applyProvinces(geo::IcosaMap<float>&, const Provinces&);
         static void applyBurst(geo::IcosaMap<float>&, const Burst&);
         static void applyBursts(geo::IcosaMap<float>&, const vector<Burst>&);
