@@ -399,11 +399,12 @@ namespace eltanin::phys {
                         auto root = with<rmmr::scene::Root>::modify(context, system.scene);
                         if (system.planet and system.planet->well and with<Body>::exists(context, *system.planet->well)) {
                             const auto& passport = system.planet->passport;
+                            const auto& runtime = system.planet->runtime;
                             auto planetBody = with<Body>::modify(context, *system.planet->well);
                             ImGui::Text("Radius %.0f m", passport.radius);
-                            ImGui::Text("Surface g %.3f m/s²", passport.surfaceAcceleration);
-                            ImGui::Text("Air MSL %.0f g/m³", passport.atmosphere.seaDensity);
-                            ImGui::Text("Kerman %.0f m", passport.atmosphere.kerman);
+                            ImGui::Text("Surface g %.3f m/s²", runtime.surfaceAcceleration);
+                            ImGui::Text("Air MSL %.0f g/m³", runtime.atmosphere.seaDensity);
+                            ImGui::Text("Kerman %.0f m", runtime.atmosphere.kerman);
                             float spinDeg = glm::degrees(system.planet->spin(*planetBody));
                             if (ImGui::DragFloat("Spin", &spinDeg, 0.5f, 0.0f, 0.0f, "%.1f°")) {
                                 system.planet->spin(*planetBody, glm::radians(spinDeg));

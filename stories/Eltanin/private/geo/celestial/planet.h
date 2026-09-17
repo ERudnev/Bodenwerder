@@ -4,6 +4,7 @@
 
 #include <base/maybe.h>
 #include <eltanin/geo/minerals.q1.h>
+#include <eltanin/geo/volatiles.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
@@ -20,25 +21,21 @@ namespace eltanin::planet {
 
     struct Passport {
         integer seed;
+        float ageGyr;
+        double mass;
         float radius;
-        float surfaceAcceleration;
-        quat orientation; // idle attitude in solar-system space; local +Y is the spin pole
-        float spinPeriod; // seconds per revolution; 0 = no automatic spin
-        struct Geology {
-            geo::Mineral::Mix mix;
-            float differentiation; // 0 unsorted boulder, 1 heavies sank to core
-            float surfaceAge; // 0 fresh melt, 1 ancient crust
-            float cohesion; // 0 crumbling, 1 fused monolith
-            float grain;
-            float tectonic;
-            float amplitude; // metres from sea, both ways; ±int16 full scale; collision sphere is radius + amplitude
-        } geology;
-        struct Atmosphere {
-            float outerRadius;
-            float seaDensity;
-            float kerman;
-            rmmr::RGB day;
-        } atmosphere;
+        geo::Mineral::Mix bulk;
+        geo::Volatile::Mix volatiles;
+        struct {
+            vec3 axis;
+            float period;
+        } spin;
+        struct {
+            float stellarFlux; // W/m², orbit-mean
+            float eccentricity;
+            float tidalHeat; // W/m² deposited inside the body
+            float debrisFlux; // normalized surviving impactor population
+        } environment;
     };
 
     struct Planet {
@@ -55,7 +52,19 @@ namespace eltanin::planet {
             integer tessellation;
         };
 
+        struct Runtime {
+            float surfaceAcceleration;
+            float reliefAmplitude;
+            struct {
+                float outerRadius;
+                float seaDensity;
+                float kerman;
+                rmmr::RGB day;
+            } atmosphere;
+        };
+
         const Passport passport;
+        Runtime runtime;
         dvec3 spinOmega; // world angular velocity; the planet is translationally fixed
         base::maybe<phys::Body::Id> well;
         geo::IcosaMap<std::int16_t> heights; // 0 = sea; ±reliefPeak maps to ±amplitude metres

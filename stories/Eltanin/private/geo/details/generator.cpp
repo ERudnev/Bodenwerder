@@ -140,8 +140,8 @@ namespace eltanin::planet {
             return float(value) / 255.0f;
         }
 
-        constexpr std::uint32_t cacheEpoch = 1;
-        constexpr char cacheMagic[8] = {'E', 'L', 'T', 'N', 'M', 'A', 'P', '1'};
+        constexpr std::uint32_t cacheEpoch = 3;
+        constexpr char cacheMagic[8] = {'E', 'L', 'T', 'N', 'M', 'A', 'P', '3'};
 
 #pragma pack(push, 1)
         struct MapHeader {
@@ -152,14 +152,27 @@ namespace eltanin::planet {
             std::int32_t tessellation;
             std::int32_t heightCount;
             std::int32_t farCount;
-            std::uint64_t mix;
+            std::uint64_t bulk;
+            std::uint32_t volatiles;
+            float ageGyr;
+            double mass;
             float radius;
-            float differentiation;
-            float surfaceAge;
-            float cohesion;
-            float grain;
-            float tectonic;
-            float amplitude;
+            float spinAxisX;
+            float spinAxisY;
+            float spinAxisZ;
+            float spinPeriod;
+            float stellarFlux;
+            float eccentricity;
+            float tidalHeat;
+            float debrisFlux;
+            float surfaceAcceleration;
+            float reliefAmplitude;
+            float atmosphereOuterRadius;
+            float atmosphereSeaDensity;
+            float atmosphereKerman;
+            float atmosphereDayR;
+            float atmosphereDayG;
+            float atmosphereDayB;
         };
 #pragma pack(pop)
 
@@ -181,21 +194,32 @@ namespace eltanin::planet {
             return mixHash(hash, bits);
         }
 
+        auto mixDouble(std::uint64_t hash, double value) -> std::uint64_t {
+            std::uint64_t bits = 0;
+            std::memcpy(&bits, &value, sizeof(bits));
+            return mixHash(hash, bits);
+        }
+
         auto cacheKey(const Planet& planet) -> std::uint64_t {
-            const auto& geology = planet.passport.geology;
+            const Passport& passport = planet.passport;
             std::uint64_t hash = 14695981039346656037ull;
             hash = mixHash(hash, cacheEpoch);
-            hash = mixHash(hash, static_cast<std::uint64_t>(static_cast<std::uint32_t>(planet.passport.seed)));
+            hash = mixHash(hash, static_cast<std::uint64_t>(static_cast<std::uint32_t>(passport.seed)));
             hash = mixHash(hash, static_cast<std::uint64_t>(static_cast<std::uint32_t>(planet.heights.pack.edgeBase)));
             hash = mixHash(hash, static_cast<std::uint64_t>(static_cast<std::uint32_t>(planet.heights.pack.tessellation)));
-            hash = mixHash(hash, geology.mix);
-            hash = mixFloat(hash, planet.passport.radius);
-            hash = mixFloat(hash, geology.differentiation);
-            hash = mixFloat(hash, geology.surfaceAge);
-            hash = mixFloat(hash, geology.cohesion);
-            hash = mixFloat(hash, geology.grain);
-            hash = mixFloat(hash, geology.tectonic);
-            hash = mixFloat(hash, geology.amplitude);
+            hash = mixHash(hash, passport.bulk);
+            hash = mixHash(hash, passport.volatiles);
+            hash = mixFloat(hash, passport.ageGyr);
+            hash = mixDouble(hash, passport.mass);
+            hash = mixFloat(hash, passport.radius);
+            hash = mixFloat(hash, passport.spin.axis.x);
+            hash = mixFloat(hash, passport.spin.axis.y);
+            hash = mixFloat(hash, passport.spin.axis.z);
+            hash = mixFloat(hash, passport.spin.period);
+            hash = mixFloat(hash, passport.environment.stellarFlux);
+            hash = mixFloat(hash, passport.environment.eccentricity);
+            hash = mixFloat(hash, passport.environment.tidalHeat);
+            hash = mixFloat(hash, passport.environment.debrisFlux);
             return hash;
         }
 
@@ -220,29 +244,42 @@ namespace eltanin::planet {
         }
 
         auto makeHeader(const Planet& planet) -> MapHeader {
-            const auto& geology = planet.passport.geology;
+            const Passport& passport = planet.passport;
             MapHeader header;
             std::memcpy(header.magic, cacheMagic, sizeof(header.magic));
             header.epoch = cacheEpoch;
-            header.seed = planet.passport.seed;
+            header.seed = passport.seed;
             header.edgeBase = planet.heights.pack.edgeBase;
             header.tessellation = planet.heights.pack.tessellation;
             header.heightCount = planet.heights.pack.storedCount();
             header.farCount = planet.farAlbedo.pack.storedCount();
-            header.mix = geology.mix;
-            header.radius = planet.passport.radius;
-            header.differentiation = geology.differentiation;
-            header.surfaceAge = geology.surfaceAge;
-            header.cohesion = geology.cohesion;
-            header.grain = geology.grain;
-            header.tectonic = geology.tectonic;
-            header.amplitude = geology.amplitude;
+            header.bulk = passport.bulk;
+            header.volatiles = passport.volatiles;
+            header.ageGyr = passport.ageGyr;
+            header.mass = passport.mass;
+            header.radius = passport.radius;
+            header.spinAxisX = passport.spin.axis.x;
+            header.spinAxisY = passport.spin.axis.y;
+            header.spinAxisZ = passport.spin.axis.z;
+            header.spinPeriod = passport.spin.period;
+            header.stellarFlux = passport.environment.stellarFlux;
+            header.eccentricity = passport.environment.eccentricity;
+            header.tidalHeat = passport.environment.tidalHeat;
+            header.debrisFlux = passport.environment.debrisFlux;
+            header.surfaceAcceleration = planet.runtime.surfaceAcceleration;
+            header.reliefAmplitude = planet.runtime.reliefAmplitude;
+            header.atmosphereOuterRadius = planet.runtime.atmosphere.outerRadius;
+            header.atmosphereSeaDensity = planet.runtime.atmosphere.seaDensity;
+            header.atmosphereKerman = planet.runtime.atmosphere.kerman;
+            header.atmosphereDayR = planet.runtime.atmosphere.day.x;
+            header.atmosphereDayG = planet.runtime.atmosphere.day.y;
+            header.atmosphereDayB = planet.runtime.atmosphere.day.z;
             return header;
         }
 
         auto headerMatches(const MapHeader& header, const Planet& planet) -> bool {
             const MapHeader expected = makeHeader(planet);
-            return std::memcmp(&header, &expected, sizeof(MapHeader)) == 0;
+            return std::memcmp(&header, &expected, offsetof(MapHeader, surfaceAcceleration)) == 0;
         }
 
         auto packView(const Planet& planet) -> vector<std::uint8_t> {
@@ -284,6 +321,12 @@ namespace eltanin::planet {
             input.read(reinterpret_cast<char*>(&header), static_cast<std::streamsize>(sizeof(header)));
             if (not input or not headerMatches(header, planet))
                 return false;
+            planet.runtime.surfaceAcceleration = header.surfaceAcceleration;
+            planet.runtime.reliefAmplitude = header.reliefAmplitude;
+            planet.runtime.atmosphere.outerRadius = header.atmosphereOuterRadius;
+            planet.runtime.atmosphere.seaDensity = header.atmosphereSeaDensity;
+            planet.runtime.atmosphere.kerman = header.atmosphereKerman;
+            planet.runtime.atmosphere.day = RGB{header.atmosphereDayR, header.atmosphereDayG, header.atmosphereDayB};
             const std::size_t heightBytes = planet.heights.values.size() * sizeof(std::int16_t);
             const std::size_t coverBytes = planet.covers.values.size() * sizeof(std::uint16_t);
             input.read(reinterpret_cast<char*>(planet.heights.values.data()), static_cast<std::streamsize>(heightBytes));
@@ -470,10 +513,6 @@ namespace eltanin::planet {
 
     }
 
-    void Generator::generateSurfaceWeights(Planet& planet) {
-        paintCover(planet, marsCover(planet.passport));
-    }
-
     void logFieldSummary(const Planet& planet) {
         const auto& pack = planet.heights.pack;
         const integer segments = pack.edgeSegments();
@@ -500,7 +539,8 @@ namespace eltanin::planet {
             logFieldSummary(planet);
             return;
         }
-        mars(planet);
+        const Geology geology = derive(planet.passport);
+        form(planet, geology);
         generateFarAlbedo(planet);
         generateFarNormal(planet);
         saveCache(planet, files);

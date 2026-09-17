@@ -8,6 +8,100 @@ namespace eltanin::planet {
     using namespace rmmr;
 
     struct Generator {
+        struct Geology {
+            struct Crust {
+                geo::Mineral::Mix mix;
+                integer plates;
+                float differentiation;
+                float thickness;
+                float mobility;
+                float fragmentation;
+                float cohesion;
+                float grain;
+            } crust;
+            struct Mantle {
+                float heat;
+                float plumeRate;
+                float plumePower;
+                float boundaryAffinity;
+            } mantle;
+            struct Bombardment {
+                geo::Mineral::Mix mix;
+                float flux;
+                float violence;
+                float largeBodyTail;
+                float ironFraction;
+            } bombardment;
+            struct Climate {
+                geo::Volatile::Mix retained;
+                float atmosphere;
+                float temperature;
+                float water;
+                float ice;
+                float weathering;
+                float transport;
+            } climate;
+            struct History {
+                float surfaceAge;
+                float reliefAmplitude;
+            } history;
+        };
+
+        struct Formation {
+            geo::IcosaMap<float> relief;
+            geo::IcosaMap<float> province;
+            geo::IcosaMap<float> composition;
+            geo::IcosaMap<float> crustAge;
+            geo::IcosaMap<float> boundary;
+            geo::IcosaMap<float> volcanic;
+            geo::IcosaMap<float> impact;
+            geo::IcosaMap<float> fracture;
+            geo::IcosaMap<float> sediment;
+            geo::IcosaMap<float> water;
+            geo::IcosaMap<float> exogenic;
+
+            Formation(geo::IcosaPack surface, geo::IcosaPack features)
+                : relief{surface, 0.0f}
+                , province{features, 0.0f}
+                , composition{features, 0.0f}
+                , crustAge{features, 0.0f}
+                , boundary{features, 0.0f}
+                , volcanic{features, 0.0f}
+                , impact{features, 0.0f}
+                , fracture{features, 0.0f}
+                , sediment{features, 0.0f}
+                , water{features, 0.0f}
+                , exogenic{features, 0.0f} {
+            }
+        };
+
+        struct PlateSite {
+            vec3 center;
+            vec3 pole;
+            float speed;
+            float elevation;
+            float age;
+            float felsic;
+        };
+
+        struct PlateField {
+            vector<PlateSite> sites;
+            integer seed;
+            float amplitude;
+            float width;
+            float activity;
+        };
+
+        struct Basin {
+            vec3 center;
+            vec3 along;
+            float radius;
+            float depth;
+            float obliquity;
+            float exogenic;
+            integer seed;
+        };
+
         struct Provinces {
             integer count;
             integer seed;
@@ -101,10 +195,13 @@ namespace eltanin::planet {
         };
 
         static void generate(Planet&);
-        static void generateSurfaceWeights(Planet&);
         static void mars(Planet&);
 
     private:
+        static auto derive(const Passport&) -> Geology;
+        static void form(Planet&, const Geology&);
+        static void applyPlateField(Formation&, const PlateField&);
+        static void applyBasin(Formation&, const Basin&);
         static void applyProvinces(geo::IcosaMap<float>&, const Provinces&);
         static void applyBurst(geo::IcosaMap<float>&, const Burst&);
         static void applyBursts(geo::IcosaMap<float>&, const vector<Burst>&);
@@ -116,7 +213,8 @@ namespace eltanin::planet {
         static void applyRub(geo::IcosaMap<float>&, const Rub&);
         static void applyWhisper(geo::IcosaMap<float>&, const Whisper&);
         static void paintCover(Planet&, const PaintCover&);
-        static auto marsCover(const Passport&) -> PaintCover;
+        static void paintFormation(Planet&, const Formation&, const Geology&);
+        static auto marsCover(const Geology&, integer seed) -> PaintCover;
     };
 
 }

@@ -136,6 +136,14 @@ namespace eltanin::planet {
             return std::uint16_t(std::uint16_t(surface) | (std::uint16_t(below) << 8));
         }
 
+        auto mineralAmount(geo::Mineral::Mix mix, geo::Mineral::Kind kind) -> integer {
+            return integer((mix >> (static_cast<integer>(kind) * 4)) & 15u);
+        }
+
+        auto volatileAmount(geo::Volatile::Mix mix, geo::Volatile::Kind kind) -> integer {
+            return integer((mix >> (static_cast<integer>(kind) * 4)) & 15u);
+        }
+
         auto angular(vec3 a, vec3 b) -> float {
             return std::acos(glm::clamp(glm::dot(glm::normalize(a), glm::normalize(b)), -1.0f, 1.0f));
         }
@@ -143,6 +151,50 @@ namespace eltanin::planet {
         auto gaussian(float angle, float sigma) -> float {
             const float s = std::max(sigma, 1.0e-4f);
             return std::exp(-0.5f * (angle * angle) / (s * s));
+        }
+
+        struct PlateSample {
+            integer first;
+            integer second;
+            float firstScore;
+            float secondScore;
+            vec3 normal;
+            vec3 along;
+            float divergence;
+            float shear;
+        };
+
+        auto samplePlate(vec3 direction, const Generator::PlateField& params) -> PlateSample {
+            const vec3 warped = warpedDirection(direction, params.seed, 1.65f, 0.16f);
+            PlateSample sample{.first = 0, .second = 0, .firstScore = -2.0f, .secondScore = -2.0f, .normal = vec3{1.0f, 0.0f, 0.0f}, .along = vec3{0.0f, 0.0f, 1.0f}, .divergence = 0.0f, .shear = 0.0f};
+            for (integer index = 0; index < static_cast<integer>(params.sites.size()); ++index) {
+                const auto& site = params.sites[static_cast<std::size_t>(index)];
+                const float score = glm::dot(warped, site.center) + 0.028f * fractal(direction * (3.1f + float(index) * 0.17f), params.seed + 101 + index * 67, 4, 0.54f);
+                if (score > sample.firstScore) {
+                    sample.second = sample.first;
+                    sample.secondScore = sample.firstScore;
+                    sample.first = index;
+                    sample.firstScore = score;
+                } else if (score > sample.secondScore) {
+                    sample.second = index;
+                    sample.secondScore = score;
+                }
+            }
+            if (params.sites.size() < 2)
+                return sample;
+            const auto& first = params.sites[static_cast<std::size_t>(sample.first)];
+            const auto& second = params.sites[static_cast<std::size_t>(sample.second)];
+            const vec3 projected = first.center - second.center - direction * glm::dot(first.center - second.center, direction);
+            if (glm::dot(projected, projected) > 1.0e-8f)
+                sample.normal = glm::normalize(projected);
+            vec3 along = glm::cross(direction, sample.normal);
+            if (glm::dot(along, along) < 1.0e-8f)
+                along = glm::cross(direction, std::abs(direction.y) < 0.8f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f});
+            sample.along = glm::normalize(along);
+            const vec3 relative = glm::cross(first.pole, direction) * first.speed - glm::cross(second.pole, direction) * second.speed;
+            sample.divergence = glm::dot(relative, sample.normal);
+            sample.shear = std::abs(glm::dot(relative, sample.along));
+            return sample;
         }
 
         auto sphereSite(integer index, integer seed) -> vec3 {
@@ -228,6 +280,102 @@ namespace eltanin::planet {
             const float massif = fractal(warped * 5.0f, params.seed + best * 53, 5, 0.56f);
             relief.at(slot) += params.amplitude * (province + 0.42f * massif);
         }
+    }
+
+    void Generator::applyPlateField(Formation& formation, const PlateField& params) {
+        if (params.sites.empty())
+            return;
+        const float width = std::max(params.width, 0.01f);
+        const float provinceScale = params.sites.size() > 1 ? 1.0f / float(params.sites.size() - 1) : 0.0f;
+        for (integer index = 0; index < formation.boundary.pack.storedCount(); ++index) {
+            const auto slot = formation.boundary.pack.slotOf(index);
+            const vec3 direction = formation.boundary.pack.direction(slot);
+            const PlateSample sample = samplePlate(direction, params);
+            const float gap = sample.firstScore - sample.secondScore;
+            const float edge = params.sites.size() > 1 ? 1.0f - glm::smoothstep(width * 0.12f, width, gap) : 0.0f;
+            const auto& first = params.sites[static_cast<std::size_t>(sample.first)];
+            const auto& second = params.sites[static_cast<std::size_t>(sample.second)];
+            const float interior = glm::smoothstep(0.0f, width, gap);
+            formation.province.at(slot) = glm::mix(float(sample.first + sample.second) * 0.5f, float(sample.first), interior) * provinceScale;
+            formation.composition.at(slot) = glm::mix((first.felsic + second.felsic) * 0.5f, first.felsic, interior);
+            formation.crustAge.at(slot) = glm::mix((first.age + second.age) * 0.5f, first.age, interior);
+            formation.boundary.at(slot) = edge * sample.divergence;
+            formation.fracture.at(slot) = edge * glm::clamp(std::abs(sample.divergence) + sample.shear * 0.72f, 0.0f, 1.0f);
+        }
+        formation.province.stitch();
+        formation.composition.stitch();
+        formation.crustAge.stitch();
+        formation.boundary.stitch();
+        formation.fracture.stitch();
+        for (integer index = 0; index < formation.relief.pack.storedCount(); ++index) {
+            const auto slot = formation.relief.pack.slotOf(index);
+            const vec3 direction = formation.relief.pack.direction(slot);
+            const PlateSample sample = samplePlate(direction, params);
+            const float gap = sample.firstScore - sample.secondScore;
+            const float edge = params.sites.size() > 1 ? 1.0f - glm::smoothstep(width * 0.12f, width, gap) : 0.0f;
+            const float interior = glm::smoothstep(0.0f, width, gap);
+            const auto& first = params.sites[static_cast<std::size_t>(sample.first)];
+            const auto& second = params.sites[static_cast<std::size_t>(sample.second)];
+            const float province = glm::mix((first.elevation + second.elevation) * 0.5f, first.elevation, interior);
+            const float convergence = glm::max(-sample.divergence, 0.0f);
+            const float divergence = glm::max(sample.divergence, 0.0f);
+            const float mountainTexture = 0.58f + 0.64f * ridgedFractal(direction * 18.0f, params.seed + 1709, 5);
+            const float shearTexture = fractal(direction * 24.0f, params.seed + 1871, 5, 0.55f);
+            const float boundaryRelief = edge * params.activity * (convergence * mountainTexture * 0.20f - divergence * (0.09f + mountainTexture * 0.06f) + sample.shear * shearTexture * 0.045f);
+            const float interiorTexture = fractal(warpedDirection(direction, params.seed + sample.first * 31, 2.4f, 0.08f) * 5.0f, params.seed + 1901 + sample.first * 53, 5, 0.55f);
+            formation.relief.at(slot) += params.amplitude * (province * 0.13f + interiorTexture * (0.035f + first.age * 0.025f) + boundaryRelief);
+        }
+        formation.relief.stitch();
+    }
+
+    void Generator::applyBasin(Formation& formation, const Basin& params) {
+        const vec3 center = glm::normalize(params.center);
+        vec3 along = params.along - center * glm::dot(params.along, center);
+        if (glm::dot(along, along) < 1.0e-8f)
+            along = glm::cross(center, vec3{0.0f, 1.0f, 0.0f});
+        if (glm::dot(along, along) < 1.0e-8f)
+            along = glm::cross(center, vec3{1.0f, 0.0f, 0.0f});
+        along = glm::normalize(along);
+        const vec3 across = glm::normalize(glm::cross(center, along));
+        const float radius = std::max(params.radius, 1.0e-4f);
+        auto footprint = [&](vec3 direction) -> vec3 {
+            const vec3 warped = warpedDirection(direction, params.seed + 11, std::min(48.0f, 3.2f / radius), radius * 0.24f);
+            const float x = std::atan2(glm::dot(warped, along), glm::dot(warped, center));
+            const float y = std::asin(glm::clamp(glm::dot(warped, across), -1.0f, 1.0f));
+            const float bend = params.obliquity * radius * 0.18f * fractal(vec3{x / radius * 2.8f, 0.41f, 1.37f}, params.seed + 37, 4, 0.56f);
+            const float longRadius = radius * (1.0f + params.obliquity * 0.62f);
+            const float wideRadius = radius * (1.0f - params.obliquity * 0.24f);
+            const float normalized = std::sqrt((x * x) / (longRadius * longRadius) + ((y - bend) * (y - bend)) / (wideRadius * wideRadius));
+            const float broken = normalized / glm::clamp(1.0f + 0.16f * fractal(direction * std::min(180.0f, 11.0f / radius), params.seed + 71, 5, 0.58f), 0.72f, 1.28f);
+            return vec3{broken, x / radius, y / radius};
+        };
+        for (integer index = 0; index < formation.relief.pack.storedCount(); ++index) {
+            const auto slot = formation.relief.pack.slotOf(index);
+            const vec3 direction = formation.relief.pack.direction(slot);
+            if (glm::dot(direction, center) < std::cos(radius * 2.8f))
+                continue;
+            const vec3 shape = footprint(direction);
+            if (shape.x > 1.65f)
+                continue;
+            const float cavity = 1.0f - glm::smoothstep(0.20f, 1.0f, shape.x);
+            const float rim = std::exp(-std::pow((shape.x - 1.02f) / 0.18f, 2.0f));
+            const float trailing = glm::smoothstep(-0.35f, 1.15f, shape.y) * params.obliquity;
+            const float floor = fractal(direction * std::min(220.0f, 14.0f / radius), params.seed + 113, 5, 0.54f);
+            formation.relief.at(slot) += -params.depth * cavity * (0.82f + floor * 0.18f) + params.depth * rim * (0.13f + trailing * 0.09f);
+        }
+        for (integer index = 0; index < formation.impact.pack.storedCount(); ++index) {
+            const auto slot = formation.impact.pack.slotOf(index);
+            const vec3 direction = formation.impact.pack.direction(slot);
+            if (glm::dot(direction, center) < std::cos(radius * 2.8f))
+                continue;
+            const vec3 shape = footprint(direction);
+            const float affected = 1.0f - glm::smoothstep(0.45f, 1.45f, shape.x);
+            formation.impact.at(slot) = std::max(formation.impact.at(slot), affected);
+            formation.exogenic.at(slot) = std::max(formation.exogenic.at(slot), affected * params.exogenic * glm::smoothstep(-0.8f, 1.2f, shape.y));
+        }
+        formation.relief.stitch();
+        formation.impact.stitch();
+        formation.exogenic.stitch();
     }
 
     void Generator::applyBurst(IcosaMap<float>& relief, const Burst& params) {
@@ -578,6 +726,92 @@ namespace eltanin::planet {
             }
             planet.covers.at(slot) = packLayers(surface, below);
         }
+    }
+
+    void Generator::paintFormation(Planet& planet, const Formation& formation, const Geology& geology) {
+        const integer last = formation.relief.pack.edgeSegments();
+        const integer olivine = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Olivine);
+        const integer pyroxene = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Pyroxene);
+        const integer feldspar = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Feldspar);
+        const integer clay = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Clay);
+        const integer carbonaceous = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Carbonaceous);
+        const integer iron = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Iron);
+        const integer sulfides = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Sulfides);
+        const integer oxides = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Oxides);
+        const integer salts = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Salts);
+        const integer waterInventory = volatileAmount(geology.climate.retained, geo::Volatile::Kind::Water);
+        const integer carbonDioxide = volatileAmount(geology.climate.retained, geo::Volatile::Kind::CarbonDioxide);
+        const integer methane = volatileAmount(geology.climate.retained, geo::Volatile::Kind::Methane);
+        const integer sulfurDioxide = volatileAmount(geology.climate.retained, geo::Volatile::Kind::SulfurDioxide);
+        auto heightAt = [&](IcosaPack::Slot slot) -> float {
+            slot.iu = std::clamp(slot.iu, integer{0}, last);
+            slot.iv = std::clamp(slot.iv, integer{0}, last);
+            return formation.relief.at(slot);
+        };
+        for (integer index = 0; index < planet.covers.pack.storedCount(); ++index) {
+            const auto slot = planet.covers.pack.slotOf(index);
+            const vec3 direction = planet.covers.pack.direction(slot);
+            const float relief = formation.relief.at(slot);
+            const float du = heightAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu + 1, .iv = slot.iv}) - heightAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu - 1, .iv = slot.iv});
+            const float dv = heightAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu, .iv = slot.iv + 1}) - heightAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu, .iv = slot.iv - 1});
+            const float slope = std::sqrt(du * du + dv * dv) / std::max(geology.history.reliefAmplitude, 1.0f);
+            const float volcanic = formation.volcanic.at(direction);
+            const float impact = formation.impact.at(direction);
+            const float fracture = formation.fracture.at(direction);
+            const float sediment = formation.sediment.at(direction);
+            const float water = formation.water.at(direction);
+            const float exogenic = formation.exogenic.at(direction);
+            const float age = formation.crustAge.at(direction);
+            const float province = formation.province.at(direction);
+            const float felsic = formation.composition.at(direction);
+            const float provinceTexture = fractal(warpedDirection(direction, planet.passport.seed + 6101, 2.2f, 0.11f) * (3.0f + province * 2.0f) + vec3{province * 2.7f, province * -1.9f, province * 1.3f}, planet.passport.seed + 6131, 5, 0.56f);
+            const float oxidation = glm::clamp(age * 0.62f + float(oxides) / 15.0f * 0.42f + provinceTexture * 0.22f, 0.0f, 1.0f);
+            Facies surface = felsic > 0.56f and feldspar > 0 ? Facies::RegolithFelsic : Facies::RegolithMafic;
+            Facies below = felsic < 0.52f and pyroxene + olivine >= feldspar ? Facies::Basalt : Facies::RegolithFelsic;
+            if (oxides > 0 and oxidation > 0.38f)
+                surface = oxidation > 0.67f ? Facies::DesertVarnish : Facies::Hematite;
+            if (feldspar > pyroxene + olivine or felsic > 0.72f)
+                below = geology.crust.differentiation > 0.62f ? Facies::Granite : Facies::Anorthosite;
+            if (clay > 0 and provinceTexture < -0.26f and slope < 0.05f)
+                surface = Facies::ClayPan;
+            if ((carbonaceous > pyroxene + feldspar and volcanic < 0.2f) or (carbonaceous > 0 and provinceTexture > 0.48f))
+                surface = geology.climate.temperature < 220.0f ? Facies::Tholin : Facies::Chondrite;
+            if (volcanic > 0.18f) {
+                surface = age < 0.32f ? Facies::Pahoehoe : volcanic > 0.68f ? Facies::Scoria : Facies::RegolithMafic;
+                below = geology.mantle.heat > 0.72f and olivine > pyroxene ? Facies::Komatiite : Facies::Basalt;
+                if (sulfurDioxide + sulfides > 8 and volcanic > 0.52f)
+                    surface = geology.climate.temperature < 215.0f ? Facies::SO2Frost : Facies::SulfurPlains;
+            }
+            if (fracture > 0.42f and slope > 0.025f)
+                below = geology.crust.differentiation > 0.45f and olivine > 0 ? Facies::Peridotite : Facies::Gabbro;
+            if (impact > 0.18f) {
+                surface = Facies::Breccia;
+                below = exogenic > 0.55f and iron > 5 ? Facies::IronMetal : Facies::RegolithMafic;
+            }
+            if (sediment > 0.12f and slope < 0.08f) {
+                if (salts > 0 and water < 0.22f)
+                    surface = geology.crust.cohesion > 0.55f ? Facies::Caliche : Facies::Evaporite;
+                else if (clay > 0 or geology.climate.weathering > 0.35f)
+                    surface = Facies::ClayPan;
+                else
+                    surface = Facies::Arenite;
+            }
+            const float polar = std::abs(direction.y) + 0.055f * fractal(warpedDirection(direction, planet.passport.seed + 7001, 2.0f, 0.08f) * 5.0f, planet.passport.seed + 7013, 5, 0.56f);
+            const float localTemperature = geology.climate.temperature - 68.0f * std::pow(glm::clamp(polar, 0.0f, 1.0f), 1.65f) - relief / std::max(geology.history.reliefAmplitude, 1.0f) * 18.0f;
+            const float waterFrost = float(waterInventory) / 15.0f * (1.0f - glm::smoothstep(205.0f, 273.0f, localTemperature));
+            const float carbonFrost = float(carbonDioxide) / 15.0f * (1.0f - glm::smoothstep(150.0f, 210.0f, localTemperature));
+            const float methaneFrost = float(methane) / 15.0f * (1.0f - glm::smoothstep(72.0f, 112.0f, localTemperature));
+            const float capEdge = 0.74f - geology.climate.ice * 0.10f - float(carbonDioxide) / 15.0f * 0.035f;
+            if (polar > capEdge and waterFrost + carbonFrost + methaneFrost > 0.055f) {
+                if (carbonFrost + methaneFrost > waterFrost * 1.15f)
+                    surface = Facies::VolatileFrost;
+                else
+                    surface = geology.crust.cohesion > 0.58f ? Facies::Glacier : age > 0.5f ? Facies::DirtyIce : Facies::Snow;
+                below = Facies::DirtyIce;
+            }
+            planet.covers.at(slot) = packLayers(surface, below);
+        }
+        planet.covers.stitch();
     }
 
 }

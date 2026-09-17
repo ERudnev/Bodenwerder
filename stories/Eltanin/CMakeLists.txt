@@ -25,6 +25,7 @@ set(Eltanin_Q1
     locality/scrap.q1
     decorations/dust.q1
     geo/minerals.q1
+    geo/volatiles.q1
     geo/rock.q1
     geo/boulder.q1
 )

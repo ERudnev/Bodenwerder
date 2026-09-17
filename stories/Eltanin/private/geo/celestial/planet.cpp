@@ -275,17 +275,25 @@ namespace eltanin::planet {
             return patches;
         }
 
-        void bindAtmosphereMesh(scene::actor::MeshState::Quantum& mesh, const Passport& passport) {
-            mesh.albedo = passport.atmosphere.day;
-            mesh.opacity = passport.atmosphere.seaDensity;
-            mesh.heat = vec2{passport.radius, passport.atmosphere.outerRadius};
-            mesh.scale = vec3{passport.atmosphere.outerRadius * 1.08f};
-            mesh.latticeStep = passport.atmosphere.kerman;
+        auto orientationOf(const Passport& passport) -> quat {
+            const vec3 axis = glm::length(passport.spin.axis) > 1.0e-6f ? glm::normalize(passport.spin.axis) : vec3{0.0f, 1.0f, 0.0f};
+            const float alignment = glm::dot(vec3{0.0f, 1.0f, 0.0f}, axis);
+            if (alignment < -0.99999f)
+                return glm::angleAxis(std::numbers::pi_v<float>, vec3{1.0f, 0.0f, 0.0f});
+            return glm::normalize(quat{1.0f + alignment, axis.z, 0.0f, -axis.x});
+        }
+
+        void bindAtmosphereMesh(scene::actor::MeshState::Quantum& mesh, const Planet& planet) {
+            mesh.albedo = planet.runtime.atmosphere.day;
+            mesh.opacity = planet.runtime.atmosphere.seaDensity;
+            mesh.heat = vec2{planet.passport.radius, planet.runtime.atmosphere.outerRadius};
+            mesh.scale = vec3{planet.runtime.atmosphere.outerRadius * 1.08f};
+            mesh.latticeStep = planet.runtime.atmosphere.kerman;
             mesh.patternScale = geo::Horizon::locality;
         }
 
-        auto spawnAtmosphere(Writing context, Pose pose, const Passport& passport) -> base::maybe<scene::actor::Mesh::Id> {
-            if (passport.atmosphere.seaDensity <= 0.0f or passport.atmosphere.outerRadius <= passport.radius)
+        auto spawnAtmosphere(Writing context, Pose pose, const Planet& planet) -> base::maybe<scene::actor::Mesh::Id> {
+            if (planet.runtime.atmosphere.seaDensity <= 0.0f or planet.runtime.atmosphere.outerRadius <= planet.passport.radius)
                 return {};
             const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "atmosphere"));
             if (not material) {
@@ -302,8 +310,8 @@ namespace eltanin::planet {
                 context.refuse("eltanin::planet::Planet::place: atmosphere mesh compose failed");
                 return {};
             }
-            auto meshState = with<scene::actor::MeshState>::defaults(passport.atmosphere.day, passport.atmosphere.seaDensity, vec3{1.0f});
-            bindAtmosphereMesh(meshState, passport);
+            auto meshState = with<scene::actor::MeshState>::defaults(planet.runtime.atmosphere.day, planet.runtime.atmosphere.seaDensity, vec3{1.0f});
+            bindAtmosphereMesh(meshState, planet);
             return with<scene::Interface>::createMeshActor(context, with<Thing>::get_global(context).scene, pose, std::move(*meshQuantum), meshState);
         }
 
@@ -312,21 +320,20 @@ namespace eltanin::planet {
         }
 
         auto spinRate(const Planet& planet) -> double {
-            return planet.passport.spinPeriod > 0.0f ? 2.0 * std::numbers::pi / double(planet.passport.spinPeriod) : 0.0;
+            return planet.passport.spin.period > 0.0f ? 2.0 * std::numbers::pi / double(planet.passport.spin.period) : 0.0;
         }
 
         auto spinAxis(const Planet& planet) -> dvec3 {
-            return dquat{planet.passport.orientation} * dvec3{0.0, 1.0, 0.0};
+            return glm::length(planet.passport.spin.axis) > 1.0e-6f ? glm::normalize(dvec3{planet.passport.spin.axis}) : dvec3{0.0, 1.0, 0.0};
         }
 
         auto wellQuantum(const Planet& planet, Pose pose) -> phys::Body::Quantum {
             const float radius = planet.passport.radius;
-            const float volume = (4.0f / 3.0f) * std::numbers::pi_v<float> * radius * radius * radius;
             return phys::Body::Quantum{
                 .position = dvec3{pose.position},
-                .orientation = dquat{planet.passport.orientation},
-                .totalMass = volume * 3000.0f,
-                .radius = radius + planet.passport.geology.amplitude,
+                .orientation = dquat{orientationOf(planet.passport)},
+                .totalMass = static_cast<float>(planet.passport.mass),
+                .radius = radius + planet.runtime.reliefAmplitude,
                 .compound = phys::Body::Id::please_never_use_this_except_patch_rejection_mechanism(),
             };
         }
@@ -362,7 +369,8 @@ namespace eltanin::planet {
 
     Planet::Planet(Passport passport, Detail detail)
         : passport{passport}
-        , spinOmega{dquat{passport.orientation} * dvec3{0.0, 1.0, 0.0} * (passport.spinPeriod > 0.0f ? 2.0 * std::numbers::pi / double(passport.spinPeriod) : 0.0)}
+        , runtime{.surfaceAcceleration = 0.0f, .reliefAmplitude = 0.0f, .atmosphere = {.outerRadius = passport.radius, .seaDensity = 0.0f, .kerman = 1.0f, .day = RGB{0.0f, 0.0f, 0.0f}}}
+        , spinOmega{spinAxis(*this) * (passport.spin.period > 0.0f ? 2.0 * std::numbers::pi / double(passport.spin.period) : 0.0)}
         , well{}
         , heights{geo::IcosaPack{.edgeBase = detail.edgeBase, .tessellation = detail.tessellation}, std::int16_t{0}}
         , covers{heights.pack, std::uint16_t{0}}
@@ -374,7 +382,7 @@ namespace eltanin::planet {
     }
 
     void Planet::place(Writing context, system::Device::Id device, Pose pose) {
-        pose.rotation = passport.orientation;
+        pose.rotation = orientationOf(passport);
         const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "planet"));
         if (not material) {
             context.refuse("eltanin::planet::Planet::place: planet material missing");
@@ -427,15 +435,15 @@ namespace eltanin::planet {
             return;
         }
         const auto patches = coarsePatches(heights.pack);
-        auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *facies, heightId, coverId, farAlbedoId, farNormalId, icosaShell(), patches, passport.radius, passport.geology.amplitude, firstLodDistance(heights.pack, passport.radius), heights.pack.edgeVertices(), patchCells);
+        auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *facies, heightId, coverId, farAlbedoId, farNormalId, icosaShell(), patches, passport.radius, runtime.reliefAmplitude, firstLodDistance(heights.pack, passport.radius), heights.pack.edgeVertices(), patchCells);
         if (not gridQuantum) {
             context.refuse("eltanin::planet::Planet::place: patch grid compose failed");
             return;
         }
         shell = with<scene::Interface>::createPatchGridActor(context, with<Thing>::get_global(context).scene, pose, std::move(*gridQuantum));
-        with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereDensity = passport.atmosphere.seaDensity;
-        with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereKerman = passport.atmosphere.kerman;
-        atmosphere = spawnAtmosphere(context, pose, passport);
+        with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereDensity = runtime.atmosphere.seaDensity;
+        with<scene::Root>::modify(context, with<Thing>::get_global(context).scene)->atmosphereKerman = runtime.atmosphere.kerman;
+        atmosphere = spawnAtmosphere(context, pose, *this);
         if (not well)
             well = phys::createBody(context, wellQuantum(*this, pose), {});
         else
@@ -476,17 +484,17 @@ namespace eltanin::planet {
     }
 
     auto Planet::spin(const phys::Body::Quantum& body) const -> float {
-        const dquat relative = glm::normalize(glm::conjugate(dquat{passport.orientation}) * body.orientation);
+        const dquat relative = glm::normalize(glm::conjugate(dquat{orientationOf(passport)}) * body.orientation);
         const double angle = 2.0 * std::atan2(relative.y, relative.w);
         return float(angle < 0.0 ? angle + 2.0 * std::numbers::pi : angle);
     }
 
     void Planet::spin(phys::Body::Quantum& body, float value) const {
-        body.orientation = glm::normalize(dquat{passport.orientation} * glm::angleAxis(double(value), dvec3{0.0, 1.0, 0.0}));
+        body.orientation = glm::normalize(dquat{orientationOf(passport)} * glm::angleAxis(double(value), dvec3{0.0, 1.0, 0.0}));
     }
 
     auto Planet::reliefScale() const -> float {
-        return passport.geology.amplitude / float(reliefPeak);
+        return runtime.reliefAmplitude / float(reliefPeak);
     }
 
     auto Planet::surfaceRadius(std::int16_t quantum) const -> double {
@@ -523,13 +531,13 @@ namespace eltanin::planet {
         if (distance < 1.0e-12)
             return dvec3{0.0, 0.0, 0.0};
         const double radius = double(passport.radius);
-        const double surface = double(passport.surfaceAcceleration);
+        const double surface = double(runtime.surfaceAcceleration);
         const double accelScale = distance < radius ? -surface / radius : -surface * radius * radius / (distance * distance * distance);
         return offset * accelScale;
     }
 
     auto Planet::airDensity(const phys::Body::Quantum& body, dvec3 worldPos) const -> float {
-        return phys::Settings::Air::density(float(glm::length(toLocal(body, worldPos))) - passport.radius, passport.atmosphere.seaDensity, passport.atmosphere.kerman);
+        return phys::Settings::Air::density(float(glm::length(toLocal(body, worldPos))) - passport.radius, runtime.atmosphere.seaDensity, runtime.atmosphere.kerman);
     }
 
     auto Planet::windAt(const phys::Body::Quantum& body, dvec3 worldPos) const -> dvec3 {
@@ -540,7 +548,7 @@ namespace eltanin::planet {
         const float len = glm::length(dir);
         const dquat rotation = body.orientation;
         if (len < 1.0e-6f)
-            return Probe{.height = passport.radius, .position = body.position, .normal = rotation * dvec3{0.0, 1.0, 0.0}, .mix = passport.geology.mix, .slope = 0.0f};
+            return Probe{.height = passport.radius, .position = body.position, .normal = rotation * dvec3{0.0, 1.0, 0.0}, .mix = passport.bulk, .slope = 0.0f};
         dir /= len;
         const double radial = height(dir);
         const dvec3 localNormal = heightNormal(*this, dir);
@@ -548,7 +556,7 @@ namespace eltanin::planet {
             .height = radial,
             .position = body.position + rotation * (dvec3{dir} * double(radial)),
             .normal = glm::normalize(rotation * dvec3{localNormal}),
-            .mix = passport.geology.mix,
+            .mix = passport.bulk,
             .slope = float(1.0 - glm::clamp(glm::dot(localNormal, dvec3{dir}), 0.0, 1.0)),
         };
     }
@@ -567,7 +575,7 @@ namespace eltanin::planet {
             .height = h,
             .position = body.position + rotation * (dir * double(h)),
             .normal = glm::normalize(rotation * dvec3{localNormal}),
-            .mix = passport.geology.mix,
+            .mix = passport.bulk,
             .slope = float(1.0 - glm::clamp(glm::dot(localNormal, dir), 0.0, 1.0)),
         };
     }
