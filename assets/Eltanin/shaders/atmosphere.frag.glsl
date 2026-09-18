@@ -24,9 +24,9 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 
 layout(binding = 1) uniform sampler2D u_sceneDepth;
 
-const int densitySamples = 4;
-const int sunSamples = 2;
-const float visualExtinction = 5.0e-8;
+const int densitySamples = 8;
+const int sunSamples = 4;
+const float zenithTau = 0.055;
 const vec3 scatterBeta = vec3(0.45, 1.00, 2.55);
 
 bool intersectSphere(vec3 origin, vec3 dir, vec3 center, float radius, out float tEnter, out float tExit) {
@@ -68,7 +68,7 @@ float densityAt(vec3 pos, vec3 planetCenter, float planetRadius, float scaleHeig
     return seaDensity * exp(-max(altitude, 0.0) / scaleHeight);
 }
 
-float opticalAlong(vec3 origin, vec3 dir, float tEnter, float tExit, vec3 planetCenter, float planetRadius, float scaleHeight, float seaDensity) {
+float opticalAlong(vec3 origin, vec3 dir, float tEnter, float tExit, vec3 planetCenter, float planetRadius, float scaleHeight, float seaDensity, float visExt) {
     tEnter = max(tEnter, 0.0);
     if (tExit <= tEnter)
         return 0.0;
@@ -78,7 +78,7 @@ float opticalAlong(vec3 origin, vec3 dir, float tEnter, float tExit, vec3 planet
         float t = tEnter + stepLength * (float(i) + 0.5);
         optical += densityAt(origin + dir * t, planetCenter, planetRadius, scaleHeight, seaDensity);
     }
-    return optical * stepLength * visualExtinction;
+    return optical * stepLength * visExt;
 }
 
 float sunLight(vec3 pos, vec3 sunDir, vec3 planetCenter) {
@@ -117,6 +117,7 @@ void main() {
 
     float shell = max(atmosphereRadius - planetRadius, 1.0);
     float scaleHeight = shell * 0.25;
+    float visExt = zenithTau / max(seaDensity * scaleHeight, 1.0e-3);
     vec3 sunPos = passPrimaryLightPositionIntensity.xyz;
     bool pointSun = passPrimaryLightColorRange.w > 0.0;
     vec3 sunColor = passPrimaryLightColorRange.rgb * max(passPrimaryLightPositionIntensity.w, 0.0);
@@ -131,7 +132,7 @@ void main() {
     float sunLeave;
     float sunTau = 0.0;
     if (intersectSphere(posLit, sunDir, planetCenter, atmosphereRadius, sunEnter, sunLeave))
-        sunTau = opticalAlong(posLit, sunDir, sunEnter, sunLeave, planetCenter, planetRadius, scaleHeight, seaDensity);
+        sunTau = opticalAlong(posLit, sunDir, sunEnter, sunLeave, planetCenter, planetRadius, scaleHeight, seaDensity, visExt);
     vec3 transSun = exp(-scatterBeta * sunTau) * shadow;
     vec3 scatter = vec3(0.0);
     float viewOptical = 0.0;
@@ -143,8 +144,8 @@ void main() {
         vec3 transView = exp(-scatterBeta * viewOptical);
         float mu = dot(rayDir, sunDir);
         float phase = 0.75 + 0.75 * mu * mu;
-        scatter += rho * visualExtinction * stepLength * transSun * transView * sunColor * phase * actorAlbedoOpacity.rgb;
-        viewOptical += rho * visualExtinction * stepLength;
+        scatter += rho * visExt * stepLength * transSun * transView * sunColor * phase * actorAlbedoOpacity.rgb;
+        viewOptical += rho * visExt * stepLength;
     }
 
     float towardSun = max(dot(rayDir, sunDir), 0.0);
@@ -153,14 +154,14 @@ void main() {
     vec3 toPlanet = planetCenter - camPos;
     float alongView = dot(toPlanet, rayDir);
     float impact = sqrt(max(dot(toPlanet, toPlanet) - alongView * alongView, 0.0));
-    float rimFade = 1.0 - smoothstep(atmosphereRadius - scaleHeight * 3.7, atmosphereRadius, impact);
-    float aureole = pow(towardSun, mix(1850.0, 370.0, longPath)) * longPath * rimFade;
+    float shellFade = 1.0 - smoothstep(atmosphereRadius - scaleHeight * 0.8, atmosphereRadius, impact);
+    float aureole = pow(towardSun, mix(1850.0, 370.0, longPath)) * longPath * shellFade;
     if (hitDist < actorLatticePattern.y)
         aureole = 0.0;
     scatter += transSun * sunColor * actorAlbedoOpacity.rgb * aureole * 0.55;
-    scatter *= rimFade;
+    scatter *= shellFade;
 
-    float absorb = (1.0 - exp(-viewOptical)) * rimFade;
+    float absorb = (1.0 - exp(-viewOptical)) * shellFade;
     if (hitGround)
         absorb *= mix(0.2, 1.0, sunLight(camPos + rayDir * tExit, sunDir, planetCenter));
     if (absorb < 0.001 && dot(scatter, vec3(1.0)) < 0.001)
