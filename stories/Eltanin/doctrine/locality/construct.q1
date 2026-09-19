@@ -47,13 +47,11 @@ namespace eltanin
         fragments: ActorFragments
         construction: mech::Construction
         visualOf: vector<mech::Construction::Primitive::Id>
-        gpuCohesions: vector<float> // last writeCohesions; never read back from GPU
-        gpuHeats: vector<float> // last writeHeats; never read back from GPU
       all
         resources: Resources?
         >bindResources()
         >update()
         >shedDead()
         *radiate(dt: seconds) // hull cool; hotter falls faster; sets Crystal.visualHurtStale
-        *followBody() // pose only; cohesion/heat GPU from update when visualHurtStale
-        >syncVisualCohesion()
+        *followBody() // pose; cohesion/heat GPU when Crystal.visualHurtStale (Direct, not Writing)
+        >syncVisualCohesion() // spawn: writeCohesions/Heats; flag already false on a new Crystal

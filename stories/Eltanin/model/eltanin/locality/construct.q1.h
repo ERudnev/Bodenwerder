@@ -57,8 +57,6 @@ namespace eltanin::locality {
             ActorFragments fragments;
             mech::Construction construction;
             vector<mech::Construction::Primitive::Id> visualOf;
-            vector<float> gpuCohesions;
-            vector<float> gpuHeats;
         };
         struct Global {
             base::maybe<Resources> resources;

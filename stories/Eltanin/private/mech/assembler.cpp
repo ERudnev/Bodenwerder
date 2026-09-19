@@ -474,7 +474,7 @@ namespace eltanin::mech {
         with<phys::rigid::Crystal>::extend(context, body, std::move(crystal));
 
         const auto thing = with<locality::Thing>::create(context, locality::Thing::Quantum{.bornAt = with<locality::Thing>::get_global(context).now});
-        with<Construct>::extend(context, thing, Construct::Quantum{.body = body, .actor = actor, .fragments = std::move(fragments), .construction = std::move(construction), .visualOf = std::move(visualOf), .gpuCohesions = {}, .gpuHeats = {}});
+        with<Construct>::extend(context, thing, Construct::Quantum{.body = body, .actor = actor, .fragments = std::move(fragments), .construction = std::move(construction), .visualOf = std::move(visualOf)});
         with<Construct>::syncVisualCohesion(context, thing);
         return thing;
     }

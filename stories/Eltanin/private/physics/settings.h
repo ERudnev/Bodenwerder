@@ -94,7 +94,7 @@ namespace eltanin::phys {
         static constexpr float restLinear = 1.0e-6f; // m/tick; below this (x−prev) is zeroed
         static constexpr float solidLiveSpeed = 0.1f; // m/s; Solid↔Crystal live = vn/(vn+this); semiKick 1→solidContact, friction
         static constexpr seconds fixedStep = 0.017; // TODO: consider 0.012 - 0.015 for better performance
-        static constexpr seconds thermalStep = 0.05; // 20 Hz; Construct heats uploaded from update when Crystal.visualHurtStale
+        static constexpr seconds thermalStep = 0.05; // 20 Hz; Construct heats uploaded from followBodies when Crystal.visualHurtStale
         static inline Debris debris = Debris::dust;
         static inline DebrisCohort debrisCohort = DebrisCohort::individual;
         static inline bool constructCollisionWounds = false; // scarFace → Construct cohesion / shed; Flash unchanged
