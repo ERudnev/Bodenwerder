@@ -87,7 +87,8 @@ namespace eltanin::planet {
         static constexpr float constructionEdge = 4.0f; // construct cubes, metres
         static constexpr std::int16_t reliefPeak = 32767;
 
-        static auto recommendedDetail(float radius, float edge) -> Detail;
+        static auto edgeMeters(float radius) -> float;
+        static auto recommendedDetail(float radius) -> Detail;
 
         Planet(Passport, Detail);
 

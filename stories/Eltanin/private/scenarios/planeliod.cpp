@@ -57,7 +57,7 @@ namespace eltanin::scenario {
                     .debrisFlux = 0.45f,
                 },
             },
-            planet::Planet::recommendedDetail(radius, 32.0f));
+            planet::Planet::recommendedDetail(radius));
         planet->place(context, device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}));
     }
 

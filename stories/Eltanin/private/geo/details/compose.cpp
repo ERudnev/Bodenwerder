@@ -1,12 +1,9 @@
 #include "geo/details/compose.h"
-#include "geo/celestial/generator.h"
 
 #include <eltanin/geo/minerals.q1.h>
 
 #include <algorithm>
 #include <cmath>
-#include <cstdint>
-#include <numbers>
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -85,35 +82,6 @@ namespace eltanin::planet {
         return AtmosphereLook{.day = RGB{day.x, day.y, day.z}, .zenithTau = zenithTau};
     }
 
-    auto PaintCover::mars(const Geology& geology, integer seed) -> PaintCover {
-        const float differentiation = glm::clamp(geology.crust.differentiation, 0.0f, 1.0f);
-        const vec3 tharsis = glm::normalize(vec3{0.72f, 0.12f, 0.35f});
-        const vec3 olympus = glm::normalize(tharsis + vec3{0.04f, 0.08f, -0.02f});
-        const vec3 canyonCenter = glm::normalize(tharsis + vec3{0.35f, -0.08f, -0.22f});
-        const vec3 canyonAlong = glm::normalize(glm::cross(vec3{0.0f, 1.0f, 0.0f}, canyonCenter));
-        return PaintCover{
-            .ice = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Ice),
-            .olivine = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Olivine),
-            .pyroxene = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Pyroxene),
-            .feldspar = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Feldspar),
-            .clay = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Clay),
-            .carbonaceous = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Carbonaceous),
-            .iron = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Iron),
-            .oxides = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Oxides),
-            .salts = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Salts),
-            .cohesion = glm::clamp(geology.crust.cohesion, 0.0f, 1.0f),
-            .age = glm::clamp(geology.history.surfaceAge, 0.0f, 1.0f),
-            .differentiation = differentiation,
-            .tharsis = tharsis,
-            .olympus = olympus,
-            .canyonCenter = canyonCenter,
-            .canyonAlong = canyonAlong,
-            .canyonHalfWidth = 0.04f + 0.02f * differentiation,
-            .canyonHalfLength = 0.46f,
-            .seed = seed,
-        };
-    }
-
     auto Compose::derive(const Passport& passport) -> Geology {
         constexpr double gravityConstant = 6.67430e-11;
         const double radius = std::max(double(passport.radius), 1.0);
@@ -168,12 +136,23 @@ namespace eltanin::planet {
         const float grain = glm::clamp(0.18f + age * 0.46f + passport.environment.debrisFlux * 0.34f, 0.0f, 1.0f);
         const float reliefFraction = glm::clamp(0.035f + cohesion * 0.025f + (1.0f - glm::clamp(gravity / 12.0f, 0.0f, 1.0f)) * 0.018f, 0.025f, 0.085f);
         const float reliefAmplitude = passport.radius * reliefFraction;
+        const float hydrogen = float(geo::Volatile::nibble(retained, geo::Volatile::Kind::Hydrogen)) / 15.0f;
+        const float helium = float(geo::Volatile::nibble(retained, geo::Volatile::Kind::Helium)) / 15.0f;
+        const float lightGas = glm::clamp((hydrogen + helium) * 0.5f, 0.0f, 1.0f);
+        const float densityDrop = glm::clamp(1.0f - solidDensity / 3500.0f, 0.0f, 1.0f);
+        const float envelope = glm::clamp(lightGas * 0.72f + densityDrop * 0.38f + atmosphere * lightGas * 0.22f, 0.0f, 1.0f);
+        const float bulkIce = float(geo::Mineral::nibble(passport.bulk, geo::Mineral::Kind::Ice)) / 15.0f;
+        const float iceMantle = glm::clamp(bulkIce * 0.55f + ice * 0.45f + (1.0f - glm::smoothstep(180.0f, 273.0f, temperature)) * 0.35f * glm::clamp(bulkIce + ice, 0.0f, 1.0f), 0.0f, 1.0f);
+        const float magmaOcean = glm::clamp(heat * (1.0f - age) * glm::clamp(1.15f - thickness, 0.0f, 1.0f) * (1.0f - envelope), 0.0f, 1.0f);
+        const float largeBodyTail = glm::clamp(passport.environment.debrisFlux * 0.55f + passport.environment.eccentricity * 0.24f, 0.0f, 1.0f);
+        const float dichotomy = glm::clamp(largeBodyTail * (1.0f - mobility) * (1.0f - envelope), 0.0f, 1.0f);
         return Geology{
             .crust = {.mix = passport.bulk, .plates = plates, .differentiation = differentiation, .thickness = thickness, .mobility = mobility, .fragmentation = fragmentation, .cohesion = cohesion, .grain = grain},
             .mantle = {.heat = heat, .plumeRate = glm::clamp(heat * (1.15f - mobility * 0.58f), 0.0f, 1.0f), .plumePower = glm::clamp(0.18f + heat * 0.72f + passport.environment.tidalHeat * 0.24f, 0.0f, 1.0f), .boundaryAffinity = glm::clamp(mobility * (0.42f + water * 0.45f), 0.0f, 1.0f)},
-            .bombardment = {.mix = passport.bulk, .flux = glm::clamp(passport.environment.debrisFlux * (0.42f + age * 0.58f), 0.0f, 1.0f), .violence = glm::clamp(0.25f + passport.environment.debrisFlux * 0.52f + passport.environment.eccentricity * 0.30f, 0.0f, 1.0f), .largeBodyTail = glm::clamp(passport.environment.debrisFlux * 0.55f + passport.environment.eccentricity * 0.24f, 0.0f, 1.0f), .ironFraction = metal},
+            .bombardment = {.mix = passport.bulk, .flux = glm::clamp(passport.environment.debrisFlux * (0.42f + age * 0.58f), 0.0f, 1.0f), .violence = glm::clamp(0.25f + passport.environment.debrisFlux * 0.52f + passport.environment.eccentricity * 0.30f, 0.0f, 1.0f), .largeBodyTail = largeBodyTail, .ironFraction = metal},
             .climate = {.retained = retained, .atmosphere = atmosphere, .temperature = temperature, .water = water, .ice = ice, .weathering = glm::clamp(water * atmosphere * age * 1.8f, 0.0f, 1.0f), .transport = glm::clamp(water * (0.35f + atmosphere) * (0.65f + mobility * 0.35f), 0.0f, 1.0f)},
             .history = {.surfaceAge = glm::clamp(age * (1.0f - mobility * 0.28f) + passport.environment.debrisFlux * 0.12f, 0.0f, 1.0f), .reliefAmplitude = reliefAmplitude},
+            .interior = {.envelope = envelope, .iceMantle = iceMantle, .magmaOcean = magmaOcean, .dichotomy = dichotomy},
         };
     }
 
@@ -181,9 +160,17 @@ namespace eltanin::planet {
         const integer seed = planet.passport.seed;
         const float amplitude = geology.history.reliefAmplitude;
         Formation formation{planet.heights.pack, planet.farAlbedo.pack};
+        if (geology.interior.dichotomy > 0.12f)
+            Provinces::apply(formation.relief, Provinces{.count = 2, .seed = seed, .amplitude = amplitude * (0.18f + 0.12f * geology.crust.differentiation) * glm::clamp(geology.interior.dichotomy / 0.22f, 0.45f, 1.0f)});
+        const bool envelopeBody = geology.interior.envelope > 0.35f;
+        integer plateCount = geology.crust.plates;
+        if (envelopeBody or geology.interior.magmaOcean > 0.45f)
+            plateCount = 0;
+        else if (geology.interior.iceMantle > 0.42f and geology.crust.mobility < 0.22f)
+            plateCount = 1;
         vector<PlateSite> plates;
-        plates.reserve(static_cast<std::size_t>(geology.crust.plates));
-        for (integer index = 0; index < geology.crust.plates; ++index) {
+        plates.reserve(static_cast<std::size_t>(plateCount));
+        for (integer index = 0; index < plateCount; ++index) {
             plates.push_back(PlateSite{
                 .center = Sample::sphereDir(index, seed + 1009, 3, 5),
                 .pole = Sample::sphereDir(index, seed + 1031, 7, 9),
@@ -193,7 +180,10 @@ namespace eltanin::planet {
                 .felsic = glm::clamp(geology.crust.differentiation * (0.55f + 0.70f * Sample::hash01(index, seed, 113, 47)), 0.0f, 1.0f),
             });
         }
-        PlateField::apply(formation, PlateField{.sites = plates, .seed = seed + 1009, .amplitude = amplitude, .width = 0.065f + 0.055f * geology.crust.fragmentation, .activity = glm::clamp(0.28f + geology.crust.fragmentation * 0.52f + geology.mantle.heat * 0.35f, 0.0f, 1.0f)});
+        if (not plates.empty())
+            PlateField::apply(formation, PlateField{.sites = plates, .seed = seed + 1009, .amplitude = amplitude, .width = 0.065f + 0.055f * geology.crust.fragmentation, .activity = glm::clamp(0.28f + geology.crust.fragmentation * 0.52f + geology.mantle.heat * 0.35f, 0.0f, 1.0f)});
+        if (geology.interior.iceMantle > 0.28f)
+            Whisper::apply(formation.relief, Whisper{.seed = seed + 5301, .freq = 5.5f + 9.0f * geology.crust.grain, .amplitude = amplitude * (0.025f + 0.045f * geology.interior.iceMantle)});
 
         struct BoundaryCandidate {
             vec3 center;
@@ -206,6 +196,7 @@ namespace eltanin::planet {
         };
         vector<BoundaryCandidate> candidates;
         candidates.reserve(192);
+        if (plates.size() > 1) {
         for (integer candidate = 0; candidate < 192; ++candidate) {
             const vec3 direction = Sample::sphereDir(candidate, seed + 1103, 11, 13);
             const PlateSite::Hit hit = PlateSite::hit(direction, plates);
@@ -240,6 +231,7 @@ namespace eltanin::planet {
             const float scale = glm::clamp(std::abs(candidate.divergence) * 0.75f + candidate.shear * 0.45f + geology.crust.fragmentation * 0.35f, 0.18f, 1.0f);
             Rift::apply(formation.relief, Rift{.center = candidate.center, .along = candidate.along, .halfWidth = 0.012f + 0.030f * scale, .halfLength = 0.24f + 0.34f * scale, .depth = amplitude * (0.12f + 0.24f * scale), .seed = seed + 1201 + static_cast<integer>(usedBoundaries.size()) * 31});
         }
+        }
 
         const integer basinCount = std::clamp(static_cast<integer>(std::lround(geology.bombardment.largeBodyTail * 5.0f)), integer{0}, integer{6});
         for (integer impact = 0; impact < basinCount; ++impact) {
@@ -251,7 +243,7 @@ namespace eltanin::planet {
         Burst::apply(formation.relief, Burst::epoch(Burst::Epoch{.seed = seed, .salt = 211, .count = 28 + static_cast<integer>(90.0f * geology.bombardment.flux), .radiusMin = 0.018f, .radiusSpan = 0.075f, .depthMin = amplitude * 0.04f, .depthSpan = amplitude * (0.08f + 0.08f * geology.bombardment.violence), .highland = 1.0f, .avoidAxis = vec3{0.0f, 1.0f, 0.0f}, .avoidDot = 2.0f}));
         Erode::apply(formation.relief, Erode{.years = geology.history.surfaceAge, .strength = 0.18f + geology.climate.weathering * 0.48f, .north = 0.0f, .iterations = 2 + static_cast<integer>(std::lround(geology.climate.weathering * 4.0f)), .seed = seed + 2203});
 
-        const integer plumeCount = geology.mantle.plumeRate > 0.045f ? std::clamp(integer{1} + static_cast<integer>(std::lround(geology.mantle.plumeRate * 5.0f)), integer{1}, integer{8}) : integer{0};
+        const integer plumeCount = envelopeBody ? integer{0} : geology.mantle.plumeRate > 0.045f ? std::clamp(integer{1} + static_cast<integer>(std::lround(geology.mantle.plumeRate * 5.0f)), integer{1}, integer{8}) : integer{0};
         for (integer plume = 0; plume < plumeCount; ++plume) {
             vec3 axis = Sample::sphereDir(plume, seed + 3001, 23, 29);
             if (geology.mantle.boundaryAffinity > Sample::hash01(plume, seed, 3007, 47) and not candidates.empty())
@@ -273,7 +265,7 @@ namespace eltanin::planet {
             }
         }
 
-        if (geology.climate.transport > 0.025f)
+        if (geology.climate.transport > 0.025f and not envelopeBody)
             Drainage::apply(formation.relief, Drainage{.seed = seed + 4001, .sources = 4 + static_cast<integer>(std::lround(24.0f * geology.climate.transport)), .steps = 45 + static_cast<integer>(std::lround(95.0f * geology.climate.transport)), .stepLength = 0.0028f + 0.0024f * geology.climate.transport, .width = 0.0012f + 0.0014f * geology.climate.transport, .depth = amplitude * (0.006f + 0.026f * geology.climate.transport)});
         Bombardment::apply(formation.relief, Bombardment{.seed = seed + 5003, .count = 350 + static_cast<integer>(std::lround(2400.0f * geology.bombardment.flux)), .radiusMin = 0.0015f, .radiusMax = 0.006f + 0.008f * geology.bombardment.violence, .depth = amplitude * (0.006f + 0.018f * geology.bombardment.violence), .northDensity = 1.0f});
         Erode::apply(formation.relief, Erode{.years = geology.history.surfaceAge, .strength = 0.08f + geology.climate.weathering * 0.32f, .north = 0.0f, .iterations = 1 + static_cast<integer>(std::lround(geology.climate.weathering * 3.0f)), .seed = seed + 5101});
@@ -300,70 +292,6 @@ namespace eltanin::planet {
         }
         planet.heights.stitch();
         Compose::paint(planet, formation, geology);
-    }
-
-    void Generator::mars(Planet& planet) {
-        const Geology geology = Compose::derive(planet.passport);
-        const float amplitude = geology.history.reliefAmplitude;
-        const float grain = glm::clamp(geology.crust.grain, 0.0f, 1.0f);
-        const float tectonic = glm::clamp(geology.mantle.heat, 0.0f, 1.0f);
-        const float differentiation = glm::clamp(geology.crust.differentiation, 0.0f, 1.0f);
-        const float age = glm::clamp(geology.history.surfaceAge, 0.0f, 1.0f);
-        const integer seed = planet.passport.seed;
-        const vec3 tharsis = glm::normalize(vec3{0.72f, 0.12f, 0.35f});
-        const vec3 olympus = glm::normalize(tharsis + vec3{0.04f, 0.08f, -0.02f});
-        const vec3 arsia = glm::normalize(tharsis + vec3{-0.12f, -0.08f, 0.10f});
-        const vec3 pavonis = glm::normalize(tharsis + vec3{-0.04f, -0.02f, 0.08f});
-        const vec3 ascrea = glm::normalize(tharsis + vec3{0.05f, 0.04f, 0.12f});
-        const vec3 canyonCenter = glm::normalize(tharsis + vec3{0.35f, -0.08f, -0.22f});
-        const vec3 canyonAlong = glm::normalize(glm::cross(vec3{0.0f, 1.0f, 0.0f}, canyonCenter));
-        const vec3 canyonAcross = glm::normalize(glm::cross(canyonCenter, canyonAlong));
-        const vec3 hellas = glm::normalize(vec3{0.18f, -0.72f, 0.52f});
-        const vec3 argyre = glm::normalize(vec3{-0.48f, -0.68f, 0.22f});
-        const vec3 isidis = glm::normalize(vec3{0.58f, 0.04f, -0.52f});
-        const float worn = 0.55f + 0.45f * age;
-        geo::IcosaMap<float> relief{planet.heights.pack, 0.0f};
-
-        Provinces::apply(relief, Provinces{.count = 2, .seed = seed, .amplitude = amplitude * (0.18f + 0.12f * differentiation)});
-
-        Burst::apply(relief, vector<Burst>{
-            Burst::impact(hellas, 0.24f, amplitude * 0.48f * worn, seed + 101),
-            Burst::impact(argyre, 0.14f, amplitude * 0.29f * worn, seed + 137),
-            Burst::impact(isidis, 0.11f, amplitude * 0.20f * worn, seed + 173),
-        });
-        Burst::apply(relief, Burst::epoch(Burst::Epoch{.seed = seed, .salt = 3, .count = 42 + integer(56.0f * grain), .radiusMin = 0.025f, .radiusSpan = 0.075f, .depthMin = amplitude * 0.07f * worn, .depthSpan = amplitude * 0.13f * worn, .highland = 0.16f, .avoidAxis = olympus, .avoidDot = 0.97f}));
-        Erode::apply(relief, Erode{.years = age, .strength = 0.58f, .north = 1.0f, .iterations = 4, .seed = seed + 251});
-
-        Swell::apply(relief, Swell{.axis = tharsis, .sigma = 0.44f, .amplitude = amplitude * (0.26f + 0.16f * tectonic), .seed = seed + 307});
-        Burst::apply(relief, vector<Burst>{
-            Burst::eruption(olympus, 0.16f, amplitude * (0.36f + 0.16f * tectonic), seed + 331),
-            Burst::eruption(arsia, 0.10f, amplitude * 0.18f, seed + 347),
-            Burst::eruption(pavonis, 0.09f, amplitude * 0.15f, seed + 367),
-            Burst::eruption(ascrea, 0.095f, amplitude * 0.17f, seed + 389),
-        });
-        Rift::apply(relief, Rift{.center = canyonCenter, .along = canyonAlong, .halfWidth = 0.04f + 0.02f * differentiation, .halfLength = 0.46f, .depth = amplitude * (0.24f + 0.22f * differentiation), .seed = seed + 401});
-        const vector<Rift> minorRifts{
-            Rift{.center = glm::normalize(canyonCenter - canyonAlong * 0.25f + canyonAcross * 0.08f), .along = glm::normalize(canyonAlong + canyonAcross * 0.26f), .halfWidth = 0.014f, .halfLength = 0.17f, .depth = amplitude * 0.095f, .seed = seed + 431},
-            Rift{.center = glm::normalize(canyonCenter + canyonAlong * 0.22f - canyonAcross * 0.07f), .along = glm::normalize(canyonAlong - canyonAcross * 0.31f), .halfWidth = 0.011f, .halfLength = 0.14f, .depth = amplitude * 0.075f, .seed = seed + 439},
-            Rift{.center = glm::normalize(canyonCenter + canyonAcross * 0.13f), .along = glm::normalize(canyonAlong + canyonAcross * 0.12f), .halfWidth = 0.009f, .halfLength = 0.11f, .depth = amplitude * 0.062f, .seed = seed + 443},
-            Rift{.center = glm::normalize(canyonCenter - canyonAcross * 0.15f - canyonAlong * 0.06f), .along = glm::normalize(canyonAlong - canyonAcross * 0.18f), .halfWidth = 0.008f, .halfLength = 0.09f, .depth = amplitude * 0.052f, .seed = seed + 449},
-        };
-        for (const Rift& rift : minorRifts)
-            Rift::apply(relief, rift);
-        Drainage::apply(relief, Drainage{.seed = seed + 601, .sources = 10 + integer(12.0f * grain), .steps = 90, .stepLength = 0.0035f, .width = 0.0015f + 0.0005f * grain, .depth = amplitude * (0.014f + 0.008f * age)});
-
-        Burst::apply(relief, Burst::epoch(Burst::Epoch{.seed = seed, .salt = 41, .count = 20 + integer(28.0f * grain), .radiusMin = 0.014f, .radiusSpan = 0.045f, .depthMin = amplitude * 0.035f, .depthSpan = amplitude * 0.075f, .highland = 1.0f, .avoidAxis = olympus, .avoidDot = 0.92f}));
-        Bombardment::apply(relief, Bombardment{.seed = seed + 701, .count = 1200 + integer(1000.0f * grain * age), .radiusMin = 0.0018f, .radiusMax = 0.010f, .depth = amplitude * (0.012f + 0.008f * grain), .northDensity = 0.34f + 0.18f * (1.0f - age)});
-        Erode::apply(relief, Erode{.years = 0.32f + 0.28f * age, .strength = 0.28f, .north = 0.35f, .iterations = 3, .seed = seed + 457});
-
-        const integer count = planet.heights.pack.storedCount();
-        for (integer index = 0; index < count; ++index) {
-            const auto slot = planet.heights.pack.slotOf(index);
-            planet.heights.at(slot) = planet.encodeRelief(glm::clamp(relief.at(slot), -amplitude, amplitude));
-        }
-        planet.heights.stitch();
-        PaintCover::apply(planet, PaintCover::mars(geology, planet.passport.seed));
-        planet.weather = Weather::spawn(geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
     }
 
 }

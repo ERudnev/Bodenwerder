@@ -428,10 +428,22 @@ namespace eltanin::planet {
 
     }
 
-    auto Planet::recommendedDetail(float radius, float edge) -> Detail {
+    auto Planet::edgeMeters(float radius) -> float {
+        const float r = std::max(radius, 1.0f);
+        constexpr float earth = 63710.0f;
+        if (r < 4000.0f)
+            return 8.0f;
+        if (r < 16000.0f)
+            return 16.0f;
+        if (r <= earth)
+            return 32.0f;
+        return 32.0f * std::pow(r / earth, 1.2f);
+    }
+
+    auto Planet::recommendedDetail(float radius) -> Detail {
         constexpr integer maxEdgeSegments = 2048; // GPU height/cover field; N = edgeBase * 2^t
         const integer cap = maxEdgeSegments;
-        const float want = edge > 0.0f ? edge : constructionEdge;
+        const float want = edgeMeters(radius);
         const double arc = std::max(0.0, double(radius)) * std::acos(1.0 / std::sqrt(5.0));
         integer segments = want > 0.0f ? static_cast<integer>(std::lround(arc / double(want))) : cap;
         if (segments < 1)

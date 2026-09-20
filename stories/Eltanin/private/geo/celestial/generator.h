@@ -6,7 +6,6 @@ namespace eltanin::planet {
 
     struct Generator {
         static void generate(Planet&);
-        static void mars(Planet&);
     };
 
 }

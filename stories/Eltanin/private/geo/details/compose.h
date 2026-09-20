@@ -45,6 +45,12 @@ namespace eltanin::planet {
             float surfaceAge;
             float reliefAmplitude;
         } history;
+        struct Interior {
+            float envelope;
+            float iceMantle;
+            float magmaOcean;
+            float dichotomy;
+        } interior;
     };
 
     struct AtmosphereLook {
@@ -67,31 +73,6 @@ namespace eltanin::planet {
         geo::IcosaMap<float> exogenic;
 
         Formation(geo::IcosaPack surface, geo::IcosaPack features);
-    };
-
-    struct PaintCover {
-        integer ice;
-        integer olivine;
-        integer pyroxene;
-        integer feldspar;
-        integer clay;
-        integer carbonaceous;
-        integer iron;
-        integer oxides;
-        integer salts;
-        float cohesion;
-        float age;
-        float differentiation;
-        vec3 tharsis;
-        vec3 olympus;
-        vec3 canyonCenter;
-        vec3 canyonAlong;
-        float canyonHalfWidth;
-        float canyonHalfLength;
-        integer seed;
-
-        static auto mars(const Geology&, integer seed) -> PaintCover;
-        static void apply(Planet&, const PaintCover&);
     };
 
     struct Compose {
