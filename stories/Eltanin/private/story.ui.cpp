@@ -67,11 +67,11 @@ namespace eltanin {
                 panel.reset();
         }
 
-        constexpr float spaceScales[4] = {0.1f, 1.0f, 10.0f, 100.0f};
+        constexpr float spaceScales[5] = {0.1f, 1.0f, 10.0f, 100.0f, 1000.0f};
 
         auto spaceScaleIndex(float scale) -> int {
             int picked = 1;
-            for (int index = 0; index < 4; ++index)
+            for (int index = 0; index < 5; ++index)
                 if (scale == spaceScales[index])
                     picked = index;
             return picked;
@@ -349,8 +349,11 @@ namespace eltanin {
                         } else {
                             ImGui::TextDisabled("Parallel projection (reserved).");
                         }
-                        ImGui::DragFloat("Near", &quantum->z_near, 0.1f, 0.5f, quantum->z_far - 1.0f, "%.1f");
-                        ImGui::DragFloat("Far", &quantum->z_far, 100.0f, quantum->z_near + 1.0f, geo::Horizon::far, "%.0f");
+                        ImGui::DragFloat("Near", &quantum->z_near, 0.1f, 0.5f, 1000.0f, "%.1f");
+                        if (quantum->mode == scene::Camera::Mode::orthographic)
+                            ImGui::DragFloat("Far", &quantum->z_far, 100.0f, quantum->z_near + 1.0f, geo::Horizon::far, "%.0f");
+                        else
+                            ImGui::TextUnformatted("Far infinite");
                     }
                 }
             }
@@ -373,7 +376,7 @@ namespace eltanin {
             else if (grid.has_value() and with<scene::actor::MeshState>::exists(world, *grid))
                 current = with<scene::actor::MeshState>::get(world, *grid).scale.x;
             int scale = spaceScaleIndex(current);
-            if (ImGui::Combo("Scale", &scale, "×0.1\0×1\0×10\0×100\0")) {
+            if (ImGui::Combo("Scale", &scale, "×0.1\0×1\0×10\0×100\0×1000\0")) {
                 const float next = spaceScales[scale];
                 if (hasCamera)
                     with<controller::Camera3d>::modify(world, cameras->free)->moveScale = next;

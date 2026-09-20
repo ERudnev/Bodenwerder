@@ -17,11 +17,21 @@ namespace rmmr::scene {
         constexpr float k_z_near = 1.0f;
         constexpr float k_z_far = 1000.0f;
 
+        auto reverseZInfinitePerspective(float fovY, float aspect, float zNear) -> mat4 {
+            const float f = 1.0f / std::tan(fovY * 0.5f);
+            mat4 projection{0.0f};
+            projection[0][0] = f / aspect;
+            projection[1][1] = f;
+            projection[2][3] = -1.0f;
+            projection[3][2] = std::max(zNear, 1.0e-6f);
+            return projection;
+        }
+
         auto projection_matrix(const Camera::Quantum& quantum, float aspect_ratio) -> mat4 {
             if (quantum.mode == Camera::Mode::perspective) {
                 const float aspect = std::max(aspect_ratio, 1.0e-6f);
-                const float fov_y = 2.0f * std::atan(std::tan(quantum.fov_x * 0.5f) / aspect);
-                return glm::perspectiveRH_ZO(fov_y, aspect, quantum.z_far, quantum.z_near); // reverse-Z, clip 0..1: near→1, far→0
+                const float fovY = 2.0f * std::atan(std::tan(quantum.fov_x * 0.5f) / aspect);
+                return reverseZInfinitePerspective(fovY, aspect, quantum.z_near);
             }
             if (quantum.mode == Camera::Mode::orthographic) {
                 const float half_w = 0.5f * static_cast<float>(quantum.ortho_size.x);

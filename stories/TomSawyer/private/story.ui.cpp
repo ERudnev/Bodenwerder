@@ -68,8 +68,11 @@ namespace tommy {
                 } else {
                     ImGui::TextDisabled("Parallel projection (reserved).");
                 }
-                ImGui::DragFloat("Near", &quantum->z_near, 0.01f, 0.001f, quantum->z_far - 0.001f, "%.3f");
-                ImGui::DragFloat("Far", &quantum->z_far, 0.1f, quantum->z_near + 0.001f, 10000.0f, "%.3f");
+                ImGui::DragFloat("Near", &quantum->z_near, 0.01f, 0.001f, 10000.0f, "%.3f");
+                if (quantum->mode == scene::Camera::Mode::orthographic)
+                    ImGui::DragFloat("Far", &quantum->z_far, 0.1f, quantum->z_near + 0.001f, 10000.0f, "%.3f");
+                else if (quantum->mode == scene::Camera::Mode::perspective)
+                    ImGui::TextUnformatted("Far infinite");
             }
         }
         ImGui::End();

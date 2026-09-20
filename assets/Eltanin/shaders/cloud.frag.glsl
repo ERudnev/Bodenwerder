@@ -46,7 +46,9 @@ vec3 pixelRayDir(vec3 camPos, mat4 invViewProj) {
     ivec2 size = textureSize(u_sceneDepth, 0);
     vec2 ndc = gl_FragCoord.xy / vec2(size) * 2.0 - 1.0;
     vec4 worldFar = invViewProj * vec4(ndc, 0.0, 1.0);
-    worldFar /= max(worldFar.w, 1.0e-6);
+    if (abs(worldFar.w) < 1.0e-6)
+        return normalize(worldFar.xyz);
+    worldFar /= worldFar.w;
     return normalize(worldFar.xyz - camPos);
 }
 
@@ -54,6 +56,8 @@ float sceneDistance(vec3 camPos, mat4 invViewProj) {
     ivec2 size = textureSize(u_sceneDepth, 0);
     vec2 uv = gl_FragCoord.xy / vec2(size);
     float depth = texture(u_sceneDepth, uv).r;
+    if (depth <= 1.0e-7)
+        return 1.0e12;
     vec4 world = invViewProj * vec4(uv * 2.0 - 1.0, depth, 1.0);
     world /= max(world.w, 1.0e-6);
     return length(world.xyz - camPos);
