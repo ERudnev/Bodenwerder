@@ -2,6 +2,8 @@
 
 #include <fQSM/api/interface.h>
 
+#include <cstdint>
+
 namespace eltanin::geo {
 
     using namespace fqsm::api;
@@ -57,5 +59,9 @@ namespace eltanin::geo {
         Exotic,
         Caliche,
     };
+
+    inline auto pack(Facies surface, Facies below) -> std::uint16_t {
+        return std::uint16_t(std::uint16_t(surface) | (std::uint16_t(below) << 8));
+    }
 
 }

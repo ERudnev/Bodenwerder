@@ -1,4 +1,5 @@
-#include "geo/celestial/generator.h"
+#include "geo/details/effects.h"
+#include "geo/details/compose.h"
 #include "geo/details/facies.h"
 
 #include <algorithm>
@@ -18,242 +19,233 @@ namespace eltanin::planet {
     using geo::IcosaMap;
     using geo::IcosaPack;
 
-    namespace {
-
-        constexpr integer spatialSpan = 32;
-
-        struct SpatialCell {
-            integer x;
-            integer y;
-            integer z;
-        };
-
-        struct ChannelPoint {
-            vec3 direction;
-            float width;
-            float depth;
-        };
-
-        struct DrainageSource {
-            vec3 direction;
-            float height;
-        };
-
-        auto spatialCell(vec3 direction) -> SpatialCell {
-            auto coordinate = [](float value) -> integer { return std::clamp(static_cast<integer>((value * 0.5f + 0.5f) * float(spatialSpan)), integer{0}, spatialSpan - 1); };
-            return SpatialCell{.x = coordinate(direction.x), .y = coordinate(direction.y), .z = coordinate(direction.z)};
-        }
-
-        auto spatialIndex(integer x, integer y, integer z) -> std::size_t {
-            return static_cast<std::size_t>((z * spatialSpan + y) * spatialSpan + x);
-        }
-
-        auto hash32(integer x, integer y, integer z, integer salt) -> std::uint32_t {
-            std::uint32_t value = std::uint32_t(x) * 73856093u ^ std::uint32_t(y) * 19349663u ^ std::uint32_t(z) * 83492791u ^ std::uint32_t(salt) * 2654435761u;
-            value ^= value >> 16;
-            value *= 0x7feb352du;
-            value ^= value >> 15;
-            value *= 0x846ca68bu;
-            value ^= value >> 16;
-            return value;
-        }
-
-        auto hash01(integer x, integer y, integer z, integer salt) -> float {
-            return float(hash32(x, y, z, salt) >> 8) * (1.0f / 16777215.0f);
-        }
-
-        auto valueNoise(float x, float y, float z, integer seed) -> float {
-            const integer x0 = static_cast<integer>(std::floor(x));
-            const integer y0 = static_cast<integer>(std::floor(y));
-            const integer z0 = static_cast<integer>(std::floor(z));
-            const float tx = x - float(x0);
-            const float ty = y - float(y0);
-            const float tz = z - float(z0);
-            const float sx = tx * tx * (3.0f - 2.0f * tx);
-            const float sy = ty * ty * (3.0f - 2.0f * ty);
-            const float sz = tz * tz * (3.0f - 2.0f * tz);
-            const float c000 = hash01(x0, y0, z0, seed);
-            const float c100 = hash01(x0 + 1, y0, z0, seed);
-            const float c010 = hash01(x0, y0 + 1, z0, seed);
-            const float c110 = hash01(x0 + 1, y0 + 1, z0, seed);
-            const float c001 = hash01(x0, y0, z0 + 1, seed);
-            const float c101 = hash01(x0 + 1, y0, z0 + 1, seed);
-            const float c011 = hash01(x0, y0 + 1, z0 + 1, seed);
-            const float c111 = hash01(x0 + 1, y0 + 1, z0 + 1, seed);
-            const float c00 = c000 + (c100 - c000) * sx;
-            const float c10 = c010 + (c110 - c010) * sx;
-            const float c01 = c001 + (c101 - c001) * sx;
-            const float c11 = c011 + (c111 - c011) * sx;
-            return (c00 + (c10 - c00) * sy) * (1.0f - sz) + (c01 + (c11 - c01) * sy) * sz;
-        }
-
-        auto signedNoise(vec3 point, integer seed) -> float {
-            return valueNoise(point.x, point.y, point.z, seed) * 2.0f - 1.0f;
-        }
-
-        auto fractal(vec3 point, integer seed, integer octaves, float persistence) -> float {
-            float sum = 0.0f;
-            float weight = 0.0f;
-            float amplitude = 1.0f;
-            for (integer octave = 0; octave < octaves; ++octave) {
-                sum += amplitude * signedNoise(point, seed + octave * 19);
-                weight += amplitude;
-                point *= 2.07f;
-                amplitude *= persistence;
-            }
-            return sum / std::max(weight, 1.0e-6f);
-        }
-
-        auto ridgedFractal(vec3 point, integer seed, integer octaves) -> float {
-            float sum = 0.0f;
-            float weight = 0.0f;
-            float amplitude = 1.0f;
-            float previous = 1.0f;
-            for (integer octave = 0; octave < octaves; ++octave) {
-                float ridge = 1.0f - std::abs(signedNoise(point, seed + octave * 23));
-                ridge *= ridge;
-                ridge *= previous;
-                previous = glm::clamp(ridge * 2.0f, 0.0f, 1.0f);
-                sum += amplitude * ridge;
-                weight += amplitude;
-                point *= 2.13f;
-                amplitude *= 0.52f;
-            }
-            return sum / std::max(weight, 1.0e-6f);
-        }
-
-        auto warpedDirection(vec3 direction, integer seed, float frequency, float strength) -> vec3 {
-            const vec3 point = direction * frequency;
-            const vec3 warp{
-                fractal(point, seed + 3, 3, 0.52f),
-                fractal(vec3{point.y, point.z, point.x}, seed + 7, 3, 0.52f),
-                fractal(vec3{point.z, point.x, point.y}, seed + 11, 3, 0.52f),
-            };
-            return glm::normalize(direction + warp * strength);
-        }
-
-        auto packLayers(Facies surface, Facies below) -> std::uint16_t {
-            return std::uint16_t(std::uint16_t(surface) | (std::uint16_t(below) << 8));
-        }
-
-        auto mineralAmount(geo::Mineral::Mix mix, geo::Mineral::Kind kind) -> integer {
-            return integer((mix >> (static_cast<integer>(kind) * 4)) & 15u);
-        }
-
-        auto volatileAmount(geo::Volatile::Mix mix, geo::Volatile::Kind kind) -> integer {
-            return integer((mix >> (static_cast<integer>(kind) * 4)) & 15u);
-        }
-
-        auto angular(vec3 a, vec3 b) -> float {
-            return std::acos(glm::clamp(glm::dot(glm::normalize(a), glm::normalize(b)), -1.0f, 1.0f));
-        }
-
-        auto gaussian(float angle, float sigma) -> float {
-            const float s = std::max(sigma, 1.0e-4f);
-            return std::exp(-0.5f * (angle * angle) / (s * s));
-        }
-
-        struct PlateSample {
-            integer first;
-            integer second;
-            float firstScore;
-            float secondScore;
-            vec3 normal;
-            vec3 along;
-            float divergence;
-            float shear;
-        };
-
-        auto samplePlate(vec3 direction, const Generator::PlateField& params) -> PlateSample {
-            const vec3 warped = warpedDirection(direction, params.seed, 2.6f, 0.34f);
-            PlateSample sample{.first = 0, .second = 0, .firstScore = -2.0f, .secondScore = -2.0f, .normal = vec3{1.0f, 0.0f, 0.0f}, .along = vec3{0.0f, 0.0f, 1.0f}, .divergence = 0.0f, .shear = 0.0f};
-            for (integer index = 0; index < static_cast<integer>(params.sites.size()); ++index) {
-                const auto& site = params.sites[static_cast<std::size_t>(index)];
-                const float score = glm::dot(warped, site.center) + 0.09f * fractal(direction * 3.6f, params.seed + 101 + index * 67, 5, 0.56f) + 0.045f * fractal(direction * 10.0f, params.seed + 131 + index * 67, 4, 0.54f) + 0.018f * fractal(direction * 24.0f, params.seed + 157 + index * 67, 3, 0.52f);
-                if (score > sample.firstScore) {
-                    sample.second = sample.first;
-                    sample.secondScore = sample.firstScore;
-                    sample.first = index;
-                    sample.firstScore = score;
-                } else if (score > sample.secondScore) {
-                    sample.second = index;
-                    sample.secondScore = score;
-                }
-            }
-            if (params.sites.size() < 2)
-                return sample;
-            const auto& first = params.sites[static_cast<std::size_t>(sample.first)];
-            const auto& second = params.sites[static_cast<std::size_t>(sample.second)];
-            const vec3 projected = first.center - second.center - direction * glm::dot(first.center - second.center, direction);
-            if (glm::dot(projected, projected) > 1.0e-8f)
-                sample.normal = glm::normalize(projected);
-            vec3 along = glm::cross(direction, sample.normal);
-            if (glm::dot(along, along) < 1.0e-8f)
-                along = glm::cross(direction, std::abs(direction.y) < 0.8f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f});
-            sample.along = glm::normalize(along);
-            const vec3 relative = glm::cross(first.pole, direction) * first.speed - glm::cross(second.pole, direction) * second.speed;
-            sample.divergence = glm::dot(relative, sample.normal);
-            sample.shear = std::abs(glm::dot(relative, sample.along));
-            return sample;
-        }
-
-        auto sphereSite(integer index, integer seed) -> vec3 {
-            const float u = hash01(index, seed, 3, 11);
-            const float v = hash01(index, seed, 5, 13);
-            const float theta = 2.0f * std::numbers::pi_v<float> * u;
-            const float z = 2.0f * v - 1.0f;
-            const float r = std::sqrt(std::max(0.0f, 1.0f - z * z));
-            return glm::normalize(vec3{r * std::cos(theta), z, r * std::sin(theta)});
-        }
-
-        auto burstDelta(vec3 dir, const Generator::Burst& burst) -> float {
-            const vec3 axis = glm::normalize(burst.axis);
-            const float radius = std::max(burst.radius, 1.0e-4f);
-            if (glm::dot(dir, axis) < std::cos(radius * 2.8f))
-                return 0.0f;
-            const vec3 warped = warpedDirection(dir, burst.seed, 2.4f, radius * 0.42f);
-            const float detailFrequency = std::min(std::max(13.0f, 1.8f / radius), 280.0f);
-            const float boundary = 1.0f + 0.22f * fractal(dir * detailFrequency, burst.seed + 31, 4, 0.54f);
-            const float t = angular(warped, axis) / (radius * boundary);
-            const float coarse = fractal(dir * std::min(std::max(9.0f, 0.9f / radius), 180.0f), burst.seed + 47, 4, 0.55f);
-            const float ridges = ridgedFractal(dir * std::min(std::max(26.0f, 2.7f / radius), 360.0f), burst.seed + 71, 5);
-            if (burst.lift < 0.0f) {
-                const float interior = 1.0f - glm::smoothstep(0.08f, 1.0f, t);
-                const float floorBreakup = interior * glm::smoothstep(0.18f, 0.86f, t) * coarse;
-                const float rimDistance = (t - 1.0f) / 0.13f;
-                const float brokenRim = burst.rim * std::exp(-rimDistance * rimDistance) * glm::clamp(0.58f + 0.72f * ridges + 0.22f * coarse, 0.15f, 1.5f);
-                const float apron = burst.rim * 0.26f * glm::clamp(1.0f - (t - 1.0f) / 0.72f, 0.0f, 1.0f) * glm::smoothstep(0.92f, 1.06f, t) * ridges;
-                return burst.lift * std::pow(interior, 0.72f) + std::abs(burst.lift) * 0.12f * floorBreakup + brokenRim + apron;
-            }
-            vec3 tangent = glm::cross(axis, vec3{0.0f, 1.0f, 0.0f});
-            if (glm::dot(tangent, tangent) < 1.0e-8f)
-                tangent = glm::cross(axis, vec3{1.0f, 0.0f, 0.0f});
-            tangent = glm::normalize(tangent);
-            const vec3 across = glm::normalize(glm::cross(axis, tangent));
-            const float azimuth = std::atan2(glm::dot(warped, tangent), glm::dot(warped, across));
-            const float lobe = 0.62f + 0.48f * fractal(vec3{std::cos(azimuth) * 2.2f, std::sin(azimuth) * 2.2f, 0.41f}, burst.seed + 91, 4, 0.56f) + 0.22f * fractal(vec3{std::cos(azimuth * 3.0f), std::sin(azimuth * 3.0f), 1.17f}, burst.seed + 97, 3, 0.52f);
-            const float apron = glm::clamp(0.55f + 0.70f * ridges, 0.28f, 1.35f);
-            const float radial = t / std::max(lobe * apron, 0.18f);
-            const float shield = std::max(std::exp(-2.05f * radial * radial) - std::exp(-2.05f * 2.35f), 0.0f);
-            const float massif = glm::clamp(0.76f + 0.22f * coarse + 0.20f * (ridges - 0.45f), 0.42f, 1.30f);
-            const float ravines = std::pow(glm::clamp(ridges, 0.0f, 1.0f), 3.0f) * glm::smoothstep(0.12f, 0.82f, radial) * glm::clamp(1.15f - radial, 0.0f, 1.0f);
-            const float caldera = std::exp(-std::pow(t / 0.13f, 4.0f)) * (0.11f + 0.05f * coarse);
-            return burst.lift * (shield * massif - 0.16f * ravines - caldera);
-        }
-
+    auto Sample::hash01(integer x, integer y, integer z, integer salt) -> float {
+        std::uint32_t value = std::uint32_t(x) * 73856093u ^ std::uint32_t(y) * 19349663u ^ std::uint32_t(z) * 83492791u ^ std::uint32_t(salt) * 2654435761u;
+        value ^= value >> 16;
+        value *= 0x7feb352du;
+        value ^= value >> 15;
+        value *= 0x846ca68bu;
+        value ^= value >> 16;
+        return float(value >> 8) * (1.0f / 16777215.0f);
     }
 
-    void Generator::applyProvinces(IcosaMap<float>& relief, const Provinces& params) {
+    auto Sample::sphereDir(integer index, integer seed, integer saltU, integer saltV) -> vec3 {
+        const float u = hash01(index, seed, saltU, 11);
+        const float v = hash01(index, seed, saltV, 13);
+        const float theta = 2.0f * std::numbers::pi_v<float> * u;
+        const float z = 2.0f * v - 1.0f;
+        const float r = std::sqrt(std::max(0.0f, 1.0f - z * z));
+        return glm::normalize(vec3{r * std::cos(theta), z, r * std::sin(theta)});
+    }
+
+    auto Sample::valueNoise(float x, float y, float z, integer seed) -> float {
+        const integer x0 = static_cast<integer>(std::floor(x));
+        const integer y0 = static_cast<integer>(std::floor(y));
+        const integer z0 = static_cast<integer>(std::floor(z));
+        const float tx = x - float(x0);
+        const float ty = y - float(y0);
+        const float tz = z - float(z0);
+        const float sx = tx * tx * (3.0f - 2.0f * tx);
+        const float sy = ty * ty * (3.0f - 2.0f * ty);
+        const float sz = tz * tz * (3.0f - 2.0f * tz);
+        const float c000 = hash01(x0, y0, z0, seed);
+        const float c100 = hash01(x0 + 1, y0, z0, seed);
+        const float c010 = hash01(x0, y0 + 1, z0, seed);
+        const float c110 = hash01(x0 + 1, y0 + 1, z0, seed);
+        const float c001 = hash01(x0, y0, z0 + 1, seed);
+        const float c101 = hash01(x0 + 1, y0, z0 + 1, seed);
+        const float c011 = hash01(x0, y0 + 1, z0 + 1, seed);
+        const float c111 = hash01(x0 + 1, y0 + 1, z0 + 1, seed);
+        const float c00 = c000 + (c100 - c000) * sx;
+        const float c10 = c010 + (c110 - c010) * sx;
+        const float c01 = c001 + (c101 - c001) * sx;
+        const float c11 = c011 + (c111 - c011) * sx;
+        return (c00 + (c10 - c00) * sy) * (1.0f - sz) + (c01 + (c11 - c01) * sy) * sz;
+    }
+
+    auto Sample::noise(vec3 point, integer seed) -> float {
+        return valueNoise(point.x, point.y, point.z, seed) * 2.0f - 1.0f;
+    }
+
+    auto Sample::fractal(vec3 point, integer seed, integer octaves, float persistence) -> float {
+        float sum = 0.0f;
+        float weight = 0.0f;
+        float amplitude = 1.0f;
+        for (integer octave = 0; octave < octaves; ++octave) {
+            sum += amplitude * noise(point, seed + octave * 19);
+            weight += amplitude;
+            point *= 2.07f;
+            amplitude *= persistence;
+        }
+        return sum / std::max(weight, 1.0e-6f);
+    }
+
+    auto Sample::ridged(vec3 point, integer seed, integer octaves) -> float {
+        float sum = 0.0f;
+        float weight = 0.0f;
+        float amplitude = 1.0f;
+        float previous = 1.0f;
+        for (integer octave = 0; octave < octaves; ++octave) {
+            float ridge = 1.0f - std::abs(noise(point, seed + octave * 23));
+            ridge *= ridge;
+            ridge *= previous;
+            previous = glm::clamp(ridge * 2.0f, 0.0f, 1.0f);
+            sum += amplitude * ridge;
+            weight += amplitude;
+            point *= 2.13f;
+            amplitude *= 0.52f;
+        }
+        return sum / std::max(weight, 1.0e-6f);
+    }
+
+    auto Sample::warped(vec3 direction, integer seed, float frequency, float strength) -> vec3 {
+        const vec3 point = direction * frequency;
+        const vec3 warp{
+            Sample::fractal(point, seed + 3, 3, 0.52f),
+            Sample::fractal(vec3{point.y, point.z, point.x}, seed + 7, 3, 0.52f),
+            Sample::fractal(vec3{point.z, point.x, point.y}, seed + 11, 3, 0.52f),
+        };
+        return glm::normalize(direction + warp * strength);
+    }
+
+    auto Sample::angular(vec3 a, vec3 b) -> float {
+        return std::acos(glm::clamp(glm::dot(glm::normalize(a), glm::normalize(b)), -1.0f, 1.0f));
+    }
+
+    auto Sample::gaussian(float angle, float sigma) -> float {
+        const float s = std::max(sigma, 1.0e-4f);
+        return std::exp(-0.5f * (angle * angle) / (s * s));
+    }
+
+    auto SpatialHash::cell(vec3 direction) -> Cell {
+        auto coordinate = [](float value) -> integer { return std::clamp(static_cast<integer>((value * 0.5f + 0.5f) * float(span)), integer{0}, span - 1); };
+        return Cell{.x = coordinate(direction.x), .y = coordinate(direction.y), .z = coordinate(direction.z)};
+    }
+
+    auto SpatialHash::index(integer x, integer y, integer z) -> std::size_t {
+        return static_cast<std::size_t>((z * span + y) * span + x);
+    }
+
+    auto PlateSite::hit(vec3 direction, const vector<PlateSite>& plates) -> Hit {
+        Hit found{.first = 0, .second = 0, .firstDot = glm::dot(direction, plates[0].center), .secondDot = -2.0f};
+        for (integer index = 1; index < static_cast<integer>(plates.size()); ++index) {
+            const float dot = glm::dot(direction, plates[static_cast<std::size_t>(index)].center);
+            if (dot > found.firstDot) {
+                found.second = found.first;
+                found.secondDot = found.firstDot;
+                found.first = index;
+                found.firstDot = dot;
+            } else if (dot > found.secondDot) {
+                found.second = index;
+                found.secondDot = dot;
+            }
+        }
+        return found;
+    }
+
+    auto PlateField::sample(vec3 direction) const -> Hit {
+        const vec3 warped = Sample::warped(direction, seed, 2.6f, 0.34f);
+        Hit found{.first = 0, .second = 0, .firstScore = -2.0f, .secondScore = -2.0f, .normal = vec3{1.0f, 0.0f, 0.0f}, .along = vec3{0.0f, 0.0f, 1.0f}, .divergence = 0.0f, .shear = 0.0f};
+        for (integer index = 0; index < static_cast<integer>(sites.size()); ++index) {
+            const auto& site = sites[static_cast<std::size_t>(index)];
+            const float score = glm::dot(warped, site.center) + 0.09f * Sample::fractal(direction * 3.6f, seed + 101 + index * 67, 5, 0.56f) + 0.045f * Sample::fractal(direction * 10.0f, seed + 131 + index * 67, 4, 0.54f) + 0.018f * Sample::fractal(direction * 24.0f, seed + 157 + index * 67, 3, 0.52f);
+            if (score > found.firstScore) {
+                found.second = found.first;
+                found.secondScore = found.firstScore;
+                found.first = index;
+                found.firstScore = score;
+            } else if (score > found.secondScore) {
+                found.second = index;
+                found.secondScore = score;
+            }
+        }
+        if (sites.size() < 2)
+            return found;
+        const auto& first = sites[static_cast<std::size_t>(found.first)];
+        const auto& second = sites[static_cast<std::size_t>(found.second)];
+        const vec3 projected = first.center - second.center - direction * glm::dot(first.center - second.center, direction);
+        if (glm::dot(projected, projected) > 1.0e-8f)
+            found.normal = glm::normalize(projected);
+        vec3 along = glm::cross(direction, found.normal);
+        if (glm::dot(along, along) < 1.0e-8f)
+            along = glm::cross(direction, std::abs(direction.y) < 0.8f ? vec3{0.0f, 1.0f, 0.0f} : vec3{1.0f, 0.0f, 0.0f});
+        found.along = glm::normalize(along);
+        const vec3 relative = glm::cross(first.pole, direction) * first.speed - glm::cross(second.pole, direction) * second.speed;
+        found.divergence = glm::dot(relative, found.normal);
+        found.shear = std::abs(glm::dot(relative, found.along));
+        return found;
+    }
+
+    auto Burst::impact(vec3 axis, float radius, float depth, integer seed) -> Burst {
+        return Burst{.axis = axis, .radius = radius, .lift = -depth, .rim = depth * 0.18f, .seed = seed};
+    }
+
+    auto Burst::eruption(vec3 axis, float radius, float height, integer seed) -> Burst {
+        return Burst{.axis = axis, .radius = radius, .lift = height, .rim = 0.0f, .seed = seed};
+    }
+
+    auto Burst::epoch(const Epoch& params) -> vector<Burst> {
+        vector<Burst> bursts;
+        bursts.reserve(static_cast<std::size_t>(params.count));
+        for (integer crater = 0; crater < params.count; ++crater) {
+            const vec3 axis = Sample::sphereDir(crater, params.seed, params.salt, params.salt + 2);
+            if (axis.y > params.highland)
+                continue;
+            if (glm::dot(axis, params.avoidAxis) > params.avoidDot)
+                continue;
+            const float radius = params.radiusMin + params.radiusSpan * Sample::hash01(crater, params.seed, params.salt + 4, 17);
+            const float depth = params.depthMin + params.depthSpan * Sample::hash01(crater, params.seed, params.salt + 6, 19);
+            bursts.push_back(impact(axis, radius, depth, params.seed + params.salt * 997 + crater * 31));
+        }
+        return bursts;
+    }
+
+    auto Burst::delta(vec3 dir, const Burst& burst) -> float {
+        const vec3 axis = glm::normalize(burst.axis);
+        const float radius = std::max(burst.radius, 1.0e-4f);
+        if (glm::dot(dir, axis) < std::cos(radius * 2.8f))
+            return 0.0f;
+        const vec3 warped = Sample::warped(dir, burst.seed, 2.4f, radius * 0.42f);
+        const float detailFrequency = std::min(std::max(13.0f, 1.8f / radius), 280.0f);
+        const float boundary = 1.0f + 0.22f * Sample::fractal(dir * detailFrequency, burst.seed + 31, 4, 0.54f);
+        const float t = Sample::angular(warped, axis) / (radius * boundary);
+        const float coarse = Sample::fractal(dir * std::min(std::max(9.0f, 0.9f / radius), 180.0f), burst.seed + 47, 4, 0.55f);
+        const float ridges = Sample::ridged(dir * std::min(std::max(26.0f, 2.7f / radius), 360.0f), burst.seed + 71, 5);
+        if (burst.lift < 0.0f) {
+            const float interior = 1.0f - glm::smoothstep(0.08f, 1.0f, t);
+            const float floorBreakup = interior * glm::smoothstep(0.18f, 0.86f, t) * coarse;
+            const float rimDistance = (t - 1.0f) / 0.13f;
+            const float brokenRim = burst.rim * std::exp(-rimDistance * rimDistance) * glm::clamp(0.58f + 0.72f * ridges + 0.22f * coarse, 0.15f, 1.5f);
+            const float apron = burst.rim * 0.26f * glm::clamp(1.0f - (t - 1.0f) / 0.72f, 0.0f, 1.0f) * glm::smoothstep(0.92f, 1.06f, t) * ridges;
+            return burst.lift * std::pow(interior, 0.72f) + std::abs(burst.lift) * 0.12f * floorBreakup + brokenRim + apron;
+        }
+        vec3 tangent = glm::cross(axis, vec3{0.0f, 1.0f, 0.0f});
+        if (glm::dot(tangent, tangent) < 1.0e-8f)
+            tangent = glm::cross(axis, vec3{1.0f, 0.0f, 0.0f});
+        tangent = glm::normalize(tangent);
+        const vec3 across = glm::normalize(glm::cross(axis, tangent));
+        const float azimuth = std::atan2(glm::dot(warped, tangent), glm::dot(warped, across));
+        const float lobe = 0.62f + 0.48f * Sample::fractal(vec3{std::cos(azimuth) * 2.2f, std::sin(azimuth) * 2.2f, 0.41f}, burst.seed + 91, 4, 0.56f) + 0.22f * Sample::fractal(vec3{std::cos(azimuth * 3.0f), std::sin(azimuth * 3.0f), 1.17f}, burst.seed + 97, 3, 0.52f);
+        const float apron = glm::clamp(0.55f + 0.70f * ridges, 0.28f, 1.35f);
+        const float radial = t / std::max(lobe * apron, 0.18f);
+        const float shield = std::max(std::exp(-2.05f * radial * radial) - std::exp(-2.05f * 2.35f), 0.0f);
+        const float massif = glm::clamp(0.76f + 0.22f * coarse + 0.20f * (ridges - 0.45f), 0.42f, 1.30f);
+        const float ravines = std::pow(glm::clamp(ridges, 0.0f, 1.0f), 3.0f) * glm::smoothstep(0.12f, 0.82f, radial) * glm::clamp(1.15f - radial, 0.0f, 1.0f);
+        const float caldera = std::exp(-std::pow(t / 0.13f, 4.0f)) * (0.11f + 0.05f * coarse);
+        return burst.lift * (shield * massif - 0.16f * ravines - caldera);
+    }
+
+    void Provinces::apply(IcosaMap<float>& relief, const Provinces& params) {
         const integer count = relief.pack.storedCount();
         if (params.count <= 2) {
             for (integer index = 0; index < count; ++index) {
                 const auto slot = relief.pack.slotOf(index);
                 const vec3 dir = relief.pack.direction(slot);
-                const vec3 warped = warpedDirection(dir, params.seed, 1.35f, 0.18f);
-                const float boundary = warped.y + 0.13f * fractal(dir * 3.2f, params.seed + 101, 4, 0.56f);
+                const vec3 warped = Sample::warped(dir, params.seed, 1.35f, 0.18f);
+                const float boundary = warped.y + 0.13f * Sample::fractal(dir * 3.2f, params.seed + 101, 4, 0.56f);
                 const float lowland = glm::smoothstep(-0.24f, 0.24f, boundary);
                 const float highland = 1.0f - glm::smoothstep(-0.32f, 0.38f, boundary);
-                const float ancientMassif = 0.62f * fractal(warped * 3.6f, params.seed + 131, 6, 0.55f) + 0.38f * (ridgedFractal(warped * 7.0f, params.seed + 167, 5) - 0.46f);
+                const float ancientMassif = 0.62f * Sample::fractal(warped * 3.6f, params.seed + 131, 6, 0.55f) + 0.38f * (Sample::ridged(warped * 7.0f, params.seed + 167, 5) - 0.46f);
                 relief.at(slot) += -params.amplitude * lowland + params.amplitude * 0.72f * highland * ancientMassif;
             }
             return;
@@ -261,11 +253,11 @@ namespace eltanin::planet {
         vector<vec3> sites;
         sites.reserve(static_cast<std::size_t>(params.count));
         for (integer site = 0; site < params.count; ++site)
-            sites.push_back(sphereSite(site, params.seed));
+            sites.push_back(Sample::sphereDir(site, params.seed, 3, 5));
         for (integer index = 0; index < count; ++index) {
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
-            const vec3 warped = warpedDirection(dir, params.seed, 1.7f, 0.12f);
+            const vec3 warped = Sample::warped(dir, params.seed, 1.7f, 0.12f);
             integer best = 0;
             integer second = 0;
             float bestDot = glm::dot(warped, sites[0]);
@@ -282,16 +274,16 @@ namespace eltanin::planet {
                     second = site;
                 }
             }
-            const float bestHeight = hash01(best, params.seed, 211, 17) * 2.0f - 1.0f;
-            const float secondHeight = hash01(second, params.seed, 211, 17) * 2.0f - 1.0f;
+            const float bestHeight = Sample::hash01(best, params.seed, 211, 17) * 2.0f - 1.0f;
+            const float secondHeight = Sample::hash01(second, params.seed, 211, 17) * 2.0f - 1.0f;
             const float interior = 0.5f + 0.5f * glm::smoothstep(0.0f, 0.11f, bestDot - secondDot);
             const float province = glm::mix(secondHeight, bestHeight, interior);
-            const float massif = fractal(warped * 5.0f, params.seed + best * 53, 5, 0.56f);
+            const float massif = Sample::fractal(warped * 5.0f, params.seed + best * 53, 5, 0.56f);
             relief.at(slot) += params.amplitude * (province + 0.42f * massif);
         }
     }
 
-    void Generator::applyPlateField(Formation& formation, const PlateField& params) {
+    void PlateField::apply(Formation& formation, const PlateField& params) {
         if (params.sites.empty())
             return;
         const float width = std::max(params.width, 0.01f);
@@ -299,8 +291,8 @@ namespace eltanin::planet {
         for (integer index = 0; index < formation.boundary.pack.storedCount(); ++index) {
             const auto slot = formation.boundary.pack.slotOf(index);
             const vec3 direction = formation.boundary.pack.direction(slot);
-            const PlateSample sample = samplePlate(direction, params);
-            const float gap = (sample.firstScore - sample.secondScore) + width * (0.18f * fractal(direction * 8.5f, params.seed + 401, 5, 0.55f) + 0.08f * fractal(direction * 21.0f, params.seed + 419, 4, 0.52f));
+            const PlateField::Hit sample = params.sample(direction);
+            const float gap = (sample.firstScore - sample.secondScore) + width * (0.18f * Sample::fractal(direction * 8.5f, params.seed + 401, 5, 0.55f) + 0.08f * Sample::fractal(direction * 21.0f, params.seed + 419, 4, 0.52f));
             const float edge = params.sites.size() > 1 ? 1.0f - glm::smoothstep(width * 0.12f, width, gap) : 0.0f;
             const auto& first = params.sites[static_cast<std::size_t>(sample.first)];
             const auto& second = params.sites[static_cast<std::size_t>(sample.second)];
@@ -319,8 +311,8 @@ namespace eltanin::planet {
         for (integer index = 0; index < formation.relief.pack.storedCount(); ++index) {
             const auto slot = formation.relief.pack.slotOf(index);
             const vec3 direction = formation.relief.pack.direction(slot);
-            const PlateSample sample = samplePlate(direction, params);
-            const float gap = (sample.firstScore - sample.secondScore) + width * (0.18f * fractal(direction * 8.5f, params.seed + 401, 5, 0.55f) + 0.08f * fractal(direction * 21.0f, params.seed + 419, 4, 0.52f));
+            const PlateField::Hit sample = params.sample(direction);
+            const float gap = (sample.firstScore - sample.secondScore) + width * (0.18f * Sample::fractal(direction * 8.5f, params.seed + 401, 5, 0.55f) + 0.08f * Sample::fractal(direction * 21.0f, params.seed + 419, 4, 0.52f));
             const float edge = params.sites.size() > 1 ? 1.0f - glm::smoothstep(width * 0.12f, width, gap) : 0.0f;
             const float interior = glm::smoothstep(0.0f, width, gap);
             const auto& first = params.sites[static_cast<std::size_t>(sample.first)];
@@ -328,16 +320,16 @@ namespace eltanin::planet {
             const float province = glm::mix((first.elevation + second.elevation) * 0.5f, first.elevation, interior);
             const float convergence = glm::max(-sample.divergence, 0.0f);
             const float divergence = glm::max(sample.divergence, 0.0f);
-            const float mountainTexture = 0.58f + 0.64f * ridgedFractal(direction * 18.0f, params.seed + 1709, 5);
-            const float shearTexture = fractal(direction * 24.0f, params.seed + 1871, 5, 0.55f);
+            const float mountainTexture = 0.58f + 0.64f * Sample::ridged(direction * 18.0f, params.seed + 1709, 5);
+            const float shearTexture = Sample::fractal(direction * 24.0f, params.seed + 1871, 5, 0.55f);
             const float boundaryRelief = edge * params.activity * (convergence * mountainTexture * 0.20f - divergence * (0.09f + mountainTexture * 0.06f) + sample.shear * shearTexture * 0.045f);
-            const float interiorTexture = fractal(warpedDirection(direction, params.seed + sample.first * 31, 2.4f, 0.08f) * 5.0f, params.seed + 1901 + sample.first * 53, 5, 0.55f);
+            const float interiorTexture = Sample::fractal(Sample::warped(direction, params.seed + sample.first * 31, 2.4f, 0.08f) * 5.0f, params.seed + 1901 + sample.first * 53, 5, 0.55f);
             formation.relief.at(slot) += params.amplitude * (province * 0.13f + interiorTexture * (0.035f + first.age * 0.025f) + boundaryRelief);
         }
         formation.relief.stitch();
     }
 
-    void Generator::applyBasin(Formation& formation, const Basin& params) {
+    void Basin::apply(Formation& formation, const Basin& params) {
         const vec3 center = glm::normalize(params.center);
         vec3 along = params.along - center * glm::dot(params.along, center);
         if (glm::dot(along, along) < 1.0e-8f)
@@ -348,14 +340,14 @@ namespace eltanin::planet {
         const vec3 across = glm::normalize(glm::cross(center, along));
         const float radius = std::max(params.radius, 1.0e-4f);
         auto footprint = [&](vec3 direction) -> vec3 {
-            const vec3 warped = warpedDirection(direction, params.seed + 11, std::min(48.0f, 3.2f / radius), radius * 0.24f);
+            const vec3 warped = Sample::warped(direction, params.seed + 11, std::min(48.0f, 3.2f / radius), radius * 0.24f);
             const float x = std::atan2(glm::dot(warped, along), glm::dot(warped, center));
             const float y = std::asin(glm::clamp(glm::dot(warped, across), -1.0f, 1.0f));
-            const float bend = params.obliquity * radius * 0.18f * fractal(vec3{x / radius * 2.8f, 0.41f, 1.37f}, params.seed + 37, 4, 0.56f);
+            const float bend = params.obliquity * radius * 0.18f * Sample::fractal(vec3{x / radius * 2.8f, 0.41f, 1.37f}, params.seed + 37, 4, 0.56f);
             const float longRadius = radius * (1.0f + params.obliquity * 0.62f);
             const float wideRadius = radius * (1.0f - params.obliquity * 0.24f);
             const float normalized = std::sqrt((x * x) / (longRadius * longRadius) + ((y - bend) * (y - bend)) / (wideRadius * wideRadius));
-            const float broken = normalized / glm::clamp(1.0f + 0.16f * fractal(direction * std::min(180.0f, 11.0f / radius), params.seed + 71, 5, 0.58f), 0.72f, 1.28f);
+            const float broken = normalized / glm::clamp(1.0f + 0.16f * Sample::fractal(direction * std::min(180.0f, 11.0f / radius), params.seed + 71, 5, 0.58f), 0.72f, 1.28f);
             return vec3{broken, x / radius, y / radius};
         };
         for (integer index = 0; index < formation.relief.pack.storedCount(); ++index) {
@@ -369,7 +361,7 @@ namespace eltanin::planet {
             const float cavity = 1.0f - glm::smoothstep(0.20f, 1.0f, shape.x);
             const float rim = std::exp(-std::pow((shape.x - 1.02f) / 0.18f, 2.0f));
             const float trailing = glm::smoothstep(-0.35f, 1.15f, shape.y) * params.obliquity;
-            const float floor = fractal(direction * std::min(220.0f, 14.0f / radius), params.seed + 113, 5, 0.54f);
+            const float floor = Sample::fractal(direction * std::min(220.0f, 14.0f / radius), params.seed + 113, 5, 0.54f);
             formation.relief.at(slot) += -params.depth * cavity * (0.82f + floor * 0.18f) + params.depth * rim * (0.13f + trailing * 0.09f);
         }
         for (integer index = 0; index < formation.impact.pack.storedCount(); ++index) {
@@ -387,7 +379,7 @@ namespace eltanin::planet {
         formation.exogenic.stitch();
     }
 
-    void Generator::stampVolcanic(IcosaMap<float>& field, vec3 axis, float radius, float amount, integer seed) {
+    void Volcanic::stamp(IcosaMap<float>& field, vec3 axis, float radius, float amount, integer seed) {
         axis = glm::normalize(axis);
         const float safeRadius = std::max(radius, 1.0e-4f);
         vec3 tangent = glm::cross(axis, vec3{0.0f, 1.0f, 0.0f});
@@ -400,11 +392,11 @@ namespace eltanin::planet {
             const vec3 direction = field.pack.direction(slot);
             if (glm::dot(direction, axis) < std::cos(safeRadius * 3.2f))
                 continue;
-            const vec3 warped = warpedDirection(direction, seed, 2.7f, safeRadius * 0.55f);
+            const vec3 warped = Sample::warped(direction, seed, 2.7f, safeRadius * 0.55f);
             const float azimuth = std::atan2(glm::dot(warped, tangent), glm::dot(warped, across));
-            const float reach = angular(warped, axis) / safeRadius;
-            const float lobe = 0.42f + 0.72f * (0.5f + 0.5f * fractal(vec3{std::cos(azimuth) * 2.4f, std::sin(azimuth) * 2.4f, 0.51f}, seed + 11, 5, 0.56f)) + 0.28f * fractal(vec3{std::cos(azimuth * 5.0f), std::sin(azimuth * 5.0f), 1.23f}, seed + 19, 3, 0.52f);
-            const float fingers = ridgedFractal(warped * 7.5f, seed + 29, 5);
+            const float reach = Sample::angular(warped, axis) / safeRadius;
+            const float lobe = 0.42f + 0.72f * (0.5f + 0.5f * Sample::fractal(vec3{std::cos(azimuth) * 2.4f, std::sin(azimuth) * 2.4f, 0.51f}, seed + 11, 5, 0.56f)) + 0.28f * Sample::fractal(vec3{std::cos(azimuth * 5.0f), std::sin(azimuth * 5.0f), 1.23f}, seed + 19, 3, 0.52f);
+            const float fingers = Sample::ridged(warped * 7.5f, seed + 29, 5);
             const float apron = glm::clamp(lobe * (0.55f + 0.70f * fingers), 0.22f, 1.55f);
             const float mask = 1.0f - glm::smoothstep(0.18f, 1.12f, reach / apron);
             if (mask <= 1.0e-4f)
@@ -415,11 +407,11 @@ namespace eltanin::planet {
         field.stitch();
     }
 
-    void Generator::applyBurst(IcosaMap<float>& relief, const Burst& params) {
-        applyBursts(relief, vector<Burst>{params});
+    void Burst::apply(IcosaMap<float>& relief, const Burst& params) {
+        apply(relief, vector<Burst>{params});
     }
 
-    void Generator::applyBursts(IcosaMap<float>& relief, const vector<Burst>& bursts) {
+    void Burst::apply(IcosaMap<float>& relief, const vector<Burst>& bursts) {
         if (bursts.empty())
             return;
         const integer count = relief.pack.storedCount();
@@ -428,31 +420,31 @@ namespace eltanin::planet {
             const vec3 dir = relief.pack.direction(slot);
             float delta = 0.0f;
             for (const auto& burst : bursts)
-                delta += burstDelta(dir, burst);
+                delta += Burst::delta(dir, burst);
             relief.at(slot) += delta;
         }
     }
 
-    void Generator::applySwell(IcosaMap<float>& relief, const Swell& params) {
+    void Swell::apply(IcosaMap<float>& relief, const Swell& params) {
         const integer count = relief.pack.storedCount();
         for (integer index = 0; index < count; ++index) {
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
-            const vec3 warped = warpedDirection(dir, params.seed, 2.2f, params.sigma * 0.42f);
+            const vec3 warped = Sample::warped(dir, params.seed, 2.2f, params.sigma * 0.42f);
             vec3 tangent = glm::cross(glm::normalize(params.axis), vec3{0.0f, 1.0f, 0.0f});
             if (glm::dot(tangent, tangent) < 1.0e-8f)
                 tangent = glm::cross(glm::normalize(params.axis), vec3{1.0f, 0.0f, 0.0f});
             tangent = glm::normalize(tangent);
             const vec3 across = glm::normalize(glm::cross(glm::normalize(params.axis), tangent));
             const float azimuth = std::atan2(glm::dot(warped, tangent), glm::dot(warped, across));
-            const float lobe = 0.70f + 0.48f * fractal(vec3{std::cos(azimuth) * 1.8f, std::sin(azimuth) * 1.8f, 0.33f}, params.seed + 19, 4, 0.56f) + 0.18f * ridgedFractal(warped * 6.5f, params.seed + 29, 4);
-            const float base = gaussian(angular(warped, params.axis), params.sigma * lobe);
-            const float massif = 0.68f * fractal(dir * 4.2f, params.seed + 37, 5, 0.56f) + 0.32f * (ridgedFractal(dir * 9.0f, params.seed + 53, 5) - 0.45f);
+            const float lobe = 0.70f + 0.48f * Sample::fractal(vec3{std::cos(azimuth) * 1.8f, std::sin(azimuth) * 1.8f, 0.33f}, params.seed + 19, 4, 0.56f) + 0.18f * Sample::ridged(warped * 6.5f, params.seed + 29, 4);
+            const float base = Sample::gaussian(Sample::angular(warped, params.axis), params.sigma * lobe);
+            const float massif = 0.68f * Sample::fractal(dir * 4.2f, params.seed + 37, 5, 0.56f) + 0.32f * (Sample::ridged(dir * 9.0f, params.seed + 53, 5) - 0.45f);
             relief.at(slot) += params.amplitude * base * glm::clamp(0.88f + 0.34f * massif, 0.55f, 1.25f);
         }
     }
 
-    void Generator::applyRift(IcosaMap<float>& relief, const Rift& params) {
+    void Rift::apply(IcosaMap<float>& relief, const Rift& params) {
         const integer count = relief.pack.storedCount();
         const vec3 center = glm::normalize(params.center);
         const vec3 along = glm::normalize(params.along - center * glm::dot(params.along, center));
@@ -470,29 +462,29 @@ namespace eltanin::planet {
             const vec3 pathLow{alongCoord * 2.2f, 0.21f, 1.07f};
             const vec3 pathMid{alongCoord * 8.4f, 0.73f, 2.41f};
             const vec3 pathHigh{alongCoord * 21.0f, 1.19f, 3.83f};
-            const float fold = halfLength * 0.22f * fractal(pathLow, params.seed + 7, 4, 0.62f) + halfLength * 0.08f * fractal(pathMid, params.seed + 13, 3, 0.55f);
+            const float fold = halfLength * 0.22f * Sample::fractal(pathLow, params.seed + 7, 4, 0.62f) + halfLength * 0.08f * Sample::fractal(pathMid, params.seed + 13, 3, 0.55f);
             const float x = x0 + fold;
             const vec3 pathNow{x / halfLength * 8.4f, 0.73f, 2.41f};
-            const float meander = halfWidth * (1.55f * fractal(pathLow, params.seed, 5, 0.62f) + 0.95f * fractal(pathNow, params.seed + 17, 5, 0.58f) + 0.32f * fractal(pathHigh, params.seed + 23, 4, 0.52f));
-            const float widthNoise = 0.58f + 0.72f * (0.5f + 0.5f * fractal(pathNow * 1.35f, params.seed + 29, 5, 0.55f));
+            const float meander = halfWidth * (1.55f * Sample::fractal(pathLow, params.seed, 5, 0.62f) + 0.95f * Sample::fractal(pathNow, params.seed + 17, 5, 0.58f) + 0.32f * Sample::fractal(pathHigh, params.seed + 23, 4, 0.52f));
+            const float widthNoise = 0.58f + 0.72f * (0.5f + 0.5f * Sample::fractal(pathNow * 1.35f, params.seed + 29, 5, 0.55f));
             const float width = halfWidth * widthNoise;
-            const float raggedEnd = halfLength * (0.78f + 0.28f * fractal(dir * 8.0f, params.seed + 43, 4, 0.53f));
+            const float raggedEnd = halfLength * (0.78f + 0.28f * Sample::fractal(dir * 8.0f, params.seed + 43, 4, 0.53f));
             const float reach = 1.0f - glm::smoothstep(raggedEnd * 0.62f, raggedEnd, std::abs(x));
             const float mainDistance = std::abs(y0 - meander);
             const float mainTrough = 1.0f - glm::smoothstep(width * 0.38f, width * 1.22f, mainDistance);
-            const float branchGate = glm::smoothstep(-halfLength * 0.28f, halfLength * 0.08f, x) * (1.0f - glm::smoothstep(halfLength * 0.55f, halfLength * 0.92f, x)) * glm::smoothstep(0.12f, 0.42f, fractal(pathLow * 0.9f, params.seed + 61, 3, 0.56f));
-            const float branchCenter = meander + width * (1.15f + 1.35f * fractal(pathNow * 0.7f, params.seed + 67, 4, 0.56f)) * (fractal(pathLow, params.seed + 71, 3, 0.6f) >= 0.0f ? 1.0f : -1.0f);
+            const float branchGate = glm::smoothstep(-halfLength * 0.28f, halfLength * 0.08f, x) * (1.0f - glm::smoothstep(halfLength * 0.55f, halfLength * 0.92f, x)) * glm::smoothstep(0.12f, 0.42f, Sample::fractal(pathLow * 0.9f, params.seed + 61, 3, 0.56f));
+            const float branchCenter = meander + width * (1.15f + 1.35f * Sample::fractal(pathNow * 0.7f, params.seed + 67, 4, 0.56f)) * (Sample::fractal(pathLow, params.seed + 71, 3, 0.6f) >= 0.0f ? 1.0f : -1.0f);
             const float branchTrough = (1.0f - glm::smoothstep(width * 0.24f, width * 0.78f, std::abs(y0 - branchCenter))) * branchGate;
-            const float fracture = glm::clamp(0.72f + 0.38f * fractal(dir * 31.0f, params.seed + 83, 4, 0.57f), 0.38f, 1.22f);
+            const float fracture = glm::clamp(0.72f + 0.38f * Sample::fractal(dir * 31.0f, params.seed + 83, 4, 0.57f), 0.38f, 1.22f);
             const float trough = std::max(mainTrough, branchTrough * 0.72f);
-            const float longDepth = glm::clamp(0.38f + 0.62f * (0.5f + 0.5f * fractal(vec3{alongCoord * 1.55f, 0.47f, 2.13f}, params.seed + 97, 4, 0.66f)), 0.16f, 1.28f);
-            const float sills = 0.78f + 0.22f * fractal(vec3{alongCoord * 6.2f, 1.31f, 0.91f}, params.seed + 103, 3, 0.55f);
+            const float longDepth = glm::clamp(0.38f + 0.62f * (0.5f + 0.5f * Sample::fractal(vec3{alongCoord * 1.55f, 0.47f, 2.13f}, params.seed + 97, 4, 0.66f)), 0.16f, 1.28f);
+            const float sills = 0.78f + 0.22f * Sample::fractal(vec3{alongCoord * 6.2f, 1.31f, 0.91f}, params.seed + 103, 3, 0.55f);
             const float shoulder = std::exp(-std::pow((mainDistance - width * 1.25f) / std::max(width * 0.42f, 1.0e-4f), 2.0f));
             relief.at(slot) += reach * (-params.depth * longDepth * sills * std::pow(trough, 0.58f) * fracture + params.depth * 0.08f * shoulder);
         }
     }
 
-    void Generator::applyErode(IcosaMap<float>& relief, const Erode& params) {
+    void Erode::apply(IcosaMap<float>& relief, const Erode& params) {
         const float force = glm::clamp(params.strength * params.years, 0.0f, 1.0f);
         if (force <= 1.0e-5f or params.iterations <= 0)
             return;
@@ -502,7 +494,7 @@ namespace eltanin::planet {
         for (integer index = 0; index < count; ++index) {
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
-            drainage.at(slot) = std::pow(glm::clamp(ridgedFractal(warpedDirection(dir, params.seed, 3.0f, 0.08f) * 22.0f, params.seed + 73, 5), 0.0f, 1.0f), 3.2f);
+            drainage.at(slot) = std::pow(glm::clamp(Sample::ridged(Sample::warped(dir, params.seed, 3.0f, 0.08f) * 22.0f, params.seed + 73, 5), 0.0f, 1.0f), 3.2f);
         }
         for (integer iteration = 0; iteration < params.iterations; ++iteration) {
             IcosaMap<float> source{relief.pack, 0.0f};
@@ -552,22 +544,22 @@ namespace eltanin::planet {
         }
     }
 
-    void Generator::applyDrainage(IcosaMap<float>& relief, const Drainage& params) {
+    void Drainage::apply(IcosaMap<float>& relief, const Drainage& params) {
         if (params.sources <= 0 or params.steps <= 0 or params.stepLength <= 0.0f or params.width <= 0.0f or params.depth <= 0.0f)
             return;
-        vector<DrainageSource> candidates;
+        vector<Drainage::Source> candidates;
         candidates.reserve(static_cast<std::size_t>(params.sources * 24));
         for (integer candidate = 0; candidate < params.sources * 24; ++candidate) {
-            const vec3 direction = sphereSite(candidate, params.seed);
+            const vec3 direction = Sample::sphereDir(candidate, params.seed, 3, 5);
             if (std::abs(direction.y) < 0.82f)
-                candidates.push_back(DrainageSource{.direction = direction, .height = relief.at(direction)});
+                candidates.push_back(Drainage::Source{.direction = direction, .height = relief.at(direction)});
         }
-        std::sort(candidates.begin(), candidates.end(), [](const DrainageSource& a, const DrainageSource& b) { return a.height > b.height; });
+        std::sort(candidates.begin(), candidates.end(), [](const Drainage::Source& a, const Drainage::Source& b) { return a.height > b.height; });
         vector<vec3> sources;
-        vector<ChannelPoint> channels;
+        vector<Drainage::Channel> channels;
         sources.reserve(static_cast<std::size_t>(params.sources));
         channels.reserve(static_cast<std::size_t>(params.sources * params.steps));
-        for (const DrainageSource& candidate : candidates) {
+        for (const Drainage::Source& candidate : candidates) {
             if (static_cast<integer>(sources.size()) >= params.sources)
                 break;
             bool separated = true;
@@ -611,33 +603,33 @@ namespace eltanin::planet {
                 if (glm::dot(momentum, momentum) > 1.0e-8f)
                     heading = glm::normalize(heading * 0.76f + momentum * 0.24f);
                 const vec3 lateral = glm::normalize(glm::cross(direction, heading));
-                heading = glm::normalize(heading + lateral * signedNoise(direction * 37.0f, params.seed + stepIndex * 13 + static_cast<integer>(sources.size()) * 101) * 0.14f);
+                heading = glm::normalize(heading + lateral * Sample::noise(direction * 37.0f, params.seed + stepIndex * 13 + static_cast<integer>(sources.size()) * 101) * 0.14f);
                 const float maturity = std::sqrt(float(stepIndex + 1) / float(params.steps));
-                channels.push_back(ChannelPoint{.direction = direction, .width = params.width * (0.62f + 0.76f * maturity), .depth = params.depth * (0.42f + 0.72f * maturity)});
+                channels.push_back(Drainage::Channel{.direction = direction, .width = params.width * (0.62f + 0.76f * maturity), .depth = params.depth * (0.42f + 0.72f * maturity)});
                 momentum = heading;
                 direction = glm::normalize(direction + heading * params.stepLength);
             }
         }
-        vector<vector<integer>> bins(static_cast<std::size_t>(spatialSpan * spatialSpan * spatialSpan));
+        vector<vector<integer>> bins(static_cast<std::size_t>(SpatialHash::span * SpatialHash::span * SpatialHash::span));
         for (integer point = 0; point < static_cast<integer>(channels.size()); ++point) {
-            const SpatialCell cell = spatialCell(channels[static_cast<std::size_t>(point)].direction);
-            bins[spatialIndex(cell.x, cell.y, cell.z)].push_back(point);
+            const SpatialHash::Cell cell = SpatialHash::cell(channels[static_cast<std::size_t>(point)].direction);
+            bins[SpatialHash::index(cell.x, cell.y, cell.z)].push_back(point);
         }
         const float reach = params.width * 3.5f;
         for (integer index = 0; index < relief.pack.storedCount(); ++index) {
             const auto slot = relief.pack.slotOf(index);
             const vec3 direction = relief.pack.direction(slot);
-            const SpatialCell first = spatialCell(direction - vec3{reach});
-            const SpatialCell last = spatialCell(direction + vec3{reach});
+            const SpatialHash::Cell first = SpatialHash::cell(direction - vec3{reach});
+            const SpatialHash::Cell last = SpatialHash::cell(direction + vec3{reach});
             float cut = 0.0f;
             for (integer z = first.z; z <= last.z; ++z) {
                 for (integer y = first.y; y <= last.y; ++y) {
                     for (integer x = first.x; x <= last.x; ++x) {
-                        for (integer point : bins[spatialIndex(x, y, z)]) {
-                            const ChannelPoint& channel = channels[static_cast<std::size_t>(point)];
+                        for (integer point : bins[SpatialHash::index(x, y, z)]) {
+                            const Drainage::Channel& channel = channels[static_cast<std::size_t>(point)];
                             const float distance = std::sqrt(std::max(0.0f, 2.0f - 2.0f * glm::dot(direction, channel.direction)));
                             const float trough = 1.0f - glm::smoothstep(channel.width * 0.22f, channel.width * 1.18f, distance);
-                            const float fracture = glm::clamp(0.82f + 0.24f * fractal(direction * 170.0f, params.seed + point * 7, 3, 0.55f), 0.55f, 1.12f);
+                            const float fracture = glm::clamp(0.82f + 0.24f * Sample::fractal(direction * 170.0f, params.seed + point * 7, 3, 0.55f), 0.55f, 1.12f);
                             cut = std::max(cut, channel.depth * trough * trough * fracture);
                         }
                     }
@@ -647,40 +639,40 @@ namespace eltanin::planet {
         }
     }
 
-    void Generator::applyBombardment(IcosaMap<float>& relief, const Bombardment& params) {
+    void Bombardment::apply(IcosaMap<float>& relief, const Bombardment& params) {
         if (params.count <= 0 or params.radiusMin <= 0.0f or params.radiusMax < params.radiusMin or params.depth <= 0.0f)
             return;
         vector<Burst> impacts;
         impacts.reserve(static_cast<std::size_t>(params.count));
         for (integer candidate = 0; candidate < params.count * 12 and static_cast<integer>(impacts.size()) < params.count; ++candidate) {
-            const vec3 axis = sphereSite(candidate, params.seed);
+            const vec3 axis = Sample::sphereDir(candidate, params.seed, 3, 5);
             const float north = glm::smoothstep(-0.16f, 0.42f, axis.y);
             const float density = glm::mix(1.0f, glm::clamp(params.northDensity, 0.0f, 1.0f), north);
-            if (hash01(candidate, params.seed, 401, 23) > density)
+            if (Sample::hash01(candidate, params.seed, 401, 23) > density)
                 continue;
-            const float radiusRoll = std::pow(hash01(candidate, params.seed, 409, 29), 3.6f);
+            const float radiusRoll = std::pow(Sample::hash01(candidate, params.seed, 409, 29), 3.6f);
             const float radius = glm::mix(params.radiusMin, params.radiusMax, radiusRoll);
             const float size = std::sqrt(radius / params.radiusMax);
-            const float depth = params.depth * size * (0.38f + 0.62f * hash01(candidate, params.seed, 419, 31));
+            const float depth = params.depth * size * (0.38f + 0.62f * Sample::hash01(candidate, params.seed, 419, 31));
             impacts.push_back(Burst{.axis = axis, .radius = radius, .lift = -depth, .rim = depth * 0.14f, .seed = params.seed + candidate * 43});
         }
-        vector<vector<integer>> bins(static_cast<std::size_t>(spatialSpan * spatialSpan * spatialSpan));
+        vector<vector<integer>> bins(static_cast<std::size_t>(SpatialHash::span * SpatialHash::span * SpatialHash::span));
         for (integer impact = 0; impact < static_cast<integer>(impacts.size()); ++impact) {
-            const SpatialCell cell = spatialCell(impacts[static_cast<std::size_t>(impact)].axis);
-            bins[spatialIndex(cell.x, cell.y, cell.z)].push_back(impact);
+            const SpatialHash::Cell cell = SpatialHash::cell(impacts[static_cast<std::size_t>(impact)].axis);
+            bins[SpatialHash::index(cell.x, cell.y, cell.z)].push_back(impact);
         }
         const float reach = params.radiusMax * 2.8f;
         for (integer index = 0; index < relief.pack.storedCount(); ++index) {
             const auto slot = relief.pack.slotOf(index);
             const vec3 direction = relief.pack.direction(slot);
-            const SpatialCell first = spatialCell(direction - vec3{reach});
-            const SpatialCell last = spatialCell(direction + vec3{reach});
+            const SpatialHash::Cell first = SpatialHash::cell(direction - vec3{reach});
+            const SpatialHash::Cell last = SpatialHash::cell(direction + vec3{reach});
             float delta = 0.0f;
             for (integer z = first.z; z <= last.z; ++z) {
                 for (integer y = first.y; y <= last.y; ++y) {
                     for (integer x = first.x; x <= last.x; ++x) {
-                        for (integer impact : bins[spatialIndex(x, y, z)])
-                            delta += burstDelta(direction, impacts[static_cast<std::size_t>(impact)]);
+                        for (integer impact : bins[SpatialHash::index(x, y, z)])
+                            delta += Burst::delta(direction, impacts[static_cast<std::size_t>(impact)]);
                     }
                 }
             }
@@ -688,32 +680,32 @@ namespace eltanin::planet {
         }
     }
 
-    void Generator::applyRub(IcosaMap<float>& relief, const Rub& params) {
+    void Rub::apply(IcosaMap<float>& relief, const Rub& params) {
         const vec3 pole = glm::normalize(params.a - params.b);
         const float width = std::max(params.width, 1.0e-4f);
         const integer count = relief.pack.storedCount();
         for (integer index = 0; index < count; ++index) {
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
-            const vec3 warped = warpedDirection(dir, params.seed, 2.0f, width * 1.8f);
+            const vec3 warped = Sample::warped(dir, params.seed, 2.0f, width * 1.8f);
             const float signedAcross = std::asin(glm::clamp(glm::dot(warped, pole), -1.0f, 1.0f));
-            const float boundary = signedAcross + width * 0.45f * fractal(dir * 9.0f, params.seed + 37, 5, 0.58f);
+            const float boundary = signedAcross + width * 0.45f * Sample::fractal(dir * 9.0f, params.seed + 37, 5, 0.58f);
             const float ridge = std::exp(-std::pow((boundary - width * 0.48f) / (width * 0.52f), 2.0f));
             const float trench = std::exp(-std::pow((boundary + width * 0.42f) / (width * 0.36f), 2.0f));
-            const float fracture = glm::clamp(0.68f + 0.44f * ridgedFractal(dir * 19.0f, params.seed + 71, 5), 0.45f, 1.18f);
+            const float fracture = glm::clamp(0.68f + 0.44f * Sample::ridged(dir * 19.0f, params.seed + 71, 5), 0.45f, 1.18f);
             relief.at(slot) += params.slip * (ridge * 0.72f - trench * 0.38f) * fracture;
         }
     }
 
-    void Generator::applyWhisper(IcosaMap<float>& relief, const Whisper& params) {
+    void Whisper::apply(IcosaMap<float>& relief, const Whisper& params) {
         const integer count = relief.pack.storedCount();
         for (integer index = 0; index < count; ++index) {
             const auto slot = relief.pack.slotOf(index);
-            relief.at(slot) += fractal(relief.pack.direction(slot) * params.freq, params.seed, 6, 0.54f) * params.amplitude;
+            relief.at(slot) += Sample::fractal(relief.pack.direction(slot) * params.freq, params.seed, 6, 0.54f) * params.amplitude;
         }
     }
 
-    void Generator::paintCover(Planet& planet, const PaintCover& params) {
+    void PaintCover::apply(Planet& planet, const PaintCover& params) {
         const vec3 canyonCenter = glm::normalize(params.canyonCenter);
         const vec3 canyonAlong = glm::normalize(params.canyonAlong - canyonCenter * glm::dot(params.canyonAlong, canyonCenter));
         const vec3 canyonAcross = glm::normalize(glm::cross(canyonCenter, canyonAlong));
@@ -733,12 +725,12 @@ namespace eltanin::planet {
             const float slope = std::sqrt(du * du + dv * dv) / float(std::max(Planet::reliefPeak, std::int16_t{1}));
             const float polar = std::abs(dir.y);
             const float cap = 0.62f + 0.12f * (params.ice / 15.0f) + 0.06f * params.age;
-            const float climate = polar + 0.085f * fractal(warpedDirection(dir, params.seed + 701, 2.1f, 0.09f) * 5.0f, params.seed + 719, 5, 0.56f) + 0.035f * relief / float(Planet::reliefPeak);
-            const vec3 volcanicDir = warpedDirection(dir, params.seed + 503, 2.4f, 0.055f);
-            const float shield = (gaussian(angular(volcanicDir, params.olympus), 0.17f) + gaussian(angular(volcanicDir, params.tharsis), 0.31f)) * glm::clamp(0.84f + 0.32f * fractal(dir * 14.0f, params.seed + 541, 4, 0.54f), 0.48f, 1.22f);
+            const float climate = polar + 0.085f * Sample::fractal(Sample::warped(dir, params.seed + 701, 2.1f, 0.09f) * 5.0f, params.seed + 719, 5, 0.56f) + 0.035f * relief / float(Planet::reliefPeak);
+            const vec3 volcanicDir = Sample::warped(dir, params.seed + 503, 2.4f, 0.055f);
+            const float shield = (Sample::gaussian(Sample::angular(volcanicDir, params.olympus), 0.17f) + Sample::gaussian(Sample::angular(volcanicDir, params.tharsis), 0.31f)) * glm::clamp(0.84f + 0.32f * Sample::fractal(dir * 14.0f, params.seed + 541, 4, 0.54f), 0.48f, 1.22f);
             const float canyonX = std::atan2(glm::dot(dir, canyonAlong), glm::dot(dir, canyonCenter));
             const float canyonY = std::asin(glm::clamp(glm::dot(dir, canyonAcross), -1.0f, 1.0f));
-            const float canyonMeander = params.canyonHalfWidth * 0.82f * fractal(vec3{canyonX * 7.0f / std::max(params.canyonHalfLength, 1.0e-4f), 0.37f, 1.91f}, params.seed + 401, 5, 0.58f);
+            const float canyonMeander = params.canyonHalfWidth * 0.82f * Sample::fractal(vec3{canyonX * 7.0f / std::max(params.canyonHalfLength, 1.0e-4f), 0.37f, 1.91f}, params.seed + 401, 5, 0.58f);
             const bool inCanyon = std::abs(canyonX) < params.canyonHalfLength * 1.05f and std::abs(canyonY - canyonMeander) < params.canyonHalfWidth * 1.8f and relief < -0.06f * float(Planet::reliefPeak);
             const bool inCrater = relief < -0.16f * float(Planet::reliefPeak) and shield < 0.30f;
             Facies surface = Facies::RegolithMafic;
@@ -778,25 +770,25 @@ namespace eltanin::planet {
                     surface = Facies::DirtyIce;
                 below = Facies::DirtyIce;
             }
-            planet.covers.at(slot) = packLayers(surface, below);
+            planet.covers.at(slot) = geo::pack(surface, below);
         }
     }
 
-    void Generator::paintFormation(Planet& planet, const Formation& formation, const Geology& geology) {
+    void Compose::paint(Planet& planet, const Formation& formation, const Geology& geology) {
         const integer last = formation.relief.pack.edgeSegments();
-        const integer olivine = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Olivine);
-        const integer pyroxene = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Pyroxene);
-        const integer feldspar = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Feldspar);
-        const integer clay = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Clay);
-        const integer carbonaceous = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Carbonaceous);
-        const integer iron = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Iron);
-        const integer sulfides = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Sulfides);
-        const integer oxides = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Oxides);
-        const integer salts = mineralAmount(geology.crust.mix, geo::Mineral::Kind::Salts);
-        const integer waterInventory = volatileAmount(geology.climate.retained, geo::Volatile::Kind::Water);
-        const integer carbonDioxide = volatileAmount(geology.climate.retained, geo::Volatile::Kind::CarbonDioxide);
-        const integer methane = volatileAmount(geology.climate.retained, geo::Volatile::Kind::Methane);
-        const integer sulfurDioxide = volatileAmount(geology.climate.retained, geo::Volatile::Kind::SulfurDioxide);
+        const integer olivine = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Olivine);
+        const integer pyroxene = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Pyroxene);
+        const integer feldspar = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Feldspar);
+        const integer clay = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Clay);
+        const integer carbonaceous = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Carbonaceous);
+        const integer iron = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Iron);
+        const integer sulfides = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Sulfides);
+        const integer oxides = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Oxides);
+        const integer salts = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Salts);
+        const integer waterInventory = geo::Volatile::nibble(geology.climate.retained, geo::Volatile::Kind::Water);
+        const integer carbonDioxide = geo::Volatile::nibble(geology.climate.retained, geo::Volatile::Kind::CarbonDioxide);
+        const integer methane = geo::Volatile::nibble(geology.climate.retained, geo::Volatile::Kind::Methane);
+        const integer sulfurDioxide = geo::Volatile::nibble(geology.climate.retained, geo::Volatile::Kind::SulfurDioxide);
         auto heightAt = [&](IcosaPack::Slot slot) -> float {
             slot.iu = std::clamp(slot.iu, integer{0}, last);
             slot.iv = std::clamp(slot.iv, integer{0}, last);
@@ -823,7 +815,7 @@ namespace eltanin::planet {
             const float age = formation.crustAge.at(direction);
             const float province = formation.province.at(direction);
             const float felsic = formation.composition.at(direction);
-            const float provinceTexture = fractal(warpedDirection(direction, planet.passport.seed + 6101, 2.2f, 0.11f) * (3.0f + province * 2.0f) + vec3{province * 2.7f, province * -1.9f, province * 1.3f}, planet.passport.seed + 6131, 5, 0.56f);
+            const float provinceTexture = Sample::fractal(Sample::warped(direction, planet.passport.seed + 6101, 2.2f, 0.11f) * (3.0f + province * 2.0f) + vec3{province * 2.7f, province * -1.9f, province * 1.3f}, planet.passport.seed + 6131, 5, 0.56f);
             const float oxidation = glm::clamp(age * 0.62f + float(oxides) / 15.0f * 0.42f + provinceTexture * 0.22f, 0.0f, 1.0f);
             Facies surface = felsic > 0.56f and feldspar > 0 ? Facies::RegolithFelsic : Facies::RegolithMafic;
             Facies below = felsic < 0.52f and pyroxene + olivine >= feldspar ? Facies::Basalt : Facies::RegolithFelsic;
@@ -895,7 +887,7 @@ namespace eltanin::planet {
                     surface = geology.crust.cohesion > 0.58f ? Facies::Glacier : age > 0.5f ? Facies::DirtyIce : Facies::Snow;
                 below = Facies::DirtyIce;
             }
-            planet.covers.at(slot) = packLayers(surface, below);
+            planet.covers.at(slot) = geo::pack(surface, below);
         }
         planet.covers.stitch();
     }

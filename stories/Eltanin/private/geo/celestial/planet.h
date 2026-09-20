@@ -59,6 +59,7 @@ namespace eltanin::planet {
                 float outerRadius;
                 float seaDensity;
                 float kerman;
+                float zenithTau;
                 rmmr::RGB day;
             } atmosphere;
         };

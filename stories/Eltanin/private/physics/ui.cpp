@@ -405,6 +405,7 @@ namespace eltanin::phys {
                             ImGui::Text("Surface g %.3f m/s²", runtime.surfaceAcceleration);
                             ImGui::Text("Air MSL %.0f g/m³", runtime.atmosphere.seaDensity);
                             ImGui::Text("Kerman %.0f m", runtime.atmosphere.kerman);
+                            ImGui::Text("Visual τ %.3f", runtime.atmosphere.zenithTau);
                             float spinDeg = glm::degrees(system.planet->spin(*planetBody));
                             if (ImGui::DragFloat("Spin", &spinDeg, 0.5f, 0.0f, 0.0f, "%.1f°")) {
                                 system.planet->spin(*planetBody, glm::radians(spinDeg));

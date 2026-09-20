@@ -6,7 +6,7 @@ namespace eltanin
     struct Mineral
       enum Kind : Ice, Olivine, Pyroxene, Feldspar, Clay, Carbonaceous, Iron, Nickel, Sulfides, Oxides, BaseMetals, PGM, RareEarths, Actinides, Salts, Exotic
       using Index as integer
-      using Mix as @external(C++ uint64_t; 16x4-bit voxel word)
+      using Mix as @external(C++ uint64_t; 16x4-bit voxel word; Mineral::nibble)
       one
         name: string
         density: float // g/cm3; physics mass uses kgPerCubicMeter (×1000 → kg/m³)

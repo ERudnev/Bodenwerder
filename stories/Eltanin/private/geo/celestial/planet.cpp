@@ -288,7 +288,7 @@ namespace eltanin::planet {
             mesh.opacity = planet.runtime.atmosphere.seaDensity;
             mesh.heat = vec2{planet.passport.radius, planet.runtime.atmosphere.outerRadius};
             mesh.scale = vec3{planet.runtime.atmosphere.outerRadius * 1.08f};
-            mesh.latticeStep = planet.runtime.atmosphere.kerman;
+            mesh.latticeStep = planet.runtime.atmosphere.zenithTau;
             mesh.patternScale = geo::Horizon::locality;
         }
 
@@ -369,7 +369,7 @@ namespace eltanin::planet {
 
     Planet::Planet(Passport passport, Detail detail)
         : passport{passport}
-        , runtime{.surfaceAcceleration = 0.0f, .reliefAmplitude = 0.0f, .atmosphere = {.outerRadius = passport.radius, .seaDensity = 0.0f, .kerman = 1.0f, .day = RGB{0.0f, 0.0f, 0.0f}}}
+        , runtime{.surfaceAcceleration = 0.0f, .reliefAmplitude = 0.0f, .atmosphere = {.outerRadius = passport.radius, .seaDensity = 0.0f, .kerman = 1.0f, .zenithTau = 0.0f, .day = RGB{0.0f, 0.0f, 0.0f}}}
         , spinOmega{spinAxis(*this) * (passport.spin.period > 0.0f ? 2.0 * std::numbers::pi / double(passport.spin.period) : 0.0)}
         , well{}
         , heights{geo::IcosaPack{.edgeBase = detail.edgeBase, .tessellation = detail.tessellation}, std::int16_t{0}}

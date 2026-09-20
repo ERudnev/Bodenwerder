@@ -26,8 +26,6 @@ layout(binding = 1) uniform sampler2D u_sceneDepth;
 
 const int densitySamples = 8;
 const int sunSamples = 4;
-const float zenithTau = 0.055;
-const vec3 scatterBeta = vec3(0.45, 1.00, 2.55);
 
 bool intersectSphere(vec3 origin, vec3 dir, vec3 center, float radius, out float tEnter, out float tExit) {
     vec3 offset = origin - center;
@@ -94,7 +92,10 @@ void main() {
     float planetRadius = actorHeat.x;
     float atmosphereRadius = actorHeat.y;
     float seaDensity = actorAlbedoOpacity.a;
-    if (atmosphereRadius <= planetRadius || seaDensity <= 0.0)
+    float zenithTau = max(actorLatticePattern.x, 0.0);
+    vec3 scatterBeta = max(actorAlbedoOpacity.rgb, vec3(0.04));
+    scatterBeta *= 3.0 / max(scatterBeta.x + scatterBeta.y + scatterBeta.z, 0.12);
+    if (atmosphereRadius <= planetRadius || seaDensity <= 0.0 || zenithTau <= 0.0)
         discard;
 
     mat4 invView = inverse(passView);

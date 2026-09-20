@@ -4,11 +4,13 @@ namespace eltanin
     // Compact inventory of mobile compounds. This is total body stock, not atmospheric composition.
     struct Volatile
       enum Kind : Water, CarbonDioxide, Nitrogen, Methane, Ammonia, SulfurDioxide, Hydrogen, Helium
-      using Mix as @external(C++ uint32_t; 8x4-bit inventory word)
+      using Mix as @external(C++ uint32_t; 8x4-bit inventory word; Volatile::nibble / pack)
       one
         name: string
         molarMass: float // g/mol
         freezeKelvin: float // reference phase boundary for the generator
         boilKelvin: float // reference phase boundary for the generator
         greenhouse: float // relative infrared opacity
+        scatter: vec3 // effective sky RGB of this gas as retained air (Rayleigh or photochemical haze)
+        absorb: vec3 // extra per-channel extinction; methane / SO2 eat blue
       always table: vector<Volatile> = @external(Mayers)

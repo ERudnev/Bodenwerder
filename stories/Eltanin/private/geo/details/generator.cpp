@@ -1,4 +1,5 @@
 #include "geo/celestial/generator.h"
+#include "geo/details/compose.h"
 
 #include <base/logging.h>
 
@@ -140,8 +141,8 @@ namespace eltanin::planet {
             return float(value) / 255.0f;
         }
 
-        constexpr std::uint32_t cacheEpoch = 5;
-        constexpr char cacheMagic[8] = {'E', 'L', 'T', 'N', 'M', 'A', 'P', '5'};
+        constexpr std::uint32_t cacheEpoch = 6;
+        constexpr char cacheMagic[8] = {'E', 'L', 'T', 'N', 'M', 'A', 'P', '6'};
 
 #pragma pack(push, 1)
         struct MapHeader {
@@ -170,6 +171,7 @@ namespace eltanin::planet {
             float atmosphereOuterRadius;
             float atmosphereSeaDensity;
             float atmosphereKerman;
+            float atmosphereZenithTau;
             float atmosphereDayR;
             float atmosphereDayG;
             float atmosphereDayB;
@@ -271,6 +273,7 @@ namespace eltanin::planet {
             header.atmosphereOuterRadius = planet.runtime.atmosphere.outerRadius;
             header.atmosphereSeaDensity = planet.runtime.atmosphere.seaDensity;
             header.atmosphereKerman = planet.runtime.atmosphere.kerman;
+            header.atmosphereZenithTau = planet.runtime.atmosphere.zenithTau;
             header.atmosphereDayR = planet.runtime.atmosphere.day.x;
             header.atmosphereDayG = planet.runtime.atmosphere.day.y;
             header.atmosphereDayB = planet.runtime.atmosphere.day.z;
@@ -326,6 +329,7 @@ namespace eltanin::planet {
             planet.runtime.atmosphere.outerRadius = header.atmosphereOuterRadius;
             planet.runtime.atmosphere.seaDensity = header.atmosphereSeaDensity;
             planet.runtime.atmosphere.kerman = header.atmosphereKerman;
+            planet.runtime.atmosphere.zenithTau = header.atmosphereZenithTau;
             planet.runtime.atmosphere.day = RGB{header.atmosphereDayR, header.atmosphereDayG, header.atmosphereDayB};
             const std::size_t heightBytes = planet.heights.values.size() * sizeof(std::int16_t);
             const std::size_t coverBytes = planet.covers.values.size() * sizeof(std::uint16_t);
@@ -539,8 +543,8 @@ namespace eltanin::planet {
             logFieldSummary(planet);
             return;
         }
-        const Geology geology = derive(planet.passport);
-        form(planet, geology);
+        const Geology geology = Compose::derive(planet.passport);
+        Compose::form(planet, geology);
         generateFarAlbedo(planet);
         generateFarNormal(planet);
         saveCache(planet, files);

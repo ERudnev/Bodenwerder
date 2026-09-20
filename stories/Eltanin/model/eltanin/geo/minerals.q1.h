@@ -43,6 +43,7 @@ namespace eltanin::geo {
         float sootMul;
 
         auto kgPerCubicMeter() const -> float { return density * 1000.0f; }
+        static auto nibble(Mix mix, Kind kind) -> integer { return integer((mix >> (static_cast<integer>(kind) * 4)) & 15u); }
 
         static const vector<Mineral>& table();
     };
