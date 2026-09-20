@@ -113,12 +113,16 @@ void main() {
     tEnter = max(tEnter, 0.0);
     float tExit = min(tAtmoExit, hitDist);
     bool hitGround = hitDist < tAtmoExit;
+    bool drawFog = actorLatticePattern.y > 0.0;
     if (tExit <= tEnter)
+        discard;
+    if (hitGround && !drawFog)
         discard;
 
     float shell = max(atmosphereRadius - planetRadius, 1.0);
     float scaleHeight = shell * 0.25;
-    float visExt = zenithTau / max(seaDensity * scaleHeight, 1.0e-3);
+    float visHeight = max(scaleHeight * 2.8, 800.0);
+    float visExt = zenithTau / max(seaDensity * visHeight, 1.0e-3);
     vec3 sunPos = passPrimaryLightPositionIntensity.xyz;
     bool pointSun = passPrimaryLightColorRange.w > 0.0;
     vec3 sunColor = passPrimaryLightColorRange.rgb * max(passPrimaryLightPositionIntensity.w, 0.0);
@@ -155,11 +159,11 @@ void main() {
     vec3 toPlanet = planetCenter - camPos;
     float alongView = dot(toPlanet, rayDir);
     float impact = sqrt(max(dot(toPlanet, toPlanet) - alongView * alongView, 0.0));
-    float shellFade = 1.0 - smoothstep(atmosphereRadius - scaleHeight * 0.8, atmosphereRadius, impact);
+    float shellFade = exp(-max(impact - planetRadius, 0.0) / max(scaleHeight, 1.0));
     float aureole = pow(towardSun, mix(1850.0, 370.0, longPath)) * longPath * shellFade;
-    if (hitDist < actorLatticePattern.y)
+    if (hitDist < abs(actorLatticePattern.y))
         aureole = 0.0;
-    scatter += transSun * sunColor * actorAlbedoOpacity.rgb * aureole * 0.55;
+    scatter += transSun * sunColor * actorAlbedoOpacity.rgb * aureole * 0.28;
     scatter *= shellFade;
 
     float absorb = (1.0 - exp(-viewOptical)) * shellFade;
@@ -169,5 +173,5 @@ void main() {
         discard;
 
     FragColor = vec4(scatter, absorb);
-    BloomMask = max(scatter.r, max(scatter.g, scatter.b)) * 0.22 + aureole * 0.85;
+    BloomMask = max(scatter.r, max(scatter.g, scatter.b)) * 0.18 + aureole * 0.22;
 }

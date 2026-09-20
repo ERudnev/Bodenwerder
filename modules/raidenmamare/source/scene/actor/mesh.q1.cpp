@@ -88,8 +88,8 @@ namespace rmmr::scene::actor {
                 .shader = shader,
                 .texpack = texpack,
                 .texture3array = bucket.texture3array,
-                .heightField = {},
-                .coverField = {},
+                .heightField = bucket.heightField,
+                .coverField = bucket.coverField,
                 .farAlbedoField = {},
                 .farNormalField = {},
                 .sprite = mesh.sprite,
@@ -258,6 +258,8 @@ namespace rmmr::scene::actor {
                 .material = source.material,
                 .texpack = source.texpack,
                 .texture3array = {},
+                .heightField = {},
+                .coverField = {},
                 .indirect = indirect,
                 .drawCount = static_cast<renderer::Count>(source.commands.size()),
                 .metadataByteOffset = static_cast<renderer::IntPtr>(metadataOffsets[index]),
@@ -310,6 +312,19 @@ namespace rmmr::scene::actor {
             surfaces.emplace(surface, resource::material::Instance{.material = material, .textures = {}});
         }
         return compose(context, resource::meshpack::Asset::Resolved{.geometry = geometryId, .entry = resource::geometry::EntryId{0}, .surfaces = std::move(surfaces), .texpack = pack});
+    }
+
+    auto Mesh::Actions::composeWithFields(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id material, resource::texture::Asset::Id heightId) -> optional<Quantum> {
+        auto quantum = composeOne(context, geometryId, material);
+        if (not quantum)
+            return {};
+        const auto& runtimes = with<resource::Runtimes>::get(context, quantum->device);
+        const auto found = runtimes.textures_id_mapping.find(heightId);
+        if (found == runtimes.textures_id_mapping.end() or not with<resource::texture::Runtime>::exists(context, found->second))
+            return {};
+        for (auto& bucket : quantum->buckets)
+            bucket.heightField = found->second;
+        return quantum;
     }
 
     void Mesh::Actions::writeCohesions(Reading context, Id node, std::span<const float> values) {

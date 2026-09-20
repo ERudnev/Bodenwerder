@@ -247,7 +247,9 @@ void main() {
     float ambientGain = max(passAmbientColorIntensity.w, 0.0);
     float lightGain = max(passPrimaryLightPositionIntensity.w, 0.0);
     float roughShade = mix(mix(1.0, 0.55, roughness), mix(1.0, 0.88, roughness), farBlend);
-    vec3 ambient = albedo * passAmbientColorIntensity.rgb * (ambientGain / (1.0 + ambientGain)) * mix(1.0, 0.82, roughness);
+    float fill = ambientGain / (1.0 + ambientGain);
+    vec3 bounce = mix(vec3(0.18), albedo, 0.1827);
+    vec3 ambient = bounce * passAmbientColorIntensity.rgb * fill * mix(1.0, 0.82, roughness);
     vec3 direct = albedo * lambert * passPrimaryLightColorRange.rgb * shadow * (lightGain / (1.0 + lightGain)) * roughShade;
     FragColor = vec4(ambient + direct, 1.0);
     BloomMask = 0.0;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "geo/details/icosaMap.h"
+#include "geo/details/weather.h"
 
 #include <base/maybe.h>
 #include <eltanin/geo/minerals.q1.h>
@@ -72,6 +73,11 @@ namespace eltanin::planet {
         geo::IcosaMap<std::uint16_t> covers; // two u8 facies: surface, then just below
         geo::IcosaMap<rmmr::vec4> farAlbedo; // filtered RGBA: mean albedo + roughness
         geo::IcosaMap<rmmr::vec3> farNormal; // object-space unit normal, far-albedo grid
+        base::maybe<Weather> weather;
+        struct {
+            bool atmosphere;
+            bool fog;
+        } draw;
 
     private:
         base::maybe<rmmr::scene::actor::PatchGrid::Id> shell;

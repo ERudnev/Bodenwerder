@@ -406,6 +406,23 @@ namespace eltanin::phys {
                             ImGui::Text("Air MSL %.0f g/m³", runtime.atmosphere.seaDensity);
                             ImGui::Text("Kerman %.0f m", runtime.atmosphere.kerman);
                             ImGui::Text("Visual τ %.3f", runtime.atmosphere.zenithTau);
+                            if (ImGui::Checkbox("Atmosphere", &system.planet->draw.atmosphere))
+                                system.planet->sync(context);
+                            ImGui::SameLine();
+                            if (ImGui::Checkbox("Fog", &system.planet->draw.fog))
+                                system.planet->sync(context);
+                            if (system.planet->weather) {
+                                const auto& weather = *system.planet->weather;
+                                ImGui::Text("Decks %d", static_cast<int>(weather.decks.size()));
+                                for (const planet::Weather::Deck& deck : weather.decks) {
+                                    const char* name = deck.kind == planet::Weather::Kind::Dust ? "Dust" : deck.kind == planet::Weather::Kind::Condensate ? "Condensate" : "Haze";
+                                    ImGui::Text("  %s  %.0f–%.0f m", name, deck.base, deck.top);
+                                }
+                                ImGui::Text("Wind %.1f m/s", weather.meanWind());
+                                ImGui::Text("Cloud %.2f  Dust %.2f", weather.meanCloud(), weather.meanDust());
+                            } else {
+                                ImGui::TextUnformatted("Weather off");
+                            }
                             float spinDeg = glm::degrees(system.planet->spin(*planetBody));
                             if (ImGui::DragFloat("Spin", &spinDeg, 0.5f, 0.0f, 0.0f, "%.1f°")) {
                                 system.planet->spin(*planetBody, glm::radians(spinDeg));

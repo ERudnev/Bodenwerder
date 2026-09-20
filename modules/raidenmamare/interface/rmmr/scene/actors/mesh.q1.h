@@ -6,6 +6,7 @@
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/resources/texpack.q1.h>
 #include <rmmr/resources/texture3array.q1.h>
+#include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/system/core.q1.h>
 
@@ -27,6 +28,8 @@ namespace rmmr::scene::actor {
             resource::material::Runtime::Id material;
             base::maybe<resource::texpack::Runtime::Id> texpack;
             base::maybe<resource::texture3array::Runtime::Id> texture3array;
+            base::maybe<resource::texture::Runtime::Id> heightField;
+            base::maybe<resource::texture::Runtime::Id> coverField;
             renderer::IndirectBuffer indirect;
             renderer::Count drawCount;
             renderer::IntPtr metadataByteOffset;
@@ -53,6 +56,7 @@ namespace rmmr::scene::actor {
             static auto composeOne(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id) -> optional<Quantum>;
             static auto composeWith3DTexture(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texture3array::Asset::Id) -> optional<Quantum>;
             static auto composeWithTexpack(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texpack::Pack::Id) -> optional<Quantum>;
+            static auto composeWithFields(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texture::Asset::Id) -> optional<Quantum>;
             static void writeCohesions(Reading, Id, std::span<const float>);
             static void writeHeats(Reading, Id, std::span<const float>);
             static void replace(Writing, Id, Quantum);

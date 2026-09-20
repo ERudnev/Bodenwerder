@@ -541,6 +541,8 @@ namespace eltanin::planet {
         if (loadCache(planet, files)) {
             generateFarNormal(planet);
             logFieldSummary(planet);
+            const Geology geology = Compose::derive(planet.passport);
+            planet.weather = Weather::spawn(geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
             return;
         }
         const Geology geology = Compose::derive(planet.passport);
@@ -549,6 +551,7 @@ namespace eltanin::planet {
         generateFarNormal(planet);
         saveCache(planet, files);
         logFieldSummary(planet);
+        planet.weather = Weather::spawn(geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
     }
 
 }

@@ -363,6 +363,7 @@ namespace eltanin::planet {
         }
         planet.heights.stitch();
         PaintCover::apply(planet, PaintCover::mars(geology, planet.passport.seed));
+        planet.weather = Weather::spawn(geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
     }
 
 }

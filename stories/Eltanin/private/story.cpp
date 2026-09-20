@@ -351,6 +351,12 @@ namespace eltanin {
                 .nearest = false,
                 .blend = renderer::BlendMode::premultiplied,
             });
+            const auto cloudShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "cloud"), item<shader::Loader>{.vertex = "shaders/cloud.vert.glsl", .fragment = "shaders/cloud.frag.glsl"});
+            with<Assets>::add_material(context, Name::from("Eltanin", "cloud"), Material::Quantum{
+                .techniques = {{renderer::Pass::atmosphere, Material::Technique{.program = with<Unit>::remember(context, cloudShader), .uniforms = ::rmmr::material::Semantics::ids_of({"sceneDepth", "heightMap"}), .glowSpread = true}}},
+                .nearest = false,
+                .blend = renderer::BlendMode::premultiplied,
+            });
             const auto manager = with<Manager>::singleton(context);
             const auto crustId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "crust")});
             with<texture3array::Asset>::extend(context, crustId, texture3array::Asset::Quantum{.layerSize = index3{0, 0, 0}, .capacity = 0});
@@ -478,6 +484,7 @@ namespace eltanin {
         });
 
         const auto root = with<locality::Thing>::get_global(context).scene;
+        with<scene::Root>::modify(context, root)->ambient_intensity = 0.18f;
         physics.emplace(root);
 
         if (not with<resource::SkySphereGenerator>::materialize(context, *assets.skySphereGeometry, window)) {

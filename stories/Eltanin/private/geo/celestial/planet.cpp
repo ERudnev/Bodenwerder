@@ -1,6 +1,7 @@
 #include "geo/celestial/planet.h"
 #include "geo/celestial/horizon.h"
 #include "geo/celestial/generator.h"
+#include "geo/details/weather.h"
 #include "physics/settings.h"
 
 #include <eltanin/locality/thing.q1.h>
@@ -13,6 +14,7 @@
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/actors/patchGrid.q1.h>
+#include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
 
@@ -289,7 +291,7 @@ namespace eltanin::planet {
             mesh.heat = vec2{planet.passport.radius, planet.runtime.atmosphere.outerRadius};
             mesh.scale = vec3{planet.runtime.atmosphere.outerRadius * 1.08f};
             mesh.latticeStep = planet.runtime.atmosphere.zenithTau;
-            mesh.patternScale = geo::Horizon::locality;
+            mesh.patternScale = planet.draw.fog ? geo::Horizon::locality : -geo::Horizon::locality;
         }
 
         auto spawnAtmosphere(Writing context, Pose pose, const Planet& planet) -> base::maybe<scene::actor::Mesh::Id> {
@@ -313,6 +315,84 @@ namespace eltanin::planet {
             auto meshState = with<scene::actor::MeshState>::defaults(planet.runtime.atmosphere.day, planet.runtime.atmosphere.seaDensity, vec3{1.0f});
             bindAtmosphereMesh(meshState, planet);
             return with<scene::Interface>::createMeshActor(context, with<Thing>::get_global(context).scene, pose, std::move(*meshQuantum), meshState);
+        }
+
+        auto sunLocal(Writing context, const phys::Body::Quantum& body) -> vec3 {
+            const auto scene = with<Thing>::get_global(context).scene;
+            if (not with<scene::Root>::exists(context, scene))
+                return vec3{0.0f, 1.0f, 0.0f};
+            const auto& root = with<scene::Root>::get(context, scene);
+            if (not root.primaryLight or not with<scene::Node>::exists(context, *root.primaryLight))
+                return vec3{0.0f, 1.0f, 0.0f};
+            const mat4 world = scene::Node::Actions::transform(context, *root.primaryLight);
+            const vec3 toLight = glm::normalize(vec3{world[2]});
+            const dvec3 local = glm::inverse(body.orientation) * dvec3{toLight};
+            const double len = glm::length(local);
+            if (len < 1.0e-12)
+                return vec3{0.0f, 1.0f, 0.0f};
+            return vec3{local / len};
+        }
+
+        void uploadWeather(Writing context, system::Device::Id device, Weather& weather) {
+            const vector<std::uint8_t> pixels = weather.atlasPixels();
+            const integer span = weather.heat.pack.edgeVertices();
+            const auto bytes = std::span<const std::byte>(reinterpret_cast<const std::byte*>(pixels.data()), pixels.size());
+            if (not weather.atlas) {
+                const auto manager = with<resource::Manager>::singleton(context);
+                const auto atlasId = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = resource::Unit::Name::from("Eltanin", "planet-weather")});
+                with<resource::texture::Asset>::extend(context, atlasId, resource::texture::Asset::Quantum{});
+                weather.atlas = atlasId;
+            }
+            if (not with<resource::texture::Asset>::install(context, *weather.atlas, device, resource::texture::Asset::Format::rgba8, resource::texture::Asset::Sampling::linear, index2{.x = span, .y = span}, geo::IcosaPack::diamondCount, 1, bytes))
+                context.refuse("eltanin::planet::Planet: weather atlas install failed");
+        }
+
+        void bindCloudMesh(scene::actor::MeshState::Quantum& mesh, const Planet& planet, const Weather::Deck& deck) {
+            const float inner = planet.passport.radius + deck.base;
+            const float outer = planet.passport.radius + deck.top;
+            mesh.albedo = deck.scatter;
+            mesh.opacity = 1.0f;
+            mesh.heat = vec2{inner, outer};
+            mesh.scale = vec3{outer * 1.08f};
+            mesh.latticeStep = 0.0f;
+            mesh.patternScale = deck.channel;
+        }
+
+        void spawnClouds(Writing context, system::Device::Id device, Pose pose, Planet& planet) {
+            if (not planet.weather or planet.weather->decks.empty())
+                return;
+            uploadWeather(context, device, *planet.weather);
+            if (not planet.weather->atlas)
+                return;
+            const auto material = with<resource::Assets>::find<resource::material::Asset>(context, resource::Unit::Name::from("Eltanin", "cloud"));
+            const auto sphere = with<resource::Assets>::find<resource::geometry::Asset>(context, resource::Unit::Name::from("Eltanin", "atmosphereSphere"));
+            if (not material or not sphere) {
+                context.refuse("eltanin::planet::Planet::place: cloud assets missing");
+                return;
+            }
+            for (Weather::Deck& deck : planet.weather->decks) {
+                auto meshQuantum = with<scene::actor::Mesh>::composeWithFields(context, *sphere, *material, *planet.weather->atlas);
+                if (not meshQuantum) {
+                    context.refuse("eltanin::planet::Planet::place: cloud mesh compose failed");
+                    return;
+                }
+                auto meshState = with<scene::actor::MeshState>::defaults(deck.scatter, 1.0f, vec3{1.0f});
+                bindCloudMesh(meshState, planet, deck);
+                deck.actor = with<scene::Interface>::createMeshActor(context, with<Thing>::get_global(context).scene, pose, std::move(*meshQuantum), meshState);
+            }
+        }
+
+        void syncWeatherLook(Writing context, Planet& planet, base::maybe<scene::actor::Mesh::Id> atmosphere) {
+            if (not planet.weather)
+                return;
+            planet.weather->applyLook(planet);
+            if (atmosphere and with<scene::actor::MeshState>::exists(context, *atmosphere))
+                bindAtmosphereMesh(*with<scene::actor::MeshState>::modify(context, *atmosphere), planet);
+            for (const Weather::Deck& deck : planet.weather->decks) {
+                if (not deck.actor or not with<scene::actor::MeshState>::exists(context, *deck.actor))
+                    continue;
+                bindCloudMesh(*with<scene::actor::MeshState>::modify(context, *deck.actor), planet, deck);
+            }
         }
 
         auto toLocal(const phys::Body::Quantum& body, dvec3 worldPos) -> dvec3 {
@@ -376,6 +456,8 @@ namespace eltanin::planet {
         , covers{heights.pack, std::uint16_t{0}}
         , farAlbedo{geo::IcosaPack{.edgeBase = std::max(heights.pack.edgeSegments() / 2, integer{1}), .tessellation = 0}, vec4{0.0f}}
         , farNormal{farAlbedo.pack, vec3{0.0f, 1.0f, 0.0f}}
+        , weather{}
+        , draw{.atmosphere = true, .fog = true}
         , shell{}
         , atmosphere{} {
         Generator::generate(*this);
@@ -448,6 +530,11 @@ namespace eltanin::planet {
             well = phys::createBody(context, wellQuantum(*this, pose), {});
         else
             bindWell(*with<phys::Body>::modify(context, *well), *this, pose);
+        if (weather and well and with<phys::Body>::exists(context, *well)) {
+            weather->tick(sunLocal(context, with<phys::Body>::get(context, *well)), passport.environment.stellarFlux, 0.5);
+            spawnClouds(context, device, pose, *this);
+            syncWeatherLook(context, *this, atmosphere);
+        }
         sync(context);
     }
 
@@ -471,6 +558,16 @@ namespace eltanin::planet {
         spinOmega = spinAxis(*this) * rate;
         if (rate != 0.0)
             body->orientation = glm::normalize(glm::angleAxis(rate * double(dt), glm::normalize(spinOmega)) * body->orientation);
+        if (weather) {
+            weather->debt += dt;
+            if (weather->debt >= 0.5) {
+                weather->tick(sunLocal(context, *body), passport.environment.stellarFlux, weather->debt);
+                if (not weather->decks.empty() and atmosphere and with<scene::actor::Mesh>::exists(context, *atmosphere))
+                    uploadWeather(context, with<scene::actor::Mesh>::get(context, *atmosphere).device, *weather);
+                syncWeatherLook(context, *this, atmosphere);
+                weather->debt = 0;
+            }
+        }
     }
 
     void Planet::sync(Writing context) {
@@ -479,8 +576,22 @@ namespace eltanin::planet {
         const Pose pose = with<phys::Body>::get(context, *well).pose();
         if (shell and with<scene::Node>::exists(context, *shell))
             with<scene::Node>::modify(context, *shell)->pose = pose;
-        if (atmosphere and with<scene::Node>::exists(context, *atmosphere))
-            with<scene::Node>::modify(context, *atmosphere)->pose = pose;
+        if (atmosphere and with<scene::Node>::exists(context, *atmosphere)) {
+            if (with<scene::actor::MeshState>::exists(context, *atmosphere))
+                bindAtmosphereMesh(*with<scene::actor::MeshState>::modify(context, *atmosphere), *this);
+            auto node = with<scene::Node>::modify(context, *atmosphere);
+            node->pose = pose;
+            node->visible = draw.atmosphere;
+        }
+        if (weather) {
+            for (const Weather::Deck& deck : weather->decks) {
+                if (not deck.actor or not with<scene::Node>::exists(context, *deck.actor))
+                    continue;
+                auto node = with<scene::Node>::modify(context, *deck.actor);
+                node->pose = pose;
+                node->visible = draw.fog;
+            }
+        }
     }
 
     auto Planet::spin(const phys::Body::Quantum& body) const -> float {
@@ -541,7 +652,26 @@ namespace eltanin::planet {
     }
 
     auto Planet::windAt(const phys::Body::Quantum& body, dvec3 worldPos) const -> dvec3 {
-        return glm::cross(spinOmega, worldPos - body.position);
+        const dvec3 spin = glm::cross(spinOmega, worldPos - body.position);
+        if (not weather or runtime.atmosphere.seaDensity <= 0.0f)
+            return spin;
+        const dvec3 local = toLocal(body, worldPos);
+        const double radial = glm::length(local);
+        if (radial < 1.0e-12)
+            return spin;
+        const vec3 direction = vec3{local / radial};
+        const float altitude = float(radial) - passport.radius;
+        const float kerman = std::max(runtime.atmosphere.kerman, 1.0f);
+        float profile = altitude <= 0.0f ? 0.0f : glm::clamp(altitude / kerman, 0.0f, 1.0f);
+        profile *= 1.0f - glm::smoothstep(kerman * 2.5f, kerman * 3.0f, altitude);
+        const vec2 flow = weather->windAt(direction);
+        vec3 east = glm::cross(vec3{0.0f, 1.0f, 0.0f}, direction);
+        if (glm::dot(east, east) < 1.0e-8f)
+            east = glm::cross(vec3{1.0f, 0.0f, 0.0f}, direction);
+        east = glm::normalize(east);
+        const vec3 north = glm::normalize(glm::cross(direction, east));
+        const vec3 meteo = (east * flow.x + north * flow.y) * profile;
+        return spin + body.orientation * dvec3{meteo};
     }
 
     auto Planet::probe(const phys::Body::Quantum& body, vec3 dir) const -> Probe {
