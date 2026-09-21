@@ -141,8 +141,8 @@ namespace eltanin::planet {
             return float(value) / 255.0f;
         }
 
-        constexpr std::uint32_t cacheEpoch = 7;
-        constexpr char cacheMagic[8] = {'E', 'L', 'T', 'N', 'M', 'A', 'P', '7'};
+        constexpr std::uint32_t cacheEpoch = 8;
+        constexpr char cacheMagic[8] = {'E', 'L', 'T', 'N', 'M', 'A', 'P', '8'};
 
 #pragma pack(push, 1)
         struct MapHeader {

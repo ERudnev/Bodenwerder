@@ -324,7 +324,15 @@ namespace eltanin::planet {
             const float shearTexture = Sample::fractal(direction * 24.0f, params.seed + 1871, 5, 0.55f);
             const float boundaryRelief = edge * params.activity * (convergence * mountainTexture * 0.20f - divergence * (0.09f + mountainTexture * 0.06f) + sample.shear * shearTexture * 0.045f);
             const float interiorTexture = Sample::fractal(Sample::warped(direction, params.seed + sample.first * 31, 2.4f, 0.08f) * 5.0f, params.seed + 1901 + sample.first * 53, 5, 0.55f);
-            formation.relief.at(slot) += params.amplitude * (province * 0.13f + interiorTexture * (0.035f + first.age * 0.025f) + boundaryRelief);
+            const float drop = first.elevation - second.elevation;
+            const float highlandMask = glm::smoothstep(0.04f, 0.22f, drop) * glm::smoothstep(width * 0.06f, width * 0.40f, gap) * (1.0f - glm::smoothstep(width * 2.4f, width * 6.0f, gap));
+            const float alongU = glm::dot(direction, sample.along);
+            const float acrossV = glm::dot(direction, sample.normal);
+            const vec3 crackDomain = sample.along * (alongU * 36.0f) + sample.normal * (acrossV * 8.5f) + direction * 1.1f;
+            const float ridges = Sample::ridged(Sample::warped(crackDomain, params.seed + 2113, 1.8f, 0.12f), params.seed + 2131, 5);
+            const float forks = Sample::ridged(sample.along * (alongU * 19.0f) + sample.normal * (acrossV * 24.0f), params.seed + 2149, 4);
+            const float cracks = std::pow(glm::clamp(1.0f - ridges, 0.0f, 1.0f), 2.6f) * (0.50f + 0.50f * std::pow(glm::clamp(1.0f - forks, 0.0f, 1.0f), 1.8f));
+            formation.relief.at(slot) += params.amplitude * (province * 0.13f + interiorTexture * (0.035f + first.age * 0.025f) + boundaryRelief - highlandMask * cracks * 0.055f * (0.55f + 0.45f * params.activity));
         }
         formation.relief.stitch();
     }
@@ -811,12 +819,18 @@ namespace eltanin::planet {
             const float waterFrost = float(waterInventory) / 15.0f * (1.0f - glm::smoothstep(176.0f, 208.0f, localTemperature));
             const float carbonFrost = float(carbonDioxide) / 15.0f * (1.0f - glm::smoothstep(148.0f, 198.0f, localTemperature));
             const float methaneFrost = float(methane) / 15.0f * (1.0f - glm::smoothstep(72.0f, 112.0f, localTemperature));
-            if (waterFrost + carbonFrost + methaneFrost > 0.48f) {
-                if (carbonFrost + methaneFrost > waterFrost * 1.15f)
+            const float frostLoad = waterFrost + carbonFrost + methaneFrost;
+            if (frostLoad > 0.48f) {
+                const bool seasonalGas = carbonFrost + methaneFrost > waterFrost * 1.15f;
+                const bool residual = frostLoad > 0.66f;
+                if (seasonalGas)
                     surface = Facies::VolatileFrost;
-                else
+                else if (residual)
                     surface = geology.crust.cohesion > 0.58f ? Facies::Glacier : age > 0.5f ? Facies::DirtyIce : Facies::Snow;
-                below = Facies::DirtyIce;
+                else
+                    surface = Facies::Snow;
+                if (residual)
+                    below = Facies::DirtyIce;
             }
             planet.covers.at(slot) = geo::pack(surface, below);
         }
