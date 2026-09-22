@@ -48,19 +48,19 @@ namespace rmmr::resource::meshpack {
             return out;
         }
 
-        struct LwoPackPayload {
+        struct SingleGeometryPackPayload {
             string name;
-            string lwo_file;
+            string geometryFile;
             string texpack;
             umap<string, FileInstance> parts;
         };
 
-        auto read_lwo_pack_payload(std::istream& in) -> LwoPackPayload {
-            LwoPackPayload out{};
+        auto readSingleGeometryPackPayload(std::istream& in) -> SingleGeometryPackPayload {
+            SingleGeometryPackPayload out{};
             base::serialization::detail::expect(in, '{');
             out.name = base::serialization::detail::read<string>(in);
             base::serialization::detail::expect(in, ',');
-            out.lwo_file = base::serialization::detail::read<string>(in);
+            out.geometryFile = base::serialization::detail::read<string>(in);
             base::serialization::detail::expect(in, ',');
             out.texpack = base::serialization::detail::read<string>(in);
             base::serialization::detail::expect(in, ',');
@@ -195,6 +195,92 @@ namespace rmmr::resource::meshpack {
             return surfaces;
         }
 
+        template<typename Loader>
+        void loadSingleGeometryPack(Writing context, Asset::Id packId, const char* loaderName) {
+            const auto& loader = with<Loader>::get(context, packId);
+            const auto& unit = with<Unit>::get(context, packId);
+            const auto packPath = with<Manager>::resolve(context, unit, loader.file);
+
+            std::ifstream in{packPath};
+            if (not in) return (void)context.refuse(std::format("resource::meshpack::{}::load: failed to open '{}'", loaderName, packPath.string()));
+
+            SingleGeometryPackPayload payload;
+            try {
+                payload = readSingleGeometryPackPayload(in);
+            } catch (const std::exception& error) {
+                return (void)context.refuse(std::format("resource::meshpack::{}::load: parse '{}': {}", loaderName, packPath.string(), error.what()));
+            }
+
+            const auto parsedName = system::content::UnitName::parse(payload.name);
+            if (not parsedName) return (void)context.refuse(std::format("resource::meshpack::{}::load: bad identity '{}'", loaderName, payload.name));
+            const auto fileName = Unit::Name{.library = parsedName->library, .own = parsedName->own};
+            if (fileName != unit.name) {
+                return (void)context.refuse(std::format("resource::meshpack::{}::load: file identity '{}' != unit '{}'", loaderName, fileName.text(), unit.name.text()));
+            }
+
+            const auto texpackId = resolve_texpack(context, payload.texpack);
+            if (not payload.texpack.empty() and payload.texpack != "-" and not texpackId) return;
+
+            const auto geometryId = with<Assets>::add_geometry_loader(
+                context,
+                Unit::Name::from(unit.name.library, std::format("{}_geometry", unit.name.own)),
+                geometry::Loader::Quantum{.file = payload.geometryFile});
+            umap<string, material::Instance> pending;
+            for (const auto& [part, fileInstance] : payload.parts) {
+                auto instance = resolve_instance(context, fileInstance, part, texpackId);
+                if (not instance) return;
+                pending.emplace(part, std::move(*instance));
+            }
+            if (pending.empty()) {
+                return (void)context.refuse(std::format("resource::meshpack::{}::load: '{}' produced no surface declarations from '{}'", loaderName, unit.name.text(), packPath.string()));
+            }
+
+            const auto declarationCount = pending.size();
+            auto asset = with<Asset>::modify(context, packId);
+            asset->texpack = texpackId;
+            asset->entries.clear();
+            auto state = with<Loader>::modify(context, packId);
+            state->geometry = geometryId;
+            state->pending = std::move(pending);
+            base::whisper("rmmr: meshpack::{} '{}' ← {} ({} surfaces)", loaderName, unit.name.text(), packPath.string(), declarationCount);
+        }
+
+        template<typename Loader>
+        void finalizeSingleGeometryPack(Writing context, Asset::Id packId, const char* loaderName) {
+            const auto& state = with<Loader>::get(context, packId);
+            if (state.pending.empty()) return;
+            const auto& unit = with<Unit>::get(context, packId);
+            if (not state.geometry or not with<geometry::Asset>::exists(context, *state.geometry)) {
+                return (void)context.refuse(std::format("resource::meshpack::{}::finalize: '{}' pooled geometry is missing", loaderName, unit.name.text()));
+            }
+            const auto geometryId = *state.geometry;
+            const auto& geometryAsset = with<geometry::Asset>::get(context, geometryId);
+            if (geometryAsset.entryCatalog.empty()) {
+                return (void)context.refuse(std::format("resource::meshpack::{}::finalize: '{}' geometry has no entries", loaderName, unit.name.text()));
+            }
+
+            umap<string, Asset::Entry> entries;
+            umap<string, bool> usedSurfaces;
+            for (const auto& [entryName, entryId] : geometryAsset.entryCatalog) {
+                auto surfaces = resolveSurfaceBindings(context, geometryAsset, entryId, state.pending, std::format("'{}' entry '{}'", unit.name.text(), entryName));
+                if (not surfaces or surfaces->empty()) return;
+                for (const auto& surface : geometryAsset.surfaceCatalogs[entryId]) usedSurfaces.emplace(surface.first, true);
+                entries.emplace(entryName, Asset::Entry{.geometry = geometryId, .entry = entryId, .surfaces = std::move(*surfaces)});
+            }
+            for (const auto& [surfaceName, _] : state.pending) {
+                if (not usedSurfaces.contains(surfaceName)) {
+                    return (void)context.refuse(std::format("resource::meshpack::{}::finalize: '{}' declares surface '{}' absent from geometry", loaderName, unit.name.text(), surfaceName));
+                }
+            }
+
+            const auto entryCount = entries.size();
+            with<Asset>::modify(context, packId)->entries = std::move(entries);
+            auto loader = with<Loader>::modify(context, packId);
+            loader->geometry = base::maybe<geometry::Asset::Id>{};
+            loader->pending.clear();
+            base::message("rmmr: meshpack '{}' finalized from geometry catalogs ({} entries)", unit.name.text(), entryCount);
+        }
+
     } // namespace
 
     auto Asset::Actions::resolve(Reading context, Id pack_id, string name) -> optional<Resolved> {
@@ -319,91 +405,19 @@ namespace rmmr::resource::meshpack {
     }
 
     void LoaderLwo::Actions::load(Writing context, Id pack_id) {
-        const auto& loader = with<LoaderLwo>::get(context, pack_id);
-        const auto& unit = with<Unit>::get(context, pack_id);
-
-        const auto pack_path = with<Manager>::resolve(context, unit, loader.file);
-
-        std::ifstream in{pack_path};
-        if (not in) {
-            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: failed to open '{}'", pack_path.string()));
-        }
-
-        LwoPackPayload payload;
-        try {
-            payload = read_lwo_pack_payload(in);
-        } catch (const std::exception& error) {
-            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: parse '{}': {}", pack_path.string(), error.what()));
-        }
-
-        const auto parsedName = system::content::UnitName::parse(payload.name);
-        if (not parsedName)
-            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: bad identity '{}'", payload.name));
-        const auto file_name = Unit::Name{.library = parsedName->library, .own = parsedName->own};
-        if (file_name != unit.name) {
-            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: file identity '{}' != unit '{}'", file_name.text(), unit.name.text()));
-        }
-
-        const auto texpack_id = resolve_texpack(context, payload.texpack);
-        if (not payload.texpack.empty() and payload.texpack != "-" and not texpack_id) {
-            return;
-        }
-
-        const auto geometryId = with<Assets>::add_geometry_loader(context, Unit::Name::from(unit.name.library, std::format("{}_geometry", unit.name.own)), geometry::Loader::Quantum{.file = payload.lwo_file});
-        umap<string, material::Instance> pending;
-        for (const auto& [part, fileInstance] : payload.parts) {
-            auto instance = resolve_instance(context, fileInstance, part, texpack_id);
-            if (not instance) return;
-            pending.emplace(part, std::move(*instance));
-        }
-
-        if (pending.empty()) {
-            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::load: '{}' produced no surface declarations from '{}'", unit.name.text(), pack_path.string()));
-        }
-        const auto declarationCount = pending.size();
-        auto asset = with<Asset>::modify(context, pack_id);
-        asset->texpack = texpack_id;
-        asset->entries.clear();
-        auto state = with<LoaderLwo>::modify(context, pack_id);
-        state->geometry = geometryId;
-        state->pending = std::move(pending);
-        base::whisper("rmmr: meshpack::LoaderLwo '{}' ← {} ({} surfaces)", unit.name.text(), pack_path.string(), declarationCount);
+        loadSingleGeometryPack<LoaderLwo>(context, pack_id, "LoaderLwo");
     }
 
     void LoaderLwo::Actions::finalize(Writing context, Id packId) {
-        const auto& state = with<LoaderLwo>::get(context, packId);
-        if (state.pending.empty()) return;
-        const auto& unit = with<Unit>::get(context, packId);
-        if (not state.geometry or not with<geometry::Asset>::exists(context, *state.geometry)) {
-            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::finalize: '{}' pooled geometry is missing", unit.name.text()));
-        }
-        const auto geometryId = *state.geometry;
-        const auto& geometryAsset = with<geometry::Asset>::get(context, geometryId);
-        if (geometryAsset.entryCatalog.empty()) {
-            return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::finalize: '{}' geometry has no entries", unit.name.text()));
-        }
+        finalizeSingleGeometryPack<LoaderLwo>(context, packId, "LoaderLwo");
+    }
 
-        umap<string, Asset::Entry> entries;
-        umap<string, bool> usedSurfaces;
-        for (const auto& [entryName, entryId] : geometryAsset.entryCatalog) {
-            auto surfaces = resolveSurfaceBindings(context, geometryAsset, entryId, state.pending, std::format("'{}' entry '{}'", unit.name.text(), entryName));
-            if (not surfaces or surfaces->empty()) return;
-            for (const auto& surface : geometryAsset.surfaceCatalogs[entryId]) usedSurfaces.emplace(surface.first, true);
-            entries.emplace(entryName, Asset::Entry{.geometry = geometryId, .entry = entryId, .surfaces = std::move(*surfaces)});
-        }
-        for (const auto& declaration : state.pending) {
-            const auto& surfaceName = declaration.first;
-            if (not usedSurfaces.contains(surfaceName)) {
-                return (void)context.refuse(std::format("resource::meshpack::LoaderLwo::finalize: '{}' declares surface '{}' absent from geometry", unit.name.text(), surfaceName));
-            }
-        }
+    void LoaderFbx::Actions::load(Writing context, Id packId) {
+        loadSingleGeometryPack<LoaderFbx>(context, packId, "LoaderFbx");
+    }
 
-        const auto entryCount = entries.size();
-        with<Asset>::modify(context, packId)->entries = std::move(entries);
-        auto loader = with<LoaderLwo>::modify(context, packId);
-        loader->geometry = base::maybe<geometry::Asset::Id>{};
-        loader->pending.clear();
-        base::message("rmmr: meshpack '{}' finalized from pooled geometry catalogs ({} entries)", unit.name.text(), entryCount);
+    void LoaderFbx::Actions::finalize(Writing context, Id packId) {
+        finalizeSingleGeometryPack<LoaderFbx>(context, packId, "LoaderFbx");
     }
 
 }

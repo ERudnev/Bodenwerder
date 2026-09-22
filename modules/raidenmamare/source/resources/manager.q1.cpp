@@ -22,6 +22,8 @@ namespace rmmr::resource {
             meshpack::LoaderObjs::Actions::load(context, id);
         for (const auto [id, _] : context->aspect<meshpack::LoaderLwo>().items())
             meshpack::LoaderLwo::Actions::load(context, id);
+        for (const auto [id, _] : context->aspect<meshpack::LoaderFbx>().items())
+            meshpack::LoaderFbx::Actions::load(context, id);
     }
 
     auto Manager::Actions::resolve(Reading context, const Unit::Quantum& unit, const filename& relative) -> filepath {

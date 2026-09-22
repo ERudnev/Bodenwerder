@@ -69,4 +69,18 @@ namespace rmmr::resource::meshpack {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    struct LoaderFbx : Feature<LoaderFbx, Asset> {
+        struct Quantum {
+            filename file;
+            base::maybe<geometry::Asset::Id> geometry;
+            umap<string, material::Instance> pending;
+        };
+        struct Actions : BaseActions {
+            static void load(Writing, Id);
+            static void finalize(Writing, Id);
+        };
+        struct Internals : DefaultInternals{};
+        static const Behavior customAspectReactions() { return {}; }
+    };
+
 }

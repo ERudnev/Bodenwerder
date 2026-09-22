@@ -70,3 +70,21 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE assimp
     ${OPENGL_LIBRARIES}
 )
+
+add_executable(Raidenmamare_fbx_tests
+    test/fbx_import.cpp
+)
+target_include_directories(Raidenmamare_fbx_tests
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/source
+)
+target_compile_definitions(Raidenmamare_fbx_tests
+    PRIVATE
+        DAQL_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+)
+target_link_libraries(Raidenmamare_fbx_tests
+    PRIVATE
+        Raidenmamare
+        assimp
+        base
+)

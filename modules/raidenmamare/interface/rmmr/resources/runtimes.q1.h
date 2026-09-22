@@ -39,6 +39,7 @@ namespace rmmr::resource {
             static auto add_sprites_kenney(Writing, Unit::Name, sprite::LoaderKenney::Quantum) -> sprite::Pack::Id;
             static auto add_meshpack_objs_loader(Writing, Unit::Name, meshpack::LoaderObjs::Quantum) -> meshpack::Asset::Id;
             static auto add_meshpack_lwo_loader(Writing, Unit::Name, meshpack::LoaderLwo::Quantum) -> meshpack::Asset::Id;
+            static auto add_meshpack_fbx_loader(Writing, Unit::Name, meshpack::LoaderFbx::Quantum) -> meshpack::Asset::Id;
             template<::fqsm::meta::category::Any Meta>
             static auto find(Reading, Unit::Name) -> optional<typename Meta::Id>;
             static void extend(Writing, filepath path);
