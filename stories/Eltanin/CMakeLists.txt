@@ -28,6 +28,9 @@ set(Eltanin_Q1
     geo/volatiles.q1
     geo/rock.q1
     geo/boulder.q1
+    totality/space.q1
+    totality/system.q1
+    totality/celestial.q1
 )
 
 add_executable(${PROJECT_NAME})
@@ -52,6 +55,7 @@ target_include_directories(${PROJECT_NAME}
 target_compile_definitions(${PROJECT_NAME}
     PRIVATE
         DAQL_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+        DAQL_WORLDS_DIR="${CMAKE_SOURCE_DIR}/worlds"
 )
 
 target_link_libraries(${PROJECT_NAME}

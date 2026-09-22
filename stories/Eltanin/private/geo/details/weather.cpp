@@ -79,7 +79,7 @@ namespace eltanin::planet {
         return decks;
     }
 
-    auto Weather::spawn(const Geology& geology, integer heightSegments, float kerman, float seaDensity) -> base::maybe<Weather> {
+    auto Weather::spawn(const Passport& passport, const Geology& geology, integer heightSegments, float kerman, float seaDensity) -> base::maybe<Weather> {
         if (seaDensity <= 0.0f)
             return {};
         const integer segments = std::clamp(heightSegments / 16, integer{48}, integer{64});
@@ -95,6 +95,7 @@ namespace eltanin::planet {
             .column = geology.climate.atmosphere,
             .temperature = geology.climate.temperature,
             .decks = decksOf(geology, kerman),
+            .climate = {pack, geology.climate.temperature},
             .heat = {pack, geology.climate.temperature},
             .wind = {pack, vec2{0.0f, 0.0f}},
             .cloud = {pack, 0.0f},
@@ -109,11 +110,16 @@ namespace eltanin::planet {
         for (integer index = 0; index < pack.storedCount(); ++index) {
             const auto slot = pack.slotOf(index);
             const vec3 direction = pack.direction(slot);
+            const float baseline = ClimateField::temperature(passport, geology, direction);
+            weather.climate.at(slot) = baseline;
+            weather.heat.at(slot) = baseline;
             const float banks = glm::smoothstep(0.20f, 0.58f, Sample::fractal(direction * 2.8f, 29, 3, 0.48f));
             const float storm = glm::smoothstep(0.28f, 0.68f, Sample::fractal(direction * 2.2f, 17, 3, 0.52f));
             weather.cloud.at(slot) = glm::clamp(geology.climate.water * banks * 0.70f, 0.0f, 1.0f);
             weather.dust.at(slot) = glm::clamp(dustSeed * storm * 0.45f, 0.0f, 1.0f);
         }
+        weather.climate.stitch();
+        weather.heat.stitch();
         weather.cloud.stitch();
         weather.dust.stitch();
         return weather;
@@ -125,15 +131,15 @@ namespace eltanin::planet {
         const float insolationScale = glm::clamp(stellarFlux / 1361.0f, 0.05f, 2.4f);
         const float tau = glm::mix(220.0f, 6400.0f, glm::clamp(cohesion, 0.0f, 1.0f));
         const float blend = 1.0f - std::exp(-step / tau);
-        const float nightFloor = temperature * 0.62f;
         const integer count = heat.pack.storedCount();
         const auto& pack = heat.pack;
         for (integer index = 0; index < count; ++index) {
             const auto slot = pack.slotOf(index);
             const vec3 direction = pack.direction(slot);
+            const float baseline = climate.at(slot);
             const float shade = glm::clamp(1.0f - cloud.at(slot) - dust.at(slot) * 0.70f, 0.12f, 1.0f);
             const float insol = glm::clamp(glm::dot(direction, sun), 0.0f, 1.0f) * shade * insolationScale;
-            const float target = glm::mix(nightFloor, temperature * (0.82f + 0.55f * insol), glm::smoothstep(0.0f, 0.18f, insol));
+            const float target = glm::mix(baseline * 0.62f, baseline * (0.82f + 0.55f * insol), glm::smoothstep(0.0f, 0.18f, insol));
             heat.at(slot) = glm::mix(heat.at(slot), target, blend);
         }
         heat.stitch();

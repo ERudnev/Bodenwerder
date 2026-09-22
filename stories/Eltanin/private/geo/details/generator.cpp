@@ -142,8 +142,8 @@ namespace eltanin::planet {
             return float(value) / 255.0f;
         }
 
-        constexpr std::uint32_t cacheEpoch = 8;
-        constexpr char cacheMagic[8] = {'E', 'L', 'T', 'N', 'M', 'A', 'P', '8'};
+        constexpr std::uint32_t cacheEpoch = 10;
+        constexpr char cacheMagic[8] = {'E', 'L', 'T', 'N', 'M', 'A', '1', '0'};
 
 #pragma pack(push, 1)
         struct MapHeader {
@@ -167,6 +167,10 @@ namespace eltanin::planet {
             float eccentricity;
             float tidalHeat;
             float debrisFlux;
+            float orbitNormalX;
+            float orbitNormalY;
+            float orbitNormalZ;
+            float orbitPeriod;
             float surfaceAcceleration;
             float reliefAmplitude;
             float atmosphereOuterRadius;
@@ -223,6 +227,10 @@ namespace eltanin::planet {
             hash = mixFloat(hash, passport.environment.eccentricity);
             hash = mixFloat(hash, passport.environment.tidalHeat);
             hash = mixFloat(hash, passport.environment.debrisFlux);
+            hash = mixFloat(hash, passport.orbit.normal.x);
+            hash = mixFloat(hash, passport.orbit.normal.y);
+            hash = mixFloat(hash, passport.orbit.normal.z);
+            hash = mixFloat(hash, passport.orbit.period);
             return hash;
         }
 
@@ -240,7 +248,7 @@ namespace eltanin::planet {
             const integer kilometres = std::max(integer{1}, static_cast<integer>(std::lround(double(planet.passport.radius) / 1000.0)));
             const std::string key = std::to_string(kilometres) + "_" + hashStem(cacheKey(planet));
             CacheFiles files;
-            files.directory = std::filesystem::path{DAQL_ASSETS_DIR} / "Eltanin" / "planetsCache";
+            files.directory = std::filesystem::path{DAQL_WORLDS_DIR} / "Eltanin" / "planets";
             files.map = files.directory / ("planet_map_" + key + ".bin");
             files.view = files.directory / ("planet_view_" + key + ".png");
             return files;
@@ -269,6 +277,10 @@ namespace eltanin::planet {
             header.eccentricity = passport.environment.eccentricity;
             header.tidalHeat = passport.environment.tidalHeat;
             header.debrisFlux = passport.environment.debrisFlux;
+            header.orbitNormalX = passport.orbit.normal.x;
+            header.orbitNormalY = passport.orbit.normal.y;
+            header.orbitNormalZ = passport.orbit.normal.z;
+            header.orbitPeriod = passport.orbit.period;
             header.surfaceAcceleration = planet.runtime.surfaceAcceleration;
             header.reliefAmplitude = planet.runtime.reliefAmplitude;
             header.atmosphereOuterRadius = planet.runtime.atmosphere.outerRadius;
@@ -556,7 +568,7 @@ namespace eltanin::planet {
             const Geology geology = Compose::derive(planet.passport);
             {
                 base::Progress job{"making weather"};
-                planet.weather = Weather::spawn(geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
+                planet.weather = Weather::spawn(planet.passport, geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
             }
             logFieldClose(planet, seconds());
             return;
@@ -577,7 +589,7 @@ namespace eltanin::planet {
         }
         {
             base::Progress job{"making weather"};
-            planet.weather = Weather::spawn(geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
+            planet.weather = Weather::spawn(planet.passport, geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
         }
         logFieldClose(planet, seconds());
     }

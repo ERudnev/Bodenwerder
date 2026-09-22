@@ -50,6 +50,10 @@ namespace eltanin::scenario {
                     .axis = glm::normalize(vec3{0.423f, 0.906f, 0.0f}),
                     .period = 88200.0f,
                 },
+                .orbit = {
+                    .normal = vec3{0.0f, 1.0f, 0.0f},
+                    .period = 59356800.0f,
+                },
                 .environment = {
                     .stellarFlux = 590.0f,
                     .eccentricity = 0.0934f,

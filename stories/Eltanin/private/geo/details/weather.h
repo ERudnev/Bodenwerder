@@ -20,6 +20,7 @@ namespace eltanin::planet {
     using namespace rmmr;
 
     struct Geology;
+    struct Passport;
     struct Planet;
 
     struct Weather {
@@ -46,6 +47,7 @@ namespace eltanin::planet {
         float column;
         float temperature;
         vector<Deck> decks;
+        geo::IcosaMap<float> climate;
         geo::IcosaMap<float> heat;
         geo::IcosaMap<vec2> wind;
         geo::IcosaMap<float> cloud;
@@ -57,7 +59,7 @@ namespace eltanin::planet {
         base::maybe<rmmr::resource::texture::Asset::Id> atlas;
 
         static auto decksOf(const Geology&, float kerman) -> vector<Deck>;
-        static auto spawn(const Geology&, integer heightSegments, float kerman, float seaDensity) -> base::maybe<Weather>;
+        static auto spawn(const Passport&, const Geology&, integer heightSegments, float kerman, float seaDensity) -> base::maybe<Weather>;
 
         void tick(vec3 sunLocal, float stellarFlux, seconds dt);
         auto atlasPixels() const -> vector<std::uint8_t>;

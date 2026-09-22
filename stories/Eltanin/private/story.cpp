@@ -537,7 +537,6 @@ namespace eltanin {
             world->camera = camera;
         }
         scenario.populate(context, window);
-        scenario.placePlanet(context, window, planet);
         if (physics)
             physics->planet = planet ? &*planet : nullptr;
         if (not geo::Sun::placed())

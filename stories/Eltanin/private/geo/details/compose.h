@@ -3,6 +3,8 @@
 #include "geo/celestial/planet.h"
 #include "geo/details/effects.h"
 
+#include <array>
+
 namespace eltanin::planet {
 
     using namespace fqsm::api;
@@ -40,6 +42,7 @@ namespace eltanin::planet {
             float ice;
             float weathering;
             float transport;
+            float frost;
         } climate;
         struct History {
             float surfaceAge;
@@ -51,6 +54,25 @@ namespace eltanin::planet {
             float magmaOcean;
             float dichotomy;
         } interior;
+        struct Scale {
+            float gravity;
+            float relief;
+            float potato;
+            float obliquity;
+            float resonance;
+            float lockHarmonic;
+            float hotLongitude;
+            float annualMean;
+            float crater;
+            float basin;
+            std::array<float, 24> annual;
+            std::array<float, 24> winter;
+        } scale;
+    };
+
+    struct ClimateField {
+        static auto temperature(const Passport&, const Geology&, vec3 direction) -> float;
+        static auto winter(const Passport&, const Geology&, vec3 direction) -> float;
     };
 
     struct AtmosphereLook {

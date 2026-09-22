@@ -19,7 +19,7 @@
 #include "fittings/mounts/catalog.h"
 #include "geo/celestial/planet.h"
 #include "physics/system.h"
-#include "scenarios/planeliod.h"
+#include "scenarios/game.h"
 #include "story.ui.h"
 #include "views/blueprints/editor.h"
 
@@ -70,7 +70,7 @@ namespace eltanin {
         base::maybe<rmmr::scene::Grid::Id> grid;
         base::maybe<phys::System> physics;
         base::maybe<planet::Planet> planet;
-        scenario::Planeliod scenario;
+        scenario::Game scenario;
         Focus focus;
         base::maybe<Cameras> cameras;
         BlueprintCatalog blueprintPack;

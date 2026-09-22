@@ -828,7 +828,6 @@ namespace eltanin::planet {
                 else
                     surface = Facies::Arenite;
             }
-            const float polar = std::abs(direction.y);
             float surround = relief;
             const integer rings[3] = {3, 11, 29};
             for (integer ring : rings) {
@@ -855,7 +854,7 @@ namespace eltanin::planet {
             localNorth = northLength > 1.0e-5f ? localNorth / northLength : vec3{1.0f, 0.0f, 0.0f};
             const vec3 tilt = slopeNormal - direction * glm::dot(slopeNormal, direction);
             const float northFacing = glm::dot(tilt, localNorth);
-            const float localTemperature = geology.climate.temperature - 95.0f * polar * polar + 24.0f * (relief / amplitude) - 48.0f * bowl - 26.0f * northFacing;
+            const float localTemperature = ClimateField::winter(planet.passport, geology, direction) + 24.0f * (relief / amplitude) - 48.0f * bowl - 26.0f * northFacing;
             const float waterFrost = float(waterInventory) / 15.0f * (1.0f - glm::smoothstep(176.0f, 208.0f, localTemperature));
             const float carbonFrost = float(carbonDioxide) / 15.0f * (1.0f - glm::smoothstep(148.0f, 198.0f, localTemperature));
             const float methaneFrost = float(methane) / 15.0f * (1.0f - glm::smoothstep(72.0f, 112.0f, localTemperature));

@@ -1,0 +1,12 @@
+import "rmmr/math"
+
+namespace eltanin
+  namespace totality
+    namespace space
+
+      using Position as dvec3
+
+      // Double pose of the totality. Locality and phys::Body keep their own frames.
+      struct Pose
+        position: Position
+        orientation: dquat

@@ -1,0 +1,10 @@
+import "totality/system"
+
+namespace eltanin
+  namespace totality
+
+    // Stars, planets, stones and rings are features of this body. anchor is its system.
+    // Passport and orbit stay on the planet feature.
+    entity Celestial
+      one
+        anchor: #System

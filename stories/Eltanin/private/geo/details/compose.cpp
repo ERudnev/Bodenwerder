@@ -4,7 +4,9 @@
 #include <eltanin/geo/minerals.q1.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <numbers>
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -13,6 +15,40 @@ namespace eltanin::planet {
 
     using namespace fqsm::api;
     using namespace rmmr;
+
+    auto dailyInsolation(float latitude, float declination) -> float {
+        float sum = 0.0f;
+        constexpr integer daySteps = 8;
+        const float sinLatitude = std::sin(latitude);
+        const float cosLatitude = std::cos(latitude);
+        const float sinDeclination = std::sin(declination);
+        const float cosDeclination = std::cos(declination);
+        for (integer hour = 0; hour < daySteps; ++hour) {
+            const float mu = sinLatitude * sinDeclination + cosLatitude * cosDeclination * std::cos((float(hour) + 0.5f) / float(daySteps) * 2.0f * std::numbers::pi_v<float> - std::numbers::pi_v<float>);
+            sum += std::max(mu, 0.0f);
+        }
+        return sum / float(daySteps);
+    }
+
+    auto annualInsolation(float latitude, float obliquity) -> float {
+        float sum = 0.0f;
+        constexpr integer orbitSteps = 6;
+        for (integer season = 0; season < orbitSteps; ++season) {
+            const float declination = obliquity * std::sin((float(season) + 0.5f) / float(orbitSteps) * 2.0f * std::numbers::pi_v<float>);
+            sum += dailyInsolation(latitude, declination);
+        }
+        return sum / float(orbitSteps);
+    }
+
+    auto winterInsolation(float latitude, float obliquity) -> float {
+        float lowest = 1.0f;
+        constexpr integer orbitSteps = 6;
+        for (integer season = 0; season < orbitSteps; ++season) {
+            const float declination = obliquity * std::sin((float(season) + 0.5f) / float(orbitSteps) * 2.0f * std::numbers::pi_v<float>);
+            lowest = std::min(lowest, dailyInsolation(latitude, declination));
+        }
+        return lowest;
+    }
 
     Formation::Formation(geo::IcosaPack surface, geo::IcosaPack features)
         : relief{surface, 0.0f}
@@ -135,8 +171,65 @@ namespace eltanin::planet {
         const integer plates = std::clamp(integer{1} + static_cast<integer>(std::lround(fragmentation * 20.0f)), integer{1}, integer{30});
         const float cohesion = glm::clamp(0.12f + thickness * 0.25f + differentiation * 0.18f - water * 0.12f, 0.05f, 0.95f);
         const float grain = glm::clamp(0.18f + age * 0.46f + passport.environment.debrisFlux * 0.34f, 0.0f, 1.0f);
-        const float reliefFraction = glm::clamp(0.035f + cohesion * 0.025f + (1.0f - glm::clamp(gravity / 12.0f, 0.0f, 1.0f)) * 0.018f, 0.025f, 0.085f);
-        const float reliefAmplitude = passport.radius * reliefFraction;
+        float hardness = 0.0f;
+        float melt = 0.0f;
+        for (integer index = 0; index < 16; ++index) {
+            const float weight = float((passport.bulk >> (index * 4)) & 15u);
+            hardness += weight * minerals[static_cast<std::size_t>(index)].hardness;
+            melt += weight * minerals[static_cast<std::size_t>(index)].meltKelvin;
+        }
+        hardness /= std::max(solidWeight, 1.0f);
+        melt /= std::max(solidWeight, 1.0f);
+        const float soft = glm::smoothstep(0.45f, 0.92f, temperature / std::max(melt, 1.0f));
+        const float yield = hardness * 1.4e8f * (1.0f - 0.85f * soft);
+        const float reliefReal = yield / std::max(solidDensity * gravity, 1.0f);
+        const float reliefPhysical = std::min(reliefReal / Planet::worldScale, passport.radius * 0.45f);
+        const float reliefFraction = reliefPhysical / passport.radius;
+        const float reliefAmplitude = std::min(reliefPhysical * Planet::reliefExaggeration, passport.radius * 0.45f);
+        const float potato = passport.radius * reliefFraction * reliefFraction;
+        const vec3 spinAxis = glm::length(passport.spin.axis) > 1.0e-6f ? glm::normalize(passport.spin.axis) : vec3{0.0f, 1.0f, 0.0f};
+        const vec3 orbitNormal = glm::length(passport.orbit.normal) > 1.0e-6f ? glm::normalize(passport.orbit.normal) : vec3{0.0f, 1.0f, 0.0f};
+        const float obliquity = std::acos(glm::clamp(glm::dot(spinAxis, orbitNormal), -1.0f, 1.0f));
+        const float spinsPerOrbit = passport.spin.period > 1.0f and passport.orbit.period > 1.0f ? passport.orbit.period / passport.spin.period : 0.0f;
+        auto resonanceOf = [](float spins, float target) -> float {
+            if (spins <= 0.0f)
+                return 0.0f;
+            const float miss = (spins - target) / target;
+            return std::exp(-0.5f * (miss * miss) / (0.035f * 0.035f));
+        };
+        const float synchronous = resonanceOf(spinsPerOrbit, 1.0f);
+        const float threeHalves = resonanceOf(spinsPerOrbit, 1.5f);
+        const float resonance = std::max(synchronous, threeHalves);
+        const float lockHarmonic = threeHalves > synchronous ? 2.0f : 1.0f;
+        const float hotLongitude = Sample::hash01(passport.seed, 17, 19, 23) * 2.0f * std::numbers::pi_v<float>;
+        std::array<float, 24> annual{};
+        std::array<float, 24> winter{};
+        float annualWeight = 0.0f;
+        float annualSum = 0.0f;
+        for (integer bin = 0; bin < 24; ++bin) {
+            const float latitude = (float(bin) / 23.0f - 0.5f) * std::numbers::pi_v<float>;
+            annual[static_cast<std::size_t>(bin)] = annualInsolation(latitude, obliquity);
+            winter[static_cast<std::size_t>(bin)] = winterInsolation(latitude, obliquity);
+            const float band = std::cos(latitude);
+            annualSum += annual[static_cast<std::size_t>(bin)] * band;
+            annualWeight += band;
+        }
+        const float annualMean = annualSum / std::max(annualWeight, 1.0e-4f);
+        const float transition = 4000.0f * (9.81f / std::max(gravity, 0.02f));
+        const float largeDiameter = transition * (10.0f + 28.0f * glm::clamp(0.25f + passport.environment.debrisFlux * 0.52f + passport.environment.eccentricity * 0.30f, 0.0f, 1.0f));
+        const float crater = std::min((largeDiameter * 0.5f) / (passport.radius * Planet::worldScale), 0.85f);
+        const float basin = std::min(crater * (2.4f + 3.2f * glm::clamp(passport.environment.debrisFlux * 0.55f + passport.environment.eccentricity * 0.24f, 0.0f, 1.0f)), 1.15f);
+        float frost = geo::Volatile::table()[static_cast<std::size_t>(geo::Volatile::Kind::Water)].freezeKelvin;
+        if (geo::Volatile::nibble(retained, geo::Volatile::Kind::Water) <= 0) {
+            integer richest = 0;
+            for (integer index = 0; index < 8; ++index) {
+                const integer amount = geo::Volatile::nibble(retained, static_cast<geo::Volatile::Kind>(index));
+                if (amount > richest) {
+                    richest = amount;
+                    frost = geo::Volatile::table()[static_cast<std::size_t>(index)].freezeKelvin;
+                }
+            }
+        }
         const float hydrogen = float(geo::Volatile::nibble(retained, geo::Volatile::Kind::Hydrogen)) / 15.0f;
         const float helium = float(geo::Volatile::nibble(retained, geo::Volatile::Kind::Helium)) / 15.0f;
         const float lightGas = glm::clamp((hydrogen + helium) * 0.5f, 0.0f, 1.0f);
@@ -151,16 +244,66 @@ namespace eltanin::planet {
             .crust = {.mix = passport.bulk, .plates = plates, .differentiation = differentiation, .thickness = thickness, .mobility = mobility, .fragmentation = fragmentation, .cohesion = cohesion, .grain = grain},
             .mantle = {.heat = heat, .plumeRate = glm::clamp(heat * (1.15f - mobility * 0.58f), 0.0f, 1.0f), .plumePower = glm::clamp(0.18f + heat * 0.72f + passport.environment.tidalHeat * 0.24f, 0.0f, 1.0f), .boundaryAffinity = glm::clamp(mobility * (0.42f + water * 0.45f), 0.0f, 1.0f)},
             .bombardment = {.mix = passport.bulk, .flux = glm::clamp(passport.environment.debrisFlux * (0.42f + age * 0.58f), 0.0f, 1.0f), .violence = glm::clamp(0.25f + passport.environment.debrisFlux * 0.52f + passport.environment.eccentricity * 0.30f, 0.0f, 1.0f), .largeBodyTail = largeBodyTail, .ironFraction = metal},
-            .climate = {.retained = retained, .atmosphere = atmosphere, .temperature = temperature, .water = water, .ice = ice, .weathering = glm::clamp(water * atmosphere * age * 1.8f, 0.0f, 1.0f), .transport = glm::clamp(water * (0.35f + atmosphere) * (0.65f + mobility * 0.35f), 0.0f, 1.0f)},
+            .climate = {.retained = retained, .atmosphere = atmosphere, .temperature = temperature, .water = water, .ice = ice, .weathering = glm::clamp(water * atmosphere * age * 1.8f, 0.0f, 1.0f), .transport = glm::clamp(water * (0.35f + atmosphere) * (0.65f + mobility * 0.35f), 0.0f, 1.0f), .frost = frost},
             .history = {.surfaceAge = glm::clamp(age * (1.0f - mobility * 0.28f) + passport.environment.debrisFlux * 0.12f, 0.0f, 1.0f), .reliefAmplitude = reliefAmplitude},
             .interior = {.envelope = envelope, .iceMantle = iceMantle, .magmaOcean = magmaOcean, .dichotomy = dichotomy},
+            .scale = {.gravity = gravity, .relief = reliefAmplitude, .potato = potato, .obliquity = obliquity, .resonance = resonance, .lockHarmonic = lockHarmonic, .hotLongitude = hotLongitude, .annualMean = annualMean, .crater = crater, .basin = basin, .annual = annual, .winter = winter},
         };
+    }
+
+    auto latitudeBand(const Geology& geology, vec3 direction, const std::array<float, 24>& table) -> float {
+        const float latitude = std::asin(glm::clamp(direction.y, -1.0f, 1.0f));
+        const float coord = (latitude / std::numbers::pi_v<float> + 0.5f) * 23.0f;
+        const integer bin = std::clamp(static_cast<integer>(std::floor(coord)), integer{0}, integer{22});
+        const float along = glm::clamp(coord - float(bin), 0.0f, 1.0f);
+        return glm::mix(table[static_cast<std::size_t>(bin)], table[static_cast<std::size_t>(bin + 1)], along) / std::max(geology.scale.annualMean, 1.0e-4f);
+    }
+
+    auto climateTemperature(const Passport& passport, const Geology& geology, vec3 direction, float shape) -> float {
+        const float longitude = std::atan2(direction.z, direction.x);
+        const float roast = 0.5f + 0.5f * std::cos(geology.scale.lockHarmonic * (longitude - geology.scale.hotLongitude));
+        const float contrast = geology.scale.resonance * glm::clamp(passport.environment.eccentricity * 3.5f, 0.0f, 1.0f);
+        const float pattern = glm::mix(1.0f, roast * 2.0f, contrast);
+        const float globalFlux = std::max(passport.environment.stellarFlux, 0.25f);
+        const float localFlux = std::max(globalFlux * shape * pattern, 0.25f);
+        const float globalEquilibrium = 278.5f * std::pow(globalFlux / 1361.0f, 0.25f);
+        const float localEquilibrium = 278.5f * std::pow(localFlux / 1361.0f, 0.25f);
+        return localEquilibrium * (geology.climate.temperature / std::max(globalEquilibrium, 1.0f));
+    }
+
+    auto ClimateField::temperature(const Passport& passport, const Geology& geology, vec3 direction) -> float {
+        if (glm::length(direction) < 1.0e-6f)
+            direction = vec3{0.0f, 1.0f, 0.0f};
+        else
+            direction = glm::normalize(direction);
+        return climateTemperature(passport, geology, direction, latitudeBand(geology, direction, geology.scale.annual));
+    }
+
+    auto ClimateField::winter(const Passport& passport, const Geology& geology, vec3 direction) -> float {
+        if (glm::length(direction) < 1.0e-6f)
+            direction = vec3{0.0f, 1.0f, 0.0f};
+        else
+            direction = glm::normalize(direction);
+        return climateTemperature(passport, geology, direction, latitudeBand(geology, direction, geology.scale.winter));
     }
 
     void Compose::form(Planet& planet, const Geology& geology) {
         const integer seed = planet.passport.seed;
         const float amplitude = geology.history.reliefAmplitude;
+        const float radius = std::max(planet.passport.radius, 1.0f);
         Formation formation{planet.heights.pack, planet.farAlbedo.pack};
+        {
+            base::Progress job{"making shape"};
+            for (integer index = 0; index < formation.relief.pack.storedCount(); ++index) {
+                base::Progress::markEvery(index);
+                const auto slot = formation.relief.pack.slotOf(index);
+                const vec3 direction = formation.relief.pack.direction(slot);
+                const float lobe = Sample::fractal(direction * 1.6f, seed + 17, 4, 0.55f);
+                const float ridge = Sample::ridged(direction * 2.4f, seed + 29, 3);
+                formation.relief.at(slot) += geology.scale.potato * (0.72f * lobe + 0.28f * (ridge - 0.5f));
+            }
+            formation.relief.stitch();
+        }
         if (geology.interior.dichotomy > 0.12f) {
             base::Progress job{"making dichotomy"};
             Provinces::apply(formation.relief, Provinces{.count = 2, .seed = seed, .amplitude = amplitude * (0.18f + 0.12f * geology.crust.differentiation) * glm::clamp(geology.interior.dichotomy / 0.22f, 0.45f, 1.0f)});
@@ -222,7 +365,8 @@ namespace eltanin::planet {
             }
             std::sort(candidates.begin(), candidates.end(), [](const BoundaryCandidate& a, const BoundaryCandidate& b) { return a.strength + (a.divergence > 0.0f ? 1.0f : 0.0f) > b.strength + (b.divergence > 0.0f ? 1.0f : 0.0f); });
             vector<vec3> usedBoundaries;
-            const integer boundaryEvents = std::clamp(integer{1} + static_cast<integer>(std::lround(geology.crust.fragmentation * 4.0f + geology.mantle.plumeRate * 2.0f)), integer{1}, integer{6});
+            const float plateAngle = std::sqrt(4.0f * std::numbers::pi_v<float> / float(std::max(static_cast<integer>(plates.size()), integer{1})));
+            const integer boundaryEvents = std::clamp(static_cast<integer>(std::lround(float(plates.size()) * (0.25f + 0.55f * geology.crust.fragmentation))), integer{1}, static_cast<integer>(plates.size()));
             for (const BoundaryCandidate& candidate : candidates) {
                 if (static_cast<integer>(usedBoundaries.size()) >= boundaryEvents)
                     break;
@@ -237,7 +381,8 @@ namespace eltanin::planet {
                     continue;
                 usedBoundaries.push_back(candidate.center);
                 const float scale = glm::clamp(std::abs(candidate.divergence) * 0.75f + candidate.shear * 0.45f + geology.crust.fragmentation * 0.35f, 0.18f, 1.0f);
-                Rift::apply(formation.relief, Rift{.center = candidate.center, .along = candidate.along, .halfWidth = 0.012f + 0.030f * scale, .halfLength = 0.24f + 0.34f * scale, .depth = amplitude * (0.12f + 0.24f * scale), .seed = seed + 1201 + static_cast<integer>(usedBoundaries.size()) * 31});
+                const float halfLength = plateAngle * (0.28f + 0.45f * scale);
+                Rift::apply(formation.relief, Rift{.center = candidate.center, .along = candidate.along, .halfWidth = halfLength * (0.045f + 0.03f * scale), .halfLength = halfLength, .depth = amplitude * (0.12f + 0.24f * scale), .seed = seed + 1201 + static_cast<integer>(usedBoundaries.size()) * 31});
             }
         }
 
@@ -246,14 +391,17 @@ namespace eltanin::planet {
             base::Progress job{"making basins"};
             for (integer impact = 0; impact < basinCount; ++impact) {
                 const vec3 axis = Sample::sphereDir(impact, seed + 2003, 17, 19);
-                const float radius = 0.10f + 0.16f * Sample::hash01(impact, seed, 2011, 41) * geology.bombardment.violence;
+                const float radius = geology.scale.basin * (0.62f + 0.55f * Sample::hash01(impact, seed, 2011, 41) * geology.bombardment.violence);
                 const float depth = amplitude * (0.18f + 0.34f * geology.bombardment.violence) * (0.65f + 0.35f * Sample::hash01(impact, seed, 2017, 43));
                 Basin::apply(formation, Basin{.center = axis, .along = Sample::sphereDir(impact, seed + 2019, 23, 29), .radius = radius, .depth = depth, .obliquity = 0.25f + 0.65f * Sample::hash01(impact, seed, 2021, 47), .exogenic = geology.bombardment.ironFraction, .seed = seed + 2027 + impact * 47});
             }
         }
         {
             base::Progress job{"making craters"};
-            Burst::apply(formation.relief, Burst::epoch(Burst::Epoch{.seed = seed, .salt = 211, .count = 28 + static_cast<integer>(90.0f * geology.bombardment.flux), .radiusMin = 0.018f, .radiusSpan = 0.075f, .depthMin = amplitude * 0.04f, .depthSpan = amplitude * (0.08f + 0.08f * geology.bombardment.violence), .highland = 1.0f, .avoidAxis = vec3{0.0f, 1.0f, 0.0f}, .avoidDot = 2.0f}));
+            const integer craterProposed = 28 + static_cast<integer>(90.0f * geology.bombardment.flux);
+            const float craterArea = float(std::max(craterProposed, integer{1})) * geology.scale.crater * geology.scale.crater;
+            const integer craterCount = craterArea > 1.8f ? std::max(integer{1}, static_cast<integer>(std::lround(1.8f / std::max(geology.scale.crater * geology.scale.crater, 1.0e-8f)))) : std::max(craterProposed, integer{1});
+            Burst::apply(formation.relief, Burst::epoch(Burst::Epoch{.seed = seed, .salt = 211, .count = craterCount, .radiusMin = geology.scale.crater * 0.55f, .radiusSpan = geology.scale.crater * (0.45f + 0.9f * geology.bombardment.violence), .depthMin = amplitude * 0.04f, .depthSpan = amplitude * (0.08f + 0.08f * geology.bombardment.violence), .highland = 1.0f, .avoidAxis = vec3{0.0f, 1.0f, 0.0f}, .avoidDot = 2.0f}));
         }
         {
             base::Progress job{"making erode"};
@@ -269,29 +417,57 @@ namespace eltanin::planet {
                     axis = candidates[static_cast<std::size_t>(plume % static_cast<integer>(candidates.size()))].center;
                 const float residence = 1.0f - geology.crust.mobility;
                 const float power = glm::clamp(geology.mantle.plumePower * (0.85f + residence * 1.65f) * (0.72f + 0.52f * Sample::hash01(plume, seed, 3011, 53)), 0.18f, 1.25f);
-                const float radius = 0.09f + 0.11f * power;
-                Swell::apply(formation.relief, Swell{.axis = axis, .sigma = 0.24f + 0.26f * power, .amplitude = amplitude * (0.14f + 0.28f * power), .seed = seed + 3023 + plume * 59});
+                const float metric = (80000.0f * (9.81f / std::max(geology.scale.gravity, 0.05f)) * (0.55f + 0.70f * power)) / Planet::worldScale / radius;
+                const float shield = metric * geology.crust.mobility + (0.10f + 0.16f * power) * (1.0f - geology.crust.mobility);
+                Swell::apply(formation.relief, Swell{.axis = axis, .sigma = shield * 1.6f, .amplitude = amplitude * (0.14f + 0.28f * power), .seed = seed + 3023 + plume * 59});
                 vec3 tangent = glm::cross(axis, Sample::sphereDir(plume, seed + 3037, 31, 37));
                 if (glm::dot(tangent, tangent) < 1.0e-8f)
                     tangent = glm::cross(axis, vec3{0.0f, 1.0f, 0.0f});
                 tangent = glm::normalize(tangent);
                 const integer chain = 1 + static_cast<integer>(std::lround(geology.crust.mobility * 3.0f));
                 for (integer volcano = 0; volcano < chain; ++volcano) {
-                    const float travel = geology.crust.mobility * 0.06f * float(volcano);
+                    const float travel = shield * geology.crust.mobility * 0.40f * float(volcano);
                     const vec3 vent = glm::normalize(axis + tangent * travel);
-                    Burst::apply(formation.relief, Burst::eruption(vent, radius * (1.0f - 0.11f * float(volcano)), amplitude * (0.28f + 0.48f * power) / (1.0f + 0.24f * float(volcano)), seed + 3109 + plume * 101 + volcano * 17));
-                    Volcanic::stamp(formation.volcanic, vent, radius * 1.15f, power, seed + 3203 + plume * 101 + volcano * 17);
+                    Burst::apply(formation.relief, Burst::eruption(vent, shield * (1.0f - 0.11f * float(volcano)), amplitude * (0.28f + 0.48f * power) / (1.0f + 0.24f * float(volcano)), seed + 3109 + plume * 101 + volcano * 17));
+                    Volcanic::stamp(formation.volcanic, vent, shield * 1.15f, power, seed + 3203 + plume * 101 + volcano * 17);
                 }
             }
         }
 
+        const float escape = std::sqrt(std::max(2.0f * geology.scale.gravity * radius * Planet::worldScale, 0.0f));
+        const float stick = glm::clamp((6500.0f - escape) / 6500.0f, 0.0f, 1.0f) * (0.30f + 0.70f * geology.bombardment.largeBodyTail);
+        const integer patches = static_cast<integer>(std::lround(stick * 3.0f));
+        if (patches > 0) {
+            base::Progress job{"making veneer"};
+            for (integer patch = 0; patch < patches; ++patch) {
+                const vec3 axis = Sample::sphereDir(patch, seed + 4401, 41, 43);
+                const float foreign = Sample::hash01(patch, seed, 707, 19);
+                const float angular = std::max(geology.scale.crater * (1.4f + 1.8f * stick), 0.02f);
+                for (integer index = 0; index < formation.composition.pack.storedCount(); ++index) {
+                    base::Progress::markEvery(index);
+                    const auto slot = formation.composition.pack.slotOf(index);
+                    const vec3 direction = formation.composition.pack.direction(slot);
+                    if (glm::dot(direction, axis) < std::cos(angular * 2.2f))
+                        continue;
+                    const float reach = 1.0f - glm::smoothstep(0.15f, 1.05f, Sample::angular(direction, axis) / angular);
+                    formation.composition.at(slot) = glm::mix(formation.composition.at(slot), foreign, reach * stick);
+                    formation.exogenic.at(slot) = std::max(formation.exogenic.at(slot), reach * stick);
+                }
+            }
+            formation.composition.stitch();
+            formation.exogenic.stitch();
+        }
         if (geology.climate.transport > 0.025f and not envelopeBody) {
             base::Progress job{"making drainage"};
             Drainage::apply(formation.relief, Drainage{.seed = seed + 4001, .sources = 4 + static_cast<integer>(std::lround(24.0f * geology.climate.transport)), .steps = 45 + static_cast<integer>(std::lround(95.0f * geology.climate.transport)), .stepLength = 0.0028f + 0.0024f * geology.climate.transport, .width = 0.0012f + 0.0014f * geology.climate.transport, .depth = amplitude * (0.006f + 0.026f * geology.climate.transport)});
         }
         {
             base::Progress job{"making bombardment"};
-            Bombardment::apply(formation.relief, Bombardment{.seed = seed + 5003, .count = 350 + static_cast<integer>(std::lround(2400.0f * geology.bombardment.flux)), .radiusMin = 0.0015f, .radiusMax = 0.006f + 0.008f * geology.bombardment.violence, .depth = amplitude * (0.006f + 0.018f * geology.bombardment.violence), .northDensity = 1.0f});
+            const integer dustProposed = 350 + static_cast<integer>(std::lround(2400.0f * geology.bombardment.flux));
+            const float dustAngle = std::max(geology.scale.crater * 0.16f, 1.0e-4f);
+            const float dustArea = float(dustProposed) * dustAngle * dustAngle;
+            const integer dustCount = dustArea > 2.4f ? std::max(integer{1}, static_cast<integer>(std::lround(2.4f / (dustAngle * dustAngle)))) : dustProposed;
+            Bombardment::apply(formation.relief, Bombardment{.seed = seed + 5003, .count = dustCount, .radiusMin = geology.scale.crater * 0.04f, .radiusMax = geology.scale.crater * (0.12f + 0.22f * geology.bombardment.violence), .depth = amplitude * (0.006f + 0.018f * geology.bombardment.violence), .northDensity = 1.0f});
         }
         {
             base::Progress job{"making erode"};
@@ -305,8 +481,11 @@ namespace eltanin::planet {
                 const auto slot = formation.water.pack.slotOf(index);
                 const vec3 direction = formation.water.pack.direction(slot);
                 const float relief = formation.relief.at(direction) / std::max(amplitude, 1.0f);
-                const float latitudeIce = glm::smoothstep(0.52f, 0.88f, std::abs(direction.y));
-                formation.water.at(slot) = glm::clamp(geology.climate.water * (0.72f - relief * 0.42f) + geology.climate.ice * latitudeIce, 0.0f, 1.0f);
+                const float localTemperature = ClimateField::temperature(planet.passport, geology, direction);
+                const float held = float(geo::Volatile::nibble(geology.climate.retained, geo::Volatile::Kind::Water)) / 15.0f;
+                const float cold = 1.0f - glm::smoothstep(geology.climate.frost - 16.0f, geology.climate.frost + 18.0f, ClimateField::winter(planet.passport, geology, direction));
+                const float liquid = held * (1.0f - cold) * (1.0f - glm::smoothstep(315.0f, 390.0f, localTemperature)) * std::max(0.72f - relief * 0.42f, 0.0f);
+                formation.water.at(slot) = glm::clamp(held * cold + liquid, 0.0f, 1.0f);
                 formation.sediment.at(slot) = glm::clamp(geology.climate.transport * formation.water.at(slot) * (0.55f + formation.fracture.at(slot) * 0.35f), 0.0f, 1.0f);
             }
         }

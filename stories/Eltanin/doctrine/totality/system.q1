@@ -1,0 +1,9 @@
+import "totality/space"
+
+namespace eltanin
+  namespace totality
+
+    // pose.position is the barycenter. +Y of pose.orientation is the ecliptic normal.
+    entity System
+      one
+        pose: space::Pose
