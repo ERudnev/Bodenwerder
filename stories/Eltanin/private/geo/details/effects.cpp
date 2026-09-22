@@ -2,6 +2,8 @@
 #include "geo/details/compose.h"
 #include "geo/details/facies.h"
 
+#include <base/logging.h>
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -239,6 +241,7 @@ namespace eltanin::planet {
         const integer count = relief.pack.storedCount();
         if (params.count <= 2) {
             for (integer index = 0; index < count; ++index) {
+                base::Progress::markEvery(index);
                 const auto slot = relief.pack.slotOf(index);
                 const vec3 dir = relief.pack.direction(slot);
                 const vec3 warped = Sample::warped(dir, params.seed, 1.35f, 0.18f);
@@ -255,6 +258,7 @@ namespace eltanin::planet {
         for (integer site = 0; site < params.count; ++site)
             sites.push_back(Sample::sphereDir(site, params.seed, 3, 5));
         for (integer index = 0; index < count; ++index) {
+            base::Progress::markEvery(index);
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
             const vec3 warped = Sample::warped(dir, params.seed, 1.7f, 0.12f);
@@ -289,6 +293,7 @@ namespace eltanin::planet {
         const float width = std::max(params.width, 0.01f);
         const float provinceScale = params.sites.size() > 1 ? 1.0f / float(params.sites.size() - 1) : 0.0f;
         for (integer index = 0; index < formation.boundary.pack.storedCount(); ++index) {
+            base::Progress::markEvery(index);
             const auto slot = formation.boundary.pack.slotOf(index);
             const vec3 direction = formation.boundary.pack.direction(slot);
             const PlateField::Hit sample = params.sample(direction);
@@ -309,6 +314,7 @@ namespace eltanin::planet {
         formation.boundary.stitch();
         formation.fracture.stitch();
         for (integer index = 0; index < formation.relief.pack.storedCount(); ++index) {
+            base::Progress::markEvery(index);
             const auto slot = formation.relief.pack.slotOf(index);
             const vec3 direction = formation.relief.pack.direction(slot);
             const PlateField::Hit sample = params.sample(direction);
@@ -359,6 +365,7 @@ namespace eltanin::planet {
             return vec3{broken, x / radius, y / radius};
         };
         for (integer index = 0; index < formation.relief.pack.storedCount(); ++index) {
+            base::Progress::markEvery(index);
             const auto slot = formation.relief.pack.slotOf(index);
             const vec3 direction = formation.relief.pack.direction(slot);
             if (glm::dot(direction, center) < std::cos(radius * 2.8f))
@@ -373,6 +380,7 @@ namespace eltanin::planet {
             formation.relief.at(slot) += -params.depth * cavity * (0.82f + floor * 0.18f) + params.depth * rim * (0.13f + trailing * 0.09f);
         }
         for (integer index = 0; index < formation.impact.pack.storedCount(); ++index) {
+            base::Progress::markEvery(index);
             const auto slot = formation.impact.pack.slotOf(index);
             const vec3 direction = formation.impact.pack.direction(slot);
             if (glm::dot(direction, center) < std::cos(radius * 2.8f))
@@ -396,6 +404,7 @@ namespace eltanin::planet {
         tangent = glm::normalize(tangent);
         const vec3 across = glm::normalize(glm::cross(axis, tangent));
         for (integer index = 0; index < field.pack.storedCount(); ++index) {
+            base::Progress::markEvery(index);
             const auto slot = field.pack.slotOf(index);
             const vec3 direction = field.pack.direction(slot);
             if (glm::dot(direction, axis) < std::cos(safeRadius * 3.2f))
@@ -423,12 +432,33 @@ namespace eltanin::planet {
         if (bursts.empty())
             return;
         const integer count = relief.pack.storedCount();
+        const integer burstCount = static_cast<integer>(bursts.size());
+        vector<vector<integer>> bins(static_cast<std::size_t>(SpatialHash::span * SpatialHash::span * SpatialHash::span));
+        const float cell = 2.0f / float(SpatialHash::span);
+        for (integer burst = 0; burst < burstCount; ++burst) {
+            const float theta = std::max(bursts[static_cast<std::size_t>(burst)].radius, 1.0e-4f) * 2.8f;
+            // Same cone as Burst::delta's dot test. One hash cell of slack, so a hit is never dropped; extras still return 0 and do not change the sum.
+            const float chord = theta >= std::numbers::pi_v<float> ? 2.0f : 2.0f * std::sin(0.5f * theta);
+            const vec3 axis = glm::normalize(bursts[static_cast<std::size_t>(burst)].axis);
+            const SpatialHash::Cell first = SpatialHash::cell(axis - vec3{chord + cell});
+            const SpatialHash::Cell last = SpatialHash::cell(axis + vec3{chord + cell});
+            for (integer z = first.z; z <= last.z; ++z) {
+                for (integer y = first.y; y <= last.y; ++y) {
+                    for (integer x = first.x; x <= last.x; ++x)
+                        bins[SpatialHash::index(x, y, z)].push_back(burst);
+                }
+            }
+        }
+        for (auto& bin : bins)
+            std::sort(bin.begin(), bin.end());
         for (integer index = 0; index < count; ++index) {
+            base::Progress::markEvery(index);
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
+            const SpatialHash::Cell here = SpatialHash::cell(dir);
             float delta = 0.0f;
-            for (const auto& burst : bursts)
-                delta += Burst::delta(dir, burst);
+            for (integer burst : bins[SpatialHash::index(here.x, here.y, here.z)])
+                delta += Burst::delta(dir, bursts[static_cast<std::size_t>(burst)]);
             relief.at(slot) += delta;
         }
     }
@@ -436,6 +466,7 @@ namespace eltanin::planet {
     void Swell::apply(IcosaMap<float>& relief, const Swell& params) {
         const integer count = relief.pack.storedCount();
         for (integer index = 0; index < count; ++index) {
+            base::Progress::markEvery(index);
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
             const vec3 warped = Sample::warped(dir, params.seed, 2.2f, params.sigma * 0.42f);
@@ -460,6 +491,7 @@ namespace eltanin::planet {
         const float halfLength = std::max(params.halfLength, 1.0e-4f);
         const float halfWidth = std::max(params.halfWidth, 1.0e-4f);
         for (integer index = 0; index < count; ++index) {
+            base::Progress::markEvery(index);
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
             const float x0 = std::atan2(glm::dot(dir, along), glm::dot(dir, center));
@@ -500,15 +532,18 @@ namespace eltanin::planet {
         const integer count = relief.pack.storedCount();
         IcosaMap<float> drainage{relief.pack, 0.0f};
         for (integer index = 0; index < count; ++index) {
+            base::Progress::markEvery(index);
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
             drainage.at(slot) = std::pow(glm::clamp(Sample::ridged(Sample::warped(dir, params.seed, 3.0f, 0.08f) * 22.0f, params.seed + 73, 5), 0.0f, 1.0f), 3.2f);
         }
+        IcosaMap<float> source{relief.pack, 0.0f};
+        IcosaMap<float> moved{relief.pack, 0.0f};
         for (integer iteration = 0; iteration < params.iterations; ++iteration) {
-            IcosaMap<float> source{relief.pack, 0.0f};
             source.values = relief.values;
-            IcosaMap<float> moved{relief.pack, 0.0f};
+            std::fill(moved.values.begin(), moved.values.end(), 0.0f);
             for (integer index = 0; index < count; ++index) {
+                base::Progress::markEvery(index);
                 const auto slot = relief.pack.slotOf(index);
                 const vec3 dir = relief.pack.direction(slot);
                 vec3 tangentA = glm::cross(vec3{0.0f, 1.0f, 0.0f}, dir);
@@ -625,6 +660,7 @@ namespace eltanin::planet {
         }
         const float reach = params.width * 3.5f;
         for (integer index = 0; index < relief.pack.storedCount(); ++index) {
+            base::Progress::markEvery(index);
             const auto slot = relief.pack.slotOf(index);
             const vec3 direction = relief.pack.direction(slot);
             const SpatialHash::Cell first = SpatialHash::cell(direction - vec3{reach});
@@ -671,6 +707,7 @@ namespace eltanin::planet {
         }
         const float reach = params.radiusMax * 2.8f;
         for (integer index = 0; index < relief.pack.storedCount(); ++index) {
+            base::Progress::markEvery(index);
             const auto slot = relief.pack.slotOf(index);
             const vec3 direction = relief.pack.direction(slot);
             const SpatialHash::Cell first = SpatialHash::cell(direction - vec3{reach});
@@ -708,6 +745,7 @@ namespace eltanin::planet {
     void Whisper::apply(IcosaMap<float>& relief, const Whisper& params) {
         const integer count = relief.pack.storedCount();
         for (integer index = 0; index < count; ++index) {
+            base::Progress::markEvery(index);
             const auto slot = relief.pack.slotOf(index);
             relief.at(slot) += Sample::fractal(relief.pack.direction(slot) * params.freq, params.seed, 6, 0.54f) * params.amplitude;
         }
@@ -739,21 +777,23 @@ namespace eltanin::planet {
             return planet.covers.pack.direction(sample) * (planet.passport.radius + heightAt(sample));
         };
         for (integer index = 0; index < planet.covers.pack.storedCount(); ++index) {
+            base::Progress::markEvery(index);
             const auto slot = planet.covers.pack.slotOf(index);
             const vec3 direction = planet.covers.pack.direction(slot);
             const float relief = formation.relief.at(slot);
             const float du = heightAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu + 1, .iv = slot.iv}) - heightAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu - 1, .iv = slot.iv});
             const float dv = heightAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu, .iv = slot.iv + 1}) - heightAt(IcosaPack::Slot{.diamond = slot.diamond, .iu = slot.iu, .iv = slot.iv - 1});
             const float slope = std::sqrt(du * du + dv * dv) / std::max(geology.history.reliefAmplitude, 1.0f);
-            const float volcanic = formation.volcanic.at(direction);
-            const float impact = formation.impact.at(direction);
-            const float fracture = formation.fracture.at(direction);
-            const float sediment = formation.sediment.at(direction);
-            const float water = formation.water.at(direction);
-            const float exogenic = formation.exogenic.at(direction);
-            const float age = formation.crustAge.at(direction);
-            const float province = formation.province.at(direction);
-            const float felsic = formation.composition.at(direction);
+            const IcosaPack::Tri feature = formation.volcanic.pack.triangle(IcosaPack::locate(direction));
+            const float volcanic = formation.volcanic.at(feature);
+            const float impact = formation.impact.at(feature);
+            const float fracture = formation.fracture.at(feature);
+            const float sediment = formation.sediment.at(feature);
+            const float water = formation.water.at(feature);
+            const float exogenic = formation.exogenic.at(feature);
+            const float age = formation.crustAge.at(feature);
+            const float province = formation.province.at(feature);
+            const float felsic = formation.composition.at(feature);
             const float provinceTexture = Sample::fractal(Sample::warped(direction, planet.passport.seed + 6101, 2.2f, 0.11f) * (3.0f + province * 2.0f) + vec3{province * 2.7f, province * -1.9f, province * 1.3f}, planet.passport.seed + 6131, 5, 0.56f);
             const float oxidation = glm::clamp(age * 0.62f + float(oxides) / 15.0f * 0.42f + provinceTexture * 0.22f, 0.0f, 1.0f);
             Facies surface = felsic > 0.56f and feldspar > 0 ? Facies::RegolithFelsic : Facies::RegolithMafic;

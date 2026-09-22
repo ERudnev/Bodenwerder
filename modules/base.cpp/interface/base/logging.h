@@ -51,6 +51,17 @@ namespace base {
         std::cout << std::format(fmt, std::forward<Args>(args)...) << std::endl;
     }
 
+    // One open line. tick/mark append '.' and flush; the destructor ends the line.
+    struct Progress {
+        static Progress* current;
+
+        explicit Progress(std::string_view label);
+        void tick();
+        ~Progress();
+        static void mark();
+        static void markEvery(long long index);
+    };
+
     // Dim / secondary chatter (ANSI bright-black). Same surface as message.
     inline void whisper(std::string_view msg) {
         std::cout << "\033[90m" << msg << "\033[0m" << std::endl;
@@ -158,6 +169,33 @@ namespace base {
 
     inline void check(bool condition, const std::string& msg) {
         if (!condition) { fatal(msg); }
+    }
+
+    inline Progress* Progress::current = nullptr;
+
+    inline Progress::Progress(std::string_view label) {
+        current = this;
+        std::cout << label << ' ' << std::flush;
+    }
+
+    inline void Progress::tick() {
+        std::cout << '.' << std::flush;
+    }
+
+    inline Progress::~Progress() {
+        std::cout << std::endl;
+        if (current == this)
+            current = nullptr;
+    }
+
+    inline void Progress::mark() {
+        if (current)
+            current->tick();
+    }
+
+    inline void Progress::markEvery(long long index) {
+        if (current and (index & 0x1fffff) == 0)
+            current->tick();
     }
 
 } // namespace base

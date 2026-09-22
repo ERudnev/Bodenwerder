@@ -426,6 +426,13 @@ namespace eltanin::planet {
             body.radius = next.radius;
         }
 
+        auto preparedPack(integer edgeBase, integer tessellation) -> geo::IcosaPack {
+            geo::IcosaPack pack{.edgeBase = edgeBase, .tessellation = tessellation};
+            pack.directions = std::make_shared<vector<vec3>>();
+            pack.weld = std::make_shared<geo::IcosaPack::Weld>();
+            return pack;
+        }
+
     }
 
     auto Planet::edgeMeters(float radius) -> float {
@@ -464,9 +471,9 @@ namespace eltanin::planet {
         , runtime{.surfaceAcceleration = 0.0f, .reliefAmplitude = 0.0f, .atmosphere = {.outerRadius = passport.radius, .seaDensity = 0.0f, .kerman = 1.0f, .zenithTau = 0.0f, .day = RGB{0.0f, 0.0f, 0.0f}}}
         , spinOmega{spinAxis(*this) * (passport.spin.period > 0.0f ? 2.0 * std::numbers::pi / double(passport.spin.period) : 0.0)}
         , well{}
-        , heights{geo::IcosaPack{.edgeBase = detail.edgeBase, .tessellation = detail.tessellation}, std::int16_t{0}}
+        , heights{preparedPack(detail.edgeBase, detail.tessellation), std::int16_t{0}}
         , covers{heights.pack, std::uint16_t{0}}
-        , farAlbedo{geo::IcosaPack{.edgeBase = std::max(heights.pack.edgeSegments() / 2, integer{1}), .tessellation = 0}, vec4{0.0f}}
+        , farAlbedo{preparedPack(std::max(heights.pack.edgeSegments() / 2, integer{1}), 0), vec4{0.0f}}
         , farNormal{farAlbedo.pack, vec3{0.0f, 1.0f, 0.0f}}
         , weather{}
         , draw{.atmosphere = true, .fog = true}

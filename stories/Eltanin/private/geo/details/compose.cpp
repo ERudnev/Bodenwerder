@@ -1,5 +1,6 @@
 #include "geo/details/compose.h"
 
+#include <base/logging.h>
 #include <eltanin/geo/minerals.q1.h>
 
 #include <algorithm>
@@ -160,8 +161,10 @@ namespace eltanin::planet {
         const integer seed = planet.passport.seed;
         const float amplitude = geology.history.reliefAmplitude;
         Formation formation{planet.heights.pack, planet.farAlbedo.pack};
-        if (geology.interior.dichotomy > 0.12f)
+        if (geology.interior.dichotomy > 0.12f) {
+            base::Progress job{"making dichotomy"};
             Provinces::apply(formation.relief, Provinces{.count = 2, .seed = seed, .amplitude = amplitude * (0.18f + 0.12f * geology.crust.differentiation) * glm::clamp(geology.interior.dichotomy / 0.22f, 0.45f, 1.0f)});
+        }
         const bool envelopeBody = geology.interior.envelope > 0.35f;
         integer plateCount = geology.crust.plates;
         if (envelopeBody or geology.interior.magmaOcean > 0.45f)
@@ -180,10 +183,14 @@ namespace eltanin::planet {
                 .felsic = glm::clamp(geology.crust.differentiation * (0.55f + 0.70f * Sample::hash01(index, seed, 113, 47)), 0.0f, 1.0f),
             });
         }
-        if (not plates.empty())
+        if (not plates.empty()) {
+            base::Progress job{"making plates"};
             PlateField::apply(formation, PlateField{.sites = plates, .seed = seed + 1009, .amplitude = amplitude, .width = 0.065f + 0.055f * geology.crust.fragmentation, .activity = glm::clamp(0.28f + geology.crust.fragmentation * 0.52f + geology.mantle.heat * 0.35f, 0.0f, 1.0f)});
-        if (geology.interior.iceMantle > 0.28f)
+        }
+        if (geology.interior.iceMantle > 0.28f) {
+            base::Progress job{"making ice"};
             Whisper::apply(formation.relief, Whisper{.seed = seed + 5301, .freq = 5.5f + 9.0f * geology.crust.grain, .amplitude = amplitude * (0.025f + 0.045f * geology.interior.iceMantle)});
+        }
 
         struct BoundaryCandidate {
             vec3 center;
@@ -197,86 +204,111 @@ namespace eltanin::planet {
         vector<BoundaryCandidate> candidates;
         candidates.reserve(192);
         if (plates.size() > 1) {
-        for (integer candidate = 0; candidate < 192; ++candidate) {
-            const vec3 direction = Sample::sphereDir(candidate, seed + 1103, 11, 13);
-            const PlateSite::Hit hit = PlateSite::hit(direction, plates);
-            const float fieldBoundary = formation.boundary.at(direction);
-            const float fieldFracture = formation.fracture.at(direction);
-            if (plates.size() <= 1 or (std::abs(fieldBoundary) < 0.025f and fieldFracture < 0.08f))
-                continue;
-            const vec3 normalRaw = plates[static_cast<std::size_t>(hit.first)].center - plates[static_cast<std::size_t>(hit.second)].center;
-            const vec3 projected = normalRaw - direction * glm::dot(normalRaw, direction);
-            if (glm::dot(projected, projected) < 1.0e-8f)
-                continue;
-            const vec3 normal = glm::normalize(projected);
-            const vec3 along = glm::normalize(glm::cross(direction, normal));
-            candidates.push_back(BoundaryCandidate{.center = direction, .along = along, .first = hit.first, .second = hit.second, .divergence = fieldBoundary, .shear = fieldFracture, .strength = std::abs(fieldBoundary) + fieldFracture * 0.65f});
-        }
-        std::sort(candidates.begin(), candidates.end(), [](const BoundaryCandidate& a, const BoundaryCandidate& b) { return a.strength + (a.divergence > 0.0f ? 1.0f : 0.0f) > b.strength + (b.divergence > 0.0f ? 1.0f : 0.0f); });
-        vector<vec3> usedBoundaries;
-        const integer boundaryEvents = std::clamp(integer{1} + static_cast<integer>(std::lround(geology.crust.fragmentation * 4.0f + geology.mantle.plumeRate * 2.0f)), integer{1}, integer{6});
-        for (const BoundaryCandidate& candidate : candidates) {
-            if (static_cast<integer>(usedBoundaries.size()) >= boundaryEvents)
-                break;
-            bool separated = true;
-            for (vec3 used : usedBoundaries) {
-                if (glm::dot(used, candidate.center) > std::cos(0.28f)) {
-                    separated = false;
-                    break;
-                }
+            base::Progress job{"making rifts"};
+            for (integer candidate = 0; candidate < 192; ++candidate) {
+                const vec3 direction = Sample::sphereDir(candidate, seed + 1103, 11, 13);
+                const PlateSite::Hit hit = PlateSite::hit(direction, plates);
+                const float fieldBoundary = formation.boundary.at(direction);
+                const float fieldFracture = formation.fracture.at(direction);
+                if (plates.size() <= 1 or (std::abs(fieldBoundary) < 0.025f and fieldFracture < 0.08f))
+                    continue;
+                const vec3 normalRaw = plates[static_cast<std::size_t>(hit.first)].center - plates[static_cast<std::size_t>(hit.second)].center;
+                const vec3 projected = normalRaw - direction * glm::dot(normalRaw, direction);
+                if (glm::dot(projected, projected) < 1.0e-8f)
+                    continue;
+                const vec3 normal = glm::normalize(projected);
+                const vec3 along = glm::normalize(glm::cross(direction, normal));
+                candidates.push_back(BoundaryCandidate{.center = direction, .along = along, .first = hit.first, .second = hit.second, .divergence = fieldBoundary, .shear = fieldFracture, .strength = std::abs(fieldBoundary) + fieldFracture * 0.65f});
             }
-            if (not separated)
-                continue;
-            usedBoundaries.push_back(candidate.center);
-            const float scale = glm::clamp(std::abs(candidate.divergence) * 0.75f + candidate.shear * 0.45f + geology.crust.fragmentation * 0.35f, 0.18f, 1.0f);
-            Rift::apply(formation.relief, Rift{.center = candidate.center, .along = candidate.along, .halfWidth = 0.012f + 0.030f * scale, .halfLength = 0.24f + 0.34f * scale, .depth = amplitude * (0.12f + 0.24f * scale), .seed = seed + 1201 + static_cast<integer>(usedBoundaries.size()) * 31});
-        }
+            std::sort(candidates.begin(), candidates.end(), [](const BoundaryCandidate& a, const BoundaryCandidate& b) { return a.strength + (a.divergence > 0.0f ? 1.0f : 0.0f) > b.strength + (b.divergence > 0.0f ? 1.0f : 0.0f); });
+            vector<vec3> usedBoundaries;
+            const integer boundaryEvents = std::clamp(integer{1} + static_cast<integer>(std::lround(geology.crust.fragmentation * 4.0f + geology.mantle.plumeRate * 2.0f)), integer{1}, integer{6});
+            for (const BoundaryCandidate& candidate : candidates) {
+                if (static_cast<integer>(usedBoundaries.size()) >= boundaryEvents)
+                    break;
+                bool separated = true;
+                for (vec3 used : usedBoundaries) {
+                    if (glm::dot(used, candidate.center) > std::cos(0.28f)) {
+                        separated = false;
+                        break;
+                    }
+                }
+                if (not separated)
+                    continue;
+                usedBoundaries.push_back(candidate.center);
+                const float scale = glm::clamp(std::abs(candidate.divergence) * 0.75f + candidate.shear * 0.45f + geology.crust.fragmentation * 0.35f, 0.18f, 1.0f);
+                Rift::apply(formation.relief, Rift{.center = candidate.center, .along = candidate.along, .halfWidth = 0.012f + 0.030f * scale, .halfLength = 0.24f + 0.34f * scale, .depth = amplitude * (0.12f + 0.24f * scale), .seed = seed + 1201 + static_cast<integer>(usedBoundaries.size()) * 31});
+            }
         }
 
         const integer basinCount = std::clamp(static_cast<integer>(std::lround(geology.bombardment.largeBodyTail * 5.0f)), integer{0}, integer{6});
-        for (integer impact = 0; impact < basinCount; ++impact) {
-            const vec3 axis = Sample::sphereDir(impact, seed + 2003, 17, 19);
-            const float radius = 0.10f + 0.16f * Sample::hash01(impact, seed, 2011, 41) * geology.bombardment.violence;
-            const float depth = amplitude * (0.18f + 0.34f * geology.bombardment.violence) * (0.65f + 0.35f * Sample::hash01(impact, seed, 2017, 43));
-            Basin::apply(formation, Basin{.center = axis, .along = Sample::sphereDir(impact, seed + 2019, 23, 29), .radius = radius, .depth = depth, .obliquity = 0.25f + 0.65f * Sample::hash01(impact, seed, 2021, 47), .exogenic = geology.bombardment.ironFraction, .seed = seed + 2027 + impact * 47});
+        if (basinCount > 0) {
+            base::Progress job{"making basins"};
+            for (integer impact = 0; impact < basinCount; ++impact) {
+                const vec3 axis = Sample::sphereDir(impact, seed + 2003, 17, 19);
+                const float radius = 0.10f + 0.16f * Sample::hash01(impact, seed, 2011, 41) * geology.bombardment.violence;
+                const float depth = amplitude * (0.18f + 0.34f * geology.bombardment.violence) * (0.65f + 0.35f * Sample::hash01(impact, seed, 2017, 43));
+                Basin::apply(formation, Basin{.center = axis, .along = Sample::sphereDir(impact, seed + 2019, 23, 29), .radius = radius, .depth = depth, .obliquity = 0.25f + 0.65f * Sample::hash01(impact, seed, 2021, 47), .exogenic = geology.bombardment.ironFraction, .seed = seed + 2027 + impact * 47});
+            }
         }
-        Burst::apply(formation.relief, Burst::epoch(Burst::Epoch{.seed = seed, .salt = 211, .count = 28 + static_cast<integer>(90.0f * geology.bombardment.flux), .radiusMin = 0.018f, .radiusSpan = 0.075f, .depthMin = amplitude * 0.04f, .depthSpan = amplitude * (0.08f + 0.08f * geology.bombardment.violence), .highland = 1.0f, .avoidAxis = vec3{0.0f, 1.0f, 0.0f}, .avoidDot = 2.0f}));
-        Erode::apply(formation.relief, Erode{.years = geology.history.surfaceAge, .strength = 0.18f + geology.climate.weathering * 0.48f, .north = 0.0f, .iterations = 2 + static_cast<integer>(std::lround(geology.climate.weathering * 4.0f)), .seed = seed + 2203});
+        {
+            base::Progress job{"making craters"};
+            Burst::apply(formation.relief, Burst::epoch(Burst::Epoch{.seed = seed, .salt = 211, .count = 28 + static_cast<integer>(90.0f * geology.bombardment.flux), .radiusMin = 0.018f, .radiusSpan = 0.075f, .depthMin = amplitude * 0.04f, .depthSpan = amplitude * (0.08f + 0.08f * geology.bombardment.violence), .highland = 1.0f, .avoidAxis = vec3{0.0f, 1.0f, 0.0f}, .avoidDot = 2.0f}));
+        }
+        {
+            base::Progress job{"making erode"};
+            Erode::apply(formation.relief, Erode{.years = geology.history.surfaceAge, .strength = 0.18f + geology.climate.weathering * 0.48f, .north = 0.0f, .iterations = 2 + static_cast<integer>(std::lround(geology.climate.weathering * 4.0f)), .seed = seed + 2203});
+        }
 
         const integer plumeCount = envelopeBody ? integer{0} : geology.mantle.plumeRate > 0.045f ? std::clamp(integer{1} + static_cast<integer>(std::lround(geology.mantle.plumeRate * 5.0f)), integer{1}, integer{8}) : integer{0};
-        for (integer plume = 0; plume < plumeCount; ++plume) {
-            vec3 axis = Sample::sphereDir(plume, seed + 3001, 23, 29);
-            if (geology.mantle.boundaryAffinity > Sample::hash01(plume, seed, 3007, 47) and not candidates.empty())
-                axis = candidates[static_cast<std::size_t>(plume % static_cast<integer>(candidates.size()))].center;
-            const float residence = 1.0f - geology.crust.mobility;
-            const float power = glm::clamp(geology.mantle.plumePower * (0.85f + residence * 1.65f) * (0.72f + 0.52f * Sample::hash01(plume, seed, 3011, 53)), 0.18f, 1.25f);
-            const float radius = 0.09f + 0.11f * power;
-            Swell::apply(formation.relief, Swell{.axis = axis, .sigma = 0.24f + 0.26f * power, .amplitude = amplitude * (0.14f + 0.28f * power), .seed = seed + 3023 + plume * 59});
-            vec3 tangent = glm::cross(axis, Sample::sphereDir(plume, seed + 3037, 31, 37));
-            if (glm::dot(tangent, tangent) < 1.0e-8f)
-                tangent = glm::cross(axis, vec3{0.0f, 1.0f, 0.0f});
-            tangent = glm::normalize(tangent);
-            const integer chain = 1 + static_cast<integer>(std::lround(geology.crust.mobility * 3.0f));
-            for (integer volcano = 0; volcano < chain; ++volcano) {
-                const float travel = geology.crust.mobility * 0.06f * float(volcano);
-                const vec3 vent = glm::normalize(axis + tangent * travel);
-                Burst::apply(formation.relief, Burst::eruption(vent, radius * (1.0f - 0.11f * float(volcano)), amplitude * (0.28f + 0.48f * power) / (1.0f + 0.24f * float(volcano)), seed + 3109 + plume * 101 + volcano * 17));
-                Volcanic::stamp(formation.volcanic, vent, radius * 1.15f, power, seed + 3203 + plume * 101 + volcano * 17);
+        if (plumeCount > 0) {
+            base::Progress job{"making plumes"};
+            for (integer plume = 0; plume < plumeCount; ++plume) {
+                vec3 axis = Sample::sphereDir(plume, seed + 3001, 23, 29);
+                if (geology.mantle.boundaryAffinity > Sample::hash01(plume, seed, 3007, 47) and not candidates.empty())
+                    axis = candidates[static_cast<std::size_t>(plume % static_cast<integer>(candidates.size()))].center;
+                const float residence = 1.0f - geology.crust.mobility;
+                const float power = glm::clamp(geology.mantle.plumePower * (0.85f + residence * 1.65f) * (0.72f + 0.52f * Sample::hash01(plume, seed, 3011, 53)), 0.18f, 1.25f);
+                const float radius = 0.09f + 0.11f * power;
+                Swell::apply(formation.relief, Swell{.axis = axis, .sigma = 0.24f + 0.26f * power, .amplitude = amplitude * (0.14f + 0.28f * power), .seed = seed + 3023 + plume * 59});
+                vec3 tangent = glm::cross(axis, Sample::sphereDir(plume, seed + 3037, 31, 37));
+                if (glm::dot(tangent, tangent) < 1.0e-8f)
+                    tangent = glm::cross(axis, vec3{0.0f, 1.0f, 0.0f});
+                tangent = glm::normalize(tangent);
+                const integer chain = 1 + static_cast<integer>(std::lround(geology.crust.mobility * 3.0f));
+                for (integer volcano = 0; volcano < chain; ++volcano) {
+                    const float travel = geology.crust.mobility * 0.06f * float(volcano);
+                    const vec3 vent = glm::normalize(axis + tangent * travel);
+                    Burst::apply(formation.relief, Burst::eruption(vent, radius * (1.0f - 0.11f * float(volcano)), amplitude * (0.28f + 0.48f * power) / (1.0f + 0.24f * float(volcano)), seed + 3109 + plume * 101 + volcano * 17));
+                    Volcanic::stamp(formation.volcanic, vent, radius * 1.15f, power, seed + 3203 + plume * 101 + volcano * 17);
+                }
             }
         }
 
-        if (geology.climate.transport > 0.025f and not envelopeBody)
+        if (geology.climate.transport > 0.025f and not envelopeBody) {
+            base::Progress job{"making drainage"};
             Drainage::apply(formation.relief, Drainage{.seed = seed + 4001, .sources = 4 + static_cast<integer>(std::lround(24.0f * geology.climate.transport)), .steps = 45 + static_cast<integer>(std::lround(95.0f * geology.climate.transport)), .stepLength = 0.0028f + 0.0024f * geology.climate.transport, .width = 0.0012f + 0.0014f * geology.climate.transport, .depth = amplitude * (0.006f + 0.026f * geology.climate.transport)});
-        Bombardment::apply(formation.relief, Bombardment{.seed = seed + 5003, .count = 350 + static_cast<integer>(std::lround(2400.0f * geology.bombardment.flux)), .radiusMin = 0.0015f, .radiusMax = 0.006f + 0.008f * geology.bombardment.violence, .depth = amplitude * (0.006f + 0.018f * geology.bombardment.violence), .northDensity = 1.0f});
-        Erode::apply(formation.relief, Erode{.years = geology.history.surfaceAge, .strength = 0.08f + geology.climate.weathering * 0.32f, .north = 0.0f, .iterations = 1 + static_cast<integer>(std::lround(geology.climate.weathering * 3.0f)), .seed = seed + 5101});
+        }
+        {
+            base::Progress job{"making bombardment"};
+            Bombardment::apply(formation.relief, Bombardment{.seed = seed + 5003, .count = 350 + static_cast<integer>(std::lround(2400.0f * geology.bombardment.flux)), .radiusMin = 0.0015f, .radiusMax = 0.006f + 0.008f * geology.bombardment.violence, .depth = amplitude * (0.006f + 0.018f * geology.bombardment.violence), .northDensity = 1.0f});
+        }
+        {
+            base::Progress job{"making erode"};
+            Erode::apply(formation.relief, Erode{.years = geology.history.surfaceAge, .strength = 0.08f + geology.climate.weathering * 0.32f, .north = 0.0f, .iterations = 1 + static_cast<integer>(std::lround(geology.climate.weathering * 3.0f)), .seed = seed + 5101});
+        }
 
-        for (integer index = 0; index < formation.water.pack.storedCount(); ++index) {
-            const auto slot = formation.water.pack.slotOf(index);
-            const vec3 direction = formation.water.pack.direction(slot);
-            const float relief = formation.relief.at(direction) / std::max(amplitude, 1.0f);
-            const float latitudeIce = glm::smoothstep(0.52f, 0.88f, std::abs(direction.y));
-            formation.water.at(slot) = glm::clamp(geology.climate.water * (0.72f - relief * 0.42f) + geology.climate.ice * latitudeIce, 0.0f, 1.0f);
-            formation.sediment.at(slot) = glm::clamp(geology.climate.transport * formation.water.at(slot) * (0.55f + formation.fracture.at(slot) * 0.35f), 0.0f, 1.0f);
+        {
+            base::Progress job{"making seas"};
+            for (integer index = 0; index < formation.water.pack.storedCount(); ++index) {
+                base::Progress::markEvery(index);
+                const auto slot = formation.water.pack.slotOf(index);
+                const vec3 direction = formation.water.pack.direction(slot);
+                const float relief = formation.relief.at(direction) / std::max(amplitude, 1.0f);
+                const float latitudeIce = glm::smoothstep(0.52f, 0.88f, std::abs(direction.y));
+                formation.water.at(slot) = glm::clamp(geology.climate.water * (0.72f - relief * 0.42f) + geology.climate.ice * latitudeIce, 0.0f, 1.0f);
+                formation.sediment.at(slot) = glm::clamp(geology.climate.transport * formation.water.at(slot) * (0.55f + formation.fracture.at(slot) * 0.35f), 0.0f, 1.0f);
+            }
         }
         planet.runtime.surfaceAcceleration = float(6.67430e-11 * std::max(planet.passport.mass, 0.0) / (double(planet.passport.radius) * double(planet.passport.radius)));
         planet.runtime.reliefAmplitude = amplitude;
@@ -286,12 +318,19 @@ namespace eltanin::planet {
         const AtmosphereLook look = AtmosphereLook::of(geology);
         planet.runtime.atmosphere.day = look.day;
         planet.runtime.atmosphere.zenithTau = look.zenithTau;
-        for (integer index = 0; index < planet.heights.pack.storedCount(); ++index) {
-            const auto slot = planet.heights.pack.slotOf(index);
-            planet.heights.at(slot) = planet.encodeRelief(glm::clamp(formation.relief.at(slot), -amplitude, amplitude));
+        {
+            base::Progress job{"making heights"};
+            for (integer index = 0; index < planet.heights.pack.storedCount(); ++index) {
+                base::Progress::markEvery(index);
+                const auto slot = planet.heights.pack.slotOf(index);
+                planet.heights.at(slot) = planet.encodeRelief(glm::clamp(formation.relief.at(slot), -amplitude, amplitude));
+            }
+            planet.heights.stitch();
         }
-        planet.heights.stitch();
-        Compose::paint(planet, formation, geology);
+        {
+            base::Progress job{"making paint"};
+            Compose::paint(planet, formation, geology);
+        }
     }
 
 }

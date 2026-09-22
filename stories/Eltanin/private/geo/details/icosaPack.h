@@ -5,6 +5,7 @@
 #include <fQSM/api/interface.h>
 
 #include <array>
+#include <memory>
 
 namespace eltanin::geo {
 
@@ -52,8 +53,18 @@ namespace eltanin::geo {
             vec3 bary;
         };
 
+        // Boundary copies of one geometric vertex, in the order stitch visits them. Groups themselves are key-sorted.
+        struct Weld {
+            struct Group {
+                vector<Slot> slots;
+            };
+            vector<Group> groups;
+        };
+
         integer edgeBase;
         integer tessellation;
+        mutable std::shared_ptr<vector<vec3>> directions;
+        mutable std::shared_ptr<Weld> weld;
 
         auto edgeSegments() const -> integer;
         auto edgeVertices() const -> integer;
@@ -65,6 +76,8 @@ namespace eltanin::geo {
         auto atlasCoord(Slot) const -> index2;
         auto sampleOf(Slot) const -> Sample;
         auto direction(Slot) const -> vec3;
+        void cacheDirections() const;
+        void cacheWeld() const;
         auto triangle(Sample) const -> Tri;
         auto upper(integer diamond, integer iu, integer iv) const -> std::array<Slot, 3>;
         auto lower(integer diamond, integer iu, integer iv) const -> std::array<Slot, 3>;
@@ -127,7 +140,9 @@ namespace eltanin::geo {
     }
 
     inline auto IcosaPack::direction(Slot slot) const -> vec3 {
-        return direction(sampleOf(slot));
+        if (not directions or directions->empty())
+            cacheDirections();
+        return (*directions)[static_cast<std::size_t>(index(slot))];
     }
 
     inline auto IcosaPack::split(float u, float v) -> Split {

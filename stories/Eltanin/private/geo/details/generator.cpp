@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstddef>
@@ -349,7 +350,6 @@ namespace eltanin::planet {
                 return false;
             planet.heights.stitch();
             planet.covers.stitch();
-            base::message("eltanin::planet::Generator: cache hit {} + {}", files.map.string(), files.view.string());
             return true;
         }
 
@@ -376,7 +376,6 @@ namespace eltanin::planet {
                 base::warning("eltanin::planet::Generator: cannot write '{}'", files.view.string());
                 return;
             }
-            base::message("eltanin::planet::Generator: cache bake {} + {}", files.map.string(), files.view.string());
         }
 
         void blurFarAlbedo(Planet& planet) {
@@ -392,6 +391,7 @@ namespace eltanin::planet {
             const float spaceScale = 1.0f / (2.0f * sigmaSpace * sigmaSpace);
             const float colorScale = 1.0f / (2.0f * sigmaColor * sigmaColor);
             for (integer diamond = 0; diamond < IcosaPack::diamondCount; ++diamond) {
+                base::Progress::mark();
                 for (integer iv = 0; iv <= last; ++iv) {
                     for (integer iu = 0; iu <= last; ++iu) {
                         const vec4 center = sample(source, diamond, iu, iv);
@@ -418,6 +418,7 @@ namespace eltanin::planet {
             const integer targetLast = planet.farAlbedo.pack.edgeSegments();
             const integer sampleWidth = std::max(sourceLast / std::max(targetLast, integer{1}), integer{1});
             for (integer index = 0; index < planet.farAlbedo.pack.storedCount(); ++index) {
+                base::Progress::markEvery(index);
                 const auto target = planet.farAlbedo.pack.slotOf(index);
                 const integer centerU = static_cast<integer>(std::lround(double(target.iu) * double(sourceLast) / double(targetLast)));
                 const integer centerV = static_cast<integer>(std::lround(double(target.iv) * double(sourceLast) / double(targetLast)));
@@ -437,6 +438,7 @@ namespace eltanin::planet {
             blurFarAlbedo(planet);
             planet.farAlbedo.stitch();
             for (integer index = 0; index < planet.farAlbedo.pack.storedCount(); ++index) {
+                base::Progress::markEvery(index);
                 const auto target = planet.farAlbedo.pack.slotOf(index);
                 const integer centerU = static_cast<integer>(std::lround(double(target.iu) * double(sourceLast) / double(targetLast)));
                 const integer centerV = static_cast<integer>(std::lround(double(target.iv) * double(sourceLast) / double(targetLast)));
@@ -481,6 +483,7 @@ namespace eltanin::planet {
             const vector<vec3> source = map.values;
             const float spaceScale = 1.0f / (2.0f * sigmaSpace * sigmaSpace);
             for (integer diamond = 0; diamond < IcosaPack::diamondCount; ++diamond) {
+                base::Progress::mark();
                 for (integer iv = 0; iv <= last; ++iv) {
                     for (integer iu = 0; iu <= last; ++iu) {
                         vec3 sum{0.0f};
@@ -502,6 +505,7 @@ namespace eltanin::planet {
 
         void generateFarNormal(Planet& planet) {
             for (integer index = 0; index < planet.farNormal.pack.storedCount(); ++index) {
+                base::Progress::markEvery(index);
                 const auto slot = planet.farNormal.pack.slotOf(index);
                 planet.farNormal.at(slot) = reliefNormal(planet, planet.farNormal.pack.direction(slot));
             }
@@ -517,41 +521,65 @@ namespace eltanin::planet {
 
     }
 
-    void logFieldSummary(const Planet& planet) {
-        const auto& pack = planet.heights.pack;
-        const integer segments = pack.edgeSegments();
-        const integer span = pack.edgeVertices();
-        const integer stored = pack.storedCount();
-        const integer unique = pack.uniqueCount();
+    void logFieldOpen(const Planet& planet) {
+        const integer segments = planet.heights.pack.edgeSegments();
         const double arc = std::max(0.0, double(planet.passport.radius)) * std::acos(1.0 / std::sqrt(5.0));
         const float texelMeters = float(arc / double(std::max(segments, integer{1})));
-        const auto atlas = pack.atlasSize();
+        base::message("eltanin::planet::Generator: R={:.0f} m, {} segments/edge, {:.0f} m/texel", planet.passport.radius, segments, texelMeters);
+    }
+
+    void logFieldClose(const Planet& planet, double seconds) {
+        const integer stored = planet.heights.pack.storedCount();
         const std::size_t heightBytes = static_cast<std::size_t>(stored) * sizeof(std::int16_t);
         const std::size_t coverBytes = static_cast<std::size_t>(stored) * sizeof(std::uint16_t);
         const std::size_t farBytes = static_cast<std::size_t>(planet.farAlbedo.pack.storedCount()) * 4u;
         const std::size_t farNormalBytes = static_cast<std::size_t>(planet.farNormal.pack.storedCount()) * 4u;
-        const std::size_t fieldBytes = heightBytes + coverBytes + farBytes + farNormalBytes;
-        const double fieldMiB = double(fieldBytes) / (1024.0 * 1024.0);
-        base::message("eltanin::planet::Generator: icosa edgeBase={} tessellation={} → {} segments/edge, {} verts/diamond side, {:.1f} m/texel (R={:.0f} m, arc={:.0f} m)", pack.edgeBase, pack.tessellation, segments, span, texelMeters, planet.passport.radius, arc);
-        base::message("eltanin::planet::Generator: field matrices {} stored slots ({} unique), diamond {}×{}, atlas {}×{}, 10 layers → heights {} B, cover {} B, far {} B, farN {} B, total {} B ({:.2f} MiB)", stored, unique, span, span, atlas.x, atlas.y, heightBytes, coverBytes, farBytes, farNormalBytes, fieldBytes, fieldMiB);
+        const double fieldMiB = double(heightBytes + coverBytes + farBytes + farNormalBytes) / (1024.0 * 1024.0);
+        base::message("eltanin::planet::Generator: {} verts, {:.0f} MiB, {:.1f} s", stored, fieldMiB, seconds);
     }
 
     void Generator::generate(Planet& planet) {
+        const auto started = std::chrono::steady_clock::now();
+        const auto seconds = [&]() { return std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count(); };
+        logFieldOpen(planet);
         const CacheFiles files = cacheFiles(planet);
-        if (loadCache(planet, files)) {
-            generateFarNormal(planet);
-            logFieldSummary(planet);
+        bool cached = false;
+        {
+            base::Progress job{"loading cache"};
+            cached = loadCache(planet, files);
+        }
+        if (cached) {
+            {
+                base::Progress job{"making far normal"};
+                generateFarNormal(planet);
+            }
             const Geology geology = Compose::derive(planet.passport);
-            planet.weather = Weather::spawn(geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
+            {
+                base::Progress job{"making weather"};
+                planet.weather = Weather::spawn(geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
+            }
+            logFieldClose(planet, seconds());
             return;
         }
         const Geology geology = Compose::derive(planet.passport);
         Compose::form(planet, geology);
-        generateFarAlbedo(planet);
-        generateFarNormal(planet);
-        saveCache(planet, files);
-        logFieldSummary(planet);
-        planet.weather = Weather::spawn(geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
+        {
+            base::Progress job{"making far albedo"};
+            generateFarAlbedo(planet);
+        }
+        {
+            base::Progress job{"making far normal"};
+            generateFarNormal(planet);
+        }
+        {
+            base::Progress job{"writing cache"};
+            saveCache(planet, files);
+        }
+        {
+            base::Progress job{"making weather"};
+            planet.weather = Weather::spawn(geology, planet.heights.pack.edgeSegments(), planet.runtime.atmosphere.kerman, planet.runtime.atmosphere.seaDensity);
+        }
+        logFieldClose(planet, seconds());
     }
 
 }

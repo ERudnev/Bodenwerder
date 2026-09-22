@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
+#include <memory>
 #include <numbers>
 
 namespace eltanin::geo {
@@ -140,6 +142,90 @@ namespace eltanin::geo {
         const auto& built = topology();
         const Diamond& diamond = built.diamonds[sample.diamond];
         return glm::normalize(onDiamond(sample.u, sample.v, built.vertices[diamond.top], built.vertices[diamond.right], built.vertices[diamond.bottom], built.vertices[diamond.left]));
+    }
+
+    void IcosaPack::cacheDirections() const {
+        if (not directions)
+            directions = std::make_shared<vector<vec3>>();
+        if (not directions->empty())
+            return;
+        const integer count = storedCount();
+        directions->reserve(static_cast<std::size_t>(count));
+        for (integer index = 0; index < count; ++index)
+            directions->push_back(direction(sampleOf(slotOf(index))));
+    }
+
+    void IcosaPack::cacheWeld() const {
+        if (not weld)
+            weld = std::make_shared<Weld>();
+        if (not weld->groups.empty() or edgeSegments() < 1)
+            return;
+        const integer last = edgeSegments();
+        struct Key {
+            integer first;
+            integer second;
+            integer along;
+            auto operator<(const Key& other) const -> bool {
+                if (first != other.first)
+                    return first < other.first;
+                if (second != other.second)
+                    return second < other.second;
+                return along < other.along;
+            }
+        };
+        std::map<Key, vector<Slot>> groups;
+        auto keyOf = [&](Slot slot) -> Key {
+            const auto& corners = diamonds()[slot.diamond];
+            const bool west = slot.iu == 0;
+            const bool east = slot.iu == last;
+            const bool north = slot.iv == 0;
+            const bool south = slot.iv == last;
+            if (west and north)
+                return Key{.first = corners.top, .second = -1, .along = 0};
+            if (east and north)
+                return Key{.first = corners.right, .second = -1, .along = 0};
+            if (west and south)
+                return Key{.first = corners.left, .second = -1, .along = 0};
+            if (east and south)
+                return Key{.first = corners.bottom, .second = -1, .along = 0};
+            integer from = 0;
+            integer to = 0;
+            integer along = 0;
+            if (north) {
+                from = corners.top;
+                to = corners.right;
+                along = slot.iu;
+            } else if (west) {
+                from = corners.top;
+                to = corners.left;
+                along = slot.iv;
+            } else if (east) {
+                from = corners.right;
+                to = corners.bottom;
+                along = slot.iv;
+            } else {
+                from = corners.left;
+                to = corners.bottom;
+                along = slot.iu;
+            }
+            if (from > to)
+                return Key{.first = to, .second = from, .along = last - along};
+            return Key{.first = from, .second = to, .along = along};
+        };
+        auto consider = [&](Slot slot) { groups[keyOf(slot)].push_back(slot); };
+        for (integer diamond = 0; diamond < diamondCount; ++diamond) {
+            for (integer iu = 0; iu <= last; ++iu) {
+                consider(Slot{.diamond = diamond, .iu = iu, .iv = 0});
+                consider(Slot{.diamond = diamond, .iu = iu, .iv = last});
+            }
+            for (integer iv = 1; iv < last; ++iv) {
+                consider(Slot{.diamond = diamond, .iu = 0, .iv = iv});
+                consider(Slot{.diamond = diamond, .iu = last, .iv = iv});
+            }
+        }
+        weld->groups.reserve(groups.size());
+        for (auto& entry : groups)
+            weld->groups.push_back(Weld::Group{.slots = std::move(entry.second)});
     }
 
     auto IcosaPack::triangle(Sample sample) const -> Tri {
