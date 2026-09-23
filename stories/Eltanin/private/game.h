@@ -19,8 +19,9 @@
 #include "fittings/mounts/catalog.h"
 #include "geo/celestial/planet.h"
 #include "physics/system.h"
-#include "scenarios/game.h"
-#include "story.ui.h"
+#include "scenarios/strategic.h"
+#include "strategic/map.h"
+#include "locality.ui.h"
 #include "views/blueprints/editor.h"
 
 namespace eltanin {
@@ -70,7 +71,8 @@ namespace eltanin {
         base::maybe<rmmr::scene::Grid::Id> grid;
         base::maybe<phys::System> physics;
         base::maybe<planet::Planet> planet;
-        scenario::Game scenario;
+        scenario::Strategic strategic;
+        strategic::Map map;
         Focus focus;
         base::maybe<Cameras> cameras;
         BlueprintCatalog blueprintPack;
@@ -85,6 +87,8 @@ namespace eltanin {
         void onFrame(establish::Realm&, int64 dt_us) override;
         void contributeViewMenu(Writing) override;
         void drawUi(Writing) override;
+        void contributeLocalityMenu(Writing);
+        void drawLocalityUi(Writing);
         auto activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> override;
         auto overlaySelection() const -> std::span<const rmmr::renderer::Integer32> override;
 

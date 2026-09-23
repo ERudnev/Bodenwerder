@@ -1,4 +1,4 @@
-#include "story.h"
+#include "game.h"
 
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/locality/flash.q1.h>
@@ -364,7 +364,7 @@ namespace eltanin {
             with<texpack::Pack>::extend(context, faciesId, texpack::Pack::Quantum{.layerSize = index2{1024, 1024}, .capacity = 48, .layers = {}, .compressed = true, .grayscale = false});
             with<texpack::LoaderCatalog>::extend(context, faciesId, texpack::LoaderCatalog::Quantum{.directory = "textures/facies"});
         }
-        scenario.loadResources(context, *shared);
+        strategic.loadResources(context, *shared);
 
         // Mech albedo catalog; editor meshpacks under meshes/editor.
         if (not shared or not shared->material.litTextured) {
@@ -468,6 +468,7 @@ namespace eltanin {
     void Game::prepareAssets(Writing) {
     }
 
+    // Locality. Not entered from the map yet.
     void Game::populateWorld(Writing context, system::Window::Id window) {
         {
             auto world = with<World>::modify_global(context);
@@ -536,7 +537,7 @@ namespace eltanin {
             world->skyBackdrop = skyBackdrop;
             world->camera = camera;
         }
-        scenario.populate(context, window);
+        strategic.populate(context, window);
         if (physics)
             physics->planet = planet ? &*planet : nullptr;
         if (not geo::Sun::placed())
@@ -577,7 +578,18 @@ namespace eltanin {
     }
 
     void Game::setup(Writing context, system::Window::Id window) {
-        populateWorld(context, window);
+        {
+            auto world = with<World>::modify_global(context);
+            world->window = window;
+            world->paused = true;
+        }
+        map.open(context, window);
+        if (map.view)
+            views = {*map.view};
+        const auto manager = with<::rmmr::resource::Manager>::singleton(context);
+        blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "blueprints");
+        mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings");
+        blueprints.create(context);
     }
 
     void Game::advanceSim(Writing context, seconds dt) {

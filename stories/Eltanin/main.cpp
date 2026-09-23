@@ -5,7 +5,7 @@
 #include <base/logging.h>
 #include <rmmr/api/_interface.h>
 
-#include "story.h"
+#include "game.h"
 
 using namespace base;
 using namespace fqsm::api;

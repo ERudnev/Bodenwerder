@@ -1,4 +1,4 @@
-#include "story.h"
+#include "game.h"
 
 #include "mech/assembler.h"
 
@@ -136,7 +136,7 @@ namespace eltanin {
 
     } // namespace
 
-    void Game::contributeViewMenu(Writing world) {
+    void Game::contributeLocalityMenu(Writing world) {
         bool paused = with<World>::get_global(world).paused;
         rmmr::wrapper::ui::viewToggle("Pause", &paused);
         if (paused != with<World>::get_global(world).paused)
@@ -163,22 +163,7 @@ namespace eltanin {
         togglePanel("Blueprints", ui.blueprints);
     }
 
-    auto Game::activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> {
-        if (not ui.blueprints.has_value() or not assets.blueprintsEditorEffect)
-            return {};
-        // Membrane tile place / mount palette: suppress hover/selection chrome. F3 keeps it for mounts.
-        if (blueprints.state.membranes.enabled or blueprints.state.paletteMode)
-            return {};
-        return assets.blueprintsEditorEffect;
-    }
-
-    auto Game::overlaySelection() const -> std::span<const rmmr::renderer::Integer32> {
-        if (not ui.blueprints.has_value() or blueprints.state.membranes.enabled or blueprints.state.paletteMode)
-            return {};
-        return blueprints.state.selection.aliases;
-    }
-
-    void Game::drawUi(Writing world) {
+    void Game::drawLocalityUi(Writing world) {
         drawInspectorWindow(world);
         drawSpaceWindow(world);
         drawLightingWindow(world);
