@@ -28,6 +28,7 @@ namespace rmmr::wrapper::assets {
                 base::maybe<rmmr::resource::material::Asset::Id> vertexColor;
             } gizmo;
             base::maybe<rmmr::resource::material::Asset::Id> ambient;
+            base::maybe<rmmr::resource::material::Asset::Id> unlit;
             base::maybe<rmmr::resource::material::Asset::Id> lit;
             base::maybe<rmmr::resource::material::Asset::Id> litTransparent;
             base::maybe<rmmr::resource::material::Asset::Id> litTextured;

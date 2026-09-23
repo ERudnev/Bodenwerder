@@ -17,6 +17,7 @@ namespace rmmr::resource::builders::material {
         static Configured oneSidedGlass(resource::shader::Reference program);
         static Configured gizmoTextured(resource::shader::Reference program);
         static Configured gizmoVertexColor(resource::shader::Reference program);
+        static Configured unlit(resource::shader::Reference program);
         static Configured grid(resource::shader::Reference program);
         static Configured sprite(resource::shader::Reference program);
         static Configured identity(resource::shader::Reference program);

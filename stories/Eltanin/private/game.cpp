@@ -583,9 +583,9 @@ namespace eltanin {
             world->window = window;
             world->paused = true;
         }
-        map.open(context, window);
-        if (map.view)
-            views = {*map.view};
+        starMap.open(context, window);
+        if (starMap.view)
+            views = {*starMap.view};
         const auto manager = with<::rmmr::resource::Manager>::singleton(context);
         blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "blueprints");
         mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings");
@@ -611,6 +611,7 @@ namespace eltanin {
         advanceSim(world, simDt);
         handleCameraHotkey(world);
         trackSpectator(world);
+        starMap.follow(world);
         with<World>::tetherEnvironment(world);
         if (planet) {
             if (const auto camera = with<World>::get_global(world).camera; camera and with<scene::Node>::exists(world, *camera))

@@ -519,7 +519,7 @@ namespace rmmr {
                 identity.end(args.world, args.view.viewport);
                 continue;
             }
-            const bool unlitPass = pass == renderer::Pass::sprite or pass == renderer::Pass::gizmo or pass == renderer::Pass::environment or pass == renderer::Pass::atmosphere or pass == renderer::Pass::identitySelected or pass == renderer::Pass::identity;
+            const bool unlitPass = pass == renderer::Pass::sprite or pass == renderer::Pass::gizmo or pass == renderer::Pass::environment or pass == renderer::Pass::atmosphere or pass == renderer::Pass::identitySelected or pass == renderer::Pass::identity or pass == renderer::Pass::transparent;
             if (not lighting.primary && not unlitPass) {
                 if (not passEmpty)
                     base::message("Renderer: no primary light; skipping draws for pass");

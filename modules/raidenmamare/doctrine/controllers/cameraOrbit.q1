@@ -14,4 +14,4 @@ namespace rmmr
         distance: float
         >create(pivot: Pos, distance: float)-> #
       all
-        !update(~system::Clock) // RMB orbit; wheel zoom; arrows pan pivot
+        !update(~system::Clock) // RMB orbit; wheel zoom; arrows pan pivot (speed follows distance)

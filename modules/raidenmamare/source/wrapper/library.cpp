@@ -38,6 +38,7 @@ namespace rmmr::wrapper::assets {
         handles.texture.whiteRing = with<Assets>::add_texture_generator(context, Unit::Name::from("rmmr", "white_ring"), item<texture::Generator>{.size = index2{256, 256}, .pattern = texture::Generator::Pattern::whiteRing});
 
         const auto ambient = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "ambient"), item<shader::Loader>{.vertex = "shaders/ambient.vert.glsl", .fragment = "shaders/ambient.frag.glsl"});
+        const auto unlit = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "unlit"), item<shader::Loader>{.vertex = "shaders/ambient.vert.glsl", .fragment = "shaders/unlit.frag.glsl"});
         const auto vertex_color = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "vertex_color"), item<shader::Loader>{.vertex = "shaders/vertexColor.vert.glsl", .fragment = "shaders/vertexColor.frag.glsl"});
         const auto gizmo_textured = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "gizmo_textured"), item<shader::Loader>{.vertex = "shaders/gizmoTextured.vert.glsl", .fragment = "shaders/gizmoTextured.frag.glsl"});
         const auto lit = with<Assets>::add_shader_loader(context, Unit::Name::from("rmmr", "lit"), item<shader::Loader>{.vertex = "shaders/lit.vert.glsl", .fragment = "shaders/lit.frag.glsl"});
@@ -56,6 +57,7 @@ namespace rmmr::wrapper::assets {
         handles.material.gizmo.textured = with<Assets>::add_material(context, Unit::Name::from("rmmr", "gizmo_textured"), builders::material::Presets::gizmoTextured(with<Unit>::remember(context, gizmo_textured)));
         handles.material.gizmo.vertexColor = with<Assets>::add_material(context, Unit::Name::from("rmmr", "gizmo_vertex_color"), builders::material::Presets::gizmoVertexColor(with<Unit>::remember(context, vertex_color)));
         handles.material.ambient = with<Assets>::add_material(context, Unit::Name::from("rmmr", "ambient"), builders::material::Presets::ambient(with<Unit>::remember(context, ambient), with<Unit>::remember(context, shadow_depth)));
+        handles.material.unlit = with<Assets>::add_material(context, Unit::Name::from("rmmr", "unlit"), builders::material::Presets::unlit(with<Unit>::remember(context, unlit)));
         handles.material.lit = with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit"), builders::material::Presets::lit(with<Unit>::remember(context, lit), with<Unit>::remember(context, shadow_depth)));
         handles.material.litTransparent = with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_transparent"), builders::material::Presets::litTransparent(with<Unit>::remember(context, lit_transparent)));
         handles.material.litTextured = with<Assets>::add_material(context, Unit::Name::from("rmmr", "lit_textured"), builders::material::Presets::litTextured(with<Unit>::remember(context, lit_textured), with<Unit>::remember(context, shadow_depth)));

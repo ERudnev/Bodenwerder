@@ -26,7 +26,7 @@ namespace rmmr::controller {
         constexpr float k_distance_min = 0.5f;
         constexpr float k_distance_max = 500.0f;
         constexpr float k_zoom_wheel_base = 0.85f; // distance *= base^wheel (scroll up → closer)
-        constexpr float k_pan_units_per_sec = 24.0f;
+        constexpr float panViewPerSec = 0.1f; // world/sec = this × orbit distance, so arrows track zoom
 
         const glm::vec3 k_world_up{0.0f, 1.0f, 0.0f};
 
@@ -54,7 +54,7 @@ namespace rmmr::controller {
             const auto& input = with<system::Window>::get(context, window);
             auto orbit = with<CameraOrbit>::modify(context, self);
 
-            if (button_down(input.current, GLFW_MOUSE_BUTTON_MIDDLE)) {
+            if (button_down(input.current, GLFW_MOUSE_BUTTON_RIGHT)) {
                 const auto shift = with<system::Window>::mouseShift(context, window);
                 orbit->hpb.x += k_heading_scale_x * static_cast<float>(shift.x) * k_mouse_sens_deg_per_pixel;
                 orbit->hpb.y += -static_cast<float>(shift.y) * k_mouse_sens_deg_per_pixel;
@@ -76,12 +76,14 @@ namespace rmmr::controller {
                 else
                     forward_xz = glm::normalize(forward_xz);
                 const vec3 right_xz = glm::normalize(glm::cross(forward_xz, k_world_up));
-                const float pan = k_pan_units_per_sec * static_cast<float>(delta_sec);
+                const float pan = panViewPerSec * orbit->distance * static_cast<float>(delta_sec);
                 vec3 pivot_delta{0.0f};
                 if (key_down(input.current.keys, GLFW_KEY_UP)) pivot_delta += forward_xz * pan;
                 if (key_down(input.current.keys, GLFW_KEY_DOWN)) pivot_delta -= forward_xz * pan;
                 if (key_down(input.current.keys, GLFW_KEY_LEFT)) pivot_delta -= right_xz * pan;
                 if (key_down(input.current.keys, GLFW_KEY_RIGHT)) pivot_delta += right_xz * pan;
+                if (key_down(input.current.keys, GLFW_KEY_PAGE_UP)) pivot_delta.y += pan;
+                if (key_down(input.current.keys, GLFW_KEY_PAGE_DOWN)) pivot_delta.y -= pan;
                 orbit->pivot += pivot_delta;
             }
 

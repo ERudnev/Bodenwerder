@@ -23,6 +23,7 @@
 #include "strategic/map.h"
 #include "locality.ui.h"
 #include "views/blueprints/editor.h"
+#include "views/starMap/view.h"
 
 namespace eltanin {
 
@@ -73,6 +74,7 @@ namespace eltanin {
         base::maybe<planet::Planet> planet;
         scenario::Strategic strategic;
         strategic::Map map;
+        views::starmap::View starMap;
         Focus focus;
         base::maybe<Cameras> cameras;
         BlueprintCatalog blueprintPack;

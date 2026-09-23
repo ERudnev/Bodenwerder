@@ -147,6 +147,20 @@ namespace rmmr::resource::builders::material {
         };
     }
 
+    auto Presets::unlit(resource::shader::Reference program) -> Asset::Quantum {
+        return Asset::Quantum{
+            .techniques = {
+                {renderer::Pass::gizmo, Asset::Technique{
+                    .program = program,
+                    .uniforms = {},
+                    .glowSpread = false,
+                }},
+            },
+            .nearest = false,
+            .blend = renderer::BlendMode::inherit,
+        };
+    }
+
     auto Presets::grid(resource::shader::Reference program) -> Asset::Quantum {
         return Asset::Quantum{
             .techniques = {
