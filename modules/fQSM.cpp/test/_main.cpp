@@ -38,7 +38,7 @@
     X(schema_merge_nested_equals_flat) \
     X(schema_merge_order_independent) \
     X(schema_merge_single_fragment_identity) \
-    X(schema_merge_duplicate_aspect_pins_current_behavior) \
+    X(schema_merge_duplicate_aspect_duplicates_custom_reactions) \
     X(schema_merge_realm_feature_removal_nested_vs_flat) \
     // end
 
@@ -73,6 +73,7 @@
     X(structural_parent_appears_requires_component) \
     X(structural_group_removal_removes_elements) \
     X(structural_element_removal_unhooks) \
+    X(structural_rule_with_absent_host_is_skipped) \
     // end
 
 #define FQSM_MINIMODEL_TESTS(X) \
