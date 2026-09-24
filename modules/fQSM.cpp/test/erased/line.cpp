@@ -9,7 +9,7 @@
 
 #include <fQSM/erased/delta.h>
 #include <fQSM/erased/line.h>
-#include <fQSM/erased/overlay.h>
+#include <fQSM/erased/future_line.h>
 
 #include "counted.h"
 #include "patch_stub.h"
@@ -157,9 +157,9 @@ void erased_overlay_nested()
         }
     }
 
-    const fqsm::erased::Overlay first(root, layers[0]);
-    const fqsm::erased::Overlay second(first, layers[1]);
-    const fqsm::erased::Overlay third(second, layers[2]);
+    const fqsm::erased::FutureLine first(root, layers[0]);
+    const fqsm::erased::FutureLine second(first, layers[1]);
+    const fqsm::erased::FutureLine third(second, layers[2]);
     const fqsm::erased::ReadLine* views[] = {&first, &second, &third};
 
     for (int layer = 0; layer < 3; ++layer) {

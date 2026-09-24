@@ -81,8 +81,10 @@ namespace fqsm::erased {
     // Reality of one aspect: ids and values in parallel dense arrays, one global value.
     class Line final : public ReadLine {
     public:
-        // The global value is default-constructed when its type allows it, else it stays absent until set_global.
-        Line(const Ops& quantum, const Ops& global);
+        enum class GlobalStart : std::uint8_t { constructed, absent };
+
+        // By default the global value is default-constructed when its type allows it, else it stays absent until set_global.
+        Line(const Ops& quantum, const Ops& global, GlobalStart start = GlobalStart::constructed);
         explicit Line(const Descriptor& descriptor);
 
         const Ops& quantum_ops() const { return slots.ops(); }

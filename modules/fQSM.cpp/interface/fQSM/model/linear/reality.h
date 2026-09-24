@@ -34,8 +34,8 @@ namespace fqsm::model::linear {
 
         Items& items() override { return view; }
         const Items& items() const override { return view; }
-        Global& global() override { return *static_cast<Global*>(storage.global_mutable()); }
-        const Global& global() const override { return *static_cast<const Global*>(storage.global()); }
+        Global& global() override { return this->global_of(storage.global_mutable()); }
+        const Global& global() const override { return this->global_of(storage.global()); }
         const erased::ReadLine& line() const override { return storage; }
         erased::Line& writableLine() { return storage; }
 

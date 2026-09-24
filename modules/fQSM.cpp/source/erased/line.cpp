@@ -129,11 +129,11 @@ namespace fqsm::erased {
 
     // Line
 
-    Line::Line(const Ops& quantum, const Ops& global)
+    Line::Line(const Ops& quantum, const Ops& global, GlobalStart start)
         : slots(quantum)
         , globalSlot(global)
     {
-        if (global.construct)
+        if (start == GlobalStart::constructed and global.construct)
             globalSlot.push_default();
     }
 

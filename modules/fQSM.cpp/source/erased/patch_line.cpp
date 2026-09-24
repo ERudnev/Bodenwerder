@@ -3,10 +3,8 @@
 namespace fqsm::erased {
 
     PatchLine::PatchLine(const Ops& quantum, const Ops& global)
-        : entries(quantum, global)
-    {
-        entries.reset_global();
-    }
+        : entries(quantum, global, Line::GlobalStart::absent)
+    {}
 
     PatchLine::PatchLine(const Descriptor& descriptor)
         : PatchLine(*descriptor.quantum, *descriptor.global)
@@ -27,8 +25,10 @@ namespace fqsm::erased {
     }
 
     void* PatchLine::touch_global(const void* baseGlobal) {
-        if (not entries.global())
+        if (not entries.global()) {
+            if (not baseGlobal) return nullptr;
             entries.set_global(baseGlobal);
+        }
         return entries.global_mutable();
     }
 

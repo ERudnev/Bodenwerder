@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <stdexcept>
+#include <string>
 
 #include <fQSM/erased/line.h>
 #include <fQSM/model/_forwards.h>
@@ -22,5 +24,14 @@ namespace fqsm::model::linear {
         virtual const erased::ReadLine& line() const = 0;
 
         std::size_t quanta() const override { return line().size(); }
+
+    protected:
+        // An assembled global is absent until Always::assemble ran.
+        static Global& global_of(void* value) {
+            if (not value)
+                throw std::logic_error(std::string("fQSM: global is not assembled yet: ") + std::string(Rtid::name<Meta>()));
+            return *static_cast<Global*>(value);
+        }
+        static const Global& global_of(const void* value) { return global_of(const_cast<void*>(value)); }
     };
 }
