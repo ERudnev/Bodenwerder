@@ -18,4 +18,4 @@ namespace eltanin
       camera: #scene::Camera? // view camera node
       =advance(dt_us: int64) // unpaused: fold wall μs into step (only writes when step grows)
       =tetherEnvironment() // sky / backdrop / sun disk position ← camera.position
-      !keyboardPauseKey(~system::Window) // rising edge on bound window toggles paused
+      =pollPauseKey() // once per frame: rising edge of the pause key on the bound window toggles paused

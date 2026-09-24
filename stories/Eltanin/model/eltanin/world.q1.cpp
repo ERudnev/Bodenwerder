@@ -58,31 +58,18 @@ namespace eltanin {
         geo::Sun::tether(context, with<rmmr::scene::Node>::get(context, *global.camera).pose.position);
     }
 
-    struct World::Internals : World::DefaultInternals {
-        static void keyboardPauseKey(Reacting context) {
-            const auto bound = with<World>::get_global(context).window;
-            if (not bound) {
-                return;
-            }
-            for (const auto& change : context.changes<rmmr::system::Window>().updated()) {
-                if (change.id != *bound) {
-                    continue;
-                }
-                const bool was_down = key_down(change.old.current.keys, k_pause_key);
-                const bool is_down = key_down(change.now.current.keys, k_pause_key);
-                if (was_down || not is_down) {
-                    continue;
-                }
-                auto world = with<World>::modify_global(context);
-                world->paused = not world->paused;
-            }
-        }
-    };
-
-    auto World::customAspectReactions() -> const Behavior {
-        return {
-            reaction::aspect_wide<World, rmmr::system::Window>(&World::Internals::keyboardPauseKey),
-        };
+    // Once per frame: the Window keeps the previous and the current input snapshot, so the edge is visible without a delta.
+    void World::Actions::pollPauseKey(Writing context) {
+        const auto bound = with<World>::get_global(context).window;
+        if (not bound or not with<rmmr::system::Window>::exists(context, *bound))
+            return;
+        const auto& window = with<rmmr::system::Window>::get(context, *bound);
+        const bool was_down = key_down(window.previous.keys, k_pause_key);
+        const bool is_down = key_down(window.current.keys, k_pause_key);
+        if (was_down or not is_down)
+            return;
+        auto world = with<World>::modify_global(context);
+        world->paused = not world->paused;
     }
 
     auto doctrine::world() -> Schema {

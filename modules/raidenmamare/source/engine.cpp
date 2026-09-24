@@ -196,7 +196,14 @@ namespace rmmr {
         {
             const auto clock = with<system::Clock>::singleton(context);
             const auto us = static_cast<int64>(glfwGetTime() * 1'000'000.0);
+            const int64 dt_us = us - with<system::Clock>::get(context, clock).absolute;
             with<system::Clock>::modify(context, clock)->absolute = us;
+
+            // camera controllers run once per frame in the input phase (they were reactions on Clock)
+            const seconds dt = static_cast<seconds>(dt_us) / 1'000'000.0;
+            with<controller::Camera3d>::tick(context, dt);
+            with<controller::Camera2d>::tick(context, dt);
+            with<controller::CameraOrbit>::tick(context, dt);
         }
 
         {

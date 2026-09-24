@@ -116,23 +116,15 @@ namespace rmmr::controller {
         return anchor;
     }
 
-    struct CameraOrbit::Internals : CameraOrbit::DefaultInternals {
-        static void update(Reacting context) {
-            for (const auto& change : context.changes<system::Clock>().updated()) {
-                const int64 dt_us = change.now.absolute - change.old.absolute;
-                if (dt_us <= 0)
-                    continue;
-                const seconds delta_sec = static_cast<seconds>(dt_us) / 1'000'000.0;
-                for (const auto [id, _] : context.proposal.aspect<CameraOrbit>().items())
-                    drive(context, id, delta_sec);
-            }
-        }
-    };
-
-    auto CameraOrbit::customAspectReactions() -> const Behavior {
-        return {
-            reaction::aspect_wide<CameraOrbit, system::Clock>(&CameraOrbit::Internals::update),
-        };
+    void CameraOrbit::Actions::tick(Writing context, seconds dt) {
+        if (dt <= 0)
+            return;
+        // ids first: drive writes into the same session
+        std::vector<Id> cameras;
+        for (const auto entry : context->aspect<CameraOrbit>().items())
+            cameras.push_back(entry.id);
+        for (const auto camera : cameras)
+            drive(context, camera, dt);
     }
 
     auto doctrine::cameraOrbit() -> Schema {
