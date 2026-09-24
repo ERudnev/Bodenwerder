@@ -8,7 +8,7 @@
 #include <fQSM/erased/line.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/model/intertype/schema.h>
-#include <fQSM/model/linear/state.h>
+#include <fQSM/view/workers.h>
 
 namespace fqsm::model::complex {
 
@@ -29,38 +29,38 @@ namespace fqsm::model::complex {
         std::size_t quanta() const;
 
         template<category::Any Meta>
-        const linear::State<Meta>& aspect() const { return view<Meta>(); }
+        const ::fqsm::view::Aspect<Meta>& aspect() const { return slot<Meta>(); }
 
         template<category::Any Meta>
-        linear::State<Meta>& aspect() { return view<Meta>(); }
+        ::fqsm::view::Aspect<Meta>& aspect() { return slot<Meta>(); }
 
-        const Schema schema; // defined for Reality/Draft/any homogenous material object
+        const Schema schema;
 
         // Pool of the Realm this state belongs to.
         const std::shared_ptr<LinePool>& linePool() const { return pool; }
 
     protected:
-        std::unique_ptr<linear::state::Erased> release_view(Slot slot) { return std::move(views[slot]); }
+        std::unique_ptr<::fqsm::view::SlotBase> release_view(Slot slot) { return std::move(views[slot]); }
 
         virtual erased::Line* writable_line(Slot) { return nullptr; }
         virtual erased::FutureLine* future_line(Slot) const { return nullptr; }
 
         // Typed views are created on first use and live as long as this state.
         template<category::Any Meta>
-        linear::View<Meta>& view() const;
+        ::fqsm::view::Slot<Meta>& slot() const;
 
     private:
-        std::unique_ptr<linear::state::Erased> make_view_holder(Slot slot) const;
+        std::unique_ptr<::fqsm::view::SlotBase> make_view_holder(Slot slot) const;
 
         std::shared_ptr<LinePool> pool;
-        mutable std::vector<std::unique_ptr<linear::state::Erased>> views;
+        mutable std::vector<std::unique_ptr<::fqsm::view::SlotBase>> views;
     };
 }
 
 namespace fqsm::model::complex {
 
     template<category::Any Meta>
-    linear::View<Meta>& State::view() const {
+    ::fqsm::view::Slot<Meta>& State::slot() const {
         const Slot slot = slotOf(TypeId<Meta>);
         auto& cached = views[slot];
         if (not cached) {
@@ -69,8 +69,8 @@ namespace fqsm::model::complex {
             if (cached)
                 cached->rebind(line(slot), self->writable_line(slot), future_line(slot));
             else
-                cached = std::make_unique<linear::View<Meta>>(line(slot), self->writable_line(slot), future_line(slot));
+                cached = std::make_unique<::fqsm::view::Slot<Meta>>(line(slot), self->writable_line(slot), future_line(slot));
         }
-        return static_cast<linear::View<Meta>&>(*cached);
+        return static_cast<::fqsm::view::Slot<Meta>&>(*cached);
     }
 }

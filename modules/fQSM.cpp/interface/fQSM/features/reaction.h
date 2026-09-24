@@ -18,7 +18,6 @@ namespace fqsm::features::reactions {
     // TODO: consider as template<ActionType>,
     struct Abstract {
         using Reacting = ::fqsm::Reacting;
-        using Draft = model::complex::Draft;
         using Patch = model::complex::Patch;
         using Sources = meta::Rtid::Set;
 
@@ -35,7 +34,7 @@ namespace fqsm::features::reactions {
         }
 
         template<category::Any Meta>
-        static auto changes(const Reacting& context) -> model::linear::Delta<Meta> {
+        static auto changes(const Reacting& context) -> ::fqsm::view::Delta<Meta> {
             return context.template changes<Meta>();
         }
     };
@@ -44,7 +43,6 @@ namespace fqsm::features::reactions {
     struct Functional : reactions::Abstract {
         using ActionFunction = ActionFunctionType;
         using reactions::Abstract::Reacting;
-        using reactions::Abstract::Draft;
         using reactions::Abstract::Patch;
         using reactions::Abstract::Sources;
 

@@ -27,11 +27,11 @@ namespace local {
 
     // a function signature says what the function may do
     static_assert(std::is_convertible_v<Writing, Reading> and not std::is_convertible_v<Reading, Writing>);
-    static_assert(std::is_convertible_v<Stewarding, Writing> and std::is_convertible_v<Stewarding, fqsm::Direct<A>>);
-    static_assert(not std::is_convertible_v<Writing, Stewarding> and not std::is_convertible_v<Writing, fqsm::Direct<A>>);
+    static_assert(std::is_convertible_v<Stewarding, Writing> and std::is_convertible_v<Stewarding, Direct<A>>);
+    static_assert(not std::is_convertible_v<Writing, Stewarding> and not std::is_convertible_v<Writing, Direct<A>>);
     static_assert(std::is_convertible_v<Reacting, Reading> and std::is_convertible_v<Reacting, Writing>);
-    static_assert(not std::is_convertible_v<Reacting, Stewarding> and not std::is_convertible_v<fqsm::Retrospecting, Stewarding>);
-    static_assert(not std::is_convertible_v<fqsm::Retrospecting, fqsm::Direct<A>> and not std::is_convertible_v<Reading, fqsm::Retrospecting>);
+    static_assert(not std::is_convertible_v<Reacting, Stewarding> and not std::is_convertible_v<Retrospecting, Stewarding>);
+    static_assert(not std::is_convertible_v<Retrospecting, Direct<A>> and not std::is_convertible_v<Reading, Retrospecting>);
 }
 } // namespace
 

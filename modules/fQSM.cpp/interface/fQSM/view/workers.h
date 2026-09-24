@@ -7,8 +7,9 @@
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/rtid.h>
 #include <fQSM/utility/messages.h>
+#include <fQSM/view/items.h>
 
-namespace fqsm::model::linear {
+namespace fqsm::view {
 
     // Typed write access to one future line (null for views that cannot write).
     template<category::Any Meta>
@@ -40,4 +41,18 @@ namespace fqsm::model::linear {
         erased::FutureLine* target;
     };
 
+    // The object a complex state caches per slot: the aspect view plus typed writes (future lines only).
+    template<category::Any Meta>
+    class Slot final : public Aspect<Meta>, public WorkersInterface<Meta> {
+    public:
+        Slot(const erased::ReadLine& reader, erased::Line* writable, erased::FutureLine* future)
+            : Aspect<Meta>(reader, writable, future)
+            , WorkersInterface<Meta>(future)
+        {}
+
+        void rebind(const erased::ReadLine& line, erased::Line* writableLine, erased::FutureLine* futureLine) override {
+            Aspect<Meta>::rebind(line, writableLine, futureLine);
+            this->retarget(futureLine);
+        }
+    };
 }

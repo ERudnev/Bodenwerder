@@ -89,13 +89,16 @@ namespace fqsm::api {
         using namespace ::fqsm::features::reactions;
     }
 
-    // api for internal namespace with implementations
-    namespace api_for_internals {
-    } // tired of fqsm::Writing
-        using Writing = fqsm::Writing;
-        using Reading = fqsm::Reading;
-        using Reacting = fqsm::Reacting;
-        using Stewarding = fqsm::Stewarding;
-        using SettingUp = fqsm::SettingUp;
-    //}
+    // contexts: a function signature says what the function may do
+    using Reading = ::fqsm::Reading;
+    using Writing = ::fqsm::Writing;
+    using Stewarding = ::fqsm::Stewarding;
+    using Reacting = ::fqsm::Reacting;
+    using Retrospecting = ::fqsm::Retrospecting;
+    using SettingUp = ::fqsm::SettingUp;
+    template<meta::category::Any Meta>
+    using Direct = ::fqsm::Direct<Meta>;
+
+    // old spelling: `using namespace api_for_internals;` still compiles; the contexts are above
+    namespace api_for_internals {}
 }

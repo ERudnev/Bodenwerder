@@ -10,7 +10,7 @@ namespace fqsm::model::complex {
         , views(schema->slotCount())
     {}
 
-    std::unique_ptr<linear::state::Erased> State::make_view_holder(Slot slot) const {
+    std::unique_ptr<::fqsm::view::SlotBase> State::make_view_holder(Slot slot) const {
         return pool ? pool->take_view(slot) : nullptr;
     }
 

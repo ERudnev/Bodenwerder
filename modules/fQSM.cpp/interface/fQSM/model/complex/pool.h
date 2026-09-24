@@ -30,8 +30,8 @@ namespace fqsm::model::complex {
         void give_future(Slot slot, std::unique_ptr<erased::FutureLine> line);
 
         // nullptr when none is pooled; the caller rebinds it
-        std::unique_ptr<linear::state::Erased> take_view(Slot slot);
-        void give_view(Slot slot, std::unique_ptr<linear::state::Erased> view);
+        std::unique_ptr<::fqsm::view::SlotBase> take_view(Slot slot);
+        void give_view(Slot slot, std::unique_ptr<::fqsm::view::SlotBase> view);
 
         // total objects allocated by this pool (patch lines, future lines)
         std::size_t allocated() const { return allocations; }
@@ -40,7 +40,7 @@ namespace fqsm::model::complex {
         struct Free {
             std::vector<std::unique_ptr<erased::PatchLine>> patches;
             std::vector<std::unique_ptr<erased::FutureLine>> futures;
-            std::vector<std::unique_ptr<linear::state::Erased>> views;
+            std::vector<std::unique_ptr<::fqsm::view::SlotBase>> views;
         };
 
         const Schema schema;

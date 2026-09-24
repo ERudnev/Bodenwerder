@@ -9,7 +9,7 @@
 #include <fQSM/erased/future_line.h>
 #include <fQSM/erased/line.h>
 #include <fQSM/erased/patch_line.h>
-#include <fQSM/model/linear/state.h>
+#include <fQSM/view/workers.h>
 
 namespace {
     namespace local {
@@ -35,7 +35,7 @@ void erased_items_view()
 {
     using namespace local;
     using Id = fqsm::Id<Tree>;
-    using View = fqsm::model::linear::View<Tree>;
+    using View = fqsm::view::Slot<Tree>;
     const auto descriptor = fqsm::erased::describe<Tree>();
 
     fqsm::erased::Line line(descriptor);
@@ -106,7 +106,7 @@ void erased_items_future()
 {
     using namespace local;
     using Id = fqsm::Id<Tree>;
-    using View = fqsm::model::linear::View<Tree>;
+    using View = fqsm::view::Slot<Tree>;
     const auto descriptor = fqsm::erased::describe<Tree>();
 
     fqsm::erased::Line line(descriptor);

@@ -58,7 +58,7 @@ void delta_iterators()
 
     const fqsm::model::complex::Future preview(state, patch);
 
-    using Layer = fqsm::model::linear::Delta<A>::Layer;
+    using Layer = fqsm::view::Delta<A>::Layer;
     std::unordered_map<Layer, std::set<Id>> collected;
 
     for (const auto change : preview.delta<A>()) {

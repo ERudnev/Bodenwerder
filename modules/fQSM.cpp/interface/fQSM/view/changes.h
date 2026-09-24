@@ -2,7 +2,7 @@
 
 #include <optional>
 
-namespace fqsm::model::linear {
+namespace fqsm::view {
 
     // One delta entry. before: nullopt when tainted (mutated in place, value before unknown), nullptr when absent.
     template<typename Key, typename Val>
