@@ -74,7 +74,7 @@ namespace eltanin::planet {
         dvec3 spinOmega; // world angular velocity; the planet is translationally fixed
         base::maybe<phys::Body::Id> well;
         geo::IcosaMap<std::int16_t> heights; // 0 = sea; ±reliefPeak maps to ±amplitude metres
-        geo::IcosaMap<std::uint16_t> covers; // two u8 facies: surface, then just below
+        geo::IcosaMap<std::uint16_t, geo::StitchMode::PickFirst> covers; // two u8 facies: surface, then just below
         geo::IcosaMap<rmmr::vec4> farAlbedo; // filtered RGBA: mean albedo + roughness
         geo::IcosaMap<rmmr::vec3> farNormal; // object-space unit normal, far-albedo grid
         base::maybe<Weather> weather;
