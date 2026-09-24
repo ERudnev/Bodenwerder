@@ -25,7 +25,8 @@ namespace fqsm::processing::algorithm::probe {
         std::uint64_t waves = 0;
         std::uint64_t reactions = 0;
         std::uint64_t micros = 0;
-        std::uint64_t byWaves[4] = {};   // 0, 1, 2, 3+ waves
+        std::uint64_t byWaves[6] = {};   // 0, 1, 2, 3, 4, 5+ waves
+        int maxWaves = 0;
         Clock::time_point opened = Clock::now();
     };
 
@@ -39,13 +40,15 @@ namespace fqsm::processing::algorithm::probe {
             const auto now = Clock::now();
             window.transactions += 1;
             window.waves += static_cast<std::uint64_t>(waves);
-            window.byWaves[waves < 3 ? waves : 3] += 1;
+            window.byWaves[waves < 5 ? waves : 5] += 1;
+            if (waves > window.maxWaves) window.maxWaves = waves;
             window.micros += static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(now - started).count());
             if (now - window.opened < std::chrono::seconds(5)) return;
-            std::fprintf(stderr, "fQSM waves: tx=%llu waves=%llu [0:%llu 1:%llu 2:%llu 3+:%llu] reactions=%llu normalization=%llu us avg=%.1f us\n",
+            std::fprintf(stderr, "fQSM waves: tx=%llu waves=%llu [1:%llu 2:%llu 3:%llu 4:%llu 5+:%llu max:%d] reactions=%llu normalization=%llu us avg=%.1f us\n",
                 static_cast<unsigned long long>(window.transactions), static_cast<unsigned long long>(window.waves),
-                static_cast<unsigned long long>(window.byWaves[0]), static_cast<unsigned long long>(window.byWaves[1]),
-                static_cast<unsigned long long>(window.byWaves[2]), static_cast<unsigned long long>(window.byWaves[3]),
+                static_cast<unsigned long long>(window.byWaves[1]), static_cast<unsigned long long>(window.byWaves[2]),
+                static_cast<unsigned long long>(window.byWaves[3]), static_cast<unsigned long long>(window.byWaves[4]),
+                static_cast<unsigned long long>(window.byWaves[5]), window.maxWaves,
                 static_cast<unsigned long long>(window.reactions), static_cast<unsigned long long>(window.micros),
                 static_cast<double>(window.micros) / static_cast<double>(window.transactions));
             window = Window{};
@@ -77,11 +80,12 @@ namespace fqsm::processing::algorithm::normalization {
         // this is very important place: this cast is saves about ~300 lines of code for new class
         // the proposal is a Future over a const patch
         fqsm::ref<Patch> non_const_patch(std::const_pointer_cast<Patch>(changes.std_ptr()));
-        const auto proposal = model::complex::Future{source, non_const_patch, taintedLines};
+        auto proposal = model::complex::Future{source, non_const_patch, taintedLines};
         Session corrections(proposal, pass);
         std::optional<Session> retrospective;
         const Reacting context(proposal, corrections, origin, retrospective);
 
+        // the structural closure writes into the proposal: the reactions below see the whole cascade
         apply_structural_rules(proposal, corrections.view, taintedLines);
 
         const auto& schema = *changes->schema;
@@ -135,6 +139,7 @@ namespace fqsm::processing::algorithm::normalization {
                 _DBG_TX_("norm: DEPTH LIMIT {}", temp_defence_normalization_waves);
                 accumulated.critical.push_back(
                     std::format("normalization: depth limit {} reached", temp_defence_normalization_waves));
+                accumulated.waves = wave;
                 return accumulated;
             }
             ++wave;
@@ -144,6 +149,7 @@ namespace fqsm::processing::algorithm::normalization {
 
             const auto fix = reactions_pass(advancing, world, lastCorrection, waveTaint);
             append(accumulated, fix->summary);
+            accumulated.waves = wave;
 
             if (not fix->summary.good()) {
                 _DBG_TX_("norm: wave {} REJECT critical={} warning={}", wave, fix->summary.critical.size(), fix->summary.warning.size());

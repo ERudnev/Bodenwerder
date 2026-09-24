@@ -27,6 +27,7 @@ namespace fqsm::model::complex {
             using Category = std::vector<std::string>;
             Category critical;
             Category warning;
+            int waves = 0;   // normalization waves the transaction took (0 before normalization)
 
             bool good() const { return critical.empty(); }
         };
