@@ -164,3 +164,19 @@ A complex structure holds one line per slot. A Realm has every line. A patch and
 Typed code sees a line through small views: `items` for a state, `changes<X>()` for a delta, `adjustments<X>()` for writes.
 
 The lifecycle rules of the categories (host and parasitic, group and element) are **structural rules**. The schema derives them from the descriptors. They run at the start of each normalization wave, before the registered reactions. The wave loop does not change.
+
+---
+
+## Session and contexts
+
+A **session** is one open change of a realm: a patch over a base state, and the future (Draft) that shows the base through the patch. A realm, a branch or a normalization wave owns a session.
+
+A **context** is a thin handle to a session. The type of the context says what a function may do:
+
+- **Reading**: read a state.
+- **Writing**: read the future, write into the patch.
+- **Stewarding**: Writing plus direct access. Direct access changes the reality in place and taints the aspect.
+- **Reacting**: read the proposal of a normalization wave and its changes, write corrections.
+- **Retrospecting**: read the last stable state from a deletion reaction.
+
+A session ends when its last handle ends. A realm then normalizes and integrates the patch.

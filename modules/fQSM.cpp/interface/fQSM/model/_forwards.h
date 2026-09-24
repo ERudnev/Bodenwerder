@@ -23,11 +23,12 @@ namespace fqsm::erased {
 }
 
 namespace fqsm::view {
-    // Owner handle of the typed per-slot views that complex states cache (and the Realm pool keeps).
-    struct SlotBase {
-        virtual ~SlotBase() = default;
-        // Points a pooled view at other lines of the same slot.
-        virtual void rebind(const erased::ReadLine& reader, erased::Line* writable, erased::FutureLine* future) = 0;
+    // The lines one typed view reads and writes. Typed views add no state to this struct,
+    // so a complex state keeps the views of all aspects in one untyped array (State::slot).
+    struct Lines {
+        const erased::ReadLine* reader = nullptr;
+        erased::Line* writable = nullptr;       // the reader itself, when in-place access is allowed (Realm lines)
+        erased::FutureLine* future = nullptr;   // the reader itself, when writes go into a patch
     };
 }
 

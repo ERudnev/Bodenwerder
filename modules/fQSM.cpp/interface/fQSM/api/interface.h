@@ -1,5 +1,17 @@
 ﻿#pragma once
 
+// fQSM public surface (proposals/contract.md section 4). Product code includes this header only.
+// Aspects: Entity<T>, Attribute<T,Host>, Feature<T,Host>, Component<T,Host>, Group<T,Host,Element>,
+//   Archetype<T>, Manipulation<T,Primary>, BaseActions, DefaultInternals, Behavior; Anchor<T>, Custody<T>, Affected<T>, Id<T>.
+// Operations: with<X>::count/get/find/exists/get_global/modify/modify_global/remove/ward/relation/vital,
+//   create (entity), extend/kraken (parasitic), addElement/deleteElement/clear (group).
+// Contexts: Reading, Writing, Stewarding (direct<X>().items, Direct<X>), Reacting (proposal, changes<X>(),
+//   adjustments<X>(), refuse, warning), Retrospecting, SettingUp.
+// Transactions: establish::Realm, establish::Branch, establish::Module; realm.branch(fn), silent_work(), result().
+// Reactions: reaction::deletion, aspect_wide, constraint::element/element_wide, structural::anchored/custody,
+//   debug::death_log; ask::relations<Target>(context), ask::schema::aspect<T>() / merge({...}).
+// Persistence: Retrospection<T>::describe with field<&T::Quantum::x>("name") and collection<Elem, &x>("name").
+
 // Q1 language basic types (alias)
 #include <fQSM/api/builtins.h>
 
@@ -23,7 +35,6 @@
 #include <fQSM/features/reactions/aspect_wide.h>
 #include <fQSM/features/reactions/anchoring.h>
 #include <fQSM/features/reactions/constraints.h>
-//#include <fQSM/features/reactions/binding.h>
 #include <fQSM/features/reactions/deletion.h>
 
 namespace fqsm::api {
@@ -37,7 +48,7 @@ namespace fqsm::api {
     template<typename Meta>
     using with = ::fqsm::meta::facade_t<Meta>;
 
-    // experimental:
+    // the quantum of an aspect
     template<typename Meta>
     using item = typename Meta::Quantum;
 

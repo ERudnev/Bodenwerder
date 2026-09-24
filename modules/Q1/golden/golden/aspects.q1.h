@@ -6,11 +6,9 @@ namespace Q1_fQSM::Etalon {
 
     using namespace fqsm::api;
 
-    //@ in is not forward, it is mature Aspect definition (just minimal Aspect)
+    //@ minimal aspect: Quantum only. Actions, Internals, customAspectReactions, Global and Always have defaults
     struct Trivia : Entity<Trivia> {
         struct Quantum {};
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct Origin : Entity<Origin> {
@@ -21,8 +19,6 @@ namespace Q1_fQSM::Etalon {
         struct Always {
             static auto assemble(SettingUp&) -> Global;
         };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct SampleEntity : Entity<SampleEntity> {
@@ -73,8 +69,6 @@ namespace Q1_fQSM::Etalon {
         struct Quantum {
             timepoint current{};
         };
-        struct Internals : DefaultInternals {};
-        static const Behavior customAspectReactions() { return {}; }
     };
 
     //@ all *name(~Scope, args...) — Stewarding / Direct hot pass (not Writing).
@@ -92,8 +86,6 @@ namespace Q1_fQSM::Etalon {
             //@ *active_working_call(~SampleEntity, tick_count: integer) — apply speed to parent data_field
             static void active_working_call(Stewarding, integer tick_count);
         };
-        struct Internals : DefaultInternals {};
-        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct ReactionSketch : Entity<ReactionSketch> {
@@ -137,8 +129,6 @@ namespace Q1_fQSM::Etalon {
             static void example_op_multiply(Writing, Id, integer factor);
             static auto example_op_div_with_remainder(Writing, Id, integer divisor) -> integer;
         };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
     };
 
     struct SampleAttribute : Attribute<SampleAttribute, SampleEntity> {
@@ -158,14 +148,9 @@ namespace Q1_fQSM::Etalon {
     //@ experimental one-line form of syntax (sorry, parser!)
     struct Note : Entity<Note> {
         struct Quantum { string text; };
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
     };
 
-    struct Note_group : Group<Note_group, SampleEntity, Note> {
-        struct Internals : DefaultInternals{};
-        static const Behavior customAspectReactions() { return {}; }
-    };
+    struct Note_group : Group<Note_group, SampleEntity, Note> {};
 
     //@ Hint: '=' functions aka "item modifiers" are meaningless for Archetype (has no own state/quantum)
     struct Notebook : Archetype<Notebook> {

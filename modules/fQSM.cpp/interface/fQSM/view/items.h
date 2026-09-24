@@ -15,8 +15,9 @@
 namespace fqsm::view {
 
     // Typed view over one erased line. Read-only over any ReadLine; mutable (Direct, integration) over a Line.
+    // Holds the Lines only: no virtual functions, trivially destructible, the same size for every aspect.
     template<category::Any Meta>
-    class Items {
+    class Items : protected Lines {
     public:
         using Key = Id<Meta>;
         using Value = Quantum<Meta>;
@@ -86,22 +87,18 @@ namespace fqsm::view {
             std::size_t index = 0;
         };
 
-        explicit Items(const erased::ReadLine& line) : reader(&line) {}
-        explicit Items(erased::Line& line) : reader(&line), writer(&line) {}
-        // writable, when set, is the same line as reader
-        Items(const erased::ReadLine& line, erased::Line* writable) : reader(&line), writer(writable) {}
-        Items(const Items&) = delete;
-        Items& operator=(const Items&) = delete;
+        explicit Items(const erased::ReadLine& line) : Lines{&line, nullptr, nullptr} {}
+        explicit Items(erased::Line& line) : Lines{&line, &line, nullptr} {}
+        explicit Items(const Lines& lines) : Lines(lines) {}
 
         const erased::ReadLine& line() const { return *reader; }
-        void rebind(const erased::ReadLine& line, erased::Line* writable) { reader = &line; writer = writable; }
 
         bool contains(const Key& id) const { return find(id) != nullptr; }
         bool empty() const { return size() == 0; }
-        SizeType size() const { return writer ? writer->size() : reader->size(); }
+        SizeType size() const { return writable ? writable->size() : reader->size(); }
 
         const Value* find(const Key& id) const {
-            const void* found = writer ? writer->find(id.raw()) : reader->find(id.raw());
+            const void* found = writable ? writable->find(id.raw()) : reader->find(id.raw());
             return static_cast<const Value*>(found);
         }
 
@@ -143,47 +140,28 @@ namespace fqsm::view {
 
     private:
         erased::Line& mutable_line() const {
-            if (not writer) throw std::logic_error("fqsm::view::Items: read-only view");
-            return *writer;
+            if (not writable) throw std::logic_error("fqsm::view::Items: read-only view");
+            return *writable;
         }
-
-        const erased::ReadLine* reader;
-        erased::Line* writer = nullptr;
     };
 
     // What State::aspect<Meta>() returns: items and global of one aspect line of a complex state.
     // writable is set over a reality line, future over a future line; a plain read view has neither.
     template<category::Any Meta>
-    class Aspect : public SlotBase {
+    class Aspect : public Items<Meta> {
     public:
         using Items = view::Items<Meta>;
         using Global = GlobalValue<Meta>;
 
-        Aspect(const erased::ReadLine& reader, erased::Line* writable, erased::FutureLine* future)
-            : reader(&reader)
-            , writable(writable)
-            , future(future)
-            , view(reader, writable)
-        {}
+        explicit Aspect(const Lines& lines) : Items(lines) {}
 
-        Aspect(const Aspect&) = delete;
-        Aspect& operator=(const Aspect&) = delete;
+        Items& items() { return *this; }
+        const Items& items() const { return *this; }
 
-        void rebind(const erased::ReadLine& line, erased::Line* writableLine, erased::FutureLine* futureLine) override {
-            reader = &line;
-            writable = writableLine;
-            future = futureLine;
-            view.rebind(line, writableLine);
-        }
-
-        Items& items() { return view; }
-        const Items& items() const { return view; }
-        const erased::ReadLine& line() const { return *reader; }
-
-        const Global& global() const { return global_of(reader->global()); }
+        const Global& global() const { return global_of(this->reader->global()); }
         Global& global() {
-            if (writable) return global_of(writable->global_mutable());
-            if (future) return global_of(future->get_access_global());
+            if (this->writable) return global_of(this->writable->global_mutable());
+            if (this->future) return global_of(this->future->get_access_global());
             throw std::logic_error("fQSM: global of a read-only view");
         }
 
@@ -194,10 +172,5 @@ namespace fqsm::view {
                 throw std::logic_error(std::string("fQSM: global is not assembled yet: ") + std::string(Rtid::name<Meta>()));
             return *static_cast<Global*>(const_cast<void*>(value));
         }
-
-        const erased::ReadLine* reader;
-        erased::Line* writable;
-        erased::FutureLine* future;
-        Items view;
     };
 }

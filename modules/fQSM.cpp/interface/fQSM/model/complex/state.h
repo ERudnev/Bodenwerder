@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <memory>
+#include <new>
+#include <type_traits>
 #include <vector>
 
 #include <fQSM/erased/future_line.h>
@@ -39,20 +41,23 @@ namespace fqsm::model::complex {
         const std::shared_ptr<LinePool>& linePool() const { return pool; }
 
     protected:
-        std::unique_ptr<::fqsm::view::SlotBase> release_view(Slot slot) { return std::move(views[slot]); }
-
         virtual erased::Line* writable_line(Slot) { return nullptr; }
         virtual erased::FutureLine* future_line(Slot) const { return nullptr; }
 
-        // Typed views are created on first use and live as long as this state.
+        // Typed views are built on first use in a cell and live as long as this state.
         template<category::Any Meta>
         ::fqsm::view::Slot<Meta>& slot() const;
 
     private:
-        std::unique_ptr<::fqsm::view::SlotBase> make_view_holder(Slot slot) const;
+        struct Cell {
+            alignas(::fqsm::view::Lines) std::byte storage[sizeof(::fqsm::view::Lines)];
+            bool built = false;
+        };
+
+        ::fqsm::view::Lines lines_of(Slot slot) const;
 
         std::shared_ptr<LinePool> pool;
-        mutable std::vector<std::unique_ptr<::fqsm::view::SlotBase>> views;
+        mutable std::vector<Cell> cells;
     };
 }
 
@@ -60,16 +65,14 @@ namespace fqsm::model::complex {
 
     template<category::Any Meta>
     ::fqsm::view::Slot<Meta>& State::slot() const {
+        using View = ::fqsm::view::Slot<Meta>;
+        static_assert(sizeof(View) == sizeof(::fqsm::view::Lines) and std::is_trivially_destructible_v<View>);
         const Slot slot = slotOf(TypeId<Meta>);
-        auto& cached = views[slot];
-        if (not cached) {
-            auto* self = const_cast<State*>(this);
-            cached = make_view_holder(slot);
-            if (cached)
-                cached->rebind(line(slot), self->writable_line(slot), future_line(slot));
-            else
-                cached = std::make_unique<::fqsm::view::Slot<Meta>>(line(slot), self->writable_line(slot), future_line(slot));
+        auto& cell = cells[slot];
+        if (not cell.built) {
+            ::new (static_cast<void*>(cell.storage)) View(lines_of(slot));
+            cell.built = true;
         }
-        return static_cast<::fqsm::view::Slot<Meta>&>(*cached);
+        return *std::launder(reinterpret_cast<View*>(cell.storage));
     }
 }

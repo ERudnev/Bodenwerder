@@ -1,17 +1,15 @@
 #include <fQSM/model/complex/state.h>
 
-#include <fQSM/model/complex/pool.h>
-
 namespace fqsm::model::complex {
 
     State::State(Schema schema, std::shared_ptr<LinePool> pool)
         : schema(schema)
         , pool(std::move(pool))
-        , views(schema->slotCount())
+        , cells(schema->slotCount())
     {}
 
-    std::unique_ptr<::fqsm::view::SlotBase> State::make_view_holder(Slot slot) const {
-        return pool ? pool->take_view(slot) : nullptr;
+    ::fqsm::view::Lines State::lines_of(Slot slot) const {
+        return ::fqsm::view::Lines{&line(slot), const_cast<State*>(this)->writable_line(slot), future_line(slot)};
     }
 
     State::~State() = default;

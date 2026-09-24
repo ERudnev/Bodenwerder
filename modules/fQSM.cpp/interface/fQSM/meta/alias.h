@@ -1,6 +1,5 @@
 #pragma once
 
-#include <fQSM/features/_forwards.h>
 #include <fQSM/meta/categories.h>
 #include <fQSM/meta/rtid.h>
 
@@ -40,12 +39,6 @@ namespace fqsm::meta {
         using Internals = typename detail::InternalsOf<Meta>::type;
         static constexpr bool has_reactions = requires { Meta::customAspectReactions(); };
         static constexpr bool has_assemble = requires(processing::SettingUp& setup) { Meta::Always::assemble(setup); };
-
-        // Behavior is complete wherever an aspect is registered (manipulation/schema.h).
-        static features::Reactions reactions() {
-            if constexpr (has_reactions) return Meta::customAspectReactions().rules;
-            else return {};
-        }
     };
 }
 
