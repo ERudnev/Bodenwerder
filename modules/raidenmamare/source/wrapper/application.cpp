@@ -10,6 +10,30 @@
 #include <stdexcept>
 #include <utility>
 
+#ifdef FQSM_WAVE_STATS
+#include <chrono>
+#include <cstdio>
+
+namespace rmmr::wrapper::probe {
+    // Opt-in (CMake option FQSM_WAVE_STATS): one stderr line per 5 s window, to pair with the fQSM wave lines.
+    struct Frames {
+        using Clock = std::chrono::steady_clock;
+        unsigned long long count = 0;
+        Clock::time_point opened = Clock::now();
+
+        void tick() {
+            ++count;
+            const auto now = Clock::now();
+            const auto elapsed = std::chrono::duration<double>(now - opened).count();
+            if (elapsed < 5.0) return;
+            std::fprintf(stderr, "rmmr frames: %llu in %.1f s = %.0f fps\n", count, elapsed, static_cast<double>(count) / elapsed);
+            count = 0;
+            opened = now;
+        }
+    };
+}
+#endif
+
 namespace rmmr::wrapper {
     using namespace fqsm::api;
     using namespace rmmr;
@@ -145,7 +169,13 @@ namespace rmmr::wrapper {
             return 1;
         }
 
+#ifdef FQSM_WAVE_STATS
+        probe::Frames frames;
+#endif
         while (engine and not engine->shouldClose(state->world)) {
+#ifdef FQSM_WAVE_STATS
+            frames.tick();
+#endif
             engine->beginFrame(state->world);
             const int64 now_us = engine->monotonicUs();
             const int64 dt_us = state->last_frame_us == 0 ? int64{0} : now_us - state->last_frame_us;
