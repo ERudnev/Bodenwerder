@@ -54,6 +54,11 @@
     X(erased_line_basic) \
     X(erased_line_global_absent) \
     X(erased_line_lifetime) \
+    X(erased_patch_line_operations) \
+    X(erased_patch_line_touch) \
+    X(erased_patch_line_absorb) \
+    X(erased_patch_line_integrate_merge) \
+    X(erased_patch_line_lifetime) \
     X(erased_overlay_nested) \
     X(erased_delta_modes) \
     X(erased_items_view) \

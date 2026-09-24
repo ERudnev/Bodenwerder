@@ -1,0 +1,93 @@
+#include <fQSM/erased/patch_line.h>
+
+namespace fqsm::erased {
+
+    PatchLine::PatchLine(const Ops& quantum, const Ops& global)
+        : entries(quantum, global)
+    {
+        entries.reset_global();
+    }
+
+    PatchLine::PatchLine(const Descriptor& descriptor)
+        : PatchLine(*descriptor.quantum, *descriptor.global)
+    {}
+
+    Mention PatchLine::at(std::size_t position) const {
+        return Mention{true, (flags[position] & tombstoneFlag) != 0, entries.value_at(position)};
+    }
+
+    Mention PatchLine::mention(RawId id) const {
+        const std::size_t position = entries.position_of(id);
+        if (position == Line::npos) return {};
+        return at(position);
+    }
+
+    void* PatchLine::find_mutable(RawId id) {
+        return entries.find_mutable(id);
+    }
+
+    void* PatchLine::touch_global(const void* baseGlobal) {
+        if (not entries.global())
+            entries.set_global(baseGlobal);
+        return entries.global_mutable();
+    }
+
+    void* PatchLine::soft_insert(RawId id, const void* value, bool moveValue, std::uint8_t incoming) {
+        const std::size_t position = entries.position_of(id);
+        if (position != Line::npos) {
+            void* stored = moveValue ? entries.emplace_move(id, const_cast<void*>(value)) : entries.insert(id, value);
+            flags[position] = static_cast<std::uint8_t>((flags[position] & tombstoneFlag) | incoming);
+            return stored;
+        }
+        flags.reserve(flags.size() + 1);
+        void* stored = moveValue ? entries.emplace_move(id, const_cast<void*>(value)) : entries.insert(id, value);
+        flags.push_back(incoming);
+        return stored;
+    }
+
+    void* PatchLine::modify(RawId id, const void* value) {
+        return soft_insert(id, value, false, verifiedFlag);
+    }
+
+    void* PatchLine::modify_move(RawId id, void* value) {
+        return soft_insert(id, value, true, verifiedFlag);
+    }
+
+    void PatchLine::del(RawId id, const void* lastValue) {
+        const std::size_t position = entries.position_of(id);
+        if (position != Line::npos and entries.value_at(position) == lastValue) {
+            flags[position] = tombstoneFlag | verifiedFlag;
+            return;
+        }
+        soft_insert(id, lastValue, false, tombstoneFlag | verifiedFlag);
+    }
+
+    void* PatchLine::touch(RawId id, const void* baseValue) {
+        const std::size_t position = entries.position_of(id);
+        if (position != Line::npos) return entries.value_at(position);
+        return soft_insert(id, baseValue, false, 0);
+    }
+
+    bool PatchLine::discard(RawId id) {
+        const std::size_t position = entries.position_of(id);
+        if (position == Line::npos) return false;
+        entries.erase(id);
+        flags[position] = flags.back();
+        flags.pop_back();
+        return true;
+    }
+
+    void PatchLine::absorb(const PatchLine& other) {
+        if (&other == this) return;
+        for (std::size_t i = 0; i < other.count(); ++i)
+            soft_insert(other.id_at(i), other.entries.value_at(i), false, other.flags[i]);
+        if (const void* global = other.global())
+            entries.set_global(global);
+    }
+
+    void PatchLine::clear() {
+        entries.clear();
+        entries.reset_global();
+        flags.clear();
+    }
+}

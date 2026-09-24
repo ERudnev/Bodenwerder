@@ -37,6 +37,7 @@ namespace fqsm::model::linear {
         Global& global() override { return *static_cast<Global*>(storage.global_mutable()); }
         const Global& global() const override { return *static_cast<const Global*>(storage.global()); }
         const erased::ReadLine& line() const override { return storage; }
+        erased::Line& writableLine() { return storage; }
 
         static ref<state::Erased> create() requires std::is_default_constructible_v<Global> { return base::make_shared<Reality<Meta>>(); }
         static ref<state::Erased> createWith(const Global& initial) { return base::make_shared<Reality<Meta>>(initial); }

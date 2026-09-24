@@ -3,6 +3,7 @@
 #include <cstddef>
 
 #include <fQSM/erased/line.h>
+#include <fQSM/erased/patch_line.h>
 
 namespace fqsm::erased {
 
@@ -10,10 +11,10 @@ namespace fqsm::erased {
     // The base may itself be an Overlay; iteration then stacks one more cursor layer.
     class Overlay final : public ReadLine {
     public:
-        Overlay(const ReadLine& base, const ReadPatch& patch) : below(&base), layer(&patch) {}
+        Overlay(const ReadLine& base, const PatchLine& patch) : below(&base), layer(&patch) {}
 
         const ReadLine& base() const { return *below; }
-        const ReadPatch& patch() const { return *layer; }
+        const PatchLine& patch() const { return *layer; }
 
         bool contains(RawId id) const override;
         const void* find(RawId id) const override;
@@ -24,6 +25,6 @@ namespace fqsm::erased {
 
     private:
         const ReadLine* below;
-        const ReadPatch* layer;
+        const PatchLine* layer;
     };
 }

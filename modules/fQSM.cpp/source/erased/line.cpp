@@ -1,4 +1,5 @@
 #include <fQSM/erased/line.h>
+#include <fQSM/erased/patch_line.h>
 
 #include <cassert>
 #include <cstdlib>
@@ -14,7 +15,7 @@ namespace fqsm::erased {
         return cursor;
     }
 
-    Cursor Cursor::overlay(const Cursor& base, const ReadPatch& layer, bool atEnd) {
+    Cursor Cursor::overlay(const Cursor& base, const PatchLine& layer, bool atEnd) {
         assert(base.layerCount < MaxLayers && "fqsm::erased::Cursor: layer capacity exceeded");
         if (base.layerCount >= MaxLayers) std::abort();
 
@@ -108,7 +109,7 @@ namespace fqsm::erased {
         }
 
         while (currentLayer < layerCount) {
-            const ReadPatch& layer = *layers[currentLayer];
+            const PatchLine& layer = *layers[currentLayer];
             const std::size_t count = layer.count();
             while (layerIndex < count) {
                 const RawId id = layer.id_at(layerIndex);
@@ -168,6 +169,21 @@ namespace fqsm::erased {
         globalSlot.push_copy(value);
         if (globalSlot.size() > 1)
             globalSlot.release(0);
+    }
+
+    void Line::build_global(Slots::Builder build, void* context) {
+        globalSlot.push_built(build, context);
+        if (globalSlot.size() > 1)
+            globalSlot.release(0);
+    }
+
+    void Line::reset_global() {
+        globalSlot.clear();
+    }
+
+    std::size_t Line::position_of(RawId id) const {
+        const auto found = positions.find(id);
+        return found == positions.end() ? npos : found->second;
     }
 
     Cursor Line::cursor_begin() const {
