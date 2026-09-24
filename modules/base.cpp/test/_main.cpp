@@ -6,12 +6,16 @@
     X(cannonballSmoke) \
     X(denseTable) \
     X(delta_demonstration) \
+    X(delta_dirty_mode) \
+    X(delta_over_nested_future) \
+    X(cursor_value_semantics) \
     X(projected_traversal_invariant) \
     X(patch_operations) \
     X(patch_integrate) \
     X(patch_merge) \
     X(draft_patch_build) \
     X(preview_future_world) \
+    X(future_nested_overlay) \
     // end
 
 #define BASE_TESTS(X) \
@@ -33,12 +37,16 @@ int main() {
             BASETEST_NAMED("smoke", &tests::cannonballSmoke),
             BASETEST_NAMED("denseTable", &tests::denseTable),
             BASETEST_NAMED("delta_demonstration", &tests::delta_demonstration),
+            BASETEST_NAMED("delta_dirty_mode", &tests::delta_dirty_mode),
+            BASETEST_NAMED("delta_over_nested_future", &tests::delta_over_nested_future),
+            BASETEST_NAMED("cursor_value_semantics", &tests::cursor_value_semantics),
             BASETEST_NAMED("projected_traversal_invariant", &tests::projected_traversal_invariant),
             BASETEST_NAMED("patch_operations", &tests::patch_operations),
             BASETEST_NAMED("patch_integrate", &tests::patch_integrate),
             BASETEST_NAMED("patch_merge", &tests::patch_merge),
             BASETEST_NAMED("draft_patch_build", &tests::draft_patch_build),
-            BASETEST_NAMED("preview_future_world", &tests::preview_future_world)
+            BASETEST_NAMED("preview_future_world", &tests::preview_future_world),
+            BASETEST_NAMED("future_nested_overlay", &tests::future_nested_overlay)
         ) },
         group{ "all", BASETEST_MAKE_LIST_TESTS(BASE_TESTS) },
     };

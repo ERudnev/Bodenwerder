@@ -3,7 +3,7 @@
 #include <base/cannonball/table.h>
 #include <base/cannonball/future.h>
 #include <base/cannonball/patch.h>
-#include <base/cannonball/delta/operational.h>
+#include <base/cannonball/delta/interface.h>
 
 #include <map>
 #include <optional>
@@ -19,7 +19,8 @@ void projected_traversal_invariant()
     using Table = base::cannonball::Table<int, int>;
     using Patch = base::cannonball::Patch<int, int>;
     using Draft = base::cannonball::Future<int, int>;
-    using Delta = base::cannonball::delta::Operational<int, int>;
+    using Delta = base::cannonball::delta::Delta<int, int>;
+    using Mode = base::cannonball::delta::Mode;
 
     Table state;
     state.insert(1, 10);
@@ -35,7 +36,7 @@ void projected_traversal_invariant()
 
     Draft preview(state, patch, base::cannonball::SeeChanges::observable);
     Draft draft(state, patch, base::cannonball::SeeChanges::observable);
-    Delta delta(state, patch);
+    Delta delta(state, patch, Mode::clean);
 
     const std::map<int, int> expectedVisible{
         {1, 10},
