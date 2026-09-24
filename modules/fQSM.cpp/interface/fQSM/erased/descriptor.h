@@ -32,7 +32,7 @@ namespace fqsm::erased {
         void (*copy)(void* dst, const void* src);         // copy-construct into raw storage
         void (*move)(void* dst, void* src);               // move-construct into raw storage
         void (*destroy)(void* obj);
-        bool (*equal)(const void* lhs, const void* rhs);  // nullptr when not equality-comparable
+        bool (*equal)(const void* lhs, const void* rhs);  // nullptr unless std::equality_comparable (no PFR walk in phase 1)
     };
 
     namespace detail {
