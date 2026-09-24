@@ -12,6 +12,7 @@ namespace fqsm::erased {
     class Slots {
     public:
         using Index = std::uint32_t;
+        using Builder = void (*)(void* dst, void* context);   // constructs one value into raw storage
 
         explicit Slots(const Ops& ops);
         Slots(const Slots& other);
@@ -32,6 +33,7 @@ namespace fqsm::erased {
         Index push_default();
         Index push_copy(const void* src);
         Index push_move(void* src);
+        Index push_built(Builder build, void* context);
 
         // Destroys the value at slot; the last value (if any other) moves into slot.
         // Returns true when a value moved, from index size() (after the call) into slot.
@@ -41,9 +43,9 @@ namespace fqsm::erased {
         void reserve(std::size_t capacity);
 
     private:
-        enum class Emplace : std::uint8_t { construct, copy, move };
-        Index emplace_back(Emplace how, const void* src);
-        void build(Emplace how, void* dst, const void* src) const;
+        enum class Emplace : std::uint8_t { construct, copy, move, build };
+        Index emplace_back(Emplace how, const void* src, Builder builder = nullptr);
+        void build(Emplace how, void* dst, const void* src, Builder builder) const;
         void grow(std::size_t next);
         void deallocate();
 

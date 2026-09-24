@@ -2,53 +2,29 @@
 
 #include <cstddef>
 #include <map>
-#include <optional>
-#include <vector>
 
 #include <fQSM/erased/line.h>
+#include <fQSM/erased/patch_line.h>
 
 namespace tests::erased {
 
-    // Minimal patch layer over int values: soft insert ORs the tombstone, like the runtime patch.
-    struct PatchStub final : fqsm::erased::ReadPatch {
-        struct Item {
-            fqsm::RawId id;
-            bool tombstone;
-            int value;
-        };
+    inline fqsm::erased::PatchLine int_patch() {
+        return fqsm::erased::PatchLine(fqsm::erased::ops_of<int>(), fqsm::erased::ops_of<int>());
+    }
 
-        std::vector<Item> items;
-        std::optional<int> changedGlobal;
+    inline void put(fqsm::erased::PatchLine& patch, fqsm::RawId id, int value, bool tombstone = false) {
+        if (tombstone) patch.del(id, &value);
+        else patch.modify(id, &value);
+    }
 
-        void put(fqsm::RawId id, int value, bool tombstone = false) {
-            for (auto& item : items) {
-                if (item.id != id) continue;
-                item.tombstone = item.tombstone or tombstone;
-                item.value = value;
-                return;
-            }
-            items.push_back(Item{id, tombstone, value});
+    // Sequential application of patch onto a plain model.
+    inline void apply_to(const fqsm::erased::PatchLine& patch, std::map<fqsm::RawId, int>& model) {
+        for (std::size_t i = 0; i < patch.count(); ++i) {
+            const auto patchlet = patch.at(i);
+            if (patchlet.tombstone) model.erase(patch.id_at(i));
+            else model[patch.id_at(i)] = *static_cast<const int*>(patchlet.value);
         }
-
-        std::size_t count() const override { return items.size(); }
-        fqsm::RawId id_at(std::size_t index) const override { return items[index].id; }
-        fqsm::erased::Mention at(std::size_t index) const override {
-            return fqsm::erased::Mention{true, items[index].tombstone, &items[index].value};
-        }
-        fqsm::erased::Mention mention(fqsm::RawId id) const override {
-            for (const auto& item : items)
-                if (item.id == id) return fqsm::erased::Mention{true, item.tombstone, &item.value};
-            return {};
-        }
-        const void* global() const override { return changedGlobal ? &*changedGlobal : nullptr; }
-
-        void apply_to(std::map<fqsm::RawId, int>& model) const {
-            for (const auto& item : items) {
-                if (item.tombstone) model.erase(item.id);
-                else model[item.id] = item.value;
-            }
-        }
-    };
+    }
 
     inline std::map<fqsm::RawId, int> collect(const fqsm::erased::ReadLine& line) {
         std::map<fqsm::RawId, int> out;

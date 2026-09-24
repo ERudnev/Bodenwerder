@@ -1,30 +1,30 @@
 #include "_common.h"
 
-#include <base/cannonball/patch.h>
-#include <base/cannonball/table.h>
+#include <fQSM/erased/line.h>
+#include <fQSM/erased/patch_line.h>
 
 namespace tests {
 
-// Invariant: tombstone survives soft modify; deletion patchlet still holds a quantum.
-// Same path as QuantumGate → get_modification_access / modify_modification after put_deletion.
+// Invariant: a tombstone survives touch and later modify-style writes; the deletion patchlet still holds a value.
+// Same path as QuantumGate -> get_modification_access after put_deletion.
 void no_resurrection()
 {
-    using Key = int;
-    using Val = int;
-    using Patch = base::cannonball::Patch<Key, Val>;
-    using Patchlet = base::cannonball::Patchlet<Val>;
-    using Table = base::cannonball::Table<Key, Val>;
+    using namespace fqsm::erased;
 
-    Table state;
-    state.insert(1, 100);
+    Line state(ops_of<int>(), ops_of<int>());
+    const int stored = 100;
+    state.insert(1, &stored);
 
-    Patch patch;
-    patch.insert(1, Patchlet::deletion(100));
+    PatchLine patch(ops_of<int>(), ops_of<int>());
+    patch.del(1, state.find(1));
 
-    (void)patch.modify_modification(1, [&]() -> const Val& {
-        return state.at(1);
-    });
-    EXPECT_TRUE(patch.at(1).tombstone);
+    *static_cast<int*>(patch.touch(1, state.find(1))) = 101;
+    EXPECT_TRUE(patch.mention(1).tombstone);
+
+    const int written = 102;
+    patch.modify(1, &written);
+    EXPECT_TRUE(patch.mention(1).tombstone);
+    EXPECT_EQ(*static_cast<const int*>(patch.mention(1).value), 102);
 }
 
 } // namespace tests

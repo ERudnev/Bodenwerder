@@ -2,7 +2,7 @@
 
 namespace fqsm::erased {
 
-    DeltaCursor DeltaCursor::begin(const ReadLine& state, const ReadPatch& patch, DeltaMode mode, DeltaLayer layer) {
+    DeltaCursor DeltaCursor::begin(const ReadLine& state, const PatchLine& patch, DeltaMode mode, DeltaLayer layer) {
         DeltaCursor cursor;
         cursor.state = &state;
         cursor.patch = &patch;
@@ -17,7 +17,7 @@ namespace fqsm::erased {
         return cursor;
     }
 
-    DeltaCursor DeltaCursor::end(const ReadLine& state, const ReadPatch& patch, DeltaMode mode, DeltaLayer layer) {
+    DeltaCursor DeltaCursor::end(const ReadLine& state, const PatchLine& patch, DeltaMode mode, DeltaLayer layer) {
         DeltaCursor cursor;
         cursor.state = &state;
         cursor.patch = &patch;
@@ -91,7 +91,7 @@ namespace fqsm::erased {
         return Change{id, state->find(id), found.tombstone ? nullptr : found.value, false};
     }
 
-    bool delta_empty(const ReadLine& state, const ReadPatch& patch, DeltaMode mode, DeltaLayer layer) {
+    bool delta_empty(const ReadLine& state, const PatchLine& patch, DeltaMode mode, DeltaLayer layer) {
         return DeltaCursor::begin(state, patch, mode, layer) == DeltaCursor::end(state, patch, mode, layer);
     }
 }

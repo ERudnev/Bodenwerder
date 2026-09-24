@@ -102,7 +102,7 @@ namespace fqsm::model::linear {
 
         Delta(const State<Meta>& state, const Patch<Meta>& patch, Mode mode)
             : state(&state.line())
-            , patch(&patch.view())
+            , patch(&patch.line)
             , mode(mode == Mode::clean ? erased::DeltaMode::clean : erased::DeltaMode::dirty)
         {}
 
@@ -122,7 +122,7 @@ namespace fqsm::model::linear {
         bool layer_empty(Layer layer) const { return erased::delta_empty(*state, *patch, mode, layer); }
 
         const erased::ReadLine* state;
-        const erased::ReadPatch* patch;
+        const erased::PatchLine* patch;
         erased::DeltaMode mode;
     };
 }

@@ -67,8 +67,9 @@ namespace fqsm::erased {
         deallocate();
     }
 
-    void Slots::build(Emplace how, void* dst, const void* src) const {
+    void Slots::build(Emplace how, void* dst, const void* src, Builder builder) const {
         switch (how) {
+        case Emplace::build: builder(dst, const_cast<void*>(src)); break;
         case Emplace::construct: valueOps->construct(dst); break;
         case Emplace::copy: valueOps->copy(dst, src); break;
         case Emplace::move: valueOps->move(dst, const_cast<void*>(src)); break;
@@ -76,15 +77,15 @@ namespace fqsm::erased {
     }
 
     // The new value is built before old values relocate, so src may point into this arena.
-    auto Slots::emplace_back(Emplace how, const void* src) -> Index {
+    auto Slots::emplace_back(Emplace how, const void* src, Builder builder) -> Index {
         if (count < capacity) {
-            build(how, storage + count * step, src);
+            build(how, storage + count * step, src, builder);
             return static_cast<Index>(count++);
         }
         const std::size_t next = std::max(count + 1, capacity < 4 ? std::size_t{4} : capacity * 2);
         auto* fresh = static_cast<std::byte*>(::operator new(next * step, std::align_val_t{valueOps->align}));
         try {
-            build(how, fresh + count * step, src);
+            build(how, fresh + count * step, src, builder);
         } catch (...) {
             ::operator delete(fresh, std::align_val_t{valueOps->align});
             throw;
@@ -112,6 +113,10 @@ namespace fqsm::erased {
 
     auto Slots::push_move(void* src) -> Index {
         return emplace_back(Emplace::move, src);
+    }
+
+    auto Slots::push_built(Builder builder, void* context) -> Index {
+        return emplace_back(Emplace::build, context, builder);
     }
 
     bool Slots::release(Index slot) {

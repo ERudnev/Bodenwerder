@@ -137,7 +137,6 @@ void erased_line_lifetime()
 // Three nested overlays against sequential application of the same patches.
 void erased_overlay_nested()
 {
-    using erased::PatchStub;
     std::mt19937 random(777);
     std::uniform_int_distribution<int> pick(1, 60);
     std::uniform_int_distribution<int> action(0, 2);
@@ -149,12 +148,12 @@ void erased_overlay_nested()
         model[static_cast<fqsm::RawId>(i)] = i;
     }
 
-    PatchStub layers[3];
+    fqsm::erased::PatchLine layers[3] = {erased::int_patch(), erased::int_patch(), erased::int_patch()};
     for (int layer = 0; layer < 3; ++layer) {
         for (int k = 0; k < 25; ++k) {
             const auto id = static_cast<fqsm::RawId>(pick(random));
             const int value = 1000 * (layer + 1) + k;
-            layers[layer].put(id, value, action(random) == 0);
+            erased::put(layers[layer], id, value, action(random) == 0);
         }
     }
 
@@ -164,7 +163,7 @@ void erased_overlay_nested()
     const fqsm::erased::ReadLine* views[] = {&first, &second, &third};
 
     for (int layer = 0; layer < 3; ++layer) {
-        layers[layer].apply_to(model);
+        erased::apply_to(layers[layer], model);
         const auto& view = *views[layer];
 
         EXPECT_TRUE(erased::collect(view) == model);
@@ -178,16 +177,16 @@ void erased_overlay_nested()
     }
     EXPECT_EQ(root.size(), std::size_t{40});
 
-    layers[1].changedGlobal = 5;
+    const int five = 5, six = 6;
+    layers[1].set_global(&five);
     EXPECT_EQ(as_int(third.global()), 5);
-    layers[2].changedGlobal = 6;
+    layers[2].set_global(&six);
     EXPECT_EQ(as_int(third.global()), 6);
     EXPECT_EQ(as_int(first.global()), 0);
 }
 
 void erased_delta_modes()
 {
-    using erased::PatchStub;
     using fqsm::erased::DeltaCursor;
     using fqsm::erased::DeltaLayer;
     using fqsm::erased::DeltaMode;
@@ -196,13 +195,13 @@ void erased_delta_modes()
     for (int i = 1; i <= 10; ++i)
         state.insert(static_cast<fqsm::RawId>(i), &i);
 
-    PatchStub patch;
-    patch.put(1, 1, true);      // removed
-    patch.put(2, 20);           // updated
-    patch.put(3, 30);
-    patch.put(3, 31, true);     // removed, last value kept
-    patch.put(11, 110);         // added
-    patch.put(12, 120, true);   // deletion of an absent id: only in all()
+    auto patch = erased::int_patch();
+    erased::put(patch, 1, 1, true);      // removed
+    erased::put(patch, 2, 20);           // updated
+    erased::put(patch, 3, 30);
+    erased::put(patch, 3, 31, true);     // removed, last value kept
+    erased::put(patch, 11, 110);         // added
+    erased::put(patch, 12, 120, true);   // deletion of an absent id: only in all()
 
     const auto gather = [&](DeltaMode mode, DeltaLayer layer) {
         std::set<fqsm::RawId> out;
@@ -235,7 +234,7 @@ void erased_delta_modes()
     }
 
     EXPECT_FALSE(fqsm::erased::delta_empty(state, patch, DeltaMode::clean, DeltaLayer::added));
-    PatchStub empty;
+    const auto empty = erased::int_patch();
     EXPECT_TRUE(fqsm::erased::delta_empty(state, empty, DeltaMode::clean, DeltaLayer::all));
     EXPECT_FALSE(fqsm::erased::delta_empty(state, empty, DeltaMode::dirty, DeltaLayer::all));
     EXPECT_TRUE(fqsm::erased::delta_empty(state, empty, DeltaMode::dirty, DeltaLayer::updated));

@@ -12,24 +12,13 @@
 namespace fqsm::erased {
 
     class Line;
+    class PatchLine;
 
     // What one patch layer says about one id. A tombstone keeps the last value.
     struct Mention {
         bool found = false;
         bool tombstone = false;
         const void* value = nullptr;
-    };
-
-    // Read side of one patch layer, as the overlay cursor and the delta cursor see it.
-    class ReadPatch {
-    public:
-        virtual ~ReadPatch() = default;
-
-        virtual std::size_t count() const = 0;
-        virtual RawId id_at(std::size_t index) const = 0;
-        virtual Mention at(std::size_t index) const = 0;
-        virtual Mention mention(RawId id) const = 0;
-        virtual const void* global() const = 0;        // nullptr: global not changed
     };
 
     // Forward read cursor over a root Line plus a stack of overlaid patch layers.
@@ -52,7 +41,7 @@ namespace fqsm::erased {
 
         // Copies base's layer stack, pushes one more layer and resolves the position from scratch:
         // visibility under N+1 layers can differ from visibility under N.
-        static Cursor overlay(const Cursor& base, const ReadPatch& layer, bool atEnd);
+        static Cursor overlay(const Cursor& base, const PatchLine& layer, bool atEnd);
 
         Entry operator*() const;
         Cursor& operator++();
@@ -69,7 +58,7 @@ namespace fqsm::erased {
 
         const Line* root = nullptr;
         std::size_t rootIndex = 0;
-        const ReadPatch* layers[MaxLayers]{};
+        const PatchLine* layers[MaxLayers]{};
         std::size_t layerCount = 0;
         Phase phase = Phase::root;
         std::size_t currentLayer = 0;
@@ -106,9 +95,14 @@ namespace fqsm::erased {
         Cursor cursor_begin() const override;
         Cursor cursor_end() const override;
 
+        static constexpr std::size_t npos = static_cast<std::size_t>(-1);
+        std::size_t position_of(RawId id) const;
+
         void* find_mutable(RawId id);
         void* global_mutable();
         void set_global(const void* value);
+        void build_global(Slots::Builder build, void* context);
+        void reset_global();
 
         // Copy (or move) value in; an existing value for id is replaced. Returns the stored value.
         void* insert(RawId id, const void* value);

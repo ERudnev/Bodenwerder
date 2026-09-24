@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include <fQSM/erased/line.h>
+#include <fQSM/erased/patch_line.h>
 
 namespace fqsm::erased {
 
@@ -30,8 +31,8 @@ namespace fqsm::erased {
     public:
         DeltaCursor() = default;
 
-        static DeltaCursor begin(const ReadLine& state, const ReadPatch& patch, DeltaMode mode, DeltaLayer layer);
-        static DeltaCursor end(const ReadLine& state, const ReadPatch& patch, DeltaMode mode, DeltaLayer layer);
+        static DeltaCursor begin(const ReadLine& state, const PatchLine& patch, DeltaMode mode, DeltaLayer layer);
+        static DeltaCursor end(const ReadLine& state, const PatchLine& patch, DeltaMode mode, DeltaLayer layer);
 
         Change operator*() const;
         DeltaCursor& operator++();
@@ -45,7 +46,7 @@ namespace fqsm::erased {
         Change from_patch() const;
 
         const ReadLine* state = nullptr;
-        const ReadPatch* patch = nullptr;
+        const PatchLine* patch = nullptr;
         Cursor stateCursor{};
         Cursor stateEnd{};
         std::size_t patchIndex = 0;
@@ -54,5 +55,5 @@ namespace fqsm::erased {
         DeltaMode mode = DeltaMode::clean;
     };
 
-    bool delta_empty(const ReadLine& state, const ReadPatch& patch, DeltaMode mode, DeltaLayer layer);
+    bool delta_empty(const ReadLine& state, const PatchLine& patch, DeltaMode mode, DeltaLayer layer);
 }
