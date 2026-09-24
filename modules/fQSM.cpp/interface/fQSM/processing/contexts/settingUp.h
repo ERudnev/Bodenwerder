@@ -20,7 +20,6 @@ namespace fqsm::processing {
         SettingUp& operator=(SettingUp&&) = delete;
 
         auto writing() -> Writing;
-        void emplace(meta::Rtid typeId, ref<model::linear::state::Erased> line);
 
     private:
         explicit SettingUp(Transaction& transaction, model::complex::Reality& reality);

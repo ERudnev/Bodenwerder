@@ -8,10 +8,8 @@
 
 #include <base/logging.h>
 #include <base/serialization.h>
-#include <fQSM/erased/algorithms.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/complex/patch.h>
-#include <fQSM/model/linear/patch.h>
 #include <fQSM/processing/contexts/review.h>
 
 namespace fqsm::utility {
@@ -20,14 +18,5 @@ namespace fqsm::utility {
     auto format_patch(const model::complex::Patch& patch) -> std::string;
     void log_patch(std::string_view legend, cref<model::complex::Patch> patch);
     void log_rejected_transaction(const model::complex::Patch::Summary&);
-
-}
-
-namespace fqsm::utility::detail {
-
-    template<category::Any Meta>
-    auto log_patch_slice(const model::complex::Patch& patch, std::string_view aspectName) -> std::string {
-        return erased::format_patch_line(patch.aspect<Meta>().line, aspectName);
-    }
 
 }

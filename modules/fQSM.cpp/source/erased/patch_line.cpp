@@ -91,4 +91,9 @@ namespace fqsm::erased {
         entries.reset_global();
         flags.clear();
     }
+
+    const PatchLine& empty_patch_line() {
+        static const PatchLine empty(ops_of<char>(), ops_of<char>());
+        return empty;
+    }
 }

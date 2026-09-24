@@ -64,6 +64,7 @@
     X(erased_delta_modes) \
     X(erased_items_view) \
     X(erased_items_future) \
+    X(erased_lazy_patch_lines) \
     // end
 
 #define FQSM_MINIMODEL_TESTS(X) \

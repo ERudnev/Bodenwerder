@@ -59,4 +59,7 @@ namespace fqsm::erased {
         Line entries;
         std::vector<std::uint8_t> flags;
     };
+
+    // Shared read-only patch with no changes, for deltas over slots that were never written.
+    const PatchLine& empty_patch_line();
 }

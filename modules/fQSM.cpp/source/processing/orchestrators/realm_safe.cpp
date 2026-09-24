@@ -1,5 +1,6 @@
 #include <fQSM/processing/orchestrators/realm_safe.h>
 
+#include <fQSM/erased/slots.h>
 #include <fQSM/model/complex/patch.h>
 #include <fQSM/model/intertype/schema.h>
 #include <fQSM/processing/_forwards.h>
@@ -11,9 +12,20 @@ namespace fqsm::processing::orchestrator {
 
     void RealmSafe::assembleGlobals() {
         SettingUp setup(*this, reality);
-        for (const auto& [typeId, node] : reality.schema->nodes) {
-            if (node.binding.assemble)
-                node.binding.assemble(setup);
+        for (model::complex::Reality::Slot slot = 0; slot < reality.schema->slotCount(); ++slot) {
+            const auto assemble = reality.schema->descriptors[slot].assembleGlobal;
+            if (not assemble) continue;
+            struct Context {
+                SettingUp& setup;
+                void (*assemble)(SettingUp&, void*);
+            } context{setup, assemble};
+            // assembled aside: the assembling Writing may integrate into this reality meanwhile
+            erased::Slots assembled(*reality.schema->descriptors[slot].global);
+            assembled.push_built([](void* dst, void* raw) {
+                auto& self = *static_cast<Context*>(raw);
+                self.assemble(self.setup, dst);
+            }, &context);
+            reality.writable(slot).set_global(assembled.at(0));
         }
     }
 

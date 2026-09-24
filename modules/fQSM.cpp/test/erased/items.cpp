@@ -6,8 +6,10 @@
 #include <string>
 
 #include <fQSM/api/interface.h>
-#include <fQSM/model/linear/future.h>
-#include <fQSM/model/linear/reality.h>
+#include <fQSM/erased/future_line.h>
+#include <fQSM/erased/line.h>
+#include <fQSM/erased/patch_line.h>
+#include <fQSM/model/linear/state.h>
 
 namespace {
     namespace local {
@@ -33,9 +35,11 @@ void erased_items_view()
 {
     using namespace local;
     using Id = fqsm::Id<Tree>;
-    using Reality = fqsm::model::linear::Reality<Tree>;
+    using View = fqsm::model::linear::View<Tree>;
+    const auto descriptor = fqsm::erased::describe<Tree>();
 
-    Reality reality;
+    fqsm::erased::Line line(descriptor);
+    View reality(line, &line, nullptr);
     auto& items = reality.items();
     EXPECT_TRUE(items.empty());
 
@@ -85,8 +89,9 @@ void erased_items_view()
     EXPECT_EQ(items.size(), std::size_t{19});
 
     reality.global().planted = 3;
-    const auto clone = Reality::from(reality);
-    const auto& copied = static_cast<const Reality&>(*clone);
+    fqsm::erased::Line cloned(descriptor);
+    cloned.clone(line);
+    const View copied(cloned, nullptr, nullptr);
     EXPECT_EQ(copied.items().size(), std::size_t{19});
     EXPECT_EQ(copied.global().planted, 3);
     EXPECT_FALSE(copied.items().contains(first));
@@ -101,11 +106,11 @@ void erased_items_future()
 {
     using namespace local;
     using Id = fqsm::Id<Tree>;
-    using Reality = fqsm::model::linear::Reality<Tree>;
-    using Patch = fqsm::model::linear::Patch<Tree>;
-    using Future = fqsm::model::linear::Future<Tree>;
+    using View = fqsm::model::linear::View<Tree>;
+    const auto descriptor = fqsm::erased::describe<Tree>();
 
-    Reality reality;
+    fqsm::erased::Line line(descriptor);
+    View reality(line, &line, nullptr);
     const Id kept = Id::generate_random();
     const Id changed = Id::generate_random();
     const Id removed = Id::generate_random();
@@ -113,8 +118,9 @@ void erased_items_future()
     reality.items().insert(changed, Tree::Quantum{2, "changed"});
     reality.items().insert(removed, Tree::Quantum{3, "removed"});
 
-    auto patch = base::make_shared<Patch>();
-    Future future(reality, patch);
+    fqsm::erased::PatchLine patch(descriptor);
+    fqsm::erased::FutureLine futureLine(line, patch);
+    View future(futureLine, nullptr, &futureLine);
     const Id added = Id::generate_random();
     future.put_add(added, Tree::Quantum{4, "added"});
     future.get_modification_access(changed).height = 20;
@@ -139,8 +145,9 @@ void erased_items_future()
     try { future.items().insert(kept, Tree::Quantum{}); } catch (const std::logic_error&) { thrown = true; }
     EXPECT_TRUE(thrown);
 
-    auto nestedPatch = base::make_shared<Patch>();
-    Future nested(future, nestedPatch);
+    fqsm::erased::PatchLine nestedPatch(descriptor);
+    fqsm::erased::FutureLine nestedLine(futureLine, nestedPatch);
+    View nested(nestedLine, nullptr, &nestedLine);
     nested.put_deletion(added);
     nested.put_add(removed, Tree::Quantum{5, "again"});
     const auto& nestedView = std::as_const(nested).items();

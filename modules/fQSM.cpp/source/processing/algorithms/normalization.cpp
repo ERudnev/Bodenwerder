@@ -11,6 +11,52 @@
 #include <fQSM/features/reaction.h>
 #include <fQSM/utility/logging.h>
 
+#ifdef FQSM_WAVE_STATS
+#include <chrono>
+#include <cstdint>
+#include <cstdio>
+
+// Opt-in probe (CMake option FQSM_WAVE_STATS): one stderr line per 5 s window. Single-threaded use.
+namespace fqsm::processing::algorithm::probe {
+    using Clock = std::chrono::steady_clock;
+
+    struct Window {
+        std::uint64_t transactions = 0;
+        std::uint64_t waves = 0;
+        std::uint64_t reactions = 0;
+        std::uint64_t micros = 0;
+        std::uint64_t byWaves[4] = {};   // 0, 1, 2, 3+ waves
+        Clock::time_point opened = Clock::now();
+    };
+
+    inline Window window;
+
+    struct Transaction {
+        Clock::time_point started = Clock::now();
+        int waves = 0;
+
+        ~Transaction() {
+            const auto now = Clock::now();
+            window.transactions += 1;
+            window.waves += static_cast<std::uint64_t>(waves);
+            window.byWaves[waves < 3 ? waves : 3] += 1;
+            window.micros += static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(now - started).count());
+            if (now - window.opened < std::chrono::seconds(5)) return;
+            std::fprintf(stderr, "fQSM waves: tx=%llu waves=%llu [0:%llu 1:%llu 2:%llu 3+:%llu] reactions=%llu normalization=%llu us avg=%.1f us\n",
+                static_cast<unsigned long long>(window.transactions), static_cast<unsigned long long>(window.waves),
+                static_cast<unsigned long long>(window.byWaves[0]), static_cast<unsigned long long>(window.byWaves[1]),
+                static_cast<unsigned long long>(window.byWaves[2]), static_cast<unsigned long long>(window.byWaves[3]),
+                static_cast<unsigned long long>(window.reactions), static_cast<unsigned long long>(window.micros),
+                static_cast<double>(window.micros) / static_cast<double>(window.transactions));
+            window = Window{};
+        }
+    };
+}
+#define FQSM_PROBE(...) __VA_ARGS__
+#else
+#define FQSM_PROBE(...)
+#endif
+
 // local alias:
 namespace fqsm::processing::algorithm {
     static constexpr int temp_defence_normalization_waves = 10;
@@ -49,22 +95,25 @@ namespace fqsm::processing::algorithm::normalization {
             origin,
             pass.patch);
 
+        const auto& schema = *changes->schema;
         std::set<model::intertype::Graph::ReactionId> selectedReactions;
-        for (const auto& [sourceType, line] : changes->lines.container) {
-            if (not line->has_changes() and not taintedLines.contains(sourceType)) {
-                continue;
-            }
-            const auto found = changes->schema->nodes.find(sourceType);
-            if (found == changes->schema->nodes.end()) continue;
-
-            for (const auto reactionId : found->second.reactions) {
-                selectedReactions.insert(reactionId);
-            }
+        const auto select = [&](meta::Rtid sourceType) {
+            const auto found = schema.nodes.find(sourceType);
+            if (found == schema.nodes.end()) return;
+            selectedReactions.insert(found->second.reactions.begin(), found->second.reactions.end());
+        };
+        for (Patch::Slot slot = 0; slot < schema.slotCount(); ++slot) {
+            const auto* line = changes->line(slot);
+            if (line and line->has_changes())
+                select(schema.descriptors[slot].id);
         }
+        for (const auto& sourceType : taintedLines)
+            select(sourceType);
 
         for (const auto reactionId : selectedReactions) {
             changes->schema->reactions.at(reactionId.raw())->apply(context);
         }
+        FQSM_PROBE(probe::window.reactions += selectedReactions.size();)
 
         _DBG_TX_("norm pass: {} reactions, changes={}, reaction={}", selectedReactions.size(), utility::format_patch(changes), utility::format_patch(fqsm::freeze(pass.patch)));
         return pass;
@@ -72,6 +121,7 @@ namespace fqsm::processing::algorithm::normalization {
 
     model::complex::Patch::Summary normalization(const model::complex::State& world, ref<Patch> patch, Rtid::Set taintedLines) {
         model::complex::Patch::Summary accumulated;
+        FQSM_PROBE(probe::Transaction measured;)
 
         _DBG_TX_("norm: start user patch={}", utility::format_patch(fqsm::freeze(patch)));
 
@@ -99,6 +149,7 @@ namespace fqsm::processing::algorithm::normalization {
                 return accumulated;
             }
             ++wave;
+            FQSM_PROBE(measured.waves = wave;)
 
             _DBG_TX_("norm: wave {} correction={}", wave, utility::format_patch(fqsm::freeze(lastCorrection)));
 

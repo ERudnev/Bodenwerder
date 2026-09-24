@@ -171,12 +171,6 @@ namespace fqsm::erased {
             globalSlot.release(0);
     }
 
-    void Line::build_global(Slots::Builder build, void* context) {
-        globalSlot.push_built(build, context);
-        if (globalSlot.size() > 1)
-            globalSlot.release(0);
-    }
-
     void Line::reset_global() {
         globalSlot.clear();
     }
