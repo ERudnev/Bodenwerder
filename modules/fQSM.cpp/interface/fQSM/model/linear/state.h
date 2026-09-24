@@ -31,6 +31,13 @@ namespace fqsm::model::linear {
         State(const State&) = delete;
         State& operator=(const State&) = delete;
 
+        void rebind(const erased::ReadLine& line, erased::Line* writableLine, erased::FutureLine* futureLine) override {
+            reader = &line;
+            writable = writableLine;
+            future = futureLine;
+            view.rebind(line, writableLine);
+        }
+
         Items& items() { return view; }
         const Items& items() const { return view; }
         const erased::ReadLine& line() const { return *reader; }
@@ -64,5 +71,10 @@ namespace fqsm::model::linear {
             : State<Meta>(reader, writable, future)
             , WorkersInterface<Meta>(future)
         {}
+
+        void rebind(const erased::ReadLine& line, erased::Line* writableLine, erased::FutureLine* futureLine) override {
+            State<Meta>::rebind(line, writableLine, futureLine);
+            this->retarget(futureLine);
+        }
     };
 }

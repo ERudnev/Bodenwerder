@@ -17,7 +17,7 @@ namespace fqsm::model::complex {
     public:
         using Slot = intertype::Graph::Slot;
 
-        explicit State(Schema schema);
+        State(Schema schema, std::shared_ptr<LinePool> pool);
         virtual ~State();
         State(const State&) = delete;
         State& operator=(const State&) = delete;
@@ -36,7 +36,12 @@ namespace fqsm::model::complex {
 
         const Schema schema; // defined for Reality/Draft/any homogenous material object
 
+        // Pool of the Realm this state belongs to.
+        const std::shared_ptr<LinePool>& linePool() const { return pool; }
+
     protected:
+        std::unique_ptr<linear::state::Erased> release_view(Slot slot) { return std::move(views[slot]); }
+
         virtual erased::Line* writable_line(Slot) { return nullptr; }
         virtual erased::FutureLine* future_line(Slot) const { return nullptr; }
 
@@ -45,6 +50,9 @@ namespace fqsm::model::complex {
         linear::View<Meta>& view() const;
 
     private:
+        std::unique_ptr<linear::state::Erased> make_view_holder(Slot slot) const;
+
+        std::shared_ptr<LinePool> pool;
         mutable std::vector<std::unique_ptr<linear::state::Erased>> views;
     };
 }
@@ -57,7 +65,11 @@ namespace fqsm::model::complex {
         auto& cached = views[slot];
         if (not cached) {
             auto* self = const_cast<State*>(this);
-            cached = std::make_unique<linear::View<Meta>>(line(slot), self->writable_line(slot), future_line(slot));
+            cached = make_view_holder(slot);
+            if (cached)
+                cached->rebind(line(slot), self->writable_line(slot), future_line(slot));
+            else
+                cached = std::make_unique<linear::View<Meta>>(line(slot), self->writable_line(slot), future_line(slot));
         }
         return static_cast<linear::View<Meta>&>(*cached);
     }

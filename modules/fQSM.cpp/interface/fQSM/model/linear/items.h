@@ -91,6 +91,7 @@ namespace fqsm::model::linear {
         Items& operator=(const Items&) = delete;
 
         const erased::ReadLine& line() const { return *reader; }
+        void rebind(const erased::ReadLine& line, erased::Line* writable) { reader = &line; writer = writable; }
 
         bool contains(const Key& id) const { return find(id) != nullptr; }
         bool empty() const { return size() == 0; }

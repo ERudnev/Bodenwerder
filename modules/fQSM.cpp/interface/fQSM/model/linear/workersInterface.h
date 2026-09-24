@@ -15,6 +15,7 @@ namespace fqsm::model::linear {
     class WorkersInterface {
     public:
         explicit WorkersInterface(erased::FutureLine* line) : target(line) {}
+        void retarget(erased::FutureLine* line) { target = line; }
 
         void put_modification(Id<Meta> id, Quantum<Meta> value) { target->put_modification(id.raw(), &value); }
         void put_deletion(Id<Meta> id) { target->put_deletion(id.raw()); }

@@ -65,6 +65,7 @@
     X(erased_items_view) \
     X(erased_items_future) \
     X(erased_lazy_patch_lines) \
+    X(erased_pooled_lines) \
     X(structural_remove_with_parent) \
     X(structural_dead_parasitic_kills_parent) \
     X(structural_new_requires_existing_parent) \
