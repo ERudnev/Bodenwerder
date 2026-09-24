@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <fQSM/erased/descriptor.h>
+#include <fQSM/erased/rules.h>
 #include <fQSM/features/_forwards.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/identifier.h>
@@ -33,8 +34,12 @@ namespace fqsm::model::intertype {
         Slot slotOf(Rtid id) const { return nodes.at(id).slot; }
         std::size_t slotCount() const { return descriptors.size(); }
 
+        // Rebuilds rules from the descriptors; rules whose aspects are not all in the schema are skipped.
+        void deriveRules();
+
         std::unordered_map<Rtid, Node, Rtid::Hash> nodes;
         std::vector<erased::Descriptor> descriptors;   // by slot, registration order
+        std::vector<erased::Rule> rules;                // structural rules of the categories
         Reactions reactions;
     };
 }

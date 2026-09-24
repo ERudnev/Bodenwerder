@@ -65,6 +65,13 @@
     X(erased_items_view) \
     X(erased_items_future) \
     X(erased_lazy_patch_lines) \
+    X(structural_remove_with_parent) \
+    X(structural_dead_parasitic_kills_parent) \
+    X(structural_new_requires_existing_parent) \
+    X(structural_new_requires_parent_appears) \
+    X(structural_parent_appears_requires_component) \
+    X(structural_group_removal_removes_elements) \
+    X(structural_element_removal_unhooks) \
     // end
 
 #define FQSM_MINIMODEL_TESTS(X) \

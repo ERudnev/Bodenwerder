@@ -149,7 +149,7 @@ void erased_describe()
     const auto part = fqsm::erased::describe<Part>();
     EXPECT_TRUE(part.category == Category::feature);
     EXPECT_TRUE(part.host == fqsm::TypeId<Host>);
-    EXPECT_FALSE(part.reactions.empty());
+    EXPECT_TRUE(part.reactions.empty());
 
     const auto crew = fqsm::erased::describe<Crew>();
     EXPECT_TRUE(crew.category == Category::group);

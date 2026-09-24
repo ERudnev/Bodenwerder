@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 
+#include <fQSM/erased/delta.h>
 #include <fQSM/erased/future_line.h>
 #include <fQSM/erased/patch_line.h>
 #include <fQSM/meta/interface.include.h>
@@ -36,12 +37,19 @@ namespace fqsm::model::complex {
         const linear::WorkersInterface<Meta>& updates() const { return view<Meta>(); }
 
         const erased::ReadLine& line(Slot slot) const override { return future(slot); }
+        erased::FutureLine& writer(Slot slot) { return future(slot); }
+
+        // Delta of one slot: the base state against this future's patch (dirty when the slot is tainted).
+        erased::DeltaCursor delta_begin(Slot slot, erased::DeltaLayer layer) const;
+        erased::DeltaCursor delta_end(Slot slot, erased::DeltaLayer layer) const;
 
     protected:
         erased::FutureLine* future_line(Slot slot) const override { return &future(slot); }
 
     private:
         erased::FutureLine& future(Slot slot) const;
+        const erased::PatchLine& patch_line(Slot slot) const;
+        erased::DeltaMode delta_mode(Slot slot) const;
 
         const State& state; // yep, technically, Future may be Future over Future which is over Future. Be carefull!
         ref<Patch> changes;

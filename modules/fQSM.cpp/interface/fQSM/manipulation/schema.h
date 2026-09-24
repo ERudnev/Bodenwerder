@@ -53,6 +53,7 @@ namespace fqsm::manipulation::schema {
             for (const auto& reaction : part->reactions)
                 detail::add_reaction(*out, reaction);
 
+        out->deriveRules();
         return fqsm::freeze(out);
     }
 
@@ -62,6 +63,7 @@ namespace fqsm::manipulation::schema {
         detail::add_node(*out, erased::describe<Meta>());
         for (const auto& reaction : out->descriptors.front().reactions)
             detail::add_reaction(*out, reaction);
+        out->deriveRules();
         return fqsm::freeze(out);
     }
 }
