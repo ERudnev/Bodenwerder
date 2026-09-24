@@ -8,7 +8,9 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <future>
 #include <numbers>
+#include <thread>
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -20,6 +22,37 @@ namespace eltanin::planet {
     using geo::Facies;
     using geo::IcosaMap;
     using geo::IcosaPack;
+
+    namespace {
+
+        template<typename F>
+        void forEachIcosaSlot(const IcosaPack& pack, F&& apply) {
+            // Workers only read cached directions and write separate diamonds.
+            pack.cacheDirections();
+            constexpr unsigned maxWorkers = 6;
+            const unsigned hardwareWorkers = std::max(1u, std::thread::hardware_concurrency());
+            const unsigned usefulWorkers = std::max(1u, static_cast<unsigned>(pack.storedCount() / 65536));
+            const unsigned workerCount = std::min({maxWorkers, hardwareWorkers, usefulWorkers, static_cast<unsigned>(IcosaPack::diamondCount)});
+            const integer span = pack.edgeVertices();
+            const integer slotsPerDiamond = span * span;
+            auto work = [&](unsigned worker) {
+                const integer firstDiamond = static_cast<integer>(worker * IcosaPack::diamondCount / workerCount);
+                const integer endDiamond = static_cast<integer>((worker + 1) * IcosaPack::diamondCount / workerCount);
+                for (integer index = firstDiamond * slotsPerDiamond; index < endDiamond * slotsPerDiamond; ++index)
+                    apply(index);
+            };
+            std::array<std::future<void>, maxWorkers - 1> jobs;
+            for (unsigned worker = 1; worker < workerCount; ++worker)
+                jobs[worker - 1] = std::async(std::launch::async, [&, worker] { work(worker); });
+            work(0);
+            base::Progress::mark();
+            for (unsigned worker = 1; worker < workerCount; ++worker) {
+                jobs[worker - 1].get();
+                base::Progress::mark();
+            }
+        }
+
+    }
 
     auto Sample::hash01(integer x, integer y, integer z, integer salt) -> float {
         std::uint32_t value = std::uint32_t(x) * 73856093u ^ std::uint32_t(y) * 19349663u ^ std::uint32_t(z) * 83492791u ^ std::uint32_t(salt) * 2654435761u;
@@ -292,8 +325,7 @@ namespace eltanin::planet {
             return;
         const float width = std::max(params.width, 0.01f);
         const float provinceScale = params.sites.size() > 1 ? 1.0f / float(params.sites.size() - 1) : 0.0f;
-        for (integer index = 0; index < formation.boundary.pack.storedCount(); ++index) {
-            base::Progress::markEvery(index);
+        forEachIcosaSlot(formation.boundary.pack, [&](integer index) {
             const auto slot = formation.boundary.pack.slotOf(index);
             const vec3 direction = formation.boundary.pack.direction(slot);
             const PlateField::Hit sample = params.sample(direction);
@@ -307,14 +339,13 @@ namespace eltanin::planet {
             formation.crustAge.at(slot) = glm::mix((first.age + second.age) * 0.5f, first.age, interior);
             formation.boundary.at(slot) = edge * sample.divergence;
             formation.fracture.at(slot) = edge * glm::clamp(std::abs(sample.divergence) + sample.shear * 0.72f, 0.0f, 1.0f);
-        }
+        });
         formation.province.stitch();
         formation.composition.stitch();
         formation.crustAge.stitch();
         formation.boundary.stitch();
         formation.fracture.stitch();
-        for (integer index = 0; index < formation.relief.pack.storedCount(); ++index) {
-            base::Progress::markEvery(index);
+        forEachIcosaSlot(formation.relief.pack, [&](integer index) {
             const auto slot = formation.relief.pack.slotOf(index);
             const vec3 direction = formation.relief.pack.direction(slot);
             const PlateField::Hit sample = params.sample(direction);
@@ -339,7 +370,7 @@ namespace eltanin::planet {
             const float forks = Sample::ridged(sample.along * (alongU * 19.0f) + sample.normal * (acrossV * 24.0f), params.seed + 2149, 4);
             const float cracks = std::pow(glm::clamp(1.0f - ridges, 0.0f, 1.0f), 2.6f) * (0.50f + 0.50f * std::pow(glm::clamp(1.0f - forks, 0.0f, 1.0f), 1.8f));
             formation.relief.at(slot) += params.amplitude * (province * 0.13f + interiorTexture * (0.035f + first.age * 0.025f) + boundaryRelief - highlandMask * cracks * 0.055f * (0.55f + 0.45f * params.activity));
-        }
+        });
         formation.relief.stitch();
     }
 
@@ -403,12 +434,11 @@ namespace eltanin::planet {
             tangent = glm::cross(axis, vec3{1.0f, 0.0f, 0.0f});
         tangent = glm::normalize(tangent);
         const vec3 across = glm::normalize(glm::cross(axis, tangent));
-        for (integer index = 0; index < field.pack.storedCount(); ++index) {
-            base::Progress::markEvery(index);
+        forEachIcosaSlot(field.pack, [&](integer index) {
             const auto slot = field.pack.slotOf(index);
             const vec3 direction = field.pack.direction(slot);
             if (glm::dot(direction, axis) < std::cos(safeRadius * 3.2f))
-                continue;
+                return;
             const vec3 warped = Sample::warped(direction, seed, 2.7f, safeRadius * 0.55f);
             const float azimuth = std::atan2(glm::dot(warped, tangent), glm::dot(warped, across));
             const float reach = Sample::angular(warped, axis) / safeRadius;
@@ -417,10 +447,10 @@ namespace eltanin::planet {
             const float apron = glm::clamp(lobe * (0.55f + 0.70f * fingers), 0.22f, 1.55f);
             const float mask = 1.0f - glm::smoothstep(0.18f, 1.12f, reach / apron);
             if (mask <= 1.0e-4f)
-                continue;
+                return;
             const float core = std::exp(-2.8f * std::pow(reach / std::max(lobe, 0.18f), 2.0f));
             field.at(slot) = std::max(field.at(slot), amount * glm::max(core, mask * (0.22f + 0.78f * fingers)));
-        }
+        });
         field.stitch();
     }
 
@@ -431,7 +461,6 @@ namespace eltanin::planet {
     void Burst::apply(IcosaMap<float>& relief, const vector<Burst>& bursts) {
         if (bursts.empty())
             return;
-        const integer count = relief.pack.storedCount();
         const integer burstCount = static_cast<integer>(bursts.size());
         vector<vector<integer>> bins(static_cast<std::size_t>(SpatialHash::span * SpatialHash::span * SpatialHash::span));
         const float cell = 2.0f / float(SpatialHash::span);
@@ -451,8 +480,7 @@ namespace eltanin::planet {
         }
         for (auto& bin : bins)
             std::sort(bin.begin(), bin.end());
-        for (integer index = 0; index < count; ++index) {
-            base::Progress::markEvery(index);
+        forEachIcosaSlot(relief.pack, [&](integer index) {
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
             const SpatialHash::Cell here = SpatialHash::cell(dir);
@@ -460,13 +488,11 @@ namespace eltanin::planet {
             for (integer burst : bins[SpatialHash::index(here.x, here.y, here.z)])
                 delta += Burst::delta(dir, bursts[static_cast<std::size_t>(burst)]);
             relief.at(slot) += delta;
-        }
+        });
     }
 
     void Swell::apply(IcosaMap<float>& relief, const Swell& params) {
-        const integer count = relief.pack.storedCount();
-        for (integer index = 0; index < count; ++index) {
-            base::Progress::markEvery(index);
+        forEachIcosaSlot(relief.pack, [&](integer index) {
             const auto slot = relief.pack.slotOf(index);
             const vec3 dir = relief.pack.direction(slot);
             const vec3 warped = Sample::warped(dir, params.seed, 2.2f, params.sigma * 0.42f);
@@ -480,7 +506,7 @@ namespace eltanin::planet {
             const float base = Sample::gaussian(Sample::angular(warped, params.axis), params.sigma * lobe);
             const float massif = 0.68f * Sample::fractal(dir * 4.2f, params.seed + 37, 5, 0.56f) + 0.32f * (Sample::ridged(dir * 9.0f, params.seed + 53, 5) - 0.45f);
             relief.at(slot) += params.amplitude * base * glm::clamp(0.88f + 0.34f * massif, 0.55f, 1.25f);
-        }
+        });
     }
 
     void Rift::apply(IcosaMap<float>& relief, const Rift& params) {
@@ -776,8 +802,7 @@ namespace eltanin::planet {
             sample.iv = std::clamp(sample.iv, integer{0}, last);
             return planet.covers.pack.direction(sample) * (planet.passport.radius + heightAt(sample));
         };
-        for (integer index = 0; index < planet.covers.pack.storedCount(); ++index) {
-            base::Progress::markEvery(index);
+        auto paintSlot = [&](integer index) {
             const auto slot = planet.covers.pack.slotOf(index);
             const vec3 direction = planet.covers.pack.direction(slot);
             const float relief = formation.relief.at(slot);
@@ -872,7 +897,8 @@ namespace eltanin::planet {
                     below = Facies::DirtyIce;
             }
             planet.covers.at(slot) = geo::pack(surface, below);
-        }
+        };
+        forEachIcosaSlot(planet.covers.pack, paintSlot);
         planet.covers.stitch();
     }
 
