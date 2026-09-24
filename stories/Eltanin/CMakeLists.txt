@@ -88,3 +88,20 @@ target_link_libraries(Eltanin_horn_tests
         base
         libglew_static
 )
+
+add_executable(Eltanin_icosa_map_tests
+    test/icosa_map.cpp
+    private/geo/details/icosaPack.cpp
+)
+target_include_directories(Eltanin_icosa_map_tests
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/private
+        ${CMAKE_SOURCE_DIR}/modules/raidenmamare/interface
+        ${CMAKE_SOURCE_DIR}/modules/fQSM.cpp/interface
+)
+target_link_libraries(Eltanin_icosa_map_tests
+    PRIVATE
+        glm
+        base
+        libglew_static
+)
