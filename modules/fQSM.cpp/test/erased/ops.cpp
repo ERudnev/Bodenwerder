@@ -22,6 +22,7 @@ namespace {
         std::vector<int> numbers;
         std::string name;
         std::unordered_set<std::uint64_t> tags;
+        bool operator==(const Rich&) const = default;
     };
 
     struct NoDefault {
@@ -70,7 +71,7 @@ void erased_ops_trivial()
     EXPECT_EQ(ops.size, sizeof(Plain));
     EXPECT_EQ(ops.align, alignof(Plain));
     EXPECT_TRUE(ops.construct != nullptr);
-    EXPECT_TRUE(ops.equal != nullptr);
+    EXPECT_TRUE(ops.equal == nullptr);
     EXPECT_TRUE(&ops == &fqsm::erased::ops_of<Plain>());
 
     Storage<Plain> a, b;
@@ -80,10 +81,9 @@ void erased_ops_trivial()
     const Plain source{7, 2.5f};
     ops.copy(b.get(), &source);
     EXPECT_EQ(b.get()->a, 7);
-    EXPECT_FALSE(ops.equal(a.get(), b.get()));
     ops.destroy(a.get());
     ops.copy(a.get(), b.get());
-    EXPECT_TRUE(ops.equal(a.get(), b.get()));
+    EXPECT_EQ(a.get()->a, 7);
     ops.destroy(a.get());
     ops.destroy(b.get());
 }

@@ -1,9 +1,14 @@
 #pragma once
 
-#include <base/cannonball/future.h>
+#include <optional>
+#include <utility>
+
+#include <base/cannonball/patchlet.h>
+#include <fQSM/erased/overlay.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/rtid.h>
 #include <fQSM/model/_forwards.h>
+#include <fQSM/model/linear/patch.h>
 #include <fQSM/model/linear/state.h>
 #include <fQSM/model/linear/workersInterface.h>
 #include <fQSM/utility/messages.h>
@@ -12,20 +17,27 @@
 namespace fqsm::model::linear {
 
     template<category::Any Meta>
-    class Future : public State<Meta>, public WorkersInterface<Meta> {
+    class Future final : public State<Meta>, public WorkersInterface<Meta> {
     public:
         using Items = State<Meta>::Items;
         using Global = State<Meta>::Global;
 
         Future(const linear::State<Meta>& state, ref<linear::Patch<Meta>> patch)
-            : draftItems(state.items(), patch->items, base::cannonball::SeeChanges::observable)
-            , futureGlobal(state.global(), patch->global)
+            : origin(state)
+            , changes(*patch)
+            , overlay(state.line(), patch->view())
+            , view(overlay)
+            , futureGlobal{state.global(), patch->global}
         {}
 
-        virtual Items& items() override { return draftItems; }
-        virtual const Items& items() const override { return draftItems; }
-        virtual Global& global() override { return futureGlobal.access(); }
-        virtual const Global& global() const override { return futureGlobal.get(); }
+        Future(const Future&) = delete;
+        Future& operator=(const Future&) = delete;
+
+        Items& items() override { return view; }
+        const Items& items() const override { return view; }
+        Global& global() override { return futureGlobal.access(); }
+        const Global& global() const override { return futureGlobal.get(); }
+        const erased::ReadLine& line() const override { return overlay; }
 
          // WorkersInterface
          void put_modification(Id<Meta>, Quantum<Meta>) override;
@@ -51,7 +63,10 @@ namespace fqsm::model::linear {
             }
         };
 
-        base::cannonball::Future<Id<Meta>, Quantum<Meta>> draftItems;
+        const State<Meta>& origin;
+        Patch<Meta>& changes;
+        erased::Overlay overlay;
+        Items view;
         FutureGlobal futureGlobal;
     };
 }
@@ -60,24 +75,24 @@ namespace fqsm::model::linear {
 
     template<category::Any Meta>
     void Future<Meta>::put_modification(Id<Meta> id, Quantum<Meta> value) {
-        draftItems.patch.modify(std::move(id), std::move(value));
+        changes.items.modify(std::move(id), std::move(value));
     }
 
     template<category::Any Meta>
     void Future<Meta>::put_deletion(Id<Meta> id) {
-        if (auto* patched = draftItems.patch.find(id)) {
-            draftItems.patch.insert(std::move(id), Patchlet::deletion(std::move(patched->quantum)));
+        if (auto* patched = changes.items.find(id)) {
+            changes.items.insert(std::move(id), Patchlet::deletion(std::move(patched->quantum)));
             return;
         }
-        if (const auto* current = draftItems.state.find(id)) {
-            draftItems.patch.insert(std::move(id), Patchlet::deletion(*current));
+        if (const auto* current = origin.items().find(id)) {
+            changes.items.insert(std::move(id), Patchlet::deletion(*current));
             return;
         }
     }
 
     template<category::Any Meta>
     void Future<Meta>::put_add(Id<Meta> id, Quantum<Meta> value) {
-        draftItems.patch.insert(std::move(id), Patchlet::modification(std::move(value)));
+        changes.items.insert(std::move(id), Patchlet::modification(std::move(value)));
     }
 
     template<category::Any Meta>
@@ -88,14 +103,14 @@ namespace fqsm::model::linear {
     template<category::Any Meta>
     Quantum<Meta>& Future<Meta>
     ::get_modification_access(Id<Meta> id) {
-        auto patchEntry = draftItems.patch.find(id);
+        auto patchEntry = changes.items.find(id);
         if (not patchEntry) {
-            const auto* current = draftItems.state.find(id);
+            const auto* current = origin.items().find(id);
             if (not current) {
                 utility::messages::throw_not_present("cannot modify", Rtid::name<Meta>(), id.raw());
             }
-            // touch/ensure: unverified patchlet; old taken from state
-            return draftItems.patch.insert(id, Patchlet::possible(*current)).quantum;
+            // touch: unverified patchlet, old value taken from the base
+            return changes.items.insert(id, Patchlet::possible(*current)).quantum;
         }
         return patchEntry->quantum;
     }
