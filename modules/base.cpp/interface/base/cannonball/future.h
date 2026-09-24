@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include <base/cannonball/cursor.h>
 #include <base/cannonball/table/operational.h>
 #include <base/cannonball/patch.h>
 
@@ -27,118 +28,7 @@ public:
 
     using SizeType = typename Interface::SizeType;
     using EntryView = typename View::EntryView;
-    using ReadIterator = typename View::ReadIterator;
-    using StateIterator = typename View::ReadIterator;
-    using PatchIterator = typename PatchView::ReadIterator;
-
-    enum class Phase {
-        state,
-        patch,
-        end
-    };
-
-    class ConstIterator {
-    public:
-        ConstIterator(
-            const Future& owner,
-            Phase phase,
-            StateIterator stateIt,
-            StateIterator stateEnd,
-            PatchIterator patchIt,
-            PatchIterator patchEnd)
-            : owner(std::addressof(owner))
-            , phase(phase)
-            , stateIt(std::move(stateIt))
-            , stateEnd(std::move(stateEnd))
-            , patchIt(std::move(patchIt))
-            , patchEnd(std::move(patchEnd))
-        {
-            skip_to_visible();
-        }
-
-        EntryView operator*() const {
-            if (phase == Phase::state) {
-                const auto entry = *stateIt;
-                if (const auto* patched = owner->patch_view().find(entry.id))
-                    return EntryView{entry.id, patched->quantum};
-                return EntryView{entry.id, entry.value};
-            }
-
-            const auto entry = *patchIt;
-            return EntryView{entry.id, entry.value.quantum};
-        }
-
-        ConstIterator& operator++() {
-            if (phase == Phase::state) {
-                ++stateIt;
-            } else if (phase == Phase::patch) {
-                ++patchIt;
-            }
-
-            skip_to_visible();
-            return *this;
-        }
-
-        ConstIterator operator++(int) {
-            ConstIterator copy = *this;
-            ++*this;
-            return copy;
-        }
-
-        bool operator==(const ConstIterator& other) const {
-            if (owner != other.owner || phase != other.phase) return false;
-            if (phase == Phase::end) return true;
-            if (phase == Phase::state) return stateIt == other.stateIt;
-            return patchIt == other.patchIt;
-        }
-
-        bool operator!=(const ConstIterator& other) const {
-            return !(*this == other);
-        }
-
-    private:
-        void skip_to_visible() {
-            if (phase == Phase::end) return;
-
-            while (phase == Phase::state) {
-                while (stateIt != stateEnd) {
-                    const auto entry = *stateIt;
-                    const auto* patched = owner->patch_view().find(entry.id);
-
-                    if (patched && patched->tombstone) {
-                        ++stateIt;
-                        continue;
-                    }
-
-                    return;
-                }
-
-                phase = Phase::patch;
-            }
-
-            while (phase == Phase::patch) {
-                while (patchIt != patchEnd) {
-                    const auto entry = *patchIt;
-
-                    if (entry.value.tombstone || owner->state.contains(entry.id)) {
-                        ++patchIt;
-                        continue;
-                    }
-
-                    return;
-                }
-
-                phase = Phase::end;
-            }
-        }
-
-        const Future* owner;
-        Phase phase;
-        StateIterator stateIt;
-        StateIterator stateEnd;
-        PatchIterator patchIt;
-        PatchIterator patchEnd;
-    };
+    using Cursor = typename View::Cursor;
 
     Future(const View& state, PatchType& patch, SeeChanges mode);
 
@@ -154,8 +44,8 @@ public:
     bool erase(const Key& id) override;
 
 protected:
-    ReadIterator read_begin() const override;
-    ReadIterator read_end() const override;
+    Cursor read_begin() const override;
+    Cursor read_end() const override;
 
 
 //private:
@@ -279,35 +169,21 @@ bool Future<Key, Val, Hasher, KeyEqual>::erase(const Key& id)
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-auto Future<Key, Val, Hasher, KeyEqual>::read_begin() const -> ReadIterator
+auto Future<Key, Val, Hasher, KeyEqual>::read_begin() const -> Cursor
 {
     if (mode == SeeChanges::blind)
         return state.begin();
 
-    return this->make_read_iterator(ConstIterator{
-        *this,
-        Phase::state,
-        state.begin(),
-        state.end(),
-        patch_view().begin(),
-        patch_view().end()
-    });
+    return Cursor::overlay(state.begin(), patch.raw_entries(), std::addressof(patch_view()), false);
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-auto Future<Key, Val, Hasher, KeyEqual>::read_end() const -> ReadIterator
+auto Future<Key, Val, Hasher, KeyEqual>::read_end() const -> Cursor
 {
     if (mode == SeeChanges::blind)
         return state.end();
 
-    return this->make_read_iterator(ConstIterator{
-        *this,
-        Phase::end,
-        state.begin(),
-        state.end(),
-        patch_view().begin(),
-        patch_view().end()
-    });
+    return Cursor::overlay(state.end(), patch.raw_entries(), std::addressof(patch_view()), true);
 }
 
 template<typename Key, typename Val, typename Hasher, typename KeyEqual>

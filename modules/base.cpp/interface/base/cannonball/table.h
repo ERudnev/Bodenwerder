@@ -2,13 +2,12 @@
 
 #include <cstddef>
 #include <functional>
-#include <iterator>
-#include <memory>
 #include <stdexcept>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include <base/cannonball/entry.h>
 #include <base/cannonball/table/direct.h>
 
 namespace base::cannonball {
@@ -21,114 +20,7 @@ public:
     using MappedType = typename Interface::MappedType;
     using SizeType = typename Interface::SizeType;
 
-    struct Entry {
-        Key id;
-        Val value;
-    };
-
-    class ConstIterator {
-    public:
-        using iterator_category = std::forward_iterator_tag;
-        using difference_type = std::ptrdiff_t;
-        using value_type = typename Interface::EntryView;
-        using pointer = const value_type*;
-        using reference = const value_type&;
-
-        value_type operator*() const {
-            return value_type{entries[index].id, entries[index].value};
-        }
-
-        struct ArrowProxy {
-            value_type view;
-            const value_type* operator->() const { return &view; }
-        };
-
-        ArrowProxy operator->() const {
-            return ArrowProxy{value_type{entries[index].id, entries[index].value}};
-        }
-
-        ConstIterator& operator++() {
-            ++index;
-            return *this;
-        }
-
-        ConstIterator operator++(int) {
-            ConstIterator copy = *this;
-            ++*this;
-            return copy;
-        }
-
-        bool operator==(const ConstIterator& other) const {
-            return std::addressof(entries) == std::addressof(other.entries) && index == other.index;
-        }
-
-        bool operator!=(const ConstIterator& other) const {
-            return !(*this == other);
-        }
-
-    private:
-        friend class Table;
-
-        ConstIterator(const std::vector<Entry>& entries, SizeType index)
-            : entries(entries)
-            , index(index)
-        {}
-
-        const std::vector<Entry>& entries;
-        SizeType index;
-    };
-
-    class Iterator {
-    public:
-        using iterator_category = std::forward_iterator_tag;
-        using difference_type = std::ptrdiff_t;
-        using value_type = typename Interface::EntryRef;
-        using pointer = value_type*;
-        using reference = value_type&;
-
-        value_type operator*() const {
-            return value_type{entries[index].id, entries[index].value};
-        }
-
-        struct ArrowProxy {
-            value_type view;
-            const value_type* operator->() const { return &view; }
-        };
-
-        ArrowProxy operator->() const {
-            return ArrowProxy{value_type{entries[index].id, entries[index].value}};
-        }
-
-        Iterator& operator++() {
-            ++index;
-            return *this;
-        }
-
-        Iterator operator++(int) {
-            Iterator copy = *this;
-            ++*this;
-            return copy;
-        }
-
-        bool operator==(const Iterator& other) const {
-            return std::addressof(entries) == std::addressof(other.entries) && index == other.index;
-        }
-
-        bool operator!=(const Iterator& other) const {
-            return !(*this == other);
-        }
-
-    private:
-        friend class Table;
-
-        Iterator(std::vector<Entry>& entries, SizeType index)
-            : entries(entries)
-            , index(index)
-        {}
-
-        std::vector<Entry>& entries;
-        SizeType index;
-    };
+    using Entry = base::cannonball::Entry<Key, Val>;
 
     Table() = default;
 
@@ -202,21 +94,25 @@ public:
         return true;
     }
 
+    // Raw backing vector, for composing an overlay Cursor layer on top of this table (see
+    // Future::read_begin/read_end); not part of the Read/Direct interface.
+    const std::vector<Entry>* raw_entries() const { return &entries; }
+
 protected:
-    typename Interface::ReadIterator read_begin() const override {
-        return this->make_read_iterator(ConstIterator(entries, 0));
+    typename Interface::Cursor read_begin() const override {
+        return Interface::Cursor::plain(&entries, 0, this);
     }
 
-    typename Interface::ReadIterator read_end() const override {
-        return this->make_read_iterator(ConstIterator(entries, entries.size()));
+    typename Interface::Cursor read_end() const override {
+        return Interface::Cursor::plain(&entries, entries.size(), this);
     }
 
-    typename Interface::WriteIterator write_begin() override {
-        return this->make_write_iterator(Iterator(entries, 0));
+    typename Interface::MutableCursor write_begin() override {
+        return typename Interface::MutableCursor(&entries, 0);
     }
 
-    typename Interface::WriteIterator write_end() override {
-        return this->make_write_iterator(Iterator(entries, entries.size()));
+    typename Interface::MutableCursor write_end() override {
+        return typename Interface::MutableCursor(&entries, entries.size());
     }
 
 private:

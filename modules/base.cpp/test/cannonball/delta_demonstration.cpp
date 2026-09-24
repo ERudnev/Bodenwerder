@@ -1,6 +1,6 @@
 #include "_common.h"
 
-#include <base/cannonball/delta/operational.h>
+#include <base/cannonball/delta/interface.h>
 #include <base/cannonball/table.h>
 #include <base/cannonball/patch.h>
 
@@ -12,7 +12,8 @@ void delta_demonstration()
 {
     using Table = base::cannonball::Table<int, int>;
     using Patch = base::cannonball::Patch<int, int>;
-    using Delta = base::cannonball::delta::Operational<int, int>;
+    using Delta = base::cannonball::delta::Delta<int, int>;
+    using Mode = base::cannonball::delta::Mode;
 
     Table state;
     state.insert(1, 10);
@@ -24,7 +25,7 @@ void delta_demonstration()
     patch.insert(3, base::cannonball::Patchlet<int>::deletion(30));
     patch.modify(4, 40);
 
-    const Delta delta{state, patch};
+    const Delta delta{state, patch, Mode::clean};
 
     std::set<int> added;
     for (const auto change : delta.added()) {
