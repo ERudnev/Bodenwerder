@@ -3,7 +3,6 @@
 #include <functional>
 #include <memory>
 
-#include <base/cannonball/table.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/model/complex/reality.h>
 #include <fQSM/processing/_forwards.h>
@@ -60,11 +59,11 @@ namespace fqsm::processing {
     template<category::Any Meta>
     struct Breach {
         using Context = context::Synchronous;
-        using Container = base::cannonball::Table<Id<Meta>, Quantum<Meta>>;
+        using Container = model::linear::Items<Meta>;
         using Global = GlobalValue<Meta>;
 
         explicit Breach(Context::Ptr parent)
-            : items(static_cast<Container&>(parent->reality.aspect<Meta>().items()))
+            : items(parent->reality.aspect<Meta>().items())
             , global(parent->reality.aspect<Meta>().global())
             , context(std::move(parent))
         {

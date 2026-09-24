@@ -12,7 +12,6 @@
 #include <fQSM/identifier.h>
 #include <fQSM/features/_forwards.h>
 #include <fQSM/meta/interface.include.h>
-#include <fQSM/model/elementary/state.h>
 #include <fQSM/processing/_forwards.h>
 
 namespace fqsm::aspect {
@@ -44,7 +43,7 @@ namespace fqsm::erased {
             static void move(void* dst, void* src) { ::new (dst) T(std::move(*static_cast<T*>(src))); }
             static void destroy(void* obj) { static_cast<T*>(obj)->~T(); }
             static bool equal(const void* lhs, const void* rhs) {
-                return model::elementary::equal_value(*static_cast<const T*>(lhs), *static_cast<const T*>(rhs));
+                return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
             }
         };
     }
@@ -54,15 +53,12 @@ namespace fqsm::erased {
         static_assert(std::is_copy_constructible_v<T> and std::is_move_constructible_v<T> and std::is_destructible_v<T>,
             "fqsm::erased::ops_of: type must be copyable, movable and destructible");
         using Of = detail::OpsOf<T>;
-        static constexpr Ops ops{
-            .size = sizeof(T),
-            .align = alignof(T),
-            .construct = std::is_default_constructible_v<T> ? &Of::construct : nullptr,
-            .copy = &Of::copy,
-            .move = &Of::move,
-            .destroy = &Of::destroy,
-            .equal = model::elementary::is_equalable<T>() ? &Of::equal : nullptr,
-        };
+        static constexpr Ops ops = [] {
+            Ops out{sizeof(T), alignof(T), nullptr, &Of::copy, &Of::move, &Of::destroy, nullptr};
+            if constexpr (std::is_default_constructible_v<T>) out.construct = &Of::construct;
+            if constexpr (std::equality_comparable<T>) out.equal = &Of::equal;
+            return out;
+        }();
         return ops;
     }
 

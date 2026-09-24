@@ -1,7 +1,6 @@
 #pragma once
 
 #include <fQSM/model/_forwards.h>
-#include <base/cannonball/table.h>
 #include <fQSM/model/intertype/composite.h>
 #include <fQSM/model/linear/state.h>
 

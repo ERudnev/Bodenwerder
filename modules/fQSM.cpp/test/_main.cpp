@@ -51,6 +51,13 @@
     X(erased_slots_basic) \
     X(erased_slots_aligned) \
     X(erased_slots_lifetime) \
+    X(erased_line_basic) \
+    X(erased_line_global_absent) \
+    X(erased_line_lifetime) \
+    X(erased_overlay_nested) \
+    X(erased_delta_modes) \
+    X(erased_items_view) \
+    X(erased_items_future) \
     // end
 
 #define FQSM_MINIMODEL_TESTS(X) \
