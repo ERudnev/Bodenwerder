@@ -1,43 +1,64 @@
 #pragma once
 
+#include <cstddef>
+#include <memory>
+#include <vector>
+
+#include <fQSM/erased/future_line.h>
+#include <fQSM/erased/line.h>
 #include <fQSM/model/_forwards.h>
-#include <fQSM/model/intertype/composite.h>
+#include <fQSM/model/intertype/schema.h>
 #include <fQSM/model/linear/state.h>
 
 namespace fqsm::model::complex {
 
+    // Heterogeneous state: one line per schema slot.
     class State {
     public:
-        //using Container = composite::Container<linear::state::Erased>;
-        using Composite = intertype::Composite<linear::state::Erased>;
+        using Slot = intertype::Graph::Slot;
 
-        State(Schema schema) : schema(schema) {}
-        virtual ~State()=default;
+        explicit State(Schema schema);
+        virtual ~State();
+        State(const State&) = delete;
+        State& operator=(const State&) = delete;
 
-        template<category::Any Meta>
-        const linear::State<Meta>& aspect() const {
-            return static_cast<const linear::State<Meta>&>(*composition().container.at(TypeId<Meta>).get());
-        }
+        virtual const erased::ReadLine& line(Slot slot) const = 0;
 
-        template<category::Any Meta>
-        linear::State<Meta>& aspect() {
-            return static_cast<linear::State<Meta>&>(*composition().container.at(TypeId<Meta>).get());
-        }
-
+        Slot slotOf(meta::Rtid typeId) const { return schema->slotOf(typeId); }
+        bool hasLine(meta::Rtid typeId) const { return schema->nodes.contains(typeId); }
         std::size_t quanta() const;
 
-        bool hasLine(meta::Rtid typeId) const { return composition().container.contains(typeId); }
+        template<category::Any Meta>
+        const linear::State<Meta>& aspect() const { return view<Meta>(); }
+
+        template<category::Any Meta>
+        linear::State<Meta>& aspect() { return view<Meta>(); }
 
         const Schema schema; // defined for Reality/Draft/any homogenous material object
-    protected:
-        using Erased = linear::state::Erased;
-        virtual cref<Erased> getLine(meta::Rtid) const = 0;
-        virtual ref<Erased> getLine(meta::Rtid) = 0;
-        virtual const Composite& composition() const = 0;
-        virtual Composite& composition()=0;
-    };
 
-    struct StateAddressable : State {
-        // own template casting accessors...
+    protected:
+        virtual erased::Line* writable_line(Slot) { return nullptr; }
+        virtual erased::FutureLine* future_line(Slot) const { return nullptr; }
+
+        // Typed views are created on first use and live as long as this state.
+        template<category::Any Meta>
+        linear::View<Meta>& view() const;
+
+    private:
+        mutable std::vector<std::unique_ptr<linear::state::Erased>> views;
     };
+}
+
+namespace fqsm::model::complex {
+
+    template<category::Any Meta>
+    linear::View<Meta>& State::view() const {
+        const Slot slot = slotOf(TypeId<Meta>);
+        auto& cached = views[slot];
+        if (not cached) {
+            auto* self = const_cast<State*>(this);
+            cached = std::make_unique<linear::View<Meta>>(line(slot), self->writable_line(slot), future_line(slot));
+        }
+        return static_cast<linear::View<Meta>&>(*cached);
+    }
 }

@@ -2,10 +2,17 @@
 
 namespace fqsm::model::complex {
 
+    State::State(Schema schema)
+        : schema(schema)
+        , views(schema->slotCount())
+    {}
+
+    State::~State() = default;
+
     std::size_t State::quanta() const {
         std::size_t total = 0;
-        for (const auto& entry : composition().container)
-            total += entry.second->quanta();
+        for (Slot slot = 0; slot < schema->slotCount(); ++slot)
+            total += line(slot).size();
         return total;
     }
 

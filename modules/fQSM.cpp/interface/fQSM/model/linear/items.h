@@ -85,6 +85,8 @@ namespace fqsm::model::linear {
 
         explicit Items(const erased::ReadLine& line) : reader(&line) {}
         explicit Items(erased::Line& line) : reader(&line), writer(&line) {}
+        // writable, when set, is the same line as reader
+        Items(const erased::ReadLine& line, erased::Line* writable) : reader(&line), writer(writable) {}
         Items(const Items&) = delete;
         Items& operator=(const Items&) = delete;
 

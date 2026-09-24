@@ -103,7 +103,6 @@ namespace fqsm::erased {
         void* find_mutable(RawId id);
         void* global_mutable();
         void set_global(const void* value);
-        void build_global(Slots::Builder build, void* context);
         void reset_global();
 
         // Copy (or move) value in; an existing value for id is replaced. Returns the stored value.

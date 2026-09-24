@@ -8,8 +8,8 @@
 #include <fQSM/erased/delta.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/linear/changes.h>
-#include <fQSM/model/linear/patch.h>
-#include <fQSM/model/linear/state.h>
+#include <fQSM/erased/line.h>
+#include <fQSM/erased/patch_line.h>
 
 namespace fqsm::model::linear {
 
@@ -100,9 +100,9 @@ namespace fqsm::model::linear {
         using GoneView = LayerView<AsGone>;
         using UpsertedView = LayerView<AsUpserted>;
 
-        Delta(const State<Meta>& state, const Patch<Meta>& patch, Mode mode)
-            : state(&state.line())
-            , patch(&patch.line)
+        Delta(const erased::ReadLine& state, const erased::PatchLine& patch, Mode mode)
+            : state(&state)
+            , patch(&patch)
             , mode(mode == Mode::clean ? erased::DeltaMode::clean : erased::DeltaMode::dirty)
         {}
 

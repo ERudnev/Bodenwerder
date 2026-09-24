@@ -14,8 +14,4 @@ namespace fqsm::processing {
         return transaction.writing(Transaction::Mode::normal);
     }
 
-    void SettingUp::emplace(meta::Rtid typeId, ref<model::linear::state::Erased> line) {
-        reality.putLine(typeId, std::move(line));
-    }
-
 }

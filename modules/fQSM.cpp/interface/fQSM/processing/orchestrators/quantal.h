@@ -7,7 +7,7 @@
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/categories.h>
 #include <fQSM/meta/rtid.h>
-#include <fQSM/model/linear/patch.h>
+#include <fQSM/model/linear/state.h>
 #include <fQSM/processing/contexts/operational.h>
 
 namespace fqsm::processing::orchestrator {
