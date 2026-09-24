@@ -80,7 +80,7 @@ namespace fqsm::processing {
     // In-place access to Realm lines of one aspect; the aspect is marked tainted for the next normalization.
     template<meta::category::Any Meta>
     struct Direct : detail::Handle {
-        using Container = model::linear::Items<Meta>;
+        using Container = ::fqsm::view::Items<Meta>;
         using Global = GlobalValue<Meta>;
 
         explicit Direct(Session& session)
@@ -120,8 +120,8 @@ namespace fqsm::processing {
 
         const model::complex::Future& proposal;
 
-        template<meta::category::Any Meta> auto changes() const -> model::linear::Delta<Meta> { return proposal.delta<Meta>(); }
-        template<meta::category::Any Meta> auto adjustments() const -> model::linear::WorkersInterface<Meta>& { return corrections.view.updates<Meta>(); }
+        template<meta::category::Any Meta> auto changes() const -> ::fqsm::view::Delta<Meta> { return proposal.delta<Meta>(); }
+        template<meta::category::Any Meta> auto adjustments() const -> ::fqsm::view::WorkersInterface<Meta>& { return corrections.view.updates<Meta>(); }
         utility::BadValue refuse(std::string message) const { return corrections.refuse(std::move(message)); }
         void warning(std::string message) const { corrections.warning(std::move(message)); }
 

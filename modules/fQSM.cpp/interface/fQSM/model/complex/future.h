@@ -10,7 +10,7 @@
 #include <fQSM/model/intertype/schema.h>
 #include <fQSM/model/complex/state.h>
 #include <fQSM/model/complex/patch.h>
-#include <fQSM/model/linear/delta.h>
+#include <fQSM/view/delta.h>
 
 namespace fqsm::model::complex {
 
@@ -22,7 +22,7 @@ namespace fqsm::model::complex {
         ~Future() override;
 
         template<category::Any Meta>
-        linear::Delta<Meta> delta() const;
+        ::fqsm::view::Delta<Meta> delta() const;
 
         // TODO: make it private to hide from workers.
         ref<Patch> patch() { return changes; }
@@ -32,10 +32,10 @@ namespace fqsm::model::complex {
         const Patch::Summary& summary() const { return changes->summary; }
 
         template<category::Any Meta>
-        linear::WorkersInterface<Meta>& updates() { return view<Meta>(); }
+        ::fqsm::view::WorkersInterface<Meta>& updates() { return slot<Meta>(); }
 
         template<category::Any Meta>
-        const linear::WorkersInterface<Meta>& updates() const { return view<Meta>(); }
+        const ::fqsm::view::WorkersInterface<Meta>& updates() const { return slot<Meta>(); }
 
         const erased::ReadLine& line(Slot slot) const override { return future(slot); }
         erased::FutureLine& writer(Slot slot) { return future(slot); }
@@ -65,8 +65,8 @@ namespace fqsm::model::complex {
 namespace fqsm::model::complex {
 
     template<category::Any Meta>
-    linear::Delta<Meta> Future::delta() const {
-        using Delta = linear::Delta<Meta>;
+    ::fqsm::view::Delta<Meta> Future::delta() const {
+        using Delta = ::fqsm::view::Delta<Meta>;
         const Slot slot = slotOf(TypeId<Meta>);
         const auto mode = dirty.contains(TypeId<Meta>) ? Delta::Mode::dirty : Delta::Mode::clean;
         const erased::PatchLine* patchLine = changes->line(slot);

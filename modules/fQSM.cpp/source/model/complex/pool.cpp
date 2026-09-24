@@ -46,7 +46,7 @@ namespace fqsm::model::complex {
         if (line) free[slot].futures.push_back(std::move(line));
     }
 
-    std::unique_ptr<linear::state::Erased> LinePool::take_view(Slot slot) {
+    std::unique_ptr<::fqsm::view::SlotBase> LinePool::take_view(Slot slot) {
         auto& list = free[slot].views;
         if (list.empty()) return nullptr;
         auto view = std::move(list.back());
@@ -54,7 +54,7 @@ namespace fqsm::model::complex {
         return view;
     }
 
-    void LinePool::give_view(Slot slot, std::unique_ptr<linear::state::Erased> view) {
+    void LinePool::give_view(Slot slot, std::unique_ptr<::fqsm::view::SlotBase> view) {
         if (view) free[slot].views.push_back(std::move(view));
     }
 }

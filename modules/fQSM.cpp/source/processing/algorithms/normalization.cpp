@@ -80,7 +80,7 @@ namespace fqsm::processing::algorithm::normalization {
         auto pass = base::make_shared<Patch>(source);
 
         // this is very important place: this cast is saves about ~300 lines of code for new class
-        // complex::Proposal === const complex::Draft
+        // the proposal is a Future over a const patch
         fqsm::ref<Patch> non_const_patch(std::const_pointer_cast<Patch>(changes.std_ptr()));
         const auto proposal = model::complex::Future{source, non_const_patch, taintedLines};
         Session corrections(proposal, pass);

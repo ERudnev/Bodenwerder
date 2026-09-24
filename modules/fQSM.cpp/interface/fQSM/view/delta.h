@@ -7,11 +7,11 @@
 
 #include <fQSM/erased/delta.h>
 #include <fQSM/meta/interface.include.h>
-#include <fQSM/model/linear/changes.h>
+#include <fQSM/view/changes.h>
 #include <fQSM/erased/line.h>
 #include <fQSM/erased/patch_line.h>
 
-namespace fqsm::model::linear {
+namespace fqsm::view {
 
     template<category::Any Meta>
     struct Delta {
