@@ -5,7 +5,7 @@
 #include <set>
 
 // Nested establish::Branch (Branch-over-Branch-over-Realm) is exactly the
-// Future-over-Future-over-Table nesting the cannonball cursor layer must handle:
+// Future-over-Future-over-Line nesting the layered cursor must handle:
 // each Branch level is one more overlaid patch layer on the aspect's items().
 namespace {
 namespace local {

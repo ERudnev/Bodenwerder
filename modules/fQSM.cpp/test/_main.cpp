@@ -60,6 +60,7 @@
     X(erased_patch_line_integrate_merge) \
     X(erased_patch_line_lifetime) \
     X(erased_overlay_nested) \
+    X(erased_future_line_writes) \
     X(erased_delta_modes) \
     X(erased_items_view) \
     X(erased_items_future) \
