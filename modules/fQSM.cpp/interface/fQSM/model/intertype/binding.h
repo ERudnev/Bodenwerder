@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <string>
 #include <string_view>
 
@@ -13,24 +12,25 @@
 
 namespace fqsm::model::intertype {
 
-    // TODO: replace with base::cannonball::composite::Lazy::Fabric Adapter
+    // Per-aspect entry points of the runtime, bound once at schema registration.
+    // Plain function pointers: every target is a template function or a capture-less lambda,
+    // so std::function would only add an indirection on the normalization and merge loops.
     struct Binding {
-        // this is pack of linear state fabrics:
         struct {
-            std::function<ref<linear::patch::Erased>()> create;
-            std::function<void(complex::Patch&, const complex::Patch&)> absorb;
-            std::function<void(complex::Patch&)> clear;
-            std::function<std::string(const complex::Patch&, std::string_view aspectName)> log;
+            ref<linear::patch::Erased> (*create)() = nullptr;
+            void (*absorb)(complex::Patch&, const complex::Patch&) = nullptr;
+            void (*clear)(complex::Patch&) = nullptr;
+            std::string (*log)(const complex::Patch&, std::string_view aspectName) = nullptr;
         } patch;
 
         struct {
-            std::function<ref<linear::state::Erased>()> create;
-            std::function<ref<linear::state::Erased>(const complex::State&)> clone;
+            ref<linear::state::Erased> (*create)() = nullptr;
+            ref<linear::state::Erased> (*clone)(const complex::State&) = nullptr;
         } state;
 
-        std::function<ref<linear::state::Erased>(const complex::State&, ref<complex::Patch>)> createFuture;
-        std::function<void(complex::Reality&, const complex::Patch&)> integratePatchSlice;
-        std::function<void(const complex::State&, complex::Patch&, const complex::Patch&)> mergePatchSlice;
-        std::function<void(::fqsm::processing::SettingUp&)> assemble;
+        ref<linear::state::Erased> (*createFuture)(const complex::State&, ref<complex::Patch>) = nullptr;
+        void (*integratePatchSlice)(complex::Reality&, const complex::Patch&) = nullptr;
+        void (*mergePatchSlice)(const complex::State&, complex::Patch&, const complex::Patch&) = nullptr;
+        void (*assemble)(::fqsm::processing::SettingUp&) = nullptr;
     };
 }

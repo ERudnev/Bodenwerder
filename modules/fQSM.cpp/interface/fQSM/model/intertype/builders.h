@@ -51,13 +51,13 @@ namespace fqsm::schema::details {
                 .log = &utility::detail::log_patch_slice<Meta>,
             },
             .state = {
-                .create = {},
+                .create = nullptr,
                 .clone = &model::complex::Reality::clone<Meta>,
             },
             .createFuture = &createFuture<Meta>,
             .integratePatchSlice = &integratePatchSlice<Meta>,
             .mergePatchSlice = &mergePatchSlice<Meta>,
-            .assemble = {},
+            .assemble = nullptr,
         };
         if constexpr (HasGlobalAssemble<Meta>) {
             out.assemble = [](fqsm::SettingUp& setup) {
