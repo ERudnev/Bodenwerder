@@ -9,20 +9,20 @@
 
 namespace fqsm {
 
-    using RawId = std::uint64_t;
-
     namespace internal::id {
         using BaseType = std::uint64_t;
         extern BaseType generate_unique();
         extern std::string info_hash(BaseType); // "abc-1234" style compressed
     }
 
+    using RawId = internal::id::BaseType;
+
     template<typename Meta, typename BaseType = internal::id::BaseType>
     class Identifier {
     public:
         Identifier() = delete;
 
-        using Raw = BaseType;
+        using Raw = RawId;
 
         explicit Identifier(BaseType v) : value(v) {}
 
