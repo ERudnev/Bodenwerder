@@ -24,9 +24,8 @@ namespace eltanin {
             static void advance(Writing, int64 dt_us);
             static void placeCamera(Writing, rmmr::Pose);
             static void tetherEnvironment(Writing);
+            static void pollPauseKey(Writing); // once per frame: rising edge on the bound window toggles paused
         };
-        struct Internals;
-        static const Behavior customAspectReactions();
     };
 
     // Schema fragment of doctrine/world.q1: every aspect declared in this file.

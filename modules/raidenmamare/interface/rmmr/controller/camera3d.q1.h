@@ -16,9 +16,9 @@ namespace rmmr::controller {
         };
         struct Actions : BaseActions {
             static auto create(Writing, scene::Camera::Id anchor, system::ViewInput::Id input) -> Id;
+            // once per frame, input phase: drives every camera from its input mail
+            static void tick(Writing, seconds dt);
         };
-        struct Internals;
-        static const Behavior customAspectReactions();
     };
 
     // Schema fragment of doctrine/controllers/camera3d.q1: every aspect declared in this file.

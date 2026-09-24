@@ -307,19 +307,22 @@ namespace eltanin {
             if (blueprintPack.unnamed)
                 world.branch([&](Writing context) { blueprints.show(context, *blueprintPack.unnamed); });
         }
+        // simulate phase: one session for every helper, one normalization per frame
+        Stewarding frame = world;
+        with<World>::pollPauseKey(frame);
         const seconds wallDt = static_cast<seconds>(dt_us) / 1'000'000.0;
-        const seconds simDt = with<World>::get_global(world).paused ? seconds{0} : wallDt * static_cast<seconds>(with<locality::Thing>::get_global(world).timeScale);
+        const seconds simDt = with<World>::get_global(frame).paused ? seconds{0} : wallDt * static_cast<seconds>(with<locality::Thing>::get_global(frame).timeScale);
         if (physics)
-            physics->step(world, simDt);
-        advanceSim(world, simDt);
-        handleCameraHotkey(world);
-        trackSpectator(world);
+            physics->step(frame, simDt);
+        advanceSim(frame, simDt);
+        handleCameraHotkey(frame);
+        trackSpectator(frame);
         if (uiMode == UiMode::starMap)
-            starMap.follow(world);
-        with<World>::tetherEnvironment(world);
+            starMap.follow(frame);
+        with<World>::tetherEnvironment(frame);
         if (planet and uiMode == UiMode::locality) {
-            if (const auto camera = with<World>::get_global(world).camera; camera and with<scene::Node>::exists(world, *camera))
-                planet->update(world, with<scene::Node>::get(world, *camera).pose.position);
+            if (const auto camera = with<World>::get_global(frame).camera; camera and with<scene::Node>::exists(frame, *camera))
+                planet->update(frame, with<scene::Node>::get(frame, *camera).pose.position);
         }
     }
 

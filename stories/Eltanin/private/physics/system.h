@@ -31,7 +31,7 @@ namespace eltanin::phys {
         planet::Planet* planet;
 
         System(scene::Root::Id);
-        void step(establish::Realm&, seconds dt);
+        void step(Stewarding, seconds dt);
         auto collisionCensus() const -> const collision::Census& { return collisions.census; }
 
     private:
