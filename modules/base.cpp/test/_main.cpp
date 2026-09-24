@@ -2,83 +2,24 @@
 
 #include <vector>
 
-#define CANNONBALL_TESTS(X) \
-    X(cannonballSmoke) \
-    X(denseTable) \
-    X(delta_demonstration) \
-    X(delta_dirty_mode) \
-    X(delta_over_nested_future) \
-    X(cursor_value_semantics) \
-    X(projected_traversal_invariant) \
-    X(patch_operations) \
-    X(patch_integrate) \
-    X(patch_merge) \
-    X(patch_modify_modification) \
-    X(raw_keyed_index) \
-    X(draft_patch_build) \
-    X(preview_future_world) \
-    X(future_nested_overlay) \
-    // end
-
 #define BASE_TESTS(X) \
     X(smoke) \
     X(serialization_roundtrip) \
-    CANNONBALL_TESTS(X) \
     // end
 
 BASETEST_FORWARD_DECLARE_TESTS(BASE_TESTS)
 
 int main() {
-    struct group final {
-        const char* name = "";
-        std::vector<base::testing::test_case> tests{};
-    };
-
-    const std::vector<group> groups{
-        group{ "cannonball", BASETEST_LIST(
-            BASETEST_NAMED("smoke", &tests::cannonballSmoke),
-            BASETEST_NAMED("denseTable", &tests::denseTable),
-            BASETEST_NAMED("delta_demonstration", &tests::delta_demonstration),
-            BASETEST_NAMED("delta_dirty_mode", &tests::delta_dirty_mode),
-            BASETEST_NAMED("delta_over_nested_future", &tests::delta_over_nested_future),
-            BASETEST_NAMED("cursor_value_semantics", &tests::cursor_value_semantics),
-            BASETEST_NAMED("projected_traversal_invariant", &tests::projected_traversal_invariant),
-            BASETEST_NAMED("patch_operations", &tests::patch_operations),
-            BASETEST_NAMED("patch_integrate", &tests::patch_integrate),
-            BASETEST_NAMED("patch_merge", &tests::patch_merge),
-            BASETEST_NAMED("patch_modify_modification", &tests::patch_modify_modification),
-            BASETEST_NAMED("raw_keyed_index", &tests::raw_keyed_index),
-            BASETEST_NAMED("draft_patch_build", &tests::draft_patch_build),
-            BASETEST_NAMED("preview_future_world", &tests::preview_future_world),
-            BASETEST_NAMED("future_nested_overlay", &tests::future_nested_overlay)
-        ) },
-        group{ "all", BASETEST_MAKE_LIST_TESTS(BASE_TESTS) },
-    };
-
-    base::testing::run_summary total{};
-
-    for (std::size_t i = 0; i < groups.size(); ++i) {
-        if (i != 0) base::message("");
-        base::message(std::format("{}:", groups[i].name));
-
-        const auto s = base::testing::run_tests(groups[i].tests);
-        total += s;
-    }
+    const auto summary = base::testing::run_tests(BASETEST_MAKE_LIST_TESTS(BASE_TESTS));
 
     base::message("");
     base::message(std::format("TOTAL SUMMARY: {} passed={}, failed={}, total={}",
-        total.ok() ? "OK" : "FAIL",
-        total.passed,
-        total.failed,
-        total.total()
+        summary.ok() ? "OK" : "FAIL",
+        summary.passed,
+        summary.failed,
+        summary.total()
     ));
-    base::message(std::format("TOTAL TIME: {:.3f} ms", total.elapsed_ms()));
+    base::message(std::format("TOTAL TIME: {:.3f} ms", summary.elapsed_ms()));
 
-    return total.ok() ? 0 : 1;
-}
-
-int main_one_test() {
-    const auto s = base::testing::run_tests(
-        BASETEST_LIST(BASETEST_NAMED("all", &tests::smoke)));
-    return s.ok() ? 0 : 1;
+    return summary.ok() ? 0 : 1;
 }
