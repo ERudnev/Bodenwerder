@@ -1,24 +1,15 @@
 #pragma once
 
-#include <memory>
-
 #include <fQSM/model/_forwards.h>
-#include <fQSM/processing/contexts/operational.h>
+#include <fQSM/processing/contexts/session.h>
 
 namespace fqsm::processing {
 
-    struct SettingUp;
-
+    // Something that gives Writing: a Realm (normalizes and integrates) or a Branch (merges into its parent).
     struct Transaction {
-        friend struct SettingUp;
         enum class Mode {
             normal,
             silent,
-        };
-        using Context = context::Operational;
-        struct ChildPolicy {
-            Reading view;
-            Context::Upstream upstream;
         };
 
         virtual ~Transaction() = default;
@@ -27,12 +18,13 @@ namespace fqsm::processing {
         operator Writing() { return writing(Mode::normal); }
         Writing silent_work() { return writing(Mode::silent); }
 
-        auto childPolicy() -> ChildPolicy {
-            return makeChildPolicy();
-        }
-
     protected:
+        friend struct SettingUp;
+        friend struct orchestrator::Branch;
+
         virtual auto writing(Mode) -> Writing = 0;
-        virtual auto makeChildPolicy() -> ChildPolicy = 0;
+        // A child Branch reads this state and hands its patch back when it closes.
+        virtual auto child_base() const -> const model::complex::State& = 0;
+        virtual void accept_child(ref<model::complex::Patch>) = 0;
     };
 }

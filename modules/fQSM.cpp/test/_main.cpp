@@ -35,6 +35,10 @@
     X(quantal) \
     X(transaction_hierarchy) \
     X(aspect_minimal_declaration) \
+    X(contexts_writing_copies_share_session) \
+    X(contexts_nested_branch_refusal) \
+    X(contexts_stewarding_direct_and_writing) \
+    X(contexts_retrospecting_reads_origin) \
     X(nested_branch_meta_visibility) \
     X(schema_merge_nested_equals_flat) \
     X(schema_merge_order_independent) \

@@ -21,7 +21,7 @@ namespace fqsm::features::reactions {
     template<category::Any Meta>
     void deletion<Meta>::apply(Reacting context) {
         for (const auto change : Abstract::changes<Meta>(context).removed()) {
-            this->action(::fqsm::Retrospecting{context.retrospective}, change.id, change.old);
+            this->action(context.retrospecting(), change.id, change.old);
         }
     }
 }

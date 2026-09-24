@@ -6,7 +6,7 @@
 #include <fQSM/model/complex/patch.h>
 #include <fQSM/model/complex/pool.h>
 #include <fQSM/model/complex/reality.h>
-#include <fQSM/processing/contexts/operational.h>
+#include <fQSM/processing/contexts/session.h>
 
 namespace {
     namespace local {
@@ -36,7 +36,7 @@ namespace tests {
 void erased_lazy_patch_lines()
 {
     using namespace local;
-    using Context = fqsm::processing::context::Operational;
+    using Session = fqsm::processing::Session;
 
     const fqsm::Schema schema = ask::schema::merge({
         ask::schema::aspect<A>(),
@@ -49,8 +49,8 @@ void erased_lazy_patch_lines()
     fqsm::model::complex::Reality world(schema);
     auto patch = base::make_shared<fqsm::model::complex::Patch>(world);
     {
-        auto context = std::make_shared<Context>(world, patch, Context::Upstream{});
-        fqsm::Writing writing{context};
+        Session session(world, patch);
+        fqsm::Writing writing{session};
         with<B>::create(writing, {1});
         with<B>::create(writing, {2});
     }
@@ -68,7 +68,7 @@ void erased_lazy_patch_lines()
 void erased_pooled_lines()
 {
     using namespace local;
-    using Context = fqsm::processing::context::Operational;
+    using Session = fqsm::processing::Session;
     using Patch = fqsm::model::complex::Patch;
 
     const fqsm::Schema schema = ask::schema::merge({
@@ -79,8 +79,8 @@ void erased_pooled_lines()
     const auto slotB = schema->slotOf(fqsm::TypeId<B>);
 
     const auto write = [&](const std::shared_ptr<Patch>& target, integer first, integer second) {
-        auto context = std::make_shared<Context>(world, base::shared_ref<Patch>(target), Context::Upstream{});
-        fqsm::Writing writing{context};
+        Session session(world, base::shared_ref<Patch>(target));
+        fqsm::Writing writing{session};
         with<B>::create(writing, {first});
         if (second) with<B>::create(writing, {second});
         *with<B>::modify_global(writing) = B::Global{first};
@@ -97,8 +97,8 @@ void erased_pooled_lines()
 
     auto second = std::make_shared<Patch>(world);
     {
-        auto context = std::make_shared<Context>(world, base::shared_ref<Patch>(second), Context::Upstream{});
-        fqsm::Writing writing{context};
+        Session session(world, base::shared_ref<Patch>(second));
+        fqsm::Writing writing{session};
         with<B>::create(writing, {3});
     }
     EXPECT_EQ(second->linesCreated(), std::size_t{1});

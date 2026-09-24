@@ -1,7 +1,7 @@
 #pragma once
 
 #include <fQSM/model/_forwards.h>
-#include <fQSM/processing/contexts/review.h>
+#include <fQSM/processing/contexts/session.h>
 
 namespace fqsm::processing::algorithm {
 
