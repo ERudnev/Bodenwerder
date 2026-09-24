@@ -38,7 +38,7 @@ namespace rmmr::scene::actor {
             return 10 * buckets * buckets;
         }
 
-        auto gpuBatch(const PatchGrid::Quantum& grid, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, renderer::BlendMode blend) -> renderer::GpuBatch {
+        auto gpuBatch(const PatchGrid::Quantum& grid, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, renderer::RenderState renderState) -> renderer::GpuBatch {
             return renderer::GpuBatch{
                 .geometry = grid.geometry,
                 .material = material,
@@ -60,7 +60,7 @@ namespace rmmr::scene::actor {
                 .metadataByteSize = renderer::SizePtr{16},
                 .indirect = grid.indirect,
                 .drawCount = grid.drawCount,
-                .renderState = renderer::RenderState{.blend = blend},
+                .renderState = renderState,
             };
         }
 
@@ -224,7 +224,7 @@ namespace rmmr::scene::actor {
         glNamedBufferSubData(grid.actorState, 0, sizeof(FieldState), &state);
         const auto& material = with<resource::material::Runtime>::get(context, grid.material);
         for (const auto& [pass, technique] : material.techniques)
-            where.gpu[pass].push_back(gpuBatch(grid, grid.material, technique.shader, material.blend));
+            where.gpu[pass].push_back(gpuBatch(grid, grid.material, technique.shader, material.renderState));
     }
 
     struct PatchGrid::Internals : PatchGrid::DefaultInternals {

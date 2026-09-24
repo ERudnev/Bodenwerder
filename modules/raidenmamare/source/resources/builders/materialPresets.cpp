@@ -8,11 +8,16 @@ namespace rmmr::resource::builders::material {
 
     namespace {
 
-        auto shadow_depth_technique(resource::shader::Reference program) -> Asset::Technique {
+        auto inheritedDepth(renderer::BlendMode blend) -> renderer::RenderState {
+            return renderer::RenderState{.blend = blend, .depthTest = renderer::ToggleMode::inherit, .depthWrite = renderer::ToggleMode::inherit, .depthCompare = renderer::DepthCompare::inherit};
+        }
+
+        auto shadowDepthTechnique(resource::shader::Reference program) -> Asset::Technique {
             return Asset::Technique{
                 .program = program,
                 .uniforms = {},
                 .glowSpread = false,
+                .lighting = renderer::LightingMode::unlit,
             };
         }
 
@@ -25,11 +30,12 @@ namespace rmmr::resource::builders::material {
                     .program = program,
                     .uniforms = {},
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::unlit,
                 }},
-                {renderer::Pass::shadow, shadow_depth_technique(shadow_depth)},
+                {renderer::Pass::shadow, shadowDepthTechnique(shadow_depth)},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::inherit,
+            .renderState = inheritedDepth(renderer::BlendMode::inherit),
         };
     }
 
@@ -42,11 +48,12 @@ namespace rmmr::resource::builders::material {
                         "shadowMap",
                     }),
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::primary,
                 }},
-                {renderer::Pass::shadow, shadow_depth_technique(shadow_depth)},
+                {renderer::Pass::shadow, shadowDepthTechnique(shadow_depth)},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::inherit,
+            .renderState = inheritedDepth(renderer::BlendMode::inherit),
         };
     }
 
@@ -59,10 +66,11 @@ namespace rmmr::resource::builders::material {
                         "shadowMap",
                     }),
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::primary,
                 }},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::alpha,
+            .renderState = inheritedDepth(renderer::BlendMode::alpha),
         };
     }
 
@@ -76,11 +84,12 @@ namespace rmmr::resource::builders::material {
                         "shadowMap",
                     }),
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::primary,
                 }},
-                {renderer::Pass::shadow, shadow_depth_technique(shadow_depth)},
+                {renderer::Pass::shadow, shadowDepthTechnique(shadow_depth)},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::inherit,
+            .renderState = inheritedDepth(renderer::BlendMode::inherit),
         };
     }
 
@@ -94,10 +103,11 @@ namespace rmmr::resource::builders::material {
                         "shadowMap",
                     }),
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::primary,
                 }},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::inherit,
+            .renderState = inheritedDepth(renderer::BlendMode::inherit),
         };
     }
 
@@ -110,10 +120,11 @@ namespace rmmr::resource::builders::material {
                         "albedoMap",
                     }),
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::primary,
                 }},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::alpha,
+            .renderState = inheritedDepth(renderer::BlendMode::alpha),
         };
     }
 
@@ -126,10 +137,11 @@ namespace rmmr::resource::builders::material {
                         "albedoMap",
                     }),
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::unlit,
                 }},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::alpha,
+            .renderState = inheritedDepth(renderer::BlendMode::alpha),
         };
     }
 
@@ -140,10 +152,11 @@ namespace rmmr::resource::builders::material {
                     .program = program,
                     .uniforms = {},
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::unlit,
                 }},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::alpha,
+            .renderState = inheritedDepth(renderer::BlendMode::alpha),
         };
     }
 
@@ -154,10 +167,11 @@ namespace rmmr::resource::builders::material {
                     .program = program,
                     .uniforms = {},
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::unlit,
                 }},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::inherit,
+            .renderState = inheritedDepth(renderer::BlendMode::inherit),
         };
     }
 
@@ -168,10 +182,11 @@ namespace rmmr::resource::builders::material {
                     .program = program,
                     .uniforms = {},
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::unlit,
                 }},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::inherit,
+            .renderState = inheritedDepth(renderer::BlendMode::inherit),
         };
     }
 
@@ -186,10 +201,11 @@ namespace rmmr::resource::builders::material {
                         "inverseAtlasSize",
                     }),
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::unlit,
                 }},
             },
             .nearest = true,
-            .blend = renderer::BlendMode::inherit,
+            .renderState = inheritedDepth(renderer::BlendMode::inherit),
         };
     }
 
@@ -200,10 +216,11 @@ namespace rmmr::resource::builders::material {
                     .program = program,
                     .uniforms = {},
                     .glowSpread = false,
+                    .lighting = renderer::LightingMode::unlit,
                 }},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::inherit,
+            .renderState = inheritedDepth(renderer::BlendMode::inherit),
         };
     }
 
@@ -214,10 +231,11 @@ namespace rmmr::resource::builders::material {
                     .program = program,
                     .uniforms = {},
                     .glowSpread = true,
+                    .lighting = renderer::LightingMode::unlit,
                 }},
             },
             .nearest = false,
-            .blend = renderer::BlendMode::inherit,
+            .renderState = inheritedDepth(renderer::BlendMode::inherit),
         };
     }
 

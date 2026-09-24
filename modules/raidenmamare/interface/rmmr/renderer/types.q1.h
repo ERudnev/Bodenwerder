@@ -21,10 +21,6 @@ namespace rmmr::renderer {
 
     using namespace fqsm::api;
 
-    struct RenderState {
-        BlendMode blend;
-    };
-
     struct DiscretePose {
         index3 pos;
         Signed32 ori;

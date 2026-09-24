@@ -24,9 +24,40 @@ namespace rmmr::renderer {
     // Per-draw / per-material; not a queue basket. inherit → pass default.
     enum class BlendMode : std::uint8_t {
         inherit,
+        replace,
         alpha,
         additive,
         premultiplied, // ONE, ONE_MINUS_SRC_ALPHA (add when a≈0; occlude when a>0)
+    };
+
+    enum class ToggleMode : std::uint8_t {
+        inherit,
+        disabled,
+        enabled,
+    };
+
+    enum class DepthCompare : std::uint8_t {
+        inherit,
+        less,
+        lessEqual,
+        equal,
+        notEqual,
+        greaterEqual,
+        greater,
+        always,
+        never,
+    };
+
+    enum class LightingMode : std::uint8_t {
+        unlit,
+        primary,
+    };
+
+    struct RenderState {
+        BlendMode blend;
+        ToggleMode depthTest;
+        ToggleMode depthWrite;
+        DepthCompare depthCompare;
     };
 
     inline constexpr std::size_t pass_count = static_cast<std::size_t>(Pass::identity) + 1;

@@ -34,7 +34,7 @@ namespace eltanin::geo {
         void bind(Writing context) {
             if (sphere and material)
                 return;
-            sphere = with<rmmr::resource::Assets>::find<rmmr::resource::geometry::Asset>(context, rmmr::resource::Unit::Name::from("rmmr", "sphere"));
+            sphere = with<rmmr::resource::Assets>::find<rmmr::resource::geometry::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "sphere"));
             if (not sphere)
                 return (void)context.refuse("eltanin::geo::Sun: sphere geometry missing");
             material = with<rmmr::resource::Assets>::find<rmmr::resource::material::Asset>(context, rmmr::resource::Unit::Name::from("Eltanin", "skySun"));

@@ -8,7 +8,7 @@ namespace rmmr
 
     using Reference as resource::Unit::Reference
 
-    // Material = pass techniques (shader + uniform slots + blend). Sampler values are on the draw.
+    // Material = pass techniques (shader + uniform slots) + draw pipeline state. Sampler values are on the draw.
     // Instance = material + sampler params; albedoMap value = texpack layer filename.
     struct Instance
       material: #Asset
@@ -21,10 +21,11 @@ namespace rmmr
         locations: Locations
         bindings: vector<Uniform::Binding>
         glowSpread: bool
+        lighting: renderer::LightingMode
       one
         techniques: umap<renderer::Pass, Technique>
         nearest: bool
-        blend: renderer::BlendMode
+        renderState: renderer::RenderState
         ?apply(#system::Device, renderer::Pass)
 
     feature Asset of resource::Unit
@@ -32,8 +33,9 @@ namespace rmmr
         program: shader::Reference
         uniforms: Uniform::Palette
         glowSpread: bool
+        lighting: renderer::LightingMode
       one
         techniques: umap<renderer::Pass, Technique>
         nearest: bool
-        blend: renderer::BlendMode
+        renderState: renderer::RenderState
         >materialize(#system::Device) -> #Runtime

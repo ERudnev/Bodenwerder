@@ -13,7 +13,7 @@ namespace rmmr::resource::material {
     using Reference = resource::Unit::Reference;
     using Uniform = ::rmmr::resource::Uniform;
 
-    // Material = pass techniques (shader + uniform slots + blend). Sampler values are on the draw.
+    // Material = pass techniques (shader + uniform slots) + draw pipeline state. Sampler values are on the draw.
     struct Runtime : Entity<Runtime> {
         using Locations = ::rmmr::material::Semantics::RuntimeMapping;
         struct Technique {
@@ -21,11 +21,12 @@ namespace rmmr::resource::material {
             Locations locations;
             vector<Uniform::Binding> bindings;
             bool glowSpread;
+            renderer::LightingMode lighting;
         };
         struct Quantum {
             umap<renderer::Pass, Technique> techniques;
             bool nearest;
-            renderer::BlendMode blend;
+            renderer::RenderState renderState;
         };
         struct Actions : BaseActions {
             static void apply(Reading, Id, system::Device::Id, renderer::Pass);
@@ -39,11 +40,12 @@ namespace rmmr::resource::material {
             shader::Reference program;
             Uniform::Palette uniforms;
             bool glowSpread;
+            renderer::LightingMode lighting;
         };
         struct Quantum {
             umap<renderer::Pass, Technique> techniques;
             bool nearest;
-            renderer::BlendMode blend;
+            renderer::RenderState renderState;
         };
         struct Actions : BaseActions {
             static auto materialize(Writing, Id, system::Device::Id) -> optional<Runtime::Id>;

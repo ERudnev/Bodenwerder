@@ -1,4 +1,6 @@
 #include "game.h"
+#include "geo/assets.h"
+#include "locality/assets.h"
 
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/locality/flash.q1.h>
@@ -25,17 +27,10 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
-#include <rmmr/resources/overlays.q1.h>
-#include <rmmr/resources/runtimes.q1.h>
-#include <rmmr/resources/shaders.q1.h>
-#include <rmmr/resources/texpack.q1.h>
-#include <rmmr/resources/texture3array.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
-#include <rmmr/semantics/rendering.h>
-#include <rmmr/semantics/uniform.h>
 #include <rmmr/system/viewport.q1.h>
 #include <rmmr/system/window.q1.h>
 
@@ -45,7 +40,6 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
-#include <utility>
 
 namespace eltanin {
 
@@ -145,324 +139,20 @@ namespace eltanin {
     }
 
     void Game::addAssets(Writing context) {
-        using namespace ::rmmr::resource;
-        using geometry::Generator;
-        using Assets = ::rmmr::resource::Assets;
-        using Name = Unit::Name;
-        using Material = ::rmmr::resource::material::Asset;
-
-        assets.primitive.grid = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "grid"), item<Generator>{.type = Generator::Type::gridPlane, .subdivisions = 0});
-        assets.primitive.sphere = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "sphere"), item<Generator>{.type = Generator::Type::sphere, .subdivisions = 1});
-        assets.primitive.kube = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "kube"), item<Generator>{.type = Generator::Type::kube, .subdivisions = 0});
-        assets.primitive.diamond = with<Assets>::add_geometry_generator(context, Name::from("rmmr", "diamond"), item<Generator>{.type = Generator::Type::diamond, .subdivisions = 0});
-
-        // Pack own name = directory basename; layers = image filenames (skySphere.png).
-        assets.sprites = with<Assets>::add_texpack_catalog(
-            context,
-            Name::from("Eltanin", "sprites"),
-            item<texpack::LoaderCatalog>{.directory = "sprites"},
-            index2{1024, 1024},
-            8);
-
-        const auto sky_sphere_shader = with<Assets>::add_shader_loader(
-            context,
-            Name::from("Eltanin", "skySphere"),
-            item<shader::Loader>{
-                .vertex = "shaders/skySphere.vert.glsl",
-                .fragment = "shaders/skySphere.frag.glsl",
-            });
-
-        const auto blueprints_editor_effect = with<Assets>::add_shader_loader(
-            context,
-            Name::from("Eltanin", "blueprintsEditorEffect"),
-            item<shader::Loader>{
-                .vertex = "shaders/blueprintsEditorEffect.vert.glsl",
-                .fragment = "shaders/blueprintsEditorEffect.frag.glsl",
-            });
-        assets.blueprintsEditorEffect = with<Assets>::add_overlay(
-            context,
-            Name::from("Eltanin", "blueprintsEditorEffect"),
-            overlay::Asset::Quantum{
-                .program = with<Unit>::remember(context, blueprints_editor_effect),
-                .uniforms = ::rmmr::material::Semantics::ids_of({"identiffyMap", "selectedMap", "under"}),
-                .scale = overlay::Scale::full,
-            });
-
-        assets.skySphereMaterial = with<Assets>::add_material(
-            context,
-            Name::from("Eltanin", "skySphere"),
-            Material::Quantum{
-                .techniques = {
-                    {renderer::Pass::environment, Material::Technique{
-                        .program = with<Unit>::remember(context, sky_sphere_shader),
-                        .uniforms = ::rmmr::material::Semantics::ids_of({"albedoMap"}),
-                        .glowSpread = true,
-                    }},
-                },
-                .nearest = false,
-                .blend = renderer::BlendMode::additive,
-            });
-        const auto skyBackdropShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "skyBackdrop"), item<shader::Loader>{.vertex = "shaders/skyBackdrop.vert.glsl", .fragment = "shaders/skyBackdrop.frag.glsl"});
-        assets.skyBackdropMaterial = with<Assets>::add_material(context, Name::from("Eltanin", "skyBackdrop"), Material::Quantum{
-            .techniques = {{renderer::Pass::environment, Material::Technique{.program = with<Unit>::remember(context, skyBackdropShader), .uniforms = {}, .glowSpread = false}}},
-            .nearest = false,
-            .blend = renderer::BlendMode::additive,
-        });
-        const auto skySunShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "skySun"), item<shader::Loader>{.vertex = "shaders/skyBackdrop.vert.glsl", .fragment = "shaders/skySun.frag.glsl"});
-        with<Assets>::add_material(context, Name::from("Eltanin", "skySun"), Material::Quantum{
-            .techniques = {{renderer::Pass::environment, Material::Technique{.program = with<Unit>::remember(context, skySunShader), .uniforms = {}, .glowSpread = true}}},
-            .nearest = false,
-            .blend = renderer::BlendMode::additive,
-        });
-
-        const auto flashShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "flash"), item<shader::Loader>{.vertex = "shaders/flash.vert.glsl", .fragment = "shaders/flash.frag.glsl"});
-        const auto flashGlowShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "flashGlow"), item<shader::Loader>{.vertex = "shaders/flash.vert.glsl", .fragment = "shaders/flashGlow.frag.glsl"});
-        const auto flashBrisanceShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "flashBrisance"), item<shader::Loader>{.vertex = "shaders/flash.vert.glsl", .fragment = "shaders/flashBrisance.frag.glsl"});
-        const auto dustShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "dust"), item<shader::Loader>{.vertex = "shaders/flash.vert.glsl", .fragment = "shaders/dust.frag.glsl"});
-        with<Assets>::add_geometry_generator(context, Name::from("Eltanin", "flashSphere"), item<Generator>{.type = Generator::Type::sphere, .subdivisions = 4});
-        with<Assets>::add_material(
-            context,
-            Name::from("Eltanin", "flash"),
-            Material::Quantum{
-                .techniques = {
-                    {renderer::Pass::transparent, Material::Technique{
-                        .program = with<Unit>::remember(context, flashShader),
-                        .uniforms = {},
-                        .glowSpread = true,
-                    }},
-                },
-                .nearest = false,
-                .blend = renderer::BlendMode::additive,
-            });
-        with<Assets>::add_material(
-            context,
-            Name::from("Eltanin", "flashGlow"),
-            Material::Quantum{
-                .techniques = {
-                    {renderer::Pass::transparent, Material::Technique{
-                        .program = with<Unit>::remember(context, flashGlowShader),
-                        .uniforms = {},
-                        .glowSpread = true,
-                    }},
-                },
-                .nearest = false,
-                .blend = renderer::BlendMode::additive,
-            });
-        with<Assets>::add_material(
-            context,
-            Name::from("Eltanin", "flashBrisance"),
-            Material::Quantum{
-                .techniques = {
-                    {renderer::Pass::transparent, Material::Technique{
-                        .program = with<Unit>::remember(context, flashBrisanceShader),
-                        .uniforms = {},
-                        .glowSpread = false,
-                    }},
-                },
-                .nearest = false,
-                .blend = renderer::BlendMode::alpha,
-            });
-        with<Assets>::add_material(
-            context,
-            Name::from("Eltanin", "dust"),
-            Material::Quantum{
-                .techniques = {
-                    {renderer::Pass::transparent, Material::Technique{
-                        .program = with<Unit>::remember(context, dustShader),
-                        .uniforms = {},
-                        .glowSpread = true,
-                    }},
-                },
-                .nearest = false,
-                .blend = renderer::BlendMode::additive,
-            });
-
-        if (not shared->material.lit) {
-            return (void)context.refuse("eltanin::Game::addAssets: rmmr lit missing");
-        }
-        if (not shared->material.gizmo.textured) {
-            return (void)context.refuse("eltanin::Game::addAssets: rmmr gizmo_textured missing");
-        }
-        {
-            const auto& gizmoTextured = with<Material>::get(context, *shared->material.gizmo.textured);
-            const auto gizmoTechnique = gizmoTextured.techniques.find(renderer::Pass::gizmo);
-            if (gizmoTechnique == gizmoTextured.techniques.end())
-                return (void)context.refuse("eltanin::Game::addAssets: gizmo_textured technique missing");
-            assets.collisionDebugMaterial = with<Assets>::add_material(
-                context,
-                Name::from("Eltanin", "collisionDebug"),
-                Material::Quantum{
-                    .techniques = {
-                        {renderer::Pass::opaque, Material::Technique{
-                            .program = gizmoTechnique->second.program,
-                            .uniforms = gizmoTechnique->second.uniforms,
-                            .glowSpread = false,
-                        }},
-                    },
-                    .nearest = false,
-                    .blend = renderer::BlendMode::inherit,
-                });
-        }
-        {
-            const auto& litQuantum = with<Material>::get(context, *shared->material.lit);
-            const auto shadowTechnique = litQuantum.techniques.find(renderer::Pass::shadow);
-            if (shadowTechnique == litQuantum.techniques.end())
-                return (void)context.refuse("eltanin::Game::addAssets: lit shadow technique missing");
-            const auto rockShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "rock"), item<shader::Loader>{.vertex = "shaders/rock.vert.glsl", .fragment = "shaders/rock.frag.glsl"});
-            with<Assets>::add_material(context, Name::from("Eltanin", "rock"), Material::Quantum{
-                .techniques = {
-                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, rockShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}), .glowSpread = true}},
-                    {renderer::Pass::shadow, Material::Technique{.program = shadowTechnique->second.program, .uniforms = {}, .glowSpread = false}},
-                },
-                .nearest = false,
-                .blend = renderer::BlendMode::inherit,
-            });
-            const auto boulderShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "boulder"), item<shader::Loader>{.vertex = "shaders/boulder.vert.glsl", .fragment = "shaders/boulder.frag.glsl"});
-            with<Assets>::add_material(context, Name::from("Eltanin", "boulder"), Material::Quantum{
-                .techniques = {
-                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, boulderShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}), .glowSpread = true}},
-                    {renderer::Pass::shadow, Material::Technique{.program = shadowTechnique->second.program, .uniforms = {}, .glowSpread = false}},
-                },
-                .nearest = false,
-                .blend = renderer::BlendMode::inherit,
-            });
-            const auto planetoidShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "planetoid"), item<shader::Loader>{.vertex = "shaders/planetoid.vert.glsl", .fragment = "shaders/planetoid.frag.glsl"});
-            with<Assets>::add_material(context, Name::from("Eltanin", "planetoid"), Material::Quantum{
-                .techniques = {
-                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetoidShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap"}), .glowSpread = false}},
-                    {renderer::Pass::shadow, Material::Technique{.program = shadowTechnique->second.program, .uniforms = {}, .glowSpread = false}},
-                },
-                .nearest = false,
-                .blend = renderer::BlendMode::inherit,
-            });
-            const auto planetShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "planet"), item<shader::Loader>{.vertex = "shaders/planet.vert.glsl", .fragment = "shaders/planet.frag.glsl"});
-            with<Assets>::add_material(context, Name::from("Eltanin", "planet"), Material::Quantum{
-                .techniques = {
-                    {renderer::Pass::opaque, Material::Technique{.program = with<Unit>::remember(context, planetShader), .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap", "heightMap", "coverMap", "farAlbedoMap", "farNormalMap"}), .glowSpread = false}},
-                },
-                .nearest = false,
-                .blend = renderer::BlendMode::inherit,
-            });
-            const auto atmosphereShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "atmosphere"), item<shader::Loader>{.vertex = "shaders/atmosphere.vert.glsl", .fragment = "shaders/atmosphere.frag.glsl"});
-            with<Assets>::add_geometry_generator(context, Name::from("Eltanin", "atmosphereSphere"), item<Generator>{.type = Generator::Type::sphere, .subdivisions = 4});
-            with<Assets>::add_geometry_generator(context, Name::from("Eltanin", "patchGrid"), item<Generator>{.type = Generator::Type::patchGrid, .subdivisions = 32});
-            with<Assets>::add_material(context, Name::from("Eltanin", "atmosphere"), Material::Quantum{
-                .techniques = {{renderer::Pass::atmosphere, Material::Technique{.program = with<Unit>::remember(context, atmosphereShader), .uniforms = ::rmmr::material::Semantics::ids_of({"sceneDepth"}), .glowSpread = true}}},
-                .nearest = false,
-                .blend = renderer::BlendMode::premultiplied,
-            });
-            const auto cloudShader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "cloud"), item<shader::Loader>{.vertex = "shaders/cloud.vert.glsl", .fragment = "shaders/cloud.frag.glsl"});
-            with<Assets>::add_material(context, Name::from("Eltanin", "cloud"), Material::Quantum{
-                .techniques = {{renderer::Pass::atmosphere, Material::Technique{.program = with<Unit>::remember(context, cloudShader), .uniforms = ::rmmr::material::Semantics::ids_of({"sceneDepth", "heightMap"}), .glowSpread = true}}},
-                .nearest = false,
-                .blend = renderer::BlendMode::premultiplied,
-            });
-            const auto manager = with<Manager>::singleton(context);
-            const auto crustId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "crust")});
-            with<texture3array::Asset>::extend(context, crustId, texture3array::Asset::Quantum{.layerSize = index3{0, 0, 0}, .capacity = 0});
-            const auto faciesId = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "facies")});
-            with<texpack::Pack>::extend(context, faciesId, texpack::Pack::Quantum{.layerSize = index2{1024, 1024}, .capacity = 48, .layers = {}, .compressed = true, .grayscale = false});
-            with<texpack::LoaderCatalog>::extend(context, faciesId, texpack::LoaderCatalog::Quantum{.directory = "textures/facies"});
-        }
+        if (not shared)
+            return (void)context.refuse("eltanin::Game::addAssets: shared assets missing");
+        const auto core = ::eltanin::assets::addCore(context, *shared);
+        if (not core)
+            return;
+        assets = *core;
+        locality::assets::add(context);
+        if (not geo::assets::add(context, *shared))
+            return;
+        if (not blueprints.addAssets(context, *shared))
+            return;
+        if (not starMap.visuals.addAssets(context))
+            return;
         strategic.loadResources(context, *shared);
-
-        // Mech albedo catalog; editor meshpacks under meshes/editor.
-        if (not shared or not shared->material.litTextured) {
-            return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_textured missing");
-        }
-        if (not shared->material.litTransparent) {
-            return (void)context.refuse("eltanin::Game::addAssets: rmmr lit_transparent missing");
-        }
-        if (not shared->material.lit) {
-            return (void)context.refuse("eltanin::Game::addAssets: rmmr lit missing");
-        }
-        assets.mech = with<Assets>::add_texpack_catalog(
-            context,
-            Name::from("Eltanin", "mech"),
-            item<texpack::LoaderCatalog>{.directory = "textures/mech"},
-            index2{1024, 1024},
-            32);
-        {
-            const auto hullProgram = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "hull"), item<shader::Loader>{.vertex = "shaders/hull.vert.glsl", .fragment = "shaders/hull.frag.glsl"});
-            auto hull = with<Material>::get(context, *shared->material.litTextured);
-            const auto opaque = hull.techniques.find(renderer::Pass::opaque);
-            if (opaque == hull.techniques.end()) {
-                return (void)context.refuse("eltanin::Game::addAssets: lit_textured has no opaque pass");
-            }
-            opaque->second.program = with<Unit>::remember(context, hullProgram);
-            opaque->second.glowSpread = true;
-            (void)with<Assets>::add_material(context, Name::from("Eltanin", "hull"), std::move(hull));
-        }
-        {
-            const auto wreckProgram = with<Assets>::add_shader_loader(context, Name::from("Eltanin", "wreck"), item<shader::Loader>{.vertex = "shaders/wreck.vert.glsl", .fragment = "shaders/wreck.frag.glsl"});
-            auto wreck = with<Material>::get(context, *shared->material.litTextured);
-            const auto opaque = wreck.techniques.find(renderer::Pass::opaque);
-            if (opaque == wreck.techniques.end()) {
-                return (void)context.refuse("eltanin::Game::addAssets: lit_textured has no opaque pass");
-            }
-            opaque->second.program = with<Unit>::remember(context, wreckProgram);
-            opaque->second.glowSpread = true;
-            (void)with<Assets>::add_material(context, Name::from("Eltanin", "wreck"), std::move(wreck));
-            if (not shared->material.litTexturedAlpha) {
-                return (void)context.refuse("eltanin::Game::addAssets: lit_textured_alpha missing");
-            }
-            auto dustWreck = with<Material>::get(context, *shared->material.litTexturedAlpha);
-            const auto transparent = dustWreck.techniques.find(renderer::Pass::transparent);
-            if (transparent == dustWreck.techniques.end()) {
-                return (void)context.refuse("eltanin::Game::addAssets: lit_textured_alpha has no transparent pass");
-            }
-            transparent->second.program = with<Unit>::remember(context, wreckProgram);
-            transparent->second.glowSpread = true;
-            dustWreck.blend = renderer::BlendMode::alpha;
-            (void)with<Assets>::add_material(context, Name::from("Eltanin", "dustWreck"), std::move(dustWreck));
-        }
-        // Transparent: world cursor. Opaque: role-colored placeholder boxes (attachments).
-        (void)with<Assets>::add_material(context, Name::from("Eltanin", "type"), with<Material>::get(context, *shared->material.litTransparent));
-        (void)with<Assets>::add_material(context, Name::from("Eltanin", "typeSolid"), with<Material>::get(context, *shared->material.lit));
-        {
-            auto ghost = with<Material>::get(context, *shared->material.litTransparent);
-            ghost.blend = renderer::BlendMode::additive;
-            (void)with<Assets>::add_material(context, Name::from("Eltanin", "clipboardGhost"), std::move(ghost));
-        }
-
-        assets.interframe = with<Assets>::add_meshpack_lwo_loader(
-            context,
-            Name::from("", "editor/interframe"),
-            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/editor/interframe.lwo.meshpack", .geometry = {}, .pending = {}});
-        assets.attachments = with<Assets>::add_meshpack_lwo_loader(
-            context,
-            Name::from("", "editor/attachments"),
-            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/editor/attachments.lwo.meshpack", .geometry = {}, .pending = {}});
-        assets.armour = with<Assets>::add_meshpack_lwo_loader(
-            context,
-            Name::from("", "fittings/mounts/armour"),
-            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/fittings/mounts/armour.lwo.meshpack", .geometry = {}, .pending = {}});
-        assets.devices = with<Assets>::add_meshpack_lwo_loader(
-            context,
-            Name::from("", "fittings/devices/cannon_temp_solid"),
-            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/fittings/devices/cannon_temp_solid.lwo.meshpack", .geometry = {}, .pending = {}});
-        assets.controlRoomSmall = with<Assets>::add_meshpack_lwo_loader(
-            context,
-            Name::from("", "fittings/devices/controlRoomSmall"),
-            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/fittings/devices/controlRoomSmall.lwo.meshpack", .geometry = {}, .pending = {}});
-        assets.projectiles = with<Assets>::add_meshpack_lwo_loader(
-            context,
-            Name::from("", "misc/projectiles"),
-            item<meshpack::LoaderLwo>{.file = "Eltanin/meshes/misc/projectiles.lwo.meshpack", .geometry = {}, .pending = {}});
-
-        const auto manager = with<Manager>::singleton(context);
-        const auto sky_geometry_id = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "skySphere")});
-        with<geometry::Asset>::extend(context, sky_geometry_id, geometry::Asset::Quantum{});
-        with<resource::SkySphereGenerator>::extend(context, sky_geometry_id, resource::SkySphereGenerator::Quantum{
-            .count = 48800, // 20k×2, then halo ×2 again (~31k disk + ~18k halo)
-            .seed = 1,
-            .angular_diameter_deg = 0.41f,
-        });
-        assets.skySphereGeometry = sky_geometry_id;
-
-        const auto scrap_id = with<Unit_group>::addElement(context, manager, Unit::Quantum{.name = Name::from("Eltanin", "scrap")});
-        with<geometry::Asset>::extend(context, scrap_id, geometry::Asset::Quantum{.entries = {}, .surfaces = {}, .mounts = {}, .entryCatalog = {}, .surfaceCatalogs = {}});
-        assets.scrap = scrap_id;
     }
 
     void Game::prepareAssets(Writing) {

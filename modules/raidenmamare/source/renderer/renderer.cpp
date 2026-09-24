@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <stdexcept>
+#include <tuple>
 #include <GL/glew.h>
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -217,68 +218,6 @@ namespace rmmr {
             return light_projection * light_view;
         }
 
-        void begin_pass(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
-            if (pass == renderer::Pass::shadow) {
-                resource::shadow::Runtime::Actions::bind(args.world, shadow->runtime);
-                glDepthFunc(GL_LESS);
-                glClearDepth(1.0);
-                resource::shadow::Runtime::Actions::clear(args.world, shadow->runtime);
-                glEnable(GL_POLYGON_OFFSET_FILL);
-                glPolygonOffset(2.0f, 8.0f);
-                return;
-            }
-            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite) {
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                glDepthMask(GL_FALSE);
-                return;
-            }
-            if (pass == renderer::Pass::environment) {
-                glDepthMask(GL_FALSE);
-                return;
-            }
-            if (pass == renderer::Pass::gizmo) {
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-                glDepthMask(GL_FALSE);
-                return;
-            }
-            if (pass == renderer::Pass::atmosphere) {
-                glDisable(GL_CULL_FACE);
-                glDisable(GL_DEPTH_TEST);
-                glEnable(GL_DEPTH_CLAMP);
-                glDepthMask(GL_FALSE);
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-                return;
-            }
-            glDepthMask(GL_TRUE);
-        }
-
-        void end_pass(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
-            if (pass == renderer::Pass::shadow) {
-                glDisable(GL_POLYGON_OFFSET_FILL);
-                glDepthFunc(GL_GREATER);
-                glClearDepth(0.0);
-                resource::shadow::Runtime::Actions::unbind(args.world, shadow->runtime);
-                system::Viewport::Actions::activate(args.world, args.view.viewport);
-                return;
-            }
-            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::environment || pass == renderer::Pass::gizmo) {
-                glDisable(GL_BLEND);
-                glDepthMask(GL_TRUE);
-                glDepthFunc(GL_GREATER);
-            }
-            if (pass == renderer::Pass::atmosphere) {
-                glDisable(GL_DEPTH_CLAMP);
-                glEnable(GL_CULL_FACE);
-                glEnable(GL_DEPTH_TEST);
-                glDisable(GL_BLEND);
-                glDepthMask(GL_TRUE);
-                glDepthFunc(GL_GREATER);
-            }
-        }
-
         constexpr std::array<renderer::Pass, 9> render_queue_passes{
             renderer::Pass::shadow,
             renderer::Pass::opaque,
@@ -291,39 +230,149 @@ namespace rmmr {
             renderer::Pass::identity,
         };
 
-        void apply_blend(renderer::Pass pass, renderer::BlendMode blend) {
-            const bool identityPass = pass == renderer::Pass::identitySelected or pass == renderer::Pass::identity;
-            if (blend == renderer::BlendMode::inherit) {
-                if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo || pass == renderer::Pass::atmosphere) {
-                    blend = renderer::BlendMode::alpha;
-                } else {
-                    if (not identityPass)
-                        glDepthFunc(GL_GREATER);
-                    return;
-                }
+        struct ColorAttachmentState {
+            bool write;
+            bool blend;
+            GLenum source;
+            GLenum destination;
+            GLenum equation;
+        };
+
+        struct PipelineState {
+            bool depthTest;
+            bool depthWrite;
+            GLenum depthCompare;
+            bool cull;
+            bool depthClamp;
+            bool polygonOffset;
+            std::array<ColorAttachmentState, 2> colors;
+        };
+
+        auto passRenderState(renderer::Pass pass) -> renderer::RenderState {
+            using renderer::BlendMode;
+            using renderer::DepthCompare;
+            using renderer::ToggleMode;
+            if (pass == renderer::Pass::shadow)
+                return renderer::RenderState{.blend = BlendMode::replace, .depthTest = ToggleMode::enabled, .depthWrite = ToggleMode::enabled, .depthCompare = DepthCompare::less};
+            if (pass == renderer::Pass::environment)
+                return renderer::RenderState{.blend = BlendMode::replace, .depthTest = ToggleMode::enabled, .depthWrite = ToggleMode::disabled, .depthCompare = DepthCompare::greater};
+            if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo)
+                return renderer::RenderState{.blend = BlendMode::alpha, .depthTest = ToggleMode::enabled, .depthWrite = ToggleMode::disabled, .depthCompare = DepthCompare::greater};
+            if (pass == renderer::Pass::atmosphere)
+                return renderer::RenderState{.blend = BlendMode::premultiplied, .depthTest = ToggleMode::disabled, .depthWrite = ToggleMode::disabled, .depthCompare = DepthCompare::greater};
+            if (pass == renderer::Pass::identitySelected || pass == renderer::Pass::identity)
+                return renderer::RenderState{.blend = BlendMode::replace, .depthTest = ToggleMode::enabled, .depthWrite = ToggleMode::enabled, .depthCompare = DepthCompare::greaterEqual};
+            return renderer::RenderState{.blend = BlendMode::replace, .depthTest = ToggleMode::enabled, .depthWrite = ToggleMode::enabled, .depthCompare = DepthCompare::greater};
+        }
+
+        auto resolveRenderState(renderer::Pass pass, renderer::RenderState requested) -> renderer::RenderState {
+            const auto fallback = passRenderState(pass);
+            return renderer::RenderState{
+                .blend = requested.blend == renderer::BlendMode::inherit ? fallback.blend : requested.blend,
+                .depthTest = requested.depthTest == renderer::ToggleMode::inherit ? fallback.depthTest : requested.depthTest,
+                .depthWrite = requested.depthWrite == renderer::ToggleMode::inherit ? fallback.depthWrite : requested.depthWrite,
+                .depthCompare = requested.depthCompare == renderer::DepthCompare::inherit ? fallback.depthCompare : requested.depthCompare,
+            };
+        }
+
+        auto depthCompare(renderer::DepthCompare compare) -> GLenum {
+            switch (compare) {
+                case renderer::DepthCompare::less: return GL_LESS;
+                case renderer::DepthCompare::lessEqual: return GL_LEQUAL;
+                case renderer::DepthCompare::equal: return GL_EQUAL;
+                case renderer::DepthCompare::notEqual: return GL_NOTEQUAL;
+                case renderer::DepthCompare::greaterEqual: return GL_GEQUAL;
+                case renderer::DepthCompare::greater: return GL_GREATER;
+                case renderer::DepthCompare::always: return GL_ALWAYS;
+                case renderer::DepthCompare::never: return GL_NEVER;
+                case renderer::DepthCompare::inherit: break;
             }
-            if (blend == renderer::BlendMode::additive) {
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_ONE, GL_ONE);
-                glDepthFunc(GL_GEQUAL);
+            throw std::runtime_error("Renderer: unresolved depth comparison");
+        }
+
+        auto colorAttachment(bool write, renderer::BlendMode blend) -> ColorAttachmentState {
+            switch (blend) {
+                case renderer::BlendMode::replace: return ColorAttachmentState{.write = write, .blend = false, .source = GL_ONE, .destination = GL_ZERO, .equation = GL_FUNC_ADD};
+                case renderer::BlendMode::alpha: return ColorAttachmentState{.write = write, .blend = true, .source = GL_SRC_ALPHA, .destination = GL_ONE_MINUS_SRC_ALPHA, .equation = GL_FUNC_ADD};
+                case renderer::BlendMode::additive: return ColorAttachmentState{.write = write, .blend = true, .source = GL_ONE, .destination = GL_ONE, .equation = GL_FUNC_ADD};
+                case renderer::BlendMode::premultiplied: return ColorAttachmentState{.write = write, .blend = true, .source = GL_ONE, .destination = GL_ONE_MINUS_SRC_ALPHA, .equation = GL_FUNC_ADD};
+                case renderer::BlendMode::inherit: break;
+            }
+            throw std::runtime_error("Renderer: unresolved blend mode");
+        }
+
+        auto pipelineState(renderer::Pass pass, renderer::RenderState requested, bool glowSpread) -> PipelineState {
+            const auto resolved = resolveRenderState(pass, requested);
+            const bool sceneColor = isSceneColorPass(pass);
+            const bool colorWrite = pass != renderer::Pass::shadow;
+            const auto bloom = ColorAttachmentState{.write = sceneColor and glowSpread, .blend = sceneColor and glowSpread, .source = GL_ONE, .destination = GL_ONE, .equation = GL_MAX};
+            return PipelineState{
+                .depthTest = resolved.depthTest == renderer::ToggleMode::enabled,
+                .depthWrite = resolved.depthWrite == renderer::ToggleMode::enabled,
+                .depthCompare = depthCompare(resolved.depthCompare),
+                .cull = pass != renderer::Pass::atmosphere,
+                .depthClamp = pass == renderer::Pass::atmosphere,
+                .polygonOffset = pass == renderer::Pass::shadow,
+                .colors = {colorAttachment(colorWrite, resolved.blend), bloom},
+            };
+        }
+
+        void applyPipelineState(const PipelineState& state) {
+            if (state.depthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+            glDepthMask(state.depthWrite ? GL_TRUE : GL_FALSE);
+            glDepthFunc(state.depthCompare);
+            if (state.cull) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+            if (state.depthClamp) glEnable(GL_DEPTH_CLAMP); else glDisable(GL_DEPTH_CLAMP);
+            if (state.polygonOffset) {
+                glEnable(GL_POLYGON_OFFSET_FILL);
+                glPolygonOffset(2.0f, 8.0f);
+            } else {
+                glDisable(GL_POLYGON_OFFSET_FILL);
+            }
+            for (GLuint attachment = 0; attachment < state.colors.size(); ++attachment) {
+                const auto& color = state.colors[attachment];
+                const GLboolean write = color.write ? GL_TRUE : GL_FALSE;
+                glColorMaski(attachment, write, write, write, write);
+                if (color.blend) glEnablei(GL_BLEND, attachment); else glDisablei(GL_BLEND, attachment);
+                glBlendEquationSeparatei(attachment, color.equation, color.equation);
+                glBlendFuncSeparatei(attachment, color.source, color.destination, color.source, color.destination);
+            }
+        }
+
+        void applyFrameBaseline(bool depthWrite) {
+            applyPipelineState(PipelineState{
+                .depthTest = true,
+                .depthWrite = depthWrite,
+                .depthCompare = GL_GREATER,
+                .cull = true,
+                .depthClamp = false,
+                .polygonOffset = false,
+                .colors = {colorAttachment(true, renderer::BlendMode::replace), colorAttachment(true, renderer::BlendMode::replace)},
+            });
+        }
+
+        void enterPassTarget(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
+            if (pass != renderer::Pass::shadow)
                 return;
-            }
-            if (not identityPass)
-                glDepthFunc(GL_GREATER);
-            if (blend == renderer::BlendMode::alpha) {
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            resource::shadow::Runtime::Actions::bind(args.world, shadow->runtime);
+            glClearDepth(1.0);
+            resource::shadow::Runtime::Actions::clear(args.world, shadow->runtime);
+        }
+
+        void leavePassTarget(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
+            if (pass != renderer::Pass::shadow)
                 return;
-            }
-            if (blend == renderer::BlendMode::premultiplied) {
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-            }
+            glClearDepth(0.0);
+            resource::shadow::Runtime::Actions::unbind(args.world, shadow->runtime);
+            system::Viewport::Actions::activate(args.world, args.view.viewport);
         }
 
         void sortGpuByPipeline(renderer::Pass pass, renderer::SeparateBuffers<renderer::GpuBatch>::Buffer& batches) {
             std::sort(batches.begin(), batches.end(), [pass](const renderer::GpuBatch& left, const renderer::GpuBatch& right) {
                 if (left.shader != right.shader) return left.shader < right.shader;
+                const auto leftState = std::tuple{left.renderState.blend, left.renderState.depthTest, left.renderState.depthWrite, left.renderState.depthCompare};
+                const auto rightState = std::tuple{right.renderState.blend, right.renderState.depthTest, right.renderState.depthWrite, right.renderState.depthCompare};
+                if (leftState != rightState) return leftState < rightState;
                 if (pass != renderer::Pass::shadow and left.material != right.material) return left.material < right.material;
                 return left.geometry < right.geometry;
             });
@@ -333,8 +382,6 @@ namespace rmmr {
 
     void Renderer::ensure_material(FrameContext args, renderer::Pass pass, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, PassDrawState& state, maybe<resource::shadow::Runtime::Id> shadow) {
         const auto material_pass = pass == renderer::Pass::identitySelected ? renderer::Pass::identity : pass;
-        const auto& materialQuantum = with<resource::material::Runtime>::get(args.world, material);
-        const bool glowSpread = technique_for(materialQuantum, pass).glowSpread;
         if (pass == renderer::Pass::shadow) {
             if (state.bound_shader && *state.bound_shader == shader)
                 return;
@@ -342,7 +389,6 @@ namespace rmmr {
             bindPassResources(args, material_pass, material, shadow);
             state.bound_shader = shader;
             state.bound_material = material;
-            SceneTarget::setGlowWrite(glowSpread);
             return;
         }
         if (state.bound_material && *state.bound_material == material)
@@ -354,7 +400,6 @@ namespace rmmr {
             state.bound_shader = shader;
         }
         state.bound_material = material;
-        SceneTarget::setGlowWrite(glowSpread);
     }
 
     void Renderer::uploadPassState(FrameContext args, base::maybe<scene::Light::Id> primaryLight) {
@@ -499,6 +544,7 @@ namespace rmmr {
         bool identityPublished = false;
         bool identityCleared = false;
         bool sceneBegun = false;
+        bool missingLightReported = false;
         const auto& viewport = with<system::Viewport>::get(args.world, args.view.viewport);
 
         for (const auto pass : render_queue_passes) {
@@ -519,13 +565,6 @@ namespace rmmr {
                 identity.end(args.world, args.view.viewport);
                 continue;
             }
-            const bool unlitPass = pass == renderer::Pass::sprite or pass == renderer::Pass::gizmo or pass == renderer::Pass::environment or pass == renderer::Pass::atmosphere or pass == renderer::Pass::identitySelected or pass == renderer::Pass::identity or pass == renderer::Pass::transparent;
-            if (not lighting.primary && not unlitPass) {
-                if (not passEmpty)
-                    base::message("Renderer: no primary light; skipping draws for pass");
-                continue;
-            }
-
             if (isSceneColorPass(pass)) {
                 if (not sceneBegun) {
                     sceneTarget.begin(viewport.size, viewport.clear_color);
@@ -546,7 +585,7 @@ namespace rmmr {
             } else {
                 if (pass == renderer::Pass::atmosphere)
                     sceneTarget.snapshotDepth();
-                begin_pass(pass, args, lighting.shadow);
+                enterPassTarget(pass, args, lighting.shadow);
             }
             PassDrawState passState{};
 
@@ -555,11 +594,16 @@ namespace rmmr {
             for (const auto& batch : gpuBatches) {
                 if (batch.drawCount <= renderer::Count{0} or not with<resource::geometry::Runtime>::exists(args.world, batch.geometry))
                     continue;
-                apply_blend(pass, batch.renderState.blend);
-                if (isSceneColorPass(pass))
-                    SceneTarget::setMaskBlendMax();
-                else
-                    glDisablei(GL_BLEND, 1);
+                const auto& material = with<resource::material::Runtime>::get(args.world, batch.material);
+                const auto& technique = technique_for(material, pass);
+                if (technique.lighting == renderer::LightingMode::primary and not lighting.primary) {
+                    if (not missingLightReported) {
+                        base::message("Renderer: no primary light; skipping lit draws");
+                        missingLightReported = true;
+                    }
+                    continue;
+                }
+                applyPipelineState(pipelineState(pass, batch.renderState, technique.glowSpread));
                 ensure_material(args, pass, batch.material, batch.shader, passState, shadow);
                 drawGpuBatch(args, pass, batch);
                 if (pass == renderer::Pass::identity)
@@ -572,7 +616,7 @@ namespace rmmr {
                 identityPublished = true;
                 identity.end(args.world, args.view.viewport);
             } else if (pass != renderer::Pass::identitySelected) {
-                end_pass(pass, args, lighting.shadow);
+                leavePassTarget(pass, args, lighting.shadow);
             }
         }
 
@@ -602,7 +646,7 @@ namespace rmmr {
             system::Viewport::Actions::activate(args.world, args.view.viewport);
         }
 
-        glDepthMask(depthWritePrev);
+        applyFrameBaseline(depthWritePrev == GL_TRUE);
     }
 
     auto Renderer::stats() const -> Stats {

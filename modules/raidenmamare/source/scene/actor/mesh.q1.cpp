@@ -81,7 +81,7 @@ namespace rmmr::scene::actor {
             }
         }
 
-            auto gpuBatch(const Mesh::Quantum& mesh, const Mesh::Bucket& bucket, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, base::maybe<resource::texpack::Runtime::Id> texpack, renderer::BlendMode blend) -> renderer::GpuBatch {
+            auto gpuBatch(const Mesh::Quantum& mesh, const Mesh::Bucket& bucket, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, base::maybe<resource::texpack::Runtime::Id> texpack, renderer::RenderState renderState) -> renderer::GpuBatch {
             return renderer::GpuBatch{
                 .geometry = bucket.geometry,
                 .material = material,
@@ -103,7 +103,7 @@ namespace rmmr::scene::actor {
                 .metadataByteSize = bucket.metadataByteSize,
                 .indirect = bucket.indirect,
                 .drawCount = bucket.drawCount,
-                .renderState = renderer::RenderState{.blend = blend},
+                .renderState = renderState,
             };
         }
 
@@ -364,7 +364,7 @@ namespace rmmr::scene::actor {
         for (const auto& bucket : mesh.buckets) {
             const auto& material = with<resource::material::Runtime>::get(context, bucket.material);
             for (const auto& [pass, technique] : material.techniques) {
-                where.gpu[pass].push_back(gpuBatch(mesh, bucket, bucket.material, technique.shader, bucket.texpack, material.blend));
+                where.gpu[pass].push_back(gpuBatch(mesh, bucket, bucket.material, technique.shader, bucket.texpack, material.renderState));
             }
         }
     }
@@ -414,7 +414,7 @@ namespace rmmr::scene::actor {
         if (technique == material.techniques.end()) throw std::runtime_error("scene::actor::Identified: identity technique missing");
         const auto& identified = with<Identified>::get(context, node);
         for (const auto& bucket : mesh.buckets) {
-            const auto batch = gpuBatch(mesh, bucket, materialFound->second, technique->second.shader, {}, material.blend);
+            const auto batch = gpuBatch(mesh, bucket, materialFound->second, technique->second.shader, {}, material.renderState);
             if (identified.selected) where.gpu[renderer::Pass::identitySelected].push_back(batch);
             where.gpu[renderer::Pass::identity].push_back(batch);
         }

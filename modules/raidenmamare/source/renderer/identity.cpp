@@ -42,10 +42,8 @@ namespace rmmr {
         ensure(size);
         const auto wh = extent(size);
         glViewport(0, 0, wh.x, wh.y);
-        glDisable(GL_BLEND);
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_GEQUAL);
         glDepthMask(GL_TRUE);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         const GLuint clearAlias[]{0u};
         glClearDepth(0.0);
         glBindFramebuffer(GL_FRAMEBUFFER, selectedFbo);
@@ -60,10 +58,6 @@ namespace rmmr {
         const auto wh = extent(size);
         glBindFramebuffer(GL_FRAMEBUFFER, selectedFbo);
         glViewport(0, 0, wh.x, wh.y);
-        glDisable(GL_BLEND);
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_GEQUAL);
-        glDepthMask(GL_TRUE);
     }
 
     void Identity::beginAll(index2 size) {
@@ -71,14 +65,9 @@ namespace rmmr {
         const auto wh = extent(size);
         glBindFramebuffer(GL_FRAMEBUFFER, allFbo);
         glViewport(0, 0, wh.x, wh.y);
-        glDisable(GL_BLEND);
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_GEQUAL);
-        glDepthMask(GL_TRUE);
     }
 
     void Identity::end(Writing world, system::Viewport::Id viewport) {
-        glDepthFunc(GL_GREATER);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         system::Viewport::Actions::activate(world, viewport);
     }

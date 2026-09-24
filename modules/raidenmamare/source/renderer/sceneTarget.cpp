@@ -37,24 +37,11 @@ namespace rmmr {
         glCopyImageSubData(depth, GL_TEXTURE_2D, 0, 0, 0, 0, depthCopy, GL_TEXTURE_2D, 0, 0, 0, 0, wh.x, wh.y, 1);
     }
 
-    void SceneTarget::setGlowWrite(bool on) {
-        const GLboolean mask = on ? GL_TRUE : GL_FALSE;
-        glColorMaski(1, mask, mask, mask, mask);
-    }
-
-    void SceneTarget::setMaskBlendMax() {
-        glEnablei(GL_BLEND, 1);
-        glBlendEquationi(1, GL_MAX);
-        glBlendFunci(1, GL_ONE, GL_ONE);
-    }
-
     void SceneTarget::bind(index2 size) {
         ensure(size);
         const auto wh = extent(size);
         glBindFramebuffer(GL_FRAMEBUFFER, fbo);
         glViewport(0, 0, wh.x, wh.y);
-        setMaskBlendMax();
-        setGlowWrite(false);
     }
 
     void SceneTarget::begin(index2 size, vec4 clearColor) {
@@ -69,7 +56,6 @@ namespace rmmr {
         glClearBufferfv(GL_COLOR, 0, hdrClear);
         glClearBufferfv(GL_COLOR, 1, maskClear);
         glClear(GL_DEPTH_BUFFER_BIT);
-        setGlowWrite(false);
     }
 
 }

@@ -61,6 +61,7 @@ namespace rmmr::resource::material {
                 .locations = std::move(locations),
                 .bindings = std::move(bindings),
                 .glowSpread = asset_technique.glowSpread,
+                .lighting = asset_technique.lighting,
             };
         }
 
@@ -82,7 +83,7 @@ namespace rmmr::resource::material {
         Runtime::Quantum quantum{
             .techniques = std::move(techniques),
             .nearest = asset.nearest,
-            .blend = asset.blend,
+            .renderState = asset.renderState,
         };
 
         if (const auto existing = runtimes.materials_id_mapping.find(asset_id); existing != runtimes.materials_id_mapping.end()) {

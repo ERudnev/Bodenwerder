@@ -65,10 +65,11 @@ namespace kubes {
                         .program = with<Unit>::remember(context, sky_sphere_shader),
                         .uniforms = ::rmmr::material::Semantics::ids_of({"albedoMap"}),
                         .glowSpread = false,
+                        .lighting = renderer::LightingMode::unlit,
                     }},
                 },
                 .nearest = false,
-                .blend = renderer::BlendMode::additive,
+                .renderState = renderer::RenderState{.blend = renderer::BlendMode::additive, .depthTest = renderer::ToggleMode::inherit, .depthWrite = renderer::ToggleMode::inherit, .depthCompare = renderer::DepthCompare::inherit},
             });
 
         const auto manager = with<Manager>::singleton(context);

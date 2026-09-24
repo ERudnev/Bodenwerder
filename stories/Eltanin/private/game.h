@@ -19,6 +19,7 @@
 #include "fittings/mounts/catalog.h"
 #include "geo/celestial/planet.h"
 #include "physics/system.h"
+#include "resources/library.h"
 #include "scenarios/strategic.h"
 #include "strategic/map.h"
 #include "locality.ui.h"
@@ -35,29 +36,6 @@ namespace eltanin {
 
     class Game : public rmmr::wrapper::Product {
     public:
-        struct Handles {
-            struct {
-                base::maybe<rmmr::resource::geometry::Asset::Id> grid;
-                base::maybe<rmmr::resource::geometry::Asset::Id> sphere;
-                base::maybe<rmmr::resource::geometry::Asset::Id> kube;
-                base::maybe<rmmr::resource::geometry::Asset::Id> diamond;
-            } primitive;
-            base::maybe<rmmr::resource::geometry::Asset::Id> skySphereGeometry;
-            base::maybe<rmmr::resource::geometry::Asset::Id> scrap;
-            base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
-            base::maybe<rmmr::resource::material::Asset::Id> skyBackdropMaterial;
-            base::maybe<rmmr::resource::texpack::Pack::Id> sprites;
-            base::maybe<rmmr::resource::texpack::Pack::Id> mech;
-            base::maybe<rmmr::resource::meshpack::Asset::Id> interframe;
-            base::maybe<rmmr::resource::meshpack::Asset::Id> attachments;
-            base::maybe<rmmr::resource::meshpack::Asset::Id> armour;
-            base::maybe<rmmr::resource::meshpack::Asset::Id> devices;
-            base::maybe<rmmr::resource::meshpack::Asset::Id> controlRoomSmall;
-            base::maybe<rmmr::resource::meshpack::Asset::Id> projectiles;
-            base::maybe<rmmr::resource::overlay::Asset::Id> blueprintsEditorEffect;
-            base::maybe<rmmr::resource::material::Asset::Id> collisionDebugMaterial;
-        };
-
         struct Cameras {
             enum class Kind { free, spectator };
             Kind kind;
@@ -66,7 +44,7 @@ namespace eltanin {
             bool hotkeyDown;
         };
 
-        Handles assets;
+        ::eltanin::assets::Handles assets;
         Ui ui;
         base::maybe<View> world_view;
         base::maybe<rmmr::scene::Grid::Id> grid;

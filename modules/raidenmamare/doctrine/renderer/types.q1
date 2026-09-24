@@ -11,9 +11,6 @@ import "resources/texture3array"
 namespace rmmr
   namespace renderer
 
-    struct RenderState
-      blend: BlendMode
-
     // Immutable actor-local lattice transform. The world transform remains on the actor.
     struct DiscretePose
       pos: index3

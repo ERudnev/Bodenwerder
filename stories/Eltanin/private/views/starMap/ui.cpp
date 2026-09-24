@@ -30,11 +30,11 @@ namespace eltanin {
     }
 
     auto Game::activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> {
-        if (not starMap.menu.blueprints.has_value() or not assets.blueprintsEditorEffect)
+        if (not starMap.menu.blueprints.has_value() or not blueprints.assets.editorEffect)
             return {};
         if (blueprints.state.membranes.enabled or blueprints.state.paletteMode)
             return {};
-        return assets.blueprintsEditorEffect;
+        return blueprints.assets.editorEffect;
     }
 
     auto Game::overlaySelection() const -> std::span<const rmmr::renderer::Integer32> {

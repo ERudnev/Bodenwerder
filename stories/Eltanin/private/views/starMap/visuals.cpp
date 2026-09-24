@@ -2,6 +2,7 @@
 
 #include <rmmr/controller/cameraOrbit.q1.h>
 #include <rmmr/resources/builders/geometryGenerator.h>
+#include <rmmr/resources/builders/materialBuilder.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
@@ -34,11 +35,13 @@ namespace eltanin::views::starmap {
         constexpr float meshScale = mapExtent / planeLocal;
         constexpr float tensCellLy = 10.0f;
         constexpr float unitCellLy = 1.0f;
-        constexpr float axisThicknessAtRef = 0.25f;
-        constexpr float dashThicknessAtRef = 0.11f;
+        constexpr float axisThicknessAtRef = 0.125f;
+        constexpr float dashThicknessAtRef = 0.055f;
         constexpr float dashPeriodAtRef = 2.5f;
         constexpr integer dashMax = 32;
-        constexpr float reticleSizeAtRef = 3.2f;
+        constexpr float reticleSizeAtRef = 3.2f / 3.0f;
+        constexpr float reticleTube = 0.05f;
+        constexpr float minStrokePixels = 1.0f;
         constexpr float scaleRefLy = 260.0f;
         constexpr float scaleUnitFull = 25.0f;
         constexpr float scaleTensFull = 80.0f;
@@ -51,6 +54,20 @@ namespace eltanin::views::starmap {
 
         auto gauge(float scaleLy) -> float {
             return scaleLy / scaleRefLy;
+        }
+
+        auto worldPerPixel(Writing context, scene::Camera::Id camera, system::Window::Id window, float distance) -> float {
+            const auto& cam = with<scene::Camera>::get(context, camera);
+            const auto fb = with<system::Window>::framebufferSize(context, window);
+            const float viewportHeight = static_cast<float>(std::max(fb.y, 1));
+            const float aspect = static_cast<float>(fb.x) / viewportHeight;
+            const float fovY = 2.0f * std::atan(std::tan(cam.fov_x * 0.5f) / aspect);
+            const float depth = std::max(distance, cam.z_near);
+            return 2.0f * depth * std::tan(fovY * 0.5f) / viewportHeight;
+        }
+
+        auto strokeAtLeastOnePixel(float worldThickness, float pixelWorld) -> float {
+            return std::max(worldThickness, pixelWorld * minStrokePixels);
         }
 
         auto smoothstep(float edge0, float edge1, float value) -> float {
@@ -145,7 +162,7 @@ namespace eltanin::views::starmap {
         auto reticleMesh() -> CpuPresentation {
             CpuPresentation cpu = emptyLit();
             constexpr float radius = 1.0f;
-            constexpr float tube = 0.05f;
+            constexpr float tube = reticleTube;
             constexpr float slotHalf = 12.0f * std::numbers::pi_v<float> / 180.0f;
             constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
             constexpr float quarter = 0.5f * std::numbers::pi_v<float>;
@@ -180,16 +197,16 @@ namespace eltanin::views::starmap {
             return cpu;
         }
 
-        auto installMesh(Writing context, system::Device::Id device, resource::Unit::Name name, const CpuPresentation& cpu) -> base::maybe<resource::geometry::Asset::Id> {
-            const auto manager = with<resource::Manager>::singleton(context);
-            const auto id = with<resource::Unit_group>::addElement(context, manager, resource::Unit::Quantum{.name = std::move(name)});
-            with<resource::geometry::Asset>::extend(context, id, resource::geometry::Asset::Quantum{.entries = {}, .surfaces = {}, .mounts = {}, .entryCatalog = {}, .surfaceCatalogs = {}});
-            if (not with<resource::geometry::Asset>::install(context, id, device, cpu))
+        auto installMesh(Writing context, system::Device::Id device, rmmr::resource::Unit::Name name, const CpuPresentation& cpu) -> base::maybe<rmmr::resource::geometry::Asset::Id> {
+            const auto manager = with<rmmr::resource::Manager>::singleton(context);
+            const auto id = with<rmmr::resource::Unit_group>::addElement(context, manager, rmmr::resource::Unit::Quantum{.name = std::move(name)});
+            with<rmmr::resource::geometry::Asset>::extend(context, id, rmmr::resource::geometry::Asset::Quantum{.entries = {}, .surfaces = {}, .mounts = {}, .entryCatalog = {}, .surfaceCatalogs = {}});
+            if (not with<rmmr::resource::geometry::Asset>::install(context, id, device, cpu))
                 return {};
             return id;
         }
 
-        auto spawnMesh(Writing context, scene::Root::Id root, resource::geometry::Asset::Id geometry, resource::material::Asset::Id material, RGB color, Pose pose, vec3 scale) -> base::maybe<scene::actor::Mesh::Id> {
+        auto spawnMesh(Writing context, scene::Root::Id root, rmmr::resource::geometry::Asset::Id geometry, rmmr::resource::material::Asset::Id material, RGB color, Pose pose, vec3 scale) -> base::maybe<scene::actor::Mesh::Id> {
             auto mesh = with<scene::actor::Mesh>::composeOne(context, geometry, material);
             if (not mesh)
                 return {};
@@ -202,7 +219,7 @@ namespace eltanin::views::starmap {
             return std::clamp(static_cast<integer>(std::lround(length / period)), 1, dashMax);
         }
 
-        void poseDrop(Writing context, Marker::Drop& drop, Pos midpoint, HPB rotation, float length, float thickness, float period, const vector<resource::geometry::Asset::Id>& dashMeshes, resource::material::Asset::Id material) {
+        void poseDrop(Writing context, Marker::Drop& drop, Pos midpoint, HPB rotation, float length, float thickness, float period, const vector<rmmr::resource::geometry::Asset::Id>& dashMeshes, rmmr::resource::material::Asset::Id material) {
             const bool show = length > thickness * 1.5f;
             scene::Node::Actions::setVisible(context, drop.actor, show);
             if (not show)
@@ -226,14 +243,14 @@ namespace eltanin::views::starmap {
             with<scene::actor::MeshState>::modify(context, actor)->scale = vec3{size, size, size};
         }
 
-        void poseMarker(Writing context, Marker& marker, Pos point, quat cameraRotation, float reticleSize, float dashThickness, float dashPeriod, const vector<resource::geometry::Asset::Id>& dashMeshes, resource::material::Asset::Id material) {
+        void poseMarker(Writing context, Marker& marker, Pos point, quat cameraRotation, float reticleSize, float dashThickness, float dashPeriod, const vector<rmmr::resource::geometry::Asset::Id>& dashMeshes, rmmr::resource::material::Asset::Id material) {
             poseReticle(context, marker.reticle, point, cameraRotation, reticleSize);
             poseDrop(context, marker.dropX, Pos{point.x * 0.5f, 0.0f, point.z}, HPB{0.0f, 0.0f, 0.0f}, std::abs(point.x), dashThickness, dashPeriod, dashMeshes, material);
             poseDrop(context, marker.dropY, Pos{point.x, point.y * 0.5f, point.z}, HPB{0.0f, 0.0f, 90.0f}, std::abs(point.y), dashThickness, dashPeriod, dashMeshes, material);
             poseDrop(context, marker.dropZ, Pos{point.x, 0.0f, point.z * 0.5f}, HPB{90.0f, 0.0f, 0.0f}, std::abs(point.z), dashThickness, dashPeriod, dashMeshes, material);
         }
 
-        auto placeMarker(Writing context, scene::Root::Id root, resource::geometry::Asset::Id reticle, resource::geometry::Asset::Id dash, resource::material::Asset::Id material, RGB color) -> base::maybe<Marker> {
+        auto placeMarker(Writing context, scene::Root::Id root, rmmr::resource::geometry::Asset::Id reticle, rmmr::resource::geometry::Asset::Id dash, rmmr::resource::material::Asset::Id material, RGB color) -> base::maybe<Marker> {
             const auto identity = Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f});
             const auto reticleActor = spawnMesh(context, root, reticle, material, color, identity, vec3{1.0f, 1.0f, 1.0f});
             const auto dropX = spawnMesh(context, root, dash, material, color, identity, vec3{1.0f, 1.0f, 1.0f});
@@ -266,14 +283,37 @@ namespace eltanin::views::starmap {
 
     }
 
+    auto Visuals::addAssets(Writing context) -> bool {
+        using Assets = rmmr::resource::Assets;
+        using Material = rmmr::resource::material::Asset;
+        using Name = rmmr::resource::Unit::Name;
+        const auto unlit = with<Assets>::find<Material>(context, Name::from("rmmr", "unlit"));
+        if (not unlit) {
+            context.refuse("eltanin::views::starmap::Visuals::addAssets: rmmr unlit missing");
+            return false;
+        }
+        chrome = rmmr::resource::builders::material::derive(context, rmmr::resource::builders::material::Derived{
+            .name = Name::from("Eltanin", "starMapChrome"),
+            .source = *unlit,
+            .sourcePass = renderer::Pass::gizmo,
+            .targetPass = renderer::Pass::gizmo,
+            .program = {},
+            .glowSpread = false,
+            .renderState = renderer::RenderState{.blend = renderer::BlendMode::additive, .depthTest = renderer::ToggleMode::disabled, .depthWrite = renderer::ToggleMode::disabled, .depthCompare = renderer::DepthCompare::inherit},
+        });
+        if (not chrome)
+            return false;
+        return true;
+    }
+
     auto Visuals::place(Writing context, scene::Root::Id root, system::Window::Id window) -> bool {
-        using Assets = resource::Assets;
-        using Name = resource::Unit::Name;
-        const auto gridGeometry = with<Assets>::find<resource::geometry::Asset>(context, Name::from("rmmr", "grid"));
-        const auto gridMaterial = with<Assets>::find<resource::material::Asset>(context, Name::from("rmmr", "grid"));
-        const auto kube = with<Assets>::find<resource::geometry::Asset>(context, Name::from("rmmr", "kube"));
-        const auto unlitMaterial = with<Assets>::find<resource::material::Asset>(context, Name::from("rmmr", "unlit"));
-        if (not gridGeometry or not gridMaterial or not kube or not unlitMaterial) {
+        renderWindow = window;
+        using Assets = rmmr::resource::Assets;
+        using Name = rmmr::resource::Unit::Name;
+        const auto gridGeometry = with<Assets>::find<rmmr::resource::geometry::Asset>(context, Name::from("Eltanin", "grid"));
+        const auto gridMaterial = with<Assets>::find<rmmr::resource::material::Asset>(context, Name::from("rmmr", "grid"));
+        const auto kube = with<Assets>::find<rmmr::resource::geometry::Asset>(context, Name::from("Eltanin", "kube"));
+        if (not gridGeometry or not gridMaterial or not kube or not chrome) {
             context.refuse("eltanin::views::starmap::Visuals::place: grid assets missing");
             return false;
         }
@@ -283,9 +323,8 @@ namespace eltanin::views::starmap {
         with<scene::actor::MeshState>::modify(context, unit)->scale = vec3{meshScale, 1.0f, meshScale};
         tensGrid = tens;
         unitGrid = unit;
-        unlit = *unlitMaterial;
         auto placeAxis = [&](RGB color, vec3 scale) -> base::maybe<scene::actor::Mesh::Id> {
-            auto mesh = with<scene::actor::Mesh>::composeOne(context, *kube, *unlitMaterial);
+            auto mesh = with<scene::actor::Mesh>::composeOne(context, *kube, *chrome);
             if (not mesh)
                 return {};
             return with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), std::move(*mesh), with<scene::actor::MeshState>::defaults(color, 1.0f, scale));
@@ -308,8 +347,8 @@ namespace eltanin::views::starmap {
             context.refuse("eltanin::views::starmap::Visuals::place: marker meshes failed");
             return false;
         }
-        currentPlayer = placeMarker(context, root, *reticle, dashMeshes.back(), *unlitMaterial, currentPlayerColor);
-        viewFocus = placeMarker(context, root, *reticle, dashMeshes.back(), *unlitMaterial, viewFocusColor);
+        currentPlayer = placeMarker(context, root, *reticle, dashMeshes.back(), *chrome, currentPlayerColor);
+        viewFocus = placeMarker(context, root, *reticle, dashMeshes.back(), *chrome, viewFocusColor);
         if (not currentPlayer or not viewFocus) {
             context.refuse("eltanin::views::starmap::Visuals::place: markers failed");
             return false;
@@ -334,10 +373,17 @@ namespace eltanin::views::starmap {
             scaleLy = glm::length(vec3{cameraNode.pose.position});
         }
         const float sized = gauge(scaleLy);
-        const float reticleSize = reticleSizeAtRef * sized;
-        const float dashThickness = dashThicknessAtRef * sized;
+        const float pixelWorld = renderWindow ? worldPerPixel(context, camera, *renderWindow, scaleLy) : 0.0f;
+        float reticleSize = reticleSizeAtRef * sized;
+        float dashThickness = dashThicknessAtRef * sized;
         const float dashPeriod = dashPeriodAtRef * sized;
-        const float axisThickness = axisThicknessAtRef * sized;
+        float axisThickness = axisThicknessAtRef * sized;
+        if (renderWindow) {
+            const float minStroke = pixelWorld * minStrokePixels;
+            reticleSize = std::max(reticleSize, minStroke / reticleTube);
+            dashThickness = strokeAtLeastOnePixel(dashThickness, pixelWorld);
+            axisThickness = strokeAtLeastOnePixel(axisThickness, pixelWorld);
+        }
         const float span = mapExtent * 2.0f;
         if (axisX)
             setAxisThickness(context, *axisX, vec3{span, 0.0f, 0.0f}, axisThickness);
@@ -349,10 +395,10 @@ namespace eltanin::views::starmap {
             setGridFade(context, *tensGrid, tensFade(scaleLy));
         if (unitGrid)
             setGridFade(context, *unitGrid, unitFade(scaleLy));
-        if (currentPlayer and unlit)
-            poseMarker(context, *currentPlayer, player, cameraNode.pose.rotation, reticleSize, dashThickness, dashPeriod, dashMeshes, *unlit);
-        if (viewFocus and unlit)
-            poseMarker(context, *viewFocus, focus, cameraNode.pose.rotation, reticleSize, dashThickness, dashPeriod, dashMeshes, *unlit);
+        if (currentPlayer and chrome)
+            poseMarker(context, *currentPlayer, player, cameraNode.pose.rotation, reticleSize, dashThickness, dashPeriod, dashMeshes, *chrome);
+        if (viewFocus and chrome)
+            poseMarker(context, *viewFocus, focus, cameraNode.pose.rotation, reticleSize, dashThickness, dashPeriod, dashMeshes, *chrome);
     }
 
 }

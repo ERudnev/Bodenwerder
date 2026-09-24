@@ -18,3 +18,7 @@ namespace rmmr
     using Pass as @external(rmmr::renderer::Pass)
     using Passes as @external(rmmr::renderer::Passes)
     using BlendMode as @external(rmmr::renderer::BlendMode)
+    using ToggleMode as @external(rmmr::renderer::ToggleMode)
+    using DepthCompare as @external(rmmr::renderer::DepthCompare)
+    using LightingMode as @external(rmmr::renderer::LightingMode)
+    using RenderState as @external(rmmr::renderer::RenderState)

@@ -38,11 +38,13 @@ namespace eltanin::views::starmap {
         base::maybe<rmmr::scene::actor::Mesh::Id> axisY;
         base::maybe<rmmr::scene::actor::Mesh::Id> axisZ;
         vector<rmmr::resource::geometry::Asset::Id> dashMeshes;
-        base::maybe<rmmr::resource::material::Asset::Id> unlit;
+        base::maybe<rmmr::resource::material::Asset::Id> chrome;
+        base::maybe<rmmr::system::Window::Id> renderWindow;
         rmmr::Pos player;
         rmmr::Pos focus;
         float scaleLy;
 
+        auto addAssets(Writing) -> bool;
         auto place(Writing, rmmr::scene::Root::Id, rmmr::system::Window::Id) -> bool;
         void follow(Writing, rmmr::scene::Camera::Id);
     };

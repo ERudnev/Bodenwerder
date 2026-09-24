@@ -285,13 +285,13 @@ namespace eltanin::views {
     } // namespace
 
     void Blueprints::create(Writing context) {
-        const auto grid_geometry = with<Assets>::find<geometry::Asset>(context, Unit::Name::from("rmmr", "grid"));
+        const auto grid_geometry = with<Assets>::find<geometry::Asset>(context, Unit::Name::from("Eltanin", "grid"));
         const auto grid_material = with<Assets>::find<rmmr::resource::material::Asset>(context, Unit::Name::from("rmmr", "grid"));
         if (not grid_geometry or not grid_material)
             return (void)context.refuse("eltanin::views::Blueprints::create: grid assets missing");
 
-        const auto kube_geometry = with<Assets>::find<geometry::Asset>(context, Unit::Name::from("rmmr", "kube"));
-        const auto sphere_geometry = with<Assets>::find<geometry::Asset>(context, Unit::Name::from("rmmr", "sphere"));
+        const auto kube_geometry = with<Assets>::find<geometry::Asset>(context, Unit::Name::from("Eltanin", "kube"));
+        const auto sphere_geometry = with<Assets>::find<geometry::Asset>(context, Unit::Name::from("Eltanin", "sphere"));
         const auto cursor_material = with<Assets>::find<rmmr::resource::material::Asset>(context, Unit::Name::from("Eltanin", "type"));
         if (not kube_geometry or not sphere_geometry or not cursor_material)
             return (void)context.refuse("eltanin::views::Blueprints::create: kube / sphere / lit-transparent material missing");

@@ -36,6 +36,10 @@ namespace eltanin::views {
     struct Blueprints {
         enum class EditMode : std::uint8_t { skeleton, membranes, mounts };
 
+        struct AssetHandles {
+            base::maybe<rmmr::resource::overlay::Asset::Id> editorEffect;
+        };
+
         struct State {
             struct MainScene {
                 base::maybe<rmmr::scene::Root::Id> root;
@@ -96,8 +100,10 @@ namespace eltanin::views {
             } spaceMenu;
         };
 
+        AssetHandles assets;
         State state;
 
+        auto addAssets(Writing, const rmmr::wrapper::assets::Handles&) -> bool;
         void create(Writing);
         void show(Writing, mech::Blueprint::Id);
         void setEditMode(Writing, EditMode);

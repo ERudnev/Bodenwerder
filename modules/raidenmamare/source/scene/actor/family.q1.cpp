@@ -182,7 +182,7 @@ namespace rmmr::scene::actor {
             }
         }
 
-        auto gpuBatch(const Family::Quantum& family, const Family::Bucket& bucket, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, base::maybe<resource::texpack::Runtime::Id> texpack, renderer::BlendMode blend) -> renderer::GpuBatch {
+        auto gpuBatch(const Family::Quantum& family, const Family::Bucket& bucket, resource::material::Runtime::Id material, resource::shader::Runtime::Id shader, base::maybe<resource::texpack::Runtime::Id> texpack, renderer::RenderState renderState) -> renderer::GpuBatch {
             return renderer::GpuBatch{
                 .geometry = bucket.geometry,
                 .material = material,
@@ -204,7 +204,7 @@ namespace rmmr::scene::actor {
                 .metadataByteSize = bucket.metadataByteSize,
                 .indirect = bucket.indirect,
                 .drawCount = bucket.drawCount,
-                .renderState = renderer::RenderState{.blend = blend},
+                .renderState = renderState,
             };
         }
 
@@ -301,7 +301,7 @@ namespace rmmr::scene::actor {
             patchInstanceCount(bucket, live);
             const auto& material = with<resource::material::Runtime>::get(context, bucket.material);
             for (const auto& [pass, technique] : material.techniques) {
-                where.gpu[pass].push_back(gpuBatch(family, bucket, bucket.material, technique.shader, bucket.texpack, material.blend));
+                where.gpu[pass].push_back(gpuBatch(family, bucket, bucket.material, technique.shader, bucket.texpack, material.renderState));
             }
         }
     }
