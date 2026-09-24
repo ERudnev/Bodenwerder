@@ -39,7 +39,8 @@ namespace fqsm::erased {
             flags[position] = static_cast<std::uint8_t>((flags[position] & tombstoneFlag) | incoming);
             return stored;
         }
-        flags.reserve(flags.size() + 1);
+        if (flags.size() == flags.capacity())
+            flags.reserve(flags.capacity() < 8 ? 8 : flags.capacity() * 2);
         void* stored = moveValue ? entries.emplace_move(id, const_cast<void*>(value)) : entries.insert(id, value);
         flags.push_back(incoming);
         return stored;
