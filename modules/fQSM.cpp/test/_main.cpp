@@ -34,6 +34,7 @@
     X(no_resurrection) \
     X(quantal) \
     X(transaction_hierarchy) \
+    X(aspect_minimal_declaration) \
     X(nested_branch_meta_visibility) \
     X(schema_merge_nested_equals_flat) \
     X(schema_merge_order_independent) \
