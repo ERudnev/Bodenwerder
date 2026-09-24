@@ -89,8 +89,11 @@ namespace fqsm::erased {
             .groupErase = nullptr,
             .groupInsert = nullptr,
             .groupElements = nullptr,
-            .reactions = Info::reactions(),
+            .reactions = {},
         };
+        if constexpr (Info::has_reactions) {
+            out.reactions = Meta::customAspectReactions().rules;   // Behavior is complete where aspects register
+        }
         if constexpr (category::Parasitic<Meta>) {
             out.host = TypeId<typename Traits::HostAspect>;
         }

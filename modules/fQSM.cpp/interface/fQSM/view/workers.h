@@ -11,48 +11,35 @@
 
 namespace fqsm::view {
 
-    // Typed write access to one future line (null for views that cannot write).
+    // Typed writes into one future line (the aspect view of a session or of a normalization wave).
     template<category::Any Meta>
-    class WorkersInterface {
+    class WorkersInterface : public Aspect<Meta> {
     public:
-        explicit WorkersInterface(erased::FutureLine* line) : target(line) {}
-        void retarget(erased::FutureLine* line) { target = line; }
+        explicit WorkersInterface(const Lines& lines) : Aspect<Meta>(lines) {}
+        WorkersInterface(const erased::ReadLine& reader, erased::Line* writable, erased::FutureLine* future)
+            : Aspect<Meta>(Lines{&reader, writable, future}) {}
 
-        void put_modification(Id<Meta> id, Quantum<Meta> value) { target->put_modification(id.raw(), &value); }
-        void put_deletion(Id<Meta> id) { target->put_deletion(id.raw()); }
-        void put_add(Id<Meta> id, Quantum<Meta> value) { target->put_add(id.raw(), &value); }
-        void put_global(GlobalValue<Meta> value) { target->put_global(&value); }
+        void put_modification(Id<Meta> id, Quantum<Meta> value) { this->future->put_modification(id.raw(), &value); }
+        void put_deletion(Id<Meta> id) { this->future->put_deletion(id.raw()); }
+        void put_add(Id<Meta> id, Quantum<Meta> value) { this->future->put_add(id.raw(), &value); }
+        void put_global(GlobalValue<Meta> value) { this->future->put_global(&value); }
 
         Quantum<Meta>& get_modification_access(Id<Meta> id) {
-            void* found = target->get_modification_access(id.raw());
+            void* found = this->future->get_modification_access(id.raw());
             if (not found)
                 utility::messages::throw_not_present("cannot modify", Rtid::name<Meta>(), id.raw());
             return *static_cast<Quantum<Meta>*>(found);
         }
 
         GlobalValue<Meta>& get_access_global() {
-            void* found = target->get_access_global();
+            void* found = this->future->get_access_global();
             if (not found)
                 throw std::logic_error(std::string("fQSM: global is not assembled yet: ") + std::string(Rtid::name<Meta>()));
             return *static_cast<GlobalValue<Meta>*>(found);
         }
-
-    private:
-        erased::FutureLine* target;
     };
 
-    // The object a complex state caches per slot: the aspect view plus typed writes (future lines only).
+    // The typed view a complex state keeps per slot: items, global and writes over one Lines.
     template<category::Any Meta>
-    class Slot final : public Aspect<Meta>, public WorkersInterface<Meta> {
-    public:
-        Slot(const erased::ReadLine& reader, erased::Line* writable, erased::FutureLine* future)
-            : Aspect<Meta>(reader, writable, future)
-            , WorkersInterface<Meta>(future)
-        {}
-
-        void rebind(const erased::ReadLine& line, erased::Line* writableLine, erased::FutureLine* futureLine) override {
-            Aspect<Meta>::rebind(line, writableLine, futureLine);
-            this->retarget(futureLine);
-        }
-    };
+    using Slot = WorkersInterface<Meta>;
 }

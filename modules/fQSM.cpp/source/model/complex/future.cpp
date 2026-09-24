@@ -16,7 +16,6 @@ namespace fqsm::model::complex {
         const auto& pool = linePool();
         if (not pool) return;
         for (Slot slot = 0; slot < lines.size(); ++slot) {
-            pool->give_view(slot, release_view(slot));
             pool->give_future(slot, std::move(lines[slot]));
         }
     }

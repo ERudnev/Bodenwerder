@@ -2,11 +2,16 @@
 
 ## Contexts
 
-- `Reading` (View) gives read access to a state: a Realm, or a Future over a Realm.
-- `Writing` (Gate) gives read access plus buffered writes. Writes go into a patch, not into the state.
-- `Stewarding` (Dock) gives direct access (`direct<X>().items`) to the Realm lines plus a Gate. Direct writes change the Realm in place and mark the aspect as tainted.
-- `Reacting` (Review) is the context of a reaction: `changes<X>()` reads the patch under review, `adjustments<X>()` writes into a new correction patch.
-- `Retrospecting` (Wall) reads the last stable state; deletion reactions use it.
+A **session** is one open change: a patch over a base state, and a future that shows the base through the patch. A Realm, a Branch or a normalization wave owns the session. A context is a thin handle to a session. A handle does not own the session. The session outlives every handle.
+
+- `Reading` reads a state: a Realm, a Branch, or a session future.
+- `Writing` reads the base plus the patch, and writes into the patch. Copies of a Writing write into one session.
+- `Stewarding` is a Writing that also gives `direct<X>()`. `Direct<X>` changes the Realm lines in place and marks the aspect as tainted. The Writing part of the same session sees these changes.
+- `Reacting` is the context of a reaction. `changes<X>()` reads the patch under review. `adjustments<X>()` writes into the correction patch of the wave. It converts to Reading (the proposal) and to Writing (the corrections).
+- `Retrospecting` reads the last stable state. Deletion reactions get it. Its writes go into the corrections of the wave.
+- `SettingUp` gives a Writing to `Always::assemble` while the Realm is built.
+
+Handles count themselves on the session. When the last handle of a Realm session ends, the Realm accepts the session: it normalizes the patch and integrates it. An unnamed Writing ends at the end of the full expression. A named Writing, or a gate from `modify()`, ends at its scope end.
 
 ## Runtime shape
 
@@ -35,7 +40,7 @@ else: integrate P into A once
 
 ## Branch
 
-A Branch owns a patch over a base view. It does not normalize. When the Branch closes, its patch is merged into the patch of the parent (another Branch, or the Realm). The Realm normalizes and integrates the result.
+A Branch owns a session over the state of its parent (the Realm or another Branch). It does not normalize. When the Branch closes, the parent takes its patch: a Realm normalizes and integrates it, a Branch merges it into its own patch. A refused Branch is discarded alone. Its refusal becomes a warning of the parent Branch, or the rejection of the Realm transaction.
 
 ## Principles
 
