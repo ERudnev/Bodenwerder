@@ -38,4 +38,9 @@ namespace eltanin::mech {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/mech/blueprint.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto blueprint() -> Schema;
+    }
+
 }

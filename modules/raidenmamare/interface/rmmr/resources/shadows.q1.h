@@ -44,4 +44,9 @@ namespace rmmr::resource::shadow {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/resources/shadows.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto shadows() -> Schema;
+    }
+
 }

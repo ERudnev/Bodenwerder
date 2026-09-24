@@ -9,4 +9,8 @@ namespace rmmr::scene::actor {
         with<MeshState>::modify(context, node)->opacity = opacity;
     }
 
+    auto doctrine::sprite() -> Schema {
+        return ask::schema::aspect<Sprite>();
+    }
+
 }

@@ -265,4 +265,8 @@ namespace eltanin::geo {
         };
     }
 
+    auto doctrine::boulder() -> Schema {
+        return ask::schema::aspect<Boulder>();
+    }
+
 }

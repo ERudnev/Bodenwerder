@@ -94,4 +94,8 @@ namespace rmmr::controller {
         };
     }
 
+    auto doctrine::camera2d() -> Schema {
+        return ask::schema::aspect<Camera2d>();
+    }
+
 }

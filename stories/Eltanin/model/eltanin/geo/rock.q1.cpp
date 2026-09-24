@@ -555,4 +555,8 @@ namespace eltanin::geo {
         };
     }
 
+    auto doctrine::rock() -> Schema {
+        return ask::schema::aspect<Rock>();
+    }
+
 }

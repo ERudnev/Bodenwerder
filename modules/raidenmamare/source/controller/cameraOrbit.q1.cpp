@@ -134,4 +134,8 @@ namespace rmmr::controller {
         };
     }
 
+    auto doctrine::cameraOrbit() -> Schema {
+        return ask::schema::aspect<CameraOrbit>();
+    }
+
 }

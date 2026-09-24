@@ -390,4 +390,8 @@ namespace eltanin::mech {
         }
     }
 
+    auto doctrine::blueprint() -> Schema {
+        return ask::schema::aspect<Blueprint>();
+    }
+
 }

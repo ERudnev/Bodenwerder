@@ -379,4 +379,12 @@ namespace rmmr::resource::texpack {
         };
     }
 
+    auto doctrine::texpack() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Runtime>(),
+            ask::schema::aspect<Pack>(),
+            ask::schema::aspect<LoaderCatalog>(),
+        });
+    }
+
 }

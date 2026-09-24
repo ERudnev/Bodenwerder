@@ -106,4 +106,11 @@ namespace rmmr::resource::material {
         glUseProgram(shader_quantum.handle);
     }
 
+    auto doctrine::materials() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Runtime>(),
+            ask::schema::aspect<Asset>(),
+        });
+    }
+
 }

@@ -43,4 +43,9 @@ namespace eltanin::decorations {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/decorations/dust.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto dust() -> Schema;
+    }
+
 }

@@ -539,4 +539,8 @@ namespace eltanin::locality {
         };
     }
 
+    auto doctrine::flash() -> Schema {
+        return ask::schema::aspect<Flash>();
+    }
+
 }

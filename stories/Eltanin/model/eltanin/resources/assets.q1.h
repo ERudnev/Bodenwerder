@@ -20,4 +20,9 @@ namespace eltanin::resource {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/resources/assets.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto assets() -> Schema;
+    }
+
 }

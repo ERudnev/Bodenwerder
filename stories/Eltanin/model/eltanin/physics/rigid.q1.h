@@ -97,4 +97,9 @@ namespace eltanin::phys::rigid {
     auto restoredBody(dvec3 origin, dquat rotation, const vector<Particle>&, const vector<vec3>&) -> Body::Quantum;
     auto restoredBody(rmmr::Pose, const vector<Particle>&, const vector<vec3>&) -> Body::Quantum;
 
+    // Schema fragment of doctrine/physics/rigid.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto rigid() -> Schema;
+    }
+
 }

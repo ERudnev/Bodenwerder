@@ -30,4 +30,9 @@ namespace eltanin::phys {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/physics/resting.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto resting() -> Schema;
+    }
+
 }

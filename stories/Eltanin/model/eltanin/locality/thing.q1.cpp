@@ -39,4 +39,8 @@ namespace eltanin::locality {
         with<geo::Boulder>::followBody(context);
     }
 
+    auto doctrine::thing() -> Schema {
+        return ask::schema::aspect<Thing>();
+    }
+
 }

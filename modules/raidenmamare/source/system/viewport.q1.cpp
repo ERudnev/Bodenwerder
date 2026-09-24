@@ -58,4 +58,11 @@ namespace rmmr::system {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
 
+    auto doctrine::viewport() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Viewport>(),
+            ask::schema::aspect<Viewport_group>(),
+        });
+    }
+
 }

@@ -27,4 +27,8 @@ namespace rmmr::scene {
         with<Node>::modify(context, id)->visible = visible;
     }
 
+    auto doctrine::node() -> Schema {
+        return ask::schema::aspect<Node>();
+    }
+
 }

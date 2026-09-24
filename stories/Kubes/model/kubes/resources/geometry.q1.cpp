@@ -173,4 +173,8 @@ namespace kubes::resource {
         return rmmr::resource::geometry::Asset::Actions::install(context, asset_id, device, build_cpu(generator));
     }
 
+    auto doctrine::geometry() -> Schema {
+        return ask::schema::aspect<SkySphereGenerator>();
+    }
+
 }

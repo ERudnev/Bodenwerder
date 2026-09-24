@@ -193,4 +193,8 @@ namespace rmmr::system {
         }
     }
 
+    auto doctrine::window() -> Schema {
+        return ask::schema::aspect<Window>();
+    }
+
 }
