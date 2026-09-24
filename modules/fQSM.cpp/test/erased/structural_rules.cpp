@@ -236,4 +236,23 @@ void structural_element_removal_unhooks()
     EXPECT_EQ(with<Crew>::get(main, base).size(), std::size_t{1});
 }
 
+// A Feature registered without its Host: the rules that need the host are skipped, nothing throws.
+void structural_rule_with_absent_host_is_skipped()
+{
+    using namespace rules;
+    fqsm::Schema lonely = ask::schema::aspect<Limb>();
+    EXPECT_TRUE(lonely->rules.empty());
+    EXPECT_FALSE(lonely->accepts<Host>());
+
+    establish::Realm main(lonely);
+    const auto id = Host::Id::generate_random();
+    with<Limb>::extend(main, id, {1});
+    EXPECT_TRUE(main.result().good()) << "no host rule: the feature is accepted alone";
+    EXPECT_TRUE(with<Limb>::exists(main, id));
+
+    with<Limb>::remove(main, id);
+    EXPECT_TRUE(main.result().good()) << "no attempt to delete the absent host";
+    EXPECT_FALSE(with<Limb>::exists(main, id));
+}
+
 } // namespace tests

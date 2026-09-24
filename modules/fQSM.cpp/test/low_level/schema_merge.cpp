@@ -35,6 +35,19 @@ namespace {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Entity with one custom reaction that counts its invocations.
+    inline int countedCalls = 0;
+
+    struct Counted : Entity<Counted> {
+        struct Quantum { integer value = 0; };
+        struct Internals : DefaultInternals {
+            static void count(Reacting) { ++countedCalls; }
+        };
+        static const Behavior customAspectReactions() {
+            return { reaction::aspect_wide<Counted>(&Internals::count) };
+        }
+    };
+
     // Feature requires its host to appear in the *same* patch as the new feature
     // (co-birth), so create+extend must happen as a single top-level call.
     auto spawn_host_with_cap(Writing context, integer value) -> Host::Id {
@@ -180,23 +193,27 @@ void schema_merge_single_fragment_identity()
 
 // PINS CURRENT BEHAVIOUR, NOT DESIRED BEHAVIOUR.
 // If the same aspect is registered by two fragments (e.g. two doctrine files both happen to
-// pull in Cap), nodes are deduplicated (Graph::nodes is keyed by type, emplace keeps the
-// first one), but reactions are simply concatenated across parts, so they end up duplicated
-// and each would fire twice. Duplicates must be avoided by construction: every doctrine file
-// must register each of its aspects exactly once across the whole schema assembly.
-void schema_merge_duplicate_aspect_pins_current_behavior()
+// pull in the same aspect), nodes and slots are deduplicated (first registration wins) and the
+// structural rules, derived from the deduplicated descriptors, exist once. Custom reactions are
+// concatenated across parts, so they are duplicated and each fires twice per change.
+// Duplicates must be avoided by construction: every doctrine file must register each of its
+// aspects exactly once across the whole schema assembly.
+void schema_merge_duplicate_aspect_duplicates_custom_reactions()
 {
     using namespace fqsm::api;
 
     const Schema once = ask::schema::merge({
         ask::schema::aspect<Host>(),
         ask::schema::aspect<Cap>(),
+        ask::schema::aspect<Counted>(),
     });
 
     const Schema twice = ask::schema::merge({
         ask::schema::aspect<Host>(),
         ask::schema::aspect<Cap>(),
-        ask::schema::aspect<Cap>(), // duplicate registration of the same aspect
+        ask::schema::aspect<Counted>(),
+        ask::schema::aspect<Cap>(),     // duplicate registration of a feature (structural rules only)
+        ask::schema::aspect<Counted>(), // duplicate registration of an aspect with a custom reaction
     });
 
     const auto a = signature_of(once);
@@ -204,9 +221,20 @@ void schema_merge_duplicate_aspect_pins_current_behavior()
 
     EXPECT_EQ(a.nodeCount, b.nodeCount) << "nodes are deduplicated by type";
     EXPECT_EQ(a.nodeNames, b.nodeNames) << "node set unaffected by the duplicate registration";
-    EXPECT_EQ(b.reactionCount, a.reactionCount * 2)
-        << "current behaviour: reactions are concatenated, not deduplicated -- "
-           "duplicate aspect registration doubles the reaction count";
+    EXPECT_EQ(once->slotCount(), twice->slotCount()) << "slots are deduplicated";
+    EXPECT_EQ(once->rules.size(), twice->rules.size()) << "structural rules are not duplicated";
+    EXPECT_EQ(a.reactionCount, std::size_t{1});
+    EXPECT_EQ(b.reactionCount, std::size_t{2}) << "custom reactions are duplicated";
+
+    const auto invocations = [](const Schema& schema) {
+        establish::Realm main(schema);
+        const auto id = with<Counted>::create(main, {1});
+        countedCalls = 0;
+        with<Counted>::modify(main, id)->value = 2;
+        return countedCalls;
+    };
+    EXPECT_EQ(invocations(once), 1);
+    EXPECT_EQ(invocations(twice), 2) << "a duplicated custom reaction fires twice per change";
 }
 
 void schema_merge_realm_feature_removal_nested_vs_flat()
