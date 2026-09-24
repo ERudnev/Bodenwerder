@@ -1,18 +1,18 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
 #include <stdexcept>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <base/cannonball/entry.h>
+#include <base/cannonball/key.h>
 #include <base/cannonball/table/direct.h>
 
 namespace base::cannonball {
 
-template<typename Key, typename Val, typename Hasher = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
+template<typename Key, typename Val>
 class Table : public table::Direct<Key, Val> {
 public:
     using Interface = table::Direct<Key, Val>;
@@ -24,22 +24,18 @@ public:
 
     Table() = default;
 
-    explicit Table(const Hasher& hash, const KeyEqual& equal = KeyEqual())
-        : idToIndex(0, hash, equal)
-    {}
-
     bool contains(const Key& id) const override {
-        return idToIndex.find(id) != idToIndex.end();
+        return idToIndex.find(RawKey<Key>::of(id)) != idToIndex.end();
     }
 
     const Val* find(const Key& id) const override {
-        const auto lookup = idToIndex.find(id);
+        const auto lookup = idToIndex.find(RawKey<Key>::of(id));
         if (lookup == idToIndex.end()) return nullptr;
         return std::addressof(entries[lookup->second].value);
     }
 
     Val* find(const Key& id) override {
-        const auto lookup = idToIndex.find(id);
+        const auto lookup = idToIndex.find(RawKey<Key>::of(id));
         if (lookup == idToIndex.end()) return nullptr;
         return std::addressof(entries[lookup->second].value);
     }
@@ -79,7 +75,7 @@ public:
     }
 
     bool erase(const Key& id) override {
-        const auto lookup = idToIndex.find(id);
+        const auto lookup = idToIndex.find(RawKey<Key>::of(id));
         if (lookup == idToIndex.end()) return false;
 
         const SizeType removedSlot = lookup->second;
@@ -87,7 +83,7 @@ public:
 
         if (removedSlot != entries.size() - 1) {
             entries[removedSlot] = std::move(entries.back());
-            idToIndex[entries[removedSlot].id] = removedSlot;
+            idToIndex[RawKey<Key>::of(entries[removedSlot].id)] = removedSlot;
         }
 
         entries.pop_back();
@@ -118,7 +114,7 @@ protected:
 private:
     template<typename KeyArg, typename ValArg>
     Val& insert_impl(KeyArg&& id, ValArg&& value) {
-        const auto lookup = idToIndex.find(id);
+        const auto lookup = idToIndex.find(RawKey<Key>::of(id));
         if (lookup != idToIndex.end()) {
             auto& slot = entries[lookup->second].value;
             slot = std::forward<ValArg>(value);
@@ -127,11 +123,11 @@ private:
 
         const SizeType slot = entries.size();
         entries.emplace_back(Entry{std::forward<KeyArg>(id), std::forward<ValArg>(value)});
-        idToIndex.emplace(entries.back().id, slot);
+        idToIndex.emplace(RawKey<Key>::of(entries.back().id), slot);
         return entries.back().value;
     }
 
-    std::unordered_map<Key, SizeType, Hasher, KeyEqual> idToIndex;
+    std::unordered_map<typename RawKey<Key>::type, SizeType> idToIndex;
     std::vector<Entry> entries;
 };
 

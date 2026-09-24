@@ -13,6 +13,8 @@
     X(patch_operations) \
     X(patch_integrate) \
     X(patch_merge) \
+    X(patch_modify_modification) \
+    X(raw_keyed_index) \
     X(draft_patch_build) \
     X(preview_future_world) \
     X(future_nested_overlay) \
@@ -44,6 +46,8 @@ int main() {
             BASETEST_NAMED("patch_operations", &tests::patch_operations),
             BASETEST_NAMED("patch_integrate", &tests::patch_integrate),
             BASETEST_NAMED("patch_merge", &tests::patch_merge),
+            BASETEST_NAMED("patch_modify_modification", &tests::patch_modify_modification),
+            BASETEST_NAMED("raw_keyed_index", &tests::raw_keyed_index),
             BASETEST_NAMED("draft_patch_build", &tests::draft_patch_build),
             BASETEST_NAMED("preview_future_world", &tests::preview_future_world),
             BASETEST_NAMED("future_nested_overlay", &tests::future_nested_overlay)

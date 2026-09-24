@@ -9,10 +9,10 @@
 namespace base::cannonball {
 
 // set of changes for some table
-template<typename Key, typename Val, typename Hasher = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
-class Patch : public Table<Key, Patchlet<Val>, Hasher, KeyEqual> {
+template<typename Key, typename Val>
+class Patch : public Table<Key, Patchlet<Val>> {
 public:
-    using Base = Table<Key, Patchlet<Val>, Hasher, KeyEqual>;
+    using Base = Table<Key, Patchlet<Val>>;
     using RelatedOperational = table::Operational<Key, Val>;
     using RelatedDirect = table::Direct<Key, Val>;
 
@@ -40,8 +40,8 @@ public:
 
 namespace base::cannonball {
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-Patchlet<Val>& Patch<Key, Val, Hasher, KeyEqual>
+template<typename Key, typename Val>
+Patchlet<Val>& Patch<Key, Val>
 ::insert(const Key& id, const Patchlet<Val>& patchlet)
 {
     if (auto* current = this->find(id)) {
@@ -55,8 +55,8 @@ Patchlet<Val>& Patch<Key, Val, Hasher, KeyEqual>
     return *this->find(id);
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-Patchlet<Val>& Patch<Key, Val, Hasher, KeyEqual>
+template<typename Key, typename Val>
+Patchlet<Val>& Patch<Key, Val>
 ::insert(Key&& id, Patchlet<Val>&& patchlet)
 {
     if (auto* current = this->find(id)) {
@@ -71,42 +71,42 @@ Patchlet<Val>& Patch<Key, Val, Hasher, KeyEqual>
     return *this->find(key);
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>
+template<typename Key, typename Val>
+void Patch<Key, Val>
 ::modify(const Key& id, const Val& quantum)
 {
     insert(id, Patchlet<Val>::modification(quantum));
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>
+template<typename Key, typename Val>
+void Patch<Key, Val>
 ::modify(Key&& id, Val&& quantum)
 {
     insert(std::move(id), Patchlet<Val>::modification(std::move(quantum)));
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-Val& Patch<Key, Val, Hasher, KeyEqual>
+template<typename Key, typename Val>
+Val& Patch<Key, Val>
 ::modify_modification(Key id, base::function_ref<const Val&()> prepatch)
 {
     if (auto* patchlet = Base::find(id)) {
         return patchlet->quantum;
     }
 
-    const Key& key = id;
+    const Key key = id;
     insert(std::move(id), Patchlet<Val>::possible(prepatch()));
     return Base::at(key).quantum;
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-bool Patch<Key, Val, Hasher, KeyEqual>
+template<typename Key, typename Val>
+bool Patch<Key, Val>
 ::discard_changes(const Key& id)
 {
     return Base::erase(id);
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>
+template<typename Key, typename Val>
+void Patch<Key, Val>
 ::integrate(RelatedOperational& target, const Patch& patch)
 {
     for (const auto entry : patch) {
@@ -119,8 +119,8 @@ void Patch<Key, Val, Hasher, KeyEqual>
     }
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>
+template<typename Key, typename Val>
+void Patch<Key, Val>
 ::integrate(RelatedDirect& target, const Patch& patch)
 {
     for (const auto entry : patch) {
@@ -138,16 +138,16 @@ void Patch<Key, Val, Hasher, KeyEqual>
     }
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>
+template<typename Key, typename Val>
+void Patch<Key, Val>
 ::merge(Patch& receiver, const Patch& other)
 {
     for (const auto entry : other)
         receiver.insert(entry.id, entry.value);
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Patch<Key, Val, Hasher, KeyEqual>
+template<typename Key, typename Val>
+void Patch<Key, Val>
 ::merge_three_way(const RelatedOperational&, Patch& receiver, const Patch& other)
 {
     merge(receiver, other);

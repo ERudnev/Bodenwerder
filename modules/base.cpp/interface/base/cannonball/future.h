@@ -17,13 +17,13 @@ enum class SeeChanges {
     blind,
 };
 
-template<typename Key, typename Val, typename Hasher = std::hash<Key>, typename KeyEqual = std::equal_to<Key>>
+template<typename Key, typename Val>
 class Future : public table::Operational<Key, Val> {
 public:
     using Mode = SeeChanges;
     using Interface = table::Operational<Key, Val>;
     using View = table::Read<Key, Val>;
-    using PatchType = Patch<Key, Val, Hasher, KeyEqual>;
+    using PatchType = Patch<Key, Val>;
     using PatchView = table::Read<Key, Patchlet<Val>>;
 
     using SizeType = typename Interface::SizeType;
@@ -64,21 +64,21 @@ public:
 // Impl
 namespace base::cannonball {
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-Future<Key, Val, Hasher, KeyEqual>::Future(const View& state, PatchType& patch, SeeChanges mode)
+template<typename Key, typename Val>
+Future<Key, Val>::Future(const View& state, PatchType& patch, SeeChanges mode)
     : state(state)
     , patch(patch)
     , mode(mode)
 {}
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-bool Future<Key, Val, Hasher, KeyEqual>::contains(const Key& id) const
+template<typename Key, typename Val>
+bool Future<Key, Val>::contains(const Key& id) const
 {
     return find(id) != nullptr;
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-const Val* Future<Key, Val, Hasher, KeyEqual>::find(const Key& id) const
+template<typename Key, typename Val>
+const Val* Future<Key, Val>::find(const Key& id) const
 {
     if (mode == SeeChanges::blind)
         return state.find(id);
@@ -91,15 +91,15 @@ const Val* Future<Key, Val, Hasher, KeyEqual>::find(const Key& id) const
     return state.find(id);
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-const Val& Future<Key, Val, Hasher, KeyEqual>::at(const Key& id) const
+template<typename Key, typename Val>
+const Val& Future<Key, Val>::at(const Key& id) const
 {
     if (const auto* found = find(id)) return *found;
     throw std::out_of_range("Future::at");
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-auto Future<Key, Val, Hasher, KeyEqual>::size() const -> SizeType
+template<typename Key, typename Val>
+auto Future<Key, Val>::size() const -> SizeType
 {
     if (mode == SeeChanges::blind)
         return state.size();
@@ -119,8 +119,8 @@ auto Future<Key, Val, Hasher, KeyEqual>::size() const -> SizeType
     return result;
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Future<Key, Val, Hasher, KeyEqual>::clear()
+template<typename Key, typename Val>
+void Future<Key, Val>::clear()
 {
     patch.clear();
     patch.reserve(state.size());
@@ -129,26 +129,26 @@ void Future<Key, Val, Hasher, KeyEqual>::clear()
         patch.insert(entry.id, Patchlet<Val>::deletion(entry.value));
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-void Future<Key, Val, Hasher, KeyEqual>::reserve(SizeType capacity)
+template<typename Key, typename Val>
+void Future<Key, Val>::reserve(SizeType capacity)
 {
     patch.reserve(capacity);
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-Val& Future<Key, Val, Hasher, KeyEqual>::insert(const Key& id, const Val& value)
+template<typename Key, typename Val>
+Val& Future<Key, Val>::insert(const Key& id, const Val& value)
 {
     return patch.insert(id, Patchlet<Val>::modification(value)).quantum;
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-Val& Future<Key, Val, Hasher, KeyEqual>::insert(Key&& id, Val&& value)
+template<typename Key, typename Val>
+Val& Future<Key, Val>::insert(Key&& id, Val&& value)
 {
     return patch.insert(std::move(id), Patchlet<Val>::modification(std::move(value))).quantum;
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-bool Future<Key, Val, Hasher, KeyEqual>::erase(const Key& id)
+template<typename Key, typename Val>
+bool Future<Key, Val>::erase(const Key& id)
 {
     const bool existed_in_state = state.contains(id);
     const auto* patched = patch.find(id);
@@ -168,8 +168,8 @@ bool Future<Key, Val, Hasher, KeyEqual>::erase(const Key& id)
     return true;
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-auto Future<Key, Val, Hasher, KeyEqual>::read_begin() const -> Cursor
+template<typename Key, typename Val>
+auto Future<Key, Val>::read_begin() const -> Cursor
 {
     if (mode == SeeChanges::blind)
         return state.begin();
@@ -177,8 +177,8 @@ auto Future<Key, Val, Hasher, KeyEqual>::read_begin() const -> Cursor
     return Cursor::overlay(state.begin(), patch.raw_entries(), std::addressof(patch_view()), false);
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-auto Future<Key, Val, Hasher, KeyEqual>::read_end() const -> Cursor
+template<typename Key, typename Val>
+auto Future<Key, Val>::read_end() const -> Cursor
 {
     if (mode == SeeChanges::blind)
         return state.end();
@@ -186,8 +186,8 @@ auto Future<Key, Val, Hasher, KeyEqual>::read_end() const -> Cursor
     return Cursor::overlay(state.end(), patch.raw_entries(), std::addressof(patch_view()), true);
 }
 
-template<typename Key, typename Val, typename Hasher, typename KeyEqual>
-auto Future<Key, Val, Hasher, KeyEqual>::patch_view() const -> const PatchView&
+template<typename Key, typename Val>
+auto Future<Key, Val>::patch_view() const -> const PatchView&
 {
     return static_cast<const PatchView&>(patch);
 }
