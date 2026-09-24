@@ -21,4 +21,9 @@ namespace rmmr::controller {
         static const Behavior customAspectReactions();
     };
 
+    // Schema fragment of doctrine/controllers/camera3d.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto camera3d() -> Schema;
+    }
+
 }

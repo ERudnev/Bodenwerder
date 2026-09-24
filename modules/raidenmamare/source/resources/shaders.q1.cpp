@@ -161,4 +161,12 @@ namespace rmmr::resource::shader {
         };
     }
 
+    auto doctrine::shaders() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Runtime>(),
+            ask::schema::aspect<Asset>(),
+            ask::schema::aspect<Loader>(),
+        });
+    }
+
 }

@@ -60,4 +60,9 @@ namespace rmmr::resource::material {
         umap<string, string> textures;
     };
 
+    // Schema fragment of doctrine/resources/materials.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto materials() -> Schema;
+    }
+
 }

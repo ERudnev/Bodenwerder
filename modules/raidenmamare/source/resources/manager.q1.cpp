@@ -38,4 +38,12 @@ namespace rmmr::resource {
         return {.id = id, .backup = with<Unit>::get(context, id).name};
     }
 
+    auto doctrine::manager() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Unit>(),
+            ask::schema::aspect<Manager>(),
+            ask::schema::aspect<Unit_group>(),
+        });
+    }
+
 }

@@ -301,4 +301,21 @@ namespace rmmr::resource {
         };
     }
 
+    auto doctrine::runtimes() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Assets>(),
+            ask::schema::aspect<DeviceRuntimes>(),
+            ask::schema::aspect<Runtime_group>(),
+            ask::schema::aspect<TexpackRuntime_group>(),
+            ask::schema::aspect<Texture3arrayRuntime_group>(),
+            ask::schema::aspect<ShaderRuntime_group>(),
+            ask::schema::aspect<MaterialRuntime_group>(),
+            ask::schema::aspect<OverlayRuntime_group>(),
+            ask::schema::aspect<ShadowRuntime_group>(),
+            ask::schema::aspect<GeometryRuntime_group>(),
+            ask::schema::aspect<SpriteRuntime_group>(),
+            ask::schema::aspect<Runtimes>(),
+        });
+    }
+
 }

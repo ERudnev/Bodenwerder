@@ -609,4 +609,13 @@ namespace rmmr::resource::geometry {
         };
     }
 
+    auto doctrine::geometry() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Runtime>(),
+            ask::schema::aspect<Asset>(),
+            ask::schema::aspect<Loader>(),
+            ask::schema::aspect<Generator>(),
+        });
+    }
+
 }

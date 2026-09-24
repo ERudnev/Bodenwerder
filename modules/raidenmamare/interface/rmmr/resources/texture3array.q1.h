@@ -40,4 +40,9 @@ namespace rmmr::resource::texture3array {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/resources/texture3array.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto texture3array() -> Schema;
+    }
+
 }

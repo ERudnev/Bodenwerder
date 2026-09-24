@@ -321,4 +321,12 @@ namespace rmmr::scene::actor {
         };
     }
 
+    auto doctrine::family() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Family>(),
+            ask::schema::aspect<Replica>(),
+            ask::schema::aspect<Replica_group>(),
+        });
+    }
+
 }

@@ -261,4 +261,13 @@ namespace rmmr::resource::texture {
         };
     }
 
+    auto doctrine::textures() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Runtime>(),
+            ask::schema::aspect<Asset>(),
+            ask::schema::aspect<Loader>(),
+            ask::schema::aspect<Generator>(),
+        });
+    }
+
 }

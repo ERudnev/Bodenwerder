@@ -112,4 +112,8 @@ namespace rmmr::controller {
         };
     }
 
+    auto doctrine::camera3d() -> Schema {
+        return ask::schema::aspect<Camera3d>();
+    }
+
 }

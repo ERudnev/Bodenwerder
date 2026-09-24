@@ -28,4 +28,9 @@ namespace eltanin::locality {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/locality/thing.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto thing() -> Schema;
+    }
+
 }

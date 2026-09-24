@@ -59,4 +59,9 @@ namespace rmmr::system {
         static const Behavior customAspectReactions();
     };
 
+    // Schema fragment of doctrine/system/core.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto core() -> Schema;
+    }
+
 }

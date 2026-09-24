@@ -199,4 +199,8 @@ namespace eltanin::decorations {
         return hang(context, actor, linear, omega, temperature, glm::clamp(cohesion, 0.0f, 1.0f), size, massOf(size));
     }
 
+    auto doctrine::dust() -> Schema {
+        return ask::schema::aspect<Dust>();
+    }
+
 }

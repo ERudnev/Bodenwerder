@@ -22,4 +22,9 @@ namespace rmmr::scene {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/scene/node.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto node() -> Schema;
+    }
+
 }

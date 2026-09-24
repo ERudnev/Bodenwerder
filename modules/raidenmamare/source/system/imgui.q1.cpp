@@ -116,4 +116,8 @@ namespace rmmr::system {
         };
     }
 
+    auto doctrine::imgui() -> Schema {
+        return ask::schema::aspect<ImGuiHost>();
+    }
+
 }

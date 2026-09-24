@@ -34,6 +34,11 @@
     X(no_resurrection) \
     X(quantal) \
     X(transaction_hierarchy) \
+    X(schema_merge_nested_equals_flat) \
+    X(schema_merge_order_independent) \
+    X(schema_merge_single_fragment_identity) \
+    X(schema_merge_duplicate_aspect_pins_current_behavior) \
+    X(schema_merge_realm_feature_removal_nested_vs_flat) \
     // end
 
 #define FQSM_MINIMODEL_TESTS(X) \

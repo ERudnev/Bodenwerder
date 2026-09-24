@@ -27,4 +27,9 @@ namespace kubes {
         static const Behavior customAspectReactions();
     };
 
+    // Schema fragment of doctrine/world.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto world() -> Schema;
+    }
+
 }

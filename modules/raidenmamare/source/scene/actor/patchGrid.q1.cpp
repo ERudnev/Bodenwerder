@@ -241,4 +241,8 @@ namespace rmmr::scene::actor {
         };
     }
 
+    auto doctrine::patchGrid() -> Schema {
+        return ask::schema::aspect<PatchGrid>();
+    }
+
 }

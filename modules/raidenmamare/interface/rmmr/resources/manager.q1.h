@@ -54,4 +54,9 @@ namespace rmmr::resource {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/resources/manager.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto manager() -> Schema;
+    }
+
 }

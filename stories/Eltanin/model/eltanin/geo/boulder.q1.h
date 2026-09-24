@@ -40,4 +40,9 @@ namespace eltanin::geo {
         static const Behavior customAspectReactions();
     };
 
+    // Schema fragment of doctrine/geo/boulder.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto boulder() -> Schema;
+    }
+
 }

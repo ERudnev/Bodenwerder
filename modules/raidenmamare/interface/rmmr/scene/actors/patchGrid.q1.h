@@ -83,4 +83,9 @@ namespace rmmr::scene::actor {
         static const Behavior customAspectReactions();
     };
 
+    // Schema fragment of doctrine/scene/actors/patchGrid.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto patchGrid() -> Schema;
+    }
+
 }

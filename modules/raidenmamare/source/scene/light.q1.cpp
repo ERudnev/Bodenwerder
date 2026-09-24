@@ -15,4 +15,8 @@ namespace rmmr::scene {
         return node;
     }
 
+    auto doctrine::light() -> Schema {
+        return ask::schema::aspect<Light>();
+    }
+
 }

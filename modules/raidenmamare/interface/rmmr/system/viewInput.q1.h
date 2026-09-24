@@ -25,4 +25,9 @@ namespace rmmr::system {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/system/viewInput.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto viewInput() -> Schema;
+    }
+
 }

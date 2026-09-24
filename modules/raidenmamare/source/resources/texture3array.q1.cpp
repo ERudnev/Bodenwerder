@@ -117,4 +117,11 @@ namespace rmmr::resource::texture3array {
         };
     }
 
+    auto doctrine::texture3array() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Runtime>(),
+            ask::schema::aspect<Asset>(),
+        });
+    }
+
 }

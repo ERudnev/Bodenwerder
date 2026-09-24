@@ -818,4 +818,8 @@ namespace eltanin::locality {
         };
     }
 
+    auto doctrine::construct() -> Schema {
+        return ask::schema::aspect<Construct>();
+    }
+
 }
