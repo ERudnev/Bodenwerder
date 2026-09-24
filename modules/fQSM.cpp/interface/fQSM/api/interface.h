@@ -21,7 +21,6 @@
 
 // Behavior definition for Aspects:
 #include <fQSM/features/behavior.h>
-#include <fQSM/features/reactions/structural.h>
 #include <fQSM/features/reactions/aspect_wide.h>
 #include <fQSM/features/reactions/anchoring.h>
 #include <fQSM/features/reactions/constraints.h>

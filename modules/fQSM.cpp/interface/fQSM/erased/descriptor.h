@@ -8,6 +8,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include <fQSM/identifier.h>
 #include <fQSM/features/_forwards.h>
@@ -75,6 +76,7 @@ namespace fqsm::erased {
         void (*assembleGlobal)(SettingUp&, void* dst);     // constructs into raw storage; nullptr when Global is default-constructible
         bool (*groupErase)(void* quantum, RawId);          // group only
         void (*groupInsert)(void* quantum, RawId);         // group only
+        void (*groupElements)(const void* quantum, std::vector<RawId>& out);   // group only: appends the ids
         features::Reactions reactions;                     // DefaultInternals::reactions()
     };
 
@@ -116,6 +118,7 @@ namespace fqsm::erased {
             .assembleGlobal = nullptr,
             .groupErase = nullptr,
             .groupInsert = nullptr,
+            .groupElements = nullptr,
             .reactions = Meta::DefaultInternals::reactions().rules,
         };
         if constexpr (category::Parasitic<Meta>) {
@@ -129,6 +132,10 @@ namespace fqsm::erased {
             };
             out.groupInsert = [](void* quantum, RawId id) {
                 static_cast<Quantum<Meta>*>(quantum)->insert(Id<Element>{id});
+            };
+            out.groupElements = [](const void* quantum, std::vector<RawId>& ids) {
+                for (const auto& id : *static_cast<const Quantum<Meta>*>(quantum))
+                    ids.push_back(id.raw());
             };
         }
         if constexpr (detail::HasGlobalAssemble<Meta>) {

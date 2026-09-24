@@ -5,6 +5,7 @@
 
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/algorithms/integration.h>
+#include <fQSM/processing/algorithms/structural.h>
 #include <fQSM/processing/contexts/review.h>
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/intertype/schema.h>
@@ -94,6 +95,8 @@ namespace fqsm::processing::algorithm::normalization {
             proposal,
             origin,
             pass.patch);
+
+        apply_structural_rules(proposal, context.reactions->future, taintedLines);
 
         const auto& schema = *changes->schema;
         std::set<model::intertype::Graph::ReactionId> selectedReactions;
