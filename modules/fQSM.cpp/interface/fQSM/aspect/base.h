@@ -78,7 +78,6 @@ namespace fqsm::aspect {
         struct Vocabulary {
             using EvaluateQuantumLocal = std::function<PossibleChange(const Quantum&)>;
             using EvaluateQuantumContextual = std::function<PossibleChange(Reading, Id, const Quantum&)>;
-            using JustWriting = std::function<void(Writing, Id, const Quantum&)>;
             using JustRetrospecting = std::function<void(Retrospecting, Id, const Quantum&)>;
         };
 

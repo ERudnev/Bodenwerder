@@ -10,7 +10,6 @@
 // manipulation
 #include <fQSM/manipulation/schema.h>
 #include <fQSM/manipulation/relations.h>
-#include <fQSM/manipulation/_experimental.h>
 #include <fQSM/manipulation/_temp_sugar.h>
 
 // processing (transactions, e.t.c)
@@ -26,7 +25,6 @@
 #include <fQSM/features/reactions/constraints.h>
 //#include <fQSM/features/reactions/binding.h>
 #include <fQSM/features/reactions/deletion.h>
-#include <fQSM/features/reactions/_experimental.h>
 
 namespace fqsm::api {
     // Q1 language builtin types

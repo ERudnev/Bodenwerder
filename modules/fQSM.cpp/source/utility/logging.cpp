@@ -42,20 +42,6 @@ namespace fqsm::utility {
         return std::format("{} {}", summary, body);
     }
 
-    void log_patch(std::string_view legend, cref<model::complex::Patch> patch) {
-        std::vector<std::string> lines;
-        collect_lines(*patch, lines);
-
-        const auto summary = not patch->has_changes()
-            ? std::string{"empty"}
-            : std::format("{{H:{}}}", lines.size());
-
-        base::message(std::format("{}: {}", legend, summary));
-
-        for (const auto& line : lines)
-            base::message("    {}", line);
-    }
-
     void log_rejected_transaction(const model::complex::Patch::Summary& result) {
         if (result.good()) return;
 

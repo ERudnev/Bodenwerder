@@ -21,6 +21,7 @@
     X(persistent_families) \
     X(temp_persistency) \
     X(remap_identities) \
+    X(reactions_vocabulary) \
     // end
 
 #define FQSM_LOW_LEVEL_TESTS(X) \

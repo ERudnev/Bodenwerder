@@ -3,8 +3,6 @@
 #include <fQSM/meta/rtid.h>
 #include <fQSM/model/_forwards.h>
 
-namespace fqsm::model::complex { class Future; }
-
 namespace fqsm::processing::algorithm {
 
     // Applies the schema's structural rules for one normalization wave. Reads the changes under review

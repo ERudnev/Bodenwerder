@@ -25,7 +25,6 @@ namespace fqsm::model::complex {
         virtual const erased::ReadLine& line(Slot slot) const = 0;
 
         Slot slotOf(meta::Rtid typeId) const { return schema->slotOf(typeId); }
-        bool hasLine(meta::Rtid typeId) const { return schema->nodes.contains(typeId); }
         std::size_t quanta() const;
 
         template<category::Any Meta>

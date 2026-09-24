@@ -9,7 +9,6 @@
 
 #include <fQSM/identifier.h>
 #include <fQSM/meta/interface.include.h>
-#include <fQSM/manipulation/_experimental.h>
 #include <fQSM/processing/contexts/session.h>
 
 namespace fqsm::manipulation {
@@ -51,7 +50,7 @@ namespace fqsm::manipulation {
                     auto operator*() const -> Related {
                         return Related{
                             *current,
-                            call_action<Watchers>::get(context, *current),
+                            meta::facade_t<Watchers>::get(context, *current),
                         };
                     }
 
@@ -60,18 +59,8 @@ namespace fqsm::manipulation {
                         return *this;
                     }
 
-                    auto operator++(int) -> iterator {
-                        auto copy = *this;
-                        ++*this;
-                        return copy;
-                    }
-
                     friend auto operator==(const iterator& a, const iterator& b) -> bool {
                         return a.current == b.current;
-                    }
-
-                    friend auto operator!=(const iterator& a, const iterator& b) -> bool {
-                        return not (a == b);
                     }
                 };
 
