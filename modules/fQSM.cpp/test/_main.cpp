@@ -10,6 +10,7 @@
     X(relations_index_build) \
     X(custom_reactions) \
     X(killing_feature) \
+    X(cascade_closure) \
     X(group_category) \
     X(group_performance) \
     X(cascade_performance) \
