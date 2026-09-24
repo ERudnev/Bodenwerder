@@ -1,3 +1,7 @@
+# Only the static glew is used. The shared DLL links with -nostdlib and fails
+# under clang-cl (memset is not inlined there), so it is not built.
+set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(ONLY_LIBS ON CACHE BOOL "" FORCE)
 add_subdirectory(glew-cmake)
 add_subdirectory(glfw)
 add_subdirectory(glm)
