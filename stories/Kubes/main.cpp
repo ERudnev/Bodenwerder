@@ -2,6 +2,7 @@
 #include <memory>
 #include <stdexcept>
 
+#include <base/clock.h>
 #include <base/logging.h>
 #include <rmmr/api/_interface.h>
 

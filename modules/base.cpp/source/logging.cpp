@@ -1,10 +1,80 @@
 #include <base/logging.h>
+#include <base/clock.h>
 
 #include <chrono>
 #include <ctime>
+#include <exception>
 #include <format>
+#include <iostream>
 
 namespace base {
+
+    void message(std::string_view msg) {
+        std::cout << msg << std::endl;
+    }
+
+    void vmessage(std::string_view fmt, std::format_args args) {
+        message(std::vformat(fmt, args));
+    }
+
+    Progress* Progress::current = nullptr;
+
+    Progress::Progress(std::string_view label) {
+        current = this;
+        std::cout << label << ' ' << std::flush;
+    }
+
+    void Progress::tick() {
+        std::cout << '.' << std::flush;
+    }
+
+    Progress::~Progress() {
+        std::cout << std::endl;
+        if (current == this)
+            current = nullptr;
+    }
+
+    void Progress::mark() {
+        if (current)
+            current->tick();
+    }
+
+    void Progress::markEvery(long long index) {
+        if (current and (index & 0x1fffff) == 0)
+            current->tick();
+    }
+
+    void whisper(std::string_view msg) {
+        std::cout << "\033[90m" << msg << "\033[0m" << std::endl;
+    }
+
+    void vwhisper(std::string_view fmt, std::format_args args) {
+        whisper(std::vformat(fmt, args));
+    }
+
+    void warning(std::string_view msg) {
+        std::cout << "\033[33m" << msg << "\033[0m" << std::endl;
+    }
+
+    void vwarning(std::string_view fmt, std::format_args args) {
+        warning(std::vformat(fmt, args));
+    }
+
+    void fatal(std::string_view msg) {
+        message("[{}] FATAL: {}", to_string(now()), msg);
+        std::terminate();
+    }
+
+    void vfatal(std::string_view fmt, std::format_args args) {
+        try {
+            fatal(std::vformat(fmt, args));
+        } catch (const std::format_error& e) {
+            fatal(std::string("format error: ") + e.what());
+        } catch (...) {
+            fatal("unknown formatting error");
+        }
+    }
+
     Time now() {
         return std::chrono::system_clock::now();
     }
@@ -34,5 +104,3 @@ namespace base {
         );
     }
 }
-
-

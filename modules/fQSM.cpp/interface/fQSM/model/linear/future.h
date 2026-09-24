@@ -6,9 +6,8 @@
 #include <fQSM/model/_forwards.h>
 #include <fQSM/model/linear/state.h>
 #include <fQSM/model/linear/workersInterface.h>
+#include <fQSM/utility/messages.h>
 
-#include <format>
-#include <stdexcept>
 
 namespace fqsm::model::linear {
 
@@ -93,7 +92,7 @@ namespace fqsm::model::linear {
         if (not patchEntry) {
             const auto* current = draftItems.state.find(id);
             if (not current) {
-                throw std::runtime_error(std::format(R"(cannot modify "{}" {}: not present)", Rtid::name<Meta>(), id));
+                utility::messages::throw_not_present("cannot modify", Rtid::name<Meta>(), id.raw());
             }
             // touch/ensure: unverified patchlet; old taken from state
             return draftItems.patch.insert(id, Patchlet::possible(*current)).quantum;
