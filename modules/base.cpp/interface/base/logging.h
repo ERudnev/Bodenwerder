@@ -1,17 +1,12 @@
 #pragma once
 
-#include <chrono>
 #include <concepts>
-#include <exception>
-#include <iostream>
 #include <format>
 #include <optional>
-#include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <utility>
 
 #ifndef NOTECS_FUNCTION_NAME
 #define NOTECS_FUNCTION_NAME __func__
@@ -25,30 +20,24 @@
 
 namespace base {
 
-    using Time = std::chrono::system_clock::time_point;
-
-    Time now();
-    std::string to_string(Time t);
-
     // --- Messaging
-    inline void message(std::string_view msg) {
-        std::cout << msg << std::endl;
-    }
+    void message(std::string_view msg);
 
     inline void message(const char* msg) {
-        std::cout << msg << std::endl;
+        message(std::string_view{msg});
     }
 
     inline void message(const std::string& msg) {
-        message(msg.c_str());
+        message(std::string_view{msg});
     }
 
+    void vmessage(std::string_view fmt, std::format_args args);
+
     // Minimal logging primitive. Compatible with std::format syntax.
-    // Intentionally header-only and state-free.
     template <typename... Args>
     requires (sizeof...(Args) > 0)
     inline void message(std::format_string<Args...> fmt, Args&&... args) {
-        std::cout << std::format(fmt, std::forward<Args>(args)...) << std::endl;
+        vmessage(fmt.get(), std::make_format_args(args...));
     }
 
     // One open line. tick/mark append '.' and flush; the destructor ends the line.
@@ -63,9 +52,7 @@ namespace base {
     };
 
     // Dim / secondary chatter (ANSI bright-black). Same surface as message.
-    inline void whisper(std::string_view msg) {
-        std::cout << "\033[90m" << msg << "\033[0m" << std::endl;
-    }
+    void whisper(std::string_view msg);
 
     inline void whisper(const char* msg) {
         whisper(std::string_view{msg});
@@ -75,16 +62,16 @@ namespace base {
         whisper(std::string_view{msg});
     }
 
+    void vwhisper(std::string_view fmt, std::format_args args);
+
     template <typename... Args>
     requires (sizeof...(Args) > 0)
     inline void whisper(std::format_string<Args...> fmt, Args&&... args) {
-        whisper(std::format(fmt, std::forward<Args>(args)...));
+        vwhisper(fmt.get(), std::make_format_args(args...));
     }
 
     // Warning (ANSI yellow). Same surface as message.
-    inline void warning(std::string_view msg) {
-        std::cout << "\033[33m" << msg << "\033[0m" << std::endl;
-    }
+    void warning(std::string_view msg);
 
     inline void warning(const char* msg) {
         warning(std::string_view{msg});
@@ -94,10 +81,12 @@ namespace base {
         warning(std::string_view{msg});
     }
 
+    void vwarning(std::string_view fmt, std::format_args args);
+
     template <typename... Args>
     requires (sizeof...(Args) > 0)
     inline void warning(std::format_string<Args...> fmt, Args&&... args) {
-        warning(std::format(fmt, std::forward<Args>(args)...));
+        vwarning(fmt.get(), std::make_format_args(args...));
     }
 
     // --- Report helpers (handy for diagnostics)
@@ -149,53 +138,18 @@ namespace base {
     }
 
     // --- Fatal / checks
-    [[noreturn]] inline void fatal(std::string_view msg) {
-        message("[{}] FATAL: {}", to_string(now()), msg);
-        std::terminate();
-    }
+    [[noreturn]] void fatal(std::string_view msg);
+
+    [[noreturn]] void vfatal(std::string_view fmt, std::format_args args);
 
     template <typename... Args>
     requires (sizeof...(Args) > 0)
     [[noreturn]] inline void fatal(std::format_string<Args...> fmt, Args&&... args) {
-        try {
-            const auto rendered = std::format(fmt, std::forward<Args>(args)...);
-            fatal(rendered);
-        } catch (const std::format_error& e) {
-            fatal(std::string("format error: ") + e.what());
-        } catch (...) {
-            fatal("unknown formatting error");
-        }
+        vfatal(fmt.get(), std::make_format_args(args...));
     }
 
     inline void check(bool condition, const std::string& msg) {
         if (!condition) { fatal(msg); }
-    }
-
-    inline Progress* Progress::current = nullptr;
-
-    inline Progress::Progress(std::string_view label) {
-        current = this;
-        std::cout << label << ' ' << std::flush;
-    }
-
-    inline void Progress::tick() {
-        std::cout << '.' << std::flush;
-    }
-
-    inline Progress::~Progress() {
-        std::cout << std::endl;
-        if (current == this)
-            current = nullptr;
-    }
-
-    inline void Progress::mark() {
-        if (current)
-            current->tick();
-    }
-
-    inline void Progress::markEvery(long long index) {
-        if (current and (index & 0x1fffff) == 0)
-            current->tick();
     }
 
 } // namespace base

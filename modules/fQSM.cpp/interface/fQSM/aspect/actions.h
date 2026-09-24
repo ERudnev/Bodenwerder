@@ -21,6 +21,7 @@
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/orchestrators/quantal.h>
 #include <fQSM/features/behavior.h>
+#include <fQSM/utility/messages.h>
 
 // rename to fqsm::actions::categories {
 namespace fqsm::aspect::actions {
@@ -192,7 +193,7 @@ namespace fqsm::aspect::actions {
     -> const Quantum& {
         const auto* found = context->aspect<Meta>().items().find(id);
         if (!found) {
-            throw std::runtime_error(std::format(R"(actions::get "{}" {}: not present)", ::fqsm::meta::Rtid::name<Meta>(), id));
+            ::fqsm::utility::messages::throw_not_present("actions::get", ::fqsm::meta::Rtid::name<Meta>(), id.raw());
         }
         return *found;
     }

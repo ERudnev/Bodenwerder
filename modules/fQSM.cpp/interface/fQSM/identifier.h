@@ -9,6 +9,8 @@
 
 namespace fqsm {
 
+    using RawId = std::uint64_t;
+
     namespace internal::id {
         using BaseType = std::uint64_t;
         extern BaseType generate_unique();
@@ -51,7 +53,7 @@ namespace fqsm {
     // ostream << Identifier (pfr_element / patch field logging).
     template<typename Meta, typename BaseType>
     std::ostream& operator<<(std::ostream& os, const Identifier<Meta, BaseType>& id) {
-        return os << std::format("{}", id);
+        return os << '#' << internal::id::info_hash(id.raw());
     }
 
     template<typename Meta, typename BaseType>

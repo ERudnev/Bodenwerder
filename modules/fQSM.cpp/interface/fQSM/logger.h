@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <base/clock.h>
 #include <base/logging.h>
 #include <fQSM/api/builtins.h>
 

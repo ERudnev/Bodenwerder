@@ -1,10 +1,10 @@
 #pragma once
 
-#include <format>
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
 #include <fQSM/processing/_forwards.h>
+#include <fQSM/utility/messages.h>
 
 namespace fqsm::features::reactions::structural {
 
@@ -72,7 +72,7 @@ namespace fqsm::features::reactions::structural {
                     continue;
                 }
                 _DBG_TX_("structural new_parasitic_requires_existing_parent: CRITICAL {} {}, {} missing in proposal", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
-                context.refuse(std::format(R"(structural: {} missing for new {} {})", Rtid::name<Parent>(), Rtid::name<Parasitic>(), change.id));
+                context.refuse(utility::messages::structural_missing(Rtid::name<Parent>(), Rtid::name<Parasitic>(), change.id.raw()));
             }
         }
     };
@@ -96,7 +96,7 @@ namespace fqsm::features::reactions::structural {
                     continue;
                 }
                 _DBG_TX_("structural new_parasitic_requires_parent_appears: CRITICAL {} {}, {} not added in same patch", Rtid::name<Parasitic>(), change.id, Rtid::name<Parent>());
-                context.refuse(std::format(R"(structural: {} must appear in the same patch as new {} {})", Rtid::name<Parent>(), Rtid::name<Parasitic>(), change.id));
+                context.refuse(utility::messages::structural_same_patch(Rtid::name<Parent>(), Rtid::name<Parasitic>(), change.id.raw()));
             }
         }
     };
@@ -113,7 +113,7 @@ namespace fqsm::features::reactions::structural {
                     continue;
                 }
                 _DBG_TX_("structural parent_appears_requires_component: CRITICAL {} {}, {} missing in proposal", Rtid::name<Parent>(), change.id, Rtid::name<Parasitic>());
-                context.refuse(std::format(R"(structural: {} missing for new {} {})", Rtid::name<Parasitic>(), Rtid::name<Parent>(), change.id));
+                context.refuse(utility::messages::structural_missing(Rtid::name<Parasitic>(), Rtid::name<Parent>(), change.id.raw()));
             }
         }
     };
