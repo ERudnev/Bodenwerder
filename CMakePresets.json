@@ -33,6 +33,47 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
+        },
+        {
+            "name": "ninja-msvc-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "description": "Run from a Developer Command Prompt (vcvars64.bat) so cl.exe, INCLUDE and LIB are set.",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "cl",
+                "CMAKE_CXX_COMPILER": "cl",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "msvc-release",
+            "displayName": "Ninja + MSVC (Release)",
+            "inherits": "ninja-msvc-base",
+            "binaryDir": "${sourceDir}/build/msvc",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "msvc-debug",
+            "displayName": "Ninja + MSVC (Debug)",
+            "inherits": "ninja-msvc-base",
+            "binaryDir": "${sourceDir}/build/msvc-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "clang-release",
+            "displayName": "Ninja + clang-cl (Release)",
+            "description": "clang-cl from PATH (scoop llvm), run from a Developer Command Prompt for rc.exe and the SDK.",
+            "inherits": "ninja-msvc-base",
+            "binaryDir": "${sourceDir}/build/clang",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "CMAKE_BUILD_TYPE": "Release"
+            }
         }
     ],
     "buildPresets": [
@@ -51,6 +92,21 @@
             "description": "",
             "displayName": "",
             "configurePreset": "ninja-clang-release"
+        },
+        {
+            "name": "msvc-release",
+            "displayName": "MSVC Release",
+            "configurePreset": "msvc-release"
+        },
+        {
+            "name": "msvc-debug",
+            "displayName": "MSVC Debug",
+            "configurePreset": "msvc-debug"
+        },
+        {
+            "name": "clang-release",
+            "displayName": "clang-cl Release",
+            "configurePreset": "clang-release"
         }
     ]
 }
