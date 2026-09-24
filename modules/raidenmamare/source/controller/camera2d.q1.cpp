@@ -1,7 +1,7 @@
 #include <rmmr/controller/camera2d.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/system/core.q1.h>
-#include <rmmr/system/window.q1.h>
+#include <rmmr/system/viewInput.q1.h>
 
 #include <GLFW/glfw3.h>
 
@@ -50,25 +50,26 @@ namespace rmmr::controller {
             node.pose.position.y += static_cast<float>(delta_mouse.y) * k_pan_pixels_to_world;
         }
 
-        auto button_down(const system::Window::InputState& input, int button) -> bool {
-            return static_cast<std::size_t>(button) < input.buttons.size() && input.buttons[static_cast<std::size_t>(button)];
+        auto button_down(const vector<bool>& buttons, int button) -> bool {
+            return static_cast<std::size_t>(button) < buttons.size() && buttons[static_cast<std::size_t>(button)];
         }
 
-        void drive(Writing context, Camera2d::Id self, system::Window::Id window, seconds delta_sec) {
-            const auto& input = with<system::Window>::get(context, window);
+        void drive(Writing context, Camera2d::Id self, seconds delta_sec) {
+            const auto& mail = with<system::ViewInput>::get(context, with<Camera2d>::get(context, self).input);
+            if (not mail.engaged)
+                return;
             auto node = with<scene::Node>::modify(context, self);
 
-            apply_arrow_move(*node, input.current.keys, delta_sec);
+            apply_arrow_move(*node, mail.keys, delta_sec);
 
-            if (button_down(input.current, GLFW_MOUSE_BUTTON_RIGHT)) {
-                apply_mouse_drag(*node, with<system::Window>::mouseShift(context, window));
-            }
+            if (button_down(mail.buttons, GLFW_MOUSE_BUTTON_RIGHT))
+                apply_mouse_drag(*node, mail.mouseShift);
         }
 
     } // namespace
 
-    auto Camera2d::Actions::create(Writing context, scene::Camera::Id anchor) -> Id {
-        with<Camera2d>::extend(context, anchor, Camera2d::Quantum{});
+    auto Camera2d::Actions::create(Writing context, scene::Camera::Id anchor, system::ViewInput::Id input) -> Id {
+        with<Camera2d>::extend(context, anchor, Camera2d::Quantum{.input = input});
         return anchor;
     }
 
@@ -81,11 +82,8 @@ namespace rmmr::controller {
                 }
                 const seconds delta_sec = static_cast<seconds>(dt_us) / 1'000'000.0;
 
-                for (const auto entry : context.proposal.aspect<system::Window>().items()) {
-                    for (const auto [id, _] : context.proposal.aspect<Camera2d>().items()) {
-                        drive(context, id, entry.id, delta_sec);
-                    }
-                }
+                for (const auto [id, _] : context.proposal.aspect<Camera2d>().items())
+                    drive(context, id, delta_sec);
             }
         }
     };

@@ -2,7 +2,7 @@
 
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/camera.q1.h>
-#include <rmmr/system/window.q1.h>
+#include <rmmr/system/viewInput.q1.h>
 
 #include <fQSM/api/interface.h>
 
@@ -15,9 +15,10 @@ namespace rmmr::controller {
             Pos pivot;
             HPB hpb;
             float distance;
+            system::ViewInput::Id input;
         };
         struct Actions : BaseActions {
-            static auto create(Writing, scene::Camera::Id anchor, Pos pivot, float distance) -> Id;
+            static auto create(Writing, scene::Camera::Id anchor, system::ViewInput::Id input, Pos pivot, float distance) -> Id;
         };
         struct Internals;
         static const Behavior customAspectReactions();

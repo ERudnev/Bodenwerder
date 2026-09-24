@@ -1,5 +1,5 @@
 import "system/core"
-import "system/window"
+import "system/viewInput"
 import "scene/camera"
 import "math"
 
@@ -12,6 +12,7 @@ namespace rmmr
         pivot: Pos
         hpb: HPB // bank kept 0
         distance: float
-        >create(pivot: Pos, distance: float)-> #
+        input: #system::ViewInput
+        >create(input: #system::ViewInput, pivot: Pos, distance: float)-> #
       all
         !update(~system::Clock) // RMB orbit; wheel zoom; arrows pan pivot (speed follows distance)

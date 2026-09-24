@@ -1,15 +1,16 @@
 import "system/core"
-import "system/window"
+import "system/viewInput"
 import "scene/camera"
 
 namespace rmmr
   namespace controller
 
     // Classic 3D fly/look control for an existing scene::Camera.
-    // Time from system::Clock deltas (change.old / change.now); input from Window.
+    // Time from system::Clock deltas (change.old / change.now); input from its ViewInput mail.
     attribute Camera3d of scene::Camera
       one
         moveScale: float
-        >create()-> #
+        input: #system::ViewInput
+        >create(input: #system::ViewInput)-> #
       all
         !update(~system::Clock) // RMB look in camera space; WASD+RF move; QE roll around view; Shift ×10 move only

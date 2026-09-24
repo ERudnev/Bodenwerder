@@ -11,6 +11,7 @@ set(Raidenmamare_Q1
     system/interface.q1
     system/imgui.q1
     system/window.q1
+    system/viewInput.q1
     system/viewport.q1
     scene/root.q1
     scene/node.q1

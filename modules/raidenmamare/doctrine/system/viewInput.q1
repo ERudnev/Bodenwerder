@@ -1,0 +1,17 @@
+import "system/window"
+
+namespace rmmr
+  namespace system
+
+    // Per-view input mailbox. The view sets engaged; refresh copies the device
+    // snapshot only into the engaged mail. Controllers read their own mail.
+    entity ViewInput
+    one
+      engaged: bool
+      keys: vector<bool>
+      buttons: vector<bool>
+      mouseShift: index2
+      wheel: float
+      >create()->#
+      =engage(on: bool)
+      =refresh(#Window) // all mails; call after Window::applyUiCapture, before Clock

@@ -99,6 +99,7 @@ namespace eltanin::planet {
         Planet(Passport, Detail);
 
         void place(Writing, rmmr::system::Device::Id, rmmr::Pose);
+        void dismantle(Writing);
         void update(Writing, rmmr::Pos camera);
         void advancePhysics(Writing, seconds dt);
         void sync(Writing);

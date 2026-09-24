@@ -16,6 +16,7 @@
 #include <rmmr/semantics/rendering.h>
 #include <rmmr/semantics/uniform.h>
 #include <rmmr/system/viewport.q1.h>
+#include <rmmr/system/viewInput.q1.h>
 
 #include <numbers>
 #include <utility>
@@ -122,7 +123,9 @@ namespace kubes {
             100.0f * std::numbers::pi_v<float> / 180.0f);
         // R=100 sphere + offset camera: default z_far=100 would clip the far hemisphere.
         with<scene::Camera>::modify(context, camera)->z_far = 250.0f;
-        with<controller::Camera3d>::create(context, camera);
+        const auto mail = with<system::ViewInput>::create(context);
+        with<system::ViewInput>::engage(context, mail, true);
+        with<controller::Camera3d>::create(context, camera, mail);
         with<scene::Interface>::createLight(context, root,
             Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}),
             item<scene::Light>{.kind = scene::Light::Kind::point, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 30.0f});

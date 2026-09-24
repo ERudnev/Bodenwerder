@@ -32,6 +32,7 @@
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/viewport.q1.h>
+#include <rmmr/system/viewInput.q1.h>
 #include <rmmr/system/window.q1.h>
 
 #include <GLFW/glfw3.h>
@@ -105,6 +106,17 @@ namespace eltanin {
             orbit->hpb = hpb;
             orbit->distance = distance;
             applyOrbitPose(context, camera, *orbit);
+        }
+
+        template<typename Aspect>
+        void removeEvery(Writing context) {
+            vector<typename Aspect::Id> ids;
+            for (const auto& entry : context->aspect<Aspect>().items())
+                ids.push_back(entry.id);
+            for (const auto id : ids) {
+                if (with<Aspect>::exists(context, id))
+                    with<Aspect>::remove(context, id);
+            }
         }
 
     } // namespace
@@ -218,7 +230,8 @@ namespace eltanin {
             quantum->z_near = geo::Horizon::near;
             quantum->z_far = geo::Horizon::far;
         }
-        with<controller::Camera3d>::create(context, camera);
+        const auto freeInput = with<system::ViewInput>::create(context);
+        with<controller::Camera3d>::create(context, camera, freeInput);
 
         bindGameEntities(context);
         {
@@ -247,8 +260,9 @@ namespace eltanin {
                 quantum->z_near = geo::Horizon::near;
                 quantum->z_far = geo::Horizon::far;
             }
-            with<controller::CameraOrbit>::create(context, spectator, freePose.position, 24.0f);
-            cameras.emplace(Cameras{.kind = Cameras::Kind::free, .free = camera, .spectator = spectator, .hotkeyDown = false});
+            const auto spectatorInput = with<system::ViewInput>::create(context);
+            with<controller::CameraOrbit>::create(context, spectator, spectatorInput, freePose.position, 24.0f);
+            cameras.emplace(Cameras{.kind = Cameras::Kind::free, .free = camera, .spectator = spectator, .freeInput = freeInput, .spectatorInput = spectatorInput, .hotkeyDown = false});
         }
 
         const auto manager = with<::rmmr::resource::Manager>::singleton(context);
@@ -268,6 +282,7 @@ namespace eltanin {
     }
 
     void Game::setup(Writing context, system::Window::Id window) {
+        uiMode = UiMode::starMap;
         {
             auto world = with<World>::modify_global(context);
             world->window = window;
@@ -280,6 +295,7 @@ namespace eltanin {
         blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "blueprints");
         mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings");
         blueprints.create(context);
+        engageInputs(context);
     }
 
     void Game::advanceSim(Writing context, seconds dt) {
@@ -301,9 +317,10 @@ namespace eltanin {
         advanceSim(world, simDt);
         handleCameraHotkey(world);
         trackSpectator(world);
-        starMap.follow(world);
+        if (uiMode == UiMode::starMap)
+            starMap.follow(world);
         with<World>::tetherEnvironment(world);
-        if (planet) {
+        if (planet and uiMode == UiMode::locality) {
             if (const auto camera = with<World>::get_global(world).camera; camera and with<scene::Node>::exists(world, *camera))
                 planet->update(world, with<scene::Node>::get(world, *camera).pose.position);
         }
@@ -350,13 +367,29 @@ namespace eltanin {
         presentCamera(context, cameras->free);
     }
 
+    void Game::engageInputs(Writing context) {
+        const bool editor = uiMode == UiMode::starMap and starMap.menu.blueprints.has_value();
+        const bool map = uiMode == UiMode::starMap and not editor;
+        const bool locality = uiMode == UiMode::locality;
+        const bool freeCam = locality and cameras and cameras->kind == Cameras::Kind::free;
+        const bool spectatorCam = locality and cameras and cameras->kind == Cameras::Kind::spectator;
+        if (starMap.input)
+            with<system::ViewInput>::engage(context, *starMap.input, map);
+        if (blueprints.state.mainScene.input)
+            with<system::ViewInput>::engage(context, *blueprints.state.mainScene.input, editor and not blueprints.state.paletteMode);
+        if (blueprints.state.paletteScene.input)
+            with<system::ViewInput>::engage(context, *blueprints.state.paletteScene.input, editor and blueprints.state.paletteMode);
+        if (cameras) {
+            with<system::ViewInput>::engage(context, cameras->freeInput, freeCam);
+            with<system::ViewInput>::engage(context, cameras->spectatorInput, spectatorCam);
+        }
+    }
+
     void Game::handleCameraHotkey(Writing context) {
-        if (not cameras)
+        if (not cameras or uiMode != UiMode::locality)
             return;
-        const auto bound = with<World>::get_global(context).window;
-        if (not bound)
-            return;
-        const bool down = keyDown(with<system::Window>::get(context, *bound).current.keys, GLFW_KEY_V);
+        const auto mail = cameras->kind == Cameras::Kind::free ? cameras->freeInput : cameras->spectatorInput;
+        const bool down = keyDown(with<system::ViewInput>::get(context, mail).keys, GLFW_KEY_V);
         if (down and not cameras->hotkeyDown) {
             if (cameras->kind == Cameras::Kind::free)
                 setCameraKind(context, Cameras::Kind::spectator);
@@ -379,6 +412,52 @@ namespace eltanin {
         auto orbit = with<controller::CameraOrbit>::modify(context, cameras->spectator);
         orbit->pivot = vec3{*center};
         applyOrbitPose(context, cameras->spectator, *orbit);
+    }
+
+    void Game::clearLocalityPopulation(Writing context) {
+        removeEvery<locality::Flash>(context);
+        removeEvery<locality::Bullet>(context);
+        removeEvery<locality::Scrap>(context);
+        removeEvery<locality::Construct>(context);
+        removeEvery<geo::Rock>(context);
+        removeEvery<geo::Boulder>(context);
+        focus.things.clear();
+    }
+
+    void Game::openPlanetScenario(Writing context) {
+        if (uiMode == UiMode::locality)
+            return;
+        const auto bound = with<World>::get_global(context).window;
+        if (not bound)
+            return;
+        if (not world_view)
+            populateWorld(context, *bound);
+        if (not world_view)
+            return;
+        planeliod.placePlanet(context, *bound, planet);
+        planeliod.populate(context, *bound);
+        if (physics)
+            physics->planet = planet ? &*planet : nullptr;
+        uiMode = UiMode::locality;
+        views = {*world_view};
+        starMap.menu.blueprints.reset();
+    }
+
+    void Game::closeLocalityScenario(Writing context) {
+        if (uiMode != UiMode::locality)
+            return;
+        clearLocalityPopulation(context);
+        if (planet) {
+            planet->dismantle(context);
+            planet.reset();
+        }
+        if (physics)
+            physics->planet = nullptr;
+        ui.blueprints.reset();
+        ui.physics.reset();
+        uiMode = UiMode::starMap;
+        if (starMap.view)
+            views = {*starMap.view};
     }
 
 }

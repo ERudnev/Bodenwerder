@@ -25,11 +25,21 @@ namespace eltanin {
 
     }
 
-    void Game::contributeViewMenu(Writing) {
+    void Game::contributeViewMenu(Writing world) {
+        if (uiMode == UiMode::locality) {
+            if (ImGui::Button("Back"))
+                closeLocalityScenario(world);
+            contributeLocalityMenu(world);
+            return;
+        }
+        if (ImGui::Button("Planet"))
+            openPlanetScenario(world);
         togglePanel("Blueprints", starMap.menu.blueprints);
     }
 
     auto Game::activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> {
+        if (uiMode != UiMode::starMap)
+            return {};
         if (not starMap.menu.blueprints.has_value() or not blueprints.assets.editorEffect)
             return {};
         if (blueprints.state.membranes.enabled or blueprints.state.paletteMode)
@@ -38,12 +48,19 @@ namespace eltanin {
     }
 
     auto Game::overlaySelection() const -> std::span<const rmmr::renderer::Integer32> {
+        if (uiMode != UiMode::starMap)
+            return {};
         if (not starMap.menu.blueprints.has_value() or blueprints.state.membranes.enabled or blueprints.state.paletteMode)
             return {};
         return blueprints.state.selection.aliases;
     }
 
     void Game::drawUi(Writing world) {
+        if (uiMode == UiMode::locality) {
+            drawLocalityUi(world);
+            engageInputs(world);
+            return;
+        }
         if (starMap.menu.blueprints.has_value()) {
             bool open = true;
             blueprints.draw(world, open, blueprintPack, mountPack);
@@ -52,6 +69,7 @@ namespace eltanin {
         }
         if (starMap.view)
             blueprints.bindView(views, starMap.menu.blueprints.has_value(), *starMap.view);
+        engageInputs(world);
 
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         constexpr float pad = 10.0f;

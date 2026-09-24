@@ -1,7 +1,7 @@
 #include <rmmr/controller/camera3d.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/system/core.q1.h>
-#include <rmmr/system/window.q1.h>
+#include <rmmr/system/viewInput.q1.h>
 
 #include <GLFW/glfw3.h>
 
@@ -25,8 +25,8 @@ namespace rmmr::controller {
             return static_cast<std::size_t>(key) < keys.size() && keys[static_cast<std::size_t>(key)];
         }
 
-        auto button_down(const system::Window::InputState& input, int button) -> bool {
-            return static_cast<std::size_t>(button) < input.buttons.size() && input.buttons[static_cast<std::size_t>(button)];
+        auto button_down(const vector<bool>& buttons, int button) -> bool {
+            return static_cast<std::size_t>(button) < buttons.size() && buttons[static_cast<std::size_t>(button)];
         }
 
         auto keyBoost(const vector<bool>& keys) -> float {
@@ -71,21 +71,23 @@ namespace rmmr::controller {
             node.pose.position.z += delta.z;
         }
 
-        void drive(Writing context, Camera3d::Id self, system::Window::Id window, seconds deltaSec) {
-            const auto& input = with<system::Window>::get(context, window);
+        void drive(Writing context, Camera3d::Id self, seconds deltaSec) {
+            const auto& mail = with<system::ViewInput>::get(context, with<Camera3d>::get(context, self).input);
+            if (not mail.engaged)
+                return;
             auto node = with<scene::Node>::modify(context, self);
             glm::quat rotation = glm::normalize(node->pose.rotation);
-            applyRoll(rotation, input.current.keys, deltaSec);
-            if (button_down(input.current, GLFW_MOUSE_BUTTON_RIGHT))
-                applyMouseLook(rotation, with<system::Window>::mouseShift(context, window));
+            applyRoll(rotation, mail.keys, deltaSec);
+            if (button_down(mail.buttons, GLFW_MOUSE_BUTTON_RIGHT))
+                applyMouseLook(rotation, mail.mouseShift);
             node->pose.rotation = rotation;
-            applyMove(*node, rotation, input.current.keys, deltaSec, with<Camera3d>::get(context, self).moveScale);
+            applyMove(*node, rotation, mail.keys, deltaSec, with<Camera3d>::get(context, self).moveScale);
         }
 
     } // namespace
 
-    auto Camera3d::Actions::create(Writing context, scene::Camera::Id anchor) -> Id {
-        with<Camera3d>::extend(context, anchor, Camera3d::Quantum{.moveScale = 1.0f});
+    auto Camera3d::Actions::create(Writing context, scene::Camera::Id anchor, system::ViewInput::Id input) -> Id {
+        with<Camera3d>::extend(context, anchor, Camera3d::Quantum{.moveScale = 1.0f, .input = input});
         return anchor;
     }
 
@@ -98,11 +100,8 @@ namespace rmmr::controller {
                 }
                 const seconds delta_sec = static_cast<seconds>(dt_us) / 1'000'000.0;
 
-                for (const auto entry : context.proposal.aspect<system::Window>().items()) {
-                    for (const auto [id, _] : context.proposal.aspect<Camera3d>().items()) {
-                        drive(context, id, entry.id, delta_sec);
-                    }
-                }
+                for (const auto [id, _] : context.proposal.aspect<Camera3d>().items())
+                    drive(context, id, delta_sec);
             }
         }
     };

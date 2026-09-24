@@ -12,6 +12,7 @@
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
+#include <rmmr/system/viewInput.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/wrapper/product.h>
@@ -44,6 +45,7 @@ namespace eltanin::views {
             struct MainScene {
                 base::maybe<rmmr::scene::Root::Id> root;
                 base::maybe<rmmr::scene::Camera::Id> camera;
+                base::maybe<rmmr::system::ViewInput::Id> input;
                 base::maybe<rmmr::scene::Grid::Id> grid;
                 base::maybe<rmmr::scene::actor::Mesh::Id> worldCursor;
                 std::vector<blueprints::geometry::QuarkActor> quarkActors;
@@ -55,6 +57,7 @@ namespace eltanin::views {
             struct PaletteScene {
                 base::maybe<rmmr::scene::Root::Id> root;
                 base::maybe<rmmr::scene::Camera::Id> camera;
+                base::maybe<rmmr::system::ViewInput::Id> input;
                 base::maybe<rmmr::scene::Grid::Id> grid;
                 std::vector<blueprints::geometry::PaletteMountActor> actors;
             } paletteScene;

@@ -557,6 +557,32 @@ namespace eltanin::planet {
         sync(context);
     }
 
+    void Planet::dismantle(Writing context) {
+        if (weather) {
+            for (Weather::Deck& deck : weather->decks) {
+                if (deck.actor and with<scene::Node>::exists(context, *deck.actor))
+                    with<scene::Node>::remove(context, *deck.actor);
+                deck.actor.reset();
+            }
+            weather->decks.clear();
+        }
+        if (atmosphere and with<scene::Node>::exists(context, *atmosphere))
+            with<scene::Node>::remove(context, *atmosphere);
+        if (shell and with<scene::Node>::exists(context, *shell))
+            with<scene::Node>::remove(context, *shell);
+        if (well and with<phys::Body>::exists(context, *well))
+            with<phys::Body>::remove(context, *well);
+        atmosphere.reset();
+        shell.reset();
+        well.reset();
+        const auto scene = with<locality::Thing>::get_global(context).scene;
+        if (with<scene::Root>::exists(context, scene)) {
+            auto root = with<scene::Root>::modify(context, scene);
+            root->atmosphereDensity = 0.0f;
+            root->atmosphereKerman = 0.0f;
+        }
+    }
+
     void Planet::update(Writing context, Pos camera) {
         if (not well or not with<phys::Body>::exists(context, *well))
             return;

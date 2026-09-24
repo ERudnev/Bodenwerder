@@ -2,6 +2,7 @@
 
 #include <eltanin/world.q1.h>
 #include <rmmr/controller/cameraOrbit.q1.h>
+#include <rmmr/system/viewInput.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/viewport.q1.h>
@@ -35,7 +36,9 @@ namespace eltanin::views::starmap {
             quantum->z_near = 0.05f;
             quantum->z_far = 2000.0f;
         }
-        with<controller::CameraOrbit>::create(context, cam, pivot, glm::length(eye - pivot));
+        const auto mail = with<system::ViewInput>::create(context);
+        input = mail;
+        with<controller::CameraOrbit>::create(context, cam, mail, pivot, glm::length(eye - pivot));
         with<World>::modify_global(context)->camera = cam;
         scene = root;
         camera = cam;

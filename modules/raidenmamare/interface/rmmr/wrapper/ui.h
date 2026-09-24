@@ -10,7 +10,7 @@ namespace rmmr::wrapper::ui {
 
     using namespace fqsm::api;
 
-    // Sticky toolbar toggle. Always SameLine() first — put Stats (or another lead item) before product toggles.
+    // Sticky toolbar toggle. Always SameLine() — put a lead control in contributeViewMenu before toggles.
     inline auto viewToggle(const char* label, bool* open) -> bool {
         ImGui::SameLine();
         const bool pressed = *open;
@@ -27,8 +27,7 @@ namespace rmmr::wrapper::ui {
     }
 
     struct State {
-        bool stats;
-        int64 last_absolute;
+        int64 lastAbsolute;
 
         void draw(Writing, Product&);
 

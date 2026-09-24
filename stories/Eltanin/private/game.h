@@ -12,6 +12,7 @@
 #include <rmmr/resources/overlays.q1.h>
 #include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/camera.q1.h>
+#include <rmmr/system/viewInput.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/wrapper/product.h>
 
@@ -20,6 +21,7 @@
 #include "geo/celestial/planet.h"
 #include "physics/system.h"
 #include "resources/library.h"
+#include "scenarios/planeliod.h"
 #include "scenarios/strategic.h"
 #include "strategic/map.h"
 #include "locality.ui.h"
@@ -36,11 +38,18 @@ namespace eltanin {
 
     class Game : public rmmr::wrapper::Product {
     public:
+        enum class UiMode {
+            starMap,
+            locality,
+        };
+
         struct Cameras {
             enum class Kind { free, spectator };
             Kind kind;
             rmmr::scene::Camera::Id free;
             rmmr::scene::Camera::Id spectator;
+            rmmr::system::ViewInput::Id freeInput;
+            rmmr::system::ViewInput::Id spectatorInput;
             bool hotkeyDown;
         };
 
@@ -51,8 +60,10 @@ namespace eltanin {
         base::maybe<phys::System> physics;
         base::maybe<planet::Planet> planet;
         scenario::Strategic strategic;
+        scenario::Planeliod planeliod;
         strategic::Map map;
         views::starmap::View starMap;
+        UiMode uiMode;
         Focus focus;
         base::maybe<Cameras> cameras;
         BlueprintCatalog blueprintPack;
@@ -79,6 +90,7 @@ namespace eltanin {
         void presentCamera(Writing, rmmr::scene::Camera::Id);
         void setCameraKind(Writing, Cameras::Kind);
         void handleCameraHotkey(Writing);
+        void engageInputs(Writing);
         void trackSpectator(Writing);
         auto focusCenter(Reading) const -> base::maybe<dvec3>;
         void drawInspectorWindow(Writing);
@@ -87,6 +99,9 @@ namespace eltanin {
         void drawMaterialsWindow(Writing);
         void drawMaterialInspector(Writing, rmmr::resource::material::Asset::Id);
         void drawAssemblerWindow(Writing);
+        void openPlanetScenario(Writing);
+        void closeLocalityScenario(Writing);
+        void clearLocalityPopulation(Writing);
     };
 
 }

@@ -21,6 +21,7 @@
 #include <rmmr/system/imgui.q1.h>
 #include <rmmr/system/interface.q1.h>
 #include <rmmr/system/viewport.q1.h>
+#include <rmmr/system/viewInput.q1.h>
 
 #include "renderer/renderer.h"
 
@@ -38,6 +39,7 @@ namespace rmmr {
                 ask::schema::aspect<system::Device>(),
                 ask::schema::aspect<system::ImGuiHost>(),
                 ask::schema::aspect<system::Window>(),
+                ask::schema::aspect<system::ViewInput>(),
                 ask::schema::aspect<system::Viewport>(),
                 ask::schema::aspect<system::Viewport_group>(),
                 ask::schema::aspect<resource::Manager>(),
@@ -226,13 +228,14 @@ namespace rmmr {
         const auto device = *state->handles.device;
 
         with<system::Device>::poll_events(context);
-        // Input snapshot, then ImGui NewFrame (WantCapture*), then sanitize Window for gameplay.
+        // Input snapshot, ImGui NewFrame, sanitize Window, then copy that into engaged view mails.
         with<system::Window>::onFrameAdvanced(context, device);
 
         if (not state->handles.activeViews.empty()) {
             with<system::ImGuiHost>::newFrame(context, device);
             with<system::Window>::applyUiCapture(context, device);
         }
+        with<system::ViewInput>::refresh(context, device);
 
         {
             const auto clock = with<system::Clock>::singleton(context);

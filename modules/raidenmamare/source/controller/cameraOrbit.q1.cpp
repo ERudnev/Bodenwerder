@@ -1,7 +1,7 @@
 #include <rmmr/controller/cameraOrbit.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/system/core.q1.h>
-#include <rmmr/system/window.q1.h>
+#include <rmmr/system/viewInput.q1.h>
 
 #include <GLFW/glfw3.h>
 
@@ -34,8 +34,8 @@ namespace rmmr::controller {
             return static_cast<std::size_t>(key) < keys.size() && keys[static_cast<std::size_t>(key)];
         }
 
-        auto button_down(const system::Window::InputState& input, int button) -> bool {
-            return static_cast<std::size_t>(button) < input.buttons.size() && input.buttons[static_cast<std::size_t>(button)];
+        auto button_down(const vector<bool>& buttons, int button) -> bool {
+            return static_cast<std::size_t>(button) < buttons.size() && buttons[static_cast<std::size_t>(button)];
         }
 
         auto rotation_from_orbit_hpb(HPB hpb) -> quat {
@@ -50,20 +50,21 @@ namespace rmmr::controller {
             node.pose.position = orbit.pivot - forward * orbit.distance;
         }
 
-        void drive(Writing context, CameraOrbit::Id self, system::Window::Id window, seconds delta_sec) {
-            const auto& input = with<system::Window>::get(context, window);
+        void drive(Writing context, CameraOrbit::Id self, seconds delta_sec) {
+            const auto& mail = with<system::ViewInput>::get(context, with<CameraOrbit>::get(context, self).input);
+            if (not mail.engaged)
+                return;
             auto orbit = with<CameraOrbit>::modify(context, self);
 
-            if (button_down(input.current, GLFW_MOUSE_BUTTON_RIGHT)) {
-                const auto shift = with<system::Window>::mouseShift(context, window);
-                orbit->hpb.x += k_heading_scale_x * static_cast<float>(shift.x) * k_mouse_sens_deg_per_pixel;
-                orbit->hpb.y += -static_cast<float>(shift.y) * k_mouse_sens_deg_per_pixel;
+            if (button_down(mail.buttons, GLFW_MOUSE_BUTTON_RIGHT)) {
+                orbit->hpb.x += k_heading_scale_x * static_cast<float>(mail.mouseShift.x) * k_mouse_sens_deg_per_pixel;
+                orbit->hpb.y += -static_cast<float>(mail.mouseShift.y) * k_mouse_sens_deg_per_pixel;
                 orbit->hpb.y = std::clamp(orbit->hpb.y, k_pitch_min_deg, k_pitch_max_deg);
                 orbit->hpb.z = 0.0f;
             }
 
-            if (std::abs(input.current.wheel) > 1e-6f)
-                orbit->distance *= std::pow(k_zoom_wheel_base, input.current.wheel);
+            if (std::abs(mail.wheel) > 1e-6f)
+                orbit->distance *= std::pow(k_zoom_wheel_base, mail.wheel);
 
             if (delta_sec > 0.0) {
                 const quat rotation = rotation_from_orbit_hpb(orbit->hpb);
@@ -78,12 +79,12 @@ namespace rmmr::controller {
                 const vec3 right_xz = glm::normalize(glm::cross(forward_xz, k_world_up));
                 const float pan = panViewPerSec * orbit->distance * static_cast<float>(delta_sec);
                 vec3 pivot_delta{0.0f};
-                if (key_down(input.current.keys, GLFW_KEY_UP)) pivot_delta += forward_xz * pan;
-                if (key_down(input.current.keys, GLFW_KEY_DOWN)) pivot_delta -= forward_xz * pan;
-                if (key_down(input.current.keys, GLFW_KEY_LEFT)) pivot_delta -= right_xz * pan;
-                if (key_down(input.current.keys, GLFW_KEY_RIGHT)) pivot_delta += right_xz * pan;
-                if (key_down(input.current.keys, GLFW_KEY_PAGE_UP)) pivot_delta.y += pan;
-                if (key_down(input.current.keys, GLFW_KEY_PAGE_DOWN)) pivot_delta.y -= pan;
+                if (key_down(mail.keys, GLFW_KEY_UP)) pivot_delta += forward_xz * pan;
+                if (key_down(mail.keys, GLFW_KEY_DOWN)) pivot_delta -= forward_xz * pan;
+                if (key_down(mail.keys, GLFW_KEY_LEFT)) pivot_delta -= right_xz * pan;
+                if (key_down(mail.keys, GLFW_KEY_RIGHT)) pivot_delta += right_xz * pan;
+                if (key_down(mail.keys, GLFW_KEY_PAGE_UP)) pivot_delta.y += pan;
+                if (key_down(mail.keys, GLFW_KEY_PAGE_DOWN)) pivot_delta.y -= pan;
                 orbit->pivot += pivot_delta;
             }
 
@@ -94,7 +95,7 @@ namespace rmmr::controller {
 
     } // namespace
 
-    auto CameraOrbit::Actions::create(Writing context, scene::Camera::Id anchor, Pos pivot, float distance) -> Id {
+    auto CameraOrbit::Actions::create(Writing context, scene::Camera::Id anchor, system::ViewInput::Id input, Pos pivot, float distance) -> Id {
         distance = std::clamp(distance, k_distance_min, k_distance_max);
         const auto& node = with<scene::Node>::get(context, anchor);
         HPB hpb = node.pose.hpb();
@@ -108,7 +109,7 @@ namespace rmmr::controller {
             hpb = HPB{glm::degrees(heading), glm::degrees(pitch), 0.0f};
         }
 
-        CameraOrbit::Quantum quantum{.pivot = pivot, .hpb = hpb, .distance = distance};
+        CameraOrbit::Quantum quantum{.pivot = pivot, .hpb = hpb, .distance = distance, .input = input};
         with<CameraOrbit>::extend(context, anchor, quantum);
         auto writable = with<scene::Node>::modify(context, anchor);
         apply_pose(*writable, quantum);
@@ -122,11 +123,8 @@ namespace rmmr::controller {
                 if (dt_us <= 0)
                     continue;
                 const seconds delta_sec = static_cast<seconds>(dt_us) / 1'000'000.0;
-                for (const auto entry : context.proposal.aspect<system::Window>().items()) {
-                    for (const auto [id, _] : context.proposal.aspect<CameraOrbit>().items()) {
-                        drive(context, id, entry.id, delta_sec);
-                    }
-                }
+                for (const auto [id, _] : context.proposal.aspect<CameraOrbit>().items())
+                    drive(context, id, delta_sec);
             }
         }
     };
