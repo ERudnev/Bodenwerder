@@ -4,8 +4,10 @@
 
 #include <glm/geometric.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <type_traits>
 
 namespace eltanin::geo {
@@ -72,6 +74,27 @@ namespace eltanin::geo {
         };
         float correction = 0.0f;
         for (const auto& group : pack.weld->groups) {
+            if constexpr (std::is_same_v<T, std::uint16_t>) {
+                // Covers pack two categorical facies IDs. Averaging the word can
+                // carry into either byte and invent an out-of-range ID.
+                T chosen = at(group.slots.front());
+                std::size_t frequency = 0;
+                for (const auto candidate : group.slots) {
+                    const T value = at(candidate);
+                    const std::size_t count = static_cast<std::size_t>(std::count_if(
+                        group.slots.begin(), group.slots.end(),
+                        [&](const auto slot) { return at(slot) == value; }));
+                    if (count > frequency or (count == frequency and value < chosen)) {
+                        chosen = value;
+                        frequency = count;
+                    }
+                }
+                for (const auto slot : group.slots) {
+                    correction += float(at(slot) != chosen);
+                    at(slot) = chosen;
+                }
+                continue;
+            }
             Acc sum = asAcc(at(group.slots[0]));
             for (std::size_t copy = 1; copy < group.slots.size(); ++copy)
                 sum = sum + asAcc(at(group.slots[copy]));

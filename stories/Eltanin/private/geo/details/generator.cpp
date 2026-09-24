@@ -350,6 +350,11 @@ namespace eltanin::planet {
             input.read(reinterpret_cast<char*>(planet.covers.values.data()), static_cast<std::streamsize>(coverBytes));
             if (not input)
                 return false;
+            const auto faciesCount = faciesMeans().size();
+            if (std::any_of(planet.covers.values.begin(), planet.covers.values.end(), [faciesCount](std::uint16_t cover) {
+                return (cover & 255u) >= faciesCount or ((cover >> 8) & 255u) >= faciesCount;
+            }))
+                return false;
             int width = 0;
             int height = 0;
             int components = 0;
