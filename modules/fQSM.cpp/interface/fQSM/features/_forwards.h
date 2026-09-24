@@ -8,13 +8,9 @@ namespace fqsm::features::reactions {
 
     template<typename ActionFunction>
     struct Functional;
-
-    // each entry in model::complex::Patch::Summary::critical is one failure
-    using FailedCount = size_t;
 }
 
 namespace fqsm::features {
-    // TODO: hide this word from this namespace
     struct Behavior;
 
     using Reactions = std::vector<std::shared_ptr<reactions::Abstract>>;

@@ -12,8 +12,5 @@ namespace fqsm {
 
     template<typename T>
     cref<T> freeze(ref<T> r) { return cref<T>(r); }
-
-    template<typename T>
-    ref<T> clone(cref<T> r) { return base::make_shared<T>(*r); }
 }
 

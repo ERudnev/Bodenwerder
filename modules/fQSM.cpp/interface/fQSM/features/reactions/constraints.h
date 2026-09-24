@@ -5,10 +5,8 @@
 
 namespace fqsm::features::reactions::constraint {
 
-    // Local data constraint: ItemChange handler from Aspect::Actions (or its Private).
+    // Local data constraint: fn(quantum) -> optional corrected quantum, for every added or updated item.
     template<category::Any Meta>
-    //struct element : Functional<typename Meta::BaseActions::QuantumLocal> {
-    //    using Parent = Functional<typename Meta::BaseActions::QuantumLocal>;
     struct element : Functional<typename Meta::BaseActions::Vocabulary::EvaluateQuantumLocal> {
         using Parent = Functional<typename Meta::BaseActions::Vocabulary::EvaluateQuantumLocal>;
 
@@ -18,6 +16,7 @@ namespace fqsm::features::reactions::constraint {
         void apply(Reacting context) override;
     };
 
+    // Contextual constraint: fn(Reading, id, quantum) -> optional corrected quantum.
     template<category::Any Meta>
     struct element_wide : Functional<typename Meta::BaseActions::Vocabulary::EvaluateQuantumContextual>
     {
@@ -39,7 +38,6 @@ namespace fqsm::features::reactions::constraint {
             const auto fix = this->action(change.now);
             if (!fix) continue;
             context.adjustments<Meta>().put_modification(change.id, *fix);
-
         }
     }
 

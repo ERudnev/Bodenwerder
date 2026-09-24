@@ -9,36 +9,16 @@
 
 namespace fqsm::features {
 
+    // The reactions of one aspect, as returned by customAspectReactions().
     struct Behavior {
         const Reactions rules;
 
         Behavior() = default;
-
         Behavior(Reactions in) : rules(std::move(in)) {}
 
-        static Behavior merged(const Behavior& lhs, const Behavior& rhs) {
-            Reactions out;
-            out.reserve(lhs.rules.size() + rhs.rules.size());
-            out.insert(out.end(), lhs.rules.begin(), lhs.rules.end());
-            out.insert(out.end(), rhs.rules.begin(), rhs.rules.end());
-            return Behavior(std::move(out));
-        }
-
-        // syntax sugar for Aspect definitions: {normaA(), normaB(p), normaC(c,d)}
-        template<typename FirstReaction, typename... RestReactions, typename = std::enable_if_t<std::is_base_of_v<features::reactions::Abstract, std::decay_t<FirstReaction>> && (std::is_base_of_v<features::reactions::Abstract, std::decay_t<RestReactions>> && ...)>>
-        Behavior(FirstReaction&& firstReaction, RestReactions&&... restReactions)
-            : rules(make_normas(std::forward<FirstReaction>(firstReaction), std::forward<RestReactions>(restReactions)...)) {}
-
-    private:
-        template<typename FirstReaction, typename... RestReactions>
-        static Reactions make_normas(FirstReaction&& firstReaction, RestReactions&&... restReactions) {
-            Reactions out;
-            out.reserve(1 + sizeof...(RestReactions));
-
-            out.push_back(std::make_shared<std::decay_t<FirstReaction>>(std::forward<FirstReaction>(firstReaction)));
-            (out.push_back(std::make_shared<std::decay_t<RestReactions>>(std::forward<RestReactions>(restReactions))), ...);
-
-            return out;
-        }
+        // syntax sugar for aspect definitions: return { reactionA(), reactionB(p) };
+        template<typename... Rs>
+            requires (sizeof...(Rs) > 0 and (std::is_base_of_v<reactions::Abstract, std::decay_t<Rs>> and ...))
+        Behavior(Rs&&... reactions) : rules{std::make_shared<std::decay_t<Rs>>(std::forward<Rs>(reactions))...} {}
     };
 }

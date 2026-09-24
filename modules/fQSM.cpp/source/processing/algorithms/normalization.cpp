@@ -4,10 +4,8 @@
 #include <optional>
 #include <set>
 
-#include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/algorithms/integration.h>
 #include <fQSM/processing/algorithms/structural.h>
-#include <fQSM/processing/contexts/session.h>
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/intertype/schema.h>
 #include <fQSM/features/reaction.h>
@@ -59,12 +57,9 @@ namespace fqsm::processing::algorithm::probe {
 #define FQSM_PROBE(...)
 #endif
 
-// local alias:
 namespace fqsm::processing::algorithm {
     static constexpr int temp_defence_normalization_waves = 10;
-
     using Patch = fqsm::model::complex::Patch;
-    using PatchRef = fqsm::ref<Patch>;
 }
 
 // internal part of normalization

@@ -1,6 +1,8 @@
 #pragma once
 
-#include <vector>
+#include <stdexcept>
+#include <type_traits>
+#include <utility>
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/_forwards.h>
@@ -14,8 +16,7 @@ namespace fqsm::features::reactions {
 
 namespace fqsm::features::reactions {
 
-    // Norma is a special kind of Reaction; Behavior collects rules specifically.
-    // TODO: consider as template<ActionType>,
+    // A reaction reads the changes of the aspects it listens to and writes corrections (see Reacting).
     struct Abstract {
         using Reacting = ::fqsm::Reacting;
         using Patch = model::complex::Patch;
@@ -27,7 +28,6 @@ namespace fqsm::features::reactions {
         virtual Sources listens() const = 0;
 
     protected:
-        // derived class helper:
         template<category::Any... Metas>
         static Sources typed_set() {
             return Sources{ TypeId<Metas>... };
@@ -39,53 +39,21 @@ namespace fqsm::features::reactions {
         }
     };
 
+    // A reaction that calls one user function (a std::function or a function pointer).
     template<typename ActionFunctionType>
     struct Functional : reactions::Abstract {
         using ActionFunction = ActionFunctionType;
-        using reactions::Abstract::Reacting;
-        using reactions::Abstract::Patch;
-        using reactions::Abstract::Sources;
 
-        explicit Functional(ActionFunction fn) : actionFunc(fn) {}
+        explicit Functional(ActionFunction fn) : actionFunc(std::move(fn)) {}
+
     protected:
-
-        // Forward Reacting into ActionFunction; do not invent a named Writing from Reacting.
-        template<typename... Rest>
-        auto action(Reacting reviewing, Rest&&... rest) const
-            -> std::invoke_result_t<ActionFunction, Reacting, Rest&&...>
-        {
-            return invoke_action(reviewing, std::forward<Rest>(rest)...);
-        }
-
-        // Direct forward (QuantumLocal, explicit Writing, etc.).
-        template<typename First, typename... Rest>
-        auto action(First&& first, Rest&&... rest) const
-            -> std::invoke_result_t<ActionFunction, First&&, Rest&&...>
-            requires (
-                !std::convertible_to<std::remove_cvref_t<First>, Reacting> ||
-                std::same_as<std::remove_cvref_t<First>, ::fqsm::Writing>
-            )
-        {
-            return invoke_action(std::forward<First>(first), std::forward<Rest>(rest)...);
-        }
-
-        bool optionally_callable(Reacting context, std::string_view reason) const {
-            if (actionFunc) return true;
-            context.refuse(std::string(reason));
-            return false;
+        template<typename... Args>
+        auto action(Args&&... args) const -> std::invoke_result_t<const ActionFunction&, Args&&...> {
+            if (not actionFunc) throw std::runtime_error("fQSM reaction: null function");
+            return actionFunc(std::forward<Args>(args)...);
         }
 
     private:
-        template<typename... Args>
-        auto invoke_action(Args&&... args) const -> std::invoke_result_t<ActionFunction, Args&&...> {
-            if (!actionFunc) throw std::runtime_error("null func");
-            if constexpr (std::is_void_v<std::invoke_result_t<ActionFunction, Args&&...>>) {
-                actionFunc(std::forward<Args>(args)...);
-            } else {
-                return actionFunc(std::forward<Args>(args)...);
-            }
-        }
-
         ActionFunction actionFunc = nullptr;
     };
 }
