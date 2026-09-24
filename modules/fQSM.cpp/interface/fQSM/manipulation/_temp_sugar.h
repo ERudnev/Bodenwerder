@@ -4,7 +4,7 @@
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/meta/rtid.h>
-#include <fQSM/processing/contexts/operational.h>
+#include <fQSM/processing/contexts/session.h>
 
 namespace fqsm::manipulation::temp_sugar {
 

@@ -1,28 +1,30 @@
 #pragma once
 
+#include <memory>
+#include <vector>
+
 #include <fQSM/model/complex/reality.h>
-#include <fQSM/processing/contexts/operational.h>
-#include <fQSM/processing/contexts/direct.h>
-#include <fQSM/processing/_forwards.h>
-#include <fQSM/processing/contexts/review.h>
 #include <fQSM/processing/transaction.h>
 #include <fQSM/processing/orchestrators/branch.h>
 
 namespace fqsm::processing::orchestrator {
 
-    struct Realm : Transaction {
+    // Owns the reality and the sessions opened on it. A session is accepted (normalized, then integrated)
+    // when its last handle ends: an unnamed Writing at the end of the full expression, a named one at its scope end.
+    struct Realm : Transaction, private SessionOwner {
         Realm(Schema schema) : reality(schema) { assembleGlobals(); }
-        //Realm(const Realm& other) : Realm(static_cast<const State&>(other)) {} // forcing deep copy
-        Realm(const Realm& other) : reality(static_cast<const State&>(other.reality)) {} // TODO clarify me
+        Realm(const Realm& other) : Transaction(), SessionOwner(), reality(static_cast<const State&>(other.reality)) {}
         Realm(const State& other) : reality(other) {}
 
-        // running local transaction (currently syncronous):
+        // runs worker in a Branch; the Branch merges into this Realm when worker returns
         template<typename Worker>
-        auto branch(Worker&& worker) -> std::invoke_result_t<Worker, Writing> { Branch context(*this); return std::invoke(std::forward<Worker>(worker), static_cast<Writing>(context)); }
+        auto branch(Worker&& worker) -> std::invoke_result_t<Worker, Writing> {
+            Branch context(*this);
+            return std::invoke(std::forward<Worker>(worker), static_cast<Writing>(context));
+        }
 
-        operator Reading() const override { return View(reality); }
+        operator Reading() const override { return Reading(reality); }
         const model::complex::State* operator->() const { return &reality; }
-
         operator Stewarding();
 
         auto result() const -> const model::complex::Patch::Summary& { return lastResult; }
@@ -30,12 +32,15 @@ namespace fqsm::processing::orchestrator {
     private:
         model::complex::Reality reality;
         model::complex::Patch::Summary lastResult;
+        std::vector<std::unique_ptr<Session>> open;
 
+        auto open_session(bool silent, bool direct) -> Session&;
         auto writing(Mode) -> Writing override;
-        auto makeChildPolicy() -> ChildPolicy override;
+        auto child_base() const -> const model::complex::State& override { return reality; }
+        void accept_child(ref<model::complex::Patch> patch) override { accept(patch, {}, false); }
+        void release(Session&) override;
 
         void assembleGlobals();
-        void acceptWriting(Context::PatchRef, Mode);
-        void acceptStewarding(Context::PatchRef, Rtid::Set dirtyTypes);
+        void accept(ref<model::complex::Patch>, Rtid::Set tainted, bool silent);
     };
 }

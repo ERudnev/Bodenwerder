@@ -1,10 +1,10 @@
-
 #include <fQSM/processing/orchestrators/realm.h>
+
+#include <algorithm>
 
 #include <fQSM/erased/slots.h>
 #include <fQSM/model/complex/patch.h>
 #include <fQSM/model/intertype/schema.h>
-#include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/algorithms/normalization.h>
 #include <fQSM/processing/contexts/settingUp.h>
 #include <fQSM/utility/logging.h>
@@ -12,7 +12,7 @@
 namespace fqsm::processing::orchestrator {
 
     void Realm::assembleGlobals() {
-        SettingUp setup(*this, reality);
+        SettingUp setup(*this);
         for (model::complex::Reality::Slot slot = 0; slot < reality.schema->slotCount(); ++slot) {
             const auto assemble = reality.schema->descriptors[slot].assembleGlobal;
             if (not assemble) continue;
@@ -30,53 +30,33 @@ namespace fqsm::processing::orchestrator {
         }
     }
 
-    auto Realm::writing(Mode mode) -> Writing {
+    auto Realm::open_session(bool silent, bool direct) -> Session& {
         auto patch = base::make_shared<model::complex::Patch>(reality);
-        auto context = std::make_shared<Context>(
-            reality,
-            patch,
-            Context::Upstream{[this, mode](Context::PatchRef patch) {
-                acceptWriting(patch, mode);
-            }}
-        );
-        //base::message(std::format("writing() this={} op={}", (void*)this, (void*)context.get()));
+        auto& session = *open.emplace_back(std::make_unique<Session>(reality, patch, static_cast<SessionOwner*>(this), direct ? &reality : nullptr));
+        session.silent = silent;
+        return session;
+    }
 
-        return Gate(context);
+    auto Realm::writing(Mode mode) -> Writing {
+        return Writing(open_session(mode == Mode::silent, false));
     }
 
     Realm::operator Stewarding() {
-        auto patch = base::make_shared<model::complex::Patch>(reality);
-        auto session = std::make_shared<context::Synchronous>(
-            reality,
-            patch,
-            [this](context::Synchronous::PatchRef patch, Rtid::Set dirty) {
-                acceptStewarding(patch, std::move(dirty));
-            }
-        );
-        return Dock(session);
+        return Stewarding(open_session(false, true));
     }
 
-    auto Realm::makeChildPolicy() -> ChildPolicy {
-        return ChildPolicy{
-            View(reality),
-            [this](Context::PatchRef patch) {
-                acceptWriting(patch, Mode::normal);
-            }
-        };
+    void Realm::release(Session& session) {
+        const auto found = std::find_if(open.begin(), open.end(), [&](const auto& owned) { return owned.get() == &session; });
+        auto closing = std::move(*found);
+        open.erase(found);
+        accept(closing->view.patch(), std::move(closing->tainted), closing->silent);
     }
 
-    void Realm::acceptWriting(Context::PatchRef patch, Mode mode) {
-        _DBG_TX_("realm: acceptWriting patch={}", utility::format_patch(fqsm::freeze(patch)));
-        lastResult = {};
-        lastResult = algorithm::update(reality, patch, {});
-        if (mode != Mode::silent)
-            utility::log_rejected_transaction(lastResult);
-    }
-
-    void Realm::acceptStewarding(Context::PatchRef patch, Rtid::Set tainted) {
-        _DBG_TX_("realm: acceptStewarding patch={}", utility::format_patch(fqsm::freeze(patch)));
+    void Realm::accept(ref<model::complex::Patch> patch, Rtid::Set tainted, bool silent) {
+        _DBG_TX_("realm: accept patch={}", utility::format_patch(fqsm::freeze(patch)));
         lastResult = {};
         lastResult = algorithm::update(reality, patch, std::move(tainted));
-        utility::log_rejected_transaction(lastResult);
+        if (not silent)
+            utility::log_rejected_transaction(lastResult);
     }
 }

@@ -1,12 +1,13 @@
 #include <fQSM/processing/algorithms/normalization.h>
 
 #include <format>
+#include <optional>
 #include <set>
 
 #include <fQSM/processing/_forwards.h>
 #include <fQSM/processing/algorithms/integration.h>
 #include <fQSM/processing/algorithms/structural.h>
-#include <fQSM/processing/contexts/review.h>
+#include <fQSM/processing/contexts/session.h>
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/intertype/schema.h>
 #include <fQSM/features/reaction.h>
@@ -74,29 +75,19 @@ namespace fqsm::processing::algorithm::normalization {
         dst.warning.insert(dst.warning.end(), src.warning.begin(), src.warning.end());
     }
 
-    struct PassResult {
-        fqsm::ref<model::complex::Patch> patch;
-        Rtid::Set taintedDuringPatch;
-    };
-
-    // build one normalization wave
-    auto reactions_pass(const model::complex::State& source, const model::complex::State& origin, fqsm::cref<Patch> changes, const Rtid::Set& taintedLines) -> PassResult {
-        //base::message("creating review context");
-        PassResult pass{
-            base::make_shared<Patch>(source),
-            {}, // TODO: consider filling Tainted Flags once Reviewers will become context::Direct<T> compatible
-        };
+    // build one normalization wave: structural rules and reactions read the proposal and write a new pass patch
+    auto reactions_pass(const model::complex::State& source, const model::complex::State& origin, fqsm::cref<Patch> changes, const Rtid::Set& taintedLines) -> ref<Patch> {
+        auto pass = base::make_shared<Patch>(source);
 
         // this is very important place: this cast is saves about ~300 lines of code for new class
         // complex::Proposal === const complex::Draft
         fqsm::ref<Patch> non_const_patch(std::const_pointer_cast<Patch>(changes.std_ptr()));
         const auto proposal = model::complex::Future{source, non_const_patch, taintedLines};
-        auto context = Review(
-            proposal,
-            origin,
-            pass.patch);
+        Session corrections(proposal, pass);
+        std::optional<Session> retrospective;
+        const Reacting context(proposal, corrections, origin, retrospective);
 
-        apply_structural_rules(proposal, context.reactions->future, taintedLines);
+        apply_structural_rules(proposal, corrections.view, taintedLines);
 
         const auto& schema = *changes->schema;
         std::set<model::intertype::Graph::ReactionId> selectedReactions;
@@ -118,7 +109,7 @@ namespace fqsm::processing::algorithm::normalization {
         }
         FQSM_PROBE(probe::window.reactions += selectedReactions.size();)
 
-        _DBG_TX_("norm pass: {} reactions, changes={}, reaction={}", selectedReactions.size(), utility::format_patch(changes), utility::format_patch(fqsm::freeze(pass.patch)));
+        _DBG_TX_("norm pass: {} reactions, changes={}, reaction={}", selectedReactions.size(), utility::format_patch(changes), utility::format_patch(fqsm::freeze(pass)));
         return pass;
     }
 
@@ -157,21 +148,21 @@ namespace fqsm::processing::algorithm::normalization {
             _DBG_TX_("norm: wave {} correction={}", wave, utility::format_patch(fqsm::freeze(lastCorrection)));
 
             const auto fix = reactions_pass(advancing, world, lastCorrection, waveTaint);
-            append(accumulated, fix.patch->summary);
+            append(accumulated, fix->summary);
 
-            if (not fix.patch->summary.good()) {
-                _DBG_TX_("norm: wave {} REJECT critical={} warning={}", wave, fix.patch->summary.critical.size(), fix.patch->summary.warning.size());
+            if (not fix->summary.good()) {
+                _DBG_TX_("norm: wave {} REJECT critical={} warning={}", wave, fix->summary.critical.size(), fix->summary.warning.size());
                 return accumulated;
             }
 
             patch->absorb(*lastCorrection);
 
-            const bool anotherWave = fix.patch->has_changes() or not fix.taintedDuringPatch.empty();
-            _DBG_TX_("norm: wave {} merged={}, reaction={}, another={}", wave, utility::format_patch(fqsm::freeze(patch)), utility::format_patch(fqsm::freeze(fix.patch)), anotherWave);
+            const bool anotherWave = fix->has_changes();
+            _DBG_TX_("norm: wave {} merged={}, reaction={}, another={}", wave, utility::format_patch(fqsm::freeze(patch)), utility::format_patch(fqsm::freeze(fix)), anotherWave);
             if (not anotherWave)
                 break;
 
-            lastCorrection = fix.patch;
+            lastCorrection = fix;
             waveTaint.clear();
         }
 

@@ -4,7 +4,7 @@
 
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/_forwards.h>
-#include <fQSM/processing/contexts/review.h>
+#include <fQSM/processing/contexts/session.h>
 
 namespace fqsm::manipulation {}
 
@@ -17,7 +17,7 @@ namespace fqsm::features::reactions {
     // Norma is a special kind of Reaction; Behavior collects rules specifically.
     // TODO: consider as template<ActionType>,
     struct Abstract {
-        using Reacting = processing::Review;
+        using Reacting = ::fqsm::Reacting;
         using Draft = model::complex::Draft;
         using Patch = model::complex::Patch;
         using Sources = meta::Rtid::Set;
@@ -51,7 +51,7 @@ namespace fqsm::features::reactions {
         explicit Functional(ActionFunction fn) : actionFunc(fn) {}
     protected:
 
-        // Forward Review into ActionFunction; do not invent a named Writing from Reacting.
+        // Forward Reacting into ActionFunction; do not invent a named Writing from Reacting.
         template<typename... Rest>
         auto action(Reacting reviewing, Rest&&... rest) const
             -> std::invoke_result_t<ActionFunction, Reacting, Rest&&...>

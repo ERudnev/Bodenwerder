@@ -1,33 +1,21 @@
 #pragma once
 
-#include <fQSM/meta/rtid.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/processing/_forwards.h>
-#include <fQSM/references.h>
 
 namespace fqsm::processing {
 
-    struct Transaction;
-    namespace orchestrator { struct Realm; struct RealmSafe; }
-
+    // Context of Always::assemble at Realm birth: gives a Writing into the Realm being built.
     struct SettingUp {
         friend struct orchestrator::Realm;
-        friend struct orchestrator::RealmSafe;
 
         SettingUp(const SettingUp&) = delete;
         SettingUp& operator=(const SettingUp&) = delete;
-        SettingUp(SettingUp&&) = delete;
-        SettingUp& operator=(SettingUp&&) = delete;
 
         auto writing() -> Writing;
 
     private:
-        explicit SettingUp(Transaction& transaction, model::complex::Reality& reality);
+        explicit SettingUp(Transaction& transaction) : transaction(transaction) {}
         Transaction& transaction;
-        model::complex::Reality& reality;
     };
-}
-
-namespace fqsm {
-    using SettingUp = processing::SettingUp;
 }

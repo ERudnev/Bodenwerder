@@ -3,7 +3,6 @@
 #include <format>
 #include <memory>
 
-//#include <base/logging.h> // required for _DBG_TX_ (make this better)
 #include <fQSM/references.h>
 #include <fQSM/meta/categories.h>
 #include <fQSM/model/_forwards.h>
@@ -13,22 +12,26 @@
 #define _DBG_TX_(...) {}
 #endif
 
-namespace fqsm::processing::context {
-    struct Operational;
-    struct Retrospective;
-    struct Synchronous;
-}
-
 namespace fqsm::processing {
-    struct View;
-    struct Gate;
-    struct Wall;
-    struct Dock;
-    struct Review;
+    class Session;
+    struct Reading;
+    struct Writing;
+    struct Stewarding;
+    struct Reacting;
+    struct Retrospecting;
     struct SettingUp;
+    struct Transaction;
 
     template<meta::category::Any>
-    struct Breach;
+    struct Direct;
+
+    namespace orchestrator { struct Realm; struct Branch; }
+
+    // phase 1 spellings (contract section 4), kept compiling for one release
+    using View = Reading;
+    using Gate = Writing;
+    using Dock = Stewarding;
+    template<meta::category::Any Meta> using Breach = Direct<Meta>;
 }
 
 namespace fqsm::processing::persistency {
@@ -37,17 +40,16 @@ namespace fqsm::processing::persistency {
     struct Archivist;
 }
 
-// exporting this as 1st class citizen of fQSM:
+// Contexts are first-class names of fQSM. A function signature says what the function may do.
 namespace fqsm {
-    using Reading = processing::View;
-    using Writing = processing::Gate;
-    using Retrospecting = processing::Wall;
-    using Reacting = processing::Review;
-    using Stewarding = processing::Dock;
+    using Reading = processing::Reading;
+    using Writing = processing::Writing;
+    using Retrospecting = processing::Retrospecting;
+    using Reacting = processing::Reacting;
+    using Stewarding = processing::Stewarding;
     using SettingUp = processing::SettingUp;
 
-    // being aside of verbs, this is a legal tansaction workaround
-    // you can manipulate State direclty with Direct<T>. May be you need it. But be aware
+    // Direct<T> changes the Realm state in place, outside the patch; only a Stewarding session gives it.
     template<meta::category::Any Meta>
-    using Direct = processing::Breach<Meta>;
+    using Direct = processing::Direct<Meta>;
 }
