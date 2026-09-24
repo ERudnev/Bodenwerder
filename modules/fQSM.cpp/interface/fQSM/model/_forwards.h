@@ -16,10 +16,18 @@ namespace fqsm::model::complex {
     class Reality;
     class Draft;
     struct Patch;
+    class Future;
+    class LinePool;
 }
 
 namespace fqsm::model::intertype {
     struct Graph;
+}
+
+namespace fqsm::erased {
+    class ReadLine;
+    class Line;
+    class FutureLine;
 }
 
 namespace fqsm::model::linear {
@@ -27,6 +35,8 @@ namespace fqsm::model::linear {
         // Owner handle for typed per-slot views cached inside complex states.
         struct Erased {
             virtual ~Erased() = default;
+            // Points a pooled view at other lines of the same slot.
+            virtual void rebind(const erased::ReadLine& reader, erased::Line* writable, erased::FutureLine* future) = 0;
         };
     }
 }

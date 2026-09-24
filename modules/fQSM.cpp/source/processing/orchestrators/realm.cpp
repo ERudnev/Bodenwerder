@@ -31,7 +31,7 @@ namespace fqsm::processing::orchestrator {
     }
 
     auto Realm::writing(Mode mode) -> Writing {
-        auto patch = base::make_shared<model::complex::Patch>(reality.schema);
+        auto patch = base::make_shared<model::complex::Patch>(reality);
         auto context = std::make_shared<Context>(
             reality,
             patch,
@@ -45,7 +45,7 @@ namespace fqsm::processing::orchestrator {
     }
 
     Realm::operator Stewarding() {
-        auto patch = base::make_shared<model::complex::Patch>(reality.schema);
+        auto patch = base::make_shared<model::complex::Patch>(reality);
         auto session = std::make_shared<context::Synchronous>(
             reality,
             patch,

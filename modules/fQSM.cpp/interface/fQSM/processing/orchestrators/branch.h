@@ -15,7 +15,7 @@ namespace fqsm::processing::orchestrator {
 
         Branch(ChildPolicy policy) : context(std::make_shared<Context>(
             *policy.view,
-            base::make_shared<Patch>(policy.view->schema),
+            base::make_shared<Patch>(*policy.view),
             policy.upstream
         ))
         {}

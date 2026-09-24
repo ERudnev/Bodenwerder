@@ -13,6 +13,7 @@ namespace fqsm::erased {
     class FutureLine final : public ReadLine {
     public:
         FutureLine(const ReadLine& base, PatchLine& patch) : below(&base), layer(&patch) {}
+        void bind(const ReadLine& base, PatchLine& patch) { below = &base; layer = &patch; }
 
         const ReadLine& base() const { return *below; }
         const PatchLine& patch() const { return *layer; }

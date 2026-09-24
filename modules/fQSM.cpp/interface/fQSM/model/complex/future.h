@@ -19,6 +19,7 @@ namespace fqsm::model::complex {
     class Future : public State {
     public:
         Future(const State& state, ref<Patch> patch, const Rtid::Set& dirty = {});
+        ~Future() override;
 
         template<category::Any Meta>
         linear::Delta<Meta> delta() const;

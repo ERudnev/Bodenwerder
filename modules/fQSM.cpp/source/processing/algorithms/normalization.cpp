@@ -83,7 +83,7 @@ namespace fqsm::processing::algorithm::normalization {
     auto reactions_pass(const model::complex::State& source, const model::complex::State& origin, fqsm::cref<Patch> changes, const Rtid::Set& taintedLines) -> PassResult {
         //base::message("creating review context");
         PassResult pass{
-            base::make_shared<Patch>(source.schema),
+            base::make_shared<Patch>(source),
             {}, // TODO: consider filling Tainted Flags once Reviewers will become context::Direct<T> compatible
         };
 
@@ -128,7 +128,7 @@ namespace fqsm::processing::algorithm::normalization {
 
         _DBG_TX_("norm: start user patch={}", utility::format_patch(fqsm::freeze(patch)));
 
-        const auto incoming = base::make_shared<Patch>(world.schema);
+        const auto incoming = base::make_shared<Patch>(world);
         incoming->absorb(*patch);
         patch->clear();
         append(accumulated, incoming->summary);

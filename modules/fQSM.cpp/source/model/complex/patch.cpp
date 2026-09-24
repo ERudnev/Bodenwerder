@@ -1,30 +1,48 @@
 #include <fQSM/model/complex/patch.h>
 
+#include <fQSM/model/complex/pool.h>
+#include <fQSM/model/complex/state.h>
+
 namespace fqsm::model::complex {
 
-    Patch::Patch(Schema schema)
+    Patch::Patch(Schema schema, std::shared_ptr<LinePool> pool)
         : summary()
         , schema(schema)
+        , pool(std::move(pool))
         , lines(schema->slotCount())
     {}
+
+    Patch::Patch(const State& over)
+        : Patch(over.schema, over.linePool())
+    {}
+
+    Patch::~Patch() {
+        if (not pool) return;
+        for (Slot slot = 0; slot < lines.size(); ++slot)
+            pool->give_patch(slot, std::move(lines[slot]));
+    }
 
     Patch::Patch(const Patch& other)
         : summary(other.summary)
         , schema(other.schema)
+        , pool(other.pool)
         , lines(other.lines.size())
     {
         for (std::size_t slot = 0; slot < lines.size(); ++slot) {
             if (not other.lines[slot]) continue;
             lines[slot] = std::make_unique<erased::PatchLine>(*other.lines[slot]);
             ++created;
+            ++allocated;
         }
     }
 
     erased::PatchLine& Patch::writable(Slot slot) {
         auto& line = lines[slot];
         if (not line) {
-            line = std::make_unique<erased::PatchLine>(schema->descriptors[slot]);
+            bool fresh = true;
+            line = pool ? pool->take_patch(slot, fresh) : std::make_unique<erased::PatchLine>(schema->descriptors[slot]);
             ++created;
+            if (fresh) ++allocated;
         }
         return *line;
     }
