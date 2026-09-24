@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/features/reaction.h>
 
@@ -7,7 +9,7 @@ namespace fqsm::features::reactions {
 
     template<category::Any Owner, category::Any... ExtraSources>
     struct aspect_wide : Abstract {
-        using Handler = typename Owner::DefaultInternals::TemporaryFreeReaction;
+        using Handler = std::function<void(Reacting)>;
 
         explicit aspect_wide(Handler handler) : handler(handler) {}
 

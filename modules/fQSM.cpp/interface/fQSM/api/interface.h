@@ -4,7 +4,7 @@
 #include <fQSM/api/builtins.h>
 
 // aspect types (Entity/Component/Attribute/Feature):
-#include <fQSM/aspect/assembly.interface.h>
+#include <fQSM/aspect/base.h>
 #include <fQSM/aspect/persistency.h>
 
 // manipulation
@@ -37,7 +37,7 @@ namespace fqsm::api {
 
     // recommended:
     template<typename Meta>
-    using with = ::fqsm::manipulation::call_action<Meta>;
+    using with = ::fqsm::meta::facade_t<Meta>;
 
     // experimental:
     template<typename Meta>

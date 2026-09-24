@@ -15,14 +15,6 @@
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/processing/_forwards.h>
 
-namespace fqsm::aspect {
-    template<typename Meta> struct Entity;
-    template<typename Meta, typename Host> struct Attribute;
-    template<typename Meta, typename Host> struct Feature;
-    template<typename Meta, typename Host> struct Component;
-    template<typename Meta, typename Host, typename Worker> struct Group;
-}
-
 namespace fqsm::erased {
 
     // Type-erased value operations; one static instance per C++ type (Quantum or Global).
@@ -63,7 +55,7 @@ namespace fqsm::erased {
         return ops;
     }
 
-    enum class Category : std::uint8_t { entity, attribute, feature, component, group };
+    using Category = aspect::Category;
 
     struct Descriptor {
         Rtid id;
@@ -77,40 +69,18 @@ namespace fqsm::erased {
         bool (*groupErase)(void* quantum, RawId);          // group only
         void (*groupInsert)(void* quantum, RawId);         // group only
         void (*groupElements)(const void* quantum, std::vector<RawId>& out);   // group only: appends the ids
-        features::Reactions reactions;                     // DefaultInternals::reactions()
+        features::Reactions reactions;                     // Meta::customAspectReactions(), when declared
     };
-
-    namespace detail {
-        template<typename Meta>
-        concept HasGlobalAssemble = requires (SettingUp& setup) {
-            { Meta::Always::assemble(setup) } -> std::same_as<GlobalValue<Meta>>;
-        };
-
-        template<typename Meta>
-        constexpr Category category_of() {
-            if constexpr (std::is_base_of_v<aspect::Entity<Meta>, Meta>) {
-                return Category::entity;
-            } else if constexpr (category::Group<Meta>) {
-                return Category::group;
-            } else if constexpr (std::is_base_of_v<aspect::Attribute<Meta, typename Meta::HostAspect>, Meta>) {
-                return Category::attribute;
-            } else if constexpr (std::is_base_of_v<aspect::Feature<Meta, typename Meta::HostAspect>, Meta>) {
-                return Category::feature;
-            } else {
-                static_assert(std::is_base_of_v<aspect::Component<Meta, typename Meta::HostAspect>, Meta>,
-                    "fqsm::erased::describe: unknown aspect category");
-                return Category::component;
-            }
-        }
-    }
 
     template<meta::category::Any Meta>
     Descriptor describe() {
-        using Global = GlobalValue<Meta>;
+        using Info = meta::aspect_info<Meta>;
+        using Global = typename Info::Global;
+        using Traits = typename Meta::Traits;
         Descriptor out{
             .id = TypeId<Meta>,
             .name = Rtid::name<Meta>(),
-            .category = detail::category_of<Meta>(),
+            .category = Traits::category,
             .host = std::nullopt,
             .element = std::nullopt,
             .quantum = &ops_of<Quantum<Meta>>(),
@@ -119,13 +89,13 @@ namespace fqsm::erased {
             .groupErase = nullptr,
             .groupInsert = nullptr,
             .groupElements = nullptr,
-            .reactions = Meta::DefaultInternals::reactions().rules,
+            .reactions = Info::reactions(),
         };
         if constexpr (category::Parasitic<Meta>) {
-            out.host = TypeId<typename Meta::HostAspect>;
+            out.host = TypeId<typename Traits::HostAspect>;
         }
         if constexpr (category::Group<Meta>) {
-            using Element = typename Meta::WorkerAspect;
+            using Element = typename Traits::ElementAspect;
             out.element = TypeId<Element>;
             out.groupErase = [](void* quantum, RawId id) -> bool {
                 return static_cast<Quantum<Meta>*>(quantum)->erase(Id<Element>{id}) != 0;
@@ -138,7 +108,7 @@ namespace fqsm::erased {
                     ids.push_back(id.raw());
             };
         }
-        if constexpr (detail::HasGlobalAssemble<Meta>) {
+        if constexpr (Info::has_assemble) {
             out.assembleGlobal = [](SettingUp& setup, void* dst) {
                 ::new (dst) Global(Meta::Always::assemble(setup));
             };
