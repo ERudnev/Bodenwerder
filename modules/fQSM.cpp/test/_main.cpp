@@ -42,6 +42,17 @@
     X(schema_merge_realm_feature_removal_nested_vs_flat) \
     // end
 
+#define FQSM_ERASED_TESTS(X) \
+    X(erased_ops_trivial) \
+    X(erased_ops_rich) \
+    X(erased_ops_no_default) \
+    X(erased_ops_aligned) \
+    X(erased_describe) \
+    X(erased_slots_basic) \
+    X(erased_slots_aligned) \
+    X(erased_slots_lifetime) \
+    // end
+
 #define FQSM_MINIMODEL_TESTS(X) \
     // end
 
@@ -55,6 +66,7 @@
 
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_FEATURES_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_LOW_LEVEL_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(FQSM_ERASED_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_MINIMODEL_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_Q1RUNTIME_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_WORKSHOP_TESTS)
@@ -68,6 +80,7 @@ int call_all_tests() {
     const std::vector<group> groups{
         group{ "features", BASETEST_MAKE_LIST_TESTS(FQSM_FEATURES_TESTS) },
         group{ "low_level", BASETEST_MAKE_LIST_TESTS(FQSM_LOW_LEVEL_TESTS) },
+        group{ "erased", BASETEST_MAKE_LIST_TESTS(FQSM_ERASED_TESTS) },
         group{ "minimodel", BASETEST_MAKE_LIST_TESTS(FQSM_MINIMODEL_TESTS) },
         group{ "q1runtime", BASETEST_MAKE_LIST_TESTS(FQSM_Q1RUNTIME_TESTS) },
         group{ "workshop", BASETEST_MAKE_LIST_TESTS(FQSM_WORKSHOP_TESTS) },
