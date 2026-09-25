@@ -69,6 +69,7 @@ namespace fqsm::erased {
         bool (*groupErase)(void* quantum, RawId);          // group only
         void (*groupInsert)(void* quantum, RawId);         // group only
         void (*groupElements)(const void* quantum, std::vector<RawId>& out);   // group only: appends the ids
+        bool (*groupContains)(const void* quantum, RawId);                    // group only
         features::Reactions reactions;                     // Meta::customAspectReactions(), when declared
     };
 
@@ -89,6 +90,7 @@ namespace fqsm::erased {
             .groupErase = nullptr,
             .groupInsert = nullptr,
             .groupElements = nullptr,
+            .groupContains = nullptr,
             .reactions = {},
         };
         if constexpr (Info::has_reactions) {
@@ -109,6 +111,9 @@ namespace fqsm::erased {
             out.groupElements = [](const void* quantum, std::vector<RawId>& ids) {
                 for (const auto& id : *static_cast<const Quantum<Meta>*>(quantum))
                     ids.push_back(id.raw());
+            };
+            out.groupContains = [](const void* quantum, RawId id) -> bool {
+                return static_cast<const Quantum<Meta>*>(quantum)->contains(Id<Element>{id});
             };
         }
         if constexpr (Info::has_assemble) {

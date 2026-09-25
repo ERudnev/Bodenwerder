@@ -183,7 +183,7 @@ namespace fqsm::processing::algorithm {
         const auto result = normalization::normalization(state, patch, taintedLines);
         if (result.good()) {
             _DBG_TX_("update: INTEGRATE patch={}", utility::format_patch(fqsm::freeze(patch)));
-            integrate(state, *patch);
+            integrate_consuming(state, *patch);   // the patch is discarded with the session
         } else {
             _DBG_TX_("update: REJECT critical={} warning={}", result.critical.size(), result.warning.size());
         }

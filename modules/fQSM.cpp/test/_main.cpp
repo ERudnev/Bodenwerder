@@ -37,6 +37,7 @@
     X(quantal) \
     X(transaction_hierarchy) \
     X(aspect_minimal_declaration) \
+    X(id_set) \
     X(contexts_writing_copies_share_session) \
     X(contexts_nested_branch_refusal) \
     X(contexts_stewarding_direct_and_writing) \

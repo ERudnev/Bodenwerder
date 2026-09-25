@@ -7,8 +7,8 @@
 #include <functional>
 #include <optional>
 #include <type_traits>
-#include <unordered_set>
 
+#include <fQSM/id_set.h>
 #include <fQSM/identifier.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/processing/_forwards.h>
@@ -26,7 +26,7 @@ namespace fqsm::aspect {
 
         template<typename T> struct GroupQuantum {};
         template<typename Host, typename Element>
-        struct GroupQuantum<Traits<Category::group, Host, Element>> { using Quantum = std::unordered_set<typename Element::Id>; };
+        struct GroupQuantum<Traits<Category::group, Host, Element>> { using Quantum = IdSet<typename Element::Id>; };
 
         // element placeholder of non-group aspects: keeps the group operations declarable
         struct NoElement { struct Id {}; struct Quantum {}; };
@@ -144,7 +144,7 @@ namespace fqsm::aspect {
                 meta::facade_t<detail::HostOf<Meta>>::kraken(context, id);
         }
 
-        // group: the quantum is a set of element ids; each change copies the set (the quantum is a value)
+        // group: the quantum is an IdSet of element ids, a value: a change copies the set once into the patch (one memcpy)
         static auto addElement(Writing context, Id me, typename detail::ElementOf<Meta>::Quantum element) -> typename detail::ElementOf<Meta>::Id
             requires (detail::group<Meta> and meta::category::Standalone<detail::ElementOf<Meta>>) {
             const auto elementId = Capability<detail::ElementOf<Meta>>::create(context, std::move(element));

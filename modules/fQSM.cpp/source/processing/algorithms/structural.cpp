@@ -127,11 +127,14 @@ namespace fqsm::processing::algorithm {
                 const auto end = members.cursor_end();
                 for (auto it = members.cursor_begin(); not (it == end); ++it) {
                     const auto entry = *it;
-                    const auto index = static_cast<erased::Slots::Index>(scratch.push_copy(entry.value));
-                    bool hit = false;
+                    bool member = false;   // copy the set only for a group that holds a removed id
                     for (const RawId id : removed)
-                        if (group.groupErase(scratch.at(index), id)) hit = true;
-                    if (hit) hits.emplace_back(entry.id, index);
+                        if (group.groupContains(entry.value, id)) { member = true; break; }
+                    if (not member) continue;
+                    const auto index = static_cast<erased::Slots::Index>(scratch.push_copy(entry.value));
+                    for (const RawId id : removed)
+                        group.groupErase(scratch.at(index), id);
+                    hits.emplace_back(entry.id, index);
                 }
                 for (const auto [id, index] : hits)
                     target.put_modification(id, scratch.at(index));

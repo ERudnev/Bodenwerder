@@ -29,6 +29,7 @@ namespace fqsm::erased {
 
         RawId id_at(std::size_t position) const { return entries.id_at(position); }
         Mention at(std::size_t position) const;
+        void* mutable_at(std::size_t position) { return entries.value_at(position); }
         bool verified_at(std::size_t position) const { return (flags[position] & verifiedFlag) != 0; }
         Mention mention(RawId id) const;
         void* find_mutable(RawId id);
