@@ -1,5 +1,7 @@
 #include <fQSM/erased/patch_line.h>
 
+#include <algorithm>
+
 namespace fqsm::erased {
 
     PatchLine::PatchLine(const Ops& quantum, const Ops& global)
@@ -15,6 +17,7 @@ namespace fqsm::erased {
     }
 
     Mention PatchLine::mention(RawId id) const {
+        if (not maybe(id)) return {};
         const std::size_t position = entries.position_of(id);
         if (position == Line::npos) return {};
         return at(position);
@@ -43,7 +46,26 @@ namespace fqsm::erased {
             flags.reserve(flags.capacity() < 8 ? 8 : flags.capacity() * 2);
         void* stored = moveValue ? entries.emplace_move(id, const_cast<void*>(value)) : entries.insert(id, value);
         flags.push_back(incoming);
+        remember(id);
         return stored;
+    }
+
+    void PatchLine::remember(RawId id) {
+        // about eight bits per id: below that the filter is rebuilt four times wider from the ids present
+        const std::size_t wanted = entries.size() * 8;
+        if (filter.empty() or wanted > (std::size_t{1} << filterBits)) {
+            int bits = filterBits == 0 ? 10 : filterBits + 2;
+            while ((std::size_t{1} << bits) < wanted) bits += 2;
+            filterBits = bits;
+            filter.assign(std::size_t{1} << (bits - 6), 0);
+            for (std::size_t i = 0; i < entries.size(); ++i) {
+                const std::uint64_t bit = mix(entries.id_at(i)) >> (64 - filterBits);
+                filter[bit >> 6] |= std::uint64_t{1} << (bit & 63);
+            }
+            return;
+        }
+        const std::uint64_t bit = mix(id) >> (64 - filterBits);
+        filter[bit >> 6] |= std::uint64_t{1} << (bit & 63);
     }
 
     void* PatchLine::modify(RawId id, const void* value) {
@@ -104,6 +126,7 @@ namespace fqsm::erased {
     }
 
     void PatchLine::clear() {
+        std::fill(filter.begin(), filter.end(), std::uint64_t{0});
         entries.clear();
         entries.reset_global();
         flags.clear();

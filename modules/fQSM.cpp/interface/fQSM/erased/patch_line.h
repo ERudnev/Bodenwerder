@@ -63,8 +63,21 @@ namespace fqsm::erased {
 
         void* soft_insert(RawId id, const void* value, bool moveValue, std::uint8_t incoming);
 
+        // Bit filter over the ids this line mentions: an id whose bit is clear is not here, so the overlay
+        // cursor answers "not mentioned" without a hash lookup. Set on insert, never cleared on discard
+        // (a stale bit only costs the lookup), rebuilt wider when the line grows, zeroed by clear().
+        bool maybe(RawId id) const {
+            if (filter.empty()) return false;
+            const std::uint64_t bit = mix(id) >> (64 - filterBits);
+            return (filter[bit >> 6] >> (bit & 63)) & 1u;
+        }
+        void remember(RawId id);
+        static std::uint64_t mix(RawId id) { return static_cast<std::uint64_t>(id) * 0x9e3779b97f4a7c15ull; }
+
         Line entries;
         std::vector<std::uint8_t> flags;
+        std::vector<std::uint64_t> filter;
+        int filterBits = 0;   // log2 of the filter size in bits
     };
 
     // Shared read-only patch with no changes, for deltas over slots that were never written.
