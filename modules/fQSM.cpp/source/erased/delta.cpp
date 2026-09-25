@@ -2,19 +2,7 @@
 
 namespace fqsm::erased {
 
-    namespace {
-        // A tainted entry (mutated in place, no value before) matches only the all and addedOrUpdated layers.
-        // For the other layers the dirty walk over the whole line yields exactly what the patch walk yields,
-        // so a tainted line is read like a clean one there: the cost follows the patch, not the line.
-        DeltaMode effective(DeltaMode mode, DeltaLayer layer) {
-            if (mode == DeltaMode::dirty and (layer == DeltaLayer::added or layer == DeltaLayer::updated or layer == DeltaLayer::removed))
-                return DeltaMode::clean;
-            return mode;
-        }
-    }
-
     DeltaCursor DeltaCursor::begin(const ReadLine& state, const PatchLine& patch, DeltaMode mode, DeltaLayer layer) {
-        mode = effective(mode, layer);
         DeltaCursor cursor;
         cursor.state = &state;
         cursor.patch = &patch;
@@ -30,7 +18,6 @@ namespace fqsm::erased {
     }
 
     DeltaCursor DeltaCursor::end(const ReadLine& state, const PatchLine& patch, DeltaMode mode, DeltaLayer layer) {
-        mode = effective(mode, layer);
         DeltaCursor cursor;
         cursor.state = &state;
         cursor.patch = &patch;
