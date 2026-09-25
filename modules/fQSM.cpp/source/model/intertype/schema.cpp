@@ -1,6 +1,27 @@
 #include <fQSM/model/intertype/schema.h>
 
+#include <fQSM/features/reaction.h>
+
 namespace fqsm::model::intertype {
+
+    void Graph::deriveLinks() {
+        links.clear();
+        for (const auto& reaction : reactions) {
+            for (const auto& spec : reaction->links()) {
+                const auto client = nodes.find(spec.client);
+                const auto observed = nodes.find(spec.observed);
+                if (client == nodes.end() or observed == nodes.end()) continue;
+                if (linkOf(client->second.slot, observed->second.slot, spec.read) != npos) continue;
+                links.push_back(erased::Link{client->second.slot, observed->second.slot, spec.read});
+            }
+        }
+    }
+
+    std::size_t Graph::linkOf(Slot client, Slot observed, erased::LinkReader read) const {
+        for (std::size_t i = 0; i < links.size(); ++i)
+            if (links[i].client == client and links[i].observed == observed and links[i].read == read) return i;
+        return npos;
+    }
 
     void Graph::deriveRules() {
         using erased::Category;

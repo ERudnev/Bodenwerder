@@ -11,6 +11,7 @@
     X(custom_reactions) \
     X(killing_feature) \
     X(cascade_closure) \
+    X(inbound_index) \
     X(group_category) \
     X(group_performance) \
     X(cascade_performance) \

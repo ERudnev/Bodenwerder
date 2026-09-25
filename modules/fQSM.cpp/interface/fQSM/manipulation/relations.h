@@ -116,6 +116,14 @@ namespace fqsm::manipulation {
             return id;
         }
 
+        // The reader of one link field, erased. Its address identifies the link in the schema (one instantiation per
+        // Watchers and Link in the program), so the reaction that declares the link and the query that uses it agree.
+        template<category::Any Watchers, auto Link>
+        RawId read_link(const void* quantum) {
+            const auto key = link_key(static_cast<const typename Watchers::Quantum*>(quantum)->*Link);
+            return key.has_value() ? key->raw() : RawId{0};
+        }
+
         template<typename Target, typename LinkT>
         concept InboundLinkValue =
             std::same_as<LinkT, typename Target::Id>
@@ -164,9 +172,43 @@ namespace fqsm::manipulation {
                     return index;
 
                 using TargetId = typename Target::Id;
+                using WatcherId = typename Watchers::Id;
                 std::unordered_set<TargetId> interesting;
                 for (const auto& change : layer)
                     interesting.insert(change.id);
+
+                // Indexed: the Reality's inbound index for this link, corrected by the transaction's own layers.
+                // A holder mentioned in a pending layer is judged by its pending value; the index answers for the rest.
+                // A direct pass over the watchers may have changed links in place: then the index is stale until the
+                // transaction ends, and the scan below answers.
+                const auto& proposal = context.proposal;
+                const auto& schema = *proposal.schema;
+                const auto watchers = schema.slotOf(TypeId<Watchers>);
+                const auto* indexes = proposal.inbound();
+                const auto link = indexes ? schema.linkOf(watchers, schema.slotOf(TypeId<Target>), &read_link<Watchers, Link>) : schema.npos;
+                if (link != schema.npos and not proposal.tainted(watchers)) {
+                    std::vector<const erased::PatchLine*> layers;
+                    proposal.pending_layers(watchers, layers);
+                    std::unordered_map<RawId, const void*> pending;   // topmost layer wins; nullptr: deleted
+                    for (const auto* line : layers)
+                        for (std::size_t i = 0; i < line->count(); ++i) {
+                            const auto patchlet = line->at(i);
+                            pending.try_emplace(line->id_at(i), patchlet.tombstone ? nullptr : patchlet.value);
+                        }
+                    const auto& inbound = (*indexes)[link];
+                    for (const auto target : interesting)
+                        if (const auto* holders = inbound.holders(target.raw()))
+                            for (const RawId holder : *holders)
+                                if (not pending.contains(holder))
+                                    index.by_target[target].push_back(WatcherId{holder});
+                    for (const auto& [holder, value] : pending) {
+                        if (not value) continue;
+                        const RawId target = read_link<Watchers, Link>(value);
+                        if (target and interesting.contains(TargetId{target}))
+                            index.by_target[TargetId{target}].push_back(WatcherId{holder});
+                    }
+                    return index;
+                }
 
                 const Reading reading = context;
                 for (const auto entry : reading->template aspect<Watchers>().items()) {

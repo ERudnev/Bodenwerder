@@ -40,6 +40,15 @@ namespace fqsm::model::complex {
         const erased::ReadLine& line(Slot slot) const override { return future(slot); }
         erased::FutureLine& writer(Slot slot) { return future(slot); }
 
+        const std::vector<erased::InboundIndex>* inbound() const override { return state.inbound(); }
+        void pending_layers(Slot slot, std::vector<const erased::PatchLine*>& out) const override {
+            if (const auto* line = changes->line(slot)) out.push_back(line);
+            state.pending_layers(slot, out);
+        }
+        bool tainted(Slot slot) const override {
+            return dirty.contains(schema->descriptors[slot].id) or state.tainted(slot);
+        }
+
         // Delta of one slot: the base state against this future's patch (dirty when the slot is tainted).
         erased::DeltaCursor delta_begin(Slot slot, erased::DeltaLayer layer) const;
         erased::DeltaCursor delta_end(Slot slot, erased::DeltaLayer layer) const;
