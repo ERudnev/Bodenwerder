@@ -220,6 +220,14 @@ namespace rmmr::resource {
             std::move(loader));
     }
 
+    auto Assets::Actions::add_meshpack_fbx_loader(Writing context, Unit::Name name, meshpack::LoaderFbx::Quantum loader) -> meshpack::Asset::Id {
+        return register_unit<meshpack::Asset, meshpack::LoaderFbx>(
+            context,
+            std::move(name),
+            meshpack::Asset::Quantum{.texpack = {}, .entries = {}},
+            std::move(loader));
+    }
+
     void Assets::Actions::extend(Writing context, filepath path) {
         const auto manager = with<Manager>::singleton(context);
         with<Manager>::modify(context, manager)->location = std::move(path);
@@ -273,6 +281,9 @@ namespace rmmr::resource {
         }
         for (const auto [id, _] : context->aspect<meshpack::LoaderLwo>().items()) {
             meshpack::LoaderLwo::Actions::finalize(context, id);
+        }
+        for (const auto [id, _] : context->aspect<meshpack::LoaderFbx>().items()) {
+            meshpack::LoaderFbx::Actions::finalize(context, id);
         }
         for (const auto [id, _] : context->aspect<sprite::Pack>().items()) {
             rematerialize_sprites(context, id, device);

@@ -86,6 +86,7 @@ namespace rmmr {
                 ask::schema::aspect<resource::meshpack::Asset>(),
                 ask::schema::aspect<resource::meshpack::LoaderObjs>(),
                 ask::schema::aspect<resource::meshpack::LoaderLwo>(),
+                ask::schema::aspect<resource::meshpack::LoaderFbx>(),
                 ask::schema::aspect<controller::Camera3d>(),
                 ask::schema::aspect<controller::Camera2d>(),
                 ask::schema::aspect<controller::CameraOrbit>(),

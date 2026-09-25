@@ -22,6 +22,7 @@ namespace rmmr
         >add_sprites_kenney(Unit::Name, sprite::LoaderKenney)->#sprite::Pack
         >add_meshpack_objs_loader(Unit::Name, meshpack::LoaderObjs)->#meshpack::Asset
         >add_meshpack_lwo_loader(Unit::Name, meshpack::LoaderLwo)->#meshpack::Asset
+        >add_meshpack_fbx_loader(Unit::Name, meshpack::LoaderFbx)->#meshpack::Asset
         ?find<R as feature of Unit>(Unit::Name)-> #R?
       all
         singleton: #

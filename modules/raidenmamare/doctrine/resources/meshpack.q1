@@ -42,3 +42,11 @@ namespace rmmr
         pending: umap<string, material::Instance>
         >load()
         >finalize()
+
+    feature LoaderFbx of Asset
+      one
+        file: filename
+        geometry: #geometry::Asset?
+        pending: umap<string, material::Instance>
+        >load()
+        >finalize()
