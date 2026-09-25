@@ -18,6 +18,18 @@ namespace fqsm::erased {
         }
     }
 
+    void integrate_move(Line& target, PatchLine& patch) {
+        if (const void* global = patch.global())
+            target.set_global(global);
+        for (std::size_t i = 0; i < patch.count(); ++i) {
+            const auto patchlet = patch.at(i);
+            if (patchlet.tombstone)
+                target.erase(patch.id_at(i));
+            else
+                target.emplace_move(patch.id_at(i), patch.mutable_at(i));
+        }
+    }
+
     void merge_into(const ReadLine& base, PatchLine& target, const PatchLine& source) {
         if (const void* global = source.global())
             target.set_global(global);

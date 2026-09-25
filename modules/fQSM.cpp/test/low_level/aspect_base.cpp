@@ -57,7 +57,7 @@ namespace local {
     static_assert(fqsm::category::Entity<Node> and fqsm::category::Standalone<Node>);
     static_assert(fqsm::category::Feature<Light> and fqsm::category::Parasitic<Light> and not fqsm::category::Attribute<Light>);
     static_assert(fqsm::category::Attribute<Mark> and fqsm::category::Component<Frame> and fqsm::category::Group<Leaves>);
-    static_assert(std::is_same_v<Light::Id, Node::Id> and std::is_same_v<Leaves::Quantum, std::unordered_set<Leaf::Id>>);
+    static_assert(std::is_same_v<Light::Id, Node::Id> and std::is_same_v<Leaves::Quantum, fqsm::IdSet<Leaf::Id>>);
 
     // defaults of a minimal declaration
     using Info = fqsm::meta::aspect_info<Light>;
