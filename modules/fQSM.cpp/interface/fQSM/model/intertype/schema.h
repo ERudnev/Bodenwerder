@@ -47,6 +47,7 @@ namespace fqsm::model::intertype {
         std::vector<erased::Descriptor> descriptors;   // by slot, registration order
         std::vector<erased::Rule> rules;                // structural rules of the categories
         std::vector<erased::Link> links;                // links the reactions declared, one inbound index each
+        std::vector<std::vector<std::size_t>> linksOfClient;   // by slot: indexes into links whose client is the slot
         Reactions reactions;
     };
 }
