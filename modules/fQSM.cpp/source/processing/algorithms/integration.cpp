@@ -24,7 +24,9 @@ namespace fqsm::processing::algorithm {
             world.learn(slot, *line);
             erased::integrate_move(world.writable(slot), patch.writable(slot));
         }
-        for (const auto& typeId : tainted)
-            world.rebuild_inbound(world.slotOf(typeId));
+        for (const auto& typeId : tainted) {
+            const auto slot = world.slotOf(typeId);
+            if (not world.schema->linksOfClient[slot].empty()) world.rebuild_inbound(slot);
+        }
     }
 }

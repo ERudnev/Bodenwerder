@@ -6,12 +6,14 @@ namespace fqsm::model::intertype {
 
     void Graph::deriveLinks() {
         links.clear();
+        linksOfClient.assign(descriptors.size(), {});
         for (const auto& reaction : reactions) {
             for (const auto& spec : reaction->links()) {
                 const auto client = nodes.find(spec.client);
                 const auto observed = nodes.find(spec.observed);
                 if (client == nodes.end() or observed == nodes.end()) continue;
                 if (linkOf(client->second.slot, observed->second.slot, spec.read) != npos) continue;
+                linksOfClient[client->second.slot].push_back(links.size());
                 links.push_back(erased::Link{client->second.slot, observed->second.slot, spec.read});
             }
         }
