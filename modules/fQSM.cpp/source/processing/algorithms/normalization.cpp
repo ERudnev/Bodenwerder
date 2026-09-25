@@ -118,54 +118,57 @@ namespace fqsm::processing::algorithm::normalization {
 
         _DBG_TX_("norm: start user patch={}", utility::format_patch(fqsm::freeze(patch)));
 
-        const auto incoming = base::make_shared<Patch>(world);
-        incoming->absorb(*patch);
-        patch->clear();
-        append(accumulated, incoming->summary);
-        if (not incoming->summary.good()) {
+        append(accumulated, patch->summary);
+        if (not patch->summary.good()) {
             return accumulated;
         }
 
-        _DBG_TX_("norm: incoming={}", utility::format_patch(fqsm::freeze(incoming)));
+        // accepted: what the waves have accepted so far, seen through advancing. The user's patch is the correction
+        // under review of wave 1. An accepted correction moves into accepted (values moved, not copied), and at the
+        // end the lines of accepted become the lines of the patch: no patchlet is copied on the way to integration.
+        const auto accepted = base::make_shared<Patch>(world);
+        {
+            // Incoming taint fuels wave 1 only. The original set is left as the caller passed it; later waves get none.
+            model::complex::Future advancing(world, accepted, taintedLines);
+            ref<Patch> lastCorrection = patch;
+            int wave = 0;
+            auto waveTaint = taintedLines;
 
-        // Incoming taint fuels wave 1 only. The original set is left as the caller passed it; later waves get none.
-        model::complex::Future advancing(world, patch, taintedLines);
-        ref<Patch> lastCorrection = incoming;
-        int wave = 0;
-        auto waveTaint = taintedLines;
+            for (;;) {
+                if (wave >= temp_defence_normalization_waves) {
+                    _DBG_TX_("norm: DEPTH LIMIT {}", temp_defence_normalization_waves);
+                    accumulated.critical.push_back(
+                        std::format("normalization: depth limit {} reached", temp_defence_normalization_waves));
+                    accumulated.waves = wave;
+                    return accumulated;
+                }
+                ++wave;
+                FQSM_PROBE(measured.waves = wave;)
 
-        for (;;) {
-            if (wave >= temp_defence_normalization_waves) {
-                _DBG_TX_("norm: DEPTH LIMIT {}", temp_defence_normalization_waves);
-                accumulated.critical.push_back(
-                    std::format("normalization: depth limit {} reached", temp_defence_normalization_waves));
+                _DBG_TX_("norm: wave {} correction={}", wave, utility::format_patch(fqsm::freeze(lastCorrection)));
+
+                const auto fix = reactions_pass(advancing, world, lastCorrection, waveTaint);
+                append(accumulated, fix->summary);
                 accumulated.waves = wave;
-                return accumulated;
+
+                if (not fix->summary.good()) {
+                    _DBG_TX_("norm: wave {} REJECT critical={} warning={}", wave, fix->summary.critical.size(), fix->summary.warning.size());
+                    return accumulated;
+                }
+
+                accepted->absorb_move(*lastCorrection);
+
+                const bool anotherWave = fix->has_changes();
+                _DBG_TX_("norm: wave {} merged={}, reaction={}, another={}", wave, utility::format_patch(fqsm::freeze(accepted)), utility::format_patch(fqsm::freeze(fix)), anotherWave);
+                if (not anotherWave)
+                    break;
+
+                lastCorrection = fix;
+                waveTaint.clear();
             }
-            ++wave;
-            FQSM_PROBE(measured.waves = wave;)
-
-            _DBG_TX_("norm: wave {} correction={}", wave, utility::format_patch(fqsm::freeze(lastCorrection)));
-
-            const auto fix = reactions_pass(advancing, world, lastCorrection, waveTaint);
-            append(accumulated, fix->summary);
-            accumulated.waves = wave;
-
-            if (not fix->summary.good()) {
-                _DBG_TX_("norm: wave {} REJECT critical={} warning={}", wave, fix->summary.critical.size(), fix->summary.warning.size());
-                return accumulated;
-            }
-
-            patch->absorb(*lastCorrection);
-
-            const bool anotherWave = fix->has_changes();
-            _DBG_TX_("norm: wave {} merged={}, reaction={}, another={}", wave, utility::format_patch(fqsm::freeze(patch)), utility::format_patch(fqsm::freeze(fix)), anotherWave);
-            if (not anotherWave)
-                break;
-
-            lastCorrection = fix;
-            waveTaint.clear();
         }
+        // advancing is gone: its future lines no longer point at the lines of accepted
+        patch->swap_lines(*accepted);
 
         _DBG_TX_("norm: done final patch={}", utility::format_patch(fqsm::freeze(patch)));
         return accumulated;

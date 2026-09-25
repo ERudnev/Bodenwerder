@@ -25,7 +25,8 @@ namespace fqsm::model::complex {
     }
 
     void LinePool::give_patch(Slot slot, std::unique_ptr<erased::PatchLine> line) {
-        if (not line or line->count() > keepLimit) return;
+        // by capacity, not count: a line that was moved out of is empty but still holds its big tables
+        if (not line or line->capacity() > keepLimit) return;
         line->clear();
         free[slot].patches.push_back(std::move(line));
     }
