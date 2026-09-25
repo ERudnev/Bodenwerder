@@ -59,7 +59,6 @@ namespace eltanin::geo::assets {
         const std::array surfaces{
             SurfaceSpec{.name = "rock", .vertex = "shaders/rock.vert.glsl", .fragment = "shaders/rock.frag.glsl", .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}), .glowSpread = true, .shadow = true},
             SurfaceSpec{.name = "boulder", .vertex = "shaders/boulder.vert.glsl", .fragment = "shaders/boulder.frag.glsl", .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}), .glowSpread = true, .shadow = true},
-            SurfaceSpec{.name = "planetoid", .vertex = "shaders/planetoid.vert.glsl", .fragment = "shaders/planetoid.frag.glsl", .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap"}), .glowSpread = false, .shadow = true},
             SurfaceSpec{.name = "planet", .vertex = "shaders/planet.vert.glsl", .fragment = "shaders/planet.frag.glsl", .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap", "heightMap", "coverMap", "farAlbedoMap", "farNormalMap"}), .glowSpread = false, .shadow = false},
         };
         for (const auto& spec : surfaces) {

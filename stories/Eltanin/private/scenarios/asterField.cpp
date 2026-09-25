@@ -5,8 +5,6 @@
 #include <eltanin/physics/rigid.q1.h>
 #include <eltanin/world.q1.h>
 
-#include <cmath>
-
 namespace eltanin::scenario {
 
     using namespace rmmr;
@@ -38,15 +36,9 @@ namespace eltanin::scenario {
         const Pos ironOffset{0.0f, 100.0f, 0.0f};
         const phys::rigid::CelestialGravity::Quantum iceGravity{.averageRadius = iceAsteroid.radius, .surfaceAcceleration = 2.0f};
         const phys::rigid::CelestialGravity::Quantum ironGravity{.averageRadius = ironAsteroid.radius, .surfaceAcceleration = iceGravity.surfaceAcceleration * 0.25f};
-        const float apoapsis = ironOffset.y - iceOffset.y;
-        const float periapsis = apoapsis * 0.5f;
-        const float semiMajor = 0.5f * (apoapsis + periapsis);
-        const float mu = iceGravity.surfaceAcceleration * iceGravity.averageRadius * iceGravity.averageRadius + ironGravity.surfaceAcceleration * ironGravity.averageRadius * ironGravity.averageRadius;
-        //const vec3 ironVel{0.0f, 0.0f, std::sqrt(mu * (2.0f / apoapsis - 1.0f / semiMajor))};
-        const vec3 ironVel{0.0f, 0.0f, 0};
         const auto asteroid = with<geo::Rock>::spawnGenerated(context, device, Pose::from(iceOffset, HPB{0.0f, 0.0f, 0.0f}), iceAsteroid, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
         with<phys::rigid::CelestialGravity>::extend(context, with<geo::Rock>::get(context, asteroid).body, iceGravity);
-        const auto companion = with<geo::Rock>::spawnGenerated(context, device, Pose::from(ironOffset, HPB{0.0f, 0.0f, 0.0f}), ironAsteroid, ironVel, vec3{0.0f, 0.0f, 0.0f});
+        const auto companion = with<geo::Rock>::spawnGenerated(context, device, Pose::from(ironOffset, HPB{0.0f, 0.0f, 0.0f}), ironAsteroid, vec3{0.0f, 0.0f, 0.0f}, vec3{0.0f, 0.0f, 0.0f});
         with<phys::rigid::CelestialGravity>::extend(context, with<geo::Rock>::get(context, companion).body, ironGravity);
     }
 

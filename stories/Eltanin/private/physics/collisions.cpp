@@ -749,15 +749,6 @@ namespace eltanin::phys::collision {
             kickSolid(bodyB, solidB, armB, tangent * impulse);
         }
 
-        // Reflect Verlet normal step via center.prev only — position already on the surface. Crystal particles do not use this.
-        // `live` soft-scales restitution (0 → e=0 stick; 1 → full solidRestitution). Separation is unchanged.
-        void bounceSolid(Body::Quantum& body, Solid::Quantum& solid, vec3 normal, float otherNormalStep, float live) {
-            const double vn = glm::dot(body.position - solid.center.prev, dvec3{normal}) - double(otherNormalStep);
-            if (vn <= 0.0)
-                return;
-            solid.center.prev += dvec3{normal} * ((1.0 + double(solidRestitution) * double(live)) * vn);
-        }
-
         void bounceSolidSolid(Body::Quantum& bodyA, Solid::Quantum& solidA, Body::Quantum& bodyB, Solid::Quantum& solidB, vec3 normal) {
             const float weightA = inverseMass(bodyA.totalMass);
             const float weightB = inverseMass(bodyB.totalMass);

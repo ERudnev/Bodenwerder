@@ -7,8 +7,8 @@ namespace eltanin::geo {
 using base::common_types::rgb;
 
 const vector<Mineral>& Mineral::table() {
-    // .scale / roughness / metalness / sinter must match rock.frag.glsl, boulder.frag.glsl and planetoid.frag.glsl
-    // Rock/boulder pack mix as 16×4-bit; planetoid demo uses fixed Ice/Olivine/Pyroxene/Iron only.
+    // .scale / roughness / metalness / sinter must match rock.frag.glsl and boulder.frag.glsl
+    // Rock/boulder pack mix as 16×4-bit.
     // .meltKelvin / tintKelvin / glowKelvin must match rock.frag.glsl and boulder.frag.glsl
     static const vector<Mineral> table{
         Mineral{.name = "Ice", .density = 0.92f, .scale = 0.08f, .albedo = rgb(217, 235, 242), .sinter = rgb(56, 168, 255), .roughness = 0.25f, .metalness = 0.0f, .hardness = 1.5f, .meltKelvin = 273.0f, .tintKelvin = 220.0f, .glowKelvin = 900.0f, .sootMul = 0.85f},

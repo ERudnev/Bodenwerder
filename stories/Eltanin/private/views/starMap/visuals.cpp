@@ -164,7 +164,6 @@ namespace eltanin::views::starmap {
             constexpr float radius = 1.0f;
             constexpr float tube = reticleTube;
             constexpr float slotHalf = 12.0f * std::numbers::pi_v<float> / 180.0f;
-            constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
             constexpr float quarter = 0.5f * std::numbers::pi_v<float>;
             constexpr integer slices = 16;
             for (integer cardinal = 0; cardinal < 4; ++cardinal) {

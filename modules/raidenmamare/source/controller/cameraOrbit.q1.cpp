@@ -69,7 +69,6 @@ namespace rmmr::controller {
             if (delta_sec > 0.0) {
                 const quat rotation = rotation_from_orbit_hpb(orbit->hpb);
                 const vec3 forward = glm::normalize(rotation * vec3{0.0f, 0.0f, -1.0f});
-                const vec3 right = glm::normalize(rotation * vec3{1.0f, 0.0f, 0.0f});
                 vec3 forward_xz = forward;
                 forward_xz.y = 0.0f;
                 if (glm::dot(forward_xz, forward_xz) < 1e-10f)

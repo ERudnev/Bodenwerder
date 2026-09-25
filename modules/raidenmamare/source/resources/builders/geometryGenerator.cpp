@@ -23,7 +23,12 @@ namespace rmmr::resource::builders::geometry {
             },
             .normals = {},
             .uv0 = {},
+            .color0 = {},
             .indices = {},
+            .mix0 = {},
+            .cohesion = {},
+            .palette = {},
+            .weights = {},
         };
     }
 
@@ -90,6 +95,7 @@ namespace rmmr::resource::builders::geometry {
                 UV{0.0f, 0.0f}, UV{1.0f, 0.0f}, UV{1.0f, 1.0f}, UV{0.0f, 1.0f},
                 UV{0.0f, 0.0f}, UV{1.0f, 0.0f}, UV{1.0f, 1.0f}, UV{0.0f, 1.0f},
             },
+            .color0 = {},
             .indices = vector<integer>{
                 0, 1, 2, 0, 2, 3,
                 4, 5, 6, 4, 6, 7,
@@ -98,6 +104,10 @@ namespace rmmr::resource::builders::geometry {
                 16, 17, 18, 16, 18, 19,
                 20, 21, 22, 20, 22, 23,
             },
+            .mix0 = {},
+            .cohesion = {},
+            .palette = {},
+            .weights = {},
         };
     }
 
@@ -152,7 +162,12 @@ namespace rmmr::resource::builders::geometry {
             .positions = std::move(positions),
             .normals = std::move(normals),
             .uv0 = std::move(uv0),
+            .color0 = {},
             .indices = std::move(indices),
+            .mix0 = {},
+            .cohesion = {},
+            .palette = {},
+            .weights = {},
         };
     }
 
@@ -171,7 +186,12 @@ namespace rmmr::resource::builders::geometry {
             },
             .normals = {},
             .uv0 = {},
+            .color0 = {},
             .indices = {0, 2, 1, 0, 3, 2, 0, 1, 2, 0, 2, 3},
+            .mix0 = {},
+            .cohesion = {},
+            .palette = {},
+            .weights = {},
         };
     }
 
@@ -195,6 +215,10 @@ namespace rmmr::resource::builders::geometry {
             },
             .color0 = {},
             .indices = {0, 1, 2, 0, 2, 3},
+            .mix0 = {},
+            .cohesion = {},
+            .palette = {},
+            .weights = {},
         };
     }
 
@@ -255,7 +279,7 @@ namespace rmmr::resource::builders::geometry {
             faces = std::move(subdivided);
         }
 
-        auto spherical_uv = [two_pi, pi](const Pos& p) -> UV {
+        auto spherical_uv = [](const Pos& p) -> UV {
             const float u = 0.5f + std::atan2(p.z, p.x) / two_pi;
             const float v = 0.5f - std::asin(std::clamp(p.y, -1.0f, 1.0f)) / pi;
             return UV{u, v};
@@ -305,6 +329,10 @@ namespace rmmr::resource::builders::geometry {
             .uv0 = std::move(uv0),
             .color0 = {},
             .indices = {},
+            .mix0 = {},
+            .cohesion = {},
+            .palette = {},
+            .weights = {},
         };
     }
 
@@ -355,6 +383,10 @@ namespace rmmr::resource::builders::geometry {
             .uv0 = {},
             .color0 = std::move(color0),
             .indices = std::move(indices),
+            .mix0 = {},
+            .cohesion = {},
+            .palette = {},
+            .weights = {},
         };
     }
 
@@ -384,7 +416,12 @@ namespace rmmr::resource::builders::geometry {
             .positions = std::move(positions),
             .normals = {},
             .uv0 = {},
+            .color0 = {},
             .indices = std::move(indices),
+            .mix0 = {},
+            .cohesion = {},
+            .palette = {},
+            .weights = {},
         };
     }
 

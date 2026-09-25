@@ -556,7 +556,6 @@ namespace fqsm::processing::persistency::database::detail {
 
         template<typename Elem, auto... Members>
         void one(Collection<Elem, Members...> slot) {
-            using Container = std::decay_t<decltype(slot.get(product))>;
             const auto relative = qualify(parent_relative, slot.name);
             const auto table = under_all
                 ? all_collection_table(aspect_root, relative)

@@ -177,7 +177,7 @@ namespace eltanin::views::blueprints::geometry {
             scene::Node::Actions::setVisible(context, id, true);
         }
 
-        void spawnBlueprintActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, const Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors, auto&& spawnOne, bool filterByDisplay) {
+        void spawnBlueprintActors(Writing context, meshpack::Asset::Id interframe, const Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors, auto&& spawnOne, bool filterByDisplay) {
             for (std::size_t cellIndex = 0; cellIndex < blueprint.cells.size(); ++cellIndex) {
                 const auto& cell = blueprint.cells[cellIndex];
                 const auto cellY = cell.placement.cell.y;
@@ -316,7 +316,7 @@ namespace eltanin::views::blueprints::geometry {
 
     void syncActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, const Blueprint& blueprint, Display display, int currentFloor, std::vector<QuarkActor>& actors) {
         clearActors(context, root, actors);
-        spawnBlueprintActors(context, root, interframe, blueprint, display, actors, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved); }, false);
+        spawnBlueprintActors(context, interframe, blueprint, display, actors, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnIdentified(context, root, pose, resolved); }, false);
         applyDisplay(context, display, currentFloor, actors, {});
     }
 
@@ -442,7 +442,7 @@ namespace eltanin::views::blueprints::geometry {
 
     void syncGhostActors(Writing context, scene::Root::Id root, meshpack::Asset::Id interframe, ::rmmr::resource::material::Asset::Id ghostMaterial, const Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors, RGB albedo, float opacity) {
         clearActors(context, root, actors);
-        spawnBlueprintActors(context, root, interframe, blueprint, display, actors, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnGhost(context, root, pose, resolved, ghostMaterial, albedo, opacity); }, true);
+        spawnBlueprintActors(context, interframe, blueprint, display, actors, [&](Pose pose, const meshpack::Asset::Resolved& resolved) { return spawnGhost(context, root, pose, resolved, ghostMaterial, albedo, opacity); }, true);
     }
 
     auto refreshGhostActors(Writing context, meshpack::Asset::Id interframe, const Blueprint& blueprint, Display display, std::vector<QuarkActor>& actors, RGB albedo, float opacity) -> bool {
