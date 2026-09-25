@@ -94,12 +94,19 @@
     X(polymorphic_behavior_exp) \
     // end
 
+// synthetic workloads shaped like the game: benchmarks with population asserts
+#define FQSM_WORKLOAD_TESTS(X) \
+    X(workload_frame) \
+    X(workload_load) \
+    // end
+
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_FEATURES_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_LOW_LEVEL_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_ERASED_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_MINIMODEL_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_Q1RUNTIME_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_WORKSHOP_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(FQSM_WORKLOAD_TESTS)
 
 int call_all_tests() {
     struct group final {
@@ -114,6 +121,7 @@ int call_all_tests() {
         group{ "minimodel", BASETEST_MAKE_LIST_TESTS(FQSM_MINIMODEL_TESTS) },
         group{ "q1runtime", BASETEST_MAKE_LIST_TESTS(FQSM_Q1RUNTIME_TESTS) },
         group{ "workshop", BASETEST_MAKE_LIST_TESTS(FQSM_WORKSHOP_TESTS) },
+        group{ "workload", BASETEST_MAKE_LIST_TESTS(FQSM_WORKLOAD_TESTS) },
     };
 
     base::testing::run_summary total{};
