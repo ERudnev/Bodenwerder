@@ -1,5 +1,7 @@
 #include <fQSM/model/complex/patch.h>
 
+#include <utility>
+
 #include <fQSM/model/complex/pool.h>
 #include <fQSM/model/complex/state.h>
 
@@ -63,6 +65,20 @@ namespace fqsm::model::complex {
 
         summary.critical.insert(summary.critical.end(), other.summary.critical.begin(), other.summary.critical.end());
         summary.warning.insert(summary.warning.end(), other.summary.warning.begin(), other.summary.warning.end());
+    }
+
+    void Patch::absorb_move(Patch& other) {
+        for (Slot slot = 0; slot < other.lines.size(); ++slot) {
+            auto& source = other.lines[slot];
+            if (not source or not source->has_changes()) continue;
+            writable(slot).absorb_move(*source);
+        }
+    }
+
+    void Patch::swap_lines(Patch& other) {
+        lines.swap(other.lines);
+        std::swap(created, other.created);
+        std::swap(allocated, other.allocated);
     }
 
     void Patch::clear() {

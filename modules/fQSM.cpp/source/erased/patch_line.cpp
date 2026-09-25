@@ -78,12 +78,29 @@ namespace fqsm::erased {
         return true;
     }
 
+    void PatchLine::reserve(std::size_t total) {
+        if (total <= flags.capacity()) return;
+        entries.reserve(total);
+        flags.reserve(total);
+    }
+
     void PatchLine::absorb(const PatchLine& other) {
         if (&other == this) return;
+        reserve(count() + other.count());
         for (std::size_t i = 0; i < other.count(); ++i)
             soft_insert(other.id_at(i), other.entries.value_at(i), false, other.flags[i]);
         if (const void* global = other.global())
             entries.set_global(global);
+    }
+
+    void PatchLine::absorb_move(PatchLine& other) {
+        if (&other == this) return;
+        reserve(count() + other.count());
+        for (std::size_t i = 0; i < other.count(); ++i)
+            soft_insert(other.id_at(i), other.entries.value_at(i), true, other.flags[i]);
+        if (const void* global = other.global())
+            entries.set_global(global);
+        other.clear();
     }
 
     void PatchLine::clear() {

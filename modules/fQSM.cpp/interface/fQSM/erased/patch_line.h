@@ -23,6 +23,8 @@ namespace fqsm::erased {
         const Ops& global_ops() const { return entries.global_ops(); }
 
         std::size_t count() const { return entries.size(); }
+        // Patchlets the line can hold without growing; a cleared line keeps it (the pool judges by it).
+        std::size_t capacity() const { return flags.capacity(); }
         bool has_changes() const { return count() != 0 or global() != nullptr; }
 
         RawId id_at(std::size_t position) const { return entries.id_at(position); }
@@ -48,6 +50,10 @@ namespace fqsm::erased {
 
         // Soft insert of every patchlet of other, in its order; other's global wins when set.
         void absorb(const PatchLine& other);
+        // The same, moving the values out of other; other is cleared.
+        void absorb_move(PatchLine& other);
+        // Room for count patchlets in total, before a batch of inserts.
+        void reserve(std::size_t count);
         void clear();
 
     private:

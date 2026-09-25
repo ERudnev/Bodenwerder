@@ -38,6 +38,11 @@ namespace fqsm::model::complex {
 
         bool has_changes() const;
         void absorb(const Patch&);
+        // Moves the patchlets of other into this patch (values moved, not copied); other's lines are left empty.
+        // The summaries are not merged.
+        void absorb_move(Patch& other);
+        // Exchanges the lines with a patch over the same schema and pool; the summaries stay.
+        void swap_lines(Patch& other);
         void clear();
 
         // patch lines materialized by this patch, and how many of them were freshly allocated (not pooled)
