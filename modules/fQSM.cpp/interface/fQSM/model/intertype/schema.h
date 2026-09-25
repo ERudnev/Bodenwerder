@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <fQSM/erased/descriptor.h>
+#include <fQSM/erased/links.h>
 #include <fQSM/erased/rules.h>
 #include <fQSM/features/_forwards.h>
 #include <fQSM/meta/interface.include.h>
@@ -36,10 +37,16 @@ namespace fqsm::model::intertype {
 
         // Rebuilds rules from the descriptors; rules whose aspects are not all in the schema are skipped.
         void deriveRules();
+        // Rebuilds links from the reactions; links whose aspects are not all in the schema are skipped.
+        void deriveLinks();
+        // Index into links, or npos when no reaction declared that link.
+        static constexpr std::size_t npos = static_cast<std::size_t>(-1);
+        std::size_t linkOf(Slot client, Slot observed, erased::LinkReader read) const;
 
         std::unordered_map<Rtid, Node, Rtid::Hash> nodes;
         std::vector<erased::Descriptor> descriptors;   // by slot, registration order
         std::vector<erased::Rule> rules;                // structural rules of the categories
+        std::vector<erased::Link> links;                // links the reactions declared, one inbound index each
         Reactions reactions;
     };
 }

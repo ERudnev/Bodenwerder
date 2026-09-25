@@ -8,6 +8,8 @@
 
 #include <fQSM/erased/future_line.h>
 #include <fQSM/erased/line.h>
+#include <fQSM/erased/links.h>
+#include <fQSM/erased/patch_line.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/model/intertype/schema.h>
 #include <fQSM/view/workers.h>
@@ -28,6 +30,13 @@ namespace fqsm::model::complex {
 
         Slot slotOf(meta::Rtid typeId) const { return schema->slotOf(typeId); }
         std::size_t quanta() const;
+
+        // The inbound indexes of the Reality under this state (one per schema link), or nullptr without a Reality.
+        virtual const std::vector<erased::InboundIndex>* inbound() const { return nullptr; }
+        // The patch lines between this state and its Reality for one slot, topmost first (none for a Reality).
+        virtual void pending_layers(Slot, std::vector<const erased::PatchLine*>&) const {}
+        // True when the slot was mutated in place somewhere between this state and its Reality.
+        virtual bool tainted(Slot) const { return false; }
 
         template<category::Any Meta>
         const ::fqsm::view::Aspect<Meta>& aspect() const { return slot<Meta>(); }

@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <fQSM/erased/links.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/_forwards.h>
 #include <fQSM/processing/contexts/session.h>
@@ -26,6 +27,8 @@ namespace fqsm::features::reactions {
 
         virtual void apply(Reacting) = 0;
         virtual Sources listens() const = 0;
+        // Links this reaction follows backwards (observed -> clients); the Realm keeps an inbound index for each.
+        virtual std::vector<erased::LinkSpec> links() const { return {}; }
 
     protected:
         template<category::Any... Metas>

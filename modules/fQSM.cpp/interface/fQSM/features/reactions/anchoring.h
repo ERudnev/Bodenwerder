@@ -27,6 +27,9 @@ namespace fqsm::features::reactions::structural {
     template<category::Any Client, category::Any Observed, details::LinkValue<Client, Observed> link>
     struct anchored final : Abstract {
         Sources listens() const override { return typed_set<Observed>(); }
+        std::vector<erased::LinkSpec> links() const override {
+            return {erased::LinkSpec{TypeId<Client>, TypeId<Observed>, &ask::detail::read_link<Client, link>}};
+        }
 
         void apply(Reacting context) override {
             auto& clientPatch = context.adjustments<Client>();
@@ -45,6 +48,9 @@ namespace fqsm::features::reactions::structural {
     template<category::Any Client, category::Any Observed, details::LinkValue<Client, Observed> link>
     struct custody final : Abstract {
         Sources listens() const override { return typed_set<Client, Observed>(); }
+        std::vector<erased::LinkSpec> links() const override {
+            return {erased::LinkSpec{TypeId<Client>, TypeId<Observed>, &ask::detail::read_link<Client, link>}};
+        }
 
         void apply(Reacting context) override {
             auto& observedPatch = context.adjustments<Observed>();

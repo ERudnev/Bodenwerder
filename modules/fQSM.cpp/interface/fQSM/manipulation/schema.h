@@ -54,6 +54,7 @@ namespace fqsm::manipulation::schema {
                 detail::add_reaction(*out, reaction);
 
         out->deriveRules();
+        out->deriveLinks();
         return fqsm::freeze(out);
     }
 
@@ -64,6 +65,7 @@ namespace fqsm::manipulation::schema {
         for (const auto& reaction : out->descriptors.front().reactions)
             detail::add_reaction(*out, reaction);
         out->deriveRules();
+        out->deriveLinks();
         return fqsm::freeze(out);
     }
 }
