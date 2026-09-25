@@ -117,9 +117,9 @@ namespace fqsm::view {
         std::size_t size() const { return all().size(); }
 
     private:
-        erased::DeltaCursor cursor_begin(Layer layer) const { return erased::DeltaCursor::begin(*state, *patch, mode, layer); }
-        erased::DeltaCursor cursor_end(Layer layer) const { return erased::DeltaCursor::end(*state, *patch, mode, layer); }
-        bool layer_empty(Layer layer) const { return erased::delta_empty(*state, *patch, mode, layer); }
+        erased::DeltaCursor cursor_begin(Layer layer) const { return erased::DeltaCursor::begin(*state, *patch, erased::reading_mode(mode, layer), layer); }
+        erased::DeltaCursor cursor_end(Layer layer) const { return erased::DeltaCursor::end(*state, *patch, erased::reading_mode(mode, layer), layer); }
+        bool layer_empty(Layer layer) const { return erased::delta_empty(*state, *patch, erased::reading_mode(mode, layer), layer); }
 
         const erased::ReadLine* state;
         const erased::PatchLine* patch;

@@ -11,6 +11,14 @@ namespace fqsm::erased {
     enum class DeltaMode : std::uint8_t { clean, dirty };
     enum class DeltaLayer : std::uint8_t { all, added, addedOrUpdated, removed, updated };
 
+    // The mode a reader of one layer asks for. A tainted entry (mutated in place, no value before) matches only
+    // the all and addedOrUpdated layers; for the other layers the dirty walk over the whole line yields what the
+    // patch walk yields, so a reader of those layers asks for the clean mode and pays for the patch, not the line.
+    constexpr DeltaMode reading_mode(DeltaMode lineMode, DeltaLayer layer) {
+        const bool seesTainted = layer == DeltaLayer::all or layer == DeltaLayer::addedOrUpdated;
+        return seesTainted ? lineMode : DeltaMode::clean;
+    }
+
     // tainted: the value was mutated in place (dirty mode), so the value before is unknown.
     struct Change {
         RawId id;

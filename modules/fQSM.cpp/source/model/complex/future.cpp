@@ -41,10 +41,10 @@ namespace fqsm::model::complex {
     }
 
     erased::DeltaCursor Future::delta_begin(Slot slot, erased::DeltaLayer layer) const {
-        return erased::DeltaCursor::begin(state.line(slot), patch_line(slot), delta_mode(slot), layer);
+        return erased::DeltaCursor::begin(state.line(slot), patch_line(slot), erased::reading_mode(delta_mode(slot), layer), layer);
     }
 
     erased::DeltaCursor Future::delta_end(Slot slot, erased::DeltaLayer layer) const {
-        return erased::DeltaCursor::end(state.line(slot), patch_line(slot), delta_mode(slot), layer);
+        return erased::DeltaCursor::end(state.line(slot), patch_line(slot), erased::reading_mode(delta_mode(slot), layer), layer);
     }
 }
