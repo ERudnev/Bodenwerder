@@ -39,6 +39,7 @@ namespace eltanin::views {
 
         struct AssetHandles {
             base::maybe<rmmr::resource::overlay::Asset::Id> editorEffect;
+            base::maybe<rmmr::resource::material::Asset::Id> gizmo;
         };
 
         struct State {
@@ -47,6 +48,10 @@ namespace eltanin::views {
                 base::maybe<rmmr::scene::Camera::Id> camera;
                 base::maybe<rmmr::system::ViewInput::Id> input;
                 base::maybe<rmmr::scene::Grid::Id> grid;
+                base::maybe<rmmr::scene::Grid::Id> floorGrid;
+                base::maybe<rmmr::scene::actor::Mesh::Id> axisX;
+                base::maybe<rmmr::scene::actor::Mesh::Id> axisY;
+                base::maybe<rmmr::scene::actor::Mesh::Id> axisZ;
                 base::maybe<rmmr::scene::actor::Mesh::Id> worldCursor;
                 std::vector<blueprints::geometry::QuarkActor> quarkActors;
                 std::vector<blueprints::geometry::QuarkActor> clipboardActors;
@@ -110,6 +115,7 @@ namespace eltanin::views {
         void create(Writing);
         void show(Writing, mech::Blueprint::Id);
         void setEditMode(Writing, EditMode);
+        void holdGrid(Writing);
         void syncGridToFloor(Writing);
         void updateWorldCursor(Writing);
         void syncVisuals(Writing);

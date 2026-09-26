@@ -13,7 +13,6 @@
 #include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/system/viewInput.q1.h>
-#include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/wrapper/product.h>
 
 #include "blueprints/catalog.h"
@@ -56,7 +55,6 @@ namespace eltanin {
         ::eltanin::assets::Handles assets;
         Ui ui;
         base::maybe<View> world_view;
-        base::maybe<rmmr::scene::Grid::Id> grid;
         base::maybe<phys::System> physics;
         base::maybe<planet::Planet> planet;
         scenario::Strategic strategic;

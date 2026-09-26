@@ -51,6 +51,16 @@ namespace eltanin::views {
         constexpr integer cursorLatticeMin = -50;
         constexpr integer cursorLatticeMax = 49;
         constexpr float gridOpacity = 0.88f;
+        constexpr float originIdleOpacity = 0.58f;
+        // Matches GeometryGenerator::gridPlane half-extent. Cell is edge2meters (4 m).
+        constexpr float gridPlaneHalf = 200.0f;
+        constexpr float axisSpan = gridPlaneHalf * 2.0f;
+        constexpr float axisOrbitRef = 50.0f;
+        constexpr float axisThicknessAtOrbit = 0.05f;
+        constexpr float axisMinPixels = 1.0f;
+        constexpr RGB axisXColor{1.0f, 0.12f, 0.12f};
+        constexpr RGB axisYColor{0.12f, 1.0f, 0.18f};
+        constexpr RGB axisZColor{0.12f, 0.12f, 1.0f};
 
         void applyOrbitPose(Writing context, scene::Camera::Id camera) {
             if (not with<controller::CameraOrbit>::exists(context, camera))
@@ -84,6 +94,33 @@ namespace eltanin::views {
             for (const auto [id, _] : context->aspect<system::Viewport>().items())
                 return id;
             return {};
+        }
+
+        auto worldPerPixel(Reading context, scene::Camera::Id camera, system::Window::Id window, float distance) -> float {
+            const auto& cam = with<scene::Camera>::get(context, camera);
+            const auto fb = with<system::Window>::framebufferSize(context, window);
+            const float viewportHeight = static_cast<float>(std::max(fb.y, 1));
+            const float aspect = static_cast<float>(fb.x) / viewportHeight;
+            const float fovY = 2.0f * std::atan(std::tan(cam.fov_x * 0.5f) / aspect);
+            const float depth = std::max(distance, cam.z_near);
+            return 2.0f * depth * std::tan(fovY * 0.5f) / viewportHeight;
+        }
+
+        void setGridOpacity(Writing context, scene::Grid::Id grid, float opacity) {
+            if (with<scene::actor::MeshState>::exists(context, grid))
+                with<scene::actor::MeshState>::modify(context, grid)->opacity = opacity;
+            if (with<scene::Grid>::exists(context, grid))
+                with<scene::Grid>::modify(context, grid)->opacity = opacity;
+        }
+
+        void setAxisThickness(Writing context, scene::actor::Mesh::Id actor, vec3 length, float thickness) {
+            if (not with<scene::actor::MeshState>::exists(context, actor))
+                return;
+            with<scene::actor::MeshState>::modify(context, actor)->scale = vec3{
+                length.x > 0.0f ? length.x : thickness,
+                length.y > 0.0f ? length.y : thickness,
+                length.z > 0.0f ? length.z : thickness,
+            };
         }
 
         struct MouseRay {
@@ -295,6 +332,8 @@ namespace eltanin::views {
         const auto cursor_material = with<Assets>::find<rmmr::resource::material::Asset>(context, Unit::Name::from("Eltanin", "type"));
         if (not kube_geometry or not sphere_geometry or not cursor_material)
             return (void)context.refuse("eltanin::views::Blueprints::create: kube / sphere / lit-transparent material missing");
+        if (not assets.gizmo)
+            return (void)context.refuse("eltanin::views::Blueprints::create: blueprintsGizmo missing");
 
         const auto device = with<World>::get_global(context).window;
         if (not device)
@@ -307,6 +346,19 @@ namespace eltanin::views {
         state.currentFloor = 0;
         state.cursorLattice = index3{.x = 0, .y = 0, .z = 0};
         state.mainScene.grid = with<scene::Interface>::createGrid(context, root, *device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *grid_geometry, .material = *grid_material, .opacity = gridOpacity, .patternScale = patternScale});
+        state.mainScene.floorGrid = with<scene::Interface>::createGrid(context, root, *device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *grid_geometry, .material = *grid_material, .opacity = gridOpacity, .patternScale = patternScale});
+        scene::Node::Actions::setVisible(context, *state.mainScene.floorGrid, false);
+        auto placeAxis = [&](RGB color, vec3 scale) -> base::maybe<scene::actor::Mesh::Id> {
+            auto mesh = with<scene::actor::Mesh>::composeOne(context, *kube_geometry, *assets.gizmo);
+            if (not mesh)
+                return {};
+            return with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), std::move(*mesh), with<scene::actor::MeshState>::defaults(color, 1.0f, scale));
+        };
+        state.mainScene.axisX = placeAxis(axisXColor, vec3{axisSpan, axisThicknessAtOrbit, axisThicknessAtOrbit});
+        state.mainScene.axisY = placeAxis(axisYColor, vec3{axisThicknessAtOrbit, axisSpan, axisThicknessAtOrbit});
+        state.mainScene.axisZ = placeAxis(axisZColor, vec3{axisThicknessAtOrbit, axisThicknessAtOrbit, axisSpan});
+        if (not state.mainScene.axisX or not state.mainScene.axisY or not state.mainScene.axisZ)
+            return (void)context.refuse("eltanin::views::Blueprints::create: grid axes failed");
 
         const float edge = mech::space::local::edge2meters;
         const auto cursorResolved = meshpack::Asset::Resolved{
@@ -349,7 +401,7 @@ namespace eltanin::views {
         blueprints::selection::resetClipboard(state.selection);
         blueprints::history::clear(state.history);
         state.hovered.reset();
-        state.spaceMenu = {.place = false, .close = false};
+        state.spaceMenu = {.place = false, .close = false, .preview = {}, .previewMount = {}, .previewTransform = {}};
 
         const auto paletteRoot = with<scene::Interface>::createScene(context);
         state.paletteScene.grid = with<scene::Interface>::createGrid(context, paletteRoot, *device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *grid_geometry, .material = *grid_material, .opacity = gridOpacity, .patternScale = patternScale});
@@ -710,17 +762,41 @@ namespace eltanin::views {
         return false;
     }
 
-    void Blueprints::syncGridToFloor(Writing context) {
-        if (not state.mainScene.grid.has_value() or not with<scene::Node>::exists(context, *state.mainScene.grid))
+    void Blueprints::holdGrid(Writing context) {
+        if (not state.mainScene.camera.has_value() or not with<scene::Camera>::exists(context, *state.mainScene.camera))
             return;
+        float distance = glm::length(vec3{with<scene::Node>::get(context, *state.mainScene.camera).pose.position});
+        if (with<controller::CameraOrbit>::exists(context, *state.mainScene.camera))
+            distance = with<controller::CameraOrbit>::get(context, *state.mainScene.camera).distance;
+        float thickness = axisThicknessAtOrbit * (distance / axisOrbitRef);
+        if (const auto window = firstWindow(context))
+            thickness = std::max(thickness, worldPerPixel(context, *state.mainScene.camera, *window, distance) * axisMinPixels);
+        if (state.mainScene.axisX)
+            setAxisThickness(context, *state.mainScene.axisX, vec3{axisSpan, 0.0f, 0.0f}, thickness);
+        if (state.mainScene.axisY)
+            setAxisThickness(context, *state.mainScene.axisY, vec3{0.0f, axisSpan, 0.0f}, thickness);
+        if (state.mainScene.axisZ)
+            setAxisThickness(context, *state.mainScene.axisZ, vec3{0.0f, 0.0f, axisSpan}, thickness);
+    }
+
+    void Blueprints::syncGridToFloor(Writing context) {
         const float cell = mech::space::local::edge2meters;
-        const float y = static_cast<float>(state.currentFloor) * cell;
-        with<scene::Node>::modify(context, *state.mainScene.grid)->pose = Pose::from(Pos{0.0f, y, 0.0f}, HPB{0.0f, 0.0f, 0.0f});
-        if (state.mainScene.camera.has_value() and with<controller::CameraOrbit>::exists(context, *state.mainScene.camera)) {
-            auto orbit = with<controller::CameraOrbit>::modify(context, *state.mainScene.camera);
-            orbit->pivot.y = static_cast<float>(state.currentFloor) * cell;
-            applyOrbitPose(context, *state.mainScene.camera);
+        const bool offZero = state.currentFloor != 0;
+        if (state.mainScene.grid.has_value())
+            setGridOpacity(context, *state.mainScene.grid, offZero ? originIdleOpacity : gridOpacity);
+        if (state.mainScene.floorGrid.has_value() and with<scene::Node>::exists(context, *state.mainScene.floorGrid)) {
+            scene::Node::Actions::setVisible(context, *state.mainScene.floorGrid, offZero);
+            const float y = static_cast<float>(state.currentFloor) * cell;
+            with<scene::Node>::modify(context, *state.mainScene.floorGrid)->pose = Pose::from(Pos{0.0f, y, 0.0f}, HPB{0.0f, 0.0f, 0.0f});
+            if (offZero)
+                setGridOpacity(context, *state.mainScene.floorGrid, gridOpacity);
         }
+        holdGrid(context);
+        if (not state.mainScene.camera.has_value() or not with<controller::CameraOrbit>::exists(context, *state.mainScene.camera))
+            return;
+        auto orbit = with<controller::CameraOrbit>::modify(context, *state.mainScene.camera);
+        orbit->pivot.y = static_cast<float>(state.currentFloor) * cell;
+        applyOrbitPose(context, *state.mainScene.camera);
     }
 
     void Blueprints::updateWorldCursor(Writing context) {
@@ -833,6 +909,7 @@ namespace eltanin::views {
             }
         }
 
+        holdGrid(context);
         if (not state.paletteMode) {
         updateWorldCursor(context);
         if (state.mounts.enabled) {

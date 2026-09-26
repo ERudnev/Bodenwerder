@@ -47,7 +47,7 @@ namespace eltanin::views {
             .scale = rmmr::resource::overlay::Scale::full,
         });
 
-        if (not shared.material.litTextured or not shared.material.litTexturedAlpha or not shared.material.litTransparent or not shared.material.lit) {
+        if (not shared.material.litTextured or not shared.material.litTexturedAlpha or not shared.material.litTransparent or not shared.material.lit or not shared.material.unlit) {
             context.refuse("eltanin::views::Blueprints::addAssets: shared materials missing");
             return false;
         }
@@ -84,6 +84,18 @@ namespace eltanin::views {
             .glowSpread = true,
             .renderState = inheritedDepth(renderer::BlendMode::alpha),
         })) return false;
+
+        assets.gizmo = rmmr::resource::builders::material::derive(context, Derived{
+            .name = Name::from("Eltanin", "blueprintsGizmo"),
+            .source = *shared.material.unlit,
+            .sourcePass = renderer::Pass::gizmo,
+            .targetPass = renderer::Pass::gizmo,
+            .program = {},
+            .glowSpread = false,
+            .renderState = renderer::RenderState{.blend = renderer::BlendMode::additive, .depthTest = renderer::ToggleMode::disabled, .depthWrite = renderer::ToggleMode::disabled, .depthCompare = renderer::DepthCompare::inherit},
+        });
+        if (not assets.gizmo)
+            return false;
 
         with<Assets>::add_material(context, Name::from("Eltanin", "type"), with<Material>::get(context, *shared.material.litTransparent));
         with<Assets>::add_material(context, Name::from("Eltanin", "typeSolid"), with<Material>::get(context, *shared.material.lit));

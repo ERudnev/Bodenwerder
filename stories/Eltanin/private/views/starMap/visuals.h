@@ -38,7 +38,7 @@ namespace eltanin::views::starmap {
         base::maybe<rmmr::scene::actor::Mesh::Id> axisY;
         base::maybe<rmmr::scene::actor::Mesh::Id> axisZ;
         vector<rmmr::resource::geometry::Asset::Id> dashMeshes;
-        base::maybe<rmmr::resource::material::Asset::Id> chrome;
+        base::maybe<rmmr::resource::material::Asset::Id> gizmo;
         base::maybe<rmmr::system::Window::Id> renderWindow;
         rmmr::Pos player;
         rmmr::Pos focus;

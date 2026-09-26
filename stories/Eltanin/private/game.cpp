@@ -197,12 +197,6 @@ namespace eltanin {
             return (void)context.refuse("eltanin::Game::populateWorld: scrap geometry materialization failed");
         }
 
-        const auto gridId = with<scene::Interface>::createGrid(context, root, window, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *assets.primitive.grid, .material = *shared->material.grid, .opacity = 0.35f, .patternScale = 1.0f});
-        if (with<scene::Node>::exists(context, gridId)) {
-            scene::Node::Actions::setVisible(context, gridId, false);
-            grid = gridId;
-        }
-
         if (not assets.sprites) {
             return (void)context.refuse("eltanin::Game::populateWorld: sprites texpack missing");
         }
@@ -264,11 +258,6 @@ namespace eltanin {
             with<controller::CameraOrbit>::create(context, spectator, spectatorInput, freePose.position, 24.0f);
             cameras.emplace(Cameras{.kind = Cameras::Kind::free, .free = camera, .spectator = spectator, .freeInput = freeInput, .spectatorInput = spectatorInput, .hotkeyDown = false});
         }
-
-        const auto manager = with<::rmmr::resource::Manager>::singleton(context);
-        blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "blueprints");
-        mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings");
-        blueprints.create(context);
     }
 
     void Game::bindGameEntities(Writing context) {

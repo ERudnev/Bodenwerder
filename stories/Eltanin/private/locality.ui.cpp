@@ -358,25 +358,25 @@ namespace eltanin {
             const bool hasCamera = cameras.has_value() and with<controller::Camera3d>::exists(world, cameras->free);
             if (hasCamera)
                 current = with<controller::Camera3d>::get(world, cameras->free).moveScale;
-            else if (grid.has_value() and with<scene::actor::MeshState>::exists(world, *grid))
-                current = with<scene::actor::MeshState>::get(world, *grid).scale.x;
+            else if (planeliod.grid.has_value() and with<scene::actor::MeshState>::exists(world, *planeliod.grid))
+                current = with<scene::actor::MeshState>::get(world, *planeliod.grid).scale.x;
             int scale = spaceScaleIndex(current);
             if (ImGui::Combo("Scale", &scale, "×0.1\0×1\0×10\0×100\0×1000\0")) {
                 const float next = spaceScales[scale];
                 if (hasCamera)
                     with<controller::Camera3d>::modify(world, cameras->free)->moveScale = next;
-                if (grid.has_value() and with<scene::actor::MeshState>::exists(world, *grid)) {
-                    auto mesh = with<scene::actor::MeshState>::modify(world, *grid);
-                    auto gizmo = with<scene::Grid>::modify(world, *grid);
+                if (planeliod.grid.has_value() and with<scene::actor::MeshState>::exists(world, *planeliod.grid)) {
+                    auto mesh = with<scene::actor::MeshState>::modify(world, *planeliod.grid);
+                    auto gizmo = with<scene::Grid>::modify(world, *planeliod.grid);
                     mesh->scale = vec3{next};
                     mesh->patternScale = 1.0f;
                     gizmo->patternScale = 1.0f;
                 }
             }
-            if (not grid.has_value() or not with<scene::Grid>::exists(world, *grid)) {
+            if (not planeliod.grid.has_value() or not with<scene::Grid>::exists(world, *planeliod.grid)) {
                 ImGui::TextDisabled("No grid in scene.");
             } else {
-                auto node = with<scene::Node>::modify(world, *grid);
+                auto node = with<scene::Node>::modify(world, *planeliod.grid);
                 bool visible = node->visible;
                 if (ImGui::Checkbox("Grid", &visible))
                     node->visible = visible;
@@ -384,9 +384,9 @@ namespace eltanin {
                 HPB hpb = node->pose.hpb();
                 if (ImGui::DragFloat3("HPB", &hpb.x, 0.1f, -180.0f, 180.0f, "%.1f°"))
                     node->pose.hpb(hpb);
-                if (with<scene::actor::MeshState>::exists(world, *grid)) {
-                    auto mesh = with<scene::actor::MeshState>::modify(world, *grid);
-                    auto gizmo = with<scene::Grid>::modify(world, *grid);
+                if (with<scene::actor::MeshState>::exists(world, *planeliod.grid)) {
+                    auto mesh = with<scene::actor::MeshState>::modify(world, *planeliod.grid);
+                    auto gizmo = with<scene::Grid>::modify(world, *planeliod.grid);
                     ImGui::SliderFloat("Opacity", &mesh->opacity, 0.0f, 1.0f, "%.2f");
                     gizmo->opacity = mesh->opacity;
                 }

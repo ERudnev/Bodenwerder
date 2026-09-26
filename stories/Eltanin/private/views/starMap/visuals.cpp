@@ -291,8 +291,8 @@ namespace eltanin::views::starmap {
             context.refuse("eltanin::views::starmap::Visuals::addAssets: rmmr unlit missing");
             return false;
         }
-        chrome = rmmr::resource::builders::material::derive(context, rmmr::resource::builders::material::Derived{
-            .name = Name::from("Eltanin", "starMapChrome"),
+        gizmo = rmmr::resource::builders::material::derive(context, rmmr::resource::builders::material::Derived{
+            .name = Name::from("Eltanin", "starMapGizmo"),
             .source = *unlit,
             .sourcePass = renderer::Pass::gizmo,
             .targetPass = renderer::Pass::gizmo,
@@ -300,7 +300,7 @@ namespace eltanin::views::starmap {
             .glowSpread = false,
             .renderState = renderer::RenderState{.blend = renderer::BlendMode::additive, .depthTest = renderer::ToggleMode::disabled, .depthWrite = renderer::ToggleMode::disabled, .depthCompare = renderer::DepthCompare::inherit},
         });
-        if (not chrome)
+        if (not gizmo)
             return false;
         return true;
     }
@@ -312,7 +312,7 @@ namespace eltanin::views::starmap {
         const auto gridGeometry = with<Assets>::find<rmmr::resource::geometry::Asset>(context, Name::from("Eltanin", "grid"));
         const auto gridMaterial = with<Assets>::find<rmmr::resource::material::Asset>(context, Name::from("rmmr", "grid"));
         const auto kube = with<Assets>::find<rmmr::resource::geometry::Asset>(context, Name::from("Eltanin", "kube"));
-        if (not gridGeometry or not gridMaterial or not kube or not chrome) {
+        if (not gridGeometry or not gridMaterial or not kube or not gizmo) {
             context.refuse("eltanin::views::starmap::Visuals::place: grid assets missing");
             return false;
         }
@@ -323,7 +323,7 @@ namespace eltanin::views::starmap {
         tensGrid = tens;
         unitGrid = unit;
         auto placeAxis = [&](RGB color, vec3 scale) -> base::maybe<scene::actor::Mesh::Id> {
-            auto mesh = with<scene::actor::Mesh>::composeOne(context, *kube, *chrome);
+            auto mesh = with<scene::actor::Mesh>::composeOne(context, *kube, *gizmo);
             if (not mesh)
                 return {};
             return with<scene::Interface>::createMeshActor(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), std::move(*mesh), with<scene::actor::MeshState>::defaults(color, 1.0f, scale));
@@ -346,8 +346,8 @@ namespace eltanin::views::starmap {
             context.refuse("eltanin::views::starmap::Visuals::place: marker meshes failed");
             return false;
         }
-        currentPlayer = placeMarker(context, root, *reticle, dashMeshes.back(), *chrome, currentPlayerColor);
-        viewFocus = placeMarker(context, root, *reticle, dashMeshes.back(), *chrome, viewFocusColor);
+        currentPlayer = placeMarker(context, root, *reticle, dashMeshes.back(), *gizmo, currentPlayerColor);
+        viewFocus = placeMarker(context, root, *reticle, dashMeshes.back(), *gizmo, viewFocusColor);
         if (not currentPlayer or not viewFocus) {
             context.refuse("eltanin::views::starmap::Visuals::place: markers failed");
             return false;
@@ -394,10 +394,10 @@ namespace eltanin::views::starmap {
             setGridFade(context, *tensGrid, tensFade(scaleLy));
         if (unitGrid)
             setGridFade(context, *unitGrid, unitFade(scaleLy));
-        if (currentPlayer and chrome)
-            poseMarker(context, *currentPlayer, player, cameraNode.pose.rotation, reticleSize, dashThickness, dashPeriod, dashMeshes, *chrome);
-        if (viewFocus and chrome)
-            poseMarker(context, *viewFocus, focus, cameraNode.pose.rotation, reticleSize, dashThickness, dashPeriod, dashMeshes, *chrome);
+        if (currentPlayer and gizmo)
+            poseMarker(context, *currentPlayer, player, cameraNode.pose.rotation, reticleSize, dashThickness, dashPeriod, dashMeshes, *gizmo);
+        if (viewFocus and gizmo)
+            poseMarker(context, *viewFocus, focus, cameraNode.pose.rotation, reticleSize, dashThickness, dashPeriod, dashMeshes, *gizmo);
     }
 
 }
