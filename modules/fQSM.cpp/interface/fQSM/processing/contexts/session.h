@@ -4,8 +4,10 @@
 // A Session is owned by a Realm, a Branch or a normalization wave, never by a handle; it outlives every handle.
 // Handles count themselves on the session; when the last handle of a Realm session ends, the Realm accepts it.
 
+#include <concepts>
 #include <optional>
 #include <string>
+#include <type_traits>
 
 #include <fQSM/model/complex/future.h>
 #include <fQSM/model/complex/reality.h>
@@ -40,6 +42,7 @@ namespace fqsm::processing {
 
         void attach() { ++handles; }
         void detach() { if (--handles == 0 and owner) owner->release(*this); }
+        bool has_handles() const { return handles != 0; }
 
     private:
         SessionOwner* owner;
@@ -66,6 +69,11 @@ namespace fqsm::processing {
     private:
         const model::complex::State* state;
     };
+
+    // A value that refers to a session or to its view: it must not outlive the owner of the session.
+    template<typename T>
+    concept SessionBound = std::derived_from<std::remove_cvref_t<T>, detail::Handle>
+                        or std::same_as<std::remove_cvref_t<T>, Reading>;
 
     // Reads base + patch, writes into the patch.
     struct Writing : detail::Handle {

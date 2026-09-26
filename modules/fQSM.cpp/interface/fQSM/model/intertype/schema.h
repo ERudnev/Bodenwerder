@@ -37,6 +37,9 @@ namespace fqsm::model::intertype {
 
         // Rebuilds rules from the descriptors; rules whose aspects are not all in the schema are skipped.
         void deriveRules();
+        // A fragment may lack the host of a parasitic aspect; a schema that runs a Realm may not.
+        // Throws std::logic_error that names the aspect and its missing host.
+        void requireHosts() const;
         // Rebuilds links from the reactions; links whose aspects are not all in the schema are skipped.
         void deriveLinks();
         // Index into links, or npos when no reaction declared that link.

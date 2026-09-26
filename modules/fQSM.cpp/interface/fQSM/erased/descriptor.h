@@ -23,7 +23,7 @@ namespace fqsm::erased {
         std::size_t align;
         void (*construct)(void* dst);                     // nullptr when not default-constructible
         void (*copy)(void* dst, const void* src);         // copy-construct into raw storage
-        void (*move)(void* dst, void* src);               // move-construct into raw storage
+        void (*move)(void* dst, void* src);               // move-construct into raw storage; a throw during relocation terminates
         void (*destroy)(void* obj);
         bool (*equal)(const void* lhs, const void* rhs);  // nullptr unless std::equality_comparable (no PFR walk in phase 1)
     };

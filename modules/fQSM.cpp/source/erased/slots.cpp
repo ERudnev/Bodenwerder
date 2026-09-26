@@ -13,6 +13,16 @@ namespace fqsm::erased {
             const std::size_t size = std::max<std::size_t>(ops.size, 1);
             return (size + ops.align - 1) / ops.align * ops.align;
         }
+
+        // Moves count values from one storage to another and destroys the sources. There is no rollback:
+        // a move that throws (in practice bad_alloc from a container with a sentinel node) would leave
+        // destroyed values counted as live, so it terminates here instead.
+        void relocate(const Ops& ops, std::byte* to, std::byte* from, std::size_t count, std::size_t step) noexcept {
+            for (std::size_t i = 0; i < count; ++i) {
+                ops.move(to + i * step, from + i * step);
+                ops.destroy(from + i * step);
+            }
+        }
     }
 
     Slots::Slots(const Ops& ops)
@@ -90,11 +100,7 @@ namespace fqsm::erased {
             ::operator delete(fresh, std::align_val_t{valueOps->align});
             throw;
         }
-        for (std::size_t i = 0; i < count; ++i) {
-            void* from = storage + i * step;
-            valueOps->move(fresh + i * step, from);
-            valueOps->destroy(from);
-        }
+        relocate(*valueOps, fresh, storage, count, step);
         deallocate();
         storage = fresh;
         capacity = next;
@@ -127,9 +133,7 @@ namespace fqsm::erased {
             --count;
             return false;
         }
-        void* tail = at(static_cast<Index>(last));
-        valueOps->move(at(slot), tail);
-        valueOps->destroy(tail);
+        relocate(*valueOps, static_cast<std::byte*>(at(slot)), static_cast<std::byte*>(at(static_cast<Index>(last))), 1, step);
         --count;
         return true;
     }
@@ -147,11 +151,7 @@ namespace fqsm::erased {
 
     void Slots::grow(std::size_t next) {
         auto* fresh = static_cast<std::byte*>(::operator new(next * step, std::align_val_t{valueOps->align}));
-        for (std::size_t i = 0; i < count; ++i) {
-            void* from = storage + i * step;
-            valueOps->move(fresh + i * step, from);
-            valueOps->destroy(from);
-        }
+        relocate(*valueOps, fresh, storage, count, step);
         deallocate();
         storage = fresh;
         capacity = next;

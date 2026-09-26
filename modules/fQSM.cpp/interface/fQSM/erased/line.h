@@ -76,6 +76,7 @@ namespace fqsm::erased {
         virtual const void* global() const = 0;
         virtual Cursor cursor_begin() const = 0;
         virtual Cursor cursor_end() const = 0;
+        virtual const Ops& quantum_ops() const = 0;
     };
 
     // Reality of one aspect: ids and values in parallel dense arrays, one global value.
@@ -87,7 +88,7 @@ namespace fqsm::erased {
         Line(const Ops& quantum, const Ops& global, GlobalStart start = GlobalStart::constructed);
         explicit Line(const Descriptor& descriptor);
 
-        const Ops& quantum_ops() const { return slots.ops(); }
+        const Ops& quantum_ops() const override { return slots.ops(); }
         const Ops& global_ops() const { return globalSlot.ops(); }
 
         bool contains(RawId id) const override;
