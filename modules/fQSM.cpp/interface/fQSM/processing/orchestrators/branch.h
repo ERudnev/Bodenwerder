@@ -1,7 +1,10 @@
 #pragma once
 
+#include <cassert>
 #include <memory>
+#include <stdexcept>
 
+#include <fQSM/erased/line.h>
 #include <fQSM/model/complex/patch.h>
 #include <fQSM/processing/algorithms/merge.h>
 #include <fQSM/processing/transaction.h>
@@ -10,21 +13,34 @@ namespace fqsm::processing::orchestrator {
 
     // A patch over the parent's state. It does not normalize: when it closes, the parent takes the patch.
     struct Branch : Transaction {
+        // throws std::logic_error when the nesting exceeds the layers a cursor can stack
         explicit Branch(Transaction& parent)
             : parent(&parent)
-            , session(std::make_unique<Session>(parent.child_base(), base::make_shared<model::complex::Patch>(parent.child_base())))
-        {}
+            , session(open(parent))
+        {
+            depth = parent.depth + 1;
+        }
         // a Branch of a Branch nests (it is not a copy)
         explicit Branch(Branch& parent) : Branch(static_cast<Transaction&>(parent)) {}
         Branch(Branch&&) noexcept = default;
         Branch& operator=(Branch&&) = delete;
-        ~Branch() override { if (session) parent->accept_child(session->view.patch()); }
+        ~Branch() override {
+            if (not session) return;
+            assert(not session->has_handles() and "fQSM: a handle outlives its Branch");
+            parent->accept_child(session->view.patch());
+        }
 
         operator Reading() const override { return Reading(session->view); }
 
     private:
         Transaction* parent;
         std::unique_ptr<Session> session;
+
+        static auto open(Transaction& parent) -> std::unique_ptr<Session> {
+            if (parent.depth >= erased::Cursor::MaxLayers)
+                throw std::logic_error("fQSM: Branch nesting exceeds the cursor layer limit");
+            return std::make_unique<Session>(parent.child_base(), base::make_shared<model::complex::Patch>(parent.child_base()));
+        }
 
         auto writing(Mode) -> Writing override { return Writing(*session); }
         auto child_base() const -> const model::complex::State& override { return session->view; }

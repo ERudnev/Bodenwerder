@@ -191,14 +191,10 @@ void schema_merge_single_fragment_identity()
     EXPECT_EQ(a.wiring, b.wiring) << "merge({fragment}) must equal fragment";
 }
 
-// PINS CURRENT BEHAVIOUR, NOT DESIRED BEHAVIOUR.
-// If the same aspect is registered by two fragments (e.g. two doctrine files both happen to
-// pull in the same aspect), nodes and slots are deduplicated (first registration wins) and the
-// structural rules, derived from the deduplicated descriptors, exist once. Custom reactions are
-// concatenated across parts, so they are duplicated and each fires twice per change.
-// Duplicates must be avoided by construction: every doctrine file must register each of its
-// aspects exactly once across the whole schema assembly.
-void schema_merge_duplicate_aspect_duplicates_custom_reactions()
+// The same aspect registered by two fragments (e.g. two doctrine files both pull in the same aspect)
+// is registered once: nodes, slots, structural rules and custom reactions are deduplicated together,
+// because the reactions of a schema are the reactions of its descriptors.
+void schema_merge_duplicate_aspect_registers_once()
 {
     using namespace fqsm::api;
 
@@ -224,7 +220,8 @@ void schema_merge_duplicate_aspect_duplicates_custom_reactions()
     EXPECT_EQ(once->slotCount(), twice->slotCount()) << "slots are deduplicated";
     EXPECT_EQ(once->rules.size(), twice->rules.size()) << "structural rules are not duplicated";
     EXPECT_EQ(a.reactionCount, std::size_t{1});
-    EXPECT_EQ(b.reactionCount, std::size_t{2}) << "custom reactions are duplicated";
+    EXPECT_EQ(b.reactionCount, std::size_t{1}) << "custom reactions are not duplicated";
+    EXPECT_EQ(a.wiring, b.wiring);
 
     const auto invocations = [](const Schema& schema) {
         establish::Realm main(schema);
@@ -234,7 +231,7 @@ void schema_merge_duplicate_aspect_duplicates_custom_reactions()
         return countedCalls;
     };
     EXPECT_EQ(invocations(once), 1);
-    EXPECT_EQ(invocations(twice), 2) << "a duplicated custom reaction fires twice per change";
+    EXPECT_EQ(invocations(twice), 1) << "a duplicated registration fires once per change";
 }
 
 void schema_merge_realm_feature_removal_nested_vs_flat()

@@ -1,5 +1,8 @@
 #include <fQSM/model/intertype/schema.h>
 
+#include <format>
+#include <stdexcept>
+
 #include <fQSM/features/reaction.h>
 
 namespace fqsm::model::intertype {
@@ -23,6 +26,14 @@ namespace fqsm::model::intertype {
         for (std::size_t i = 0; i < links.size(); ++i)
             if (links[i].client == client and links[i].observed == observed and links[i].read == read) return i;
         return npos;
+    }
+
+    void Graph::requireHosts() const {
+        for (const auto& descriptor : descriptors) {
+            if (not descriptor.host or nodes.contains(*descriptor.host)) continue;
+            throw std::logic_error(std::format("fQSM schema: aspect {} needs its host {}, which is not in the schema",
+                descriptor.name, Rtid::name(*descriptor.host)));
+        }
     }
 
     void Graph::deriveRules() {

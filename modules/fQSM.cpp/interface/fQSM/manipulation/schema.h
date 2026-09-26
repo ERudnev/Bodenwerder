@@ -42,6 +42,7 @@ namespace fqsm::manipulation::schema {
     }
 
     // Slots are renumbered: parts in order, each part in its own slot order, first registration wins.
+    // The reactions are those of the kept descriptors: an aspect registered twice brings its reactions once.
     inline Schema merge(std::initializer_list<Schema> parts) {
         auto out = base::make_shared<model::intertype::Graph>();
 
@@ -49,8 +50,8 @@ namespace fqsm::manipulation::schema {
             for (const auto& descriptor : part->descriptors)
                 detail::add_node(*out, descriptor);
 
-        for (const auto& part : parts)
-            for (const auto& reaction : part->reactions)
+        for (const auto& descriptor : out->descriptors)
+            for (const auto& reaction : descriptor.reactions)
                 detail::add_reaction(*out, reaction);
 
         out->deriveRules();

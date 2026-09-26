@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include <fQSM/model/_forwards.h>
 #include <fQSM/processing/contexts/session.h>
 
@@ -26,5 +28,7 @@ namespace fqsm::processing {
         // A child Branch reads this state and hands its patch back when it closes.
         virtual auto child_base() const -> const model::complex::State& = 0;
         virtual void accept_child(ref<model::complex::Patch>) = 0;
+
+        std::size_t depth = 0;   // patch layers over the reality: 0 for a Realm, parent + 1 for a Branch
     };
 }

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cassert>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <fQSM/model/complex/reality.h>
@@ -12,12 +14,15 @@ namespace fqsm::processing::orchestrator {
     // Owns the reality and the sessions opened on it. A session is accepted (normalized, then integrated)
     // when its last handle ends: an unnamed Writing at the end of the full expression, a named one at its scope end.
     struct Realm : Transaction, private SessionOwner {
-        Realm(Schema schema) : reality(schema) { assembleGlobals(); }
+        Realm(Schema schema) : reality(complete(std::move(schema))) { assembleGlobals(); }
         Realm(const Realm& other) : Transaction(), SessionOwner(), reality(static_cast<const State&>(other.reality)) {}
         Realm(const State& other) : reality(other) {}
+        ~Realm() override { assert(open.empty() and "fQSM: a session of this Realm is still open"); }
 
-        // runs worker in a Branch; the Branch merges into this Realm when worker returns
+        // runs worker in a Branch; the Branch merges into this Realm when worker returns,
+        // so the result must not refer to the session of the Branch
         template<typename Worker>
+            requires (not SessionBound<std::invoke_result_t<Worker, Writing>>)
         auto branch(Worker&& worker) -> std::invoke_result_t<Worker, Writing> {
             Branch context(*this);
             return std::invoke(std::forward<Worker>(worker), static_cast<Writing>(context));
@@ -40,6 +45,7 @@ namespace fqsm::processing::orchestrator {
         void accept_child(ref<model::complex::Patch> patch) override { accept(patch, {}, false); }
         void release(Session&) override;
 
+        static auto complete(Schema schema) -> Schema { schema->requireHosts(); return schema; }
         void assembleGlobals();
         void accept(ref<model::complex::Patch>, Rtid::Set tainted, bool silent);
     };

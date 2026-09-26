@@ -1,5 +1,6 @@
 #include "_common.h"
 
+#include <stdexcept>
 #include <string>
 
 #include <fQSM/api/interface.h>
@@ -236,23 +237,26 @@ void structural_element_removal_unhooks()
     EXPECT_EQ(with<Crew>::get(main, base).size(), std::size_t{1});
 }
 
-// A Feature registered without its Host: the rules that need the host are skipped, nothing throws.
-void structural_rule_with_absent_host_is_skipped()
+// A Feature registered without its Host: a fragment may be partial, but a Realm needs the host of every
+// parasitic aspect, else the structural rules that keep the model consistent would be missing.
+void structural_realm_requires_every_host()
 {
     using namespace rules;
     fqsm::Schema lonely = ask::schema::aspect<Limb>();
-    EXPECT_TRUE(lonely->rules.empty());
-    EXPECT_FALSE(lonely->accepts<Host>());
+    EXPECT_TRUE(lonely->rules.empty()) << "a partial fragment is allowed";
 
-    establish::Realm main(lonely);
-    const auto id = Host::Id::generate_random();
-    with<Limb>::extend(main, id, {1});
-    EXPECT_TRUE(main.result().good()) << "no host rule: the feature is accepted alone";
-    EXPECT_TRUE(with<Limb>::exists(main, id));
+    std::string message;
+    try {
+        establish::Realm main(lonely);
+    } catch (const std::logic_error& error) {
+        message = error.what();
+    }
+    EXPECT_TRUE(message.find("Limb") != std::string::npos) << "the error names the aspect: " << message;
+    EXPECT_TRUE(message.find("Host") != std::string::npos) << "the error names the missing host: " << message;
 
-    with<Limb>::remove(main, id);
-    EXPECT_TRUE(main.result().good()) << "no attempt to delete the absent host";
-    EXPECT_FALSE(with<Limb>::exists(main, id));
+    fqsm::Schema whole = ask::schema::merge({ lonely, ask::schema::aspect<Host>() });
+    establish::Realm main(whole);
+    EXPECT_FALSE(whole->rules.empty());
 }
 
 } // namespace tests

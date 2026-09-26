@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <iterator>
 #include <optional>
@@ -87,9 +88,10 @@ namespace fqsm::view {
             std::size_t index = 0;
         };
 
-        explicit Items(const erased::ReadLine& line) : Lines{&line, nullptr, nullptr} {}
-        explicit Items(erased::Line& line) : Lines{&line, &line, nullptr} {}
-        explicit Items(const Lines& lines) : Lines(lines) {}
+        // the line must hold values of this aspect (checked in debug builds)
+        explicit Items(const erased::ReadLine& line) : Lines{&line, nullptr, nullptr} { assert(holds_values()); }
+        explicit Items(erased::Line& line) : Lines{&line, &line, nullptr} { assert(holds_values()); }
+        explicit Items(const Lines& lines) : Lines(lines) { assert(holds_values()); }
 
         const erased::ReadLine& line() const { return *reader; }
 
@@ -139,6 +141,8 @@ namespace fqsm::view {
         void reserve(SizeType capacity) { mutable_line().reserve(capacity); }
 
     private:
+        bool holds_values() const { return not reader or &reader->quantum_ops() == &erased::ops_of<Value>(); }
+
         erased::Line& mutable_line() const {
             if (not writable) throw std::logic_error("fqsm::view::Items: read-only view");
             return *writable;

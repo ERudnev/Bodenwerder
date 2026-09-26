@@ -24,6 +24,7 @@ namespace fqsm::erased {
         const void* global() const override;
         Cursor cursor_begin() const override;
         Cursor cursor_end() const override;
+        const Ops& quantum_ops() const override { return layer->quantum_ops(); }
 
         // value is moved from
         void put_modification(RawId id, void* value);
