@@ -74,6 +74,30 @@
                 "CMAKE_CXX_COMPILER": "clang-cl",
                 "CMAKE_BUILD_TYPE": "Release"
             }
+        },
+        {
+            "name": "msvc-asan",
+            "displayName": "Ninja + MSVC (Debug, ASan)",
+            "description": "AddressSanitizer on project targets (cmake/Sanitizers.cmake). cl has no UBSan; see clang-ubsan. Run from a Developer Command Prompt.",
+            "inherits": "ninja-msvc-base",
+            "binaryDir": "${sourceDir}/build/msvc-asan",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "DAQL_SANITIZE": "address"
+            }
+        },
+        {
+            "name": "clang-ubsan",
+            "displayName": "Ninja + clang-cl (Debug, UBSan)",
+            "description": "UndefinedBehaviorSanitizer on project targets (cmake/Sanitizers.cmake), static CRT. clang-cl from PATH, run from a Developer Command Prompt. clang-cl ASan is refused there: it breaks C++ exception handling.",
+            "inherits": "ninja-msvc-base",
+            "binaryDir": "${sourceDir}/build/clang-ubsan",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang-cl",
+                "CMAKE_CXX_COMPILER": "clang-cl",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "DAQL_SANITIZE": "undefined"
+            }
         }
     ],
     "buildPresets": [
@@ -107,6 +131,20 @@
             "name": "clang-release",
             "displayName": "clang-cl Release",
             "configurePreset": "clang-release"
+        },
+        {
+            "name": "msvc-asan",
+            "displayName": "MSVC ASan: test suite",
+            "description": "Builds the test executables only. Run each one afterwards; ASan aborts on the first error.",
+            "configurePreset": "msvc-asan",
+            "targets": ["base_tests", "fQSM_tests", "Eltanin_horn_tests"]
+        },
+        {
+            "name": "clang-ubsan",
+            "displayName": "clang-cl UBSan: test suite",
+            "description": "Builds the test executables only. Run each one afterwards, with UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 to fail on the first UBSan report.",
+            "configurePreset": "clang-ubsan",
+            "targets": ["base_tests", "fQSM_tests", "Eltanin_horn_tests"]
         }
     ]
 }
