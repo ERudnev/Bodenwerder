@@ -14,6 +14,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(Q1)
 include(Warnings)
 include(Precompiled)
+include(Sanitizers)
 
 add_subdirectory(3party)
 add_subdirectory(modules)
@@ -21,7 +22,7 @@ add_subdirectory(stories)
 #add_subdirectory(workshop)
 
 # Project targets only; 3party keeps its own flags.
-daql_enable_warnings(
+set(DAQL_PROJECT_TARGETS
     base base_tests
     fQSM fQSM_tests fQSM_workshop
     pQRF
@@ -31,6 +32,9 @@ daql_enable_warnings(
     Kubes
     TomSawyer
 )
+daql_enable_warnings(${DAQL_PROJECT_TARGETS})
+# Off unless DAQL_SANITIZE is set (see cmake/Sanitizers.cmake and the msvc-asan, clang-ubsan presets).
+daql_enable_sanitizers(${DAQL_PROJECT_TARGETS})
 
 # Precompiled headers per project target (see cmake/Precompiled.cmake); 3party untouched.
 daql_enable_pch(base            ${DAQL_PCH_STD} ${DAQL_PCH_BASE})
