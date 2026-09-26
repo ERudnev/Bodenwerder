@@ -9,7 +9,7 @@
 namespace tests {
 
     void stitch_preserves_packed_facies() {
-        const eltanin::geo::IcosaPack pack{.edgeBase = 1, .tessellation = 0};
+        const eltanin::geo::IcosaPack pack{.edgeBase = 1, .tessellation = 0, .directions = {}, .weld = {}};
         pack.cacheWeld();
         eltanin::geo::IcosaMap<std::uint16_t, eltanin::geo::StitchMode::PickFirst> covers{pack, 0};
         constexpr std::uint16_t first = 0x0002;

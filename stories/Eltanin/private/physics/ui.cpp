@@ -124,6 +124,9 @@ namespace eltanin::phys {
                 .color0 = {},
                 .indices = {},
                 .mix0 = {},
+                .cohesion = {},
+                .palette = {},
+                .weights = {},
             };
             for (const auto& face : hull.faces) {
                 if (face.points.size() < 3)

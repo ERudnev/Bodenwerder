@@ -83,7 +83,7 @@ namespace eltanin::planet {
         if (seaDensity <= 0.0f)
             return {};
         const integer segments = std::clamp(heightSegments / 16, integer{48}, integer{64});
-        const geo::IcosaPack pack{.edgeBase = segments, .tessellation = 0};
+        const geo::IcosaPack pack{.edgeBase = segments, .tessellation = 0, .directions = {}, .weld = {}};
         const AtmosphereLook look = AtmosphereLook::of(geology);
         const vec3 oxide = geo::Mineral::table()[static_cast<std::size_t>(geo::Mineral::Kind::Oxides)].albedo;
         Weather weather{

@@ -427,10 +427,12 @@ namespace eltanin::planet {
         }
 
         auto preparedPack(integer edgeBase, integer tessellation) -> geo::IcosaPack {
-            geo::IcosaPack pack{.edgeBase = edgeBase, .tessellation = tessellation};
-            pack.directions = std::make_shared<vector<vec3>>();
-            pack.weld = std::make_shared<geo::IcosaPack::Weld>();
-            return pack;
+            return geo::IcosaPack{
+                .edgeBase = edgeBase,
+                .tessellation = tessellation,
+                .directions = std::make_shared<vector<vec3>>(),
+                .weld = std::make_shared<geo::IcosaPack::Weld>(),
+            };
         }
 
     }
