@@ -45,6 +45,6 @@ namespace eltanin::views::blueprints::history {
     auto redo(Writing, Store&, mech::Blueprint::Id) -> bool;
 
     enum class UiAction : std::uint8_t { none, undo, redo };
-    auto drawWindow(Store&) -> UiAction;
+    auto drawWindow(Store&, bool& shown) -> UiAction;
 
 }

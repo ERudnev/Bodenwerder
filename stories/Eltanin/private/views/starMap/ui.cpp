@@ -32,9 +32,28 @@ namespace eltanin {
             contributeLocalityMenu(world);
             return;
         }
+        if (starMap.menu.blueprints.has_value()) {
+            if (ImGui::Button("Back"))
+                starMap.menu.blueprints.reset();
+            contributeEditorPanels(true);
+            return;
+        }
         if (ImGui::Button("Planet"))
             openPlanetScenario(world);
-        togglePanel("Blueprints", starMap.menu.blueprints);
+        bool editor = false;
+        rmmr::wrapper::ui::viewToggle("Blueprints", &editor);
+        if (editor) {
+            blueprints.openPanels();
+            starMap.menu.blueprints.emplace();
+        }
+    }
+
+    void Game::contributeEditorPanels(bool catalog) {
+        if (catalog)
+            togglePanel("Blueprints", blueprints.state.panels.catalog);
+        togglePanel("Actions", blueprints.state.panels.actions);
+        togglePanel("Clipboard", blueprints.state.panels.clipboard);
+        togglePanel("Selection", blueprints.state.panels.selection);
     }
 
     auto Game::activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> {
@@ -62,10 +81,7 @@ namespace eltanin {
             return;
         }
         if (starMap.menu.blueprints.has_value()) {
-            bool open = true;
-            blueprints.draw(world, open, blueprintPack, mountPack);
-            if (not open)
-                starMap.menu.blueprints.reset();
+            blueprints.draw(world, true, blueprintPack, mountPack);
         }
         if (starMap.view)
             blueprints.bindView(views, starMap.menu.blueprints.has_value(), *starMap.view);

@@ -81,7 +81,7 @@ namespace eltanin::views::blueprints::selection {
     auto handleClipboardHotkeys(Store&) -> bool;
     auto handleClipboardChords(Writing, Store&, history::Store&, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&) -> bool;
 
-    auto drawPanel(Writing, Store&, history::Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&) -> bool;
-    auto drawClipboardPanel(Writing, Store&, history::Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered) -> bool;
+    auto drawPanel(Writing, Store&, history::Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, bool& shown, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>&, const std::vector<MountActor>&) -> bool;
+    auto drawClipboardPanel(Writing, Store&, history::Store&, ImVec2 blueprintsPos, ImVec2 blueprintsSize, bool& shown, base::maybe<mech::Blueprint::Id> hovered) -> bool;
 
 } // namespace eltanin::views::blueprints::selection

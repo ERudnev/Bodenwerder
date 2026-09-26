@@ -161,6 +161,10 @@ namespace eltanin {
             }
         }
         togglePanel("Blueprints", ui.blueprints);
+        if (ui.blueprints.has_value()) {
+            blueprints.openPanels();
+            contributeEditorPanels(false);
+        }
     }
 
     void Game::drawLocalityUi(Writing world) {
@@ -176,10 +180,7 @@ namespace eltanin {
                 ui.physics.reset();
         }
         if (ui.blueprints.has_value()) {
-            bool open = true;
-            blueprints.draw(world, open, blueprintPack, mountPack);
-            if (not open)
-                ui.blueprints.reset();
+            blueprints.draw(world, true, blueprintPack, mountPack);
         }
         if (world_view)
             blueprints.bindView(views, ui.blueprints.has_value(), *world_view);

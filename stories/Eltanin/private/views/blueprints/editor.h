@@ -106,6 +106,16 @@ namespace eltanin::views {
                 base::maybe<mech::Mount::Id> previewMount;
                 base::maybe<mech::space::Transform> previewTransform;
             } spaceMenu;
+            struct Panels {
+                struct Catalog {};
+                struct Actions {};
+                struct Clipboard {};
+                struct Selection {};
+                base::maybe<Catalog> catalog;
+                base::maybe<Actions> actions;
+                base::maybe<Clipboard> clipboard;
+                base::maybe<Selection> selection;
+            } panels;
         };
 
         AssetHandles assets;
@@ -134,7 +144,8 @@ namespace eltanin::views {
         void syncMountCursor(Writing, rmmr::renderer::Integer32 under);
         void persistHovered(Writing);
         void applyHistory(Writing, blueprints::history::UiAction);
-        void draw(Writing, bool& open, BlueprintCatalog&, MountCatalog&);
+        void openPanels();
+        void draw(Writing, bool session, BlueprintCatalog&, MountCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;
     };
 

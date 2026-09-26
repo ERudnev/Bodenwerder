@@ -402,6 +402,7 @@ namespace eltanin::views {
         blueprints::history::clear(state.history);
         state.hovered.reset();
         state.spaceMenu = {.place = false, .close = false, .preview = {}, .previewMount = {}, .previewTransform = {}};
+        state.panels = {.catalog = {}, .actions = {}, .clipboard = {}, .selection = {}};
 
         const auto paletteRoot = with<scene::Interface>::createScene(context);
         state.paletteScene.grid = with<scene::Interface>::createGrid(context, paletteRoot, *device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *grid_geometry, .material = *grid_material, .opacity = gridOpacity, .patternScale = patternScale});
@@ -858,8 +859,17 @@ namespace eltanin::views {
             syncMountCursor(context, renderer::Integer32{0});
     }
 
-    void Blueprints::draw(Writing context, bool& open, BlueprintCatalog& catalog, MountCatalog& mounts) {
-        if (not open) {
+    void Blueprints::openPanels() {
+        if (state.panels.catalog or state.panels.actions or state.panels.clipboard or state.panels.selection)
+            return;
+        state.panels.catalog.emplace();
+        state.panels.actions.emplace();
+        state.panels.clipboard.emplace();
+        state.panels.selection.emplace();
+    }
+
+    void Blueprints::draw(Writing context, bool session, BlueprintCatalog& catalog, MountCatalog& mounts) {
+        if (not session) {
             if (state.mainScene.root.has_value()) {
                 blueprints::geometry::clearActors(context, *state.mainScene.root, state.mainScene.clipboardActors);
                 blueprints::geometry::clearMountActors(context, *state.mainScene.root, state.mainScene.clipboardMountActors);
@@ -1147,10 +1157,11 @@ namespace eltanin::views {
         }
         } // not paletteMode
 
-        bool shown = open;
+        bool shown = true;
         ImVec2 blueprintsPos{};
         ImVec2 blueprintsSize{};
-        if (ImGui::Begin("Blueprints", &shown)) {
+        if (state.panels.catalog) {
+            if (ImGui::Begin("Blueprints", &shown)) {
             blueprintsPos = ImGui::GetWindowPos();
             blueprintsSize = ImGui::GetWindowSize();
             if (ImGui::Checkbox("Mount palette", &state.paletteMode)) {
@@ -1325,28 +1336,44 @@ namespace eltanin::views {
             ImGui::EndChild();
         }
         ImGui::End();
-        open = shown;
+        if (not shown)
+            state.panels.catalog.reset();
+        }
 
         if (not state.paletteMode and not state.membranes.enabled) {
             static const std::vector<blueprints::geometry::QuarkActor> noQuarks;
             const auto& quarksForSelect = state.mounts.enabled ? noQuarks : state.mainScene.quarkActors;
-            if (blueprints::selection::drawPanel(context, state.selection, state.history, blueprintsPos, blueprintsSize, state.hovered, quarksForSelect, state.mainScene.mountActors)) {
-                persistHovered(context);
-                syncVisuals(context);
-                refreshMembraneCandidates(context);
+            if (state.panels.selection) {
+                bool shown = true;
+                if (blueprints::selection::drawPanel(context, state.selection, state.history, blueprintsPos, blueprintsSize, shown, state.hovered, quarksForSelect, state.mainScene.mountActors)) {
+                    persistHovered(context);
+                    syncVisuals(context);
+                    refreshMembraneCandidates(context);
+                }
+                if (not shown)
+                    state.panels.selection.reset();
             }
-            if (blueprints::selection::drawClipboardPanel(context, state.selection, state.history, blueprintsPos, blueprintsSize, state.hovered)) {
-                persistHovered(context);
-                syncVisuals(context);
-                refreshMembraneCandidates(context);
+            if (state.panels.clipboard) {
+                bool shown = true;
+                if (blueprints::selection::drawClipboardPanel(context, state.selection, state.history, blueprintsPos, blueprintsSize, shown, state.hovered)) {
+                    persistHovered(context);
+                    syncVisuals(context);
+                    refreshMembraneCandidates(context);
+                }
+                if (not shown)
+                    state.panels.clipboard.reset();
             }
             syncClipboardGhost(context);
         } else if (not state.paletteMode and state.mainScene.root.has_value()) {
             blueprints::geometry::clearActors(context, *state.mainScene.root, state.mainScene.clipboardActors);
             blueprints::geometry::clearMountActors(context, *state.mainScene.root, state.mainScene.clipboardMountActors);
         }
-        if (not state.paletteMode)
-            applyHistory(context, blueprints::history::drawWindow(state.history));
+        if (not state.paletteMode and state.panels.actions) {
+            bool shown = true;
+            applyHistory(context, blueprints::history::drawWindow(state.history, shown));
+            if (not shown)
+                state.panels.actions.reset();
+        }
         if (not state.paletteMode and not state.mounts.enabled)
             drawMembraneFaceHighlight(context);
     }

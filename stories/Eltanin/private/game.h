@@ -77,6 +77,7 @@ namespace eltanin {
         void contributeViewMenu(Writing) override;
         void drawUi(Writing) override;
         void contributeLocalityMenu(Writing);
+        void contributeEditorPanels(bool catalog);
         void drawLocalityUi(Writing);
         auto activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> override;
         auto overlaySelection() const -> std::span<const rmmr::renderer::Integer32> override;

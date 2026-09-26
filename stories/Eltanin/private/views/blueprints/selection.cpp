@@ -777,11 +777,11 @@ namespace eltanin::views::blueprints::selection {
         return false;
     }
 
-    auto drawPanel(Writing context, Store& store, history::Store& history, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& quarks, const std::vector<MountActor>& mounts) -> bool {
+    auto drawPanel(Writing context, Store& store, history::Store& history, ImVec2 blueprintsPos, ImVec2 blueprintsSize, bool& shown, base::maybe<mech::Blueprint::Id> hovered, const std::vector<QuarkActor>& quarks, const std::vector<MountActor>& mounts) -> bool {
         ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y}, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2{360.0f, 220.0f}, ImGuiCond_FirstUseEver);
         bool erased = false;
-        if (ImGui::Begin("Selection")) {
+        if (ImGui::Begin("Selection", &shown)) {
             if (store.aliases.empty()) {
                 if (ImGui::Button("select all") and (not quarks.empty() or not mounts.empty()))
                     selectAll(context, store, quarks, mounts);
@@ -883,11 +883,11 @@ namespace eltanin::views::blueprints::selection {
         return erased;
     }
 
-    auto drawClipboardPanel(Writing context, Store& store, history::Store& history, ImVec2 blueprintsPos, ImVec2 blueprintsSize, base::maybe<mech::Blueprint::Id> hovered) -> bool {
+    auto drawClipboardPanel(Writing context, Store& store, history::Store& history, ImVec2 blueprintsPos, ImVec2 blueprintsSize, bool& shown, base::maybe<mech::Blueprint::Id> hovered) -> bool {
         ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y + 228.0f}, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2{360.0f, 140.0f}, ImGuiCond_FirstUseEver);
         bool pasted = false;
-        if (ImGui::Begin("Clipboard")) {
+        if (ImGui::Begin("Clipboard", &shown)) {
             std::size_t knots = 0;
             std::size_t halfChords = 0;
             std::size_t walls = 0;

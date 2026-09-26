@@ -78,9 +78,9 @@ namespace eltanin::views::blueprints::history {
         return true;
     }
 
-    auto drawWindow(Store& store) -> UiAction {
+    auto drawWindow(Store& store, bool& shown) -> UiAction {
         auto action = UiAction::none;
-        if (not ImGui::Begin("Actions")) {
+        if (not ImGui::Begin("Actions", &shown)) {
             ImGui::End();
             return action;
         }
