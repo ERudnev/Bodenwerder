@@ -1,5 +1,6 @@
 #include <fQSM/processing/algorithms/normalization.h>
 
+#include <exception>
 #include <format>
 #include <optional>
 #include <set>
@@ -179,8 +180,24 @@ namespace fqsm::processing::algorithm::normalization {
 // facade part
 namespace fqsm::processing::algorithm {
 
+    // Sessions close in destructors, so an exception from a reaction must not leave here. Reactions run
+    // before integration: a throw refuses the transaction and leaves the reality as it was.
+    static auto normalize_catching(const model::complex::Reality& state, fqsm::ref<Patch> patch, const Rtid::Set& taintedLines) -> model::complex::Patch::Summary {
+        try {
+            return normalization::normalization(state, patch, taintedLines);
+        } catch (const std::exception& error) {
+            model::complex::Patch::Summary refused;
+            refused.critical.push_back(std::format("normalization: exception: {}", error.what()));
+            return refused;
+        } catch (...) {
+            model::complex::Patch::Summary refused;
+            refused.critical.push_back("normalization: unknown exception");
+            return refused;
+        }
+    }
+
     auto update(model::complex::Reality& state, fqsm::ref<Patch> patch, Rtid::Set taintedLines) -> model::complex::Patch::Summary {
-        const auto result = normalization::normalization(state, patch, taintedLines);
+        const auto result = normalize_catching(state, patch, taintedLines);
         if (result.good()) {
             _DBG_TX_("update: INTEGRATE patch={}", utility::format_patch(fqsm::freeze(patch)));
             integrate_consuming(state, *patch, taintedLines);   // the patch is discarded with the session

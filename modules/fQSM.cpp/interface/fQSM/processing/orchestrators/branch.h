@@ -24,9 +24,11 @@ namespace fqsm::processing::orchestrator {
         explicit Branch(Branch& parent) : Branch(static_cast<Transaction&>(parent)) {}
         Branch(Branch&&) noexcept = default;
         Branch& operator=(Branch&&) = delete;
+        // an exception that unwinds the Branch discards its patch
         ~Branch() override {
             if (not session) return;
             assert(not session->has_handles() and "fQSM: a handle outlives its Branch");
+            if (session->unwinding()) return;
             parent->accept_child(session->view.patch());
         }
 

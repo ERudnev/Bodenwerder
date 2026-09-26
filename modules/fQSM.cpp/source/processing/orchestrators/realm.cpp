@@ -49,6 +49,14 @@ namespace fqsm::processing::orchestrator {
         const auto found = std::find_if(open.begin(), open.end(), [&](const auto& owned) { return owned.get() == &session; });
         auto closing = std::move(*found);
         open.erase(found);
+        if (closing->unwinding()) {
+            // Direct writes of the session stay in the reality: they cannot be undone
+            lastResult = {};
+            lastResult.critical.push_back("fQSM: session discarded, an exception left its scope");
+            if (not closing->silent)
+                utility::log_rejected_transaction(lastResult);
+            return;
+        }
         accept(closing->view.patch(), std::move(closing->tainted), closing->silent);
     }
 

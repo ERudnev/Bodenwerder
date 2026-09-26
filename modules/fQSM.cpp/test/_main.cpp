@@ -44,6 +44,9 @@
     X(contexts_stewarding_direct_and_writing) \
     X(contexts_retrospecting_reads_origin) \
     X(contexts_branch_depth_is_checked) \
+    X(exceptions_branch_discards_on_unwind) \
+    X(exceptions_session_discards_on_unwind) \
+    X(exceptions_reaction_throw_refuses) \
     X(nested_branch_meta_visibility) \
     X(schema_merge_nested_equals_flat) \
     X(schema_merge_order_independent) \

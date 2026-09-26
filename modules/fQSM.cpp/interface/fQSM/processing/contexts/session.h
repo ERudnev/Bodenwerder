@@ -3,8 +3,10 @@
 // Contexts: one Session per open change, thin handles over it.
 // A Session is owned by a Realm, a Branch or a normalization wave, never by a handle; it outlives every handle.
 // Handles count themselves on the session; when the last handle of a Realm session ends, the Realm accepts it.
+// A session that closes because an exception unwinds its scope is discarded, not accepted.
 
 #include <concepts>
+#include <exception>
 #include <optional>
 #include <string>
 #include <type_traits>
@@ -40,6 +42,9 @@ namespace fqsm::processing {
         utility::BadValue refuse(std::string message) { view.summary().critical.push_back(std::move(message)); return {}; }
         void warning(std::string message) { view.summary().warning.push_back(std::move(message)); }
 
+        // true while an exception that started after the session opened unwinds: its owner discards it
+        bool unwinding() const { return std::uncaught_exceptions() > exceptions; }
+
         void attach() { ++handles; }
         void detach() { if (--handles == 0 and owner) owner->release(*this); }
         bool has_handles() const { return handles != 0; }
@@ -47,6 +52,7 @@ namespace fqsm::processing {
     private:
         SessionOwner* owner;
         unsigned handles = 0;
+        int exceptions = std::uncaught_exceptions();
     };
 
     namespace detail {
