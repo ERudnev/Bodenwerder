@@ -244,4 +244,13 @@ namespace eltanin::phys::rigid {
         }
     }
 
+    auto doctrine::rigid() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Solid>(),
+            ask::schema::aspect<Ray>(),
+            ask::schema::aspect<Crystal>(),
+            ask::schema::aspect<CelestialGravity>(),
+        });
+    }
+
 }

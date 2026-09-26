@@ -198,4 +198,8 @@ namespace eltanin::resource {
         return with<rmmr::resource::geometry::Asset>::install(context, assetId, device, cpu, primitiveSurfaces, umap<string, SurfaceId>{{"face", SurfaceId{0}}, {"cut", SurfaceId{1}}});
     }
 
+    auto doctrine::geometry() -> Schema {
+        return ask::schema::aspect<SkySphereGenerator>();
+    }
+
 }

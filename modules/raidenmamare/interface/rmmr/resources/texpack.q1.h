@@ -49,4 +49,9 @@ namespace rmmr::resource::texpack {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/resources/texpack.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto texpack() -> Schema;
+    }
+
 }

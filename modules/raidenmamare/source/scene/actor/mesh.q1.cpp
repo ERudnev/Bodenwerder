@@ -442,4 +442,12 @@ namespace rmmr::scene::actor {
         };
     }
 
+    auto doctrine::mesh() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Mesh>(),
+            ask::schema::aspect<MeshState>(),
+            ask::schema::aspect<Identified>(),
+        });
+    }
+
 }

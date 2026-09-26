@@ -6,7 +6,7 @@
 #include <vector>
 
 #include <fQSM/api/interface.h>
-#include <fQSM/processing/contexts/operational.h>
+#include <fQSM/processing/contexts/session.h>
 #include <fQSM/model/complex/future.h>
 
 namespace {
@@ -30,7 +30,6 @@ void delta_iterators()
 {
     using namespace local;
     using Id = fqsm::Id<A>;
-    using Context = fqsm::processing::context::Operational;
 
     const fqsm::Schema schema = fqsm::manipulation::schema::aspect<A>();
 
@@ -43,10 +42,8 @@ void delta_iterators()
 
     const fqsm::model::complex::Reality state(look(fill));
     auto patch = base::make_shared<fqsm::model::complex::Patch>(schema);
-    auto patch_context = std::make_shared<Context>(
-        state, patch, Context::Upstream{}
-    );
-    auto writing = fqsm::processing::Gate{patch_context};
+    fqsm::processing::Session session(state, patch);
+    fqsm::Writing writing{session};
 
     std::vector<Id> added_ids;
     for (int i = 101; i <= 110; ++i) {
@@ -61,7 +58,7 @@ void delta_iterators()
 
     const fqsm::model::complex::Future preview(state, patch);
 
-    using Layer = fqsm::model::linear::Delta<A>::Layer;
+    using Layer = fqsm::view::Delta<A>::Layer;
     std::unordered_map<Layer, std::set<Id>> collected;
 
     for (const auto change : preview.delta<A>()) {

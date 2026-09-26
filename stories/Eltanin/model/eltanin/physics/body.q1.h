@@ -55,4 +55,9 @@ namespace eltanin::phys {
         return body;
     }
 
+    // Schema fragment of doctrine/physics/body.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto body() -> Schema;
+    }
+
 }

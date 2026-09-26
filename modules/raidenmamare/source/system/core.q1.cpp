@@ -38,4 +38,12 @@ namespace rmmr::system {
         };
     }
 
+    auto doctrine::core() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Core>(),
+            ask::schema::aspect<Clock>(),
+            ask::schema::aspect<Device>(),
+        });
+    }
+
 }

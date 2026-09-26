@@ -146,3 +146,37 @@ Only the resulting state becomes part of persistent realm state.
 
 The model layer describes forms, states, transitions, and compositions.
 It defines the language used to describe realm structure independently of behavior, execution, processing, or feature logic.
+
+---
+
+## Runtime shape
+
+The runtime does not compile once per aspect. Each aspect is data: a **descriptor**, built once when the aspect is registered. The descriptor holds the value operations of the Quantum and the Global (size, alignment, copy, move, destroy), the category, the host, the group element and the custom reactions.
+
+The schema gives each aspect a dense **slot**. A linear structure is an erased **line** that stores values of one aspect by slot:
+
+- **Line**: the reality of one aspect (ids, values, one global value).
+- **PatchLine**: the patch of one aspect. Each patchlet has a value and two flags: tombstone (deleted, the value is the last value) and verified (written by an honest put, not by a touch). A tombstone is never cleared by a later write in the same patch.
+- **FutureLine**: a line seen through a patch line (a Draft of one aspect). Reads resolve the patch first. Writes go into the patch.
+
+A complex structure holds one line per slot. A Realm has every line. A patch and a future create their lines only for the slots that a transaction touches, and the Realm pools these lines for the next transaction.
+
+Typed code sees a line through small views: `items` for a state, `changes<X>()` for a delta, `adjustments<X>()` for writes.
+
+The lifecycle rules of the categories (host and parasitic, group and element) are **structural rules**. The schema derives them from the descriptors. They run at the start of each normalization wave, before the registered reactions. The wave loop does not change.
+
+---
+
+## Session and contexts
+
+A **session** is one open change of a realm: a patch over a base state, and the future (Draft) that shows the base through the patch. A realm, a branch or a normalization wave owns a session.
+
+A **context** is a thin handle to a session. The type of the context says what a function may do:
+
+- **Reading**: read a state.
+- **Writing**: read the future, write into the patch.
+- **Stewarding**: Writing plus direct access. Direct access changes the reality in place and taints the aspect.
+- **Reacting**: read the proposal of a normalization wave and its changes, write corrections.
+- **Retrospecting**: read the last stable state from a deletion reaction.
+
+A session ends when its last handle ends. A realm then normalizes and integrates the patch.

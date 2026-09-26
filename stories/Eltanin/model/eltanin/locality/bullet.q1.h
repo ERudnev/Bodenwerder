@@ -34,4 +34,9 @@ namespace eltanin::locality {
         static const Behavior customAspectReactions();
     };
 
+    // Schema fragment of doctrine/locality/bullet.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto bullet() -> Schema;
+    }
+
 }

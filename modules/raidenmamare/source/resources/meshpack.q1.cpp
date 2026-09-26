@@ -406,4 +406,12 @@ namespace rmmr::resource::meshpack {
         base::message("rmmr: meshpack '{}' finalized from pooled geometry catalogs ({} entries)", unit.name.text(), entryCount);
     }
 
+    auto doctrine::meshpack() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Asset>(),
+            ask::schema::aspect<LoaderObjs>(),
+            ask::schema::aspect<LoaderLwo>(),
+        });
+    }
+
 }

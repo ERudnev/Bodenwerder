@@ -523,4 +523,8 @@ namespace eltanin::mech {
         }
     }
 
+    auto doctrine::mount() -> Schema {
+        return ask::schema::aspect<Mount>();
+    }
+
 }

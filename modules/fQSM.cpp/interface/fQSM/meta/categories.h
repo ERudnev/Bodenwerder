@@ -1,6 +1,7 @@
 #pragma once
 
 #include <concepts>
+#include <cstdint>
 
 #include <base/serialization.h>
 #include <fQSM/meta/retrospection.h>
@@ -13,6 +14,20 @@ namespace fqsm::detail::meta::category {
         void all(auto&&) {}
     };
 
+}
+
+namespace fqsm::aspect {
+
+    // The five Q1 aspect categories. The erased runtime uses the same enum (erased::Category).
+    enum class Category : std::uint8_t { entity, attribute, feature, component, group };
+
+    // Category data of an aspect: every aspect base exposes it as Meta::Traits.
+    template<Category C, typename Host = void, typename Element = void>
+    struct Traits {
+        static constexpr Category category = C;
+        using HostAspect = Host;
+        using ElementAspect = Element;
+    };
 }
 
 namespace fqsm::meta::category {
@@ -29,19 +44,10 @@ namespace fqsm::meta::category {
 
         template<typename Meta>
         concept Quantum = requires { typename Meta::Quantum; };
-            //and base::serialization::serializable<typename Meta::Quantum>;
 
         template<typename Meta>
-        concept Worker = requires { typename Meta::WorkerAspect; };
+        concept Traits = requires { { Meta::Traits::category } -> std::convertible_to<aspect::Category>; };
 
-        template<typename Meta>
-        concept Host = std::same_as<typename Meta::Id, typename Meta::HostAspect::Id>;
-
-        template<typename Meta>
-        concept Passport = requires(typename Meta::Quantum quantum) { quantum.passport; };
-
-        template<typename Meta>
-        concept Autonomy = not musthave::Host<Meta>;
         template<typename Meta>
         concept Primary = requires { typename Meta::PrimaryAspect; };
 
@@ -51,32 +57,25 @@ namespace fqsm::meta::category {
         };
     }
 
-    // abstractions: can not be final concepts to be usef for domain archetypes:
-    // (intended to be used in library code)
+    // Any aspect: category data, an id and a quantum.
     template<typename Meta>
-    concept Any = musthave::Id<Meta> and musthave::Quantum<Meta>;
+    concept Any = musthave::Traits<Meta> and musthave::Id<Meta> and musthave::Quantum<Meta>;
+
+    template<typename Meta, aspect::Category C>
+    concept Is = Any<Meta> and Meta::Traits::category == C;
+
+    // Standalone aspects own their id; parasitic aspects share the id of their host.
+    template<typename Meta>
+    concept Standalone = Is<Meta, aspect::Category::entity>;
 
     template<typename Meta>
-    concept Standalone = Any<Meta> and musthave::Autonomy<Meta>;
+    concept Parasitic = Any<Meta> and Meta::Traits::category != aspect::Category::entity;
 
-    template<typename Meta>
-    concept Parasitic = Any<Meta> and musthave::Host<Meta>;
-
-    // final archetype kind to be used in domains aspect meta-classes
-    template<typename Meta>
-    concept Entity = Standalone<Meta>; // TODO: add Entity-specific requirements later...
-
-    template<typename Meta>
-    concept Component = Parasitic<Meta>;
-
-    template<typename Meta>
-    concept Attribute = Parasitic<Meta>;
-
-    template<typename Meta>
-    concept Feature = Parasitic<Meta>;
-
-    template<typename Meta>
-    concept Group = Parasitic<Meta> and musthave::Worker<Meta>; // redesigned: "and musthave::Passport<Meta>"
+    template<typename Meta> concept Entity = Is<Meta, aspect::Category::entity>;
+    template<typename Meta> concept Attribute = Is<Meta, aspect::Category::attribute>;
+    template<typename Meta> concept Feature = Is<Meta, aspect::Category::feature>;
+    template<typename Meta> concept Component = Is<Meta, aspect::Category::component>;
+    template<typename Meta> concept Group = Is<Meta, aspect::Category::group>;
 
     template<typename Meta>
     concept Manipulation = musthave::Primary<Meta> and musthave::Id<Meta> and musthave::Quantum<Meta>;

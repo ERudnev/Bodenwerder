@@ -26,4 +26,9 @@ namespace eltanin::resource {
         static auto materialize(Writing, rmmr::resource::geometry::Asset::Id, rmmr::system::Device::Id) -> optional<rmmr::resource::geometry::Runtime::Id>;
     };
 
+    // Schema fragment of doctrine/resources/geometry.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto geometry() -> Schema;
+    }
+
 }

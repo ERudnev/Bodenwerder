@@ -1,13 +1,14 @@
 #pragma once
 
 #include <initializer_list>
+#include <string>
 
 #include <base/shared_reference.h>
 
+#include <fQSM/erased/descriptor.h>
 #include <fQSM/features/behavior.h>
 #include <fQSM/meta/categories.h>
 #include <fQSM/model/intertype/schema.h>
-#include <fQSM/model/intertype/builders.h>
 
 namespace fqsm::manipulation::schema {
 
@@ -18,58 +19,54 @@ namespace fqsm::manipulation::schema {
 }
 // impl:
 namespace fqsm::manipulation::schema {
+
+    namespace detail {
+        using Graph = model::intertype::Graph;
+
+        inline void add_reaction(Graph& graph, const Graph::Reactions::value_type& reaction) {
+            const auto reactionId = Graph::ReactionId{ graph.reactions.size() };
+            graph.reactions.push_back(reaction);
+            for (const auto& sourceType : reaction->listens()) {
+                const auto found = graph.nodes.find(sourceType);
+                if (found == graph.nodes.end()) continue;
+                found->second.reactions.push_back(reactionId);
+            }
+        }
+
+        inline void add_node(Graph& graph, const erased::Descriptor& descriptor) {
+            if (graph.nodes.contains(descriptor.id)) return;
+            const auto slot = static_cast<Graph::Slot>(graph.descriptors.size());
+            graph.descriptors.push_back(descriptor);
+            graph.nodes.emplace(descriptor.id, Graph::Node{std::string{descriptor.name}, {}, slot});
+        }
+    }
+
+    // Slots are renumbered: parts in order, each part in its own slot order, first registration wins.
+    // The reactions are those of the kept descriptors: an aspect registered twice brings its reactions once.
     inline Schema merge(std::initializer_list<Schema> parts) {
         auto out = base::make_shared<model::intertype::Graph>();
 
-        for (const auto& part : parts) {
-            for (const auto& [type, node] : part->nodes) {
-                out->nodes.emplace(type, node);
-            }
-        }
+        for (const auto& part : parts)
+            for (const auto& descriptor : part->descriptors)
+                detail::add_node(*out, descriptor);
 
-        for (auto& [_, node] : out->nodes) {
-            node.reactions.clear();
-        }
+        for (const auto& descriptor : out->descriptors)
+            for (const auto& reaction : descriptor.reactions)
+                detail::add_reaction(*out, reaction);
 
-        for (const auto& part : parts) {
-            for (const auto& reaction : part->reactions) {
-                const auto reactionId = model::intertype::Graph::ReactionId{ out->reactions.size() };
-                out->reactions.push_back(reaction);
-
-                for (const auto& sourceType : reaction->listens()) {
-                    const auto found = out->nodes.find(sourceType);
-                    if (found == out->nodes.end()) continue;
-                    found->second.reactions.push_back(reactionId);
-                }
-            }
-        }
-
+        out->deriveRules();
+        out->deriveLinks();
         return fqsm::freeze(out);
     }
 
     template<meta::category::Any Meta>
     fqsm::Schema aspect() {
         auto out = base::make_shared<model::intertype::Graph>();
-        auto node = model::intertype::Graph::Node{
-            std::string{fqsm::meta::Rtid::name<Meta>()},
-            model::intertype::Graph::ReactionIds{},
-            fqsm::schema::details::binding<Meta>(),
-        };
-
-        out->nodes.emplace(TypeId<Meta>, node);
-
-        const auto behavior = Meta::DefaultInternals::reactions();
-        for (const auto& reaction : behavior.rules) {
-            const auto reactionId = model::intertype::Graph::ReactionId{ out->reactions.size() };
-            out->reactions.push_back(reaction);
-
-            for (const auto& sourceType : reaction->listens()) {
-                const auto found = out->nodes.find(sourceType);
-                if (found == out->nodes.end()) continue;
-                found->second.reactions.push_back(reactionId);
-            }
-        }
-
+        detail::add_node(*out, erased::describe<Meta>());
+        for (const auto& reaction : out->descriptors.front().reactions)
+            detail::add_reaction(*out, reaction);
+        out->deriveRules();
+        out->deriveLinks();
         return fqsm::freeze(out);
     }
 }

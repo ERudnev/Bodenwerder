@@ -1,34 +1,34 @@
 #pragma once
 
+#include <memory>
+#include <vector>
+
+#include <fQSM/erased/line.h>
 #include <fQSM/model/complex/state.h>
-#include <fQSM/model/linear/reality.h>
-#include <fQSM/model/intertype/composite.h>
-#include <fQSM/model/linear/state.h>
 
 namespace fqsm::model::complex {
 
+    // Materialized state: every slot has its line.
     class Reality : public State {
     public:
-        Reality(Schema schema) : State(schema) { initStructure(); }
-        Reality(const State& source);
-        Reality(const Reality& other)=delete;
+        explicit Reality(Schema schema);
+        explicit Reality(const State& source);
 
-        void putLine(meta::Rtid typeId, ref<linear::state::Erased> line);
+        const erased::ReadLine& line(Slot slot) const override { return *lines[slot]; }
+        erased::Line& writable(Slot slot) { return *lines[slot]; }
 
-        // schema
-        template<category::Any Meta>
-        static ref<linear::state::Erased> clone(const State& source) {
-            return linear::Reality<Meta>::from(source.aspect<Meta>());
-        }
+        const std::vector<erased::InboundIndex>* inbound() const override { return &indexes; }
+        // Before a patch line is integrated into slot: the indexes of the links whose client is slot learn its changes.
+        void learn(Slot slot, const erased::PatchLine& patch);
+        // After a direct pass over slot: the indexes of the links whose client is slot are rebuilt from the line.
+        void rebuild_inbound(Slot slot);
+        void rebuild_inbound();
 
     protected:
-        cref<Erased> getLine(Rtid typeId) const override { return lines.container.at(typeId); }
-        ref<Erased> getLine(Rtid typeId) override { return lines.container.at(typeId); }
-        const Composite& composition() const override { return lines; }
-        Composite& composition() override { return lines; }
+        erased::Line* writable_line(Slot slot) override { return lines[slot].get(); }
 
-        void initStructure();
-
-        intertype::Composite<linear::state::Erased> lines;
+    private:
+        std::vector<std::unique_ptr<erased::Line>> lines;
+        std::vector<erased::InboundIndex> indexes;   // by schema link
     };
 }

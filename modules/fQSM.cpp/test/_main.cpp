@@ -10,6 +10,8 @@
     X(relations_index_build) \
     X(custom_reactions) \
     X(killing_feature) \
+    X(cascade_closure) \
+    X(inbound_index) \
     X(group_category) \
     X(group_performance) \
     X(cascade_performance) \
@@ -21,6 +23,7 @@
     X(persistent_families) \
     X(temp_persistency) \
     X(remap_identities) \
+    X(reactions_vocabulary) \
     // end
 
 #define FQSM_LOW_LEVEL_TESTS(X) \
@@ -34,6 +37,56 @@
     X(no_resurrection) \
     X(quantal) \
     X(transaction_hierarchy) \
+    X(aspect_minimal_declaration) \
+    X(id_set) \
+    X(contexts_writing_copies_share_session) \
+    X(contexts_nested_branch_refusal) \
+    X(contexts_stewarding_direct_and_writing) \
+    X(contexts_retrospecting_reads_origin) \
+    X(contexts_branch_depth_is_checked) \
+    X(exceptions_branch_discards_on_unwind) \
+    X(exceptions_session_discards_on_unwind) \
+    X(exceptions_reaction_throw_refuses) \
+    X(nested_branch_meta_visibility) \
+    X(schema_merge_nested_equals_flat) \
+    X(schema_merge_order_independent) \
+    X(schema_merge_single_fragment_identity) \
+    X(schema_merge_duplicate_aspect_registers_once) \
+    X(schema_merge_realm_feature_removal_nested_vs_flat) \
+    // end
+
+#define FQSM_ERASED_TESTS(X) \
+    X(erased_ops_trivial) \
+    X(erased_ops_rich) \
+    X(erased_ops_no_default) \
+    X(erased_ops_aligned) \
+    X(erased_describe) \
+    X(erased_slots_basic) \
+    X(erased_slots_aligned) \
+    X(erased_slots_lifetime) \
+    X(erased_line_basic) \
+    X(erased_line_global_absent) \
+    X(erased_line_lifetime) \
+    X(erased_patch_line_operations) \
+    X(erased_patch_line_touch) \
+    X(erased_patch_line_absorb) \
+    X(erased_patch_line_integrate_merge) \
+    X(erased_patch_line_lifetime) \
+    X(erased_overlay_nested) \
+    X(erased_future_line_writes) \
+    X(erased_delta_modes) \
+    X(erased_items_view) \
+    X(erased_items_future) \
+    X(erased_lazy_patch_lines) \
+    X(erased_pooled_lines) \
+    X(structural_remove_with_parent) \
+    X(structural_dead_parasitic_kills_parent) \
+    X(structural_new_requires_existing_parent) \
+    X(structural_new_requires_parent_appears) \
+    X(structural_parent_appears_requires_component) \
+    X(structural_group_removal_removes_elements) \
+    X(structural_element_removal_unhooks) \
+    X(structural_realm_requires_every_host) \
     // end
 
 #define FQSM_MINIMODEL_TESTS(X) \
@@ -47,11 +100,19 @@
     X(polymorphic_behavior_exp) \
     // end
 
+// synthetic workloads shaped like the game: benchmarks with population asserts
+#define FQSM_WORKLOAD_TESTS(X) \
+    X(workload_frame) \
+    X(workload_load) \
+    // end
+
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_FEATURES_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_LOW_LEVEL_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(FQSM_ERASED_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_MINIMODEL_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_Q1RUNTIME_TESTS)
 BASETEST_FORWARD_DECLARE_TESTS(FQSM_WORKSHOP_TESTS)
+BASETEST_FORWARD_DECLARE_TESTS(FQSM_WORKLOAD_TESTS)
 
 int call_all_tests() {
     struct group final {
@@ -62,9 +123,11 @@ int call_all_tests() {
     const std::vector<group> groups{
         group{ "features", BASETEST_MAKE_LIST_TESTS(FQSM_FEATURES_TESTS) },
         group{ "low_level", BASETEST_MAKE_LIST_TESTS(FQSM_LOW_LEVEL_TESTS) },
+        group{ "erased", BASETEST_MAKE_LIST_TESTS(FQSM_ERASED_TESTS) },
         group{ "minimodel", BASETEST_MAKE_LIST_TESTS(FQSM_MINIMODEL_TESTS) },
         group{ "q1runtime", BASETEST_MAKE_LIST_TESTS(FQSM_Q1RUNTIME_TESTS) },
         group{ "workshop", BASETEST_MAKE_LIST_TESTS(FQSM_WORKSHOP_TESTS) },
+        group{ "workload", BASETEST_MAKE_LIST_TESTS(FQSM_WORKLOAD_TESTS) },
     };
 
     base::testing::run_summary total{};

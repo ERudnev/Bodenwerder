@@ -6,10 +6,10 @@ namespace rmmr
   namespace controller
 
     // Ortho/2D pan control for an existing scene::Camera.
-    // Time from system::Clock deltas (change.old / change.now); input from its ViewInput mail.
+    // Driven once per frame by the engine input phase (=tick); input from its ViewInput mail.
     attribute Camera2d of scene::Camera
       one
         input: #system::ViewInput
         >create(input: #system::ViewInput)-> #
       all
-        !update(~system::Clock) // RMB drag + arrows on XY
+        =tick(dt: seconds) // RMB drag + arrows on XY

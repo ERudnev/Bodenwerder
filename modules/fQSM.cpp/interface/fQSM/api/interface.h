@@ -1,16 +1,27 @@
 ﻿#pragma once
 
+// fQSM public surface (proposals/contract.md section 4). Product code includes this header only.
+// Aspects: Entity<T>, Attribute<T,Host>, Feature<T,Host>, Component<T,Host>, Group<T,Host,Element>,
+//   Archetype<T>, Manipulation<T,Primary>, BaseActions, DefaultInternals, Behavior; Anchor<T>, Custody<T>, Affected<T>, Id<T>.
+// Operations: with<X>::count/get/find/exists/get_global/modify/modify_global/remove/ward/relation/vital,
+//   create (entity), extend/kraken (parasitic), addElement/deleteElement/clear (group).
+// Contexts: Reading, Writing, Stewarding (direct<X>().items, Direct<X>), Reacting (proposal, changes<X>(),
+//   adjustments<X>(), refuse, warning), Retrospecting, SettingUp.
+// Transactions: establish::Realm, establish::Branch, establish::Module; realm.branch(fn), silent_work(), result().
+// Reactions: reaction::deletion, aspect_wide, constraint::element/element_wide, structural::anchored/custody,
+//   debug::death_log; ask::relations<Target>(context), ask::schema::aspect<T>() / merge({...}).
+// Persistence: Retrospection<T>::describe with field<&T::Quantum::x>("name") and collection<Elem, &x>("name").
+
 // Q1 language basic types (alias)
 #include <fQSM/api/builtins.h>
 
 // aspect types (Entity/Component/Attribute/Feature):
-#include <fQSM/aspect/assembly.interface.h>
+#include <fQSM/aspect/base.h>
 #include <fQSM/aspect/persistency.h>
 
 // manipulation
 #include <fQSM/manipulation/schema.h>
 #include <fQSM/manipulation/relations.h>
-#include <fQSM/manipulation/_experimental.h>
 #include <fQSM/manipulation/_temp_sugar.h>
 
 // processing (transactions, e.t.c)
@@ -21,13 +32,10 @@
 
 // Behavior definition for Aspects:
 #include <fQSM/features/behavior.h>
-#include <fQSM/features/reactions/structural.h>
 #include <fQSM/features/reactions/aspect_wide.h>
 #include <fQSM/features/reactions/anchoring.h>
 #include <fQSM/features/reactions/constraints.h>
-//#include <fQSM/features/reactions/binding.h>
 #include <fQSM/features/reactions/deletion.h>
-#include <fQSM/features/reactions/_experimental.h>
 
 namespace fqsm::api {
     // Q1 language builtin types
@@ -38,9 +46,9 @@ namespace fqsm::api {
 
     // recommended:
     template<typename Meta>
-    using with = ::fqsm::manipulation::call_action<Meta>;
+    using with = ::fqsm::meta::facade_t<Meta>;
 
-    // experimental:
+    // the quantum of an aspect
     template<typename Meta>
     using item = typename Meta::Quantum;
 
@@ -90,13 +98,16 @@ namespace fqsm::api {
         using namespace ::fqsm::features::reactions;
     }
 
-    // api for internal namespace with implementations
-    namespace api_for_internals {
-    } // tired of fqsm::Writing
-        using Writing = fqsm::Writing;
-        using Reading = fqsm::Reading;
-        using Reacting = fqsm::Reacting;
-        using Stewarding = fqsm::Stewarding;
-        using SettingUp = fqsm::SettingUp;
-    //}
+    // contexts: a function signature says what the function may do
+    using Reading = ::fqsm::Reading;
+    using Writing = ::fqsm::Writing;
+    using Stewarding = ::fqsm::Stewarding;
+    using Reacting = ::fqsm::Reacting;
+    using Retrospecting = ::fqsm::Retrospecting;
+    using SettingUp = ::fqsm::SettingUp;
+    template<meta::category::Any Meta>
+    using Direct = ::fqsm::Direct<Meta>;
+
+    // old spelling: `using namespace api_for_internals;` still compiles; the contexts are above
+    namespace api_for_internals {}
 }

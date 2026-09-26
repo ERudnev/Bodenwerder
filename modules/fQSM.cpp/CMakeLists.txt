@@ -20,6 +20,11 @@ target_include_directories(${PROJECT_NAME}
     INTERFACE
         ${PROJECT_SOURCE_DIR}/interface
 )
+option(FQSM_WAVE_STATS "fQSM: print normalization wave statistics to stderr every 5 seconds" OFF)
+if (FQSM_WAVE_STATS)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE FQSM_WAVE_STATS)
+endif()
+
 target_link_libraries(${PROJECT_NAME}
     PUBLIC glm
     PUBLIC base

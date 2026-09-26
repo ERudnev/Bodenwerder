@@ -51,4 +51,9 @@ namespace eltanin::locality {
         static const Behavior customAspectReactions();
     };
 
+    // Schema fragment of doctrine/locality/scrap.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto scrap() -> Schema;
+    }
+
 }

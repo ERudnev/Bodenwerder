@@ -22,4 +22,9 @@ namespace kubes::resource {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/resources/geometry.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto geometry() -> Schema;
+    }
+
 }

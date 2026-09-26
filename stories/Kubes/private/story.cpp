@@ -28,8 +28,8 @@ namespace kubes {
 
     Schema KubeOfKubes::schema() const {
         return ask::schema::merge({
-            ask::schema::aspect<World>(),
-            ask::schema::aspect<resource::SkySphereGenerator>(),
+            doctrine::world(),
+            resource::doctrine::geometry(),
         });
     }
 

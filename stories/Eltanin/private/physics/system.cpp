@@ -333,12 +333,11 @@ namespace eltanin::phys {
         thermalDebt = 0;
     }
 
-    void System::step(establish::Realm& world, seconds dt) {
+    void System::step(Stewarding session, seconds dt) {
         debt += dt;
         thermalDebt += dt;
         if (debt < Settings::fixedStep and thermalDebt < Settings::thermalStep)
             return;
-        Stewarding session = world;
         if (not with<scene::Root>::exists(session, scene))
             return;
         bool ticked = false;

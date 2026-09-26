@@ -136,4 +136,8 @@ namespace eltanin::locality {
         };
     }
 
+    auto doctrine::bullet() -> Schema {
+        return ask::schema::aspect<Bullet>();
+    }
+
 }

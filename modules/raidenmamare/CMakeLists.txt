@@ -44,6 +44,11 @@ set(Raidenmamare_Q1
 
 add_library(${PROJECT_NAME} STATIC)
 
+# Same switch as fQSM: the wrapper prints frames per 5 s window next to the fQSM wave lines.
+if (FQSM_WAVE_STATS)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE FQSM_WAVE_STATS)
+endif()
+
 add_q1_schema(${PROJECT_NAME}
     ROOT ${CMAKE_CURRENT_SOURCE_DIR}/doctrine
     FILES ${Raidenmamare_Q1}

@@ -126,4 +126,12 @@ namespace rmmr::resource::shadow {
         };
     }
 
+    auto doctrine::shadows() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Runtime>(),
+            ask::schema::aspect<Asset>(),
+            ask::schema::aspect<Allocator>(),
+        });
+    }
+
 }

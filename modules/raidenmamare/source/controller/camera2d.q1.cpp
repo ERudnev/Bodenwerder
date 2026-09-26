@@ -73,25 +73,19 @@ namespace rmmr::controller {
         return anchor;
     }
 
-    struct Camera2d::Internals : Camera2d::DefaultInternals {
-        static void update(Reacting context) {
-            for (const auto& change : context.changes<system::Clock>().updated()) {
-                const int64 dt_us = change.now.absolute - change.old.absolute;
-                if (dt_us <= 0) {
-                    continue;
-                }
-                const seconds delta_sec = static_cast<seconds>(dt_us) / 1'000'000.0;
+    void Camera2d::Actions::tick(Writing context, seconds dt) {
+        if (dt <= 0)
+            return;
+        // ids first: drive writes into the same session
+        std::vector<Id> cameras;
+        for (const auto entry : context->aspect<Camera2d>().items())
+            cameras.push_back(entry.id);
+        for (const auto camera : cameras)
+            drive(context, camera, dt);
+    }
 
-                for (const auto [id, _] : context.proposal.aspect<Camera2d>().items())
-                    drive(context, id, delta_sec);
-            }
-        }
-    };
-
-    auto Camera2d::customAspectReactions() -> const Behavior {
-        return {
-            reaction::aspect_wide<Camera2d, system::Clock>(&Camera2d::Internals::update),
-        };
+    auto doctrine::camera2d() -> Schema {
+        return ask::schema::aspect<Camera2d>();
     }
 
 }

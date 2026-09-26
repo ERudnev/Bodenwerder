@@ -73,4 +73,8 @@ namespace rmmr::scene {
         return projection_matrix(quantum, aspect_ratio) * view_matrix(context, id);
     }
 
+    auto doctrine::camera() -> Schema {
+        return ask::schema::aspect<Camera>();
+    }
+
 }

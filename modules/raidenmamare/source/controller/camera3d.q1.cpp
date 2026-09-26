@@ -91,25 +91,19 @@ namespace rmmr::controller {
         return anchor;
     }
 
-    struct Camera3d::Internals : Camera3d::DefaultInternals {
-        static void update(Reacting context) {
-            for (const auto& change : context.changes<system::Clock>().updated()) {
-                const int64 dt_us = change.now.absolute - change.old.absolute;
-                if (dt_us <= 0) {
-                    continue;
-                }
-                const seconds delta_sec = static_cast<seconds>(dt_us) / 1'000'000.0;
+    void Camera3d::Actions::tick(Writing context, seconds dt) {
+        if (dt <= 0)
+            return;
+        // ids first: drive writes into the same session
+        std::vector<Id> cameras;
+        for (const auto entry : context->aspect<Camera3d>().items())
+            cameras.push_back(entry.id);
+        for (const auto camera : cameras)
+            drive(context, camera, dt);
+    }
 
-                for (const auto [id, _] : context.proposal.aspect<Camera3d>().items())
-                    drive(context, id, delta_sec);
-            }
-        }
-    };
-
-    auto Camera3d::customAspectReactions() -> const Behavior {
-        return {
-            reaction::aspect_wide<Camera3d, system::Clock>(&Camera3d::Internals::update),
-        };
+    auto doctrine::camera3d() -> Schema {
+        return ask::schema::aspect<Camera3d>();
     }
 
 }

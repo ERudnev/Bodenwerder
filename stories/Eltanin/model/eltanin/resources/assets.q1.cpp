@@ -46,4 +46,8 @@ namespace eltanin::resource {
             });
     }
 
+    auto doctrine::assets() -> Schema {
+        return ask::schema::aspect<Assets>();
+    }
+
 }

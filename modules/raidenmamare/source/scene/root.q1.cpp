@@ -191,4 +191,15 @@ namespace rmmr::scene {
         return node;
     }
 
+    auto doctrine::root() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Root>(),
+            ask::schema::aspect<Node_group>(),
+            ask::schema::aspect<Camera_group>(),
+            ask::schema::aspect<Light_group>(),
+            ask::schema::aspect<Family_group>(),
+            ask::schema::aspect<Flat2d>(),
+        });
+    }
+
 }

@@ -2,17 +2,17 @@
 
 #include <base/types/common_types.h>
 #include <fQSM/identifier.h>
-#include <fQSM/aspect/assembly.interface.h>
 
 namespace fqsm::q1 {
     using namespace base::common_types;
 
+    // Q1 link fields: anchor<T>, custody<T> are ids with lifecycle rules; affects<T> is a typed id only.
     template<typename Meta>
-    using Anchor = ::fqsm::detail::aspect::Base::Anchor<Meta>;
+    using Anchor = typename Meta::Id;
 
     template<typename Meta>
-    using Custody = ::fqsm::detail::aspect::Base::Custody<Meta>;
+    using Custody = typename Meta::Id;
 
     template<typename Meta>
-    using Affected = ::fqsm::detail::aspect::Base::Affected<Meta>;
+    using Affected = ::fqsm::Affected<Meta>;
 }

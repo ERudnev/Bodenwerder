@@ -25,4 +25,9 @@ namespace rmmr::system {
         static const Behavior customAspectReactions();
     };
 
+    // Schema fragment of doctrine/system/imgui.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto imgui() -> Schema;
+    }
+
 }

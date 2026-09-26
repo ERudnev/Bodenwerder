@@ -13,7 +13,7 @@ namespace tommy {
     using namespace rmmr;
 
     Schema SpriteTest::schema() const {
-        return ask::schema::aspect<World>();
+        return doctrine::world();
     }
 
     void SpriteTest::populateWorld(Writing context, system::Window::Id window) {

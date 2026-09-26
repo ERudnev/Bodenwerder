@@ -103,4 +103,9 @@ namespace rmmr::scene::actor {
         static const Behavior customAspectReactions() { return {}; }
     };
 
+    // Schema fragment of doctrine/scene/actors/mesh.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto mesh() -> Schema;
+    }
+
 }

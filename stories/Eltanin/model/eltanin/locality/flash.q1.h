@@ -70,4 +70,9 @@ namespace eltanin::locality {
         static const Behavior customAspectReactions();
     };
 
+    // Schema fragment of doctrine/locality/flash.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto flash() -> Schema;
+    }
+
 }

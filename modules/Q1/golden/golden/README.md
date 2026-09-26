@@ -54,7 +54,7 @@ Each Q1 aspect becomes one C++ `struct` derived from the matching fQSM category:
 
 - `entity X` -> `struct X : Entity<X>`
 - `attribute A of Host` -> `struct A : Attribute<A, Host>`
-- `feature F of Host` -> `struct F : Attribute<F, Host>`
+- `feature F of Host` -> `struct F : Feature<F, Host>`
 - `component C of Host` -> `struct C : Component<C, Host>`
 - `group<E> of Host` -> a dedicated group aspect type, e.g. `GroupName : Group<GroupName, Host, E>`
 - `archetype T` -> `struct T : Archetype<T>`
@@ -69,6 +69,39 @@ See `elementary.q1` / `elementary.q1.h` (`Simple`, `Complex`).
 ### Why
 
 The aspect category already carries core semantics. The header should express that directly instead of rebuilding category meaning through ad hoc helper code.
+
+## Defaults of an Aspect Declaration
+
+The minimal aspect has a `Quantum` only:
+
+```
+struct Light : Feature<Light, Node> {
+    struct Quantum { RGB color; float intensity; };
+};
+```
+
+fQSM supplies a default for each other member:
+
+- No `Actions`: `with<X>` is `BaseActions`, the operations of the category.
+- No `Internals`: the aspect has no internal helpers. `DefaultInternals` stays available for a `.cpp` that declares `struct X::Internals : DefaultInternals`.
+- No `customAspectReactions()`: the aspect has no custom reactions. The structural rules of the category always apply.
+- No `Global`: the global is an empty struct.
+- No `Always::assemble`: the global is default-constructed.
+
+### Rule
+
+The projection emits a member only when the doctrine needs it:
+
+- `Actions : BaseActions` when the aspect declares public operations.
+- `struct Internals;` and `static const Behavior customAspectReactions();` when the aspect declares reactions (explicit `!`, or implied by `anchor<>` / `custody<>`).
+- `Global` when `all` holds data.
+- `Always` when the aspect declares constants, pure helpers or a Global assembler.
+
+Headers that declare the trivial form (`struct Internals : DefaultInternals{};` and `customAspectReactions() { return {}; }`) still compile. New headers do not emit it.
+
+### Why
+
+Empty members are noise. They hide the members that carry meaning, and the runtime can supply them.
 
 ## Block-to-Type Mapping
 
@@ -216,10 +249,7 @@ Therefore:
 
 ### Trivial form
 
-If an aspect is trivial at header level, it may use:
-
-- `struct Internals : DefaultInternals{};`
-- `static const Behavior customAspectReactions() { return {}; }`
+If an aspect is trivial at header level, the header does not declare `Internals` or `customAspectReactions()`. The defaults apply (see Defaults of an Aspect Declaration).
 
 ### Why
 
@@ -242,7 +272,7 @@ When reading an aspect header in this folder, use this mental model:
 
 1. `Quantum`, `Global`, and `Always` come from Q1 data blocks.
 2. `Actions` contains only the public callable API.
-3. `Internals` plus `customAspectReactions()` mean that Q1 declared or implied nontrivial behavior.
+3. `Internals` plus `customAspectReactions()` mean that Q1 declared or implied nontrivial behavior. Their absence means the defaults apply.
 4. `Internals` in `.cpp` may also hold private helpers when projection needs them — even if (3) does not apply.
 5. Missing data in Q1 must not quietly reappear in C++.
 

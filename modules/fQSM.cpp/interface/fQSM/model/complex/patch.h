@@ -1,63 +1,62 @@
 #pragma once
 
+#include <cstddef>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <fQSM/erased/patch_line.h>
 #include <fQSM/meta/interface.include.h>
 #include <fQSM/model/_forwards.h>
-#include <fQSM/model/linear/patch.h>
-#include <fQSM/model/intertype/composite.h>
+#include <fQSM/model/intertype/schema.h>
 
 namespace fqsm::model::complex {
 
+    // Changes for a complex state: one patch line per slot, created on first write.
     struct Patch {
-        Patch(Schema schema) : summary(), schema(schema), lines(composition(schema)) {}
+        using Slot = intertype::Graph::Slot;
+
+        explicit Patch(Schema schema, std::shared_ptr<LinePool> pool = nullptr);
+        // A patch against over: same schema, lines drawn from the pool of over.
+        explicit Patch(const State& over);
+        Patch(const Patch& other);
+        ~Patch();
+        Patch& operator=(const Patch&) = delete;
 
         struct Summary {
             using Category = std::vector<std::string>;
             Category critical;
             Category warning;
+            int waves = 0;   // normalization waves the transaction took (0 before normalization)
 
             bool good() const { return critical.empty(); }
         };
 
-        template<category::Any Meta>
-        linear::Patch<Meta>& aspect();
-
-        template<category::Any Meta>
-        const linear::Patch<Meta>& aspect() const;
+        // nullptr when the slot was never written
+        const erased::PatchLine* line(Slot slot) const { return lines[slot].get(); }
+        erased::PatchLine& writable(Slot slot);
 
         bool has_changes() const;
         void absorb(const Patch&);
+        // Moves the patchlets of other into this patch (values moved, not copied); other's lines are left empty.
+        // The summaries are not merged.
+        void absorb_move(Patch& other);
+        // Exchanges the lines with a patch over the same schema and pool; the summaries stay.
+        void swap_lines(Patch& other);
         void clear();
 
-        // schema
-        template<category::Any Meta>
-        static void absorb(Patch& target, const Patch& source) {
-            target.aspect<Meta>().absorb(source.aspect<Meta>());
-        }
-
-        template<category::Any Meta>
-        static void clear(Patch& patch) {
-            patch.aspect<Meta>().clear();
-        }
+        // patch lines materialized by this patch, and how many of them were freshly allocated (not pooled)
+        std::size_t linesCreated() const { return created; }
+        std::size_t linesAllocated() const { return allocated; }
 
         // public.. still. sonsider to make write-only for workers
         Summary summary;
         const Schema schema;
-        const intertype::Composite<linear::patch::Erased> lines;
 
     private:
-        static intertype::Composite<linear::patch::Erased> composition(Schema);
+        std::shared_ptr<LinePool> pool;
+        std::vector<std::unique_ptr<erased::PatchLine>> lines;
+        std::size_t created = 0;
+        std::size_t allocated = 0;
     };
-}
-
-namespace fqsm::model::complex {
-
-    template<category::Any Meta>
-    linear::Patch<Meta>& Patch::aspect() {
-        return static_cast<linear::Patch<Meta>&>(*lines.container.at(TypeId<Meta>).get());
-    };
-
-    template<category::Any Meta>
-    const linear::Patch<Meta>& Patch::aspect() const {
-        return static_cast<const linear::Patch<Meta>&>(*lines.container.at(TypeId<Meta>).get());
-    }
 }

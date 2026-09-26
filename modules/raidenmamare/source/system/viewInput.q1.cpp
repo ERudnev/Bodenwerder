@@ -42,4 +42,8 @@ namespace rmmr::system {
         }
     }
 
+    auto doctrine::viewInput() -> Schema {
+        return ask::schema::aspect<ViewInput>();
+    }
+
 }

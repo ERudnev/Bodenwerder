@@ -132,4 +132,9 @@ namespace rmmr::resource {
         return {};
     }
 
+    // Schema fragment of doctrine/resources/runtimes.q1: every aspect declared in this file.
+    namespace doctrine {
+        auto runtimes() -> Schema;
+    }
+
 }

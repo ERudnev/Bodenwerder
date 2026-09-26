@@ -12,25 +12,9 @@
 namespace fqsm::aspect {
 
     namespace detail::retrospection {
-
-        template<auto Member, auto... Rest>
-        decltype(auto) project_member(auto& root) {
-            if constexpr (sizeof...(Rest) == 0) {
-                return root.*Member;
-            } else {
-                return project_member<Rest...>(root.*Member);
-            }
-        }
-
+        // root.*m1.*m2...; no members: root itself
         template<auto... Members>
-        decltype(auto) project(auto& root) {
-            if constexpr (sizeof...(Members) == 0) {
-                return root;
-            } else {
-                return project_member<Members...>(root);
-            }
-        }
-
+        decltype(auto) project(auto& root) { return (root .* ... .* Members); }
     }
 
     template<auto... Members>
@@ -39,13 +23,9 @@ namespace fqsm::aspect {
 
         std::string_view name{};
 
+        // Root may be const: the projection keeps it
         template<typename Root>
         decltype(auto) get(Root& root) const {
-            return detail::retrospection::project<Members...>(root);
-        }
-
-        template<typename Root>
-        decltype(auto) get(const Root& root) const {
             return detail::retrospection::project<Members...>(root);
         }
     };
@@ -58,13 +38,9 @@ namespace fqsm::aspect {
         // Column base name for map keys (umap / pair<Key, Mapped> elements). Ignored for sequences.
         std::string_view key_name = "key";
 
+        // Root may be const: the projection keeps it
         template<typename Root>
         decltype(auto) get(Root& root) const {
-            return detail::retrospection::project<Members...>(root);
-        }
-
-        template<typename Root>
-        decltype(auto) get(const Root& root) const {
             return detail::retrospection::project<Members...>(root);
         }
     };

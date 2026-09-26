@@ -412,4 +412,8 @@ namespace eltanin::locality {
         };
     }
 
+    auto doctrine::scrap() -> Schema {
+        return ask::schema::aspect<Scrap>();
+    }
+
 }

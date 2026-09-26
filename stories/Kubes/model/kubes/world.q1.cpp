@@ -73,4 +73,8 @@ namespace kubes {
         };
     }
 
+    auto doctrine::world() -> Schema {
+        return ask::schema::aspect<World>();
+    }
+
 }

@@ -56,4 +56,11 @@ namespace rmmr::resource::overlay {
         return with<OverlayRuntime_group>::addElement(context, device, std::move(quantum));
     }
 
+    auto doctrine::overlays() -> Schema {
+        return ask::schema::merge({
+            ask::schema::aspect<Runtime>(),
+            ask::schema::aspect<Asset>(),
+        });
+    }
+
 }
