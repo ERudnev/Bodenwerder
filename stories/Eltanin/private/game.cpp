@@ -18,6 +18,9 @@
 #include <eltanin/resources/assets.q1.h>
 #include <eltanin/resources/geometry.q1.h>
 #include <eltanin/world.q1.h>
+#include <eltanin/fundamental/existent.q1.h>
+#include <eltanin/fundamental/system.q1.h>
+#include <eltanin/fundamental/celestial.q1.h>
 #include "geo/celestial/sun.h"
 #include "geo/celestial/horizon.h"
 #include <rmmr/api/_interface.h>
@@ -124,6 +127,9 @@ namespace eltanin {
     Schema Game::schema() const {
         return ask::schema::merge({
             doctrine::world(),
+            fundamental::doctrine::existent(),
+            fundamental::doctrine::system(),
+            fundamental::doctrine::celestial(),
             phys::doctrine::body(),
             phys::rigid::doctrine::rigid(),
             phys::doctrine::resting(),
@@ -172,9 +178,8 @@ namespace eltanin {
         {
             auto world = with<World>::modify_global(context);
             world->window = window;
-            world->paused = true;
+            world->paused = false;
         }
-        with<locality::Thing>::modify_global(context)->timeScale = 1.0f;
 
         const auto framebuffer = with<system::Window>::framebufferSize(context, window);
         const auto viewport = with<system::Viewport_group>::addElement(context, window, system::Viewport::Quantum{
@@ -272,7 +277,7 @@ namespace eltanin {
         {
             auto world = with<World>::modify_global(context);
             world->window = window;
-            world->paused = true;
+            world->paused = false;
         }
         starMap.open(context, window);
         if (starMap.view)
@@ -300,7 +305,9 @@ namespace eltanin {
         Stewarding frame = world;
         with<World>::pollPauseKey(frame);
         const seconds wallDt = static_cast<seconds>(dt_us) / 1'000'000.0;
-        const seconds simDt = with<World>::get_global(frame).paused ? seconds{0} : wallDt * static_cast<seconds>(with<locality::Thing>::get_global(frame).timeScale);
+        const seconds before = with<fundamental::Existent>::get_global(frame).now;
+        with<fundamental::Existent>::update(frame, wallDt);
+        const seconds simDt = with<fundamental::Existent>::get_global(frame).now - before;
         if (physics)
             physics->step(frame, simDt);
         advanceSim(frame, simDt);

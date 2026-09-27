@@ -1,7 +1,7 @@
-import "totality/space"
+import "fundamental/space"
 
 namespace eltanin
-  namespace totality
+  namespace fundamental
 
     // pose.position is the barycenter. +Y of pose.orientation is the ecliptic normal.
     entity System

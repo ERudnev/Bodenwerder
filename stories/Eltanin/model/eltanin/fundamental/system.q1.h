@@ -1,20 +1,24 @@
 #pragma once
 
-#include <eltanin/totality/system.q1.h>
+#include <eltanin/fundamental/space.q1.h>
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::totality {
+namespace eltanin::fundamental {
 
     using namespace fqsm::api;
 
-    struct Celestial : Entity<Celestial> {
+    struct System : Entity<System> {
         struct Quantum {
-            System::Id anchor;
+            space::Pose pose;
         };
         struct Actions : BaseActions {};
         struct Internals : DefaultInternals {};
         static const Behavior customAspectReactions() { return {}; }
     };
+
+    namespace doctrine {
+        auto system() -> Schema;
+    }
 
 }

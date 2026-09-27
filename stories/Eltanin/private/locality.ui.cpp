@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <eltanin/mech/blueprint.q1.h>
 #include <eltanin/locality/thing.q1.h>
+#include <eltanin/fundamental/existent.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/manager.q1.h>
@@ -137,10 +138,12 @@ namespace eltanin {
     } // namespace
 
     void Game::contributeLocalityMenu(Writing world) {
-        bool paused = with<World>::get_global(world).paused;
+        bool paused = with<fundamental::Existent>::get_global(world).warp == 0;
         rmmr::wrapper::ui::viewToggle("Pause", &paused);
-        if (paused != with<World>::get_global(world).paused)
+        if (paused != (with<fundamental::Existent>::get_global(world).warp == 0)) {
+            with<fundamental::Existent>::modify_global(world)->warp = paused ? integer{0} : integer{1};
             with<World>::modify_global(world)->paused = paused;
+        }
         togglePanel("Inspector", ui.inspector);
         togglePanel("Space", ui.space);
         togglePanel("Lighting", ui.lighting);

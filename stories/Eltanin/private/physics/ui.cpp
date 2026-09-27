@@ -1,7 +1,6 @@
 #include "physics/ui.h"
 #include "geo/celestial/planet.h"
 
-#include <eltanin/locality/thing.q1.h>
 #include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/flash.q1.h>
 #include <eltanin/locality/bullet.q1.h>
@@ -333,34 +332,6 @@ namespace eltanin::phys {
             ImGui::SetNextWindowSize(ImVec2{420.0f, 0.0f}, ImGuiCond_FirstUseEver);
 
             if (ImGui::Begin("Physics", &open)) {
-                ImGui::TextUnformatted("Time scale");
-                constexpr float scales[] = {
-                    1.0f / 16.0f, 1.0f / 8.0f, 1.0f / 4.0f, 1.0f / 2.0f,
-                    1.0f,
-                    2.0f, 4.0f, 8.0f, 16.0f,
-                };
-                constexpr const char* labels[] = {
-                    "1/16", "1/8", "1/4", "1/2",
-                    "1",
-                    "x2", "x4", "x8", "x16",
-                };
-                auto thing = with<locality::Thing>::modify_global(context);
-                int selected = 4;
-                for (int i = 0; i < 9; ++i) {
-                    if (thing->timeScale == scales[i]) {
-                        selected = i;
-                    }
-                }
-                for (int i = 0; i < 9; ++i) {
-                    if (i > 0) {
-                        ImGui::SameLine();
-                    }
-                    if (ImGui::RadioButton(labels[i], selected == i)) {
-                        thing->timeScale = scales[i];
-                    }
-                }
-
-                ImGui::Separator();
                 ImGui::TextUnformatted("Debris");
                 {
                     const char* cohortLabels[] = {"Individual", "Families", "Unified"};

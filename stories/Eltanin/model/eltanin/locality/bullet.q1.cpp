@@ -1,5 +1,6 @@
 #include <eltanin/locality/bullet.q1.h>
 
+#include <eltanin/fundamental/existent.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include "physics/settings.h"
 #include <rmmr/resources/manager.q1.h>
@@ -89,14 +90,14 @@ namespace eltanin::locality {
         with<phys::rigid::Ray>::extend(context, body, phys::rigid::Ray::Quantum{
             .core = phys::Particle{phys::Matter{.position = dvec3{pose.position}, .mass = shellMass, .temperature = shellHeat, .cohesion = 1.0f}, dvec3{pose.position} - dvec3{velocity * float(phys::Settings::fixedStep)}, dvec3{0.0, 0.0, 0.0}},
         });
-        const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<Thing>::get_global(context).now});
+        const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<::eltanin::fundamental::Existent>::get_global(context).now});
         with<Bullet>::extend(context, thing, Bullet::Quantum{.actor = replica, .body = body, .speed = speed});
         return thing;
     }
 
     void Bullet::Actions::update(Writing context) {
         constexpr seconds lifetime = 5.0;
-        const seconds now = with<Thing>::get_global(context).now;
+        const seconds now = with<::eltanin::fundamental::Existent>::get_global(context).now;
         vector<Id> expired;
         for (auto [id, _] : context->aspect<Bullet>().items()) {
             if (not with<Thing>::exists(context, id))

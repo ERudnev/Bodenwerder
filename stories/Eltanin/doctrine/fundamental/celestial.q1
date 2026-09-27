@@ -1,7 +1,7 @@
-import "totality/system"
+import "fundamental/system"
 
 namespace eltanin
-  namespace totality
+  namespace fundamental
 
     // Stars, planets, stones and rings are features of this body. anchor is its system.
     // Passport and orbit stay on the planet feature.

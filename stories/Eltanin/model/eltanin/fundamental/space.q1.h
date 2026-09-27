@@ -4,7 +4,7 @@
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::totality::space {
+namespace eltanin::fundamental::space {
 
     using namespace fqsm::api;
 

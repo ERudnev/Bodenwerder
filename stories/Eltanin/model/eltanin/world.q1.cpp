@@ -1,4 +1,5 @@
 #include <eltanin/world.q1.h>
+#include <eltanin/fundamental/existent.q1.h>
 
 #include "geo/celestial/sun.h"
 #include <rmmr/scene/node.q1.h>
@@ -68,8 +69,10 @@ namespace eltanin {
         const bool is_down = key_down(window.current.keys, k_pause_key);
         if (was_down or not is_down)
             return;
+        auto existent = with<fundamental::Existent>::modify_global(context);
+        existent->warp = existent->warp == 0 ? integer{1} : integer{0};
         auto world = with<World>::modify_global(context);
-        world->paused = not world->paused;
+        world->paused = existent->warp == 0;
     }
 
     auto doctrine::world() -> Schema {

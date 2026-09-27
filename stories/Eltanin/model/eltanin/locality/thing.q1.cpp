@@ -15,13 +15,12 @@ namespace eltanin::locality {
     auto Thing::Always::assemble(SettingUp& setup) -> Thing::Global {
         auto world = setup.writing();
         const auto root = with<rmmr::scene::Interface>::createScene(world);
-        return Global{.now = seconds{}, .timeScale = 1.0f, .scene = root};
+        return Global{.scene = root};
     }
 
     void Thing::Actions::update(Writing context, seconds dt) {
         if (dt <= 0)
             return;
-        with<Thing>::modify_global(context)->now += dt;
         with<Flash>::update(context);
         with<Bullet>::update(context);
         with<Construct>::update(context);

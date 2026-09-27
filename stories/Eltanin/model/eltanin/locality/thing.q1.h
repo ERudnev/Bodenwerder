@@ -13,8 +13,6 @@ namespace eltanin::locality {
             seconds bornAt;
         };
         struct Global {
-            seconds now;
-            float timeScale;
             rmmr::scene::Root::Id scene;
         };
         struct Always {

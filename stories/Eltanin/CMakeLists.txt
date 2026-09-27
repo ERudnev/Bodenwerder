@@ -28,9 +28,10 @@ set(Eltanin_Q1
     geo/volatiles.q1
     geo/rock.q1
     geo/boulder.q1
-    totality/space.q1
-    totality/system.q1
-    totality/celestial.q1
+    fundamental/space.q1
+    fundamental/system.q1
+    fundamental/celestial.q1
+    fundamental/existent.q1
 )
 
 add_executable(${PROJECT_NAME})

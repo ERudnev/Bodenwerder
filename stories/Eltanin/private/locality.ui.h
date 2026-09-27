@@ -14,6 +14,9 @@ namespace eltanin {
 
     // Panel open ≡ maybe has_value(); nested fields = that window's UI state.
     struct Ui {
+        struct Menu {};
+        base::maybe<Menu> menu;
+
         struct Inspector {};
         base::maybe<Inspector> inspector;
 

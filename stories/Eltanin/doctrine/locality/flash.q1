@@ -43,7 +43,7 @@ namespace eltanin
         plasma: custody<rmmr::scene::actor::Mesh>
         field: custody<rmmr::scene::actor::Mesh>
         linear: vec3 // drift; actors stay identity orientation
-        elapsed: seconds // wave clock; physics ticks, not Thing.now
+        elapsed: seconds // wave clock; physics ticks, not Existent.now
       all
         resources: Resources?
         >bindResources()
