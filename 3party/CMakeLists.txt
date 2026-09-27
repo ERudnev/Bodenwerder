@@ -12,6 +12,13 @@ set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 set(ASSIMP_WARNINGS_AS_ERRORS OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
+# Only the formats the assets use are compiled in: LightWave (.lwo) for the
+# meshpacks and Wavefront (.obj) for the primitives. Nothing is exported.
+# A new mesh format needs its ASSIMP_BUILD_<NAME>_IMPORTER switched on here.
+set(ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_LWO_IMPORTER ON CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_OBJ_IMPORTER ON CACHE BOOL "" FORCE)
+set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)
 add_subdirectory(assimp)
 
 # Standalone Boost.PFR (vendored as submodule in 3party/pfr).
