@@ -8,6 +8,7 @@
 #include <GL/glew.h>
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
+#include <glm/ext/matrix_clip_space.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <base/logging.h>
 #include <base/maybe.h>
@@ -202,19 +203,21 @@ namespace rmmr {
             viewHi += vec3{pad, pad, pad};
             const float nearDist = glm::max(0.05f, -viewHi.z);
             const float farDist = glm::max(nearDist + 0.1f, -viewLo.z);
-            return glm::ortho(viewLo.x, viewHi.x, viewLo.y, viewHi.y, nearDist, farDist) * view;
+            return glm::orthoRH_ZO(viewLo.x, viewHi.x, viewLo.y, viewHi.y, farDist, nearDist) * view;
         }
 
         auto light_space_matrix(Reading context, scene::Light::Id light_node, scene::Root::Id root) -> mat4 {
             const auto& light = with<scene::Light>::get(context, light_node);
             if (light.kind == scene::Light::Kind::directional) {
                 const vec3 toLight = directional_to_light(scene::Node::Actions::transform(context, light_node));
-                return worldCubeOrtho(toLight, shadowCubeHalf(context, root));
+                const auto& studio = with<scene::Root>::get(context, root);
+                const float half = studio.shadowHalf ? glm::clamp(*studio.shadowHalf, 4.0f, 1000.0f) : shadowCubeHalf(context, root);
+                return worldCubeOrtho(toLight, half);
             }
             const mat4 light_transform = scene::Node::Actions::transform(context, light_node);
             const glm::vec3 light_position{light_transform[3]};
             const mat4 light_view = glm::lookAt(light_position, glm::vec3{0.0f, 0.0f, 0.0f}, glm::vec3{0.0f, 1.0f, 0.0f});
-            const mat4 light_projection = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, 0.1f, 50.0f);
+            const mat4 light_projection = glm::orthoRH_ZO(-15.0f, 15.0f, -15.0f, 15.0f, 50.0f, 0.1f);
             return light_projection * light_view;
         }
 
@@ -253,7 +256,7 @@ namespace rmmr {
             using renderer::DepthCompare;
             using renderer::ToggleMode;
             if (pass == renderer::Pass::shadow)
-                return renderer::RenderState{.blend = BlendMode::replace, .depthTest = ToggleMode::enabled, .depthWrite = ToggleMode::enabled, .depthCompare = DepthCompare::less};
+                return renderer::RenderState{.blend = BlendMode::replace, .depthTest = ToggleMode::enabled, .depthWrite = ToggleMode::enabled, .depthCompare = DepthCompare::greater};
             if (pass == renderer::Pass::environment)
                 return renderer::RenderState{.blend = BlendMode::replace, .depthTest = ToggleMode::enabled, .depthWrite = ToggleMode::disabled, .depthCompare = DepthCompare::greater};
             if (pass == renderer::Pass::transparent || pass == renderer::Pass::sprite || pass == renderer::Pass::gizmo)
@@ -325,7 +328,7 @@ namespace rmmr {
             if (state.depthClamp) glEnable(GL_DEPTH_CLAMP); else glDisable(GL_DEPTH_CLAMP);
             if (state.polygonOffset) {
                 glEnable(GL_POLYGON_OFFSET_FILL);
-                glPolygonOffset(2.0f, 8.0f);
+                glPolygonOffset(-2.0f, -8.0f);
             } else {
                 glDisable(GL_POLYGON_OFFSET_FILL);
             }
@@ -355,14 +358,12 @@ namespace rmmr {
             if (pass != renderer::Pass::shadow)
                 return;
             resource::shadow::Runtime::Actions::bind(args.world, shadow->runtime);
-            glClearDepth(1.0);
             resource::shadow::Runtime::Actions::clear(args.world, shadow->runtime);
         }
 
         void leavePassTarget(renderer::Pass pass, Renderer::FrameContext args, base::maybe<ShadowCaster> shadow) {
             if (pass != renderer::Pass::shadow)
                 return;
-            glClearDepth(0.0);
             resource::shadow::Runtime::Actions::unbind(args.world, shadow->runtime);
             system::Viewport::Actions::activate(args.world, args.view.viewport);
         }

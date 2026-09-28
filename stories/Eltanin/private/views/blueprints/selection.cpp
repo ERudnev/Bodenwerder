@@ -781,7 +781,7 @@ namespace eltanin::views::blueprints::selection {
         ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y}, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2{360.0f, 220.0f}, ImGuiCond_FirstUseEver);
         bool erased = false;
-        if (ImGui::Begin("Selection", &shown)) {
+        if (ImGui::Begin("Selection", &shown, ImGuiWindowFlags_NoCollapse)) {
             if (store.aliases.empty()) {
                 if (ImGui::Button("select all") and (not quarks.empty() or not mounts.empty()))
                     selectAll(context, store, quarks, mounts);
@@ -887,7 +887,7 @@ namespace eltanin::views::blueprints::selection {
         ImGui::SetNextWindowPos(ImVec2{blueprintsPos.x + blueprintsSize.x + 8.0f, blueprintsPos.y + 228.0f}, ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2{360.0f, 140.0f}, ImGuiCond_FirstUseEver);
         bool pasted = false;
-        if (ImGui::Begin("Clipboard", &shown)) {
+        if (ImGui::Begin("Clipboard", &shown, ImGuiWindowFlags_NoCollapse)) {
             std::size_t knots = 0;
             std::size_t halfChords = 0;
             std::size_t walls = 0;

@@ -26,6 +26,7 @@ namespace rmmr
         atmosphereKerman: float // m; altitude where ρ = 1% of sea; 0 = no air
         atmosphereTemperature: float // K; default CMB
         shutter: float // seconds; smear metres = speed × shutter
+        shadowHalf: float? // metres; empty = fit casters
         primaryLight: #Light?
 
     group<Node> of Root

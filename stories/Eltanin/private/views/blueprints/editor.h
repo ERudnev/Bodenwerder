@@ -14,6 +14,7 @@
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/system/viewInput.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
+#include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/wrapper/product.h>
 
@@ -53,6 +54,8 @@ namespace eltanin::views {
                 base::maybe<rmmr::scene::actor::Mesh::Id> axisY;
                 base::maybe<rmmr::scene::actor::Mesh::Id> axisZ;
                 base::maybe<rmmr::scene::actor::Mesh::Id> worldCursor;
+                base::maybe<rmmr::scene::actor::Mesh::Id> sky;
+                base::maybe<rmmr::scene::Light::Id> sun;
                 std::vector<blueprints::geometry::QuarkActor> quarkActors;
                 std::vector<blueprints::geometry::QuarkActor> clipboardActors;
                 std::vector<blueprints::geometry::MountActor> mountActors;
@@ -64,6 +67,7 @@ namespace eltanin::views {
                 base::maybe<rmmr::scene::Camera::Id> camera;
                 base::maybe<rmmr::system::ViewInput::Id> input;
                 base::maybe<rmmr::scene::Grid::Id> grid;
+                base::maybe<rmmr::scene::Light::Id> sun;
                 std::vector<blueprints::geometry::PaletteMountActor> actors;
             } paletteScene;
 
@@ -73,6 +77,11 @@ namespace eltanin::views {
             base::maybe<::rmmr::resource::material::Asset::Id> ghostMaterial;
             base::maybe<mech::Blueprint::Id> hovered;
             blueprints::geometry::Display display;
+            struct {
+                bool grid;
+                bool axes;
+                bool stars;
+            } overlays;
             // Catalog mount → Layer from attachment coplanarity (immutable for this run).
             std::unordered_map<mech::Mount::Id, mech::Layer> mountLayers;
             // Catalog mount → admissible oris about attachment BBox center (filled with layers).
@@ -111,10 +120,12 @@ namespace eltanin::views {
                 struct Actions {};
                 struct Clipboard {};
                 struct Selection {};
+                struct View {};
                 base::maybe<Catalog> catalog;
                 base::maybe<Actions> actions;
                 base::maybe<Clipboard> clipboard;
                 base::maybe<Selection> selection;
+                base::maybe<View> view;
             } panels;
         };
 
@@ -145,6 +156,7 @@ namespace eltanin::views {
         void persistHovered(Writing);
         void applyHistory(Writing, blueprints::history::UiAction);
         void openPanels();
+        void drawViewPanel(Writing);
         void draw(Writing, bool session, BlueprintCatalog&, MountCatalog&);
         void bindView(std::vector<rmmr::wrapper::Product::View>& views, bool open, const rmmr::wrapper::Product::View& world_view) const;
     };

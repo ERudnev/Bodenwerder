@@ -29,6 +29,7 @@ namespace rmmr::scene {
             .atmosphereKerman = 0.0f,
             .atmosphereTemperature = 2.7f,
             .shutter = 1.0f / 192.0f,
+            .shadowHalf = {},
             .primaryLight = {},
         });
 

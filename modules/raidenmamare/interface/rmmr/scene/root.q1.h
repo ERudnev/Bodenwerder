@@ -30,6 +30,7 @@ namespace rmmr::scene {
             float atmosphereKerman;
             float atmosphereTemperature;
             float shutter;
+            base::maybe<float> shadowHalf;
             base::maybe<Light::Id> primaryLight;
         };
         struct Internals : DefaultInternals{};

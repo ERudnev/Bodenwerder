@@ -57,22 +57,22 @@ const float wrapAmount = 0.42;
 
 float sampleShadow(vec2 uv, float currentDepth) {
     float closest = texture(u_shadowMap, uv).r;
-    return currentDepth > closest ? 0.0 : 1.0;
+    return currentDepth < closest ? 0.0 : 1.0;
 }
 
 float fetchShadow(vec3 worldPos, vec3 N, vec3 L) {
     float slope = 1.0 - max(dot(N, L), 0.0);
     vec4 lightSpace = passLightSpace * vec4(worldPos + N * (0.4 + 1.2 * slope), 1.0);
     vec3 proj = lightSpace.xyz / lightSpace.w;
-    proj = proj * 0.5 + 0.5;
-    if (proj.z > 1.0 || proj.x < 0.0 || proj.x > 1.0 || proj.y < 0.0 || proj.y > 1.0)
+    vec2 uv = proj.xy * 0.5 + 0.5;
+    if (proj.z < 0.0 || proj.z > 1.0 || uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0)
         return 1.0;
-    float currentDepth = proj.z - (shadowBias + 0.012 * slope);
+    float currentDepth = proj.z + (shadowBias + 0.012 * slope);
     vec2 texel = 1.0 / vec2(textureSize(u_shadowMap, 0));
     float shadow = 0.0;
     for (int x = -1; x <= 1; ++x) {
         for (int y = -1; y <= 1; ++y)
-            shadow += sampleShadow(proj.xy + vec2(float(x), float(y)) * texel, currentDepth);
+            shadow += sampleShadow(uv + vec2(float(x), float(y)) * texel, currentDepth);
     }
     return shadow / 9.0;
 }

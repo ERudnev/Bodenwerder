@@ -10,8 +10,11 @@
 #include "mech/semantics/subframe.h"
 #include "views/blueprints/membraneSlots.h"
 #include "views/blueprints/mountPlacement.h"
+#include "geo/celestial/horizon.h"
+#include "geo/celestial/sun.h"
 
 #include <eltanin/resources/assets.q1.h>
+#include <eltanin/resources/geometry.q1.h>
 #include <eltanin/mech/blueprint.q1.h>
 #include <eltanin/world.q1.h>
 #include <fQSM/identifier.h>
@@ -19,6 +22,7 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/meshpack.q1.h>
+#include <rmmr/resources/texpack.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/light.q1.h>
@@ -35,6 +39,7 @@
 #include <numbers>
 #include <vector>
 
+#include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
 
@@ -61,6 +66,52 @@ namespace eltanin::views {
         constexpr RGB axisXColor{1.0f, 0.12f, 0.12f};
         constexpr RGB axisYColor{0.12f, 1.0f, 0.18f};
         constexpr RGB axisZColor{0.12f, 0.12f, 1.0f};
+
+        auto placeStudioSun(Writing context, scene::Root::Id root) -> scene::Light::Id {
+            const auto look = geo::Sun::sol();
+            return with<scene::Interface>::createLight(context, root, Pose::from(Pos{0.0f, 0.0f, 0.0f}, look.heading), item<scene::Light>{.kind = scene::Light::Kind::directional, .color = look.color, .intensity = look.brightness, .range = 0.0f});
+        }
+
+        void writeStudioSun(Writing context, scene::Light::Id sun, HPB heading, RGB color, float intensity) {
+            with<scene::Node>::modify(context, sun)->pose = Pose::from(Pos{0.0f, 0.0f, 0.0f}, heading);
+            auto light = with<scene::Light>::modify(context, sun);
+            light->kind = scene::Light::Kind::directional;
+            light->color = color;
+            light->intensity = intensity;
+            light->range = 0.0f;
+        }
+
+        auto constructionShadowHalf(const base::maybe<blueprints::mountBounds::CellBox>& box) -> float {
+            constexpr float cell = mech::space::local::edge2meters;
+            constexpr float emptyHalf = 12.0f;
+            constexpr float pad = cell * 2.0f;
+            if (not box)
+                return emptyHalf;
+            const auto axis = [&](int lo, int hi) {
+                return glm::max(std::abs(static_cast<float>(lo)) * cell, std::abs(static_cast<float>(hi + 1)) * cell);
+            };
+            return glm::max(emptyHalf, glm::max(axis(box->min.x, box->max.x), glm::max(axis(box->min.y, box->max.y), axis(box->min.z, box->max.z))) + pad);
+        }
+
+        auto meshReach(Reading context, scene::actor::Mesh::Id id) -> float {
+            if (not with<scene::Node>::exists(context, id))
+                return 0.0f;
+            const vec3 p = glm::abs(with<scene::Node>::get(context, id).pose.position);
+            float radius = 8.0f;
+            if (with<scene::actor::MeshState>::exists(context, id)) {
+                const vec3 scale = glm::abs(with<scene::actor::MeshState>::get(context, id).scale);
+                radius = glm::max(radius, 0.5f * glm::max(scale.x, glm::max(scale.y, scale.z)));
+            }
+            return glm::max(p.x, glm::max(p.y, p.z)) + radius;
+        }
+
+        void writeShadowHalf(Writing context, scene::Root::Id root, float half) {
+            with<scene::Root>::modify(context, root)->shadowHalf = half;
+        }
+
+        void tetherStars(Writing context, scene::actor::Mesh::Id sky, scene::Camera::Id camera) {
+            with<scene::Node>::modify(context, sky)->pose.position = with<scene::Node>::get(context, camera).pose.position;
+        }
 
         void applyOrbitPose(Writing context, scene::Camera::Id camera) {
             if (not with<controller::CameraOrbit>::exists(context, camera))
@@ -334,6 +385,9 @@ namespace eltanin::views {
             return (void)context.refuse("eltanin::views::Blueprints::create: kube / sphere / lit-transparent material missing");
         if (not assets.gizmo)
             return (void)context.refuse("eltanin::views::Blueprints::create: blueprintsGizmo missing");
+        const auto skyGeometry = with<Assets>::find<geometry::Asset>(context, Unit::Name::from("Eltanin", "skySphere"));
+        const auto skyMaterial = with<Assets>::find<rmmr::resource::material::Asset>(context, Unit::Name::from("Eltanin", "skySphere"));
+        const auto sprites = with<Assets>::find<texpack::Pack>(context, Unit::Name::from("Eltanin", "sprites"));
 
         const auto device = with<World>::get_global(context).window;
         if (not device)
@@ -377,7 +431,19 @@ namespace eltanin::views {
         with<controller::CameraOrbit>::create(context, camera, mail, pivot, glm::length(camera_pos - pivot));
         applyOrbitPose(context, camera);
 
-        with<scene::Interface>::createLight(context, root, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.kind = scene::Light::Kind::point, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 120.0f});
+        if (skyGeometry and skyMaterial and sprites and with<::eltanin::resource::SkySphereGenerator>::materialize(context, *skyGeometry, *device)) {
+            const auto skyScale = geo::Horizon::stars / geo::Horizon::skyMesh;
+            const auto skyResolved = meshpack::Asset::Resolved{
+                .geometry = *skyGeometry,
+                .entry = geometry::EntryId{0},
+                .surfaces = {{geometry::SurfaceId{0}, rmmr::resource::material::Instance{.material = *skyMaterial, .textures = {{"albedoMap", "skySphere.png"}}}}},
+                .texpack = *sprites,
+            };
+            if (auto skyMesh = with<scene::actor::Mesh>::compose(context, skyResolved))
+                state.mainScene.sky = with<scene::Interface>::createMeshActor(context, root, Pose::from(with<scene::Node>::get(context, camera).pose.position, HPB{0.0f, 0.0f, 0.0f}), std::move(*skyMesh), with<scene::actor::MeshState>::defaults(RGB{1.0f, 1.0f, 1.0f}, 1.0f, vec3{skyScale, skyScale, skyScale}));
+        }
+
+        state.mainScene.sun = placeStudioSun(context, root);
 
         state.mainScene.root = root;
         state.mainScene.camera = camera;
@@ -390,6 +456,7 @@ namespace eltanin::views {
         state.mainScene.mountActors = {};
         state.mainScene.clipboardMountActors = {};
         state.display = {.skeleton = true, .membranes = true, .internals = true, .externals = true, .floorMode = blueprints::geometry::Display::FloorMode::all};
+        state.overlays = {.grid = true, .axes = true, .stars = true};
         state.mountLayers = {};
         state.mountSpins = {};
         state.mountFits = {};
@@ -402,7 +469,7 @@ namespace eltanin::views {
         blueprints::history::clear(state.history);
         state.hovered.reset();
         state.spaceMenu = {.place = false, .close = false, .preview = {}, .previewMount = {}, .previewTransform = {}};
-        state.panels = {.catalog = {}, .actions = {}, .clipboard = {}, .selection = {}};
+        state.panels = {.catalog = {}, .actions = {}, .clipboard = {}, .selection = {}, .view = {}};
 
         const auto paletteRoot = with<scene::Interface>::createScene(context);
         state.paletteScene.grid = with<scene::Interface>::createGrid(context, paletteRoot, *device, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *grid_geometry, .material = *grid_material, .opacity = gridOpacity, .patternScale = patternScale});
@@ -413,7 +480,7 @@ namespace eltanin::views {
         state.paletteScene.input = paletteMail;
         with<controller::CameraOrbit>::create(context, paletteCamera, paletteMail, palettePivot, glm::length(paletteCameraPos - palettePivot));
         applyOrbitPose(context, paletteCamera);
-        with<scene::Interface>::createLight(context, paletteRoot, Pose::from(Pos{9.5f, 19.0f, 7.5f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Light>{.kind = scene::Light::Kind::point, .color = RGB{1.0f, 0.94f, 0.86f}, .intensity = 7.0f, .range = 120.0f});
+        state.paletteScene.sun = placeStudioSun(context, paletteRoot);
         state.paletteScene.root = paletteRoot;
         state.paletteScene.camera = paletteCamera;
         state.paletteScene.actors = {};
@@ -778,6 +845,34 @@ namespace eltanin::views {
             setAxisThickness(context, *state.mainScene.axisY, vec3{0.0f, axisSpan, 0.0f}, thickness);
         if (state.mainScene.axisZ)
             setAxisThickness(context, *state.mainScene.axisZ, vec3{0.0f, 0.0f, axisSpan}, thickness);
+        if (state.mainScene.axisX and with<scene::Node>::exists(context, *state.mainScene.axisX))
+            scene::Node::Actions::setVisible(context, *state.mainScene.axisX, state.overlays.axes);
+        if (state.mainScene.axisY and with<scene::Node>::exists(context, *state.mainScene.axisY))
+            scene::Node::Actions::setVisible(context, *state.mainScene.axisY, state.overlays.axes);
+        if (state.mainScene.axisZ and with<scene::Node>::exists(context, *state.mainScene.axisZ))
+            scene::Node::Actions::setVisible(context, *state.mainScene.axisZ, state.overlays.axes);
+        const bool offZero = state.currentFloor != 0;
+        if (state.mainScene.grid.has_value() and with<scene::Node>::exists(context, *state.mainScene.grid))
+            scene::Node::Actions::setVisible(context, *state.mainScene.grid, state.overlays.grid);
+        if (state.mainScene.floorGrid.has_value() and with<scene::Node>::exists(context, *state.mainScene.floorGrid))
+            scene::Node::Actions::setVisible(context, *state.mainScene.floorGrid, state.overlays.grid and offZero);
+        if (state.mainScene.sky.has_value() and with<scene::Node>::exists(context, *state.mainScene.sky)) {
+            tetherStars(context, *state.mainScene.sky, *state.mainScene.camera);
+            scene::Node::Actions::setVisible(context, *state.mainScene.sky, state.overlays.stars);
+        }
+        if (state.mainScene.root.has_value() and with<scene::Root>::exists(context, *state.mainScene.root))
+            writeShadowHalf(context, *state.mainScene.root, constructionShadowHalf(state.cellBox));
+        if (state.paletteScene.root.has_value() and with<scene::Root>::exists(context, *state.paletteScene.root)) {
+            float paletteHalf = 16.0f;
+            for (const auto& actor : state.paletteScene.actors) {
+                paletteHalf = glm::max(paletteHalf, meshReach(context, actor.id));
+                for (const auto extra : actor.extras)
+                    paletteHalf = glm::max(paletteHalf, meshReach(context, extra));
+                for (const auto ball : actor.balls)
+                    paletteHalf = glm::max(paletteHalf, meshReach(context, ball));
+            }
+            writeShadowHalf(context, *state.paletteScene.root, paletteHalf);
+        }
     }
 
     void Blueprints::syncGridToFloor(Writing context) {
@@ -1161,7 +1256,7 @@ namespace eltanin::views {
         ImVec2 blueprintsPos{};
         ImVec2 blueprintsSize{};
         if (state.panels.catalog) {
-            if (ImGui::Begin("Blueprints", &shown)) {
+            if (ImGui::Begin("Blueprints", &shown, ImGuiWindowFlags_NoCollapse)) {
             blueprintsPos = ImGui::GetWindowPos();
             blueprintsSize = ImGui::GetWindowSize();
             if (ImGui::Checkbox("Mount palette", &state.paletteMode)) {
@@ -1340,6 +1435,9 @@ namespace eltanin::views {
             state.panels.catalog.reset();
         }
 
+        if (state.panels.view)
+            drawViewPanel(context);
+
         if (not state.paletteMode and not state.membranes.enabled) {
             static const std::vector<blueprints::geometry::QuarkActor> noQuarks;
             const auto& quarksForSelect = state.mounts.enabled ? noQuarks : state.mainScene.quarkActors;
@@ -1376,6 +1474,44 @@ namespace eltanin::views {
         }
         if (not state.paletteMode and not state.mounts.enabled)
             drawMembraneFaceHighlight(context);
+    }
+
+    void Blueprints::drawViewPanel(Writing context) {
+        if (not state.mainScene.sun.has_value() or not with<scene::Light>::exists(context, *state.mainScene.sun) or not with<scene::Node>::exists(context, *state.mainScene.sun))
+            return;
+        bool shown = true;
+        if (ImGui::Begin("View", &shown, ImGuiWindowFlags_NoCollapse)) {
+            auto node = with<scene::Node>::modify(context, *state.mainScene.sun);
+            auto light = with<scene::Light>::modify(context, *state.mainScene.sun);
+            HPB heading = node->pose.hpb();
+            RGB color = light->color;
+            float intensity = light->intensity;
+            bool changed = ImGui::DragFloat3("Heading HPB", &heading.x, 0.5f, 0.0f, 0.0f, "%.1f");
+            changed = ImGui::ColorEdit3("Color", &color.x) or changed;
+            changed = ImGui::DragFloat("Intensity", &intensity, 0.05f, 0.0f, 100.0f, "%.2f") or changed;
+            if (changed)
+                writeStudioSun(context, *state.mainScene.sun, heading, color, intensity);
+            if (state.mainScene.root.has_value() and with<scene::Root>::exists(context, *state.mainScene.root)) {
+                auto root = with<scene::Root>::modify(context, *state.mainScene.root);
+                ImGui::Separator();
+                ImGui::ColorEdit3("Ambient", &root->ambient.x);
+                ImGui::DragFloat("Ambient intensity", &root->ambient_intensity, 0.05f, 0.0f, 20.0f, "%.2f");
+                if (state.paletteScene.root.has_value() and with<scene::Root>::exists(context, *state.paletteScene.root)) {
+                    auto palette = with<scene::Root>::modify(context, *state.paletteScene.root);
+                    palette->ambient = root->ambient;
+                    palette->ambient_intensity = root->ambient_intensity;
+                }
+            }
+            if (state.paletteScene.sun.has_value() and with<scene::Light>::exists(context, *state.paletteScene.sun) and with<scene::Node>::exists(context, *state.paletteScene.sun))
+                writeStudioSun(context, *state.paletteScene.sun, heading, color, intensity);
+            ImGui::Separator();
+            ImGui::Checkbox("Grid", &state.overlays.grid);
+            ImGui::Checkbox("Axes", &state.overlays.axes);
+            ImGui::Checkbox("Stars", &state.overlays.stars);
+        }
+        ImGui::End();
+        if (not shown)
+            state.panels.view.reset();
     }
 
     void Blueprints::bindView(std::vector<rmmr::wrapper::Product::View>& product_views, bool open, const rmmr::wrapper::Product::View& world_view) const {

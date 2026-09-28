@@ -28,5 +28,7 @@ void main() {
     vec3 color = vec3(0.45, 0.48, 0.52) * intensity * actorAlbedoOpacity.a;
     float alpha = intensity * actorAlbedoOpacity.a;
     alpha *= mix(1.0, 1.5, clamp(major_factor, 0.0, 1.0));
-    FragColor = vec4(color, alpha);
+    float wash = max(fw.x, fw.y);
+    float fade = mix(0.12, 1.0, 1.0 - smoothstep(0.012, 0.07, wash));
+    FragColor = vec4(color * fade, alpha * fade);
 }

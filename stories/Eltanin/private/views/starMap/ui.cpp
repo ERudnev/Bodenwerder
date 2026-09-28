@@ -129,6 +129,7 @@ namespace eltanin {
         togglePanel("Actions", blueprints.state.panels.actions);
         togglePanel("Clipboard", blueprints.state.panels.clipboard);
         togglePanel("Selection", blueprints.state.panels.selection);
+        togglePanel("View", blueprints.state.panels.view);
     }
 
     auto Game::activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> {

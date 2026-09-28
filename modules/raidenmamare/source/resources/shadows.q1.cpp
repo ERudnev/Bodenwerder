@@ -61,7 +61,7 @@ namespace rmmr::resource::shadow {
         glTextureParameteri(depth, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glTextureParameteri(depth, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
         glTextureParameteri(depth, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-        const GLfloat border_color[]{1.0f, 1.0f, 1.0f, 1.0f};
+        const GLfloat border_color[]{0.0f, 0.0f, 0.0f, 0.0f};
         glTextureParameterfv(depth, GL_TEXTURE_BORDER_COLOR, border_color);
 
         renderer::Framebuffer fbo{};
