@@ -1,6 +1,6 @@
 #include "game.h"
 
-#include <eltanin/fundamental/existent.q1.h>
+#include <eltanin/fundamental/thing.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/window.q1.h>
@@ -30,30 +30,31 @@ namespace eltanin {
         }
 
         void setWarp(Writing world, integer warp) {
-            warp = std::clamp(warp, integer{0}, fundamental::Existent::Always::warpTop);
-            with<fundamental::Existent>::modify_global(world)->warp = warp;
-            with<World>::modify_global(world)->paused = warp == 0;
+            warp = std::clamp(warp, integer{0}, World::Always::warpTop);
+            auto session = with<World>::modify_global(world);
+            session->warp = warp;
+            session->paused = warp == 0;
         }
 
     }
 
-    void Game::contributeChrome(Writing world) {
-        const bool menuOpen = ui.menu.has_value();
+    void Game::contributeMenuBar(Writing world) {
+        const bool menuOpen = menu.has_value();
         if (menuOpen) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
         }
         if (ImGui::Button("Menu")) {
             if (menuOpen)
-                ui.menu.reset();
+                menu.reset();
             else
-                ui.menu.emplace();
+                menu.emplace();
         }
         if (menuOpen)
             ImGui::PopStyleColor(2);
 
-        const auto& existent = with<fundamental::Existent>::get_global(world);
-        const auto civil = fundamental::Existent::Always::civil(existent.now);
+        const auto& clock = with<fundamental::Thing>::get_global(world);
+        const auto civil = fundamental::Thing::Always::civil(clock.now);
         ImGui::SameLine();
         ImGui::AlignTextToFramePadding();
         ImGui::BeginGroup();
@@ -67,11 +68,11 @@ namespace eltanin {
 
         ImGui::SameLine();
         ImGui::SetNextItemWidth(ImGui::CalcTextSize("×100 000").x + ImGui::GetFrameHeight() + ImGui::GetStyle().FramePadding.x * 2.f);
-        const integer warp = existent.warp;
-        if (ImGui::BeginCombo("##universeWarp", fundamental::Existent::Always::warpLabel(warp))) {
-            for (integer step = 0; step <= fundamental::Existent::Always::warpTop; ++step) {
+        const integer warp = with<World>::get_global(world).warp;
+        if (ImGui::BeginCombo("##sessionWarp", World::Always::warpLabel(warp))) {
+            for (integer step = 0; step <= World::Always::warpTop; ++step) {
                 const bool selected = step == warp;
-                if (ImGui::Selectable(fundamental::Existent::Always::warpLabel(step), selected))
+                if (ImGui::Selectable(World::Always::warpLabel(step), selected))
                     setWarp(world, step);
                 if (selected)
                     ImGui::SetItemDefaultFocus();
@@ -81,7 +82,7 @@ namespace eltanin {
     }
 
     void Game::drawMenuWindow(Writing world) {
-        if (not ui.menu.has_value())
+        if (not menu.has_value())
             return;
         bool open = true;
         if (ImGui::Begin("Menu", &open)) {
@@ -93,75 +94,75 @@ namespace eltanin {
         }
         ImGui::End();
         if (not open)
-            ui.menu.reset();
+            menu.reset();
     }
 
     void Game::contributeViewMenu(Writing world) {
-        contributeChrome(world);
-        if (uiMode == UiMode::locality) {
+        contributeMenuBar(world);
+        if (shown == Shown::locality and locality) {
             ImGui::SameLine();
             if (ImGui::Button("Back"))
-                closeLocalityScenario(world);
-            contributeLocalityMenu(world);
+                showMap(world);
+            if (shared)
+                locality->contributeMenu(world, assets, *shared);
             return;
         }
-        if (starMap.menu.blueprints.has_value()) {
+        if (shown == Shown::editor) {
             ImGui::SameLine();
             if (ImGui::Button("Back"))
-                starMap.menu.blueprints.reset();
+                showMap(world);
             contributeEditorPanels(true);
             return;
         }
         ImGui::SameLine();
         if (ImGui::Button("Planet"))
-            openPlanetScenario(world);
-        bool editor = false;
-        rmmr::wrapper::ui::viewToggle("Blueprints", &editor);
-        if (editor) {
-            blueprints.openPanels();
-            starMap.menu.blueprints.emplace();
-        }
+            showLocality(world);
+        bool editorToggle = false;
+        rmmr::wrapper::ui::viewToggle("Blueprints", &editorToggle);
+        if (editorToggle)
+            showEditor(world);
     }
 
     void Game::contributeEditorPanels(bool catalog) {
         if (catalog)
-            togglePanel("Blueprints", blueprints.state.panels.catalog);
-        togglePanel("Actions", blueprints.state.panels.actions);
-        togglePanel("Clipboard", blueprints.state.panels.clipboard);
-        togglePanel("Selection", blueprints.state.panels.selection);
-        togglePanel("View", blueprints.state.panels.view);
+            togglePanel("Blueprints", editor.state.panels.catalog);
+        togglePanel("Actions", editor.state.panels.actions);
+        togglePanel("Clipboard", editor.state.panels.clipboard);
+        togglePanel("Selection", editor.state.panels.selection);
+        togglePanel("View", editor.state.panels.view);
     }
 
     auto Game::activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> {
-        if (uiMode != UiMode::starMap)
+        if (shown != Shown::editor or not editor.assets.editorEffect)
             return {};
-        if (not starMap.menu.blueprints.has_value() or not blueprints.assets.editorEffect)
+        if (editor.state.membranes.enabled or editor.state.paletteMode)
             return {};
-        if (blueprints.state.membranes.enabled or blueprints.state.paletteMode)
-            return {};
-        return blueprints.assets.editorEffect;
+        return editor.assets.editorEffect;
     }
 
     auto Game::overlaySelection() const -> std::span<const rmmr::renderer::Integer32> {
-        if (uiMode != UiMode::starMap)
+        if (shown != Shown::editor or editor.state.membranes.enabled or editor.state.paletteMode)
             return {};
-        if (not starMap.menu.blueprints.has_value() or blueprints.state.membranes.enabled or blueprints.state.paletteMode)
-            return {};
-        return blueprints.state.selection.aliases;
+        return editor.state.selection.aliases;
     }
 
     void Game::drawUi(Writing world) {
         drawMenuWindow(world);
-        if (uiMode == UiMode::locality) {
-            drawLocalityUi(world);
+        if (shown == Shown::locality and locality) {
+            locality->draw(world, blueprintPack);
+            locality->present(views);
             engageInputs(world);
             return;
         }
-        if (starMap.menu.blueprints.has_value()) {
-            blueprints.draw(world, true, blueprintPack, mountPack);
+        if (shown == Shown::editor) {
+            editor.draw(world, true, blueprintPack, mountPack);
+            if (starMap.view)
+                editor.bindView(views, true, *starMap.view);
+            engageInputs(world);
+            return;
         }
         if (starMap.view)
-            blueprints.bindView(views, starMap.menu.blueprints.has_value(), *starMap.view);
+            views = {*starMap.view};
         engageInputs(world);
 
         const ImGuiViewport* viewport = ImGui::GetMainViewport();

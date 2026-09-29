@@ -86,7 +86,7 @@ fQSM supplies a default for each other member:
 - No `Internals`: the aspect has no internal helpers. `DefaultInternals` stays available for a `.cpp` that declares `struct X::Internals : DefaultInternals`.
 - No `customAspectReactions()`: the aspect has no custom reactions. The structural rules of the category always apply.
 - No `Global`: the global is an empty struct.
-- No `Always::assemble`: the global is default-constructed.
+- No `Always::setup`: the global is default-constructed.
 
 ### Rule
 
@@ -95,7 +95,7 @@ The projection emits a member only when the doctrine needs it:
 - `Actions : BaseActions` when the aspect declares public operations.
 - `struct Internals;` and `static const Behavior customAspectReactions();` when the aspect declares reactions (explicit `!`, or implied by `anchor<>` / `custody<>`).
 - `Global` when `all` holds data.
-- `Always` when the aspect declares constants, pure helpers or a Global assembler.
+- `Always` when the aspect declares constants, pure helpers or a Global setup.
 
 Headers that declare the trivial form (`struct Internals : DefaultInternals{};` and `customAspectReactions() { return {}; }`) still compile. New headers do not emit it.
 
@@ -117,7 +117,7 @@ Q1 aspect blocks map to nested C++ types by role:
 - `Global` is world-owned aspect-wide state.
 - `Global` is emitted only when `all` contains actual data.
 - Empty `Global` should be omitted.
-- `Always` is for compile-time constants, pure helpers without `Reading`/`Writing`/`Id`, and at most one Global assembler `>name() -> all` (`static auto name(SettingUp&) -> Global`).
+- `Always` is for compile-time constants, pure helpers without `Reading`/`Writing`/`Id`, and at most one Global setup `>name() -> all` (`static auto name(SettingUp&) -> Global`).
 
 ### Why
 

@@ -65,7 +65,7 @@ namespace fqsm::erased {
         std::optional<Rtid> element;                       // group: worker aspect
         const Ops* quantum;
         const Ops* global;
-        void (*assembleGlobal)(SettingUp&, void* dst);     // constructs into raw storage; nullptr when Global is default-constructible
+        void (*setupGlobal)(SettingUp&, void* dst);         // constructs into raw storage; nullptr when Global is default-constructible
         bool (*groupErase)(void* quantum, RawId);          // group only
         void (*groupInsert)(void* quantum, RawId);         // group only
         void (*groupElements)(const void* quantum, std::vector<RawId>& out);   // group only: appends the ids
@@ -86,7 +86,7 @@ namespace fqsm::erased {
             .element = std::nullopt,
             .quantum = &ops_of<Quantum<Meta>>(),
             .global = &ops_of<Global>(),
-            .assembleGlobal = nullptr,
+            .setupGlobal = nullptr,
             .groupErase = nullptr,
             .groupInsert = nullptr,
             .groupElements = nullptr,
@@ -116,12 +116,12 @@ namespace fqsm::erased {
                 return static_cast<const Quantum<Meta>*>(quantum)->contains(Id<Element>{id});
             };
         }
-        if constexpr (Info::has_assemble) {
-            out.assembleGlobal = [](SettingUp& setup, void* dst) {
-                ::new (dst) Global(Meta::Always::assemble(setup));
+        if constexpr (Info::has_setup) {
+            out.setupGlobal = [](SettingUp& setup, void* dst) {
+                ::new (dst) Global(Meta::Always::setup(setup));
             };
         } else {
-            static_assert(std::is_default_constructible_v<Global>, "fQSM: Global is not default-constructible; declare always >assemble() -> all");
+            static_assert(std::is_default_constructible_v<Global>, "fQSM: Global is not default-constructible; declare always >setup() -> all");
         }
         return out;
     }

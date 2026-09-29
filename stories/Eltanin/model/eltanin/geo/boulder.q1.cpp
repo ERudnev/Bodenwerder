@@ -1,6 +1,6 @@
 #include <eltanin/geo/boulder.q1.h>
 
-#include <eltanin/fundamental/existent.q1.h>
+#include <eltanin/fundamental/thing.q1.h>
 #include <eltanin/geo/minerals.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -177,7 +177,7 @@ namespace eltanin::geo {
             .halfExtents = vec3{recipe.radius, recipe.radius, recipe.radius},
             .collided = false,
         });
-        const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<::eltanin::fundamental::Existent>::get_global(context).now});
+        const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<::eltanin::fundamental::Thing>::get_global(context).now});
         with<Boulder>::extend(context, thing, Boulder::Quantum{.body = body, .actor = actor, .recipe = recipe});
         return thing;
     }

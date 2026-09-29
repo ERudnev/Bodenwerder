@@ -19,7 +19,7 @@ namespace eltanin::phys {
     using namespace rmmr;
 
     // Private physics subsystem (not Q1).
-    // Fixed tick Settings::fixedStep; frame dt accumulates as seconds debt. Same clock as fundamental::Existent.now.
+    // Fixed tick Settings::fixedStep; frame dt accumulates as seconds debt. Same clock as fundamental::Thing.now.
     // One pass: accumulate forces → Verlet → Horn → connectivity (cohorts, then planet well) → Construction/Crystal reconcile → Horn → pull to shape → dissipate resting.
     // After the last tick of this Dock: Thing::followBodies copies Body pose onto Node (missing ward → skip) and Construct writes cohesion/heat GPU when Crystal.visualHurtStale.
     // One Dock per tick; hot mutation via Stewarding::direct<Body>() and direct<rigid::Crystal>() / direct<rigid::Solid>().

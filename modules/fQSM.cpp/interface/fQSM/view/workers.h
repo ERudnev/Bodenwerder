@@ -34,7 +34,7 @@ namespace fqsm::view {
         GlobalValue<Meta>& get_access_global() {
             void* found = this->future->get_access_global();
             if (not found)
-                throw std::logic_error(std::string("fQSM: global is not assembled yet: ") + std::string(Rtid::name<Meta>()));
+                throw std::logic_error(std::string("fQSM: global is not set up yet: ") + std::string(Rtid::name<Meta>()));
             return *static_cast<GlobalValue<Meta>*>(found);
         }
     };

@@ -1,9 +1,9 @@
 #include <eltanin/world.q1.h>
-#include <eltanin/fundamental/existent.q1.h>
 
 #include "geo/celestial/sun.h"
 #include <rmmr/scene/node.q1.h>
 
+#include <algorithm>
 #include <GLFW/glfw3.h>
 
 namespace eltanin {
@@ -21,13 +21,52 @@ namespace eltanin {
         constexpr int k_pause_key = GLFW_KEY_P;
         constexpr int64 k_us_per_step = 1000; // 1000 steps/sec from wall μs
 
+        constexpr seconds warpRates[] = {
+            seconds{0},
+            seconds{1},
+            seconds{5},
+            seconds{10},
+            seconds{50},
+            seconds{100},
+            seconds{1000},
+            seconds{10000},
+            seconds{100000},
+        };
+        constexpr const char* warpLabels[] = {
+            "Pause",
+            "×1",
+            "×5",
+            "×10",
+            "×50",
+            "×100",
+            "×1 000",
+            "×10 000",
+            "×100 000",
+        };
+
+        auto clampWarp(integer warp) -> integer {
+            return std::clamp(warp, integer{0}, World::Always::warpTop);
+        }
+
     } // namespace
+
+    auto World::Always::setup(SettingUp&) -> World::Global {
+        return Global{.step = 0, .paused = false, .warp = 1, .window = {}, .sky = {}, .skyBackdrop = {}, .camera = {}};
+    }
+
+    auto World::Always::rate(integer warp) -> seconds {
+        return warpRates[static_cast<std::size_t>(clampWarp(warp))];
+    }
+
+    auto World::Always::warpLabel(integer warp) -> const char* {
+        return warpLabels[static_cast<std::size_t>(clampWarp(warp))];
+    }
 
     void World::Actions::advance(Writing context, int64 dt_us) {
         if (dt_us < k_us_per_step) {
             return;
         }
-        if (with<World>::get_global(context).paused) {
+        if (with<World>::get_global(context).warp == 0) {
             return;
         }
         with<World>::modify_global(context)->step += static_cast<integer>(dt_us / k_us_per_step);
@@ -69,10 +108,9 @@ namespace eltanin {
         const bool is_down = key_down(window.current.keys, k_pause_key);
         if (was_down or not is_down)
             return;
-        auto existent = with<fundamental::Existent>::modify_global(context);
-        existent->warp = existent->warp == 0 ? integer{1} : integer{0};
         auto world = with<World>::modify_global(context);
-        world->paused = existent->warp == 0;
+        world->warp = world->warp == 0 ? integer{1} : integer{0};
+        world->paused = world->warp == 0;
     }
 
     auto doctrine::world() -> Schema {

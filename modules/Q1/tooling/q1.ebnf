@@ -173,5 +173,5 @@ literal             ::= INTEGER ;
       is a ConstField whose initializer is an ExternalType, not an integer literal.
    8. `struct Derived of Base` is single value-struct inheritance (C++: `struct Derived : Base`). `of` here
       names a struct, not an aspect owner. Nested structs may use the same header form.
-   9. `always >name(...) -> all` is the aspect Global assembler (at most one FactoryOp in `always`).
-      Return type `all` is the enclosing aspect's Global bag, not a named C++ type. C++: Always::assemble(SettingUp&) -> Global.
+   9. `always >name(...) -> all` is the aspect Global setup (at most one FactoryOp in `always`).
+      Return type `all` is the enclosing aspect's Global bag, not a named C++ type. C++: Always::setup(SettingUp&) -> Global.

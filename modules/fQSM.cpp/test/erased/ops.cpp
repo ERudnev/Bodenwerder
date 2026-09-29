@@ -143,7 +143,7 @@ void erased_describe()
     EXPECT_TRUE(host.category == Category::entity);
     EXPECT_FALSE(host.host.has_value());
     EXPECT_TRUE(host.quantum == &fqsm::erased::ops_of<Host::Quantum>());
-    EXPECT_TRUE(host.assembleGlobal == nullptr);
+    EXPECT_TRUE(host.setupGlobal == nullptr);
     EXPECT_TRUE(host.groupErase == nullptr);
 
     const auto part = fqsm::erased::describe<Part>();

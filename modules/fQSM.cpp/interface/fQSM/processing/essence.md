@@ -9,7 +9,7 @@ A **session** is one open change: a patch over a base state, and a future that s
 - `Stewarding` is a Writing that also gives `direct<X>()`. `Direct<X>` changes the Realm lines in place and marks the aspect as tainted. The Writing part of the same session sees these changes.
 - `Reacting` is the context of a reaction. `changes<X>()` reads the patch under review. `adjustments<X>()` writes into the correction patch of the wave. It converts to Reading (the proposal) and to Writing (the corrections).
 - `Retrospecting` reads the last stable state. Deletion reactions get it. Its writes go into the corrections of the wave.
-- `SettingUp` gives a Writing to `Always::assemble` while the Realm is built.
+- `SettingUp` gives a Writing to `Always::setup` while the Realm is built.
 
 Handles count themselves on the session. When the last handle of a Realm session ends, the Realm accepts the session: it normalizes the patch and integrates it. An unnamed Writing ends at the end of the full expression. A named Writing, or a gate from `modify()`, ends at its scope end.
 

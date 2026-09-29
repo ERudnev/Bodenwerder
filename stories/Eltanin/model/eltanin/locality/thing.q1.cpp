@@ -12,7 +12,7 @@ namespace eltanin::locality {
 
     using namespace fqsm::api;
 
-    auto Thing::Always::assemble(SettingUp& setup) -> Thing::Global {
+    auto Thing::Always::setup(SettingUp& setup) -> Thing::Global {
         auto world = setup.writing();
         const auto root = with<rmmr::scene::Interface>::createScene(world);
         return Global{.scene = root};

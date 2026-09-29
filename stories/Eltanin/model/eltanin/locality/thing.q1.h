@@ -16,7 +16,7 @@ namespace eltanin::locality {
             rmmr::scene::Root::Id scene;
         };
         struct Always {
-            static auto assemble(SettingUp&) -> Global;
+            static auto setup(SettingUp&) -> Global;
         };
         struct Actions : BaseActions {
             static void update(Writing, seconds dt);

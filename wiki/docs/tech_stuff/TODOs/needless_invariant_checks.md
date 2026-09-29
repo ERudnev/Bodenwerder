@@ -6,9 +6,9 @@ Writing/Reading уже смотрят на нормализованный мир
 
 Нужно, чтобы было видно без саги: *этот* id/группа/синглтон в этом контексте уже факт; *этот* — вход операции (файл, имя материала, опциональный Flat2d). Пока тип врёт одинаково про оба — проверки будут плодиться снова.
 
-## Schema-born Global: `always >assemble`
+## Schema-born Global: `always >setup`
 
-Для полей, которые обязаны существовать в любом наблюдаемом Realm, тип больше не `?`. Сборщик `Always::assemble(SettingUp&)` возвращает законный Global; `Realm` не отдаёт контексты, пока сумка не стоит.
+Для полей, которые обязаны существовать в любом наблюдаемом Realm, тип больше не `?`. `Always::setup(SettingUp&)` возвращает законный Global; `Realm` не отдаёт контексты, пока сумка не стоит.
 
 Пилот: `Thing.scene` — `#Root`, не `#Root?`. Проверки «а сцена есть?» сняты.
 
@@ -16,6 +16,6 @@ Writing/Reading уже смотрят на нормализованный мир
 
 `Core::Global::singleton` (и Clock, Assets) семантически не optional. После `Interface::create` синглтон *есть*. Уместен просто `Id`.
 
-Пока `Interface::create` живёт в Product и берёт `path` / `GLVer`, SettingUp без сессии их не соберёт. Сентринел `please_never_use_this_except_patch_rejection_mechanism` остаётся стенд-ином «ещё не родили». Это следующая ось, не schema-born assemble.
+Пока `Interface::create` живёт в Product и берёт `path` / `GLVer`, SettingUp без сессии их не соберёт. Сентринел `please_never_use_this_except_patch_rejection_mechanism` остаётся стенд-ином «ещё не родили». Это следующая ось, не schema-born setup.
 
 `BadValue` / refuse по-прежнему может возвращать тот же фальшивый Id — другой рот, не рождение мира.

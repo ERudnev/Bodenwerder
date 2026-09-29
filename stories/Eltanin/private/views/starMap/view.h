@@ -1,6 +1,5 @@
 #pragma once
 
-#include "views/starMap/ui.h"
 #include "views/starMap/visuals.h"
 
 #include <base/maybe.h>
@@ -17,7 +16,6 @@ namespace eltanin::views::starmap {
     using namespace fqsm::api;
 
     struct View {
-        Menu menu;
         base::maybe<rmmr::scene::Root::Id> scene;
         base::maybe<rmmr::scene::Camera::Id> camera;
         base::maybe<rmmr::system::ViewInput::Id> input;

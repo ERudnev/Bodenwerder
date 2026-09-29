@@ -6,11 +6,10 @@ namespace eltanin::fundamental {
 
     using namespace fqsm::api;
 
-    struct Existent : Entity<Existent> {
+    struct Thing : Entity<Thing> {
         struct Quantum {};
         struct Global {
             seconds now;
-            integer warp;
         };
         struct Civil {
             integer year;
@@ -21,11 +20,8 @@ namespace eltanin::fundamental {
             integer second;
         };
         struct Always {
-            static constexpr integer warpTop = 8;
-            static auto assemble(SettingUp&) -> Global;
-            static auto rate(integer warp) -> seconds;
+            static auto setup(SettingUp&) -> Global;
             static auto civil(seconds now) -> Civil;
-            static auto warpLabel(integer warp) -> const char*;
         };
         struct Actions : BaseActions {
             static void update(Writing, seconds dt);
@@ -35,7 +31,7 @@ namespace eltanin::fundamental {
     };
 
     namespace doctrine {
-        auto existent() -> Schema;
+        auto thing() -> Schema;
     }
 
 }

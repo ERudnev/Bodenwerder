@@ -1,9 +1,12 @@
-#include "game.h"
+#include "views/locality/view.h"
 
 #include "mech/assembler.h"
+#include "geo/celestial/horizon.h"
+#include "physics/settings.h"
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cctype>
 #include <cmath>
 #include <cstdio>
@@ -13,30 +16,25 @@
 
 #include <base/logging.h>
 #include <eltanin/mech/blueprint.q1.h>
-#include <eltanin/locality/thing.q1.h>
-#include <eltanin/fundamental/existent.q1.h>
+#include <eltanin/physics/body.q1.h>
 #include <eltanin/world.q1.h>
-#include <rmmr/math.q1.h>
-#include <rmmr/resources/manager.q1.h>
-#include <rmmr/resources/materials.q1.h>
-#include <rmmr/resources/textures.q1.h>
 #include <rmmr/controller/camera3d.q1.h>
-#include "physics/settings.h"
-#include "geo/celestial/horizon.h"
+#include <rmmr/math.q1.h>
+#include <rmmr/resources/materials.q1.h>
+#include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/scene/light.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/semantics.q1.h>
-#include <rmmr/system/viewport.q1.h>
 #include <rmmr/wrapper/ui.h>
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 
-namespace eltanin {
+namespace eltanin::views::locality {
 
     using namespace fqsm::api;
     using namespace rmmr;
@@ -137,64 +135,55 @@ namespace eltanin {
 
     } // namespace
 
-    void Game::contributeLocalityMenu(Writing world) {
-        bool paused = with<fundamental::Existent>::get_global(world).warp == 0;
+    void View::contributeMenu(Writing world, const assets::Handles& assets, const rmmr::wrapper::assets::Handles& shared) {
+        bool paused = with<World>::get_global(world).warp == 0;
         rmmr::wrapper::ui::viewToggle("Pause", &paused);
-        if (paused != (with<fundamental::Existent>::get_global(world).warp == 0)) {
-            with<fundamental::Existent>::modify_global(world)->warp = paused ? integer{0} : integer{1};
-            with<World>::modify_global(world)->paused = paused;
+        if (paused != (with<World>::get_global(world).warp == 0)) {
+            auto session = with<World>::modify_global(world);
+            session->warp = paused ? integer{0} : integer{1};
+            session->paused = paused;
         }
-        togglePanel("Inspector", ui.inspector);
-        togglePanel("Space", ui.space);
-        togglePanel("Lighting", ui.lighting);
-        togglePanel("Materials", ui.materials);
+        togglePanel("Inspector", panels.inspector);
+        togglePanel("Space", panels.space);
+        togglePanel("Lighting", panels.lighting);
+        togglePanel("Materials", panels.materials);
         {
-            bool open = ui.physics.has_value();
+            bool open = panels.physics.has_value();
             rmmr::wrapper::ui::viewToggle("Physics", &open);
-            if (open != ui.physics.has_value()) {
+            if (open != panels.physics.has_value()) {
                 if (open) {
-                    if (not assets.collisionDebugMaterial or not shared->material.gizmo.vertexColor or not shared->texture.debug or not assets.primitive.diamond or not assets.primitive.sphere) {
-                        base::message("eltanin::Game: Physics UI needs collision debug material, gizmo vertex color, debug texpack, diamond and sphere primitives");
+                    if (not assets.collisionDebugMaterial or not shared.material.gizmo.vertexColor or not shared.texture.debug or not assets.primitive.diamond or not assets.primitive.sphere) {
+                        base::message("eltanin::views::locality: Physics UI needs collision debug material, gizmo vertex color, debug texpack, diamond and sphere primitives");
                     } else {
-                        ui.physics.emplace(*assets.primitive.diamond, *assets.primitive.sphere, *shared->material.gizmo.vertexColor, *assets.collisionDebugMaterial, *shared->texture.debug);
+                        panels.physics.emplace(*assets.primitive.diamond, *assets.primitive.sphere, *shared.material.gizmo.vertexColor, *assets.collisionDebugMaterial, *shared.texture.debug);
                     }
                 } else {
-                    ui.physics.reset();
+                    panels.physics.reset();
                 }
             }
         }
-        togglePanel("Blueprints", ui.blueprints);
-        if (ui.blueprints.has_value()) {
-            blueprints.openPanels();
-            contributeEditorPanels(false);
-        }
     }
 
-    void Game::drawLocalityUi(Writing world) {
+    void View::draw(Writing world, BlueprintCatalog& blueprintPack) {
         drawInspectorWindow(world);
         drawSpaceWindow(world);
         drawLightingWindow(world);
         drawMaterialsWindow(world);
-        drawAssemblerWindow(world);
-        if (ui.physics.has_value() and physics.has_value()) {
+        drawAssemblerWindow(world, blueprintPack);
+        if (panels.physics.has_value() and physics.has_value()) {
             bool open = true;
-            ui.physics->draw(world, open, *physics);
+            panels.physics->draw(world, open, *physics);
             if (not open)
-                ui.physics.reset();
+                panels.physics.reset();
         }
-        if (ui.blueprints.has_value()) {
-            blueprints.draw(world, true, blueprintPack, mountPack);
-        }
-        if (world_view)
-            blueprints.bindView(views, ui.blueprints.has_value(), *world_view);
     }
 
-    void Game::drawAssemblerWindow(Writing world) {
+    void View::drawAssemblerWindow(Writing world, BlueprintCatalog& blueprintPack) {
         if (not ImGui::Begin("Assembler")) {
             ImGui::End();
             return;
         }
-        auto& panel = ui.assembler;
+        auto& panel = panels.assembler;
         if (ImGui::RadioButton("Manual pos", not panel.spawnAtCamera))
             panel.spawnAtCamera = false;
         ImGui::SameLine();
@@ -202,8 +191,8 @@ namespace eltanin {
             panel.spawnAtCamera = true;
         if (not panel.spawnAtCamera) {
             ImGui::DragFloat3("Spawn pos", &panel.spawnPos.x, 0.1f, 0.0f, 0.0f, "%.2f");
-        } else if (world_view.has_value() and with<scene::Camera>::exists(world, world_view->camera)) {
-            const auto& cameraPose = with<scene::Node>::get(world, world_view->camera).pose;
+        } else if (view.has_value() and with<scene::Camera>::exists(world, view->camera)) {
+            const auto& cameraPose = with<scene::Node>::get(world, view->camera).pose;
             ImGui::TextDisabled("Spawn pos: camera (%.2f, %.2f, %.2f)", cameraPose.position.x, cameraPose.position.y, cameraPose.position.z);
         } else {
             ImGui::TextDisabled("Spawn pos: camera (no view)");
@@ -245,12 +234,12 @@ namespace eltanin {
             pickShelf("Prefabs", blueprintPack.prefabs);
             ImGui::EndCombo();
         }
-        const bool cameraReady = not panel.spawnAtCamera or (world_view.has_value() and with<scene::Camera>::exists(world, world_view->camera));
-        const bool canCreate = panel.blueprint.has_value() and world_view.has_value() and cameraReady;
+        const bool cameraReady = not panel.spawnAtCamera or (view.has_value() and with<scene::Camera>::exists(world, view->camera));
+        const bool canCreate = panel.blueprint.has_value() and view.has_value() and cameraReady;
         if (not canCreate)
             ImGui::BeginDisabled();
         if (ImGui::Button("Create", ImVec2{-1.0f, 0.0f}) and canCreate) {
-            const Pos spawnPos = panel.spawnAtCamera ? with<scene::Node>::get(world, world_view->camera).pose.position : panel.spawnPos;
+            const Pos spawnPos = panel.spawnAtCamera ? with<scene::Node>::get(world, view->camera).pose.position : panel.spawnPos;
             mech::Assembler::spawn(world, Pose::from(spawnPos, panel.spawnHpb), *panel.blueprint, panel.spawnVel);
         }
         if (not canCreate)
@@ -258,8 +247,8 @@ namespace eltanin {
         ImGui::End();
     }
 
-    void Game::drawInspectorWindow(Writing world) {
-        if (not ui.inspector.has_value())
+    void View::drawInspectorWindow(Writing world) {
+        if (not panels.inspector.has_value())
             return;
 
         bool open = true;
@@ -349,11 +338,11 @@ namespace eltanin {
         }
         ImGui::End();
         if (not open)
-            ui.inspector.reset();
+            panels.inspector.reset();
     }
 
-    void Game::drawSpaceWindow(Writing world) {
-        if (not ui.space.has_value())
+    void View::drawSpaceWindow(Writing world) {
+        if (not panels.space.has_value())
             return;
 
         bool open = true;
@@ -398,16 +387,16 @@ namespace eltanin {
         }
         ImGui::End();
         if (not open)
-            ui.space.reset();
+            panels.space.reset();
     }
 
-    void Game::drawLightingWindow(Writing world) {
-        if (not ui.lighting.has_value() or views.empty())
+    void View::drawLightingWindow(Writing world) {
+        if (not panels.lighting.has_value() or not view)
             return;
 
         bool open = true;
         if (ImGui::Begin("Lighting", &open)) {
-            const auto scene = views.front().scene;
+            const auto scene = view->scene;
             if (not with<scene::Root>::exists(world, scene)) {
                 ImGui::TextDisabled("No scene selected.");
             } else {
@@ -445,16 +434,16 @@ namespace eltanin {
         }
         ImGui::End();
         if (not open)
-            ui.lighting.reset();
+            panels.lighting.reset();
     }
 
-    void Game::drawMaterialInspector(Writing world, ::rmmr::resource::material::Asset::Id material_id) {
+    void View::drawMaterialInspector(Writing world, ::rmmr::resource::material::Asset::Id material_id) {
         auto material = with<::rmmr::resource::material::Asset>::modify(world, material_id);
         auto editable_unit = with<::rmmr::resource::Unit>::modify(world, material_id);
-        auto& nameEdits = ui.materials->nameEdits;
+        auto& nameEdits = panels.materials->nameEdits;
         auto found = nameEdits.find(material_id);
         if (found == nameEdits.end())
-            found = nameEdits.emplace(material_id, Ui::Materials::NameEdit{.buf = {}, .editing = false}).first;
+            found = nameEdits.emplace(material_id, Panels::Materials::NameEdit{.buf = {}, .editing = false}).first;
         auto& name_state = found->second;
         if (not name_state.editing)
             std::snprintf(name_state.buf.data(), name_state.buf.size(), "%s", editable_unit->name.own.c_str());
@@ -484,12 +473,12 @@ namespace eltanin {
         }
     }
 
-    void Game::drawMaterialsWindow(Writing world) {
-        if (not ui.materials.has_value())
+    void View::drawMaterialsWindow(Writing world) {
+        if (not panels.materials.has_value())
             return;
 
         bool open = true;
-        auto& panel = *ui.materials;
+        auto& panel = *panels.materials;
         if (ImGui::Begin("Materials", &open)) {
             const auto materials = collectMaterials(world, filterText(panel.filter));
             if (materials.empty()) {
@@ -532,7 +521,7 @@ namespace eltanin {
         }
         ImGui::End();
         if (not open)
-            ui.materials.reset();
+            panels.materials.reset();
     }
 
 }

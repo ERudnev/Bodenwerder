@@ -62,7 +62,7 @@ namespace eltanin::locality {
             base::maybe<Resources> resources;
         };
         struct Always {
-            static auto assemble(SettingUp&) -> Global;
+            static auto setup(SettingUp&) -> Global;
         };
         struct Actions : BaseActions {
             static void bindResources(Writing);

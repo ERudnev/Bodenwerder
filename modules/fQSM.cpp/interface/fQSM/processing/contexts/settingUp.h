@@ -5,7 +5,7 @@
 
 namespace fqsm::processing {
 
-    // Context of Always::assemble at Realm birth: gives a Writing into the Realm being built.
+    // Context of Always::setup at Realm birth: gives a Writing into the Realm being built.
     struct SettingUp {
         friend struct orchestrator::Realm;
 

@@ -9,7 +9,7 @@ namespace Q1_fQSM
 
     entity Origin
       always
-        >assemble() -> all
+        >setup() -> all
       all
         trivia: #Trivia
 

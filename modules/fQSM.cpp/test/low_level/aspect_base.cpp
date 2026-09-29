@@ -64,7 +64,7 @@ namespace local {
     static_assert(std::is_same_v<with<Light>, fqsm::aspect::Capability<Light>>);
     static_assert(std::is_same_v<fqsm::GlobalValue<Light>, fqsm::meta::EmptyGlobal>);
     static_assert(std::is_same_v<Info::Internals, fqsm::meta::EmptyInternals>);
-    static_assert(not Info::has_reactions and not Info::has_assemble);
+    static_assert(not Info::has_reactions and not Info::has_setup);
 }
 } // namespace
 

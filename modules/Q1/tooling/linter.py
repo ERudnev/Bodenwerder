@@ -249,7 +249,7 @@ def lint_type_expr(
     kind = expr["kind"]
     if kind == "AllBagType":
         if block_role != "always":
-            warn(diags, line, "all-bag-outside-always-assemble", "`all` as a type is the Global bag; only `always >name() -> all`")
+            warn(diags, line, "all-bag-outside-always-setup", "`all` as a type is the Global bag; only `always >name() -> all`")
         return
     if kind == "BuiltinType":
         return
@@ -510,17 +510,17 @@ def lint_ast(ast: dict[str, Any], source_file: Path | None = None) -> list[Diagn
                         primary_aspect=decl["name"],
                     )
                     if role == "always":
-                        assemble_count = 0
+                        setup_count = 0
                         for member in block["members"]:
                             if member["kind"] not in {"ConstField", "QueryOp", "FactoryOp"}:
                                 warn(diags, member["line"], "unexpected-member-in-always", f"{member['kind']} is not part of the current `always` subset")
                             if member["kind"] == "FactoryOp":
-                                assemble_count += 1
+                                setup_count += 1
                                 ret = member.get("return_type")
                                 if ret is None or ret.get("kind") != "AllBagType":
-                                    warn(diags, member["line"], "always-assemble-must-return-all", "`always` effector must return `all` (the Global bag)")
-                        if assemble_count > 1:
-                            warn(diags, block["line"], "duplicate-always-assemble", "At most one `always >name() -> all` assembler per aspect")
+                                    warn(diags, member["line"], "always-setup-must-return-all", "`always` effector must return `all` (the Global bag)")
+                        if setup_count > 1:
+                            warn(diags, block["line"], "duplicate-always-setup", "At most one `always >name() -> all` setup per aspect")
                     if role == "one":
                         for member in block["members"]:
                             if member["kind"] not in {"FieldDecl", "QueryOp", "CommandOp", "StewardOp", "ReactionDecl"}:

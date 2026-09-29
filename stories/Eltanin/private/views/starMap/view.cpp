@@ -1,6 +1,5 @@
 #include "views/starMap/view.h"
 
-#include <eltanin/world.q1.h>
 #include <rmmr/controller/cameraOrbit.q1.h>
 #include <rmmr/system/viewInput.q1.h>
 #include <rmmr/scene/camera.q1.h>
@@ -39,7 +38,6 @@ namespace eltanin::views::starmap {
         const auto mail = with<system::ViewInput>::create(context);
         input = mail;
         with<controller::CameraOrbit>::create(context, cam, mail, pivot, glm::length(eye - pivot));
-        with<World>::modify_global(context)->camera = cam;
         scene = root;
         camera = cam;
         view = rmmr::wrapper::Product::View{.viewport = viewport, .scene = root, .camera = cam};

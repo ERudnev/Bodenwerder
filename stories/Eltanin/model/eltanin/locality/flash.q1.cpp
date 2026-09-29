@@ -1,6 +1,6 @@
 #include <eltanin/locality/flash.q1.h>
 
-#include <eltanin/fundamental/existent.q1.h>
+#include <eltanin/fundamental/thing.q1.h>
 #include <eltanin/decorations/dust.q1.h>
 #include <eltanin/physics/rigid.q1.h>
 #include "physics/settings.h"
@@ -412,7 +412,7 @@ namespace eltanin::locality {
             const auto shock = spawnSphere(context, scene, position, resources->sphere, resources->flash, shockLook);
             const auto plasma = spawnSphere(context, scene, position, resources->sphere, resources->flashGlow, plasmaLook);
             const auto field = spawnSphere(context, scene, position, resources->sphere, resources->brisance, fieldLook);
-            const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<::eltanin::fundamental::Existent>::get_global(context).now});
+            const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<::eltanin::fundamental::Thing>::get_global(context).now});
             with<Flash>::extend(context, thing, Flash::Quantum{.effect = effect, .shock = shock, .plasma = plasma, .field = field, .linear = linear, .elapsed = seconds{}});
             return thing;
         }

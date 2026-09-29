@@ -11,7 +11,7 @@ namespace Q1_fQSM::Etalon {
 
     using namespace fqsm::api;
 
-    auto Origin::Always::assemble(SettingUp& setup) -> Origin::Global {
+    auto Origin::Always::setup(SettingUp& setup) -> Origin::Global {
         auto world = setup.writing();
         const auto trivia = with<Trivia>::create(world, {});
         return Global{.trivia = trivia};

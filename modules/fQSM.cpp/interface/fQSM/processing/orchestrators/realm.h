@@ -14,7 +14,7 @@ namespace fqsm::processing::orchestrator {
     // Owns the reality and the sessions opened on it. A session is accepted (normalized, then integrated)
     // when its last handle ends: an unnamed Writing at the end of the full expression, a named one at its scope end.
     struct Realm : Transaction, private SessionOwner {
-        Realm(Schema schema) : reality(complete(std::move(schema))) { assembleGlobals(); }
+        Realm(Schema schema) : reality(complete(std::move(schema))) { setupGlobals(); }
         Realm(const Realm& other) : Transaction(), SessionOwner(), reality(static_cast<const State&>(other.reality)) {}
         Realm(const State& other) : reality(other) {}
         ~Realm() override { assert(open.empty() and "fQSM: a session of this Realm is still open"); }
@@ -46,7 +46,7 @@ namespace fqsm::processing::orchestrator {
         void release(Session&) override;
 
         static auto complete(Schema schema) -> Schema { schema->requireHosts(); return schema; }
-        void assembleGlobals();
+        void setupGlobals();
         void accept(ref<model::complex::Patch>, Rtid::Set tainted, bool silent);
     };
 }

@@ -31,7 +31,7 @@ set(Eltanin_Q1
     fundamental/space.q1
     fundamental/system.q1
     fundamental/celestial.q1
-    fundamental/existent.q1
+    fundamental/thing.q1
 )
 
 add_executable(${PROJECT_NAME})

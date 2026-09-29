@@ -11,22 +11,22 @@
 
 namespace fqsm::processing::orchestrator {
 
-    void Realm::assembleGlobals() {
+    void Realm::setupGlobals() {
         SettingUp setup(*this);
         for (model::complex::Reality::Slot slot = 0; slot < reality.schema->slotCount(); ++slot) {
-            const auto assemble = reality.schema->descriptors[slot].assembleGlobal;
-            if (not assemble) continue;
+            const auto setupGlobal = reality.schema->descriptors[slot].setupGlobal;
+            if (not setupGlobal) continue;
             struct Context {
                 SettingUp& setup;
-                void (*assemble)(SettingUp&, void*);
-            } context{setup, assemble};
-            // assembled aside: the assembling Writing may integrate into this reality meanwhile
-            erased::Slots assembled(*reality.schema->descriptors[slot].global);
-            assembled.push_built([](void* dst, void* raw) {
+                void (*setupGlobal)(SettingUp&, void*);
+            } context{setup, setupGlobal};
+            // built aside: the SettingUp Writing may integrate into this reality meanwhile
+            erased::Slots built(*reality.schema->descriptors[slot].global);
+            built.push_built([](void* dst, void* raw) {
                 auto& self = *static_cast<Context*>(raw);
-                self.assemble(self.setup, dst);
+                self.setupGlobal(self.setup, dst);
             }, &context);
-            reality.writable(slot).set_global(assembled.at(0));
+            reality.writable(slot).set_global(built.at(0));
         }
     }
 

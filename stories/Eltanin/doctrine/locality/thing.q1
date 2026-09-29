@@ -3,12 +3,12 @@ import "rmmr/scene/root"
 namespace eltanin
   namespace locality
 
-    // Local scene host. Universe time is fundamental::Existent.now; Quantum.bornAt snapshots it at create.
-    //   Product::onFrame wall dt → Existent >update, then physics and >update share that dt.
-    // scene — the one gameplay Root; born with the Realm (always >assemble).
+    // Local scene host. Universe time is fundamental::Thing.now; Quantum.bornAt snapshots it at create.
+    //   Product::onFrame wall dt → World.rate(warp) → Thing >update, then physics and >update share that dt.
+    // scene — the one gameplay Root; born with the Realm (always >setup).
     entity Thing
       always
-        >assemble() -> all
+        >setup() -> all
       one
         bornAt: seconds
       all

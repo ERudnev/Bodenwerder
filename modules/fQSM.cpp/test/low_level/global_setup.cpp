@@ -21,7 +21,7 @@ namespace model {
             Host::Id host;
         };
         struct Always {
-            static auto assemble(SettingUp& setup) -> Global {
+            static auto setup(SettingUp& setup) -> Global {
                 auto world = setup.writing();
                 const auto id = with<Host>::create(world, {});
                 return Global{.host = id};
@@ -36,7 +36,7 @@ namespace model {
 
 namespace tests {
 
-void global_assemble()
+void global_setup()
 {
     using namespace model;
     using namespace fqsm::api;
@@ -56,7 +56,7 @@ void global_assemble()
     } catch (const std::exception&) {
         refused = true;
     }
-    EXPECT_TRUE(refused) << "Seed.assemble without Host in schema must fail world birth";
+    EXPECT_TRUE(refused) << "Seed.setup without Host in schema must fail world birth";
 }
 
 } // namespace tests

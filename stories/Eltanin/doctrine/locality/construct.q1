@@ -40,7 +40,7 @@ namespace eltanin
       struct Resources
         interframe: #rmmr::resource::meshpack::Asset
       always
-        >assemble() -> all
+        >setup() -> all
       one
         body: custody<phys::rigid::Crystal>
         actor: custody<rmmr::scene::actor::Mesh>

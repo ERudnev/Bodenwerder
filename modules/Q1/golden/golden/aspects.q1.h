@@ -17,7 +17,7 @@ namespace Q1_fQSM::Etalon {
             Trivia::Id trivia;
         };
         struct Always {
-            static auto assemble(SettingUp&) -> Global;
+            static auto setup(SettingUp&) -> Global;
         };
     };
 

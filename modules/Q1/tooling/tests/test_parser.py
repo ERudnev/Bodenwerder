@@ -710,13 +710,13 @@ namespace Demo
     assert extra["base"] == "Binding"
 
 
-def test_parse_always_assemble_returns_all_bag() -> None:
+def test_parse_always_setup_returns_all_bag() -> None:
     text = """
 namespace Demo
   entity Trivia
   entity Origin
     always
-      >assemble() -> all
+      >setup() -> all
     all
       trivia: #Trivia
 """
@@ -726,7 +726,7 @@ namespace Demo
     assert always["role"] == "always"
     op = always["members"][0]
     assert op["kind"] == "FactoryOp"
-    assert op["name"] == "assemble"
+    assert op["name"] == "setup"
     assert op["return_type"]["kind"] == "AllBagType"
     assert op["return_type"]["raw"] == "all"
 

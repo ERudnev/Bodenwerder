@@ -2,7 +2,7 @@
 
 #include "mech/construction.h"
 #include <eltanin/locality/thing.q1.h>
-#include <eltanin/fundamental/existent.q1.h>
+#include <eltanin/fundamental/thing.q1.h>
 #include <eltanin/mech/mount.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/physics/rigid.q1.h>
@@ -474,7 +474,7 @@ namespace eltanin::mech {
         const auto body = phys::createBody(context, phys::rigid::restoredBody(pose, crystal.particles, crystal.shape), {});
         with<phys::rigid::Crystal>::extend(context, body, std::move(crystal));
 
-        const auto thing = with<locality::Thing>::create(context, locality::Thing::Quantum{.bornAt = with<::eltanin::fundamental::Existent>::get_global(context).now});
+        const auto thing = with<locality::Thing>::create(context, locality::Thing::Quantum{.bornAt = with<::eltanin::fundamental::Thing>::get_global(context).now});
         with<Construct>::extend(context, thing, Construct::Quantum{.body = body, .actor = actor, .fragments = std::move(fragments), .construction = std::move(construction), .visualOf = std::move(visualOf)});
         with<Construct>::syncVisualCohesion(context, thing);
         return thing;

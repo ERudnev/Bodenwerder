@@ -269,10 +269,10 @@ Any further items are ordinary params (named in the golden etalon).
 Optional `-> type` is allowed by the grammar for symmetry with other ops; golden examples omit return type (void / Stewarding-only).
 Preferred placement is `all`; `one` is allowed with the same `~` / `~Type` scope shape. Not part of `always` or value-`struct` subsets.
 
-### Always Global assembler (`>name() -> all`)
+### Always Global setup (`>name() -> all`)
 
 `always` may contain at most one `FactoryOp`. Return type is the keyword `all` (AST `AllBagType`): the enclosing aspect's Global bag, not a named type.
-C++ projection: `Always::name(SettingUp&) -> Global`. Linter: `always-assemble-must-return-all`, `duplicate-always-assemble`.
+C++ projection: `Always::name(SettingUp&) -> Global`. Linter: `always-setup-must-return-all`, `duplicate-always-setup`.
 Pure `always ?` helpers stay without context.
 
 ## Conservative behavior policy

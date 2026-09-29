@@ -170,10 +170,10 @@ namespace fqsm::view {
         }
 
     private:
-        // An assembled global is absent until Always::assemble ran.
+        // Global is absent until Always::setup ran.
         static Global& global_of(const void* value) {
             if (not value)
-                throw std::logic_error(std::string("fQSM: global is not assembled yet: ") + std::string(Rtid::name<Meta>()));
+                throw std::logic_error(std::string("fQSM: global is not set up yet: ") + std::string(Rtid::name<Meta>()));
             return *static_cast<Global*>(const_cast<void*>(value));
         }
     };

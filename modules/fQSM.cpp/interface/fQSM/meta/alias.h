@@ -12,7 +12,7 @@ namespace fqsm::processing { struct SettingUp; }
 // Defaults of an aspect declaration, detected in one place.
 // Absent Actions: the facade is BaseActions. Absent Internals: an empty type.
 // Absent customAspectReactions(): no reactions. Absent Global: an empty struct.
-// Absent Always::assemble: the global is default-constructed.
+// Absent Always::setup: the global is default-constructed.
 namespace fqsm::meta {
 
     struct EmptyGlobal {};
@@ -38,7 +38,7 @@ namespace fqsm::meta {
         using Global = typename detail::GlobalOf<Meta>::type;
         using Internals = typename detail::InternalsOf<Meta>::type;
         static constexpr bool has_reactions = requires { Meta::customAspectReactions(); };
-        static constexpr bool has_assemble = requires(processing::SettingUp& setup) { Meta::Always::assemble(setup); };
+        static constexpr bool has_setup = requires(processing::SettingUp& setup) { Meta::Always::setup(setup); };
     };
 }
 
