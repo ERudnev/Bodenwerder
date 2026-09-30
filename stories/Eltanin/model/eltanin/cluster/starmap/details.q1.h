@@ -1,16 +1,16 @@
 #pragma once
 
-#include <eltanin/fundamental/space.q1.h>
+#include <eltanin/cluster/orbital.q1.h>
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::fundamental {
+namespace eltanin::cluster::starmap {
 
     using namespace fqsm::api;
 
-    struct System : Entity<System> {
+    struct Details : Attribute<Details, Axis> {
         struct Quantum {
-            space::Pose pose;
+            string name;
         };
         struct Actions : BaseActions {};
         struct Internals : DefaultInternals {};
@@ -18,7 +18,7 @@ namespace eltanin::fundamental {
     };
 
     namespace doctrine {
-        auto system() -> Schema;
+        auto details() -> Schema;
     }
 
 }

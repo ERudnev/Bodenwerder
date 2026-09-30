@@ -1,9 +1,9 @@
-#include <eltanin/fundamental/thing.q1.h>
+#include <eltanin/cluster/thing.q1.h>
 
 #include <algorithm>
 #include <cmath>
 
-namespace eltanin::fundamental {
+namespace eltanin::cluster {
 
     using namespace fqsm::api;
 

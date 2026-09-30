@@ -1,6 +1,6 @@
 #include <eltanin/locality/scrap.q1.h>
 
-#include <eltanin/fundamental/thing.q1.h>
+#include <eltanin/cluster/thing.q1.h>
 #include <eltanin/decorations/dust.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include "physics/settings.h"
@@ -112,7 +112,7 @@ namespace eltanin::locality {
                 .halfExtents = half,
                 .collided = false,
             });
-            const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<::eltanin::fundamental::Thing>::get_global(context).now});
+            const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<::eltanin::cluster::Thing>::get_global(context).now});
             with<Scrap>::extend(context, thing, Scrap::Quantum{.body = body, .actor = actor, .gpuKelvin = temperature, .meshFromBody = meshFromBody, .lineage = lineage});
             return thing;
         }
@@ -259,7 +259,7 @@ namespace eltanin::locality {
         for (const auto id : living) {
             if (not with<Scrap>::exists(context, id) or not with<Thing>::exists(context, id))
                 continue;
-            if (with<Thing>::get(context, id).bornAt == with<::eltanin::fundamental::Thing>::get_global(context).now)
+            if (with<Thing>::get(context, id).bornAt == with<::eltanin::cluster::Thing>::get_global(context).now)
                 continue;
             const auto& scrap = with<Scrap>::get(context, id);
             if (not with<phys::rigid::Solid>::exists(context, scrap.body) or not with<phys::Body>::exists(context, scrap.body))

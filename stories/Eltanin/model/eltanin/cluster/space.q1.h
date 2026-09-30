@@ -4,7 +4,7 @@
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::fundamental::space {
+namespace eltanin::cluster::space {
 
     using namespace fqsm::api;
 

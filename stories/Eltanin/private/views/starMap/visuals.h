@@ -6,11 +6,14 @@
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
+#include <rmmr/scene/actors/family.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/scene/root.q1.h>
 #include <rmmr/system/window.q1.h>
+
+#include "cluster/astronomy.h"
 
 #include <fQSM/api/interface.h>
 
@@ -30,6 +33,17 @@ namespace eltanin::views::starmap {
     };
 
     struct Visuals {
+        struct Lod {
+            rmmr::scene::actor::Family::Id family;
+            rmmr::resource::geometry::Asset::Id mesh;
+        };
+        struct Star {
+            cluster::Celestial::Id celestial;
+            rmmr::scene::actor::Replica::Id coarse;
+            rmmr::scene::actor::Replica::Id fine;
+            float celestialRadius;
+        };
+
         base::maybe<Marker> currentPlayer;
         base::maybe<Marker> viewFocus;
         base::maybe<rmmr::scene::Grid::Id> tensGrid;
@@ -39,13 +53,19 @@ namespace eltanin::views::starmap {
         base::maybe<rmmr::scene::actor::Mesh::Id> axisZ;
         vector<rmmr::resource::geometry::Asset::Id> dashMeshes;
         base::maybe<rmmr::resource::material::Asset::Id> gizmo;
+        base::maybe<rmmr::resource::material::Asset::Id> starMaterial;
+        base::maybe<Lod> coarse;
+        base::maybe<Lod> fine;
+        vector<Star> stars;
         base::maybe<rmmr::system::Window::Id> renderWindow;
         rmmr::Pos player;
         rmmr::Pos focus;
         float scaleLy;
 
+        static auto starMeshRadius(float celestialRadius, float cameraDistance, float pixelWorld) -> float;
         auto addAssets(Writing) -> bool;
         auto place(Writing, rmmr::scene::Root::Id, rmmr::system::Window::Id) -> bool;
+        auto bind(Writing, rmmr::scene::Root::Id, const cluster::Astronomy&) -> bool;
         void follow(Writing, rmmr::scene::Camera::Id);
     };
 

@@ -1,4 +1,5 @@
 #include "geo/details/compose.h"
+#include "cluster/measure.h"
 
 #include <base/logging.h>
 #include <eltanin/geo/minerals.q1.h>
@@ -183,7 +184,7 @@ namespace eltanin::planet {
         const float soft = glm::smoothstep(0.45f, 0.92f, temperature / std::max(melt, 1.0f));
         const float yield = hardness * 1.4e8f * (1.0f - 0.85f * soft);
         const float reliefReal = yield / std::max(solidDensity * gravity, 1.0f);
-        const float reliefPhysical = std::min(reliefReal / Planet::worldScale, passport.radius * 0.45f);
+        const float reliefPhysical = std::min(float(reliefReal * cluster::measure::celestialFactor), passport.radius * 0.45f);
         const float reliefFraction = reliefPhysical / passport.radius;
         const float reliefAmplitude = std::min(reliefPhysical * Planet::reliefExaggeration, passport.radius * 0.45f);
         const float potato = passport.radius * reliefFraction * reliefFraction;
@@ -217,7 +218,7 @@ namespace eltanin::planet {
         const float annualMean = annualSum / std::max(annualWeight, 1.0e-4f);
         const float transition = 4000.0f * (9.81f / std::max(gravity, 0.02f));
         const float largeDiameter = transition * (10.0f + 28.0f * glm::clamp(0.25f + passport.environment.debrisFlux * 0.52f + passport.environment.eccentricity * 0.30f, 0.0f, 1.0f));
-        const float crater = std::min((largeDiameter * 0.5f) / (passport.radius * Planet::worldScale), 0.85f);
+        const float crater = std::min((largeDiameter * 0.5f) / float(passport.radius / cluster::measure::celestialFactor), 0.85f);
         const float basin = std::min(crater * (2.4f + 3.2f * glm::clamp(passport.environment.debrisFlux * 0.55f + passport.environment.eccentricity * 0.24f, 0.0f, 1.0f)), 1.15f);
         float frost = geo::Volatile::table()[static_cast<std::size_t>(geo::Volatile::Kind::Water)].freezeKelvin;
         if (geo::Volatile::nibble(retained, geo::Volatile::Kind::Water) <= 0) {
@@ -417,7 +418,7 @@ namespace eltanin::planet {
                     axis = candidates[static_cast<std::size_t>(plume % static_cast<integer>(candidates.size()))].center;
                 const float residence = 1.0f - geology.crust.mobility;
                 const float power = glm::clamp(geology.mantle.plumePower * (0.85f + residence * 1.65f) * (0.72f + 0.52f * Sample::hash01(plume, seed, 3011, 53)), 0.18f, 1.25f);
-                const float metric = (80000.0f * (9.81f / std::max(geology.scale.gravity, 0.05f)) * (0.55f + 0.70f * power)) / Planet::worldScale / radius;
+                const float metric = (80000.0f * (9.81f / std::max(geology.scale.gravity, 0.05f)) * (0.55f + 0.70f * power)) * float(cluster::measure::celestialFactor) / radius;
                 const float shield = metric * geology.crust.mobility + (0.10f + 0.16f * power) * (1.0f - geology.crust.mobility);
                 Swell::apply(formation.relief, Swell{.axis = axis, .sigma = shield * 1.6f, .amplitude = amplitude * (0.14f + 0.28f * power), .seed = seed + 3023 + plume * 59});
                 vec3 tangent = glm::cross(axis, Sample::sphereDir(plume, seed + 3037, 31, 37));
@@ -434,7 +435,7 @@ namespace eltanin::planet {
             }
         }
 
-        const float escape = std::sqrt(std::max(2.0f * geology.scale.gravity * radius * Planet::worldScale, 0.0f));
+        const float escape = std::sqrt(std::max(float(2.0f * geology.scale.gravity * radius / cluster::measure::celestialFactor), 0.0f));
         const float stick = glm::clamp((6500.0f - escape) / 6500.0f, 0.0f, 1.0f) * (0.30f + 0.70f * geology.bombardment.largeBodyTail);
         const integer patches = static_cast<integer>(std::lround(stick * 3.0f));
         if (patches > 0) {

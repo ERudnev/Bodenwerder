@@ -1,6 +1,7 @@
 #pragma once
 
 #include <base/maybe.h>
+#include <eltanin/types.q1.h>
 #include <rmmr/math.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -8,7 +9,7 @@
 namespace eltanin::phys {
 
     using namespace fqsm::api;
-    using Kelvins = float;
+    using Kelvins = ::eltanin::Kelvins;
 
     struct Matter {
         dvec3 position;

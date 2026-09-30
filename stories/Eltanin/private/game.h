@@ -9,6 +9,7 @@
 #include "blueprints/catalog.h"
 #include "fittings/mounts/catalog.h"
 #include "resources/library.h"
+#include "cluster/astronomy.h"
 #include "views/blueprints/editor.h"
 #include "views/locality/view.h"
 #include "views/starMap/view.h"
@@ -25,16 +26,27 @@ namespace eltanin {
             editor,
         };
 
-        struct Menu {};
+        struct Entities {
+            cluster::Astronomy astronomy;
+            BlueprintCatalog blueprintPack;
+            MountCatalog mountPack;
+        };
 
+        struct Views {
+            Shown shown;
+            views::starmap::View starMap;
+            base::maybe<views::locality::View> locality;
+            views::Blueprints editor;
+        };
+
+        struct UI {
+            bool menuOpen;
+        };
+
+        Entities entities;
         ::eltanin::assets::Handles assets;
-        base::maybe<Menu> menu;
-        Shown shown;
-        views::starmap::View starMap;
-        base::maybe<views::locality::View> locality;
-        views::Blueprints editor;
-        BlueprintCatalog blueprintPack;
-        MountCatalog mountPack;
+        UI ui;
+        Views view;
 
         Schema schema() const override;
         void createCore(Writing) override;

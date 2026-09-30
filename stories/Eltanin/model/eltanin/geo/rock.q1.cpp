@@ -1,6 +1,6 @@
 #include <eltanin/geo/rock.q1.h>
 
-#include <eltanin/fundamental/thing.q1.h>
+#include <eltanin/cluster/thing.q1.h>
 #include <eltanin/geo/minerals.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <rmmr/resources/geometry.q1.h>
@@ -451,7 +451,7 @@ namespace eltanin::geo {
                 .hull = std::move(hull),
                 .visualHurtStale = false,
             });
-            const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<::eltanin::fundamental::Thing>::get_global(context).now});
+            const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<::eltanin::cluster::Thing>::get_global(context).now});
             with<Rock>::extend(context, thing, Rock::Quantum{.body = body, .actor = actor, .volume = std::move(volume)});
             return thing;
         }

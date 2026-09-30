@@ -1,6 +1,6 @@
 #include "game.h"
 
-#include <eltanin/fundamental/thing.q1.h>
+#include <eltanin/cluster/thing.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/system/core.q1.h>
 #include <rmmr/system/window.q1.h>
@@ -39,22 +39,18 @@ namespace eltanin {
     }
 
     void Game::contributeMenuBar(Writing world) {
-        const bool menuOpen = menu.has_value();
+        const bool menuOpen = ui.menuOpen;
         if (menuOpen) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
         }
-        if (ImGui::Button("Menu")) {
-            if (menuOpen)
-                menu.reset();
-            else
-                menu.emplace();
-        }
+        if (ImGui::Button("Menu"))
+            ui.menuOpen = not ui.menuOpen;
         if (menuOpen)
             ImGui::PopStyleColor(2);
 
-        const auto& clock = with<fundamental::Thing>::get_global(world);
-        const auto civil = fundamental::Thing::Always::civil(clock.now);
+        const auto& clock = with<cluster::Thing>::get_global(world);
+        const auto civil = cluster::Thing::Always::civil(clock.now);
         ImGui::SameLine();
         ImGui::AlignTextToFramePadding();
         ImGui::BeginGroup();
@@ -82,10 +78,13 @@ namespace eltanin {
     }
 
     void Game::drawMenuWindow(Writing world) {
-        if (not menu.has_value())
+        if (not ui.menuOpen)
             return;
-        bool open = true;
-        if (ImGui::Begin("Menu", &open)) {
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(ImVec2{viewport->WorkPos.x + viewport->WorkSize.x * 0.5f, viewport->WorkPos.y + viewport->WorkSize.y * 0.5f}, ImGuiCond_Always, ImVec2{0.5f, 0.5f});
+        ImGui::SetNextWindowSize(ImVec2{156.f, 48.f}, ImGuiCond_Always);
+        constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+        if (ImGui::Begin("##menu", nullptr, flags)) {
             if (ImGui::Button("Quit", ImVec2{140.f, 0.f})) {
                 const auto bound = with<World>::get_global(world).window;
                 if (bound and with<system::Window>::exists(world, *bound) and with<system::Device>::exists(world, *bound))
@@ -93,21 +92,19 @@ namespace eltanin {
             }
         }
         ImGui::End();
-        if (not open)
-            menu.reset();
     }
 
     void Game::contributeViewMenu(Writing world) {
         contributeMenuBar(world);
-        if (shown == Shown::locality and locality) {
+        if (view.shown == Shown::locality and view.locality) {
             ImGui::SameLine();
             if (ImGui::Button("Back"))
                 showMap(world);
             if (shared)
-                locality->contributeMenu(world, assets, *shared);
+                view.locality->contributeMenu(world, assets, *shared);
             return;
         }
-        if (shown == Shown::editor) {
+        if (view.shown == Shown::editor) {
             ImGui::SameLine();
             if (ImGui::Button("Back"))
                 showMap(world);
@@ -117,6 +114,7 @@ namespace eltanin {
         ImGui::SameLine();
         if (ImGui::Button("Planet"))
             showLocality(world);
+        togglePanel("Systems", view.starMap.panels.systems);
         bool editorToggle = false;
         rmmr::wrapper::ui::viewToggle("Blueprints", &editorToggle);
         if (editorToggle)
@@ -125,45 +123,46 @@ namespace eltanin {
 
     void Game::contributeEditorPanels(bool catalog) {
         if (catalog)
-            togglePanel("Blueprints", editor.state.panels.catalog);
-        togglePanel("Actions", editor.state.panels.actions);
-        togglePanel("Clipboard", editor.state.panels.clipboard);
-        togglePanel("Selection", editor.state.panels.selection);
-        togglePanel("View", editor.state.panels.view);
+            togglePanel("Blueprints", view.editor.state.panels.catalog);
+        togglePanel("Actions", view.editor.state.panels.actions);
+        togglePanel("Clipboard", view.editor.state.panels.clipboard);
+        togglePanel("Selection", view.editor.state.panels.selection);
+        togglePanel("View", view.editor.state.panels.view);
     }
 
     auto Game::activeOverlay() const -> base::maybe<rmmr::resource::overlay::Asset::Id> {
-        if (shown != Shown::editor or not editor.assets.editorEffect)
+        if (view.shown != Shown::editor or not view.editor.assets.editorEffect)
             return {};
-        if (editor.state.membranes.enabled or editor.state.paletteMode)
+        if (view.editor.state.membranes.enabled or view.editor.state.paletteMode)
             return {};
-        return editor.assets.editorEffect;
+        return view.editor.assets.editorEffect;
     }
 
     auto Game::overlaySelection() const -> std::span<const rmmr::renderer::Integer32> {
-        if (shown != Shown::editor or editor.state.membranes.enabled or editor.state.paletteMode)
+        if (view.shown != Shown::editor or view.editor.state.membranes.enabled or view.editor.state.paletteMode)
             return {};
-        return editor.state.selection.aliases;
+        return view.editor.state.selection.aliases;
     }
 
     void Game::drawUi(Writing world) {
         drawMenuWindow(world);
-        if (shown == Shown::locality and locality) {
-            locality->draw(world, blueprintPack);
-            locality->present(views);
+        if (view.shown == Shown::locality and view.locality) {
+            view.locality->draw(world, entities.blueprintPack);
+            view.locality->present(views);
             engageInputs(world);
             return;
         }
-        if (shown == Shown::editor) {
-            editor.draw(world, true, blueprintPack, mountPack);
-            if (starMap.view)
-                editor.bindView(views, true, *starMap.view);
+        if (view.shown == Shown::editor) {
+            view.editor.draw(world, true, entities.blueprintPack, entities.mountPack);
+            if (view.starMap.view)
+                view.editor.bindView(views, true, *view.starMap.view);
             engageInputs(world);
             return;
         }
-        if (starMap.view)
-            views = {*starMap.view};
+        if (view.starMap.view)
+            views = {*view.starMap.view};
         engageInputs(world);
+        view.starMap.draw(world);
 
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         constexpr float pad = 10.0f;
@@ -173,7 +172,7 @@ namespace eltanin {
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{8.0f, 2.0f});
         if (ImGui::Begin("##starmapReadout", nullptr, flags)) {
             ImGui::SetWindowFontScale(0.75f);
-            const auto& visuals = starMap.visuals;
+            const auto& visuals = view.starMap.visuals;
             ImGui::Text("Scale   %.1f LY", visuals.scaleLy);
             ImGui::Text("Player  %.2f, %.2f, %.2f LY", visuals.player.x, visuals.player.y, visuals.player.z);
             ImGui::Text("Focus   %.2f, %.2f, %.2f LY", visuals.focus.x, visuals.focus.y, visuals.focus.z);

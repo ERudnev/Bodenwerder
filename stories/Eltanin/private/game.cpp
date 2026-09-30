@@ -3,9 +3,10 @@
 #include "locality/assets.h"
 
 #include <eltanin/decorations/dust.q1.h>
-#include <eltanin/fundamental/celestial.q1.h>
-#include <eltanin/fundamental/thing.q1.h>
-#include <eltanin/fundamental/system.q1.h>
+#include <eltanin/cluster/celestial.q1.h>
+#include <eltanin/cluster/thing.q1.h>
+#include <eltanin/cluster/orbital.q1.h>
+#include <eltanin/cluster/starmap/details.q1.h>
 #include <eltanin/geo/boulder.q1.h>
 #include <eltanin/geo/rock.q1.h>
 #include <eltanin/locality/bullet.q1.h>
@@ -34,9 +35,10 @@ namespace eltanin {
     Schema Game::schema() const {
         return ask::schema::merge({
             doctrine::world(),
-            fundamental::doctrine::thing(),
-            fundamental::doctrine::system(),
-            fundamental::doctrine::celestial(),
+            cluster::doctrine::thing(),
+            cluster::doctrine::orbital(),
+            cluster::doctrine::celestial(),
+            cluster::starmap::doctrine::details(),
             phys::doctrine::body(),
             phys::rigid::doctrine::rigid(),
             phys::doctrine::resting(),
@@ -58,6 +60,7 @@ namespace eltanin {
     void Game::createCore(Writing context) {
         const auto host = with<::rmmr::resource::Assets>::singleton(context);
         with<::eltanin::resource::Assets>::extend(context, host, ::eltanin::resource::Assets::Quantum{});
+        entities.astronomy.generate(context);
     }
 
     void Game::addAssets(Writing context) {
@@ -70,9 +73,9 @@ namespace eltanin {
         locality::assets::add(context);
         if (not geo::assets::add(context, *shared))
             return;
-        if (not editor.addAssets(context, *shared))
+        if (not view.editor.addAssets(context, *shared))
             return;
-        if (not starMap.visuals.addAssets(context))
+        if (not view.starMap.visuals.addAssets(context))
             return;
     }
 
@@ -80,80 +83,82 @@ namespace eltanin {
     }
 
     void Game::setup(Writing context, system::Window::Id window) {
-        shown = Shown::map;
+        view.shown = Shown::map;
+        ui.menuOpen = false;
         with<World>::modify_global(context)->window = window;
-        starMap.open(context, window);
+        view.starMap.open(context, window);
+        view.starMap.bind(context, entities.astronomy);
         showMap(context);
         const auto manager = with<::rmmr::resource::Manager>::singleton(context);
-        blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "blueprints");
-        mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings");
-        editor.create(context);
+        entities.blueprintPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "blueprints");
+        entities.mountPack.bind(with<::rmmr::resource::Manager>::get(context, manager).location / "Eltanin" / "fittings");
+        view.editor.create(context);
         engageInputs(context);
     }
 
     void Game::onFrame(establish::Realm& world, int64 dt_us) {
-        if (not mountPack.ready)
-            mountPack.loadFromDisk(world);
-        if (not blueprintPack.ready) {
-            blueprintPack.loadFromDisk(world);
-            if (blueprintPack.unnamed)
-                world.branch([&](Writing context) { editor.show(context, *blueprintPack.unnamed); });
+        if (not entities.mountPack.ready)
+            entities.mountPack.loadFromDisk(world);
+        if (not entities.blueprintPack.ready) {
+            entities.blueprintPack.loadFromDisk(world);
+            if (entities.blueprintPack.unnamed)
+                world.branch([&](Writing context) { view.editor.show(context, *entities.blueprintPack.unnamed); });
         }
         Stewarding frame = world;
-        if (shown == Shown::editor)
+        if (view.shown == Shown::editor)
             return;
         with<World>::pollPauseKey(frame);
         const seconds wallDt = static_cast<seconds>(dt_us) / 1'000'000.0;
         const seconds simDt = wallDt * World::Always::rate(with<World>::get_global(frame).warp);
-        with<fundamental::Thing>::update(frame, simDt);
-        starMap.follow(frame);
-        if (locality) {
-            locality->tick(frame, simDt);
-            if (shown == Shown::locality)
-                locality->handleCameraHotkey(frame);
+        with<cluster::Thing>::update(frame, simDt);
+        view.starMap.follow(frame);
+        if (view.locality) {
+            view.locality->tick(frame, simDt);
+            if (view.shown == Shown::locality)
+                view.locality->handleCameraHotkey(frame);
         }
     }
 
     void Game::engageInputs(Writing context) {
-        const bool map = shown == Shown::map;
-        const bool editorShown = shown == Shown::editor;
-        const bool localityShown = shown == Shown::locality;
-        if (starMap.input)
-            with<system::ViewInput>::engage(context, *starMap.input, map);
-        if (editor.state.mainScene.input)
-            with<system::ViewInput>::engage(context, *editor.state.mainScene.input, editorShown and not editor.state.paletteMode);
-        if (editor.state.paletteScene.input)
-            with<system::ViewInput>::engage(context, *editor.state.paletteScene.input, editorShown and editor.state.paletteMode);
-        if (locality)
-            locality->engageCameras(context, localityShown);
+        const bool map = view.shown == Shown::map;
+        const bool editorShown = view.shown == Shown::editor;
+        const bool localityShown = view.shown == Shown::locality;
+        if (view.starMap.input)
+            with<system::ViewInput>::engage(context, *view.starMap.input, map);
+        if (view.editor.state.mainScene.input)
+            with<system::ViewInput>::engage(context, *view.editor.state.mainScene.input, editorShown and not view.editor.state.paletteMode);
+        if (view.editor.state.paletteScene.input)
+            with<system::ViewInput>::engage(context, *view.editor.state.paletteScene.input, editorShown and view.editor.state.paletteMode);
+        if (view.locality)
+            view.locality->engageCameras(context, localityShown);
     }
 
     void Game::showMap(Writing) {
-        shown = Shown::map;
-        if (starMap.view)
-            views = {*starMap.view};
+        view.shown = Shown::map;
+        if (view.starMap.view)
+            views = {*view.starMap.view};
     }
 
     void Game::showLocality(Writing context) {
-        if (shown == Shown::locality)
+        if (view.shown == Shown::locality)
             return;
         const auto bound = with<World>::get_global(context).window;
         if (not bound)
             return;
-        if (not locality) {
-            locality.emplace();
-            if (not locality->create(context, *bound, assets)) {
-                locality.reset();
+        if (not view.locality) {
+            view.locality.emplace();
+            if (not view.locality->create(context, *bound, assets)) {
+                view.locality.reset();
                 return;
             }
         }
-        shown = Shown::locality;
-        locality->present(views);
+        view.shown = Shown::locality;
+        view.locality->present(views);
     }
 
     void Game::showEditor(Writing) {
-        shown = Shown::editor;
-        editor.openPanels();
+        view.shown = Shown::editor;
+        view.editor.openPanels();
     }
 
 }

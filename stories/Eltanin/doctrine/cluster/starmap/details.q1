@@ -1,0 +1,10 @@
+import "cluster/orbital"
+
+namespace eltanin
+  namespace cluster
+    namespace starmap
+
+      // Map-facing grain label. Not orbital mechanics; the Axis pose stays on cluster::Axis.
+      attribute Details of Axis
+        one
+          name: string

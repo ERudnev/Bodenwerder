@@ -1,5 +1,7 @@
 #include "views/starMap/visuals.h"
 
+#include "cluster/measure.h"
+
 #include <rmmr/controller/cameraOrbit.q1.h>
 #include <rmmr/resources/builders/geometryGenerator.h>
 #include <rmmr/resources/builders/materialBuilder.h>
@@ -7,6 +9,7 @@
 #include <rmmr/resources/manager.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/runtimes.q1.h>
+#include <rmmr/scene/actors/family.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/scene/node.q1.h>
@@ -18,7 +21,9 @@
 #include <format>
 #include <numbers>
 
+#include <glm/common.hpp>
 #include <glm/geometric.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <glm/mat3x3.hpp>
 
 namespace eltanin::views::starmap {
@@ -45,6 +50,11 @@ namespace eltanin::views::starmap {
         constexpr float scaleRefLy = 260.0f;
         constexpr float scaleUnitFull = 25.0f;
         constexpr float scaleTensFull = 80.0f;
+        constexpr float fingernailPixels = 28.0f;
+        constexpr float starFloorPixels = 3.5f;
+        constexpr float washDistanceLy = 45.0f;
+        constexpr float farRadiusMix = 0.14f;
+        constexpr float lodFinePixels = 14.0f;
         constexpr float gridOpacity = 0.7f;
         constexpr RGB axisXColor{1.0f, 0.12f, 0.12f};
         constexpr RGB axisYColor{0.12f, 1.0f, 0.18f};
@@ -205,6 +215,17 @@ namespace eltanin::views::starmap {
             return id;
         }
 
+        auto starLayout() -> scene::actor::Family::Layout {
+            using Type = resource::Uniform::Type;
+            return scene::actor::Family::Layout{
+                .instanceBytes = 16,
+                .fields = {
+                    scene::actor::Family::Field{.name = "color", .type = Type::v3f, .offset = 0},
+                    scene::actor::Family::Field{.name = "radius", .type = Type::f32, .offset = 12},
+                },
+            };
+        }
+
         auto spawnMesh(Writing context, scene::Root::Id root, rmmr::resource::geometry::Asset::Id geometry, rmmr::resource::material::Asset::Id material, RGB color, Pose pose, vec3 scale) -> base::maybe<scene::actor::Mesh::Id> {
             auto mesh = with<scene::actor::Mesh>::composeOne(context, geometry, material);
             if (not mesh)
@@ -302,6 +323,16 @@ namespace eltanin::views::starmap {
         });
         if (not gizmo)
             return false;
+        starMaterial = rmmr::resource::builders::material::addSinglePass(context, rmmr::resource::builders::material::SinglePass{
+            .name = Name::from("Eltanin", "starMapStar"),
+            .shader = item<rmmr::resource::shader::Loader>{.vertex = "shaders/starMapStar.vert.glsl", .fragment = "shaders/starMapStar.frag.glsl"},
+            .pass = renderer::Pass::opaque,
+            .uniforms = {},
+            .glowSpread = true,
+            .lighting = renderer::LightingMode::unlit,
+            .nearest = false,
+            .renderState = renderer::RenderState{.blend = renderer::BlendMode::inherit, .depthTest = renderer::ToggleMode::inherit, .depthWrite = renderer::ToggleMode::inherit, .depthCompare = renderer::DepthCompare::inherit},
+        });
         return true;
     }
 
@@ -356,6 +387,25 @@ namespace eltanin::views::starmap {
         focus = Pos{0.0f, 0.0f, 0.0f};
         scaleLy = scaleRefLy;
         scene::Node::Actions::setVisible(context, unit, false);
+        if (not starMaterial) {
+            context.refuse("eltanin::views::starmap::Visuals::place: star material missing");
+            return false;
+        }
+        auto placeLod = [&](integer tessellation, const char* name) -> base::maybe<Lod> {
+            const auto mesh = installMesh(context, window, Name::from("Eltanin", name), GeometryGenerator::sphere(tessellation));
+            if (not mesh)
+                return {};
+            auto quantum = with<scene::actor::Family>::composeOne(context, *mesh, *starMaterial, starLayout());
+            if (not quantum)
+                return {};
+            return Lod{.family = with<scene::Interface>::createFamily(context, root, std::move(*quantum)), .mesh = *mesh};
+        };
+        coarse = placeLod(0, "starMapIcosa0");
+        fine = placeLod(1, "starMapIcosa1");
+        if (not coarse or not fine) {
+            context.refuse("eltanin::views::starmap::Visuals::place: star lod families failed");
+            return false;
+        }
         return true;
     }
 
@@ -398,6 +448,64 @@ namespace eltanin::views::starmap {
             poseMarker(context, *currentPlayer, player, cameraNode.pose.rotation, reticleSize, dashThickness, dashPeriod, dashMeshes, *gizmo);
         if (viewFocus and gizmo)
             poseMarker(context, *viewFocus, focus, cameraNode.pose.rotation, reticleSize, dashThickness, dashPeriod, dashMeshes, *gizmo);
+        for (const auto& star : stars) {
+            if (not with<scene::actor::Replica>::exists(context, star.coarse) or not with<scene::actor::Replica>::exists(context, star.fine) or not with<scene::Node>::exists(context, star.coarse))
+                continue;
+            const float distance = glm::length(vec3{with<scene::Node>::get(context, star.coarse).pose.position} - vec3{cameraNode.pose.position});
+            const float starPixel = renderWindow ? worldPerPixel(context, camera, *renderWindow, distance) : 0.0f;
+            const float visual = starMeshRadius(star.celestialRadius, distance, starPixel);
+            const bool useFine = starPixel > 1.0e-12f and (2.0f * visual) / starPixel > lodFinePixels;
+            auto coarsePacked = with<scene::actor::Replica>::modify(context, star.coarse);
+            auto finePacked = with<scene::actor::Replica>::modify(context, star.fine);
+            with<scene::actor::Family>::write(context, coarsePacked->family, coarsePacked->packed, "radius", visual);
+            with<scene::actor::Family>::write(context, finePacked->family, finePacked->packed, "radius", visual);
+            scene::Node::Actions::setVisible(context, star.coarse, not useFine);
+            scene::Node::Actions::setVisible(context, star.fine, useFine);
+        }
+    }
+
+    auto Visuals::starMeshRadius(float celestialRadius, float cameraDistance, float pixelWorld) -> float {
+        const float sun = float(cluster::measure::Radius::sun * cluster::measure::celestialFactor);
+        const float relative = sun > 1.0e-12f ? std::max(celestialRadius, 0.0f) / sun : 1.0f;
+        const float nearPx = fingernailPixels * relative;
+        const float farPx = starFloorPixels * glm::mix(1.0f, relative, farRadiusMix);
+        const float screenPx = farPx + (nearPx - farPx) / (1.0f + std::max(cameraDistance, 0.0f) / washDistanceLy);
+        if (pixelWorld > 1.0e-12f)
+            return screenPx * pixelWorld;
+        return screenPx * 0.0004f * std::max(cameraDistance, 1.0f);
+    }
+
+    auto Visuals::bind(Writing context, scene::Root::Id root, const cluster::Astronomy& catalog) -> bool {
+        if (not coarse or not fine) {
+            context.refuse("eltanin::views::starmap::Visuals::bind: lod families missing");
+            return false;
+        }
+        stars.clear();
+        stars.reserve(catalog.celestials.size());
+        const auto bytes = static_cast<std::size_t>(starLayout().instanceBytes);
+        for (const auto id : catalog.celestials) {
+            if (not with<cluster::Star>::exists(context, id) or not with<cluster::Celestial>::exists(context, id) or not with<cluster::Axis>::exists(context, id))
+                continue;
+            const auto& star = with<cluster::Star>::get(context, id);
+            const auto& body = with<cluster::Celestial>::get(context, id);
+            const auto& axis = with<cluster::Axis>::get(context, id);
+            const dvec3 world = axis.pose.position + axis.pose.orientation * body.position;
+            const Pos map{float(world.x / cluster::measure::ly), float(world.y / cluster::measure::ly), float(world.z / cluster::measure::ly)};
+            const auto pose = Pose::from(map, HPB{0.0f, 0.0f, 0.0f});
+            scene::actor::Packed packed(bytes);
+            with<scene::actor::Family>::write(context, coarse->family, packed, "color", star.color);
+            with<scene::actor::Family>::write(context, coarse->family, packed, "radius", 1.0f);
+            scene::actor::Packed finePacked = packed;
+            const auto coarseReplica = with<scene::Interface>::createReplica(context, root, coarse->family, pose, scene::actor::Replica::Quantum{.family = coarse->family, .packed = std::move(packed)});
+            const auto fineReplica = with<scene::Interface>::createReplica(context, root, fine->family, pose, scene::actor::Replica::Quantum{.family = fine->family, .packed = std::move(finePacked)});
+            if (not with<scene::actor::Replica>::exists(context, coarseReplica) or not with<scene::actor::Replica>::exists(context, fineReplica)) {
+                context.refuse("eltanin::views::starmap::Visuals::bind: star replica failed");
+                return false;
+            }
+            scene::Node::Actions::setVisible(context, fineReplica, false);
+            stars.push_back(Star{.celestial = id, .coarse = coarseReplica, .fine = fineReplica, .celestialRadius = body.radius});
+        }
+        return true;
     }
 
 }

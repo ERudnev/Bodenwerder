@@ -3,6 +3,7 @@
 #include "geo/celestial/generator.h"
 #include "geo/details/weather.h"
 #include "physics/settings.h"
+#include "cluster/measure.h"
 
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/physics/body.q1.h>
@@ -439,7 +440,7 @@ namespace eltanin::planet {
 
     auto Planet::edgeMeters(float radius) -> float {
         const float r = std::max(radius, 1.0f);
-        constexpr float earth = 63710.0f;
+        const float earth = float(cluster::measure::Radius::earth * cluster::measure::celestialFactor);
         if (r < 4000.0f)
             return 8.0f;
         if (r < 16000.0f)

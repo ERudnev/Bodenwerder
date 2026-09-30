@@ -1,5 +1,9 @@
 #include "views/starMap/view.h"
 
+#include "cluster/measure.h"
+
+#include <eltanin/cluster/orbital.q1.h>
+#include <eltanin/cluster/starmap/details.q1.h>
 #include <rmmr/controller/cameraOrbit.q1.h>
 #include <rmmr/system/viewInput.q1.h>
 #include <rmmr/scene/camera.q1.h>
@@ -11,6 +15,7 @@
 #include <numbers>
 
 #include <glm/geometric.hpp>
+#include <imgui.h>
 
 namespace eltanin::views::starmap {
 
@@ -41,12 +46,50 @@ namespace eltanin::views::starmap {
         scene = root;
         camera = cam;
         view = rmmr::wrapper::Product::View{.viewport = viewport, .scene = root, .camera = cam};
+        panels.systems.emplace();
         visuals.follow(context, cam);
+    }
+
+    void View::bind(Writing context, const cluster::Astronomy& astronomy) {
+        if (not scene or not visuals.bind(context, *scene, astronomy))
+            return;
+        follow(context);
     }
 
     void View::follow(Writing context) {
         if (camera)
             visuals.follow(context, *camera);
+    }
+
+    void View::draw(Writing world) {
+        if (not panels.systems)
+            return;
+        bool open = true;
+        ImGui::SetNextWindowSize(ImVec2{280.f, 440.f}, ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Systems", &open)) {
+            if (ImGui::BeginTable("axes", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp, ImGui::GetContentRegionAvail())) {
+                ImGui::TableSetupScrollFreeze(0, 1);
+                ImGui::TableSetupColumn("Name");
+                ImGui::TableSetupColumn("ly", ImGuiTableColumnFlags_WidthFixed, 72.f);
+                ImGui::TableHeadersRow();
+                const dvec3 focus{visuals.focus};
+                for (const auto [id, axis] : world->aspect<cluster::Axis>().items()) {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    if (with<cluster::starmap::Details>::exists(world, id))
+                        ImGui::TextUnformatted(with<cluster::starmap::Details>::get(world, id).name.c_str());
+                    else
+                        ImGui::TextDisabled("—");
+                    ImGui::TableNextColumn();
+                    const dvec3 delta = axis.pose.position / cluster::measure::ly - focus;
+                    ImGui::Text("%.2f", glm::length(delta));
+                }
+                ImGui::EndTable();
+            }
+        }
+        ImGui::End();
+        if (not open)
+            panels.systems.reset();
     }
 
 }

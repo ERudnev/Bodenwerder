@@ -1,0 +1,21 @@
+import "types"
+import "cluster/space"
+import "cluster/orbital"
+import "rmmr/math"
+
+namespace eltanin
+  namespace cluster
+
+    // Body of this Axis. position is in the Axis frame. mass / radius are game kg and m.
+    feature Celestial of Axis
+      using Mass as @external(C++ double; kilograms)
+      one
+        position: space::Position
+        mass: Mass
+        radius: float
+
+    // Photosphere of this Celestial. Mass and radius stay on Celestial.
+    feature Star of Celestial
+      one
+        temperature: Kelvins
+        color: vec3

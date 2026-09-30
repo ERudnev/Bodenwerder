@@ -2,7 +2,7 @@
 
 #include <fQSM/api/interface.h>
 
-namespace eltanin::fundamental {
+namespace eltanin::cluster {
 
     using namespace fqsm::api;
 

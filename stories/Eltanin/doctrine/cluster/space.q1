@@ -1,12 +1,12 @@
 import "rmmr/math"
 
 namespace eltanin
-  namespace fundamental
+  namespace cluster
     namespace space
 
       using Position as dvec3
 
-      // Double pose of the fundamental layer. Locality and phys::Body keep their own frames.
+      // Double pose of the Cluster. Locality and phys::Body keep their own frames.
       struct Pose
         position: Position
         orientation: dquat

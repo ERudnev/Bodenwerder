@@ -16,14 +16,22 @@ namespace eltanin::views::starmap {
     using namespace fqsm::api;
 
     struct View {
+        struct Panels {
+            struct Systems {};
+            base::maybe<Systems> systems;
+        };
+
         base::maybe<rmmr::scene::Root::Id> scene;
         base::maybe<rmmr::scene::Camera::Id> camera;
         base::maybe<rmmr::system::ViewInput::Id> input;
         base::maybe<rmmr::wrapper::Product::View> view;
         Visuals visuals;
+        Panels panels;
 
         void open(Writing, rmmr::system::Window::Id);
+        void bind(Writing, const cluster::Astronomy&);
         void follow(Writing);
+        void draw(Writing);
     };
 
 }

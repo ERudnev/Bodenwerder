@@ -1,9 +1,0 @@
-import "fundamental/space"
-
-namespace eltanin
-  namespace fundamental
-
-    // pose.position is the barycenter. +Y of pose.orientation is the ecliptic normal.
-    entity System
-      one
-        pose: space::Pose

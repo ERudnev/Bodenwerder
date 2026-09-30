@@ -1,7 +1,7 @@
 namespace eltanin
 
-  // Session Global (window, sky, camera, sim rate). Universe clocks stay on fundamental::Thing.now.
-  //   Product::onFrame wall dt → fundamental::Thing >update with dt * rate(warp)
+  // Session Global (window, sky, camera, sim rate). Universe clocks stay on cluster::Thing.now.
+  //   Product::onFrame wall dt → cluster::Thing >update with dt * rate(warp)
   // warp 0 is pause (rate 0). Pause input: only Global.window (bound in Product::setup).
   // Environment sky: own Node; =tetherEnvironment copies camera position only (rotation untouched).
   // Also tethers skyBackdrop and geo::Sun disk.

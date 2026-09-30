@@ -1,9 +1,10 @@
 import "rmmr/math"
+import "types"
 
 namespace eltanin
   namespace phys
 
-    using Kelvins as float
+    using Kelvins as eltanin::Kelvins
 
     struct Matter
       position: dvec3

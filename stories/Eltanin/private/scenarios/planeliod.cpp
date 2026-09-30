@@ -1,6 +1,7 @@
 #include "scenarios/planeliod.h"
 
 #include "geo/celestial/sun.h"
+#include "cluster/measure.h"
 #include <eltanin/geo/minerals.q1.h>
 #include <eltanin/geo/volatiles.q1.h>
 #include <eltanin/locality/thing.q1.h>
@@ -47,7 +48,9 @@ namespace eltanin::scenario {
     }
 
     void Planeliod::placePlanet(Writing context, rmmr::system::Device::Id device, base::maybe<planet::Planet>& planet) {
-        constexpr float radius = 34000.0f; // close to real Mars, divided by 100
+        constexpr double marsMass = 6.417e23;
+        constexpr double marsRadius = 3.390e6;
+        const float radius = float(marsRadius * cluster::measure::celestialFactor);
         using Mineral = geo::Mineral::Kind;
         using Volatile = geo::Volatile::Kind;
         auto mineral = [](Mineral channel, integer fill) -> geo::Mineral::Mix {
@@ -60,7 +63,7 @@ namespace eltanin::scenario {
             planet::Passport{
                 .seed = 7,
                 .ageGyr = 4.54f,
-                .mass = 6.4266e19,
+                .mass = marsMass * cluster::measure::celestialFactor * cluster::measure::celestialFactor,
                 .radius = radius,
                 .bulk = mineral(Mineral::Pyroxene, 12) | mineral(Mineral::Olivine, 8) | mineral(Mineral::Feldspar, 6) | mineral(Mineral::Oxides, 11) | mineral(Mineral::Clay, 7) | mineral(Mineral::Ice, 6) | mineral(Mineral::Salts, 4) | mineral(Mineral::Iron, 5) | mineral(Mineral::Carbonaceous, 3),
                 .volatiles = volatileInventory(Volatile::Water, 6) | volatileInventory(Volatile::CarbonDioxide, 12) | volatileInventory(Volatile::Nitrogen, 2) | volatileInventory(Volatile::SulfurDioxide, 1),

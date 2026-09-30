@@ -7,7 +7,7 @@ namespace eltanin
     // Fail-safe: disk stars only, one atlas sprite, additive.
     feature SkySphereGenerator of rmmr::resource::geometry::Asset
       one
-        count: integer // stars to sample into the Galaxy disk
+        count: integer // stars to sample into the sky-disk
         seed: integer
         angular_diameter_deg: float // star billboard angular size
         >materialize(#system::Device) -> #rmmr::resource::geometry::Runtime?

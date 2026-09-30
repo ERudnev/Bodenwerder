@@ -1,9 +1,8 @@
 namespace eltanin
-  namespace fundamental
+  namespace cluster
 
-    // Grain of the cosmos. Instances come later; Global.now is the universe clock.
+    // Universe clock of the Cluster. Global.now.
     //   Product::onFrame wall dt → World.rate(warp) → >update(simDt): now += simDt.
-    // Systems and Celestials are separate identities.
     // Locality Thing.bornAt snapshots this now at create.
     entity Thing
       always

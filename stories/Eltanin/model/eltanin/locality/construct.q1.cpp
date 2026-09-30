@@ -1,7 +1,7 @@
 #include <eltanin/locality/construct.q1.h>
 #include <eltanin/locality/scrap.q1.h>
 #include <eltanin/locality/thing.q1.h>
-#include <eltanin/fundamental/thing.q1.h>
+#include <eltanin/cluster/thing.q1.h>
 #include <eltanin/decorations/dust.q1.h>
 
 #include "mech/assembler.h"
@@ -443,7 +443,7 @@ namespace eltanin::locality {
             const auto crystalBody = phys::createBody(context, phys::rigid::restoredBody(body.pose(), crystal.particles, crystal.shape), std::nullopt);
             phys::bindCohort(context, crystalBody, crystalBody);
             with<phys::rigid::Crystal>::extend(context, crystalBody, std::move(crystal));
-            const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<::eltanin::fundamental::Thing>::get_global(context).now});
+            const auto thing = with<Thing>::create(context, Thing::Quantum{.bornAt = with<::eltanin::cluster::Thing>::get_global(context).now});
             with<Construct>::extend(context, thing, Construct::Quantum{.body = crystalBody, .actor = actor, .fragments = std::move(fragments), .construction = std::move(slice), .visualOf = std::move(visualOf)});
             Construct::Actions::syncVisualCohesion(context, thing);
             return true;

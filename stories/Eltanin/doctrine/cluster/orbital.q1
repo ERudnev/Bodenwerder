@@ -1,0 +1,14 @@
+import "cluster/space"
+
+namespace eltanin
+  namespace cluster
+
+    // Local frame. pose.position is the barycenter; +Y of pose.orientation is the ecliptic normal.
+    entity Axis
+      one
+        pose: space::Pose
+
+    // Present when this frame is bound to another Axis. Absent = root in cluster space. pose stays on Axis.
+    feature Orbit of Axis
+      one
+        parent: #Axis

@@ -8,6 +8,7 @@ project("Eltanin"
 )
 
 set(Eltanin_Q1
+    types.q1
     world.q1
     physics/body.q1
     physics/rigid.q1
@@ -28,10 +29,11 @@ set(Eltanin_Q1
     geo/volatiles.q1
     geo/rock.q1
     geo/boulder.q1
-    fundamental/space.q1
-    fundamental/system.q1
-    fundamental/celestial.q1
-    fundamental/thing.q1
+    cluster/space.q1
+    cluster/thing.q1
+    cluster/orbital.q1
+    cluster/celestial.q1
+    cluster/starmap/details.q1
 )
 
 add_executable(${PROJECT_NAME})
