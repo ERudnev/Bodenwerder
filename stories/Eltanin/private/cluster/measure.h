@@ -5,13 +5,13 @@
 namespace eltanin::cluster::measure {
 
     struct StretchFactor {
-        static constexpr double celestial = 0.01;
+        static constexpr double celestial = 0.02;
         static constexpr double relief = 4.0;
     };
 
     constexpr double eMm = 1000000.0 * StretchFactor::celestial;
-    constexpr double eAU = 50000.0 * eMm; // extra ×3 on interplanetary vs celestial-only AU
-    constexpr double eLY = 500.0 * eAU; // extra ×126 on interstellar (SI ~63000 AU/ly → 500 eAU)
+    constexpr double eAU = 100000.0 * eMm;
+    constexpr double eLY = 1000.0 * eAU;
 
     struct Mass {
         static constexpr double sun = 1.9884e30;

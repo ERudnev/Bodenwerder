@@ -140,7 +140,7 @@ namespace eltanin::planet {
         const float actinides = float(geo::Mineral::nibble(passport.bulk, geo::Mineral::Kind::Actinides)) / 15.0f;
         const float metal = float(geo::Mineral::nibble(passport.bulk, geo::Mineral::Kind::Iron) + geo::Mineral::nibble(passport.bulk, geo::Mineral::Kind::Nickel)) / 30.0f;
         const float silicates = float(geo::Mineral::nibble(passport.bulk, geo::Mineral::Kind::Olivine) + geo::Mineral::nibble(passport.bulk, geo::Mineral::Kind::Pyroxene) + geo::Mineral::nibble(passport.bulk, geo::Mineral::Kind::Feldspar)) / 45.0f;
-        const float escapeProxy = std::sqrt(std::max(2.0f * gravity * passport.radius, 0.0f));
+        const float escapeProxy = std::sqrt(std::max(2.0f * gravity * float(realRadius), 0.0f));
         float greenhouse = 0.0f;
         float retainedWeight = 0.0f;
         cluster::chemistry::Volatile::Mix retained = 0;
@@ -150,7 +150,7 @@ namespace eltanin::planet {
             const integer amount = cluster::chemistry::Volatile::nibble(passport.volatiles, kind);
             const float molecular = glm::clamp(volatiles[static_cast<std::size_t>(index)].molarMass / 44.0f, 0.05f, 1.5f);
             const float thermalLoss = glm::clamp((equilibrium - 90.0f) / 360.0f, 0.0f, 1.0f);
-            const float retention = glm::clamp(0.12f + escapeProxy / 850.0f + molecular * 0.34f - thermalLoss * (1.05f - molecular * 0.35f) - passport.ageGyr * 0.018f, 0.0f, 1.0f);
+            const float retention = glm::clamp(0.12f + escapeProxy / 8500.0f + molecular * 0.34f - thermalLoss * (1.05f - molecular * 0.35f) - passport.ageGyr * 0.018f, 0.0f, 1.0f);
             const integer kept = static_cast<integer>(std::lround(float(amount) * retention));
             retained = cluster::chemistry::Volatile::pack(retained, kind, kept);
             retainedWeight += float(kept);
@@ -164,7 +164,8 @@ namespace eltanin::planet {
         const float waterInventory = float(cluster::chemistry::Volatile::nibble(retained, cluster::chemistry::Volatile::Kind::Water)) / 15.0f;
         const float water = waterInventory * glm::smoothstep(185.0f, 273.0f, temperature) * liquidWindow;
         const float ice = waterInventory * (1.0f - glm::smoothstep(210.0f, 285.0f, temperature));
-        const float primordialHeat = std::exp(-passport.ageGyr / 4.8f) * glm::clamp(std::log2(std::max(passport.radius, 1000.0f) / 1000.0f) / 13.0f, 0.08f, 1.0f);
+        const float heatFloor = float(0.1 * eMm);
+        const float primordialHeat = std::exp(-passport.ageGyr / 4.8f) * glm::clamp(std::log2(std::max(passport.radius, heatFloor) / heatFloor) / 13.0f, 0.08f, 1.0f);
         const float heat = glm::clamp(primordialHeat + actinides * 0.42f + passport.environment.tidalHeat * 0.65f, 0.0f, 1.0f);
         const float differentiation = glm::clamp(age * 0.72f + metal * 0.35f + silicates * 0.18f + primordialHeat * 0.22f, 0.0f, 1.0f);
         const float thickness = glm::clamp(0.82f - heat * 0.48f + age * 0.24f + solidDensity / 15000.0f, 0.12f, 0.96f);

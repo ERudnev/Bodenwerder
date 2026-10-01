@@ -1,5 +1,6 @@
 #include "geo/celestial/generator.h"
 #include "geo/details/compose.h"
+#include "cluster/measure.h"
 
 #include <base/logging.h>
 
@@ -142,7 +143,7 @@ namespace eltanin::planet {
             return float(value) / 255.0f;
         }
 
-        constexpr std::uint32_t cacheEpoch = 11;
+        constexpr std::uint32_t cacheEpoch = 12;
         constexpr char cacheMagic[8] = {'E', 'L', 'T', 'N', 'M', 'A', '1', '0'};
 
 #pragma pack(push, 1)
@@ -245,7 +246,7 @@ namespace eltanin::planet {
         }
 
         auto cacheFiles(const Planet& planet) -> CacheFiles {
-            const integer kilometres = std::max(integer{1}, static_cast<integer>(std::lround(double(planet.passport.radius) / 1000.0)));
+            const integer kilometres = std::max(integer{1}, static_cast<integer>(std::lround(double(planet.passport.radius) / (0.1 * eMm))));
             const std::string key = std::to_string(kilometres) + "_" + hashStem(cacheKey(planet));
             CacheFiles files;
             files.directory = std::filesystem::path{DAQL_WORLDS_DIR} / "Eltanin" / "planets";

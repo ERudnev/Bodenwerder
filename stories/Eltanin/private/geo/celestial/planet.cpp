@@ -441,13 +441,13 @@ namespace eltanin::planet {
     auto Planet::edgeMeters(float radius) -> float {
         const float r = std::max(radius, 1.0f);
         const float earth = float(Radius::earth);
-        if (r < 4000.0f)
-            return 8.0f;
-        if (r < 16000.0f)
-            return 16.0f;
+        if (r < float(0.4 * eMm))
+            return float(0.0008 * eMm);
+        if (r < float(1.6 * eMm))
+            return float(0.0016 * eMm);
         if (r <= earth)
-            return 32.0f;
-        return 32.0f * std::pow(r / earth, 1.2f);
+            return float(0.0032 * eMm);
+        return float(0.0032 * eMm) * std::pow(r / earth, 1.2f);
     }
 
     auto Planet::recommendedDetail(float radius) -> Detail {

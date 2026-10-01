@@ -520,17 +520,18 @@ namespace eltanin::views::starmap {
             cam->z_far = 2000.0f;
         }
         const float span = mapExtent * 2.0f;
+        const float cartesianFade = display.grid ? std::max(0.0f, bestFade) : 0.0f;
         if (axisX) {
             setAxisThickness(context, *axisX, vec3{span, 0.0f, 0.0f}, axisThickness);
-            scene::Node::Actions::setVisible(context, *axisX, display.grid);
+            setMeshOpacity(context, *axisX, cartesianFade);
         }
         if (axisY) {
             setAxisThickness(context, *axisY, vec3{0.0f, span, 0.0f}, axisThickness);
-            scene::Node::Actions::setVisible(context, *axisY, display.grid);
+            setMeshOpacity(context, *axisY, cartesianFade);
         }
         if (axisZ) {
             setAxisThickness(context, *axisZ, vec3{0.0f, 0.0f, span}, axisThickness);
-            scene::Node::Actions::setVisible(context, *axisZ, display.grid);
+            setMeshOpacity(context, *axisZ, cartesianFade);
         }
         for (std::size_t index = 0; index < lattices.size(); ++index) {
             auto& lattice = lattices[index];

@@ -23,7 +23,7 @@ namespace eltanin::scenario {
     }
 
     void Planeliod::populate(Writing context, rmmr::system::Device::Id device) {
-        with<World>::placeCamera(context, Pose::from(Pos{0.0f, 0.0f, 65000.0f}, HPB{0.0f, 0.0f, 0.0f}));
+        with<World>::placeCamera(context, Pose::from(Pos{0.0f, 0.0f, float(6.5 * eMm)}, HPB{0.0f, 0.0f, 0.0f}));
         if (const auto camera = with<World>::get_global(context).camera)
             with<controller::Camera3d>::modify(context, *camera)->moveScale = 100.0f;
         if (not grid) {
