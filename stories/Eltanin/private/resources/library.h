@@ -5,6 +5,7 @@
 #include <rmmr/resources/geometry.q1.h>
 #include <rmmr/resources/materials.q1.h>
 #include <rmmr/resources/texpack.q1.h>
+#include <rmmr/resources/texts.q1.h>
 #include <rmmr/wrapper/library.h>
 
 namespace eltanin::assets {
@@ -25,6 +26,7 @@ namespace eltanin::assets {
         base::maybe<rmmr::resource::material::Asset::Id> skySphereMaterial;
         base::maybe<rmmr::resource::material::Asset::Id> skyBackdropMaterial;
         base::maybe<rmmr::resource::texpack::Pack::Id> sprites;
+        base::maybe<rmmr::resource::text::Pack::Id> clusterTexts;
         base::maybe<rmmr::resource::material::Asset::Id> collisionDebugMaterial;
     };
 

@@ -2,6 +2,7 @@
 
 #include "cluster/measure.h"
 
+#include <eltanin/cluster/celestial.q1.h>
 #include <eltanin/cluster/orbital.q1.h>
 #include <eltanin/cluster/starmap/details.q1.h>
 #include <rmmr/controller/cameraOrbit.q1.h>
@@ -14,6 +15,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <numbers>
 
 #include <glm/geometric.hpp>
@@ -56,6 +58,56 @@ namespace eltanin::views::starmap {
             return "—";
         }
 
+        void kvRow(const char* key, const std::string& value) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextDisabled("%s", key);
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(value.c_str());
+        }
+
+        void drawAxisCard(Reading world, cluster::Axis::Id id) {
+            if (not with<cluster::Axis>::exists(world, id)) {
+                ImGui::TextDisabled("Gone");
+                return;
+            }
+            if (not ImGui::BeginTable("axisCard", 2, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_RowBg))
+                return;
+            ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed, 88.f);
+            ImGui::TableSetupColumn("value");
+            if (with<cluster::starmap::Details>::exists(world, id))
+                kvRow("Name", with<cluster::starmap::Details>::get(world, id).name);
+            else
+                kvRow("Name", "—");
+            if (with<cluster::Star>::exists(world, id)) {
+                const auto& star = with<cluster::Star>::get(world, id);
+                kvRow("Class", star.spectralClass());
+                kvRow("Kind", star.kind());
+                kvRow("Age", Format::age(star.age));
+                kvRow("T", std::format("{:.0f} K", star.temperature));
+            }
+            if (with<cluster::Celestial>::exists(world, id)) {
+                const auto& body = with<cluster::Celestial>::get(world, id);
+                const auto& axis = with<cluster::Axis>::get(world, id);
+                const dvec3 worldPos = axis.pose.position + axis.pose.orientation * body.position;
+                kvRow("Mass", std::format("{:.2f} Msun", body.mass / Mass::sun));
+                kvRow("Radius", std::format("{:.2f} Rsun", double(body.radius) / Radius::sun));
+                if (with<cluster::Star>::exists(world, id)) {
+                    const auto& star = with<cluster::Star>::get(world, id);
+                    const double radiusSuns = double(body.radius) / Radius::sun;
+                    const double tempRatio = double(star.temperature) / double(Temperature::sun);
+                    kvRow("L", std::format("{:.3g} Lsun", radiusSuns * radiusSuns * tempRatio * tempRatio * tempRatio * tempRatio));
+                }
+                kvRow("Position", std::format("{:.2f}, {:.2f}, {:.2f} ly", worldPos.x / eLY, worldPos.y / eLY, worldPos.z / eLY));
+            } else {
+                const dvec3 bary = with<cluster::Axis>::get(world, id).pose.position;
+                kvRow("Position", std::format("{:.2f}, {:.2f}, {:.2f} ly", bary.x / eLY, bary.y / eLY, bary.z / eLY));
+            }
+            if (with<cluster::Star>::exists(world, id))
+                kvRow("Metal", with<cluster::Star>::get(world, id).metallicity());
+            ImGui::EndTable();
+        }
+
     }
 
     void View::open(Writing context, system::Window::Id window) {
@@ -87,7 +139,12 @@ namespace eltanin::views::starmap {
         scene = root;
         camera = cam;
         view = rmmr::wrapper::Product::View{.viewport = viewport, .scene = root, .camera = cam};
+        hovered.reset();
+        selected.reset();
+        rmb.empty = false;
+        rmb.origin = vec2{0.0f, 0.0f};
         panels.systems.emplace();
+        panels.selected.emplace();
         visuals.follow(context, cam);
     }
 
@@ -102,15 +159,77 @@ namespace eltanin::views::starmap {
             visuals.follow(context, *camera);
     }
 
+    void View::handlePointer(Writing world) {
+        if (selected and not with<cluster::Axis>::exists(world, *selected))
+            selected.reset();
+        hovered.reset();
+        if (not camera)
+            return;
+        if (ImGui::GetIO().WantCaptureMouse) {
+            rmb.empty = false;
+            return;
+        }
+        const ImGuiIO& io = ImGui::GetIO();
+        const vec2 mouse{io.MousePos.x, io.MousePos.y};
+        hovered = visuals.pickStar(world, *camera, mouse, vec2{io.DisplaySize.x, io.DisplaySize.y});
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) and hovered)
+            selected = hovered;
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+            rmb.empty = not hovered;
+            rmb.origin = mouse;
+        }
+        if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+            const vec2 delta = mouse - rmb.origin;
+            if (rmb.empty and glm::dot(delta, delta) < 25.0f)
+                selected.reset();
+            rmb.empty = false;
+        }
+    }
+
+    void View::drawHover(Writing world) {
+        if (not hovered or not with<cluster::Axis>::exists(world, *hovered))
+            return;
+        const ImVec2 mouse = ImGui::GetIO().MousePos;
+        ImGui::SetNextWindowPos(ImVec2{mouse.x + 14.f, mouse.y + 18.f});
+        ImGui::SetNextWindowBgAlpha(0.86f);
+        constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs;
+        if (ImGui::Begin("##starmapHover", nullptr, flags)) {
+            ImGui::SetWindowFontScale(0.85f);
+            drawAxisCard(world, *hovered);
+            ImGui::SetWindowFontScale(1.0f);
+        }
+        ImGui::End();
+    }
+
+    void View::drawSelected(Writing world) {
+        if (not panels.selected)
+            return;
+        bool open = true;
+        ImGui::SetNextWindowSize(ImVec2{280.f, 260.f}, ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Selected", &open)) {
+            if (not selected or not with<cluster::Axis>::exists(world, *selected))
+                ImGui::TextDisabled("Nothing selected");
+            else
+                drawAxisCard(world, *selected);
+        }
+        ImGui::End();
+        if (not open)
+            panels.selected.reset();
+    }
+
     void View::draw(Writing world) {
+        handlePointer(world);
+        drawHover(world);
+        drawSelected(world);
         if (panels.systems) {
             bool open = true;
-            ImGui::SetNextWindowSize(ImVec2{280.f, 440.f}, ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2{320.f, 440.f}, ImGuiCond_FirstUseEver);
             if (ImGui::Begin("Systems", &open)) {
-                if (ImGui::BeginTable("axes", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp, ImGui::GetContentRegionAvail())) {
+                if (ImGui::BeginTable("axes", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp, ImGui::GetContentRegionAvail())) {
                     ImGui::TableSetupScrollFreeze(0, 1);
                     ImGui::TableSetupColumn("Name");
                     ImGui::TableSetupColumn("ly", ImGuiTableColumnFlags_WidthFixed, 72.f);
+                    ImGui::TableSetupColumn("Age", ImGuiTableColumnFlags_WidthFixed, 88.f);
                     ImGui::TableHeadersRow();
                     const dvec3 focus{visuals.focus};
                     for (const auto [id, axis] : world->aspect<cluster::Axis>().items()) {
@@ -123,6 +242,11 @@ namespace eltanin::views::starmap {
                         ImGui::TableNextColumn();
                         const dvec3 delta = axis.pose.position / eLY - focus;
                         ImGui::Text("%.2f", glm::length(delta));
+                        ImGui::TableNextColumn();
+                        if (with<cluster::Star>::exists(world, id))
+                            ImGui::TextUnformatted(Format::age(with<cluster::Star>::get(world, id).age).c_str());
+                        else
+                            ImGui::TextDisabled("—");
                     }
                     ImGui::EndTable();
                 }
@@ -144,8 +268,6 @@ namespace eltanin::views::starmap {
     }
 
     void View::drawScale(Writing world) {
-        if (not visuals.display.grid)
-            return;
         const auto marks = Visuals::latticeScales();
         if (marks.empty())
             return;

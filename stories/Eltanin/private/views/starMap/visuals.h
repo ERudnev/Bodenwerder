@@ -86,6 +86,7 @@ namespace eltanin::views::starmap {
         static auto latticeScales() -> std::span<const LatticeScale>;
         static auto homeLy(float cellLy) -> float;
         static auto starMeshRadius(float celestialRadius, float cameraDistance, float pixelWorld) -> float;
+        auto pickStar(Reading, rmmr::scene::Camera::Id, vec2 mouse, vec2 display) const -> base::maybe<cluster::Axis::Id>;
         auto addAssets(Writing) -> bool;
         auto place(Writing, rmmr::scene::Root::Id, rmmr::system::Window::Id) -> bool;
         auto bind(Writing, rmmr::scene::Root::Id, const cluster::Astronomy&) -> bool;

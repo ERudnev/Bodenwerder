@@ -18,4 +18,10 @@ namespace eltanin::cluster::measure {
         return std::format("{:.1f} m", mag);
     }
 
+    auto Format::age(double myr) -> std::string {
+        if (std::abs(myr) >= 10.0)
+            return std::format("{:.0f} Myr", myr);
+        return std::format("{:.1f} Myr", myr);
+    }
+
 }

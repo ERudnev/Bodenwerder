@@ -43,6 +43,7 @@ namespace rmmr {
                 resource::doctrine::runtimes(),
                 resource::texture::doctrine::textures(),
                 resource::texpack::doctrine::texpack(),
+                resource::text::doctrine::texts(),
                 resource::texture3array::doctrine::texture3array(),
                 resource::shader::doctrine::shaders(),
                 resource::material::doctrine::materials(),

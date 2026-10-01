@@ -27,8 +27,12 @@ namespace eltanin::cluster {
         struct Quantum {
             Kelvins temperature;
             chemistry::Volatile::Mix mix;
+            Myr age;
 
             auto look() const -> vec3;
+            auto spectralClass() const -> string;
+            auto kind() const -> string;
+            auto metallicity() const -> string;
         };
         struct Actions : BaseActions {};
         struct Internals : DefaultInternals {};

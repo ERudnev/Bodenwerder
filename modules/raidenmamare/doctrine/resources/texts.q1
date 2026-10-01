@@ -1,0 +1,20 @@
+import "resources/manager"
+
+namespace rmmr
+  namespace resource
+    namespace text
+
+    using Reference as resource::Unit::Reference
+
+    // Pack name (Unit::own) = catalog directory basename. Keys = file stems inside.
+    feature Pack of resource::Unit
+      struct Document
+        lines: vector<string>
+      one
+        documents: umap<string, Document>
+
+    // Scan a directory under the library root; every .txt file becomes a document.
+    feature LoaderCatalog of Pack
+      one
+        directory: filename
+        >load()

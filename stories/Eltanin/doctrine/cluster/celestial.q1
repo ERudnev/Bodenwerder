@@ -15,9 +15,13 @@ namespace eltanin
         mass: Mass
         radius: float
 
-    // Photosphere of this Celestial. Mass and radius stay on Celestial. mix is the same stock as a planet.
+    // Photosphere of this Celestial. Mass and radius stay on Celestial. mix is the same stock as a planet. age is millions of years.
     feature Star of Celestial
       one
         temperature: Kelvins
         mix: chemistry::Volatile::Mix
+        age: Myr
         ?look()->vec3
+        ?spectralClass()->string
+        ?kind()->string
+        ?metallicity()->string

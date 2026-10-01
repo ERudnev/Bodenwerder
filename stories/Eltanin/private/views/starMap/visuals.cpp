@@ -30,6 +30,8 @@
 #include <glm/geometric.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/mat3x3.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/vec4.hpp>
 
 namespace eltanin::views::starmap {
 
@@ -604,6 +606,48 @@ namespace eltanin::views::starmap {
         if (pixelWorld > 1.0e-12f)
             return screenPx * pixelWorld;
         return screenPx * 0.0004f * std::max(cameraDistance, 1.0f);
+    }
+
+    auto Visuals::pickStar(Reading context, scene::Camera::Id camera, vec2 mouse, vec2 display) const -> base::maybe<cluster::Axis::Id> {
+        if (not renderWindow or not with<scene::Camera>::exists(context, camera) or not with<scene::Node>::exists(context, camera))
+            return {};
+        if (display.x < 1.0f or display.y < 1.0f)
+            return {};
+        const auto fb = with<system::Window>::framebufferSize(context, *renderWindow);
+        const float viewportHeight = static_cast<float>(std::max(fb.y, 1));
+        const float aspect = static_cast<float>(std::max(fb.x, 1)) / viewportHeight;
+        const auto& cam = with<scene::Camera>::get(context, camera);
+        const float fovY = 2.0f * std::atan(std::tan(cam.fov_x * 0.5f) / aspect);
+        const vec3 eye{with<scene::Node>::get(context, camera).pose.position};
+        const mat4 viewProjection = scene::Camera::Actions::view_projection(context, camera, aspect);
+        const float displayPerFb = display.y / viewportHeight;
+        base::maybe<cluster::Axis::Id> hit;
+        float bestDist = 1.0e30f;
+        float bestDepth = -1.0f;
+        for (const auto& star : stars) {
+            if (not with<scene::Node>::exists(context, star.coarse))
+                continue;
+            const vec3 world{with<scene::Node>::get(context, star.coarse).pose.position};
+            const vec4 clip = viewProjection * vec4{world, 1.0f};
+            if (not (clip.w > 0.0f))
+                continue;
+            const vec3 ndc{vec3{clip} / clip.w};
+            const vec2 screen{(ndc.x * 0.5f + 0.5f) * display.x, (0.5f - ndc.y * 0.5f) * display.y};
+            const float distance = std::max(glm::length(world - eye), cam.z_near);
+            const float starPixel = 2.0f * distance * std::tan(fovY * 0.5f) / viewportHeight;
+            const float visual = starMeshRadius(star.celestialRadius, distance, starPixel);
+            const float radiusDisplay = starPixel > 1.0e-12f ? visual / starPixel * displayPerFb : 10.0f;
+            const float hitPx = std::max(radiusDisplay, 10.0f);
+            const float dist = glm::length(mouse - screen);
+            if (dist > hitPx)
+                continue;
+            if (dist < bestDist - 0.25f or (std::abs(dist - bestDist) <= 0.25f and ndc.z > bestDepth)) {
+                bestDist = dist;
+                bestDepth = ndc.z;
+                hit = star.celestial;
+            }
+        }
+        return hit;
     }
 
     auto Visuals::bind(Writing context, scene::Root::Id root, const cluster::Astronomy& catalog) -> bool {

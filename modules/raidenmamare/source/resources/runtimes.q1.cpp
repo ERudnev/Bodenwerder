@@ -2,6 +2,7 @@
 #include <rmmr/resources/meshpack.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/resources/texpack.q1.h>
+#include <rmmr/resources/texts.q1.h>
 #include <rmmr/semantics/rendering.h>
 
 #include <base/logging.h>
@@ -144,6 +145,10 @@ namespace rmmr::resource {
                 .grayscale = false,
             },
             std::move(loader));
+    }
+
+    auto Assets::Actions::add_text_catalog(Writing context, Unit::Name name, text::LoaderCatalog::Quantum loader) -> text::Pack::Id {
+        return register_unit<text::Pack, text::LoaderCatalog>(context, std::move(name), text::Pack::Quantum{.documents = {}}, std::move(loader));
     }
 
     auto Assets::Actions::add_shader_loader(Writing context, Unit::Name name, shader::Loader::Quantum loader) -> shader::Asset::Id {

@@ -9,6 +9,7 @@
 #include <rmmr/resources/shadows.q1.h>
 #include <rmmr/resources/sprites.q1.h>
 #include <rmmr/resources/texpack.q1.h>
+#include <rmmr/resources/texts.q1.h>
 #include <rmmr/resources/texture3array.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/system/core.q1.h>
@@ -30,6 +31,7 @@ namespace rmmr::resource {
             static auto add_texture_loader(Writing, Unit::Name, texture::Loader::Quantum) -> texture::Asset::Id;
             static auto add_texture_generator(Writing, Unit::Name, texture::Generator::Quantum) -> texture::Asset::Id;
             static auto add_texpack_catalog(Writing, Unit::Name, texpack::LoaderCatalog::Quantum, index2 layerSize, integer capacity) -> texpack::Pack::Id;
+            static auto add_text_catalog(Writing, Unit::Name, text::LoaderCatalog::Quantum) -> text::Pack::Id;
             static auto add_shader_loader(Writing, Unit::Name, shader::Loader::Quantum) -> shader::Asset::Id;
             static auto add_material(Writing, Unit::Name, material::Asset::Quantum) -> material::Asset::Id;
             static auto add_overlay(Writing, Unit::Name, overlay::Asset::Quantum) -> overlay::Asset::Id;

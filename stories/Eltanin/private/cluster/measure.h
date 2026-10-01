@@ -30,6 +30,7 @@ namespace eltanin::cluster::measure {
     struct Format {
         static auto altitude(double metres) -> std::string;
         static auto distance(double metres) -> std::string;
+        static auto age(double myr) -> std::string;
     };
 
 }

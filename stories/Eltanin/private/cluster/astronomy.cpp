@@ -5,6 +5,7 @@
 
 #include <base/logging.h>
 
+#include <algorithm>
 #include <cmath>
 #include <format>
 
@@ -32,10 +33,11 @@ namespace eltanin::cluster {
             const double mass = Mass::sun * solarMasses;
             const float radius = float(Radius::sun * std::pow(solarMasses, 0.8));
             const float temperature = Temperature::sun * float(std::pow(solarMasses, 0.55));
+            const float age = std::min(10000.0f * float(std::pow(solarMasses, -2.5)) * 0.46f, 13000.0f);
             const auto grain = with<Axis>::create(context, Axis::Quantum{.pose = Pose{.position = position, .orientation = dquat{1.0, 0.0, 0.0, 0.0}}});
             with<starmap::Details>::extend(context, grain, starmap::Details::Quantum{.name = std::move(name)});
             with<Celestial>::extend(context, grain, Celestial::Quantum{.position = Position{0.0, 0.0, 0.0}, .mass = mass, .radius = radius});
-            with<Star>::extend(context, grain, Star::Quantum{.temperature = temperature, .mix = mix});
+            with<Star>::extend(context, grain, Star::Quantum{.temperature = temperature, .mix = mix, .age = age});
             return grain;
         }
 

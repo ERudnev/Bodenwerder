@@ -23,5 +23,5 @@ void main() {
     float rim = pow(1.0 - mu, 2.2);
     vec3 rgb = v_color * limb + v_color * 0.22 * rim;
     FragColor = vec4(rgb, 1.0);
-    BloomMask = 0.22 + 0.40 * mu + 0.38 * rim;
+    BloomMask = 0.05 + 0.14 * mu + 0.10 * rim;
 }

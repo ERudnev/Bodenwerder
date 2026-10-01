@@ -1,3 +1,4 @@
 namespace eltanin
 
   using Kelvins as float
+  using Myr as float

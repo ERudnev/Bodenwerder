@@ -47,6 +47,7 @@ namespace eltanin::assets {
             handles.primitive.*spec.target = with<Assets>::add_geometry_generator(context, Name::from("Eltanin", spec.name), item<Generator>{.type = spec.type, .subdivisions = spec.subdivisions});
 
         handles.sprites = with<Assets>::add_texpack_catalog(context, Name::from("Eltanin", "sprites"), item<rmmr::resource::texpack::LoaderCatalog>{.directory = "sprites"}, index2{1024, 1024}, 8);
+        handles.clusterTexts = with<Assets>::add_text_catalog(context, Name::from("Eltanin", "cluster"), item<rmmr::resource::text::LoaderCatalog>{.directory = "texts/cluster"});
         handles.skySphereMaterial = rmmr::resource::builders::material::addSinglePass(context, SinglePass{
             .name = Name::from("Eltanin", "skySphere"),
             .shader = item<rmmr::resource::shader::Loader>{.vertex = "shaders/skySphere.vert.glsl", .fragment = "shaders/skySphere.frag.glsl"},

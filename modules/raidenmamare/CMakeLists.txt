@@ -27,6 +27,7 @@ set(Raidenmamare_Q1
     resources/textures.q1
     resources/texpack.q1
     resources/texture3array.q1
+    resources/texts.q1
     resources/shaders.q1
     resources/materials.q1
     resources/overlays.q1
