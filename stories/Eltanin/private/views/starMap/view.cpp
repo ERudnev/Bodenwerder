@@ -43,6 +43,11 @@ namespace eltanin::views::starmap {
         const auto mail = with<system::ViewInput>::create(context);
         input = mail;
         with<controller::CameraOrbit>::create(context, cam, mail, pivot, glm::length(eye - pivot));
+        {
+            auto orbit = with<controller::CameraOrbit>::modify(context, cam);
+            orbit->distanceMin = 1.0e-10f;
+            orbit->distanceMax = 500.0f;
+        }
         scene = root;
         camera = cam;
         view = rmmr::wrapper::Product::View{.viewport = viewport, .scene = root, .camera = cam};
@@ -62,34 +67,43 @@ namespace eltanin::views::starmap {
     }
 
     void View::draw(Writing world) {
-        if (not panels.systems)
+        if (panels.systems) {
+            bool open = true;
+            ImGui::SetNextWindowSize(ImVec2{280.f, 440.f}, ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("Systems", &open)) {
+                if (ImGui::BeginTable("axes", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp, ImGui::GetContentRegionAvail())) {
+                    ImGui::TableSetupScrollFreeze(0, 1);
+                    ImGui::TableSetupColumn("Name");
+                    ImGui::TableSetupColumn("ly", ImGuiTableColumnFlags_WidthFixed, 72.f);
+                    ImGui::TableHeadersRow();
+                    const dvec3 focus{visuals.focus};
+                    for (const auto [id, axis] : world->aspect<cluster::Axis>().items()) {
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        if (with<cluster::starmap::Details>::exists(world, id))
+                            ImGui::TextUnformatted(with<cluster::starmap::Details>::get(world, id).name.c_str());
+                        else
+                            ImGui::TextDisabled("—");
+                        ImGui::TableNextColumn();
+                        const dvec3 delta = axis.pose.position / cluster::measure::eLY - focus;
+                        ImGui::Text("%.2f", glm::length(delta));
+                    }
+                    ImGui::EndTable();
+                }
+            }
+            ImGui::End();
+            if (not open)
+                panels.systems.reset();
+        }
+        if (not panels.view)
             return;
         bool open = true;
-        ImGui::SetNextWindowSize(ImVec2{280.f, 440.f}, ImGuiCond_FirstUseEver);
-        if (ImGui::Begin("Systems", &open)) {
-            if (ImGui::BeginTable("axes", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingStretchProp, ImGui::GetContentRegionAvail())) {
-                ImGui::TableSetupScrollFreeze(0, 1);
-                ImGui::TableSetupColumn("Name");
-                ImGui::TableSetupColumn("ly", ImGuiTableColumnFlags_WidthFixed, 72.f);
-                ImGui::TableHeadersRow();
-                const dvec3 focus{visuals.focus};
-                for (const auto [id, axis] : world->aspect<cluster::Axis>().items()) {
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    if (with<cluster::starmap::Details>::exists(world, id))
-                        ImGui::TextUnformatted(with<cluster::starmap::Details>::get(world, id).name.c_str());
-                    else
-                        ImGui::TextDisabled("—");
-                    ImGui::TableNextColumn();
-                    const dvec3 delta = axis.pose.position / cluster::measure::ly - focus;
-                    ImGui::Text("%.2f", glm::length(delta));
-                }
-                ImGui::EndTable();
-            }
-        }
+        ImGui::SetNextWindowSize(ImVec2{220.f, 80.f}, ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("View", &open))
+            ImGui::Checkbox("Grid", &visuals.display.grid);
         ImGui::End();
         if (not open)
-            panels.systems.reset();
+            panels.view.reset();
     }
 
 }

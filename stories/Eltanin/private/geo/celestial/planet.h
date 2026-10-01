@@ -5,7 +5,7 @@
 
 #include <base/maybe.h>
 #include <eltanin/geo/minerals.q1.h>
-#include <eltanin/geo/volatiles.q1.h>
+#include <eltanin/cluster/chemistry/volatiles.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
@@ -26,7 +26,7 @@ namespace eltanin::planet {
         double mass;
         float radius;
         geo::Mineral::Mix bulk;
-        geo::Volatile::Mix volatiles;
+        cluster::chemistry::Volatile::Mix volatiles;
         struct {
             vec3 axis;
             float period; // seconds

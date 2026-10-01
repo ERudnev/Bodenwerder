@@ -142,7 +142,7 @@ namespace eltanin::planet {
             return float(value) / 255.0f;
         }
 
-        constexpr std::uint32_t cacheEpoch = 10;
+        constexpr std::uint32_t cacheEpoch = 11;
         constexpr char cacheMagic[8] = {'E', 'L', 'T', 'N', 'M', 'A', '1', '0'};
 
 #pragma pack(push, 1)
@@ -155,7 +155,7 @@ namespace eltanin::planet {
             std::int32_t heightCount;
             std::int32_t farCount;
             std::uint64_t bulk;
-            std::uint32_t volatiles;
+            std::uint64_t volatiles;
             float ageGyr;
             double mass;
             float radius;

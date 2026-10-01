@@ -18,8 +18,10 @@ layout(std140, binding = 0) uniform PassStateBuffer {
 void main() {
     vec3 N = normalize(v_worldNormal);
     vec3 Nview = normalize(mat3(passView) * N);
-    float wrap = 0.28 + 0.72 * max(dot(Nview, vec3(0.18, 0.42, 0.90)), 0.0);
-    vec3 rgb = v_color * (0.55 + 1.35 * wrap);
+    float mu = max(Nview.z, 0.0);
+    float limb = 0.38 + 0.62 * mu;
+    float rim = pow(1.0 - mu, 2.2);
+    vec3 rgb = v_color * limb + v_color * 0.22 * rim;
     FragColor = vec4(rgb, 1.0);
-    BloomMask = 0.35 + 0.45 * wrap;
+    BloomMask = 0.22 + 0.40 * mu + 0.38 * rim;
 }

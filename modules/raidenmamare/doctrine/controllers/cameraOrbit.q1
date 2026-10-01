@@ -12,6 +12,8 @@ namespace rmmr
         pivot: Pos
         hpb: HPB // bank kept 0
         distance: float
+        distanceMin: float
+        distanceMax: float
         input: #system::ViewInput
         >create(input: #system::ViewInput, pivot: Pos, distance: float)-> #
       all

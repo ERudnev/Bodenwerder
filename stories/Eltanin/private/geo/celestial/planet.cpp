@@ -440,7 +440,7 @@ namespace eltanin::planet {
 
     auto Planet::edgeMeters(float radius) -> float {
         const float r = std::max(radius, 1.0f);
-        const float earth = float(cluster::measure::Radius::earth * cluster::measure::celestialFactor);
+        const float earth = float(cluster::measure::Radius::earth / cluster::measure::ShrinkFactor::celestial);
         if (r < 4000.0f)
             return 8.0f;
         if (r < 16000.0f)

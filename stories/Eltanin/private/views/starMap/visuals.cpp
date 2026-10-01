@@ -11,9 +11,13 @@
 #include <rmmr/resources/runtimes.q1.h>
 #include <rmmr/scene/actors/family.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
+#include <rmmr/scene/camera.q1.h>
 #include <rmmr/scene/gizmos.q1.h>
 #include <rmmr/scene/node.q1.h>
 #include <rmmr/scene/root.q1.h>
+
+#include <eltanin/cluster/celestial.q1.h>
+#include <eltanin/cluster/orbital.q1.h>
 
 #include <algorithm>
 #include <array>
@@ -38,8 +42,15 @@ namespace eltanin::views::starmap {
         constexpr float mapExtent = 100.0f;
         constexpr float planeLocal = 200.0f;
         constexpr float meshScale = mapExtent / planeLocal;
-        constexpr float tensCellLy = 10.0f;
-        constexpr float unitCellLy = 1.0f;
+        constexpr float latticeStep = 10.0f;
+        constexpr float latticeFadeNear = 25.0f;
+        constexpr float latticeFadeFar = 80.0f;
+        constexpr std::array latticeCellsLy{
+            float(50.0 * eAU / eLY),
+            1.0f,
+            10.0f,
+            100.0f,
+        };
         constexpr float axisThicknessAtRef = 0.125f;
         constexpr float dashThicknessAtRef = 0.055f;
         constexpr float dashPeriodAtRef = 2.5f;
@@ -48,13 +59,10 @@ namespace eltanin::views::starmap {
         constexpr float reticleTube = 0.05f;
         constexpr float minStrokePixels = 1.0f;
         constexpr float scaleRefLy = 260.0f;
-        constexpr float scaleUnitFull = 25.0f;
-        constexpr float scaleTensFull = 80.0f;
-        constexpr float fingernailPixels = 28.0f;
-        constexpr float starFloorPixels = 3.5f;
-        constexpr float washDistanceLy = 45.0f;
-        constexpr float farRadiusMix = 0.14f;
         constexpr float lodFinePixels = 14.0f;
+        constexpr float approachDistanceLy = 3.0f;
+        constexpr integer radialRings = 10;
+        constexpr float radialOuterMul = float(1 << (radialRings - 1));
         constexpr float gridOpacity = 0.7f;
         constexpr RGB axisXColor{1.0f, 0.12f, 0.12f};
         constexpr RGB axisYColor{0.12f, 1.0f, 0.18f};
@@ -87,12 +95,31 @@ namespace eltanin::views::starmap {
             return t * t * (3.0f - 2.0f * t);
         }
 
-        auto tensFade(float scaleLy) -> float {
-            return smoothstep(scaleUnitFull, scaleTensFull, scaleLy);
+        auto latticeFade(float scaleLy, float cellLy) -> float {
+            const float finest = latticeCellsLy.front();
+            const float coarsest = latticeCellsLy.back();
+            float fade = 1.0f;
+            if (cellLy > finest * 1.01f)
+                fade *= smoothstep(latticeFadeNear * (cellLy / latticeStep), latticeFadeFar * (cellLy / latticeStep), scaleLy);
+            if (cellLy < coarsest * 0.99f)
+                fade *= 1.0f - smoothstep(latticeFadeNear * cellLy, latticeFadeFar * cellLy, scaleLy);
+            return fade;
         }
 
-        auto unitFade(float scaleLy) -> float {
-            return 1.0f - tensFade(scaleLy);
+        auto decadeCeil(double metres) -> double {
+            if (not (metres > 0.0))
+                return 1.0;
+            return std::pow(10.0, std::ceil(std::log10(metres) - 1e-12));
+        }
+
+        auto radialOuterLy(float celestialRadius) -> float {
+            const double base = decadeCeil(double(std::max(celestialRadius, 0.0f)));
+            return float(base * double(radialOuterMul) / cluster::measure::eLY);
+        }
+
+        auto radialFade(float distance, float outer) -> float {
+            const float span = std::max(outer, 1.0e-12f);
+            return 1.0f - smoothstep(span * 8.0f, span * 48.0f, std::max(distance, 0.0f));
         }
 
         void appendBox(CpuPresentation& cpu, Pos center, vec3 fullSize, mat3 axes) {
@@ -137,6 +164,27 @@ namespace eltanin::views::starmap {
 
         auto emptyLit() -> CpuPresentation {
             return CpuPresentation{.layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position", "normal", "uv0"})};
+        }
+
+        auto radialDisk() -> CpuPresentation {
+            constexpr float half = 1.0f;
+            return CpuPresentation{
+                .layout = primitive::GeometrySemantics::layoutIds(vector<string>{"position"}),
+                .positions = vector<Pos>{
+                    Pos{-half, 0.0f, -half},
+                    Pos{half, 0.0f, -half},
+                    Pos{half, 0.0f, half},
+                    Pos{-half, 0.0f, half},
+                },
+                .normals = {},
+                .uv0 = {},
+                .color0 = {},
+                .indices = {0, 2, 1, 0, 3, 2, 0, 1, 2, 0, 2, 3},
+                .mix0 = {},
+                .cohesion = {},
+                .palette = {},
+                .weights = {},
+            };
         }
 
         // Square-tube arcs in XY, facing +Z. Adjacent boxes of the old ring are one strip (no interior caps).
@@ -291,6 +339,12 @@ namespace eltanin::views::starmap {
             with<scene::actor::MeshState>::modify(context, grid)->opacity = opacity;
         }
 
+        void setMeshOpacity(Writing context, scene::actor::Mesh::Id actor, float opacity) {
+            scene::Node::Actions::setVisible(context, actor, opacity > 0.02f);
+            if (with<scene::actor::MeshState>::exists(context, actor))
+                with<scene::actor::MeshState>::modify(context, actor)->opacity = opacity;
+        }
+
         void setAxisThickness(Writing context, scene::actor::Mesh::Id actor, vec3 length, float thickness) {
             if (not with<scene::actor::MeshState>::exists(context, actor))
                 return;
@@ -333,6 +387,16 @@ namespace eltanin::views::starmap {
             .nearest = false,
             .renderState = renderer::RenderState{.blend = renderer::BlendMode::inherit, .depthTest = renderer::ToggleMode::inherit, .depthWrite = renderer::ToggleMode::inherit, .depthCompare = renderer::DepthCompare::inherit},
         });
+        radialMaterial = rmmr::resource::builders::material::addSinglePass(context, rmmr::resource::builders::material::SinglePass{
+            .name = Name::from("Eltanin", "starMapRadial"),
+            .shader = item<rmmr::resource::shader::Loader>{.vertex = "shaders/starMapRadial.vert.glsl", .fragment = "shaders/starMapRadial.frag.glsl"},
+            .pass = renderer::Pass::gizmo,
+            .uniforms = {},
+            .glowSpread = false,
+            .lighting = renderer::LightingMode::unlit,
+            .nearest = false,
+            .renderState = renderer::RenderState{.blend = renderer::BlendMode::additive, .depthTest = renderer::ToggleMode::disabled, .depthWrite = renderer::ToggleMode::disabled, .depthCompare = renderer::DepthCompare::inherit},
+        });
         return true;
     }
 
@@ -347,12 +411,15 @@ namespace eltanin::views::starmap {
             context.refuse("eltanin::views::starmap::Visuals::place: grid assets missing");
             return false;
         }
-        const auto tens = with<scene::Interface>::createGrid(context, root, window, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *gridGeometry, .material = *gridMaterial, .opacity = gridOpacity, .patternScale = meshScale / tensCellLy});
-        with<scene::actor::MeshState>::modify(context, tens)->scale = vec3{meshScale, 1.0f, meshScale};
-        const auto unit = with<scene::Interface>::createGrid(context, root, window, Pose::from(Pos{0.0f, 0.002f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *gridGeometry, .material = *gridMaterial, .opacity = 0.0f, .patternScale = meshScale / unitCellLy});
-        with<scene::actor::MeshState>::modify(context, unit)->scale = vec3{meshScale, 1.0f, meshScale};
-        tensGrid = tens;
-        unitGrid = unit;
+        lattices.clear();
+        lattices.reserve(latticeCellsLy.size());
+        for (std::size_t index = 0; index < latticeCellsLy.size(); ++index) {
+            const float cellLy = latticeCellsLy[index];
+            const auto grid = with<scene::Interface>::createGrid(context, root, window, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *gridGeometry, .material = *gridMaterial, .opacity = index + 1 == latticeCellsLy.size() ? gridOpacity : 0.0f, .patternScale = meshScale / cellLy});
+            with<scene::actor::MeshState>::modify(context, grid)->scale = vec3{meshScale, 1.0f, meshScale};
+            scene::Node::Actions::setVisible(context, grid, index + 1 == latticeCellsLy.size());
+            lattices.push_back(Lattice{.grid = grid, .cellLy = cellLy});
+        }
         auto placeAxis = [&](RGB color, vec3 scale) -> base::maybe<scene::actor::Mesh::Id> {
             auto mesh = with<scene::actor::Mesh>::composeOne(context, *kube, *gizmo);
             if (not mesh)
@@ -386,9 +453,14 @@ namespace eltanin::views::starmap {
         player = Pos{0.0f, 0.0f, 0.0f};
         focus = Pos{0.0f, 0.0f, 0.0f};
         scaleLy = scaleRefLy;
-        scene::Node::Actions::setVisible(context, unit, false);
-        if (not starMaterial) {
+        display = Display{.grid = true};
+        if (not starMaterial or not radialMaterial) {
             context.refuse("eltanin::views::starmap::Visuals::place: star material missing");
+            return false;
+        }
+        radialPlane = installMesh(context, window, Name::from("Eltanin", "starMapRadialPlane"), radialDisk());
+        if (not radialPlane) {
+            context.refuse("eltanin::views::starmap::Visuals::place: radial plane failed");
             return false;
         }
         auto placeLod = [&](integer tessellation, const char* name) -> base::maybe<Lod> {
@@ -400,8 +472,8 @@ namespace eltanin::views::starmap {
                 return {};
             return Lod{.family = with<scene::Interface>::createFamily(context, root, std::move(*quantum)), .mesh = *mesh};
         };
-        coarse = placeLod(0, "starMapIcosa0");
-        fine = placeLod(1, "starMapIcosa1");
+        coarse = placeLod(1, "starMapIcosa1");
+        fine = placeLod(3, "starMapIcosa3");
         if (not coarse or not fine) {
             context.refuse("eltanin::views::starmap::Visuals::place: star lod families failed");
             return false;
@@ -433,17 +505,30 @@ namespace eltanin::views::starmap {
             dashThickness = strokeAtLeastOnePixel(dashThickness, pixelWorld);
             axisThickness = strokeAtLeastOnePixel(axisThickness, pixelWorld);
         }
+        if (with<scene::Camera>::exists(context, camera)) {
+            auto cam = with<scene::Camera>::modify(context, camera);
+            cam->z_near = std::max(1.0e-12f, std::min(0.05f, scaleLy * 0.02f));
+            cam->z_far = 2000.0f;
+        }
         const float span = mapExtent * 2.0f;
-        if (axisX)
+        if (axisX) {
             setAxisThickness(context, *axisX, vec3{span, 0.0f, 0.0f}, axisThickness);
-        if (axisY)
+            scene::Node::Actions::setVisible(context, *axisX, display.grid);
+        }
+        if (axisY) {
             setAxisThickness(context, *axisY, vec3{0.0f, span, 0.0f}, axisThickness);
-        if (axisZ)
+            scene::Node::Actions::setVisible(context, *axisY, display.grid);
+        }
+        if (axisZ) {
             setAxisThickness(context, *axisZ, vec3{0.0f, 0.0f, span}, axisThickness);
-        if (tensGrid)
-            setGridFade(context, *tensGrid, tensFade(scaleLy));
-        if (unitGrid)
-            setGridFade(context, *unitGrid, unitFade(scaleLy));
+            scene::Node::Actions::setVisible(context, *axisZ, display.grid);
+        }
+        for (std::size_t index = 0; index < lattices.size(); ++index) {
+            auto& lattice = lattices[index];
+            setGridFade(context, lattice.grid, display.grid ? latticeFade(scaleLy, lattice.cellLy) : 0.0f);
+            if (with<scene::Node>::exists(context, lattice.grid))
+                with<scene::Node>::modify(context, lattice.grid)->pose.position.y = pixelWorld * 0.25f * static_cast<float>(index);
+        }
         if (currentPlayer and gizmo)
             poseMarker(context, *currentPlayer, player, cameraNode.pose.rotation, reticleSize, dashThickness, dashPeriod, dashMeshes, *gizmo);
         if (viewFocus and gizmo)
@@ -462,14 +547,42 @@ namespace eltanin::views::starmap {
             scene::Node::Actions::setVisible(context, star.coarse, not useFine);
             scene::Node::Actions::setVisible(context, star.fine, useFine);
         }
+        for (const auto& radial : radials) {
+            if (not with<cluster::Celestial>::exists(context, radial.celestial) or not with<cluster::Axis>::exists(context, radial.celestial))
+                continue;
+            if (not with<scene::Node>::exists(context, radial.plane) or not with<scene::Node>::exists(context, radial.pole))
+                continue;
+            const auto& body = with<cluster::Celestial>::get(context, radial.celestial);
+            const auto& axis = with<cluster::Axis>::get(context, radial.celestial);
+            const dvec3 world = axis.pose.position + axis.pose.orientation * body.position;
+            const Pos map{float(world.x / cluster::measure::eLY), float(world.y / cluster::measure::eLY), float(world.z / cluster::measure::eLY)};
+            const quat rotation{axis.pose.orientation};
+            const float outer = radialOuterLy(body.radius);
+            const float distance = glm::length(vec3{map} - vec3{cameraNode.pose.position});
+            const float fade = display.grid ? radialFade(distance, outer) : 0.0f;
+            const float opacity = gridOpacity * fade;
+            auto planeNode = with<scene::Node>::modify(context, radial.plane);
+            planeNode->pose.position = map;
+            planeNode->pose.rotation = rotation;
+            auto poleNode = with<scene::Node>::modify(context, radial.pole);
+            poleNode->pose.position = map;
+            poleNode->pose.rotation = rotation;
+            if (with<scene::actor::MeshState>::exists(context, radial.plane))
+                with<scene::actor::MeshState>::modify(context, radial.plane)->scale = vec3{outer, 1.0f, outer};
+            const float localPixel = renderWindow ? worldPerPixel(context, camera, *renderWindow, std::max(distance, 1.0e-12f)) : pixelWorld;
+            setAxisThickness(context, radial.pole, vec3{0.0f, outer * 2.0f, 0.0f}, strokeAtLeastOnePixel(axisThicknessAtRef * gauge(std::max(distance, 1.0e-4f)), localPixel));
+            setMeshOpacity(context, radial.plane, opacity);
+            setMeshOpacity(context, radial.pole, opacity);
+        }
     }
 
     auto Visuals::starMeshRadius(float celestialRadius, float cameraDistance, float pixelWorld) -> float {
-        const float sun = float(cluster::measure::Radius::sun * cluster::measure::celestialFactor);
+        const float sun = float(cluster::measure::Radius::sun / cluster::measure::ShrinkFactor::celestial);
         const float relative = sun > 1.0e-12f ? std::max(celestialRadius, 0.0f) / sun : 1.0f;
-        const float nearPx = fingernailPixels * relative;
-        const float farPx = starFloorPixels * glm::mix(1.0f, relative, farRadiusMix);
-        const float screenPx = farPx + (nearPx - farPx) / (1.0f + std::max(cameraDistance, 0.0f) / washDistanceLy);
+        const float rank = glm::clamp((std::log2(std::max(relative, 0.05f)) + 2.0f) / 4.5f, 0.0f, 1.0f);
+        const float farPx = 2.0f + 3.0f * rank;
+        const float nearPx = 10.0f + 22.0f * rank;
+        const float screenPx = farPx + (nearPx - farPx) / (1.0f + std::max(cameraDistance, 0.0f) / approachDistanceLy);
         if (pixelWorld > 1.0e-12f)
             return screenPx * pixelWorld;
         return screenPx * 0.0004f * std::max(cameraDistance, 1.0f);
@@ -490,10 +603,10 @@ namespace eltanin::views::starmap {
             const auto& body = with<cluster::Celestial>::get(context, id);
             const auto& axis = with<cluster::Axis>::get(context, id);
             const dvec3 world = axis.pose.position + axis.pose.orientation * body.position;
-            const Pos map{float(world.x / cluster::measure::ly), float(world.y / cluster::measure::ly), float(world.z / cluster::measure::ly)};
+            const Pos map{float(world.x / cluster::measure::eLY), float(world.y / cluster::measure::eLY), float(world.z / cluster::measure::eLY)};
             const auto pose = Pose::from(map, HPB{0.0f, 0.0f, 0.0f});
             scene::actor::Packed packed(bytes);
-            with<scene::actor::Family>::write(context, coarse->family, packed, "color", star.color);
+            with<scene::actor::Family>::write(context, coarse->family, packed, "color", star.look());
             with<scene::actor::Family>::write(context, coarse->family, packed, "radius", 1.0f);
             scene::actor::Packed finePacked = packed;
             const auto coarseReplica = with<scene::Interface>::createReplica(context, root, coarse->family, pose, scene::actor::Replica::Quantum{.family = coarse->family, .packed = std::move(packed)});
@@ -504,6 +617,34 @@ namespace eltanin::views::starmap {
             }
             scene::Node::Actions::setVisible(context, fineReplica, false);
             stars.push_back(Star{.celestial = id, .coarse = coarseReplica, .fine = fineReplica, .celestialRadius = body.radius});
+        }
+        radials.clear();
+        if (not radialPlane or not radialMaterial or not gizmo) {
+            context.refuse("eltanin::views::starmap::Visuals::bind: radial assets missing");
+            return false;
+        }
+        using Assets = rmmr::resource::Assets;
+        using Name = rmmr::resource::Unit::Name;
+        const auto kube = with<Assets>::find<rmmr::resource::geometry::Asset>(context, Name::from("Eltanin", "kube"));
+        if (not kube) {
+            context.refuse("eltanin::views::starmap::Visuals::bind: kube missing");
+            return false;
+        }
+        radials.reserve(catalog.celestials.size());
+        const auto identity = Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f});
+        const RGB poleColor = axisYColor * 0.5f;
+        for (const auto id : catalog.celestials) {
+            if (not with<cluster::Celestial>::exists(context, id) or not with<cluster::Axis>::exists(context, id))
+                continue;
+            const auto plane = spawnMesh(context, root, *radialPlane, *radialMaterial, RGB{1.0f, 1.0f, 1.0f}, identity, vec3{1.0f, 1.0f, 1.0f});
+            const auto pole = spawnMesh(context, root, *kube, *gizmo, poleColor, identity, vec3{1.0f, 1.0f, 1.0f});
+            if (not plane or not pole) {
+                context.refuse("eltanin::views::starmap::Visuals::bind: radial replica failed");
+                return false;
+            }
+            scene::Node::Actions::setVisible(context, *plane, false);
+            scene::Node::Actions::setVisible(context, *pole, false);
+            radials.push_back(Radial{.celestial = id, .plane = *plane, .pole = *pole});
         }
         return true;
     }

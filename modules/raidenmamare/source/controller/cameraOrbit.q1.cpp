@@ -87,7 +87,7 @@ namespace rmmr::controller {
                 orbit->pivot += pivot_delta;
             }
 
-            orbit->distance = std::clamp(orbit->distance, k_distance_min, k_distance_max);
+            orbit->distance = std::clamp(orbit->distance, orbit->distanceMin, orbit->distanceMax);
             auto node = with<scene::Node>::modify(context, self);
             apply_pose(*node, *orbit);
         }
@@ -108,7 +108,7 @@ namespace rmmr::controller {
             hpb = HPB{glm::degrees(heading), glm::degrees(pitch), 0.0f};
         }
 
-        CameraOrbit::Quantum quantum{.pivot = pivot, .hpb = hpb, .distance = distance, .input = input};
+        CameraOrbit::Quantum quantum{.pivot = pivot, .hpb = hpb, .distance = distance, .distanceMin = k_distance_min, .distanceMax = k_distance_max, .input = input};
         with<CameraOrbit>::extend(context, anchor, quantum);
         auto writable = with<scene::Node>::modify(context, anchor);
         apply_pose(*writable, quantum);

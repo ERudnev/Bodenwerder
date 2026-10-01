@@ -1,0 +1,20 @@
+import "rmmr/math"
+
+namespace eltanin
+  namespace cluster
+    namespace chemistry
+
+      // Body stock for planets and stars. Not a stoichiometric basis: each Kind is a reservoir.
+      // Mix is 12×4-bit fill (0..15) in uint64. Scatter/absorb: sky from inside a planet, halo from outside a star.
+      struct Volatile
+        enum Kind : Water, CarbonDioxide, Nitrogen, Methane, Ammonia, SulfurDioxide, Hydrogen, Helium, Oxygen, Carbon, Silicon, Iron
+        using Mix as @external(C++ uint64_t; 12x4-bit inventory word; Volatile::nibble / pack)
+        one
+          name: string
+          molarMass: float // g/mol
+          freezeKelvin: float // reference phase boundary for the generator
+          boilKelvin: float // reference phase boundary for the generator
+          greenhouse: float // relative infrared opacity
+          scatter: vec3 // Rayleigh / haze RGB
+          absorb: vec3 // extra per-channel extinction
+        always table: vector<Volatile> = @external(Mayers)

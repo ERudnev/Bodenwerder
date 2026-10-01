@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-namespace eltanin::geo {
+namespace eltanin::cluster::chemistry {
 
     using namespace fqsm::api;
 
@@ -18,8 +18,13 @@ namespace eltanin::geo {
             SulfurDioxide,
             Hydrogen,
             Helium,
+            Oxygen,
+            Carbon,
+            Silicon,
+            Iron,
         };
-        using Mix = std::uint32_t;
+        static constexpr integer kindCount = 12;
+        using Mix = std::uint64_t;
         string name;
         float molarMass;
         float freezeKelvin;

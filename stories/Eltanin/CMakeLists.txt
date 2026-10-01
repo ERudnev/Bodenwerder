@@ -26,10 +26,10 @@ set(Eltanin_Q1
     locality/scrap.q1
     decorations/dust.q1
     geo/minerals.q1
-    geo/volatiles.q1
     geo/rock.q1
     geo/boulder.q1
     cluster/space.q1
+    cluster/chemistry/volatiles.q1
     cluster/thing.q1
     cluster/orbital.q1
     cluster/celestial.q1

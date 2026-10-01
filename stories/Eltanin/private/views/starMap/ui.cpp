@@ -115,6 +115,7 @@ namespace eltanin {
         if (ImGui::Button("Planet"))
             showLocality(world);
         togglePanel("Systems", view.starMap.panels.systems);
+        togglePanel("View", view.starMap.panels.view);
         bool editorToggle = false;
         rmmr::wrapper::ui::viewToggle("Blueprints", &editorToggle);
         if (editorToggle)

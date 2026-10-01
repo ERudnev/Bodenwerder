@@ -788,10 +788,10 @@ namespace eltanin::planet {
         const integer sulfides = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Sulfides);
         const integer oxides = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Oxides);
         const integer salts = geo::Mineral::nibble(geology.crust.mix, geo::Mineral::Kind::Salts);
-        const integer waterInventory = geo::Volatile::nibble(geology.climate.retained, geo::Volatile::Kind::Water);
-        const integer carbonDioxide = geo::Volatile::nibble(geology.climate.retained, geo::Volatile::Kind::CarbonDioxide);
-        const integer methane = geo::Volatile::nibble(geology.climate.retained, geo::Volatile::Kind::Methane);
-        const integer sulfurDioxide = geo::Volatile::nibble(geology.climate.retained, geo::Volatile::Kind::SulfurDioxide);
+        const integer waterInventory = cluster::chemistry::Volatile::nibble(geology.climate.retained, cluster::chemistry::Volatile::Kind::Water);
+        const integer carbonDioxide = cluster::chemistry::Volatile::nibble(geology.climate.retained, cluster::chemistry::Volatile::Kind::CarbonDioxide);
+        const integer methane = cluster::chemistry::Volatile::nibble(geology.climate.retained, cluster::chemistry::Volatile::Kind::Methane);
+        const integer sulfurDioxide = cluster::chemistry::Volatile::nibble(geology.climate.retained, cluster::chemistry::Volatile::Kind::SulfurDioxide);
         auto heightAt = [&](IcosaPack::Slot slot) -> float {
             slot.iu = std::clamp(slot.iu, integer{0}, last);
             slot.iv = std::clamp(slot.iv, integer{0}, last);

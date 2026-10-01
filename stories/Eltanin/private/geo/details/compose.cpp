@@ -66,23 +66,23 @@ namespace eltanin::planet {
     }
 
     auto AtmosphereLook::of(const Geology& geology) -> AtmosphereLook {
-        const auto& volatiles = geo::Volatile::table();
+        const auto& volatiles = cluster::chemistry::Volatile::table();
         const auto& minerals = geo::Mineral::table();
         vec3 gasScatter{0.0f};
         vec3 gasAbsorb{0.0f};
         float retainedSum = 0.0f;
         float rayleighMass = 0.0f;
         float hazeMass = 0.0f;
-        for (integer index = 0; index < 8; ++index) {
-            const auto kind = static_cast<geo::Volatile::Kind>(index);
-            const float amount = float(geo::Volatile::nibble(geology.climate.retained, kind));
+        for (integer index = 0; index < cluster::chemistry::Volatile::kindCount; ++index) {
+            const auto kind = static_cast<cluster::chemistry::Volatile::Kind>(index);
+            const float amount = float(cluster::chemistry::Volatile::nibble(geology.climate.retained, kind));
             if (amount <= 0.0f)
                 continue;
             const auto& gas = volatiles[static_cast<std::size_t>(index)];
             gasScatter += amount * gas.scatter;
             gasAbsorb += amount * gas.absorb;
             retainedSum += amount;
-            if (kind == geo::Volatile::Kind::Methane or kind == geo::Volatile::Kind::Ammonia or kind == geo::Volatile::Kind::SulfurDioxide)
+            if (kind == cluster::chemistry::Volatile::Kind::Methane or kind == cluster::chemistry::Volatile::Kind::Ammonia or kind == cluster::chemistry::Volatile::Kind::SulfurDioxide)
                 hazeMass += amount;
             else
                 rayleighMass += amount;
@@ -123,7 +123,8 @@ namespace eltanin::planet {
     auto Compose::derive(const Passport& passport) -> Geology {
         constexpr double gravityConstant = 6.67430e-11;
         const double radius = std::max(double(passport.radius), 1.0);
-        const float gravity = float(gravityConstant * std::max(passport.mass, 0.0) / (radius * radius));
+        const double realRadius = radius * cluster::measure::ShrinkFactor::celestial;
+        const float gravity = float(gravityConstant * std::max(passport.mass, 0.0) / (realRadius * realRadius));
         const float age = glm::clamp(passport.ageGyr / 8.0f, 0.0f, 1.0f);
         const float stellarFlux = std::max(passport.environment.stellarFlux, 0.0f);
         const float equilibrium = 278.5f * std::pow(std::max(stellarFlux, 0.25f) / 1361.0f, 0.25f);
@@ -142,16 +143,16 @@ namespace eltanin::planet {
         const float escapeProxy = std::sqrt(std::max(2.0f * gravity * passport.radius, 0.0f));
         float greenhouse = 0.0f;
         float retainedWeight = 0.0f;
-        geo::Volatile::Mix retained = 0;
-        const auto& volatiles = geo::Volatile::table();
-        for (integer index = 0; index < 8; ++index) {
-            const auto kind = static_cast<geo::Volatile::Kind>(index);
-            const integer amount = geo::Volatile::nibble(passport.volatiles, kind);
+        cluster::chemistry::Volatile::Mix retained = 0;
+        const auto& volatiles = cluster::chemistry::Volatile::table();
+        for (integer index = 0; index < cluster::chemistry::Volatile::kindCount; ++index) {
+            const auto kind = static_cast<cluster::chemistry::Volatile::Kind>(index);
+            const integer amount = cluster::chemistry::Volatile::nibble(passport.volatiles, kind);
             const float molecular = glm::clamp(volatiles[static_cast<std::size_t>(index)].molarMass / 44.0f, 0.05f, 1.5f);
             const float thermalLoss = glm::clamp((equilibrium - 90.0f) / 360.0f, 0.0f, 1.0f);
             const float retention = glm::clamp(0.12f + escapeProxy / 850.0f + molecular * 0.34f - thermalLoss * (1.05f - molecular * 0.35f) - passport.ageGyr * 0.018f, 0.0f, 1.0f);
             const integer kept = static_cast<integer>(std::lround(float(amount) * retention));
-            retained = geo::Volatile::pack(retained, kind, kept);
+            retained = cluster::chemistry::Volatile::pack(retained, kind, kept);
             retainedWeight += float(kept);
             greenhouse += float(kept) * volatiles[static_cast<std::size_t>(index)].greenhouse;
         }
@@ -160,7 +161,7 @@ namespace eltanin::planet {
         const float atmosphere = glm::clamp(retainedBudget * (0.55f + greenhouse * 0.85f) * (0.45f + gravity * 0.18f), 0.0f, 1.0f);
         const float temperature = equilibrium * (1.0f + atmosphere * greenhouse * 0.32f);
         const float liquidWindow = 1.0f - glm::smoothstep(315.0f, 390.0f, temperature);
-        const float waterInventory = float(geo::Volatile::nibble(retained, geo::Volatile::Kind::Water)) / 15.0f;
+        const float waterInventory = float(cluster::chemistry::Volatile::nibble(retained, cluster::chemistry::Volatile::Kind::Water)) / 15.0f;
         const float water = waterInventory * glm::smoothstep(185.0f, 273.0f, temperature) * liquidWindow;
         const float ice = waterInventory * (1.0f - glm::smoothstep(210.0f, 285.0f, temperature));
         const float primordialHeat = std::exp(-passport.ageGyr / 4.8f) * glm::clamp(std::log2(std::max(passport.radius, 1000.0f) / 1000.0f) / 13.0f, 0.08f, 1.0f);
@@ -184,7 +185,7 @@ namespace eltanin::planet {
         const float soft = glm::smoothstep(0.45f, 0.92f, temperature / std::max(melt, 1.0f));
         const float yield = hardness * 1.4e8f * (1.0f - 0.85f * soft);
         const float reliefReal = yield / std::max(solidDensity * gravity, 1.0f);
-        const float reliefPhysical = std::min(float(reliefReal * cluster::measure::celestialFactor), passport.radius * 0.45f);
+        const float reliefPhysical = std::min(float(reliefReal / cluster::measure::ShrinkFactor::celestial), passport.radius * 0.45f);
         const float reliefFraction = reliefPhysical / passport.radius;
         const float reliefAmplitude = std::min(reliefPhysical * Planet::reliefExaggeration, passport.radius * 0.45f);
         const float potato = passport.radius * reliefFraction * reliefFraction;
@@ -218,21 +219,21 @@ namespace eltanin::planet {
         const float annualMean = annualSum / std::max(annualWeight, 1.0e-4f);
         const float transition = 4000.0f * (9.81f / std::max(gravity, 0.02f));
         const float largeDiameter = transition * (10.0f + 28.0f * glm::clamp(0.25f + passport.environment.debrisFlux * 0.52f + passport.environment.eccentricity * 0.30f, 0.0f, 1.0f));
-        const float crater = std::min((largeDiameter * 0.5f) / float(passport.radius / cluster::measure::celestialFactor), 0.85f);
+        const float crater = std::min((largeDiameter * 0.5f) / float(passport.radius * cluster::measure::ShrinkFactor::celestial), 0.85f);
         const float basin = std::min(crater * (2.4f + 3.2f * glm::clamp(passport.environment.debrisFlux * 0.55f + passport.environment.eccentricity * 0.24f, 0.0f, 1.0f)), 1.15f);
-        float frost = geo::Volatile::table()[static_cast<std::size_t>(geo::Volatile::Kind::Water)].freezeKelvin;
-        if (geo::Volatile::nibble(retained, geo::Volatile::Kind::Water) <= 0) {
+        float frost = cluster::chemistry::Volatile::table()[static_cast<std::size_t>(cluster::chemistry::Volatile::Kind::Water)].freezeKelvin;
+        if (cluster::chemistry::Volatile::nibble(retained, cluster::chemistry::Volatile::Kind::Water) <= 0) {
             integer richest = 0;
-            for (integer index = 0; index < 8; ++index) {
-                const integer amount = geo::Volatile::nibble(retained, static_cast<geo::Volatile::Kind>(index));
+            for (integer index = 0; index < cluster::chemistry::Volatile::kindCount; ++index) {
+                const integer amount = cluster::chemistry::Volatile::nibble(retained, static_cast<cluster::chemistry::Volatile::Kind>(index));
                 if (amount > richest) {
                     richest = amount;
-                    frost = geo::Volatile::table()[static_cast<std::size_t>(index)].freezeKelvin;
+                    frost = cluster::chemistry::Volatile::table()[static_cast<std::size_t>(index)].freezeKelvin;
                 }
             }
         }
-        const float hydrogen = float(geo::Volatile::nibble(retained, geo::Volatile::Kind::Hydrogen)) / 15.0f;
-        const float helium = float(geo::Volatile::nibble(retained, geo::Volatile::Kind::Helium)) / 15.0f;
+        const float hydrogen = float(cluster::chemistry::Volatile::nibble(retained, cluster::chemistry::Volatile::Kind::Hydrogen)) / 15.0f;
+        const float helium = float(cluster::chemistry::Volatile::nibble(retained, cluster::chemistry::Volatile::Kind::Helium)) / 15.0f;
         const float lightGas = glm::clamp((hydrogen + helium) * 0.5f, 0.0f, 1.0f);
         const float densityDrop = glm::clamp(1.0f - solidDensity / 3500.0f, 0.0f, 1.0f);
         const float envelope = glm::clamp(lightGas * 0.72f + densityDrop * 0.38f + atmosphere * lightGas * 0.22f, 0.0f, 1.0f);
@@ -418,7 +419,7 @@ namespace eltanin::planet {
                     axis = candidates[static_cast<std::size_t>(plume % static_cast<integer>(candidates.size()))].center;
                 const float residence = 1.0f - geology.crust.mobility;
                 const float power = glm::clamp(geology.mantle.plumePower * (0.85f + residence * 1.65f) * (0.72f + 0.52f * Sample::hash01(plume, seed, 3011, 53)), 0.18f, 1.25f);
-                const float metric = (80000.0f * (9.81f / std::max(geology.scale.gravity, 0.05f)) * (0.55f + 0.70f * power)) * float(cluster::measure::celestialFactor) / radius;
+                const float metric = (80000.0f * (9.81f / std::max(geology.scale.gravity, 0.05f)) * (0.55f + 0.70f * power)) / float(cluster::measure::ShrinkFactor::celestial) / radius;
                 const float shield = metric * geology.crust.mobility + (0.10f + 0.16f * power) * (1.0f - geology.crust.mobility);
                 Swell::apply(formation.relief, Swell{.axis = axis, .sigma = shield * 1.6f, .amplitude = amplitude * (0.14f + 0.28f * power), .seed = seed + 3023 + plume * 59});
                 vec3 tangent = glm::cross(axis, Sample::sphereDir(plume, seed + 3037, 31, 37));
@@ -435,7 +436,7 @@ namespace eltanin::planet {
             }
         }
 
-        const float escape = std::sqrt(std::max(float(2.0f * geology.scale.gravity * radius / cluster::measure::celestialFactor), 0.0f));
+        const float escape = std::sqrt(std::max(float(2.0f * geology.scale.gravity * radius * cluster::measure::ShrinkFactor::celestial), 0.0f));
         const float stick = glm::clamp((6500.0f - escape) / 6500.0f, 0.0f, 1.0f) * (0.30f + 0.70f * geology.bombardment.largeBodyTail);
         const integer patches = static_cast<integer>(std::lround(stick * 3.0f));
         if (patches > 0) {
@@ -483,14 +484,14 @@ namespace eltanin::planet {
                 const vec3 direction = formation.water.pack.direction(slot);
                 const float relief = formation.relief.at(direction) / std::max(amplitude, 1.0f);
                 const float localTemperature = ClimateField::temperature(planet.passport, geology, direction);
-                const float held = float(geo::Volatile::nibble(geology.climate.retained, geo::Volatile::Kind::Water)) / 15.0f;
+                const float held = float(cluster::chemistry::Volatile::nibble(geology.climate.retained, cluster::chemistry::Volatile::Kind::Water)) / 15.0f;
                 const float cold = 1.0f - glm::smoothstep(geology.climate.frost - 16.0f, geology.climate.frost + 18.0f, ClimateField::winter(planet.passport, geology, direction));
                 const float liquid = held * (1.0f - cold) * (1.0f - glm::smoothstep(315.0f, 390.0f, localTemperature)) * std::max(0.72f - relief * 0.42f, 0.0f);
                 formation.water.at(slot) = glm::clamp(held * cold + liquid, 0.0f, 1.0f);
                 formation.sediment.at(slot) = glm::clamp(geology.climate.transport * formation.water.at(slot) * (0.55f + formation.fracture.at(slot) * 0.35f), 0.0f, 1.0f);
             }
         }
-        planet.runtime.surfaceAcceleration = float(6.67430e-11 * std::max(planet.passport.mass, 0.0) / (double(planet.passport.radius) * double(planet.passport.radius)));
+        planet.runtime.surfaceAcceleration = float(6.67430e-11 * std::max(planet.passport.mass, 0.0) / (double(planet.passport.radius) * double(planet.passport.radius) * cluster::measure::ShrinkFactor::celestial * cluster::measure::ShrinkFactor::celestial));
         planet.runtime.reliefAmplitude = amplitude;
         planet.runtime.atmosphere.seaDensity = geology.climate.atmosphere * 1800.0f;
         planet.runtime.atmosphere.kerman = planet.passport.radius * glm::clamp(0.008f + geology.climate.temperature / std::max(planet.runtime.surfaceAcceleration, 0.2f) * 0.00012f, 0.008f, 0.055f);

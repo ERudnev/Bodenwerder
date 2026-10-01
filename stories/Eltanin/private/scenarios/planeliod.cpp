@@ -3,7 +3,7 @@
 #include "geo/celestial/sun.h"
 #include "cluster/measure.h"
 #include <eltanin/geo/minerals.q1.h>
-#include <eltanin/geo/volatiles.q1.h>
+#include <eltanin/cluster/chemistry/volatiles.q1.h>
 #include <eltanin/locality/thing.q1.h>
 #include <eltanin/world.q1.h>
 #include <rmmr/controller/camera3d.q1.h>
@@ -50,20 +50,20 @@ namespace eltanin::scenario {
     void Planeliod::placePlanet(Writing context, rmmr::system::Device::Id device, base::maybe<planet::Planet>& planet) {
         constexpr double marsMass = 6.417e23;
         constexpr double marsRadius = 3.390e6;
-        const float radius = float(marsRadius * cluster::measure::celestialFactor);
+        const float radius = float(marsRadius / cluster::measure::ShrinkFactor::celestial);
         using Mineral = geo::Mineral::Kind;
-        using Volatile = geo::Volatile::Kind;
+        using Volatile = cluster::chemistry::Volatile::Kind;
         auto mineral = [](Mineral channel, integer fill) -> geo::Mineral::Mix {
             return geo::Mineral::Mix{static_cast<std::uint64_t>(fill)} << (static_cast<integer>(channel) * 4);
         };
-        auto volatileInventory = [](Volatile channel, integer fill) -> geo::Volatile::Mix {
-            return geo::Volatile::Mix{static_cast<std::uint32_t>(fill)} << (static_cast<integer>(channel) * 4);
+        auto volatileInventory = [](Volatile channel, integer fill) -> cluster::chemistry::Volatile::Mix {
+            return cluster::chemistry::Volatile::Mix{static_cast<std::uint64_t>(fill)} << (static_cast<integer>(channel) * 4);
         };
         planet.emplace(
             planet::Passport{
                 .seed = 7,
                 .ageGyr = 4.54f,
-                .mass = marsMass * cluster::measure::celestialFactor * cluster::measure::celestialFactor,
+                .mass = marsMass,
                 .radius = radius,
                 .bulk = mineral(Mineral::Pyroxene, 12) | mineral(Mineral::Olivine, 8) | mineral(Mineral::Feldspar, 6) | mineral(Mineral::Oxides, 11) | mineral(Mineral::Clay, 7) | mineral(Mineral::Ice, 6) | mineral(Mineral::Salts, 4) | mineral(Mineral::Iron, 5) | mineral(Mineral::Carbonaceous, 3),
                 .volatiles = volatileInventory(Volatile::Water, 6) | volatileInventory(Volatile::CarbonDioxide, 12) | volatileInventory(Volatile::Nitrogen, 2) | volatileInventory(Volatile::SulfurDioxide, 1),

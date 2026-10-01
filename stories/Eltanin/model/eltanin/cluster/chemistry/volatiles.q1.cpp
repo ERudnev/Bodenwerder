@@ -1,12 +1,12 @@
-#include <eltanin/geo/volatiles.q1.h>
+#include <eltanin/cluster/chemistry/volatiles.q1.h>
 
 #include <algorithm>
 
-namespace eltanin::geo {
+namespace eltanin::cluster::chemistry {
 
     auto Volatile::pack(Mix mix, Kind kind, integer value) -> Mix {
         const integer shift = static_cast<integer>(kind) * 4;
-        const Mix mask = Mix{15u} << shift;
+        const Mix mask = Mix{15ull} << shift;
         return (mix & ~mask) | (Mix(std::clamp(value, integer{0}, integer{15})) << shift);
     }
 
@@ -20,6 +20,10 @@ namespace eltanin::geo {
             Volatile{.name = "SulfurDioxide", .molarMass = 64.066f, .freezeKelvin = 197.67f, .boilKelvin = 263.05f, .greenhouse = 0.56f, .scatter = vec3{0.92f, 0.78f, 0.36f}, .absorb = vec3{0.08f, 0.16f, 0.32f}},
             Volatile{.name = "Hydrogen", .molarMass = 2.016f, .freezeKelvin = 13.99f, .boilKelvin = 20.27f, .greenhouse = 0.02f, .scatter = vec3{0.50f, 0.85f, 1.65f}, .absorb = vec3{0.00f, 0.00f, 0.02f}},
             Volatile{.name = "Helium", .molarMass = 4.003f, .freezeKelvin = 0.95f, .boilKelvin = 4.22f, .greenhouse = 0.00f, .scatter = vec3{0.58f, 0.82f, 1.28f}, .absorb = vec3{0.00f, 0.00f, 0.00f}},
+            Volatile{.name = "Oxygen", .molarMass = 31.998f, .freezeKelvin = 54.36f, .boilKelvin = 90.19f, .greenhouse = 0.03f, .scatter = vec3{0.40f, 0.70f, 1.40f}, .absorb = vec3{0.00f, 0.02f, 0.04f}},
+            Volatile{.name = "Carbon", .molarMass = 12.011f, .freezeKelvin = 3915.0f, .boilKelvin = 3915.0f, .greenhouse = 0.08f, .scatter = vec3{0.35f, 0.32f, 0.28f}, .absorb = vec3{0.12f, 0.10f, 0.08f}},
+            Volatile{.name = "Silicon", .molarMass = 28.085f, .freezeKelvin = 1687.0f, .boilKelvin = 3538.0f, .greenhouse = 0.02f, .scatter = vec3{0.78f, 0.74f, 0.62f}, .absorb = vec3{0.04f, 0.04f, 0.05f}},
+            Volatile{.name = "Iron", .molarMass = 55.845f, .freezeKelvin = 1811.0f, .boilKelvin = 3134.0f, .greenhouse = 0.01f, .scatter = vec3{0.55f, 0.28f, 0.16f}, .absorb = vec3{0.14f, 0.10f, 0.06f}},
         };
         return table;
     }

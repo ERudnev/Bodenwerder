@@ -3,6 +3,7 @@
 #include <vector>
 
 #include <eltanin/cluster/orbital.q1.h>
+#include <eltanin/cluster/space.q1.h>
 #include <eltanin/cluster/celestial.q1.h>
 
 #include <fQSM/api/interface.h>
@@ -16,6 +17,7 @@ namespace eltanin::cluster {
         vector<Celestial::Id> celestials;
 
         void generate(Writing);
+        void generateSol(Writing, space::Position);
     };
 
 }

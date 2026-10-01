@@ -35,7 +35,7 @@ namespace eltanin::planet {
             float ironFraction;
         } bombardment;
         struct Climate {
-            geo::Volatile::Mix retained;
+            cluster::chemistry::Volatile::Mix retained;
             float atmosphere;
             float temperature;
             float water;

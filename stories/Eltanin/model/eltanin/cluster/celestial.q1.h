@@ -1,5 +1,6 @@
 #pragma once
 
+#include <eltanin/cluster/chemistry/volatiles.q1.h>
 #include <eltanin/cluster/orbital.q1.h>
 #include <eltanin/cluster/space.q1.h>
 #include <eltanin/types.q1.h>
@@ -25,7 +26,9 @@ namespace eltanin::cluster {
     struct Star : Feature<Star, Celestial> {
         struct Quantum {
             Kelvins temperature;
-            vec3 color;
+            chemistry::Volatile::Mix mix;
+
+            auto look() const -> vec3;
         };
         struct Actions : BaseActions {};
         struct Internals : DefaultInternals {};

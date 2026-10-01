@@ -4,7 +4,7 @@
 
 #include <base/maybe.h>
 #include <eltanin/geo/minerals.q1.h>
-#include <eltanin/geo/volatiles.q1.h>
+#include <eltanin/cluster/chemistry/volatiles.q1.h>
 #include <rmmr/math.q1.h>
 #include <rmmr/resources/textures.q1.h>
 #include <rmmr/scene/actors/mesh.q1.h>
@@ -40,7 +40,7 @@ namespace eltanin::planet {
         };
 
         geo::Mineral::Mix crust;
-        geo::Volatile::Mix retained;
+            cluster::chemistry::Volatile::Mix retained;
         float cohesion;
         float water;
         float ice;

@@ -4,7 +4,7 @@
 #include "geo/details/effects.h"
 
 #include <eltanin/geo/minerals.q1.h>
-#include <eltanin/geo/volatiles.q1.h>
+#include <eltanin/cluster/chemistry/volatiles.q1.h>
 
 #include <algorithm>
 #include <cmath>
@@ -26,8 +26,8 @@ namespace eltanin::planet {
             return float(geo::Mineral::nibble(mix, kind)) / 15.0f;
         }
 
-        auto nibble(geo::Volatile::Mix mix, geo::Volatile::Kind kind) -> float {
-            return float(geo::Volatile::nibble(mix, kind)) / 15.0f;
+        auto nibble(cluster::chemistry::Volatile::Mix mix, cluster::chemistry::Volatile::Kind kind) -> float {
+            return float(cluster::chemistry::Volatile::nibble(mix, kind)) / 15.0f;
         }
 
         auto encodeWind(float value) -> std::uint8_t {
@@ -56,9 +56,9 @@ namespace eltanin::planet {
             const auto& oxide = geo::Mineral::table()[static_cast<std::size_t>(geo::Mineral::Kind::Oxides)];
             decks.push_back(Deck{.kind = Kind::Dust, .base = 0.0f, .top = kerman * (0.10f + 0.12f * dustPotential), .scatter = RGB{oxide.albedo.x, oxide.albedo.y, oxide.albedo.z}, .channel = 0.0f, .actor = {}});
         }
-        const float waterInv = nibble(geology.climate.retained, geo::Volatile::Kind::Water);
-        const float carbonDioxide = nibble(geology.climate.retained, geo::Volatile::Kind::CarbonDioxide);
-        const float methane = nibble(geology.climate.retained, geo::Volatile::Kind::Methane);
+        const float waterInv = nibble(geology.climate.retained, cluster::chemistry::Volatile::Kind::Water);
+        const float carbonDioxide = nibble(geology.climate.retained, cluster::chemistry::Volatile::Kind::CarbonDioxide);
+        const float methane = nibble(geology.climate.retained, cluster::chemistry::Volatile::Kind::Methane);
         const float temperature = geology.climate.temperature;
         const bool waterCloud = waterInv > 0.08f and temperature > 210.0f and temperature < 330.0f and geology.climate.atmosphere > 0.08f;
         const bool carbonFrost = carbonDioxide > 0.18f and temperature < 205.0f;
@@ -67,8 +67,8 @@ namespace eltanin::planet {
             const vec3 tint = waterCloud ? vec3{0.92f, 0.94f, 0.98f} : carbonFrost ? vec3{0.82f, 0.88f, 0.95f} : vec3{0.88f, 0.78f, 0.62f};
             decks.push_back(Deck{.kind = Kind::Condensate, .base = kerman * 0.18f, .top = kerman * 0.55f, .scatter = RGB{tint.x, tint.y, tint.z}, .channel = 1.0f, .actor = {}});
         }
-        const float ammonia = nibble(geology.climate.retained, geo::Volatile::Kind::Ammonia);
-        const float sulfur = nibble(geology.climate.retained, geo::Volatile::Kind::SulfurDioxide);
+        const float ammonia = nibble(geology.climate.retained, cluster::chemistry::Volatile::Kind::Ammonia);
+        const float sulfur = nibble(geology.climate.retained, cluster::chemistry::Volatile::Kind::SulfurDioxide);
         const float hazeMass = methane + ammonia + sulfur;
         if (hazeMass > 0.18f) {
             const vec3 tint = glm::normalize(vec3{0.82f, 0.62f, 0.28f} * methane + vec3{0.88f, 0.84f, 0.70f} * ammonia + vec3{0.92f, 0.78f, 0.36f} * sulfur) * 0.9f;

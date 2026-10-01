@@ -1,6 +1,7 @@
 import "types"
 import "cluster/space"
 import "cluster/orbital"
+import "cluster/chemistry/volatiles"
 import "rmmr/math"
 
 namespace eltanin
@@ -14,8 +15,9 @@ namespace eltanin
         mass: Mass
         radius: float
 
-    // Photosphere of this Celestial. Mass and radius stay on Celestial.
+    // Photosphere of this Celestial. Mass and radius stay on Celestial. mix is the same stock as a planet.
     feature Star of Celestial
       one
         temperature: Kelvins
-        color: vec3
+        mix: chemistry::Volatile::Mix
+        ?look()->vec3

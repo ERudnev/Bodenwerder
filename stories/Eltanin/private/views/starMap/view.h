@@ -18,7 +18,9 @@ namespace eltanin::views::starmap {
     struct View {
         struct Panels {
             struct Systems {};
+            struct View {};
             base::maybe<Systems> systems;
+            base::maybe<View> view;
         };
 
         base::maybe<rmmr::scene::Root::Id> scene;

@@ -15,6 +15,8 @@ namespace rmmr::controller {
             Pos pivot;
             HPB hpb;
             float distance;
+            float distanceMin;
+            float distanceMax;
             system::ViewInput::Id input;
         };
         struct Actions : BaseActions {

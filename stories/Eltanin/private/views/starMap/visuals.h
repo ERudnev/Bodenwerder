@@ -43,24 +43,38 @@ namespace eltanin::views::starmap {
             rmmr::scene::actor::Replica::Id fine;
             float celestialRadius;
         };
+        struct Radial {
+            cluster::Celestial::Id celestial;
+            rmmr::scene::actor::Mesh::Id plane;
+            rmmr::scene::actor::Mesh::Id pole;
+        };
+        struct Lattice {
+            rmmr::scene::Grid::Id grid;
+            float cellLy;
+        };
 
         base::maybe<Marker> currentPlayer;
         base::maybe<Marker> viewFocus;
-        base::maybe<rmmr::scene::Grid::Id> tensGrid;
-        base::maybe<rmmr::scene::Grid::Id> unitGrid;
+        vector<Lattice> lattices;
         base::maybe<rmmr::scene::actor::Mesh::Id> axisX;
         base::maybe<rmmr::scene::actor::Mesh::Id> axisY;
         base::maybe<rmmr::scene::actor::Mesh::Id> axisZ;
         vector<rmmr::resource::geometry::Asset::Id> dashMeshes;
         base::maybe<rmmr::resource::material::Asset::Id> gizmo;
         base::maybe<rmmr::resource::material::Asset::Id> starMaterial;
+        base::maybe<rmmr::resource::material::Asset::Id> radialMaterial;
+        base::maybe<rmmr::resource::geometry::Asset::Id> radialPlane;
         base::maybe<Lod> coarse;
         base::maybe<Lod> fine;
         vector<Star> stars;
+        vector<Radial> radials;
         base::maybe<rmmr::system::Window::Id> renderWindow;
         rmmr::Pos player;
         rmmr::Pos focus;
         float scaleLy;
+        struct Display {
+            bool grid;
+        } display;
 
         static auto starMeshRadius(float celestialRadius, float cameraDistance, float pixelWorld) -> float;
         auto addAssets(Writing) -> bool;
