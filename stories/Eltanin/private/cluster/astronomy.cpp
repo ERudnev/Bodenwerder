@@ -29,9 +29,9 @@ namespace eltanin::cluster {
         }
 
         auto placeStar(Writing context, Position position, string name, double solarMasses, Volatile::Mix mix) -> Axis::Id {
-            const double mass = measure::Mass::sun * solarMasses;
-            const float radius = float(measure::Radius::sun / measure::ShrinkFactor::celestial * std::pow(solarMasses, 0.8));
-            const float temperature = measure::Temperature::sun * float(std::pow(solarMasses, 0.55));
+            const double mass = Mass::sun * solarMasses;
+            const float radius = float(Radius::sun * std::pow(solarMasses, 0.8));
+            const float temperature = Temperature::sun * float(std::pow(solarMasses, 0.55));
             const auto grain = with<Axis>::create(context, Axis::Quantum{.pose = Pose{.position = position, .orientation = dquat{1.0, 0.0, 0.0, 0.0}}});
             with<starmap::Details>::extend(context, grain, starmap::Details::Quantum{.name = std::move(name)});
             with<Celestial>::extend(context, grain, Celestial::Quantum{.position = Position{0.0, 0.0, 0.0}, .mass = mass, .radius = radius});
@@ -51,7 +51,7 @@ namespace eltanin::cluster {
         axes.clear();
         celestials.clear();
         constexpr integer wings = 5;
-        constexpr double step = 5.0 * measure::eLY;
+        constexpr double step = 5.0 * eLY;
         const auto mix = solarMix();
         for (integer index = -wings; index <= wings; ++index) {
             const Position position{double(index) * step, 0.0, 0.0};

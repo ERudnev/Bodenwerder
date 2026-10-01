@@ -2,6 +2,9 @@
 
 #include <base/types/common_types.h>
 
+#include <algorithm>
+#include <array>
+
 namespace eltanin::geo {
 
 using base::common_types::rgb;
@@ -29,6 +32,38 @@ const vector<Mineral>& Mineral::table() {
         Mineral{.name = "Exotic", .density = 13.0f, .scale = 0.90f, .albedo = rgb(115, 31, 217), .sinter = rgb(168, 64, 255), .roughness = 0.12f, .metalness = 0.80f, .hardness = 9.0f, .meltKelvin = 4200.0f, .tintKelvin = 1600.0f, .glowKelvin = 2600.0f, .sootMul = 0.10f},
     };
     return table;
+}
+
+auto Mineral::description(Mix mix) -> string {
+    struct Slot {
+        integer weight;
+        integer channel;
+    };
+    const auto& minerals = table();
+    const integer channels = static_cast<integer>(minerals.size());
+    std::array<Slot, 16> present{};
+    integer count = 0;
+    for (integer channel = 0; channel < channels; ++channel) {
+        const integer weight = nibble(mix, static_cast<Kind>(channel));
+        if (weight > 0)
+            present[static_cast<std::size_t>(count++)] = Slot{.weight = weight, .channel = channel};
+    }
+    if (count == 0)
+        return "—";
+    std::sort(present.begin(), present.begin() + count, [](const Slot& a, const Slot& b) {
+        if (a.weight != b.weight)
+            return a.weight > b.weight;
+        return a.channel < b.channel;
+    });
+    const integer shown = std::min(count, integer{4});
+    string text = minerals[static_cast<std::size_t>(present[0].channel)].name;
+    for (integer index = 1; index < shown; ++index) {
+        text += "/";
+        text += minerals[static_cast<std::size_t>(present[index].channel)].name;
+    }
+    if (count > 4)
+        text += " (more..)";
+    return text;
 }
 
 }

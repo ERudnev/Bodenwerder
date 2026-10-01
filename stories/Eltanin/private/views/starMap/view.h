@@ -34,6 +34,7 @@ namespace eltanin::views::starmap {
         void bind(Writing, const cluster::Astronomy&);
         void follow(Writing);
         void draw(Writing);
+        void drawScale(Writing);
     };
 
 }

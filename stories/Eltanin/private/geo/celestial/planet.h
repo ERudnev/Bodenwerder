@@ -90,7 +90,6 @@ namespace eltanin::planet {
     public:
         static constexpr float constructionEdge = 4.0f; // construct cubes, metres
         static constexpr std::int16_t reliefPeak = 32767;
-        static constexpr float reliefExaggeration = 4.0f; // toy exaggeration of the yield-strength ceiling
 
         static auto edgeMeters(float radius) -> float;
         static auto recommendedDetail(float radius) -> Detail;

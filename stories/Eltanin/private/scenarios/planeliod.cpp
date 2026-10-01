@@ -49,8 +49,7 @@ namespace eltanin::scenario {
 
     void Planeliod::placePlanet(Writing context, rmmr::system::Device::Id device, base::maybe<planet::Planet>& planet) {
         constexpr double marsMass = 6.417e23;
-        constexpr double marsRadius = 3.390e6;
-        const float radius = float(marsRadius / cluster::measure::ShrinkFactor::celestial);
+        const float radius = float(3.390 * eMm);
         using Mineral = geo::Mineral::Kind;
         using Volatile = cluster::chemistry::Volatile::Kind;
         auto mineral = [](Mineral channel, integer fill) -> geo::Mineral::Mix {

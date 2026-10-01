@@ -24,6 +24,7 @@
 #include <cmath>
 #include <format>
 #include <numbers>
+#include <span>
 
 #include <glm/common.hpp>
 #include <glm/geometric.hpp>
@@ -45,11 +46,11 @@ namespace eltanin::views::starmap {
         constexpr float latticeStep = 10.0f;
         constexpr float latticeFadeNear = 25.0f;
         constexpr float latticeFadeFar = 80.0f;
-        constexpr std::array latticeCellsLy{
-            float(50.0 * eAU / eLY),
-            1.0f,
-            10.0f,
-            100.0f,
+        constexpr std::array latticeScaleTable{
+            Visuals::LatticeScale{.cellLy = float(50.0 * eAU / eLY), .caption = "50 AU"},
+            Visuals::LatticeScale{.cellLy = 1.0f, .caption = "1 LY"},
+            Visuals::LatticeScale{.cellLy = 10.0f, .caption = "10 LY"},
+            Visuals::LatticeScale{.cellLy = 100.0f, .caption = "100 LY"},
         };
         constexpr float axisThicknessAtRef = 0.125f;
         constexpr float dashThicknessAtRef = 0.055f;
@@ -96,11 +97,8 @@ namespace eltanin::views::starmap {
         }
 
         auto latticeFade(float scaleLy, float cellLy) -> float {
-            const float finest = latticeCellsLy.front();
-            const float coarsest = latticeCellsLy.back();
-            float fade = 1.0f;
-            if (cellLy > finest * 1.01f)
-                fade *= smoothstep(latticeFadeNear * (cellLy / latticeStep), latticeFadeFar * (cellLy / latticeStep), scaleLy);
+            const float coarsest = latticeScaleTable.back().cellLy;
+            float fade = smoothstep(latticeFadeNear * (cellLy / latticeStep), latticeFadeFar * (cellLy / latticeStep), scaleLy);
             if (cellLy < coarsest * 0.99f)
                 fade *= 1.0f - smoothstep(latticeFadeNear * cellLy, latticeFadeFar * cellLy, scaleLy);
             return fade;
@@ -114,7 +112,7 @@ namespace eltanin::views::starmap {
 
         auto radialOuterLy(float celestialRadius) -> float {
             const double base = decadeCeil(double(std::max(celestialRadius, 0.0f)));
-            return float(base * double(radialOuterMul) / cluster::measure::eLY);
+            return float(base * double(radialOuterMul) / eLY);
         }
 
         auto radialFade(float distance, float outer) -> float {
@@ -412,12 +410,12 @@ namespace eltanin::views::starmap {
             return false;
         }
         lattices.clear();
-        lattices.reserve(latticeCellsLy.size());
-        for (std::size_t index = 0; index < latticeCellsLy.size(); ++index) {
-            const float cellLy = latticeCellsLy[index];
-            const auto grid = with<scene::Interface>::createGrid(context, root, window, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *gridGeometry, .material = *gridMaterial, .opacity = index + 1 == latticeCellsLy.size() ? gridOpacity : 0.0f, .patternScale = meshScale / cellLy});
+        lattices.reserve(latticeScaleTable.size());
+        for (std::size_t index = 0; index < latticeScaleTable.size(); ++index) {
+            const float cellLy = latticeScaleTable[index].cellLy;
+            const auto grid = with<scene::Interface>::createGrid(context, root, window, Pose::from(Pos{0.0f, 0.0f, 0.0f}, HPB{0.0f, 0.0f, 0.0f}), item<scene::Grid>{.geometry = *gridGeometry, .material = *gridMaterial, .opacity = index + 1 == latticeScaleTable.size() ? gridOpacity : 0.0f, .patternScale = meshScale / cellLy});
             with<scene::actor::MeshState>::modify(context, grid)->scale = vec3{meshScale, 1.0f, meshScale};
-            scene::Node::Actions::setVisible(context, grid, index + 1 == latticeCellsLy.size());
+            scene::Node::Actions::setVisible(context, grid, index + 1 == latticeScaleTable.size());
             lattices.push_back(Lattice{.grid = grid, .cellLy = cellLy});
         }
         auto placeAxis = [&](RGB color, vec3 scale) -> base::maybe<scene::actor::Mesh::Id> {
@@ -453,6 +451,8 @@ namespace eltanin::views::starmap {
         player = Pos{0.0f, 0.0f, 0.0f};
         focus = Pos{0.0f, 0.0f, 0.0f};
         scaleLy = scaleRefLy;
+        pixelWorld = 0.0f;
+        cellLy = 10.0f;
         display = Display{.grid = true};
         if (not starMaterial or not radialMaterial) {
             context.refuse("eltanin::views::starmap::Visuals::place: star material missing");
@@ -494,7 +494,16 @@ namespace eltanin::views::starmap {
             scaleLy = glm::length(vec3{cameraNode.pose.position});
         }
         const float sized = gauge(scaleLy);
-        const float pixelWorld = renderWindow ? worldPerPixel(context, camera, *renderWindow, scaleLy) : 0.0f;
+        pixelWorld = renderWindow ? worldPerPixel(context, camera, *renderWindow, scaleLy) : 0.0f;
+        cellLy = latticeScaleTable.front().cellLy;
+        float bestFade = -1.0f;
+        for (const auto& mark : latticeScaleTable) {
+            const float fade = latticeFade(scaleLy, mark.cellLy);
+            if (fade >= bestFade) {
+                bestFade = fade;
+                cellLy = mark.cellLy;
+            }
+        }
         float reticleSize = reticleSizeAtRef * sized;
         float dashThickness = dashThicknessAtRef * sized;
         const float dashPeriod = dashPeriodAtRef * sized;
@@ -555,7 +564,7 @@ namespace eltanin::views::starmap {
             const auto& body = with<cluster::Celestial>::get(context, radial.celestial);
             const auto& axis = with<cluster::Axis>::get(context, radial.celestial);
             const dvec3 world = axis.pose.position + axis.pose.orientation * body.position;
-            const Pos map{float(world.x / cluster::measure::eLY), float(world.y / cluster::measure::eLY), float(world.z / cluster::measure::eLY)};
+            const Pos map{float(world.x / eLY), float(world.y / eLY), float(world.z / eLY)};
             const quat rotation{axis.pose.orientation};
             const float outer = radialOuterLy(body.radius);
             const float distance = glm::length(vec3{map} - vec3{cameraNode.pose.position});
@@ -576,8 +585,16 @@ namespace eltanin::views::starmap {
         }
     }
 
+    auto Visuals::latticeScales() -> std::span<const LatticeScale> {
+        return latticeScaleTable;
+    }
+
+    auto Visuals::homeLy(float cellLy) -> float {
+        return cellLy * std::sqrt(latticeFadeNear * latticeFadeFar / latticeStep);
+    }
+
     auto Visuals::starMeshRadius(float celestialRadius, float cameraDistance, float pixelWorld) -> float {
-        const float sun = float(cluster::measure::Radius::sun / cluster::measure::ShrinkFactor::celestial);
+        const float sun = float(Radius::sun);
         const float relative = sun > 1.0e-12f ? std::max(celestialRadius, 0.0f) / sun : 1.0f;
         const float rank = glm::clamp((std::log2(std::max(relative, 0.05f)) + 2.0f) / 4.5f, 0.0f, 1.0f);
         const float farPx = 2.0f + 3.0f * rank;
@@ -603,7 +620,7 @@ namespace eltanin::views::starmap {
             const auto& body = with<cluster::Celestial>::get(context, id);
             const auto& axis = with<cluster::Axis>::get(context, id);
             const dvec3 world = axis.pose.position + axis.pose.orientation * body.position;
-            const Pos map{float(world.x / cluster::measure::eLY), float(world.y / cluster::measure::eLY), float(world.z / cluster::measure::eLY)};
+            const Pos map{float(world.x / eLY), float(world.y / eLY), float(world.z / eLY)};
             const auto pose = Pose::from(map, HPB{0.0f, 0.0f, 0.0f});
             scene::actor::Packed packed(bytes);
             with<scene::actor::Family>::write(context, coarse->family, packed, "color", star.look());

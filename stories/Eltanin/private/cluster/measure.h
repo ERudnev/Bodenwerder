@@ -1,6 +1,17 @@
 #pragma once
 
+#include <string>
+
 namespace eltanin::cluster::measure {
+
+    struct StretchFactor {
+        static constexpr double celestial = 0.01;
+        static constexpr double relief = 4.0;
+    };
+
+    constexpr double eMm = 1000000.0 * StretchFactor::celestial;
+    constexpr double eAU = 50000.0 * eMm; // extra ×3 on interplanetary vs celestial-only AU
+    constexpr double eLY = 500.0 * eAU; // extra ×126 on interstellar (SI ~63000 AU/ly → 500 eAU)
 
     struct Mass {
         static constexpr double sun = 1.9884e30;
@@ -8,30 +19,28 @@ namespace eltanin::cluster::measure {
     };
 
     struct Radius {
-        static constexpr double sun = 6.96e8;
-        static constexpr double earth = 6.371e6;
+        static constexpr double sun = 696.0 * eMm;
+        static constexpr double earth = 6.371 * eMm;
     };
 
     struct Temperature {
         static constexpr float sun = 5772.0f;
     };
 
-    struct ShrinkFactor {
-        static constexpr double celestial = 100.0;
+    struct Format {
+        static auto altitude(double metres) -> std::string;
+        static auto distance(double metres) -> std::string;
     };
-
-    constexpr double eMm = 1000000.0 / ShrinkFactor::celestial;
-    constexpr double eAU = 50000.0 * eMm; // extra ×3 on interplanetary vs celestial-only AU
-    constexpr double eLY = 500.0 * eAU; // extra ×126 on interstellar (SI ~63000 AU/ly → 500 eAU)
 
 }
 
 namespace eltanin {
     using cluster::measure::Mass;
     using cluster::measure::Radius;
-    using cluster::measure::ShrinkFactor;
+    using cluster::measure::StretchFactor;
     using cluster::measure::Temperature;
     using cluster::measure::eAU;
     using cluster::measure::eLY;
     using cluster::measure::eMm;
+    using cluster::measure::Format;
 }

@@ -123,7 +123,7 @@ namespace eltanin::planet {
     auto Compose::derive(const Passport& passport) -> Geology {
         constexpr double gravityConstant = 6.67430e-11;
         const double radius = std::max(double(passport.radius), 1.0);
-        const double realRadius = radius * cluster::measure::ShrinkFactor::celestial;
+        const double realRadius = radius / StretchFactor::celestial;
         const float gravity = float(gravityConstant * std::max(passport.mass, 0.0) / (realRadius * realRadius));
         const float age = glm::clamp(passport.ageGyr / 8.0f, 0.0f, 1.0f);
         const float stellarFlux = std::max(passport.environment.stellarFlux, 0.0f);
@@ -185,10 +185,10 @@ namespace eltanin::planet {
         const float soft = glm::smoothstep(0.45f, 0.92f, temperature / std::max(melt, 1.0f));
         const float yield = hardness * 1.4e8f * (1.0f - 0.85f * soft);
         const float reliefReal = yield / std::max(solidDensity * gravity, 1.0f);
-        const float reliefPhysical = std::min(float(reliefReal / cluster::measure::ShrinkFactor::celestial), passport.radius * 0.45f);
-        const float reliefFraction = reliefPhysical / passport.radius;
-        const float reliefAmplitude = std::min(reliefPhysical * Planet::reliefExaggeration, passport.radius * 0.45f);
-        const float potato = passport.radius * reliefFraction * reliefFraction;
+        const float reliefPhysical = std::min(float(reliefReal * (radius / realRadius)), float(radius) * 0.45f);
+        const float reliefFraction = reliefPhysical / float(radius);
+        const float reliefAmplitude = std::min(reliefPhysical * float(StretchFactor::relief), float(radius) * 0.45f);
+        const float potato = float(radius) * reliefFraction * reliefFraction;
         const vec3 spinAxis = glm::length(passport.spin.axis) > 1.0e-6f ? glm::normalize(passport.spin.axis) : vec3{0.0f, 1.0f, 0.0f};
         const vec3 orbitNormal = glm::length(passport.orbit.normal) > 1.0e-6f ? glm::normalize(passport.orbit.normal) : vec3{0.0f, 1.0f, 0.0f};
         const float obliquity = std::acos(glm::clamp(glm::dot(spinAxis, orbitNormal), -1.0f, 1.0f));
@@ -219,7 +219,7 @@ namespace eltanin::planet {
         const float annualMean = annualSum / std::max(annualWeight, 1.0e-4f);
         const float transition = 4000.0f * (9.81f / std::max(gravity, 0.02f));
         const float largeDiameter = transition * (10.0f + 28.0f * glm::clamp(0.25f + passport.environment.debrisFlux * 0.52f + passport.environment.eccentricity * 0.30f, 0.0f, 1.0f));
-        const float crater = std::min((largeDiameter * 0.5f) / float(passport.radius * cluster::measure::ShrinkFactor::celestial), 0.85f);
+        const float crater = std::min((largeDiameter * 0.5f) / float(realRadius), 0.85f);
         const float basin = std::min(crater * (2.4f + 3.2f * glm::clamp(passport.environment.debrisFlux * 0.55f + passport.environment.eccentricity * 0.24f, 0.0f, 1.0f)), 1.15f);
         float frost = cluster::chemistry::Volatile::table()[static_cast<std::size_t>(cluster::chemistry::Volatile::Kind::Water)].freezeKelvin;
         if (cluster::chemistry::Volatile::nibble(retained, cluster::chemistry::Volatile::Kind::Water) <= 0) {
@@ -293,6 +293,7 @@ namespace eltanin::planet {
         const integer seed = planet.passport.seed;
         const float amplitude = geology.history.reliefAmplitude;
         const float radius = std::max(planet.passport.radius, 1.0f);
+        const double realRadius = double(radius) / StretchFactor::celestial;
         Formation formation{planet.heights.pack, planet.farAlbedo.pack};
         {
             base::Progress job{"making shape"};
@@ -419,7 +420,7 @@ namespace eltanin::planet {
                     axis = candidates[static_cast<std::size_t>(plume % static_cast<integer>(candidates.size()))].center;
                 const float residence = 1.0f - geology.crust.mobility;
                 const float power = glm::clamp(geology.mantle.plumePower * (0.85f + residence * 1.65f) * (0.72f + 0.52f * Sample::hash01(plume, seed, 3011, 53)), 0.18f, 1.25f);
-                const float metric = (80000.0f * (9.81f / std::max(geology.scale.gravity, 0.05f)) * (0.55f + 0.70f * power)) / float(cluster::measure::ShrinkFactor::celestial) / radius;
+                const float metric = (80000.0f * (9.81f / std::max(geology.scale.gravity, 0.05f)) * (0.55f + 0.70f * power)) / float(realRadius);
                 const float shield = metric * geology.crust.mobility + (0.10f + 0.16f * power) * (1.0f - geology.crust.mobility);
                 Swell::apply(formation.relief, Swell{.axis = axis, .sigma = shield * 1.6f, .amplitude = amplitude * (0.14f + 0.28f * power), .seed = seed + 3023 + plume * 59});
                 vec3 tangent = glm::cross(axis, Sample::sphereDir(plume, seed + 3037, 31, 37));
@@ -436,7 +437,7 @@ namespace eltanin::planet {
             }
         }
 
-        const float escape = std::sqrt(std::max(float(2.0f * geology.scale.gravity * radius * cluster::measure::ShrinkFactor::celestial), 0.0f));
+        const float escape = std::sqrt(std::max(float(2.0f * geology.scale.gravity * float(realRadius)), 0.0f));
         const float stick = glm::clamp((6500.0f - escape) / 6500.0f, 0.0f, 1.0f) * (0.30f + 0.70f * geology.bombardment.largeBodyTail);
         const integer patches = static_cast<integer>(std::lround(stick * 3.0f));
         if (patches > 0) {
@@ -491,7 +492,7 @@ namespace eltanin::planet {
                 formation.sediment.at(slot) = glm::clamp(geology.climate.transport * formation.water.at(slot) * (0.55f + formation.fracture.at(slot) * 0.35f), 0.0f, 1.0f);
             }
         }
-        planet.runtime.surfaceAcceleration = float(6.67430e-11 * std::max(planet.passport.mass, 0.0) / (double(planet.passport.radius) * double(planet.passport.radius) * cluster::measure::ShrinkFactor::celestial * cluster::measure::ShrinkFactor::celestial));
+        planet.runtime.surfaceAcceleration = geology.scale.gravity;
         planet.runtime.reliefAmplitude = amplitude;
         planet.runtime.atmosphere.seaDensity = geology.climate.atmosphere * 1800.0f;
         planet.runtime.atmosphere.kerman = planet.passport.radius * glm::clamp(0.008f + geology.climate.temperature / std::max(planet.runtime.surfaceAcceleration, 0.2f) * 0.00012f, 0.008f, 0.055f);

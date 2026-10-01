@@ -1,5 +1,6 @@
 #pragma once
 
+#include <span>
 #include <vector>
 
 #include <base/maybe.h>
@@ -52,6 +53,10 @@ namespace eltanin::views::starmap {
             rmmr::scene::Grid::Id grid;
             float cellLy;
         };
+        struct LatticeScale {
+            float cellLy;
+            const char* caption;
+        };
 
         base::maybe<Marker> currentPlayer;
         base::maybe<Marker> viewFocus;
@@ -72,10 +77,14 @@ namespace eltanin::views::starmap {
         rmmr::Pos player;
         rmmr::Pos focus;
         float scaleLy;
+        float pixelWorld;
+        float cellLy;
         struct Display {
             bool grid;
         } display;
 
+        static auto latticeScales() -> std::span<const LatticeScale>;
+        static auto homeLy(float cellLy) -> float;
         static auto starMeshRadius(float celestialRadius, float cameraDistance, float pixelWorld) -> float;
         auto addAssets(Writing) -> bool;
         auto place(Writing, rmmr::scene::Root::Id, rmmr::system::Window::Id) -> bool;

@@ -3,6 +3,7 @@
 #include "mech/assembler.h"
 #include "geo/celestial/horizon.h"
 #include "physics/settings.h"
+#include "cluster/measure.h"
 
 #include <algorithm>
 #include <array>
@@ -15,6 +16,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <eltanin/geo/minerals.q1.h>
 #include <eltanin/mech/blueprint.q1.h>
 #include <eltanin/physics/body.q1.h>
 #include <eltanin/world.q1.h>
@@ -281,7 +283,7 @@ namespace eltanin::views::locality {
                         ImGui::TextDisabled("No camera selected.");
                     } else {
                         const auto& node = with<scene::Node>::get(world, *camera);
-                        ImGui::Text("Pos: %.2f, %.2f, %.2f", node.pose.position.x, node.pose.position.y, node.pose.position.z);
+                        ImGui::Text("Pos: %s, %s, %s", Format::distance(node.pose.position.x).c_str(), Format::distance(node.pose.position.y).c_str(), Format::distance(node.pose.position.z).c_str());
                         if (planet and planet->well and with<phys::Body>::exists(world, *planet->well)) {
                             ImGui::Separator();
                             ImGui::TextUnformatted("Planet");
@@ -293,20 +295,20 @@ namespace eltanin::views::locality {
                             const float gravity = float(glm::length(planet->gravityAt(planetBody, dvec3{cameraPos})));
                             const float latDeg = range > 1.0e-3f ? glm::degrees(std::asin(glm::clamp(local.y / range, -1.0f, 1.0f))) : 0.0f;
                             const float lonDeg = range > 1.0e-3f ? glm::degrees(std::atan2(local.x, local.z)) : 0.0f;
-                            ImGui::Text("Altitude: %.1f m", altitude);
+                            ImGui::Text("Altitude: %s", Format::altitude(altitude).c_str());
                             ImGui::Text("g: %.3f m/s²", gravity);
                             const float air = planet->airDensity(planetBody, dvec3{cameraPos});
                             ImGui::Text("Air: %.0f g/m³ (%.0f%% ISA)", air, 100.0f * air / phys::Settings::Air::isaDensity);
-                            ImGui::Text("Range to center: %.1f m (%.2f km)", range, range * 0.001f);
+                            ImGui::Text("Range to center: %s", Format::distance(range).c_str());
                             ImGui::Text("Lat / Lon: %.3f°, %.3f°", latDeg, lonDeg);
                             const auto hit = planet->probe(planetBody, local);
                             ImGui::Separator();
                             ImGui::TextUnformatted("Probe");
-                            ImGui::Text("height %.2f m", hit.height);
-                            ImGui::Text("position %.2f, %.2f, %.2f", hit.position.x, hit.position.y, hit.position.z);
+                            ImGui::Text("height %s", Format::altitude(hit.height).c_str());
+                            ImGui::Text("position %s, %s, %s", Format::distance(hit.position.x).c_str(), Format::distance(hit.position.y).c_str(), Format::distance(hit.position.z).c_str());
                             ImGui::Text("normal %.3f, %.3f, %.3f", hit.normal.x, hit.normal.y, hit.normal.z);
                             ImGui::Text("slope %.3f", hit.slope);
-                            ImGui::Text("mix %016llx", static_cast<unsigned long long>(hit.mix));
+                            ImGui::Text("mix %s", geo::Mineral::description(hit.mix).c_str());
                         }
                     }
 
